@@ -1,7 +1,7 @@
 //! Determine whether a [Declaration] is documentable.
 use crate::{
     doc::{Document, ModuleInfo},
-    render::{trim_fn_body, ContextType, DocStrings, ItemBody, ItemContext, ItemHeader},
+    render::{trim_fn_body, Context, ContextType, DocStrings, ItemBody, ItemContext, ItemHeader},
 };
 use anyhow::Result;
 use sway_core::{
@@ -47,8 +47,10 @@ impl Descriptor {
                     let item_name = struct_decl.call_path.suffix;
                     let attrs_opt = (!struct_decl.attributes.is_empty())
                         .then(|| struct_decl.attributes.to_html_string());
-                    let context = (!struct_decl.fields.is_empty())
-                        .then_some(ContextType::StructFields(struct_decl.fields));
+                    let context = (!struct_decl.fields.is_empty()).then_some(Context::new(
+                        module_info.clone(),
+                        ContextType::StructFields(struct_decl.fields),
+                    ));
 
                     Ok(Descriptor::Documentable(Document {
                         module_info: module_info.clone(),
@@ -65,7 +67,9 @@ impl Descriptor {
                                 struct_decl.span.as_str(),
                             ),
                             attrs_opt: attrs_opt.clone(),
-                            item_context: ItemContext { context },
+                            item_context: ItemContext {
+                                context_opt: context,
+                            },
                         },
                         raw_attributes: attrs_opt,
                     }))
@@ -79,8 +83,10 @@ impl Descriptor {
                     let item_name = enum_decl.call_path.suffix;
                     let attrs_opt = (!enum_decl.attributes.is_empty())
                         .then(|| enum_decl.attributes.to_html_string());
-                    let context = (!enum_decl.variants.is_empty())
-                        .then_some(ContextType::EnumVariants(enum_decl.variants));
+                    let context = (!enum_decl.variants.is_empty()).then_some(Context::new(
+                        module_info.clone(),
+                        ContextType::EnumVariants(enum_decl.variants),
+                    ));
 
                     Ok(Descriptor::Documentable(Document {
                         module_info: module_info.clone(),
@@ -97,7 +103,9 @@ impl Descriptor {
                                 enum_decl.span.as_str(),
                             ),
                             attrs_opt: attrs_opt.clone(),
-                            item_context: ItemContext { context },
+                            item_context: ItemContext {
+                                context_opt: context,
+                            },
                         },
                         raw_attributes: attrs_opt,
                     }))
@@ -111,18 +119,20 @@ impl Descriptor {
                     let item_name = trait_decl.name;
                     let attrs_opt = (!trait_decl.attributes.is_empty())
                         .then(|| trait_decl.attributes.to_html_string());
-                    let context = (!trait_decl.interface_surface.is_empty()).then_some(
-                        ContextType::RequiredMethods(
-                            trait_decl
-                                .interface_surface
-                                .into_iter()
-                                .flat_map(|item| match item {
-                                    TyTraitInterfaceItem::TraitFn(fn_decl) => Some(fn_decl),
-                                })
-                                .collect::<Vec<_>>()
-                                .to_methods(decl_engine),
-                        ),
-                    );
+                    let context =
+                        (!trait_decl.interface_surface.is_empty()).then_some(Context::new(
+                            module_info.clone(),
+                            ContextType::RequiredMethods(
+                                trait_decl
+                                    .interface_surface
+                                    .into_iter()
+                                    .flat_map(|item| match item {
+                                        TyTraitInterfaceItem::TraitFn(fn_decl) => Some(fn_decl),
+                                    })
+                                    .collect::<Vec<_>>()
+                                    .to_methods(decl_engine),
+                            ),
+                        ));
 
                     Ok(Descriptor::Documentable(Document {
                         module_info: module_info.clone(),
@@ -139,7 +149,9 @@ impl Descriptor {
                                 trait_decl.span.as_str(),
                             ),
                             attrs_opt: attrs_opt.clone(),
-                            item_context: ItemContext { context },
+                            item_context: ItemContext {
+                                context_opt: context,
+                            },
                         },
                         raw_attributes: attrs_opt,
                     }))
@@ -150,7 +162,8 @@ impl Descriptor {
                 let item_name = abi_decl.name;
                 let attrs_opt =
                     (!abi_decl.attributes.is_empty()).then(|| abi_decl.attributes.to_html_string());
-                let context = (!abi_decl.interface_surface.is_empty()).then_some(
+                let context = (!abi_decl.interface_surface.is_empty()).then_some(Context::new(
+                    module_info.clone(),
                     ContextType::RequiredMethods(
                         abi_decl
                             .interface_surface
@@ -161,7 +174,7 @@ impl Descriptor {
                             .collect::<Vec<_>>()
                             .to_methods(decl_engine),
                     ),
-                );
+                ));
 
                 Ok(Descriptor::Documentable(Document {
                     module_info: module_info.clone(),
@@ -176,7 +189,9 @@ impl Descriptor {
                         item_name,
                         code_str: parse::parse_format::<sway_ast::ItemAbi>(abi_decl.span.as_str()),
                         attrs_opt: attrs_opt.clone(),
-                        item_context: ItemContext { context },
+                        item_context: ItemContext {
+                            context_opt: context,
+                        },
                     },
                     raw_attributes: attrs_opt,
                 }))
@@ -188,8 +203,10 @@ impl Descriptor {
                 );
                 let attrs_opt = (!storage_decl.attributes.is_empty())
                     .then(|| storage_decl.attributes.to_html_string());
-                let context = (!storage_decl.fields.is_empty())
-                    .then_some(ContextType::StorageFields(storage_decl.fields));
+                let context = (!storage_decl.fields.is_empty()).then_some(Context::new(
+                    module_info.clone(),
+                    ContextType::StorageFields(storage_decl.fields),
+                ));
 
                 Ok(Descriptor::Documentable(Document {
                     module_info: module_info.clone(),
@@ -206,7 +223,9 @@ impl Descriptor {
                             storage_decl.span.as_str(),
                         ),
                         attrs_opt: attrs_opt.clone(),
-                        item_context: ItemContext { context },
+                        item_context: ItemContext {
+                            context_opt: context,
+                        },
                     },
                     raw_attributes: attrs_opt,
                 }))
@@ -263,7 +282,7 @@ impl Descriptor {
                                 fn_decl.span.as_str(),
                             )),
                             attrs_opt: attrs_opt.clone(),
-                            item_context: ItemContext { context: None },
+                            item_context: ItemContext { context_opt: None },
                         },
                         raw_attributes: attrs_opt,
                     }))
@@ -293,7 +312,7 @@ impl Descriptor {
                                 const_decl.span.as_str(),
                             ),
                             attrs_opt: attrs_opt.clone(),
-                            item_context: ItemContext { context: None },
+                            item_context: ItemContext { context_opt: None },
                         },
                         raw_attributes: attrs_opt,
                     }))

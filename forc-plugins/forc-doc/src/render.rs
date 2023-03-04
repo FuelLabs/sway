@@ -1,22 +1,28 @@
-use crate::doc::{Documentation, ModuleInfo, ModulePrefix};
-use anyhow::Result;
+use crate::{
+    doc::{Documentation, ModuleInfo, ModulePrefix},
+    RenderPlan,
+};
+use anyhow::{anyhow, Result};
 use comrak::{markdown_to_html, ComrakOptions};
 use horrorshow::{box_html, helper::doctype, html, prelude::*, Raw};
-use std::collections::BTreeMap;
-use std::fmt::Write;
-use sway_core::language::ty::{
-    TyDeclaration::{self, *},
-    TyEnumVariant, TyProgramKind, TyStorageField, TyStructField, TyTraitFn,
+use std::{collections::BTreeMap, fmt::Write};
+use sway_core::{
+    language::ty::{
+        TyDeclaration::{self, *},
+        TyEnumVariant, TyProgramKind, TyStorageField, TyStructField, TyTraitFn,
+    },
+    transform::{AttributeKind, AttributesMap},
+    AbiName, TypeInfo,
 };
-use sway_core::transform::{AttributeKind, AttributesMap};
 use sway_lsp::utils::markdown::format_docs;
-use sway_types::BaseIdent;
+use sway_types::{BaseIdent, Spanned};
 
 pub(crate) const ALL_DOC_FILENAME: &str = "all.html";
 pub(crate) const INDEX_FILENAME: &str = "index.html";
 pub(crate) const IDENTITY: &str = "#";
+
 pub(crate) trait Renderable {
-    fn render(self) -> Result<Box<dyn RenderBox>>;
+    fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>>;
 }
 /// A [Document] rendered to HTML.
 pub(crate) struct RenderedDocument {
@@ -31,6 +37,7 @@ impl RenderedDocumentation {
     /// Top level HTML rendering for all [Documentation] of a program.
     pub fn from(
         raw: Documentation,
+        render_plan: RenderPlan,
         root_attributes: Option<AttributesMap>,
         program_kind: TyProgramKind,
         forc_version: Option<String>,
@@ -53,7 +60,7 @@ impl RenderedDocumentation {
             rendered_docs.0.push(RenderedDocument {
                 module_info: doc.module_info.clone(),
                 html_filename: doc.html_filename(),
-                file_contents: HTMLString::from(doc.clone().render()?),
+                file_contents: HTMLString::from(doc.clone().render(render_plan.clone())?),
             });
             // Here we gather all of the `doc_links` based on which module they belong to.
             let location = doc.module_info.location().to_string();
@@ -239,7 +246,7 @@ impl RenderedDocumentation {
                             links: doc_links.to_owned(),
                         },
                     }
-                    .render()?,
+                    .render(render_plan.clone())?,
                 ),
             }),
             None => panic!("Project does not contain a root module."),
@@ -269,7 +276,7 @@ impl RenderedDocumentation {
                                     links: doc_links.to_owned(),
                                 },
                             }
-                            .render()?,
+                            .render(render_plan.clone())?,
                         ),
                     })
                 }
@@ -284,7 +291,7 @@ impl RenderedDocumentation {
                     project_name: root_module,
                     all_docs,
                 }
-                .render()?,
+                .render(render_plan)?,
             ),
         });
 
@@ -317,7 +324,7 @@ pub(crate) struct ItemHeader {
 }
 impl Renderable for ItemHeader {
     /// Basic HTML header component
-    fn render(self) -> Result<Box<dyn RenderBox>> {
+    fn render(self, _render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
         let ItemHeader {
             module_info,
             friendly_name,
@@ -382,7 +389,7 @@ impl SidebarNav for ItemBody {
 }
 impl Renderable for ItemBody {
     /// HTML body component
-    fn render(self) -> Result<Box<dyn RenderBox>> {
+    fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
         let sidebar = self.sidebar();
         let ItemBody {
             module_info,
@@ -395,9 +402,9 @@ impl Renderable for ItemBody {
 
         let decl_ty = ty_decl.doc_name();
         let friendly_name = ty_decl.friendly_type_name();
-        let sidebar = sidebar.render()?;
-        let item_context = (item_context.context.is_some())
-            .then(|| -> Result<Box<dyn RenderBox>> { item_context.render() });
+        let sidebar = sidebar.render(render_plan.clone())?;
+        let item_context = (item_context.context_opt.is_some())
+            .then(|| -> Result<Box<dyn RenderBox>> { item_context.render(render_plan) });
         let sway_hjs = module_info.to_html_shorthand_path_string("assets/highlight.js");
 
         Ok(box_html! {
@@ -484,17 +491,243 @@ pub(crate) enum ContextType {
     /// at a later date if need be
     RequiredMethods(Vec<TyTraitFn>),
 }
+impl ContextType {
+    fn as_block_title(&self) -> BlockTitle {
+        match self {
+            ContextType::StructFields(_) => BlockTitle::Fields,
+            ContextType::StorageFields(_) => BlockTitle::Fields,
+            ContextType::EnumVariants(_) => BlockTitle::Variants,
+            ContextType::RequiredMethods(_) => BlockTitle::RequiredMethods,
+        }
+    }
+}
+/// The actual context of the item displayed by [ItemContext].
+/// This uses [ContextType] to determine how to represent the context of an item.
+///
+/// Example:
+/// ```sw
+/// struct Foo {}
+/// trait Foo {
+///     fn foo() -> Foo;
+/// }
+/// ```
+/// Becomes:
+/// ```rust
+/// Context {
+///     module_info: ModuleInfo, /* cloned from item origin to create links */
+///     context_type: ContextType::RequiredMethods(Vec<TyTraitFn>), /* trait fn foo() stored here */
+/// }
+/// ```
 #[derive(Clone)]
+pub(crate) struct Context {
+    module_info: ModuleInfo,
+    context_type: ContextType,
+}
+impl Context {
+    pub(crate) fn new(module_info: ModuleInfo, context_type: ContextType) -> Self {
+        Self {
+            module_info,
+            context_type,
+        }
+    }
+}
+impl Renderable for Context {
+    fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
+        let mut rendered_list: Vec<String> = Vec::new();
+        match self.context_type {
+            ContextType::StructFields(fields) => {
+                for field in fields {
+                    let struct_field_id = format!("structfield.{}", field.name.as_str());
+                    let type_anchor = render_type_anchor(
+                        render_plan.type_engine.get(field.type_argument.type_id),
+                        &render_plan,
+                        &self.module_info,
+                    );
+                    rendered_list.push(box_html! {
+                        span(id=&struct_field_id, class="structfield small-section-header") {
+                            a(class="anchor field", href=format!("{IDENTITY}{struct_field_id}"));
+                            code {
+                                : format!("{}: ", field.name.as_str());
+                                @ if let Ok(type_anchor) = type_anchor {
+                                    : type_anchor;
+                                } else {
+                                    : field.type_argument.span.as_str();
+                                }
+                            }
+                        }
+                        @ if !field.attributes.is_empty() {
+                            div(class="docblock") {
+                                : Raw(field.attributes.to_html_string());
+                            }
+                        }
+                    }.into_string()?);
+                }
+            }
+            ContextType::StorageFields(fields) => {
+                for field in fields {
+                    let storage_field_id = format!("storagefield.{}", field.name.as_str());
+                    let type_anchor = render_type_anchor(
+                        render_plan.type_engine.get(field.type_argument.type_id),
+                        &render_plan,
+                        &self.module_info,
+                    );
+                    rendered_list.push(box_html! {
+                        span(id=&storage_field_id, class="storagefield small-section-header") {
+                            a(class="anchor field", href=format!("{IDENTITY}{storage_field_id}"));
+                            code {
+                                : format!("{}: ", field.name.as_str());
+                                @ if let Ok(type_anchor) = type_anchor {
+                                    : type_anchor;
+                                } else {
+                                    : field.type_argument.span.as_str();
+                                }
+                            }
+                        }
+                        @ if !field.attributes.is_empty() {
+                            div(class="docblock") {
+                                : Raw(field.attributes.to_html_string());
+                            }
+                        }
+                    }.into_string()?);
+                }
+            }
+            ContextType::EnumVariants(variants) => {
+                for variant in variants {
+                    let enum_variant_id = format!("variant.{}", variant.name.as_str());
+                    let type_anchor = render_type_anchor(
+                        render_plan.type_engine.get(variant.type_argument.type_id),
+                        &render_plan,
+                        &self.module_info,
+                    );
+                    rendered_list.push(box_html! {
+                        h3(id=&enum_variant_id, class="variant small-section-header") {
+                            a(class="anchor field", href=format!("{IDENTITY}{enum_variant_id}"));
+                            code {
+                                : format!("{}: ", variant.name.as_str());
+                                @ if let Ok(type_anchor) = type_anchor {
+                                    : type_anchor;
+                                } else {
+                                    : variant.type_argument.span.as_str();
+                                }
+                            }
+                        }
+                        @ if !variant.attributes.is_empty() {
+                            div(class="docblock") {
+                                : Raw(variant.attributes.to_html_string());
+                            }
+                        }
+                    }.into_string()?);
+                }
+            }
+            ContextType::RequiredMethods(methods) => {
+                for method in methods {
+                    // there is likely a better way we can do this while simultaneously storing the
+                    // string slices we need like "&mut "
+                    let mut fn_sig = format!("fn {}(", method.name.as_str());
+                    for param in &method.parameters {
+                        let mut param_str = String::new();
+                        if param.is_reference {
+                            write!(param_str, "ref ")?;
+                        }
+                        if param.is_mutable {
+                            write!(param_str, "mut ")?;
+                        }
+                        if param.is_self() {
+                            write!(param_str, "self,")?;
+                        } else {
+                            write!(
+                                fn_sig,
+                                "{} {},",
+                                param.name.as_str(),
+                                param.type_argument.span.as_str()
+                            )?;
+                        }
+                    }
+                    write!(fn_sig, ") -> {}", method.return_type_span.as_str())?;
+                    let multiline = fn_sig.chars().count() >= 60;
+
+                    let method_id = format!("tymethod.{}", method.name.as_str());
+                    rendered_list.push(box_html! {
+                        div(class="methods") {
+                            div(id=&method_id, class="method has-srclink") {
+                                h4(class="code-header") {
+                                    : "fn ";
+                                    a(class="fnname", href=format!("{IDENTITY}{method_id}")) {
+                                        : method.name.as_str();
+                                    }
+                                    : "(";
+                                    @ if multiline {
+                                        @ for param in &method.parameters {
+                                            br;
+                                            : "    ";
+                                            @ if param.is_reference {
+                                                : "ref";
+                                            }
+                                            @ if param.is_mutable {
+                                                : "mut ";
+                                            }
+                                            @ if param.is_self() {
+                                                : "self,"
+                                            } else {
+                                                : param.name.as_str();
+                                                : ": ";
+                                                : param.type_argument.span.as_str();
+                                                : ","
+                                            }
+                                        }
+                                        br;
+                                        : ")";
+                                    } else {
+                                        @ for param in &method.parameters {
+                                            @ if param.is_reference {
+                                                : "ref";
+                                            }
+                                            @ if param.is_mutable {
+                                                : "mut ";
+                                            }
+                                            @ if param.is_self() {
+                                                : "self"
+                                            } else {
+                                                : param.name.as_str();
+                                                : ": ";
+                                                : param.type_argument.span.as_str();
+                                            }
+                                            @ if param.name.as_str()
+                                                != method.parameters.last()
+                                                .expect("no last element in trait method parameters list")
+                                                .name.as_str() {
+                                                : ", ";
+                                            }
+                                        }
+                                        : ") -> ";
+                                    }
+                                    : method.return_type_span.as_str();
+                                }
+                            }
+                        }
+                    }.into_string()?);
+                }
+            }
+        };
+        Ok(box_html! {
+            @ for item in rendered_list {
+                : Raw(item);
+            }
+        })
+    }
+}
+#[derive(Clone)]
+/// The context section of an item that appears in the page [ItemBody].
 pub(crate) struct ItemContext {
-    pub(crate) context: Option<ContextType>,
+    pub(crate) context_opt: Option<Context>,
     // TODO: All other Implementation types, eg
     // implementations on foreign types, method implementations, etc.
 }
 impl ItemContext {
     fn to_doclinks(&self) -> DocLinks {
         let mut links: BTreeMap<BlockTitle, Vec<DocLink>> = BTreeMap::new();
-        if let Some(context) = &self.context {
-            match context {
+        if let Some(context) = &self.context_opt {
+            match context.context_type.clone() {
                 ContextType::StructFields(fields) => {
                     let doc_links = fields
                         .iter()
@@ -564,189 +797,150 @@ impl ItemContext {
     }
 }
 impl Renderable for ItemContext {
-    fn render(self) -> Result<Box<dyn RenderBox>> {
-        match self.context.unwrap() {
-            ContextType::StructFields(fields) => Ok(context_section(fields, BlockTitle::Fields)?),
-            ContextType::StorageFields(fields) => Ok(context_section(fields, BlockTitle::Fields)?),
-            ContextType::EnumVariants(variants) => {
-                Ok(context_section(variants, BlockTitle::Variants)?)
+    fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
+        let (title, rendered_list) = match self.context_opt {
+            Some(context) => {
+                let title = context.context_type.as_block_title();
+                let rendered_list = context.render(render_plan)?;
+                Ok((title, rendered_list))
             }
-            ContextType::RequiredMethods(methods) => {
-                Ok(context_section(methods, BlockTitle::RequiredMethods)?)
-            }
-        }
-    }
-}
-/// Dynamically creates the context section of an item.
-fn context_section<'title, S: Renderable + 'static>(
-    list: Vec<S>,
-    title: BlockTitle,
-) -> Result<Box<dyn RenderBox + 'title>> {
-    let lct = title.html_title_string();
-    let mut rendered_list: Vec<_> = Vec::new();
-    for item in list {
-        rendered_list.push(item.render()?)
-    }
-    Ok(box_html! {
-        h2(id=&lct, class=format!("{} small-section-header", &lct)) {
-            : title.as_str();
-            a(class="anchor", href=format!("{IDENTITY}{lct}"));
-        }
-        @ for item in rendered_list {
-            // TODO: Check for visibility of the field itself
-            : item;
-        }
-    })
-}
-impl Renderable for TyStructField {
-    fn render(self) -> Result<Box<dyn RenderBox>> {
-        let struct_field_id = format!("structfield.{}", self.name.as_str());
+            None => Err(anyhow!(
+                "Safeguard against render call on empty context failed."
+            )),
+        }?;
+        let lct = title.html_title_string();
         Ok(box_html! {
-            span(id=&struct_field_id, class="structfield small-section-header") {
-                a(class="anchor field", href=format!("{IDENTITY}{struct_field_id}"));
-                code {
-                    : format!("{}: ", self.name.as_str());
-                    // TODO: Add links to types based on visibility
-                    : self.type_argument.span.as_str();
-                }
+            h2(id=&lct, class=format!("{} small-section-header", &lct)) {
+                : title.as_str();
+                a(class="anchor", href=format!("{IDENTITY}{lct}"));
             }
-            @ if !self.attributes.is_empty() {
-                div(class="docblock") {
-                    : Raw(self.attributes.to_html_string());
-                }
-            }
+            : rendered_list;
         })
     }
 }
-impl Renderable for TyStorageField {
-    fn render(self) -> Result<Box<dyn RenderBox>> {
-        let storage_field_id = format!("storagefield.{}", self.name.as_str());
-        Ok(box_html! {
-            span(id=&storage_field_id, class="storagefield small-section-header") {
-                a(class="anchor field", href=format!("{IDENTITY}{storage_field_id}"));
-                code {
-                    : format!("{}: ", self.name.as_str());
-                    // TODO: Add links to types based on visibility
-                    : self.type_argument.span.as_str();
+/// Handles types & nested types that should have links
+/// eg. (`[]` represent types with links).
+///
+/// ```sway
+/// struct Foo {
+///     foo: ([Foo], (u32, [Foo], ([Foo], [Foo])))
+/// }
+/// ```
+//
+// TODO: Add checks for multiline types
+fn render_type_anchor(
+    type_info: TypeInfo,
+    render_plan: &RenderPlan,
+    current_module_info: &ModuleInfo,
+) -> Result<Box<dyn RenderBox>> {
+    match type_info {
+        TypeInfo::Array(ty_arg, len) => {
+            let inner = render_type_anchor(
+                render_plan.type_engine.get(ty_arg.type_id),
+                render_plan,
+                current_module_info,
+            )?;
+            Ok(box_html! {
+                : "[";
+                : inner;
+                : format!("; {}]", len.val());
+            })
+        }
+        TypeInfo::Tuple(ty_args) => {
+            let mut rendered_args: Vec<_> = Vec::new();
+            for ty_arg in ty_args {
+                rendered_args.push(render_type_anchor(
+                    render_plan.type_engine.get(ty_arg.type_id),
+                    render_plan,
+                    current_module_info,
+                )?)
+            }
+            Ok(box_html! {
+                : "(";
+                @ for arg in rendered_args {
+                    : arg;
                 }
-            }
-            @ if !self.attributes.is_empty() {
-                div(class="docblock") {
-                    : Raw(self.attributes.to_html_string());
-                }
-            }
-        })
-    }
-}
-
-impl Renderable for TyEnumVariant {
-    fn render(self) -> Result<Box<dyn RenderBox>> {
-        let enum_variant_id = format!("variant.{}", self.name.as_str());
-        Ok(box_html! {
-            h3(id=&enum_variant_id, class="variant small-section-header") {
-                a(class="anchor field", href=format!("{IDENTITY}{enum_variant_id}"));
-                code {
-                    : format!("{}: ", self.name.as_str());
-                    : self.type_argument.span.as_str();
-                }
-            }
-            @ if !self.attributes.is_empty() {
-                div(class="docblock") {
-                    : Raw(self.attributes.to_html_string());
-                }
-            }
-        })
-    }
-}
-impl Renderable for TyTraitFn {
-    fn render(self) -> Result<Box<dyn RenderBox>> {
-        // there is likely a better way we can do this while simultaneously storing the
-        // string slices we need like "&mut "
-        let mut fn_sig = format!("fn {}(", self.name.as_str());
-        for param in &self.parameters {
-            let mut param_str = String::new();
-            if param.is_reference {
-                write!(param_str, "&")?;
-            }
-            if param.is_mutable {
-                write!(param_str, "mut ")?;
-            }
-            if param.is_self() {
-                write!(param_str, "self,")?;
+                : ")";
+            })
+        }
+        TypeInfo::Enum(decl_ref) => {
+            let enum_decl = render_plan.decl_engine.get_enum(&decl_ref);
+            if !render_plan.document_private_items && enum_decl.visibility.is_private() {
+                Ok(box_html! {
+                    : decl_ref.name.as_str();
+                })
             } else {
-                write!(
-                    fn_sig,
-                    "{} {},",
-                    param.name.as_str(),
-                    param.type_argument.span.as_str()
-                )?;
+                let module_info = ModuleInfo::from_call_path(enum_decl.call_path);
+                let file_name = format!("enum.{}.html", decl_ref.name.as_str());
+                let href = module_info.file_path_from_location(&file_name, current_module_info)?;
+                Ok(box_html! {
+                    a(class="enum", href=href) {
+                        : decl_ref.name.as_str();
+                    }
+                })
             }
         }
-        write!(fn_sig, ") -> {}", self.return_type_span.as_str())?;
-        let multiline = fn_sig.chars().count() >= 60;
-
-        let method_ref = format!("tymethod.{}", self.name.as_str());
-        Ok(box_html! {
-            div(class="methods") {
-                div(id=&method_ref, class="method has-srclink") {
-                    h4(class="code-header") {
-                        : "fn ";
-                        a(class="fnname", href=format!("{IDENTITY}{method_ref}")) {
-                            : self.name.as_str();
-                        }
-                        : "(";
-                        @ if multiline {
-                            @ for param in &self.parameters {
-                                br;
-                                : "    ";
-                                @ if param.is_reference {
-                                    : "ref";
-                                }
-                                @ if param.is_mutable {
-                                    : "mut ";
-                                }
-                                @ if param.is_self() {
-                                    : "self,"
-                                } else {
-                                    : param.name.as_str();
-                                    : ": ";
-                                    : param.type_argument.span.as_str();
-                                    : ","
-                                }
-                            }
-                            br;
-                            : ")";
-                        } else {
-                            @ for param in &self.parameters {
-                                @ if param.is_reference {
-                                    : "ref";
-                                }
-                                @ if param.is_mutable {
-                                    : "mut ";
-                                }
-                                @ if param.is_self() {
-                                    : "self"
-                                } else {
-                                    : param.name.as_str();
-                                    : ": ";
-                                    : param.type_argument.span.as_str();
-                                }
-                                @ if param.name.as_str()
-                                    != self.parameters.last()
-                                    .expect("no last element in trait method parameters list")
-                                    .name.as_str() {
-                                    : ", ";
-                                }
-                            }
-                            : ") -> ";
-                        }
-                        : self.return_type_span.as_str();
+        TypeInfo::Struct(decl_ref) => {
+            let struct_decl = render_plan.decl_engine.get_struct(&decl_ref);
+            if !render_plan.document_private_items && struct_decl.visibility.is_private() {
+                Ok(box_html! {
+                    : decl_ref.name.as_str();
+                })
+            } else {
+                let module_info = ModuleInfo::from_call_path(struct_decl.call_path);
+                let file_name = format!("struct.{}.html", decl_ref.name.as_str());
+                let href = module_info.file_path_from_location(&file_name, current_module_info)?;
+                Ok(box_html! {
+                    a(class="struct", href=href) {
+                        : decl_ref.name.as_str();
                     }
-                }
+                })
             }
-        })
+        }
+        TypeInfo::UnknownGeneric { name, .. } => Ok(box_html! {
+            : name.as_str();
+        }),
+        TypeInfo::Str(len) => Ok(box_html! {
+            : len.span().as_str();
+        }),
+        TypeInfo::UnsignedInteger(int_bits) => {
+            use sway_types::integer_bits::IntegerBits;
+            let uint = match int_bits {
+                IntegerBits::Eight => "u8",
+                IntegerBits::Sixteen => "u16",
+                IntegerBits::ThirtyTwo => "u32",
+                IntegerBits::SixtyFour => "u64",
+            };
+            Ok(box_html! {
+                : uint;
+            })
+        }
+        TypeInfo::Boolean => Ok(box_html! {
+            : "bool";
+        }),
+        TypeInfo::ContractCaller { abi_name, .. } => {
+            // TODO: determine whether we should give a link to this
+            if let AbiName::Known(name) = abi_name {
+                Ok(box_html! {
+                    : name.suffix.as_str();
+                })
+            } else {
+                Err(anyhow!("Deferred AbiName is unhandled"))
+            }
+        }
+        TypeInfo::Custom { call_path, .. } => Ok(box_html! {
+            : call_path.suffix.as_str();
+        }),
+        TypeInfo::SelfType => Ok(box_html! {
+            : "Self";
+        }),
+        TypeInfo::B256 => Ok(box_html! {
+            : "b256";
+        }),
+        _ => Err(anyhow!("Undetermined or unusable TypeInfo")),
     }
 }
+
 /// Used for creating links between docs.
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) struct DocLink {
@@ -762,7 +956,7 @@ struct DocLinks {
     links: BTreeMap<BlockTitle, Vec<DocLink>>,
 }
 impl Renderable for DocLinks {
-    fn render(self) -> Result<Box<dyn RenderBox>> {
+    fn render(self, _render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
         let doc_links = match self.style {
             DocStyle::AllDoc(_) => box_html! {
                 @ for (title, list_items) in self.links {
@@ -772,7 +966,7 @@ impl Renderable for DocLinks {
                             @ for item in list_items {
                                 div(class="item-row") {
                                     div(class=format!("item-left {}-item", title.item_title_str())) {
-                                        a(href=item.module_info.to_file_path_string(&item.html_filename, item.module_info.project_name())) {
+                                        a(href=item.module_info.file_path_at_location(&item.html_filename, item.module_info.project_name())) {
                                             : item.module_info.to_path_literal_string(
                                                 &item.name,
                                                 item.module_info.project_name()
@@ -800,7 +994,7 @@ impl Renderable for DocLinks {
                             @ for item in list_items {
                                 div(class="item-row") {
                                     div(class=format!("item-left {}-item", title.item_title_str())) {
-                                        a(href=item.module_info.to_file_path_string(&item.html_filename, item.module_info.project_name())) {
+                                        a(href=item.module_info.file_path_at_location(&item.html_filename, item.module_info.project_name())) {
                                             @ if title == BlockTitle::Modules {
                                                 : item.name;
                                             } else {
@@ -832,7 +1026,7 @@ impl Renderable for DocLinks {
                             @ for item in list_items {
                                 div(class="item-row") {
                                     div(class=format!("item-left {}-item", title.item_title_str())) {
-                                        a(href=item.module_info.to_file_path_string(&item.html_filename, item.module_info.location())) {
+                                        a(href=item.module_info.file_path_at_location(&item.html_filename, item.module_info.location())) {
                                             : item.module_info.to_path_literal_string(
                                                 &item.name,
                                                 item.module_info.location()
@@ -937,9 +1131,9 @@ impl SidebarNav for AllDocIndex {
     }
 }
 impl Renderable for AllDocIndex {
-    fn render(self) -> Result<Box<dyn RenderBox>> {
-        let doc_links = self.all_docs.clone().render()?;
-        let sidebar = self.sidebar().render()?;
+    fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
+        let doc_links = self.all_docs.clone().render(render_plan.clone())?;
+        let sidebar = self.sidebar().render(render_plan)?;
         Ok(box_html! {
             head {
                 meta(charset="utf-8");
@@ -1022,9 +1216,9 @@ impl SidebarNav for ModuleIndex {
     }
 }
 impl Renderable for ModuleIndex {
-    fn render(self) -> Result<Box<dyn RenderBox>> {
-        let doc_links = self.module_docs.clone().render()?;
-        let sidebar = self.sidebar().render()?;
+    fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
+        let doc_links = self.module_docs.clone().render(render_plan.clone())?;
+        let sidebar = self.sidebar().render(render_plan)?;
         let title_prefix = match self.module_docs.style {
             DocStyle::ProjectIndex(ref program_type) => format!("{program_type} "),
             DocStyle::ModuleIndex => "Module ".to_string(),
@@ -1151,7 +1345,7 @@ struct Sidebar {
     nav: DocLinks,
 }
 impl Renderable for Sidebar {
-    fn render(self) -> Result<Box<dyn RenderBox>> {
+    fn render(self, _render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
         let path_to_logo = self
             .module_info
             .to_html_shorthand_path_string("assets/sway-logo.svg");
