@@ -215,7 +215,7 @@ impl Session {
         let (_, token) = self.token_map.token_at_position(url, position)?;
         let token_ranges = self
             .token_map
-            .all_references_of_token(&token, &self.type_engine.read())
+            .all_references_of_token(&token, &self.type_engine.read(), &self.decl_engine.read())
             .map(|(ident, _)| get_range_from_span(&ident.span()))
             .collect();
 
@@ -229,7 +229,9 @@ impl Session {
     ) -> Option<GotoDefinitionResponse> {
         self.token_map
             .token_at_position(&uri, position)
-            .and_then(|(_, token)| token.declared_token_ident(&self.type_engine.read()))
+            .and_then(|(_, token)| {
+                token.declared_token_ident(&self.type_engine.read(), &self.decl_engine.read())
+            })
             .and_then(|decl_ident| {
                 let range = get_range_from_span(&decl_ident.span());
                 decl_ident.span().path().and_then(|path| {

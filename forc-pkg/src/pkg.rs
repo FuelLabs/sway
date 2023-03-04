@@ -1740,6 +1740,7 @@ pub fn compile(
                         json_abi_with_callpaths: profile.json_abi_with_callpaths,
                     },
                     engines.te(),
+                    engines.de(),
                     &mut types
                 )
             ))
@@ -1757,7 +1758,7 @@ pub fn compile(
 
             let abi = time_expr!(
                 "generate JSON ABI program",
-                evm_json_abi::generate_json_abi_program(typed_program, engines.te())
+                evm_json_abi::generate_json_abi_program(typed_program, &engines)
             );
 
             ops.extend(abi.into_iter());
