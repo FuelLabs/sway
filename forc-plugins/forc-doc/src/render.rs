@@ -548,7 +548,6 @@ impl Renderable for Context {
                             a(class="anchor field", href=format!("{IDENTITY}{struct_field_id}"));
                             code {
                                 : format!("{}: ", field.name.as_str());
-                                // TODO: Add links to types based on visibility
                                 @ if let Ok(type_anchor) = type_anchor {
                                     : type_anchor;
                                 } else {
@@ -577,7 +576,6 @@ impl Renderable for Context {
                             a(class="anchor field", href=format!("{IDENTITY}{storage_field_id}"));
                             code {
                                 : format!("{}: ", field.name.as_str());
-                                // TODO: Add links to types based on visibility
                                 @ if let Ok(type_anchor) = type_anchor {
                                     : type_anchor;
                                 } else {
