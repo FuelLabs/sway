@@ -15,14 +15,15 @@ use crate::{
 use sway_core::{
     language::{
         parsed::{
-            AbiCastExpression, AbiDeclaration, AmbiguousPathExpression, ArrayIndexExpression,
-            AstNode, AstNodeContent, CodeBlock, ConstantDeclaration, Declaration,
-            DelineatedPathExpression, EnumDeclaration, Expression, ExpressionKind,
-            FunctionApplicationExpression, FunctionDeclaration, FunctionParameter, IfExpression,
-            ImplItem, ImplSelf, ImplTrait, ImportType, IntrinsicFunctionExpression,
+            AbiCastExpression, AbiDeclaration, AmbiguousPathExpression, ArrayExpression,
+            ArrayIndexExpression, AstNode, AstNodeContent, CodeBlock, ConstantDeclaration,
+            Declaration, DelineatedPathExpression, EnumDeclaration, EnumVariant, Expression,
+            ExpressionKind, FunctionApplicationExpression, FunctionDeclaration, FunctionParameter,
+            IfExpression, ImplItem, ImplSelf, ImplTrait, ImportType, IntrinsicFunctionExpression,
             LazyOperatorExpression, MatchExpression, MethodApplicationExpression, MethodName,
-            ParseModule, ParseProgram, ParseSubmodule, ReassignmentTarget, Scrutinee,
-            StorageAccessExpression, StorageDeclaration, StructDeclaration, StructExpression,
+            ParseModule, ParseProgram, ParseSubmodule, ReassignmentExpression, ReassignmentTarget,
+            Scrutinee, StorageAccessExpression, StorageDeclaration, StorageField,
+            StructDeclaration, StructExpression, StructExpressionField, StructField,
             StructScrutineeField, SubfieldExpression, Supertrait, TraitDeclaration, TraitFn,
             TraitItem, TreeType, TupleIndexExpression, UseStatement, VariableDeclaration,
             WhileLoopExpression,
@@ -1020,12 +1021,496 @@ impl Parse for Declaration {
     }
 }
 
-impl Parse for Expression {
-    fn parse(&self, ctx: &ParseContext) {}
+impl Parse for UseStatement {
+    fn parse(&self, ctx: &ParseContext) {
+        if let Some(alias) = &self.alias {
+            ctx.tokens.insert(
+                to_ident_key(alias),
+                Token::from_parsed(AstToken::UseStatement(self.clone()), SymbolKind::Unknown),
+            );
+        }
+        for prefix in &self.call_path {
+            ctx.tokens.insert(
+                to_ident_key(prefix),
+                Token::from_parsed(AstToken::UseStatement(self.clone()), SymbolKind::Module),
+            );
+        }
+        match &self.import_type {
+            ImportType::Item(item) => {
+                ctx.tokens.insert(
+                    to_ident_key(item),
+                    Token::from_parsed(AstToken::UseStatement(self.clone()), SymbolKind::Unknown),
+                );
+            }
+            ImportType::SelfImport(span) => {
+                ctx.tokens.insert(
+                    to_ident_key(&Ident::new(span.clone())),
+                    Token::from_parsed(AstToken::UseStatement(self.clone()), SymbolKind::Unknown),
+                );
+            }
+            ImportType::Star => {}
+        }
+    }
 }
 
-impl Parse for UseStatement {
-    fn parse(&self, ctx: &ParseContext) {}
+impl Parse for Expression {
+    fn parse(&self, ctx: &ParseContext) {
+        match &self.kind {
+            ExpressionKind::Error(_part_spans) => {
+                // FIXME(Centril): Left for @JoshuaBatty to use.
+            }
+            ExpressionKind::Literal(value) => {
+                let symbol_kind = literal_to_symbol_kind(value);
+                ctx.tokens.insert(
+                    to_ident_key(&Ident::new(self.span.clone())),
+                    Token::from_parsed(AstToken::Expression(self.clone()), symbol_kind),
+                );
+            }
+            ExpressionKind::FunctionApplication(function_application_expression) => {
+                function_application_expression.parse(ctx);
+            }
+            ExpressionKind::LazyOperator(LazyOperatorExpression { lhs, rhs, .. }) => {
+                lhs.parse(ctx);
+                rhs.parse(ctx);
+            }
+            ExpressionKind::Variable(name) => {
+                if !name.as_str().contains(TUPLE_NAME_PREFIX)
+                    && !name.as_str().contains(MATCH_RETURN_VAR_NAME_PREFIX)
+                {
+                    let symbol_kind = if name.as_str().contains(DESTRUCTURE_PREFIX) {
+                        SymbolKind::Struct
+                    } else {
+                        SymbolKind::Variable
+                    };
+                    ctx.tokens.insert(
+                        to_ident_key(name),
+                        Token::from_parsed(AstToken::Expression(self.clone()), symbol_kind),
+                    );
+                }
+            }
+            ExpressionKind::Tuple(fields) => {
+                fields.iter().for_each(|field| field.parse(ctx));
+            }
+            ExpressionKind::TupleIndex(TupleIndexExpression {
+                prefix, index_span, ..
+            }) => {
+                prefix.parse(ctx);
+                ctx.tokens.insert(
+                    to_ident_key(&Ident::new(index_span.clone())),
+                    Token::from_parsed(
+                        AstToken::Expression(self.clone()),
+                        SymbolKind::NumericLiteral,
+                    ),
+                );
+            }
+            ExpressionKind::Array(array_expression) => {
+                array_expression.parse(ctx);
+            }
+            ExpressionKind::Struct(struct_expression) => {
+                struct_expression.parse(ctx);
+            }
+            ExpressionKind::CodeBlock(code_block) => {
+                code_block.contents.iter().for_each(|node| node.parse(ctx));
+            }
+            ExpressionKind::If(IfExpression {
+                condition,
+                then,
+                r#else,
+                ..
+            }) => {
+                condition.parse(ctx);
+                then.parse(ctx);
+                if let Some(r#else) = r#else {
+                    r#else.parse(ctx);
+                }
+            }
+            ExpressionKind::Match(MatchExpression {
+                value, branches, ..
+            }) => {
+                value.parse(ctx);
+                branches.iter().for_each(|branch| {
+                    branch.scrutinee.parse(ctx);
+                    branch.result.parse(ctx);
+                });
+            }
+            ExpressionKind::Asm(asm) => {
+                asm.registers.iter().for_each(|register| {
+                    if let Some(initializer) = &register.initializer {
+                        initializer.parse(ctx);
+                    }
+                });
+            }
+            ExpressionKind::MethodApplication(method_application_expression) => {
+                method_application_expression.parse(ctx);
+            }
+            ExpressionKind::Subfield(SubfieldExpression {
+                prefix,
+                field_to_access,
+                ..
+            }) => {
+                prefix.parse(ctx);
+                ctx.tokens.insert(
+                    to_ident_key(field_to_access),
+                    Token::from_parsed(AstToken::Expression(self.clone()), SymbolKind::Field),
+                );
+            }
+            ExpressionKind::AmbiguousPathExpression(path_expr) => {
+                path_expr.parse(ctx);
+            }
+            ExpressionKind::DelineatedPath(delineated_path_expression) => {
+                delineated_path_expression.parse(ctx);
+            }
+            ExpressionKind::AbiCast(abi_cast_expression) => {
+                abi_cast_expression.parse(ctx);
+            }
+            ExpressionKind::ArrayIndex(ArrayIndexExpression { prefix, index, .. }) => {
+                prefix.parse(ctx);
+                index.parse(ctx);
+            }
+            ExpressionKind::StorageAccess(StorageAccessExpression { field_names }) => {
+                field_names.iter().for_each(|field_name| {
+                    ctx.tokens.insert(
+                        to_ident_key(field_name),
+                        Token::from_parsed(AstToken::Ident(field_name.clone()), SymbolKind::Field),
+                    );
+                });
+            }
+            ExpressionKind::IntrinsicFunction(intrinsic_function_expression) => {
+                intrinsic_function_expression.parse(ctx);
+            }
+            ExpressionKind::WhileLoop(WhileLoopExpression {
+                body, condition, ..
+            }) => {
+                body.contents.iter().for_each(|node| node.parse(ctx));
+                condition.parse(ctx);
+            }
+            ExpressionKind::Reassignment(reassignment) => {
+                reassignment.parse(ctx);
+            }
+            ExpressionKind::Return(expr) => {
+                expr.parse(ctx);
+            }
+            // We are collecting these tokens in the lexed phase.
+            ExpressionKind::Break | ExpressionKind::Continue => {}
+        }
+    }
+}
+
+impl Parse for ReassignmentExpression {
+    fn parse(&self, ctx: &ParseContext) {
+        self.rhs.parse(ctx);
+        match &self.lhs {
+            ReassignmentTarget::VariableExpression(exp) => {
+                exp.parse(ctx);
+            }
+            ReassignmentTarget::StorageField(idents) => {
+                for ident in idents {
+                    ctx.tokens.insert(
+                        to_ident_key(ident),
+                        Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Field),
+                    );
+                }
+            }
+        }
+    }
+}
+
+impl Parse for IntrinsicFunctionExpression {
+    fn parse(&self, ctx: &ParseContext) {
+        ctx.tokens.insert(
+            to_ident_key(&self.name),
+            Token::from_parsed(
+                AstToken::Intrinsic(self.kind_binding.inner.clone()),
+                SymbolKind::Function,
+            ),
+        );
+        self.arguments.iter().for_each(|arg| arg.parse(ctx));
+        self.kind_binding
+            .type_arguments
+            .to_vec()
+            .iter()
+            .for_each(|type_arg| type_arg.parse(ctx));
+    }
+}
+
+impl Parse for AbiCastExpression {
+    fn parse(&self, ctx: &ParseContext) {
+        for ident in &self.abi_name.prefixes {
+            ctx.tokens.insert(
+                to_ident_key(ident),
+                Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Module),
+            );
+        }
+        ctx.tokens.insert(
+            to_ident_key(&self.abi_name.suffix),
+            Token::from_parsed(AstToken::AbiCastExpression(self.clone()), SymbolKind::Trait),
+        );
+        self.address.parse(ctx);
+    }
+}
+
+impl Parse for DelineatedPathExpression {
+    fn parse(&self, ctx: &ParseContext) {
+        let DelineatedPathExpression {
+            call_path_binding,
+            args,
+        } = &*self;
+        for ident in &call_path_binding.inner.prefixes {
+            ctx.tokens.insert(
+                to_ident_key(ident),
+                Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Enum),
+            );
+        }
+        ctx.tokens.insert(
+            to_ident_key(&call_path_binding.inner.suffix),
+            Token::from_parsed(
+                AstToken::DelineatedPathExpression(self.clone()),
+                SymbolKind::Variant,
+            ),
+        );
+        call_path_binding
+            .type_arguments
+            .to_vec()
+            .iter()
+            .for_each(|type_arg| {
+                type_arg.parse(ctx);
+            });
+        if let Some(args_vec) = args.as_ref() {
+            args_vec.iter().for_each(|exp| {
+                exp.parse(ctx);
+            });
+        }
+    }
+}
+
+impl Parse for AmbiguousPathExpression {
+    fn parse(&self, ctx: &ParseContext) {
+        let AmbiguousPathExpression {
+            call_path_binding,
+            args,
+        } = &*self;
+        for ident in call_path_binding
+            .inner
+            .prefixes
+            .iter()
+            .chain(iter::once(&call_path_binding.inner.suffix.before.inner))
+        {
+            ctx.tokens.insert(
+                to_ident_key(ident),
+                Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Enum),
+            );
+        }
+        ctx.tokens.insert(
+            to_ident_key(&call_path_binding.inner.suffix.suffix),
+            Token::from_parsed(
+                AstToken::AmbiguousPathExpression(self.clone()),
+                SymbolKind::Variant,
+            ),
+        );
+        call_path_binding
+            .type_arguments
+            .to_vec()
+            .iter()
+            .for_each(|type_arg| {
+                type_arg.parse(ctx);
+            });
+        args.iter().for_each(|arg| arg.parse(ctx));
+    }
+}
+
+impl Parse for MethodApplicationExpression {
+    fn parse(&self, ctx: &ParseContext) {
+        let prefixes = match &self.method_name_binding.inner {
+            MethodName::FromType {
+                call_path_binding, ..
+            } => call_path_binding.inner.prefixes.clone(),
+            MethodName::FromTrait { call_path, .. } => call_path.prefixes.clone(),
+            _ => vec![],
+        };
+        if let MethodName::FromType {
+            call_path_binding, ..
+        } = &self.method_name_binding.inner
+        {
+            let (type_info, ident) = &call_path_binding.inner.suffix;
+            collect_type_info_token(ctx, type_info, Some(ident.span()));
+        }
+        self.method_name_binding
+            .type_arguments
+            .to_vec()
+            .iter()
+            .for_each(|type_arg| {
+                type_arg.parse(ctx);
+            });
+        // Don't collect applications of desugared operators due to mismatched ident lengths.
+        if !desugared_op(&prefixes) {
+            ctx.tokens.insert(
+                to_ident_key(&self.method_name_binding.inner.easy_name()),
+                Token::from_parsed(
+                    AstToken::MethodApplicationExpression(self.clone()),
+                    SymbolKind::Struct,
+                ),
+            );
+        }
+        self.arguments.iter().for_each(|arg| arg.parse(ctx));
+        self.contract_call_params
+            .iter()
+            .for_each(|param| param.parse(ctx));
+    }
+}
+
+impl Parse for Scrutinee {
+    fn parse(&self, ctx: &ParseContext) {
+        match self {
+            Scrutinee::CatchAll { .. } => (),
+            Scrutinee::Literal { ref value, span } => {
+                let token = Token::from_parsed(
+                    AstToken::Scrutinee(self.clone()),
+                    literal_to_symbol_kind(value),
+                );
+                ctx.tokens
+                    .insert(to_ident_key(&Ident::new(span.clone())), token);
+            }
+            Scrutinee::Variable { name, .. } => {
+                ctx.tokens.insert(
+                    to_ident_key(name),
+                    // it could either be a variable or a constant
+                    Token::from_parsed(AstToken::Scrutinee(self.clone()), SymbolKind::Unknown),
+                );
+            }
+            Scrutinee::StructScrutinee {
+                struct_name,
+                fields,
+                ..
+            } => {
+                for ident in &struct_name.prefixes {
+                    let token =
+                        Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Struct);
+                    ctx.tokens.insert(to_ident_key(ident), token);
+                }
+                ctx.tokens.insert(
+                    to_ident_key(&struct_name.suffix),
+                    Token::from_parsed(AstToken::Scrutinee(self.clone()), SymbolKind::Struct),
+                );
+                fields.iter().for_each(|field| field.parse(ctx));
+            }
+            Scrutinee::EnumScrutinee {
+                call_path, value, ..
+            } => {
+                for ident in &call_path.prefixes {
+                    ctx.tokens.insert(
+                        to_ident_key(ident),
+                        Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Enum),
+                    );
+                }
+                let token =
+                    Token::from_parsed(AstToken::Scrutinee(self.clone()), SymbolKind::Variant);
+                ctx.tokens.insert(to_ident_key(&call_path.suffix), token);
+                value.parse(ctx);
+            }
+            Scrutinee::Tuple { elems, .. } => {
+                elems.iter().for_each(|elem| elem.parse(ctx));
+            }
+            Scrutinee::Error { .. } => {
+                // FIXME: Left for @JoshuaBatty to use.
+            }
+        }
+    }
+}
+
+impl Parse for StructScrutineeField {
+    fn parse(&self, ctx: &ParseContext) {
+        let token = Token::from_parsed(
+            AstToken::StructScrutineeField(self.clone()),
+            SymbolKind::Field,
+        );
+        if let StructScrutineeField::Field {
+            field, scrutinee, ..
+        } = self
+        {
+            ctx.tokens.insert(to_ident_key(field), token);
+            if let Some(scrutinee) = scrutinee {
+                scrutinee.parse(ctx);
+            }
+        }
+    }
+}
+
+impl Parse for StructExpression {
+    fn parse(&self, ctx: &ParseContext) {
+        for ident in &self.call_path_binding.inner.prefixes {
+            ctx.tokens.insert(
+                to_ident_key(ident),
+                Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Struct),
+            );
+        }
+        let name = &self.call_path_binding.inner.suffix;
+        ctx.tokens.insert(
+            to_ident_key(name),
+            Token::from_parsed(AstToken::StructExpression(self.clone()), SymbolKind::Struct),
+        );
+        let type_arguments = &self.call_path_binding.type_arguments.to_vec();
+        type_arguments.iter().for_each(|type_arg| {
+            type_arg.parse(ctx);
+        });
+        self.fields.iter().for_each(|field| field.parse(ctx));
+    }
+}
+
+impl Parse for StructExpressionField {
+    fn parse(&self, ctx: &ParseContext) {
+        ctx.tokens.insert(
+            to_ident_key(&self.name),
+            Token::from_parsed(
+                AstToken::StructExpressionField(self.clone()),
+                SymbolKind::Field,
+            ),
+        );
+        self.value.parse(ctx);
+    }
+}
+
+impl Parse for ArrayExpression {
+    fn parse(&self, ctx: &ParseContext) {
+        self.contents.iter().for_each(|exp| exp.parse(ctx));
+        if let Some(length_span) = &self.length_span {
+            let ident = Ident::new(length_span.clone());
+            ctx.tokens.insert(
+                to_ident_key(&ident),
+                Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::NumericLiteral),
+            );
+        }
+    }
+}
+
+impl Parse for FunctionApplicationExpression {
+    fn parse(&self, ctx: &ParseContext) {
+        // Don't collect applications of desugared operators due to mismatched ident lengths.
+        if !desugared_op(&self.call_path_binding.inner.prefixes) {
+            for ident in &self.call_path_binding.inner.prefixes {
+                ctx.tokens.insert(
+                    to_ident_key(ident),
+                    Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Module),
+                );
+            }
+            ctx.tokens.insert(
+                to_ident_key(&self.call_path_binding.inner.suffix),
+                Token::from_parsed(
+                    AstToken::FunctionApplicationExpression(self.clone()),
+                    SymbolKind::Function,
+                ),
+            );
+            self.call_path_binding
+                .type_arguments
+                .to_vec()
+                .iter()
+                .for_each(|type_arg| {
+                    type_arg.parse(ctx);
+                });
+        }
+        self.arguments.iter().for_each(|exp| {
+            exp.parse(ctx);
+        });
+    }
 }
 
 impl Parse for VariableDeclaration {
@@ -1063,20 +1548,20 @@ impl Parse for FunctionDeclaration {
             SymbolKind::Function,
         );
         ctx.tokens.insert(to_ident_key(&self.name), token.clone());
-        for node in &self.body.contents {
+        self.body.contents.iter().for_each(|node| {
             node.parse(ctx);
-        }
-        for parameter in &self.parameters {
-            parameter.parse(ctx);
-        }
-        for type_param in &self.type_parameters {
+        });
+        self.parameters.iter().for_each(|param| {
+            param.parse(ctx);
+        });
+        self.type_parameters.iter().for_each(|type_param| {
             type_param.parse(ctx);
-        }
+        });
         for (ident, constraints) in &self.where_clause {
             ctx.tokens.insert(to_ident_key(ident), token.clone());
-            for constraint in constraints {
+            constraints.iter().for_each(|constraint| {
                 constraint.parse(ctx);
-            }
+            });
         }
         self.return_type.parse(ctx);
         self.attributes.parse(ctx);
@@ -1092,17 +1577,15 @@ impl Parse for TraitDeclaration {
                 SymbolKind::Trait,
             ),
         );
-        for item in &self.interface_surface {
-            match item {
-                TraitItem::TraitFn(trait_fn) => trait_fn.parse(ctx),
-            }
-        }
-        for func_dec in &self.methods {
+        self.interface_surface.iter().for_each(|item| match item {
+            TraitItem::TraitFn(trait_fn) => trait_fn.parse(ctx),
+        });
+        self.methods.iter().for_each(|func_dec| {
             func_dec.parse(ctx);
-        }
-        for supertrait in &self.supertraits {
+        });
+        self.supertraits.iter().for_each(|supertrait| {
             supertrait.parse(ctx);
-        }
+        });
     }
 }
 
@@ -1115,17 +1598,12 @@ impl Parse for StructDeclaration {
                 SymbolKind::Struct,
             ),
         );
-        for field in &self.fields {
-            ctx.tokens.insert(
-                to_ident_key(&field.name),
-                Token::from_parsed(AstToken::StructField(field.clone()), SymbolKind::Field),
-            );
-            field.type_argument.parse(ctx);
-            field.attributes.parse(ctx);
-        }
-        for type_param in &self.type_parameters {
+        self.fields.iter().for_each(|field| {
+            field.parse(ctx);
+        });
+        self.type_parameters.iter().for_each(|type_param| {
             type_param.parse(ctx);
-        }
+        });
         self.attributes.parse(ctx);
     }
 }
@@ -1139,17 +1617,12 @@ impl Parse for EnumDeclaration {
                 SymbolKind::Enum,
             ),
         );
-        for type_param in &self.type_parameters {
+        self.type_parameters.iter().for_each(|type_param| {
             type_param.parse(ctx);
-        }
-        for variant in &self.variants {
-            ctx.tokens.insert(
-                to_ident_key(&variant.name),
-                Token::from_parsed(AstToken::EnumVariant(variant.clone()), SymbolKind::Variant),
-            );
-            variant.type_argument.parse(ctx);
-            variant.attributes.parse(ctx);
-        }
+        });
+        self.variants.iter().for_each(|variant| {
+            variant.parse(ctx);
+        });
         self.attributes.parse(ctx);
     }
 }
@@ -1170,15 +1643,12 @@ impl Parse for ImplTrait {
             ),
         );
         self.implementing_for.parse(ctx);
-
-        for type_param in &self.impl_type_parameters {
+        self.impl_type_parameters.iter().for_each(|type_param| {
             type_param.parse(ctx);
-        }
-        for item in &self.items {
-            match item {
-                ImplItem::Fn(fn_decl) => fn_decl.parse(ctx),
-            }
-        }
+        });
+        self.items.iter().for_each(|item| match item {
+            ImplItem::Fn(fn_decl) => fn_decl.parse(ctx),
+        });
     }
 }
 
@@ -1202,14 +1672,12 @@ impl Parse for ImplSelf {
                 }
             }
         }
-        for type_param in &self.impl_type_parameters {
+        self.impl_type_parameters.iter().for_each(|type_param| {
             type_param.parse(ctx);
-        }
-        for item in &self.items {
-            match item {
-                ImplItem::Fn(fn_decl) => fn_decl.parse(ctx),
-            }
-        }
+        });
+        self.items.iter().for_each(|item| match item {
+            ImplItem::Fn(fn_decl) => fn_decl.parse(ctx),
+        });
     }
 }
 
@@ -1222,14 +1690,12 @@ impl Parse for AbiDeclaration {
                 SymbolKind::Trait,
             ),
         );
-        for item in &self.interface_surface {
-            match item {
-                TraitItem::TraitFn(trait_fn) => trait_fn.parse(ctx),
-            }
-        }
-        for supertrait in &self.supertraits {
+        self.interface_surface.iter().for_each(|item| match item {
+            TraitItem::TraitFn(trait_fn) => trait_fn.parse(ctx),
+        });
+        self.supertraits.iter().for_each(|supertrait| {
             supertrait.parse(ctx);
-        }
+        });
         self.attributes.parse(ctx);
     }
 }
@@ -1253,15 +1719,21 @@ impl Parse for ConstantDeclaration {
 
 impl Parse for StorageDeclaration {
     fn parse(&self, ctx: &ParseContext) {
-        for field in &self.fields {
-            ctx.tokens.insert(
-                to_ident_key(&field.name),
-                Token::from_parsed(AstToken::StorageField(field.clone()), SymbolKind::Field),
-            );
-            field.type_argument.parse(ctx);
-            field.initializer.parse(ctx);
-            field.attributes.parse(ctx);
-        }
+        self.fields.iter().for_each(|field| {
+            field.parse(ctx);
+        });
+        self.attributes.parse(ctx);
+    }
+}
+
+impl Parse for StorageField {
+    fn parse(&self, ctx: &ParseContext) {
+        ctx.tokens.insert(
+            to_ident_key(&self.name),
+            Token::from_parsed(AstToken::StorageField(self.clone()), SymbolKind::Field),
+        );
+        self.type_argument.parse(ctx);
+        self.initializer.parse(ctx);
         self.attributes.parse(ctx);
     }
 }
@@ -1281,9 +1753,9 @@ impl Parse for TraitFn {
             to_ident_key(&self.name),
             Token::from_parsed(AstToken::TraitFn(self.clone()), SymbolKind::Function),
         );
-        for parameter in &self.parameters {
-            parameter.parse(ctx);
-        }
+        self.parameters.iter().for_each(|param| {
+            param.parse(ctx);
+        });
         collect_type_info_token(ctx, &self.return_type, Some(self.return_type_span.clone()));
         self.attributes.parse(ctx);
     }
@@ -1304,9 +1776,9 @@ impl Parse for TraitConstraint {
                 SymbolKind::Function,
             ),
         );
-        for type_arg in &self.type_arguments {
+        self.type_arguments.iter().for_each(|type_arg| {
             type_arg.parse(ctx);
-        }
+        });
     }
 }
 
@@ -1320,6 +1792,28 @@ impl Parse for FunctionParameter {
             ),
         );
         self.type_argument.parse(ctx);
+    }
+}
+
+impl Parse for StructField {
+    fn parse(&self, ctx: &ParseContext) {
+        ctx.tokens.insert(
+            to_ident_key(&self.name),
+            Token::from_parsed(AstToken::StructField(self.clone()), SymbolKind::Field),
+        );
+        self.type_argument.parse(ctx);
+        self.attributes.parse(ctx);
+    }
+}
+
+impl Parse for EnumVariant {
+    fn parse(&self, ctx: &ParseContext) {
+        ctx.tokens.insert(
+            to_ident_key(&self.name),
+            Token::from_parsed(AstToken::EnumVariant(self.clone()), SymbolKind::Variant),
+        );
+        self.type_argument.parse(ctx);
+        self.attributes.parse(ctx);
     }
 }
 
@@ -1383,9 +1877,9 @@ fn collect_type_info_token(ctx: &ParseContext, type_info: &TypeInfo, type_span: 
             type_arg.parse(ctx);
         }
         TypeInfo::Tuple(type_arguments) => {
-            for type_arg in type_arguments {
+            type_arguments.iter().for_each(|type_arg| {
                 type_arg.parse(ctx);
-            }
+            });
         }
         TypeInfo::Custom {
             call_path,
@@ -1396,9 +1890,9 @@ fn collect_type_info_token(ctx: &ParseContext, type_info: &TypeInfo, type_span: 
             token.type_def = Some(TypeDefinition::Ident(ident.clone()));
             ctx.tokens.insert(to_ident_key(&ident), token);
             if let Some(type_arguments) = type_arguments {
-                for type_arg in type_arguments {
+                type_arguments.iter().for_each(|type_arg| {
                     type_arg.parse(ctx);
-                }
+                });
             }
         }
         _ => {
