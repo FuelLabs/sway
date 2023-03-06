@@ -1,13 +1,9 @@
 #![allow(dead_code)]
 use crate::{
-    core::{
-        token::{
-            to_ident_key, type_info_to_symbol_kind, SymbolKind, Token, TypeDefinition,
-            TypedAstToken,
-        },
-        token_map::TokenMap,
+    core::token::{
+        to_ident_key, type_info_to_symbol_kind, SymbolKind, Token, TypeDefinition, TypedAstToken,
     },
-    traverse::{Parse, ParseContext},
+    traverse::ParseContext,
 };
 use dashmap::mapref::one::RefMut;
 use sway_core::{
@@ -24,12 +20,12 @@ use sway_core::{
 use sway_types::{Ident, Span, Spanned};
 
 pub struct TypedTree<'a> {
-    ctx: ParseContext<'a>,
+    ctx: &'a ParseContext<'a>,
     namespace: &'a namespace::Module,
 }
 
 impl<'a> TypedTree<'a> {
-    pub fn new(ctx: ParseContext<'a>, namespace: &'a namespace::Module) -> Self {
+    pub fn new(ctx: &'a ParseContext<'a>, namespace: &'a namespace::Module) -> Self {
         Self { ctx, namespace }
     }
 

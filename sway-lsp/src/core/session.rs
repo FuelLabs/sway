@@ -178,17 +178,16 @@ impl Session {
                 lexed_tree::parse(&lexed, &ctx);
 
                 // Next, populate our token_map with un-typed yet parsed ast nodes.
-                let parsed_tree = ParsedTree::new(type_engine, &self.token_map);
+                let parsed_tree = ParsedTree::new(&ctx);
                 parsed_tree.collect_module_spans(&parsed);
-                self.parse_ast_to_tokens(&parsed, |an| parsed_tree.traverse_node(an));
+                self.parse_ast_to_tokens(&parsed, &ctx, |an, _ctx| parsed_tree.traverse_node(an));
 
                 // Finally, create runnables and populate our token_map with typed ast nodes.
                 self.create_runnables(typed_program);
 
-                let typed_tree =
-                    TypedTree::new(engines, &self.token_map, &typed_program.root.namespace);
+                let typed_tree = TypedTree::new(&ctx, &typed_program.root.namespace);
                 typed_tree.collect_module_spans(typed_program);
-                self.parse_ast_to_typed_tokens(typed_program, |node, ctx| {
+                self.parse_ast_to_typed_tokens(typed_program, &ctx, |node, _ctx| {
                     typed_tree.traverse_node(node)
                 });
 
@@ -199,11 +198,11 @@ impl Session {
                 diagnostics = get_diagnostics(&ast_res.warnings, &ast_res.errors);
             } else {
                 // Collect tokens from dependencies and the standard library prelude.
-                self.parse_ast_to_tokens(&parsed, |an, ctx| {
+                self.parse_ast_to_tokens(&parsed, &ctx, |an, ctx| {
                     dependency::collect_parsed_declaration(an, ctx)
                 });
 
-                self.parse_ast_to_typed_tokens(typed_program, |node, ctx| {
+                self.parse_ast_to_typed_tokens(typed_program, &ctx, |node, ctx| {
                     dependency::collect_typed_declaration(node, ctx)
                 });
             }

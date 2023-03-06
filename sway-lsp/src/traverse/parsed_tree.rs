@@ -31,11 +31,11 @@ use sway_types::constants::{DESTRUCTURE_PREFIX, MATCH_RETURN_VAR_NAME_PREFIX, TU
 use sway_types::{Ident, Span, Spanned};
 
 pub struct ParsedTree<'a> {
-    ctx: ParseContext<'a>,
+    ctx: &'a ParseContext<'a>,
 }
 
 impl<'a> ParsedTree<'a> {
-    pub fn new(ctx: ParseContext<'a>) -> Self {
+    pub fn new(ctx: &'a ParseContext<'a>) -> Self {
         Self { ctx }
     }
 
