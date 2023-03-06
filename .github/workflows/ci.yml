@@ -314,8 +314,8 @@ jobs:
           deps=$(cargo deps --manifest-path forc-pkg/Cargo.toml)
 
           case "$deps" in
-            *fuel*)
-              echo "\nFound dependency on a 'fuels' crate.
+            *fuels*)
+              echo -e "\nFound dependency on a 'fuels' crate.
           To avoid cyclic dependencies between 'fuels' and 'forc-pkg',
           we want to avoid using 'fuels' crates in 'forc-pkg' since 'fuels-rs' depends on 'forc-pkg' for its integration tests.
 
