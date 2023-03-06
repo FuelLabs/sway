@@ -1,4 +1,4 @@
-library auth_testing_abi;
+library;
 
 use std::auth::*;
 

@@ -1,4 +1,4 @@
-library test_fuel_coin_abi;
+library;
 
 abi TestFuelCoin {
     fn mint(mint_amount: u64);

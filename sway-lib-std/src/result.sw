@@ -53,7 +53,7 @@
 //! 
 //! `unwrap`   : `Result::unwrap`
 //! `unwrap_or`: `Result::unwrap_or`
-library result;
+library;
 
 use ::revert::revert;
 

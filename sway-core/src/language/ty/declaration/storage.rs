@@ -56,7 +56,7 @@ impl TyStorageDeclaration {
         attributes: transform::AttributesMap,
     ) -> Self {
         TyStorageDeclaration {
-            name: Ident::new_with_override("storage", span.clone()),
+            name: Ident::new_with_override("storage".to_string(), span.clone()),
             fields,
             span,
             attributes,

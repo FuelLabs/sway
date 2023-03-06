@@ -1,4 +1,4 @@
-library external;
+library;
 
 use ::constants::ZERO_B256;
 use ::contract_id::ContractId;

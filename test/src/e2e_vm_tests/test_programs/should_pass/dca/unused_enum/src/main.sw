@@ -1,7 +1,7 @@
 script;
 
-dep r#enum;
-dep utils;
+mod r#enum;
+mod utils;
 
 fn main() {
     let _ = utils::uses_enum();

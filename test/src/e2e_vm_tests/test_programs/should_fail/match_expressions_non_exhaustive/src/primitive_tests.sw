@@ -1,4 +1,4 @@
-library primitive_tests;
+library;
 
 pub fn simple_numbers_test() {
     let x = 0;

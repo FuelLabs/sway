@@ -57,7 +57,7 @@ pub enum AstNodeContent {
     /// An implicit return expression is an [Expression] at the end of a code block which has no
     /// semicolon, denoting that it is the [Expression] to be returned from that block.
     ImplicitReturnExpression(Expression),
-    /// A statement of the form `dep foo::bar;` which imports/includes another source file.
+    /// A statement of the form `mod foo::bar;` which imports/includes another source file.
     IncludeStatement(IncludeStatement),
 }
 

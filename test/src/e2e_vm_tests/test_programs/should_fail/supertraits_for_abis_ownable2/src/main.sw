@@ -1,6 +1,6 @@
 contract;
 
-dep ownable;
+mod ownable;
 use ownable::{Ownable, StorageHelpers};
 
 storage {

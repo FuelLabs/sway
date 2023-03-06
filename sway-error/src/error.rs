@@ -320,7 +320,7 @@ pub enum CompileError {
         file_path: String,
         stringified_error: String,
     },
-    #[error("This imported file must be a library. It must start with \"library <name>\", where \"name\" is the name of the library this file contains.")]
+    #[error("This imported file must be a library. It must start with \"library;\"")]
     ImportMustBeLibrary { span: Span },
     #[error("An enum instantiaton cannot contain more than one value. This should be a single value of type {ty}.")]
     MoreThanOneEnumInstantiator { span: Span, ty: String },

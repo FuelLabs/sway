@@ -769,7 +769,7 @@ fn decl_name(type_engine: &TypeEngine, decl: &Declaration) -> Option<DependentSy
 
         // These have the added complexity of converting CallPath and/or TypeInfo into a name.
         Declaration::ImplSelf(decl) => {
-            let trait_name = Ident::new_with_override("self", decl.implementing_for.span());
+            let trait_name = Ident::new_with_override("self".into(), decl.implementing_for.span());
             impl_sym(
                 trait_name,
                 &type_engine.get(decl.implementing_for.type_id),

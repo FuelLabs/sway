@@ -1,5 +1,5 @@
 //! Functionality for determining who is calling a contract.
-library auth;
+library;
 
 use ::address::Address;
 use ::contract_id::ContractId;

@@ -1,2 +1,2 @@
-library foo;
-dep b_dependency;
+library;
+mod a_dependency;

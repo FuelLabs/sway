@@ -1,4 +1,4 @@
-library bar;
+library;
 
 pub struct Bar1 {
     a: u32,

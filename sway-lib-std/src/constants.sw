@@ -1,4 +1,4 @@
-library constants;
+library;
 
 use ::contract_id::ContractId;
 

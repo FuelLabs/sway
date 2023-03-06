@@ -1,8 +1,8 @@
 script;
 
-dep a_dependency;
-dep b_dependency;
-dep c_dependency;
+mod foo;
+mod bar;
+mod baz;
 
 fn main() -> u64 {
     let x = foo::Foo {

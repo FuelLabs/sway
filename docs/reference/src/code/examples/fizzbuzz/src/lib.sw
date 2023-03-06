@@ -1,4 +1,4 @@
-library fizzbuzz;
+library;
 
 // ANCHOR: state
 enum State {
