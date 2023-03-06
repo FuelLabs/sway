@@ -404,8 +404,9 @@ impl Renderable for ItemBody {
         let block_title = ty_decl.as_block_title();
         let sidebar = sidebar.render(render_plan.clone())?;
         let item_context = (item_context.context_opt.is_some())
-            .then(|| -> Result<Box<dyn RenderBox>> { item_context.render(render_plan) });
+            .then(|| -> Result<Box<dyn RenderBox>> { item_context.render(render_plan.clone()) });
         let sway_hjs = module_info.to_html_shorthand_path_string("assets/highlight.js");
+        let rendered_module_anchors = module_info.into_anchors()?;
 
         Ok(box_html! {
             body(class=format!("swaydoc {decl_ty}")) {
@@ -413,32 +414,35 @@ impl Renderable for ItemBody {
                 // this is the main code block
                 main {
                     div(class="width-limiter") {
-                        div(class="sub-container") {
-                            nav(class="sub") {
-                                form(class="search-form") {
-                                    div(class="search-container") {
-                                        span;
-                                        input(
-                                            class="search-input",
-                                            name="search",
-                                            autocomplete="off",
-                                            spellcheck="false",
-                                            // TODO: https://github.com/FuelLabs/sway/issues/3480
-                                            placeholder="Searchbar unimplemented, see issue #3480...",
-                                            type="search"
-                                        );
-                                        div(id="help-button", title="help", tabindex="-1") {
-                                            button(type="button") { : "?" }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        // div(class="sub-container") {
+                        //     nav(class="sub") {
+                        //         form(class="search-form") {
+                        //             div(class="search-container") {
+                        //                 span;
+                        //                 input(
+                        //                     class="search-input",
+                        //                     name="search",
+                        //                     autocomplete="off",
+                        //                     spellcheck="false",
+                        //                     // TODO: https://github.com/FuelLabs/sway/issues/3480
+                        //                     placeholder="Searchbar unimplemented, see issue #3480...",
+                        //                     type="search"
+                        //                 );
+                        //                 div(id="help-button", title="help", tabindex="-1") {
+                        //                     button(type="button") { : "?" }
+                        //                 }
+                        //             }
+                        //         }
+                        //     }
+                        // }
                         section(id="main-content", class="content") {
                             div(class="main-heading") {
                                 h1(class="fqn") {
                                     span(class="in-band") {
                                         : format!("{} ", block_title.item_title_str());
+                                        @ for anchor in rendered_module_anchors {
+                                            : Raw(anchor);
+                                        }
                                         // TODO: add qualified path anchors
                                         a(class=&decl_ty, href=IDENTITY) {
                                             : item_name.as_str();
@@ -1171,27 +1175,27 @@ impl Renderable for AllDocIndex {
                 : sidebar;
                 main {
                     div(class="width-limiter") {
-                        div(class="sub-container") {
-                            nav(class="sub") {
-                                form(class="search-form") {
-                                    div(class="search-container") {
-                                        span;
-                                        input(
-                                            class="search-input",
-                                            name="search",
-                                            autocomplete="off",
-                                            spellcheck="false",
-                                            // TODO: Add functionality.
-                                            placeholder="Searchbar unimplemented, see issue #3480...",
-                                            type="search"
-                                        );
-                                        div(id="help-button", title="help", tabindex="-1") {
-                                            button(type="button") { : "?" }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        // div(class="sub-container") {
+                        //     nav(class="sub") {
+                        //         form(class="search-form") {
+                        //             div(class="search-container") {
+                        //                 span;
+                        //                 input(
+                        //                     class="search-input",
+                        //                     name="search",
+                        //                     autocomplete="off",
+                        //                     spellcheck="false",
+                        //                     // TODO: Add functionality.
+                        //                     placeholder="Searchbar unimplemented, see issue #3480...",
+                        //                     type="search"
+                        //                 );
+                        //                 div(id="help-button", title="help", tabindex="-1") {
+                        //                     button(type="button") { : "?" }
+                        //                 }
+                        //             }
+                        //         }
+                        //     }
+                        // }
                         section(id="main-content", class="content") {
                             h1(class="fqn") {
                                 span(class="in-band") { : "List of all items" }
@@ -1234,7 +1238,7 @@ impl SidebarNav for ModuleIndex {
 impl Renderable for ModuleIndex {
     fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
         let doc_links = self.module_docs.clone().render(render_plan.clone())?;
-        let sidebar = self.sidebar().render(render_plan)?;
+        let sidebar = self.sidebar().render(render_plan.clone())?;
         let title_prefix = match self.module_docs.style {
             DocStyle::ProjectIndex(ref program_type) => format!("{program_type} "),
             DocStyle::ModuleIndex => "Module ".to_string(),
@@ -1259,6 +1263,8 @@ impl Renderable for ModuleIndex {
         let ayu_hjs = self
             .module_info
             .to_html_shorthand_path_string("assets/ayu.min.css");
+        let mut rendered_module_anchors = self.module_info.into_anchors()?;
+        rendered_module_anchors.pop();
 
         Ok(box_html! {
             head {
@@ -1284,32 +1290,35 @@ impl Renderable for ModuleIndex {
                 : sidebar;
                 main {
                     div(class="width-limiter") {
-                        div(class="sub-container") {
-                            nav(class="sub") {
-                                form(class="search-form") {
-                                    div(class="search-container") {
-                                        span;
-                                        input(
-                                            class="search-input",
-                                            name="search",
-                                            autocomplete="off",
-                                            spellcheck="false",
-                                            // TODO: Add functionality.
-                                            placeholder="Searchbar unimplemented, see issue #3480...",
-                                            type="search"
-                                        );
-                                        div(id="help-button", title="help", tabindex="-1") {
-                                            button(type="button") { : "?" }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        // div(class="sub-container") {
+                        //     nav(class="sub") {
+                        //         form(class="search-form") {
+                        //             div(class="search-container") {
+                        //                 span;
+                        //                 input(
+                        //                     class="search-input",
+                        //                     name="search",
+                        //                     autocomplete="off",
+                        //                     spellcheck="false",
+                        //                     // TODO: Add functionality.
+                        //                     placeholder="Searchbar unimplemented, see issue #3480...",
+                        //                     type="search"
+                        //                 );
+                        //                 div(id="help-button", title="help", tabindex="-1") {
+                        //                     button(type="button") { : "?" }
+                        //                 }
+                        //             }
+                        //         }
+                        //     }
+                        // }
                         section(id="main-content", class="content") {
                             div(class="main-heading") {
                                 h1(class="fqn") {
                                     span(class="in-band") {
                                         : title_prefix;
+                                        @ for anchor in rendered_module_anchors {
+                                            : Raw(anchor);
+                                        }
                                         a(class="mod", href=IDENTITY) {
                                             : self.module_info.location();
                                         }
@@ -1528,3 +1537,15 @@ pub(crate) fn split_at_markdown_header(raw_html: &str) -> &str {
         raw_html
     }
 }
+
+// impl Renderable for ModuleInfo {
+//     fn render(self, _render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
+//         let rendered_module_anchors = self.into_anchors()?;
+
+//         Ok(box_html! {
+//             @ for anchor in rendered_module_anchors {
+//                 : Raw(anchor);
+//             }
+//         })
+//     }
+// }
