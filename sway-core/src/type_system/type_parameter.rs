@@ -57,7 +57,7 @@ impl PartialEqWithEngines for TypeParameter {
 }
 
 impl OrdWithEngines for TypeParameter {
-    fn cmp(&self, other: &Self, engines: &Engines<'_>) -> Ordering {
+    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
         let TypeParameter {
             type_id: lti,
             name_ident: ln,

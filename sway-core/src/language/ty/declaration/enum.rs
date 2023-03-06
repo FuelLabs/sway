@@ -149,7 +149,7 @@ impl PartialEqWithEngines for TyEnumVariant {
 }
 
 impl OrdWithEngines for TyEnumVariant {
-    fn cmp(&self, other: &Self, engines: &Engines<'_>) -> Ordering {
+    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
         let TyEnumVariant {
             name: ln,
             type_argument: lta,

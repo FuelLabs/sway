@@ -7,32 +7,7 @@ _Associated functions_ are very similar to _methods_, in that they are also defi
 To declare methods and associated functions for a struct or enum, use an _impl block_. Here, `impl` stands for implementation.
 
 ```sway
-script;
-
-struct Foo {
-    bar: u64,
-    baz: bool,
-}
-
-impl Foo {
-    // this is a _method_, as it takes `self` as a parameter.
-    fn is_baz_true(self) -> bool {
-        self.baz
-    }
-
-    // this is an _associated function_, since it does not take `self` as a parameter.
-    fn new_foo(number: u64, boolean: bool) -> Foo {
-        Foo {
-            bar: number,
-            baz: boolean,
-        }
-    }
-}
-
-fn main() {
-    let foo = Foo::new_foo(42, true);
-    assert(foo.is_baz_true());
-}
+{{#include ../../../../examples/methods_and_associated_functions/src/main.sw}}
 ```
 
 To call a method, simply use dot syntax: `foo.iz_baz_true()`.
