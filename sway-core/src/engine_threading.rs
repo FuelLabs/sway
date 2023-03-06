@@ -92,7 +92,7 @@ where
     T: PartialEqWithEngines,
 {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.thing.cmp(&other.thing, &self.engines))
+        Some(self.thing.cmp(&other.thing, self.engines))
     }
 }
 
@@ -101,7 +101,7 @@ where
     T: EqWithEngines,
 {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.thing.cmp(&other.thing, &self.engines)
+        self.thing.cmp(&other.thing, self.engines)
     }
 }
 
@@ -159,7 +159,7 @@ pub trait PartialEqWithEngines {
 }
 
 pub trait OrdWithEngines {
-    fn cmp(&self, other: &Self, engines: &Engines<'_>) -> Ordering;
+    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering;
 }
 
 impl<T: EqWithEngines + ?Sized> EqWithEngines for &T {}
@@ -169,13 +169,13 @@ impl<T: PartialEqWithEngines + ?Sized> PartialEqWithEngines for &T {
     }
 }
 impl<T: OrdWithEngines + ?Sized> OrdWithEngines for &T {
-    fn cmp(&self, other: &Self, engines: &Engines<'_>) -> Ordering {
+    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
         (*self).cmp(*other, engines)
     }
 }
 
 impl<T: OrdWithEngines> OrdWithEngines for Option<T> {
-    fn cmp(&self, other: &Self, engines: &Engines<'_>) -> Ordering {
+    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
         match (self, other) {
             (Some(x), Some(y)) => x.cmp(y, engines),
             (Some(_), None) => Ordering::Less,
@@ -203,7 +203,7 @@ impl<T: PartialEqWithEngines> PartialEqWithEngines for [T] {
     }
 }
 impl<T: OrdWithEngines> OrdWithEngines for [T] {
-    fn cmp(&self, other: &Self, engines: &Engines<'_>) -> Ordering {
+    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
         self.iter()
             .zip(other.iter())
             .map(|(x, y)| x.cmp(y, engines))

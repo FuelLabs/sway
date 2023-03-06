@@ -53,7 +53,7 @@ impl PartialEqWithEngines for TypeArgument {
 }
 
 impl OrdWithEngines for TypeArgument {
-    fn cmp(&self, other: &Self, engines: &Engines<'_>) -> Ordering {
+    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
         let TypeArgument {
             type_id: lti,
             // these fields are not compared because they aren't relevant/a
