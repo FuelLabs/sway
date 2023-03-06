@@ -378,9 +378,13 @@ pub(crate) struct ItemBody {
 }
 impl SidebarNav for ItemBody {
     fn sidebar(&self) -> Sidebar {
+        let style = DocStyle::Item {
+            title: Some(self.ty_decl.as_block_title()),
+            name: Some(self.item_name.clone()),
+        };
         Sidebar {
             version_opt: None,
-            style: DocStyle::Item,
+            style,
             module_info: self.module_info.clone(),
             href_path: INDEX_FILENAME.to_owned(),
             nav: self.item_context.to_doclinks(),
@@ -791,7 +795,10 @@ impl ItemContext {
             }
         }
         DocLinks {
-            style: DocStyle::Item,
+            style: DocStyle::Item {
+                title: None,
+                name: None,
+            },
             links,
         }
     }
@@ -1357,7 +1364,10 @@ enum DocStyle {
     AllDoc(String),
     ProjectIndex(String),
     ModuleIndex,
-    Item,
+    Item {
+        title: Option<BlockTitle>,
+        name: Option<BaseIdent>,
+    },
 }
 /// Sidebar component for quick navigation.
 struct Sidebar {
@@ -1374,23 +1384,29 @@ impl Renderable for Sidebar {
         let path_to_logo = self
             .module_info
             .to_html_shorthand_path_string("assets/sway-logo.svg");
-        let location_with_prefix = match &self.style {
+        let style = self.style.clone();
+        let version_opt = self.version_opt.clone();
+        let location_with_prefix = match &style {
             DocStyle::AllDoc(project_kind) | DocStyle::ProjectIndex(project_kind) => {
                 format!("{project_kind} {}", self.module_info.location())
             }
-            DocStyle::ModuleIndex | DocStyle::Item => format!(
+            DocStyle::ModuleIndex => format!(
                 "{} {}",
                 BlockTitle::Modules.item_title_str(),
                 self.module_info.location()
             ),
+            DocStyle::Item { title, name } => {
+                let title = title.clone().expect("Expected a BlockTitle");
+                let name = name.clone().expect("Expected a BaseIdent");
+                format!("{} {}", title.item_title_str(), name.as_str())
+            }
         };
         let root_path = self
             .module_info
             .to_html_shorthand_path_string(INDEX_FILENAME);
-        let (logo_path_to_root, path_to_parent_or_self) = match &self.style {
-            DocStyle::AllDoc(_) | DocStyle::Item => (root_path, self.href_path.clone()),
-            DocStyle::ProjectIndex(_) => (IDENTITY.to_owned(), IDENTITY.to_owned()),
-            DocStyle::ModuleIndex => (root_path, IDENTITY.to_owned()),
+        let logo_path_to_root = match style {
+            DocStyle::AllDoc(_) | DocStyle::Item { .. } | DocStyle::ModuleIndex => root_path,
+            DocStyle::ProjectIndex(_) => IDENTITY.to_owned(),
         };
         // Unfortunately, match arms that return a closure, even if they are the same
         // type, are incompatible. The work around is to return a String instead,
@@ -1398,23 +1414,11 @@ impl Renderable for Sidebar {
         let styled_content = match &self.style {
             DocStyle::ProjectIndex(_) => {
                 let nav_links = self.nav.links;
-                let version_opt = self.version_opt;
                 let all_items = format!("See all {}'s items", self.module_info.project_name());
                 box_html! {
                     div(class="sidebar-elems") {
-                        div(class="block") {
-                            ul {
-                                @ if version_opt.is_some() {
-                                    li(class="version") {
-                                        : version_opt.unwrap();
-                                    }
-                                }
-                                li {
-                                    a(id="all-types", href=ALL_DOC_FILENAME) {
-                                        : all_items;
-                                    }
-                                }
-                            }
+                        a(id="all-types", href=ALL_DOC_FILENAME) {
+                            : all_items;
                         }
                         section {
                             div(class="block") {
@@ -1462,7 +1466,14 @@ impl Renderable for Sidebar {
                     }
                 }
                 h2(class="location") {
-                    a(href=path_to_parent_or_self) { : location_with_prefix; }
+                    : location_with_prefix;
+                }
+                @ if let DocStyle::ProjectIndex(_) = style.clone() {
+                    @ if version_opt.is_some() {
+                        div(class="version") {
+                            p: version_opt.unwrap();
+                        }
+                    }
                 }
                 : Raw(styled_content);
             }

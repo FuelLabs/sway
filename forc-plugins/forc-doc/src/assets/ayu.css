@@ -487,3 +487,8 @@ details.dir-entry summary:focus {
 .toggle-line:hover .toggle-line-inner {
   background: #c5c5c5;
 }
+.sidebar .location {
+    border-color: #000;
+    background-color: #0f1419;
+    color: #fff;
+}

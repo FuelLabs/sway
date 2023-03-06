@@ -371,12 +371,17 @@ nav.sub {
   top: 0;
   left: 0;
 }
-.sidebar-elems,
 .sidebar > .location {
   padding-left: 24px;
 }
 .sidebar .location {
-  overflow-wrap: anywhere;
+    border: 1px solid;
+    font-size: 17px;
+    margin: 30px 10px 20px 10px;
+    text-align: center;
+    word-wrap: break-word;
+    font-weight: inherit;
+    padding: 0;
 }
 .swaydoc.source .sidebar {
   width: 50px;
@@ -417,7 +422,6 @@ nav.sub {
   border: 1px solid;
   margin: 0 15px;
   margin-bottom: 10px;
-  margin-left: 0;
   display: block;
   border-radius: 7px;
 }
@@ -481,7 +485,7 @@ nav.sub {
 h2.location a {
   display: block;
   padding: 0.25rem;
-  margin-left: -0.25rem;
+  margin-left: 2em;
   text-overflow: ellipsis;
   overflow: hidden;
 }
@@ -1999,4 +2003,7 @@ details.swaydoc-toggle[open] > summary.hideme::after {
 }
 .example-links ul {
   margin-bottom: 0;
+}
+#all-types>p {
+    margin: 5px 0;
 }
