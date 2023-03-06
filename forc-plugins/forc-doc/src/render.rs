@@ -406,7 +406,7 @@ impl Renderable for ItemBody {
         let item_context = (item_context.context_opt.is_some())
             .then(|| -> Result<Box<dyn RenderBox>> { item_context.render(render_plan.clone()) });
         let sway_hjs = module_info.to_html_shorthand_path_string("assets/highlight.js");
-        let rendered_module_anchors = module_info.into_anchors()?;
+        let rendered_module_anchors = module_info.get_anchors()?;
 
         Ok(box_html! {
             body(class=format!("swaydoc {decl_ty}")) {
@@ -1238,7 +1238,7 @@ impl SidebarNav for ModuleIndex {
 impl Renderable for ModuleIndex {
     fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
         let doc_links = self.module_docs.clone().render(render_plan.clone())?;
-        let sidebar = self.sidebar().render(render_plan.clone())?;
+        let sidebar = self.sidebar().render(render_plan)?;
         let title_prefix = match self.module_docs.style {
             DocStyle::ProjectIndex(ref program_type) => format!("{program_type} "),
             DocStyle::ModuleIndex => "Module ".to_string(),
@@ -1263,7 +1263,7 @@ impl Renderable for ModuleIndex {
         let ayu_hjs = self
             .module_info
             .to_html_shorthand_path_string("assets/ayu.min.css");
-        let mut rendered_module_anchors = self.module_info.into_anchors()?;
+        let mut rendered_module_anchors = self.module_info.get_anchors()?;
         rendered_module_anchors.pop();
 
         Ok(box_html! {

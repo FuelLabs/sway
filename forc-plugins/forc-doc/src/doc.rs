@@ -220,7 +220,7 @@ impl ModuleInfo {
     }
     /// Renders the [ModuleInfo] into a [CallPath] with anchors. We return this as a `Result<Vec<String>>`
     /// since the `box_html!` macro returns a closure and no two closures are considered the same type.
-    pub(crate) fn into_anchors(&self) -> Result<Vec<String>> {
+    pub(crate) fn get_anchors(&self) -> Result<Vec<String>> {
         let mut count = self.depth();
         let mut rendered_module_anchors = Vec::new();
         for prefix in self.module_prefixes.iter() {
