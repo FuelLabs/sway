@@ -6,7 +6,6 @@ mod id;
 mod info;
 mod length;
 mod occurs_check;
-mod replace_self_type;
 mod substitute;
 mod trait_constraint;
 mod type_argument;
