@@ -73,6 +73,7 @@ impl ty::TyAbiDeclaration {
                         ctx.decl_engine.insert(method),
                     ));
                 }
+                TraitItem::Constant(_) => todo!(),
             }
         }
 

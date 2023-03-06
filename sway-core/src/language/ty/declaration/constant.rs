@@ -3,6 +3,7 @@ use std::hash::{Hash, Hasher};
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
+    decl_engine::{DeclMapping, ReplaceDecls},
     engine_threading::*,
     language::{ty::*, Visibility},
     transform,
@@ -18,6 +19,7 @@ pub struct TyConstantDeclaration {
     pub attributes: transform::AttributesMap,
     pub type_ascription: TypeArgument,
     pub span: Span,
+    pub implementing_type: Option<TyDeclaration>,
 }
 
 impl EqWithEngines for TyConstantDeclaration {}
@@ -43,6 +45,7 @@ impl HashWithEngines for TyConstantDeclaration {
             // reliable source of obj v. obj distinction
             attributes: _,
             span: _,
+            implementing_type: _,
         } = self;
         name.hash(state);
         value.hash(state, engines);
@@ -61,5 +64,28 @@ impl Named for TyConstantDeclaration {
 impl Spanned for TyConstantDeclaration {
     fn span(&self) -> Span {
         self.span.clone()
+    }
+}
+
+impl SubstTypes for TyConstantDeclaration {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        self.type_ascription.subst(type_mapping, engines);
+        if let Some(expr) = &mut self.value {
+            expr.subst(type_mapping, engines);
+        }
+    }
+}
+
+impl ReplaceSelfType for TyConstantDeclaration {
+    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+        self.type_ascription.replace_self_type(engines, self_type);
+    }
+}
+
+impl ReplaceDecls for TyConstantDeclaration {
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
+        if let Some(expr) = &mut self.value {
+            expr.replace_decls(decl_mapping, engines);
+        }
     }
 }

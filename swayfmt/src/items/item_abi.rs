@@ -86,6 +86,7 @@ impl Format for ItemAbi {
             else {
                 let span = match &last_abi_item.0.value {
                     sway_ast::ItemTraitItem::Fn(fn_decl) => fn_decl.span(),
+                    sway_ast::ItemTraitItem::Const(_) => todo!(),
                 };
                 span.end()
             }

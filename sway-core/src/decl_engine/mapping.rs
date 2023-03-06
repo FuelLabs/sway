@@ -1,11 +1,11 @@
 use std::fmt;
 
-use crate::language::ty::{TyFunctionDeclaration, TyTraitInterfaceItem, TyTraitItem};
+use crate::language::ty::{TyTraitInterfaceItem, TyTraitItem};
 
-use super::{DeclId, FunctionalDeclId, InterfaceItemMap, ItemMap};
+use super::{FunctionalDeclId, InterfaceItemMap, ItemMap};
 
 type SourceDecl = FunctionalDeclId;
-type DestinationDecl = DeclId<TyFunctionDeclaration>;
+type DestinationDecl = FunctionalDeclId;
 
 /// The [DeclMapping] is used to create a mapping between a [SourceDecl] (LHS)
 /// and a [DestinationDecl] (RHS).
@@ -21,7 +21,15 @@ impl fmt::Display for DeclMapping {
             self.mapping
                 .iter()
                 .map(|(source_type, dest_type)| {
-                    format!("{} -> {}", source_type, dest_type.inner(),)
+                    format!(
+                        "{} -> {}",
+                        source_type,
+                        match dest_type {
+                            FunctionalDeclId::TraitFn(decl_id) => decl_id.inner(),
+                            FunctionalDeclId::Function(decl_id) => decl_id.inner(),
+                            FunctionalDeclId::Constant(decl_id) => decl_id.inner(),
+                        }
+                    )
                 })
                 .collect::<Vec<_>>()
                 .join(", ")
@@ -56,28 +64,28 @@ impl DeclMapping {
         let mut mapping = vec![];
         for (interface_decl_name, interface_item) in interface_decl_refs.into_iter() {
             if let Some(new_item) = impld_decl_refs.get(&interface_decl_name) {
-                #[allow(clippy::infallible_destructuring_match)]
                 let interface_decl_ref = match interface_item {
-                    TyTraitInterfaceItem::TraitFn(decl_ref) => decl_ref,
+                    TyTraitInterfaceItem::TraitFn(decl_ref) => decl_ref.id.into(),
+                    TyTraitInterfaceItem::Constant(decl_ref) => decl_ref.id.into(),
                 };
-                #[allow(clippy::infallible_destructuring_match)]
                 let new_decl_ref = match new_item {
-                    TyTraitItem::Fn(decl_ref) => decl_ref,
+                    TyTraitItem::Fn(decl_ref) => decl_ref.id.into(),
+                    TyTraitItem::Constant(decl_ref) => decl_ref.id.into(),
                 };
-                mapping.push(((interface_decl_ref.id).into(), new_decl_ref.id));
+                mapping.push((interface_decl_ref, new_decl_ref));
             }
         }
         for (decl_name, item) in item_decl_refs.into_iter() {
             if let Some(new_item) = impld_decl_refs.get(&decl_name) {
-                #[allow(clippy::infallible_destructuring_match)]
                 let interface_decl_ref = match item {
-                    TyTraitItem::Fn(decl_ref) => decl_ref,
+                    TyTraitItem::Fn(decl_ref) => decl_ref.id.into(),
+                    TyTraitItem::Constant(decl_ref) => decl_ref.id.into(),
                 };
-                #[allow(clippy::infallible_destructuring_match)]
                 let new_decl_ref = match new_item {
-                    TyTraitItem::Fn(decl_ref) => decl_ref,
+                    TyTraitItem::Fn(decl_ref) => decl_ref.id.into(),
+                    TyTraitItem::Constant(decl_ref) => decl_ref.id.into(),
                 };
-                mapping.push(((interface_decl_ref.id).into(), new_decl_ref.into()));
+                mapping.push((interface_decl_ref, new_decl_ref));
             }
         }
         DeclMapping { mapping }
@@ -86,7 +94,7 @@ impl DeclMapping {
     pub(crate) fn find_match(&self, decl_ref: SourceDecl) -> Option<DestinationDecl> {
         for (source_decl_ref, dest_decl_ref) in self.mapping.iter() {
             if *source_decl_ref == decl_ref {
-                return Some(*dest_decl_ref);
+                return Some(dest_decl_ref.clone());
             }
         }
         None

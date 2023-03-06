@@ -1,6 +1,6 @@
 use std::hash::{Hash, Hasher};
 
-use super::{FunctionDeclaration, FunctionParameter};
+use super::{ConstantDeclaration, FunctionDeclaration, FunctionParameter};
 
 use crate::{
     decl_engine::DeclRefTrait, engine_threading::*, language::*, transform, type_system::*,
@@ -10,6 +10,7 @@ use sway_types::{ident::Ident, span::Span, Spanned};
 #[derive(Debug, Clone)]
 pub enum TraitItem {
     TraitFn(TraitFn),
+    Constant(ConstantDeclaration),
 }
 
 #[derive(Debug, Clone)]

@@ -42,7 +42,14 @@ impl Format for ItemImpl {
                 "{}",
                 formatter.shape.indent.to_string(&formatter.config)?,
             )?;
-            item.format(formatted_code, formatter)?;
+            match &item.value {
+                sway_ast::ItemImplItem::Fn(fn_decl) => {
+                    fn_decl.format(formatted_code, formatter)?;
+                }
+                sway_ast::ItemImplItem::Const(const_decl) => {
+                    const_decl.format(formatted_code, formatter)?;
+                }
+            }
             writeln!(formatted_code)?;
         }
         Self::close_curly_brace(formatted_code, formatter)?;
@@ -59,6 +66,7 @@ impl Format for ItemImplItem {
     ) -> Result<(), FormatterError> {
         match self {
             ItemImplItem::Fn(fn_decl) => fn_decl.format(formatted_code, formatter),
+            ItemImplItem::Const(const_decl) => const_decl.format(formatted_code, formatter),
         }
     }
 }
@@ -114,6 +122,7 @@ impl LeafSpans for ItemImplItem {
         let mut collected_spans = vec![];
         match self {
             ItemImplItem::Fn(fn_decl) => collected_spans.append(&mut fn_decl.leaf_spans()),
+            ItemImplItem::Const(const_decl) => collected_spans.append(&mut const_decl.leaf_spans()),
         }
         collected_spans
     }

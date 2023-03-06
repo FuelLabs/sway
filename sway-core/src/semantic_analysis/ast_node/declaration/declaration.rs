@@ -152,6 +152,7 @@ impl ty::TyDeclaration {
                     type_ascription,
                     is_configurable,
                     span,
+                    implementing_type: None,
                 };
                 let decl_ref = decl_engine.insert(decl);
                 let typed_const_decl = ty::TyDeclaration::ConstantDeclaration {
@@ -283,10 +284,8 @@ impl ty::TyDeclaration {
                     decl_id: decl_ref.id,
                     decl_span: decl_ref.decl_span,
                 };
-                impl_trait.items.iter_mut().for_each(|item| match item {
-                    ty::TyImplItem::Fn(method) => {
-                        method.replace_implementing_type(engines, impl_trait_decl.clone())
-                    }
+                impl_trait.items.iter_mut().for_each(|item| {
+                    item.replace_implementing_type(engines, impl_trait_decl.clone())
                 });
                 impl_trait_decl
             }
@@ -318,10 +317,8 @@ impl ty::TyDeclaration {
                     decl_id: decl_ref.id,
                     decl_span: decl_ref.decl_span,
                 };
-                impl_trait.items.iter_mut().for_each(|item| match item {
-                    ty::TyImplItem::Fn(method) => {
-                        method.replace_implementing_type(engines, impl_trait_decl.clone())
-                    }
+                impl_trait.items.iter_mut().for_each(|item| {
+                    item.replace_implementing_type(engines, impl_trait_decl.clone())
                 });
                 impl_trait_decl
             }

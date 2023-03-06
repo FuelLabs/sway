@@ -63,6 +63,12 @@ pub struct DeclRef<I> {
     pub decl_span: Span,
 }
 
+impl<T> DeclRef<DeclId<T>> {
+    pub(crate) fn replace_id(&mut self, index: DeclId<T>) {
+        self.id.replace_id(index);
+    }
+}
+
 impl<T> DeclRef<DeclId<T>>
 where
     FunctionalDeclId: From<DeclId<T>>,
@@ -72,10 +78,6 @@ where
         decl_engine.register_parent(id.into(), parent);
         self
     }
-
-    pub(crate) fn replace_id(&mut self, index: DeclId<T>) {
-        self.id.replace_id(index);
-    }
 }
 
 impl<T> DeclRef<DeclId<T>>
@@ -84,7 +86,7 @@ where
     DeclEngine: DeclEngineIndex<T>,
     T: Named + Spanned + SubstTypes,
 {
-    pub(crate) fn subst_types_and_insert_new(
+    pub(crate) fn subst_types_and_insert_new_with_parent(
         &self,
         type_mapping: &TypeSubstMap,
         engines: Engines<'_>,
@@ -103,7 +105,7 @@ where
     DeclEngine: DeclEngineIndex<T>,
     T: Named + Spanned + ReplaceSelfType,
 {
-    pub(crate) fn replace_self_type_and_insert_new(
+    pub(crate) fn replace_self_type_and_insert_new_with_parent(
         &self,
         engines: Engines<'_>,
         self_type: TypeId,
@@ -122,7 +124,7 @@ where
     DeclEngine: DeclEngineIndex<T>,
     T: Named + Spanned + ReplaceDecls,
 {
-    pub(crate) fn replace_decls_and_insert_new(
+    pub(crate) fn replace_decls_and_insert_new_with_parent(
         &self,
         decl_mapping: &DeclMapping,
         engines: Engines<'_>,
@@ -133,6 +135,39 @@ where
         decl_engine
             .insert(decl)
             .with_parent(decl_engine, self.id.into())
+    }
+}
+
+impl<T> DeclRef<DeclId<T>>
+where
+    DeclEngine: DeclEngineIndex<T>,
+    T: Named + Spanned + SubstTypes,
+{
+    pub(crate) fn subst_types_and_insert_new(
+        &self,
+        type_mapping: &TypeSubstMap,
+        engines: Engines<'_>,
+    ) -> Self {
+        let decl_engine = engines.de();
+        let mut decl = decl_engine.get(self.id);
+        decl.subst(type_mapping, engines);
+        decl_engine.insert(decl)
+    }
+}
+impl<T> DeclRef<DeclId<T>>
+where
+    DeclEngine: DeclEngineIndex<T>,
+    T: Named + Spanned + ReplaceSelfType,
+{
+    pub(crate) fn replace_self_type_and_insert_new(
+        &self,
+        engines: Engines<'_>,
+        self_type: TypeId,
+    ) -> Self {
+        let decl_engine = engines.de();
+        let mut decl = decl_engine.get(self.id);
+        decl.replace_self_type(engines, self_type);
+        decl_engine.insert(decl)
     }
 }
 
@@ -252,13 +287,17 @@ impl ReplaceDecls for DeclRefFunction {
     fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
         let decl_engine = engines.de();
         if let Some(new_decl_ref) = decl_mapping.find_match(self.id.into()) {
-            self.id = new_decl_ref;
+            if let FunctionalDeclId::Function(new_decl_ref) = new_decl_ref {
+                self.id = new_decl_ref;
+            }
             return;
         }
         let all_parents = decl_engine.find_all_parents(engines, &self.id);
         for parent in all_parents.iter() {
             if let Some(new_decl_ref) = decl_mapping.find_match(parent.clone()) {
-                self.id = new_decl_ref;
+                if let FunctionalDeclId::Function(new_decl_ref) = new_decl_ref {
+                    self.id = new_decl_ref;
+                }
                 return;
             }
         }

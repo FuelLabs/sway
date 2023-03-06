@@ -187,6 +187,7 @@ impl<'a> ParsedTree<'a> {
                 for item in &trait_decl.interface_surface {
                     match item {
                         TraitItem::TraitFn(trait_fn) => self.collect_trait_fn(trait_fn),
+                        TraitItem::Constant(const_decl) => self.collect_constant(const_decl),
                     }
                 }
 
@@ -281,6 +282,7 @@ impl<'a> ParsedTree<'a> {
                 for item in &impl_trait.items {
                     match item {
                         ImplItem::Fn(fn_decl) => self.handle_function_declaration(fn_decl),
+                        ImplItem::Constant(const_decl) => self.handle_const_declaration(const_decl),
                     }
                 }
             }
@@ -311,6 +313,7 @@ impl<'a> ParsedTree<'a> {
                 for item in &impl_self.items {
                     match item {
                         ImplItem::Fn(fn_decl) => self.handle_function_declaration(fn_decl),
+                        ImplItem::Constant(const_decl) => self.handle_const_declaration(const_decl),
                     }
                 }
             }
@@ -326,6 +329,7 @@ impl<'a> ParsedTree<'a> {
                 for item in &abi_decl.interface_surface {
                     match item {
                         TraitItem::TraitFn(trait_fn) => self.collect_trait_fn(trait_fn),
+                        TraitItem::Constant(const_decl) => self.collect_constant(const_decl),
                     }
                 }
 
@@ -1020,6 +1024,18 @@ impl<'a> ParsedTree<'a> {
                 SymbolKind::TypeParameter,
             ),
         );
+    }
+
+    fn collect_constant(&self, const_decl: &ConstantDeclaration) {
+        let token = Token::from_parsed(
+            AstToken::ConstantDeclaration(const_decl.clone()),
+            SymbolKind::Const,
+        );
+        self.tokens.insert(to_ident_key(&const_decl.name), token);
+
+        self.collect_type_arg(&const_decl.type_ascription);
+
+        const_decl.attributes.parse(self.tokens);
     }
 }
 

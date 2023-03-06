@@ -221,6 +221,14 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                             errors
                         );
                     }
+                    ty::TyImplItem::Constant(decl_ref) => {
+                        check!(
+                            validate_const_decl(engines, &decl_ref.id),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                    }
                 }
             }
         }

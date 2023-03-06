@@ -76,6 +76,7 @@ impl Format for ItemTrait {
                         fn_signature.format(formatted_code, formatter)?;
                         writeln!(formatted_code, "{}", semicolon_token.ident().as_str())?;
                     }
+                    sway_ast::ItemTraitItem::Const(_) => todo!(),
                 }
             }
         }
@@ -107,6 +108,7 @@ impl Format for ItemTraitItem {
     ) -> Result<(), FormatterError> {
         match self {
             ItemTraitItem::Fn(fn_decl) => fn_decl.format(formatted_code, formatter),
+            ItemTraitItem::Const(const_decl) => const_decl.format(formatted_code, formatter),
         }
     }
 }
@@ -185,6 +187,7 @@ impl LeafSpans for ItemTraitItem {
         let mut collected_spans = Vec::new();
         match &self {
             ItemTraitItem::Fn(fn_sig) => collected_spans.append(&mut fn_sig.leaf_spans()),
+            ItemTraitItem::Const(_) => todo!(),
         };
         collected_spans
     }

@@ -1070,7 +1070,8 @@ impl ty::TyExpression {
 
         let decl_engine = ctx.decl_engine;
 
-        // The first step is to determine if the call path refers to a module, enum, or function.
+        // The first step is to determine if the call path refers to a module, enum, function
+        // or constant.
         // If only one exists, then we use that one. Otherwise, if more than one exist, it is
         // an ambiguous reference error.
 
@@ -1339,6 +1340,10 @@ impl ty::TyExpression {
                             .insert(method.to_dummy_func(Mode::ImplAbiFn))
                             .with_parent(decl_engine, decl_ref.id.into()),
                     ));
+                }
+                ty::TyTraitInterfaceItem::Constant(decl_ref) => {
+                    let const_decl = decl_engine.get_constant(&decl_ref);
+                    abi_items.push(TyImplItem::Constant(decl_engine.insert(const_decl)));
                 }
             }
         }
