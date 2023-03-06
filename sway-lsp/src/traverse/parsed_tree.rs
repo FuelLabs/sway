@@ -16,10 +16,10 @@ use sway_core::{
     language::{
         parsed::{
             AbiCastExpression, AbiDeclaration, AmbiguousPathExpression, ArrayExpression,
-            ArrayIndexExpression, AstNode, AstNodeContent, CodeBlock, ConstantDeclaration,
-            Declaration, DelineatedPathExpression, EnumDeclaration, EnumVariant, Expression,
-            ExpressionKind, FunctionApplicationExpression, FunctionDeclaration, FunctionParameter,
-            IfExpression, ImplItem, ImplSelf, ImplTrait, ImportType, IntrinsicFunctionExpression,
+            ArrayIndexExpression, AstNode, AstNodeContent, ConstantDeclaration, Declaration,
+            DelineatedPathExpression, EnumDeclaration, EnumVariant, Expression, ExpressionKind,
+            FunctionApplicationExpression, FunctionDeclaration, FunctionParameter, IfExpression,
+            ImplItem, ImplSelf, ImplTrait, ImportType, IntrinsicFunctionExpression,
             LazyOperatorExpression, MatchExpression, MethodApplicationExpression, MethodName,
             ParseModule, ParseProgram, ParseSubmodule, ReassignmentExpression, ReassignmentTarget,
             Scrutinee, StorageAccessExpression, StorageDeclaration, StorageField,
@@ -370,7 +370,7 @@ impl Parse for DelineatedPathExpression {
         let DelineatedPathExpression {
             call_path_binding,
             args,
-        } = &*self;
+        } = self;
         for ident in &call_path_binding.inner.prefixes {
             ctx.tokens.insert(
                 to_ident_key(ident),
@@ -404,7 +404,7 @@ impl Parse for AmbiguousPathExpression {
         let AmbiguousPathExpression {
             call_path_binding,
             args,
-        } = &*self;
+        } = self;
         for ident in call_path_binding
             .inner
             .prefixes
@@ -967,7 +967,7 @@ impl Parse for TypeArgument {
                 if let Some(tree) = &self.call_path_tree {
                     let token =
                         Token::from_parsed(AstToken::TypeArgument(self.clone()), symbol_kind);
-                    collect_call_path_tree(tree, &token, &ctx.tokens);
+                    collect_call_path_tree(tree, &token, ctx.tokens);
                 }
             }
         }
