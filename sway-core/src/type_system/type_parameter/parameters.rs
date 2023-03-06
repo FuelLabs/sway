@@ -13,6 +13,7 @@ use std::{
 pub struct TypeParameters {
     /// The "self type" that encapsulated by this scope, if any.
     self_type: Option<TypeParameter>,
+
     /// List of [TypeParameter]s in this scope.
     list: Vec<TypeParameter>,
 }
@@ -184,7 +185,7 @@ impl PartialEqWithEngines for TypeParameters {
 }
 
 impl OrdWithEngines for TypeParameters {
-    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
+    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
         let TypeParameters {
             self_type: lst,
             list: ll,
@@ -193,8 +194,7 @@ impl OrdWithEngines for TypeParameters {
             self_type: rst,
             list: rl,
         } = other;
-        lst.cmp(rst, type_engine)
-            .then_with(|| ll.cmp(rl, type_engine))
+        lst.cmp(rst, engines).then_with(|| ll.cmp(rl, engines))
     }
 }
 

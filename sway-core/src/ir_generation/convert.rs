@@ -1,4 +1,5 @@
 use crate::{
+    decl_engine::DeclEngine,
     language::Literal,
     type_system::{TypeId, TypeInfo},
     TypeEngine,
@@ -48,6 +49,7 @@ pub(super) fn convert_literal_to_constant(
 
 pub(super) fn convert_resolved_typeid(
     type_engine: &TypeEngine,
+    decl_engine: &DeclEngine,
     context: &mut Context,
     ast_type: &TypeId,
     span: &Span,
@@ -56,6 +58,7 @@ pub(super) fn convert_resolved_typeid(
     // other than String eventually?  IrError?
     convert_resolved_type(
         type_engine,
+        decl_engine,
         context,
         &type_engine
             .to_typeinfo(*ast_type, span)
@@ -66,16 +69,18 @@ pub(super) fn convert_resolved_typeid(
 
 pub(super) fn convert_resolved_typeid_no_span(
     type_engine: &TypeEngine,
+    decl_engine: &DeclEngine,
     context: &mut Context,
     ast_type: &TypeId,
 ) -> Result<Type, CompileError> {
     let msg = "unknown source location";
     let span = crate::span::Span::from_string(msg.to_string());
-    convert_resolved_typeid(type_engine, context, ast_type, &span)
+    convert_resolved_typeid(type_engine, decl_engine, context, ast_type, &span)
 }
 
 fn convert_resolved_type(
     type_engine: &TypeEngine,
+    decl_engine: &DeclEngine,
     context: &mut Context,
     ast_type: &TypeInfo,
     span: &Span,
@@ -97,21 +102,32 @@ fn convert_resolved_type(
         TypeInfo::Boolean => Type::get_bool(context),
         TypeInfo::B256 => Type::get_b256(context),
         TypeInfo::Str(n) => Type::new_string(context, n.val() as u64),
-        TypeInfo::Struct { fields, .. } => super::types::get_aggregate_for_types(
+        TypeInfo::Struct(decl_ref) => super::types::get_aggregate_for_types(
             type_engine,
+            decl_engine,
             context,
-            fields
+            decl_engine
+                .get_struct(decl_ref)
+                .fields
                 .iter()
                 .map(|field| field.type_argument.type_id)
                 .collect::<Vec<_>>()
                 .as_slice(),
         )?,
-        TypeInfo::Enum { variant_types, .. } => {
-            create_enum_aggregate(type_engine, context, variant_types)?
-        }
+        TypeInfo::Enum(decl_ref) => create_enum_aggregate(
+            type_engine,
+            decl_engine,
+            context,
+            &decl_engine.get_enum(decl_ref).variants,
+        )?,
         TypeInfo::Array(elem_type, length) => {
-            let elem_type =
-                convert_resolved_typeid(type_engine, context, &elem_type.type_id, span)?;
+            let elem_type = convert_resolved_typeid(
+                type_engine,
+                decl_engine,
+                context,
+                &elem_type.type_id,
+                span,
+            )?;
             Type::new_array(context, elem_type, length.val() as u64)
         }
         TypeInfo::Tuple(fields) => {
@@ -122,7 +138,7 @@ fn convert_resolved_type(
                 Type::get_unit(context)
             } else {
                 let new_fields = fields.iter().map(|x| x.type_id).collect();
-                create_tuple_aggregate(type_engine, context, new_fields)?
+                create_tuple_aggregate(type_engine, decl_engine, context, new_fields)?
             }
         }
         TypeInfo::RawUntypedPtr => Type::get_uint64(context),

@@ -302,7 +302,7 @@ pub(crate) fn type_check_method_application(
             return err(warnings, errors);
         };
         let func_selector = check!(
-            method.to_fn_selector_value(type_engine),
+            method.to_fn_selector_value(type_engine, decl_engine),
             [0; 4],
             warnings,
             errors

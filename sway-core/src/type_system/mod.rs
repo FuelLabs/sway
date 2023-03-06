@@ -30,6 +30,10 @@ pub use type_parameter::*;
 pub(crate) use unconstrained_type_parameters::*;
 
 use crate::error::*;
+#[cfg(test)]
+use crate::{
+    decl_engine::DeclEngineIndex, language::ty::TyEnumDeclaration, transform::AttributesMap,
+};
 use std::fmt::Debug;
 
 #[cfg(test)]
@@ -87,14 +91,16 @@ fn generic_enum_resolution() {
         span: sp.clone(),
         attributes: transform::AttributesMap::default(),
     }];
-    let ty_1 = type_engine.insert(
-        &decl_engine,
-        TypeInfo::Enum {
-            call_path: result_name.clone().into(),
-            variant_types,
-            type_parameters: vec![placeholder_type_param].into(),
-        },
-    );
+
+    let decl_ref_1 = decl_engine.insert(TyEnumDeclaration {
+        call_path: result_name.clone().into(),
+        type_parameters: TypeParameters::from(vec![placeholder_type_param]),
+        variants: variant_types,
+        span: sp.clone(),
+        visibility: crate::language::Visibility::Public,
+        attributes: AttributesMap::default(),
+    });
+    let ty_1 = type_engine.insert(&decl_engine, TypeInfo::Enum(decl_ref_1));
 
     /*
     Result<bool> {
@@ -121,26 +127,23 @@ fn generic_enum_resolution() {
         trait_constraints: vec![],
         trait_constraints_span: sp.clone(),
     };
-    let ty_2 = type_engine.insert(
-        &decl_engine,
-        TypeInfo::Enum {
-            call_path: result_name.into(),
-            variant_types,
-            type_parameters: vec![type_param].into(),
-        },
-    );
+    let decl_ref_2 = decl_engine.insert(TyEnumDeclaration {
+        call_path: result_name.into(),
+        type_parameters: TypeParameters::from(vec![type_param]),
+        variants: variant_types.clone(),
+        span: sp.clone(),
+        visibility: crate::language::Visibility::Public,
+        attributes: AttributesMap::default(),
+    });
+    let ty_2 = type_engine.insert(&decl_engine, TypeInfo::Enum(decl_ref_2));
 
     // Unify them together...
     let (_, errors) = type_engine.unify(&decl_engine, ty_1, ty_2, &sp, "", None);
     assert!(errors.is_empty());
 
-    if let TypeInfo::Enum {
-        call_path: name,
-        variant_types,
-        ..
-    } = type_engine.get(ty_1)
-    {
-        assert_eq!(name.suffix.as_str(), "Result");
+    if let TypeInfo::Enum(decl_ref_1) = type_engine.get(ty_1) {
+        let decl = decl_engine.get_enum(&decl_ref_1);
+        assert_eq!(decl.call_path.suffix.as_str(), "Result");
         assert!(matches!(
             type_engine.get(variant_types[0].type_argument.type_id),
             TypeInfo::Boolean

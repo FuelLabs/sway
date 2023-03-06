@@ -4,6 +4,7 @@ use std::fmt::Write;
 use sway_error::error::CompileError;
 use sway_types::Span;
 
+use crate::decl_engine::DeclEngine;
 use crate::{error::*, language::ty, language::Literal, TypeInfo};
 
 use super::{patstack::PatStack, range::Range};
@@ -678,7 +679,7 @@ impl Pattern {
         }
     }
 
-    pub(crate) fn matches_type_info(&self, type_info: &TypeInfo) -> bool {
+    pub(crate) fn matches_type_info(&self, type_info: &TypeInfo, decl_engine: &DeclEngine) -> bool {
         match (self, type_info) {
             (
                 Pattern::Enum(EnumPattern {
@@ -686,14 +687,12 @@ impl Pattern {
                     variant_name,
                     ..
                 }),
-                TypeInfo::Enum {
-                    call_path: r_enum_call_path,
-                    variant_types,
-                    ..
-                },
+                TypeInfo::Enum(r_enum_decl_ref),
             ) => {
-                l_enum_name.as_str() == r_enum_call_path.suffix.as_str()
-                    && variant_types
+                let r_decl = decl_engine.get_enum(r_enum_decl_ref);
+                l_enum_name.as_str() == r_decl.call_path.suffix.as_str()
+                    && r_decl
+                        .variants
                         .iter()
                         .map(|variant_type| variant_type.name.clone())
                         .any(|name| name.as_str() == variant_name.as_str())

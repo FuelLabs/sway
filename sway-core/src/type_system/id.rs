@@ -1,5 +1,5 @@
 use super::*;
-use crate::engine_threading::*;
+use crate::{decl_engine::DeclEngine, engine_threading::*};
 
 use std::fmt;
 
@@ -104,14 +104,20 @@ impl TypeId {
         self.0
     }
 
-    pub(crate) fn get_type_parameters(&self, type_engine: &TypeEngine) -> Option<TypeParameters> {
+    pub(crate) fn get_type_parameters(
+        &self,
+        type_engine: &TypeEngine,
+        decl_engine: &DeclEngine,
+    ) -> Option<TypeParameters> {
         match type_engine.get(*self) {
-            TypeInfo::Enum {
-                type_parameters, ..
-            } => (!type_parameters.is_empty_excluding_self()).then_some(type_parameters),
-            TypeInfo::Struct {
-                type_parameters, ..
-            } => (!type_parameters.is_empty_excluding_self()).then_some(type_parameters),
+            TypeInfo::Enum(decl_ref) => {
+                let decl = decl_engine.get_enum(&decl_ref);
+                (!decl.type_parameters.is_empty_excluding_self()).then_some(decl.type_parameters)
+            }
+            TypeInfo::Struct(decl_ref) => {
+                let decl = decl_engine.get_struct(&decl_ref);
+                (!decl.type_parameters.is_empty_excluding_self()).then_some(decl.type_parameters)
+            }
             _ => None,
         }
     }
@@ -122,23 +128,16 @@ impl TypeId {
     pub(crate) fn is_generic_parameter(
         self,
         type_engine: &TypeEngine,
+        decl_engine: &DeclEngine,
         resolved_type_id: TypeId,
     ) -> bool {
         match (type_engine.get(self), type_engine.get(resolved_type_id)) {
-            (
-                TypeInfo::Custom { call_path, .. },
-                TypeInfo::Enum {
-                    call_path: enum_call_path,
-                    ..
-                },
-            ) => call_path.suffix != enum_call_path.suffix,
-            (
-                TypeInfo::Custom { call_path, .. },
-                TypeInfo::Struct {
-                    call_path: struct_call_path,
-                    ..
-                },
-            ) => call_path.suffix != struct_call_path.suffix,
+            (TypeInfo::Custom { call_path, .. }, TypeInfo::Enum(decl_ref)) => {
+                call_path.suffix != decl_engine.get_enum(&decl_ref).call_path.suffix
+            }
+            (TypeInfo::Custom { call_path, .. }, TypeInfo::Struct(decl_ref)) => {
+                call_path.suffix != decl_engine.get_struct(&decl_ref).call_path.suffix
+            }
             (TypeInfo::Custom { .. }, _) => true,
             _ => false,
         }

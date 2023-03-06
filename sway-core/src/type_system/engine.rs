@@ -53,7 +53,9 @@ impl TypeEngine {
             .from_hash(ty_hash, |x| x.eq(&ty, engines));
         match raw_entry {
             RawEntryMut::Occupied(o) => return *o.get(),
-            RawEntryMut::Vacant(_) if ty.can_change() => TypeId::new(self.slab.insert(ty)),
+            RawEntryMut::Vacant(_) if ty.can_change(decl_engine) => {
+                TypeId::new(self.slab.insert(ty))
+            }
             RawEntryMut::Vacant(v) => {
                 let type_id = TypeId::new(self.slab.insert(ty.clone()));
                 v.insert_with_hasher(ty_hash, ty, type_id, make_hasher(&hash_builder, engines));
@@ -394,12 +396,9 @@ impl TypeEngine {
                     .ok(&mut warnings, &mut errors)
                     .cloned()
                 {
-                    Some(ty::TyDeclaration::StructDeclaration {
-                        decl_id: original_id,
-                        ..
-                    }) => {
+                    Some(ty::TyDeclaration::StructDeclaration(original_decl_ref)) => {
                         // get the copy from the declaration engine
-                        let mut new_copy = decl_engine.get_struct(&original_id);
+                        let mut new_copy = decl_engine.get_struct(&original_decl_ref);
 
                         // monomorphize the copy, in place
                         check!(
@@ -417,8 +416,13 @@ impl TypeEngine {
                             errors,
                         );
 
+                        // insert the new copy in the decl engine
+                        let new_decl_ref = decl_engine.insert(new_copy);
+
                         // create the type id from the copy
-                        let type_id = new_copy.create_type_id(engines);
+                        let type_id = engines
+                            .te()
+                            .insert(decl_engine, TypeInfo::Struct(new_decl_ref));
 
                         // take any trait methods that apply to this type and copy them to the new type
                         namespace.insert_trait_implementation_for_type(engines, type_id);
@@ -426,12 +430,9 @@ impl TypeEngine {
                         // return the id
                         type_id
                     }
-                    Some(ty::TyDeclaration::EnumDeclaration {
-                        decl_id: original_id,
-                        ..
-                    }) => {
+                    Some(ty::TyDeclaration::EnumDeclaration(original_decl_ref)) => {
                         // get the copy from the declaration engine
-                        let mut new_copy = decl_engine.get_enum(&original_id);
+                        let mut new_copy = decl_engine.get_enum(&original_decl_ref);
 
                         // monomorphize the copy, in place
                         check!(
@@ -449,8 +450,13 @@ impl TypeEngine {
                             errors
                         );
 
+                        // insert the new copy in the decl engine
+                        let new_decl_ref = decl_engine.insert(new_copy);
+
                         // create the type id from the copy
-                        let type_id = new_copy.create_type_id(engines);
+                        let type_id = engines
+                            .te()
+                            .insert(decl_engine, TypeInfo::Enum(new_decl_ref));
 
                         // take any trait methods that apply to this type and copy them to the new type
                         namespace.insert_trait_implementation_for_type(engines, type_id);

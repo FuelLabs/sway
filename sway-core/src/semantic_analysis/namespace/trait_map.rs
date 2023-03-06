@@ -28,10 +28,10 @@ impl PartialEqWithEngines for TraitSuffix {
     }
 }
 impl OrdWithEngines for TraitSuffix {
-    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self, engines: Engines<'_>) -> std::cmp::Ordering {
         self.name
             .cmp(&other.name)
-            .then_with(|| self.args.cmp(&other.args, type_engine))
+            .then_with(|| self.args.cmp(&other.args, engines))
     }
 }
 
@@ -43,10 +43,10 @@ impl<T: PartialEqWithEngines> PartialEqWithEngines for CallPath<T> {
     }
 }
 impl<T: OrdWithEngines> OrdWithEngines for CallPath<T> {
-    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
+    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
         self.prefixes
             .cmp(&other.prefixes)
-            .then_with(|| self.suffix.cmp(&other.suffix, type_engine))
+            .then_with(|| self.suffix.cmp(&other.suffix, engines))
             .then_with(|| self.is_absolute.cmp(&other.is_absolute))
     }
 }
@@ -60,9 +60,9 @@ struct TraitKey {
 }
 
 impl OrdWithEngines for TraitKey {
-    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self, engines: Engines<'_>) -> std::cmp::Ordering {
         self.name
-            .cmp(&other.name, type_engine)
+            .cmp(&other.name, engines)
             .then_with(|| self.type_id.cmp(&other.type_id))
     }
 }
@@ -345,7 +345,7 @@ impl TraitMap {
         for oe in other.trait_impls.into_iter() {
             let pos = self
                 .trait_impls
-                .binary_search_by(|se| se.key.cmp(&oe.key, engines.te()));
+                .binary_search_by(|se| se.key.cmp(&oe.key, engines));
 
             match pos {
                 Ok(pos) => self.trait_impls[pos].value.extend(oe.value.into_iter()),
@@ -463,11 +463,14 @@ impl TraitMap {
     /// with those entries for `Data<T, T>`.
     pub(crate) fn filter_by_type(&self, type_id: TypeId, engines: Engines<'_>) -> TraitMap {
         let type_engine = engines.te();
+        let decl_engine = engines.de();
         // a curried version of the decider protocol to use in the helper functions
         let decider = |type_info: &TypeInfo, map_type_info: &TypeInfo| {
             type_info.is_subset_of(map_type_info, engines)
         };
-        let mut all_types = type_engine.get(type_id).extract_inner_types(type_engine);
+        let mut all_types = type_engine
+            .get(type_id)
+            .extract_inner_types(type_engine, decl_engine);
         all_types.insert(type_id);
         let all_types = all_types.into_iter().collect::<Vec<_>>();
         self.filter_by_type_inner(engines, all_types, decider)
@@ -537,6 +540,7 @@ impl TraitMap {
         engines: Engines<'_>,
     ) -> TraitMap {
         let type_engine = engines.te();
+        let decl_engine = engines.de();
         // a curried version of the decider protocol to use in the helper functions
         let decider = |type_info: &TypeInfo, map_type_info: &TypeInfo| {
             type_info.is_subset_of(map_type_info, engines)
@@ -545,7 +549,7 @@ impl TraitMap {
         let mut trait_map = self.filter_by_type_inner(engines, vec![type_id], decider);
         let all_types = type_engine
             .get(type_id)
-            .extract_inner_types(type_engine)
+            .extract_inner_types(type_engine, decl_engine)
             .into_iter()
             .collect::<Vec<_>>();
         // a curried version of the decider protocol to use in the helper functions
@@ -579,7 +583,7 @@ impl TraitMap {
         {
             for type_id in all_types.iter_mut() {
                 let type_info = type_engine.get(*type_id);
-                if !type_info.can_change() && *type_id == *map_type_id {
+                if !type_info.can_change(decl_engine) && *type_id == *map_type_id {
                     trait_map.insert_inner(
                         map_trait_name.clone(),
                         *type_id,
@@ -587,8 +591,12 @@ impl TraitMap {
                         engines,
                     );
                 } else if decider(&type_info, &type_engine.get(*map_type_id)) {
-                    let type_mapping =
-                        TypeSubstMap::from_superset_and_subset(type_engine, *map_type_id, *type_id);
+                    let type_mapping = TypeSubstMap::from_superset_and_subset(
+                        type_engine,
+                        decl_engine,
+                        *map_type_id,
+                        *type_id,
+                    );
                     type_id.subst(&type_mapping, engines);
                     let trait_items: TraitItems = map_trait_items
                         .clone()
@@ -803,6 +811,7 @@ pub(crate) fn are_equal_minus_dynamic_types(
     }
 
     let type_engine = engines.te();
+    let decl_engine = engines.de();
 
     match (type_engine.get(left), type_engine.get(right)) {
         // these cases are false because, unless left and right have the same
@@ -853,20 +862,12 @@ pub(crate) fn are_equal_minus_dynamic_types(
                         acc && are_equal_minus_dynamic_types(engines, left.type_id, right.type_id)
                     })
         }
-        (
-            TypeInfo::Enum {
-                call_path: l_name,
-                variant_types: l_variant_types,
-                type_parameters: l_type_parameters,
-            },
-            TypeInfo::Enum {
-                call_path: r_name,
-                variant_types: r_variant_types,
-                type_parameters: r_type_parameters,
-            },
-        ) => {
-            l_name.suffix == r_name.suffix
-                && l_variant_types.iter().zip(r_variant_types.iter()).fold(
+        (TypeInfo::Enum(l_decl_ref), TypeInfo::Enum(r_decl_ref)) => {
+            let l_decl = decl_engine.get_enum(&l_decl_ref);
+            let r_decl = decl_engine.get_enum(&r_decl_ref);
+            l_decl.call_path.suffix == r_decl.call_path.suffix
+                && l_decl.call_path.suffix.span() == r_decl.call_path.suffix.span()
+                && l_decl.variants.iter().zip(r_decl.variants.iter()).fold(
                     true,
                     |acc, (left, right)| {
                         acc && left.name == right.name
@@ -877,41 +878,35 @@ pub(crate) fn are_equal_minus_dynamic_types(
                             )
                     },
                 )
-                && l_type_parameters
+                && l_decl
+                    .type_parameters
                     .iter_including_self()
-                    .zip(r_type_parameters.iter_including_self())
+                    .zip(r_decl.type_parameters.iter_including_self())
                     .fold(true, |acc, (left, right)| {
                         acc && left.name_ident == right.name_ident
                             && are_equal_minus_dynamic_types(engines, left.type_id, right.type_id)
                     })
         }
-        (
-            TypeInfo::Struct {
-                call_path: l_name,
-                fields: l_fields,
-                type_parameters: l_type_parameters,
-            },
-            TypeInfo::Struct {
-                call_path: r_name,
-                fields: r_fields,
-                type_parameters: r_type_parameters,
-            },
-        ) => {
-            l_name.suffix == r_name.suffix
-                && l_fields
-                    .iter()
-                    .zip(r_fields.iter())
-                    .fold(true, |acc, (left, right)| {
+        (TypeInfo::Struct(l_decl_ref), TypeInfo::Struct(r_decl_ref)) => {
+            let l_decl = decl_engine.get_struct(&l_decl_ref);
+            let r_decl = decl_engine.get_struct(&r_decl_ref);
+            l_decl.call_path.suffix == r_decl.call_path.suffix
+                && l_decl.call_path.suffix.span() == r_decl.call_path.suffix.span()
+                && l_decl.fields.iter().zip(r_decl.fields.iter()).fold(
+                    true,
+                    |acc, (left, right)| {
                         acc && left.name == right.name
                             && are_equal_minus_dynamic_types(
                                 engines,
                                 left.type_argument.type_id,
                                 right.type_argument.type_id,
                             )
-                    })
-                && l_type_parameters
+                    },
+                )
+                && l_decl
+                    .type_parameters
                     .iter_including_self()
-                    .zip(r_type_parameters.iter_including_self())
+                    .zip(r_decl.type_parameters.iter_including_self())
                     .fold(true, |acc, (left, right)| {
                         acc && left.name_ident == right.name_ident
                             && are_equal_minus_dynamic_types(engines, left.type_id, right.type_id)

@@ -68,21 +68,6 @@ impl SubstTypes for TyStructDeclaration {
     }
 }
 
-impl CreateTypeId for TyStructDeclaration {
-    fn create_type_id(&self, engines: Engines<'_>) -> TypeId {
-        let type_engine = engines.te();
-        let decl_engine = engines.de();
-        type_engine.insert(
-            decl_engine,
-            TypeInfo::Struct {
-                call_path: self.call_path.clone(),
-                fields: self.fields.clone(),
-                type_parameters: self.type_parameters.clone(),
-            },
-        )
-    }
-}
-
 impl Spanned for TyStructDeclaration {
     fn span(&self) -> Span {
         self.span.clone()
@@ -158,7 +143,7 @@ impl PartialEqWithEngines for TyStructField {
 }
 
 impl OrdWithEngines for TyStructField {
-    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
+    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
         let TyStructField {
             name: ln,
             type_argument: lta,
@@ -175,7 +160,7 @@ impl OrdWithEngines for TyStructField {
             span: _,
             attributes: _,
         } = other;
-        ln.cmp(rn).then_with(|| lta.cmp(rta, type_engine))
+        ln.cmp(rn).then_with(|| lta.cmp(rta, engines))
     }
 }
 

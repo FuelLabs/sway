@@ -224,7 +224,7 @@ fn test_function_selector_behavior() {
         where_clause: vec![],
     };
 
-    let selector_text = match decl.to_selector_name(&type_engine).value {
+    let selector_text = match decl.to_selector_name(&type_engine, &decl_engine).value {
         Some(value) => value,
         _ => panic!("test failure"),
     };
@@ -272,7 +272,7 @@ fn test_function_selector_behavior() {
         where_clause: vec![],
     };
 
-    let selector_text = match decl.to_selector_name(&type_engine).value {
+    let selector_text = match decl.to_selector_name(&type_engine, &decl_engine).value {
         Some(value) => value,
         _ => panic!("test failure"),
     };

@@ -235,14 +235,10 @@ impl TyAstNode {
                 } => Ok(decl_engine.get_trait(decl_id).visibility.is_public()),
                 TyAstNode {
                     content:
-                        TyAstNodeContent::Declaration(TyDeclaration::StructDeclaration {
-                            decl_id,
-                            decl_span: _,
-                            ..
-                        }),
+                        TyAstNodeContent::Declaration(TyDeclaration::StructDeclaration(decl_ref)),
                     ..
                 } => {
-                    let struct_decl = decl_engine.get_struct(decl_id);
+                    let struct_decl = decl_engine.get_struct(decl_ref);
                     Ok(struct_decl.visibility == Visibility::Public)
                 }
                 TyAstNode {

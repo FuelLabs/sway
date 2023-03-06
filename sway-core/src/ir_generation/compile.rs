@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::DeclRefFunction,
+    decl_engine::{DeclEngine, DeclRefFunction},
     language::{ty, Visibility},
     metadata::MetadataManager,
     semantic_analysis::namespace,
@@ -304,6 +304,7 @@ pub(super) fn compile_function(
     test_decl_ref: Option<DeclRefFunction>,
 ) -> Result<Option<Function>, CompileError> {
     let type_engine = engines.te();
+    let decl_engine = engines.de();
     // Currently monomorphization of generics is inlined into main() and the functions with generic
     // args are still present in the AST declarations, but they can be ignored.
     if !ast_fn_decl.type_parameters.is_empty_excluding_self() {
@@ -312,7 +313,7 @@ pub(super) fn compile_function(
         let args = ast_fn_decl
             .parameters
             .iter()
-            .map(|param| convert_fn_param(type_engine, context, param))
+            .map(|param| convert_fn_param(type_engine, decl_engine, context, param))
             .collect::<Result<Vec<(String, Type, bool, Span)>, CompileError>>()?;
 
         compile_fn_with_args(
@@ -386,11 +387,13 @@ pub(super) fn compile_tests(
 
 fn convert_fn_param(
     type_engine: &TypeEngine,
+    decl_engine: &DeclEngine,
     context: &mut Context,
     param: &ty::TyFunctionParameter,
 ) -> Result<(String, Type, bool, Span), CompileError> {
     convert_resolved_typeid(
         type_engine,
+        decl_engine,
         context,
         &param.type_argument.type_id,
         &param.type_argument.span,
@@ -417,6 +420,7 @@ fn compile_fn_with_args(
     test_decl_ref: Option<DeclRefFunction>,
 ) -> Result<Function, CompileError> {
     let type_engine = engines.te();
+    let decl_engine = engines.de();
 
     let inline_opt = ast_fn_decl.inline();
     let ty::TyFunctionDeclaration {
@@ -436,6 +440,7 @@ fn compile_fn_with_args(
 
     let ret_type = convert_resolved_typeid(
         type_engine,
+        decl_engine,
         context,
         &return_type.type_id,
         &return_type.span,
@@ -566,9 +571,10 @@ fn compile_abi_method(
     engines: Engines<'_>,
 ) -> Result<Function, CompileError> {
     let type_engine = engines.te();
+    let decl_engine = engines.de();
 
     // Use the error from .to_fn_selector_value() if possible, else make an CompileError::Internal.
-    let get_selector_result = ast_fn_decl.to_fn_selector_value(type_engine);
+    let get_selector_result = ast_fn_decl.to_fn_selector_value(type_engine, decl_engine);
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
     let selector = match get_selector_result.ok(&mut warnings, &mut errors) {
@@ -597,6 +603,7 @@ fn compile_abi_method(
         .map(|param| {
             convert_resolved_typeid(
                 type_engine,
+                decl_engine,
                 context,
                 &param.type_argument.type_id,
                 &param.type_argument.span,

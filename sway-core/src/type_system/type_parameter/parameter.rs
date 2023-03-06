@@ -57,7 +57,7 @@ impl PartialEqWithEngines for TypeParameter {
 }
 
 impl OrdWithEngines for TypeParameter {
-    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
+    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
         let TypeParameter {
             type_id: lti,
             name_ident: ln,
@@ -77,12 +77,8 @@ impl OrdWithEngines for TypeParameter {
             initial_type_id: _,
         } = other;
         ln.cmp(rn)
-            .then_with(|| {
-                type_engine
-                    .get(*lti)
-                    .cmp(&type_engine.get(*rti), type_engine)
-            })
-            .then_with(|| ltc.cmp(rtc, type_engine))
+            .then_with(|| engines.te().get(*lti).cmp(&engines.te().get(*rti), engines))
+            .then_with(|| ltc.cmp(rtc, engines))
     }
 }
 

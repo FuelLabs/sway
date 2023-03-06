@@ -138,11 +138,9 @@ impl CollectTypesMetadata for TyExpression {
                 }
             }
             StructExpression { fields, span, .. } => {
-                if let TypeInfo::Struct {
-                    type_parameters, ..
-                } = ctx.type_engine.get(self.return_type)
-                {
-                    for type_parameter in type_parameters.iter_excluding_self() {
+                if let TypeInfo::Struct(decl_ref) = ctx.type_engine.get(self.return_type) {
+                    let decl = decl_engine.get_struct(&decl_ref);
+                    for type_parameter in decl.type_parameters.iter_excluding_self() {
                         ctx.call_site_insert(type_parameter.type_id, span.clone());
                     }
                 }
