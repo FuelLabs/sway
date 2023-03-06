@@ -32,7 +32,6 @@ pub enum AstToken {
     EnumVariant(EnumVariant),
     TraitFn(TraitFn),
     TraitConstraint(TraitConstraint),
-    ConstantDeclaration(ConstantDeclaration),
     StorageField(StorageField),
     Scrutinee(Scrutinee),
     Keyword(Ident),

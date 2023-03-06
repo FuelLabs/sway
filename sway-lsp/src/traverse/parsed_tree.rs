@@ -2,9 +2,12 @@
 use std::iter;
 
 use crate::{
-    core::token::{
-        desugared_op, to_ident_key, type_info_to_symbol_kind, AstToken, SymbolKind, Token,
-        TypeDefinition,
+    core::{
+        token::{
+            desugared_op, to_ident_key, type_info_to_symbol_kind, AstToken, SymbolKind, Token,
+            TypeDefinition,
+        },
+        token_map::TokenMap,
     },
     traverse::{Parse, ParseContext},
 };
@@ -12,14 +15,17 @@ use crate::{
 use sway_core::{
     language::{
         parsed::{
-            AbiCastExpression, AmbiguousPathExpression, ArrayIndexExpression, AstNode,
-            AstNodeContent, CodeBlock, ConstantDeclaration, Declaration, DelineatedPathExpression,
-            Expression, ExpressionKind, FunctionApplicationExpression, FunctionDeclaration,
-            FunctionParameter, IfExpression, ImplItem, ImportType, IntrinsicFunctionExpression,
+            AbiCastExpression, AbiDeclaration, AmbiguousPathExpression, ArrayIndexExpression,
+            AstNode, AstNodeContent, CodeBlock, ConstantDeclaration, Declaration,
+            DelineatedPathExpression, EnumDeclaration, Expression, ExpressionKind,
+            FunctionApplicationExpression, FunctionDeclaration, FunctionParameter, IfExpression,
+            ImplItem, ImplSelf, ImplTrait, ImportType, IntrinsicFunctionExpression,
             LazyOperatorExpression, MatchExpression, MethodApplicationExpression, MethodName,
             ParseModule, ParseProgram, ParseSubmodule, ReassignmentTarget, Scrutinee,
-            StorageAccessExpression, StructExpression, StructScrutineeField, SubfieldExpression,
-            TraitFn, TraitItem, TreeType, TupleIndexExpression, UseStatement, WhileLoopExpression,
+            StorageAccessExpression, StorageDeclaration, StructDeclaration, StructExpression,
+            StructScrutineeField, SubfieldExpression, Supertrait, TraitDeclaration, TraitFn,
+            TraitItem, TreeType, TupleIndexExpression, UseStatement, VariableDeclaration,
+            WhileLoopExpression,
         },
         CallPathTree, Literal,
     },
@@ -93,7 +99,7 @@ impl<'a> ParsedTree<'a> {
         self.ctx.tokens.insert(
             to_ident_key(&const_decl.name),
             Token::from_parsed(
-                AstToken::ConstantDeclaration(const_decl.clone()),
+                AstToken::Declaration(Declaration::ConstantDeclaration(const_decl.clone())),
                 SymbolKind::Const,
             ),
         );
@@ -603,7 +609,7 @@ impl<'a> ParsedTree<'a> {
                 } = &method_name_binding.inner
                 {
                     let (type_info, ident) = &call_path_binding.inner.suffix;
-                    self.collect_type_info_token(type_info, Some(ident.span()));
+                    collect_type_info_token(self.ctx, type_info, Some(ident.span()));
                 }
 
                 for type_arg in &method_name_binding.type_arguments.to_vec() {
@@ -838,22 +844,9 @@ impl<'a> ParsedTree<'a> {
                     Token::from_parsed(AstToken::TypeArgument(type_argument.clone()), symbol_kind);
 
                 if let Some(tree) = &type_argument.call_path_tree {
-                    self.collect_call_path_tree(tree, &token);
+                    collect_call_path_tree(tree, &token, &self.ctx.tokens);
                 }
             }
-        }
-    }
-
-    fn collect_call_path_tree(&self, tree: &CallPathTree, token: &Token) {
-        for ident in &tree.call_path.prefixes {
-            self.ctx.tokens.insert(to_ident_key(ident), token.clone());
-        }
-        self.ctx
-            .tokens
-            .insert(to_ident_key(&tree.call_path.suffix), token.clone());
-
-        for child in &tree.children {
-            self.collect_call_path_tree(child, token);
         }
     }
 
@@ -937,55 +930,6 @@ impl<'a> ParsedTree<'a> {
         }
     }
 
-    fn collect_type_info_token(&self, type_info: &TypeInfo, type_span: Option<Span>) {
-        let symbol_kind = type_info_to_symbol_kind(self.ctx.engines.te(), type_info);
-        match type_info {
-            TypeInfo::Str(length) => {
-                let ident = Ident::new(length.span());
-                self.ctx.tokens.insert(
-                    to_ident_key(&ident),
-                    Token::from_parsed(AstToken::Ident(ident.clone()), symbol_kind),
-                );
-            }
-            TypeInfo::Array(type_arg, length) => {
-                let ident = Ident::new(length.span());
-                self.ctx.tokens.insert(
-                    to_ident_key(&ident),
-                    Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::NumericLiteral),
-                );
-                self.collect_type_arg(type_arg);
-            }
-            TypeInfo::Tuple(type_arguments) => {
-                for type_arg in type_arguments {
-                    self.collect_type_arg(type_arg);
-                }
-            }
-            TypeInfo::Custom {
-                call_path,
-                type_arguments,
-            } => {
-                let ident = call_path.suffix.clone();
-                let mut token = Token::from_parsed(AstToken::Ident(ident.clone()), symbol_kind);
-                token.type_def = Some(TypeDefinition::Ident(ident.clone()));
-                self.ctx.tokens.insert(to_ident_key(&ident), token);
-                if let Some(type_arguments) = type_arguments {
-                    for type_arg in type_arguments {
-                        self.collect_type_arg(type_arg);
-                    }
-                }
-            }
-            _ => {
-                if let Some(type_span) = type_span {
-                    let ident = Ident::new(type_span);
-                    self.ctx.tokens.insert(
-                        to_ident_key(&ident),
-                        Token::from_parsed(AstToken::Ident(ident.clone()), symbol_kind),
-                    );
-                }
-            }
-        }
-    }
-
     fn collect_function_parameter(&self, parameter: &FunctionParameter) {
         self.ctx.tokens.insert(
             to_ident_key(&parameter.name),
@@ -1007,7 +951,8 @@ impl<'a> ParsedTree<'a> {
             self.collect_function_parameter(parameter);
         }
 
-        self.collect_type_info_token(
+        collect_type_info_token(
+            self.ctx,
             &trait_fn.return_type,
             Some(trait_fn.return_type_span.clone()),
         );
@@ -1040,6 +985,441 @@ impl Parse for AttributesMap {
                     ),
                 );
             });
+    }
+}
+
+impl Parse for AstNode {
+    fn parse(&self, ctx: &ParseContext) {
+        match &self.content {
+            AstNodeContent::Declaration(declaration) => declaration.parse(ctx),
+            AstNodeContent::Expression(expression)
+            | AstNodeContent::ImplicitReturnExpression(expression) => {
+                expression.parse(ctx);
+            }
+            AstNodeContent::UseStatement(use_statement) => use_statement.parse(ctx),
+            // include statements are handled throught [`collect_module_spans`]
+            AstNodeContent::IncludeStatement(_) => {}
+        }
+    }
+}
+
+impl Parse for Declaration {
+    fn parse(&self, ctx: &ParseContext) {
+        match self {
+            Declaration::VariableDeclaration(decl) => decl.parse(ctx),
+            Declaration::FunctionDeclaration(decl) => decl.parse(ctx),
+            Declaration::TraitDeclaration(decl) => decl.parse(ctx),
+            Declaration::StructDeclaration(decl) => decl.parse(ctx),
+            Declaration::EnumDeclaration(decl) => decl.parse(ctx),
+            Declaration::ImplTrait(decl) => decl.parse(ctx),
+            Declaration::ImplSelf(decl) => decl.parse(ctx),
+            Declaration::AbiDeclaration(decl) => decl.parse(ctx),
+            Declaration::ConstantDeclaration(decl) => decl.parse(ctx),
+            Declaration::StorageDeclaration(decl) => decl.parse(ctx),
+        }
+    }
+}
+
+impl Parse for Expression {
+    fn parse(&self, ctx: &ParseContext) {}
+}
+
+impl Parse for UseStatement {
+    fn parse(&self, ctx: &ParseContext) {}
+}
+
+impl Parse for VariableDeclaration {
+    fn parse(&self, ctx: &ParseContext) {
+        // Don't collect tokens if the ident's name contains __tuple_ || __match_return_var_name_
+        // The individual elements are handled in the subsequent VariableDeclaration's
+        if !self.name.as_str().contains(TUPLE_NAME_PREFIX)
+            && !self.name.as_str().contains(MATCH_RETURN_VAR_NAME_PREFIX)
+        {
+            let symbol_kind = if self.name.as_str().contains(DESTRUCTURE_PREFIX) {
+                SymbolKind::Struct
+            } else {
+                SymbolKind::Variable
+            };
+            // We want to use the span from variable.name to construct a
+            // new Ident as the name_override_opt can be set to one of the
+            // const prefixes and not the actual token name.
+            ctx.tokens.insert(
+                to_ident_key(&Ident::new(self.name.span())),
+                Token::from_parsed(
+                    AstToken::Declaration(Declaration::VariableDeclaration(self.clone())),
+                    symbol_kind,
+                ),
+            );
+            self.type_ascription.parse(ctx);
+        }
+        self.body.parse(ctx);
+    }
+}
+
+impl Parse for FunctionDeclaration {
+    fn parse(&self, ctx: &ParseContext) {
+        let token = Token::from_parsed(
+            AstToken::FunctionDeclaration(self.clone()),
+            SymbolKind::Function,
+        );
+        ctx.tokens.insert(to_ident_key(&self.name), token.clone());
+        for node in &self.body.contents {
+            node.parse(ctx);
+        }
+        for parameter in &self.parameters {
+            parameter.parse(ctx);
+        }
+        for type_param in &self.type_parameters {
+            type_param.parse(ctx);
+        }
+        for (ident, constraints) in &self.where_clause {
+            ctx.tokens.insert(to_ident_key(ident), token.clone());
+            for constraint in constraints {
+                constraint.parse(ctx);
+            }
+        }
+        self.return_type.parse(ctx);
+        self.attributes.parse(ctx);
+    }
+}
+
+impl Parse for TraitDeclaration {
+    fn parse(&self, ctx: &ParseContext) {
+        ctx.tokens.insert(
+            to_ident_key(&self.name),
+            Token::from_parsed(
+                AstToken::Declaration(Declaration::TraitDeclaration(self.clone())),
+                SymbolKind::Trait,
+            ),
+        );
+        for item in &self.interface_surface {
+            match item {
+                TraitItem::TraitFn(trait_fn) => trait_fn.parse(ctx),
+            }
+        }
+        for func_dec in &self.methods {
+            func_dec.parse(ctx);
+        }
+        for supertrait in &self.supertraits {
+            supertrait.parse(ctx);
+        }
+    }
+}
+
+impl Parse for StructDeclaration {
+    fn parse(&self, ctx: &ParseContext) {
+        ctx.tokens.insert(
+            to_ident_key(&self.name),
+            Token::from_parsed(
+                AstToken::Declaration(Declaration::StructDeclaration(self.clone())),
+                SymbolKind::Struct,
+            ),
+        );
+        for field in &self.fields {
+            ctx.tokens.insert(
+                to_ident_key(&field.name),
+                Token::from_parsed(AstToken::StructField(field.clone()), SymbolKind::Field),
+            );
+            field.type_argument.parse(ctx);
+            field.attributes.parse(ctx);
+        }
+        for type_param in &self.type_parameters {
+            type_param.parse(ctx);
+        }
+        self.attributes.parse(ctx);
+    }
+}
+
+impl Parse for EnumDeclaration {
+    fn parse(&self, ctx: &ParseContext) {
+        ctx.tokens.insert(
+            to_ident_key(&self.name),
+            Token::from_parsed(
+                AstToken::Declaration(Declaration::EnumDeclaration(self.clone())),
+                SymbolKind::Enum,
+            ),
+        );
+        for type_param in &self.type_parameters {
+            type_param.parse(ctx);
+        }
+        for variant in &self.variants {
+            ctx.tokens.insert(
+                to_ident_key(&variant.name),
+                Token::from_parsed(AstToken::EnumVariant(variant.clone()), SymbolKind::Variant),
+            );
+            variant.type_argument.parse(ctx);
+            variant.attributes.parse(ctx);
+        }
+        self.attributes.parse(ctx);
+    }
+}
+
+impl Parse for ImplTrait {
+    fn parse(&self, ctx: &ParseContext) {
+        for ident in &self.trait_name.prefixes {
+            ctx.tokens.insert(
+                to_ident_key(ident),
+                Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Module),
+            );
+        }
+        ctx.tokens.insert(
+            to_ident_key(&self.trait_name.suffix),
+            Token::from_parsed(
+                AstToken::Declaration(Declaration::ImplTrait(self.clone())),
+                SymbolKind::Trait,
+            ),
+        );
+        self.implementing_for.parse(ctx);
+
+        for type_param in &self.impl_type_parameters {
+            type_param.parse(ctx);
+        }
+        for item in &self.items {
+            match item {
+                ImplItem::Fn(fn_decl) => fn_decl.parse(ctx),
+            }
+        }
+    }
+}
+
+impl Parse for ImplSelf {
+    fn parse(&self, ctx: &ParseContext) {
+        if let TypeInfo::Custom {
+            call_path,
+            type_arguments,
+        } = &ctx.engines.te().get(self.implementing_for.type_id)
+        {
+            ctx.tokens.insert(
+                to_ident_key(&call_path.suffix),
+                Token::from_parsed(
+                    AstToken::Declaration(Declaration::ImplSelf(self.clone())),
+                    SymbolKind::Struct,
+                ),
+            );
+            if let Some(type_arguments) = type_arguments {
+                for type_arg in type_arguments {
+                    type_arg.parse(ctx);
+                }
+            }
+        }
+        for type_param in &self.impl_type_parameters {
+            type_param.parse(ctx);
+        }
+        for item in &self.items {
+            match item {
+                ImplItem::Fn(fn_decl) => fn_decl.parse(ctx),
+            }
+        }
+    }
+}
+
+impl Parse for AbiDeclaration {
+    fn parse(&self, ctx: &ParseContext) {
+        ctx.tokens.insert(
+            to_ident_key(&self.name),
+            Token::from_parsed(
+                AstToken::Declaration(Declaration::AbiDeclaration(self.clone())),
+                SymbolKind::Trait,
+            ),
+        );
+        for item in &self.interface_surface {
+            match item {
+                TraitItem::TraitFn(trait_fn) => trait_fn.parse(ctx),
+            }
+        }
+        for supertrait in &self.supertraits {
+            supertrait.parse(ctx);
+        }
+        self.attributes.parse(ctx);
+    }
+}
+
+impl Parse for ConstantDeclaration {
+    fn parse(&self, ctx: &ParseContext) {
+        ctx.tokens.insert(
+            to_ident_key(&self.name),
+            Token::from_parsed(
+                AstToken::Declaration(Declaration::ConstantDeclaration(self.clone())),
+                SymbolKind::Const,
+            ),
+        );
+        self.type_ascription.parse(ctx);
+        if let Some(value) = &self.value {
+            value.parse(ctx);
+        }
+        self.attributes.parse(ctx);
+    }
+}
+
+impl Parse for StorageDeclaration {
+    fn parse(&self, ctx: &ParseContext) {
+        for field in &self.fields {
+            ctx.tokens.insert(
+                to_ident_key(&field.name),
+                Token::from_parsed(AstToken::StorageField(field.clone()), SymbolKind::Field),
+            );
+            field.type_argument.parse(ctx);
+            field.initializer.parse(ctx);
+            field.attributes.parse(ctx);
+        }
+        self.attributes.parse(ctx);
+    }
+}
+
+impl Parse for Supertrait {
+    fn parse(&self, ctx: &ParseContext) {
+        ctx.tokens.insert(
+            to_ident_key(&self.name.suffix),
+            Token::from_parsed(AstToken::Supertrait(self.clone()), SymbolKind::Trait),
+        );
+    }
+}
+
+impl Parse for TraitFn {
+    fn parse(&self, ctx: &ParseContext) {
+        ctx.tokens.insert(
+            to_ident_key(&self.name),
+            Token::from_parsed(AstToken::TraitFn(self.clone()), SymbolKind::Function),
+        );
+        for parameter in &self.parameters {
+            parameter.parse(ctx);
+        }
+        collect_type_info_token(ctx, &self.return_type, Some(self.return_type_span.clone()));
+        self.attributes.parse(ctx);
+    }
+}
+
+impl Parse for TraitConstraint {
+    fn parse(&self, ctx: &ParseContext) {
+        for prefix in &self.trait_name.prefixes {
+            ctx.tokens.insert(
+                to_ident_key(prefix),
+                Token::from_parsed(AstToken::Ident(prefix.clone()), SymbolKind::Function),
+            );
+        }
+        ctx.tokens.insert(
+            to_ident_key(&self.trait_name.suffix),
+            Token::from_parsed(
+                AstToken::TraitConstraint(self.clone()),
+                SymbolKind::Function,
+            ),
+        );
+        for type_arg in &self.type_arguments {
+            type_arg.parse(ctx);
+        }
+    }
+}
+
+impl Parse for FunctionParameter {
+    fn parse(&self, ctx: &ParseContext) {
+        ctx.tokens.insert(
+            to_ident_key(&self.name),
+            Token::from_parsed(
+                AstToken::FunctionParameter(self.clone()),
+                SymbolKind::ValueParam,
+            ),
+        );
+        self.type_argument.parse(ctx);
+    }
+}
+
+impl Parse for TypeParameter {
+    fn parse(&self, ctx: &ParseContext) {
+        ctx.tokens.insert(
+            to_ident_key(&self.name_ident),
+            Token::from_parsed(
+                AstToken::TypeParameter(self.clone()),
+                SymbolKind::TypeParameter,
+            ),
+        );
+    }
+}
+
+impl Parse for TypeArgument {
+    fn parse(&self, ctx: &ParseContext) {
+        let type_info = ctx.engines.te().get(self.type_id);
+        match &type_info {
+            TypeInfo::Array(type_arg, length) => {
+                let ident = Ident::new(length.span());
+                ctx.tokens.insert(
+                    to_ident_key(&ident),
+                    Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::NumericLiteral),
+                );
+                type_arg.parse(ctx);
+            }
+            TypeInfo::Tuple(type_arguments) => {
+                for type_arg in type_arguments {
+                    type_arg.parse(ctx);
+                }
+            }
+            _ => {
+                let symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), &type_info);
+                if let Some(tree) = &self.call_path_tree {
+                    let token =
+                        Token::from_parsed(AstToken::TypeArgument(self.clone()), symbol_kind);
+                    collect_call_path_tree(tree, &token, &ctx.tokens);
+                }
+            }
+        }
+    }
+}
+
+fn collect_type_info_token(ctx: &ParseContext, type_info: &TypeInfo, type_span: Option<Span>) {
+    let symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), type_info);
+    match type_info {
+        TypeInfo::Str(length) => {
+            let ident = Ident::new(length.span());
+            ctx.tokens.insert(
+                to_ident_key(&ident),
+                Token::from_parsed(AstToken::Ident(ident.clone()), symbol_kind),
+            );
+        }
+        TypeInfo::Array(type_arg, length) => {
+            let ident = Ident::new(length.span());
+            ctx.tokens.insert(
+                to_ident_key(&ident),
+                Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::NumericLiteral),
+            );
+            type_arg.parse(ctx);
+        }
+        TypeInfo::Tuple(type_arguments) => {
+            for type_arg in type_arguments {
+                type_arg.parse(ctx);
+            }
+        }
+        TypeInfo::Custom {
+            call_path,
+            type_arguments,
+        } => {
+            let ident = call_path.suffix.clone();
+            let mut token = Token::from_parsed(AstToken::Ident(ident.clone()), symbol_kind);
+            token.type_def = Some(TypeDefinition::Ident(ident.clone()));
+            ctx.tokens.insert(to_ident_key(&ident), token);
+            if let Some(type_arguments) = type_arguments {
+                for type_arg in type_arguments {
+                    type_arg.parse(ctx);
+                }
+            }
+        }
+        _ => {
+            if let Some(type_span) = type_span {
+                let ident = Ident::new(type_span);
+                ctx.tokens.insert(
+                    to_ident_key(&ident),
+                    Token::from_parsed(AstToken::Ident(ident.clone()), symbol_kind),
+                );
+            }
+        }
+    }
+}
+
+fn collect_call_path_tree(tree: &CallPathTree, token: &Token, tokens: &TokenMap) {
+    for ident in &tree.call_path.prefixes {
+        tokens.insert(to_ident_key(ident), token.clone());
+    }
+    tokens.insert(to_ident_key(&tree.call_path.suffix), token.clone());
+    for child in &tree.children {
+        collect_call_path_tree(child, token, tokens);
     }
 }
 
