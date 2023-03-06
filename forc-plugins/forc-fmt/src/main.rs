@@ -67,7 +67,6 @@ fn run() -> Result<()> {
 
         if is_sway_file(file_path) {
             format_file(&app, file_path.to_path_buf(), manifest_file, &mut formatter)?;
-
             return Ok(());
         }
 
@@ -261,8 +260,7 @@ fn format_pkg_at_dir(app: &App, dir: &Path, formatter: &mut Formatter) -> Result
             let mut contains_edits = false;
 
             for file in files {
-                let fmted = format_file(app, file, Some(manifest_file.clone()), formatter)?;
-                contains_edits |= fmted;
+                contains_edits |= format_file(app, file, Some(manifest_file.clone()), formatter)?;
             }
             // format manifest using taplo formatter
             contains_edits |= format_manifest(app, manifest_file)?;
