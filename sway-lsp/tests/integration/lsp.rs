@@ -341,8 +341,8 @@ pub(crate) async fn definition_check<'a>(
     let unwrapped_response = serde_json::from_value(value.clone()).unwrap_or_else(|error| {
         panic!(
             "Failed to deserialize response: {:?} input: {:#?} error: {}",
-            definition.clone(),
             value.clone(),
+            definition.clone(),
             error
         );
     });
