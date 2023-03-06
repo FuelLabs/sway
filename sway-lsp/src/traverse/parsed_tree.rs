@@ -660,7 +660,7 @@ impl Parse for VariableDeclaration {
 impl Parse for FunctionDeclaration {
     fn parse(&self, ctx: &ParseContext) {
         let token = Token::from_parsed(
-            AstToken::FunctionDeclaration(self.clone()),
+            AstToken::Declaration(Declaration::FunctionDeclaration(self.clone())),
             SymbolKind::Function,
         );
         ctx.tokens.insert(to_ident_key(&self.name), token.clone());

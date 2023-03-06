@@ -4,7 +4,7 @@ use sway_core::{
     language::{
         parsed::{
             AbiCastExpression, AmbiguousPathExpression, Declaration, DelineatedPathExpression,
-            EnumVariant, Expression, FunctionApplicationExpression, FunctionDeclaration,
+            EnumVariant, Expression, FunctionApplicationExpression,
             FunctionParameter, MethodApplicationExpression, Scrutinee, StorageField,
             StructExpression, StructExpressionField, StructField, StructScrutineeField, Supertrait,
             TraitFn, UseStatement,
@@ -29,7 +29,6 @@ pub enum AstToken {
     StructExpression(StructExpression),
     StructExpressionField(StructExpressionField),
     StructScrutineeField(StructScrutineeField),
-    FunctionDeclaration(FunctionDeclaration),
     FunctionParameter(FunctionParameter),
     FunctionApplicationExpression(FunctionApplicationExpression),
     MethodApplicationExpression(MethodApplicationExpression),
