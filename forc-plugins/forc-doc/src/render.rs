@@ -386,7 +386,6 @@ impl SidebarNav for ItemBody {
             version_opt: None,
             style,
             module_info: self.module_info.clone(),
-            href_path: INDEX_FILENAME.to_owned(),
             nav: self.item_context.to_doclinks(),
         }
     }
@@ -1152,7 +1151,6 @@ impl SidebarNav for AllDocIndex {
             version_opt: None,
             style: self.all_docs.style.clone(),
             module_info: self.project_name.clone(),
-            href_path: INDEX_FILENAME.to_owned(),
             nav: self.all_docs.clone(),
         }
     }
@@ -1237,7 +1235,6 @@ impl SidebarNav for ModuleIndex {
             version_opt: self.version_opt.clone(),
             style,
             module_info: self.module_info.clone(),
-            href_path: INDEX_FILENAME.to_owned(),
             nav: self.module_docs.clone(),
         }
     }
@@ -1374,8 +1371,6 @@ struct Sidebar {
     version_opt: Option<String>,
     style: DocStyle,
     module_info: ModuleInfo,
-    /// the path to the current module
-    href_path: String,
     /// support for page navigation
     nav: DocLinks,
 }
