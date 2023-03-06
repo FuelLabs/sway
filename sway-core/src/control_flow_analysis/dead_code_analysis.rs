@@ -618,7 +618,7 @@ fn get_struct_type_info_from_type_id(
     match type_info {
         TypeInfo::Enum(decl_ref) => {
             let decl = decl_engine.get_enum(&decl_ref);
-            for param in decl.type_parameters.iter_excluding_self() {
+            for param in decl.type_parameters.iter() {
                 if let Ok(Some(type_info)) =
                     get_struct_type_info_from_type_id(type_engine, decl_engine, param.type_id)
                 {

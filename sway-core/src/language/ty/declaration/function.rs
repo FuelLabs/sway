@@ -125,7 +125,7 @@ impl UnconstrainedTypeParameters for TyFunctionDeclaration {
         let type_parameter_info = type_engine.get(type_parameter.type_id);
         if self
             .type_parameters
-            .iter_excluding_self()
+            .iter()
             .map(|type_param| type_engine.get(type_param.type_id))
             .any(|x| x.eq(&type_parameter_info, engines))
         {
@@ -172,7 +172,7 @@ impl CollectTypesMetadata for TyFunctionDeclaration {
             warnings,
             errors
         ));
-        for type_param in self.type_parameters.iter_excluding_self() {
+        for type_param in self.type_parameters.iter() {
             body.append(&mut check!(
                 type_param.type_id.collect_types_metadata(ctx),
                 return err(warnings, errors),

@@ -367,10 +367,7 @@ impl<'a> Unifier<'a> {
         let mut errors = vec![];
         let (rn, rtps, rfs) = r;
         let (en, etps, efs) = e;
-        if rn == en
-            && rfs.len() == efs.len()
-            && rtps.len_excluding_self() == etps.len_excluding_self()
-        {
+        if rn == en && rfs.len() == efs.len() && rtps.len() == etps.len() {
             rfs.iter().zip(efs.iter()).for_each(|(rf, ef)| {
                 let new_span = if self.arguments_are_flipped {
                     &ef.span
@@ -421,10 +418,7 @@ impl<'a> Unifier<'a> {
         let mut errors = vec![];
         let (rn, rtps, rvs) = r;
         let (en, etps, evs) = e;
-        if rn == en
-            && rvs.len() == evs.len()
-            && rtps.len_excluding_self() == etps.len_excluding_self()
-        {
+        if rn == en && rvs.len() == evs.len() && rtps.len() == etps.len() {
             rvs.iter().zip(evs.iter()).for_each(|(rv, ev)| {
                 let new_span = if self.arguments_are_flipped {
                     &ev.span

@@ -101,7 +101,7 @@ impl CollectTypesMetadata for TyExpression {
                 let function_decl = decl_engine.get_function(function_decl_ref);
 
                 ctx.call_site_push();
-                for type_parameter in function_decl.type_parameters.iter_excluding_self() {
+                for type_parameter in function_decl.type_parameters.iter() {
                     ctx.call_site_insert(type_parameter.type_id, call_path.span())
                 }
 
@@ -140,7 +140,7 @@ impl CollectTypesMetadata for TyExpression {
             StructExpression { fields, span, .. } => {
                 if let TypeInfo::Struct(decl_ref) = ctx.type_engine.get(self.return_type) {
                     let decl = decl_engine.get_struct(&decl_ref);
-                    for type_parameter in decl.type_parameters.iter_excluding_self() {
+                    for type_parameter in decl.type_parameters.iter() {
                         ctx.call_site_insert(type_parameter.type_id, span.clone());
                     }
                 }
@@ -275,7 +275,7 @@ impl CollectTypesMetadata for TyExpression {
                 call_path_binding,
                 ..
             } => {
-                for type_param in enum_decl.type_parameters.iter_excluding_self() {
+                for type_param in enum_decl.type_parameters.iter() {
                     ctx.call_site_insert(type_param.type_id, call_path_binding.inner.suffix.span())
                 }
                 if let Some(contents) = contents {
@@ -294,7 +294,7 @@ impl CollectTypesMetadata for TyExpression {
                         errors
                     ));
                 }
-                for type_param in enum_decl.type_parameters.iter_excluding_self() {
+                for type_param in enum_decl.type_parameters.iter() {
                     res.append(&mut check!(
                         type_param.type_id.collect_types_metadata(ctx),
                         return err(warnings, errors),

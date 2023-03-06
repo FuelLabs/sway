@@ -121,12 +121,12 @@ pub(crate) trait CodeAction<'a, T: Spanned> {
 
     /// Returns an optional [String] of the type parameters for the given [TypeParameter] vector.
     fn type_param_string(&self, type_params: &TypeParameters) -> Option<String> {
-        if type_params.is_empty_excluding_self() {
+        if type_params.is_empty() {
             None
         } else {
             Some(
                 type_params
-                    .iter_excluding_self()
+                    .iter()
                     .map(|param| param.name_ident.to_string())
                     .collect::<Vec<_>>()
                     .join(", "),

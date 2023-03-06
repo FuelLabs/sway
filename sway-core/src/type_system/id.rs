@@ -112,11 +112,11 @@ impl TypeId {
         match type_engine.get(*self) {
             TypeInfo::Enum(decl_ref) => {
                 let decl = decl_engine.get_enum(&decl_ref);
-                (!decl.type_parameters.is_empty_excluding_self()).then_some(decl.type_parameters)
+                (!decl.type_parameters.is_empty()).then_some(decl.type_parameters)
             }
             TypeInfo::Struct(decl_ref) => {
                 let decl = decl_engine.get_struct(&decl_ref);
-                (!decl.type_parameters.is_empty_excluding_self()).then_some(decl.type_parameters)
+                (!decl.type_parameters.is_empty()).then_some(decl.type_parameters)
             }
             _ => None,
         }

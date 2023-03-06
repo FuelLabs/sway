@@ -307,7 +307,7 @@ pub(super) fn compile_function(
     let decl_engine = engines.de();
     // Currently monomorphization of generics is inlined into main() and the functions with generic
     // args are still present in the AST declarations, but they can be ignored.
-    if !ast_fn_decl.type_parameters.is_empty_excluding_self() {
+    if !ast_fn_decl.type_parameters.is_empty() {
         Ok(None)
     } else {
         let args = ast_fn_decl

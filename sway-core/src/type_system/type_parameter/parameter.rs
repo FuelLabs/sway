@@ -226,7 +226,7 @@ impl TypeParameter {
         let mut item_refs: ItemMap = BTreeMap::new();
         let mut impld_item_refs: ItemMap = BTreeMap::new();
 
-        for type_param in type_parameters.iter_excluding_self() {
+        for type_param in type_parameters.iter() {
             let TypeParameter {
                 type_id,
                 trait_constraints,

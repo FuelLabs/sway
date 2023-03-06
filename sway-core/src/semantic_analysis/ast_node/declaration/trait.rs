@@ -241,7 +241,7 @@ impl ty::TyTraitDeclaration {
         // Retrieve the implemented items for this type.
         let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
             type_parameters
-                .iter_excluding_self()
+                .iter()
                 .map(|type_param| type_param.type_id)
                 .collect(),
             type_arguments
@@ -297,7 +297,7 @@ impl ty::TyTraitDeclaration {
         // the original trait declaration and the given type arguments.
         let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
             type_parameters
-                .iter_excluding_self()
+                .iter()
                 .map(|type_param| type_param.type_id)
                 .collect(),
             type_arguments

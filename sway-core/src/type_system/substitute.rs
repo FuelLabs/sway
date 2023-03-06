@@ -343,11 +343,11 @@ impl TypeSubstMap {
                         field.type_argument.type_id = type_id;
                     }
                 }
-                if let Some(type_param) = decl.type_parameters.to_mut_self_type() {
+                if let Some(type_param) = decl.type_parameters.get_self_type_mut() {
                     need_to_create_new = true;
                     type_param.type_id = type_id;
                 }
-                for type_param in decl.type_parameters.iter_mut_excluding_self() {
+                for type_param in decl.type_parameters.iter_mut() {
                     if let Some(type_id) = self.find_match(type_param.type_id, engines) {
                         need_to_create_new = true;
                         type_param.type_id = type_id;
@@ -369,11 +369,11 @@ impl TypeSubstMap {
                         variant.type_argument.type_id = type_id;
                     }
                 }
-                if let Some(type_param) = decl.type_parameters.to_mut_self_type() {
+                if let Some(type_param) = decl.type_parameters.get_self_type_mut() {
                     need_to_create_new = true;
                     type_param.type_id = type_id;
                 }
-                for type_param in decl.type_parameters.iter_mut_excluding_self() {
+                for type_param in decl.type_parameters.iter_mut() {
                     if let Some(type_id) = self.find_match(type_param.type_id, engines) {
                         need_to_create_new = true;
                         type_param.type_id = type_id;

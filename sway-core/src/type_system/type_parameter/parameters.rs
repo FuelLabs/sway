@@ -35,8 +35,8 @@ impl TypeParameters {
         }
     }
 
-    /// Creates a new [TypeParameters] with all of the elements of `self`.
-    /// Excludes any [TypeParameter] that might exist for a "self type".
+    /// Creates a new [TypeParameters], where the new [TypeParameters] contains
+    /// one element: the "self type" from `self`.
     pub(crate) fn drop_everything_but_self(self) -> TypeParameters {
         TypeParameters {
             self_type: self.self_type,
@@ -45,49 +45,49 @@ impl TypeParameters {
     }
 
     /// Returns the "self type", if it exists.
-    pub(crate) fn to_self_type(&self) -> Option<&TypeParameter> {
+    pub(crate) fn get_self_type(&self) -> Option<&TypeParameter> {
         self.self_type.as_ref()
     }
 
     /// Returns a mutable reference to the "self type".
-    pub fn to_mut_self_type(&mut self) -> Option<&mut TypeParameter> {
+    pub fn get_self_type_mut(&mut self) -> Option<&mut TypeParameter> {
         self.self_type.as_mut()
     }
 
     /// Returns the [TypeParameter]s from `self` as a slice.
     /// Excludes any [TypeParameter] that might exist for a "self type".
-    pub fn to_list_excluding_self(&self) -> &[TypeParameter] {
+    pub fn as_slice(&self) -> &[TypeParameter] {
         &self.list
     }
 
     /// Returns `true` if `self` contains 0 [TypeParameter].
     /// Excludes any [TypeParameter] that might exist for a "self type".
-    pub fn is_empty_excluding_self(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.list.is_empty()
     }
 
     /// Returns the number of [TypeParameter] in `self`.
     /// Excludes any [TypeParameter] that might exist for a "self type".
-    pub fn len_excluding_self(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.list.len()
     }
 
     /// Extends this [TypeParameters] with another [TypeParameters].
     /// Excludes any [TypeParameter] that might exist for a "self type" in
     /// `other`.
-    pub(crate) fn extend_excluding_self(&mut self, other: TypeParameters) {
+    pub(crate) fn extend(&mut self, other: TypeParameters) {
         self.list.extend(other.list);
     }
 
     /// Iterates immutably through the [TypeParameter]s in `self`.
     /// Excludes any [TypeParameter] that might exist for a "self type".
-    pub fn iter_excluding_self(&self) -> Iter<'_, TypeParameter> {
+    pub fn iter(&self) -> Iter<'_, TypeParameter> {
         self.list.iter()
     }
 
     /// Iterates mutably through the [TypeParameter]s in `self`.
     /// Excludes any [TypeParameter] that might exist for a "self type".
-    pub(crate) fn iter_mut_excluding_self(&mut self) -> IterMut<'_, TypeParameter> {
+    pub(crate) fn iter_mut(&mut self) -> IterMut<'_, TypeParameter> {
         self.list.iter_mut()
     }
 

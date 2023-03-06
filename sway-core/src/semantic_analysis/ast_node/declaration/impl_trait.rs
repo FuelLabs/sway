@@ -156,7 +156,7 @@ impl ty::TyImplTrait {
 
                 // Unify the "self" type param from the trait declaration with
                 // the type that we are implementing for.
-                if let Some(trait_self_type) = trait_decl.type_parameters.to_self_type() {
+                if let Some(trait_self_type) = trait_decl.type_parameters.get_self_type() {
                     check!(
                         CompileResult::from(type_engine.unify(
                             decl_engine,
@@ -1065,7 +1065,7 @@ fn type_check_impl_method(
             .collect();
     impl_method
         .type_parameters
-        .extend_excluding_self(unconstrained_type_parameters_to_be_added);
+        .extend(unconstrained_type_parameters_to_be_added);
 
     if errors.is_empty() {
         ok(impl_method, warnings, errors)
@@ -1124,7 +1124,7 @@ fn check_for_unconstrained_type_parameters(
     // Create a list of defined generics, with the generic and a span.
     // Purposefully exclude the "self" type parameters.
     let mut defined_generics: HashMap<_, _> =
-        HashMap::from_iter(type_parameters.iter_excluding_self().map(|type_param| {
+        HashMap::from_iter(type_parameters.iter().map(|type_param| {
             let (thing, sp) = (engines.te().get(type_param.type_id), type_param.span());
             (WithEngines::new(thing, engines), sp)
         }));
@@ -1212,7 +1212,7 @@ fn handle_supertraits(
 
                 // Right now we don't parse type arguments for supertraits, so
                 // we should give this error message to users.
-                if !trait_decl.type_parameters.is_empty_excluding_self() {
+                if !trait_decl.type_parameters.is_empty() {
                     errors.push(CompileError::Unimplemented(
                         "Using generic traits as supertraits is not supported yet.",
                         supertrait.name.span(),

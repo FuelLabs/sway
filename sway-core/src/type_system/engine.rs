@@ -133,7 +133,7 @@ impl TypeEngine {
         let engines = Engines::new(self, decl_engine);
 
         // Filter the self type out of the type parameters.
-        let type_parameters = value.type_parameters().to_list_excluding_self();
+        let type_parameters = value.type_parameters().as_slice();
 
         for type_argument in type_arguments.iter_mut() {
             type_argument.type_id = check!(
@@ -193,7 +193,7 @@ impl TypeEngine {
                 let mut type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
                     value
                         .type_parameters()
-                        .iter_excluding_self()
+                        .iter()
                         .map(|type_param| type_param.type_id)
                         .collect(),
                     type_arguments

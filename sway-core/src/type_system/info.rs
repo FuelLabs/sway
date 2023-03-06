@@ -400,9 +400,7 @@ impl DisplayWithEngines for TypeInfo {
                 print_inner_types(
                     engines,
                     decl.call_path.suffix.as_str().to_string(),
-                    decl.type_parameters
-                        .iter_excluding_self()
-                        .map(|x| x.type_id),
+                    decl.type_parameters.iter().map(|x| x.type_id),
                 )
             }
             Struct(decl_ref) => {
@@ -410,9 +408,7 @@ impl DisplayWithEngines for TypeInfo {
                 print_inner_types(
                     engines,
                     decl.call_path.suffix.as_str().to_string(),
-                    decl.type_parameters
-                        .iter_excluding_self()
-                        .map(|x| x.type_id),
+                    decl.type_parameters.iter().map(|x| x.type_id),
                 )
             }
             ContractCaller { abi_name, address } => {
@@ -464,7 +460,7 @@ impl UnconstrainedTypeParameters for TypeInfo {
                 let decl = engines.de().get_enum(decl_ref);
                 let unconstrained_in_type_parameters = decl
                     .type_parameters
-                    .iter_excluding_self()
+                    .iter()
                     .map(|type_param| {
                         type_param
                             .type_id
@@ -487,7 +483,7 @@ impl UnconstrainedTypeParameters for TypeInfo {
                 let decl = engines.de().get_struct(decl_ref);
                 let unconstrained_in_type_parameters = decl
                     .type_parameters
-                    .iter_excluding_self()
+                    .iter()
                     .map(|type_param| {
                         type_param
                             .type_id
@@ -671,7 +667,7 @@ impl TypeInfo {
                 let type_arguments = {
                     let type_arguments = decl
                         .type_parameters
-                        .iter_excluding_self()
+                        .iter()
                         .map(|ty| {
                             let ty = match type_engine.to_typeinfo(ty.type_id, error_msg_span) {
                                 Err(e) => return err(vec![], vec![e.into()]),
@@ -725,7 +721,7 @@ impl TypeInfo {
                 let type_arguments = {
                     let type_arguments = decl
                         .type_parameters
-                        .iter_excluding_self()
+                        .iter()
                         .map(|ty| {
                             let ty = match type_engine.to_typeinfo(ty.type_id, error_msg_span) {
                                 Err(e) => return err(vec![], vec![e.into()]),
@@ -960,7 +956,7 @@ impl TypeInfo {
                 TypeInfo::Enum(decl_ref) => {
                     let decl = decl_engine.get_enum(&decl_ref);
                     inner_types.insert(type_id);
-                    for type_param in decl.type_parameters.iter_excluding_self() {
+                    for type_param in decl.type_parameters.iter() {
                         inner_types.extend(
                             type_engine
                                 .get(type_param.type_id)
@@ -978,7 +974,7 @@ impl TypeInfo {
                 TypeInfo::Struct(decl_ref) => {
                     let decl = decl_engine.get_struct(&decl_ref);
                     inner_types.insert(type_id);
-                    for type_param in decl.type_parameters.iter_excluding_self() {
+                    for type_param in decl.type_parameters.iter() {
                         inner_types.extend(
                             type_engine
                                 .get(type_param.type_id)
@@ -1056,7 +1052,7 @@ impl TypeInfo {
         match self {
             TypeInfo::Enum(decl_ref) => {
                 let decl = decl_engine.get_enum(decl_ref);
-                for type_param in decl.type_parameters.iter_excluding_self() {
+                for type_param in decl.type_parameters.iter() {
                     inner_types.extend(helper(type_param.type_id));
                 }
                 for variant in decl.variants.iter() {
@@ -1065,7 +1061,7 @@ impl TypeInfo {
             }
             TypeInfo::Struct(decl_ref) => {
                 let decl = decl_engine.get_struct(decl_ref);
-                for type_param in decl.type_parameters.iter_excluding_self() {
+                for type_param in decl.type_parameters.iter() {
                     inner_types.extend(helper(type_param.type_id));
                 }
                 for field in decl.fields.iter() {
@@ -1202,7 +1198,7 @@ impl TypeInfo {
         match self {
             TypeInfo::Enum(decl_ref) => {
                 let decl = decl_engine.get_enum(&decl_ref);
-                for type_parameter in decl.type_parameters.iter_excluding_self() {
+                for type_parameter in decl.type_parameters.iter() {
                     let mut nested_types = check!(
                         type_engine
                             .get(type_parameter.type_id)
@@ -1227,7 +1223,7 @@ impl TypeInfo {
             }
             TypeInfo::Struct(decl_ref) => {
                 let decl = decl_engine.get_struct(&decl_ref);
-                for type_parameter in decl.type_parameters.iter_excluding_self() {
+                for type_parameter in decl.type_parameters.iter() {
                     let mut nested_types = check!(
                         type_engine
                             .get(type_parameter.type_id)
@@ -1647,11 +1643,11 @@ impl TypeInfo {
         match self {
             TypeInfo::Enum(decl_ref) => {
                 let decl = decl_engine.get_enum(decl_ref);
-                !decl.type_parameters.is_empty_excluding_self()
+                !decl.type_parameters.is_empty()
             }
             TypeInfo::Struct(decl_ref) => {
                 let decl = decl_engine.get_struct(decl_ref);
-                !decl.type_parameters.is_empty_excluding_self()
+                !decl.type_parameters.is_empty()
             }
             TypeInfo::Str(_)
             | TypeInfo::UnsignedInteger(_)

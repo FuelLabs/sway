@@ -163,7 +163,7 @@ impl TyAstNode {
                 let TyFunctionDeclaration {
                     type_parameters, ..
                 } = decl_engine.get_function(decl_id);
-                !type_parameters.is_empty_excluding_self()
+                !type_parameters.is_empty()
             }
             _ => false,
         }

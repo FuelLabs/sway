@@ -318,7 +318,7 @@ impl TypeId {
             false => resolved_type_id
                 .get_type_parameters(type_engine, decl_engine)
                 .map(|v| {
-                    v.iter_excluding_self()
+                    v.iter()
                         .map(|v| v.get_json_type_parameter(ctx, type_engine, decl_engine, types))
                         .collect::<Vec<_>>()
                 }),
@@ -554,7 +554,7 @@ impl TypeId {
                             resolved_type_id
                                 .get_type_parameters(type_engine, decl_engine)
                                 .unwrap_or_default()
-                                .iter_excluding_self(),
+                                .iter(),
                         )
                         .map(|(v, p)| program_abi::TypeDeclaration {
                             type_id: v.initial_type_id.index(),
@@ -618,7 +618,7 @@ impl TypeId {
                 let resolved_params = resolved_params.unwrap_or_default();
                 let json_type_arguments = type_arguments
                     .iter()
-                    .zip(resolved_params.iter_excluding_self())
+                    .zip(resolved_params.iter())
                     .map(|(v, p)| program_abi::TypeDeclaration {
                         type_id: v.initial_type_id.index(),
                         type_field: v.initial_type_id.get_json_type_str(
@@ -665,7 +665,7 @@ impl TypeId {
                 // Here, type_id for each type parameter should contain resolved types
                 let json_type_arguments = decl
                     .type_parameters
-                    .iter_excluding_self()
+                    .iter()
                     .map(|v| program_abi::TypeDeclaration {
                         type_id: v.type_id.index(),
                         type_field: v.type_id.get_json_type_str(
@@ -694,7 +694,7 @@ impl TypeId {
 
                 Some(
                     decl.type_parameters
-                        .iter_excluding_self()
+                        .iter()
                         .map(|arg| program_abi::TypeApplication {
                             name: "".to_string(),
                             type_id: arg.type_id.index(),
@@ -715,7 +715,7 @@ impl TypeId {
                 // Here, type_id for each type parameter should contain resolved types
                 let json_type_arguments = decl
                     .type_parameters
-                    .iter_excluding_self()
+                    .iter()
                     .map(|v| program_abi::TypeDeclaration {
                         type_id: v.type_id.index(),
                         type_field: v.type_id.get_json_type_str(
@@ -744,7 +744,7 @@ impl TypeId {
 
                 Some(
                     decl.type_parameters
-                        .iter_excluding_self()
+                        .iter()
                         .map(|arg| program_abi::TypeApplication {
                             name: "".to_string(),
                             type_id: arg.type_id.index(),
