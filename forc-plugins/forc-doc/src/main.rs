@@ -112,7 +112,7 @@ pub fn main() -> Result<()> {
         .project
         .forc_version
         .as_ref()
-        .map(|ver| format!("{}.{}.{}", ver.major, ver.minor, ver.patch));
+        .map(|ver| format!("Forc v{}.{}.{}", ver.major, ver.minor, ver.patch));
     let rendered_docs = RenderedDocumentation::from(
         raw_docs,
         RenderPlan::new(

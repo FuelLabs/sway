@@ -413,7 +413,13 @@ nav.sub {
   visibility: visible;
 }
 #all-types {
-  margin-top: 1em;
+  text-align: center;
+  border: 1px solid;
+  margin: 0 15px;
+  margin-bottom: 10px;
+  margin-left: 0;
+  display: block;
+  border-radius: 7px;
 }
 * {
   scrollbar-width: initial;

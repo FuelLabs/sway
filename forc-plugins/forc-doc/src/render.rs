@@ -438,8 +438,6 @@ impl Renderable for ItemBody {
                             div(class="main-heading") {
                                 h1(class="fqn") {
                                     span(class="in-band") {
-                                        // TODO: pass the decl ty info or match
-                                        // for uppercase naming like: "Enum"
                                         : format!("{} ", block_title.item_title_str());
                                         // TODO: add qualified path anchors
                                         a(class=&decl_ty, href=IDENTITY) {
@@ -621,8 +619,6 @@ impl Renderable for Context {
             }
             ContextType::RequiredMethods(methods) => {
                 for method in methods {
-                    // there is likely a better way we can do this while simultaneously storing the
-                    // string slices we need like "&mut "
                     let mut fn_sig = format!("fn {}(", method.name.as_str());
                     for param in &method.parameters {
                         let mut param_str = String::new();
@@ -1393,20 +1389,20 @@ impl Renderable for Sidebar {
         let styled_content = match &self.style {
             DocStyle::ProjectIndex(_) => {
                 let nav_links = self.nav.links;
-                let version = match self.version_opt {
-                    Some(ref v) => v.as_str(),
-                    None => "0.0.0",
-                };
+                let version_opt = self.version_opt;
+                let all_items = format!("See all {}'s items", self.module_info.project_name());
                 box_html! {
                     div(class="sidebar-elems") {
                         div(class="block") {
                             ul {
-                                li(class="version") {
-                                    : format!("Version {version}");
+                                @ if version_opt.is_some() {
+                                    li(class="version") {
+                                        : version_opt.unwrap();
+                                    }
                                 }
                                 li {
                                     a(id="all-types", href=ALL_DOC_FILENAME) {
-                                        : "All Items";
+                                        : all_items;
                                     }
                                 }
                             }
