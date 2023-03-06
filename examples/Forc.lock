@@ -65,6 +65,11 @@ source = 'member'
 dependencies = ['std']
 
 [[package]]
+name = 'methods_and_associated_functions'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
 name = 'msg_sender'
 source = 'member'
 dependencies = ['std']
