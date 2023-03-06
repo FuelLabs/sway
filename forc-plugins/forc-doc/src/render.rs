@@ -401,7 +401,7 @@ impl Renderable for ItemBody {
         } = self;
 
         let decl_ty = ty_decl.doc_name();
-        let friendly_name = ty_decl.friendly_type_name();
+        let block_title = ty_decl.as_block_title();
         let sidebar = sidebar.render(render_plan.clone())?;
         let item_context = (item_context.context_opt.is_some())
             .then(|| -> Result<Box<dyn RenderBox>> { item_context.render(render_plan) });
@@ -440,7 +440,7 @@ impl Renderable for ItemBody {
                                     span(class="in-band") {
                                         // TODO: pass the decl ty info or match
                                         // for uppercase naming like: "Enum"
-                                        : format!("{friendly_name} ");
+                                        : format!("{} ", block_title.item_title_str());
                                         // TODO: add qualified path anchors
                                         a(class=&decl_ty, href=IDENTITY) {
                                             : item_name.as_str();
@@ -491,7 +491,7 @@ pub(crate) enum ContextType {
     /// at a later date if need be
     RequiredMethods(Vec<TyTraitFn>),
 }
-impl ContextType {
+impl DocBlockTitle for ContextType {
     fn as_block_title(&self) -> BlockTitle {
         match self {
             ContextType::StructFields(_) => BlockTitle::Fields,
@@ -1052,6 +1052,9 @@ impl Renderable for DocLinks {
         })
     }
 }
+trait DocBlockTitle {
+    fn as_block_title(&self) -> BlockTitle;
+}
 /// Represents all of the possible titles
 /// belonging to an index or sidebar.
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
@@ -1108,6 +1111,23 @@ impl BlockTitle {
                 .join("-")
         } else {
             self.as_str().to_lowercase()
+        }
+    }
+}
+
+impl DocBlockTitle for TyDeclaration {
+    fn as_block_title(&self) -> BlockTitle {
+        match self {
+            TyDeclaration::StructDeclaration(_) => BlockTitle::Structs,
+            TyDeclaration::EnumDeclaration(_) => BlockTitle::Enums,
+            TyDeclaration::TraitDeclaration { .. } => BlockTitle::Traits,
+            TyDeclaration::AbiDeclaration { .. } => BlockTitle::Abi,
+            TyDeclaration::StorageDeclaration { .. } => BlockTitle::ContractStorage,
+            TyDeclaration::ConstantDeclaration { .. } => BlockTitle::Constants,
+            TyDeclaration::FunctionDeclaration { .. } => BlockTitle::Functions,
+            _ => {
+                unreachable!("All other TyDecls are non-documentable and will never be matched on")
+            }
         }
     }
 }
