@@ -4,10 +4,10 @@ use sway_core::{
     language::{
         parsed::{
             AbiCastExpression, AmbiguousPathExpression, Declaration, DelineatedPathExpression,
-            EnumVariant, Expression, FunctionApplicationExpression,
-            FunctionParameter, MethodApplicationExpression, Scrutinee, StorageField,
-            StructExpression, StructExpressionField, StructField, StructScrutineeField, Supertrait,
-            TraitFn, UseStatement,
+            EnumVariant, Expression, FunctionApplicationExpression, FunctionParameter,
+            MethodApplicationExpression, Scrutinee, StorageField, StructExpression,
+            StructExpressionField, StructField, StructScrutineeField, Supertrait, TraitFn,
+            UseStatement,
         },
         ty,
     },
