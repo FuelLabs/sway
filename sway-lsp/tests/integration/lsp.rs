@@ -337,8 +337,16 @@ pub(crate) async fn definition_check<'a>(
         .await
         .unwrap()
         .unwrap();
-    let value = response.result().unwrap().clone();
-    if let GotoDefinitionResponse::Scalar(response) = serde_json::from_value(value).unwrap() {
+    let value = response.result().unwrap();
+    let unwrapped_response = serde_json::from_value(value.clone()).unwrap_or_else(|error| {
+        panic!(
+            "Failed to deserialize response: {:?} input: {:#?} error: {}",
+            go_to,
+            value.clone(),
+            error
+        );
+    });
+    if let GotoDefinitionResponse::Scalar(response) = unwrapped_response {
         let uri = response.uri.as_str();
         let range = json!({
             "end": {
@@ -358,7 +366,11 @@ pub(crate) async fn definition_check<'a>(
             go_to.def_path,
         );
     } else {
-        panic!("Expected GotoDefinitionResponse::Scalar");
+        panic!(
+            "Expected GotoDefinitionResponse::Scalar with input {:#?}, got {:?}",
+            go_to,
+            value.clone(),
+        );
     }
     definition
 }
