@@ -156,7 +156,7 @@ impl PartialEqWithEngines for TyStructField {
 }
 
 impl OrdWithEngines for TyStructField {
-    fn cmp(&self, other: &Self, engines: &Engines<'_>) -> Ordering {
+    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
         let TyStructField {
             name: ln,
             type_argument: lta,
