@@ -11,8 +11,7 @@ use crate::{
     },
     error::{DocumentError, LanguageServerError},
     traverse::{
-        dependency::Dependency, lexed_tree::LexedTree, parsed_tree::ParsedTree,
-        typed_tree::TypedTree,
+        dependency, lexed_tree, parsed_tree::ParsedTree, typed_tree::TypedTree, ParseContext,
     },
 };
 use dashmap::DashMap;
@@ -171,25 +170,24 @@ impl Session {
 
             let ast_res = CompileResult::new(typed, warnings, errors);
             let typed_program = self.compile_res_to_typed_program(&ast_res)?;
+            let ctx = ParseContext::new(&self.token_map, engines);
 
             // The final element in the results is the main program.
             if i == results_len - 1 {
                 // First, populate our token_map with sway keywords.
-                let lexed_tree = LexedTree::new(&self.token_map);
-                lexed_tree.parse(&lexed);
+                lexed_tree::parse(&lexed, &ctx);
 
                 // Next, populate our token_map with un-typed yet parsed ast nodes.
-                let parsed_tree = ParsedTree::new(type_engine, &self.token_map);
+                let parsed_tree = ParsedTree::new(&ctx);
                 parsed_tree.collect_module_spans(&parsed);
-                self.parse_ast_to_tokens(&parsed, |an| parsed_tree.traverse_node(an));
+                self.parse_ast_to_tokens(&parsed, &ctx, |an, _ctx| parsed_tree.traverse_node(an));
 
                 // Finally, create runnables and populate our token_map with typed ast nodes.
                 self.create_runnables(typed_program);
 
-                let typed_tree =
-                    TypedTree::new(engines, &self.token_map, &typed_program.root.namespace);
+                let typed_tree = TypedTree::new(&ctx, &typed_program.root.namespace);
                 typed_tree.collect_module_spans(typed_program);
-                self.parse_ast_to_typed_tokens(typed_program, |node| {
+                self.parse_ast_to_typed_tokens(typed_program, &ctx, |node, _ctx| {
                     typed_tree.traverse_node(node)
                 });
 
@@ -200,11 +198,12 @@ impl Session {
                 diagnostics = get_diagnostics(&ast_res.warnings, &ast_res.errors);
             } else {
                 // Collect tokens from dependencies and the standard library prelude.
-                let dependency = Dependency::new(&self.token_map);
-                self.parse_ast_to_tokens(&parsed, |an| dependency.collect_parsed_declaration(an));
+                self.parse_ast_to_tokens(&parsed, &ctx, |an, ctx| {
+                    dependency::collect_parsed_declaration(an, ctx)
+                });
 
-                self.parse_ast_to_typed_tokens(typed_program, |node| {
-                    dependency.collect_typed_declaration(node)
+                self.parse_ast_to_typed_tokens(typed_program, &ctx, |node, ctx| {
+                    dependency::collect_typed_declaration(node, ctx)
                 });
             }
         }
@@ -351,7 +350,12 @@ impl Session {
     }
 
     /// Parse the [ParseProgram] AST to populate the [TokenMap] with parsed AST nodes.
-    fn parse_ast_to_tokens(&self, parse_program: &ParseProgram, f: impl Fn(&AstNode)) {
+    fn parse_ast_to_tokens(
+        &self,
+        parse_program: &ParseProgram,
+        ctx: &ParseContext,
+        f: impl Fn(&AstNode, &ParseContext),
+    ) {
         let root_nodes = parse_program.root.tree.root_nodes.iter();
         let sub_nodes = parse_program
             .root
@@ -359,11 +363,16 @@ impl Session {
             .iter()
             .flat_map(|(_, submodule)| &submodule.module.tree.root_nodes);
 
-        root_nodes.chain(sub_nodes).for_each(f);
+        root_nodes.chain(sub_nodes).for_each(|n| f(n, ctx));
     }
 
     /// Parse the [ty::TyProgram] AST to populate the [TokenMap] with typed AST nodes.
-    fn parse_ast_to_typed_tokens(&self, typed_program: &ty::TyProgram, f: impl Fn(&ty::TyAstNode)) {
+    fn parse_ast_to_typed_tokens(
+        &self,
+        typed_program: &ty::TyProgram,
+        ctx: &ParseContext,
+        f: impl Fn(&ty::TyAstNode, &ParseContext),
+    ) {
         let root_nodes = typed_program.root.all_nodes.iter();
         let sub_nodes = typed_program
             .root
@@ -371,7 +380,7 @@ impl Session {
             .iter()
             .flat_map(|(_, submodule)| submodule.module.all_nodes.iter());
 
-        root_nodes.chain(sub_nodes).for_each(f);
+        root_nodes.chain(sub_nodes).for_each(|n| f(n, ctx));
     }
 
     /// Get a reference to the [ty::TyProgram] AST.
