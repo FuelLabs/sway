@@ -180,7 +180,6 @@ impl RenderedDocumentation {
                         module_map.insert(parent_module.clone(), doc_links);
                     }
                 }
-                println!("{:?}", module_clone);
                 let mut parent =
                     PathBuf::from(module_clone.module_prefixes.pop().unwrap_or_default());
                 parent.push(child_prefix);
