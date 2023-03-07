@@ -11,7 +11,7 @@
 use crate::{
     decl_engine::*,
     language::{
-        ty::{self, TyFunctionDeclaration},
+        ty::{self, TyFunctionDeclaration, TyImplTrait},
         AsmOp,
     },
     Engines,
@@ -99,10 +99,10 @@ fn contract_entry_points(
         .iter()
         .flat_map(|ast_node| match &ast_node.content {
             Declaration(ty::TyDeclaration::FunctionDeclaration { decl_id, .. }) => {
-                decl_id_to_fn_decls(decl_engine, decl_id, &ast_node.span)
+                decl_id_to_fn_decls(decl_engine, decl_id)
             }
             Declaration(ty::TyDeclaration::ImplTrait { decl_id, .. }) => {
-                impl_trait_methods(decl_engine, decl_id, &ast_node.span)
+                impl_trait_methods(decl_engine, decl_id)
             }
             _ => vec![],
         })
@@ -111,30 +111,24 @@ fn contract_entry_points(
 
 fn decl_id_to_fn_decls(
     decl_engine: &DeclEngine,
-    decl_id: &DeclId,
-    span: &Span,
+    decl_id: &DeclId<TyFunctionDeclaration>,
 ) -> Vec<TyFunctionDeclaration> {
-    decl_engine
-        .get_function(decl_id, span)
-        .map_or(vec![], |fn_decl| vec![fn_decl])
+    vec![decl_engine.get_function(decl_id)]
 }
 
 fn impl_trait_methods(
     decl_engine: &DeclEngine,
-    impl_trait_decl_id: &DeclId,
-    span: &Span,
+    impl_trait_decl_id: &DeclId<TyImplTrait>,
 ) -> Vec<ty::TyFunctionDeclaration> {
-    match decl_engine.get_impl_trait(impl_trait_decl_id, span) {
-        Ok(impl_trait) => impl_trait
-            .items
-            .iter()
-            .flat_map(|item| match item {
-                ty::TyImplItem::Fn(fn_decl) => Some(fn_decl),
-            })
-            .flat_map(|fn_decl| decl_id_to_fn_decls(decl_engine, &fn_decl.id, span))
-            .collect(),
-        Err(_) => vec![],
-    }
+    let impl_trait = decl_engine.get_impl_trait(impl_trait_decl_id);
+    impl_trait
+        .items
+        .iter()
+        .flat_map(|item| match item {
+            ty::TyImplItem::Fn(fn_decl) => Some(fn_decl),
+        })
+        .flat_map(|fn_decl| decl_id_to_fn_decls(decl_engine, &fn_decl.id))
+        .collect()
 }
 
 // This is the main part of the analysis algorithm:
@@ -255,9 +249,7 @@ fn analyze_expression(
             call_path,
             ..
         } => {
-            let func = decl_engine
-                .get_function(function_decl_ref, &expr.span)
-                .unwrap();
+            let func = decl_engine.get_function(function_decl_ref);
             // we don't need to run full analysis on the function body as it will be covered
             // as a separate step of the whole contract analysis
             // we just need function's effects at this point
@@ -522,10 +514,16 @@ fn effects_of_expression(engines: Engines<'_>, expr: &ty::TyExpression) -> HashS
             // accessing a storage map's method (or a storage vector's method),
             // which is represented using a struct with empty fields
             // does not result in a storage read
-            crate::TypeInfo::Struct { fields, .. } if fields.is_empty() => HashSet::new(),
+            crate::TypeInfo::Struct(decl_ref)
+                if decl_engine.get_struct(&decl_ref).fields.is_empty() =>
+            {
+                HashSet::new()
+            }
             // if it's an empty enum then it cannot be constructed and hence cannot be read
             // adding this check here just to be on the safe side
-            crate::TypeInfo::Enum { variant_types, .. } if variant_types.is_empty() => {
+            crate::TypeInfo::Enum(decl_ref)
+                if decl_engine.get_enum(&decl_ref).variants.is_empty() =>
+            {
                 HashSet::new()
             }
             _ => HashSet::from([Effect::StorageRead]),
@@ -589,10 +587,7 @@ fn effects_of_expression(engines: Engines<'_>, expr: &ty::TyExpression) -> HashS
             selector,
             ..
         } => {
-            let fn_body = decl_engine
-                .get_function(function_decl_ref, &expr.span)
-                .unwrap()
-                .body;
+            let fn_body = decl_engine.get_function(function_decl_ref).body;
             let mut effs = effects_of_codeblock(engines, &fn_body);
             let args_effs = map_hashsets_union(arguments, |e| effects_of_expression(engines, &e.1));
             effs.extend(args_effs);

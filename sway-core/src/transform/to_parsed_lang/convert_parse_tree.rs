@@ -23,10 +23,10 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::warning::{CompileWarning, Warning};
 use sway_types::{
     constants::{
-        DESTRUCTURE_PREFIX, DOC_ATTRIBUTE_NAME, DOC_COMMENT_ATTRIBUTE_NAME, INLINE_ATTRIBUTE_NAME,
-        MATCH_RETURN_VAR_NAME_PREFIX, PAYABLE_ATTRIBUTE_NAME, STORAGE_PURITY_ATTRIBUTE_NAME,
-        STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME, TEST_ATTRIBUTE_NAME,
-        TUPLE_NAME_PREFIX, VALID_ATTRIBUTE_NAMES,
+        ALLOW_ATTRIBUTE_NAME, DESTRUCTURE_PREFIX, DOC_ATTRIBUTE_NAME, DOC_COMMENT_ATTRIBUTE_NAME,
+        INLINE_ATTRIBUTE_NAME, MATCH_RETURN_VAR_NAME_PREFIX, PAYABLE_ATTRIBUTE_NAME,
+        STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
+        TEST_ATTRIBUTE_NAME, TUPLE_NAME_PREFIX, VALID_ATTRIBUTE_NAMES,
     },
     integer_bits::IntegerBits,
 };
@@ -2624,7 +2624,7 @@ fn literal_to_literal(
                         }
                     }
                 }
-                Some((lit_int_type, _span)) => match lit_int_type {
+                Some((lit_int_type, _)) => match lit_int_type {
                     LitIntType::U8 => {
                         let value = match u8::try_from(parsed) {
                             Ok(value) => value,
@@ -3726,6 +3726,7 @@ fn item_attrs_to_map(
                 INLINE_ATTRIBUTE_NAME => Some(AttributeKind::Inline),
                 TEST_ATTRIBUTE_NAME => Some(AttributeKind::Test),
                 PAYABLE_ATTRIBUTE_NAME => Some(AttributeKind::Payable),
+                ALLOW_ATTRIBUTE_NAME => Some(AttributeKind::Allow),
                 _ => None,
             } {
                 match attrs_map.get_mut(&attr_kind) {
@@ -3734,6 +3735,45 @@ fn item_attrs_to_map(
                     }
                     None => {
                         attrs_map.insert(attr_kind, vec![attribute]);
+                    }
+                }
+            }
+        }
+    }
+
+    // Check attribute arguments
+    for (attribute_kind, attributes) in &attrs_map {
+        for attribute in attributes {
+            // check attribute arguments length
+            let (expected_min_len, expected_max_len) =
+                attribute_kind.clone().expected_args_len_min_max();
+            if attribute.args.len() < expected_min_len
+                || attribute.args.len() > expected_max_len.unwrap_or(usize::MAX)
+            {
+                handler.emit_warn(CompileWarning {
+                    span: attribute.name.span().clone(),
+                    warning_content: Warning::AttributeExpectedNumberOfArguments {
+                        attrib_name: attribute.name.clone(),
+                        received_args: attribute.args.len(),
+                        expected_min_len,
+                        expected_max_len,
+                    },
+                })
+            }
+
+            // check attribute argument value
+            for (index, arg) in attribute.args.iter().enumerate() {
+                let possible_values = attribute_kind.clone().expected_args_values(index);
+                if let Some(possible_values) = possible_values {
+                    if !possible_values.iter().any(|v| v == arg.as_str()) {
+                        handler.emit_warn(CompileWarning {
+                            span: attribute.name.span().clone(),
+                            warning_content: Warning::UnexpectedAttributeArgumentValue {
+                                attrib_name: attribute.name.clone(),
+                                received_value: arg.as_str().to_string(),
+                                expected_values: possible_values,
+                            },
+                        })
                     }
                 }
             }

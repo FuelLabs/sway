@@ -16,9 +16,31 @@ use include_dir::{include_dir, Dir};
 use pkg::manifest::ManifestFile;
 use std::{
     process::Command as Process,
+    sync::Arc,
     {fs, path::PathBuf},
 };
 use sway_core::{decl_engine::DeclEngine, BuildTarget, Engines, TypeEngine};
+
+/// Information passed to the render phase to get TypeInfo, CallPath or visibility for type anchors.
+#[derive(Clone)]
+struct RenderPlan {
+    document_private_items: bool,
+    type_engine: Arc<TypeEngine>,
+    decl_engine: Arc<DeclEngine>,
+}
+impl RenderPlan {
+    fn new(
+        document_private_items: bool,
+        type_engine: Arc<TypeEngine>,
+        decl_engine: Arc<DeclEngine>,
+    ) -> RenderPlan {
+        Self {
+            document_private_items,
+            type_engine,
+            decl_engine,
+        }
+    }
+}
 
 /// Main method for `forc doc`.
 pub fn main() -> Result<()> {
@@ -91,8 +113,17 @@ pub fn main() -> Result<()> {
         .forc_version
         .as_ref()
         .map(|ver| format!("{}.{}.{}", ver.major, ver.minor, ver.patch));
-    let rendered_docs =
-        RenderedDocumentation::from(raw_docs, root_attributes, program_kind, forc_version)?;
+    let rendered_docs = RenderedDocumentation::from(
+        raw_docs,
+        RenderPlan::new(
+            document_private_items,
+            Arc::from(type_engine),
+            Arc::from(decl_engine),
+        ),
+        root_attributes,
+        program_kind,
+        forc_version,
+    )?;
 
     // write contents to outfile
     for doc in rendered_docs.0 {

@@ -1,6 +1,5 @@
 use sway_core::{
-    decl_engine::DeclRef,
-    language::ty::{TyAstNodeContent, TyDeclaration, TyFunctionDeclaration, TyFunctionParameter},
+    language::ty::{TyAstNodeContent, TyDeclaration, TyFunctionDeclaration},
     namespace::Items,
     Engines, TypeId, TypeInfo,
 };
@@ -32,8 +31,9 @@ fn completion_items_for_type_id(
     let mut completion_items = vec![];
     let type_info = engines.te().get(type_id);
 
-    if let TypeInfo::Struct { fields, .. } = type_info {
-        for field in fields {
+    if let TypeInfo::Struct(decl_ref) = type_info {
+        let struct_decl = engines.de().get_struct(&decl_ref.id);
+        for field in struct_decl.fields {
             let item = CompletionItem {
                 kind: Some(CompletionItemKind::FIELD),
                 label: field.name.as_str().to_string(),
@@ -48,7 +48,7 @@ fn completion_items_for_type_id(
     }
 
     for method in namespace.get_methods_for_type(engines, type_id) {
-        let params = parameters_of_fn(engines, &method);
+        let params = engines.de().get_function(&method.id).parameters;
 
         // Only show methods that take `self` as the first parameter.
         if params.first().map(|p| p.is_self()).unwrap_or(false) {
@@ -127,12 +127,14 @@ fn type_id_of_raw_ident(
                 .iter()
                 .find_map(|decl_ref| {
                     if decl_ref.name.as_str() == method_name {
-                        return return_type_id_of_fn(engines, decl_ref);
+                        return Some(engines.de().get_function(&decl_ref.id).return_type.type_id);
                     }
                     None
                 });
-        } else if let TypeInfo::Struct { fields, .. } = engines.te().get(curr_type_id.unwrap()) {
-            curr_type_id = fields
+        } else if let TypeInfo::Struct(decl_ref) = engines.te().get(curr_type_id.unwrap()) {
+            let struct_decl = engines.de().get_struct(&decl_ref.id);
+            curr_type_id = struct_decl
+                .fields
                 .iter()
                 .find(|field| field.name.to_string() == parts[i])
                 .map(|field| field.type_argument.type_id);
@@ -140,41 +142,6 @@ fn type_id_of_raw_ident(
         i += 1;
     }
     curr_type_id
-}
-
-/// Returns the [TypeId] of a function or trait function given its [DeclRef].
-fn return_type_id_of_fn(engines: Engines, decl_ref: &DeclRef) -> Option<TypeId> {
-    return engines
-        .de()
-        .get_function(&decl_ref.id, &decl_ref.decl_span)
-        .ok()
-        .map(|decl| Some(decl.return_type.type_id))
-        .unwrap_or_else(|| {
-            engines
-                .de()
-                .get_trait_fn(&decl_ref.id, &decl_ref.decl_span)
-                .ok()
-                .map(|decl| Some(decl.return_type))
-                .unwrap_or_default()
-        });
-}
-
-/// Returns the parameters of a function or trait function given its [DeclRef].
-fn parameters_of_fn(engines: Engines, decl_ref: &DeclRef) -> Vec<TyFunctionParameter> {
-    return engines
-        .de()
-        .get_function(&decl_ref.id, &decl_ref.decl_span)
-        .ok()
-        .map(|decl| Some(decl.parameters))
-        .unwrap_or_else(|| {
-            engines
-                .de()
-                .get_trait_fn(&decl_ref.id, &decl_ref.decl_span)
-                .ok()
-                .map(|decl| Some(decl.parameters))
-                .unwrap_or(Some(vec![]))
-        })
-        .unwrap_or_default();
 }
 
 /// Returns the [TypeId] of an ident by looking for its instantiation within the scope of the

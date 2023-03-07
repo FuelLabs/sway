@@ -92,6 +92,17 @@ pub enum Warning {
     UnrecognizedAttribute {
         attrib_name: Ident,
     },
+    AttributeExpectedNumberOfArguments {
+        attrib_name: Ident,
+        received_args: usize,
+        expected_min_len: usize,
+        expected_max_len: Option<usize>,
+    },
+    UnexpectedAttributeArgumentValue {
+        attrib_name: Ident,
+        received_value: String,
+        expected_values: Vec<String>,
+    },
     EffectAfterInteraction {
         effect: String,
         effect_in_suggestion: String,
@@ -217,6 +228,24 @@ impl fmt::Display for Warning {
             ),
             MatchExpressionUnreachableArm => write!(f, "This match arm is unreachable."),
             UnrecognizedAttribute {attrib_name} => write!(f, "Unknown attribute: \"{attrib_name}\"."),
+            AttributeExpectedNumberOfArguments {attrib_name, received_args, expected_min_len, expected_max_len } => write!(
+                f,
+                "Attribute: \"{attrib_name}\" expected {} argument(s) received {received_args}.",
+                if let Some(expected_max_len) = expected_max_len {
+                    if expected_min_len == expected_max_len {
+                        format!("exactly {expected_min_len}")
+                    } else {
+                        format!("between {expected_min_len} and {expected_max_len}")
+                    }
+                } else {
+                    format!("at least {expected_min_len}")
+                }
+            ),
+            UnexpectedAttributeArgumentValue {attrib_name, received_value, expected_values } => write!(
+                f,
+                "Unexpected attribute value: \"{received_value}\" for attribute: \"{attrib_name}\" expected value {}",
+                expected_values.iter().map(|v| format!("\"{v}\"")).collect::<Vec<_>>().join(" or ")
+            ),
             EffectAfterInteraction {effect, effect_in_suggestion, block_name} =>
                 write!(f, "{effect} after external contract interaction in function or method \"{block_name}\". \
                           Consider {effect_in_suggestion} before calling another contract"),

@@ -386,8 +386,16 @@ pub(crate) async fn definition_check<'a>(
         .await
         .unwrap()
         .unwrap();
-    let value = response.result().unwrap().clone();
-    if let GotoDefinitionResponse::Scalar(response) = serde_json::from_value(value).unwrap() {
+    let value = response.result().unwrap();
+    let unwrapped_response = serde_json::from_value(value.clone()).unwrap_or_else(|error| {
+        panic!(
+            "Failed to deserialize response: {:?} input: {:#?} error: {}",
+            value.clone(),
+            definition.clone(),
+            error
+        );
+    });
+    if let GotoDefinitionResponse::Scalar(response) = unwrapped_response {
         let uri = response.uri.as_str();
         let range = json!({
             "end": {
@@ -407,7 +415,11 @@ pub(crate) async fn definition_check<'a>(
             go_to.def_path,
         );
     } else {
-        panic!("Expected GotoDefinitionResponse::Scalar");
+        panic!(
+            "Expected GotoDefinitionResponse::Scalar with input {:#?}, got {:?}",
+            definition.clone(),
+            value.clone(),
+        );
     }
     definition
 }
@@ -428,13 +440,32 @@ pub(crate) async fn hover_request<'a>(
     });
     let hover = build_request_with_id("textDocument/hover", params, ids.next().unwrap());
     let response = call_request(service, hover.clone()).await.unwrap().unwrap();
-    let value = response.result().unwrap().clone();
-    let hover_res: Hover = serde_json::from_value(value).unwrap();
+    let value = response.result().unwrap();
+    let unwrapped_response = serde_json::from_value(value.clone()).unwrap_or_else(|error| {
+        panic!(
+            "Failed to deserialize response: {:?} input: {:#?} error: {}",
+            value.clone(),
+            hover.clone(),
+            error
+        );
+    });
+    let hover_res: Hover = serde_json::from_value(unwrapped_response).unwrap_or_else(|error| {
+        panic!(
+            "Failed to deserialize hover: {:?} input: {:#?} error: {}",
+            value.clone(),
+            hover.clone(),
+            error
+        );
+    });
 
     if let HoverContents::Markup(markup_content) = hover_res.contents {
         assert_eq!(hover_docs.documentation, markup_content.value);
     } else {
-        panic!("Expected HoverContents::Markup");
+        panic!(
+            "Expected HoverContents::Markup with input {:#?}, got {:?}",
+            hover.clone(),
+            value.clone(),
+        );
     }
     hover
 }

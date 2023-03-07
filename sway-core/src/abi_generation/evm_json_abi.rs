@@ -2,19 +2,26 @@ use sway_types::integer_bits::IntegerBits;
 
 use crate::{
     asm_generation::EvmAbiResult,
+    decl_engine::DeclEngine,
     language::ty::{TyFunctionDeclaration, TyProgram, TyProgramKind},
-    TypeArgument, TypeEngine, TypeId, TypeInfo,
+    Engines, TypeArgument, TypeEngine, TypeId, TypeInfo,
 };
 
-pub fn generate_json_abi_program(program: &TyProgram, type_engine: &TypeEngine) -> EvmAbiResult {
+pub fn generate_json_abi_program(program: &TyProgram, engines: &Engines<'_>) -> EvmAbiResult {
+    let type_engine = engines.te();
+    let decl_engine = engines.de();
     match &program.kind {
         TyProgramKind::Contract { abi_entries, .. } => abi_entries
             .iter()
-            .map(|x| generate_json_abi_function(x, type_engine))
+            .map(|x| generate_json_abi_function(x, type_engine, decl_engine))
             .collect(),
         TyProgramKind::Script { main_function, .. }
         | TyProgramKind::Predicate { main_function, .. } => {
-            vec![generate_json_abi_function(main_function, type_engine)]
+            vec![generate_json_abi_function(
+                main_function,
+                type_engine,
+                decl_engine,
+            )]
         }
         _ => vec![],
     }
@@ -24,25 +31,26 @@ pub fn generate_json_abi_program(program: &TyProgram, type_engine: &TypeEngine) 
 fn get_json_type_str(
     type_id: &TypeId,
     type_engine: &TypeEngine,
+    decl_engine: &DeclEngine,
     resolved_type_id: TypeId,
 ) -> String {
-    if type_id.is_generic_parameter(type_engine, resolved_type_id) {
+    if type_id.is_generic_parameter(type_engine, decl_engine, resolved_type_id) {
         format!(
             "generic {}",
-            json_abi_str(&type_engine.get(*type_id), type_engine)
+            json_abi_str(&type_engine.get(*type_id), type_engine, decl_engine)
         )
     } else {
         match (type_engine.get(*type_id), type_engine.get(resolved_type_id)) {
             (TypeInfo::Custom { .. }, TypeInfo::Struct { .. }) => {
                 format!(
                     "struct {}",
-                    json_abi_str(&type_engine.get(*type_id), type_engine)
+                    json_abi_str(&type_engine.get(*type_id), type_engine, decl_engine)
                 )
             }
             (TypeInfo::Custom { .. }, TypeInfo::Enum { .. }) => {
                 format!(
                     "enum {}",
-                    json_abi_str(&type_engine.get(*type_id), type_engine)
+                    json_abi_str(&type_engine.get(*type_id), type_engine, decl_engine)
                 )
             }
             (TypeInfo::Tuple(fields), TypeInfo::Tuple(resolved_fields)) => {
@@ -60,15 +68,19 @@ fn get_json_type_str(
             (TypeInfo::Custom { .. }, _) => {
                 format!(
                     "generic {}",
-                    json_abi_str(&type_engine.get(*type_id), type_engine)
+                    json_abi_str(&type_engine.get(*type_id), type_engine, decl_engine)
                 )
             }
-            _ => json_abi_str(&type_engine.get(*type_id), type_engine),
+            _ => json_abi_str(&type_engine.get(*type_id), type_engine, decl_engine),
         }
     }
 }
 
-pub fn json_abi_str(type_info: &TypeInfo, type_engine: &TypeEngine) -> String {
+pub fn json_abi_str(
+    type_info: &TypeInfo,
+    type_engine: &TypeEngine,
+    decl_engine: &DeclEngine,
+) -> String {
     use TypeInfo::*;
     match type_info {
         Unknown => "unknown".into(),
@@ -87,7 +99,7 @@ pub fn json_abi_str(type_info: &TypeInfo, type_engine: &TypeEngine) -> String {
         Tuple(fields) => {
             let field_strs = fields
                 .iter()
-                .map(|field| json_abi_str_type_arg(field, type_engine))
+                .map(|field| json_abi_str_type_arg(field, type_engine, decl_engine))
                 .collect::<Vec<String>>();
             format!("({})", field_strs.join(", "))
         }
@@ -96,11 +108,13 @@ pub fn json_abi_str(type_info: &TypeInfo, type_engine: &TypeEngine) -> String {
         Numeric => "u64".into(), // u64 is the default
         Contract => "contract".into(),
         ErrorRecovery => "unknown due to error".into(),
-        Enum { call_path, .. } => {
-            format!("enum {}", call_path.suffix)
+        Enum(decl_ref) => {
+            let decl = decl_engine.get_enum(decl_ref);
+            format!("enum {}", decl.call_path.suffix)
         }
-        Struct { call_path, .. } => {
-            format!("struct {}", call_path.suffix)
+        Struct(decl_ref) => {
+            let decl = decl_engine.get_struct(decl_ref);
+            format!("struct {}", decl.call_path.suffix)
         }
         ContractCaller { abi_name, .. } => {
             format!("contract caller {abi_name}")
@@ -108,7 +122,7 @@ pub fn json_abi_str(type_info: &TypeInfo, type_engine: &TypeEngine) -> String {
         Array(elem_ty, length) => {
             format!(
                 "{}[{}]",
-                json_abi_str_type_arg(elem_ty, type_engine),
+                json_abi_str_type_arg(elem_ty, type_engine, decl_engine),
                 length.val()
             )
         }
@@ -118,7 +132,11 @@ pub fn json_abi_str(type_info: &TypeInfo, type_engine: &TypeEngine) -> String {
     }
 }
 
-pub fn json_abi_param_type(type_info: &TypeInfo, type_engine: &TypeEngine) -> ethabi::ParamType {
+pub fn json_abi_param_type(
+    type_info: &TypeInfo,
+    type_engine: &TypeEngine,
+    decl_engine: &DeclEngine,
+) -> ethabi::ParamType {
     use TypeInfo::*;
     match type_info {
         Str(x) => ethabi::ParamType::FixedArray(Box::new(ethabi::ParamType::String), x.val()),
@@ -135,20 +153,28 @@ pub fn json_abi_param_type(type_info: &TypeInfo, type_engine: &TypeEngine) -> et
         Tuple(fields) => ethabi::ParamType::Tuple(
             fields
                 .iter()
-                .map(|f| json_abi_param_type(&type_engine.get(f.type_id), type_engine))
+                .map(|f| json_abi_param_type(&type_engine.get(f.type_id), type_engine, decl_engine))
                 .collect::<Vec<ethabi::ParamType>>(),
         ),
-        Struct { fields, .. } => ethabi::ParamType::Tuple(
-            fields
-                .iter()
-                .map(|f| {
-                    json_abi_param_type(&type_engine.get(f.type_argument.type_id), type_engine)
-                })
-                .collect::<Vec<ethabi::ParamType>>(),
-        ),
+        Struct(decl_ref) => {
+            let decl = decl_engine.get_struct(decl_ref);
+            ethabi::ParamType::Tuple(
+                decl.fields
+                    .iter()
+                    .map(|f| {
+                        json_abi_param_type(
+                            &type_engine.get(f.type_argument.type_id),
+                            type_engine,
+                            decl_engine,
+                        )
+                    })
+                    .collect::<Vec<ethabi::ParamType>>(),
+            )
+        }
         Array(elem_ty, ..) => ethabi::ParamType::Array(Box::new(json_abi_param_type(
             &type_engine.get(elem_ty.type_id),
             type_engine,
+            decl_engine,
         ))),
         _ => panic!("cannot convert type to Solidity ABI param type: {type_info:?}",),
     }
@@ -157,6 +183,7 @@ pub fn json_abi_param_type(type_info: &TypeInfo, type_engine: &TypeEngine) -> et
 pub(self) fn generate_json_abi_function(
     fn_decl: &TyFunctionDeclaration,
     type_engine: &TypeEngine,
+    decl_engine: &DeclEngine,
 ) -> ethabi::operation::Operation {
     // A list of all `ethabi::Param`s needed for inputs
     let input_types = fn_decl
@@ -168,6 +195,7 @@ pub(self) fn generate_json_abi_function(
             internal_type: Some(get_json_type_str(
                 &x.type_argument.type_id,
                 type_engine,
+                decl_engine,
                 x.type_argument.type_id,
             )),
         })
@@ -180,6 +208,7 @@ pub(self) fn generate_json_abi_function(
         internal_type: Some(get_json_type_str(
             &fn_decl.return_type.type_id,
             type_engine,
+            decl_engine,
             fn_decl.return_type.type_id,
         )),
     };
@@ -195,6 +224,10 @@ pub(self) fn generate_json_abi_function(
     })
 }
 
-pub(self) fn json_abi_str_type_arg(type_arg: &TypeArgument, type_engine: &TypeEngine) -> String {
-    json_abi_str(&type_engine.get(type_arg.type_id), type_engine)
+pub(self) fn json_abi_str_type_arg(
+    type_arg: &TypeArgument,
+    type_engine: &TypeEngine,
+    decl_engine: &DeclEngine,
+) -> String {
+    json_abi_str(&type_engine.get(type_arg.type_id), type_engine, decl_engine)
 }

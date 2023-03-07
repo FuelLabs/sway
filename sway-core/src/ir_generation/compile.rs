@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::{DeclId, DeclRef},
+    decl_engine::{DeclEngine, DeclRefFunction},
     language::{ty, Visibility},
     metadata::MetadataManager,
     semantic_analysis::namespace,
@@ -28,7 +28,7 @@ pub(super) fn compile_script(
     declarations: &[ty::TyDeclaration],
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    test_fns: &[(ty::TyFunctionDeclaration, DeclRef)],
+    test_fns: &[(ty::TyFunctionDeclaration, DeclRefFunction)],
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Script);
     let mut md_mgr = MetadataManager::default();
@@ -74,7 +74,7 @@ pub(super) fn compile_predicate(
     declarations: &[ty::TyDeclaration],
     logged_types: &HashMap<TypeId, LogId>,
     messages_types: &HashMap<TypeId, MessageId>,
-    test_fns: &[(ty::TyFunctionDeclaration, DeclRef)],
+    test_fns: &[(ty::TyFunctionDeclaration, DeclRefFunction)],
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Predicate);
     let mut md_mgr = MetadataManager::default();
@@ -119,7 +119,7 @@ pub(super) fn compile_contract(
     declarations: &[ty::TyDeclaration],
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    test_fns: &[(ty::TyFunctionDeclaration, DeclRef)],
+    test_fns: &[(ty::TyFunctionDeclaration, DeclRefFunction)],
     engines: Engines<'_>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Contract);
@@ -165,7 +165,7 @@ pub(super) fn compile_library(
     declarations: &[ty::TyDeclaration],
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    test_fns: &[(ty::TyFunctionDeclaration, DeclRef)],
+    test_fns: &[(ty::TyFunctionDeclaration, DeclRefFunction)],
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Library);
     let mut md_mgr = MetadataManager::default();
@@ -243,10 +243,8 @@ fn compile_declarations(
     let (type_engine, decl_engine) = engines.unwrap();
     for declaration in declarations {
         match declaration {
-            ty::TyDeclaration::ConstantDeclaration {
-                decl_id, decl_span, ..
-            } => {
-                let decl = decl_engine.get_constant(decl_id, decl_span)?;
+            ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
+                let decl = decl_engine.get_constant(decl_id);
                 compile_const_decl(
                     &mut LookupEnv {
                         type_engine,
@@ -303,9 +301,10 @@ pub(super) fn compile_function(
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     is_entry: bool,
-    test_decl_ref: Option<DeclRef>,
+    test_decl_ref: Option<DeclRefFunction>,
 ) -> Result<Option<Function>, CompileError> {
     let type_engine = engines.te();
+    let decl_engine = engines.de();
     // Currently monomorphization of generics is inlined into main() and the functions with generic
     // args are still present in the AST declarations, but they can be ignored.
     if !ast_fn_decl.type_parameters.is_empty() {
@@ -314,7 +313,7 @@ pub(super) fn compile_function(
         let args = ast_fn_decl
             .parameters
             .iter()
-            .map(|param| convert_fn_param(type_engine, context, param))
+            .map(|param| convert_fn_param(type_engine, decl_engine, context, param))
             .collect::<Result<Vec<(String, Type, bool, Span)>, CompileError>>()?;
 
         compile_fn_with_args(
@@ -343,7 +342,7 @@ pub(super) fn compile_entry_function(
     ast_fn_decl: &ty::TyFunctionDeclaration,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    test_decl_ref: Option<DeclRef>,
+    test_decl_ref: Option<DeclRefFunction>,
 ) -> Result<Function, CompileError> {
     let is_entry = true;
     compile_function(
@@ -367,7 +366,7 @@ pub(super) fn compile_tests(
     module: Module,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    test_fns: &[(ty::TyFunctionDeclaration, DeclRef)],
+    test_fns: &[(ty::TyFunctionDeclaration, DeclRefFunction)],
 ) -> Result<Vec<Function>, CompileError> {
     test_fns
         .iter()
@@ -388,11 +387,13 @@ pub(super) fn compile_tests(
 
 fn convert_fn_param(
     type_engine: &TypeEngine,
+    decl_engine: &DeclEngine,
     context: &mut Context,
     param: &ty::TyFunctionParameter,
 ) -> Result<(String, Type, bool, Span), CompileError> {
     convert_resolved_typeid(
         type_engine,
+        decl_engine,
         context,
         &param.type_argument.type_id,
         &param.type_argument.span,
@@ -416,9 +417,10 @@ fn compile_fn_with_args(
     selector: Option<[u8; 4]>,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    test_decl_ref: Option<DeclRef>,
+    test_decl_ref: Option<DeclRefFunction>,
 ) -> Result<Function, CompileError> {
     let type_engine = engines.te();
+    let decl_engine = engines.de();
 
     let inline_opt = ast_fn_decl.inline();
     let ty::TyFunctionDeclaration {
@@ -438,6 +440,7 @@ fn compile_fn_with_args(
 
     let ret_type = convert_resolved_typeid(
         type_engine,
+        decl_engine,
         context,
         &return_type.type_id,
         &return_type.span,
@@ -458,7 +461,7 @@ fn compile_fn_with_args(
     let storage_md_idx = md_mgr.purity_to_md(context, *purity);
     let mut metadata = md_combine(context, &span_md_idx, &storage_md_idx);
 
-    let decl_index = test_decl_ref.map(|decl_ref| *DeclId::from(&decl_ref));
+    let decl_index = test_decl_ref.map(|decl_ref| decl_ref.id);
     if let Some(decl_index) = decl_index {
         let test_decl_index_md_idx = md_mgr.test_decl_index_to_md(context, decl_index);
         metadata = md_combine(context, &metadata, &test_decl_index_md_idx);
@@ -568,9 +571,10 @@ fn compile_abi_method(
     engines: Engines<'_>,
 ) -> Result<Function, CompileError> {
     let type_engine = engines.te();
+    let decl_engine = engines.de();
 
     // Use the error from .to_fn_selector_value() if possible, else make an CompileError::Internal.
-    let get_selector_result = ast_fn_decl.to_fn_selector_value(type_engine);
+    let get_selector_result = ast_fn_decl.to_fn_selector_value(type_engine, decl_engine);
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
     let selector = match get_selector_result.ok(&mut warnings, &mut errors) {
@@ -599,6 +603,7 @@ fn compile_abi_method(
         .map(|param| {
             convert_resolved_typeid(
                 type_engine,
+                decl_engine,
                 context,
                 &param.type_argument.type_id,
                 &param.type_argument.span,

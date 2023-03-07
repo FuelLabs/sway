@@ -76,7 +76,7 @@ pub async fn run_pkg(
                 .map_err(|e| anyhow!("Failed to parse contract id: {}", e))
         })
         .collect::<Result<Vec<ContractId>>>()?;
-    let tx = TransactionBuilder::script(compiled.bytecode.clone(), script_data)
+    let tx = TransactionBuilder::script(compiled.bytecode.bytes.clone(), script_data)
         .gas_limit(command.gas.limit)
         .gas_price(command.gas.price)
         // TODO: Spec says maturity should be u32, but fuel-tx expects u64.
@@ -152,6 +152,7 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
             terse: cmd.pkg.terse,
             locked: cmd.pkg.locked,
             output_directory: cmd.pkg.output_directory.clone(),
+            json_abi_with_callpaths: cmd.pkg.json_abi_with_callpaths,
         },
         print: pkg::PrintOpts {
             ast: cmd.print.ast,

@@ -1,14 +1,17 @@
 use crate::{
     descriptor::Descriptor,
     render::{split_at_markdown_header, DocLink, DocStrings, ItemBody, ItemHeader, Renderable},
+    RenderPlan,
 };
 use anyhow::Result;
 use horrorshow::{box_html, RenderBox};
-use std::option::Option;
-use std::path::PathBuf;
+use std::{fmt::Write, option::Option, path::PathBuf};
 use sway_core::{
     decl_engine::DeclEngine,
-    language::ty::{TyAstNodeContent, TyProgram, TySubmodule},
+    language::{
+        ty::{TyAstNodeContent, TyProgram, TySubmodule},
+        CallPath,
+    },
 };
 
 pub(crate) type Documentation = Vec<Document>;
@@ -136,9 +139,9 @@ impl Document {
     }
 }
 impl Renderable for Document {
-    fn render(self) -> Result<Box<dyn RenderBox>> {
-        let header = self.item_header.render()?;
-        let body = self.item_body.render()?;
+    fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
+        let header = self.item_header.render(render_plan.clone())?;
+        let body = self.item_body.render(render_plan)?;
         Ok(box_html! {
             : header;
             : body;
@@ -213,10 +216,10 @@ impl ModuleInfo {
         iter.map(|s| s.as_str()).collect::<Vec<&str>>().join("::")
     }
     /// Creates a String version of the path to an item,
-    /// used in navigation between pages.
+    /// used in navigation between pages. The location given is the break point.
     ///
     /// This is only used for full path syntax, e.g `module/submodule/file_name.html`.
-    pub(crate) fn to_file_path_string(&self, file_name: &str, location: &str) -> Result<String> {
+    pub(crate) fn file_path_at_location(&self, file_name: &str, location: &str) -> Result<String> {
         let mut iter = self.module_prefixes.iter();
         for prefix in iter.by_ref() {
             if prefix == location {
@@ -230,6 +233,44 @@ impl ModuleInfo {
             .to_str()
             .map(|file_path_str| file_path_str.to_string())
             .ok_or_else(|| anyhow::anyhow!("There will always be at least the item name"))
+    }
+    /// Compares the current `module_info` to the next `module_info` to determine how many directories to go back to make
+    /// the next file path valid, and returns that path as a `String`.
+    ///
+    /// Example:
+    /// ```
+    /// // number of dirs:               [match][    2    ][    1    ]
+    /// current_location = "project_root/module/submodule1/submodule2/struct.Name.html";
+    /// next_location    =              "module/other_submodule/enum.Name.html";
+    /// result           =               "../../other_submodule/enum.Name.html";
+    /// ```
+    /// In this case the first module to match is "module", so we have no need to go back further than that.
+    pub(crate) fn file_path_from_location(
+        &self,
+        file_name: &str,
+        current_module_info: &ModuleInfo,
+    ) -> Result<String> {
+        let mut mid = 0; // the index to split the module_info from call_path at
+        let mut offset = 0; // the number of directories to go back
+        let mut next_location_iter = self.module_prefixes.iter().rev().enumerate().peekable();
+        while let Some((index, prefix)) = next_location_iter.peek() {
+            for (count, module) in current_module_info.module_prefixes.iter().rev().enumerate() {
+                if module == *prefix {
+                    offset = count;
+                    mid = self.module_prefixes.len() - index;
+                    break;
+                }
+            }
+            next_location_iter.next();
+        }
+        let mut new_path = (0..offset).map(|_| "../").collect::<String>();
+        write!(
+            new_path,
+            "{}/{}",
+            self.module_prefixes.split_at(mid).1.join("/"),
+            file_name
+        )?;
+        Ok(new_path)
     }
     /// Create a path `&str` for navigation from the `module.depth()` & `file_name`.
     ///
@@ -245,11 +286,23 @@ impl ModuleInfo {
     pub(crate) fn depth(&self) -> usize {
         self.module_prefixes.len()
     }
-    /// Create a new [ModuleInfo] from a vec.
+    /// Create a new [ModuleInfo] from a `TyModule`.
     pub(crate) fn from_ty_module(module_prefixes: Vec<String>, attributes: Option<String>) -> Self {
         Self {
             module_prefixes,
             attributes,
+        }
+    }
+    /// Create a new [ModuleInfo] from a `CallPath`.
+    pub(crate) fn from_call_path(call_path: CallPath) -> Self {
+        let module_prefixes = call_path
+            .prefixes
+            .iter()
+            .map(|p| p.as_str().to_string())
+            .collect::<Vec<String>>();
+        Self {
+            module_prefixes,
+            attributes: None,
         }
     }
     pub(crate) fn preview_opt(&self) -> Option<String> {
