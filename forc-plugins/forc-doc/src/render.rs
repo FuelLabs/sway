@@ -1602,15 +1602,3 @@ pub(crate) fn split_at_markdown_header(raw_html: &str) -> &str {
         raw_html
     }
 }
-
-// impl Renderable for ModuleInfo {
-//     fn render(self, _render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
-//         let rendered_module_anchors = self.into_anchors()?;
-
-//         Ok(box_html! {
-//             @ for anchor in rendered_module_anchors {
-//                 : Raw(anchor);
-//             }
-//         })
-//     }
-// }

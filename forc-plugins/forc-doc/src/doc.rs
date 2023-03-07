@@ -222,7 +222,7 @@ impl ModuleInfo {
     /// since the `box_html!` macro returns a closure and no two closures are considered the same type.
     pub(crate) fn get_anchors(&self) -> Result<Vec<String>> {
         let mut count = self.depth();
-        let mut rendered_module_anchors = Vec::new();
+        let mut rendered_module_anchors = Vec::with_capacity(self.depth());
         for prefix in self.module_prefixes.iter() {
             let mut href = (1..count).map(|_| "../").collect::<String>();
             href.push_str(INDEX_FILENAME);
