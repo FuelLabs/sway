@@ -5,7 +5,7 @@ use crate::{
 use anyhow::{anyhow, Result};
 use comrak::{markdown_to_html, ComrakOptions};
 use horrorshow::{box_html, helper::doctype, html, prelude::*, Raw};
-use std::{collections::BTreeMap, fmt::Write};
+use std::{collections::BTreeMap, fmt::Write, path::PathBuf};
 use sway_core::{
     language::ty::{
         TyDeclaration::{self, *},
@@ -25,6 +25,7 @@ pub(crate) trait Renderable {
     fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>>;
 }
 /// A [Document] rendered to HTML.
+#[derive(Debug)]
 pub(crate) struct RenderedDocument {
     pub(crate) module_info: ModuleInfo,
     pub(crate) html_filename: String,
@@ -148,11 +149,18 @@ impl RenderedDocumentation {
                 }
             }
             // Create links to child modules.
-            if let Some(parent_module) = doc.module_info.parent() {
+            let mut module_clone = doc.module_info.clone();
+            let mut child_prefix = PathBuf::new();
+            while let Some(parent_module) = module_clone.parent() {
+                let html_filename = if let Some(child_prefix) = child_prefix.to_str() {
+                    format!("{child_prefix}{INDEX_FILENAME}")
+                } else {
+                    INDEX_FILENAME.to_string()
+                };
                 let module_link = DocLink {
-                    name: location.clone(),
-                    module_info: doc.module_info.to_owned(),
-                    html_filename: INDEX_FILENAME.to_owned(),
+                    name: location.to_owned(),
+                    module_info: module_clone.to_owned(),
+                    html_filename,
                     preview_opt: doc.module_info.preview_opt(),
                 };
                 match module_map.get_mut(parent_module) {
@@ -172,6 +180,11 @@ impl RenderedDocumentation {
                         module_map.insert(parent_module.clone(), doc_links);
                     }
                 }
+                println!("{:?}", module_clone);
+                let mut parent =
+                    PathBuf::from(module_clone.module_prefixes.pop().unwrap_or_default());
+                parent.push(child_prefix);
+                child_prefix = parent;
             }
             // Above we check for the module a link belongs to, here we want _all_ links so the check is much more shallow.
             match doc.item_body.ty_decl {
@@ -299,6 +312,7 @@ impl RenderedDocumentation {
     }
 }
 /// The finalized HTML file contents.
+#[derive(Debug)]
 pub(crate) struct HTMLString(pub(crate) String);
 impl HTMLString {
     /// Final rendering of a [Document] HTML page to String.
