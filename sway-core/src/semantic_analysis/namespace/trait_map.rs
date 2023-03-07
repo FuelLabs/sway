@@ -29,7 +29,7 @@ impl PartialEqWithEngines for TraitSuffix {
     }
 }
 impl OrdWithEngines for TraitSuffix {
-    fn cmp(&self, other: &Self, engines: &Engines<'_>) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self, engines: Engines<'_>) -> std::cmp::Ordering {
         self.name
             .cmp(&other.name)
             .then_with(|| self.args.cmp(&other.args, engines))
@@ -44,7 +44,7 @@ impl<T: PartialEqWithEngines> PartialEqWithEngines for CallPath<T> {
     }
 }
 impl<T: OrdWithEngines> OrdWithEngines for CallPath<T> {
-    fn cmp(&self, other: &Self, engines: &Engines<'_>) -> Ordering {
+    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
         self.prefixes
             .cmp(&other.prefixes)
             .then_with(|| self.suffix.cmp(&other.suffix, engines))
@@ -61,7 +61,7 @@ struct TraitKey {
 }
 
 impl OrdWithEngines for TraitKey {
-    fn cmp(&self, other: &Self, engines: &Engines<'_>) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self, engines: Engines<'_>) -> std::cmp::Ordering {
         self.name
             .cmp(&other.name, engines)
             .then_with(|| self.type_id.cmp(&other.type_id))
@@ -346,7 +346,7 @@ impl TraitMap {
         for oe in other.trait_impls.into_iter() {
             let pos = self
                 .trait_impls
-                .binary_search_by(|se| se.key.cmp(&oe.key, &engines));
+                .binary_search_by(|se| se.key.cmp(&oe.key, engines));
 
             match pos {
                 Ok(pos) => self.trait_impls[pos].value.extend(oe.value.into_iter()),

@@ -13,8 +13,6 @@ pub fn attributes_map(token: &Token) -> Option<&transform::AttributesMap> {
             Declaration::AbiDeclaration(decl) => Some(&decl.attributes),
             _ => None,
         },
-        AstToken::ConstantDeclaration(decl) => Some(&decl.attributes),
-        AstToken::FunctionDeclaration(decl) => Some(&decl.attributes),
         AstToken::StorageField(field) => Some(&field.attributes),
         AstToken::StructField(field) => Some(&field.attributes),
         AstToken::TraitFn(trait_fn) => Some(&trait_fn.attributes),

@@ -37,7 +37,7 @@ impl PartialEqWithEngines for TraitConstraint {
 }
 
 impl OrdWithEngines for TraitConstraint {
-    fn cmp(&self, other: &Self, engines: &Engines<'_>) -> Ordering {
+    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
         let TraitConstraint {
             trait_name: ltn,
             type_arguments: lta,

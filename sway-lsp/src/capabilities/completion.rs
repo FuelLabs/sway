@@ -55,10 +55,7 @@ fn is_initial_declaration(token_type: &Token) -> bool {
             )
         }
         None => {
-            matches!(
-                token_type.parsed,
-                AstToken::Declaration(_) | AstToken::FunctionDeclaration(_)
-            )
+            matches!(token_type.parsed, AstToken::Declaration(_))
         }
     }
 }
