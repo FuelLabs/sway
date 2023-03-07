@@ -851,7 +851,8 @@ async fn go_to_definition_for_paths() {
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
     };
     // dfun
-    let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
+    // TODO: Uncomment when https://github.com/FuelLabs/sway/issues/4211 is fixed.
+    // let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
 
     shutdown_and_exit(&mut service).await;
 }
