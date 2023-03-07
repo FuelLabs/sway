@@ -1,9 +1,9 @@
 #![allow(dead_code)]
-use crate::core::{
-    token::{
+use crate::{
+    core::token::{
         to_ident_key, type_info_to_symbol_kind, SymbolKind, Token, TypeDefinition, TypedAstToken,
     },
-    token_map::TokenMap,
+    traverse::ParseContext,
 };
 use dashmap::mapref::one::RefMut;
 use sway_core::{
@@ -15,27 +15,18 @@ use sway_core::{
     },
     namespace,
     type_system::TypeArgument,
-    Engines, TraitConstraint, TypeId, TypeInfo,
+    TraitConstraint, TypeId, TypeInfo,
 };
 use sway_types::{Ident, Span, Spanned};
 
 pub struct TypedTree<'a> {
-    engines: Engines<'a>,
-    tokens: &'a TokenMap,
+    ctx: &'a ParseContext<'a>,
     namespace: &'a namespace::Module,
 }
 
 impl<'a> TypedTree<'a> {
-    pub fn new(
-        engines: Engines<'a>,
-        tokens: &'a TokenMap,
-        namespace: &'a namespace::Module,
-    ) -> Self {
-        Self {
-            engines,
-            tokens,
-            namespace,
-        }
+    pub fn new(ctx: &'a ParseContext<'a>, namespace: &'a namespace::Module) -> Self {
+        Self { ctx, namespace }
     }
 
     pub fn traverse_node(&self, node: &ty::TyAstNode) {
@@ -52,7 +43,12 @@ impl<'a> TypedTree<'a> {
     /// Collects the library name and the module name from the dep statement
     pub fn collect_module_spans(&self, typed_program: &TyProgram) {
         if let TyProgramKind::Library { name } = &typed_program.kind {
-            if let Some(mut token) = self.tokens.try_get_mut(&to_ident_key(name)).try_unwrap() {
+            if let Some(mut token) = self
+                .ctx
+                .tokens
+                .try_get_mut(&to_ident_key(name))
+                .try_unwrap()
+            {
                 token.typed = Some(TypedAstToken::TypedProgramKind(typed_program.kind.clone()));
                 token.type_def = Some(TypeDefinition::Ident(name.clone()));
             }
@@ -71,6 +67,7 @@ impl<'a> TypedTree<'a> {
         ) in &typed_module.submodules
         {
             if let Some(mut token) = self
+                .ctx
                 .tokens
                 .try_get_mut(&to_ident_key(&Ident::new(dependency_path_span.clone())))
                 .try_unwrap()
@@ -79,6 +76,7 @@ impl<'a> TypedTree<'a> {
                 token.type_def = Some(TypeDefinition::Ident(library_name.clone()));
             }
             if let Some(mut token) = self
+                .ctx
                 .tokens
                 .try_get_mut(&to_ident_key(library_name))
                 .try_unwrap()
@@ -91,10 +89,11 @@ impl<'a> TypedTree<'a> {
     }
 
     fn handle_declaration(&self, declaration: &ty::TyDeclaration) {
-        let decl_engine = self.engines.de();
+        let decl_engine = self.ctx.engines.de();
         match declaration {
             ty::TyDeclaration::VariableDeclaration(variable) => {
                 if let Some(mut token) = self
+                    .ctx
                     .tokens
                     .try_get_mut(&to_ident_key(&variable.name))
                     .try_unwrap()
@@ -118,6 +117,7 @@ impl<'a> TypedTree<'a> {
             ty::TyDeclaration::TraitDeclaration { decl_id, .. } => {
                 let trait_decl = decl_engine.get_trait(decl_id);
                 if let Some(mut token) = self
+                    .ctx
                     .tokens
                     .try_get_mut(&to_ident_key(&trait_decl.name))
                     .try_unwrap()
@@ -141,6 +141,7 @@ impl<'a> TypedTree<'a> {
             ty::TyDeclaration::StructDeclaration(decl_ref) => {
                 let struct_decl = decl_engine.get_struct(decl_ref);
                 if let Some(mut token) = self
+                    .ctx
                     .tokens
                     .try_get_mut(&to_ident_key(&struct_decl.call_path.suffix))
                     .try_unwrap()
@@ -155,6 +156,7 @@ impl<'a> TypedTree<'a> {
 
                 for type_param in &struct_decl.type_parameters {
                     if let Some(mut token) = self
+                        .ctx
                         .tokens
                         .try_get_mut(&to_ident_key(&type_param.name_ident))
                         .try_unwrap()
@@ -167,6 +169,7 @@ impl<'a> TypedTree<'a> {
             ty::TyDeclaration::EnumDeclaration(decl_ref) => {
                 let enum_decl = decl_engine.get_enum(decl_ref);
                 if let Some(mut token) = self
+                    .ctx
                     .tokens
                     .try_get_mut(&to_ident_key(&enum_decl.call_path.suffix))
                     .try_unwrap()
@@ -178,6 +181,7 @@ impl<'a> TypedTree<'a> {
 
                 for type_param in &enum_decl.type_parameters {
                     if let Some(mut token) = self
+                        .ctx
                         .tokens
                         .try_get_mut(&to_ident_key(&type_param.name_ident))
                         .try_unwrap()
@@ -210,14 +214,18 @@ impl<'a> TypedTree<'a> {
                 }
 
                 for ident in &trait_name.prefixes {
-                    if let Some(mut token) =
-                        self.tokens.try_get_mut(&to_ident_key(ident)).try_unwrap()
+                    if let Some(mut token) = self
+                        .ctx
+                        .tokens
+                        .try_get_mut(&to_ident_key(ident))
+                        .try_unwrap()
                     {
                         token.typed = Some(TypedAstToken::Ident(ident.clone()));
                     }
                 }
 
                 if let Some(mut token) = self
+                    .ctx
                     .tokens
                     .try_get_mut(&to_ident_key(&trait_name.suffix))
                     .try_unwrap()
@@ -270,6 +278,7 @@ impl<'a> TypedTree<'a> {
             ty::TyDeclaration::AbiDeclaration { decl_id, .. } => {
                 let abi_decl = decl_engine.get_abi(decl_id);
                 if let Some(mut token) = self
+                    .ctx
                     .tokens
                     .try_get_mut(&to_ident_key(&abi_decl.name))
                     .try_unwrap()
@@ -292,7 +301,12 @@ impl<'a> TypedTree<'a> {
                 }
             }
             ty::TyDeclaration::GenericTypeForFunctionScope { name, type_id } => {
-                if let Some(mut token) = self.tokens.try_get_mut(&to_ident_key(name)).try_unwrap() {
+                if let Some(mut token) = self
+                    .ctx
+                    .tokens
+                    .try_get_mut(&to_ident_key(name))
+                    .try_unwrap()
+                {
                     token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
                     token.type_def = Some(TypeDefinition::TypeId(*type_id));
                 }
@@ -302,6 +316,7 @@ impl<'a> TypedTree<'a> {
                 let storage_decl = decl_engine.get_storage(decl_id);
                 for field in &storage_decl.fields {
                     if let Some(mut token) = self
+                        .ctx
                         .tokens
                         .try_get_mut(&to_ident_key(&field.name))
                         .try_unwrap()
@@ -330,8 +345,11 @@ impl<'a> TypedTree<'a> {
                 },
             ) => {
                 for (mod_path, ident) in iter_prefixes(call_path).zip(call_path) {
-                    if let Some(mut token) =
-                        self.tokens.try_get_mut(&to_ident_key(ident)).try_unwrap()
+                    if let Some(mut token) = self
+                        .ctx
+                        .tokens
+                        .try_get_mut(&to_ident_key(ident))
+                        .try_unwrap()
                     {
                         token.typed = Some(TypedAstToken::TypedUseStatement(use_statement.clone()));
 
@@ -347,8 +365,11 @@ impl<'a> TypedTree<'a> {
 
                 match &import_type {
                     ImportType::Item(item) => {
-                        if let Some(mut token) =
-                            self.tokens.try_get_mut(&to_ident_key(item)).try_unwrap()
+                        if let Some(mut token) = self
+                            .ctx
+                            .tokens
+                            .try_get_mut(&to_ident_key(item))
+                            .try_unwrap()
                         {
                             token.typed =
                                 Some(TypedAstToken::TypedUseStatement(use_statement.clone()));
@@ -363,8 +384,11 @@ impl<'a> TypedTree<'a> {
                                 .and_then(|decl| decl.get_decl_ident())
                             {
                                 // Update the symbol kind to match the declarations symbol kind
-                                if let Some(decl) =
-                                    self.tokens.try_get(&to_ident_key(&decl_ident)).try_unwrap()
+                                if let Some(decl) = self
+                                    .ctx
+                                    .tokens
+                                    .try_get(&to_ident_key(&decl_ident))
+                                    .try_unwrap()
                                 {
                                     symbol_kind = decl.value().kind.clone();
                                 }
@@ -376,8 +400,11 @@ impl<'a> TypedTree<'a> {
 
                             // the alias should take on the same symbol kind and type definition
                             if let Some(alias) = alias {
-                                if let Some(mut token) =
-                                    self.tokens.try_get_mut(&to_ident_key(alias)).try_unwrap()
+                                if let Some(mut token) = self
+                                    .ctx
+                                    .tokens
+                                    .try_get_mut(&to_ident_key(alias))
+                                    .try_unwrap()
                                 {
                                     token.typed = Some(TypedAstToken::TypedUseStatement(
                                         use_statement.clone(),
@@ -390,6 +417,7 @@ impl<'a> TypedTree<'a> {
                     }
                     ImportType::SelfImport(span) => {
                         if let Some(mut token) = self
+                            .ctx
                             .tokens
                             .try_get_mut(&to_ident_key(&Ident::new(span.clone())))
                             .try_unwrap()
@@ -414,10 +442,11 @@ impl<'a> TypedTree<'a> {
     }
 
     fn handle_expression(&self, expression: &ty::TyExpression) {
-        let decl_engine = self.engines.de();
+        let decl_engine = self.ctx.engines.de();
         match &expression.expression {
             ty::TyExpressionVariant::Literal { .. } => {
                 if let Some(mut token) = self
+                    .ctx
                     .tokens
                     .try_get_mut(&to_ident_key(&Ident::new(expression.span.clone())))
                     .try_unwrap()
@@ -447,8 +476,11 @@ impl<'a> TypedTree<'a> {
                 let prefixes = if let Some(impl_type_name) = implementing_type_name {
                     // the last prefix of the call path is not a module but a type
                     if let Some((last, prefixes)) = call_path.prefixes.split_last() {
-                        if let Some(mut token) =
-                            self.tokens.try_get_mut(&to_ident_key(last)).try_unwrap()
+                        if let Some(mut token) = self
+                            .ctx
+                            .tokens
+                            .try_get_mut(&to_ident_key(last))
+                            .try_unwrap()
                         {
                             token.typed = Some(TypedAstToken::Ident(impl_type_name.clone()));
                             token.type_def = Some(TypeDefinition::Ident(impl_type_name));
@@ -463,6 +495,7 @@ impl<'a> TypedTree<'a> {
                 self.collect_call_path_prefixes(prefixes);
 
                 if let Some(mut token) = self
+                    .ctx
                     .tokens
                     .try_get_mut(&to_ident_key(&call_path.suffix))
                     .try_unwrap()
@@ -477,8 +510,11 @@ impl<'a> TypedTree<'a> {
                 }
 
                 for (ident, exp) in arguments {
-                    if let Some(mut token) =
-                        self.tokens.try_get_mut(&to_ident_key(ident)).try_unwrap()
+                    if let Some(mut token) = self
+                        .ctx
+                        .tokens
+                        .try_get_mut(&to_ident_key(ident))
+                        .try_unwrap()
                     {
                         token.typed = Some(TypedAstToken::Ident(ident.clone()));
                     }
@@ -511,6 +547,7 @@ impl<'a> TypedTree<'a> {
                 };
 
                 if let Some(mut token) = self
+                    .ctx
                     .tokens
                     .try_get_mut(&to_ident_key(&Ident::new(span)))
                     .try_unwrap()
@@ -539,6 +576,7 @@ impl<'a> TypedTree<'a> {
                 ..
             } => {
                 if let Some(mut token) = self
+                    .ctx
                     .tokens
                     .try_get_mut(&to_ident_key(&call_path_binding.inner.suffix))
                     .try_unwrap()
@@ -555,16 +593,17 @@ impl<'a> TypedTree<'a> {
 
                 for field in fields {
                     if let Some(mut token) = self
+                        .ctx
                         .tokens
                         .try_get_mut(&to_ident_key(&field.name))
                         .try_unwrap()
                     {
                         token.typed = Some(TypedAstToken::TypedExpression(field.value.clone()));
 
-                        if let Some(struct_decl) = &self
-                            .tokens
-                            .struct_declaration_of_type_id(self.engines, &expression.return_type)
-                        {
+                        if let Some(struct_decl) = &self.ctx.tokens.struct_declaration_of_type_id(
+                            self.ctx.engines,
+                            &expression.return_type,
+                        ) {
                             for decl_field in &struct_decl.fields {
                                 if decl_field.name == field.name {
                                     token.type_def =
@@ -621,6 +660,7 @@ impl<'a> TypedTree<'a> {
                 self.handle_expression(prefix);
 
                 if let Some(mut token) = self
+                    .ctx
                     .tokens
                     .try_get_mut(&to_ident_key(&Ident::new(field_instantiation_span.clone())))
                     .try_unwrap()
@@ -637,6 +677,7 @@ impl<'a> TypedTree<'a> {
                 self.handle_expression(prefix);
 
                 if let Some(mut token) = self
+                    .ctx
                     .tokens
                     .try_get_mut(&to_ident_key(&Ident::new(elem_to_access_span.clone())))
                     .try_unwrap()
@@ -653,6 +694,7 @@ impl<'a> TypedTree<'a> {
                 ..
             } => {
                 if let Some(mut token) = self
+                    .ctx
                     .tokens
                     .try_get_mut(&to_ident_key(&call_path_binding.inner.suffix))
                     .try_unwrap()
@@ -669,6 +711,7 @@ impl<'a> TypedTree<'a> {
                 self.collect_call_path_prefixes(&call_path_binding.inner.prefixes);
 
                 if let Some(mut token) = self
+                    .ctx
                     .tokens
                     .try_get_mut(&to_ident_key(&Ident::new(
                         variant_instantiation_span.clone(),
@@ -689,6 +732,7 @@ impl<'a> TypedTree<'a> {
                 self.collect_call_path_prefixes(&abi_name.prefixes);
 
                 if let Some(mut token) = self
+                    .ctx
                     .tokens
                     .try_get_mut(&to_ident_key(&abi_name.suffix))
                     .try_unwrap()
@@ -709,6 +753,7 @@ impl<'a> TypedTree<'a> {
             ty::TyExpressionVariant::StorageAccess(storage_access) => {
                 for field in &storage_access.fields {
                     if let Some(mut token) = self
+                        .ctx
                         .tokens
                         .try_get_mut(&to_ident_key(&field.name))
                         .try_unwrap()
@@ -727,6 +772,7 @@ impl<'a> TypedTree<'a> {
             ty::TyExpressionVariant::UnsafeDowncast { exp, variant } => {
                 self.handle_expression(exp);
                 if let Some(mut token) = self
+                    .ctx
                     .tokens
                     .try_get_mut(&to_ident_key(&variant.name))
                     .try_unwrap()
@@ -743,6 +789,7 @@ impl<'a> TypedTree<'a> {
                 self.handle_expression(&reassignment.rhs);
 
                 if let Some(mut token) = self
+                    .ctx
                     .tokens
                     .try_get_mut(&to_ident_key(&reassignment.lhs_base_name))
                     .try_unwrap()
@@ -752,14 +799,19 @@ impl<'a> TypedTree<'a> {
 
                 for proj_kind in &reassignment.lhs_indices {
                     if let ty::ProjectionKind::StructField { name } = proj_kind {
-                        if let Some(mut token) =
-                            self.tokens.try_get_mut(&to_ident_key(name)).try_unwrap()
+                        if let Some(mut token) = self
+                            .ctx
+                            .tokens
+                            .try_get_mut(&to_ident_key(name))
+                            .try_unwrap()
                         {
                             token.typed =
                                 Some(TypedAstToken::TypedReassignment((**reassignment).clone()));
-                            if let Some(struct_decl) = &self
-                                .tokens
-                                .struct_declaration_of_type_id(self.engines, &reassignment.lhs_type)
+                            if let Some(struct_decl) =
+                                &self.ctx.tokens.struct_declaration_of_type_id(
+                                    self.ctx.engines,
+                                    &reassignment.lhs_type,
+                                )
                             {
                                 for decl_field in &struct_decl.fields {
                                     if &decl_field.name == name {
@@ -775,6 +827,7 @@ impl<'a> TypedTree<'a> {
             ty::TyExpressionVariant::StorageReassignment(storage_reassignment) => {
                 for field in &storage_reassignment.fields {
                     if let Some(mut token) = self
+                        .ctx
                         .tokens
                         .try_get_mut(&to_ident_key(&field.name))
                         .try_unwrap()
@@ -795,13 +848,19 @@ impl<'a> TypedTree<'a> {
         match &scrutinee.variant {
             CatchAll => {}
             Constant(name, _, const_decl) => {
-                if let Some(mut token) = self.tokens.try_get_mut(&to_ident_key(name)).try_unwrap() {
+                if let Some(mut token) = self
+                    .ctx
+                    .tokens
+                    .try_get_mut(&to_ident_key(name))
+                    .try_unwrap()
+                {
                     token.typed = Some(TypedAstToken::TypedScrutinee(scrutinee.clone()));
                     token.type_def = Some(TypeDefinition::Ident(const_decl.name.clone()));
                 }
             }
             Literal(_) => {
                 if let Some(mut token) = self
+                    .ctx
                     .tokens
                     .try_get_mut(&to_ident_key(&Ident::new(scrutinee.span.clone())))
                     .try_unwrap()
@@ -810,7 +869,11 @@ impl<'a> TypedTree<'a> {
                 }
             }
             Variable(ident) => {
-                if let Some(mut token) = self.tokens.try_get_mut(&to_ident_key(ident)).try_unwrap()
+                if let Some(mut token) = self
+                    .ctx
+                    .tokens
+                    .try_get_mut(&to_ident_key(ident))
+                    .try_unwrap()
                 {
                     token.typed = Some(TypedAstToken::TypedScrutinee(scrutinee.clone()));
                 }
@@ -821,6 +884,7 @@ impl<'a> TypedTree<'a> {
                 fields,
             } => {
                 if let Some(mut token) = self
+                    .ctx
                     .tokens
                     .try_get_mut(&to_ident_key(struct_name))
                     .try_unwrap()
@@ -831,6 +895,7 @@ impl<'a> TypedTree<'a> {
 
                 for field in fields {
                     if let Some(mut token) = self
+                        .ctx
                         .tokens
                         .try_get_mut(&to_ident_key(&field.field))
                         .try_unwrap()
@@ -852,8 +917,11 @@ impl<'a> TypedTree<'a> {
             } => {
                 let prefixes = if let Some((last, prefixes)) = call_path.prefixes.split_last() {
                     // the last prefix of the call path is not a module but a type
-                    if let Some(mut token) =
-                        self.tokens.try_get_mut(&to_ident_key(last)).try_unwrap()
+                    if let Some(mut token) = self
+                        .ctx
+                        .tokens
+                        .try_get_mut(&to_ident_key(last))
+                        .try_unwrap()
                     {
                         token.typed = Some(TypedAstToken::TypedScrutinee(scrutinee.clone()));
                         token.type_def = Some(TypeDefinition::Ident(decl_name.clone()));
@@ -865,6 +933,7 @@ impl<'a> TypedTree<'a> {
                 self.collect_call_path_prefixes(prefixes);
 
                 if let Some(mut token) = self
+                    .ctx
                     .tokens
                     .try_get_mut(&to_ident_key(&call_path.suffix))
                     .try_unwrap()
@@ -908,7 +977,12 @@ impl<'a> TypedTree<'a> {
 
     fn collect_call_path_prefixes(&self, prefixes: &[Ident]) {
         for (mod_path, ident) in iter_prefixes(prefixes).zip(prefixes) {
-            if let Some(mut token) = self.tokens.try_get_mut(&to_ident_key(ident)).try_unwrap() {
+            if let Some(mut token) = self
+                .ctx
+                .tokens
+                .try_get_mut(&to_ident_key(ident))
+                .try_unwrap()
+            {
                 token.typed = Some(TypedAstToken::Ident(ident.clone()));
 
                 if let Some(name) = self
@@ -924,13 +998,14 @@ impl<'a> TypedTree<'a> {
 
     fn collect_supertrait(&self, supertrait: &Supertrait) {
         if let Some(mut token) = self
+            .ctx
             .tokens
             .try_get_mut(&to_ident_key(&supertrait.name.suffix))
             .try_unwrap()
         {
             token.typed = Some(TypedAstToken::TypedSupertrait(supertrait.clone()));
             token.type_def = if let Some(decl_ref) = &supertrait.decl_ref {
-                let decl_engine = self.engines.de();
+                let decl_engine = self.ctx.engines.de();
                 let trait_decl = decl_engine.get_trait(decl_ref);
                 Some(TypeDefinition::Ident(trait_decl.name))
             } else {
@@ -941,6 +1016,7 @@ impl<'a> TypedTree<'a> {
 
     fn collect_typed_trait_fn_token(&self, trait_fn: &ty::TyTraitFn) {
         if let Some(mut token) = self
+            .ctx
             .tokens
             .try_get_mut(&to_ident_key(&trait_fn.name))
             .try_unwrap()
@@ -955,6 +1031,7 @@ impl<'a> TypedTree<'a> {
 
         let return_ident = Ident::new(trait_fn.return_type_span.clone());
         if let Some(mut token) = self
+            .ctx
             .tokens
             .try_get_mut(&to_ident_key(&return_ident))
             .try_unwrap()
@@ -967,6 +1044,7 @@ impl<'a> TypedTree<'a> {
     fn collect_typed_fn_param_token(&self, param: &ty::TyFunctionParameter) {
         let typed_token = TypedAstToken::TypedFunctionParameter(param.clone());
         if let Some(mut token) = self
+            .ctx
             .tokens
             .try_get_mut(&to_ident_key(&param.name))
             .try_unwrap()
@@ -988,6 +1066,7 @@ impl<'a> TypedTree<'a> {
         self.collect_call_path_prefixes(&trait_name.prefixes);
 
         if let Some(mut token) = self
+            .ctx
             .tokens
             .try_get_mut(&to_ident_key(&trait_name.suffix))
             .try_unwrap()
@@ -1023,8 +1102,8 @@ impl<'a> TypedTree<'a> {
     }
 
     fn collect_call_path_tree(&self, tree: &CallPathTree, type_arg: &TypeArgument) {
-        let type_engine = self.engines.te();
-        let decl_engine = self.engines.de();
+        let type_engine = self.ctx.engines.te();
+        let decl_engine = self.ctx.engines.de();
         let type_info = type_engine.get(type_arg.type_id);
 
         self.collect_call_path_prefixes(&tree.call_path.prefixes);
@@ -1065,6 +1144,7 @@ impl<'a> TypedTree<'a> {
 
                     self.collect_call_path_prefixes(&abi_call_path.prefixes);
                     if let Some(mut token) = self
+                        .ctx
                         .tokens
                         .try_get_mut(&to_ident_key(&abi_call_path.suffix))
                         .try_unwrap()
@@ -1086,8 +1166,8 @@ impl<'a> TypedTree<'a> {
     }
 
     fn collect_type_id(&self, type_id: TypeId, typed_token: &TypedAstToken, type_span: Span) {
-        let type_engine = self.engines.te();
-        let decl_engine = self.engines.de();
+        let type_engine = self.ctx.engines.te();
+        let decl_engine = self.ctx.engines.de();
         let type_info = type_engine.get(type_id);
         let symbol_kind = type_info_to_symbol_kind(type_engine, &type_info);
         match &type_info {
@@ -1102,6 +1182,7 @@ impl<'a> TypedTree<'a> {
             TypeInfo::Enum(decl_ref) => {
                 let decl = decl_engine.get_enum(decl_ref);
                 if let Some(token) = self
+                    .ctx
                     .tokens
                     .try_get_mut(&to_ident_key(&Ident::new(type_span)))
                     .try_unwrap()
@@ -1124,6 +1205,7 @@ impl<'a> TypedTree<'a> {
             TypeInfo::Struct(decl_ref) => {
                 let decl = decl_engine.get_struct(decl_ref);
                 if let Some(token) = self
+                    .ctx
                     .tokens
                     .try_get_mut(&to_ident_key(&Ident::new(type_span)))
                     .try_unwrap()
@@ -1148,6 +1230,7 @@ impl<'a> TypedTree<'a> {
                 call_path: name,
             } => {
                 if let Some(token) = self
+                    .ctx
                     .tokens
                     .try_get_mut(&to_ident_key(&Ident::new(name.span())))
                     .try_unwrap()
@@ -1168,6 +1251,7 @@ impl<'a> TypedTree<'a> {
             }
             _ => {
                 if let Some(token) = self
+                    .ctx
                     .tokens
                     .try_get_mut(&to_ident_key(&Ident::new(type_span)))
                     .try_unwrap()
@@ -1180,6 +1264,7 @@ impl<'a> TypedTree<'a> {
 
     fn collect_const_decl(&self, const_decl: &ty::TyConstantDeclaration) {
         if let Some(mut token) = self
+            .ctx
             .tokens
             .try_get_mut(&to_ident_key(&const_decl.name))
             .try_unwrap()
@@ -1200,6 +1285,7 @@ impl<'a> TypedTree<'a> {
     fn collect_typed_fn_decl(&self, func_decl: &ty::TyFunctionDeclaration) {
         let typed_token = TypedAstToken::TypedFunctionDeclaration(func_decl.clone());
         if let Some(mut token) = self
+            .ctx
             .tokens
             .try_get_mut(&to_ident_key(&func_decl.name))
             .try_unwrap()
@@ -1230,7 +1316,12 @@ impl<'a> TypedTree<'a> {
                 self.collect_trait_constraint(constraint);
             }
 
-            if let Some(mut token) = self.tokens.try_get_mut(&to_ident_key(ident)).try_unwrap() {
+            if let Some(mut token) = self
+                .ctx
+                .tokens
+                .try_get_mut(&to_ident_key(ident))
+                .try_unwrap()
+            {
                 token.typed = Some(typed_token.clone());
                 if let Some(param_decl_ident) = func_decl
                     .type_parameters
@@ -1247,6 +1338,7 @@ impl<'a> TypedTree<'a> {
     fn collect_ty_enum_variant(&self, enum_variant: &TyEnumVariant) {
         let typed_token = TypedAstToken::TypedEnumVariant(enum_variant.clone());
         if let Some(mut token) = self
+            .ctx
             .tokens
             .try_get_mut(&to_ident_key(&enum_variant.name))
             .try_unwrap()
@@ -1260,6 +1352,7 @@ impl<'a> TypedTree<'a> {
 
     fn collect_ty_struct_field(&self, field: &ty::TyStructField) {
         if let Some(mut token) = self
+            .ctx
             .tokens
             .try_get_mut(&to_ident_key(&field.name))
             .try_unwrap()
