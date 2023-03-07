@@ -379,12 +379,12 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
         }
         TraitDeclaration { decl_id, .. } => {
             let trait_decl = decl_engine.get_trait(decl_id);
-            connect_trait_declaration(&trait_decl, graph, entry_node);
+            connect_trait_declaration(&trait_decl, graph, entry_node, tree_type);
             Ok(leaves.to_vec())
         }
         AbiDeclaration { decl_id, .. } => {
             let abi_decl = decl_engine.get_abi(decl_id);
-            connect_abi_declaration(engines, &abi_decl, graph, entry_node)?;
+            connect_abi_declaration(engines, &abi_decl, graph, entry_node, tree_type)?;
             Ok(leaves.to_vec())
         }
         StructDeclaration { decl_id, .. } => {
@@ -399,7 +399,10 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
         }
         ImplTrait { decl_id, .. } => {
             let ty::TyImplTrait {
-                trait_name, items, ..
+                trait_name,
+                items,
+                trait_decl_ref,
+                ..
             } = decl_engine.get_impl_trait(decl_id);
 
             connect_impl_trait(
@@ -409,6 +412,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
                 &items,
                 entry_node,
                 tree_type,
+                trait_decl_ref,
                 options,
             )?;
             Ok(leaves.to_vec())
@@ -478,6 +482,7 @@ fn connect_struct_declaration<'eng: 'cfg, 'cfg>(
 /// that the declaration was indeed at some point implemented.
 /// Additionally, we insert the trait's methods into the method namespace in order to
 /// track which exact methods are dead code.
+#[allow(clippy::too_many_arguments)]
 fn connect_impl_trait<'eng: 'cfg, 'cfg>(
     engines: Engines<'eng>,
     trait_name: &CallPath,
@@ -485,6 +490,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
     items: &[TyImplItem],
     entry_node: NodeIndex,
     tree_type: &TreeType,
+    trait_decl_ref: Option<DeclRef<InterfaceDeclId>>,
     options: NodeConnectionOptions,
 ) -> Result<(), CompileError> {
     let decl_engine = engines.de();
@@ -496,9 +502,21 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
         }
         Some(trait_decl_node) => {
             graph.add_edge_from_entry(entry_node, "".into());
-            graph.add_edge(entry_node, trait_decl_node, "".into());
+            graph.add_edge(entry_node, trait_decl_node.trait_idx, "".into());
         }
     };
+    let trait_entry = graph.namespace.find_trait(trait_name).cloned();
+    let mut trait_items_method_names = Vec::new();
+    if let Some(trait_decl_ref) = trait_decl_ref {
+        if let InterfaceDeclId::Trait(trait_decl_id) = &trait_decl_ref.id {
+            let trait_decl = decl_engine.get_trait(trait_decl_id);
+            for trait_item in trait_decl.items {
+                let ty::TyTraitItem::Fn(func_decl_ref) = trait_item;
+                let functional_decl_id = decl_engine.get_function(&func_decl_ref);
+                trait_items_method_names.push(functional_decl_id.name.as_str().to_string());
+            }
+        }
+    }
     let mut methods_and_indexes = vec![];
     // insert method declarations into the graph
     for item in items {
@@ -511,7 +529,21 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
                     method_decl_ref: method_decl_ref.clone(),
                     engines,
                 });
-                if matches!(tree_type, TreeType::Library { .. } | TreeType::Contract) {
+                let add_edge_to_fn_decl =
+                    if trait_items_method_names.contains(&fn_decl.name.as_str().to_string()) {
+                        if let Some(trait_entry) = trait_entry.clone() {
+                            matches!(
+                                trait_entry.module_tree_type,
+                                TreeType::Library { .. } | TreeType::Contract
+                            )
+                        } else {
+                            // trait_entry not found which means it probably is compiled in another library
+                            true
+                        }
+                    } else {
+                        matches!(tree_type, TreeType::Library { .. } | TreeType::Contract)
+                    };
+                if add_edge_to_fn_decl {
                     graph.add_edge(entry_node, fn_decl_entry_node, "".into());
                 }
                 // connect the impl declaration node to the functions themselves, as all trait functions are
@@ -557,6 +589,7 @@ fn connect_trait_declaration(
     decl: &ty::TyTraitDeclaration,
     graph: &mut ControlFlowGraph,
     entry_node: NodeIndex,
+    tree_type: &TreeType,
 ) {
     graph.namespace.add_trait(
         CallPath {
@@ -564,7 +597,10 @@ fn connect_trait_declaration(
             suffix: decl.name.clone(),
             is_absolute: false,
         },
-        entry_node,
+        TraitNamespaceEntry {
+            trait_idx: entry_node,
+            module_tree_type: tree_type.clone(),
+        },
     );
 }
 
@@ -574,6 +610,7 @@ fn connect_abi_declaration(
     decl: &ty::TyAbiDeclaration,
     graph: &mut ControlFlowGraph,
     entry_node: NodeIndex,
+    tree_type: &TreeType,
 ) -> Result<(), CompileError> {
     let type_engine = engines.te();
     let decl_engine = engines.de();
@@ -584,7 +621,10 @@ fn connect_abi_declaration(
             suffix: decl.name.clone(),
             is_absolute: false,
         },
-        entry_node,
+        TraitNamespaceEntry {
+            trait_idx: entry_node,
+            module_tree_type: tree_type.clone(),
+        },
     );
 
     // If a struct type is used as a return type in the interface surface
@@ -1375,10 +1415,10 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
         AbiName(abi_name) => {
             if let crate::type_system::AbiName::Known(abi_name) = abi_name {
                 // abis are treated as traits here
-                let decl = graph.namespace.find_trait(abi_name).cloned();
-                if let Some(decl_node) = decl {
+                let entry = graph.namespace.find_trait(abi_name).cloned();
+                if let Some(entry) = entry {
                     for leaf in leaves {
-                        graph.add_edge(*leaf, decl_node, "".into());
+                        graph.add_edge(*leaf, entry.trait_idx, "".into());
                     }
                 }
             }
