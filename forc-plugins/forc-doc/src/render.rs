@@ -446,7 +446,6 @@ impl Renderable for ItemBody {
                                         @ for anchor in rendered_module_anchors {
                                             : Raw(anchor);
                                         }
-                                        // TODO: add qualified path anchors
                                         a(class=&decl_ty, href=IDENTITY) {
                                             : item_name.as_str();
                                         }
@@ -967,12 +966,15 @@ impl Renderable for DocLinks {
             DocStyle::AllDoc(_) => box_html! {
                 @ for (title, list_items) in self.links {
                     @ if !list_items.is_empty() {
-                        h3(id=format!("{}", title.html_title_string())) { : title.as_str(); }
+                        h2(id=format!("{}", title.html_title_string())) { : title.as_str(); }
                         div(class="item-table") {
                             @ for item in list_items {
                                 div(class="item-row") {
                                     div(class=format!("item-left {}-item", title.item_title_str())) {
-                                        a(href=item.module_info.file_path_at_location(&item.html_filename, item.module_info.project_name())) {
+                                        a(
+                                            class=title.class_title_str(),
+                                            href=item.module_info.file_path_at_location(&item.html_filename, item.module_info.project_name())
+                                        ) {
                                             : item.module_info.to_path_literal_string(
                                                 &item.name,
                                                 item.module_info.project_name()
@@ -995,12 +997,15 @@ impl Renderable for DocLinks {
             DocStyle::ProjectIndex(_) => box_html! {
                 @ for (title, list_items) in self.links {
                     @ if !list_items.is_empty() {
-                        h3(id=format!("{}", title.html_title_string())) { : title.as_str(); }
+                        h2(id=format!("{}", title.html_title_string())) { : title.as_str(); }
                         div(class="item-table") {
                             @ for item in list_items {
                                 div(class="item-row") {
                                     div(class=format!("item-left {}-item", title.item_title_str())) {
-                                        a(href=item.module_info.file_path_at_location(&item.html_filename, item.module_info.project_name())) {
+                                        a(
+                                            class=title.class_title_str(),
+                                            href=item.module_info.file_path_at_location(&item.html_filename, item.module_info.project_name())
+                                        ) {
                                             @ if title == BlockTitle::Modules {
                                                 : item.name;
                                             } else {
@@ -1027,12 +1032,15 @@ impl Renderable for DocLinks {
             _ => box_html! {
                 @ for (title, list_items) in self.links {
                     @ if !list_items.is_empty() {
-                        h3(id=format!("{}", title.html_title_string())) { : title.as_str(); }
+                        h2(id=format!("{}", title.html_title_string())) { : title.as_str(); }
                         div(class="item-table") {
                             @ for item in list_items {
                                 div(class="item-row") {
                                     div(class=format!("item-left {}-item", title.item_title_str())) {
-                                        a(href=item.module_info.file_path_at_location(&item.html_filename, item.module_info.location())) {
+                                        a(
+                                            class=title.class_title_str(),
+                                            href=item.module_info.file_path_at_location(&item.html_filename, item.module_info.location())
+                                        ) {
                                             : item.module_info.to_path_literal_string(
                                                 &item.name,
                                                 item.module_info.location()
@@ -1106,6 +1114,19 @@ impl BlockTitle {
             Self::Fields => "Fields",
             Self::Variants => "Variants",
             Self::RequiredMethods => "Required Methods",
+        }
+    }
+    fn class_title_str(&self) -> &str {
+        match self {
+            Self::Modules => "mod",
+            Self::Structs => "struct",
+            Self::Enums => "enum",
+            Self::Traits => "trait",
+            Self::Abi => "abi",
+            Self::ContractStorage => "storage",
+            Self::Constants => "constant",
+            Self::Functions => "fn",
+            _ => unimplemented!("These titles are unimplemented, and should not be used this way."),
         }
     }
     fn html_title_string(&self) -> String {
@@ -1413,7 +1434,32 @@ impl Renderable for Sidebar {
                 box_html! {
                     div(class="sidebar-elems") {
                         a(id="all-types", href=ALL_DOC_FILENAME) {
-                            : all_items;
+                            p: all_items;
+                        }
+                        section {
+                            div(class="block") {
+                                ul {
+                                    @ for (title, _) in nav_links {
+                                        li {
+                                            a(href=format!("{}{}", IDENTITY, title.html_title_string())) {
+                                                : title.as_str();
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                .into_string()
+                .unwrap()
+            }
+            DocStyle::AllDoc(_) => {
+                let nav_links = self.nav.links;
+                box_html! {
+                    div(class="sidebar-elems") {
+                        a(id="all-types", href=INDEX_FILENAME) {
+                            p: "Back to index";
                         }
                         section {
                             div(class="block") {

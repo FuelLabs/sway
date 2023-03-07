@@ -169,9 +169,6 @@ pre,
 .content a.macro {
   color: #a37acc;
 }
-.sidebar a {
-  color: #53b1db;
-}
 .sidebar a.current.type {
   color: #53b1db;
 }
@@ -192,7 +189,7 @@ nav.main .separator {
   border: 1px solid #5c6773;
 }
 a {
-  color: #39afd7;
+    color: #c5c5c5;
 }
 .sidebar h2 a,
 .sidebar h3 a {
@@ -488,7 +485,10 @@ details.dir-entry summary:focus {
   background: #c5c5c5;
 }
 .sidebar .location {
-    border-color: #000;
-    background-color: #0f1419;
-    color: #fff;
+  border-color: #000;
+  background-color: #0f1419;
+  color: #fff;
+}
+#all-types {
+  background-color: #14191f;
 }
