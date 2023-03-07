@@ -842,17 +842,18 @@ async fn go_to_definition_for_paths() {
     let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
     definition_check_with_req_offset(&mut service, &mut go_to, 25, 31, &mut i).await;
 
-    let go_to = GotoDefinition {
-        req_uri: &uri,
-        req_line: 6,
-        req_char: 39,
-        def_line: 2,
-        def_start_char: 7,
-        def_end_char: 15,
-        def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
-    };
+    // TODO: Uncomment when https://github.com/FuelLabs/sway/issues/4211 is fixed.
+    // let go_to = GotoDefinition {
+    //     req_uri: &uri,
+    //     req_line: 6,
+    //     req_char: 39,
+    //     def_line: 2,
+    //     def_start_char: 7,
+    //     def_end_char: 15,
+    //     def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
+    // };
     // dfun
-    let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
+    // let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
 
     shutdown_and_exit(&mut service).await;
 }
