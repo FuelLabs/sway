@@ -15,6 +15,7 @@ use tower_lsp::{
 };
 
 /// Holds the information needed to check the response of a goto definition request.
+#[derive(Debug)]
 pub(crate) struct GotoDefinition<'a> {
     req_uri: &'a Url,
     req_line: i32,
