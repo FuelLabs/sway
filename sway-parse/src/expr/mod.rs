@@ -1,8 +1,7 @@
 use crate::{Parse, ParseBracket, ParseResult, ParseToEnd, Parser, ParserConsumed, Peek};
 
-use core::ops::ControlFlow;
 use sway_ast::brackets::{Braces, Parens, SquareBrackets};
-use sway_ast::expr::{ReassignmentOp, ReassignmentOpVariant};
+use sway_ast::expr::{IfControlFlow, ReassignmentOp, ReassignmentOpVariant};
 use sway_ast::keywords::{
     AbiToken, AddEqToken, AsmToken, CommaToken, ConfigurableToken, ConstToken, DivEqToken,
     DoubleColonToken, EnumToken, EqToken, FalseToken, FnToken, IfToken, ImplToken, LetToken,
@@ -52,8 +51,8 @@ impl Parse for IfExpr {
         let else_opt = match parser.take() {
             Some(else_token) => {
                 let else_body = match parser.guarded_parse::<IfToken, _>()? {
-                    Some(if_expr) => ControlFlow::Continue(Box::new(if_expr)),
-                    None => ControlFlow::Break(parser.parse()?),
+                    Some(if_expr) => IfControlFlow::Continue(Box::new(if_expr)),
+                    None => IfControlFlow::Break(parser.parse()?),
                 };
                 Some((else_token, else_body))
             }

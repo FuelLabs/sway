@@ -1,6 +1,6 @@
 use crate::priv_prelude::*;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct Dependency {
     pub dep_token: DepToken,
     pub path: DependencyPath,
@@ -13,7 +13,7 @@ impl Spanned for Dependency {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct DependencyPath {
     pub prefix: Ident,
     pub suffixes: Vec<(ForwardSlashToken, Ident)>,

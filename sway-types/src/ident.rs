@@ -1,3 +1,5 @@
+use serde::Serialize;
+
 use crate::{span::Span, Spanned};
 
 use std::{
@@ -78,6 +80,18 @@ impl BaseIdent {
 /// representation, so that namespacing isn't reliant on the span itself, which will
 /// often be different.
 pub type Ident = BaseIdent;
+
+impl Serialize for Ident {
+    // Serialize an `Ident` struct with two fields: `to_string` and `span`.
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+
+        let mut state = serializer.serialize_struct("Ident", 2)?;
+        state.serialize_field("to_string", &self.to_string())?;
+        state.serialize_field("span", &self.span)?;
+        state.end()
+    }
+}
 
 impl Hash for Ident {
     fn hash<H: Hasher>(&self, state: &mut H) {

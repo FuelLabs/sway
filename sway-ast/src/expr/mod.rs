@@ -3,7 +3,7 @@ use crate::{priv_prelude::*, PathExprSegment};
 pub mod asm;
 pub mod op_code;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub enum Expr {
     /// A malformed expression.
     ///
@@ -256,13 +256,13 @@ impl Spanned for Expr {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct ReassignmentOp {
     pub variant: ReassignmentOpVariant,
     pub span: Span,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub enum ReassignmentOpVariant {
     Equals,
     AddEquals,
@@ -287,7 +287,7 @@ impl ReassignmentOpVariant {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct AbiCastArgs {
     pub name: PathType,
     pub comma_token: CommaToken,
@@ -295,18 +295,18 @@ pub struct AbiCastArgs {
 }
 
 #[allow(clippy::type_complexity)]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct IfExpr {
     pub if_token: IfToken,
     pub condition: IfCondition,
     pub then_block: Braces<CodeBlockContents>,
     pub else_opt: Option<(
         ElseToken,
-        ControlFlow<Braces<CodeBlockContents>, Box<IfExpr>>,
+        IfControlFlow<Braces<CodeBlockContents>, Box<IfExpr>>,
     )>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub enum IfCondition {
     Expr(Box<Expr>),
     Let {
@@ -317,13 +317,19 @@ pub enum IfCondition {
     },
 }
 
+#[derive(Clone, Debug, Serialize)]
+pub enum IfControlFlow<B, C = ()> {
+    Continue(C),
+    Break(B),
+}
+
 impl Spanned for IfExpr {
     fn span(&self) -> Span {
         let start = self.if_token.span();
         let end = match &self.else_opt {
             Some((_else_token, tail)) => match tail {
-                ControlFlow::Break(block) => block.span(),
-                ControlFlow::Continue(if_expr) => if_expr.span(),
+                IfControlFlow::Break(block) => block.span(),
+                IfControlFlow::Continue(if_expr) => if_expr.span(),
             },
             None => self.then_block.span(),
         };
@@ -331,7 +337,7 @@ impl Spanned for IfExpr {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub enum ExprTupleDescriptor {
     Nil,
     Cons {
@@ -341,7 +347,7 @@ pub enum ExprTupleDescriptor {
     },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub enum ExprArrayDescriptor {
     Sequence(Punctuated<Expr, CommaToken>),
     Repeat {
@@ -351,7 +357,7 @@ pub enum ExprArrayDescriptor {
     },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct MatchBranch {
     pub pattern: Pattern,
     pub fat_right_arrow_token: FatRightArrowToken,
@@ -365,7 +371,7 @@ impl Spanned for MatchBranch {
 }
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum MatchBranchKind {
     Block {
         block: Braces<CodeBlockContents>,
@@ -394,13 +400,13 @@ impl Spanned for MatchBranchKind {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct CodeBlockContents {
     pub statements: Vec<Statement>,
     pub final_expr_opt: Option<Box<Expr>>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct ExprStructField {
     pub field_name: Ident,
     pub expr_opt: Option<(ColonToken, Box<Expr>)>,

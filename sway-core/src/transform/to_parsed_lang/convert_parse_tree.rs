@@ -7,7 +7,7 @@ use crate::{
 
 use sway_ast::{
     attribute::Annotated,
-    expr::{ReassignmentOp, ReassignmentOpVariant},
+    expr::{IfControlFlow, ReassignmentOp, ReassignmentOpVariant},
     ty::TyTupleDescriptor,
     AbiCastArgs, AngleBrackets, AsmBlock, Assignable, AttributeDecl, Braces, CodeBlockContents,
     CommaToken, Dependency, DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField,
@@ -37,7 +37,6 @@ use std::{
     convert::TryFrom,
     iter,
     mem::MaybeUninit,
-    ops::ControlFlow,
     sync::Arc,
 };
 
@@ -2457,7 +2456,7 @@ fn if_expr_to_expression(
         None => None,
         Some((_else_token, tail)) => {
             let expression = match tail {
-                ControlFlow::Break(braced_code_block_contents) => {
+                IfControlFlow::Break(braced_code_block_contents) => {
                     braced_code_block_contents_to_expression(
                         context,
                         handler,
@@ -2465,7 +2464,7 @@ fn if_expr_to_expression(
                         braced_code_block_contents,
                     )?
                 }
-                ControlFlow::Continue(if_expr) => {
+                IfControlFlow::Continue(if_expr) => {
                     if_expr_to_expression(context, handler, engines, *if_expr)?
                 }
             };

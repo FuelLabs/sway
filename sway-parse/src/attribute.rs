@@ -111,3 +111,126 @@ impl ParseToEnd for Attribute {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use insta::*;
+    use std::sync::Arc;
+    use sway_ast::ItemFn;
+
+    fn parse_annotated<T>(input: &str) -> Annotated<T>
+    where
+        T: Parse,
+    {
+        let handler = <_>::default();
+        let ts = crate::token::lex(&handler, &Arc::from(input), 0, input.len(), None).unwrap();
+        Parser::new(&handler, &ts)
+            .parse()
+            .unwrap_or_else(|_| panic!("Parse error: {:?}", handler.consume().0))
+    }
+
+    #[test]
+    fn parse_annotated_fn() {
+        assert_ron_snapshot!(parse_annotated::<ItemFn>(r#"
+            // I will be ignored.
+            //! I will be ignored.
+            /// This is a doc comment.
+            #[storage(read)]
+            fn main() {
+                ()
+            }
+        "#,), @r###"
+        Annotated(
+          attribute_list: [
+            AttributeDecl(
+              hash_kind: Outer(HashToken(
+                span: (82, 108),
+              )),
+              attribute: SquareBrackets(
+                inner: Punctuated(
+                  value_separator_pairs: [],
+                  final_value_opt: Some(Attribute(
+                    name: Ident(
+                      to_string: "doc-comment",
+                      span: (82, 108),
+                    ),
+                    args: Some(Parens(
+                      inner: Punctuated(
+                        value_separator_pairs: [],
+                        final_value_opt: Some(Ident(
+                          to_string: " This is a doc comment.",
+                          span: (85, 108),
+                        )),
+                      ),
+                      span: (85, 108),
+                    )),
+                  )),
+                ),
+                span: (82, 108),
+              ),
+            ),
+            AttributeDecl(
+              hash_kind: Outer(HashToken(
+                span: (121, 122),
+              )),
+              attribute: SquareBrackets(
+                inner: Punctuated(
+                  value_separator_pairs: [],
+                  final_value_opt: Some(Attribute(
+                    name: Ident(
+                      to_string: "storage",
+                      span: (123, 130),
+                    ),
+                    args: Some(Parens(
+                      inner: Punctuated(
+                        value_separator_pairs: [],
+                        final_value_opt: Some(Ident(
+                          to_string: "read",
+                          span: (131, 135),
+                        )),
+                      ),
+                      span: (130, 136),
+                    )),
+                  )),
+                ),
+                span: (122, 137),
+              ),
+            ),
+          ],
+          value: ItemFn(
+            fn_signature: FnSignature(
+              visibility: None,
+              fn_token: FnToken(
+                span: (150, 152),
+              ),
+              name: Ident(
+                to_string: "main",
+                span: (153, 157),
+              ),
+              generics: None,
+              arguments: Parens(
+                inner: Static(Punctuated(
+                  value_separator_pairs: [],
+                  final_value_opt: None,
+                )),
+                span: (157, 159),
+              ),
+              return_type_opt: None,
+              where_clause_opt: None,
+            ),
+            body: Braces(
+              inner: CodeBlockContents(
+                statements: [],
+                final_expr_opt: Some(Tuple(Parens(
+                  inner: Nil,
+                  span: (178, 180),
+                ))),
+              ),
+              span: (160, 194),
+            ),
+          ),
+        )
+        "###);
+    }
+}
