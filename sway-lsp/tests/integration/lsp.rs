@@ -343,7 +343,7 @@ pub(crate) async fn completion_request(service: &mut LspService<Backend>, uri: &
           "kind": 2,
           "label": "get(…)",
           "labelDetails": {
-            "description": "fn get(self, foo: Self) -> Self "
+            "description": "fn(self, MyStruct) -> MyStruct"
           },
           "textEdit": {
             "newText": "get(foo)",

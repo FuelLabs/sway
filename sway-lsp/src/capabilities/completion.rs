@@ -31,7 +31,7 @@ fn completion_items_for_type_id(
     let mut completion_items = vec![];
     let type_info = engines.te().get(type_id);
 
-    if let TypeInfo::Struct(decl_ref) = type_info {
+    if let TypeInfo::Struct(decl_ref) = type_info.clone() {
         let struct_decl = engines.de().get_struct(&decl_ref.id);
         for field in struct_decl.fields {
             let item = CompletionItem {
@@ -48,7 +48,8 @@ fn completion_items_for_type_id(
     }
 
     for method in namespace.get_methods_for_type(engines, type_id) {
-        let params = engines.de().get_function(&method.id).parameters;
+        let fn_decl = engines.de().get_function(&method.id);
+        let params = fn_decl.clone().parameters;
 
         // Only show methods that take `self` as the first parameter.
         if params.first().map(|p| p.is_self()).unwrap_or(false) {
@@ -56,7 +57,7 @@ fn completion_items_for_type_id(
                 true => "()".to_string(),
                 false => "(…)".to_string(),
             };
-            let params_str = params
+            let params_edit_str = params
                 .iter()
                 .filter_map(|p| {
                     if p.is_self() {
@@ -66,14 +67,6 @@ fn completion_items_for_type_id(
                 })
                 .collect::<Vec<&str>>()
                 .join(", ");
-            let decl_string = method.decl_span.clone().str();
-            let signature = decl_string
-                .split_at(decl_string.find('{').unwrap())
-                .0
-                .split_at(decl_string.find("fn").unwrap())
-                .1
-                .to_string();
-
             let item = CompletionItem {
                 kind: Some(CompletionItemKind::METHOD),
                 label: format!("{}{}", method.name.as_str(), params_short),
@@ -82,10 +75,10 @@ fn completion_items_for_type_id(
                         start: position,
                         end: position,
                     },
-                    new_text: format!("{}({})", method.name.as_str(), params_str),
+                    new_text: format!("{}({})", method.name.as_str(), params_edit_str),
                 })),
                 label_details: Some(CompletionItemLabelDetails {
-                    description: Some(signature),
+                    description: Some(fn_signature_string(&fn_decl, &type_info)),
                     detail: None,
                 }),
                 ..Default::default()
@@ -95,6 +88,29 @@ fn completion_items_for_type_id(
     }
 
     completion_items
+}
+
+/// Returns the [String] of the shortened function signature to display in the completion item's label details.
+fn fn_signature_string(fn_decl: &TyFunctionDeclaration, parent_type_info: &TypeInfo) -> String {
+    let params_str = fn_decl
+        .parameters
+        .iter()
+        .map(|p| replace_self_with_type_str(p.type_argument.clone().span.str(), parent_type_info))
+        .collect::<Vec<String>>()
+        .join(", ");
+    format!(
+        "fn({}) -> {}",
+        params_str,
+        replace_self_with_type_str(fn_decl.return_type.clone().span.str(), parent_type_info)
+    )
+}
+
+/// Given a [String] representing a type, replaces `Self` with the display name of the type.
+fn replace_self_with_type_str(type_str: String, parent_type_info: &TypeInfo) -> String {
+    if type_str == "Self" {
+        return parent_type_info.display_name();
+    }
+    type_str
 }
 
 /// Returns the [TypeId] of an ident that may include field accesses and may be incomplete.
