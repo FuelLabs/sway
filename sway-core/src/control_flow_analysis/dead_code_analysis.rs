@@ -905,11 +905,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                     engines,
                     &ty::TyAstNode {
                         content: ty::TyAstNodeContent::Declaration(
-                            ty::TyDeclaration::FunctionDeclaration {
-                                name: function_decl_ref.name.clone(),
-                                decl_id: function_decl_ref.id,
-                                decl_span: function_decl_ref.decl_span.clone(),
-                            },
+                            ty::TyDeclaration::FunctionDeclaration(function_decl_ref.clone()),
                         ),
                         span: expression_span.clone(),
                     },
@@ -1673,12 +1669,10 @@ fn construct_dead_code_warning_from_node(
         // code.
         ty::TyAstNode {
             content:
-                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration {
-                    name, ..
-                }),
+                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(decl_ref)),
             ..
         } => CompileWarning {
-            span: name.span(),
+            span: decl_ref.name.span(),
             warning_content: Warning::DeadFunctionDeclaration,
         },
         ty::TyAstNode {
@@ -1698,20 +1692,18 @@ fn construct_dead_code_warning_from_node(
         },
         ty::TyAstNode {
             content:
-                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::TraitDeclaration { name, .. }),
+                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::TraitDeclaration(decl_ref)),
             ..
         } => CompileWarning {
-            span: name.span(),
+            span: decl_ref.name.span(),
             warning_content: Warning::DeadTrait,
         },
         ty::TyAstNode {
             content:
-                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ConstantDeclaration {
-                    name, ..
-                }),
+                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ConstantDeclaration(decl_ref)),
             ..
         } => CompileWarning {
-            span: name.span(),
+            span: decl_ref.name.span(),
             warning_content: Warning::DeadDeclaration,
         },
         ty::TyAstNode {

@@ -458,8 +458,8 @@ fn disallow_impure_functions(
     let fn_decls = declarations
         .iter()
         .filter_map(|decl| match decl {
-            TyDeclaration::FunctionDeclaration { decl_id, .. } => {
-                Some(decl_engine.get_function(decl_id))
+            TyDeclaration::FunctionDeclaration(decl_ref) => {
+                Some(decl_engine.get_function(decl_ref))
             }
             _ => None,
         })

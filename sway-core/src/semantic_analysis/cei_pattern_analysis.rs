@@ -127,7 +127,7 @@ fn impl_trait_methods(
         .flat_map(|item| match item {
             ty::TyImplItem::Fn(fn_decl) => Some(fn_decl),
         })
-        .flat_map(|fn_decl| decl_id_to_fn_decls(decl_engine, &fn_decl.id))
+        .flat_map(|fn_decl| decl_id_to_fn_decls(decl_engine, &fn_decl))
         .collect()
 }
 
