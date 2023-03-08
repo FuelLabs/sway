@@ -716,12 +716,21 @@ impl<'eng> FnCompiler<'eng> {
                     }
                 }
             }
-            Intrinsic::Add | Intrinsic::Sub | Intrinsic::Mul | Intrinsic::Div => {
+            Intrinsic::Add
+            | Intrinsic::Sub
+            | Intrinsic::Mul
+            | Intrinsic::Div
+            | Intrinsic::And
+            | Intrinsic::Or
+            | Intrinsic::Xor => {
                 let op = match kind {
                     Intrinsic::Add => BinaryOpKind::Add,
                     Intrinsic::Sub => BinaryOpKind::Sub,
                     Intrinsic::Mul => BinaryOpKind::Mul,
                     Intrinsic::Div => BinaryOpKind::Div,
+                    Intrinsic::And => BinaryOpKind::And,
+                    Intrinsic::Or => BinaryOpKind::Or,
+                    Intrinsic::Xor => BinaryOpKind::Xor,
                     _ => unreachable!(),
                 };
                 let lhs = &arguments[0];

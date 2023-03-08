@@ -47,9 +47,12 @@ const INT1 = 1;
 const ZERO_B256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
 const KEY = ZERO_B256;
 
-// const FOO: u32 = 0x12345678;
-// const MASK: u32 = 0x00FFFF00;
-// const FOO_MIDDLE: u32 = FOO & MASK;
+const BAR: u32 = 6;
+const FOO: u32 = 5;
+const MASK: u32 = 11;
+const MASK2: u32 = 8;
+const MASK3: u32 = 15;
+const FOO_MIDDLE: u32 = ((FOO & MASK) | MASK2) ^ MASK3;
 
 const CARR1 = [X_SIZE - Y_SIZE + 1; 4];
 // This doesn't work because const-eval happens after type-checking,
@@ -110,6 +113,7 @@ fn main() -> u64 {
     assert(SO == __size_of::<u64>());
     assert(SOV == __size_of_val("hello"));
     assert(TRUEB != FALSEB);
+    assert(FOO_MIDDLE == BAR);
 
     1
 }

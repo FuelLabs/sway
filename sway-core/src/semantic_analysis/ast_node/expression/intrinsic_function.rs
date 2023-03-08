@@ -50,9 +50,13 @@ impl ty::TyIntrinsicFunctionKind {
                 type_check_state_quad(ctx, kind, arguments, type_arguments, span)
             }
             Intrinsic::Log => type_check_log(ctx, kind, arguments, span),
-            Intrinsic::Add | Intrinsic::Sub | Intrinsic::Mul | Intrinsic::Div => {
-                type_check_binary_op(ctx, kind, arguments, type_arguments, span)
-            }
+            Intrinsic::Add
+            | Intrinsic::Sub
+            | Intrinsic::Mul
+            | Intrinsic::Div
+            | Intrinsic::And
+            | Intrinsic::Or
+            | Intrinsic::Xor => type_check_binary_op(ctx, kind, arguments, type_arguments, span),
             Intrinsic::Revert => type_check_revert(ctx, kind, arguments, type_arguments, span),
             Intrinsic::PtrAdd | Intrinsic::PtrSub => {
                 type_check_ptr_ops(ctx, kind, arguments, type_arguments, span)
@@ -987,6 +991,18 @@ fn type_check_log(
 ///
 /// Signature: `__div<T>(lhs: T, rhs: T) -> T`
 /// Description: Divides `lhs` and `rhs` and returns the result.
+/// Constraints: `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+///
+/// Signature: `__and<T>(lhs: T, rhs: T) -> T`
+/// Description: Bitwise And of `lhs` and `rhs` and returns the result.
+/// Constraints: `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+///
+/// Signature: `__or<T>(lhs: T, rhs: T) -> T`
+/// Description: Bitwise Or `lhs` and `rhs` and returns the result.
+/// Constraints: `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+///
+/// Signature: `__xor<T>(lhs: T, rhs: T) -> T`
+/// Description: Bitwise Xor `lhs` and `rhs` and returns the result.
 /// Constraints: `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
 fn type_check_binary_op(
     mut ctx: TypeCheckContext,

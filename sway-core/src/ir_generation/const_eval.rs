@@ -1,3 +1,5 @@
+use std::ops::{BitAnd, BitOr, BitXor};
+
 use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
     decl_engine::DeclEngine,
@@ -474,7 +476,10 @@ fn const_eval_intrinsic(
         sway_ast::Intrinsic::Add
         | sway_ast::Intrinsic::Sub
         | sway_ast::Intrinsic::Mul
-        | sway_ast::Intrinsic::Div => {
+        | sway_ast::Intrinsic::Div
+        | sway_ast::Intrinsic::And
+        | sway_ast::Intrinsic::Or
+        | sway_ast::Intrinsic::Xor => {
             let ty = args[0].ty;
             assert!(
                 args.len() == 2 && ty.is_uint(lookup.context) && ty.eq(lookup.context, &args[1].ty)
@@ -489,6 +494,9 @@ fn const_eval_intrinsic(
                 sway_ast::Intrinsic::Sub => arg1.checked_sub(*arg2),
                 sway_ast::Intrinsic::Mul => arg1.checked_mul(*arg2),
                 sway_ast::Intrinsic::Div => arg1.checked_div(*arg2),
+                sway_ast::Intrinsic::And => Some(arg1.bitand(arg2)),
+                sway_ast::Intrinsic::Or => Some(arg1.bitor(*arg2)),
+                sway_ast::Intrinsic::Xor => Some(arg1.bitxor(*arg2)),
                 _ => unreachable!(),
             };
             match result {

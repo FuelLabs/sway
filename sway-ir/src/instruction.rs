@@ -190,6 +190,9 @@ pub enum BinaryOpKind {
     Sub,
     Mul,
     Div,
+    And,
+    Or,
+    Xor,
 }
 
 /// Special registers in the Fuel Virtual Machine.

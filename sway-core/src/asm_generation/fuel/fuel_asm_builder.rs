@@ -545,6 +545,9 @@ impl<'ir> FuelAsmBuilder<'ir> {
             BinaryOpKind::Sub => Either::Left(VirtualOp::SUB(res_reg.clone(), val1_reg, val2_reg)),
             BinaryOpKind::Mul => Either::Left(VirtualOp::MUL(res_reg.clone(), val1_reg, val2_reg)),
             BinaryOpKind::Div => Either::Left(VirtualOp::DIV(res_reg.clone(), val1_reg, val2_reg)),
+            BinaryOpKind::And => Either::Left(VirtualOp::AND(res_reg.clone(), val1_reg, val2_reg)),
+            BinaryOpKind::Or => Either::Left(VirtualOp::OR(res_reg.clone(), val1_reg, val2_reg)),
+            BinaryOpKind::Xor => Either::Left(VirtualOp::XOR(res_reg.clone(), val1_reg, val2_reg)),
         };
         self.cur_bytecode.push(Op {
             opcode,

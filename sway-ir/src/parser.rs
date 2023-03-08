@@ -159,6 +159,9 @@ mod ir_builder {
                 / "sub" _ { BinaryOpKind::Sub }
                 / "mul" _ { BinaryOpKind::Mul }
                 / "div" _ { BinaryOpKind::Div }
+                / "and" _ { BinaryOpKind::And }
+                / "or" _ { BinaryOpKind::Or }
+                / "xor" _ { BinaryOpKind::Xor }
 
             rule operation() -> IrAstOperation
                 = op_addr_of()
