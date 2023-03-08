@@ -604,7 +604,7 @@ fn perform_control_flow_analysis(
     };
     if let Some(graph) = dca_res.clone().value {
         if print_graph {
-            graph.visualize();
+            graph.visualize(engines);
         }
     }
     dca_res.flat_map(|_| rpa_res)

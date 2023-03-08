@@ -679,7 +679,7 @@ impl BuildPlan {
         self.compilation_order()
             .iter()
             .cloned()
-            .filter(|&n| self.graph[n].source == source::Pinned::Member)
+            .filter(|&n| self.graph[n].source == source::Pinned::MEMBER)
     }
 
     /// Produce an iterator yielding all workspace member pinned pkgs in order of compilation.
@@ -806,7 +806,7 @@ fn validate_pkg_version(pkg_manifest: &PackageManifestFile) -> Result<()> {
 
 fn member_nodes(g: &Graph) -> impl Iterator<Item = NodeIx> + '_ {
     g.node_indices()
-        .filter(|&n| g[n].source == source::Pinned::Member)
+        .filter(|&n| g[n].source == source::Pinned::MEMBER)
 }
 
 /// Validates the state of the pinned package graph against the given ManifestFile.
@@ -1041,12 +1041,7 @@ impl Pinned {
 
     /// Retrieve the unpinned version of this source.
     pub fn unpinned(&self, path: &Path) -> Pkg {
-        let source = match &self.source {
-            source::Pinned::Member => Source::Member(path.to_owned()),
-            source::Pinned::Git(git) => Source::Git(git.source.clone()),
-            source::Pinned::Path(_) => Source::Path(path.to_owned()),
-            source::Pinned::Registry(reg) => Source::Registry(reg.source.clone()),
-        };
+        let source = self.source.unpinned(path);
         let name = self.name.clone();
         Pkg { name, source }
     }
@@ -1206,8 +1201,8 @@ fn validate_path_root(graph: &Graph, path_dep: NodeIx, path_root: PinnedId) -> R
 fn find_path_root(graph: &Graph, mut node: NodeIx) -> Result<NodeIx> {
     loop {
         let pkg = &graph[node];
-        match &pkg.source {
-            source::Pinned::Path(src) => {
+        match pkg.source {
+            source::Pinned::Path(ref src) => {
                 let parent = graph
                     .edges_directed(node, Direction::Incoming)
                     .next()
@@ -1220,7 +1215,7 @@ fn find_path_root(graph: &Graph, mut node: NodeIx) -> Result<NodeIx> {
                     })?;
                 node = parent;
             }
-            source::Pinned::Git(_) | source::Pinned::Registry(_) | source::Pinned::Member => {
+            source::Pinned::Git(_) | source::Pinned::Registry(_) | source::Pinned::Member(_) => {
                 return Ok(node);
             }
         }
@@ -1279,7 +1274,7 @@ fn fetch_pkg_graph(
         Ok(proj_node) => proj_node,
         Err(_) => {
             let name = proj_manifest.project.name.clone();
-            let source = source::Pinned::Member;
+            let source = source::Pinned::MEMBER;
             let pkg = Pinned { name, source };
             let pkg_id = pkg.id();
             manifest_map.insert(pkg_id, proj_manifest.clone());
@@ -1398,7 +1393,7 @@ fn fetch_deps(
         })?;
 
         let path_root = match dep_pinned.source {
-            source::Pinned::Member | source::Pinned::Git(_) | source::Pinned::Registry(_) => {
+            source::Pinned::Member(_) | source::Pinned::Git(_) | source::Pinned::Registry(_) => {
                 dep_pkg_id
             }
             source::Pinned::Path(_) => path_root,
