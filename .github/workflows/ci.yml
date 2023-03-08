@@ -265,20 +265,51 @@ jobs:
       - name: Cargo Run E2E Tests (EVM)
         run: cargo run --locked --release --bin test -- --target midenvm --locked
 
-  # TODO: Remove this upon merging std tests with the rest of the E2E tests.
-  cargo-test-lib-std:
+  cargo-test-lib-std-build-artifacts:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
+      - name: Install nextest
+        uses: taiki-e/install-action@nextest
       - name: Build All Tests
         run: cd test/src/sdk-harness && bash build.sh --locked && cd ../../../
-      - name: Cargo Test sway-lib-std
-        run: cargo test --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
+      - name: Build and archive tests
+        run: cargo nextest archive --manifest-path ./test/src/sdk-harness/Cargo.toml --archive-file nextest-archive.tar.zst
+      - name: Upload archive to workflow
+        uses: actions/upload-artifact@v3
+        with:
+          name: nextest-archive
+          path: nextest-archive.tar.zst
+
+  # TODO: Remove this upon merging std tests with the rest of the E2E tests.
+  cargo-test-lib-std:
+    runs-on: ubuntu-latest
+    needs: cargo-test-lib-std-build-artifacts
+    strategy:
+      matrix:
+        partition: [1, 2]
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - run: mkdir -p ~/.cargo/bin
+      - name: Install nextest
+        uses: taiki-e/install-action@nextest
+      - name: Download archive
+        uses: actions/download-artifact@v3
+        with:
+          name: nextest-archive
+      - name: Run tests
+        run: |
+          ~/.cargo/bin/cargo-nextest nextest run --manifest-path ./test/src/sdk-harness/Cargo.toml --archive-file nextest-archive.tar.zst \
+            --partition count:${{ matrix.partition }}/2 -- -- --nocapture
 
   forc-unit-tests:
     runs-on: ubuntu-latest
@@ -329,7 +360,6 @@ jobs:
               ;;
           esac
 
- 
   cargo-test-workspace:
     runs-on: ubuntu-latest
     steps:
