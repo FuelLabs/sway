@@ -522,7 +522,13 @@ fn const_eval_intrinsic(
                 value: ConstantValue::Uint(ir_type_size_in_bytes(lookup.context, &ir_type)),
             }))
         }
-        sway_ast::Intrinsic::Eq => Ok(None),
+        sway_ast::Intrinsic::Eq => {
+            assert!(args.len() == 2);
+            Ok(Some(Constant {
+                ty: Type::get_bool(lookup.context),
+                value: ConstantValue::Bool(args[0].eq(lookup.context, &args[1])),
+            }))
+        }
         sway_ast::Intrinsic::AddrOf => Ok(None),
         sway_ast::Intrinsic::PtrAdd => Ok(None),
         sway_ast::Intrinsic::PtrSub => Ok(None),

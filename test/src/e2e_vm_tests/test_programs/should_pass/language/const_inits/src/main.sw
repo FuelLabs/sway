@@ -29,6 +29,8 @@ const X_SIZE: u64 = 4;
 const Y_SIZE: u64 = 2;
 const XPY = ((X_SIZE + Y_SIZE - 1) * 2) / 5;
 const EN0A = En1::Int(XPY);
+const TRUEB: bool = X_SIZE == 4;
+const FALSEB: bool = X_SIZE == Y_SIZE;
 
 const SO = __size_of::<u64>();
 const SOV = __size_of_val("hello");
@@ -107,6 +109,7 @@ fn main() -> u64 {
     assert(XPY == 2);
     assert(SO == __size_of::<u64>());
     assert(SOV == __size_of_val("hello"));
+    assert(TRUEB != FALSEB);
 
     1
 }
