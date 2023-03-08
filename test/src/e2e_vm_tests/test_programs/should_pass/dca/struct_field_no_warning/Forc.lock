@@ -1,0 +1,3 @@
+[[package]]
+name = 'struct_field_no_warning'
+source = 'member'

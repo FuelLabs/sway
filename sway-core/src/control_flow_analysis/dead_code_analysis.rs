@@ -1219,6 +1219,14 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 graph.add_edge(*leaf, this_ix, "".into());
             }
             graph.add_edge(this_ix, field_ix, "".into());
+
+            if let Some(struct_node_ix) = graph
+                .namespace
+                .find_struct_decl(resolved_type_of_parent.suffix.as_str())
+            {
+                graph.add_edge(this_ix, *struct_node_ix, "".into());
+            }
+
             Ok(vec![this_ix])
         }
         AsmExpression { registers, .. } => {
