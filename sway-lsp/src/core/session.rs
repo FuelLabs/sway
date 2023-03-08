@@ -265,8 +265,9 @@ impl Session {
         let compiled_program = &*self.compiled_program.read();
 
         if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.typed.clone() {
+            let program = compiled_program.typed.clone()?;
             return Some(capabilities::completion::to_completion_items(
-                &compiled_program.typed.clone().unwrap().root.namespace,
+                &program.root.namespace,
                 Engines::new(&self.type_engine.read(), &self.decl_engine.read()),
                 &ident_to_complete,
                 &fn_decl,
