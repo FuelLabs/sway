@@ -1357,7 +1357,7 @@ impl Renderable for ModuleIndex {
                                         @ for anchor in rendered_module_anchors {
                                             : Raw(anchor);
                                         }
-                                        a(class="mod", href=IDENTITY) {
+                                        a(class=BlockTitle::Modules.class_title_str(), href=IDENTITY) {
                                             : self.module_info.location();
                                         }
                                     }
