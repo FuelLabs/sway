@@ -8,6 +8,7 @@
 //! 4. Add variant support to the `from_manifest_dep` and `FromStr` implementations.
 
 pub mod git;
+mod member;
 pub mod path;
 mod reg;
 
@@ -54,7 +55,7 @@ type FetchId = u64;
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub enum Source {
     /// Used to refer to a workspace member project.
-    Member(PathBuf),
+    Member(member::Source),
     /// A git repo with a `Forc.toml` manifest at its root.
     Git(git::Source),
     /// A path to a directory with a `Forc.toml` manifest at its root.
@@ -69,7 +70,7 @@ pub enum Source {
 /// pinned version or commit is updated upon creation of the lock file and on `forc update`.
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
 pub enum Pinned {
-    Member,
+    Member(member::Pinned),
     Git(git::Pinned),
     Path(path::Pinned),
     Registry(reg::Pinned),
@@ -135,7 +136,7 @@ impl Source {
                         .values()
                         .any(|pkg_manifest| pkg_manifest.dir() == canonical_path)
                     {
-                        Source::Member(canonical_path)
+                        Source::Member(member::Source(canonical_path))
                     } else {
                         Source::Path(canonical_path)
                     }
@@ -211,7 +212,7 @@ impl Source {
 
     /// Attempt to determine the pinned version or commit for the source.
     ///
-    /// Also updates the `path_map` with a path to the local copy of the source.
+    /// Also updates the manifest map with a path to the local copy of the pkg.
     ///
     /// The `path_root` is required for `Path` dependencies and must specify the package that is the
     /// root of the current subgraph of path dependencies.
@@ -223,7 +224,6 @@ impl Source {
             Pinned: From<T::Pinned>,
         {
             let (pinned, fetch_path) = source.pin(ctx.clone())?;
-            // TODO: Could potentially omit `name`? Breaks all existing locks though...
             let id = PinnedId::new(ctx.name(), &Pinned::from(pinned.clone()));
             if let hash_map::Entry::Vacant(entry) = manifests.entry(id) {
                 entry.insert(pinned.fetch(ctx, &fetch_path)?);
@@ -231,7 +231,7 @@ impl Source {
             Ok(pinned)
         }
         match self {
-            Source::Member(_path) => Ok(Pinned::Member),
+            Source::Member(source) => Ok(Pinned::Member(f(source, ctx, manifests)?)),
             Source::Path(source) => Ok(Pinned::Path(f(source, ctx, manifests)?)),
             Source::Git(source) => Ok(Pinned::Git(f(source, ctx, manifests)?)),
             Source::Registry(source) => Ok(Pinned::Registry(f(source, ctx, manifests)?)),
@@ -240,10 +240,12 @@ impl Source {
 }
 
 impl Pinned {
+    pub(crate) const MEMBER: Self = Self::Member(member::Pinned);
+
     /// Return how the pinned source for a dependency can be found on the local file system.
     pub(crate) fn dep_path(&self, name: &str) -> Result<DependencyPath> {
         match self {
-            Self::Member => Ok(DependencyPath::Member),
+            Self::Member(pinned) => pinned.dep_path(name),
             Self::Path(pinned) => pinned.dep_path(name),
             Self::Git(pinned) => pinned.dep_path(name),
             Self::Registry(pinned) => pinned.dep_path(name),
@@ -272,6 +274,16 @@ impl Pinned {
             manifest_dir,
         }
     }
+
+    /// Retrieve the unpinned instance of this source.
+    pub fn unpinned(&self, path: &Path) -> Source {
+        match self {
+            Self::Member(_) => Source::Member(member::Source(path.to_owned())),
+            Self::Git(git) => Source::Git(git.source.clone()),
+            Self::Path(_) => Source::Path(path.to_owned()),
+            Self::Registry(reg) => Source::Registry(reg.source.clone()),
+        }
+    }
 }
 
 impl<'a> PinCtx<'a> {
@@ -292,7 +304,7 @@ impl<'a> PinCtx<'a> {
 impl fmt::Display for Pinned {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::Member => write!(f, "member"),
+            Self::Member(src) => src.fmt(f),
             Self::Path(src) => src.fmt(f),
             Self::Git(src) => src.fmt(f),
             Self::Registry(_reg) => todo!("pkg registries not yet implemented"),
@@ -303,7 +315,7 @@ impl fmt::Display for Pinned {
 impl<'a> fmt::Display for DisplayCompiling<'a, Pinned> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.source {
-            Pinned::Member => self.manifest_dir.display().fmt(f),
+            Pinned::Member(_) => self.manifest_dir.display().fmt(f),
             Pinned::Path(_src) => self.manifest_dir.display().fmt(f),
             Pinned::Git(src) => src.fmt(f),
             Pinned::Registry(_src) => todo!("registry dependencies not yet implemented"),
@@ -317,7 +329,7 @@ impl FromStr for Pinned {
         // Also check `"root"` to support reading the legacy `Forc.lock` format and to
         // avoid breaking old projects.
         let source = if s == "root" || s == "member" {
-            Self::Member
+            Self::Member(member::Pinned)
         } else if let Ok(src) = path::Pinned::from_str(s) {
             Self::Path(src)
         } else if let Ok(src) = git::Pinned::from_str(s) {
