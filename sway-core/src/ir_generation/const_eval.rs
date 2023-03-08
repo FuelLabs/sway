@@ -91,13 +91,13 @@ pub(crate) fn compile_const_decl(
             // See if we it's a global const and whether we can compile it *now*.
             let decl = module_ns.check_symbol(name)?;
             let decl_name_value = match decl {
-                ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
+                ty::TyDeclaration::ConstantDeclaration(decl_ref) => {
                     let ty::TyConstantDeclaration {
                         name,
                         value,
                         is_configurable,
                         ..
-                    } = env.decl_engine.get_constant(decl_id);
+                    } = env.decl_engine.get_constant(decl_ref);
                     Some((name, value, is_configurable))
                 }
                 _otherwise => None,

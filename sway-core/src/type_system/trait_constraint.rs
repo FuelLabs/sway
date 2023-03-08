@@ -188,8 +188,8 @@ impl TraitConstraint {
             .ok(&mut warnings, &mut errors)
             .cloned()
         {
-            Some(ty::TyDeclaration::TraitDeclaration { decl_id, .. }) => {
-                let mut trait_decl = decl_engine.get_trait(&decl_id);
+            Some(ty::TyDeclaration::TraitDeclaration(decl_ref)) => {
+                let mut trait_decl = decl_engine.get_trait(&decl_ref);
 
                 // Monomorphize the trait declaration.
                 check!(

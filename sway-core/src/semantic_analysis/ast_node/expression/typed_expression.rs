@@ -406,12 +406,12 @@ impl ty::TyExpression {
                     span,
                 }
             }
-            Some(ty::TyDeclaration::ConstantDeclaration { decl_id, .. }) => {
+            Some(ty::TyDeclaration::ConstantDeclaration(decl_ref)) => {
                 let ty::TyConstantDeclaration {
                     name: decl_name,
                     type_ascription,
                     ..
-                } = decl_engine.get_constant(decl_id);
+                } = decl_engine.get_constant(decl_ref);
                 ty::TyExpression {
                     return_type: type_ascription.type_id,
                     // Although this isn't strictly a 'variable' expression we can treat it as one for
@@ -425,8 +425,8 @@ impl ty::TyExpression {
                     span,
                 }
             }
-            Some(ty::TyDeclaration::AbiDeclaration { decl_id, .. }) => {
-                let decl = decl_engine.get_abi(decl_id);
+            Some(ty::TyDeclaration::AbiDeclaration(decl_ref)) => {
+                let decl = decl_engine.get_abi(decl_ref);
                 ty::TyExpression {
                     return_type: decl.create_type_id(engines),
                     expression: ty::TyExpressionVariant::AbiName(AbiName::Known(decl.name.into())),
@@ -1261,7 +1261,7 @@ impl ty::TyExpression {
             span,
             ..
         } = match abi {
-            ty::TyDeclaration::AbiDeclaration { decl_id, .. } => decl_engine.get_abi(&decl_id),
+            ty::TyDeclaration::AbiDeclaration(decl_ref) => decl_engine.get_abi(&decl_ref),
             ty::TyDeclaration::VariableDeclaration(ref decl) => {
                 let ty::TyVariableDeclaration { body: expr, .. } = &**decl;
                 let ret_ty = type_engine.get(expr.return_type);
