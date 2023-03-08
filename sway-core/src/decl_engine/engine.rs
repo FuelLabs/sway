@@ -130,65 +130,65 @@ impl DeclEngine {
             .or_insert_with(|| vec![parent]);
     }
 
-    pub fn get_function<'a, T, I>(&self, index: &'a T) -> ty::TyFunctionDeclaration
+    pub fn get_function<'a, T>(&self, index: &'a T) -> ty::TyFunctionDeclaration
     where
-        DeclId<I>: From<&'a T>,
+        DeclId<ty::TyFunctionDeclaration>: From<&'a T>,
     {
         self.function_slab.get(DeclId::from(index).inner())
     }
 
-    pub fn get_trait<'a, T, I>(&self, index: &'a T) -> ty::TyTraitDeclaration
+    pub fn get_trait<'a, T>(&self, index: &'a T) -> ty::TyTraitDeclaration
     where
-        DeclId<I>: From<&'a T>,
+        DeclId<ty::TyTraitDeclaration>: From<&'a T>,
     {
         self.trait_slab.get(DeclId::from(index).inner())
     }
 
-    pub fn get_trait_fn<'a, T, I>(&self, index: &'a T) -> ty::TyTraitFn
+    pub fn get_trait_fn<'a, T>(&self, index: &'a T) -> ty::TyTraitFn
     where
-        DeclId<I>: From<&'a T>,
+        DeclId<ty::TyTraitFn>: From<&'a T>,
     {
         self.trait_fn_slab.get(DeclId::from(index).inner())
     }
 
-    pub fn get_impl_trait<'a, T, I>(&self, index: &'a T) -> ty::TyImplTrait
+    pub fn get_impl_trait<'a, T>(&self, index: &'a T) -> ty::TyImplTrait
     where
-        DeclId<I>: From<&'a T>,
+        DeclId<ty::TyImplTrait>: From<&'a T>,
     {
         self.impl_trait_slab.get(DeclId::from(index).inner())
     }
 
-    pub fn get_struct<'a, T, I>(&self, index: &'a T) -> ty::TyStructDeclaration
+    pub fn get_struct<'a, T>(&self, index: &'a T) -> ty::TyStructDeclaration
     where
-        DeclId<I>: From<&'a T>,
+        DeclId<ty::TyStructDeclaration>: From<&'a T>,
     {
         self.struct_slab.get(DeclId::from(index).inner())
     }
 
-    pub fn get_storage<'a, T, I>(&self, index: &'a T) -> ty::TyStorageDeclaration
+    pub fn get_storage<'a, T>(&self, index: &'a T) -> ty::TyStorageDeclaration
     where
-        DeclId<I>: From<&'a T>,
+        DeclId<ty::TyStorageDeclaration>: From<&'a T>,
     {
         self.storage_slab.get(DeclId::from(index).inner())
     }
 
-    pub fn get_abi<'a, T, I>(&self, index: &'a T) -> ty::TyAbiDeclaration
+    pub fn get_abi<'a, T>(&self, index: &'a T) -> ty::TyAbiDeclaration
     where
-        DeclId<I>: From<&'a T>,
+        DeclId<ty::TyAbiDeclaration>: From<&'a T>,
     {
         self.abi_slab.get(DeclId::from(index).inner())
     }
 
-    pub fn get_constant<'a, T, I>(&self, index: &'a T) -> ty::TyConstantDeclaration
+    pub fn get_constant<'a, T>(&self, index: &'a T) -> ty::TyConstantDeclaration
     where
-        DeclId<I>: From<&'a T>,
+        DeclId<ty::TyConstantDeclaration>: From<&'a T>,
     {
         self.constant_slab.get(DeclId::from(index).inner())
     }
 
-    pub fn get_enum<'a, T, I>(&self, index: &'a T) -> ty::TyEnumDeclaration
+    pub fn get_enum<'a, T>(&self, index: &'a T) -> ty::TyEnumDeclaration
     where
-        DeclId<I>: From<&'a T>,
+        DeclId<ty::TyEnumDeclaration>: From<&'a T>,
     {
         self.enum_slab.get(DeclId::from(index).inner())
     }
