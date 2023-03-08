@@ -441,13 +441,8 @@ fn item_fn_to_function_declaration(
             item_fn.fn_signature.arguments.into_inner(),
         )?,
         span,
-<<<<<<< HEAD
-        return_type: match item_fn.fn_signature.return_type {
-            Some((_right_arrow, ty)) => ty_to_type_info(handler, engines, ty)?,
-=======
         return_type: match item_fn.fn_signature.return_type_opt {
             Some((_right_arrow, ty)) => ty_to_type_info(context, handler, engines, ty)?,
->>>>>>> master
             None => TypeInfo::Tuple(Vec::new()),
         },
         type_parameters: generic_params_opt_to_type_parameters(
@@ -1153,13 +1148,8 @@ fn fn_signature_to_trait_fn(
             engines,
             fn_signature.arguments.into_inner(),
         )?,
-<<<<<<< HEAD
-        return_type: match fn_signature.return_type {
-            Some((_right_arrow_token, ty)) => ty_to_type_info(handler, engines, ty)?,
-=======
         return_type: match fn_signature.return_type_opt {
             Some((_right_arrow_token, ty)) => ty_to_type_info(context, handler, engines, ty)?,
->>>>>>> master
             None => TypeInfo::Tuple(Vec::new()),
         },
         return_type_span,
