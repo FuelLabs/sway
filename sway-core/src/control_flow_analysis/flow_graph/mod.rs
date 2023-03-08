@@ -5,6 +5,7 @@ use std::collections::HashMap;
 
 use crate::{
     decl_engine::*,
+    engine_threading::DisplayWithEngines,
     language::ty::{self, GetDeclIdent},
     transform, Engines, Ident,
 };
@@ -117,11 +118,11 @@ impl<'cfg> std::convert::From<&str> for ControlFlowGraphNode<'cfg> {
     }
 }
 
-impl<'cfg> std::fmt::Debug for ControlFlowGraphNode<'cfg> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl<'cfg> DisplayWithEngines for ControlFlowGraphNode<'cfg> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, engines: Engines<'_>) -> std::fmt::Result {
         let text = match self {
             ControlFlowGraphNode::OrganizationalDominator(s) => s.to_string(),
-            ControlFlowGraphNode::ProgramNode { node, .. } => format!("{node:?}"),
+            ControlFlowGraphNode::ProgramNode { node, .. } => engines.help_out(node).to_string(),
             ControlFlowGraphNode::EnumVariant { variant_name, .. } => {
                 format!("Enum variant {variant_name}")
             }
@@ -195,11 +196,16 @@ impl<'cfg> ControlFlowGraph<'cfg> {
     }
 
     /// Prints out GraphViz DOT format for this graph.
-    pub(crate) fn visualize(&self) {
+    pub(crate) fn visualize(&self, engines: Engines<'_>) {
         use petgraph::dot::{Config, Dot};
+        let string_graph = self.graph.filter_map(
+            |_idx, node| Some(engines.help_out(node).to_string()),
+            |_idx, edge| Some(edge.0.clone()),
+        );
+
         tracing::info!(
             "{:?}",
-            Dot::with_config(&self.graph, &[Config::EdgeNoLabel])
+            Dot::with_config(&string_graph, &[Config::EdgeNoLabel])
         );
     }
 }

@@ -78,7 +78,9 @@ impl Root {
                     name: call_path.suffix.clone(),
                     span: call_path.suffix.span(),
                 });
-                return err(warnings, errors);
+                // Returns ok with error, this allows functions which call this to
+                // also access the returned TyDeclaration and throw more suitable errors.
+                return ok(decl, warnings, errors);
             }
         }
 
