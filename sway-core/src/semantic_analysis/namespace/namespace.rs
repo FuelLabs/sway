@@ -105,6 +105,16 @@ impl Namespace {
         self.root.resolve_call_path(&self.mod_path, call_path)
     }
 
+    /// Short-hand for calling [Root::resolve_call_path_with_visibility_check] on `root` with the `mod_path`.
+    pub(crate) fn resolve_call_path_with_visibility_check(
+        &self,
+        engines: Engines<'_>,
+        call_path: &CallPath,
+    ) -> CompileResult<&ty::TyDeclaration> {
+        self.root
+            .resolve_call_path_with_visibility_check(engines, &self.mod_path, call_path)
+    }
+
     /// Short-hand for calling [Root::resolve_type_with_self] on `root` with the `mod_path`.
     pub(crate) fn resolve_type_with_self(
         &mut self,

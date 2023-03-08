@@ -1,5 +1,5 @@
 library testlib;
 
-fn foo() {
+pub fn foo() {
     log(1);
 }
