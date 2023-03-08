@@ -1,5 +1,5 @@
 library bar;
 
-enum Bar {
+pub enum Bar {
     Baz: bool,
 }
