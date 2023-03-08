@@ -371,8 +371,8 @@ impl LanguageServer for Backend {
     ) -> jsonrpc::Result<Option<CompletionResponse>> {
         let trigger_char = params
             .context
-            .unwrap()
-            .trigger_character
+            .map(|ctx| ctx.trigger_character)
+            .unwrap_or_default()
             .unwrap_or("".to_string());
         let position = params.text_document_position.position;
         match self.get_uri_and_session(&params.text_document_position.text_document.uri) {
