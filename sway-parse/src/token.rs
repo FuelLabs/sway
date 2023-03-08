@@ -5,13 +5,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use sway_ast::literal::{LitChar, LitInt, LitIntType, LitString, Literal};
 use sway_ast::token::{
-<<<<<<< HEAD
-    ClosingDelimiter, Comment, CommentedGroup, CommentedTokenStream, CommentedTokenTree,
-    Delimiters, DocComment, DocStyle, OpeningDelimiter, Punct, PunctKind, Spacing, TokenStream,
-=======
-    Comment, CommentKind, CommentedGroup, CommentedTokenStream, CommentedTokenTree, Delimiter,
-    DocComment, DocStyle, GenericTokenTree, Punct, PunctKind, Spacing, TokenStream,
->>>>>>> master
+    ClosingDelimiter, Comment, CommentKind, CommentedGroup, CommentedTokenStream,
+    CommentedTokenTree, Delimiters, DocComment, DocStyle, GenericTokenTree, OpeningDelimiter,
+    Punct, PunctKind, Spacing, TokenStream,
 };
 use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};

@@ -458,15 +458,9 @@ impl Parse for FnSignature {
         }
         insert_keyword(ctx, self.fn_token.span());
 
-<<<<<<< HEAD
-        self.arguments.get().parse(tokens);
-        if let Some((.., ty)) = &self.return_type {
-            ty.parse(tokens);
-=======
         self.arguments.get().parse(ctx);
-        if let Some((.., ty)) = &self.return_type_opt {
+        if let Some((.., ty)) = &self.return_type {
             ty.parse(ctx);
->>>>>>> master
         }
         if let Some(where_clause) = &self.where_clause_opt {
             insert_keyword(ctx, where_clause.where_token.span());
