@@ -281,7 +281,7 @@ jobs:
       - name: Build All Tests
         run: cd test/src/sdk-harness && bash build.sh --locked && cd ../../../
       - name: Build and archive tests
-        run: cargo nextest archive --archive-file nextest-archive.tar.zst
+        run: cargo nextest archive --manifest-path ./test/src/sdk-harness/Cargo.toml --archive-file nextest-archive.tar.zst
       - name: Upload archive to workflow
         uses: actions/upload-artifact@v3
         with:
@@ -308,7 +308,7 @@ jobs:
           name: nextest-archive
       - name: Run tests
         run: |
-          ~/.cargo/bin/cargo-nextest nextest run --manifest-path ./test/src/sdk-harness/Cargo.toml --archive-file nextest-archive.tar.zst \
+          ~/.cargo/bin/cargo-nextest nextest run --archive-file nextest-archive.tar.zst \
             --partition count:${{ matrix.partition }}/2 -- -- --nocapture
 
   forc-unit-tests:
