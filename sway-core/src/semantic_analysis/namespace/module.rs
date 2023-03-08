@@ -103,10 +103,18 @@ impl Module {
                 engines,
                 const_item,
                 attributes,
+                true,
             )?;
 
             // Temporarily disallow non-literals. See https://github.com/FuelLabs/sway/issues/2647.
-            if !matches!(const_decl.value.kind, ExpressionKind::Literal(_)) {
+            let has_literal = match &const_decl.value {
+                Some(value) => {
+                    matches!(value.kind, ExpressionKind::Literal(_))
+                }
+                None => false,
+            };
+
+            if !has_literal {
                 return Err(
                     handler.emit_err(CompileError::ConfigTimeConstantNotALiteral {
                         span: const_item_span,
@@ -150,8 +158,7 @@ impl Module {
     }
 
     /// Insert a submodule into this `Module`.
-    pub fn insert_submodule(&mut self, name: String, mut submodule: Module) {
-        submodule.name = Some(Ident::new_no_span(Box::leak(name.clone().into_boxed_str())));
+    pub fn insert_submodule(&mut self, name: String, submodule: Module) {
         self.submodules.insert(name, submodule);
     }
 
@@ -360,10 +367,13 @@ impl Module {
                     errors
                 );
                 if visibility != Visibility::Public {
-                    errors.push(CompileError::ImportPrivateSymbol { name: item.clone() });
+                    errors.push(CompileError::ImportPrivateSymbol {
+                        name: item.clone(),
+                        span: item.span(),
+                    });
                 }
 
-                let type_id = decl.return_type(engines, &item.span()).value;
+                let type_id = decl.return_type(engines).value;
                 //  if this is an enum or struct or function, import its implementations
                 if let Some(type_id) = type_id {
                     impls_to_insert.extend(
@@ -394,7 +404,10 @@ impl Module {
                 };
             }
             None => {
-                errors.push(CompileError::SymbolNotFound { name: item.clone() });
+                errors.push(CompileError::SymbolNotFound {
+                    name: item.clone(),
+                    span: item.span(),
+                });
                 return err(warnings, errors);
             }
         };
@@ -423,14 +436,14 @@ impl<'a> std::ops::Index<&'a Path> for Module {
     type Output = Module;
     fn index(&self, path: &'a Path) -> &Self::Output {
         self.submodule(path)
-            .unwrap_or_else(|| panic!("no module for the given path {:?}", path))
+            .unwrap_or_else(|| panic!("no module for the given path {path:?}"))
     }
 }
 
 impl<'a> std::ops::IndexMut<&'a Path> for Module {
     fn index_mut(&mut self, path: &'a Path) -> &mut Self::Output {
         self.submodule_mut(path)
-            .unwrap_or_else(|| panic!("no module for the given path {:?}", path))
+            .unwrap_or_else(|| panic!("no module for the given path {path:?}"))
     }
 }
 

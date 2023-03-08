@@ -77,7 +77,7 @@ pub(crate) fn exec(cmd: Command) -> Result<()> {
 fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> Result<()> {
     let succeeded = pkg.tests.iter().filter(|t| t.passed()).count();
     let failed = pkg.tests.len() - succeeded;
-    let mut failed_test_details = Vec::new();
+    let mut failed_tests = Vec::new();
     for test in &pkg.tests {
         let test_passed = test.passed();
         let (state, color) = match test_passed {
@@ -85,10 +85,11 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> Res
             false => ("FAILED", Colour::Red),
         };
         info!(
-            "      test {} ... {} ({:?})",
+            "      test {} ... {} ({:?}, {} gas)",
             test.name,
             color.paint(state),
-            test.duration
+            test.duration,
+            test.gas_used
         );
 
         // If logs are enabled, print them.
@@ -98,10 +99,9 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> Res
             info!("{}", formatted_logs);
         }
 
-        // If the test is failing, save details.
+        // If the test is failing, save the test result for printing the details later on.
         if !test_passed {
-            let details = test.details()?;
-            failed_test_details.push((test.name.clone(), details));
+            failed_tests.push(test);
         }
     }
     let (state, color) = match succeeded == pkg.tests.len() {
@@ -110,13 +110,28 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> Res
     };
     if failed != 0 {
         info!("\n   failures:");
-        for (failed_test_name, failed_test_detail) in failed_test_details {
-            let path = &*failed_test_detail.file_path;
-            let line_number = failed_test_detail.line_number;
+        for failed_test in failed_tests {
+            let failed_test_name = &failed_test.name;
+            let failed_test_details = failed_test.details()?;
+            let path = &*failed_test_details.file_path;
+            let line_number = failed_test_details.line_number;
+            let logs = &failed_test.logs;
+            let formatted_logs = format_log_receipts(logs, test_print_opts.pretty_print)?;
             info!(
                 "      - test {}, {:?}:{} ",
                 failed_test_name, path, line_number
             );
+            if let Some(revert_code) = failed_test.revert_code() {
+                // If we have a revert_code, try to get a known error signal
+                let mut failed_info_str = format!("        revert code: {revert_code:x}");
+                let error_signal = failed_test.error_signal().ok();
+                if let Some(error_signal) = error_signal {
+                    let error_signal_str = error_signal.to_string();
+                    failed_info_str.push_str(&format!(" -- {error_signal_str}"));
+                }
+                info!("{failed_info_str}");
+            }
+            info!("        Logs: {}", formatted_logs);
         }
         info!("\n");
     }
@@ -140,28 +155,30 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> Res
 fn opts_from_cmd(cmd: Command) -> forc_test::Opts {
     forc_test::Opts {
         pkg: pkg::PkgOpts {
-            path: cmd.build.path,
-            offline: cmd.build.offline_mode,
-            terse: cmd.build.terse_mode,
-            locked: cmd.build.locked,
-            output_directory: cmd.build.output_directory,
+            path: cmd.build.pkg.path,
+            offline: cmd.build.pkg.offline,
+            terse: cmd.build.pkg.terse,
+            locked: cmd.build.pkg.locked,
+            output_directory: cmd.build.pkg.output_directory,
+            json_abi_with_callpaths: cmd.build.pkg.json_abi_with_callpaths,
         },
         print: pkg::PrintOpts {
-            ast: cmd.build.print_ast,
-            dca_graph: cmd.build.print_dca_graph,
-            finalized_asm: cmd.build.print_finalized_asm,
-            intermediate_asm: cmd.build.print_intermediate_asm,
-            ir: cmd.build.print_ir,
+            ast: cmd.build.print.ast,
+            dca_graph: cmd.build.print.dca_graph,
+            finalized_asm: cmd.build.print.finalized_asm,
+            intermediate_asm: cmd.build.print.intermediate_asm,
+            ir: cmd.build.print.ir,
         },
+        time_phases: cmd.build.print.time_phases,
         minify: pkg::MinifyOpts {
-            json_abi: cmd.build.minify_json_abi,
-            json_storage_slots: cmd.build.minify_json_storage_slots,
+            json_abi: cmd.build.minify.json_abi,
+            json_storage_slots: cmd.build.minify.json_storage_slots,
         },
+        build_profile: cmd.build.profile.build_profile,
+        release: cmd.build.profile.release,
+        error_on_warnings: cmd.build.profile.error_on_warnings,
+        binary_outfile: cmd.build.output.bin_file,
+        debug_outfile: cmd.build.output.debug_file,
         build_target: cmd.build.build_target,
-        build_profile: cmd.build.build_profile,
-        release: cmd.build.release,
-        time_phases: cmd.build.time_phases,
-        binary_outfile: cmd.build.binary_outfile,
-        debug_outfile: cmd.build.debug_outfile,
     }
 }

@@ -10,9 +10,8 @@ use crate::{
 use sway_error::error::CompileError;
 use sway_types::{ident::Ident, span::Span, Spanned};
 
-use fuel_abi_types::program_abi;
-
 use std::{
+    cmp::Ordering,
     collections::BTreeMap,
     fmt,
     hash::{Hash, Hasher},
@@ -27,20 +26,24 @@ pub struct TypeParameter {
     pub(crate) trait_constraints_span: Span,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl HashWithEngines for TypeParameter {
-    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
-        type_engine.get(self.type_id).hash(state, type_engine);
-        self.name_ident.hash(state);
-        self.trait_constraints.hash(state, type_engine);
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TypeParameter {
+            type_id,
+            name_ident,
+            trait_constraints,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            trait_constraints_span: _,
+            initial_type_id: _,
+        } = self;
+        let type_engine = engines.te();
+        type_engine.get(*type_id).hash(state, engines);
+        name_ident.hash(state);
+        trait_constraints.hash(state, engines);
     }
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TypeParameter {}
 impl PartialEqWithEngines for TypeParameter {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
@@ -50,6 +53,32 @@ impl PartialEqWithEngines for TypeParameter {
             .eq(&type_engine.get(other.type_id), engines)
             && self.name_ident == other.name_ident
             && self.trait_constraints.eq(&other.trait_constraints, engines)
+    }
+}
+
+impl OrdWithEngines for TypeParameter {
+    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
+        let TypeParameter {
+            type_id: lti,
+            name_ident: ln,
+            trait_constraints: ltc,
+            // these fields are not compared because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            trait_constraints_span: _,
+            initial_type_id: _,
+        } = self;
+        let TypeParameter {
+            type_id: rti,
+            name_ident: rn,
+            trait_constraints: rtc,
+            // these fields are not compared because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            trait_constraints_span: _,
+            initial_type_id: _,
+        } = other;
+        ln.cmp(rn)
+            .then_with(|| engines.te().get(*lti).cmp(&engines.te().get(*rti), engines))
+            .then_with(|| ltc.cmp(rtc, engines))
     }
 }
 
@@ -90,10 +119,44 @@ impl fmt::Debug for TypeParameter {
 }
 
 impl TypeParameter {
-    pub(crate) fn type_check(
+    /// Type check a list of [TypeParameter] and return a new list of
+    /// [TypeParameter]. This will also insert this new list into the current
+    /// namespace.
+    pub(crate) fn type_check_type_params(
         mut ctx: TypeCheckContext,
-        type_parameter: TypeParameter,
-    ) -> CompileResult<Self> {
+        type_params: Vec<TypeParameter>,
+        disallow_trait_constraints: bool,
+    ) -> CompileResult<Vec<TypeParameter>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        let mut new_type_params: Vec<TypeParameter> = vec![];
+
+        for type_param in type_params.into_iter() {
+            if disallow_trait_constraints && !type_param.trait_constraints.is_empty() {
+                let errors = vec![CompileError::WhereClauseNotYetSupported {
+                    span: type_param.trait_constraints_span,
+                }];
+                return err(vec![], errors);
+            }
+            new_type_params.push(check!(
+                TypeParameter::type_check(ctx.by_ref(), type_param),
+                continue,
+                warnings,
+                errors
+            ));
+        }
+
+        if errors.is_empty() {
+            ok(new_type_params, warnings, errors)
+        } else {
+            err(warnings, errors)
+        }
+    }
+
+    /// Type checks a [TypeParameter] (including its [TraitConstraint]s) and
+    /// inserts into into the current namespace.
+    fn type_check(mut ctx: TypeCheckContext, type_parameter: TypeParameter) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -158,29 +221,6 @@ impl TypeParameter {
         ok(type_parameter, warnings, errors)
     }
 
-    /// Returns the initial type ID of a TypeParameter. Also updates the provided list of types to
-    /// append the current TypeParameter as a `program_abi::TypeDeclaration`.
-    pub(crate) fn get_json_type_parameter(
-        &self,
-        type_engine: &TypeEngine,
-        types: &mut Vec<program_abi::TypeDeclaration>,
-    ) -> usize {
-        let type_parameter = program_abi::TypeDeclaration {
-            type_id: self.initial_type_id.index(),
-            type_field: self
-                .initial_type_id
-                .get_json_type_str(type_engine, self.type_id),
-            components: self.initial_type_id.get_json_type_components(
-                type_engine,
-                types,
-                self.type_id,
-            ),
-            type_parameters: None,
-        };
-        types.push(type_parameter);
-        self.initial_type_id.index()
-    }
-
     /// Creates a [DeclMapping] from a list of [TypeParameter]s.
     pub(crate) fn gather_decl_mapping_from_trait_constraints(
         mut ctx: TypeCheckContext,
@@ -190,8 +230,9 @@ impl TypeParameter {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let mut original_method_ids: BTreeMap<Ident, DeclId> = BTreeMap::new();
-        let mut impld_method_ids: BTreeMap<Ident, DeclId> = BTreeMap::new();
+        let mut interface_item_refs: InterfaceItemMap = BTreeMap::new();
+        let mut item_refs: ItemMap = BTreeMap::new();
+        let mut impld_item_refs: ItemMap = BTreeMap::new();
 
         for type_param in type_parameters.iter() {
             let TypeParameter {
@@ -221,20 +262,24 @@ impl TypeParameter {
                     type_arguments: trait_type_arguments,
                 } = trait_constraint;
 
-                let (trait_original_method_ids, trait_impld_method_ids) = check!(
+                let (trait_interface_item_refs, trait_item_refs, trait_impld_item_refs) = check!(
                     handle_trait(ctx.by_ref(), *type_id, trait_name, trait_type_arguments),
                     continue,
                     warnings,
                     errors
                 );
-                original_method_ids.extend(trait_original_method_ids);
-                impld_method_ids.extend(trait_impld_method_ids);
+                interface_item_refs.extend(trait_interface_item_refs);
+                item_refs.extend(trait_item_refs);
+                impld_item_refs.extend(trait_impld_item_refs);
             }
         }
 
         if errors.is_empty() {
-            let decl_mapping =
-                DeclMapping::from_stub_and_impld_decl_ids(original_method_ids, impld_method_ids);
+            let decl_mapping = DeclMapping::from_interface_and_item_and_impld_decl_refs(
+                interface_item_refs,
+                item_refs,
+                impld_item_refs,
+            );
             ok(decl_mapping, warnings, errors)
         } else {
             err(warnings, errors)
@@ -247,14 +292,15 @@ fn handle_trait(
     type_id: TypeId,
     trait_name: &CallPath,
     type_arguments: &[TypeArgument],
-) -> CompileResult<(BTreeMap<Ident, DeclId>, BTreeMap<Ident, DeclId>)> {
+) -> CompileResult<(InterfaceItemMap, ItemMap, ItemMap)> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
     let decl_engine = ctx.decl_engine;
 
-    let mut original_method_ids: BTreeMap<Ident, DeclId> = BTreeMap::new();
-    let mut impld_method_ids: BTreeMap<Ident, DeclId> = BTreeMap::new();
+    let mut interface_item_refs: InterfaceItemMap = BTreeMap::new();
+    let mut item_refs: ItemMap = BTreeMap::new();
+    let mut impld_item_refs: ItemMap = BTreeMap::new();
 
     match ctx
         .namespace
@@ -262,38 +308,34 @@ fn handle_trait(
         .ok(&mut warnings, &mut errors)
         .cloned()
     {
-        Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
-            let trait_decl = check!(
-                CompileResult::from(decl_engine.get_trait(decl_id, &trait_name.suffix.span())),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
+        Some(ty::TyDeclaration::TraitDeclaration { decl_id, .. }) => {
+            let trait_decl = decl_engine.get_trait(&decl_id);
 
-            let (trait_original_method_ids, trait_method_ids, trait_impld_method_ids) = check!(
-                trait_decl.retrieve_interface_surface_and_methods_and_implemented_methods_for_type(
+            let (trait_interface_item_refs, trait_item_refs, trait_impld_item_refs) = trait_decl
+                .retrieve_interface_surface_and_items_and_implemented_items_for_type(
                     ctx.by_ref(),
                     type_id,
                     trait_name,
-                    type_arguments
-                ),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            original_method_ids.extend(trait_original_method_ids);
-            original_method_ids.extend(trait_method_ids);
-            impld_method_ids.extend(trait_impld_method_ids);
+                    type_arguments,
+                );
+            interface_item_refs.extend(trait_interface_item_refs);
+            item_refs.extend(trait_item_refs);
+            impld_item_refs.extend(trait_impld_item_refs);
 
             for supertrait in trait_decl.supertraits.iter() {
-                let (supertrait_original_method_ids, supertrait_impld_method_ids) = check!(
+                let (
+                    supertrait_interface_item_refs,
+                    supertrait_item_refs,
+                    supertrait_impld_item_refs,
+                ) = check!(
                     handle_trait(ctx.by_ref(), type_id, &supertrait.name, &[]),
                     continue,
                     warnings,
                     errors
                 );
-                original_method_ids.extend(supertrait_original_method_ids);
-                impld_method_ids.extend(supertrait_impld_method_ids);
+                interface_item_refs.extend(supertrait_interface_item_refs);
+                item_refs.extend(supertrait_item_refs);
+                impld_item_refs.extend(supertrait_impld_item_refs);
             }
         }
         _ => errors.push(CompileError::TraitNotFound {
@@ -303,7 +345,11 @@ fn handle_trait(
     }
 
     if errors.is_empty() {
-        ok((original_method_ids, impld_method_ids), warnings, errors)
+        ok(
+            (interface_item_refs, item_refs, impld_item_refs),
+            warnings,
+            errors,
+        )
     } else {
         err(warnings, errors)
     }

@@ -69,56 +69,42 @@ pub(crate) fn print_decl_engine_types(
         .iter()
         .map(|n| match &n.content {
             ty::TyAstNodeContent::Declaration(declaration) => match declaration {
-                ty::TyDeclaration::ConstantDeclaration(decl_id) => {
-                    let const_decl = decl_engine
-                        .get_constant(decl_id.clone(), &decl_id.span())
-                        .unwrap();
-                    format!("{:#?}", const_decl)
+                ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
+                    let const_decl = decl_engine.get_constant(decl_id);
+                    format!("{const_decl:#?}")
                 }
-                ty::TyDeclaration::FunctionDeclaration(decl_id) => {
-                    let func_decl = decl_engine
-                        .get_function(decl_id.clone(), &decl_id.span())
-                        .unwrap();
-                    format!("{:#?}", func_decl)
+                ty::TyDeclaration::FunctionDeclaration { decl_id, .. } => {
+                    let func_decl = decl_engine.get_function(decl_id);
+                    format!("{func_decl:#?}")
                 }
-                ty::TyDeclaration::TraitDeclaration(decl_id) => {
-                    let trait_decl = decl_engine
-                        .get_trait(decl_id.clone(), &decl_id.span())
-                        .unwrap();
-                    format!("{:#?}", trait_decl)
+                ty::TyDeclaration::TraitDeclaration { decl_id, .. } => {
+                    let trait_decl = decl_engine.get_trait(decl_id);
+                    format!("{trait_decl:#?}")
                 }
-                ty::TyDeclaration::StructDeclaration(decl_id) => {
-                    let struct_decl = decl_engine
-                        .get_struct(decl_id.clone(), &decl_id.span())
-                        .unwrap();
-                    format!("{:#?}", struct_decl)
+                ty::TyDeclaration::StructDeclaration(decl_ref) => {
+                    let struct_decl = decl_engine.get_struct(decl_ref);
+                    format!("{struct_decl:#?}")
                 }
-                ty::TyDeclaration::EnumDeclaration(decl_id) => {
-                    let enum_decl = decl_engine
-                        .get_enum(decl_id.clone(), &decl_id.span())
-                        .unwrap();
-                    format!("{:#?}", enum_decl)
+                ty::TyDeclaration::EnumDeclaration(decl_ref) => {
+                    let enum_decl = decl_engine.get_enum(decl_ref);
+                    format!("{enum_decl:#?}")
                 }
-                ty::TyDeclaration::AbiDeclaration(decl_id) => {
-                    let abi_decl = decl_engine
-                        .get_abi(decl_id.clone(), &decl_id.span())
-                        .unwrap();
-                    format!("{:#?}", abi_decl)
+                ty::TyDeclaration::AbiDeclaration { decl_id, .. } => {
+                    let abi_decl = decl_engine.get_abi(decl_id);
+                    format!("{abi_decl:#?}")
                 }
-                ty::TyDeclaration::StorageDeclaration(decl_id) => {
-                    let storage_decl = decl_engine
-                        .get_storage(decl_id.clone(), &decl_id.span())
-                        .unwrap();
-                    format!("{:#?}", storage_decl)
+                ty::TyDeclaration::StorageDeclaration { decl_id, .. } => {
+                    let storage_decl = decl_engine.get_storage(decl_id);
+                    format!("{storage_decl:#?}")
                 }
-                _ => format!("{:#?}", declaration),
+                _ => format!("{declaration:#?}"),
             },
             ty::TyAstNodeContent::Expression(expression)
             | ty::TyAstNodeContent::ImplicitReturnExpression(expression) => {
-                format!("{:#?}", expression)
+                format!("{expression:#?}")
             }
-            ty::TyAstNodeContent::SideEffect => "".to_string(),
+            ty::TyAstNodeContent::SideEffect(side_effect) => format!("{side_effect:#?}"),
         })
-        .map(|s| format!("{}\n", s))
+        .map(|s| format!("{s}\n"))
         .collect()
 }

@@ -22,19 +22,18 @@ pub struct TypeEngine {
     pub(super) slab: ConcurrentSlab<TypeInfo>,
     storage_only_types: ConcurrentSlab<TypeInfo>,
     id_map: RwLock<HashMap<TypeInfo, TypeId>>,
-    unify_map: RwLock<HashMap<TypeId, Vec<TypeId>>>,
 }
 
 fn make_hasher<'a: 'b, 'b, K>(
     hash_builder: &'a impl BuildHasher,
-    type_engine: &'b TypeEngine,
+    engines: Engines<'b>,
 ) -> impl Fn(&K) -> u64 + 'b
 where
     K: HashWithEngines + ?Sized,
 {
     move |key: &K| {
         let mut state = hash_builder.build_hasher();
-        key.hash(&mut state, type_engine);
+        key.hash(&mut state, engines);
         state.finish()
     }
 }
@@ -45,53 +44,22 @@ impl TypeEngine {
     pub(crate) fn insert(&self, decl_engine: &DeclEngine, ty: TypeInfo) -> TypeId {
         let mut id_map = self.id_map.write().unwrap();
 
+        let engines = Engines::new(self, decl_engine);
         let hash_builder = id_map.hasher().clone();
-        let ty_hash = make_hasher(&hash_builder, self)(&ty);
+        let ty_hash = make_hasher(&hash_builder, engines)(&ty);
 
         let raw_entry = id_map
             .raw_entry_mut()
-            .from_hash(ty_hash, |x| x.eq(&ty, Engines::new(self, decl_engine)));
+            .from_hash(ty_hash, |x| x.eq(&ty, engines));
         match raw_entry {
             RawEntryMut::Occupied(o) => return *o.get(),
-            RawEntryMut::Vacant(_) if ty.can_change() => TypeId::new(self.slab.insert(ty)),
+            RawEntryMut::Vacant(_) if ty.can_change(decl_engine) => {
+                TypeId::new(self.slab.insert(ty))
+            }
             RawEntryMut::Vacant(v) => {
                 let type_id = TypeId::new(self.slab.insert(ty.clone()));
-                v.insert_with_hasher(ty_hash, ty, type_id, make_hasher(&hash_builder, self));
+                v.insert_with_hasher(ty_hash, ty, type_id, make_hasher(&hash_builder, engines));
                 type_id
-            }
-        }
-    }
-
-    pub(crate) fn insert_unified_type(&self, received: TypeId, expected: TypeId) {
-        let mut unify_map = self.unify_map.write().unwrap();
-        if let Some(type_ids) = unify_map.get(&received) {
-            if type_ids.contains(&expected) {
-                return;
-            }
-            let mut type_ids = type_ids.clone();
-            type_ids.push(expected);
-            unify_map.insert(received, type_ids);
-            return;
-        }
-
-        unify_map.insert(received, vec![expected]);
-    }
-
-    pub(crate) fn get_unified_types(&self, type_id: TypeId) -> Vec<TypeId> {
-        let mut final_unify_ids: Vec<TypeId> = vec![];
-        self.get_unified_types_rec(type_id, &mut final_unify_ids);
-        final_unify_ids
-    }
-
-    fn get_unified_types_rec(&self, type_id: TypeId, final_unify_ids: &mut Vec<TypeId>) {
-        let unify_map = self.unify_map.read().unwrap();
-        if let Some(unify_ids) = unify_map.get(&type_id) {
-            for unify_id in unify_ids {
-                if final_unify_ids.contains(unify_id) {
-                    continue;
-                }
-                final_unify_ids.push(*unify_id);
-                self.get_unified_types_rec(*unify_id, final_unify_ids);
             }
         }
     }
@@ -436,23 +404,18 @@ impl TypeEngine {
         let module_path = type_info_prefix.unwrap_or(mod_path);
         let type_id = match self.get(type_id) {
             TypeInfo::Custom {
-                name,
+                call_path,
                 type_arguments,
             } => {
                 match namespace
                     .root()
-                    .resolve_symbol(module_path, &name)
+                    .resolve_call_path_with_visibility_check(engines, module_path, &call_path)
                     .ok(&mut warnings, &mut errors)
                     .cloned()
                 {
-                    Some(ty::TyDeclaration::StructDeclaration(original_id)) => {
+                    Some(ty::TyDeclaration::StructDeclaration(original_decl_ref)) => {
                         // get the copy from the declaration engine
-                        let mut new_copy = check!(
-                            CompileResult::from(decl_engine.get_struct(original_id, &name.span())),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
+                        let mut new_copy = decl_engine.get_struct(&original_decl_ref);
 
                         // monomorphize the copy, in place
                         check!(
@@ -470,8 +433,13 @@ impl TypeEngine {
                             errors,
                         );
 
+                        // insert the new copy in the decl engine
+                        let new_decl_ref = decl_engine.insert(new_copy);
+
                         // create the type id from the copy
-                        let type_id = new_copy.create_type_id(engines);
+                        let type_id = engines
+                            .te()
+                            .insert(decl_engine, TypeInfo::Struct(new_decl_ref));
 
                         // take any trait methods that apply to this type and copy them to the new type
                         namespace.insert_trait_implementation_for_type(engines, type_id);
@@ -479,14 +447,9 @@ impl TypeEngine {
                         // return the id
                         type_id
                     }
-                    Some(ty::TyDeclaration::EnumDeclaration(original_id)) => {
+                    Some(ty::TyDeclaration::EnumDeclaration(original_decl_ref)) => {
                         // get the copy from the declaration engine
-                        let mut new_copy = check!(
-                            CompileResult::from(decl_engine.get_enum(original_id, &name.span())),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
+                        let mut new_copy = decl_engine.get_enum(&original_decl_ref);
 
                         // monomorphize the copy, in place
                         check!(
@@ -504,8 +467,13 @@ impl TypeEngine {
                             errors
                         );
 
+                        // insert the new copy in the decl engine
+                        let new_decl_ref = decl_engine.insert(new_copy);
+
                         // create the type id from the copy
-                        let type_id = new_copy.create_type_id(engines);
+                        let type_id = engines
+                            .te()
+                            .insert(decl_engine, TypeInfo::Enum(new_decl_ref));
 
                         // take any trait methods that apply to this type and copy them to the new type
                         namespace.insert_trait_implementation_for_type(engines, type_id);
@@ -516,8 +484,8 @@ impl TypeEngine {
                     Some(ty::TyDeclaration::GenericTypeForFunctionScope { type_id, .. }) => type_id,
                     _ => {
                         errors.push(CompileError::UnknownTypeName {
-                            name: name.to_string(),
-                            span: name.span(),
+                            name: call_path.to_string(),
+                            span: call_path.span(),
                         });
                         self.insert(decl_engine, TypeInfo::ErrorRecovery)
                     }
@@ -599,7 +567,7 @@ impl TypeEngine {
         self.slab.with_slice(|elems| {
             let list = elems.iter().map(|type_info| engines.help_out(type_info));
             let list = ListDisplay { list };
-            write!(builder, "TypeEngine {{\n{}\n}}", list).unwrap();
+            write!(builder, "TypeEngine {{\n{list}\n}}").unwrap();
         });
         builder
     }

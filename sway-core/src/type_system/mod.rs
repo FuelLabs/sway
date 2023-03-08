@@ -25,12 +25,16 @@ pub use length::*;
 use occurs_check::*;
 pub(crate) use replace_self_type::*;
 pub(crate) use substitute::*;
-pub(crate) use trait_constraint::*;
+pub use trait_constraint::*;
 pub use type_argument::*;
 pub use type_parameter::*;
 pub(crate) use unconstrained_type_parameters::*;
 
 use crate::error::*;
+#[cfg(test)]
+use crate::{
+    decl_engine::DeclEngineIndex, language::ty::TyEnumDeclaration, transform::AttributesMap,
+};
 use std::fmt::Debug;
 
 #[cfg(test)]
@@ -79,20 +83,25 @@ fn generic_enum_resolution() {
     let variant_types = vec![ty::TyEnumVariant {
         name: a_name.clone(),
         tag: 0,
-        type_id: placeholder_type,
-        initial_type_id: placeholder_type,
+        type_argument: TypeArgument {
+            type_id: placeholder_type,
+            initial_type_id: placeholder_type,
+            span: sp.clone(),
+            call_path_tree: None,
+        },
         span: sp.clone(),
-        type_span: sp.clone(),
         attributes: transform::AttributesMap::default(),
     }];
-    let ty_1 = type_engine.insert(
-        &decl_engine,
-        TypeInfo::Enum {
-            name: result_name.clone(),
-            variant_types,
-            type_parameters: vec![placeholder_type_param],
-        },
-    );
+
+    let decl_ref_1 = decl_engine.insert(TyEnumDeclaration {
+        call_path: result_name.clone().into(),
+        type_parameters: vec![placeholder_type_param],
+        variants: variant_types,
+        span: sp.clone(),
+        visibility: crate::language::Visibility::Public,
+        attributes: AttributesMap::default(),
+    });
+    let ty_1 = type_engine.insert(&decl_engine, TypeInfo::Enum(decl_ref_1));
 
     /*
     Result<bool> {
@@ -103,10 +112,13 @@ fn generic_enum_resolution() {
     let variant_types = vec![ty::TyEnumVariant {
         name: a_name,
         tag: 0,
-        type_id: boolean_type,
-        initial_type_id: boolean_type,
+        type_argument: TypeArgument {
+            type_id: boolean_type,
+            initial_type_id: boolean_type,
+            span: sp.clone(),
+            call_path_tree: None,
+        },
         span: sp.clone(),
-        type_span: sp.clone(),
         attributes: transform::AttributesMap::default(),
     }];
     let type_param = TypeParameter {
@@ -116,28 +128,25 @@ fn generic_enum_resolution() {
         trait_constraints: vec![],
         trait_constraints_span: sp.clone(),
     };
-    let ty_2 = type_engine.insert(
-        &decl_engine,
-        TypeInfo::Enum {
-            name: result_name,
-            variant_types,
-            type_parameters: vec![type_param],
-        },
-    );
+    let decl_ref_2 = decl_engine.insert(TyEnumDeclaration {
+        call_path: result_name.into(),
+        type_parameters: vec![type_param],
+        variants: variant_types.clone(),
+        span: sp.clone(),
+        visibility: crate::language::Visibility::Public,
+        attributes: AttributesMap::default(),
+    });
+    let ty_2 = type_engine.insert(&decl_engine, TypeInfo::Enum(decl_ref_2));
 
     // Unify them together...
     let (_, errors) = type_engine.unify(&decl_engine, ty_1, ty_2, &sp, "", None);
     assert!(errors.is_empty());
 
-    if let TypeInfo::Enum {
-        name,
-        variant_types,
-        ..
-    } = type_engine.get(ty_1)
-    {
-        assert_eq!(name.as_str(), "Result");
+    if let TypeInfo::Enum(decl_ref_1) = type_engine.get(ty_1) {
+        let decl = decl_engine.get_enum(&decl_ref_1);
+        assert_eq!(decl.call_path.suffix.as_str(), "Result");
         assert!(matches!(
-            type_engine.get(variant_types[0].type_id),
+            type_engine.get(variant_types[0].type_argument.type_id),
             TypeInfo::Boolean
         ));
     } else {

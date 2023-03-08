@@ -3,7 +3,9 @@ use std::collections::HashSet;
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span};
 
-use crate::{error::*, language::ty, type_system::TypeId, Engines, TypeEngine, TypeInfo};
+use crate::{
+    decl_engine::DeclEngine, error::*, language::ty, type_system::TypeId, Engines, TypeInfo,
+};
 
 use super::{
     patstack::PatStack,
@@ -16,17 +18,14 @@ pub(crate) struct ConstructorFactory {
 }
 
 impl ConstructorFactory {
-    pub(crate) fn new(
-        type_engine: &TypeEngine,
-        type_id: TypeId,
-        span: &Span,
-    ) -> CompileResult<Self> {
+    pub(crate) fn new(engines: Engines<'_>, type_id: TypeId, span: &Span) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let possible_types = check!(
-            type_engine
+            engines
+                .te()
                 .get(type_id)
-                .extract_nested_types(type_engine, span),
+                .extract_nested_types(engines, span),
             return err(warnings, errors),
             warnings,
             errors
@@ -285,21 +284,23 @@ impl ConstructorFactory {
             }
             ref pat @ Pattern::Enum(ref enum_pattern) => {
                 let type_info = check!(
-                    self.resolve_possible_types(pat, span),
+                    self.resolve_possible_types(pat, span, engines.de()),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                let (enum_name, enum_variants) = check!(
+                let enum_decl = engines.de().get_enum(&check!(
                     type_info.expect_enum(engines, "", span),
                     return err(warnings, errors),
                     warnings,
                     errors
-                );
+                ));
+                let enum_name = enum_decl.call_path.suffix;
+                let enum_variants = enum_decl.variants;
                 let (all_variants, variant_tracker) = check!(
                     ConstructorFactory::resolve_enum(
-                        enum_name,
-                        enum_variants,
+                        &enum_name,
+                        &enum_variants,
                         enum_pattern,
                         rest,
                         span
@@ -402,12 +403,14 @@ impl ConstructorFactory {
     ) -> CompileResult<bool> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let preprocessed = pat_stack.flatten().filter_out_wildcards();
-        if preprocessed.is_empty() {
+        if pat_stack.is_empty() {
             return ok(false, warnings, errors);
         }
+        if pat_stack.contains(&Pattern::Wildcard) {
+            return ok(true, warnings, errors);
+        }
         let (first, rest) = check!(
-            preprocessed.split_first(span),
+            pat_stack.split_first(span),
             return err(warnings, errors),
             warnings,
             errors
@@ -523,21 +526,23 @@ impl ConstructorFactory {
             }
             ref pat @ Pattern::Enum(ref enum_pattern) => {
                 let type_info = check!(
-                    self.resolve_possible_types(pat, span),
+                    self.resolve_possible_types(pat, span, engines.de()),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                let (enum_name, enum_variants) = check!(
+                let enum_decl = engines.de().get_enum(&check!(
                     type_info.expect_enum(engines, "", span),
                     return err(warnings, errors),
                     warnings,
                     errors
-                );
+                ));
+                let enum_name = enum_decl.call_path.suffix;
+                let enum_variants = enum_decl.variants;
                 let (all_variants, variant_tracker) = check!(
                     ConstructorFactory::resolve_enum(
-                        enum_name,
-                        enum_variants,
+                        &enum_name,
+                        &enum_variants,
                         enum_pattern,
                         rest,
                         span
@@ -585,12 +590,17 @@ impl ConstructorFactory {
         }
     }
 
-    fn resolve_possible_types(&self, pattern: &Pattern, span: &Span) -> CompileResult<&TypeInfo> {
+    fn resolve_possible_types(
+        &self,
+        pattern: &Pattern,
+        span: &Span,
+        decl_engine: &DeclEngine,
+    ) -> CompileResult<&TypeInfo> {
         let warnings = vec![];
         let mut errors = vec![];
         let mut type_info = None;
         for possible_type in self.possible_types.iter() {
-            let matches = pattern.matches_type_info(possible_type);
+            let matches = pattern.matches_type_info(possible_type, decl_engine);
             if matches {
                 type_info = Some(possible_type);
                 break;

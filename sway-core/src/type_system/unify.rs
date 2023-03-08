@@ -105,37 +105,52 @@ impl<'a> Unifier<'a> {
             (Array(re, rc), Array(ee, ec)) if rc.val() == ec.val() => {
                 self.unify_arrays(received, expected, span, re.type_id, ee.type_id)
             }
-            (
-                Struct {
-                    name: rn,
-                    type_parameters: rpts,
-                    fields: rfs,
-                },
-                Struct {
-                    name: en,
-                    type_parameters: etps,
-                    fields: efs,
-                },
-            ) => self.unify_structs(received, expected, span, (rn, rpts, rfs), (en, etps, efs)),
+            (Struct(r_decl_ref), Struct(e_decl_ref)) => {
+                let r_decl = self.engines.de().get_struct(&r_decl_ref);
+                let e_decl = self.engines.de().get_struct(&e_decl_ref);
+
+                self.unify_structs(
+                    received,
+                    expected,
+                    span,
+                    (
+                        r_decl.call_path.suffix,
+                        r_decl.type_parameters,
+                        r_decl.fields,
+                    ),
+                    (
+                        e_decl.call_path.suffix,
+                        e_decl.type_parameters,
+                        e_decl.fields,
+                    ),
+                )
+            }
             // Let empty enums to coerce to any other type. This is useful for Never enum.
-            (
-                Enum {
-                    variant_types: rvs, ..
-                },
-                _,
-            ) if rvs.is_empty() => (vec![], vec![]),
-            (
-                Enum {
-                    name: rn,
-                    type_parameters: rtps,
-                    variant_types: rvs,
-                },
-                Enum {
-                    name: en,
-                    type_parameters: etps,
-                    variant_types: evs,
-                },
-            ) => self.unify_enums(received, expected, span, (rn, rtps, rvs), (en, etps, evs)),
+            (Enum(r_decl_ref), _)
+                if self.engines.de().get_enum(&r_decl_ref).variants.is_empty() =>
+            {
+                (vec![], vec![])
+            }
+            (Enum(r_decl_ref), Enum(e_decl_ref)) => {
+                let r_decl = self.engines.de().get_enum(&r_decl_ref);
+                let e_decl = self.engines.de().get_enum(&e_decl_ref);
+
+                self.unify_enums(
+                    received,
+                    expected,
+                    span,
+                    (
+                        r_decl.call_path.suffix,
+                        r_decl.type_parameters,
+                        r_decl.variants,
+                    ),
+                    (
+                        e_decl.call_path.suffix,
+                        e_decl.type_parameters,
+                        e_decl.variants,
+                    ),
+                )
+            }
 
             // For integers and numerics, we (potentially) unify the numeric
             // with the integer.
@@ -225,17 +240,11 @@ impl<'a> Unifier<'a> {
                     name: en,
                     trait_constraints: etc,
                 },
-            ) if rn.as_str() == en.as_str() && rtc.eq(&etc, self.engines) => {
-                self.engines.te().insert_unified_type(received, expected);
-                self.engines.te().insert_unified_type(expected, received);
-                (vec![], vec![])
-            }
+            ) if rn.as_str() == en.as_str() && rtc.eq(&etc, self.engines) => (vec![], vec![]),
             (r @ UnknownGeneric { .. }, e) if !self.occurs_check(r.clone(), &e, span) => {
-                self.engines.te().insert_unified_type(expected, received);
                 self.replace_received_with_expected(received, expected, &r, e, span)
             }
             (r, e @ UnknownGeneric { .. }) if !self.occurs_check(e.clone(), &r, span) => {
-                self.engines.te().insert_unified_type(received, expected);
                 self.replace_expected_with_received(received, expected, r, &e, span)
             }
 
@@ -356,7 +365,7 @@ impl<'a> Unifier<'a> {
                     &rf.span
                 };
                 append!(
-                    self.unify(rf.type_id, ef.type_id, new_span),
+                    self.unify(rf.type_argument.type_id, ef.type_argument.type_id, new_span),
                     warnings,
                     errors
                 );
@@ -405,7 +414,7 @@ impl<'a> Unifier<'a> {
                     &rv.span
                 };
                 append!(
-                    self.unify(rv.type_id, ev.type_id, new_span),
+                    self.unify(rv.type_argument.type_id, ev.type_argument.type_id, new_span),
                     warnings,
                     errors
                 );

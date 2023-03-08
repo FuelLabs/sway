@@ -9,7 +9,6 @@ use crate::{
     Engines,
 };
 use sway_ir::{Context, Module};
-use sway_types::Spanned;
 
 impl ty::TyProgram {
     /// Type-check the given parsed program to produce a typed program.
@@ -56,19 +55,16 @@ impl ty::TyProgram {
                 let storage_decl = self
                     .declarations
                     .iter()
-                    .find(|decl| matches!(decl, ty::TyDeclaration::StorageDeclaration(_)));
+                    .find(|decl| matches!(decl, ty::TyDeclaration::StorageDeclaration { .. }));
 
                 // Expecting at most a single storage declaration
                 match storage_decl {
-                    Some(ty::TyDeclaration::StorageDeclaration(decl_id)) => {
-                        let decl = check!(
-                            CompileResult::from(
-                                decl_engine.get_storage(decl_id.clone(), &decl_id.span())
-                            ),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
+                    Some(ty::TyDeclaration::StorageDeclaration {
+                        decl_id,
+                        decl_span: _,
+                        ..
+                    }) => {
+                        let decl = decl_engine.get_storage(decl_id);
                         let mut storage_slots = check!(
                             decl.get_initialized_storage_slots(engines, context, md_mgr, module),
                             return err(warnings, errors),

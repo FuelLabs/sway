@@ -37,18 +37,30 @@ impl ty::TyAstNode {
                     };
                     let mut res = match a.import_type {
                         ImportType::Star => ctx.namespace.star_import(&path, engines),
-                        ImportType::SelfImport => {
-                            ctx.namespace.self_import(engines, &path, a.alias)
+                        ImportType::SelfImport(_) => {
+                            ctx.namespace.self_import(engines, &path, a.alias.clone())
                         }
-                        ImportType::Item(s) => {
-                            ctx.namespace.item_import(engines, &path, &s, a.alias)
+                        ImportType::Item(ref s) => {
+                            ctx.namespace
+                                .item_import(engines, &path, s, a.alias.clone())
                         }
                     };
                     warnings.append(&mut res.warnings);
                     errors.append(&mut res.errors);
-                    ty::TyAstNodeContent::SideEffect
+                    ty::TyAstNodeContent::SideEffect(ty::TySideEffect {
+                        side_effect: ty::TySideEffectVariant::UseStatement(ty::TyUseStatement {
+                            alias: a.alias,
+                            call_path: a.call_path,
+                            is_absolute: a.is_absolute,
+                            import_type: a.import_type,
+                        }),
+                    })
                 }
-                AstNodeContent::IncludeStatement(_) => ty::TyAstNodeContent::SideEffect,
+                AstNodeContent::IncludeStatement(_) => {
+                    ty::TyAstNodeContent::SideEffect(ty::TySideEffect {
+                        side_effect: ty::TySideEffectVariant::IncludeStatement,
+                    })
+                }
                 AstNodeContent::Declaration(decl) => ty::TyAstNodeContent::Declaration(check!(
                     ty::TyDeclaration::type_check(ctx, decl),
                     return err(warnings, errors),
@@ -91,7 +103,8 @@ impl ty::TyAstNode {
                 r#type: engines.help_out(node.type_info(type_engine)).to_string(),
             };
             assert_or_warn!(
-                node.type_info(type_engine).can_safely_ignore(type_engine),
+                node.type_info(type_engine)
+                    .can_safely_ignore(type_engine, decl_engine),
                 warnings,
                 node.span.clone(),
                 warning
@@ -122,8 +135,7 @@ pub(crate) fn reassign_storage_subfield(
     }
 
     let storage_fields = check!(
-        ctx.namespace
-            .get_storage_field_descriptors(decl_engine, &span),
+        ctx.namespace.get_storage_field_descriptors(decl_engine),
         return err(warnings, errors),
         warnings,
         errors
@@ -137,15 +149,13 @@ pub(crate) fn reassign_storage_subfield(
         .enumerate()
         .find(|(_, ty::TyStorageField { name, .. })| name == &first_field)
     {
-        Some((
-            ix,
-            ty::TyStorageField {
-                type_id: r#type, ..
-            },
-        )) => (StateIndex::new(ix), r#type),
+        Some((ix, ty::TyStorageField { type_argument, .. })) => {
+            (StateIndex::new(ix), type_argument.type_id)
+        }
         None => {
             errors.push(CompileError::StorageFieldDoesNotExist {
                 name: first_field.clone(),
+                span: first_field.span(),
             });
             return err(warnings, errors);
         }
@@ -153,19 +163,19 @@ pub(crate) fn reassign_storage_subfield(
 
     type_checked_buf.push(ty::TyStorageReassignDescriptor {
         name: first_field.clone(),
-        type_id: *initial_field_type,
+        type_id: initial_field_type,
         span: first_field.span(),
     });
 
     let update_available_struct_fields = |id: TypeId| match type_engine.get(id) {
-        TypeInfo::Struct { fields, .. } => fields,
+        TypeInfo::Struct(decl_ref) => decl_engine.get_struct(&decl_ref).fields,
         _ => vec![],
     };
-    let mut curr_type = *initial_field_type;
+    let mut curr_type = initial_field_type;
 
     // if the previously iterated type was a struct, put its fields here so we know that,
     // in the case of a subfield, we can type check the that the subfield exists and its type.
-    let mut available_struct_fields = update_available_struct_fields(*initial_field_type);
+    let mut available_struct_fields = update_available_struct_fields(initial_field_type);
 
     // get the initial field's type
     // make sure the next field exists in that type
@@ -175,13 +185,14 @@ pub(crate) fn reassign_storage_subfield(
             .find(|x| x.name.as_str() == field.as_str())
         {
             Some(struct_field) => {
-                curr_type = struct_field.type_id;
+                curr_type = struct_field.type_argument.type_id;
                 type_checked_buf.push(ty::TyStorageReassignDescriptor {
                     name: field.clone(),
-                    type_id: struct_field.type_id,
+                    type_id: struct_field.type_argument.type_id,
                     span: field.span().clone(),
                 });
-                available_struct_fields = update_available_struct_fields(struct_field.type_id);
+                available_struct_fields =
+                    update_available_struct_fields(struct_field.type_argument.type_id);
             }
             None => {
                 let available_fields = available_struct_fields
@@ -192,6 +203,7 @@ pub(crate) fn reassign_storage_subfield(
                     field_name: field.clone(),
                     available_fields: available_fields.join(", "),
                     struct_name: type_checked_buf.last().unwrap().name.clone(),
+                    span: field.span(),
                 });
                 return err(warnings, errors);
             }

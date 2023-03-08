@@ -1,16 +1,19 @@
 use crate::{
     asm_generation::{
-        abstract_instruction_set::AbstractInstructionSet,
         asm_builder::{AsmBuilder, AsmBuilderResult},
-        compiler_constants,
         from_ir::{
             aggregate_idcs_to_field_layout, ir_type_size_in_bytes, StateAccessType, Storage,
         },
-        register_sequencer::RegisterSequencer,
-        DataId, DataSection, Entry, ProgramKind,
+        fuel::{
+            abstract_instruction_set::AbstractInstructionSet,
+            compiler_constants,
+            data_section::{DataId, DataSection, Entry},
+            register_sequencer::RegisterSequencer,
+        },
+        ProgramKind,
     },
     asm_lang::{virtual_register::*, Label, Op, VirtualImmediate12, VirtualImmediate18, VirtualOp},
-    decl_engine::DeclId,
+    decl_engine::DeclRefFunction,
     error::*,
     fuel_prelude::fuel_crypto::Hasher,
     metadata::MetadataManager,
@@ -60,7 +63,7 @@ pub struct FuelAsmBuilder<'ir> {
 
     // Final resulting VM bytecode ops; entry functions with their function and label, and regular
     // non-entry functions.
-    pub(super) entries: Vec<(Function, Label, Vec<Op>, Option<DeclId>)>,
+    pub(super) entries: Vec<(Function, Label, Vec<Op>, Option<DeclRefFunction>)>,
     pub(super) non_entries: Vec<Vec<Op>>,
 
     // In progress VM bytecode ops.
@@ -70,7 +73,12 @@ pub struct FuelAsmBuilder<'ir> {
 pub type FuelAsmBuilderResult = (
     DataSection,
     RegisterSequencer,
-    Vec<(Function, Label, AbstractInstructionSet, Option<DeclId>)>,
+    Vec<(
+        Function,
+        Label,
+        AbstractInstructionSet,
+        Option<DeclRefFunction>,
+    )>,
     Vec<AbstractInstructionSet>,
 );
 
@@ -137,8 +145,8 @@ impl<'ir> FuelAsmBuilder<'ir> {
             self.entries
                 .clone()
                 .into_iter()
-                .map(|(f, l, ops, test_decl_id)| {
-                    (f, l, AbstractInstructionSet { ops }, test_decl_id)
+                .map(|(f, l, ops, test_decl_ref)| {
+                    (f, l, AbstractInstructionSet { ops }, test_decl_ref)
                 })
                 .collect(),
             self.non_entries
@@ -238,6 +246,15 @@ impl<'ir> FuelAsmBuilder<'ir> {
                         message_size,
                         output_index,
                         coins,
+                    ),
+                    FuelVmInstruction::StateClear {
+                        key,
+                        number_of_slots,
+                    } => check!(
+                        self.compile_state_clear(instr_val, key, number_of_slots,),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
                     ),
                     FuelVmInstruction::StateLoadQuadWord {
                         load_val,
@@ -828,7 +845,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                         "extract_value @ {}",
                         indices
                             .iter()
-                            .map(|idx| format!("{}", idx))
+                            .map(|idx| format!("{idx}"))
                             .collect::<Vec<String>>()
                             .join(",")
                     ),
@@ -847,7 +864,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                         "extract_value @ {}",
                         indices
                             .iter()
-                            .map(|idx| format!("{}", idx))
+                            .map(|idx| format!("{idx}"))
                             .collect::<Vec<String>>()
                             .join(",")
                     ),
@@ -1115,7 +1132,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
 
         let indices_str = indices
             .iter()
-            .map(|idx| format!("{}", idx))
+            .map(|idx| format!("{idx}"))
             .collect::<Vec<String>>()
             .join(",");
 
@@ -1140,7 +1157,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                         insert_reg,
                         VirtualImmediate12 { value: 0 },
                     )),
-                    comment: format!("insert_value @ {}", indices_str),
+                    comment: format!("insert_value @ {indices_str}"),
                     owning_span,
                 });
             } else {
@@ -1152,7 +1169,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                             value: insert_offs as u16,
                         },
                     )),
-                    comment: format!("insert_value @ {}", indices_str),
+                    comment: format!("insert_value @ {indices_str}"),
                     owning_span,
                 });
             }
@@ -1169,7 +1186,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                             value: (insert_offs * 8) as u16,
                         },
                     )),
-                    comment: format!("get struct field(s) {} offset", indices_str),
+                    comment: format!("get struct field(s) {indices_str} offset"),
                     owning_span: owning_span.clone(),
                 });
             }
@@ -1550,6 +1567,56 @@ impl<'ir> FuelAsmBuilder<'ir> {
         offset_reg
     }
 
+    fn compile_state_clear(
+        &mut self,
+        instr_val: &Value,
+        key: &Value,
+        number_of_slots: &Value,
+    ) -> CompileResult<()> {
+        // Make sure that key is a pointer to B256.
+        assert!(key.get_type(self.context).is(Type::is_b256, self.context));
+        let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
+
+        let key_var = self.resolve_ptr(key);
+        if key_var.value.is_none() {
+            return key_var.map(|_| ());
+        }
+        let (key_var, var_ty, offset) = key_var.value.unwrap();
+
+        // Not expecting an offset here nor a pointer cast
+        assert!(offset == 0);
+        assert!(var_ty.is_b256(self.context));
+
+        let key_reg = match self.ptr_map.get(&key_var) {
+            Some(Storage::Stack(key_offset)) => {
+                let base_reg = self.locals_base_reg().clone();
+                let key_offset_in_bytes = key_offset * 8;
+                self.offset_reg(&base_reg, key_offset_in_bytes, owning_span.clone())
+            }
+            _ => unreachable!("Unexpected storage locations for key and val"),
+        };
+
+        // capture the status of whether the slot was set before calling this instruction
+        let was_slot_set_reg = self.reg_seqr.next();
+
+        // Number of slots to be cleared
+        let number_of_slots_reg = self.value_to_register(number_of_slots);
+
+        self.cur_bytecode.push(Op {
+            opcode: Either::Left(VirtualOp::SCWQ(
+                key_reg,
+                was_slot_set_reg.clone(),
+                number_of_slots_reg,
+            )),
+            comment: "clear a sequence of storage slots".into(),
+            owning_span,
+        });
+
+        self.reg_map.insert(*instr_val, was_slot_set_reg);
+
+        ok((), Vec::new(), Vec::new())
+    }
+
     fn compile_state_access_quad_word(
         &mut self,
         instr_val: &Value,
@@ -1617,16 +1684,24 @@ impl<'ir> FuelAsmBuilder<'ir> {
 
         self.cur_bytecode.push(Op {
             opcode: Either::Left(match access_type {
-                StateAccessType::Read => {
-                    VirtualOp::SRWQ(val_reg, was_slot_set_reg, key_reg, number_of_slots_reg)
-                }
-                StateAccessType::Write => {
-                    VirtualOp::SWWQ(key_reg, was_slot_set_reg, val_reg, number_of_slots_reg)
-                }
+                StateAccessType::Read => VirtualOp::SRWQ(
+                    val_reg,
+                    was_slot_set_reg.clone(),
+                    key_reg,
+                    number_of_slots_reg,
+                ),
+                StateAccessType::Write => VirtualOp::SWWQ(
+                    key_reg,
+                    was_slot_set_reg.clone(),
+                    val_reg,
+                    number_of_slots_reg,
+                ),
             }),
-            comment: "quad word state access".into(),
+            comment: "access a sequence of storage slots".into(),
             owning_span,
         });
+
+        self.reg_map.insert(*instr_val, was_slot_set_reg);
 
         ok((), Vec::new(), Vec::new())
     }
@@ -1713,13 +1788,19 @@ impl<'ir> FuelAsmBuilder<'ir> {
                 let key_reg = self.offset_reg(&base_reg, key_offset_in_bytes, owning_span.clone());
 
                 self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::SWW(key_reg, was_slot_set_reg, store_reg)),
+                    opcode: Either::Left(VirtualOp::SWW(
+                        key_reg,
+                        was_slot_set_reg.clone(),
+                        store_reg,
+                    )),
                     comment: "single word state access".into(),
                     owning_span,
                 });
             }
             _ => unreachable!("Unexpected storage locations for key and store_val"),
         }
+
+        self.reg_map.insert(*instr_val, was_slot_set_reg);
 
         ok((), Vec::new(), Vec::new())
     }
@@ -1996,8 +2077,8 @@ impl<'ir> FuelAsmBuilder<'ir> {
             })
     }
 
-    // Same as `opt_value_to_register` but returns a new register if no register is found or if
-    // `value` is not a constant.
+    /// Same as [`opt_value_to_register`] but returns a new register if no register is found or if
+    /// `value` is not a constant.
     pub(super) fn value_to_register(&mut self, value: &Value) -> VirtualRegister {
         match self.opt_value_to_register(value) {
             Some(reg) => reg,

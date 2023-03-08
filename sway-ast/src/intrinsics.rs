@@ -1,6 +1,6 @@
 use std::fmt;
 
-#[derive(Eq, PartialEq, Debug, Clone)]
+#[derive(Eq, PartialEq, Debug, Clone, Hash)]
 pub enum Intrinsic {
     GetStorageKey,
     IsReferenceType,
@@ -9,6 +9,7 @@ pub enum Intrinsic {
     Eq,
     Gtf,
     AddrOf,
+    StateClear,
     StateLoadWord,
     StateStoreWord,
     StateLoadQuad,
@@ -34,6 +35,7 @@ impl fmt::Display for Intrinsic {
             Intrinsic::Eq => "eq",
             Intrinsic::Gtf => "gtf",
             Intrinsic::AddrOf => "addr_of",
+            Intrinsic::StateClear => "state_clear",
             Intrinsic::StateLoadWord => "state_load_word",
             Intrinsic::StateStoreWord => "state_store_word",
             Intrinsic::StateLoadQuad => "state_load_quad",
@@ -48,7 +50,7 @@ impl fmt::Display for Intrinsic {
             Intrinsic::PtrSub => "ptr_sub",
             Intrinsic::Smo => "smo",
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 
@@ -63,6 +65,7 @@ impl Intrinsic {
             "__eq" => Eq,
             "__gtf" => Gtf,
             "__addr_of" => AddrOf,
+            "__state_clear" => StateClear,
             "__state_load_word" => StateLoadWord,
             "__state_store_word" => StateStoreWord,
             "__state_load_quad" => StateLoadQuad,

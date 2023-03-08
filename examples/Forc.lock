@@ -1,0 +1,168 @@
+[[package]]
+name = 'abi_supertraits'
+source = 'member'
+
+[[package]]
+name = 'array'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'asm_return_tuple_pointer'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'break_and_continue'
+source = 'member'
+dependencies = ['core']
+
+[[package]]
+name = 'cei_analysis'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'config_time_constants'
+source = 'member'
+
+[[package]]
+name = 'core'
+source = 'path+from-root-087D5D776F294F03'
+
+[[package]]
+name = 'counter'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'enums'
+source = 'member'
+
+[[package]]
+name = 'fizzbuzz'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'hashing'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'identity'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'liquidity_pool'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'match_statements'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'methods_and_associated_functions'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'msg_sender'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'mut_ref_params'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'native_token'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'option'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'ownership'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'result'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'signatures'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-087D5D776F294F03'
+dependencies = ['core']
+
+[[package]]
+name = 'storage_example'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'storage_map'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'storage_variables'
+source = 'member'
+
+[[package]]
+name = 'storage_vec'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'structs'
+source = 'member'
+
+[[package]]
+name = 'subcurrency'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'tuples'
+source = 'member'
+
+[[package]]
+name = 'vec'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'wallet_abi'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'wallet_contract_caller_script'
+source = 'member'
+dependencies = [
+    'std',
+    'wallet_abi',
+]
+
+[[package]]
+name = 'wallet_smart_contract'
+source = 'member'
+dependencies = [
+    'std',
+    'wallet_abi',
+]

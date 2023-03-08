@@ -1,19 +1,26 @@
 use fuel_vm::fuel_crypto::Hasher;
 use fuels::{
-    contract::execution_script::ExecutableFuelCall,
     prelude::*,
+    programs::execution_script::ExecutableFuelCall,
     tx::{
         field::Script as ScriptField, field::Witnesses, field::*, Bytes32, ConsensusParameters,
         ContractId, Input as TxInput, TxPointer, UniqueIdentifier, UtxoId,
     },
 };
+// use fuels_types::core::contract::execution_script::ExecutableFuelCall;
 use std::str::FromStr;
 
 const MESSAGE_DATA: [u8; 3] = [1u8, 2u8, 3u8];
 
 abigen!(
-    TxContractTest,
-    "test_artifacts/tx_contract/out/debug/tx_contract-abi.json",
+    Contract(
+        name = "TxContractTest",
+        abi = "test_artifacts/tx_contract/out/debug/tx_contract-abi.json",
+    ),
+    Predicate(
+        name = "TestPredicate",
+        abi = "test_projects/tx_fields/out/debug/tx_predicate-abi.json"
+    )
 );
 
 async fn get_contracts() -> (TxContractTest, ContractId, WalletUnlocked, WalletUnlocked) {
@@ -68,7 +75,7 @@ async fn generate_predicate_inputs(
     wallet: &WalletUnlocked,
 ) -> (Vec<u8>, TxInput, TxInput) {
     let predicate =
-        Predicate::load_from("test_projects/tx_fields/out/debug/tx_predicate.bin").unwrap();
+        TestPredicate::load_from("test_projects/tx_fields/out/debug/tx_predicate.bin").unwrap();
 
     let predicate_root = predicate.address();
 
@@ -163,7 +170,7 @@ mod tx {
             .await
             .unwrap();
         // Script transactions are of type = 0
-        assert_eq!(result.value, Transaction::Script());
+        assert_eq!(result.value, Transaction::Script);
     }
 
     #[tokio::test]
@@ -444,6 +451,7 @@ mod inputs {
                     .methods()
                     .get_tx_input_predicate_data_pointer(0)
                     .call_params(call_params)
+                    .unwrap()
                     .call()
                     .await
                     .unwrap();
@@ -464,7 +472,7 @@ mod inputs {
                 .call()
                 .await
                 .unwrap();
-            assert_eq!(result.value, Input::Contract());
+            assert_eq!(result.value, Input::Contract);
 
             let result = contract_instance
                 .methods()
@@ -472,7 +480,7 @@ mod inputs {
                 .call()
                 .await
                 .unwrap();
-            assert_eq!(result.value, Input::Coin());
+            assert_eq!(result.value, Input::Coin);
         }
 
         #[tokio::test]
@@ -530,7 +538,7 @@ mod inputs {
             use super::*;
 
             #[tokio::test]
-            async fn can_get_input_message_msg_id() -> Result<(), Error> {
+            async fn can_get_input_message_msg_id() -> Result<()> {
                 let (contract_instance, _, wallet, _) = get_contracts().await;
 
                 let handler = contract_instance.methods().get_input_message_msg_id(2);
@@ -550,7 +558,7 @@ mod inputs {
             }
 
             #[tokio::test]
-            async fn can_get_input_message_sender() -> Result<(), Error> {
+            async fn can_get_input_message_sender() -> Result<()> {
                 let (contract_instance, _, wallet, _) = get_contracts().await;
                 let handler = contract_instance.methods().get_input_message_sender(2);
                 let mut executable = handler.get_executable_call().await.unwrap();
@@ -567,7 +575,7 @@ mod inputs {
             }
 
             #[tokio::test]
-            async fn can_get_input_message_recipient() -> Result<(), Error> {
+            async fn can_get_input_message_recipient() -> Result<()> {
                 let (contract_instance, _, wallet, _) = get_contracts().await;
                 let handler = contract_instance.methods().get_input_message_recipient(2);
                 let mut executable = handler.get_executable_call().await.unwrap();
@@ -583,7 +591,7 @@ mod inputs {
             }
 
             #[tokio::test]
-            async fn can_get_input_message_nonce() -> Result<(), Error> {
+            async fn can_get_input_message_nonce() -> Result<()> {
                 let (contract_instance, _, wallet, _) = get_contracts().await;
                 let handler = contract_instance.methods().get_input_message_nonce(2);
                 let mut executable = handler.get_executable_call().await.unwrap();
@@ -721,7 +729,7 @@ mod outputs {
                 .call()
                 .await
                 .unwrap();
-            assert_eq!(result.value, Output::Contract());
+            assert_eq!(result.value, Output::Contract);
         }
     }
 

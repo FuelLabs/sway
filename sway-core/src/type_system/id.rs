@@ -1,7 +1,8 @@
 use super::*;
-use crate::engine_threading::*;
-
-use fuel_abi_types::program_abi;
+use crate::{
+    decl_engine::{DeclEngine, DeclEngineIndex},
+    engine_threading::*,
+};
 
 use std::fmt;
 
@@ -77,67 +78,156 @@ impl CollectTypesMetadata for TypeId {
 
 impl ReplaceSelfType for TypeId {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        match engines.te().get(*self) {
-            TypeInfo::SelfType => {
-                *self = self_type;
-            }
-            TypeInfo::Enum {
-                mut type_parameters,
-                mut variant_types,
-                ..
-            } => {
-                for type_parameter in type_parameters.iter_mut() {
-                    type_parameter.replace_self_type(engines, self_type);
-                }
-                for variant_type in variant_types.iter_mut() {
-                    variant_type.replace_self_type(engines, self_type);
-                }
-            }
-            TypeInfo::Struct {
-                mut type_parameters,
-                mut fields,
-                ..
-            } => {
-                for type_parameter in type_parameters.iter_mut() {
-                    type_parameter.replace_self_type(engines, self_type);
-                }
-                for field in fields.iter_mut() {
-                    field.replace_self_type(engines, self_type);
-                }
-            }
-            TypeInfo::Tuple(mut type_arguments) => {
-                for type_argument in type_arguments.iter_mut() {
-                    type_argument.replace_self_type(engines, self_type);
-                }
-            }
-            TypeInfo::Custom { type_arguments, .. } => {
-                if let Some(mut type_arguments) = type_arguments {
-                    for type_argument in type_arguments.iter_mut() {
-                        type_argument.replace_self_type(engines, self_type);
+        fn helper(type_id: TypeId, engines: Engines<'_>, self_type: TypeId) -> Option<TypeId> {
+            let type_engine = engines.te();
+            let decl_engine = engines.de();
+            match type_engine.get(type_id) {
+                TypeInfo::SelfType => Some(self_type),
+                TypeInfo::Enum(decl_ref) => {
+                    let mut decl = decl_engine.get_enum(&decl_ref);
+                    let mut need_to_create_new = false;
+
+                    for variant in decl.variants.iter_mut() {
+                        if let Some(type_id) =
+                            helper(variant.type_argument.type_id, engines, self_type)
+                        {
+                            need_to_create_new = true;
+                            variant.type_argument.type_id = type_id;
+                        }
+                    }
+
+                    for type_param in decl.type_parameters.iter_mut() {
+                        if let Some(type_id) = helper(type_param.type_id, engines, self_type) {
+                            need_to_create_new = true;
+                            type_param.type_id = type_id;
+                        }
+                    }
+
+                    if need_to_create_new {
+                        let new_decl_ref = decl_engine.insert(decl);
+                        Some(type_engine.insert(decl_engine, TypeInfo::Enum(new_decl_ref)))
+                    } else {
+                        None
                     }
                 }
-            }
-            TypeInfo::Array(mut type_id, _) => {
-                type_id.replace_self_type(engines, self_type);
-            }
-            TypeInfo::Storage { mut fields } => {
-                for field in fields.iter_mut() {
-                    field.replace_self_type(engines, self_type);
+                TypeInfo::Struct(decl_ref) => {
+                    let mut decl = decl_engine.get_struct(&decl_ref);
+                    let mut need_to_create_new = false;
+
+                    for field in decl.fields.iter_mut() {
+                        if let Some(type_id) =
+                            helper(field.type_argument.type_id, engines, self_type)
+                        {
+                            need_to_create_new = true;
+                            field.type_argument.type_id = type_id;
+                        }
+                    }
+
+                    for type_param in decl.type_parameters.iter_mut() {
+                        if let Some(type_id) = helper(type_param.type_id, engines, self_type) {
+                            need_to_create_new = true;
+                            type_param.type_id = type_id;
+                        }
+                    }
+
+                    if need_to_create_new {
+                        let new_decl_ref = decl_engine.insert(decl);
+                        Some(type_engine.insert(decl_engine, TypeInfo::Struct(new_decl_ref)))
+                    } else {
+                        None
+                    }
                 }
+                TypeInfo::Tuple(fields) => {
+                    let mut need_to_create_new = false;
+                    let fields = fields
+                        .into_iter()
+                        .map(|mut field| {
+                            if let Some(type_id) = helper(field.type_id, engines, self_type) {
+                                need_to_create_new = true;
+                                field.type_id = type_id;
+                            }
+                            field
+                        })
+                        .collect::<Vec<_>>();
+                    if need_to_create_new {
+                        Some(type_engine.insert(decl_engine, TypeInfo::Tuple(fields)))
+                    } else {
+                        None
+                    }
+                }
+                TypeInfo::Custom {
+                    call_path,
+                    type_arguments,
+                } => {
+                    let mut need_to_create_new = false;
+                    let type_arguments = type_arguments.map(|type_arguments| {
+                        type_arguments
+                            .into_iter()
+                            .map(|mut type_arg| {
+                                if let Some(type_id) = helper(type_arg.type_id, engines, self_type)
+                                {
+                                    need_to_create_new = true;
+                                    type_arg.type_id = type_id;
+                                }
+                                type_arg
+                            })
+                            .collect::<Vec<_>>()
+                    });
+                    if need_to_create_new {
+                        Some(type_engine.insert(
+                            decl_engine,
+                            TypeInfo::Custom {
+                                call_path,
+                                type_arguments,
+                            },
+                        ))
+                    } else {
+                        None
+                    }
+                }
+                TypeInfo::Array(mut elem_ty, count) => helper(elem_ty.type_id, engines, self_type)
+                    .map(|type_id| {
+                        elem_ty.type_id = type_id;
+                        type_engine.insert(decl_engine, TypeInfo::Array(elem_ty, count))
+                    }),
+                TypeInfo::Storage { fields } => {
+                    let mut need_to_create_new = false;
+                    let fields = fields
+                        .into_iter()
+                        .map(|mut field| {
+                            if let Some(type_id) =
+                                helper(field.type_argument.type_id, engines, self_type)
+                            {
+                                need_to_create_new = true;
+                                field.type_argument.type_id = type_id;
+                            }
+                            field
+                        })
+                        .collect::<Vec<_>>();
+                    if need_to_create_new {
+                        Some(type_engine.insert(decl_engine, TypeInfo::Storage { fields }))
+                    } else {
+                        None
+                    }
+                }
+                TypeInfo::Unknown
+                | TypeInfo::UnknownGeneric { .. }
+                | TypeInfo::Str(_)
+                | TypeInfo::UnsignedInteger(_)
+                | TypeInfo::Boolean
+                | TypeInfo::ContractCaller { .. }
+                | TypeInfo::B256
+                | TypeInfo::Numeric
+                | TypeInfo::RawUntypedPtr
+                | TypeInfo::RawUntypedSlice
+                | TypeInfo::Contract
+                | TypeInfo::ErrorRecovery
+                | TypeInfo::Placeholder(_) => None,
             }
-            TypeInfo::Unknown
-            | TypeInfo::UnknownGeneric { .. }
-            | TypeInfo::Str(_)
-            | TypeInfo::UnsignedInteger(_)
-            | TypeInfo::Boolean
-            | TypeInfo::ContractCaller { .. }
-            | TypeInfo::B256
-            | TypeInfo::Numeric
-            | TypeInfo::RawUntypedPtr
-            | TypeInfo::RawUntypedSlice
-            | TypeInfo::Contract
-            | TypeInfo::ErrorRecovery
-            | TypeInfo::Placeholder(_) => {}
+        }
+
+        if let Some(type_id) = helper(*self, engines, self_type) {
+            *self = type_id;
         }
     }
 }
@@ -176,14 +266,17 @@ impl TypeId {
     pub(crate) fn get_type_parameters(
         &self,
         type_engine: &TypeEngine,
+        decl_engine: &DeclEngine,
     ) -> Option<Vec<TypeParameter>> {
         match type_engine.get(*self) {
-            TypeInfo::Enum {
-                type_parameters, ..
-            } => (!type_parameters.is_empty()).then_some(type_parameters),
-            TypeInfo::Struct {
-                type_parameters, ..
-            } => (!type_parameters.is_empty()).then_some(type_parameters),
+            TypeInfo::Enum(decl_ref) => {
+                let decl = decl_engine.get_enum(&decl_ref);
+                (!decl.type_parameters.is_empty()).then_some(decl.type_parameters)
+            }
+            TypeInfo::Struct(decl_ref) => {
+                let decl = decl_engine.get_struct(&decl_ref);
+                (!decl.type_parameters.is_empty()).then_some(decl.type_parameters)
+            }
             _ => None,
         }
     }
@@ -194,391 +287,18 @@ impl TypeId {
     pub(crate) fn is_generic_parameter(
         self,
         type_engine: &TypeEngine,
+        decl_engine: &DeclEngine,
         resolved_type_id: TypeId,
     ) -> bool {
         match (type_engine.get(self), type_engine.get(resolved_type_id)) {
-            (
-                TypeInfo::Custom { name, .. },
-                TypeInfo::Enum {
-                    name: enum_name, ..
-                },
-            ) => name != enum_name,
-            (
-                TypeInfo::Custom { name, .. },
-                TypeInfo::Struct {
-                    name: struct_name, ..
-                },
-            ) => name != struct_name,
+            (TypeInfo::Custom { call_path, .. }, TypeInfo::Enum(decl_ref)) => {
+                call_path.suffix != decl_engine.get_enum(&decl_ref).call_path.suffix
+            }
+            (TypeInfo::Custom { call_path, .. }, TypeInfo::Struct(decl_ref)) => {
+                call_path.suffix != decl_engine.get_struct(&decl_ref).call_path.suffix
+            }
             (TypeInfo::Custom { .. }, _) => true,
             _ => false,
-        }
-    }
-
-    /// Return the components of a given (potentially generic) type while considering what it
-    /// actually resolves to. These components are essentially of type of
-    /// `program_abi::TypeApplication`.  The method below also updates the provided list of
-    /// `program_abi::TypeDeclaration`s  to add the newly discovered types.
-    pub(crate) fn get_json_type_components(
-        &self,
-        type_engine: &TypeEngine,
-        types: &mut Vec<program_abi::TypeDeclaration>,
-        resolved_type_id: TypeId,
-    ) -> Option<Vec<program_abi::TypeApplication>> {
-        match type_engine.get(*self) {
-            TypeInfo::Enum { variant_types, .. } => {
-                // A list of all `program_abi::TypeDeclaration`s needed for the enum variants
-                let variants = variant_types
-                    .iter()
-                    .map(|x| program_abi::TypeDeclaration {
-                        type_id: x.initial_type_id.index(),
-                        type_field: x.initial_type_id.get_json_type_str(type_engine, x.type_id),
-                        components: x.initial_type_id.get_json_type_components(
-                            type_engine,
-                            types,
-                            x.type_id,
-                        ),
-                        type_parameters: x.initial_type_id.get_json_type_parameters(
-                            type_engine,
-                            types,
-                            x.type_id,
-                        ),
-                    })
-                    .collect::<Vec<_>>();
-                types.extend(variants);
-
-                // Generate the JSON data for the enum. This is basically a list of
-                // `program_abi::TypeApplication`s
-                Some(
-                    variant_types
-                        .iter()
-                        .map(|x| program_abi::TypeApplication {
-                            name: x.name.to_string(),
-                            type_id: x.initial_type_id.index(),
-                            type_arguments: x.initial_type_id.get_json_type_arguments(
-                                type_engine,
-                                types,
-                                x.type_id,
-                            ),
-                        })
-                        .collect(),
-                )
-            }
-            TypeInfo::Struct { fields, .. } => {
-                // A list of all `program_abi::TypeDeclaration`s needed for the struct fields
-                let field_types = fields
-                    .iter()
-                    .map(|x| program_abi::TypeDeclaration {
-                        type_id: x.initial_type_id.index(),
-                        type_field: x.initial_type_id.get_json_type_str(type_engine, x.type_id),
-                        components: x.initial_type_id.get_json_type_components(
-                            type_engine,
-                            types,
-                            x.type_id,
-                        ),
-                        type_parameters: x.initial_type_id.get_json_type_parameters(
-                            type_engine,
-                            types,
-                            x.type_id,
-                        ),
-                    })
-                    .collect::<Vec<_>>();
-                types.extend(field_types);
-
-                // Generate the JSON data for the struct. This is basically a list of
-                // `program_abi::TypeApplication`s
-                Some(
-                    fields
-                        .iter()
-                        .map(|x| program_abi::TypeApplication {
-                            name: x.name.to_string(),
-                            type_id: x.initial_type_id.index(),
-                            type_arguments: x.initial_type_id.get_json_type_arguments(
-                                type_engine,
-                                types,
-                                x.type_id,
-                            ),
-                        })
-                        .collect(),
-                )
-            }
-            TypeInfo::Array(..) => {
-                if let TypeInfo::Array(elem_ty, _) = type_engine.get(resolved_type_id) {
-                    // The `program_abi::TypeDeclaration`s needed for the array element type
-                    let elem_json_ty = program_abi::TypeDeclaration {
-                        type_id: elem_ty.initial_type_id.index(),
-                        type_field: elem_ty
-                            .initial_type_id
-                            .get_json_type_str(type_engine, elem_ty.type_id),
-                        components: elem_ty.initial_type_id.get_json_type_components(
-                            type_engine,
-                            types,
-                            elem_ty.type_id,
-                        ),
-                        type_parameters: elem_ty.initial_type_id.get_json_type_parameters(
-                            type_engine,
-                            types,
-                            elem_ty.type_id,
-                        ),
-                    };
-                    types.push(elem_json_ty);
-
-                    // Generate the JSON data for the array. This is basically a single
-                    // `program_abi::TypeApplication` for the array element type
-                    Some(vec![program_abi::TypeApplication {
-                        name: "__array_element".to_string(),
-                        type_id: elem_ty.initial_type_id.index(),
-                        type_arguments: elem_ty.initial_type_id.get_json_type_arguments(
-                            type_engine,
-                            types,
-                            elem_ty.type_id,
-                        ),
-                    }])
-                } else {
-                    unreachable!();
-                }
-            }
-            TypeInfo::Tuple(_) => {
-                if let TypeInfo::Tuple(fields) = type_engine.get(resolved_type_id) {
-                    // A list of all `program_abi::TypeDeclaration`s needed for the tuple fields
-                    let fields_types = fields
-                        .iter()
-                        .map(|x| program_abi::TypeDeclaration {
-                            type_id: x.initial_type_id.index(),
-                            type_field: x.initial_type_id.get_json_type_str(type_engine, x.type_id),
-                            components: x.initial_type_id.get_json_type_components(
-                                type_engine,
-                                types,
-                                x.type_id,
-                            ),
-                            type_parameters: x.initial_type_id.get_json_type_parameters(
-                                type_engine,
-                                types,
-                                x.type_id,
-                            ),
-                        })
-                        .collect::<Vec<_>>();
-                    types.extend(fields_types);
-
-                    // Generate the JSON data for the tuple. This is basically a list of
-                    // `program_abi::TypeApplication`s
-                    Some(
-                        fields
-                            .iter()
-                            .map(|x| program_abi::TypeApplication {
-                                name: "__tuple_element".to_string(),
-                                type_id: x.initial_type_id.index(),
-                                type_arguments: x.initial_type_id.get_json_type_arguments(
-                                    type_engine,
-                                    types,
-                                    x.type_id,
-                                ),
-                            })
-                            .collect(),
-                    )
-                } else {
-                    unreachable!()
-                }
-            }
-            TypeInfo::Custom { type_arguments, .. } => {
-                if !self.is_generic_parameter(type_engine, resolved_type_id) {
-                    // A list of all `program_abi::TypeDeclaration`s needed for the type arguments
-                    let type_args = type_arguments
-                        .unwrap_or_default()
-                        .iter()
-                        .zip(
-                            resolved_type_id
-                                .get_type_parameters(type_engine)
-                                .unwrap_or_default()
-                                .iter(),
-                        )
-                        .map(|(v, p)| program_abi::TypeDeclaration {
-                            type_id: v.initial_type_id.index(),
-                            type_field: v.initial_type_id.get_json_type_str(type_engine, p.type_id),
-                            components: v.initial_type_id.get_json_type_components(
-                                type_engine,
-                                types,
-                                p.type_id,
-                            ),
-                            type_parameters: v.initial_type_id.get_json_type_parameters(
-                                type_engine,
-                                types,
-                                p.type_id,
-                            ),
-                        })
-                        .collect::<Vec<_>>();
-                    types.extend(type_args);
-
-                    resolved_type_id.get_json_type_components(type_engine, types, resolved_type_id)
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        }
-    }
-
-    /// Return the type parameters of a given (potentially generic) type while considering what it
-    /// actually resolves to. These parameters are essentially of type of `usize` which are
-    /// basically the IDs of some set of `program_abi::TypeDeclaration`s. The method below also
-    /// updates the provide list of `program_abi::TypeDeclaration`s  to add the newly discovered
-    /// types.
-    pub(crate) fn get_json_type_parameters(
-        &self,
-        type_engine: &TypeEngine,
-        types: &mut Vec<program_abi::TypeDeclaration>,
-        resolved_type_id: TypeId,
-    ) -> Option<Vec<usize>> {
-        match self.is_generic_parameter(type_engine, resolved_type_id) {
-            true => None,
-            false => resolved_type_id.get_type_parameters(type_engine).map(|v| {
-                v.iter()
-                    .map(|v| v.get_json_type_parameter(type_engine, types))
-                    .collect::<Vec<_>>()
-            }),
-        }
-    }
-
-    /// Return the type arguments of a given (potentially generic) type while considering what it
-    /// actually resolves to. These arguments are essentially of type of
-    /// `program_abi::TypeApplication`. The method below also updates the provided list of
-    /// `program_abi::TypeDeclaration`s  to add the newly discovered types.
-    pub(crate) fn get_json_type_arguments(
-        &self,
-        type_engine: &TypeEngine,
-        types: &mut Vec<program_abi::TypeDeclaration>,
-        resolved_type_id: TypeId,
-    ) -> Option<Vec<program_abi::TypeApplication>> {
-        let resolved_params = resolved_type_id.get_type_parameters(type_engine);
-        match type_engine.get(*self) {
-            TypeInfo::Custom {
-                type_arguments: Some(type_arguments),
-                ..
-            } => (!type_arguments.is_empty()).then_some({
-                let resolved_params = resolved_params.unwrap_or_default();
-                let json_type_arguments = type_arguments
-                    .iter()
-                    .zip(resolved_params.iter())
-                    .map(|(v, p)| program_abi::TypeDeclaration {
-                        type_id: v.initial_type_id.index(),
-                        type_field: v.initial_type_id.get_json_type_str(type_engine, p.type_id),
-                        components: v.initial_type_id.get_json_type_components(
-                            type_engine,
-                            types,
-                            p.type_id,
-                        ),
-                        type_parameters: v.initial_type_id.get_json_type_parameters(
-                            type_engine,
-                            types,
-                            p.type_id,
-                        ),
-                    })
-                    .collect::<Vec<_>>();
-                types.extend(json_type_arguments);
-
-                type_arguments
-                    .iter()
-                    .map(|arg| program_abi::TypeApplication {
-                        name: "".to_string(),
-                        type_id: arg.initial_type_id.index(),
-                        type_arguments: arg.initial_type_id.get_json_type_arguments(
-                            type_engine,
-                            types,
-                            arg.type_id,
-                        ),
-                    })
-                    .collect::<Vec<_>>()
-            }),
-            TypeInfo::Enum {
-                type_parameters, ..
-            }
-            | TypeInfo::Struct {
-                type_parameters, ..
-            } => {
-                // Here, type_id for each type parameter should contain resolved types
-                let json_type_arguments = type_parameters
-                    .iter()
-                    .map(|v| program_abi::TypeDeclaration {
-                        type_id: v.type_id.index(),
-                        type_field: v.type_id.get_json_type_str(type_engine, v.type_id),
-                        components: v.type_id.get_json_type_components(
-                            type_engine,
-                            types,
-                            v.type_id,
-                        ),
-                        type_parameters: v.type_id.get_json_type_parameters(
-                            type_engine,
-                            types,
-                            v.type_id,
-                        ),
-                    })
-                    .collect::<Vec<_>>();
-                types.extend(json_type_arguments);
-
-                Some(
-                    type_parameters
-                        .iter()
-                        .map(|arg| program_abi::TypeApplication {
-                            name: "".to_string(),
-                            type_id: arg.type_id.index(),
-                            type_arguments: arg.type_id.get_json_type_arguments(
-                                type_engine,
-                                types,
-                                arg.type_id,
-                            ),
-                        })
-                        .collect::<Vec<_>>(),
-                )
-            }
-            _ => None,
-        }
-    }
-
-    pub fn json_abi_str(&self, type_engine: &TypeEngine) -> String {
-        type_engine.get(*self).json_abi_str(type_engine)
-    }
-
-    /// Gives back a string that represents the type, considering what it resolves to
-    pub(crate) fn get_json_type_str(
-        &self,
-        type_engine: &TypeEngine,
-        resolved_type_id: TypeId,
-    ) -> String {
-        if self.is_generic_parameter(type_engine, resolved_type_id) {
-            format!(
-                "generic {}",
-                type_engine.get(*self).json_abi_str(type_engine)
-            )
-        } else {
-            match (type_engine.get(*self), type_engine.get(resolved_type_id)) {
-                (TypeInfo::Custom { .. }, TypeInfo::Struct { .. }) => {
-                    format!(
-                        "struct {}",
-                        type_engine.get(*self).json_abi_str(type_engine)
-                    )
-                }
-                (TypeInfo::Custom { .. }, TypeInfo::Enum { .. }) => {
-                    format!("enum {}", type_engine.get(*self).json_abi_str(type_engine))
-                }
-                (TypeInfo::Tuple(fields), TypeInfo::Tuple(resolved_fields)) => {
-                    assert_eq!(fields.len(), resolved_fields.len());
-                    let field_strs = fields
-                        .iter()
-                        .map(|_| "_".to_string())
-                        .collect::<Vec<String>>();
-                    format!("({})", field_strs.join(", "))
-                }
-                (TypeInfo::Array(_, count), TypeInfo::Array(_, resolved_count)) => {
-                    assert_eq!(count.val(), resolved_count.val());
-                    format!("[_; {}]", count.val())
-                }
-                (TypeInfo::Custom { .. }, _) => {
-                    format!(
-                        "generic {}",
-                        type_engine.get(*self).json_abi_str(type_engine)
-                    )
-                }
-                _ => type_engine.get(*self).json_abi_str(type_engine),
-            }
         }
     }
 }

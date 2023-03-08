@@ -1,16 +1,17 @@
-use fuel_types::Bytes64;
+use fuel_vm::fuel_types::Bytes64;
 use fuels::{
     prelude::*,
     signers::fuel_crypto::{Message, PublicKey, SecretKey, Signature},
     tx::Bytes32,
+    types::{Bits256, EvmAddress},
 };
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use sha3::{Digest, Keccak256};
 
-abigen!(
-    EvmEcRecoverContract,
-    "test_projects/evm_ec_recover/out/debug/evm_ec_recover-abi.json"
-);
+abigen!(Contract(
+    name = "EvmEcRecoverContract",
+    abi = "test_projects/evm_ec_recover/out/debug/evm_ec_recover-abi.json"
+));
 
 fn keccak_hash<B>(data: B) -> Bytes32
 where
@@ -28,8 +29,7 @@ fn clear_12_bytes(bytes: [u8; 32]) -> [u8; 32] {
     bytes
 }
 
-async fn setup_env() -> Result<(EvmEcRecoverContract, PublicKey, Message, Bytes64, [u8; 32]), Error>
-{
+async fn setup_env() -> Result<(EvmEcRecoverContract, PublicKey, Message, Bytes64, [u8; 32])> {
     let mut rng = StdRng::seed_from_u64(1000);
     let msg_bytes: Bytes32 = rng.gen();
     let private_key = SecretKey::random(&mut rng);
@@ -41,7 +41,7 @@ async fn setup_env() -> Result<(EvmEcRecoverContract, PublicKey, Message, Bytes6
 
     let msg = unsafe { Message::from_bytes_unchecked(*msg_bytes) };
     let sig = Signature::sign(&private_key, &msg);
-    let sig_bytes: Bytes64 = Bytes64::try_from(sig).unwrap();
+    let sig_bytes: Bytes64 = Bytes64::from(sig);
     let mut wallet = WalletUnlocked::new_from_private_key(private_key, None);
 
     let num_assets = 1;

@@ -91,20 +91,18 @@ pub(crate) fn compile_const_decl(
             // See if we it's a global const and whether we can compile it *now*.
             let decl = module_ns.check_symbol(name)?;
             let decl_name_value = match decl {
-                ty::TyDeclaration::ConstantDeclaration(decl_id) => {
+                ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
                     let ty::TyConstantDeclaration {
                         name,
                         value,
                         is_configurable,
                         ..
-                    } = env
-                        .decl_engine
-                        .get_constant(decl_id.clone(), &name.span())?;
+                    } = env.decl_engine.get_constant(decl_id);
                     Some((name, value, is_configurable))
                 }
                 _otherwise => None,
             };
-            if let Some((name, value, is_configurable)) = decl_name_value {
+            if let Some((name, Some(value), is_configurable)) = decl_name_value {
                 let const_val = compile_constant_expression(
                     Engines::new(env.type_engine, env.decl_engine),
                     env.context,
@@ -221,7 +219,7 @@ fn const_eval_typed_expr(
         ty::TyExpressionVariant::Literal(l) => Some(convert_literal_to_constant(lookup.context, l)),
         ty::TyExpressionVariant::FunctionApplication {
             arguments,
-            function_decl_id,
+            function_decl_ref,
             ..
         } => {
             let mut actuals_const: Vec<_> = vec![];
@@ -243,9 +241,7 @@ fn const_eval_typed_expr(
             }
 
             // TODO: Handle more than one statement in the block.
-            let function_decl = lookup
-                .decl_engine
-                .get_function(function_decl_id.clone(), &expr.span)?;
+            let function_decl = lookup.decl_engine.get_function(function_decl_ref);
             if function_decl.body.contents.len() > 1 {
                 return Ok(None);
             }
@@ -286,16 +282,19 @@ fn const_eval_typed_expr(
                 // We couldn't evaluate all fields to a constant.
                 return Ok(None);
             }
-            get_aggregate_for_types(lookup.type_engine, lookup.context, &field_typs).map_or(
-                None,
-                |struct_ty| {
-                    Some(Constant::new_struct(
-                        lookup.context,
-                        struct_ty.get_field_types(lookup.context),
-                        field_vals,
-                    ))
-                },
+            get_aggregate_for_types(
+                lookup.type_engine,
+                lookup.decl_engine,
+                lookup.context,
+                &field_typs,
             )
+            .map_or(None, |struct_ty| {
+                Some(Constant::new_struct(
+                    lookup.context,
+                    struct_ty.get_field_types(lookup.context),
+                    field_vals,
+                ))
+            })
         }
         ty::TyExpressionVariant::Tuple { fields } => {
             let (mut field_typs, mut field_vals): (Vec<_>, Vec<_>) = (vec![], vec![]);
@@ -310,16 +309,19 @@ fn const_eval_typed_expr(
                 // We couldn't evaluate all fields to a constant.
                 return Ok(None);
             }
-            create_tuple_aggregate(lookup.type_engine, lookup.context, field_typs).map_or(
-                None,
-                |tuple_ty| {
-                    Some(Constant::new_struct(
-                        lookup.context,
-                        tuple_ty.get_field_types(lookup.context),
-                        field_vals,
-                    ))
-                },
+            create_tuple_aggregate(
+                lookup.type_engine,
+                lookup.decl_engine,
+                lookup.context,
+                field_typs,
             )
+            .map_or(None, |tuple_ty| {
+                Some(Constant::new_struct(
+                    lookup.context,
+                    tuple_ty.get_field_types(lookup.context),
+                    field_vals,
+                ))
+            })
         }
         ty::TyExpressionVariant::Array { contents } => {
             let (mut element_typs, mut element_vals): (Vec<_>, Vec<_>) = (vec![], vec![]);
@@ -347,6 +349,7 @@ fn const_eval_typed_expr(
             }
             create_array_aggregate(
                 lookup.type_engine,
+                lookup.decl_engine,
                 lookup.context,
                 element_type_id,
                 element_typs.len().try_into().unwrap(),
@@ -365,8 +368,12 @@ fn const_eval_typed_expr(
             contents,
             ..
         } => {
-            let aggregate =
-                create_enum_aggregate(lookup.type_engine, lookup.context, &enum_decl.variants);
+            let aggregate = create_enum_aggregate(
+                lookup.type_engine,
+                lookup.decl_engine,
+                lookup.context,
+                &enum_decl.variants,
+            );
             if let Ok(enum_ty) = aggregate {
                 let tag_value = Constant::new_uint(lookup.context, 64, *tag as u64);
                 let mut fields: Vec<Constant> = vec![tag_value];
@@ -403,6 +410,7 @@ fn const_eval_typed_expr(
                 };
                 get_struct_name_field_index_and_type(
                     lookup.type_engine,
+                    lookup.decl_engine,
                     *resolved_type_of_parent,
                     field_kind,
                 )
@@ -425,6 +433,9 @@ fn const_eval_typed_expr(
             _ => None,
         },
         ty::TyExpressionVariant::Return(exp) => const_eval_typed_expr(lookup, known_consts, exp)?,
+        ty::TyExpressionVariant::MatchExp { desugared, .. } => {
+            const_eval_typed_expr(lookup, known_consts, desugared)?
+        }
         ty::TyExpressionVariant::ArrayIndex { .. }
         | ty::TyExpressionVariant::IntrinsicFunction(_)
         | ty::TyExpressionVariant::CodeBlock(_)
@@ -458,6 +469,6 @@ fn const_eval_typed_ast_node(
         ty::TyAstNodeContent::Expression(e) | ty::TyAstNodeContent::ImplicitReturnExpression(e) => {
             const_eval_typed_expr(lookup, known_consts, e)
         }
-        ty::TyAstNodeContent::SideEffect => Ok(None),
+        ty::TyAstNodeContent::SideEffect(_) => Ok(None),
     }
 }

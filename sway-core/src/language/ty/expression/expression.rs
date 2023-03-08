@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, hash::Hasher};
 
 use sway_types::{Span, Spanned};
 
@@ -18,9 +18,6 @@ pub struct TyExpression {
     pub span: Span,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyExpression {}
 impl PartialEqWithEngines for TyExpression {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
@@ -29,6 +26,21 @@ impl PartialEqWithEngines for TyExpression {
             && type_engine
                 .get(self.return_type)
                 .eq(&type_engine.get(other.return_type), engines)
+    }
+}
+
+impl HashWithEngines for TyExpression {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TyExpression {
+            expression,
+            return_type,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+        } = self;
+        let type_engine = engines.te();
+        expression.hash(state, engines);
+        type_engine.get(*return_type).hash(state, engines);
     }
 }
 
@@ -81,7 +93,7 @@ impl CollectTypesMetadata for TyExpression {
         match &self.expression {
             FunctionApplication {
                 arguments,
-                function_decl_id,
+                function_decl_ref,
                 call_path,
                 ..
             } => {
@@ -93,11 +105,7 @@ impl CollectTypesMetadata for TyExpression {
                         errors
                     ));
                 }
-                let function_decl =
-                    match decl_engine.get_function(function_decl_id.clone(), &self.span) {
-                        Ok(decl) => decl,
-                        Err(e) => return err(vec![], vec![e]),
-                    };
+                let function_decl = decl_engine.get_function(function_decl_ref);
 
                 ctx.call_site_push();
                 for type_parameter in function_decl.type_parameters {
@@ -137,11 +145,9 @@ impl CollectTypesMetadata for TyExpression {
                 }
             }
             StructExpression { fields, span, .. } => {
-                if let TypeInfo::Struct {
-                    type_parameters, ..
-                } = ctx.type_engine.get(self.return_type)
-                {
-                    for type_parameter in type_parameters {
+                if let TypeInfo::Struct(decl_ref) = ctx.type_engine.get(self.return_type) {
+                    let decl = decl_engine.get_struct(&decl_ref);
+                    for type_parameter in decl.type_parameters {
                         ctx.call_site_insert(type_parameter.type_id, span.clone());
                     }
                 }
@@ -202,6 +208,12 @@ impl CollectTypesMetadata for TyExpression {
                     ));
                 }
             }
+            MatchExp { desugared, .. } => res.append(&mut check!(
+                desugared.collect_types_metadata(ctx),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )),
             IfExp {
                 condition,
                 then,
@@ -267,11 +279,11 @@ impl CollectTypesMetadata for TyExpression {
             EnumInstantiation {
                 enum_decl,
                 contents,
-                enum_instantiation_span,
+                call_path_binding,
                 ..
             } => {
                 for type_param in enum_decl.type_parameters.iter() {
-                    ctx.call_site_insert(type_param.type_id, enum_instantiation_span.clone())
+                    ctx.call_site_insert(type_param.type_id, call_path_binding.inner.suffix.span())
                 }
                 if let Some(contents) = contents {
                     res.append(&mut check!(
@@ -283,7 +295,7 @@ impl CollectTypesMetadata for TyExpression {
                 }
                 for variant in enum_decl.variants.iter() {
                     res.append(&mut check!(
-                        variant.type_id.collect_types_metadata(ctx),
+                        variant.type_argument.type_id.collect_types_metadata(ctx),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -330,7 +342,7 @@ impl CollectTypesMetadata for TyExpression {
                     errors
                 ));
                 res.append(&mut check!(
-                    variant.type_id.collect_types_metadata(ctx),
+                    variant.type_argument.type_id.collect_types_metadata(ctx),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -402,18 +414,14 @@ impl DeterministicallyAborts for TyExpression {
         use TyExpressionVariant::*;
         match &self.expression {
             FunctionApplication {
-                function_decl_id,
+                function_decl_ref,
                 arguments,
                 ..
             } => {
                 if !check_call_body {
                     return false;
                 }
-                let function_decl =
-                    match decl_engine.get_function(function_decl_id.clone(), &self.span) {
-                        Ok(decl) => decl,
-                        Err(_e) => panic!("failed to get function"),
-                    };
+                let function_decl = decl_engine.get_function(function_decl_ref);
                 function_decl
                     .body
                     .deterministically_aborts(decl_engine, check_call_body)
@@ -457,6 +465,9 @@ impl DeterministicallyAborts for TyExpression {
                     .map(|x| x.deterministically_aborts(decl_engine, check_call_body))
                     .unwrap_or(false)
             }),
+            MatchExp { desugared, .. } => {
+                desugared.deterministically_aborts(decl_engine, check_call_body)
+            }
             IfExp {
                 condition,
                 then,

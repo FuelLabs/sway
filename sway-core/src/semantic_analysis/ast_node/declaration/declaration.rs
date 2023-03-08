@@ -2,7 +2,7 @@ use sway_error::warning::{CompileWarning, Warning};
 use sway_types::{style::is_screaming_snake_case, Spanned};
 
 use crate::{
-    decl_engine::ReplaceFunctionImplementingType,
+    decl_engine::{DeclEngineIndex, DeclRef, ReplaceFunctionImplementingType},
     error::*,
     language::{parsed, ty},
     semantic_analysis::TypeCheckContext,
@@ -25,15 +25,14 @@ impl ty::TyDeclaration {
         let decl = match decl {
             parsed::Declaration::VariableDeclaration(parsed::VariableDeclaration {
                 name,
-                type_ascription,
-                type_ascription_span,
+                mut type_ascription,
                 body,
                 is_mutable,
             }) => {
-                let type_ascription = check!(
+                type_ascription.type_id = check!(
                     ctx.resolve_type_with_self(
-                        type_engine.insert(decl_engine, type_ascription),
-                        &type_ascription_span.clone().unwrap_or_else(|| name.span()),
+                        type_ascription.type_id,
+                        &type_ascription.span,
                         EnforceTypeArguments::Yes,
                         None
                     ),
@@ -41,10 +40,12 @@ impl ty::TyDeclaration {
                     warnings,
                     errors
                 );
-                let mut ctx = ctx.with_type_annotation(type_ascription).with_help_text(
-                    "Variable declaration's type annotation does not match up \
+                let mut ctx = ctx
+                    .with_type_annotation(type_ascription.type_id)
+                    .with_help_text(
+                        "Variable declaration's type annotation does not match up \
                         with the assigned expression's type.",
-                );
+                    );
                 let result = ty::TyExpression::type_check(ctx.by_ref(), body);
                 let body = check!(
                     result,
@@ -57,8 +58,8 @@ impl ty::TyDeclaration {
                 // to get the type of the variable. The type of the variable *has* to follow
                 // `type_ascription` if `type_ascription` is a concrete integer type that does not
                 // conflict with the type of `body` (i.e. passes the type checking above).
-                let return_type = match type_engine.get(type_ascription) {
-                    TypeInfo::UnsignedInteger(_) => type_ascription,
+                let return_type = match type_engine.get(type_ascription.type_id) {
+                    TypeInfo::UnsignedInteger(_) => type_ascription.type_id,
                     _ => body.return_type,
                 };
                 let typed_var_decl =
@@ -68,7 +69,6 @@ impl ty::TyDeclaration {
                         mutability: ty::VariableMutability::new_from_ref_mut(false, is_mutable),
                         return_type,
                         type_ascription,
-                        type_ascription_span,
                     }));
                 check!(
                     ctx.namespace.insert_symbol(name, typed_var_decl.clone()),
@@ -80,17 +80,16 @@ impl ty::TyDeclaration {
             }
             parsed::Declaration::ConstantDeclaration(parsed::ConstantDeclaration {
                 name,
-                type_ascription,
-                type_ascription_span,
+                mut type_ascription,
                 value,
                 visibility,
                 attributes,
                 is_configurable,
                 span,
             }) => {
-                let type_ascription = check!(
+                type_ascription.type_id = check!(
                     ctx.resolve_type_with_self(
-                        type_engine.insert(decl_engine, type_ascription),
+                        type_ascription.type_id,
                         &span,
                         EnforceTypeArguments::No,
                         None
@@ -102,48 +101,64 @@ impl ty::TyDeclaration {
 
                 let mut ctx = ctx
                     .by_ref()
-                    .with_type_annotation(type_ascription)
+                    .with_type_annotation(type_ascription.type_id)
                     .with_help_text(
                         "This declaration's type annotation does not match up with the assigned \
                         expression's type.",
                     );
-                let result = ty::TyExpression::type_check(ctx.by_ref(), value);
 
-                if !is_screaming_snake_case(name.as_str()) {
-                    warnings.push(CompileWarning {
-                        span: name.span(),
-                        warning_content: Warning::NonScreamingSnakeCaseConstName {
-                            name: name.clone(),
-                        },
-                    })
-                }
+                let value = match value {
+                    Some(value) => {
+                        let result = ty::TyExpression::type_check(ctx.by_ref(), value);
 
-                let value = check!(
-                    result,
-                    ty::TyExpression::error(name.span(), engines),
-                    warnings,
-                    errors
-                );
+                        if !is_screaming_snake_case(name.as_str()) {
+                            warnings.push(CompileWarning {
+                                span: name.span(),
+                                warning_content: Warning::NonScreamingSnakeCaseConstName {
+                                    name: name.clone(),
+                                },
+                            })
+                        }
+
+                        let value = check!(
+                            result,
+                            ty::TyExpression::error(name.span(), engines),
+                            warnings,
+                            errors
+                        );
+
+                        Some(value)
+                    }
+                    None => None,
+                };
+
                 // Integers are special in the sense that we can't only rely on the type of `body`
                 // to get the type of the variable. The type of the variable *has* to follow
                 // `type_ascription` if `type_ascription` is a concrete integer type that does not
                 // conflict with the type of `body` (i.e. passes the type checking above).
-                let return_type = match type_engine.get(type_ascription) {
-                    TypeInfo::UnsignedInteger(_) => type_ascription,
-                    _ => value.return_type,
+                type_ascription.type_id = match type_engine.get(type_ascription.type_id) {
+                    TypeInfo::UnsignedInteger(_) => type_ascription.type_id,
+                    _ => match &value {
+                        Some(value) => value.return_type,
+                        None => type_ascription.type_id,
+                    },
                 };
+
                 let decl = ty::TyConstantDeclaration {
                     name: name.clone(),
                     value,
                     visibility,
-                    return_type,
                     attributes,
-                    type_ascription_span,
+                    type_ascription,
                     is_configurable,
                     span,
                 };
-                let typed_const_decl =
-                    ty::TyDeclaration::ConstantDeclaration(decl_engine.insert(decl));
+                let decl_ref = decl_engine.insert(decl);
+                let typed_const_decl = ty::TyDeclaration::ConstantDeclaration {
+                    name: decl_ref.name,
+                    decl_id: decl_ref.id,
+                    decl_span: decl_ref.decl_span,
+                };
                 check!(
                     ctx.namespace.insert_symbol(name, typed_const_decl.clone()),
                     return err(warnings, errors),
@@ -160,10 +175,10 @@ impl ty::TyDeclaration {
                     warnings,
                     errors
                 );
-                let name = enum_decl.name.clone();
+                let call_path = enum_decl.call_path.clone();
                 let decl = ty::TyDeclaration::EnumDeclaration(decl_engine.insert(enum_decl));
                 check!(
-                    ctx.namespace.insert_symbol(name, decl.clone()),
+                    ctx.namespace.insert_symbol(call_path.suffix, decl.clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -181,7 +196,12 @@ impl ty::TyDeclaration {
                     errors
                 );
                 let name = fn_decl.name.clone();
-                let decl = ty::TyDeclaration::FunctionDeclaration(decl_engine.insert(fn_decl));
+                let decl_ref = decl_engine.insert(fn_decl);
+                let decl = ty::TyDeclaration::FunctionDeclaration {
+                    name: decl_ref.name,
+                    decl_id: decl_ref.id,
+                    decl_span: decl_ref.decl_span,
+                };
                 ctx.namespace.insert_symbol(name, decl.clone());
                 decl
             }
@@ -194,12 +214,39 @@ impl ty::TyDeclaration {
                     errors
                 );
                 let name = trait_decl.name.clone();
-                let decl_id = decl_engine.insert(trait_decl.clone());
-                let decl = ty::TyDeclaration::TraitDeclaration(decl_id);
+
+                // save decl_refs for the LSP
+                for supertrait in trait_decl.supertraits.iter_mut() {
+                    ctx.namespace
+                        .resolve_call_path(&supertrait.name)
+                        .cloned()
+                        .map(|supertrait_decl| {
+                            if let ty::TyDeclaration::TraitDeclaration {
+                                name: supertrait_name,
+                                decl_id: supertrait_decl_id,
+                                decl_span: supertrait_decl_span,
+                            } = supertrait_decl
+                            {
+                                supertrait.decl_ref = Some(DeclRef::new(
+                                    supertrait_name,
+                                    supertrait_decl_id,
+                                    supertrait_decl_span,
+                                ));
+                            }
+                        });
+                }
+
+                let decl_ref = decl_engine.insert(trait_decl.clone());
+                let decl = ty::TyDeclaration::TraitDeclaration {
+                    name: decl_ref.name,
+                    decl_id: decl_ref.id,
+                    decl_span: decl_ref.decl_span,
+                };
+
                 trait_decl
-                    .methods
+                    .items
                     .iter_mut()
-                    .for_each(|method| method.replace_implementing_type(engines, decl.clone()));
+                    .for_each(|item| item.replace_implementing_type(engines, decl.clone()));
                 check!(
                     ctx.namespace.insert_symbol(name, decl.clone()),
                     return err(warnings, errors),
@@ -220,8 +267,8 @@ impl ty::TyDeclaration {
                     ctx.namespace.insert_trait_implementation(
                         impl_trait.trait_name.clone(),
                         impl_trait.trait_type_arguments.clone(),
-                        impl_trait.implementing_for_type_id,
-                        &impl_trait.methods,
+                        impl_trait.implementing_for.type_id,
+                        &impl_trait.items,
                         &impl_trait.span,
                         false,
                         engines,
@@ -230,10 +277,16 @@ impl ty::TyDeclaration {
                     warnings,
                     errors
                 );
-                let impl_trait_decl =
-                    ty::TyDeclaration::ImplTrait(decl_engine.insert(impl_trait.clone()));
-                impl_trait.methods.iter_mut().for_each(|method| {
-                    method.replace_implementing_type(engines, impl_trait_decl.clone())
+                let decl_ref = decl_engine.insert(impl_trait.clone());
+                let impl_trait_decl = ty::TyDeclaration::ImplTrait {
+                    name: decl_ref.name,
+                    decl_id: decl_ref.id,
+                    decl_span: decl_ref.decl_span,
+                };
+                impl_trait.items.iter_mut().for_each(|item| match item {
+                    ty::TyImplItem::Fn(method) => {
+                        method.replace_implementing_type(engines, impl_trait_decl.clone())
+                    }
                 });
                 impl_trait_decl
             }
@@ -249,8 +302,8 @@ impl ty::TyDeclaration {
                     ctx.namespace.insert_trait_implementation(
                         impl_trait.trait_name.clone(),
                         impl_trait.trait_type_arguments.clone(),
-                        impl_trait.implementing_for_type_id,
-                        &impl_trait.methods,
+                        impl_trait.implementing_for.type_id,
+                        &impl_trait.items,
                         &impl_trait.span,
                         true,
                         engines,
@@ -259,10 +312,16 @@ impl ty::TyDeclaration {
                     warnings,
                     errors
                 );
-                let impl_trait_decl =
-                    ty::TyDeclaration::ImplTrait(decl_engine.insert(impl_trait.clone()));
-                impl_trait.methods.iter_mut().for_each(|method| {
-                    method.replace_implementing_type(engines, impl_trait_decl.clone())
+                let decl_ref = decl_engine.insert(impl_trait.clone());
+                let impl_trait_decl = ty::TyDeclaration::ImplTrait {
+                    name: decl_ref.name,
+                    decl_id: decl_ref.id,
+                    decl_span: decl_ref.decl_span,
+                };
+                impl_trait.items.iter_mut().for_each(|item| match item {
+                    ty::TyImplItem::Fn(method) => {
+                        method.replace_implementing_type(engines, impl_trait_decl.clone())
+                    }
                 });
                 impl_trait_decl
             }
@@ -274,12 +333,11 @@ impl ty::TyDeclaration {
                     warnings,
                     errors
                 );
-                let name = decl.name.clone();
-                let decl_id = decl_engine.insert(decl);
-                let decl = ty::TyDeclaration::StructDeclaration(decl_id);
+                let call_path = decl.call_path.clone();
+                let decl = ty::TyDeclaration::StructDeclaration(decl_engine.insert(decl));
                 // insert the struct decl into namespace
                 check!(
-                    ctx.namespace.insert_symbol(name, decl.clone()),
+                    ctx.namespace.insert_symbol(call_path.suffix, decl.clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -295,11 +353,38 @@ impl ty::TyDeclaration {
                     errors
                 );
                 let name = abi_decl.name.clone();
-                let decl = ty::TyDeclaration::AbiDeclaration(decl_engine.insert(abi_decl.clone()));
+
+                // save decl_refs for the LSP
+                for supertrait in abi_decl.supertraits.iter_mut() {
+                    ctx.namespace
+                        .resolve_call_path(&supertrait.name)
+                        .cloned()
+                        .map(|supertrait_decl| {
+                            if let ty::TyDeclaration::TraitDeclaration {
+                                name: supertrait_name,
+                                decl_id: supertrait_decl_id,
+                                decl_span: supertrait_decl_span,
+                            } = supertrait_decl
+                            {
+                                supertrait.decl_ref = Some(DeclRef::new(
+                                    supertrait_name,
+                                    supertrait_decl_id,
+                                    supertrait_decl_span,
+                                ));
+                            }
+                        });
+                }
+
+                let decl_ref = decl_engine.insert(abi_decl.clone());
+                let decl = ty::TyDeclaration::AbiDeclaration {
+                    name: decl_ref.name,
+                    decl_id: decl_ref.id,
+                    decl_span: decl_ref.decl_span,
+                };
                 abi_decl
-                    .methods
+                    .items
                     .iter_mut()
-                    .for_each(|method| method.replace_implementing_type(engines, decl.clone()));
+                    .for_each(|item| item.replace_implementing_type(engines, decl.clone()));
                 check!(
                     ctx.namespace.insert_symbol(name, decl.clone()),
                     return err(warnings, errors),
@@ -317,26 +402,21 @@ impl ty::TyDeclaration {
                 let mut fields_buf = Vec::with_capacity(fields.len());
                 for parsed::StorageField {
                     name,
-                    type_info,
                     initializer,
-                    type_info_span,
+                    mut type_argument,
                     attributes,
                     span: field_span,
                     ..
                 } in fields
                 {
-                    let type_id = check!(
-                        ctx.resolve_type_without_self(
-                            type_engine.insert(decl_engine, type_info),
-                            &name.span(),
-                            None
-                        ),
+                    type_argument.type_id = check!(
+                        ctx.resolve_type_without_self(type_argument.type_id, &name.span(), None),
                         return err(warnings, errors),
                         warnings,
                         errors
                     );
 
-                    let mut ctx = ctx.by_ref().with_type_annotation(type_id);
+                    let mut ctx = ctx.by_ref().with_type_annotation(type_argument.type_id);
                     let initializer = check!(
                         ty::TyExpression::type_check(ctx.by_ref(), initializer),
                         return err(warnings, errors),
@@ -346,26 +426,28 @@ impl ty::TyDeclaration {
 
                     fields_buf.push(ty::TyStorageField {
                         name,
-                        type_id,
-                        type_span: type_info_span,
+                        type_argument,
                         initializer,
                         span: field_span,
                         attributes,
                     });
                 }
                 let decl = ty::TyStorageDeclaration::new(fields_buf, span, attributes);
-                let decl_id = decl_engine.insert(decl);
+                let decl_ref = decl_engine.insert(decl);
                 // insert the storage declaration into the symbols
                 // if there already was one, return an error that duplicate storage
 
                 // declarations are not allowed
                 check!(
-                    ctx.namespace.set_storage_declaration(decl_id.clone()),
+                    ctx.namespace.set_storage_declaration(decl_ref.clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                ty::TyDeclaration::StorageDeclaration(decl_id)
+                ty::TyDeclaration::StorageDeclaration {
+                    decl_id: decl_ref.id,
+                    decl_span: decl_ref.decl_span,
+                }
             }
         };
 

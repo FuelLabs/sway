@@ -1,7 +1,7 @@
-use crate::language::DepName;
+use crate::{language::DepName, transform};
 
 use super::ParseTree;
-use sway_types::Ident;
+use sway_types::{Ident, Span};
 
 /// A module and its submodules in the form of a tree.
 #[derive(Debug, Clone)]
@@ -10,6 +10,7 @@ pub struct ParseModule {
     pub tree: ParseTree,
     /// Submodules introduced within this module using the `dep` syntax in order of declaration.
     pub submodules: Vec<(DepName, ParseSubmodule)>,
+    pub attributes: transform::AttributesMap,
 }
 
 /// A library module that was declared as a `dep` of another module.
@@ -20,4 +21,5 @@ pub struct ParseSubmodule {
     /// The name of a submodule, parsed from the `library` declaration within the module itself.
     pub library_name: Ident,
     pub module: ParseModule,
+    pub dependency_path_span: Span,
 }

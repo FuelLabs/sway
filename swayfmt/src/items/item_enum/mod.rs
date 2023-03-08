@@ -137,12 +137,12 @@ impl CurlyBrace for ItemEnum {
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add openning brace to the next line.
-                writeln!(line, "\n{}", open_brace)?;
+                writeln!(line, "\n{open_brace}")?;
                 formatter.shape.block_indent(&formatter.config);
             }
             _ => {
                 // Add opening brace to the same line
-                write!(line, " {}", open_brace)?;
+                write!(line, " {open_brace}")?;
                 formatter.shape.block_indent(&formatter.config);
             }
         }

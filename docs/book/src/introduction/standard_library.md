@@ -4,7 +4,7 @@ Similar to Rust, Sway comes with its own standard library.
 
 The Sway Standard Library is the foundation of portable Sway software, a set of minimal shared abstractions for the broader Sway ecosystem. It offers core types, like `Result<T, E>` and `Option<T>`, library-defined operations on language primitives, native asset management, blockchain contextual operations, access control, storage management, and support for types from other VMs, among many other things.
 
-The entire Sway standard library is a Forc project called `std`, and is available directly here: <https://github.com/FuelLabs/sway/tree/master/sway-lib-std> (navigate to the appropriate tagged release if the latest `master` is not compatible).
+The entire Sway standard library is a Forc project called `std`, and is available directly here: <https://github.com/FuelLabs/sway/tree/master/sway-lib-std> (navigate to the appropriate tagged release if the latest `master` is not compatible). For the latest `std` documentation see: <https://fuellabs.github.io/sway/master/std/>.
 
 ## Using the Standard Library
 
@@ -34,5 +34,7 @@ The current version of the prelude lives in [`std::prelude`](https://github.com/
 - [`std::option::Option`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/option.sw), an enum which expresses the presence or absence of a value.
 - [`std::result::Result`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/result.sw), an enum for functions that may succeed or fail.
 - [`std::assert::assert`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/assert.sw), a function that reverts the VM if the condition provided to it is `false`.
+- [`std::assert::assert_eq`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/assert.sw), a function that reverts the VM and logs its two inputs `v1` and `v2` if the condition `v1` == `v2` is `false`.
 - [`std::revert::require`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/revert.sw), a function that reverts the VM and logs a given value if the condition provided to it is `false`.
 - [`std::revert::revert`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/revert.sw), a function that reverts the VM.
+- [`std::logging::log`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/logging.sw), a function that logs arbitrary stack types.

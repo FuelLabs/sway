@@ -30,16 +30,15 @@ impl ty::TyFunctionDeclaration {
             parameters,
             span,
             attributes,
-            return_type,
+            mut return_type,
             type_parameters,
-            return_type_span,
             visibility,
             purity,
+            where_clause,
         } = fn_decl;
 
         let type_engine = ctx.type_engine;
         let decl_engine = ctx.decl_engine;
-        let engines = ctx.engines();
 
         // If functions aren't allowed in this location, return an error.
         if ctx.functions_disallowed() {
@@ -60,31 +59,26 @@ impl ty::TyFunctionDeclaration {
 
         // create a namespace for the function
         let mut fn_namespace = ctx.namespace.clone();
-        let mut fn_ctx = ctx
+        let mut ctx = ctx
             .by_ref()
             .scoped(&mut fn_namespace)
             .with_purity(purity)
             .disallow_functions();
 
-        // type check the type parameters, which will also insert them into the namespace
-        let mut new_type_parameters = vec![];
-        for type_parameter in type_parameters.into_iter() {
-            new_type_parameters.push(check!(
-                TypeParameter::type_check(fn_ctx.by_ref(), type_parameter),
-                continue,
-                warnings,
-                errors
-            ));
-        }
-        if !errors.is_empty() {
-            return err(warnings, errors);
-        }
+        // Type check the type parameters. This will also insert them into the
+        // current namespace.
+        let new_type_parameters = check!(
+            TypeParameter::type_check_type_params(ctx.by_ref(), type_parameters, false),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
         // type check the function parameters, which will also insert them into the namespace
         let mut new_parameters = vec![];
         for parameter in parameters.into_iter() {
             new_parameters.push(check!(
-                ty::TyFunctionParameter::type_check(fn_ctx.by_ref(), parameter, is_method),
+                ty::TyFunctionParameter::type_check(ctx.by_ref(), parameter, is_method),
                 continue,
                 warnings,
                 errors
@@ -95,11 +89,10 @@ impl ty::TyFunctionDeclaration {
         }
 
         // type check the return type
-        let initial_return_type = type_engine.insert(decl_engine, return_type);
-        let return_type = check!(
-            fn_ctx.resolve_type_with_self(
-                initial_return_type,
-                &return_type_span,
+        return_type.type_id = check!(
+            ctx.resolve_type_with_self(
+                return_type.type_id,
+                &return_type.span,
                 EnforceTypeArguments::Yes,
                 None
             ),
@@ -113,13 +106,13 @@ impl ty::TyFunctionDeclaration {
         // If there are no implicit block returns, then we do not want to type check them, so we
         // stifle the errors. If there _are_ implicit block returns, we want to type_check them.
         let (body, _implicit_block_return) = {
-            let fn_ctx = fn_ctx
+            let ctx = ctx
                 .by_ref()
                 .with_purity(purity)
                 .with_help_text("Function body's return type does not match up with its return type annotation.")
-                .with_type_annotation(return_type);
+                .with_type_annotation(return_type.type_id);
             check!(
-                ty::TyCodeBlock::type_check(fn_ctx, body),
+                ty::TyCodeBlock::type_check(ctx, body),
                 (
                     ty::TyCodeBlock { contents: vec![] },
                     type_engine.insert(decl_engine, TypeInfo::ErrorRecovery)
@@ -137,7 +130,7 @@ impl ty::TyFunctionDeclaration {
             .collect();
 
         check!(
-            unify_return_statements(fn_ctx.by_ref(), &return_statements, return_type),
+            unify_return_statements(ctx.by_ref(), &return_statements, return_type.type_id),
             return err(warnings, errors),
             warnings,
             errors
@@ -150,7 +143,7 @@ impl ty::TyFunctionDeclaration {
                 (Visibility::Public, false)
             }
         } else {
-            (visibility, fn_ctx.mode() == Mode::ImplAbiFn)
+            (visibility, ctx.mode() == Mode::ImplAbiFn)
         };
 
         let function_decl = ty::TyFunctionDeclaration {
@@ -161,27 +154,12 @@ impl ty::TyFunctionDeclaration {
             span,
             attributes,
             return_type,
-            initial_return_type,
             type_parameters: new_type_parameters,
-            return_type_span,
             visibility,
             is_contract_call,
             purity,
+            where_clause,
         };
-
-        // Retrieve the implemented traits for the type of the return type and
-        // insert them in the broader namespace. We don't want to include any
-        // type parameters, so we filter them out.
-        let mut return_type_namespace = fn_ctx
-            .namespace
-            .implemented_traits
-            .filter_by_type(function_decl.return_type, fn_ctx.engines());
-        for type_param in function_decl.type_parameters.iter() {
-            return_type_namespace.filter_against_type(engines, type_param.type_id);
-        }
-        ctx.namespace
-            .implemented_traits
-            .extend(return_type_namespace, engines);
 
         ok(function_decl, warnings, errors)
     }
@@ -240,15 +218,14 @@ fn test_function_selector_behavior() {
         parameters: vec![],
         span: Span::dummy(),
         attributes: Default::default(),
-        return_type: 0.into(),
-        initial_return_type: 0.into(),
+        return_type: TypeId::from(0).into(),
         type_parameters: vec![],
-        return_type_span: Span::dummy(),
         visibility: Visibility::Public,
         is_contract_call: false,
+        where_clause: vec![],
     };
 
-    let selector_text = match decl.to_selector_name(&type_engine).value {
+    let selector_text = match decl.to_selector_name(&type_engine, &decl_engine).value {
         Some(value) => value,
         _ => panic!("test failure"),
     };
@@ -266,37 +243,37 @@ fn test_function_selector_behavior() {
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
-                type_id: type_engine
-                    .insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy()))),
-                initial_type_id: type_engine
-                    .insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy()))),
-                type_span: Span::dummy(),
+                type_argument: type_engine
+                    .insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy())))
+                    .into(),
             },
             ty::TyFunctionParameter {
                 name: Ident::new_no_span("baz"),
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
-                type_id: type_engine.insert(
-                    &decl_engine,
-                    TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
-                ),
-                initial_type_id: type_engine
-                    .insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy()))),
-                type_span: Span::dummy(),
+                type_argument: TypeArgument {
+                    type_id: type_engine.insert(
+                        &decl_engine,
+                        TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
+                    ),
+                    initial_type_id: type_engine
+                        .insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy()))),
+                    span: Span::dummy(),
+                    call_path_tree: None,
+                },
             },
         ],
         span: Span::dummy(),
         attributes: Default::default(),
-        return_type: 0.into(),
-        initial_return_type: 0.into(),
+        return_type: TypeId::from(0).into(),
         type_parameters: vec![],
-        return_type_span: Span::dummy(),
         visibility: Visibility::Public,
         is_contract_call: false,
+        where_clause: vec![],
     };
 
-    let selector_text = match decl.to_selector_name(&type_engine).value {
+    let selector_text = match decl.to_selector_name(&type_engine, &decl_engine).value {
         Some(value) => value,
         _ => panic!("test failure"),
     };

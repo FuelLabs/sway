@@ -1,9 +1,11 @@
 use crate::{
     core::{
         session::Session,
-        token::{get_range_from_span, to_ident_key, Token, TypedAstToken},
+        token::{get_range_from_span, to_ident_key, SymbolKind, Token, TypedAstToken},
     },
-    utils::{attributes::doc_comment_attributes, markdown, markup::Markup},
+    utils::{
+        attributes::doc_comment_attributes, keyword_docs::KeywordDocs, markdown, markup::Markup,
+    },
 };
 use std::sync::Arc;
 use sway_core::{
@@ -14,10 +16,32 @@ use sway_types::{Ident, Span, Spanned};
 use tower_lsp::lsp_types::{self, Position, Url};
 
 /// Extracts the hover information for a token at the current position.
-pub fn hover_data(session: Arc<Session>, url: Url, position: Position) -> Option<lsp_types::Hover> {
+pub fn hover_data(
+    session: Arc<Session>,
+    keyword_docs: &KeywordDocs,
+    url: Url,
+    position: Position,
+) -> Option<lsp_types::Hover> {
     let (ident, token) = session.token_map().token_at_position(&url, position)?;
     let range = get_range_from_span(&ident.span());
-    let (decl_ident, decl_token) = match token.declared_token_ident(&session.type_engine.read()) {
+
+    // check if our token is a keyword
+    if token.kind == SymbolKind::Keyword {
+        let name = ident.as_str();
+        let documentation = keyword_docs.get(name).unwrap();
+        let prefix = format!("\n```sway\n{name}\n```\n\n---\n\n");
+        let formatted_doc = format!("{prefix}{documentation}");
+        let content = Markup::new().text(&formatted_doc);
+        let contents = lsp_types::HoverContents::Markup(markup_content(content));
+        return Some(lsp_types::Hover {
+            contents,
+            range: Some(range),
+        });
+    }
+
+    let (decl_ident, decl_token) = match token
+        .declared_token_ident(&session.type_engine.read(), &session.decl_engine.read())
+    {
         Some(decl_ident) => {
             let decl_token = session
                 .token_map()
@@ -62,7 +86,7 @@ fn format_doc_attributes(token: &Token) -> String {
             .iter()
             .map(|attribute| {
                 let comment = attribute.args.first().unwrap().as_str();
-                format!("{}\n", comment)
+                format!("{comment}\n")
             })
             .collect()
     }
@@ -83,7 +107,7 @@ fn format_variable_hover(is_mutable: bool, type_name: &str, token_name: &str) ->
         false => "",
         true => " mut",
     };
-    format!("let{} {}: {}", mutability, token_name, type_name)
+    format!("let{mutability} {token_name}: {type_name}")
 }
 
 fn markup_content(markup: Markup) -> lsp_types::MarkupContent {
@@ -100,7 +124,7 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
 
     let format_name_with_type = |name: &str, type_id: &TypeId| -> String {
         let type_name = format!("{}", engines.help_out(type_id));
-        format!("{}: {}", name, type_name)
+        format!("{name}: {type_name}")
     };
 
     let value = token
@@ -109,54 +133,54 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
         .and_then(|typed_token| match typed_token {
             TypedAstToken::TypedDeclaration(decl) => match decl {
                 ty::TyDeclaration::VariableDeclaration(var_decl) => {
-                    let type_name = format!("{}", engines.help_out(var_decl.type_ascription));
+                    let type_name =
+                        format!("{}", engines.help_out(var_decl.type_ascription.type_id));
                     Some(format_variable_hover(
                         var_decl.mutability.is_mutable(),
                         &type_name,
                         &token_name,
                     ))
                 }
-                ty::TyDeclaration::StructDeclaration(decl_id) => decl_engine
-                    .get_struct(decl_id.clone(), &decl.span())
-                    .map(|struct_decl| {
-                        format_visibility_hover(
-                            struct_decl.visibility,
-                            decl.friendly_name(),
-                            &token_name,
-                        )
-                    })
-                    .ok(),
-                ty::TyDeclaration::TraitDeclaration(ref decl_id) => decl_engine
-                    .get_trait(decl_id.clone(), &decl.span())
-                    .map(|trait_decl| {
-                        format_visibility_hover(
-                            trait_decl.visibility,
-                            decl.friendly_name(),
-                            &token_name,
-                        )
-                    })
-                    .ok(),
-                ty::TyDeclaration::EnumDeclaration(decl_id) => decl_engine
-                    .get_enum(decl_id.clone(), &decl.span())
-                    .map(|enum_decl| {
-                        format_visibility_hover(
-                            enum_decl.visibility,
-                            decl.friendly_name(),
-                            &token_name,
-                        )
-                    })
-                    .ok(),
+                ty::TyDeclaration::StructDeclaration(decl_ref) => {
+                    let struct_decl = decl_engine.get_struct(decl_ref);
+                    Some(format_visibility_hover(
+                        struct_decl.visibility,
+                        decl.friendly_type_name(),
+                        &token_name,
+                    ))
+                }
+                ty::TyDeclaration::TraitDeclaration { decl_id, .. } => {
+                    let trait_decl = decl_engine.get_trait(decl_id);
+                    Some(format_visibility_hover(
+                        trait_decl.visibility,
+                        decl.friendly_type_name(),
+                        &token_name,
+                    ))
+                }
+                ty::TyDeclaration::EnumDeclaration(decl_ref) => {
+                    let enum_decl = decl_engine.get_enum(decl_ref);
+                    Some(format_visibility_hover(
+                        enum_decl.visibility,
+                        decl.friendly_type_name(),
+                        &token_name,
+                    ))
+                }
+                ty::TyDeclaration::AbiDeclaration { .. } => {
+                    Some(format!("{} {}", decl.friendly_type_name(), &token_name))
+                }
                 _ => None,
             },
             TypedAstToken::TypedFunctionDeclaration(func) => {
                 Some(extract_fn_signature(&func.span()))
             }
-            TypedAstToken::TypedFunctionParameter(param) => {
-                Some(format_name_with_type(param.name.as_str(), &param.type_id))
-            }
-            TypedAstToken::TypedStructField(field) => {
-                Some(format_name_with_type(field.name.as_str(), &field.type_id))
-            }
+            TypedAstToken::TypedFunctionParameter(param) => Some(format_name_with_type(
+                param.name.as_str(),
+                &param.type_argument.type_id,
+            )),
+            TypedAstToken::TypedStructField(field) => Some(format_name_with_type(
+                field.name.as_str(),
+                &field.type_argument.type_id,
+            )),
             TypedAstToken::TypedExpression(expr) => match expr.expression {
                 ty::TyExpressionVariant::Literal { .. } => {
                     Some(format!("{}", engines.help_out(expr.return_type)))

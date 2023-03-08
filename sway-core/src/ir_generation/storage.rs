@@ -26,7 +26,7 @@ where
             sway_utils::constants::STORAGE_DOMAIN_SEPARATOR,
             ix.to_usize()
         ),
-        |acc, i| format!("{}_{}", acc, i),
+        |acc, i| format!("{acc}_{i}"),
     ))
 }
 

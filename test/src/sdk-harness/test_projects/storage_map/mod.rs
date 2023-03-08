@@ -1,9 +1,12 @@
-use fuels::prelude::*;
+use fuels::{
+    prelude::*,
+    types::{Bits256, SizedAsciiString},
+};
 
-abigen!(
-    TestStorageMapContract,
-    "test_projects/storage_map/out/debug/storage_map-abi.json",
-);
+abigen!(Contract(
+    name = "TestStorageMapContract",
+    abi = "test_projects/storage_map/out/debug/storage_map-abi.json",
+));
 
 async fn test_storage_map_instance() -> TestStorageMapContract {
     let wallet = launch_provider_and_get_wallet().await;
@@ -31,6 +34,18 @@ mod u64_to {
 
         let (key1, key2, key3) = (1, 2, 3);
         let (val1, val2, val3) = (true, false, true);
+
+        // Nothing to read just yet
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u64_to_bool_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
+        );
 
         // Insert into u64 -> T storage maps
         instance
@@ -61,7 +76,7 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            val1
+            Some(val1)
         );
         assert_eq!(
             instance
@@ -71,7 +86,7 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            val2
+            Some(val2)
         );
         assert_eq!(
             instance
@@ -81,7 +96,30 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            val3
+            Some(val3)
+        );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_u64_to_bool_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u64_to_bool_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
         );
     }
 
@@ -91,6 +129,18 @@ mod u64_to {
 
         let (key1, key2, key3) = (1, 2, 3);
         let (val1, val2, val3) = (8, 66, 99);
+
+        // Nothing to read just yet
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u64_to_u8_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
+        );
 
         instance
             .methods()
@@ -119,7 +169,7 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            val1
+            Some(val1)
         );
         assert_eq!(
             instance
@@ -129,7 +179,7 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            val2
+            Some(val2)
         );
         assert_eq!(
             instance
@@ -139,7 +189,30 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            val3
+            Some(val3)
+        );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_u64_to_u8_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u64_to_u8_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
         );
     }
 
@@ -149,6 +222,18 @@ mod u64_to {
 
         let (key1, key2, key3) = (6, 9, 1);
         let (val1, val2, val3) = (9, 42, 100);
+
+        // Nothing to read just yet
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u64_to_u16_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
+        );
 
         instance
             .methods()
@@ -177,7 +262,7 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            val1
+            Some(val1)
         );
         assert_eq!(
             instance
@@ -187,7 +272,7 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            val2
+            Some(val2)
         );
         assert_eq!(
             instance
@@ -197,7 +282,30 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            val3
+            Some(val3)
+        );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_u64_to_u16_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u64_to_u16_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
         );
     }
 
@@ -207,6 +315,18 @@ mod u64_to {
 
         let (key1, key2, key3) = (5, 99, 10);
         let (val1, val2, val3) = (90, 2, 100);
+
+        // Nothing to read just yet
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u64_to_u32_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
+        );
 
         instance
             .methods()
@@ -235,7 +355,7 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            val1
+            Some(val1)
         );
         assert_eq!(
             instance
@@ -245,7 +365,7 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            val2
+            Some(val2)
         );
         assert_eq!(
             instance
@@ -255,7 +375,30 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            val3
+            Some(val3)
+        );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_u64_to_u32_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u64_to_u32_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
         );
     }
 
@@ -265,6 +408,18 @@ mod u64_to {
 
         let (key1, key2, key3) = (50, 99, 1);
         let (val1, val2, val3) = (90, 20, 10);
+
+        // Nothing to read just yet
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u64_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
+        );
 
         instance
             .methods()
@@ -293,7 +448,7 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            val1
+            Some(val1)
         );
         assert_eq!(
             instance
@@ -303,7 +458,7 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            val2
+            Some(val2)
         );
         assert_eq!(
             instance
@@ -313,7 +468,30 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            val3
+            Some(val3)
+        );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_u64_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u64_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
         );
     }
 
@@ -326,6 +504,18 @@ mod u64_to {
             (Bits256([1; 32]), 42, true),
             (Bits256([2; 32]), 24, true),
             (Bits256([3; 32]), 99, true),
+        );
+
+        // Nothing to read just yet
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u64_to_tuple_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
         );
 
         instance
@@ -355,7 +545,7 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            val1
+            Some(val1)
         );
         assert_eq!(
             instance
@@ -365,7 +555,7 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            val2
+            Some(val2)
         );
         assert_eq!(
             instance
@@ -375,7 +565,30 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            val3
+            Some(val3)
+        );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_u64_to_tuple_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u64_to_tuple_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
         );
     }
 
@@ -400,6 +613,18 @@ mod u64_to {
                 y: Bits256([55; 32]),
                 z: Bits256([12; 32]),
             },
+        );
+
+        // Nothing to read just yet
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u64_to_struct_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
         );
 
         instance
@@ -429,7 +654,7 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            val1
+            Some(val1)
         );
         assert_eq!(
             instance
@@ -439,7 +664,7 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            val2
+            Some(val2)
         );
         assert_eq!(
             instance
@@ -449,7 +674,30 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            val3
+            Some(val3)
+        );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_u64_to_struct_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u64_to_struct_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
         );
     }
 
@@ -462,6 +710,18 @@ mod u64_to {
             Enum::V1(Bits256([66; 32])),
             Enum::V2(42),
             Enum::V3(Bits256([42; 32])),
+        );
+
+        // Nothing to read just yet
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u64_to_enum_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
         );
 
         instance
@@ -491,7 +751,7 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            val1
+            Some(val1)
         );
         assert_eq!(
             instance
@@ -501,7 +761,7 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            val2
+            Some(val2)
         );
         assert_eq!(
             instance
@@ -511,7 +771,30 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            val3
+            Some(val3)
+        );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_u64_to_enum_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u64_to_enum_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
         );
     }
 
@@ -526,30 +809,33 @@ mod u64_to {
             "fastest_modular_execution_layer_C",
         );
 
+        // Nothing to read just yet
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u64_to_str_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
+        );
+
         instance
             .methods()
-            .insert_into_u64_to_str_map(
-                key1,
-                fuels::prelude::SizedAsciiString::try_from(val1).unwrap(),
-            )
+            .insert_into_u64_to_str_map(key1, SizedAsciiString::try_from(val1).unwrap())
             .call()
             .await
             .unwrap();
         instance
             .methods()
-            .insert_into_u64_to_str_map(
-                key2,
-                fuels::prelude::SizedAsciiString::try_from(val2).unwrap(),
-            )
+            .insert_into_u64_to_str_map(key2, SizedAsciiString::try_from(val2).unwrap())
             .call()
             .await
             .unwrap();
         instance
             .methods()
-            .insert_into_u64_to_str_map(
-                key3,
-                fuels::prelude::SizedAsciiString::try_from(val3).unwrap(),
-            )
+            .insert_into_u64_to_str_map(key3, SizedAsciiString::try_from(val3).unwrap())
             .call()
             .await
             .unwrap();
@@ -562,7 +848,7 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            val1
+            Some(SizedAsciiString::try_from(val1).unwrap())
         );
         assert_eq!(
             instance
@@ -572,7 +858,7 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            val2
+            Some(SizedAsciiString::try_from(val2).unwrap())
         );
         assert_eq!(
             instance
@@ -582,7 +868,30 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            val3
+            Some(SizedAsciiString::try_from(val3).unwrap())
+        );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_u64_to_str_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u64_to_str_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
         );
     }
 }
@@ -597,6 +906,18 @@ mod to_u64_map {
 
         let (key1, key2) = (true, false);
         let (val1, val2) = (1, 2);
+
+        // Nothing to read just yet
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_bool_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
+        );
 
         instance
             .methods()
@@ -619,7 +940,7 @@ mod to_u64_map {
                 .await
                 .unwrap()
                 .value,
-            val1
+            Some(val1)
         );
         assert_eq!(
             instance
@@ -629,7 +950,30 @@ mod to_u64_map {
                 .await
                 .unwrap()
                 .value,
-            val2
+            Some(val2)
+        );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_bool_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_bool_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
         );
     }
 
@@ -639,6 +983,18 @@ mod to_u64_map {
 
         let (key1, key2, key3) = (8, 66, 99);
         let (val1, val2, val3) = (1, 2, 3);
+
+        // Nothing to read just yet
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u8_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
+        );
 
         instance
             .methods()
@@ -667,7 +1023,7 @@ mod to_u64_map {
                 .await
                 .unwrap()
                 .value,
-            val1
+            Some(val1)
         );
         assert_eq!(
             instance
@@ -677,7 +1033,7 @@ mod to_u64_map {
                 .await
                 .unwrap()
                 .value,
-            val2
+            Some(val2)
         );
         assert_eq!(
             instance
@@ -687,7 +1043,30 @@ mod to_u64_map {
                 .await
                 .unwrap()
                 .value,
-            val3
+            Some(val3)
+        );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_u8_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u8_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
         );
     }
 
@@ -697,6 +1076,18 @@ mod to_u64_map {
 
         let (key1, key2, key3) = (9, 42, 100);
         let (val1, val2, val3) = (6, 9, 1);
+
+        // Nothing to read just yet
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u16_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
+        );
 
         instance
             .methods()
@@ -725,7 +1116,7 @@ mod to_u64_map {
                 .await
                 .unwrap()
                 .value,
-            val1
+            Some(val1)
         );
         assert_eq!(
             instance
@@ -735,7 +1126,7 @@ mod to_u64_map {
                 .await
                 .unwrap()
                 .value,
-            val2
+            Some(val2)
         );
         assert_eq!(
             instance
@@ -745,7 +1136,30 @@ mod to_u64_map {
                 .await
                 .unwrap()
                 .value,
-            val3
+            Some(val3)
+        );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_u16_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u16_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
         );
     }
 
@@ -755,6 +1169,18 @@ mod to_u64_map {
 
         let (key1, key2, key3) = (90, 2, 100);
         let (val1, val2, val3) = (5, 99, 10);
+
+        // Nothing to read just yet
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u32_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
+        );
 
         instance
             .methods()
@@ -783,7 +1209,7 @@ mod to_u64_map {
                 .await
                 .unwrap()
                 .value,
-            val1
+            Some(val1)
         );
         assert_eq!(
             instance
@@ -793,7 +1219,7 @@ mod to_u64_map {
                 .await
                 .unwrap()
                 .value,
-            val2
+            Some(val2)
         );
         assert_eq!(
             instance
@@ -803,7 +1229,30 @@ mod to_u64_map {
                 .await
                 .unwrap()
                 .value,
-            val3
+            Some(val3)
+        );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_u32_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u32_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
         );
     }
 
@@ -817,6 +1266,18 @@ mod to_u64_map {
             (Bits256([3; 32]), 99, true),
         );
         let (val1, val2, val3) = (50, 99, 10);
+
+        // Nothing to read just yet
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_tuple_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
+        );
 
         instance
             .methods()
@@ -845,7 +1306,7 @@ mod to_u64_map {
                 .await
                 .unwrap()
                 .value,
-            val1
+            Some(val1)
         );
         assert_eq!(
             instance
@@ -855,7 +1316,7 @@ mod to_u64_map {
                 .await
                 .unwrap()
                 .value,
-            val2
+            Some(val2)
         );
         assert_eq!(
             instance
@@ -865,7 +1326,30 @@ mod to_u64_map {
                 .await
                 .unwrap()
                 .value,
-            val3
+            Some(val3)
+        );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_tuple_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_tuple_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
         );
     }
 
@@ -893,6 +1377,18 @@ mod to_u64_map {
 
         let (val1, val2, val3) = (5, 9, 1);
 
+        // Nothing to read just yet
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_struct_to_u64_map(key1.clone())
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
+        );
+
         instance
             .methods()
             .insert_into_struct_to_u64_map(key1.clone(), val1.clone())
@@ -915,12 +1411,12 @@ mod to_u64_map {
         assert_eq!(
             instance
                 .methods()
-                .get_from_struct_to_u64_map(key1)
+                .get_from_struct_to_u64_map(key1.clone())
                 .call()
                 .await
                 .unwrap()
                 .value,
-            val1
+            Some(val1)
         );
         assert_eq!(
             instance
@@ -930,7 +1426,7 @@ mod to_u64_map {
                 .await
                 .unwrap()
                 .value,
-            val2
+            Some(val2)
         );
         assert_eq!(
             instance
@@ -940,7 +1436,30 @@ mod to_u64_map {
                 .await
                 .unwrap()
                 .value,
-            val3
+            Some(val3)
+        );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_struct_to_u64_map(key1.clone())
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_struct_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
         );
     }
 
@@ -954,6 +1473,18 @@ mod to_u64_map {
             Enum::V3(Bits256([42; 32])),
         );
         let (val1, val2, val3) = (44, 17, 1000);
+
+        // Nothing to read just yet
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_enum_to_u64_map(key1.clone())
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
+        );
 
         instance
             .methods()
@@ -977,12 +1508,12 @@ mod to_u64_map {
         assert_eq!(
             instance
                 .methods()
-                .get_from_enum_to_u64_map(key1)
+                .get_from_enum_to_u64_map(key1.clone())
                 .call()
                 .await
                 .unwrap()
                 .value,
-            val1
+            Some(val1)
         );
         assert_eq!(
             instance
@@ -992,7 +1523,7 @@ mod to_u64_map {
                 .await
                 .unwrap()
                 .value,
-            val2
+            Some(val2)
         );
         assert_eq!(
             instance
@@ -1002,7 +1533,30 @@ mod to_u64_map {
                 .await
                 .unwrap()
                 .value,
-            val3
+            Some(val3)
+        );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_enum_to_u64_map(key1.clone())
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_enum_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
         );
     }
 
@@ -1016,6 +1570,18 @@ mod to_u64_map {
             "fastest_modular_execution_layer_C",
         );
         let (val1, val2, val3) = (9001, 1980, 1000);
+
+        // Nothing to read just yet
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_str_to_u64_map(SizedAsciiString::try_from(key1).unwrap())
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
+        );
 
         instance
             .methods()
@@ -1044,7 +1610,7 @@ mod to_u64_map {
                 .await
                 .unwrap()
                 .value,
-            val1
+            Some(val1)
         );
         assert_eq!(
             instance
@@ -1054,7 +1620,7 @@ mod to_u64_map {
                 .await
                 .unwrap()
                 .value,
-            val2
+            Some(val2)
         );
         assert_eq!(
             instance
@@ -1064,7 +1630,30 @@ mod to_u64_map {
                 .await
                 .unwrap()
                 .value,
-            val3
+            Some(val3)
+        );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_str_to_u64_map(SizedAsciiString::try_from(key1).unwrap())
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_str_to_u64_map(SizedAsciiString::try_from(key1).unwrap())
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
         );
     }
 }
@@ -1076,6 +1665,28 @@ async fn test_multiple_maps() {
     let (key1, key2, key3) = (1, 2, 3);
     let (val1_1, val2_1, val3_1) = (8, 66, 99);
     let (val1_2, val2_2, val3_2) = (9, 42, 100);
+
+    // Nothing to read just yet
+    assert_eq!(
+        instance
+            .methods()
+            .get_from_u64_to_u8_map(key1)
+            .call()
+            .await
+            .unwrap()
+            .value,
+        None
+    );
+    assert_eq!(
+        instance
+            .methods()
+            .get_from_u64_to_u16_map(key1)
+            .call()
+            .await
+            .unwrap()
+            .value,
+        None
+    );
 
     instance
         .methods()
@@ -1123,7 +1734,7 @@ async fn test_multiple_maps() {
             .await
             .unwrap()
             .value,
-        val1_1
+        Some(val1_1)
     );
     assert_eq!(
         instance
@@ -1133,7 +1744,7 @@ async fn test_multiple_maps() {
             .await
             .unwrap()
             .value,
-        val2_1
+        Some(val2_1)
     );
     assert_eq!(
         instance
@@ -1143,7 +1754,7 @@ async fn test_multiple_maps() {
             .await
             .unwrap()
             .value,
-        val3_1
+        Some(val3_1)
     );
 
     assert_eq!(
@@ -1154,7 +1765,7 @@ async fn test_multiple_maps() {
             .await
             .unwrap()
             .value,
-        val1_2
+        Some(val1_2)
     );
     assert_eq!(
         instance
@@ -1164,7 +1775,7 @@ async fn test_multiple_maps() {
             .await
             .unwrap()
             .value,
-        val2_2
+        Some(val2_2)
     );
     assert_eq!(
         instance
@@ -1174,6 +1785,6 @@ async fn test_multiple_maps() {
             .await
             .unwrap()
             .value,
-        val3_2
+        Some(val3_2)
     );
 }

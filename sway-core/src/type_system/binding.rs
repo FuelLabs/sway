@@ -1,14 +1,14 @@
 use sway_types::{Span, Spanned};
 
 use crate::{
+    decl_engine::*,
+    engine_threading::*,
     error::*,
     language::{ty, CallPath},
     semantic_analysis::TypeCheckContext,
-    type_system::EnforceTypeArguments,
-    CreateTypeId, TypeInfo,
+    type_system::*,
+    Ident,
 };
-
-use super::{TypeArgument, TypeId};
 
 /// A `TypeBinding` is the result of using turbofish to bind types to
 /// generic parameters.
@@ -72,8 +72,67 @@ use super::{TypeArgument, TypeId};
 #[derive(Debug, Clone)]
 pub struct TypeBinding<T> {
     pub inner: T,
-    pub type_arguments: Vec<TypeArgument>,
+    pub type_arguments: TypeArgs,
     pub span: Span,
+}
+
+/// A [TypeArgs] contains a `Vec<TypeArgument>` either in the variant `Regular`
+/// or in the variant `Prefix`.
+///
+/// `Regular` variant indicates the type arguments are located after the suffix.
+/// `Prefix` variant indicates the type arguments are located between the last
+/// prefix and the suffix.
+///
+/// In the case of an enum we can have either the type parameters in the `Regular`
+/// variant, case of:
+/// ```ignore
+/// let z = Option::Some::<u32>(10);
+/// ```
+/// Or the enum can have the type parameters in the `Prefix` variant, case of:
+/// ```ignore
+/// let z = Option::<u32>::Some(10);
+/// ```
+/// So we can have type parameters in the `Prefix` or `Regular` variant but not
+/// in both.
+#[derive(Debug, Clone)]
+pub enum TypeArgs {
+    /// `Regular` variant indicates the type arguments are located after the suffix.
+    Regular(Vec<TypeArgument>),
+    /// `Prefix` variant indicates the type arguments are located between the last
+    /// prefix and the suffix.
+    Prefix(Vec<TypeArgument>),
+}
+
+impl TypeArgs {
+    pub fn to_vec(&self) -> Vec<TypeArgument> {
+        match self {
+            TypeArgs::Regular(vec) => vec.to_vec(),
+            TypeArgs::Prefix(vec) => vec.to_vec(),
+        }
+    }
+
+    pub(crate) fn to_vec_mut(&mut self) -> &mut Vec<TypeArgument> {
+        match self {
+            TypeArgs::Regular(vec) => vec,
+            TypeArgs::Prefix(vec) => vec,
+        }
+    }
+}
+
+impl Spanned for TypeArgs {
+    fn span(&self) -> Span {
+        Span::join_all(self.to_vec().iter().map(|t| t.span()))
+    }
+}
+
+impl PartialEqWithEngines for TypeArgs {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        match (self, other) {
+            (TypeArgs::Regular(vec1), TypeArgs::Regular(vec2)) => vec1.eq(vec2, engines),
+            (TypeArgs::Prefix(vec1), TypeArgs::Prefix(vec2)) => vec1.eq(vec2, engines),
+            _ => false,
+        }
+    }
 }
 
 impl<T> Spanned for TypeBinding<T> {
@@ -82,7 +141,23 @@ impl<T> Spanned for TypeBinding<T> {
     }
 }
 
-impl TypeBinding<CallPath<(TypeInfo, Span)>> {
+impl PartialEqWithEngines for TypeBinding<()> {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        self.span == other.span && self.type_arguments.eq(&other.type_arguments, engines)
+    }
+}
+
+impl<T> TypeBinding<T> {
+    pub fn strip_inner(self) -> TypeBinding<()> {
+        TypeBinding {
+            inner: (),
+            type_arguments: self.type_arguments,
+            span: self.span,
+        }
+    }
+}
+
+impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
     pub(crate) fn type_check_with_type_info(
         &self,
         ctx: &mut TypeCheckContext,
@@ -93,7 +168,8 @@ impl TypeBinding<CallPath<(TypeInfo, Span)>> {
         let type_engine = ctx.type_engine;
         let decl_engine = ctx.decl_engine;
 
-        let (type_info, type_info_span) = self.inner.suffix.clone();
+        let (type_info, type_ident) = self.inner.suffix.clone();
+        let type_info_span = type_ident.span();
 
         // find the module that the symbol is in
         let type_info_prefix = ctx.namespace.find_module_path(&self.inner.prefixes);
@@ -106,7 +182,7 @@ impl TypeBinding<CallPath<(TypeInfo, Span)>> {
 
         // create the type info object
         let type_info = check!(
-            type_info.apply_type_arguments(self.type_arguments.clone(), &type_info_span),
+            type_info.apply_type_arguments(self.type_arguments.to_vec(), &type_info_span),
             return err(warnings, errors),
             warnings,
             errors
@@ -143,14 +219,16 @@ impl TypeBinding<CallPath> {
 
         // grab the declaration
         let unknown_decl = check!(
-            ctx.namespace.resolve_call_path(&self.inner).cloned(),
+            ctx.namespace
+                .resolve_call_path_with_visibility_check(engines, &self.inner)
+                .cloned(),
             return err(warnings, errors),
             warnings,
             errors
         );
 
         // replace the self types inside of the type arguments
-        for type_argument in self.type_arguments.iter_mut() {
+        for type_argument in self.type_arguments.to_vec_mut().iter_mut() {
             check!(
                 ctx.resolve_type_with_self(
                     type_argument.type_id,
@@ -165,57 +243,59 @@ impl TypeBinding<CallPath> {
         }
 
         if !errors.is_empty() {
-            return err(warnings, errors);
+            // Returns ok with error, this allows functions which call this to
+            // also access the returned TyDeclaration and throw more suitable errors.
+            return ok(unknown_decl, warnings, errors);
         }
 
         // monomorphize the declaration, if needed
         let new_decl = match unknown_decl {
-            ty::TyDeclaration::FunctionDeclaration(original_id) => {
+            ty::TyDeclaration::FunctionDeclaration {
+                decl_id: original_id,
+                name,
+                decl_span,
+            } => {
                 // get the copy from the declaration engine
-                let mut new_copy = check!(
-                    CompileResult::from(
-                        decl_engine.get_function(original_id.clone(), &self.span())
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                let mut new_copy = decl_engine.get_function(&original_id);
 
                 // monomorphize the copy, in place
-                check!(
-                    ctx.monomorphize(
-                        &mut new_copy,
-                        &mut self.type_arguments,
-                        EnforceTypeArguments::No,
-                        &self.span
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                if let TypeArgs::Regular(_) = self.type_arguments {
+                    check!(
+                        ctx.monomorphize(
+                            &mut new_copy,
+                            self.type_arguments.to_vec_mut(),
+                            EnforceTypeArguments::No,
+                            &self.span
+                        ),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                }
 
                 // insert the new copy into the declaration engine
-                let new_id = ctx
+                let DeclRef {
+                    id: new_decl_id, ..
+                } = ctx
                     .decl_engine
                     .insert(new_copy)
-                    .with_parent(ctx.decl_engine, original_id);
+                    .with_parent(ctx.decl_engine, original_id.into());
 
-                ty::TyDeclaration::FunctionDeclaration(new_id)
+                ty::TyDeclaration::FunctionDeclaration {
+                    name,
+                    decl_id: new_decl_id,
+                    decl_span,
+                }
             }
-            ty::TyDeclaration::EnumDeclaration(original_id) => {
+            ty::TyDeclaration::EnumDeclaration(original_decl_ref) => {
                 // get the copy from the declaration engine
-                let mut new_copy = check!(
-                    CompileResult::from(decl_engine.get_enum(original_id, &self.span())),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                let mut new_copy = decl_engine.get_enum(&original_decl_ref);
 
                 // monomorphize the copy, in place
                 check!(
                     ctx.monomorphize(
                         &mut new_copy,
-                        &mut self.type_arguments,
+                        self.type_arguments.to_vec_mut(),
                         EnforceTypeArguments::No,
                         &self.span
                     ),
@@ -224,31 +304,26 @@ impl TypeBinding<CallPath> {
                     errors
                 );
 
+                // insert the new copy into the declaration engine
+                let new_decl_ref = ctx.decl_engine.insert(new_copy);
+
                 // take any trait methods that apply to this type and copy them to the new type
                 ctx.namespace.insert_trait_implementation_for_type(
                     engines,
-                    new_copy.create_type_id(engines),
+                    type_engine.insert(decl_engine, TypeInfo::Enum(new_decl_ref.clone())),
                 );
 
-                // insert the new copy into the declaration engine
-                let new_id = ctx.decl_engine.insert(new_copy);
-
-                ty::TyDeclaration::EnumDeclaration(new_id)
+                ty::TyDeclaration::EnumDeclaration(new_decl_ref)
             }
-            ty::TyDeclaration::StructDeclaration(original_id) => {
+            ty::TyDeclaration::StructDeclaration(original_decl_ref) => {
                 // get the copy from the declaration engine
-                let mut new_copy = check!(
-                    CompileResult::from(decl_engine.get_struct(original_id, &self.span())),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                let mut new_copy = decl_engine.get_struct(&original_decl_ref);
 
                 // monomorphize the copy, in place
                 check!(
                     ctx.monomorphize(
                         &mut new_copy,
-                        &mut self.type_arguments,
+                        self.type_arguments.to_vec_mut(),
                         EnforceTypeArguments::No,
                         &self.span
                     ),
@@ -257,16 +332,16 @@ impl TypeBinding<CallPath> {
                     errors
                 );
 
+                // insert the new copy into the declaration engine
+                let new_decl_ref = ctx.decl_engine.insert(new_copy);
+
                 // take any trait methods that apply to this type and copy them to the new type
                 ctx.namespace.insert_trait_implementation_for_type(
                     engines,
-                    new_copy.create_type_id(engines),
+                    type_engine.insert(decl_engine, TypeInfo::Struct(new_decl_ref.clone())),
                 );
 
-                // insert the new copy into the declaration engine
-                let new_id = ctx.decl_engine.insert(new_copy);
-
-                ty::TyDeclaration::StructDeclaration(new_id)
+                ty::TyDeclaration::StructDeclaration(new_decl_ref)
             }
             _ => unknown_decl,
         };

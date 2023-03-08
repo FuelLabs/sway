@@ -1,16 +1,19 @@
 use sway_ast::Intrinsic;
 use sway_core::{
+    decl_engine::DeclEngine,
     language::{
         parsed::{
-            Declaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter,
-            ReassignmentExpression, Scrutinee, StorageField, StructExpressionField, StructField,
-            TraitFn,
+            AbiCastExpression, AmbiguousPathExpression, Declaration, DelineatedPathExpression,
+            EnumVariant, Expression, FunctionApplicationExpression, FunctionParameter,
+            MethodApplicationExpression, Scrutinee, StorageField, StructExpression,
+            StructExpressionField, StructField, StructScrutineeField, Supertrait, TraitFn,
+            UseStatement,
         },
         ty,
     },
     transform::Attribute,
     type_system::{TypeId, TypeInfo, TypeParameter},
-    TypeArgument, TypeEngine,
+    TraitConstraint, TypeArgument, TypeEngine,
 };
 use sway_types::{Ident, Span, Spanned};
 use tower_lsp::lsp_types::{Position, Range};
@@ -23,18 +26,31 @@ use tower_lsp::lsp_types::{Position, Range};
 pub enum AstToken {
     Declaration(Declaration),
     Expression(Expression),
+    StructExpression(StructExpression),
     StructExpressionField(StructExpressionField),
-    FunctionDeclaration(FunctionDeclaration),
+    StructScrutineeField(StructScrutineeField),
     FunctionParameter(FunctionParameter),
+    FunctionApplicationExpression(FunctionApplicationExpression),
+    MethodApplicationExpression(MethodApplicationExpression),
+    AmbiguousPathExpression(AmbiguousPathExpression),
+    DelineatedPathExpression(DelineatedPathExpression),
+    AbiCastExpression(AbiCastExpression),
     StructField(StructField),
     EnumVariant(EnumVariant),
     TraitFn(TraitFn),
-    Reassignment(ReassignmentExpression),
+    TraitConstraint(TraitConstraint),
     StorageField(StorageField),
     Scrutinee(Scrutinee),
     Keyword(Ident),
     Intrinsic(Intrinsic),
     Attribute(Attribute),
+    LibraryName(Ident),
+    IncludeStatement,
+    UseStatement(UseStatement),
+    TypeArgument(TypeArgument),
+    TypeParameter(TypeParameter),
+    Supertrait(Supertrait),
+    Ident(Ident),
 }
 
 /// The `TypedAstToken` holds the types produced by the [sway_core::language::ty::TyProgram].
@@ -42,16 +58,26 @@ pub enum AstToken {
 pub enum TypedAstToken {
     TypedDeclaration(ty::TyDeclaration),
     TypedExpression(ty::TyExpression),
+    TypedScrutinee(ty::TyScrutinee),
+    TypedConstantDeclaration(ty::TyConstantDeclaration),
     TypedFunctionDeclaration(ty::TyFunctionDeclaration),
     TypedFunctionParameter(ty::TyFunctionParameter),
     TypedStructField(ty::TyStructField),
     TypedEnumVariant(ty::TyEnumVariant),
     TypedTraitFn(ty::TyTraitFn),
+    TypedSupertrait(Supertrait),
     TypedStorageField(ty::TyStorageField),
+    TyStorageAccessDescriptor(ty::TyStorageAccessDescriptor),
     TypeCheckedStorageReassignDescriptor(ty::TyStorageReassignDescriptor),
     TypedReassignment(ty::TyReassignment),
     TypedArgument(TypeArgument),
     TypedParameter(TypeParameter),
+    TypedTraitConstraint(TraitConstraint),
+    TypedProgramKind(ty::TyProgramKind),
+    TypedLibraryName(Ident),
+    TypedIncludeStatement,
+    TypedUseStatement(ty::TyUseStatement),
+    Ident(Ident),
 }
 
 /// These variants are used to represent the semantic type of the [Token].
@@ -110,9 +136,13 @@ impl Token {
     }
 
     /// Return the [Ident] of the declaration of the provided token.
-    pub fn declared_token_ident(&self, type_engine: &TypeEngine) -> Option<Ident> {
+    pub fn declared_token_ident(
+        &self,
+        type_engine: &TypeEngine,
+        decl_engine: &DeclEngine,
+    ) -> Option<Ident> {
         self.type_def.as_ref().and_then(|type_def| match type_def {
-            TypeDefinition::TypeId(type_id) => ident_of_type_id(type_engine, type_id),
+            TypeDefinition::TypeId(type_id) => ident_of_type_id(type_engine, decl_engine, type_id),
             TypeDefinition::Ident(ident) => Some(ident.clone()),
         })
     }
@@ -120,9 +150,15 @@ impl Token {
     /// Return the [Span] of the declaration of the provided token. This is useful for
     /// performaing == comparisons on spans. We need to do this instead of comparing
     /// the [Ident] because the [PartialEq] implementation is only comparing the name.
-    pub fn declared_token_span(&self, type_engine: &TypeEngine) -> Option<Span> {
+    pub fn declared_token_span(
+        &self,
+        type_engine: &TypeEngine,
+        decl_engine: &DeclEngine,
+    ) -> Option<Span> {
         self.type_def.as_ref().and_then(|type_def| match type_def {
-            TypeDefinition::TypeId(type_id) => Some(ident_of_type_id(type_engine, type_id)?.span()),
+            TypeDefinition::TypeId(type_id) => {
+                Some(ident_of_type_id(type_engine, decl_engine, type_id)?.span())
+            }
             TypeDefinition::Ident(ident) => Some(ident.span()),
         })
     }
@@ -145,12 +181,16 @@ pub fn to_ident_key(ident: &Ident) -> (Ident, Span) {
 }
 
 /// Use the [TypeId] to look up the associated [TypeInfo] and return the [Ident] if one is found.
-pub fn ident_of_type_id(type_engine: &TypeEngine, type_id: &TypeId) -> Option<Ident> {
+pub fn ident_of_type_id(
+    type_engine: &TypeEngine,
+    decl_engine: &DeclEngine,
+    type_id: &TypeId,
+) -> Option<Ident> {
     match type_engine.get(*type_id) {
-        TypeInfo::UnknownGeneric { name, .. }
-        | TypeInfo::Enum { name, .. }
-        | TypeInfo::Struct { name, .. }
-        | TypeInfo::Custom { name, .. } => Some(name),
+        TypeInfo::UnknownGeneric { name, .. } => Some(name),
+        TypeInfo::Enum(decl_ref) => Some(decl_engine.get_enum(&decl_ref).call_path.suffix),
+        TypeInfo::Struct(decl_ref) => Some(decl_engine.get_struct(&decl_ref).call_path.suffix),
+        TypeInfo::Custom { call_path, .. } => Some(call_path.suffix),
         _ => None,
     }
 }
@@ -163,7 +203,9 @@ pub fn type_info_to_symbol_kind(type_engine: &TypeEngine, type_info: &TypeInfo) 
             SymbolKind::BuiltinType
         }
         TypeInfo::Numeric | TypeInfo::Str(..) => SymbolKind::NumericLiteral,
-        TypeInfo::Custom { .. } | TypeInfo::Struct { .. } => SymbolKind::Struct,
+        TypeInfo::Custom { .. } | TypeInfo::Struct { .. } | TypeInfo::Contract => {
+            SymbolKind::Struct
+        }
         TypeInfo::Enum { .. } => SymbolKind::Enum,
         TypeInfo::Array(elem_ty, ..) => {
             let type_info = type_engine.get(elem_ty.type_id);

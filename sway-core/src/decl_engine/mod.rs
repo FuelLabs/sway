@@ -10,13 +10,25 @@
 
 #[allow(clippy::module_inception)]
 pub(crate) mod engine;
-pub(crate) mod id;
+pub(crate) mod functional_decl_id;
+pub mod id;
+pub(crate) mod interface_decl_id;
 pub(crate) mod mapping;
-pub(crate) mod replace_decl_id;
-pub(crate) mod wrapper;
+pub(crate) mod r#ref;
+pub(crate) mod replace_decls;
+
+use std::collections::BTreeMap;
 
 pub use engine::*;
-pub use id::*;
+pub(crate) use functional_decl_id::*;
+pub(crate) use id::*;
+pub use interface_decl_id::*;
 pub(crate) use mapping::*;
-pub(crate) use replace_decl_id::*;
-pub(crate) use wrapper::*;
+pub use r#ref::*;
+pub(crate) use replace_decls::*;
+use sway_types::Ident;
+
+use crate::language::ty::{TyTraitInterfaceItem, TyTraitItem};
+
+pub(crate) type InterfaceItemMap = BTreeMap<Ident, TyTraitInterfaceItem>;
+pub(crate) type ItemMap = BTreeMap<Ident, TyTraitItem>;

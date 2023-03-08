@@ -2,8 +2,8 @@ use crate::{Parse, ParseResult, ParseToEnd, Parser, ParserConsumed};
 
 use sway_ast::keywords::{
     AbiToken, ClassToken, ConfigurableToken, ConstToken, DepToken, EnumToken, FnToken, ImplToken,
-    MutToken, OpenAngleBracketToken, RefToken, SelfToken, StorageToken, StructToken, TraitToken,
-    UseToken, WhereToken,
+    MutToken, OpenAngleBracketToken, RefToken, SelfToken, SemicolonToken, StorageToken,
+    StructToken, TraitToken, UseToken, WhereToken,
 };
 use sway_ast::{
     Braces, CodeBlockContents, Dependency, FnArg, FnArgs, FnReturnType, FnSignature,
@@ -57,6 +57,7 @@ impl Parse for ItemKind {
             ItemKind::Abi(item)
         } else if let Some(mut item) = parser.guarded_parse::<ConstToken, ItemConst>()? {
             item.visibility = visibility.take();
+            parser.take::<SemicolonToken>();
             ItemKind::Const(item)
         } else if let Some(item) = parser.guarded_parse::<StorageToken, _>()? {
             ItemKind::Storage(item)
@@ -85,7 +86,7 @@ impl Parse for TypeField {
 
 impl ParseToEnd for FnArgs {
     fn parse_to_end<'a, 'e>(
-        mut parser: Parser<'a, 'e>,
+        mut parser: Parser<'a, '_>,
     ) -> ParseResult<(FnArgs, ParserConsumed<'a>)> {
         let mut ref_self: Option<RefToken> = None;
         let mut mutable_self: Option<MutToken> = None;
@@ -168,7 +169,7 @@ impl Parse for FnSignature {
 mod tests {
     use super::*;
     use std::sync::Arc;
-    use sway_ast::{AttributeDecl, Item};
+    use sway_ast::{AttributeDecl, Item, ItemTraitItem};
 
     fn parse_item(input: &str) -> Item {
         let handler = <_>::default();
@@ -228,7 +229,7 @@ mod tests {
         let item = parse_item(
             r#"
             // I will be ignored.
-            //! I will be ignored.
+            //! I will be ignored. 
             /// This is a doc comment.
             //! I will be ignored.
             // I will be ignored.
@@ -473,12 +474,17 @@ mod tests {
         if let ItemKind::Trait(item_trait) = item.value {
             let mut decls = item_trait.trait_items.get().iter();
 
-            let f_sig = decls.next();
-            assert!(f_sig.is_some());
-            assert_eq!(
-                attributes(&f_sig.unwrap().0.attribute_list),
-                vec![[("foo", Some(vec!["one"]))], [("bar", None)]]
-            );
+            let trait_item = decls.next();
+            assert!(trait_item.is_some());
+            let (annotated, _) = trait_item.unwrap();
+            #[allow(irrefutable_let_patterns)]
+            if let ItemTraitItem::Fn(_fn_sig) = &annotated.value {
+                assert_eq!(
+                    attributes(&annotated.attribute_list),
+                    vec![[("foo", Some(vec!["one"]))], [("bar", None)]]
+                );
+            }
+
             assert!(decls.next().is_none());
 
             assert!(item_trait.trait_defs_opt.is_some());

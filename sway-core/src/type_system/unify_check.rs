@@ -1,4 +1,5 @@
 use crate::{engine_threading::*, type_system::*};
+use sway_types::Spanned;
 
 /// Helper struct to aid in type coercion.
 pub(super) struct UnifyCheck<'a> {
@@ -147,11 +148,11 @@ impl<'a> UnifyCheck<'a> {
 
             (
                 Custom {
-                    name: l_name,
+                    call_path: l_name,
                     type_arguments: l_type_args,
                 },
                 Custom {
-                    name: r_name,
+                    call_path: r_name,
                     type_arguments: r_type_args,
                 },
             ) => {
@@ -167,68 +168,69 @@ impl<'a> UnifyCheck<'a> {
                     .iter()
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
-                l_name == r_name && self.check_multiple(&l_types, &r_types)
+                l_name.suffix == r_name.suffix && self.check_multiple(&l_types, &r_types)
             }
             // Let empty enums to coerce to any other type. This is useful for Never enum.
-            (
-                Enum {
-                    variant_types: rvs, ..
-                },
-                _,
-            ) if rvs.is_empty() => true,
-            (
-                Enum {
-                    name: l_name,
-                    variant_types: l_variant_types,
-                    type_parameters: l_type_parameters,
-                },
-                Enum {
-                    name: r_name,
-                    variant_types: r_variant_types,
-                    type_parameters: r_type_parameters,
-                },
-            ) => {
-                let l_names = l_variant_types
-                    .iter()
-                    .map(|x| x.name.clone())
-                    .collect::<Vec<_>>();
-                let r_names = r_variant_types
-                    .iter()
-                    .map(|x| x.name.clone())
-                    .collect::<Vec<_>>();
-                let l_types = l_type_parameters
-                    .iter()
-                    .map(|x| x.type_id)
-                    .collect::<Vec<_>>();
-                let r_types = r_type_parameters
-                    .iter()
-                    .map(|x| x.type_id)
-                    .collect::<Vec<_>>();
-                l_name == r_name && l_names == r_names && self.check_multiple(&l_types, &r_types)
+            (Enum(r_decl_ref), _)
+                if self.engines.de().get_enum(&r_decl_ref).variants.is_empty() =>
+            {
+                true
             }
-            (
-                Struct {
-                    name: l_name,
-                    fields: l_fields,
-                    type_parameters: l_type_parameters,
-                },
-                Struct {
-                    name: r_name,
-                    fields: r_fields,
-                    type_parameters: r_type_parameters,
-                },
-            ) => {
-                let l_names = l_fields.iter().map(|x| x.name.clone()).collect::<Vec<_>>();
-                let r_names = r_fields.iter().map(|x| x.name.clone()).collect::<Vec<_>>();
-                let l_types = l_type_parameters
+            (Enum(l_decl_ref), Enum(r_decl_ref)) => {
+                let l_decl = self.engines.de().get_enum(&l_decl_ref);
+                let r_decl = self.engines.de().get_enum(&r_decl_ref);
+                let l_names = l_decl
+                    .variants
+                    .iter()
+                    .map(|x| x.name.clone())
+                    .collect::<Vec<_>>();
+                let r_names = r_decl
+                    .variants
+                    .iter()
+                    .map(|x| x.name.clone())
+                    .collect::<Vec<_>>();
+                let l_types = l_decl
+                    .type_parameters
                     .iter()
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
-                let r_types = r_type_parameters
+                let r_types = r_decl
+                    .type_parameters
                     .iter()
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
-                l_name == r_name && l_names == r_names && self.check_multiple(&l_types, &r_types)
+                l_decl.call_path.suffix == r_decl.call_path.suffix
+                    && l_decl.call_path.suffix.span() == r_decl.call_path.suffix.span()
+                    && l_names == r_names
+                    && self.check_multiple(&l_types, &r_types)
+            }
+            (Struct(l_decl_ref), Struct(r_decl_ref)) => {
+                let l_decl = self.engines.de().get_struct(&l_decl_ref);
+                let r_decl = self.engines.de().get_struct(&r_decl_ref);
+                let l_names = l_decl
+                    .fields
+                    .iter()
+                    .map(|x| x.name.clone())
+                    .collect::<Vec<_>>();
+                let r_names = r_decl
+                    .fields
+                    .iter()
+                    .map(|x| x.name.clone())
+                    .collect::<Vec<_>>();
+                let l_types = l_decl
+                    .type_parameters
+                    .iter()
+                    .map(|x| x.type_id)
+                    .collect::<Vec<_>>();
+                let r_types = r_decl
+                    .type_parameters
+                    .iter()
+                    .map(|x| x.type_id)
+                    .collect::<Vec<_>>();
+                l_decl.call_path.suffix == r_decl.call_path.suffix
+                    && l_decl.call_path.suffix.span() == r_decl.call_path.suffix.span()
+                    && l_names == r_names
+                    && self.check_multiple(&l_types, &r_types)
             }
 
             // For contract callers, they can be coerced if they have the same

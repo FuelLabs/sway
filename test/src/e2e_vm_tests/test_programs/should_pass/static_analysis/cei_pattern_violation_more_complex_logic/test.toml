@@ -5,3 +5,4 @@ category = "compile"
 # check: $()Storage read after external contract interaction in function or method "create". Consider making all storage reads before calling another contract
 
 # check: $()Storage write after external contract interaction in function or method "create". Consider making all storage writes before calling another contract
+expected_warnings = 6

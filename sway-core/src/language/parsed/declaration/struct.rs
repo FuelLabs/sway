@@ -1,8 +1,4 @@
-use crate::{
-    language::Visibility,
-    transform,
-    type_system::{TypeInfo, TypeParameter},
-};
+use crate::{language::Visibility, transform, type_system::TypeParameter, TypeArgument};
 use sway_types::{ident::Ident, span::Span};
 
 #[derive(Debug, Clone)]
@@ -19,7 +15,6 @@ pub struct StructDeclaration {
 pub struct StructField {
     pub name: Ident,
     pub attributes: transform::AttributesMap,
-    pub type_info: TypeInfo,
     pub(crate) span: Span,
-    pub type_span: Span,
+    pub type_argument: TypeArgument,
 }

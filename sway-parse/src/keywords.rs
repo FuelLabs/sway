@@ -145,7 +145,8 @@ token_impls! {
     DoubleAmpersandToken,
     DoublePipeToken,
     UnderscoreToken,
-    HashToken
+    HashToken,
+    HashBangToken
 }
 
 fn peek_open_delimiter<T: OpenDelimiterToken>(peeker: Peeker<'_>) -> Option<T> {
@@ -169,7 +170,7 @@ fn parse_open_delimiter<T: OpenDelimiterToken + Peek>(parser: &mut Parser) -> Pa
 }
 
 // Keep this in sync with the list in `sway-ast/keywords.rs` defined by define_keyword!
-pub(crate) const RESERVED_KEYWORDS: phf::Set<&'static str> = phf::phf_set! {
+pub const RESERVED_KEYWORDS: phf::Set<&'static str> = phf::phf_set! {
     "script",
     "contract",
     "predicate",

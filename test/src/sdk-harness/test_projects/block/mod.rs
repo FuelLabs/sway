@@ -2,10 +2,10 @@ use fuels::prelude::*;
 use tai64::Tai64;
 use tokio::time::{sleep, Duration};
 
-abigen!(
-    BlockTestContract,
-    "test_projects/block/out/debug/block-abi.json"
-);
+abigen!(Contract(
+    name = "BlockTestContract",
+    abi = "test_projects/block/out/debug/block-abi.json"
+));
 
 async fn get_block_instance() -> (BlockTestContract, ContractId) {
     let wallet = launch_provider_and_get_wallet().await;

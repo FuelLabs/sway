@@ -16,7 +16,8 @@ use crate::{
     metadata::{MetadataIndex, Metadatum},
     module::{Kind, ModuleContent},
     value::{Value, ValueContent, ValueDatum},
-    BinaryOpKind, BlockArgument,
+    AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, BlockArgument, IrError, Module,
+    Pass, PassMutability, ScopedPass,
 };
 
 #[derive(Debug)]
@@ -96,6 +97,40 @@ pub fn to_string(context: &Context) -> String {
         })
         .append(md_namer.to_doc(context))
         .build()
+}
+
+pub struct ModulePrinterResult;
+impl AnalysisResultT for ModulePrinterResult {}
+
+/// Print a module stdout.
+pub fn module_printer(
+    context: &Context,
+    _analyses: &AnalysisResults,
+    module: Module,
+) -> Result<AnalysisResult, IrError> {
+    let mut md_namer = MetadataNamer::default();
+    print!(
+        "{}",
+        module_to_doc(
+            context,
+            &mut md_namer,
+            context.modules.get(module.0).unwrap()
+        )
+        .append(md_namer.to_doc(context))
+        .build()
+    );
+    Ok(Box::new(ModulePrinterResult))
+}
+
+pub const MODULEPRINTER_NAME: &str = "module_printer";
+
+pub fn create_module_printer_pass() -> Pass {
+    Pass {
+        name: MODULEPRINTER_NAME,
+        descr: "Print module to stdout",
+        deps: vec![],
+        runner: ScopedPass::ModulePass(PassMutability::Analysis(module_printer)),
+    }
 }
 
 fn module_to_doc<'a>(
@@ -246,8 +281,8 @@ fn function_to_doc<'a>(
     .append(Doc::text_line("}"))
 }
 
-fn block_to_doc<'a>(
-    context: &'a Context,
+fn block_to_doc(
+    context: &Context,
     md_namer: &mut MetadataNamer,
     namer: &mut Namer,
     block: &Block,
@@ -650,6 +685,19 @@ fn instruction_to_doc<'a>(
                         ))
                         .append(md_namer.md_idx_to_doc(context, metadata)),
                     )),
+                FuelVmInstruction::StateClear {
+                    key,
+                    number_of_slots,
+                } => maybe_constant_to_doc(context, md_namer, namer, number_of_slots).append(
+                    Doc::line(
+                        Doc::text(format!(
+                            "state_clear key {}, {}",
+                            namer.name(context, key),
+                            namer.name(context, number_of_slots),
+                        ))
+                        .append(md_namer.md_idx_to_doc(context, metadata)),
+                    ),
+                ),
                 FuelVmInstruction::StateLoadQuadWord {
                     load_val,
                     key,

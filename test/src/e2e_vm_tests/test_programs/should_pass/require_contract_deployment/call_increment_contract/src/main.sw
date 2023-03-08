@@ -1,7 +1,6 @@
 script;
 
 use increment_abi::Incrementor;
-use std::assert::assert;
 
 fn main() -> bool {
     let the_abi = abi(Incrementor, 0x58e55bce44f715173b2c81c9c93d70649a40841a5767b4ccc074a6c68079f8e6);

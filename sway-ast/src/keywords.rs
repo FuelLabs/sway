@@ -107,6 +107,14 @@ macro_rules! define_token (
             span: Span,
         }
 
+        impl Default for $ty_name {
+            fn default() -> Self {
+                Self {
+                    span: Span::dummy()
+                }
+            }
+        }
+
         impl Spanned for $ty_name {
             fn span(&self) -> Span {
                 self.span.clone()
@@ -221,6 +229,7 @@ define_token!(
 define_token!(DoublePipeToken, "`||`", [Pipe, Pipe], [Pipe]);
 define_token!(UnderscoreToken, "`_`", [Underscore], [Underscore]);
 define_token!(HashToken, "`#`", [Sharp], []);
+<<<<<<< HEAD
 
 pub trait OpenDelimiterToken: Spanned + Sized {
     /// Creates the keyword from the given `span`.
@@ -317,3 +326,6 @@ define_closing_delimiter_token!(CloseAngleBracketToken, "`>`", [AngleBracket]);
 define_closing_delimiter_token!(CloseCurlyBraceToken, "`}`", [CurlyBrace]);
 define_closing_delimiter_token!(CloseParenthesisToken, "`)`", [Parenthesis]);
 define_closing_delimiter_token!(CloseSquareBracketToken, "`]`", [SquareBracket]);
+=======
+define_token!(HashBangToken, "`#!`", [Sharp, Bang], []);
+>>>>>>> master

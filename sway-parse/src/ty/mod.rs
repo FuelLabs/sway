@@ -56,7 +56,7 @@ impl Parse for Ty {
 
 impl ParseToEnd for TyArrayDescriptor {
     fn parse_to_end<'a, 'e>(
-        mut parser: Parser<'a, 'e>,
+        mut parser: Parser<'a, '_>,
     ) -> ParseResult<(TyArrayDescriptor, ParserConsumed<'a>)> {
         let ty = parser.parse()?;
         let semicolon_token = parser.parse()?;

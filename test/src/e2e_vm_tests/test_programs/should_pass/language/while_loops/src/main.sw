@@ -1,7 +1,5 @@
 script;
 
-use std::assert::assert;
-
 fn main() -> bool {
     let mut counter = 0;
     // test standard while loop:
