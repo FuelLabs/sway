@@ -219,7 +219,9 @@ impl TypeBinding<CallPath> {
 
         // grab the declaration
         let unknown_decl = check!(
-            ctx.namespace.resolve_call_path(&self.inner).cloned(),
+            ctx.namespace
+                .resolve_call_path_with_visibility_check(engines, &self.inner)
+                .cloned(),
             return err(warnings, errors),
             warnings,
             errors
