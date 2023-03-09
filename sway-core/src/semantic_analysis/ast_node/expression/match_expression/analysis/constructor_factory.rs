@@ -314,7 +314,6 @@ impl ConstructorFactory {
                         PatStack::from(
                             all_variants
                                 .difference(&variant_tracker)
-                                .into_iter()
                                 .map(|x| {
                                     Pattern::Enum(EnumPattern {
                                         enum_name: enum_name.to_string(),
