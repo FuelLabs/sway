@@ -1,4 +1,4 @@
-library utils;
+library;
 
 pub struct Foo {
     value: u64

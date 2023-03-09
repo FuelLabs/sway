@@ -43,7 +43,7 @@ impl<T: Parse> Parse for Annotated<T> {
                 attribute: SquareBrackets::new(
                     Punctuated::single(Attribute {
                         name: Ident::new_with_override(
-                            DOC_COMMENT_ATTRIBUTE_NAME,
+                            DOC_COMMENT_ATTRIBUTE_NAME.to_string(),
                             doc_comment.span.clone(),
                         ),
                         args: Some(Parens::new(

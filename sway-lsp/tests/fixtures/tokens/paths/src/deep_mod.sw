@@ -1,3 +1,3 @@
-library deep_mod;
+library;
 
-dep deep_mod/deeper_mod;
+mod deeper_mod;

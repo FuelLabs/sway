@@ -1,4 +1,4 @@
-library b256;
+library;
 
 use ::assert::assert;
 use ::bytes::Bytes;

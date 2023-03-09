@@ -353,14 +353,14 @@ where
 #[test]
 fn trait_and_super_trait() {
     check(
-        r#"library traits;
+        r#"library;
 
 trait Person{ fn name( self )->String;fn age( self )->usize; }
 trait Student:Person {fn university(self) -> String;}
 trait Programmer {fn fav_language(self) -> String;}
 trait CompSciStudent: Programmer+Student {fn git_username(self) -> String;}
 trait TraitWithGenerics<T> where T: String {fn from(b: T) -> Self;}"#,
-        r#"library traits;
+        r#"library;
 
 trait Person {
     fn name(self) -> String;
@@ -1011,10 +1011,10 @@ fn comments_before_module_kind() {
     check(
         r#"// something about module kind
 // something else about module kind
-library test_module_kind_with_comments;"#,
+library;"#,
         r#"// something about module kind
 // something else about module kind
-library test_module_kind_with_comments;
+library;
 "#,
     );
 }
@@ -1026,17 +1026,17 @@ fn newline_before_comments() {
 
 // something about module kind
 // something else about module kind
-library test_module_kind_with_comments;"#,
+library;"#,
         r#"// something about module kind
 // something else about module kind
-library test_module_kind_with_comments;
+library;
 "#,
     );
 }
 #[test]
 fn destructure_structs() {
     check(
-        r#"library test_destructure_structs;
+        r#"library;
 
 struct Point {
     x: u64,
@@ -1061,7 +1061,7 @@ fn struct_destructuring() {
     } = tuple_in_struct;
 }
 "#,
-        r#"library test_destructure_structs;
+        r#"library;
 
 struct Point {
     x: u64,
@@ -1094,7 +1094,7 @@ fn struct_destructuring() {
 #[test]
 fn multiline_collections() {
     check(
-        r#"library test_multiline_collections;
+        r#"library;
 fn func_with_multiline_collections() {
     let x = (
         "hello",
@@ -1102,7 +1102,7 @@ fn func_with_multiline_collections() {
     );
 }
 "#,
-        r#"library test_multiline_collections;
+        r#"library;
 fn func_with_multiline_collections() {
     let x = ("hello", "world");
 }
@@ -1156,14 +1156,14 @@ fn main() {
 #[test]
 fn parameterless_attributes() {
     check(
-        r#"library my_lib;
+        r#"library;
 
 abi MyContract {
     #[test]
     fn foo();
 }
 "#,
-        r#"library my_lib;
+        r#"library;
 
 abi MyContract {
     #[test]
@@ -1251,12 +1251,12 @@ fn main() {
 #[test]
 fn multiple_comma_separated_attributes() {
     check(
-        r#"library my_lib;
+        r#"library;
 
 #[test, inline(always), storage(read, write), payable]
 fn foo() {}
 "#,
-        r#"library my_lib;
+        r#"library;
 
 #[test, inline(always), storage(read, write), payable]
 fn foo() {}
@@ -1267,14 +1267,14 @@ fn foo() {}
 #[test]
 fn stack_of_comma_separated_attributes1() {
     check(
-        r#"library my_lib;
+        r#"library;
 
 /// this is a doc comment
 #[storage(read, write), payable]
 #[test, inline(always)]
 fn foo() {}
 "#,
-        r#"library my_lib;
+        r#"library;
 
 /// this is a doc comment
 #[storage(read, write), payable]
@@ -1287,7 +1287,7 @@ fn foo() {}
 #[test]
 fn stack_of_comma_separated_attributes2() {
     check(
-        r#"library my_lib;
+        r#"library;
 
 /// this is a doc comment
 #[storage(read, write)]
@@ -1296,7 +1296,7 @@ fn stack_of_comma_separated_attributes2() {
 #[inline(always)]
 fn foo() {}
 "#,
-        r#"library my_lib;
+        r#"library;
 
 /// this is a doc comment
 #[storage(read, write)]
@@ -1383,7 +1383,7 @@ impl MyContract for Contract {
 #[test]
 fn asm_block() {
     check(
-        r#"library my_lib;
+        r#"library;
 
 fn foo() {
     asm(r1: self, r2: other, r3, r4) {
@@ -1393,7 +1393,7 @@ fn foo() {
     }
 }
 "#,
-        r#"library my_lib;
+        r#"library;
 
 fn foo() {
     asm(r1: self, r2: other, r3, r4) {

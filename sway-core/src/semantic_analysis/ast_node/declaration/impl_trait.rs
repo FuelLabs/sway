@@ -446,7 +446,7 @@ impl ty::TyImplTrait {
             prefixes: vec![],
             suffix: match &type_engine.get(implementing_for.type_id) {
                 TypeInfo::Custom { call_path, .. } => call_path.suffix.clone(),
-                _ => Ident::new_with_override("r#Self", implementing_for.span()),
+                _ => Ident::new_with_override("r#Self".into(), implementing_for.span()),
             },
             is_absolute: false,
         };

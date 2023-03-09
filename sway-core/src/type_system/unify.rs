@@ -328,7 +328,7 @@ impl<'a> Unifier<'a> {
             NumericCastCompatResult::CastableWithWarning(warn) => {
                 vec![CompileWarning {
                     span: span.clone(),
-                    warning_content: warn,
+                    warning_content: *warn,
                 }]
             }
             NumericCastCompatResult::Compatible => {
@@ -502,10 +502,10 @@ fn numeric_cast_compat(
         | (Sixteen, ThirtyTwo)
         | (Sixteen, SixtyFour)
         | (ThirtyTwo, SixtyFour) => {
-            NumericCastCompatResult::CastableWithWarning(Warning::LossOfPrecision {
+            NumericCastCompatResult::CastableWithWarning(Box::new(Warning::LossOfPrecision {
                 initial_type: old_size,
                 cast_to: new_size,
-            })
+            }))
         }
         // Upcasting is ok, so everything else is ok.
         _ => NumericCastCompatResult::Compatible,
@@ -514,5 +514,5 @@ fn numeric_cast_compat(
 
 enum NumericCastCompatResult {
     Compatible,
-    CastableWithWarning(Warning),
+    CastableWithWarning(Box<Warning>),
 }

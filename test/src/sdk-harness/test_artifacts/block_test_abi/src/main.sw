@@ -1,4 +1,4 @@
-library block_test_abi;
+library;
 
 abi BlockTest {
     fn get_block_height() -> u64;

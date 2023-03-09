@@ -1,4 +1,4 @@
-library foo;
+library;
 
 enum Foo {
   A: (),

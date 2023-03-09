@@ -1,4 +1,4 @@
-library balance_test_abi;
+library;
 
 abi BalanceTest {
     fn get_42() -> u64;

@@ -1,4 +1,4 @@
-library data_structures;
+library;
 
 use core::ops::*;
 use std::hash::sha256;

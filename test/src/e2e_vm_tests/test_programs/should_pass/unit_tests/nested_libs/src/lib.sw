@@ -1,6 +1,6 @@
-library lib;
+library;
 
-dep inner;
+mod inner;
 
 #[test]
 fn test_meaning_of_life() {

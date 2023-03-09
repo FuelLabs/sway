@@ -1,6 +1,6 @@
 script;
 
-dep lib;
+mod lib;
 
 // Glob import should not result in any shadowing issues 
 use lib::*;

@@ -1,4 +1,4 @@
-library more_consts;
+library;
 
 struct Value {
     a: u32,

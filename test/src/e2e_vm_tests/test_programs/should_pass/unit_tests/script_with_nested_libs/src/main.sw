@@ -1,6 +1,6 @@
 script;
 
-dep inner;
+mod inner;
 
 fn main() { }
 

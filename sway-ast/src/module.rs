@@ -8,10 +8,10 @@ pub struct Module {
 }
 
 impl Module {
-    pub fn dependencies(&self) -> impl Iterator<Item = &Dependency> {
+    pub fn submodules(&self) -> impl Iterator<Item = &Submodule> {
         self.items.iter().filter_map(|i| {
-            if let ItemKind::Dependency(dep) = &i.value {
-                Some(dep)
+            if let ItemKind::Submodule(submod) = &i.value {
+                Some(submod)
             } else {
                 None
             }
@@ -33,19 +33,10 @@ impl Spanned for Module {
 
 #[derive(Clone, Debug)]
 pub enum ModuleKind {
-    Script {
-        script_token: ScriptToken,
-    },
-    Contract {
-        contract_token: ContractToken,
-    },
-    Predicate {
-        predicate_token: PredicateToken,
-    },
-    Library {
-        library_token: LibraryToken,
-        name: Ident,
-    },
+    Script { script_token: ScriptToken },
+    Contract { contract_token: ContractToken },
+    Predicate { predicate_token: PredicateToken },
+    Library { library_token: LibraryToken },
 }
 
 impl Spanned for ModuleKind {
@@ -54,10 +45,7 @@ impl Spanned for ModuleKind {
             Self::Script { script_token } => script_token.span(),
             Self::Contract { contract_token } => contract_token.span(),
             Self::Predicate { predicate_token } => predicate_token.span(),
-            Self::Library {
-                library_token,
-                name,
-            } => Span::join(library_token.span(), name.span()),
+            Self::Library { library_token } => library_token.span(),
         }
     }
 }

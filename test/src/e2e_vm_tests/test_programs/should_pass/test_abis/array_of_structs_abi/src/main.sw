@@ -1,4 +1,4 @@
-library array_of_structs_abi;
+library;
 
 pub struct Id {
     number: u64,

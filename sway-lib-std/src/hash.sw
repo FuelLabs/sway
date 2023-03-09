@@ -1,4 +1,4 @@
-library hash;
+library;
 
 /// Returns the `SHA-2-256` hash of `param`.
 pub fn sha256<T>(param: T) -> b256 {

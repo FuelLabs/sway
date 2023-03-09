@@ -1,4 +1,4 @@
-library my_library;
+library;
 
 use my_other_library::quix;
 

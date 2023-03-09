@@ -1,4 +1,4 @@
-library never;
+library;
 
 use ::ops::{Eq, Not, Ord};
 

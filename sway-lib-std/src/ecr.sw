@@ -1,4 +1,4 @@
-library ecr;
+library;
 
 use ::address::Address;
 use ::b512::B512;
