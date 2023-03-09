@@ -278,7 +278,7 @@ jobs:
       - name: Build All Tests
         run: cd test/src/sdk-harness && bash build.sh --locked && cd ../../../
       - name: Cargo Test sway-lib-std
-        run: cargo test --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
+        run: cargo test --locked --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
 
   forc-unit-tests:
     runs-on: ubuntu-latest
