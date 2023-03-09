@@ -156,12 +156,12 @@
 </code></pre>
 <p>To be able to use our library <code>my_library.sw</code> in <code>lib.sw</code> there are two steps to take:</p>
 <ol>
-<li>Bring our library into scope by using the <code>dep</code> keyword followed by the library name</li>
+<li>Bring our library into scope by using the <code>mod</code> keyword followed by the library name</li>
 <li>Use the <code>use</code> keyword to selectively import various items from the library</li>
 </ol>
-<pre><code class="language-sway">library lib;
+<pre><code class="language-sway">library;
 
-dep my_library;
+mod my_library;
 
 use my_library::bar;
 

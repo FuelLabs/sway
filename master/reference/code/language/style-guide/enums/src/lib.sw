@@ -1,4 +1,4 @@
-library enums;
+library;
 
 pub enum Error {
     StateError: StateError,

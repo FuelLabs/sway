@@ -147,8 +147,8 @@
                         <h1 id="library"><a class="header" href="#library">Library</a></h1>
 <p>A library is used to contain code that performs common operations in order to prevent code duplication.</p>
 <h2 id="definition"><a class="header" href="#definition">Definition</a></h2>
-<p>Libraries are defined using the <code>library</code> keyword at the beginning of a file followed by a name so that they can be identified and imported.</p>
-<pre><code class="language-sway">library my_library;
+<p>Libraries are defined using the <code>library</code> keyword at the beginning of a file.</p>
+<pre><code class="language-sway">library;
 </code></pre>
 <h2 id="accessibility"><a class="header" href="#accessibility">Accessibility</a></h2>
 <p>Code defined inside a library, but more generally anywhere inside a Sway project, is considered to be <code>private</code> which means that it is inaccessible to other files unless explicitly exposed.</p>
@@ -157,7 +157,7 @@
 <li>Add a <code>pub</code> keyword at the start of some code</li>
 <li>Specify the <a href="external.html">library</a> in the <code>Forc.toml</code> file as a dependency and then import the <code>pub</code> declaration</li>
 </ul>
-<pre><code class="language-sway">library my_library;
+<pre><code class="language-sway">library;
 
 // Cannot import because the `pub` keyword is missing
 fn foo() {}

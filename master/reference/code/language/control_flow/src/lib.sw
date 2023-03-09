@@ -1,4 +1,4 @@
-library control_flow;
+library;
 
 fn conditional() {
     // ANCHOR: conditional

@@ -267,7 +267,7 @@
 <p>The following example demonstrates an interface for a wallet which is able to receive and send funds.</p>
 <p>The structure begins by using the keyword <code>abi</code> followed by the name of the contract.</p>
 <p>Inside the declaration are function signatures, annotations denoting the interaction with storage and documentation comments outlining the functionality.</p>
-<pre><code class="language-sway">library interface;
+<pre><code class="language-sway">library;
 
 abi Wallet {
     /// When the BASE_ASSET is sent to this function the internal contract balance is incremented
@@ -312,8 +312,8 @@ impl Wallet for Contract {
 <div style="break-before: page; page-break-before: always;"></div><h1 id="library"><a class="header" href="#library">Library</a></h1>
 <p>A library is used to contain code that performs common operations in order to prevent code duplication.</p>
 <h2 id="definition"><a class="header" href="#definition">Definition</a></h2>
-<p>Libraries are defined using the <code>library</code> keyword at the beginning of a file followed by a name so that they can be identified and imported.</p>
-<pre><code class="language-sway">library my_library;
+<p>Libraries are defined using the <code>library</code> keyword at the beginning of a file.</p>
+<pre><code class="language-sway">library;
 </code></pre>
 <h2 id="accessibility"><a class="header" href="#accessibility">Accessibility</a></h2>
 <p>Code defined inside a library, but more generally anywhere inside a Sway project, is considered to be <code>private</code> which means that it is inaccessible to other files unless explicitly exposed.</p>
@@ -322,7 +322,7 @@ impl Wallet for Contract {
 <li>Add a <code>pub</code> keyword at the start of some code</li>
 <li>Specify the <a href="documentation/language/program-types/libraries/external.html">library</a> in the <code>Forc.toml</code> file as a dependency and then import the <code>pub</code> declaration</li>
 </ul>
-<pre><code class="language-sway">library my_library;
+<pre><code class="language-sway">library;
 
 // Cannot import because the `pub` keyword is missing
 fn foo() {}
@@ -368,12 +368,12 @@ pub trait MyTrait {
 </code></pre>
 <p>To be able to use our library <code>my_library.sw</code> in <code>lib.sw</code> there are two steps to take:</p>
 <ol>
-<li>Bring our library into scope by using the <code>dep</code> keyword followed by the library name</li>
+<li>Bring our library into scope by using the <code>mod</code> keyword followed by the library name</li>
 <li>Use the <code>use</code> keyword to selectively import various items from the library</li>
 </ol>
-<pre><code class="language-sway">library lib;
+<pre><code class="language-sway">library;
 
-dep my_library;
+mod my_library;
 
 use my_library::bar;
 
@@ -398,7 +398,7 @@ use my_library::bar;
 <h2 id="libraries"><a class="header" href="#libraries">Libraries</a></h2>
 <h3 id="my_other_library"><a class="header" href="#my_other_library">my_other_library</a></h3>
 <p><code>my_other_library</code> has a function <code>quix()</code> which can be imported into <code>my_library</code> because it uses the <code>pub</code> keyword.</p>
-<pre><code class="language-sway">library my_other_library;
+<pre><code class="language-sway">library;
 
 pub fn quix() {}
 </code></pre>
@@ -417,7 +417,7 @@ my_other_library = { path = &quot;../my_other_library&quot; }
 </code></pre>
 <h4 id="import"><a class="header" href="#import">Import</a></h4>
 <p>Use the <code>use</code> keyword to selectively import our code from <code>my_other_library</code></p>
-<pre><code class="language-sway">library my_library;
+<pre><code class="language-sway">library;
 
 use my_other_library::quix;
 
@@ -1291,7 +1291,7 @@ enum DepositError {
 <h2 id="snake_case"><a class="header" href="#snake_case">snake_case</a></h2>
 <p>Modules, <a href="documentation/language/style-guide/../variables/index.html">variables</a>, and <a href="documentation/language/style-guide/../functions/index.html">functions</a> are <code>snake_case</code> which means that each word is lowercase and separated by an underscore.</p>
 <p>Module name:</p>
-<pre><code class="language-sway">library letter_casing;
+<pre><code class="language-sway">library;
 </code></pre>
 <p>Function and variable:</p>
 <pre><code class="language-sway">fn authorize_user(user: Identity) {
@@ -1763,7 +1763,7 @@ fn update() {
 </ol>
 <h3 id="defining-the-interface"><a class="header" href="#defining-the-interface">Defining the Interface</a></h3>
 <p>Let's take the example of a <code>Vault</code> to demonstrate how a call can be performed.</p>
-<pre><code class="language-sway">library interface;
+<pre><code class="language-sway">library;
 
 abi Vault {
     fn deposit();

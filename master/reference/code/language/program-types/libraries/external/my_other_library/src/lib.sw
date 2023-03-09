@@ -1,3 +1,3 @@
-library my_other_library;
+library;
 
 pub fn quix() {}

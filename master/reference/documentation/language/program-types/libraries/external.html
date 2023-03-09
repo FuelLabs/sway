@@ -163,7 +163,7 @@
 <h2 id="libraries"><a class="header" href="#libraries">Libraries</a></h2>
 <h3 id="my_other_library"><a class="header" href="#my_other_library">my_other_library</a></h3>
 <p><code>my_other_library</code> has a function <code>quix()</code> which can be imported into <code>my_library</code> because it uses the <code>pub</code> keyword.</p>
-<pre><code class="language-sway">library my_other_library;
+<pre><code class="language-sway">library;
 
 pub fn quix() {}
 </code></pre>
@@ -182,7 +182,7 @@ my_other_library = { path = &quot;../my_other_library&quot; }
 </code></pre>
 <h4 id="import"><a class="header" href="#import">Import</a></h4>
 <p>Use the <code>use</code> keyword to selectively import our code from <code>my_other_library</code></p>
-<pre><code class="language-sway">library my_library;
+<pre><code class="language-sway">library;
 
 use my_other_library::quix;
 
