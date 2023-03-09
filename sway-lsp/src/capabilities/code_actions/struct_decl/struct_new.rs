@@ -22,12 +22,10 @@ impl<'a> CodeAction<'a, TyStructDeclaration> for StructNewCodeAction<'a> {
             .tokens
             .all_references_of_token(ctx.token, ctx.engines.te(), ctx.engines.de())
             .find_map(|(_, token)| {
-                if let Some(TypedAstToken::TypedDeclaration(TyDeclaration::ImplTrait {
-                    decl_id,
-                    ..
-                })) = token.typed
+                if let Some(TypedAstToken::TypedDeclaration(TyDeclaration::ImplTrait(decl_ref))) =
+                    token.typed
                 {
-                    Some(ctx.engines.de().get_impl_trait(&decl_id))
+                    Some(ctx.engines.de().get_impl_trait(&decl_ref))
                 } else {
                     None
                 }

@@ -1,7 +1,7 @@
 use sway_types::{Ident, Span};
 
 use crate::{
-    decl_engine::{DeclEngine, DeclRef, DeclRefFunction},
+    decl_engine::{DeclEngine, DeclRefFunction},
     language::ty::*,
     language::DepName,
     semantic_analysis::namespace,

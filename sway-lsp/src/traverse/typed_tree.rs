@@ -106,16 +106,16 @@ impl<'a> TypedTree<'a> {
                 }
                 self.handle_expression(&variable.body);
             }
-            ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
-                let const_decl = decl_engine.get_constant(decl_id);
+            ty::TyDeclaration::ConstantDeclaration(decl_ref) => {
+                let const_decl = decl_engine.get_constant(decl_ref);
                 self.collect_const_decl(&const_decl);
             }
-            ty::TyDeclaration::FunctionDeclaration { decl_id, .. } => {
-                let func_decl = decl_engine.get_function(decl_id);
+            ty::TyDeclaration::FunctionDeclaration(decl_ref) => {
+                let func_decl = decl_engine.get_function(decl_ref);
                 self.collect_typed_fn_decl(&func_decl);
             }
-            ty::TyDeclaration::TraitDeclaration { decl_id, .. } => {
-                let trait_decl = decl_engine.get_trait(decl_id);
+            ty::TyDeclaration::TraitDeclaration(decl_ref) => {
+                let trait_decl = decl_engine.get_trait(decl_ref);
                 if let Some(mut token) = self
                     .ctx
                     .tokens
@@ -195,7 +195,7 @@ impl<'a> TypedTree<'a> {
                     self.collect_ty_enum_variant(variant);
                 }
             }
-            ty::TyDeclaration::ImplTrait { decl_id, .. } => {
+            ty::TyDeclaration::ImplTrait(decl_ref) => {
                 let ty::TyImplTrait {
                     impl_type_parameters,
                     trait_name,
@@ -204,7 +204,7 @@ impl<'a> TypedTree<'a> {
                     items,
                     implementing_for,
                     ..
-                } = decl_engine.get_impl_trait(decl_id);
+                } = decl_engine.get_impl_trait(decl_ref);
                 for param in impl_type_parameters {
                     self.collect_type_id(
                         param.type_id,
@@ -275,8 +275,8 @@ impl<'a> TypedTree<'a> {
                         .unwrap_or(implementing_for.span()),
                 );
             }
-            ty::TyDeclaration::AbiDeclaration { decl_id, .. } => {
-                let abi_decl = decl_engine.get_abi(decl_id);
+            ty::TyDeclaration::AbiDeclaration(decl_ref) => {
+                let abi_decl = decl_engine.get_abi(decl_ref);
                 if let Some(mut token) = self
                     .ctx
                     .tokens

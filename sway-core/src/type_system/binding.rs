@@ -250,13 +250,9 @@ impl TypeBinding<CallPath> {
 
         // monomorphize the declaration, if needed
         let new_decl = match unknown_decl {
-            ty::TyDeclaration::FunctionDeclaration {
-                decl_id: original_id,
-                name,
-                decl_span,
-            } => {
+            ty::TyDeclaration::FunctionDeclaration(original_decl_ref) => {
                 // get the copy from the declaration engine
-                let mut new_copy = decl_engine.get_function(&original_id);
+                let mut new_copy = decl_engine.get_function(&original_decl_ref);
 
                 // monomorphize the copy, in place
                 if let TypeArgs::Regular(_) = self.type_arguments {
@@ -279,13 +275,13 @@ impl TypeBinding<CallPath> {
                 } = ctx
                     .decl_engine
                     .insert(new_copy)
-                    .with_parent(ctx.decl_engine, original_id.into());
+                    .with_parent(ctx.decl_engine, original_decl_ref.id.into());
 
-                ty::TyDeclaration::FunctionDeclaration {
-                    name,
-                    decl_id: new_decl_id,
-                    decl_span,
-                }
+                ty::TyDeclaration::FunctionDeclaration(DeclRef {
+                    name: original_decl_ref.name,
+                    id: new_decl_id,
+                    decl_span: original_decl_ref.decl_span,
+                })
             }
             ty::TyDeclaration::EnumDeclaration(original_decl_ref) => {
                 // get the copy from the declaration engine
