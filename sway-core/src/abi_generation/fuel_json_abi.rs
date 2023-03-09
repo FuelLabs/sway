@@ -227,11 +227,11 @@ fn generate_json_configurables(
         .iter()
         .map(
             |TyConstantDeclaration {
-                 name,
+                 call_path,
                  type_ascription,
                  ..
              }| program_abi::Configurable {
-                name: name.to_string(),
+                name: call_path.suffix.to_string(),
                 application: program_abi::TypeApplication {
                     name: "".to_string(),
                     type_id: type_ascription.type_id.index(),

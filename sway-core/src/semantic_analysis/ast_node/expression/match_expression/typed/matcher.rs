@@ -1,6 +1,6 @@
 use crate::{
     error::{err, ok},
-    language::{ty, Literal},
+    language::{ty, CallPath, Literal},
     semantic_analysis::{
         ast_node::expression::typed_expression::{
             instantiate_struct_field_access, instantiate_tuple_index_access,
@@ -98,7 +98,7 @@ pub(crate) fn matcher(
         }
         ty::TyScrutineeVariant::Variable(name) => ok(match_variable(exp, name), vec![], vec![]),
         ty::TyScrutineeVariant::Constant(name, _, const_decl) => ok(
-            match_constant(exp, name, const_decl.type_ascription.type_id, span),
+            match_constant(ctx, exp, name, const_decl.type_ascription.type_id, span),
             vec![],
             vec![],
         ),
@@ -131,6 +131,7 @@ fn match_variable(exp: &ty::TyExpression, scrutinee_name: Ident) -> MatcherResul
 }
 
 fn match_constant(
+    ctx: TypeCheckContext,
     exp: &ty::TyExpression,
     scrutinee_name: Ident,
     scrutinee_type_id: TypeId,
@@ -140,10 +141,10 @@ fn match_constant(
         exp.to_owned(),
         ty::TyExpression {
             expression: ty::TyExpressionVariant::VariableExpression {
-                name: scrutinee_name,
+                name: scrutinee_name.clone(),
                 span: span.clone(),
                 mutability: ty::VariableMutability::Immutable,
-                call_path: None,
+                call_path: Some(CallPath::from(scrutinee_name).to_fullpath(ctx.namespace)),
             },
             return_type: scrutinee_type_id,
             span,
