@@ -3,10 +3,10 @@ use sway_error::warning::CompileWarning;
 use sway_types::{Span, Spanned};
 
 use crate::{
-    decl_engine::{DeclRefConstant, DeclRefFunction},
+    decl_engine::DeclId,
     engine_threading::*,
     error::*,
-    language::ty,
+    language::ty::{self, TyConstantDeclaration, TyFunctionDeclaration},
     type_system::*,
 };
 
@@ -190,17 +190,17 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
             );
             check!(expr_validate(engines, &decl.body), (), warnings, errors)
         }
-        ty::TyDeclaration::ConstantDeclaration(decl_ref) => {
+        ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
             check!(
-                validate_const_decl(engines, decl_ref),
+                validate_const_decl(engines, decl_id),
                 return err(warnings, errors),
                 warnings,
                 errors
             );
         }
-        ty::TyDeclaration::FunctionDeclaration(decl_ref) => {
+        ty::TyDeclaration::FunctionDeclaration { decl_id, .. } => {
             check!(
-                validate_fn_decl(engines, decl_ref),
+                validate_fn_decl(engines, decl_id),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -209,12 +209,17 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
         ty::TyDeclaration::AbiDeclaration { .. } | ty::TyDeclaration::TraitDeclaration { .. } => {
             // These methods are not typed. They are however handled from ImplTrait.
         }
-        ty::TyDeclaration::ImplTrait(decl_ref) => {
-            let ty::TyImplTrait { items, .. } = decl_engine.get_impl_trait(decl_ref);
+        ty::TyDeclaration::ImplTrait { decl_id, .. } => {
+            let ty::TyImplTrait { items, .. } = decl_engine.get_impl_trait(decl_id);
             for item in items {
                 match item {
                     ty::TyImplItem::Fn(decl_ref) => {
-                        check!(validate_fn_decl(engines, &decl_ref), (), warnings, errors);
+                        check!(
+                            validate_fn_decl(engines, &decl_ref.id),
+                            (),
+                            warnings,
+                            errors
+                        );
                     }
                 }
             }
@@ -280,13 +285,16 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
     }
 }
 
-pub fn validate_const_decl(engines: Engines<'_>, decl_ref: &DeclRefConstant) -> CompileResult<()> {
+pub fn validate_const_decl(
+    engines: Engines<'_>,
+    decl_id: &DeclId<TyConstantDeclaration>,
+) -> CompileResult<()> {
     let mut warnings: Vec<CompileWarning> = vec![];
     let mut errors: Vec<CompileError> = vec![];
     let decl_engine = engines.de();
     let ty::TyConstantDeclaration {
         value: expr, name, ..
-    } = decl_engine.get_constant(decl_ref);
+    } = decl_engine.get_constant(decl_id);
     if let Some(expr) = expr {
         check!(
             check_type(engines, expr.return_type, name.span(), false),
@@ -303,7 +311,10 @@ pub fn validate_const_decl(engines: Engines<'_>, decl_ref: &DeclRefConstant) -> 
     }
 }
 
-pub fn validate_fn_decl(engines: Engines<'_>, decl_ref: &DeclRefFunction) -> CompileResult<()> {
+pub fn validate_fn_decl(
+    engines: Engines<'_>,
+    decl_id: &DeclId<TyFunctionDeclaration>,
+) -> CompileResult<()> {
     let mut warnings: Vec<CompileWarning> = vec![];
     let mut errors: Vec<CompileError> = vec![];
     let decl_engine = engines.de();
@@ -312,7 +323,7 @@ pub fn validate_fn_decl(engines: Engines<'_>, decl_ref: &DeclRefFunction) -> Com
         parameters,
         return_type,
         ..
-    } = decl_engine.get_function(decl_ref);
+    } = decl_engine.get_function(decl_id);
     check!(
         validate_decls_for_storage_only_types_in_codeblock(engines, &body),
         (),

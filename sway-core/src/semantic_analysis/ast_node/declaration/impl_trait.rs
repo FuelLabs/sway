@@ -105,8 +105,8 @@ impl ty::TyImplTrait {
             .ok(&mut warnings, &mut errors)
             .cloned()
         {
-            Some(ty::TyDeclaration::TraitDeclaration(decl_ref)) => {
-                let mut trait_decl = decl_engine.get_trait(&decl_ref);
+            Some(ty::TyDeclaration::TraitDeclaration { decl_id, .. }) => {
+                let mut trait_decl = decl_engine.get_trait(&decl_id);
 
                 // monomorphize the trait declaration
                 check!(
@@ -145,7 +145,7 @@ impl ty::TyImplTrait {
                     trait_type_arguments,
                     trait_decl_ref: Some(DeclRef::new(
                         trait_decl.name.clone(),
-                        decl_ref.id.into(),
+                        decl_id.into(),
                         trait_decl.span.clone(),
                     )),
                     span: block_span,
@@ -153,13 +153,13 @@ impl ty::TyImplTrait {
                     implementing_for,
                 }
             }
-            Some(ty::TyDeclaration::AbiDeclaration(decl_ref)) => {
+            Some(ty::TyDeclaration::AbiDeclaration { decl_id, .. }) => {
                 // if you are comparing this with the `impl_trait` branch above, note that
                 // there are no type arguments here because we don't support generic types
                 // in contract ABIs yet (or ever?) due to the complexity of communicating
                 // the ABI layout in the descriptor file.
 
-                let abi = decl_engine.get_abi(&decl_ref);
+                let abi = decl_engine.get_abi(&decl_id);
 
                 if !type_engine
                     .get(implementing_for.type_id)
@@ -195,11 +195,7 @@ impl ty::TyImplTrait {
                     impl_type_parameters: vec![], // this is empty because abi definitions don't support generics
                     trait_name,
                     trait_type_arguments: vec![], // this is empty because abi definitions don't support generics
-                    trait_decl_ref: Some(DeclRef::new(
-                        abi.name.clone(),
-                        decl_ref.id.into(),
-                        abi.span,
-                    )),
+                    trait_decl_ref: Some(DeclRef::new(abi.name.clone(), decl_id.into(), abi.span)),
                     span: block_span,
                     items: new_items,
                     implementing_for,
@@ -362,9 +358,9 @@ impl ty::TyImplTrait {
                 ty::TyDeclaration::VariableDeclaration(decl) => {
                     expr_contains_get_storage_index(decl_engine, &decl.body, access_span)
                 }
-                ty::TyDeclaration::ConstantDeclaration(decl_ref) => {
+                ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
                     let ty::TyConstantDeclaration { value: expr, .. } =
-                        decl_engine.get_constant(decl_ref);
+                        decl_engine.get_constant(decl_id);
                     match expr {
                         Some(expr) => {
                             expr_contains_get_storage_index(decl_engine, &expr, access_span)
@@ -1105,8 +1101,8 @@ fn handle_supertraits(
             .ok(&mut warnings, &mut errors)
             .cloned()
         {
-            Some(ty::TyDeclaration::TraitDeclaration(decl_ref)) => {
-                let trait_decl = decl_engine.get_trait(&decl_ref);
+            Some(ty::TyDeclaration::TraitDeclaration { decl_id, .. }) => {
+                let trait_decl = decl_engine.get_trait(&decl_id);
 
                 // Right now we don't parse type arguments for supertraits, so
                 // we should give this error message to users.

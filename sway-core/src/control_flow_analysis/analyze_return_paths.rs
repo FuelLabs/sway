@@ -195,8 +195,8 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             }
             Ok(vec![entry_node])
         }
-        FunctionDeclaration(decl_ref) => {
-            let fn_decl = decl_engine.get_function(decl_ref);
+        FunctionDeclaration { decl_id, .. } => {
+            let fn_decl = decl_engine.get_function(decl_id);
             let entry_node = graph.add_node(ControlFlowGraphNode::from_node(node));
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
@@ -204,10 +204,10 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             connect_typed_fn_decl(engines, &fn_decl, graph, entry_node)?;
             Ok(leaves.to_vec())
         }
-        ImplTrait(decl_ref) => {
+        ImplTrait { decl_id, .. } => {
             let ty::TyImplTrait {
                 trait_name, items, ..
-            } = decl_engine.get_impl_trait(decl_ref);
+            } = decl_engine.get_impl_trait(decl_id);
             let entry_node = graph.add_node(ControlFlowGraphNode::from_node(node));
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
