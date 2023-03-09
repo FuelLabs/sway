@@ -1,7 +1,7 @@
 use crate::{
     engine_threading::Engines,
     error::*,
-    language::{parsed::*, ty, Visibility},
+    language::{parsed::*, ty},
     semantic_analysis::*,
     transform::to_parsed_lang,
     Ident, Namespace,
@@ -225,13 +225,7 @@ impl Module {
         let implemented_traits = src_ns.implemented_traits.clone();
         let mut symbols_and_decls = vec![];
         for (symbol, decl) in src_ns.symbols.iter() {
-            let visibility = check!(
-                decl.visibility(decl_engine),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            if visibility == Visibility::Public {
+            if decl.visibility(decl_engine).is_public() {
                 symbols_and_decls.push((symbol.clone(), decl.clone()));
             }
         }
@@ -282,13 +276,7 @@ impl Module {
             .map(|(symbol, (_, _, decl))| (symbol.clone(), decl.clone()))
             .collect::<Vec<_>>();
         for (symbol, decl) in src_ns.symbols.iter() {
-            let visibility = check!(
-                decl.visibility(decl_engine),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            if visibility == Visibility::Public {
+            if decl.visibility(decl_engine).is_public() {
                 symbols_and_decls.push((symbol.clone(), decl.clone()));
             }
         }
@@ -362,13 +350,7 @@ impl Module {
         let mut impls_to_insert = TraitMap::default();
         match src_ns.symbols.get(item).cloned() {
             Some(decl) => {
-                let visibility = check!(
-                    decl.visibility(decl_engine),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                if visibility != Visibility::Public {
+                if !decl.visibility(decl_engine).is_public() {
                     errors.push(CompileError::ImportPrivateSymbol {
                         name: item.clone(),
                         span: item.span(),

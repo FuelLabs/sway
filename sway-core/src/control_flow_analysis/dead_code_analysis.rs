@@ -169,7 +169,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
         let mut entry_points = vec![];
         let mut non_entry_points = vec![];
         for ast_entrypoint in module_nodes {
-            if ast_entrypoint.is_entry_point(decl_engine, tree_type)? {
+            if ast_entrypoint.is_entry_point(decl_engine, tree_type) {
                 entry_points.push(ast_entrypoint);
             } else {
                 non_entry_points.push(ast_entrypoint);
@@ -203,7 +203,7 @@ fn collect_entry_points(
     for i in graph.node_indices() {
         let is_entry = match &graph[i] {
             ControlFlowGraphNode::ProgramNode { node, .. } => {
-                node.is_entry_point(decl_engine, tree_type)?
+                node.is_entry_point(decl_engine, tree_type)
             }
             _ => false,
         };
