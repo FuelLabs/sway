@@ -23,7 +23,7 @@ pub trait GetDeclIdent {
 #[derive(Clone, Debug)]
 pub struct TyAstNode {
     pub content: TyAstNodeContent,
-    pub(crate) span: Span,
+    pub span: Span,
 }
 
 impl EqWithEngines for TyAstNode {}
