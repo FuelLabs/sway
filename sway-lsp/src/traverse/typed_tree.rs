@@ -117,8 +117,8 @@ impl<'a> TypedTree<'a> {
                     self.collect_supertrait(&supertrait);
                 }
             }
-            ty::TyDeclaration::StructDeclaration(decl_ref) => {
-                let struct_decl = decl_engine.get_struct(decl_ref);
+            ty::TyDeclaration::StructDeclaration { decl_id, .. } => {
+                let struct_decl = decl_engine.get_struct(decl_id);
                 if let Some(mut token) = self
                     .ctx
                     .tokens
@@ -145,8 +145,8 @@ impl<'a> TypedTree<'a> {
                     }
                 }
             }
-            ty::TyDeclaration::EnumDeclaration(decl_ref) => {
-                let enum_decl = decl_engine.get_enum(decl_ref);
+            ty::TyDeclaration::EnumDeclaration { decl_id, .. } => {
+                let enum_decl = decl_engine.get_enum(decl_id);
                 if let Some(mut token) = self
                     .ctx
                     .tokens

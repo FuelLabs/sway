@@ -39,8 +39,8 @@ impl Descriptor {
         use swayfmt::parse;
         use TyDeclaration::*;
         match ty_decl {
-            StructDeclaration(decl_ref) => {
-                let struct_decl = decl_engine.get_struct(decl_ref);
+            StructDeclaration { decl_id, .. } => {
+                let struct_decl = decl_engine.get_struct(decl_id);
                 if !document_private_items && struct_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
@@ -75,8 +75,8 @@ impl Descriptor {
                     }))
                 }
             }
-            EnumDeclaration(decl_ref) => {
-                let enum_decl = decl_engine.get_enum(decl_ref);
+            EnumDeclaration { decl_id, .. } => {
+                let enum_decl = decl_engine.get_enum(decl_id);
                 if !document_private_items && enum_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {

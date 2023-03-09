@@ -387,14 +387,14 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             connect_abi_declaration(engines, &abi_decl, graph, entry_node)?;
             Ok(leaves.to_vec())
         }
-        StructDeclaration(decl_ref) => {
-            let struct_decl = decl_engine.get_struct(decl_ref);
-            connect_struct_declaration(&struct_decl, decl_ref.id, graph, entry_node, tree_type);
+        StructDeclaration { decl_id, .. } => {
+            let struct_decl = decl_engine.get_struct(decl_id);
+            connect_struct_declaration(&struct_decl, *decl_id, graph, entry_node, tree_type);
             Ok(leaves.to_vec())
         }
-        EnumDeclaration(decl_ref) => {
-            let enum_decl = decl_engine.get_enum(decl_ref);
-            connect_enum_declaration(&enum_decl, decl_ref.id, graph, entry_node);
+        EnumDeclaration { decl_id, .. } => {
+            let enum_decl = decl_engine.get_enum(decl_id);
+            connect_enum_declaration(&enum_decl, *decl_id, graph, entry_node);
             Ok(leaves.to_vec())
         }
         ImplTrait { decl_id, .. } => {
@@ -830,8 +830,8 @@ fn get_trait_fn_node_index<'a>(
                     .namespace
                     .find_trait_method(&trait_decl.name.into(), &fn_decl.name))
             }
-            ty::TyDeclaration::StructDeclaration(decl_ref) => {
-                let struct_decl = decl_engine.get_struct(&decl_ref);
+            ty::TyDeclaration::StructDeclaration { decl_id, .. } => {
+                let struct_decl = decl_engine.get_struct(&decl_id);
                 Ok(graph
                     .namespace
                     .find_trait_method(&struct_decl.call_path.suffix.into(), &fn_decl.name))
@@ -1687,17 +1687,18 @@ fn construct_dead_code_warning_from_node(
         },
         ty::TyAstNode {
             content:
-                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::StructDeclaration(decl_ref)),
+                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::StructDeclaration { name, .. }),
             ..
         } => CompileWarning {
-            span: decl_ref.name.span(),
+            span: name.span(),
             warning_content: Warning::DeadStructDeclaration,
         },
         ty::TyAstNode {
-            content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::EnumDeclaration(decl_ref)),
+            content:
+                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::EnumDeclaration { name, .. }),
             ..
         } => CompileWarning {
-            span: decl_ref.name.span(),
+            span: name.span(),
             warning_content: Warning::DeadEnumDeclaration,
         },
         ty::TyAstNode {
@@ -1834,11 +1835,11 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
             ty::TyDeclaration::TraitDeclaration { decl_id, .. } => {
                 allow_dead_code(decl_engine.get_trait(decl_id).attributes)
             }
-            ty::TyDeclaration::StructDeclaration(decl_ref) => {
-                allow_dead_code(decl_engine.get_struct(decl_ref).attributes)
+            ty::TyDeclaration::StructDeclaration { decl_id, .. } => {
+                allow_dead_code(decl_engine.get_struct(decl_id).attributes)
             }
-            ty::TyDeclaration::EnumDeclaration(decl_ref) => {
-                allow_dead_code(decl_engine.get_enum(decl_ref).attributes)
+            ty::TyDeclaration::EnumDeclaration { decl_id, .. } => {
+                allow_dead_code(decl_engine.get_enum(decl_id).attributes)
             }
             ty::TyDeclaration::ImplTrait { .. } => false,
             ty::TyDeclaration::AbiDeclaration { .. } => false,

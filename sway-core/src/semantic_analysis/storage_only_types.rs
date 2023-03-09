@@ -224,8 +224,8 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                 }
             }
         }
-        ty::TyDeclaration::StructDeclaration(decl_ref) => {
-            let ty::TyStructDeclaration { fields, .. } = decl_engine.get_struct(decl_ref);
+        ty::TyDeclaration::StructDeclaration { decl_id, .. } => {
+            let ty::TyStructDeclaration { fields, .. } = decl_engine.get_struct(decl_id);
             for field in fields {
                 check!(
                     check_type(
@@ -240,8 +240,8 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                 );
             }
         }
-        ty::TyDeclaration::EnumDeclaration(decl_ref) => {
-            let ty::TyEnumDeclaration { variants, .. } = decl_engine.get_enum(decl_ref);
+        ty::TyDeclaration::EnumDeclaration { decl_id, .. } => {
+            let ty::TyEnumDeclaration { variants, .. } = decl_engine.get_enum(decl_id);
             for variant in variants {
                 check!(
                     check_type(
