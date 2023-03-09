@@ -39,9 +39,9 @@ pub fn collect_typed_declaration(node: &ty::TyAstNode, ctx: &ParseContext) {
             ty::TyDeclaration::VariableDeclaration(variable) => variable.name.clone(),
             ty::TyDeclaration::StructDeclaration(decl_ref) => decl_ref.name.clone(),
             ty::TyDeclaration::EnumDeclaration(decl_ref) => decl_ref.name.clone(),
-            ty::TyDeclaration::TraitDeclaration(decl_ref) => decl_ref.name.clone(),
-            ty::TyDeclaration::FunctionDeclaration(decl_ref) => decl_ref.name.clone(),
-            ty::TyDeclaration::ConstantDeclaration(decl_ref) => decl_ref.name.clone(),
+            ty::TyDeclaration::TraitDeclaration { name, .. }
+            | ty::TyDeclaration::FunctionDeclaration { name, .. }
+            | ty::TyDeclaration::ConstantDeclaration { name, .. } => name.clone(),
             _ => return,
         };
         let ident = token::to_ident_key(&ident);

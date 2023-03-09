@@ -154,7 +154,11 @@ impl ty::TyDeclaration {
                     span,
                 };
                 let decl_ref = decl_engine.insert(decl);
-                let typed_const_decl = ty::TyDeclaration::ConstantDeclaration(decl_ref);
+                let typed_const_decl = ty::TyDeclaration::ConstantDeclaration {
+                    name: decl_ref.name,
+                    decl_id: decl_ref.id,
+                    decl_span: decl_ref.decl_span,
+                };
                 check!(
                     ctx.namespace.insert_symbol(name, typed_const_decl.clone()),
                     return err(warnings, errors),
@@ -193,7 +197,11 @@ impl ty::TyDeclaration {
                 );
                 let name = fn_decl.name.clone();
                 let decl_ref = decl_engine.insert(fn_decl);
-                let decl = ty::TyDeclaration::FunctionDeclaration(decl_ref);
+                let decl = ty::TyDeclaration::FunctionDeclaration {
+                    name: decl_ref.name,
+                    decl_id: decl_ref.id,
+                    decl_span: decl_ref.decl_span,
+                };
                 ctx.namespace.insert_symbol(name, decl.clone());
                 decl
             }
@@ -213,18 +221,27 @@ impl ty::TyDeclaration {
                         .resolve_call_path(&supertrait.name)
                         .cloned()
                         .map(|supertrait_decl| {
-                            if let ty::TyDeclaration::TraitDeclaration(decl_ref) = supertrait_decl {
+                            if let ty::TyDeclaration::TraitDeclaration {
+                                name: supertrait_name,
+                                decl_id: supertrait_decl_id,
+                                decl_span: supertrait_decl_span,
+                            } = supertrait_decl
+                            {
                                 supertrait.decl_ref = Some(DeclRef::new(
-                                    decl_ref.name,
-                                    decl_ref.id,
-                                    decl_ref.decl_span,
+                                    supertrait_name,
+                                    supertrait_decl_id,
+                                    supertrait_decl_span,
                                 ));
                             }
                         });
                 }
 
                 let decl_ref = decl_engine.insert(trait_decl.clone());
-                let decl = ty::TyDeclaration::TraitDeclaration(decl_ref);
+                let decl = ty::TyDeclaration::TraitDeclaration {
+                    name: decl_ref.name,
+                    decl_id: decl_ref.id,
+                    decl_span: decl_ref.decl_span,
+                };
 
                 trait_decl
                     .items
@@ -261,7 +278,11 @@ impl ty::TyDeclaration {
                     errors
                 );
                 let decl_ref = decl_engine.insert(impl_trait.clone());
-                let impl_trait_decl = ty::TyDeclaration::ImplTrait(decl_ref);
+                let impl_trait_decl = ty::TyDeclaration::ImplTrait {
+                    name: decl_ref.name,
+                    decl_id: decl_ref.id,
+                    decl_span: decl_ref.decl_span,
+                };
                 impl_trait.items.iter_mut().for_each(|item| match item {
                     ty::TyImplItem::Fn(method) => {
                         method.replace_implementing_type(engines, impl_trait_decl.clone())
@@ -292,7 +313,11 @@ impl ty::TyDeclaration {
                     errors
                 );
                 let decl_ref = decl_engine.insert(impl_trait.clone());
-                let impl_trait_decl = ty::TyDeclaration::ImplTrait(decl_ref);
+                let impl_trait_decl = ty::TyDeclaration::ImplTrait {
+                    name: decl_ref.name,
+                    decl_id: decl_ref.id,
+                    decl_span: decl_ref.decl_span,
+                };
                 impl_trait.items.iter_mut().for_each(|item| match item {
                     ty::TyImplItem::Fn(method) => {
                         method.replace_implementing_type(engines, impl_trait_decl.clone())
@@ -335,18 +360,27 @@ impl ty::TyDeclaration {
                         .resolve_call_path(&supertrait.name)
                         .cloned()
                         .map(|supertrait_decl| {
-                            if let ty::TyDeclaration::TraitDeclaration(decl_ref) = supertrait_decl {
+                            if let ty::TyDeclaration::TraitDeclaration {
+                                name: supertrait_name,
+                                decl_id: supertrait_decl_id,
+                                decl_span: supertrait_decl_span,
+                            } = supertrait_decl
+                            {
                                 supertrait.decl_ref = Some(DeclRef::new(
-                                    decl_ref.name,
-                                    decl_ref.id,
-                                    decl_ref.decl_span,
+                                    supertrait_name,
+                                    supertrait_decl_id,
+                                    supertrait_decl_span,
                                 ));
                             }
                         });
                 }
 
                 let decl_ref = decl_engine.insert(abi_decl.clone());
-                let decl = ty::TyDeclaration::AbiDeclaration(decl_ref);
+                let decl = ty::TyDeclaration::AbiDeclaration {
+                    name: decl_ref.name,
+                    decl_id: decl_ref.id,
+                    decl_span: decl_ref.decl_span,
+                };
                 abi_decl
                     .items
                     .iter_mut()

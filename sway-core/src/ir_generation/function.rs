@@ -139,8 +139,8 @@ impl<'eng> FnCompiler<'eng> {
                 ty::TyDeclaration::VariableDeclaration(tvd) => {
                     self.compile_var_decl(context, md_mgr, tvd, span_md_idx)
                 }
-                ty::TyDeclaration::ConstantDeclaration(decl_ref) => {
-                    let tcd = self.decl_engine.get_constant(decl_ref);
+                ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
+                    let tcd = self.decl_engine.get_constant(decl_id);
                     self.compile_const_decl(context, md_mgr, tcd, span_md_idx)?;
                     Ok(None)
                 }

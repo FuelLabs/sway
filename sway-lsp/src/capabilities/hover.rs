@@ -149,8 +149,8 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
                         &token_name,
                     ))
                 }
-                ty::TyDeclaration::TraitDeclaration(decl_ref) => {
-                    let trait_decl = decl_engine.get_trait(decl_ref);
+                ty::TyDeclaration::TraitDeclaration { decl_id, .. } => {
+                    let trait_decl = decl_engine.get_trait(decl_id);
                     Some(format_visibility_hover(
                         trait_decl.visibility,
                         decl.friendly_type_name(),

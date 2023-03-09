@@ -347,8 +347,8 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
                 options,
             )
         }
-        ConstantDeclaration(decl_ref) => {
-            let ty::TyConstantDeclaration { name, value, .. } = decl_engine.get_constant(decl_ref);
+        ConstantDeclaration { decl_id, .. } => {
+            let ty::TyConstantDeclaration { name, value, .. } = decl_engine.get_constant(decl_id);
             graph.namespace.insert_constant(name, entry_node);
             if let Some(value) = &value {
                 connect_expression(
@@ -366,20 +366,20 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
                 Ok(leaves.to_vec())
             }
         }
-        FunctionDeclaration(decl_ref) => {
-            let fn_decl = decl_engine.get_function(decl_ref);
+        FunctionDeclaration { decl_id, .. } => {
+            let fn_decl = decl_engine.get_function(decl_id);
             connect_typed_fn_decl(
                 engines, &fn_decl, graph, entry_node, span, exit_node, tree_type, options,
             )?;
             Ok(leaves.to_vec())
         }
-        TraitDeclaration(decl_ref) => {
-            let trait_decl = decl_engine.get_trait(decl_ref);
+        TraitDeclaration { decl_id, .. } => {
+            let trait_decl = decl_engine.get_trait(decl_id);
             connect_trait_declaration(&trait_decl, graph, entry_node);
             Ok(leaves.to_vec())
         }
-        AbiDeclaration(decl_ref) => {
-            let abi_decl = decl_engine.get_abi(decl_ref);
+        AbiDeclaration { decl_id, .. } => {
+            let abi_decl = decl_engine.get_abi(decl_id);
             connect_abi_declaration(engines, &abi_decl, graph, entry_node)?;
             Ok(leaves.to_vec())
         }
@@ -393,10 +393,10 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             connect_enum_declaration(&enum_decl, decl_ref.id, graph, entry_node);
             Ok(leaves.to_vec())
         }
-        ImplTrait(decl_ref) => {
+        ImplTrait { decl_id, .. } => {
             let ty::TyImplTrait {
                 trait_name, items, ..
-            } = decl_engine.get_impl_trait(decl_ref);
+            } = decl_engine.get_impl_trait(decl_id);
 
             connect_impl_trait(
                 engines,
@@ -820,8 +820,8 @@ fn get_trait_fn_node_index<'a>(
     let fn_decl = decl_engine.get_function(&function_decl_ref);
     if let Some(implementing_type) = fn_decl.implementing_type {
         match implementing_type {
-            ty::TyDeclaration::TraitDeclaration(decl_ref) => {
-                let trait_decl = decl_engine.get_trait(&decl_ref);
+            ty::TyDeclaration::TraitDeclaration { decl_id, .. } => {
+                let trait_decl = decl_engine.get_trait(&decl_id);
                 Ok(graph
                     .namespace
                     .find_trait_method(&trait_decl.name.into(), &fn_decl.name))
@@ -832,14 +832,14 @@ fn get_trait_fn_node_index<'a>(
                     .namespace
                     .find_trait_method(&struct_decl.call_path.suffix.into(), &fn_decl.name))
             }
-            ty::TyDeclaration::ImplTrait(decl_ref) => {
-                let impl_trait = decl_engine.get_impl_trait(&decl_ref);
+            ty::TyDeclaration::ImplTrait { decl_id, .. } => {
+                let impl_trait = decl_engine.get_impl_trait(&decl_id);
                 Ok(graph
                     .namespace
                     .find_trait_method(&impl_trait.trait_name, &fn_decl.name))
             }
-            ty::TyDeclaration::AbiDeclaration(decl_ref) => {
-                let abi_decl = decl_engine.get_abi(&decl_ref);
+            ty::TyDeclaration::AbiDeclaration { decl_id, .. } => {
+                let abi_decl = decl_engine.get_abi(&decl_id);
                 Ok(graph
                     .namespace
                     .find_trait_method(&abi_decl.name.into(), &fn_decl.name))
@@ -905,7 +905,11 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                     engines,
                     &ty::TyAstNode {
                         content: ty::TyAstNodeContent::Declaration(
-                            ty::TyDeclaration::FunctionDeclaration(function_decl_ref.clone()),
+                            ty::TyDeclaration::FunctionDeclaration {
+                                name: function_decl_ref.name.clone(),
+                                decl_id: function_decl_ref.id,
+                                decl_span: function_decl_ref.decl_span.clone(),
+                            },
                         ),
                         span: expression_span.clone(),
                     },
@@ -1669,10 +1673,12 @@ fn construct_dead_code_warning_from_node(
         // code.
         ty::TyAstNode {
             content:
-                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(decl_ref)),
+                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration {
+                    name, ..
+                }),
             ..
         } => CompileWarning {
-            span: decl_ref.name.span(),
+            span: name.span(),
             warning_content: Warning::DeadFunctionDeclaration,
         },
         ty::TyAstNode {
@@ -1692,18 +1698,20 @@ fn construct_dead_code_warning_from_node(
         },
         ty::TyAstNode {
             content:
-                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::TraitDeclaration(decl_ref)),
+                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::TraitDeclaration { name, .. }),
             ..
         } => CompileWarning {
-            span: decl_ref.name.span(),
+            span: name.span(),
             warning_content: Warning::DeadTrait,
         },
         ty::TyAstNode {
             content:
-                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ConstantDeclaration(decl_ref)),
+                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ConstantDeclaration {
+                    name, ..
+                }),
             ..
         } => CompileWarning {
-            span: decl_ref.name.span(),
+            span: name.span(),
             warning_content: Warning::DeadDeclaration,
         },
         ty::TyAstNode {
@@ -1726,10 +1734,10 @@ fn construct_dead_code_warning_from_node(
             }
         }
         ty::TyAstNode {
-            content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait(decl_ref)),
+            content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait { decl_id, .. }),
             span,
         } => {
-            let ty::TyImplTrait { items: methods, .. } = decl_engine.get_impl_trait(decl_ref);
+            let ty::TyImplTrait { items: methods, .. } = decl_engine.get_impl_trait(decl_id);
             if methods.is_empty() {
                 return None;
             } else {
@@ -1813,14 +1821,14 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
     match &node.content {
         ty::TyAstNodeContent::Declaration(decl) => match &decl {
             ty::TyDeclaration::VariableDeclaration(_) => false,
-            ty::TyDeclaration::ConstantDeclaration(decl_ref) => {
-                allow_dead_code(decl_engine.get_constant(decl_ref).attributes)
+            ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
+                allow_dead_code(decl_engine.get_constant(decl_id).attributes)
             }
-            ty::TyDeclaration::FunctionDeclaration(decl_ref) => {
-                allow_dead_code(decl_engine.get_function(decl_ref).attributes)
+            ty::TyDeclaration::FunctionDeclaration { decl_id, .. } => {
+                allow_dead_code(decl_engine.get_function(decl_id).attributes)
             }
-            ty::TyDeclaration::TraitDeclaration(decl_ref) => {
-                allow_dead_code(decl_engine.get_trait(decl_ref).attributes)
+            ty::TyDeclaration::TraitDeclaration { decl_id, .. } => {
+                allow_dead_code(decl_engine.get_trait(decl_id).attributes)
             }
             ty::TyDeclaration::StructDeclaration(decl_ref) => {
                 allow_dead_code(decl_engine.get_struct(decl_ref).attributes)
