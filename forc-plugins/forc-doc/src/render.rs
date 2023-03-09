@@ -5,7 +5,7 @@ use crate::{
 use anyhow::{anyhow, Result};
 use comrak::{markdown_to_html, ComrakOptions};
 use horrorshow::{box_html, helper::doctype, html, prelude::*, Raw};
-use std::{collections::BTreeMap, fmt::Write};
+use std::{collections::BTreeMap, fmt::Write, path::PathBuf};
 use sway_core::{
     language::ty::{
         TyDeclaration::{self, *},
@@ -25,6 +25,7 @@ pub(crate) trait Renderable {
     fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>>;
 }
 /// A [Document] rendered to HTML.
+#[derive(Debug)]
 pub(crate) struct RenderedDocument {
     pub(crate) module_info: ModuleInfo,
     pub(crate) html_filename: String,
@@ -148,11 +149,18 @@ impl RenderedDocumentation {
                 }
             }
             // Create links to child modules.
-            if let Some(parent_module) = doc.module_info.parent() {
+            let mut module_clone = doc.module_info.clone();
+            let mut child_prefix = PathBuf::new();
+            while let Some(parent_module) = module_clone.parent() {
+                let html_filename = if let Some(child_prefix) = child_prefix.to_str() {
+                    format!("{child_prefix}{INDEX_FILENAME}")
+                } else {
+                    INDEX_FILENAME.to_string()
+                };
                 let module_link = DocLink {
-                    name: location.clone(),
-                    module_info: doc.module_info.to_owned(),
-                    html_filename: INDEX_FILENAME.to_owned(),
+                    name: location.to_owned(),
+                    module_info: module_clone.to_owned(),
+                    html_filename,
                     preview_opt: doc.module_info.preview_opt(),
                 };
                 match module_map.get_mut(parent_module) {
@@ -172,6 +180,10 @@ impl RenderedDocumentation {
                         module_map.insert(parent_module.clone(), doc_links);
                     }
                 }
+                let mut parent =
+                    PathBuf::from(module_clone.module_prefixes.pop().unwrap_or_default());
+                parent.push(child_prefix);
+                child_prefix = parent;
             }
             // Above we check for the module a link belongs to, here we want _all_ links so the check is much more shallow.
             match doc.item_body.ty_decl {
@@ -299,6 +311,7 @@ impl RenderedDocumentation {
     }
 }
 /// The finalized HTML file contents.
+#[derive(Debug)]
 pub(crate) struct HTMLString(pub(crate) String);
 impl HTMLString {
     /// Final rendering of a [Document] HTML page to String.
@@ -378,11 +391,14 @@ pub(crate) struct ItemBody {
 }
 impl SidebarNav for ItemBody {
     fn sidebar(&self) -> Sidebar {
+        let style = DocStyle::Item {
+            title: Some(self.ty_decl.as_block_title()),
+            name: Some(self.item_name.clone()),
+        };
         Sidebar {
             version_opt: None,
-            style: DocStyle::Item,
+            style,
             module_info: self.module_info.clone(),
-            href_path: INDEX_FILENAME.to_owned(),
             nav: self.item_context.to_doclinks(),
         }
     }
@@ -401,11 +417,12 @@ impl Renderable for ItemBody {
         } = self;
 
         let decl_ty = ty_decl.doc_name();
-        let friendly_name = ty_decl.friendly_type_name();
+        let block_title = ty_decl.as_block_title();
         let sidebar = sidebar.render(render_plan.clone())?;
         let item_context = (item_context.context_opt.is_some())
-            .then(|| -> Result<Box<dyn RenderBox>> { item_context.render(render_plan) });
+            .then(|| -> Result<Box<dyn RenderBox>> { item_context.render(render_plan.clone()) });
         let sway_hjs = module_info.to_html_shorthand_path_string("assets/highlight.js");
+        let rendered_module_anchors = module_info.get_anchors()?;
 
         Ok(box_html! {
             body(class=format!("swaydoc {decl_ty}")) {
@@ -413,35 +430,35 @@ impl Renderable for ItemBody {
                 // this is the main code block
                 main {
                     div(class="width-limiter") {
-                        div(class="sub-container") {
-                            nav(class="sub") {
-                                form(class="search-form") {
-                                    div(class="search-container") {
-                                        span;
-                                        input(
-                                            class="search-input",
-                                            name="search",
-                                            autocomplete="off",
-                                            spellcheck="false",
-                                            // TODO: https://github.com/FuelLabs/sway/issues/3480
-                                            placeholder="Searchbar unimplemented, see issue #3480...",
-                                            type="search"
-                                        );
-                                        div(id="help-button", title="help", tabindex="-1") {
-                                            button(type="button") { : "?" }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        // div(class="sub-container") {
+                        //     nav(class="sub") {
+                        //         form(class="search-form") {
+                        //             div(class="search-container") {
+                        //                 span;
+                        //                 input(
+                        //                     class="search-input",
+                        //                     name="search",
+                        //                     autocomplete="off",
+                        //                     spellcheck="false",
+                        //                     // TODO: https://github.com/FuelLabs/sway/issues/3480
+                        //                     placeholder="Searchbar unimplemented, see issue #3480...",
+                        //                     type="search"
+                        //                 );
+                        //                 div(id="help-button", title="help", tabindex="-1") {
+                        //                     button(type="button") { : "?" }
+                        //                 }
+                        //             }
+                        //         }
+                        //     }
+                        // }
                         section(id="main-content", class="content") {
                             div(class="main-heading") {
                                 h1(class="fqn") {
                                     span(class="in-band") {
-                                        // TODO: pass the decl ty info or match
-                                        // for uppercase naming like: "Enum"
-                                        : format!("{friendly_name} ");
-                                        // TODO: add qualified path anchors
+                                        : format!("{} ", block_title.item_title_str());
+                                        @ for anchor in rendered_module_anchors {
+                                            : Raw(anchor);
+                                        }
                                         a(class=&decl_ty, href=IDENTITY) {
                                             : item_name.as_str();
                                         }
@@ -491,7 +508,7 @@ pub(crate) enum ContextType {
     /// at a later date if need be
     RequiredMethods(Vec<TyTraitFn>),
 }
-impl ContextType {
+impl DocBlockTitle for ContextType {
     fn as_block_title(&self) -> BlockTitle {
         match self {
             ContextType::StructFields(_) => BlockTitle::Fields,
@@ -621,8 +638,6 @@ impl Renderable for Context {
             }
             ContextType::RequiredMethods(methods) => {
                 for method in methods {
-                    // there is likely a better way we can do this while simultaneously storing the
-                    // string slices we need like "&mut "
                     let mut fn_sig = format!("fn {}(", method.name.as_str());
                     for param in &method.parameters {
                         let mut param_str = String::new();
@@ -791,7 +806,10 @@ impl ItemContext {
             }
         }
         DocLinks {
-            style: DocStyle::Item,
+            style: DocStyle::Item {
+                title: None,
+                name: None,
+            },
             links,
         }
     }
@@ -961,12 +979,15 @@ impl Renderable for DocLinks {
             DocStyle::AllDoc(_) => box_html! {
                 @ for (title, list_items) in self.links {
                     @ if !list_items.is_empty() {
-                        h3(id=format!("{}", title.html_title_string())) { : title.as_str(); }
+                        h2(id=format!("{}", title.html_title_string())) { : title.as_str(); }
                         div(class="item-table") {
                             @ for item in list_items {
                                 div(class="item-row") {
                                     div(class=format!("item-left {}-item", title.item_title_str())) {
-                                        a(href=item.module_info.file_path_at_location(&item.html_filename, item.module_info.project_name())) {
+                                        a(
+                                            class=title.class_title_str(),
+                                            href=item.module_info.file_path_at_location(&item.html_filename, item.module_info.project_name())
+                                        ) {
                                             : item.module_info.to_path_literal_string(
                                                 &item.name,
                                                 item.module_info.project_name()
@@ -989,12 +1010,15 @@ impl Renderable for DocLinks {
             DocStyle::ProjectIndex(_) => box_html! {
                 @ for (title, list_items) in self.links {
                     @ if !list_items.is_empty() {
-                        h3(id=format!("{}", title.html_title_string())) { : title.as_str(); }
+                        h2(id=format!("{}", title.html_title_string())) { : title.as_str(); }
                         div(class="item-table") {
                             @ for item in list_items {
                                 div(class="item-row") {
                                     div(class=format!("item-left {}-item", title.item_title_str())) {
-                                        a(href=item.module_info.file_path_at_location(&item.html_filename, item.module_info.project_name())) {
+                                        a(
+                                            class=title.class_title_str(),
+                                            href=item.module_info.file_path_at_location(&item.html_filename, item.module_info.project_name())
+                                        ) {
                                             @ if title == BlockTitle::Modules {
                                                 : item.name;
                                             } else {
@@ -1021,12 +1045,15 @@ impl Renderable for DocLinks {
             _ => box_html! {
                 @ for (title, list_items) in self.links {
                     @ if !list_items.is_empty() {
-                        h3(id=format!("{}", title.html_title_string())) { : title.as_str(); }
+                        h2(id=format!("{}", title.html_title_string())) { : title.as_str(); }
                         div(class="item-table") {
                             @ for item in list_items {
                                 div(class="item-row") {
                                     div(class=format!("item-left {}-item", title.item_title_str())) {
-                                        a(href=item.module_info.file_path_at_location(&item.html_filename, item.module_info.location())) {
+                                        a(
+                                            class=title.class_title_str(),
+                                            href=item.module_info.file_path_at_location(&item.html_filename, item.module_info.location())
+                                        ) {
                                             : item.module_info.to_path_literal_string(
                                                 &item.name,
                                                 item.module_info.location()
@@ -1051,6 +1078,9 @@ impl Renderable for DocLinks {
             : Raw(doc_links);
         })
     }
+}
+trait DocBlockTitle {
+    fn as_block_title(&self) -> BlockTitle;
 }
 /// Represents all of the possible titles
 /// belonging to an index or sidebar.
@@ -1099,6 +1129,19 @@ impl BlockTitle {
             Self::RequiredMethods => "Required Methods",
         }
     }
+    fn class_title_str(&self) -> &str {
+        match self {
+            Self::Modules => "mod",
+            Self::Structs => "struct",
+            Self::Enums => "enum",
+            Self::Traits => "trait",
+            Self::Abi => "abi",
+            Self::ContractStorage => "storage",
+            Self::Constants => "constant",
+            Self::Functions => "fn",
+            _ => unimplemented!("These titles are unimplemented, and should not be used this way."),
+        }
+    }
     fn html_title_string(&self) -> String {
         if self.as_str().contains(' ') {
             self.as_str()
@@ -1108,6 +1151,23 @@ impl BlockTitle {
                 .join("-")
         } else {
             self.as_str().to_lowercase()
+        }
+    }
+}
+
+impl DocBlockTitle for TyDeclaration {
+    fn as_block_title(&self) -> BlockTitle {
+        match self {
+            TyDeclaration::StructDeclaration(_) => BlockTitle::Structs,
+            TyDeclaration::EnumDeclaration(_) => BlockTitle::Enums,
+            TyDeclaration::TraitDeclaration { .. } => BlockTitle::Traits,
+            TyDeclaration::AbiDeclaration { .. } => BlockTitle::Abi,
+            TyDeclaration::StorageDeclaration { .. } => BlockTitle::ContractStorage,
+            TyDeclaration::ConstantDeclaration { .. } => BlockTitle::Constants,
+            TyDeclaration::FunctionDeclaration { .. } => BlockTitle::Functions,
+            _ => {
+                unreachable!("All other TyDecls are non-documentable and will never be matched on")
+            }
         }
     }
 }
@@ -1125,7 +1185,6 @@ impl SidebarNav for AllDocIndex {
             version_opt: None,
             style: self.all_docs.style.clone(),
             module_info: self.project_name.clone(),
-            href_path: INDEX_FILENAME.to_owned(),
             nav: self.all_docs.clone(),
         }
     }
@@ -1155,27 +1214,27 @@ impl Renderable for AllDocIndex {
                 : sidebar;
                 main {
                     div(class="width-limiter") {
-                        div(class="sub-container") {
-                            nav(class="sub") {
-                                form(class="search-form") {
-                                    div(class="search-container") {
-                                        span;
-                                        input(
-                                            class="search-input",
-                                            name="search",
-                                            autocomplete="off",
-                                            spellcheck="false",
-                                            // TODO: Add functionality.
-                                            placeholder="Searchbar unimplemented, see issue #3480...",
-                                            type="search"
-                                        );
-                                        div(id="help-button", title="help", tabindex="-1") {
-                                            button(type="button") { : "?" }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        // div(class="sub-container") {
+                        //     nav(class="sub") {
+                        //         form(class="search-form") {
+                        //             div(class="search-container") {
+                        //                 span;
+                        //                 input(
+                        //                     class="search-input",
+                        //                     name="search",
+                        //                     autocomplete="off",
+                        //                     spellcheck="false",
+                        //                     // TODO: Add functionality.
+                        //                     placeholder="Searchbar unimplemented, see issue #3480...",
+                        //                     type="search"
+                        //                 );
+                        //                 div(id="help-button", title="help", tabindex="-1") {
+                        //                     button(type="button") { : "?" }
+                        //                 }
+                        //             }
+                        //         }
+                        //     }
+                        // }
                         section(id="main-content", class="content") {
                             h1(class="fqn") {
                                 span(class="in-band") { : "List of all items" }
@@ -1210,7 +1269,6 @@ impl SidebarNav for ModuleIndex {
             version_opt: self.version_opt.clone(),
             style,
             module_info: self.module_info.clone(),
-            href_path: INDEX_FILENAME.to_owned(),
             nav: self.module_docs.clone(),
         }
     }
@@ -1243,6 +1301,8 @@ impl Renderable for ModuleIndex {
         let ayu_hjs = self
             .module_info
             .to_html_shorthand_path_string("assets/ayu.min.css");
+        let mut rendered_module_anchors = self.module_info.get_anchors()?;
+        rendered_module_anchors.pop();
 
         Ok(box_html! {
             head {
@@ -1268,33 +1328,36 @@ impl Renderable for ModuleIndex {
                 : sidebar;
                 main {
                     div(class="width-limiter") {
-                        div(class="sub-container") {
-                            nav(class="sub") {
-                                form(class="search-form") {
-                                    div(class="search-container") {
-                                        span;
-                                        input(
-                                            class="search-input",
-                                            name="search",
-                                            autocomplete="off",
-                                            spellcheck="false",
-                                            // TODO: Add functionality.
-                                            placeholder="Searchbar unimplemented, see issue #3480...",
-                                            type="search"
-                                        );
-                                        div(id="help-button", title="help", tabindex="-1") {
-                                            button(type="button") { : "?" }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        // div(class="sub-container") {
+                        //     nav(class="sub") {
+                        //         form(class="search-form") {
+                        //             div(class="search-container") {
+                        //                 span;
+                        //                 input(
+                        //                     class="search-input",
+                        //                     name="search",
+                        //                     autocomplete="off",
+                        //                     spellcheck="false",
+                        //                     // TODO: Add functionality.
+                        //                     placeholder="Searchbar unimplemented, see issue #3480...",
+                        //                     type="search"
+                        //                 );
+                        //                 div(id="help-button", title="help", tabindex="-1") {
+                        //                     button(type="button") { : "?" }
+                        //                 }
+                        //             }
+                        //         }
+                        //     }
+                        // }
                         section(id="main-content", class="content") {
                             div(class="main-heading") {
                                 h1(class="fqn") {
                                     span(class="in-band") {
                                         : title_prefix;
-                                        a(class="module", href=IDENTITY) {
+                                        @ for anchor in rendered_module_anchors {
+                                            : Raw(anchor);
+                                        }
+                                        a(class=BlockTitle::Modules.class_title_str(), href=IDENTITY) {
                                             : self.module_info.location();
                                         }
                                     }
@@ -1332,15 +1395,16 @@ enum DocStyle {
     AllDoc(String),
     ProjectIndex(String),
     ModuleIndex,
-    Item,
+    Item {
+        title: Option<BlockTitle>,
+        name: Option<BaseIdent>,
+    },
 }
 /// Sidebar component for quick navigation.
 struct Sidebar {
     version_opt: Option<String>,
     style: DocStyle,
     module_info: ModuleInfo,
-    /// the path to the current module
-    href_path: String,
     /// support for page navigation
     nav: DocLinks,
 }
@@ -1349,22 +1413,29 @@ impl Renderable for Sidebar {
         let path_to_logo = self
             .module_info
             .to_html_shorthand_path_string("assets/sway-logo.svg");
-        let location_with_prefix = match &self.style {
+        let style = self.style.clone();
+        let version_opt = self.version_opt.clone();
+        let location_with_prefix = match &style {
             DocStyle::AllDoc(project_kind) | DocStyle::ProjectIndex(project_kind) => {
                 format!("{project_kind} {}", self.module_info.location())
             }
-            DocStyle::ModuleIndex | DocStyle::Item => format!(
+            DocStyle::ModuleIndex => format!(
                 "{} {}",
                 BlockTitle::Modules.item_title_str(),
                 self.module_info.location()
             ),
-        };
-        let (logo_path_to_parent, path_to_parent_or_self) = match &self.style {
-            DocStyle::AllDoc(_) | DocStyle::Item => {
-                (self.href_path.clone(), self.href_path.clone())
+            DocStyle::Item { title, name } => {
+                let title = title.clone().expect("Expected a BlockTitle");
+                let name = name.clone().expect("Expected a BaseIdent");
+                format!("{} {}", title.item_title_str(), name.as_str())
             }
-            DocStyle::ProjectIndex(_) => (IDENTITY.to_owned(), IDENTITY.to_owned()),
-            DocStyle::ModuleIndex => (format!("../{INDEX_FILENAME}"), IDENTITY.to_owned()),
+        };
+        let root_path = self
+            .module_info
+            .to_html_shorthand_path_string(INDEX_FILENAME);
+        let logo_path_to_root = match style {
+            DocStyle::AllDoc(_) | DocStyle::Item { .. } | DocStyle::ModuleIndex => root_path,
+            DocStyle::ProjectIndex(_) => IDENTITY.to_owned(),
         };
         // Unfortunately, match arms that return a closure, even if they are the same
         // type, are incompatible. The work around is to return a String instead,
@@ -1372,23 +1443,36 @@ impl Renderable for Sidebar {
         let styled_content = match &self.style {
             DocStyle::ProjectIndex(_) => {
                 let nav_links = self.nav.links;
-                let version = match self.version_opt {
-                    Some(ref v) => v.as_str(),
-                    None => "0.0.0",
-                };
+                let all_items = format!("See all {}'s items", self.module_info.project_name());
                 box_html! {
                     div(class="sidebar-elems") {
-                        div(class="block") {
-                            ul {
-                                li(class="version") {
-                                    : format!("Version {version}");
-                                }
-                                li {
-                                    a(id="all-types", href=ALL_DOC_FILENAME) {
-                                        : "All Items";
+                        a(id="all-types", href=ALL_DOC_FILENAME) {
+                            p: all_items;
+                        }
+                        section {
+                            div(class="block") {
+                                ul {
+                                    @ for (title, _) in nav_links {
+                                        li {
+                                            a(href=format!("{}{}", IDENTITY, title.html_title_string())) {
+                                                : title.as_str();
+                                            }
+                                        }
                                     }
                                 }
                             }
+                        }
+                    }
+                }
+                .into_string()
+                .unwrap()
+            }
+            DocStyle::AllDoc(_) => {
+                let nav_links = self.nav.links;
+                box_html! {
+                    div(class="sidebar-elems") {
+                        a(id="all-types", href=INDEX_FILENAME) {
+                            p: "Back to index";
                         }
                         section {
                             div(class="block") {
@@ -1430,13 +1514,20 @@ impl Renderable for Sidebar {
         };
         Ok(box_html! {
             nav(class="sidebar") {
-                a(class="sidebar-logo", href=&logo_path_to_parent) {
+                a(class="sidebar-logo", href=&logo_path_to_root) {
                     div(class="logo-container") {
                         img(class="sway-logo", src=path_to_logo, alt="logo");
                     }
                 }
                 h2(class="location") {
-                    a(href=path_to_parent_or_self) { : location_with_prefix; }
+                    : location_with_prefix;
+                }
+                @ if let DocStyle::ProjectIndex(_) = style.clone() {
+                    @ if version_opt.is_some() {
+                        div(class="version") {
+                            p: version_opt.unwrap();
+                        }
+                    }
                 }
                 : Raw(styled_content);
             }
