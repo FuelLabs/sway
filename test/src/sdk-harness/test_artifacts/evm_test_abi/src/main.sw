@@ -1,4 +1,4 @@
-library evm_test_abi;
+library;
 
 use std::vm::evm::evm_address::EvmAddress;
 

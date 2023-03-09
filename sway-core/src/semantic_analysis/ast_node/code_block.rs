@@ -57,10 +57,10 @@ impl ty::TyCodeBlock {
             .unwrap_or_else(|| {
                 if node_deterministically_aborts {
                     let never_mod_path = vec![
-                        Ident::new_with_override("core", span.clone()),
-                        Ident::new_with_override("never", span.clone()),
+                        Ident::new_with_override("core".into(), span.clone()),
+                        Ident::new_with_override("never".into(), span.clone()),
                     ];
-                    let never_ident = Ident::new_with_override("Never", span.clone());
+                    let never_ident = Ident::new_with_override("Never".into(), span.clone());
 
                     let never_decl_opt = ctx
                         .namespace

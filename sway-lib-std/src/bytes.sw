@@ -1,5 +1,5 @@
 //! The `Bytes` type is used when a collection of tightly-packed arbitrary bytes is needed.
-library bytes;
+library;
 
 use ::{alloc::{alloc_bytes, realloc_bytes}, vec::Vec};
 use ::assert::assert;

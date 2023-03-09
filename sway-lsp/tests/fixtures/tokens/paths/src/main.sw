@@ -1,7 +1,7 @@
 contract;
 
-dep test_mod;
-dep deep_mod;
+mod test_mod;
+mod deep_mod;
 
 use test_mod::A;
 use deep_mod::deeper_mod::deep_fun as dfun;

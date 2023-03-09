@@ -10,7 +10,7 @@ use sway_core::{
     decl_engine::InterfaceDeclId,
     language::{
         parsed::{ImportType, Supertrait},
-        ty::{self, GetDeclIdent, TyEnumVariant, TyModule, TyProgram, TyProgramKind, TySubmodule},
+        ty::{self, GetDeclIdent, TyEnumVariant, TyModule, TyProgram, TySubmodule},
         CallPathTree,
     },
     namespace,
@@ -40,19 +40,8 @@ impl<'a> TypedTree<'a> {
         };
     }
 
-    /// Collects the library name and the module name from the dep statement
+    /// Collects module names from the mod statements
     pub fn collect_module_spans(&self, typed_program: &TyProgram) {
-        if let TyProgramKind::Library { name } = &typed_program.kind {
-            if let Some(mut token) = self
-                .ctx
-                .tokens
-                .try_get_mut(&to_ident_key(name))
-                .try_unwrap()
-            {
-                token.typed = Some(TypedAstToken::TypedProgramKind(typed_program.kind.clone()));
-                token.type_def = Some(TypeDefinition::Ident(name.clone()));
-            }
-        }
         self.collect_module(&typed_program.root);
     }
 
@@ -60,29 +49,19 @@ impl<'a> TypedTree<'a> {
         for (
             _,
             TySubmodule {
-                library_name,
                 module,
-                dependency_path_span,
+                mod_name_span,
             },
         ) in &typed_module.submodules
         {
             if let Some(mut token) = self
                 .ctx
                 .tokens
-                .try_get_mut(&to_ident_key(&Ident::new(dependency_path_span.clone())))
+                .try_get_mut(&to_ident_key(&Ident::new(mod_name_span.clone())))
                 .try_unwrap()
             {
                 token.typed = Some(TypedAstToken::TypedIncludeStatement);
-                token.type_def = Some(TypeDefinition::Ident(library_name.clone()));
-            }
-            if let Some(mut token) = self
-                .ctx
-                .tokens
-                .try_get_mut(&to_ident_key(library_name))
-                .try_unwrap()
-            {
-                token.typed = Some(TypedAstToken::TypedLibraryName(library_name.clone()));
-                token.type_def = Some(TypeDefinition::Ident(library_name.clone()));
+                token.type_def = Some(TypeDefinition::Ident(Ident::new(module.span.clone())));
             }
             self.collect_module(module);
         }
@@ -353,12 +332,12 @@ impl<'a> TypedTree<'a> {
                     {
                         token.typed = Some(TypedAstToken::TypedUseStatement(use_statement.clone()));
 
-                        if let Some(name) = self
+                        if let Some(span) = self
                             .namespace
                             .submodule(mod_path)
-                            .and_then(|tgt_submod| tgt_submod.name.clone())
+                            .and_then(|tgt_submod| tgt_submod.span.clone())
                         {
-                            token.type_def = Some(TypeDefinition::Ident(name));
+                            token.type_def = Some(TypeDefinition::Ident(Ident::new(span)));
                         }
                     }
                 }
@@ -425,12 +404,12 @@ impl<'a> TypedTree<'a> {
                             token.typed =
                                 Some(TypedAstToken::TypedUseStatement(use_statement.clone()));
 
-                            if let Some(name) = self
+                            if let Some(span) = self
                                 .namespace
                                 .submodule(call_path)
-                                .and_then(|tgt_submod| tgt_submod.name.clone())
+                                .and_then(|tgt_submod| tgt_submod.span.clone())
                             {
-                                token.type_def = Some(TypeDefinition::Ident(name));
+                                token.type_def = Some(TypeDefinition::Ident(Ident::new(span)));
                             }
                         }
                     }
@@ -985,12 +964,12 @@ impl<'a> TypedTree<'a> {
             {
                 token.typed = Some(TypedAstToken::Ident(ident.clone()));
 
-                if let Some(name) = self
+                if let Some(span) = self
                     .namespace
                     .submodule(mod_path)
-                    .and_then(|tgt_submod| tgt_submod.name.clone())
+                    .and_then(|tgt_submod| tgt_submod.span.clone())
                 {
-                    token.type_def = Some(TypeDefinition::Ident(name));
+                    token.type_def = Some(TypeDefinition::Ident(Ident::new(span)));
                 }
             }
         }

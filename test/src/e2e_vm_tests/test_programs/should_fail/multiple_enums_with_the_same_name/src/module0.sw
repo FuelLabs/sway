@@ -1,4 +1,4 @@
-library module0;
+library;
 
 pub enum MyEnum {
     A: ()

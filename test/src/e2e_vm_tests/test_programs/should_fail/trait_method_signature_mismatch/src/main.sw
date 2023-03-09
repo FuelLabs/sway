@@ -1,7 +1,7 @@
 // This should result in an error saying that the method signature of the
 // implementation does not match the declaration.
 
-library test;
+library;
 
 struct MyStruct<T> {
     val: T

@@ -1,4 +1,4 @@
-library basic_storage_abi;
+library;
 
 pub struct Quad {
     v1: u64,

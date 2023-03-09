@@ -72,7 +72,7 @@
 //! `Ok(v)`  : `Result::Ok`
 //! `Some(v)`: `Option::Some`
 //! `ok_or`  : `Option::ok_or`
-library option;
+library;
 
 use ::result::Result;
 use ::revert::revert;

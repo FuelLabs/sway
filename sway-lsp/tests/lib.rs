@@ -265,8 +265,8 @@ async fn go_to_definition_for_fields() {
         req_line: 17,
         req_char: 10,
         def_line: 0,
-        def_start_char: 8,
-        def_end_char: 11,
+        def_start_char: 0,
+        def_end_char: 0,
         def_path: "sway-lsp/tests/fixtures/tokens/fields/src/foo.sw",
     };
     // foo
@@ -463,23 +463,31 @@ async fn go_to_definition_for_modules() {
         req_line: 2,
         req_char: 6,
         def_line: 0,
-        def_start_char: 8,
-        def_end_char: 16,
+        def_start_char: 0,
+        def_end_char: 0,
         def_path: "sway-lsp/tests/fixtures/tokens/modules/src/test_mod.sw",
     };
-    // dep test_mod;
+    // mod test_mod;
     let _ = lsp::definition_check(&mut service, &opt_go_to, &mut i).await;
 
+    shutdown_and_exit(&mut service).await;
+
+    let (mut service, _) = LspService::new(Backend::new);
+    let uri = init_and_open(
+        &mut service,
+        test_fixtures_dir().join("tokens/modules/src/test_mod.sw"),
+    )
+    .await;
     let opt_go_to = GotoDefinition {
         req_uri: &uri,
-        req_line: 3,
+        req_line: 2,
         req_char: 6,
         def_line: 0,
-        def_start_char: 8,
-        def_end_char: 15,
-        def_path: "sway-lsp/tests/fixtures/tokens/modules/src/dir_mod/mod.sw",
+        def_start_char: 0,
+        def_end_char: 0,
+        def_path: "sway-lsp/tests/fixtures/tokens/modules/src/test_mod/deep_mod.sw",
     };
-    // dep dir_mod/mod;
+    // mod deep_mod;
     let _ = lsp::definition_check(&mut service, &opt_go_to, &mut i).await;
 
     shutdown_and_exit(&mut service).await;
@@ -499,9 +507,9 @@ async fn go_to_definition_for_paths() {
         req_uri: &uri,
         req_line: 10,
         req_char: 13,
-        def_line: 3,
-        def_start_char: 8,
-        def_end_char: 11,
+        def_line: 0,
+        def_start_char: 0,
+        def_end_char: 0,
         def_path: "sway-lib-std/src/lib.sw",
     };
     // std
@@ -515,9 +523,9 @@ async fn go_to_definition_for_paths() {
         req_uri: &uri,
         req_line: 10,
         req_char: 19,
-        def_line: 74,
-        def_start_char: 8,
-        def_end_char: 14,
+        def_line: 0,
+        def_start_char: 0,
+        def_end_char: 0,
         def_path: "sway-lib-std/src/option.sw",
     };
     // option
@@ -541,9 +549,9 @@ async fn go_to_definition_for_paths() {
         req_line: 12,
         req_char: 17,
         def_line: 0,
-        def_start_char: 8,
-        def_end_char: 10,
-        def_path: "sway-lib-std/src/vm/mod.sw",
+        def_start_char: 0,
+        def_end_char: 0,
+        def_path: "sway-lib-std/src/vm.sw",
     };
     // vm
     let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
@@ -553,9 +561,9 @@ async fn go_to_definition_for_paths() {
         req_line: 12,
         req_char: 22,
         def_line: 0,
-        def_start_char: 8,
-        def_end_char: 11,
-        def_path: "sway-lib-std/src/vm/evm/mod.sw",
+        def_start_char: 0,
+        def_end_char: 0,
+        def_path: "sway-lib-std/src/vm/evm.sw",
     };
     // evm
     let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
@@ -564,9 +572,9 @@ async fn go_to_definition_for_paths() {
         req_uri: &uri,
         req_line: 12,
         req_char: 27,
-        def_line: 1,
-        def_start_char: 8,
-        def_end_char: 19,
+        def_line: 0,
+        def_start_char: 0,
+        def_end_char: 0,
         def_path: "sway-lib-std/src/vm/evm/evm_address.sw",
     };
     // evm_address
@@ -589,8 +597,8 @@ async fn go_to_definition_for_paths() {
         req_line: 16,
         req_char: 6,
         def_line: 0,
-        def_start_char: 8,
-        def_end_char: 16,
+        def_start_char: 0,
+        def_end_char: 0,
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/test_mod.sw",
     };
     // test_mod
@@ -615,8 +623,8 @@ async fn go_to_definition_for_paths() {
         req_line: 17,
         req_char: 8,
         def_line: 0,
-        def_start_char: 8,
-        def_end_char: 16,
+        def_start_char: 0,
+        def_end_char: 0,
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod.sw",
     };
     // deep_mod
@@ -634,8 +642,8 @@ async fn go_to_definition_for_paths() {
         req_line: 17,
         req_char: 18,
         def_line: 0,
-        def_start_char: 8,
-        def_end_char: 18,
+        def_start_char: 0,
+        def_end_char: 0,
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
     };
     // deeper_mod
@@ -720,8 +728,8 @@ async fn go_to_definition_for_paths() {
         req_line: 18,
         req_char: 11,
         def_line: 0,
-        def_start_char: 8,
-        def_end_char: 14,
+        def_start_char: 0,
+        def_end_char: 0,
         def_path: "sway-lib-std/src/assert.sw",
     };
     // assert
@@ -732,8 +740,8 @@ async fn go_to_definition_for_paths() {
         req_line: 19,
         req_char: 13,
         def_line: 0,
-        def_start_char: 8,
-        def_end_char: 12,
+        def_start_char: 0,
+        def_end_char: 0,
         def_path: "sway-lib-core/src/lib.sw",
     };
     // core
@@ -744,8 +752,8 @@ async fn go_to_definition_for_paths() {
         req_line: 19,
         req_char: 21,
         def_line: 0,
-        def_start_char: 8,
-        def_end_char: 18,
+        def_start_char: 0,
+        def_end_char: 0,
         def_path: "sway-lib-core/src/primitives.sw",
     };
     // primitives
@@ -795,8 +803,8 @@ async fn go_to_definition_for_paths() {
         req_line: 24,
         req_char: 20,
         def_line: 0,
-        def_start_char: 8,
-        def_end_char: 17,
+        def_start_char: 0,
+        def_end_char: 0,
         def_path: "sway-lib-std/src/constants.sw",
     };
     // constants

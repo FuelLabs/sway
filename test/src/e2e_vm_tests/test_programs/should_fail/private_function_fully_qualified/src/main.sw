@@ -1,6 +1,6 @@
 script;
 
-dep pkga;
+mod pkga;
 
 fn main() {
     pkga::foo();

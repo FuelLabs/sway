@@ -1,4 +1,4 @@
-library r#storage;
+library;
 
 use ::alloc::{alloc, realloc_bytes};
 use ::assert::assert;

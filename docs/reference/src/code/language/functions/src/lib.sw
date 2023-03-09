@@ -1,7 +1,7 @@
-library functions;
+library;
 
-dep explicit;
-dep implicit;
+mod explicit;
+mod implicit;
 
 // ANCHOR: definition
 fn my_function(my_parameter: u64 /* ... */) -> u64 {

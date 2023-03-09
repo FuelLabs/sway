@@ -212,7 +212,7 @@ fn test_function_selector_behavior() {
 
     let decl = ty::TyFunctionDeclaration {
         purity: Default::default(),
-        name: Ident::new_no_span("foo"),
+        name: Ident::new_no_span("foo".into()),
         implementing_type: None,
         body: ty::TyCodeBlock { contents: vec![] },
         parameters: vec![],
@@ -234,12 +234,12 @@ fn test_function_selector_behavior() {
 
     let decl = ty::TyFunctionDeclaration {
         purity: Default::default(),
-        name: Ident::new_with_override("bar", Span::dummy()),
+        name: Ident::new_with_override("bar".into(), Span::dummy()),
         implementing_type: None,
         body: ty::TyCodeBlock { contents: vec![] },
         parameters: vec![
             ty::TyFunctionParameter {
-                name: Ident::new_no_span("foo"),
+                name: Ident::new_no_span("foo".into()),
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
@@ -248,7 +248,7 @@ fn test_function_selector_behavior() {
                     .into(),
             },
             ty::TyFunctionParameter {
-                name: Ident::new_no_span("baz"),
+                name: Ident::new_no_span("baz".into()),
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),

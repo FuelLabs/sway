@@ -1,5 +1,5 @@
 //! Functionality for accessing block-related data.
-library block;
+library;
 
 /// Get the current block height.
 pub fn height() -> u64 {

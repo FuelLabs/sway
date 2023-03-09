@@ -1,6 +1,6 @@
 predicate;
 
-dep loop;
+mod loop;
 
 fn main() -> bool {
     loop::loop()

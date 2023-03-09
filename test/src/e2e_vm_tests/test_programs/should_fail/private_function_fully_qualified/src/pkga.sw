@@ -1,3 +1,3 @@
-library pkga;
+library;
 
 fn foo() { }

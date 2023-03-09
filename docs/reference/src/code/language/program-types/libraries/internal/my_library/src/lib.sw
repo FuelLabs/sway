@@ -1,6 +1,6 @@
-library lib;
+library;
 
-dep my_library;
+mod my_library;
 
 use my_library::bar;
 

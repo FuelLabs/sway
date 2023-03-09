@@ -658,7 +658,7 @@ impl BuildPlan {
             info!("  Creating a new `Forc.lock` file. (Cause: {})", cause);
             let member_names = manifests
                 .iter()
-                .map(|(_, manifest)| manifest.project.name.clone())
+                .map(|(_, manifest)| manifest.project.name.to_string())
                 .collect();
             crate::lock::print_diff(&member_names, &lock_diff);
             let string = toml::ser::to_string_pretty(&new_lock)
@@ -815,7 +815,11 @@ fn member_nodes(g: &Graph) -> impl Iterator<Item = NodeIx> + '_ {
 fn validate_graph(graph: &Graph, manifests: &MemberManifestFiles) -> Result<BTreeSet<EdgeIx>> {
     let mut member_pkgs: HashMap<&String, &PackageManifestFile> = manifests.iter().collect();
     let member_nodes: Vec<_> = member_nodes(graph)
-        .filter_map(|n| member_pkgs.remove(&graph[n].name).map(|pkg| (n, pkg)))
+        .filter_map(|n| {
+            member_pkgs
+                .remove(&graph[n].name.to_string())
+                .map(|pkg| (n, pkg))
+        })
         .collect();
 
     // If no member nodes, the graph is either empty or corrupted. Remove all edges.
@@ -959,7 +963,7 @@ fn dep_path(
 
             // Otherwise, check if it comes from a patch.
             for (_, patch_map) in node_manifest.patches() {
-                if let Some(Dependency::Detailed(details)) = patch_map.get(dep_name) {
+                if let Some(Dependency::Detailed(details)) = patch_map.get(&dep_name.to_string()) {
                     if let Some(ref rel_path) = details.path {
                         if let Ok(path) = node_manifest.dir().join(rel_path).canonicalize() {
                             if path.exists() {
@@ -997,7 +1001,7 @@ fn remove_deps(
 ) {
     // Retrieve the project nodes for workspace members.
     let member_nodes: HashSet<_> = member_nodes(graph)
-        .filter(|&n| member_names.contains(&graph[n].name))
+        .filter(|&n| member_names.contains(&graph[n].name.to_string()))
         .collect();
 
     // Before removing edges, sort the nodes in order of dependency for the node removal pass.
@@ -1344,14 +1348,17 @@ fn fetch_deps(
         )
         .collect();
     for (dep_name, dep, dep_kind) in deps {
-        let name = dep.package().unwrap_or(&dep_name).to_string();
+        let name = dep.package().unwrap_or(&dep_name);
         let parent_manifest = &manifest_map[&parent_id];
         let source =
-            Source::from_manifest_dep_patched(parent_manifest, &name, &dep, member_manifests)
+            Source::from_manifest_dep_patched(parent_manifest, name, &dep, member_manifests)
                 .context("Failed to source dependency")?;
 
         // If we haven't yet fetched this dependency, fetch it, pin it and add it to the graph.
-        let dep_pkg = Pkg { name, source };
+        let dep_pkg = Pkg {
+            name: name.to_string(),
+            source,
+        };
         let dep_node = match fetched.entry(dep_pkg) {
             hash_map::Entry::Occupied(entry) => *entry.get(),
             hash_map::Entry::Vacant(entry) => {
@@ -1503,9 +1510,7 @@ pub fn dependency_namespace(
     let mut namespace = namespace::Module::default_with_constants(engines, constants)?;
 
     let node_idx = &graph[node];
-    namespace.name = Some(Ident::new_no_span(Box::leak(
-        node_idx.name.clone().into_boxed_str(),
-    )));
+    namespace.name = Some(Ident::new_no_span(node_idx.name.clone()));
 
     // Add direct dependencies.
     let mut core_added = false;
@@ -1553,10 +1558,18 @@ pub fn dependency_namespace(
         }
     }
 
-    namespace.star_import_with_reexports(&[CORE, PRELUDE].map(Ident::new_no_span), &[], engines);
+    namespace.star_import_with_reexports(
+        &[CORE, PRELUDE].map(|s| Ident::new_no_span(s.into())),
+        &[],
+        engines,
+    );
 
     if has_std_dep(graph, node) {
-        namespace.star_import_with_reexports(&[STD, PRELUDE].map(Ident::new_no_span), &[], engines);
+        namespace.star_import_with_reexports(
+            &[STD, PRELUDE].map(|s| Ident::new_no_span(s.into())),
+            &[],
+            engines,
+        );
     }
 
     Ok(namespace)
@@ -1621,6 +1634,7 @@ pub fn compile_ast(
     build_target: BuildTarget,
     build_profile: &BuildProfile,
     namespace: namespace::Module,
+    package_name: &str,
 ) -> Result<CompileResult<ty::TyProgram>> {
     let source = manifest.entry_string()?;
     let sway_build_config = sway_build_config(
@@ -1629,7 +1643,13 @@ pub fn compile_ast(
         build_target,
         build_profile,
     )?;
-    let ast_res = sway_core::compile_to_ast(engines, source, namespace, Some(&sway_build_config));
+    let ast_res = sway_core::compile_to_ast(
+        engines,
+        source,
+        namespace,
+        Some(&sway_build_config),
+        package_name,
+    );
     Ok(ast_res)
 }
 
@@ -1697,7 +1717,7 @@ pub fn compile(
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
     let ast_res = time_expr!(
         "compile to ast",
-        compile_ast(engines, manifest, *target, profile, namespace)?
+        compile_ast(engines, manifest, *target, profile, namespace, &pkg.name)?
     );
     let typed_program = match ast_res.value.as_ref() {
         None => return fail(&ast_res.warnings, &ast_res.errors),
@@ -2048,7 +2068,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
     match curr_manifest {
         Some(pkg_manifest) => {
             let built_pkg = built_workspace
-                .remove(&pkg_manifest.project.name)
+                .remove(&pkg_manifest.project.name.to_string())
                 .expect("package didn't exist in workspace");
             Ok(Built::Package(Box::new(built_pkg)))
         }
@@ -2270,9 +2290,18 @@ pub fn build(
         };
         let (mut built_package, namespace) =
             compile_pkg(node, &mut source_map, compile_pkg_context)?;
-        if let TreeType::Library { ref name } = built_package.tree_type {
+        if let TreeType::Library = built_package.tree_type {
             let mut namespace = namespace::Module::from(namespace);
-            namespace.name = Some(name.clone());
+            namespace.name = Some(Ident::new_no_span(pkg.name.clone()));
+            namespace.span = Some(
+                Span::new(
+                    manifest.entry_string()?,
+                    0,
+                    0,
+                    Some(manifest.entry_path().into()),
+                )
+                .unwrap(),
+            );
             lib_namespace_map.insert(node, namespace);
         }
         source_map.insert_dependency(manifest.dir());
@@ -2461,7 +2490,7 @@ pub fn check(
             Some(modules) => modules,
         };
 
-        let ast_result = sway_core::parsed_to_ast(engines, &parsed, dep_namespace, None);
+        let ast_result = sway_core::parsed_to_ast(engines, &parsed, dep_namespace, None, &pkg.name);
         warnings.extend(ast_result.warnings);
         errors.extend(ast_result.errors);
 
@@ -2474,9 +2503,18 @@ pub fn check(
             Some(typed_program) => typed_program,
         };
 
-        if let TreeType::Library { name } = typed_program.kind.tree_type() {
+        if let TreeType::Library = typed_program.kind.tree_type() {
             let mut namespace = typed_program.root.namespace.clone();
-            namespace.name = Some(name.clone());
+            namespace.name = Some(Ident::new_no_span(pkg.name.clone()));
+            namespace.span = Some(
+                Span::new(
+                    manifest.entry_string()?,
+                    0,
+                    0,
+                    Some(manifest.entry_path().into()),
+                )
+                .unwrap(),
+            );
             lib_namespace_map.insert(node, namespace);
         }
 

@@ -1,4 +1,4 @@
-library storage_access_abi;
+library;
 
 pub struct S {
     x: u64,

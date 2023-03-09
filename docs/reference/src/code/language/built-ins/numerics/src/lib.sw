@@ -1,4 +1,4 @@
-library numerics;
+library;
 
 fn syntax() {
     // ANCHOR: syntax

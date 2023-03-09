@@ -1,4 +1,4 @@
-library auth_testing_abi;
+library;
 
 abi AuthTesting {
     fn returns_gm_one() -> bool;

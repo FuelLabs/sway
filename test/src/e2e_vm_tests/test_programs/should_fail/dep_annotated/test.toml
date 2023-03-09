@@ -1,6 +1,6 @@
 category = "fail"
 
-# check: pub dep baz;
+# check: pub mod baz;
 # nextln: $()Unnecessary visibility qualifier, `pub` is implied here.
 
 # check: /// should return a parser error

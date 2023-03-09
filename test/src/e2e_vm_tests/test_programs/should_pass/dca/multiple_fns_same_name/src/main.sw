@@ -1,7 +1,7 @@
 script;
 
-dep colors1;
-dep colors2;
+mod colors1;
+mod colors2;
 
 fn main() {
 	let _ = colors1::color();
