@@ -243,8 +243,8 @@ fn compile_declarations(
     let (type_engine, decl_engine) = engines.unwrap();
     for declaration in declarations {
         match declaration {
-            ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
-                let decl = decl_engine.get_constant(decl_id);
+            ty::TyDeclaration::ConstantDeclaration(decl_ref) => {
+                let decl = decl_engine.get_constant(decl_ref);
                 compile_const_decl(
                     &mut LookupEnv {
                         type_engine,

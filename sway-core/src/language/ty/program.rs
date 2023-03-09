@@ -63,12 +63,8 @@ impl TyProgram {
         let mut fn_declarations = std::collections::HashSet::new();
         for node in &root.all_nodes {
             match &node.content {
-                TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration {
-                    name,
-                    decl_id,
-                    decl_span,
-                }) => {
-                    let func = decl_engine.get_function(decl_id);
+                TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(decl_ref)) => {
+                    let func = decl_engine.get_function(decl_ref);
 
                     if func.name.as_str() == "main" {
                         mains.push(func.clone());
@@ -81,17 +77,10 @@ impl TyProgram {
                         });
                     }
 
-                    declarations.push(TyDeclaration::FunctionDeclaration {
-                        name: name.clone(),
-                        decl_id: *decl_id,
-                        decl_span: decl_span.clone(),
-                    });
+                    declarations.push(TyDeclaration::FunctionDeclaration(decl_ref.clone()));
                 }
-                TyAstNodeContent::Declaration(TyDeclaration::ConstantDeclaration {
-                    decl_id,
-                    ..
-                }) => {
-                    let config_decl = decl_engine.get_constant(decl_id);
+                TyAstNodeContent::Declaration(TyDeclaration::ConstantDeclaration(decl_ref)) => {
+                    let config_decl = decl_engine.get_constant(decl_ref);
                     if config_decl.is_configurable {
                         configurables.push(config_decl);
                     }
@@ -99,14 +88,14 @@ impl TyProgram {
                 // ABI entries are all functions declared in impl_traits on the contract type
                 // itself, except for ABI supertraits, which do not expose their methods to
                 // the user
-                TyAstNodeContent::Declaration(TyDeclaration::ImplTrait { decl_id, .. }) => {
+                TyAstNodeContent::Declaration(TyDeclaration::ImplTrait(decl_ref)) => {
                     let TyImplTrait {
                         items,
                         implementing_for,
 
                         trait_decl_ref,
                         ..
-                    } = decl_engine.get_impl_trait(decl_id);
+                    } = decl_engine.get_impl_trait(decl_ref);
                     if matches!(ty_engine.get(implementing_for.type_id), TypeInfo::Contract) {
                         // add methods to the ABI only if they come from an ABI implementation
                         // and not a (super)trait implementation for Contract
@@ -469,8 +458,8 @@ fn disallow_impure_functions(
     let fn_decls = declarations
         .iter()
         .filter_map(|decl| match decl {
-            TyDeclaration::FunctionDeclaration { decl_id, .. } => {
-                Some(decl_engine.get_function(decl_id))
+            TyDeclaration::FunctionDeclaration(decl_ref) => {
+                Some(decl_engine.get_function(decl_ref))
             }
             _ => None,
         })

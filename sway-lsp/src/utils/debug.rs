@@ -69,16 +69,16 @@ pub(crate) fn print_decl_engine_types(
         .iter()
         .map(|n| match &n.content {
             ty::TyAstNodeContent::Declaration(declaration) => match declaration {
-                ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
-                    let const_decl = decl_engine.get_constant(decl_id);
+                ty::TyDeclaration::ConstantDeclaration(decl_ref) => {
+                    let const_decl = decl_engine.get_constant(decl_ref);
                     format!("{const_decl:#?}")
                 }
-                ty::TyDeclaration::FunctionDeclaration { decl_id, .. } => {
-                    let func_decl = decl_engine.get_function(decl_id);
+                ty::TyDeclaration::FunctionDeclaration(decl_ref) => {
+                    let func_decl = decl_engine.get_function(decl_ref);
                     format!("{func_decl:#?}")
                 }
-                ty::TyDeclaration::TraitDeclaration { decl_id, .. } => {
-                    let trait_decl = decl_engine.get_trait(decl_id);
+                ty::TyDeclaration::TraitDeclaration(decl_ref) => {
+                    let trait_decl = decl_engine.get_trait(decl_ref);
                     format!("{trait_decl:#?}")
                 }
                 ty::TyDeclaration::StructDeclaration(decl_ref) => {
@@ -89,8 +89,8 @@ pub(crate) fn print_decl_engine_types(
                     let enum_decl = decl_engine.get_enum(decl_ref);
                     format!("{enum_decl:#?}")
                 }
-                ty::TyDeclaration::AbiDeclaration { decl_id, .. } => {
-                    let abi_decl = decl_engine.get_abi(decl_id);
+                ty::TyDeclaration::AbiDeclaration(decl_ref) => {
+                    let abi_decl = decl_engine.get_abi(decl_ref);
                     format!("{abi_decl:#?}")
                 }
                 ty::TyDeclaration::StorageDeclaration { decl_id, .. } => {

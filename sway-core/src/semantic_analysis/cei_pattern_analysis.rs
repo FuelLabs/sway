@@ -11,7 +11,7 @@
 use crate::{
     decl_engine::*,
     language::{
-        ty::{self, TyFunctionDeclaration, TyImplTrait},
+        ty::{self, TyFunctionDeclaration},
         AsmOp,
     },
     Engines,
@@ -98,11 +98,11 @@ fn contract_entry_points(
     ast_nodes
         .iter()
         .flat_map(|ast_node| match &ast_node.content {
-            Declaration(ty::TyDeclaration::FunctionDeclaration { decl_id, .. }) => {
-                decl_id_to_fn_decls(decl_engine, decl_id)
+            Declaration(ty::TyDeclaration::FunctionDeclaration(decl_ref)) => {
+                decl_id_to_fn_decls(decl_engine, decl_ref)
             }
-            Declaration(ty::TyDeclaration::ImplTrait { decl_id, .. }) => {
-                impl_trait_methods(decl_engine, decl_id)
+            Declaration(ty::TyDeclaration::ImplTrait(decl_ref)) => {
+                impl_trait_methods(decl_engine, decl_ref)
             }
             _ => vec![],
         })
@@ -111,23 +111,23 @@ fn contract_entry_points(
 
 fn decl_id_to_fn_decls(
     decl_engine: &DeclEngine,
-    decl_id: &DeclId<TyFunctionDeclaration>,
+    decl_ref: &DeclRefFunction,
 ) -> Vec<TyFunctionDeclaration> {
-    vec![decl_engine.get_function(decl_id)]
+    vec![decl_engine.get_function(decl_ref)]
 }
 
 fn impl_trait_methods(
     decl_engine: &DeclEngine,
-    impl_trait_decl_id: &DeclId<TyImplTrait>,
+    impl_trait_decl_ref: &DeclRefImplTrait,
 ) -> Vec<ty::TyFunctionDeclaration> {
-    let impl_trait = decl_engine.get_impl_trait(impl_trait_decl_id);
+    let impl_trait = decl_engine.get_impl_trait(impl_trait_decl_ref);
     impl_trait
         .items
         .iter()
         .flat_map(|item| match item {
             ty::TyImplItem::Fn(fn_decl) => Some(fn_decl),
         })
-        .flat_map(|fn_decl| decl_id_to_fn_decls(decl_engine, &fn_decl.id))
+        .flat_map(|fn_decl_ref| decl_id_to_fn_decls(decl_engine, fn_decl_ref))
         .collect()
 }
 
