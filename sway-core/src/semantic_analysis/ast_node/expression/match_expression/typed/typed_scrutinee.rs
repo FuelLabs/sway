@@ -71,8 +71,8 @@ fn type_check_variable(
 
     let typed_scrutinee = match ctx.namespace.resolve_symbol(&name).value {
         // If this variable is a constant, then we turn it into a [TyScrutinee::Constant](ty::TyScrutinee::Constant).
-        Some(ty::TyDeclaration::ConstantDeclaration(decl_ref)) => {
-            let constant_decl = decl_engine.get_constant(decl_ref);
+        Some(ty::TyDeclaration::ConstantDeclaration { decl_id, .. }) => {
+            let constant_decl = decl_engine.get_constant(decl_id);
             let value = match constant_decl.value {
                 Some(ref value) => value,
                 None => {

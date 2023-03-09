@@ -111,8 +111,8 @@ impl Descriptor {
                     }))
                 }
             }
-            TraitDeclaration(decl_ref) => {
-                let trait_decl = decl_engine.get_trait(decl_ref);
+            TraitDeclaration { decl_id, .. } => {
+                let trait_decl = decl_engine.get_trait(decl_id);
                 if !document_private_items && trait_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
@@ -157,8 +157,8 @@ impl Descriptor {
                     }))
                 }
             }
-            AbiDeclaration(decl_ref) => {
-                let abi_decl = decl_engine.get_abi(decl_ref);
+            AbiDeclaration { decl_id, .. } => {
+                let abi_decl = decl_engine.get_abi(decl_id);
                 let item_name = abi_decl.name;
                 let attrs_opt =
                     (!abi_decl.attributes.is_empty()).then(|| abi_decl.attributes.to_html_string());
@@ -258,8 +258,8 @@ impl Descriptor {
             //         raw_attributes: None,
             //     }))
             // }
-            FunctionDeclaration(decl_ref) => {
-                let fn_decl = decl_engine.get_function(decl_ref);
+            FunctionDeclaration { decl_id, .. } => {
+                let fn_decl = decl_engine.get_function(decl_id);
                 if !document_private_items && fn_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
@@ -288,8 +288,8 @@ impl Descriptor {
                     }))
                 }
             }
-            ConstantDeclaration(decl_ref) => {
-                let const_decl = decl_engine.get_constant(decl_ref);
+            ConstantDeclaration { decl_id, .. } => {
+                let const_decl = decl_engine.get_constant(decl_id);
                 if !document_private_items && const_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {

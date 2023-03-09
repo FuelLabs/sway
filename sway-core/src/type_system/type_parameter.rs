@@ -308,8 +308,8 @@ fn handle_trait(
         .ok(&mut warnings, &mut errors)
         .cloned()
     {
-        Some(ty::TyDeclaration::TraitDeclaration(decl_ref)) => {
-            let trait_decl = decl_engine.get_trait(&decl_ref);
+        Some(ty::TyDeclaration::TraitDeclaration { decl_id, .. }) => {
+            let trait_decl = decl_engine.get_trait(&decl_id);
 
             let (trait_interface_item_refs, trait_item_refs, trait_impld_item_refs) = trait_decl
                 .retrieve_interface_surface_and_items_and_implemented_items_for_type(
