@@ -1,6 +1,6 @@
-library assertions;
+library;
 
-dep req;
+mod req;
 
 // ANCHOR: assert
 fn subtract(a: u64, b: u64) -> u64 {

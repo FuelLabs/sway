@@ -1,7 +1,7 @@
 contract;
 
-dep folder1/dep_1;
-dep folder2/dep_2;
+mod dep_1;
+mod dep_2;
 
 use dep_1::*;
 use dep_2::*;

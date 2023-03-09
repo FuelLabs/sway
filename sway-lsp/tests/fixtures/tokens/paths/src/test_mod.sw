@@ -1,4 +1,4 @@
-library test_mod;
+library;
 
 pub fn test_fun(){}
 

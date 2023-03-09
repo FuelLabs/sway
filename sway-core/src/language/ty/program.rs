@@ -28,7 +28,7 @@ impl TyProgram {
         engines: Engines<'_>,
         root: &TyModule,
         kind: parsed::TreeType,
-        module_span: Span,
+        package_name: &str,
     ) -> CompileResult<(
         TyProgramKind,
         Vec<TyDeclaration>,
@@ -48,10 +48,8 @@ impl TyProgram {
                 Self::validate_root(
                     engines,
                     &submodule.module,
-                    parsed::TreeType::Library {
-                        name: submodule.library_name.clone(),
-                    },
-                    submodule.library_name.span().clone(),
+                    parsed::TreeType::Library,
+                    package_name,
                 ),
                 continue,
                 warnings,
@@ -204,18 +202,20 @@ impl TyProgram {
 
                 TyProgramKind::Contract { abi_entries }
             }
-            parsed::TreeType::Library { name } => {
+            parsed::TreeType::Library => {
                 if !configurables.is_empty() {
                     errors.push(CompileError::ConfigurableInLibrary {
                         span: configurables[0].name.span(),
                     });
                 }
-                TyProgramKind::Library { name }
+                TyProgramKind::Library {
+                    name: package_name.to_string(),
+                }
             }
             parsed::TreeType::Predicate => {
                 // A predicate must have a main function and that function must return a boolean.
                 if mains.is_empty() {
-                    errors.push(CompileError::NoPredicateMainFunction(module_span));
+                    errors.push(CompileError::NoPredicateMainFunction(root.span.clone()));
                     return err(vec![], errors);
                 }
                 if mains.len() > 1 {
@@ -238,7 +238,7 @@ impl TyProgram {
             parsed::TreeType::Script => {
                 // A script must have exactly one main function.
                 if mains.is_empty() {
-                    errors.push(CompileError::NoScriptMainFunction(module_span));
+                    errors.push(CompileError::NoScriptMainFunction(root.span.clone()));
                     return err(vec![], errors);
                 }
                 if mains.len() > 1 {
@@ -429,7 +429,7 @@ pub enum TyProgramKind {
         abi_entries: Vec<TyFunctionDeclaration>,
     },
     Library {
-        name: Ident,
+        name: String,
     },
     Predicate {
         main_function: TyFunctionDeclaration,
@@ -444,7 +444,7 @@ impl TyProgramKind {
     pub fn tree_type(&self) -> parsed::TreeType {
         match self {
             TyProgramKind::Contract { .. } => parsed::TreeType::Contract,
-            TyProgramKind::Library { name } => parsed::TreeType::Library { name: name.clone() },
+            TyProgramKind::Library { .. } => parsed::TreeType::Library,
             TyProgramKind::Predicate { .. } => parsed::TreeType::Predicate,
             TyProgramKind::Script { .. } => parsed::TreeType::Script,
         }

@@ -1,4 +1,4 @@
-library u256;
+library;
 
 use ::assert::assert;
 use ::convert::From;

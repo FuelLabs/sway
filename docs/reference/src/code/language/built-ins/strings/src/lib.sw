@@ -1,4 +1,4 @@
-library strings;
+library;
 
 fn explicit() {
     // ANCHOR: explicit

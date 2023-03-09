@@ -1,4 +1,4 @@
-library revert;
+library;
 
 use ::logging::log;
 use ::error_signals::FAILED_REQUIRE_SIGNAL;

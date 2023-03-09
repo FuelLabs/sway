@@ -25,7 +25,7 @@ impl Spanned for Item {
 #[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug, Serialize)]
 pub enum ItemKind {
-    Dependency(Dependency),
+    Submodule(Submodule),
     Use(ItemUse),
     Struct(ItemStruct),
     Enum(ItemEnum),
@@ -41,7 +41,7 @@ pub enum ItemKind {
 impl Spanned for ItemKind {
     fn span(&self) -> Span {
         match self {
-            ItemKind::Dependency(item_dep) => item_dep.span(),
+            ItemKind::Submodule(item_mod) => item_mod.span(),
             ItemKind::Use(item_use) => item_use.span(),
             ItemKind::Struct(item_struct) => item_struct.span(),
             ItemKind::Enum(item_enum) => item_enum.span(),

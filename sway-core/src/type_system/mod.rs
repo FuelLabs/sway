@@ -47,9 +47,9 @@ fn generic_enum_resolution() {
     let decl_engine = DeclEngine::default();
 
     let sp = Span::dummy();
-    let generic_name = Ident::new_with_override("T", sp.clone());
-    let a_name = Ident::new_with_override("a", sp.clone());
-    let result_name = Ident::new_with_override("Result", sp.clone());
+    let generic_name = Ident::new_with_override("T".into(), sp.clone());
+    let a_name = Ident::new_with_override("a".into(), sp.clone());
+    let result_name = Ident::new_with_override("Result".into(), sp.clone());
 
     /*
     Result<_> {

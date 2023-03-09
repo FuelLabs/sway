@@ -1,4 +1,4 @@
-library deeper_mod;
+library;
 
 pub fn deep_fun(){}
 

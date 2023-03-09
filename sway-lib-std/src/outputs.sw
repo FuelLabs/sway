@@ -1,6 +1,6 @@
 //! Getters for fields on transaction outputs.
 //! This includes `Output::Coins`, `Input::Messages` and `Input::Contracts`.
-library outputs;
+library;
 
 use ::contract_id::ContractId;
 use ::revert::revert;

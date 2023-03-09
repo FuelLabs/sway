@@ -1,5 +1,5 @@
 //! A library for allocating memory inspired by [Rust's std::alloc](https://doc.rust-lang.org/std/alloc/index.html).
-library alloc;
+library;
 
 /// Allocates zeroed memory on the heap.
 ///

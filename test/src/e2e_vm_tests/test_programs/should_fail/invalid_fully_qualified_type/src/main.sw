@@ -1,6 +1,6 @@
 script;
 
-dep foo;
+mod foo;
 
 struct Bar {
   baz: foo::foo::Foo

@@ -24,7 +24,7 @@ use sway_types::{span::Span, ConfigTimeConstant, Spanned};
 /// A single `Module` within a Sway project.
 ///
 /// A `Module` is most commonly associated with an individual file of Sway code, e.g. a top-level
-/// script/predicate/contract file or some library dependency whether introduced via `dep` or the
+/// script/predicate/contract file or some library dependency whether introduced via `mod` or the
 /// `[dependencies]` table of a `forc` manifest.
 ///
 /// A `Module` contains a set of all items that exist within the lexical scope via declaration or
@@ -34,16 +34,18 @@ pub struct Module {
     /// Submodules of the current module represented as an ordered map from each submodule's name
     /// to the associated `Module`.
     ///
-    /// Submodules are normally introduced in Sway code with the `dep foo;` syntax where `foo` is
+    /// Submodules are normally introduced in Sway code with the `mod foo;` syntax where `foo` is
     /// some library dependency that we include as a submodule.
     ///
     /// Note that we *require* this map to be ordered to produce deterministic codegen results.
     pub(crate) submodules: im::OrdMap<ModuleName, Module>,
     /// The set of symbols, implementations, synonyms and aliases present within this module.
     items: Items,
-    /// Name of the module, package name for root module, library name for other modules.
-    /// Library name used is the same as declared in `library name;`.
+    /// Name of the module, package name for root module, module name for other modules.
+    /// Module name used is the same as declared in `mod name;`.
     pub name: Option<Ident>,
+    /// Empty span at the beginning of the file implementing the module
+    pub span: Option<Span>,
 }
 
 impl Module {

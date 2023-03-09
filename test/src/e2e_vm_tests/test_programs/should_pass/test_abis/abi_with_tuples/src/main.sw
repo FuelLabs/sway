@@ -1,4 +1,4 @@
-library abi_with_tuples;
+library;
 
 pub struct Person {
     age: u64

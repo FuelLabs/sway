@@ -53,8 +53,8 @@ fn insert_keyword(ctx: &ParseContext, span: Span) {
 impl Parse for ItemKind {
     fn parse(&self, ctx: &ParseContext) {
         match self {
-            ItemKind::Dependency(dependency) => {
-                insert_keyword(ctx, dependency.dep_token.span());
+            ItemKind::Submodule(submod) => {
+                insert_keyword(ctx, submod.mod_token.span());
             }
             ItemKind::Use(item_use) => {
                 item_use.parse(ctx);

@@ -57,8 +57,8 @@ impl ty::TyExpression {
 
         let call_path = CallPath {
             prefixes: vec![
-                Ident::new_with_override("core", span.clone()),
-                Ident::new_with_override("ops", span.clone()),
+                Ident::new_with_override("core".into(), span.clone()),
+                Ident::new_with_override("ops".into(), span.clone()),
             ],
             suffix: Op {
                 op_variant: OpVariant::Equals,
@@ -1526,10 +1526,10 @@ impl ty::TyExpression {
                 inner: MethodName::FromTrait {
                     call_path: CallPath {
                         prefixes: vec![
-                            Ident::new_with_override("core", span.clone()),
-                            Ident::new_with_override("ops", span.clone()),
+                            Ident::new_with_override("core".into(), span.clone()),
+                            Ident::new_with_override("ops".into(), span.clone()),
                         ],
-                        suffix: Ident::new_with_override("index", span.clone()),
+                        suffix: Ident::new_with_override("index".into(), span.clone()),
                         is_absolute: true,
                     },
                 },

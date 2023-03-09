@@ -3,7 +3,6 @@ pub use {
         assignable::Assignable,
         attribute::{Annotated, Attribute, AttributeDecl},
         brackets::{AngleBrackets, Braces, Parens, SquareBrackets},
-        dependency::Dependency,
         expr::{
             asm::{AsmBlock, AsmImmediate},
             op_code::Instruction,
@@ -30,6 +29,7 @@ pub use {
         pattern::Pattern,
         punctuated::Punctuated,
         statement::{Statement, StatementLet},
+        submodule::Submodule,
         token::{Delimiter, Group, Punct, PunctKind, Spacing, TokenStream, TokenTree},
         ty::Ty,
         where_clause::{WhereBound, WhereClause},

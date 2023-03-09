@@ -1,4 +1,3 @@
-library modules;
+library;
 
-dep test_mod;
-dep dir_mod/mod;
+mod test_mod;

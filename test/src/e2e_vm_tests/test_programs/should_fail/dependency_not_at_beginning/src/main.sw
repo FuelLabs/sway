@@ -11,5 +11,5 @@ fn main() -> bool {
   false
 }
 
-dep a_dependency;
+mod a_dependency;
 

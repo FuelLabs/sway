@@ -1,3 +1,3 @@
-library data_structures;
+library;
 
 pub struct MyStruct {}

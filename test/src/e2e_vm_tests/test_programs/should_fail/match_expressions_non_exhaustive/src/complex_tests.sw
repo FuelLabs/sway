@@ -1,4 +1,4 @@
-library complex_tests;
+library;
 
 use std::result::*;
 

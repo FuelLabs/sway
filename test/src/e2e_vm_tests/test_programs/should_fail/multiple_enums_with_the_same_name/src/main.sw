@@ -1,7 +1,7 @@
 script;
 
-dep module0;
-dep module1;
+mod module0;
+mod module1;
 
 fn main() {
     let mut x = module0::MyEnum::A;

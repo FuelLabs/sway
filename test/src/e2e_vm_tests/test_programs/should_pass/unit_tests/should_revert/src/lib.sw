@@ -1,4 +1,4 @@
-library should_revert;
+library;
 
 #[test(should_revert)]
 fn should_revert_test() {

@@ -14,22 +14,24 @@ pub trait Named {
 
 #[derive(Debug, Clone)]
 pub struct BaseIdent {
-    name_override_opt: Option<&'static str>,
+    name_override_opt: Option<String>,
     span: Span,
     is_raw_ident: bool,
 }
 
 impl BaseIdent {
     pub fn as_str(&self) -> &str {
-        self.name_override_opt.unwrap_or_else(|| self.span.as_str())
+        self.name_override_opt
+            .as_deref()
+            .unwrap_or_else(|| self.span.as_str())
     }
 
     pub fn is_raw_ident(&self) -> bool {
         self.is_raw_ident
     }
 
-    pub fn name_override_opt(&self) -> Option<&'static str> {
-        self.name_override_opt
+    pub fn name_override_opt(&self) -> Option<&str> {
+        self.name_override_opt.as_deref()
     }
 
     pub fn new(span: Span) -> Ident {
@@ -58,7 +60,7 @@ impl BaseIdent {
         }
     }
 
-    pub fn new_with_override(name_override: &'static str, span: Span) -> Ident {
+    pub fn new_with_override(name_override: String, span: Span) -> Ident {
         Ident {
             name_override_opt: Some(name_override),
             span,
@@ -66,7 +68,7 @@ impl BaseIdent {
         }
     }
 
-    pub fn new_no_span(name: &'static str) -> Ident {
+    pub fn new_no_span(name: String) -> Ident {
         Ident {
             name_override_opt: Some(name),
             span: Span::dummy(),
@@ -152,7 +154,7 @@ impl From<&Ident> for IdentUnique {
 impl From<&IdentUnique> for Ident {
     fn from(item: &IdentUnique) -> Self {
         Ident {
-            name_override_opt: item.0.name_override_opt(),
+            name_override_opt: item.0.name_override_opt().map(|s| s.to_string()),
             span: item.0.span(),
             is_raw_ident: item.0.is_raw_ident(),
         }

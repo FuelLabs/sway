@@ -1,5 +1,5 @@
 //! Transaction field getters.
-library tx;
+library;
 
 use ::constants::ZERO_B256;
 use ::revert::revert;

@@ -1,6 +1,6 @@
 contract;
 
-dep wallet_abi;
+mod wallet_abi;
 
 use std::{
     auth::{

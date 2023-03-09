@@ -1,4 +1,4 @@
-library structs;
+library;
 
 // ANCHOR: definition
 struct Foo {
