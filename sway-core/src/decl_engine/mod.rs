@@ -10,7 +10,7 @@
 
 #[allow(clippy::module_inception)]
 pub(crate) mod engine;
-pub(crate) mod functional_decl_id;
+pub mod functional_decl_id;
 pub mod id;
 pub(crate) mod interface_decl_id;
 pub(crate) mod mapping;

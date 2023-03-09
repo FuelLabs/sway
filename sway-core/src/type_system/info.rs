@@ -435,6 +435,21 @@ impl DisplayWithEngines for TypeInfo {
     }
 }
 
+impl TypeInfo {
+    pub fn display_name(&self) -> String {
+        match self {
+            TypeInfo::UnknownGeneric { name, .. } => name.to_string(),
+            TypeInfo::Placeholder(type_param) => type_param.name_ident.to_string(),
+            TypeInfo::Enum(decl_ref) => decl_ref.name.to_string(),
+            TypeInfo::Struct(decl_ref) => decl_ref.name.to_string(),
+            TypeInfo::ContractCaller { abi_name, .. } => abi_name.to_string(),
+            TypeInfo::Custom { call_path, .. } => call_path.to_string(),
+            TypeInfo::Storage { .. } => "storage".into(),
+            _ => format!("{self:?}"),
+        }
+    }
+}
+
 impl UnconstrainedTypeParameters for TypeInfo {
     fn type_parameter_is_unconstrained(
         &self,

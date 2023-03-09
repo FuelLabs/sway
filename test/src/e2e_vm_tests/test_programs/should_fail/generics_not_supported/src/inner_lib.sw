@@ -1,6 +1,6 @@
 library inner_lib;
 
-const C = 42;
+pub const C = 42;
 
 pub fn func() -> bool {
     true

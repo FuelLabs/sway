@@ -1,0 +1,3 @@
+library pkga;
+
+fn foo() { }

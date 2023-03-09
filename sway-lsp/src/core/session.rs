@@ -6,7 +6,9 @@ use crate::{
         runnable::{Runnable, RunnableMainFn, RunnableTestFn},
     },
     core::{
-        document::TextDocument, sync::SyncWorkspace, token::get_range_from_span,
+        document::TextDocument,
+        sync::SyncWorkspace,
+        token::{get_range_from_span, TypedAstToken},
         token_map::TokenMap,
     },
     error::{DocumentError, LanguageServerError},
@@ -75,6 +77,7 @@ impl Session {
 
     pub fn init(&self, uri: &Url) -> Result<ProjectDirectory, LanguageServerError> {
         let manifest_dir = PathBuf::from(uri.path());
+
         // Create a new temp dir that clones the current workspace
         // and store manifest and temp paths
         self.sync.create_temp_dir_from_workspace(&manifest_dir)?;
@@ -244,10 +247,34 @@ impl Session {
             })
     }
 
-    pub fn completion_items(&self) -> Option<Vec<CompletionItem>> {
-        Some(capabilities::completion::to_completion_items(
-            self.token_map(),
-        ))
+    pub fn completion_items(
+        &self,
+        uri: &Url,
+        position: Position,
+        trigger_char: String,
+    ) -> Option<Vec<CompletionItem>> {
+        let shifted_position = Position {
+            line: position.line,
+            character: position.character - trigger_char.len() as u32 - 1,
+        };
+        let (ident_to_complete, _) = self.token_map.token_at_position(uri, shifted_position)?;
+        let fn_tokens = self
+            .token_map
+            .tokens_at_position(uri, shifted_position, Some(true));
+        let (_, fn_token) = fn_tokens.first()?;
+        let compiled_program = &*self.compiled_program.read();
+
+        if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.typed.clone() {
+            let program = compiled_program.typed.clone()?;
+            return Some(capabilities::completion::to_completion_items(
+                &program.root.namespace,
+                Engines::new(&self.type_engine.read(), &self.decl_engine.read()),
+                &ident_to_complete,
+                &fn_decl,
+                position,
+            ));
+        }
+        None
     }
 
     pub fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
@@ -399,7 +426,7 @@ impl Session {
     /// Create runnables if the `TyProgramKind` of the `TyProgram` is a script.
     fn create_runnables(&self, typed_program: &ty::TyProgram) {
         // Insert runnable test functions.
-        let decl_engine = &*self.decl_engine.read();
+        let decl_engine = &self.decl_engine.read();
         for (decl, _) in typed_program.test_fns(decl_engine) {
             // Get the span of the first attribute if it exists, otherwise use the span of the function name.
             let span = decl

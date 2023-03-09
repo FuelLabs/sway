@@ -156,7 +156,7 @@ impl Items {
         self.implemented_traits.insert_for_type(engines, type_id);
     }
 
-    pub(crate) fn get_methods_for_type(
+    pub fn get_methods_for_type(
         &self,
         engines: Engines<'_>,
         type_id: TypeId,
