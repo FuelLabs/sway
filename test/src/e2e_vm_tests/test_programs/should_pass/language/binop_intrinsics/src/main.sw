@@ -43,6 +43,7 @@ fn main() -> u64 {
   assert(__xor(a, b) == 58);
 
   assert(__xor(15, (__or(8, __and(5, 11)))) == 6);
+  assert(__gt(2, 1) && __lt(1, 2));
 
   2
 }

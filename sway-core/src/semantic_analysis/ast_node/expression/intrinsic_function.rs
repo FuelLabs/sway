@@ -38,7 +38,9 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::GetStorageKey => {
                 type_check_get_storage_key(ctx, kind, arguments, type_arguments, span)
             }
-            Intrinsic::Eq => type_check_eq(ctx, kind, arguments, span),
+            Intrinsic::Eq | Intrinsic::Gt | Intrinsic::Lt => {
+                type_check_cmp(ctx, kind, arguments, span)
+            }
             Intrinsic::Gtf => type_check_gtf(ctx, kind, arguments, type_arguments, span),
             Intrinsic::AddrOf => type_check_addr_of(ctx, kind, arguments, span),
             Intrinsic::StateClear => type_check_state_clear(ctx, kind, arguments, span),
@@ -275,7 +277,15 @@ fn type_check_get_storage_key(
 /// Signature: `__eq<T>(lhs: T, rhs: T) -> bool`
 /// Description: Returns whether `lhs` and `rhs` are equal.
 /// Constraints: `T` is `bool`, `u8`, `u16`, `u32`, `u64`, or `raw_ptr`.
-fn type_check_eq(
+///
+/// Signature: `__gt<T>(lhs: T, rhs: T) -> bool`
+/// Description: Returns whether `lhs` > `rhs`.
+/// Constraints: `T` is `u8`, `u16`, `u32`, `u64`.
+///
+/// Signature: `__lt<T>(lhs: T, rhs: T) -> bool`
+/// Description: Returns whether `lhs` < `rhs`.
+/// Constraints: `T` is `u8`, `u16`, `u32`, `u64`.
+fn type_check_cmp(
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
     arguments: Vec<Expression>,
@@ -317,10 +327,9 @@ fn type_check_eq(
         warnings,
         errors
     );
-    let is_valid_arg_ty = matches!(
-        arg_ty,
-        TypeInfo::UnsignedInteger(_) | TypeInfo::Boolean | TypeInfo::RawUntypedPtr
-    );
+    let is_valid_arg_ty = matches!(arg_ty, TypeInfo::UnsignedInteger(_))
+        || (matches!(&kind, Intrinsic::Eq)
+            && matches!(arg_ty, TypeInfo::Boolean | TypeInfo::RawUntypedPtr));
     if !is_valid_arg_ty {
         errors.push(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),

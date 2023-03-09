@@ -226,61 +226,37 @@ pub trait Ord {
 
 impl Ord for u64 {
     fn gt(self, other: Self) -> bool {
-        asm(r1: self, r2: other, r3) {
-            gt r3 r1 r2;
-            r3: bool
-        }
+        __gt(self, other)
     }
     fn lt(self, other: Self) -> bool {
-        asm(r1: self, r2: other, r3) {
-            lt r3 r1 r2;
-            r3: bool
-        }
+        __lt(self, other)
     }
 }
 
 impl Ord for u32 {
     fn gt(self, other: Self) -> bool {
-        asm(r1: self, r2: other, r3) {
-            gt r3 r1 r2;
-            r3: bool
-        }
+        __gt(self, other)
     }
     fn lt(self, other: Self) -> bool {
-        asm(r1: self, r2: other, r3) {
-            lt r3 r1 r2;
-            r3: bool
-        }
+        __lt(self, other)
     }
 }
 
 impl Ord for u16 {
     fn gt(self, other: Self) -> bool {
-        asm(r1: self, r2: other, r3) {
-            gt r3 r1 r2;
-            r3: bool
-        }
+        __gt(self, other)
     }
     fn lt(self, other: Self) -> bool {
-        asm(r1: self, r2: other, r3) {
-            lt r3 r1 r2;
-            r3: bool
-        }
+        __lt(self, other)
     }
 }
 
 impl Ord for u8 {
     fn gt(self, other: Self) -> bool {
-        asm(r1: self, r2: other, r3) {
-            gt r3 r1 r2;
-            r3: bool
-        }
+        __gt(self, other)
     }
     fn lt(self, other: Self) -> bool {
-        asm(r1: self, r2: other, r3) {
-            lt r3 r1 r2;
-            r3: bool
-        }
+        __lt(self, other)
     }
 }
 

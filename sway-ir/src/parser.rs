@@ -375,10 +375,10 @@ mod ir_builder {
                     IrAstOperation::Store(val, dst)
                 }
 
-            rule cmp_pred() -> String
-                = p:$("eq") _ {
-                    p.to_string()
-                }
+            rule cmp_pred() -> Predicate
+                = "eq" _ { Predicate::Equal }
+                / "gt" _ { Predicate::GreaterThan }
+                / "lt" _ { Predicate::LessThan }
 
             rule reg_name() -> String
                 = r:$("of" / "pc" / "ssp" / "sp" / "fp" / "hp" / "err" / "ggas" / "cgas" / "bal" / "is" / "ret" / "retl" / "flag") _ {
@@ -679,7 +679,7 @@ mod ir_builder {
         Call(String, Vec<String>),
         CastPtr(String, IrAstTy, u64),
         Cbr(String, String, Vec<String>, String, Vec<String>),
-        Cmp(String, String, String),
+        Cmp(Predicate, String, String),
         Const(IrAstTy, IrAstConst),
         ContractCall(IrAstTy, String, String, String, String, String),
         ExtractElement(String, IrAstTy, String),
@@ -1119,13 +1119,10 @@ mod ir_builder {
                                 .collect(),
                         )
                         .add_metadatum(context, opt_metadata),
-                    IrAstOperation::Cmp(pred_str, lhs, rhs) => block
+                    IrAstOperation::Cmp(pred, lhs, rhs) => block
                         .ins(context)
                         .cmp(
-                            match pred_str.as_str() {
-                                "eq" => Predicate::Equal,
-                                _ => unreachable!("Bug in `cmp` predicate rule."),
-                            },
+                            pred,
                             *val_map.get(&lhs).unwrap(),
                             *val_map.get(&rhs).unwrap(),
                         )

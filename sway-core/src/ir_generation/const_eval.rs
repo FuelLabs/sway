@@ -537,6 +537,26 @@ fn const_eval_intrinsic(
                 value: ConstantValue::Bool(args[0].eq(lookup.context, &args[1])),
             }))
         }
+        sway_ast::Intrinsic::Gt => {
+            let (ConstantValue::Uint(val1), ConstantValue::Uint(val2)) = (&args[0].value, &args[1].value)
+                else {
+                    unreachable!("Type checker allowed non integer value for GreaterThan")
+                };
+            Ok(Some(Constant {
+                ty: Type::get_bool(lookup.context),
+                value: ConstantValue::Bool(val1 > val2),
+            }))
+        }
+        sway_ast::Intrinsic::Lt => {
+            let (ConstantValue::Uint(val1), ConstantValue::Uint(val2)) = (&args[0].value, &args[1].value)
+                else {
+                    unreachable!("Type checker allowed non integer value for LessThan")
+                };
+            Ok(Some(Constant {
+                ty: Type::get_bool(lookup.context),
+                value: ConstantValue::Bool(val1 < val2),
+            }))
+        }
         sway_ast::Intrinsic::AddrOf => Ok(None),
         sway_ast::Intrinsic::PtrAdd => Ok(None),
         sway_ast::Intrinsic::PtrSub => Ok(None),
