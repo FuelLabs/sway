@@ -82,6 +82,7 @@ impl ReplaceSelfType for TypeId {
             let type_engine = engines.te();
             let decl_engine = engines.de();
             match type_engine.get(type_id) {
+                TypeInfo::TypeParam(_) => None,
                 TypeInfo::SelfType => Some(self_type),
                 TypeInfo::Enum(decl_ref) => {
                     let mut decl = decl_engine.get_enum(&decl_ref);
