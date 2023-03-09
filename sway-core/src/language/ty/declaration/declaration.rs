@@ -631,9 +631,9 @@ impl TyDeclaration {
         ok(type_id, warnings, errors)
     }
 
-    pub(crate) fn visibility(&self, decl_engine: &DeclEngine) -> CompileResult<Visibility> {
+    pub(crate) fn visibility(&self, decl_engine: &DeclEngine) -> Visibility {
         use TyDeclaration::*;
-        let visibility = match self {
+        match self {
             TraitDeclaration { decl_id, .. } => {
                 let TyTraitDeclaration { visibility, .. } = decl_engine.get_trait(decl_id);
                 visibility
@@ -660,7 +660,6 @@ impl TyDeclaration {
             | AbiDeclaration { .. }
             | ErrorRecovery(_) => Visibility::Public,
             VariableDeclaration(decl) => decl.mutability.visibility(),
-        };
-        ok(visibility, vec![], vec![])
+        }
     }
 }

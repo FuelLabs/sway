@@ -363,14 +363,8 @@ impl CollectTypesMetadata for TyProgram {
                         .map(|(_, submod)| &submod.module),
                 ) {
                     for node in module.all_nodes.iter() {
-                        let is_public = check!(
-                            node.is_public(decl_engine),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
                         let is_generic_function = node.is_generic_function(decl_engine);
-                        if is_public {
+                        if node.is_public(decl_engine) {
                             let node_metadata = check!(
                                 node.collect_types_metadata(ctx),
                                 return err(warnings, errors),
