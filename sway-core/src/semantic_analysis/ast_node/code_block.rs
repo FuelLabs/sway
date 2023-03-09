@@ -79,11 +79,7 @@ impl ty::TyCodeBlock {
                     {
                         return ctx.engines().te().insert(
                             decl_engine,
-                            TypeInfo::Enum(DeclRef::new(
-                                name.clone(),
-                                decl_id.clone(),
-                                decl_span.clone(),
-                            )),
+                            TypeInfo::Enum(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
                         );
                     }
 
