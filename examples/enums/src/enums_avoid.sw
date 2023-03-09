@@ -1,7 +1,6 @@
-library enums_avoid;
+library;
 
-dep enum_of_enums;
-use enum_of_enums::{Error, StateError, UserError};
+use ::enum_of_enums::{Error, StateError, UserError};
 
 fn avoid() {
     let error1 = Error::StateError(StateError::Void);

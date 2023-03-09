@@ -247,7 +247,7 @@ pub(crate) struct Op {
 
 impl Op {
     pub fn to_var_name(&self) -> Ident {
-        Ident::new_with_override(self.op_variant.as_str(), self.span.clone())
+        Ident::new_with_override(self.op_variant.as_str().to_string(), self.span.clone())
     }
 }
 

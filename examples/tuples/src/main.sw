@@ -1,4 +1,4 @@
-library tuples;
+library;
 
 fn tuple() {
     // You can declare the types youself

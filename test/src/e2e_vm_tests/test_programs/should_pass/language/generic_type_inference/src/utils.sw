@@ -1,4 +1,4 @@
-library utils;
+library;
 
 pub fn vec_from(vals: [u32; 3]) -> Vec<u32> {
     let mut vec = Vec::new();

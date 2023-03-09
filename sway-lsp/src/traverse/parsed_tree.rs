@@ -25,7 +25,7 @@ use sway_core::{
             Scrutinee, StorageAccessExpression, StorageDeclaration, StorageField,
             StructDeclaration, StructExpression, StructExpressionField, StructField,
             StructScrutineeField, SubfieldExpression, Supertrait, TraitDeclaration, TraitFn,
-            TraitItem, TreeType, TupleIndexExpression, UseStatement, VariableDeclaration,
+            TraitItem, TupleIndexExpression, UseStatement, VariableDeclaration,
             WhileLoopExpression,
         },
         CallPathTree, Literal,
@@ -50,38 +50,31 @@ impl<'a> ParsedTree<'a> {
         node.parse(self.ctx);
     }
 
-    /// Collects the library name and the module name from the dep statement
+    /// Collects module names from the mod statements
     pub fn collect_module_spans(&self, parse_program: &ParseProgram) {
-        if let TreeType::Library { name } = &parse_program.kind {
-            self.ctx.tokens.insert(
-                to_ident_key(name),
-                Token::from_parsed(AstToken::LibraryName(name.clone()), SymbolKind::Module),
-            );
-        }
         self.collect_parse_module(&parse_program.root);
     }
 
     fn collect_parse_module(&self, parse_module: &ParseModule) {
+        self.ctx.tokens.insert(
+            to_ident_key(&Ident::new(parse_module.span.clone())),
+            Token::from_parsed(
+                AstToken::LibrarySpan(parse_module.span.clone()),
+                SymbolKind::Module,
+            ),
+        );
         for (
             _,
             ParseSubmodule {
-                library_name,
                 module,
-                dependency_path_span,
+                mod_name_span,
                 ..
             },
         ) in &parse_module.submodules
         {
             self.ctx.tokens.insert(
-                to_ident_key(&Ident::new(dependency_path_span.clone())),
+                to_ident_key(&Ident::new(mod_name_span.clone())),
                 Token::from_parsed(AstToken::IncludeStatement, SymbolKind::Module),
-            );
-            self.ctx.tokens.insert(
-                to_ident_key(library_name),
-                Token::from_parsed(
-                    AstToken::LibraryName(library_name.clone()),
-                    SymbolKind::Module,
-                ),
             );
             self.collect_parse_module(module);
         }

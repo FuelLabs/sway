@@ -1,6 +1,6 @@
 script;
 
-dep lib_a;
+mod lib_a;
 
 fn main() -> u64 {
 

@@ -1,5 +1,5 @@
 //! Traits for conversions between types.
-library convert;
+library;
 
 use ::option::Option;
 

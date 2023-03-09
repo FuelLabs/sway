@@ -1,4 +1,4 @@
-library variables;
+library;
 
 fn mutable() {
     // ANCHOR: mutable

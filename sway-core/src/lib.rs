@@ -80,16 +80,15 @@ pub fn parse(
         None => parse_in_memory(h, engines, input),
         // When a `BuildConfig` is given,
         // the module source may declare `dep`s that must be parsed from other files.
-        Some(config) => parse_module_tree(h, engines, input, config.canonical_root_module()).map(
-            |(kind, lexed, parsed)| {
+        Some(config) => parse_module_tree(h, engines, input, config.canonical_root_module(), None)
+            .map(|(kind, lexed, parsed)| {
                 let lexed = lexed::LexedProgram {
                     kind: kind.clone(),
                     root: lexed,
                 };
                 let parsed = parsed::ParseProgram { kind, root: parsed };
                 (lexed, parsed)
-            },
-        ),
+            }),
     })
 }
 
@@ -158,6 +157,7 @@ fn parse_in_memory(
     let submodules = Default::default();
     let attributes = module_attrs_to_map(handler, &module.attribute_list)?;
     let root = parsed::ParseModule {
+        span: span::Span::dummy(),
         tree,
         submodules,
         attributes,
@@ -182,56 +182,52 @@ struct Submodules {
 fn parse_submodules(
     handler: &Handler,
     engines: Engines<'_>,
+    module_name: Option<&str>,
     module: &sway_ast::Module,
     module_dir: &Path,
 ) -> Submodules {
     // Assume the happy path, so there'll be as many submodules as dependencies, but no more.
-    let mut lexed_submods = Vec::with_capacity(module.dependencies().count());
+    let mut lexed_submods = Vec::with_capacity(module.submodules().count());
     let mut parsed_submods = Vec::with_capacity(lexed_submods.capacity());
 
-    module.dependencies().for_each(|dep| {
+    module.submodules().for_each(|submod| {
         // Read the source code from the dependency.
         // If we cannot, record as an error, but continue with other files.
-        let dep_path = Arc::new(module_path(module_dir, dep));
-        let dep_str: Arc<str> = match std::fs::read_to_string(&*dep_path) {
+        let submod_path = Arc::new(module_path(module_dir, module_name, submod));
+        let submod_str: Arc<str> = match std::fs::read_to_string(&*submod_path) {
             Ok(s) => Arc::from(s),
             Err(e) => {
                 handler.emit_err(CompileError::FileCouldNotBeRead {
-                    span: dep.path.span(),
-                    file_path: dep_path.to_string_lossy().to_string(),
+                    span: submod.name.span(),
+                    file_path: submod_path.to_string_lossy().to_string(),
                     stringified_error: e.to_string(),
                 });
                 return;
             }
         };
 
-        if let Ok((kind, lexed_module, parse_module)) =
-            parse_module_tree(handler, engines, dep_str.clone(), dep_path.clone())
-        {
-            let library_name = match kind {
-                parsed::TreeType::Library { name } => name,
-                _ => {
-                    let span = span::Span::new(dep_str, 0, 0, Some(dep_path)).unwrap();
-                    handler.emit_err(CompileError::ImportMustBeLibrary { span });
-                    return;
-                }
-            };
-            // NOTE: Typed `IncludStatement`'s include an `alias` field, however its only
-            // constructor site is always `None`. If we introduce dep aliases in the future, this
-            // is where we should use it.
-            let dep_alias = None;
-            let dep_name = dep_alias.unwrap_or_else(|| library_name.clone());
+        if let Ok((kind, lexed_module, parse_module)) = parse_module_tree(
+            handler,
+            engines,
+            submod_str.clone(),
+            submod_path.clone(),
+            Some(submod.name.as_str()),
+        ) {
+            if !matches!(kind, parsed::TreeType::Library) {
+                let span = span::Span::new(submod_str, 0, 0, Some(submod_path)).unwrap();
+                handler.emit_err(CompileError::ImportMustBeLibrary { span });
+                return;
+            }
+
             let parse_submodule = parsed::ParseSubmodule {
-                library_name: library_name.clone(),
                 module: parse_module,
-                dependency_path_span: dep.path.span(),
+                mod_name_span: submod.name.span(),
             };
             let lexed_submodule = lexed::LexedSubmodule {
-                library_name,
                 module: lexed_module,
             };
-            lexed_submods.push((dep_name.clone(), lexed_submodule));
-            parsed_submods.push((dep_name, parse_submodule));
+            lexed_submods.push((submod.name.clone(), lexed_submodule));
+            parsed_submods.push((submod.name.clone(), parse_submodule));
         }
     });
 
@@ -248,14 +244,15 @@ fn parse_module_tree(
     engines: Engines<'_>,
     src: Arc<str>,
     path: Arc<PathBuf>,
+    module_name: Option<&str>,
 ) -> Result<(parsed::TreeType, lexed::LexedModule, parsed::ParseModule), ErrorEmitted> {
     // Parse this module first.
     let module_dir = path.parent().expect("module file has no parent directory");
-    let module = sway_parse::parse_file(handler, src, Some(path.clone()))?;
+    let module = sway_parse::parse_file(handler, src.clone(), Some(path.clone()))?;
 
     // Parse all submodules before converting to the `ParseTree`.
     // This always recovers on parse errors for the file itself by skipping that file.
-    let submodules = parse_submodules(handler, engines, &module.value, module_dir);
+    let submodules = parse_submodules(handler, engines, module_name, &module.value, module_dir);
 
     // Convert from the raw parsed module to the `ParseTree` ready for type-check.
     let (kind, tree) = to_parsed_lang::convert_parse_tree(
@@ -271,6 +268,7 @@ fn parse_module_tree(
         submodules: submodules.lexed,
     };
     let parsed = parsed::ParseModule {
+        span: span::Span::new(src, 0, 0, Some(path)).unwrap(),
         tree,
         submodules: submodules.parsed,
         attributes,
@@ -278,12 +276,22 @@ fn parse_module_tree(
     Ok((kind, lexed, parsed))
 }
 
-fn module_path(parent_module_dir: &Path, dep: &sway_ast::Dependency) -> PathBuf {
-    parent_module_dir
-        .iter()
-        .chain(dep.path.span().as_str().split('/').map(AsRef::as_ref))
-        .collect::<PathBuf>()
-        .with_extension(sway_types::constants::DEFAULT_FILE_EXTENSION)
+fn module_path(
+    parent_module_dir: &Path,
+    parent_module_name: Option<&str>,
+    submod: &sway_ast::Submodule,
+) -> PathBuf {
+    if let Some(parent_name) = parent_module_name {
+        parent_module_dir
+            .join(parent_name)
+            .join(submod.name.to_string())
+            .with_extension(sway_types::constants::DEFAULT_FILE_EXTENSION)
+    } else {
+        // top level module
+        parent_module_dir
+            .join(submod.name.to_string())
+            .with_extension(sway_types::constants::DEFAULT_FILE_EXTENSION)
+    }
 }
 
 pub struct CompiledAsm(pub FinalizedAsm);
@@ -293,13 +301,14 @@ pub fn parsed_to_ast(
     parse_program: &parsed::ParseProgram,
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
+    package_name: &str,
 ) -> CompileResult<ty::TyProgram> {
     // Type check the program.
     let CompileResult {
         value: typed_program_opt,
         mut warnings,
         mut errors,
-    } = ty::TyProgram::type_check(engines, parse_program, initial_namespace);
+    } = ty::TyProgram::type_check(engines, parse_program, initial_namespace, package_name);
     let mut typed_program = match typed_program_opt {
         Some(typed_program) => typed_program,
         None => return err(warnings, errors),
@@ -403,6 +412,7 @@ pub fn compile_to_ast(
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
+    package_name: &str,
 ) -> CompileResult<ty::TyProgram> {
     // Parse the program to a concrete syntax tree (CST).
     let CompileResult {
@@ -424,7 +434,13 @@ pub fn compile_to_ast(
     }
 
     // Type check (+ other static analysis) the CST to a typed AST.
-    let typed_res = parsed_to_ast(engines, &parse_program, initial_namespace, build_config);
+    let typed_res = parsed_to_ast(
+        engines,
+        &parse_program,
+        initial_namespace,
+        build_config,
+        package_name,
+    );
     errors.extend(typed_res.errors);
     warnings.extend(typed_res.warnings);
     let typed_program = match typed_res.value {
@@ -447,8 +463,15 @@ pub fn compile_to_asm(
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: BuildConfig,
+    package_name: &str,
 ) -> CompileResult<CompiledAsm> {
-    let ast_res = compile_to_ast(engines, input, initial_namespace, Some(&build_config));
+    let ast_res = compile_to_ast(
+        engines,
+        input,
+        initial_namespace,
+        Some(&build_config),
+        package_name,
+    );
     ast_to_asm(engines, &ast_res, &build_config)
 }
 
@@ -560,8 +583,15 @@ pub fn compile_to_bytecode(
     initial_namespace: namespace::Module,
     build_config: BuildConfig,
     source_map: &mut SourceMap,
+    package_name: &str,
 ) -> CompileResult<CompiledBytecode> {
-    let asm_res = compile_to_asm(engines, input, initial_namespace, build_config);
+    let asm_res = compile_to_asm(
+        engines,
+        input,
+        initial_namespace,
+        build_config,
+        package_name,
+    );
     asm_to_bytecode(asm_res, source_map)
 }
 
@@ -641,8 +671,7 @@ fn module_dead_code_analysis<'eng: 'cfg, 'cfg>(
         .submodules
         .iter()
         .fold(init_res, |res, (_, submodule)| {
-            let name = submodule.library_name.clone();
-            let tree_type = parsed::TreeType::Library { name };
+            let tree_type = parsed::TreeType::Library;
             res.flat_map(|_| {
                 module_dead_code_analysis(engines, &submodule.module, &tree_type, graph)
             })

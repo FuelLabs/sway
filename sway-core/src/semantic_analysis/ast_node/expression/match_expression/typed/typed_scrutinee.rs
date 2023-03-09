@@ -21,7 +21,7 @@ impl ty::TyScrutinee {
                 let dummy_type_param = TypeParameter {
                     type_id,
                     initial_type_id: type_id,
-                    name_ident: BaseIdent::new_with_override("_", span.clone()),
+                    name_ident: BaseIdent::new_with_override("_".into(), span.clone()),
                     trait_constraints: vec![],
                     trait_constraints_span: Span::dummy(),
                 };

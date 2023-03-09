@@ -1,8 +1,6 @@
-library tests;
+library;
 
-dep data_structures;
-
-use data_structures::*;
+use ::data_structures::*;
 use core::ops::*;
 
 /////////////////////////////////////////////////////////////////////////////

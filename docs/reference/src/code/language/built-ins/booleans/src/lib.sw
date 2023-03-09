@@ -1,4 +1,4 @@
-library booleans;
+library;
 
 // ANCHOR: syntax
 fn returns_true() -> bool {

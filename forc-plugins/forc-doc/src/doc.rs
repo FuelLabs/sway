@@ -112,7 +112,7 @@ impl Document {
         let mut new_submodule_prefix = module_prefix.to_owned();
         new_submodule_prefix
             .module_prefixes
-            .push(typed_submodule.library_name.as_str().to_owned());
+            .push(typed_submodule.mod_name_span.as_str().to_owned());
         for ast_node in &typed_submodule.module.all_nodes {
             if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
                 let desc = Descriptor::from_typed_decl(

@@ -1,6 +1,5 @@
 mod attribute;
 mod brackets;
-mod dependency;
 mod expr;
 mod generics;
 mod item;
@@ -13,6 +12,7 @@ mod path;
 mod pattern;
 mod priv_prelude;
 mod punctuated;
+mod submodule;
 mod token;
 mod ty;
 mod where_clause;

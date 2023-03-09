@@ -1,4 +1,4 @@
-library assert;
+library;
 
 use ::logging::log;
 use ::revert::revert;

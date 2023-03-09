@@ -1,5 +1,5 @@
 // ANCHOR: module
-library letter_casing;
+library;
 // ANCHOR_END: module
 // ANCHOR: const
 const MAXIMUM_DEPOSIT = 10;

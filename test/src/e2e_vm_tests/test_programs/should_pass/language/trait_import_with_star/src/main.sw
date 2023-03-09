@@ -1,5 +1,5 @@
 script;
-dep shiftable;
+mod shiftable;
 use shiftable::*;
 
 fn main() {

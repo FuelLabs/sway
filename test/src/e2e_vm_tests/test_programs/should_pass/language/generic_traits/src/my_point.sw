@@ -1,4 +1,4 @@
-library my_point;
+library;
 
 use ::my_double::MyDouble;
 

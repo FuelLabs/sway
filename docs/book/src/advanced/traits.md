@@ -77,7 +77,7 @@ ABI supertraits are intended to make contract implementations compositional, all
 Often, libraries and APIs have interfaces that are abstracted over a type that implements a certain trait. It is up to the consumer of the interface to implement that trait for the type they wish to use with the interface. For example, let's take a look at a trait and an interface built off of it.
 
 ```sway
-library games;
+library;
 
 pub enum Suit {
     Hearts: (),

@@ -130,6 +130,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                     Arc::from(sway_str),
                     core_lib.clone(),
                     Some(&bld_cfg),
+                    "test_lib",
                 );
                 if !typed_res.errors.is_empty() {
                     panic!(

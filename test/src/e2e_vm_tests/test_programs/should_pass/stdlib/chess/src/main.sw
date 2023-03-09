@@ -1,6 +1,6 @@
 script;
 
-dep huge_enum;
+mod huge_enum;
 
 use huge_enum::*;
 

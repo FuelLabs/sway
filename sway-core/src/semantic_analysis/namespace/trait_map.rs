@@ -370,7 +370,7 @@ impl TraitMap {
     ///
     /// `data.sw`:
     /// ```ignore
-    /// library data;
+    /// library;
     ///
     /// enum MyResult<T, E> {
     ///     Ok: T,
@@ -403,7 +403,7 @@ impl TraitMap {
     /// ```ignore
     /// script;
     ///
-    /// dep data;
+    /// mod data;
     ///
     /// use data::Data;
     ///
@@ -490,7 +490,7 @@ impl TraitMap {
     ///
     /// `my_double.sw`:
     /// ```ignore
-    /// library my_double;
+    /// library;
     ///
     /// pub trait MyDouble<T> {
     ///     fn my_double(self, input: T) -> T;
@@ -499,7 +499,7 @@ impl TraitMap {
     ///
     /// `my_point.sw`:
     /// ```ignore
-    /// library my_point;
+    /// library;
     ///
     /// use ::my_double::MyDouble;
     ///
@@ -519,8 +519,8 @@ impl TraitMap {
     /// ```ignore
     /// script;
     ///
-    /// dep my_double;
-    /// dep my_point;
+    /// mod my_double;
+    /// mod my_point;
     ///
     /// use my_point::MyPoint;
     ///

@@ -1,4 +1,4 @@
-library basic_enum;
+library;
 
 // Declare the enum
 enum Color {
