@@ -159,10 +159,10 @@ fn parse_open_delimiter<T: OpenDelimiterToken + Peek>(parser: &mut Parser) -> Pa
         Some(value) => Ok(value),
         None => {
             let err = match T::DELIMITER_KIND {
-                OpeningDelimiter::Parenthesis => ParseErrorKind::ExpectedOpenParen,
-                OpeningDelimiter::CurlyBrace => ParseErrorKind::ExpectedOpenBrace,
-                OpeningDelimiter::SquareBracket => ParseErrorKind::ExpectedOpenBracket,
-                OpeningDelimiter::AngleBracket => ParseErrorKind::ExpectedOpenBracket,
+                [OpeningDelimiter::Parenthesis] => ParseErrorKind::ExpectedOpenParen,
+                [OpeningDelimiter::CurlyBrace] => ParseErrorKind::ExpectedOpenBrace,
+                [OpeningDelimiter::SquareBracket] => ParseErrorKind::ExpectedOpenBracket,
+                [OpeningDelimiter::AngleBracket] => ParseErrorKind::ExpectedOpenBracket,
             };
             Err(parser.emit_error(err))
         }
