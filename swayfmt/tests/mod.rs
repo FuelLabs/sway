@@ -573,6 +573,9 @@ fn comments_empty_fns() {
 
 fn single_comment_same_line() { /* a comment */ }
 
+fn single_comment_same_line_trailing() {  // a comment
+}
+
 fn single_comment() -> bool {
     // TODO: This is a TODO
 }
@@ -585,6 +588,9 @@ fn multiline_comments() {
         r#"contract;
 
 fn single_comment_same_line() { /* a comment */ }
+
+fn single_comment_same_line_trailing() { // a comment
+}
 
 fn single_comment() -> bool {
     // TODO: This is a TODO
