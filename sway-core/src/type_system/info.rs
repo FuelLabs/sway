@@ -66,8 +66,9 @@ impl<T: PartialEqWithEngines> PartialEqWithEngines for VecSet<T> {
 }
 
 /// Type information without an associated value, used for type inferencing and definition.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub enum TypeInfo {
+    #[default]
     Unknown,
     /// Represents a type parameter.
     ///
@@ -367,12 +368,6 @@ impl OrdWithEngines for TypeInfo {
             }
             (l, r) => l.discriminant_value().cmp(&r.discriminant_value()),
         }
-    }
-}
-
-impl Default for TypeInfo {
-    fn default() -> Self {
-        TypeInfo::Unknown
     }
 }
 

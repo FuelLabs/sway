@@ -359,7 +359,6 @@ impl CollectTypesMetadata for TyProgram {
                 for module in std::iter::once(&self.root).chain(
                     self.root
                         .submodules_recursive()
-                        .into_iter()
                         .map(|(_, submod)| &submod.module),
                 ) {
                     for node in module.all_nodes.iter() {
@@ -400,7 +399,6 @@ impl CollectTypesMetadata for TyProgram {
         for module in std::iter::once(&self.root).chain(
             self.root
                 .submodules_recursive()
-                .into_iter()
                 .map(|(_, submod)| &submod.module),
         ) {
             for node in module.all_nodes.iter() {
