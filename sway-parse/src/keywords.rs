@@ -169,6 +169,31 @@ fn parse_open_delimiter<T: OpenDelimiterToken + Peek>(parser: &mut Parser) -> Pa
     }
 }
 
+macro_rules! open_delimiter_impls {
+    ($($ty:ty),*) => {
+        $(
+            impl Peek for $ty {
+                fn peek(peeker: Peeker<'_>) -> Option<Self> {
+                    peek_open_delimiter(peeker)
+                }
+            }
+
+            impl Parse for $ty {
+                fn parse(parser: &mut Parser) -> ParseResult<Self> {
+                    parse_open_delimiter(parser)
+                }
+            }
+        )*
+    };
+}
+
+open_delimiter_impls!(
+    OpenParenthesisToken,
+    OpenCurlyBraceToken,
+    OpenSquareBracketToken,
+    OpenAngleBracketToken
+);
+
 // Keep this in sync with the list in `sway-ast/keywords.rs` defined by define_keyword!
 pub const RESERVED_KEYWORDS: phf::Set<&'static str> = phf::phf_set! {
     "script",
