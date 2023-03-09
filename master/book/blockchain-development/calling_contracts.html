@@ -242,7 +242,7 @@ user contract and issues warnings if that's the case.</p>
 external contract call is executed before a storage write.</p>
 <pre><code class="language-sway">contract;
 
-dep other_contract;
+mod other_contract;
 
 use other_contract::*;
 
@@ -275,7 +275,7 @@ impl MyContract for Contract {
 }
 </code></pre>
 <p>Here, <code>other_contract</code> is defined as follows:</p>
-<pre><code class="language-sway">library other_contract;
+<pre><code class="language-sway">library;
 
 abi OtherContract {
     #[payable]

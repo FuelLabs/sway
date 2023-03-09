@@ -148,7 +148,7 @@
 <h2 id="structs"><a class="header" href="#structs">Structs</a></h2>
 <p>Structs in Sway are a named grouping of types. You may also be familiar with structs via another name: <em>product types</em>. Sway does not make any significantly unique usages of structs; they are similar to most other languages which have structs. If you're coming from an object-oriented background, a struct is like the data attributes of an object.</p>
 <p>Firstly, we declare a struct named <code>Foo</code> with two fields. The first field is named <code>bar</code> and it accepts values of type <code>u64</code>, the second field is named <code>baz</code> and it accepts <code>bool</code> values.</p>
-<pre><code class="language-sway">library data_structures;
+<pre><code class="language-sway">library;
 
 // Declare a struct type
 pub struct Foo {
@@ -178,9 +178,9 @@ pub struct TupleInStruct {
 <li>Passing in variables with names different than the struct fields</li>
 <li>Using a shorthand notation via variables that are the same as the field names</li>
 </ul>
-<pre><code class="language-sway">library utils;
+<pre><code class="language-sway">library;
 
-dep data_structures;
+mod data_structures;
 use data_structures::{Foo, Line, Point, TupleInStruct};
 
 fn hardcoded_instantiation() -&gt; Foo {
@@ -275,7 +275,7 @@ This information is not vital if you are new to the language, or programming in 
 <h2 id="tuples"><a class="header" href="#tuples">Tuples</a></h2>
 <p>Tuples are a <a href="./built_in_types.html#tuple-types">basic static-length type</a> which contain multiple different types within themselves. The type of a tuple is defined by the types of the values within it, and a tuple can contain basic types as well as structs and enums.</p>
 <p>You can access values directly by using the <code>.</code> syntax. Moreover, multiple variables can be extracted from a tuple using the destructuring syntax.</p>
-<pre><code class="language-sway">library tuples;
+<pre><code class="language-sway">library;
 
 fn tuple() {
     // You can declare the types youself
@@ -304,7 +304,7 @@ fn tuple() {
 <h2 id="enums"><a class="header" href="#enums">Enums</a></h2>
 <p><em>Enumerations</em>, or <em>enums</em>, are also known as <em>sum types</em>. An enum is a type that could be one of several variants. To declare an enum, you enumerate all potential variants.</p>
 <p>Here, we have defined five potential colors. Each enum variant is just the color name. As there is no extra data associated with each variant, we say that each variant is of type <code>()</code>, or unit.</p>
-<pre><code class="language-sway">library basic_enum;
+<pre><code class="language-sway">library;
 
 // Declare the enum
 enum Color {
@@ -323,7 +323,7 @@ fn main() {
 </code></pre>
 <h3 id="enums-of-structs"><a class="header" href="#enums-of-structs">Enums of Structs</a></h3>
 <p>It is also possible to have an enum variant contain extra data. Take a look at this more substantial example, which combines struct declarations with enum variants:</p>
-<pre><code class="language-sway">library enum_of_structs;
+<pre><code class="language-sway">library;
 
 struct Item {
     price: u64,
@@ -345,7 +345,7 @@ fn main() {
 </code></pre>
 <h3 id="enums-of-enums"><a class="header" href="#enums-of-enums">Enums of Enums</a></h3>
 <p>It is possible to define enums of enums:</p>
-<pre><code class="language-sway">library enum_of_enums;
+<pre><code class="language-sway">library;
 
 pub enum Error {
     StateError: StateError,
@@ -365,10 +365,9 @@ pub enum UserError {
 </code></pre>
 <h4 id="preferred-usage"><a class="header" href="#preferred-usage">Preferred usage</a></h4>
 <p>The preferred way to use enums is to use the individual (not nested) enums directly because they are easy to follow and the lines are short:</p>
-<pre><code class="language-sway">library enums_preferred;
+<pre><code class="language-sway">library;
 
-dep enum_of_enums;
-use enum_of_enums::{StateError, UserError};
+use ::enum_of_enums::{StateError, UserError};
 
 fn preferred() {
     let error1 = StateError::Void;
@@ -377,10 +376,9 @@ fn preferred() {
 </code></pre>
 <h4 id="inadvisable"><a class="header" href="#inadvisable">Inadvisable</a></h4>
 <p>If you wish to use the nested form of enums via the <code>Error</code> enum from the example above, then you can instantiate them into variables using the following syntax:</p>
-<pre><code class="language-sway">library enums_avoid;
+<pre><code class="language-sway">library;
 
-dep enum_of_enums;
-use enum_of_enums::{Error, StateError, UserError};
+use ::enum_of_enums::{Error, StateError, UserError};
 
 fn avoid() {
     let error1 = Error::StateError(StateError::Void);

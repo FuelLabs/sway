@@ -148,15 +148,15 @@
 <p>Libraries in Sway are files used to define new common behavior. The most prominent example of this is the <a href="../introduction/standard_library.html">Sway Standard Library</a> that is made implicitly available to all Forc projects created using <code>forc new</code>.</p>
 <h2 id="writing-libraries"><a class="header" href="#writing-libraries">Writing Libraries</a></h2>
 <p>Libraries are defined using the <code>library</code> keyword at the beginning of a file, followed by a name so that they can be imported.</p>
-<pre><code class="language-sway">library my_library;
+<pre><code class="language-sway">library;
 
 // library code
 </code></pre>
 <p>A good reference library to use when learning library design is the <a href="../introduction/standard_library.html">Sway Standard Library</a>. For example, the standard library offers an <a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/option.sw">implementation</a> of <code>enum Option&lt;T&gt;</code> which is a generic type that represents either the existence of a value using the variant <code>Some(..)</code> or a value's absence using the variant <code>None</code>. The <a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/option.sw">Sway file implementing <code>Option&lt;T&gt;</code></a> has the following structure:</p>
 <ul>
-<li>The <code>library</code> keyword followed by the name of the library:</li>
+<li>The <code>library</code> keyword:</li>
 </ul>
-<pre><code class="language-sway">library option;
+<pre><code class="language-sway">library;
 </code></pre>
 <ul>
 <li>A <code>use</code> statement that imports <code>revert</code> from another library <em>inside</em> the standard library:</li>
@@ -193,38 +193,50 @@ name = &quot;my_library&quot;
 [dependencies]
 </code></pre>
 <p>which denotes the authors, an entry file, the name by which it can be imported, and any dependencies.</p>
-<p>For large libraries, it is recommended to have a <code>lib.sw</code> entry point re-export all other sub-libraries. For example, the <code>lib.sw</code> of the standard library looks like:</p>
-<pre><code class="language-sway">library std;
+<p>For large libraries, it is recommended to have a <code>lib.sw</code> entry point re-export all other sub-libraries.</p>
+<p>The <code>mod</code> keyword registers a submodule, making its items (such as functions and structs) accessible from the parent library.
+If used at the top level it will refer to a file in the <code>src</code> folder and in other cases in a folder named after the library in which it is defined.</p>
+<p>For example, the <code>lib.sw</code> of the standard library looks like:</p>
+<pre><code class="language-sway">library;
 
-dep block;
-dep storage;
-dep constants;
+mod block;
+mod storage;
+mod constants;
+mod vm;
 // .. Other deps
 </code></pre>
-<p>with other libraries contained in the <code>src</code> folder, like the block library (inside of <code>block.sw</code>):</p>
-<pre><code class="language-sway">library block;
+<p>with other libraries contained in the <code>src</code> folder, like the vm library (inside of <code>src/vm.sw</code>):</p>
+<pre><code class="language-sway">library;
 
-// Implementation of the `block` library
+mod evm;
+// ...
 </code></pre>
-<p>The <code>dep</code> keyword in the main library includes a dependency on another library, making all of its items (such as functions and structs) accessible from the main library. The <code>dep</code> keyword simply makes the library a dependency and fully accessible within the current context.</p>
+<p>and it's own sub-library evm located in <code>src/vm/evm.sw</code>:</p>
+<pre><code class="language-sway">library;
+
+// ...
+</code></pre>
 <h2 id="using-libraries"><a class="header" href="#using-libraries">Using Libraries</a></h2>
 <p>There are two types of Sway libraries, based on their location and how they can be imported.</p>
 <h3 id="internal-libraries"><a class="header" href="#internal-libraries">Internal Libraries</a></h3>
-<p>Internal libraries are located within the project's <code>src</code> directory alongside <code>main.sw</code> as shown below:</p>
+<p>Internal libraries are located within the project's <code>src</code> directory alongside
+<code>main.sw</code> or in the appropriate folders as shown below:</p>
 <pre><code class="language-bash">$ tree
 .
 ├── Cargo.toml
 ├── Forc.toml
 └── src
     ├── internal_lib.sw
-    └── main.sw
+    ├── main.sw
+    └── internal_lib
+        └── nested_lib.sw
 </code></pre>
 <p>As <code>internal_lib</code> is an internal library, it can be imported into <code>main.sw</code> as follows:</p>
 <ul>
-<li>Use the <code>dep</code> keyword followed by the library name to make the internal library a dependancy</li>
+<li>Use the <code>mod</code> keyword followed by the library name to make the internal library a dependancy</li>
 <li>Use the <code>use</code> keyword with a <code>::</code> separating the name of the library and the imported item(s)</li>
 </ul>
-<pre><code class="language-sway">dep internal_lib; // Assuming the library name in `internal_lib.sw` is `internal_lib`
+<pre><code class="language-sway">mod internal_lib; // Assuming the library name in `internal_lib.sw` is `internal_lib`
 
 use internal_lib::mint;
 
