@@ -215,7 +215,7 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                 match item {
                     ty::TyImplItem::Fn(decl_ref) => {
                         check!(
-                            validate_fn_decl(engines, &decl_ref.id),
+                            validate_fn_decl(engines, &decl_ref.id().clone()),
                             (),
                             warnings,
                             errors

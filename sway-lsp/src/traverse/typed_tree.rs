@@ -212,7 +212,7 @@ impl<'a> TypedTree<'a> {
                     token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
 
                     token.type_def = if let Some(decl_ref) = &trait_decl_ref {
-                        match &decl_ref.id {
+                        match &decl_ref.id().clone() {
                             InterfaceDeclId::Abi(decl_id) => {
                                 let abi_decl = decl_engine.get_abi(decl_id);
                                 Some(TypeDefinition::Ident(abi_decl.name))

@@ -710,7 +710,7 @@ fn type_check_trait_implementation(
                 all_items_refs.push(TyImplItem::Fn(
                     decl_engine
                         .insert(method)
-                        .with_parent(decl_engine, decl_ref.id.into()),
+                        .with_parent(decl_engine, (*decl_ref.id()).into()),
                 ));
             }
         }

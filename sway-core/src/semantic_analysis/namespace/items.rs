@@ -58,7 +58,7 @@ impl Items {
         let decl_engine = engines.de();
         match self.declared_storage {
             Some(ref decl_ref) => {
-                let storage = decl_engine.get_storage(&decl_ref.id);
+                let storage = decl_engine.get_storage(&decl_ref.id().clone());
                 storage.apply_storage_load(type_engine, decl_engine, fields, storage_fields)
             }
             None => {

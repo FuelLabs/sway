@@ -252,8 +252,7 @@ impl TypeBinding<CallPath> {
         let new_decl = match unknown_decl {
             ty::TyDeclaration::FunctionDeclaration {
                 decl_id: original_id,
-                name,
-                decl_span,
+                ..
             } => {
                 // get the copy from the declaration engine
                 let mut new_copy = decl_engine.get_function(&original_id);
@@ -274,23 +273,16 @@ impl TypeBinding<CallPath> {
                 }
 
                 // insert the new copy into the declaration engine
-                let DeclRef {
-                    id: new_decl_id, ..
-                } = ctx
+                let new_decl_ref = ctx
                     .decl_engine
                     .insert(new_copy)
                     .with_parent(ctx.decl_engine, original_id.into());
 
-                ty::TyDeclaration::FunctionDeclaration {
-                    name,
-                    decl_id: new_decl_id,
-                    decl_span,
-                }
+                new_decl_ref.into()
             }
             ty::TyDeclaration::EnumDeclaration {
                 decl_id: original_id,
-                name,
-                decl_span,
+                ..
             } => {
                 // get the copy from the declaration engine
                 let mut new_copy = decl_engine.get_enum(&original_id);
@@ -317,16 +309,11 @@ impl TypeBinding<CallPath> {
                     type_engine.insert(decl_engine, TypeInfo::Enum(new_decl_ref.clone())),
                 );
 
-                ty::TyDeclaration::EnumDeclaration {
-                    name,
-                    decl_id: new_decl_ref.id,
-                    decl_span,
-                }
+                new_decl_ref.into()
             }
             ty::TyDeclaration::StructDeclaration {
                 decl_id: original_id,
-                name,
-                decl_span,
+                ..
             } => {
                 // get the copy from the declaration engine
                 let mut new_copy = decl_engine.get_struct(&original_id);
@@ -353,11 +340,7 @@ impl TypeBinding<CallPath> {
                     type_engine.insert(decl_engine, TypeInfo::Struct(new_decl_ref.clone())),
                 );
 
-                ty::TyDeclaration::StructDeclaration {
-                    name,
-                    decl_id: new_decl_ref.id,
-                    decl_span,
-                }
+                new_decl_ref.into()
             }
             _ => unknown_decl,
         };

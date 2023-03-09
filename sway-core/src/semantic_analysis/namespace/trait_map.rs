@@ -118,7 +118,7 @@ impl TraitMap {
         for item in items.iter() {
             match item {
                 TyImplItem::Fn(decl_ref) => {
-                    trait_items.insert(decl_ref.name.to_string(), item.clone());
+                    trait_items.insert(decl_ref.name().clone().to_string(), item.clone());
                 }
             }
         }
@@ -200,9 +200,9 @@ impl TraitMap {
                             if map_trait_items.get(name).is_some() {
                                 errors.push(CompileError::DuplicateDeclDefinedForType {
                                     decl_kind: "method".into(),
-                                    decl_name: decl_ref.name.to_string(),
+                                    decl_name: decl_ref.name().clone().to_string(),
                                     type_implementing_for: engines.help_out(type_id).to_string(),
-                                    span: decl_ref.name.span(),
+                                    span: decl_ref.name().clone().span(),
                                 });
                             }
                         }
@@ -608,12 +608,12 @@ impl TraitMap {
                             let decl_ref = match &item {
                                 ty::TyTraitItem::Fn(decl_ref) => decl_ref,
                             };
-                            let mut decl = decl_engine.get(decl_ref.id);
+                            let mut decl = decl_engine.get(*decl_ref.id());
                             decl.subst(&type_mapping, engines);
                             decl.replace_self_type(engines, new_self_type);
                             let new_ref = decl_engine
                                 .insert(decl)
-                                .with_parent(decl_engine, decl_ref.id.into());
+                                .with_parent(decl_engine, (*decl_ref.id()).into());
                             let item = match item {
                                 ty::TyTraitItem::Fn(_) => TyImplItem::Fn(new_ref),
                             };

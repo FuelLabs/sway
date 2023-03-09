@@ -32,7 +32,7 @@ fn completion_items_for_type_id(
     let type_info = engines.te().get(type_id);
 
     if let TypeInfo::Struct(decl_ref) = type_info.clone() {
-        let struct_decl = engines.de().get_struct(&decl_ref.id);
+        let struct_decl = engines.de().get_struct(&decl_ref.id().clone());
         for field in struct_decl.fields {
             let item = CompletionItem {
                 kind: Some(CompletionItemKind::FIELD),
@@ -48,7 +48,7 @@ fn completion_items_for_type_id(
     }
 
     for method in namespace.get_methods_for_type(engines, type_id) {
-        let fn_decl = engines.de().get_function(&method.id);
+        let fn_decl = engines.de().get_function(&method.id().clone());
         let params = fn_decl.clone().parameters;
 
         // Only show methods that take `self` as the first parameter.
@@ -69,13 +69,13 @@ fn completion_items_for_type_id(
                 .join(", ");
             let item = CompletionItem {
                 kind: Some(CompletionItemKind::METHOD),
-                label: format!("{}{}", method.name.as_str(), params_short),
+                label: format!("{}{}", method.name().clone().as_str(), params_short),
                 text_edit: Some(CompletionTextEdit::Edit(TextEdit {
                     range: Range {
                         start: position,
                         end: position,
                     },
-                    new_text: format!("{}({})", method.name.as_str(), params_edit_str),
+                    new_text: format!("{}({})", method.name().clone().as_str(), params_edit_str),
                 })),
                 label_details: Some(CompletionItemLabelDetails {
                     description: Some(fn_signature_string(&fn_decl, &type_info)),
@@ -142,13 +142,19 @@ fn type_id_of_raw_ident(
                 .get_methods_for_type(engines, curr_type_id?)
                 .iter()
                 .find_map(|decl_ref| {
-                    if decl_ref.name.as_str() == method_name {
-                        return Some(engines.de().get_function(&decl_ref.id).return_type.type_id);
+                    if decl_ref.name().clone().as_str() == method_name {
+                        return Some(
+                            engines
+                                .de()
+                                .get_function(&decl_ref.id().clone())
+                                .return_type
+                                .type_id,
+                        );
                     }
                     None
                 });
         } else if let TypeInfo::Struct(decl_ref) = engines.te().get(curr_type_id.unwrap()) {
-            let struct_decl = engines.de().get_struct(&decl_ref.id);
+            let struct_decl = engines.de().get_struct(&decl_ref.id().clone());
             curr_type_id = struct_decl
                 .fields
                 .iter()

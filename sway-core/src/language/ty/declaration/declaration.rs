@@ -290,11 +290,7 @@ impl TyDeclaration {
             decl_span,
         } = self
         {
-            Some(DeclRef {
-                name: name.clone(),
-                id: *decl_id,
-                decl_span: decl_span.clone(),
-            })
+            Some(DeclRef::new(name.clone(), *decl_id, decl_span.clone()))
         } else {
             None
         }
@@ -722,6 +718,85 @@ impl TyDeclaration {
             | AbiDeclaration { .. }
             | ErrorRecovery(_) => Visibility::Public,
             VariableDeclaration(decl) => decl.mutability.visibility(),
+        }
+    }
+}
+
+impl From<DeclRef<DeclId<TyConstantDeclaration>>> for TyDeclaration {
+    fn from(decl_ref: DeclRef<DeclId<TyConstantDeclaration>>) -> Self {
+        TyDeclaration::ConstantDeclaration {
+            name: decl_ref.name().clone(),
+            decl_id: *decl_ref.id(),
+            decl_span: decl_ref.decl_span().clone(),
+        }
+    }
+}
+
+impl From<DeclRef<DeclId<TyEnumDeclaration>>> for TyDeclaration {
+    fn from(decl_ref: DeclRef<DeclId<TyEnumDeclaration>>) -> Self {
+        TyDeclaration::EnumDeclaration {
+            name: decl_ref.name().clone(),
+            decl_id: *decl_ref.id(),
+            decl_span: decl_ref.decl_span().clone(),
+        }
+    }
+}
+
+impl From<DeclRef<DeclId<TyFunctionDeclaration>>> for TyDeclaration {
+    fn from(decl_ref: DeclRef<DeclId<TyFunctionDeclaration>>) -> Self {
+        TyDeclaration::FunctionDeclaration {
+            name: decl_ref.name().clone(),
+            decl_id: *decl_ref.id(),
+            decl_span: decl_ref.decl_span().clone(),
+        }
+    }
+}
+
+impl From<DeclRef<DeclId<TyTraitDeclaration>>> for TyDeclaration {
+    fn from(decl_ref: DeclRef<DeclId<TyTraitDeclaration>>) -> Self {
+        TyDeclaration::TraitDeclaration {
+            name: decl_ref.name().clone(),
+            decl_id: *decl_ref.id(),
+            decl_span: decl_ref.decl_span().clone(),
+        }
+    }
+}
+
+impl From<DeclRef<DeclId<TyImplTrait>>> for TyDeclaration {
+    fn from(decl_ref: DeclRef<DeclId<TyImplTrait>>) -> Self {
+        TyDeclaration::ImplTrait {
+            name: decl_ref.name().clone(),
+            decl_id: *decl_ref.id(),
+            decl_span: decl_ref.decl_span().clone(),
+        }
+    }
+}
+
+impl From<DeclRef<DeclId<TyStructDeclaration>>> for TyDeclaration {
+    fn from(decl_ref: DeclRef<DeclId<TyStructDeclaration>>) -> Self {
+        TyDeclaration::StructDeclaration {
+            name: decl_ref.name().clone(),
+            decl_id: *decl_ref.id(),
+            decl_span: decl_ref.decl_span().clone(),
+        }
+    }
+}
+
+impl From<DeclRef<DeclId<TyAbiDeclaration>>> for TyDeclaration {
+    fn from(decl_ref: DeclRef<DeclId<TyAbiDeclaration>>) -> Self {
+        TyDeclaration::AbiDeclaration {
+            name: decl_ref.name().clone(),
+            decl_id: *decl_ref.id(),
+            decl_span: decl_ref.decl_span().clone(),
+        }
+    }
+}
+
+impl From<DeclRef<DeclId<TyStorageDeclaration>>> for TyDeclaration {
+    fn from(decl_ref: DeclRef<DeclId<TyStorageDeclaration>>) -> Self {
+        TyDeclaration::StorageDeclaration {
+            decl_id: *decl_ref.id(),
+            decl_span: decl_ref.decl_span().clone(),
         }
     }
 }

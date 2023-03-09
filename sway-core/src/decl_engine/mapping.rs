@@ -64,7 +64,7 @@ impl DeclMapping {
                 let new_decl_ref = match new_item {
                     TyTraitItem::Fn(decl_ref) => decl_ref,
                 };
-                mapping.push(((interface_decl_ref.id).into(), new_decl_ref.id));
+                mapping.push(((*interface_decl_ref.id()).into(), *new_decl_ref.id()));
             }
         }
         for (decl_name, item) in item_decl_refs.into_iter() {
@@ -77,7 +77,7 @@ impl DeclMapping {
                 let new_decl_ref = match new_item {
                     TyTraitItem::Fn(decl_ref) => decl_ref,
                 };
-                mapping.push(((interface_decl_ref.id).into(), new_decl_ref.into()));
+                mapping.push(((*interface_decl_ref.id()).into(), new_decl_ref.into()));
             }
         }
         DeclMapping { mapping }

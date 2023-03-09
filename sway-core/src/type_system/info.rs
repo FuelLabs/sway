@@ -445,8 +445,8 @@ impl TypeInfo {
         match self {
             TypeInfo::UnknownGeneric { name, .. } => name.to_string(),
             TypeInfo::Placeholder(type_param) => type_param.name_ident.to_string(),
-            TypeInfo::Enum(decl_ref) => decl_ref.name.to_string(),
-            TypeInfo::Struct(decl_ref) => decl_ref.name.to_string(),
+            TypeInfo::Enum(decl_ref) => decl_ref.name().clone().to_string(),
+            TypeInfo::Struct(decl_ref) => decl_ref.name().clone().to_string(),
             TypeInfo::ContractCaller { abi_name, .. } => abi_name.to_string(),
             TypeInfo::Custom { call_path, .. } => call_path.to_string(),
             TypeInfo::Storage { .. } => "storage".into(),
@@ -1529,7 +1529,7 @@ impl TypeInfo {
                     .iter()
                     .map(|x| type_engine.get(x.type_id))
                     .collect::<Vec<_>>();
-                l_decl_ref.name == r_decl_ref.name
+                l_decl_ref.name().clone() == r_decl_ref.name().clone()
                     && l_names == r_names
                     && types_are_subset_of(engines, &l_types, &r_types)
             }
@@ -1556,7 +1556,7 @@ impl TypeInfo {
                     .iter()
                     .map(|x| type_engine.get(x.type_id))
                     .collect::<Vec<_>>();
-                l_decl_ref.name == r_decl_ref.name
+                l_decl_ref.name().clone() == r_decl_ref.name().clone()
                     && l_names == r_names
                     && types_are_subset_of(engines, &l_types, &r_types)
             }

@@ -233,7 +233,7 @@ impl Namespace {
         let mut matching_method_decl_refs: Vec<DeclRefFunction> = vec![];
 
         for decl_ref in methods.into_iter() {
-            if &decl_ref.name == method_name {
+            if &decl_ref.name().clone() == method_name {
                 matching_method_decl_refs.push(decl_ref);
             }
         }

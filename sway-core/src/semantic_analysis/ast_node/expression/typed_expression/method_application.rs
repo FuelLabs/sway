@@ -527,7 +527,7 @@ pub(crate) fn resolve_method_name(
     let decl_ref = ctx
         .decl_engine
         .insert(func_decl)
-        .with_parent(ctx.decl_engine, decl_ref.id.into());
+        .with_parent(ctx.decl_engine, (*decl_ref.id()).into());
 
     ok(decl_ref, warnings, errors)
 }

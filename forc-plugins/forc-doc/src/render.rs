@@ -885,15 +885,15 @@ fn render_type_anchor(
             let enum_decl = render_plan.decl_engine.get_enum(&decl_ref);
             if !render_plan.document_private_items && enum_decl.visibility.is_private() {
                 Ok(box_html! {
-                    : decl_ref.name.as_str();
+                    : decl_ref.name().clone().as_str();
                 })
             } else {
                 let module_info = ModuleInfo::from_call_path(enum_decl.call_path);
-                let file_name = format!("enum.{}.html", decl_ref.name.as_str());
+                let file_name = format!("enum.{}.html", decl_ref.name().clone().as_str());
                 let href = module_info.file_path_from_location(&file_name, current_module_info)?;
                 Ok(box_html! {
                     a(class="enum", href=href) {
-                        : decl_ref.name.as_str();
+                        : decl_ref.name().clone().as_str();
                     }
                 })
             }
@@ -902,15 +902,15 @@ fn render_type_anchor(
             let struct_decl = render_plan.decl_engine.get_struct(&decl_ref);
             if !render_plan.document_private_items && struct_decl.visibility.is_private() {
                 Ok(box_html! {
-                    : decl_ref.name.as_str();
+                    : decl_ref.name().clone().as_str();
                 })
             } else {
                 let module_info = ModuleInfo::from_call_path(struct_decl.call_path);
-                let file_name = format!("struct.{}.html", decl_ref.name.as_str());
+                let file_name = format!("struct.{}.html", decl_ref.name().clone().as_str());
                 let href = module_info.file_path_from_location(&file_name, current_module_info)?;
                 Ok(box_html! {
                     a(class="struct", href=href) {
-                        : decl_ref.name.as_str();
+                        : decl_ref.name().clone().as_str();
                     }
                 })
             }
