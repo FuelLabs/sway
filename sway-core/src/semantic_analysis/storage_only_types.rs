@@ -293,11 +293,13 @@ pub fn validate_const_decl(
     let mut errors: Vec<CompileError> = vec![];
     let decl_engine = engines.de();
     let ty::TyConstantDeclaration {
-        value: expr, name, ..
+        value: expr,
+        call_path,
+        ..
     } = decl_engine.get_constant(decl_id);
     if let Some(expr) = expr {
         check!(
-            check_type(engines, expr.return_type, name.span(), false),
+            check_type(engines, expr.return_type, call_path.suffix.span(), false),
             (),
             warnings,
             errors

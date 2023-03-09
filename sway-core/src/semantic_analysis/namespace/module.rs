@@ -46,15 +46,19 @@ pub struct Module {
     pub name: Option<Ident>,
     /// Empty span at the beginning of the file implementing the module
     pub span: Option<Span>,
+    /// Indicates whether the module is external to the current package. External modules are
+    /// imported in the `Forc.toml` file.
+    pub is_external: bool,
 }
 
 impl Module {
     pub fn default_with_constants(
         engines: Engines<'_>,
         constants: BTreeMap<String, ConfigTimeConstant>,
+        name: Option<Ident>,
     ) -> Result<Self, vec1::Vec1<CompileError>> {
         let handler = <_>::default();
-        Module::default_with_constants_inner(&handler, engines, constants).map_err(|_| {
+        Module::default_with_constants_inner(&handler, engines, constants, name).map_err(|_| {
             let (errors, warnings) = handler.consume();
             assert!(warnings.is_empty());
 
@@ -67,6 +71,7 @@ impl Module {
         handler: &Handler,
         engines: Engines<'_>,
         constants: BTreeMap<String, ConfigTimeConstant>,
+        ns_name: Option<Ident>,
     ) -> Result<Self, ErrorEmitted> {
         // it would be nice to one day maintain a span from the manifest file, but
         // we don't keep that around so we just use the span from the generated const decl instead.
@@ -129,6 +134,9 @@ impl Module {
                 span: const_item_span.clone(),
             };
             let mut ns = Namespace::init_root(Default::default());
+            // This is pretty hacky but that's okay because of this code is being removed pretty soon
+            ns.root.module.name = ns_name.clone();
+            ns.root.module.is_external = true;
             let type_check_ctx = TypeCheckContext::from_root(&mut ns, engines);
             let typed_node = ty::TyAstNode::type_check(type_check_ctx, ast_node)
                 .unwrap(&mut vec![], &mut vec![]);

@@ -4,7 +4,7 @@ use sway_types::{style::is_screaming_snake_case, Spanned};
 use crate::{
     decl_engine::{DeclEngineIndex, DeclRef, ReplaceFunctionImplementingType},
     error::*,
-    language::{parsed, ty},
+    language::{parsed, ty, CallPath},
     semantic_analysis::TypeCheckContext,
     type_system::*,
     CompileResult,
@@ -144,8 +144,11 @@ impl ty::TyDeclaration {
                     },
                 };
 
+                let mut path: CallPath = name.into();
+                path = path.to_fullpath(ctx.namespace);
+
                 let decl = ty::TyConstantDeclaration {
-                    name: name.clone(),
+                    call_path: path.clone(),
                     value,
                     visibility,
                     attributes,
@@ -160,7 +163,8 @@ impl ty::TyDeclaration {
                     decl_span: decl_ref.decl_span,
                 };
                 check!(
-                    ctx.namespace.insert_symbol(name, typed_const_decl.clone()),
+                    ctx.namespace
+                        .insert_symbol(path.suffix, typed_const_decl.clone()),
                     return err(warnings, errors),
                     warnings,
                     errors

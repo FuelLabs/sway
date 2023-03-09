@@ -348,8 +348,12 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             )
         }
         ConstantDeclaration { decl_id, .. } => {
-            let ty::TyConstantDeclaration { name, value, .. } = decl_engine.get_constant(decl_id);
-            graph.namespace.insert_constant(name, entry_node);
+            let ty::TyConstantDeclaration {
+                call_path, value, ..
+            } = decl_engine.get_constant(decl_id);
+            graph
+                .namespace
+                .insert_constant(call_path.suffix, entry_node);
             if let Some(value) = &value {
                 connect_expression(
                     engines,

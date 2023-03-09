@@ -401,14 +401,16 @@ impl ty::TyExpression {
                         name: decl_name.clone(),
                         span: name.span(),
                         mutability: *mutability,
-                        call_path: None,
+                        call_path: Some(
+                            CallPath::from(decl_name.clone()).to_fullpath(ctx.namespace),
+                        ),
                     },
                     span,
                 }
             }
             Some(ty::TyDeclaration::ConstantDeclaration { decl_id, .. }) => {
                 let ty::TyConstantDeclaration {
-                    name: decl_name,
+                    call_path: decl_name,
                     type_ascription,
                     ..
                 } = decl_engine.get_constant(decl_id);
@@ -417,10 +419,10 @@ impl ty::TyExpression {
                     // Although this isn't strictly a 'variable' expression we can treat it as one for
                     // this context.
                     expression: ty::TyExpressionVariant::VariableExpression {
-                        name: decl_name,
+                        name: decl_name.suffix.clone(),
                         span: name.span(),
                         mutability: ty::VariableMutability::Immutable,
-                        call_path: None,
+                        call_path: Some(decl_name.to_fullpath(ctx.namespace)),
                     },
                     span,
                 }
@@ -1196,7 +1198,7 @@ impl ty::TyExpression {
                     );
                 }
                 check!(
-                    instantiate_constant_decl(const_decl, call_path_binding),
+                    instantiate_constant_decl(ctx, const_decl, call_path_binding),
                     return err(warnings, errors),
                     warnings,
                     errors
