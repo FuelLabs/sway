@@ -1,10 +1,13 @@
 use crate::{
     descriptor::Descriptor,
-    render::{split_at_markdown_header, DocLink, DocStrings, ItemBody, ItemHeader, Renderable},
+    render::{
+        split_at_markdown_header, DocLink, DocStrings, ItemBody, ItemHeader, Renderable,
+        INDEX_FILENAME,
+    },
     RenderPlan,
 };
 use anyhow::Result;
-use horrorshow::{box_html, RenderBox};
+use horrorshow::{box_html, RenderBox, Template};
 use std::{fmt::Write, option::Option, path::PathBuf};
 use sway_core::{
     decl_engine::DeclEngine,
@@ -214,6 +217,27 @@ impl ModuleInfo {
             }
         }
         iter.map(|s| s.as_str()).collect::<Vec<&str>>().join("::")
+    }
+    /// Renders the [ModuleInfo] into a [CallPath] with anchors. We return this as a `Result<Vec<String>>`
+    /// since the `box_html!` macro returns a closure and no two closures are considered the same type.
+    pub(crate) fn get_anchors(&self) -> Result<Vec<String>> {
+        let mut count = self.depth();
+        let mut rendered_module_anchors = Vec::with_capacity(self.depth());
+        for prefix in self.module_prefixes.iter() {
+            let mut href = (1..count).map(|_| "../").collect::<String>();
+            href.push_str(INDEX_FILENAME);
+            rendered_module_anchors.push(
+                box_html! {
+                    a(class="mod", href=href) {
+                        : prefix;
+                    }
+                    span: "::";
+                }
+                .into_string()?,
+            );
+            count -= 1;
+        }
+        Ok(rendered_module_anchors)
     }
     /// Creates a String version of the path to an item,
     /// used in navigation between pages. The location given is the break point.
