@@ -3,6 +3,8 @@
 mod auth;
 mod block;
 mod call_frames;
+mod configurables_in_contract;
+mod configurables_in_script;
 mod context;
 mod contract_bytecode;
 mod ec_recover;
