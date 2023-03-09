@@ -58,30 +58,78 @@ impl TokenMap {
 
     /// Given a cursor [Position], return the [Ident] of a token in the
     /// Iterator if one exists at that position.
-    pub fn ident_at_position<I>(&self, cursor_position: Position, tokens: I) -> Option<Ident>
+    pub fn idents_at_position<I>(&self, cursor_position: Position, tokens: I) -> Vec<Ident>
     where
         I: Iterator<Item = (Ident, Token)>,
     {
-        for (ident, _) in tokens {
-            let range = token::get_range_from_span(&ident.span());
-            if cursor_position >= range.start && cursor_position <= range.end {
-                return Some(ident);
-            }
-        }
-        None
+        tokens
+            .filter_map(|(ident, _)| {
+                let range = token::get_range_from_span(&ident.span());
+                if cursor_position >= range.start && cursor_position <= range.end {
+                    return Some(ident);
+                }
+                None
+            })
+            .collect()
     }
 
-    /// Check if the code editor's cursor is currently over one of our collected tokens.
+    /// Returns the first collected tokens that is at the cursor position.
     pub fn token_at_position(&self, uri: &Url, position: Position) -> Option<(Ident, Token)> {
         let tokens = self.tokens_for_file(uri);
-        self.ident_at_position(position, tokens).and_then(|ident| {
-            self.try_get(&token::to_ident_key(&ident))
-                .try_unwrap()
-                .map(|item| {
-                    let ((ident, _), token) = item.pair();
-                    (ident.clone(), token.clone())
-                })
-        })
+        self.idents_at_position(position, tokens)
+            .first()
+            .and_then(|ident| {
+                self.try_get(&token::to_ident_key(ident))
+                    .try_unwrap()
+                    .map(|item| {
+                        let ((ident, _), token) = item.pair();
+                        (ident.clone(), token.clone())
+                    })
+            })
+    }
+
+    /// Returns all collected tokens that are at the given [Position] in the file.
+    /// If `functions_only` is true, it only returns tokens of type [TypedAstToken::TypedFunctionDeclaration].
+    ///
+    /// This is different from `idents_at_position` because this searches the spans of token bodies, not
+    /// just the spans of the token idents. For example, if we want to find out what function declaration
+    /// the cursor is inside of, we need to search the body of the function declaration, not just the ident
+    /// of the function declaration (the function name).
+    pub fn tokens_at_position(
+        &self,
+        uri: &Url,
+        position: Position,
+        functions_only: Option<bool>,
+    ) -> Vec<(Ident, Token)> {
+        let tokens = self.tokens_for_file(uri);
+        tokens
+            .filter_map(|(ident, token)| {
+                let span = match token.typed {
+                    Some(TypedAstToken::TypedFunctionDeclaration(decl)) => decl.span(),
+                    _ => ident.span(),
+                };
+                let range = token::get_range_from_span(&span);
+                if position >= range.start && position <= range.end {
+                    return self
+                        .try_get(&token::to_ident_key(&ident))
+                        .try_unwrap()
+                        .map(|item| {
+                            let ((ident, _), token) = item.pair();
+                            (ident.clone(), token.clone())
+                        });
+                }
+                None
+            })
+            .filter_map(|(ident, token)| {
+                if functions_only == Some(true) {
+                    if let Some(TypedAstToken::TypedFunctionDeclaration(_)) = token.typed {
+                        return Some((ident, token));
+                    }
+                    return None;
+                }
+                Some((ident, token))
+            })
+            .collect()
     }
 
     /// Uses the [TypeId] to find the associated [ty::TyDeclaration] in the TokenMap.
