@@ -562,7 +562,7 @@ mod inputs {
                 let (contract_instance, _, wallet, _) = get_contracts().await;
                 let handler = contract_instance.methods().get_input_message_sender(2);
                 let mut executable = handler.get_executable_call().await.unwrap();
-                let message_id = add_message_input(&mut executable, wallet.clone()).await; // let result = contract_instance
+                add_message_input(&mut executable, wallet.clone()).await; // let result = contract_instance
 
                 let messages = wallet.get_messages().await?;
                 let receipts = executable
