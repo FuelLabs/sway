@@ -15,4 +15,13 @@ The heap pointer, <code>$hp</code>, will always point to unallocated space.</p>
 </code></pre>
 <p>For more information, see the Fuel Spec for <a href="https://fuellabs.github.io/fuel-specs/master/vm#vm-initialization">VM Initialization</a><br />
 and the VM Instruction Set for <a href="https://fuellabs.github.io/fuel-specs/master/vm/instruction_set.html#aloc-allocate-memory">Memory Allocation</a>.</p>
+<p>NOTE: See <a href="https://github.com/FuelLabs/fuel-specs/pull/464">https://github.com/FuelLabs/fuel-specs/pull/464</a> and related PRs.  There is an upcoming<br />
+breaking change to the VM which ‘corrects’ the above behaviour to be more intuitive.  Instead of<br />
+<code>$hp</code> pointing to the last byte of free memory it will instead point to the bottom of allocated<br />
+memory.  So it will be initialized to <code>VM_MAX_RAM</code> and after an <code>ALOC</code> it will point directly to<br />
+the new buffer.</p>
+<p>To avoid the need to synchronize the behaviours between this library and the two allocation<br />
+modes, i.e., before and after the breaking change, we allocate 1 extra byte here and still<br />
+return <code>$hp + 1</code>.  So prior to the VM change every allocation will have an unused byte <em>after</em><br />
+the buffer and after the change every allocation will have an unused byte <em>before</em> the buffer.</p>
 </div></details></section></div></main><script src="../assets/highlight.js"></script><script>hljs.highlightAll();</script></body></html>
