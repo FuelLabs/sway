@@ -457,7 +457,7 @@ impl TyDeclaration {
                 decl_id,
                 decl_span,
             } => ok(
-                DeclRef::new(name.clone(), decl_id.clone(), decl_span.clone()),
+                DeclRef::new(name.clone(), *decl_id, decl_span.clone()),
                 vec![],
                 vec![],
             ),
@@ -484,7 +484,7 @@ impl TyDeclaration {
                 decl_id,
                 decl_span,
             } => ok(
-                DeclRef::new(name.clone(), decl_id.clone(), decl_span.clone()),
+                DeclRef::new(name.clone(), *decl_id, decl_span.clone()),
                 vec![],
                 vec![],
             ),
@@ -661,11 +661,7 @@ impl TyDeclaration {
                 decl_span,
             } => type_engine.insert(
                 decl_engine,
-                TypeInfo::Struct(DeclRef::new(
-                    name.clone(),
-                    decl_id.clone(),
-                    decl_span.clone(),
-                )),
+                TypeInfo::Struct(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
             ),
             TyDeclaration::EnumDeclaration {
                 name,
@@ -673,11 +669,7 @@ impl TyDeclaration {
                 decl_span,
             } => type_engine.insert(
                 decl_engine,
-                TypeInfo::Enum(DeclRef::new(
-                    name.clone(),
-                    decl_id.clone(),
-                    decl_span.clone(),
-                )),
+                TypeInfo::Enum(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
             ),
             TyDeclaration::StorageDeclaration { decl_id, .. } => {
                 let storage_decl = decl_engine.get_storage(decl_id);
