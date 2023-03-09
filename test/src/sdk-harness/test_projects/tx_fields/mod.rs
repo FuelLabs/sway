@@ -545,13 +545,13 @@ mod inputs {
                 let mut executable = handler.get_executable_call().await.unwrap();
                 add_message_input(&mut executable, wallet.clone()).await;
 
+                let messages = wallet.get_messages().await?;
+                let message_id: [u8; 32] = *messages[0].message_id();
+
                 let receipts = executable
                     .execute(&wallet.get_provider().unwrap())
                     .await
                     .unwrap();
-
-                let messages = wallet.get_messages().await?;
-                let message_id: [u8; 32] = *messages[0].message_id();
 
                 assert_eq!(receipts[1].data().unwrap(), message_id);
                 Ok(())
@@ -564,11 +564,11 @@ mod inputs {
                 let mut executable = handler.get_executable_call().await.unwrap();
                 add_message_input(&mut executable, wallet.clone()).await; // let result = contract_instance
 
+                let messages = wallet.get_messages().await?;
                 let receipts = executable
                     .execute(&wallet.get_provider().unwrap())
                     .await
                     .unwrap();
-                let messages = wallet.get_messages().await?;
 
                 assert_eq!(receipts[1].data().unwrap(), *messages[0].sender.hash());
                 Ok(())
@@ -581,11 +581,11 @@ mod inputs {
                 let mut executable = handler.get_executable_call().await.unwrap();
                 add_message_input(&mut executable, wallet.clone()).await;
 
+                let messages = wallet.get_messages().await?;
                 let receipts = executable
                     .execute(&wallet.get_provider().unwrap())
                     .await
                     .unwrap();
-                let messages = wallet.get_messages().await?;
                 assert_eq!(receipts[1].data().unwrap(), *messages[0].recipient.hash());
                 Ok(())
             }
@@ -597,11 +597,11 @@ mod inputs {
                 let mut executable = handler.get_executable_call().await.unwrap();
                 add_message_input(&mut executable, wallet.clone()).await;
 
+                let messages = wallet.get_messages().await?;
                 let receipts = executable
                     .execute(&wallet.get_provider().unwrap())
                     .await
                     .unwrap();
-                let messages = wallet.get_messages().await?;
                 let nonce: u64 = messages[0].nonce.clone().into();
                 assert_eq!(receipts[1].val().unwrap(), nonce);
                 Ok(())
