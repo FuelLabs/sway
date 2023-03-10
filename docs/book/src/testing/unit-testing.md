@@ -115,9 +115,7 @@ abi MyContract2 {
 #[test]
 fn test_contract_multi_call() {
   let caller = abi(MyContract, CONTRACT_ID);
-
-  let contract2_id = 0xad4770679dec457bd9c0875d5ea52d75ac735ef28c0187d0bf7ee1dff5b9cee3;
-  let caller2 = abi(MyContract2, contract2_id);
+  let caller2 = abi(MyContract2, contract2::CONTRACT_ID);
 
   let should_be_true  = caller.test_true {}();
   let should_be_false = caller2.test_false {}();
@@ -127,4 +125,4 @@ fn test_contract_multi_call() {
 }
 ```
 
-> **Note:** In order for this example to work, the package hosting this contract must declare the package implementing the `MyContract2` ABI as a contract dependency. When running the `forc test` command, the IDs of any contracts that are dependencies of the currently tested contract will be displayed.
+> **Note:** In order for this example to work, the package hosting this contract must declare the package implementing the `MyContract2` ABI as a contract dependency.
