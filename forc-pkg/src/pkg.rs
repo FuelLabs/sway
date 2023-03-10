@@ -516,8 +516,8 @@ impl Built {
     pub fn into_members<'a>(
         &'a self,
     ) -> Box<dyn Iterator<Item = (&Pinned, Arc<BuiltPackage>)> + 'a> {
-        // NOTE: Pkg clones in this function are only reference increments not inner value clones.
-        // Since pkg is of type `Arc<_>`. So it is not a heavy opeartion.
+        // NOTE: Since pkg is a `Arc<_>`, pkg clones in this function are only reference
+        // increments. `BuiltPackage` struct does not get copied.`
         match self {
             Built::Package(pkg) => {
                 let pinned = &pkg.as_ref().descriptor.pinned;
