@@ -120,6 +120,7 @@ pub(crate) fn reassign_storage_subfield(
     fields: Vec<Ident>,
     rhs: Expression,
     span: Span,
+    storage_keyword_span: Span,
 ) -> CompileResult<ty::TyStorageReassignment> {
     let mut errors = vec![];
     let mut warnings = vec![];
@@ -219,6 +220,7 @@ pub(crate) fn reassign_storage_subfield(
 
     ok(
         ty::TyStorageReassignment {
+            storage_keyword_span,
             fields: type_checked_buf,
             ix,
             rhs,

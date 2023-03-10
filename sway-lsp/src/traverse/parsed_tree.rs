@@ -320,7 +320,13 @@ impl Parse for ReassignmentExpression {
             ReassignmentTarget::VariableExpression(exp) => {
                 exp.parse(ctx);
             }
-            ReassignmentTarget::StorageField(idents) => {
+            ReassignmentTarget::StorageField(storage_keyword_span, idents) => {
+                let storage_ident = Ident::new(storage_keyword_span.clone());
+                ctx.tokens.insert(
+                    to_ident_key(&storage_ident),
+                    Token::from_parsed(AstToken::Ident(storage_ident), SymbolKind::Storage),
+                );
+
                 for ident in idents {
                     ctx.tokens.insert(
                         to_ident_key(ident),
