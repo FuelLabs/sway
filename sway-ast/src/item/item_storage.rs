@@ -1,6 +1,6 @@
 use crate::priv_prelude::*;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct ItemStorage {
     pub storage_token: StorageToken,
     pub fields: Braces<Punctuated<Annotated<StorageField>, CommaToken>>,
@@ -12,7 +12,7 @@ impl Spanned for ItemStorage {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct StorageField {
     pub name: Ident,
     pub colon_token: ColonToken,

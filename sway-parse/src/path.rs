@@ -128,3 +128,56 @@ impl Parse for QualifiedPathRoot {
         Ok(QualifiedPathRoot { ty, as_trait })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use insta::*;
+    use std::sync::Arc;
+
+    fn parse_path_expr(input: &str) -> PathExpr {
+        let handler = <_>::default();
+        let ts = crate::token::lex(&handler, &Arc::from(input), 0, input.len(), None).unwrap();
+        Parser::new(&handler, &ts)
+            .parse()
+            .unwrap_or_else(|_| panic!("Parse error: {:?}", handler.consume().0))
+    }
+
+    #[test]
+    fn parse_nested_path() {
+        assert_ron_snapshot!(parse_path_expr(r#"
+            std::vec::Vec
+        "#,), @r###"
+        PathExpr(
+          root_opt: None,
+          prefix: PathExprSegment(
+            name: Ident(
+              to_string: "std",
+              span: (13, 16),
+            ),
+            generics_opt: None,
+          ),
+          suffix: [
+            (DoubleColonToken(
+              span: (16, 18),
+            ), PathExprSegment(
+              name: Ident(
+                to_string: "vec",
+                span: (18, 21),
+              ),
+              generics_opt: None,
+            )),
+            (DoubleColonToken(
+              span: (21, 23),
+            ), PathExprSegment(
+              name: Ident(
+                to_string: "Vec",
+                span: (23, 26),
+              ),
+              generics_opt: None,
+            )),
+          ],
+        )
+        "###);
+    }
+}

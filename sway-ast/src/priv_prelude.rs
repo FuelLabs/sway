@@ -36,6 +36,7 @@ pub use {
     },
     extension_trait::extension_trait,
     num_bigint::BigUint,
+    serde::{Serialize, Serializer},
     std::{
         fmt, marker::PhantomData, mem, ops::ControlFlow, path::PathBuf, str::FromStr, sync::Arc,
     },

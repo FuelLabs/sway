@@ -1,11 +1,11 @@
 use crate::priv_prelude::*;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub enum ItemImplItem {
     Fn(ItemFn),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct ItemImpl {
     pub impl_token: ImplToken,
     pub generic_params_opt: Option<GenericParams>,
