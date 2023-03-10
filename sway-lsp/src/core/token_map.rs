@@ -42,15 +42,26 @@ impl TokenMap {
         token: &Token,
         engines: Engines<'s>,
     ) -> impl 's + Iterator<Item = (Ident, Token)> {
-        let current_type_id = token.declared_token_span(engines);
+        let current_type_id = token.declared_token_span(type_engine, decl_engine);
+        eprintln!("current_type_id = {:#?}", current_type_id);
 
         self.iter()
             .filter(move |item| {
-                let ((_, _), token) = item.pair();
-                current_type_id == token.declared_token_span(engines)
+                let ((_, span), token) = item.pair();
+                if span.as_str() == "Red" {
+                    eprintln!("filtering span = {:#?}", span);
+                }
+                let decl_span = token.declared_token_span(type_engine, decl_engine);
+                if let Some(name) = &decl_span {
+                    if name.as_str() == "Red" {
+                        eprintln!("decl_span = {:#?}", &name);
+                    }
+                }
+                current_type_id == decl_span || Some(span) == current_type_id.as_ref()
             })
             .map(|item| {
                 let ((ident, _), token) = item.pair();
+                eprintln!("ident to rename = {:#?}", ident);
                 (ident.clone(), token.clone())
             })
     }

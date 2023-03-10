@@ -1621,19 +1621,33 @@ async fn rename() {
         test_fixtures_dir().join("renaming/src/main.sw"),
     )
     .await;
+    let mut i = 0..;
 
+    // let req = RequestParams {
+    //     uri: &uri,
+    //     line: 19,
+    //     char: 13,
+    // };
+    // let rename = Rename {
+    //     req: &req,
+    //     new_name: "pnt",
+    // };
+    //let _ = lsp::prepare_rename_request(&mut service, &req, &mut i).await;
+    //let _ = lsp::rename_request(&mut service, &rename, &mut i).await;
+
+    // Enum Variant
     let req = RequestParams {
         uri: &uri,
-        line: 19,
-        char: 13,
+        line: 18,
+        char: 20,
     };
     let rename = Rename {
         req: &req,
-        new_name: "pnt",
+        new_name: "Pink",
     };
-
-    let mut i = 0..;
     let _ = lsp::prepare_rename_request(&mut service, &req, &mut i).await;
+    let _ = lsp::rename_request(&mut service, &rename, &mut i).await;
+
 }
 
 #[tokio::test]

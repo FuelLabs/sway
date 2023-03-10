@@ -493,3 +493,28 @@ pub(crate) async fn prepare_rename_request<'a>(
     let prepare_rename_res: Option<PrepareRenameResponse> = serde_json::from_value(value).unwrap();
     prepare_rename_res.unwrap()
 }
+
+pub(crate) async fn rename_request<'a>(
+    service: &mut LspService<Backend>,
+    rename: &'a Rename<'a>,
+    ids: &mut impl Iterator<Item = i64>,
+) -> WorkspaceEdit {
+    let params = json!({
+        "textDocument": {
+            "uri": rename.req.uri,
+        },
+        "position": {
+            "line": rename.req.line,
+            "character": rename.req.char
+        },
+        "newName": rename.new_name
+    });
+    let rename = build_request_with_id("textDocument/rename", params, ids.next().unwrap());
+    let response = call_request(service, rename.clone())
+        .await
+        .unwrap()
+        .unwrap();
+    let value = response.result().unwrap().clone();
+    let worspace_edit: Option<WorkspaceEdit> = serde_json::from_value(value).unwrap();
+    worspace_edit.unwrap()
+}

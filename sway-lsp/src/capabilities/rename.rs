@@ -19,12 +19,11 @@ pub fn rename(
     url: Url,
     position: Position,
 ) -> Option<WorkspaceEdit> {
+    // Make sure the new name is not a keyword
     let compiler_keywords: Vec<_> = sway_parse::RESERVED_KEYWORDS
         .iter()
         .map(|s| s.to_string())
         .collect();
-
-    // Make sure the new name is not a keyword
     if compiler_keywords.contains(&new_name) {
         return None;
     }
@@ -33,10 +32,10 @@ pub fn rename(
         return None;
     }
 
-    let (_, token) = session.token_map().token_at_position(&url, position)?;
+    let (ident, token) = session.token_map().token_at_position(&url, position)?;
+    eprintln!("original ident = {:#?}", ident);
     let mut edits = Vec::new();
 
-    // todo: currently only supports single file rename
     for (ident, _) in session.token_map().all_references_of_token(
         &token,
         &session.type_engine.read(),
