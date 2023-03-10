@@ -185,6 +185,7 @@ impl RenderedDocumentation {
                 parent.push(child_prefix);
                 child_prefix = parent;
             }
+            println!("{:?}", module_map);
             // Above we check for the module a link belongs to, here we want _all_ links so the check is much more shallow.
             match doc.item_body.ty_decl {
                 StructDeclaration { .. } => match all_docs.links.get_mut(&BlockTitle::Structs) {
@@ -329,7 +330,7 @@ impl HTMLString {
 
 /// All necessary components to render the header portion of
 /// the item html doc.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct ItemHeader {
     pub(crate) module_info: ModuleInfo,
     pub(crate) friendly_name: &'static str,
@@ -377,7 +378,7 @@ impl Renderable for ItemHeader {
 /// All necessary components to render the body portion of
 /// the item html doc. Many parts of the HTML body structure will be the same
 /// for each item, but things like struct fields vs trait methods will be different.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct ItemBody {
     pub(crate) module_info: ModuleInfo,
     pub(crate) ty_decl: TyDeclaration,
@@ -496,7 +497,7 @@ impl Renderable for ItemBody {
         })
     }
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) enum ContextType {
     /// structs
     StructFields(Vec<TyStructField>),
@@ -535,7 +536,7 @@ impl DocBlockTitle for ContextType {
 ///     context_type: ContextType::RequiredMethods(Vec<TyTraitFn>), /* trait fn foo() stored here */
 /// }
 /// ```
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct Context {
     module_info: ModuleInfo,
     context_type: ContextType,
@@ -731,7 +732,7 @@ impl Renderable for Context {
         })
     }
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 /// The context section of an item that appears in the page [ItemBody].
 pub(crate) struct ItemContext {
     pub(crate) context_opt: Option<Context>,
