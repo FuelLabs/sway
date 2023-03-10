@@ -397,7 +397,7 @@ impl ty::TyDeclaration {
                 span,
                 fields,
                 attributes,
-                ..
+                storage_keyword,
             }) => {
                 let mut fields_buf = Vec::with_capacity(fields.len());
                 for parsed::StorageField {
@@ -432,7 +432,12 @@ impl ty::TyDeclaration {
                         attributes,
                     });
                 }
-                let decl = ty::TyStorageDeclaration::new(fields_buf, span, attributes);
+                let decl = ty::TyStorageDeclaration {
+                    fields: fields_buf,
+                    span,
+                    attributes,
+                    storage_keyword,
+                };
                 let decl_ref = decl_engine.insert(decl);
                 // insert the storage declaration into the symbols
                 // if there already was one, return an error that duplicate storage

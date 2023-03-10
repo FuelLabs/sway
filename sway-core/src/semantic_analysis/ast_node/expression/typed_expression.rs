@@ -1731,12 +1731,12 @@ impl ty::TyExpression {
                     errors,
                 )
             }
-            ReassignmentTarget::StorageField(fields) => {
+            ReassignmentTarget::StorageField(storage_keyword_span, fields) => {
                 let ctx = ctx
                     .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown))
                     .with_help_text("");
                 let reassignment = check!(
-                    reassign_storage_subfield(ctx, fields, rhs, span.clone()),
+                    reassign_storage_subfield(ctx, fields, rhs, span.clone(), storage_keyword_span),
                     return err(warnings, errors),
                     warnings,
                     errors,

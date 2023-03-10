@@ -13,12 +13,12 @@ pub struct TyStorageDeclaration {
     pub fields: Vec<TyStorageField>,
     pub span: Span,
     pub attributes: transform::AttributesMap,
-    name: Ident,
+    pub storage_keyword: Ident,
 }
 
 impl Named for TyStorageDeclaration {
     fn name(&self) -> &Ident {
-        &self.name
+        &self.storage_keyword
     }
 }
 
@@ -37,7 +37,7 @@ impl HashWithEngines for TyStorageDeclaration {
             // reliable source of obj v. obj distinction
             span: _,
             attributes: _,
-            name: _,
+            storage_keyword: _,
         } = self;
         fields.hash(state, engines);
     }
@@ -50,19 +50,6 @@ impl Spanned for TyStorageDeclaration {
 }
 
 impl TyStorageDeclaration {
-    pub fn new(
-        fields: Vec<TyStorageField>,
-        span: Span,
-        attributes: transform::AttributesMap,
-    ) -> Self {
-        TyStorageDeclaration {
-            name: Ident::new_with_override("storage".to_string(), span.clone()),
-            fields,
-            span,
-            attributes,
-        }
-    }
-
     /// Given a field, find its type information in the declaration and return it. If the field has not
     /// been declared as a part of storage, return an error.
     pub fn apply_storage_load(

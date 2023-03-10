@@ -804,18 +804,91 @@ impl<'a> TypedTree<'a> {
                 }
             }
             ty::TyExpressionVariant::StorageReassignment(storage_reassignment) => {
-                for field in &storage_reassignment.fields {
+                let type_engine = self.ctx.engines.te();
+                let decl_engine = self.ctx.engines.de();
+
+                // collect storage keyword
+                if let Some(mut token) = self
+                    .ctx
+                    .tokens
+                    .try_get_mut(&to_ident_key(&Ident::new(
+                        storage_reassignment.storage_keyword_span.clone(),
+                    )))
+                    .try_unwrap()
+                {
+                    token.typed = Some(TypedAstToken::TyStorageResassignment(
+                        storage_reassignment.clone(),
+                    ));
+                    if let Some(storage) = self.namespace.get_declared_storage(decl_engine) {
+                        token.type_def = Some(TypeDefinition::Ident(storage.storage_keyword));
+                    }
+                }
+
+                if let Some((head_field, tail_fields)) = storage_reassignment.fields.split_first() {
+                    // collect the first ident as a field of the storage definition
                     if let Some(mut token) = self
                         .ctx
                         .tokens
-                        .try_get_mut(&to_ident_key(&field.name))
+                        .try_get_mut(&to_ident_key(&head_field.name))
                         .try_unwrap()
                     {
                         token.typed = Some(TypedAstToken::TypeCheckedStorageReassignDescriptor(
-                            field.clone(),
+                            head_field.clone(),
                         ));
+
+                        if let Some(storage_field) = self
+                            .namespace
+                            .get_declared_storage(decl_engine)
+                            .and_then(|storage| {
+                                // find the corresponding field in the storage declaration
+                                storage
+                                    .fields
+                                    .into_iter()
+                                    .find(|f| f.name.as_str() == head_field.name.as_str())
+                            })
+                        {
+                            token.type_def = Some(TypeDefinition::Ident(storage_field.name));
+                        }
+                    }
+
+                    // collect the rest of the idents as fields of their respective types
+                    for (field, container_type_id) in tail_fields
+                        .iter()
+                        .zip(storage_reassignment.fields.iter().map(|f| f.type_id))
+                    {
+                        if let Some(mut token) = self
+                            .ctx
+                            .tokens
+                            .try_get_mut(&to_ident_key(&field.name))
+                            .try_unwrap()
+                        {
+                            token.typed = Some(
+                                TypedAstToken::TypeCheckedStorageReassignDescriptor(field.clone()),
+                            );
+
+                            match type_engine.get(container_type_id) {
+                                TypeInfo::Struct(decl_ref) => {
+                                    if let Some(field_name) = decl_engine
+                                        .get_struct(&decl_ref)
+                                        .fields
+                                        .iter()
+                                        .find(|struct_field| {
+                                            // find the corresponding field in the containing type declaration
+                                            struct_field.name.as_str() == field.name.as_str()
+                                        })
+                                        .map(|struct_field| struct_field.name.clone())
+                                    {
+                                        token.type_def = Some(TypeDefinition::Ident(field_name));
+                                    }
+                                }
+                                _ => {
+                                    token.type_def = Some(TypeDefinition::TypeId(field.type_id));
+                                }
+                            }
+                        }
                     }
                 }
+
                 self.handle_expression(&storage_reassignment.rhs);
             }
             ty::TyExpressionVariant::Return(exp) => self.handle_expression(exp),

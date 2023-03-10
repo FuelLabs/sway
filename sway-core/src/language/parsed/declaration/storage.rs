@@ -8,6 +8,7 @@ pub struct StorageDeclaration {
     pub attributes: transform::AttributesMap,
     pub fields: Vec<StorageField>,
     pub span: Span,
+    pub storage_keyword: Ident,
 }
 
 /// An individual field in a storage declaration.

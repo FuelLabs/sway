@@ -831,6 +831,7 @@ fn item_storage_to_storage_declaration(
         attributes,
         span,
         fields,
+        storage_keyword: item_storage.storage_token.into(),
     };
     Ok(storage_declaration)
 }
@@ -3530,7 +3531,7 @@ fn assignable_to_reassignment_target(
             Assignable::Var(name) => {
                 if name.as_str() == "storage" {
                     let idents = idents.into_iter().rev().cloned().collect();
-                    return Ok(ReassignmentTarget::StorageField(idents));
+                    return Ok(ReassignmentTarget::StorageField(name.span(), idents));
                 }
                 break;
             }
