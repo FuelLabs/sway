@@ -1,6 +1,6 @@
 /*!
   Highlight.js v11.3.1 (git: 2a972d8658)
-  (c) 2006-2022 Ivan Sagalaev and other contributors
+  (c) 2006-2023 Ivan Sagalaev and other contributors
   License: BSD-3-Clause
  */
 var hljs=function(){"use strict";var e={exports:{}};function t(e){
@@ -310,9 +310,9 @@ illegal:"</",contains:[e.C_LINE_COMMENT_MODE,e.COMMENT("/\\*","\\*/",{
 contains:["self"]}),e.inherit(e.QUOTE_STRING_MODE,{begin:/b?"/,illegal:null}),{
 className:"string",variants:[{begin:/b?r(#*)"(.|\n)*?"\1(?!#)/},{
 begin:/b?'\\?(x\w{2}|u\w{4}|U\w{8}|.)'/}]},{className:"symbol",
-begin:/'[a-zA-Z_][a-zA-Z0-9_]*/},{className:"number",variants:[{
-begin:"\\b0b([01_]+)"+n},{begin:"\\b0o([0-7_]+)"+n},{
-begin:"\\b0x([A-Fa-f0-9_]+)"+n},{
+begin:/'[a-zA-Z_][a-zA-Z0-9_]*/},{scope:"meta",match:/#\[.*\]/},{
+className:"number",variants:[{begin:"\\b0b([01_]+)"+n},{begin:"\\b0o([0-7_]+)"+n
+},{begin:"\\b0x([A-Fa-f0-9_]+)"+n},{
 begin:"\\b(\\d[\\d_]*(\\.[0-9_]+)?([eE][+-]?[0-9_]+)?)"+n}],relevance:0},{
 begin:[/fn/,/\s+/,e.UNDERSCORE_IDENT_RE],className:{1:"keyword",
 3:"title.function"}},{

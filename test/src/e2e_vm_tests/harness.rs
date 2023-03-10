@@ -135,7 +135,7 @@ pub(crate) fn runs_in_vm(
     script: BuiltPackage,
     script_data: Option<Vec<u8>>,
 ) -> Result<VMExecutionResult> {
-    match script.build_target {
+    match script.descriptor.target {
         BuildTarget::Fuel => {
             let storage = MemoryStorage::default();
 
@@ -307,7 +307,7 @@ pub(crate) fn test_json_abi(file_name: &str, built_package: &BuiltPackage) -> Re
 
 fn emit_json_abi(file_name: &str, built_package: &BuiltPackage) -> Result<()> {
     tracing::info!("ABI gen {} ...", file_name.bold());
-    let json_abi = match &built_package.json_abi_program {
+    let json_abi = match &built_package.program_abi {
         ProgramABI::Fuel(abi) => serde_json::json!(abi),
         ProgramABI::Evm(abi) => serde_json::json!(abi),
         ProgramABI::MidenVM(_) => todo!(),

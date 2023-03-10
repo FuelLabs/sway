@@ -29,9 +29,9 @@ abi TestContract {
 }
 
 impl TestContract for Contract {
-// ANCHOR: using_configurables
+    // ANCHOR: using_configurables
     fn return_configurables() -> (u8, bool, [u32; 3], str[4], StructWithGeneric<u8>) {
         (U8, BOOL, ARRAY, STR_4, STRUCT)
     }
-// ANCHOR_END: using_configurables
+    // ANCHOR_END: using_configurables
 }

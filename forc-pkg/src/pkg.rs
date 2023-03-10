@@ -46,7 +46,7 @@ use sway_core::{
     semantic_analysis::namespace,
     source_map::SourceMap,
     transform::AttributeKind,
-    BuildTarget, CompileResult, CompiledBytecode, Engines, FinalizedEntry, TypeEngine,
+    BuildTarget, CompileResult, Engines, FinalizedEntry, TypeEngine,
 };
 use sway_error::{error::CompileError, warning::CompileWarning};
 use sway_types::{Ident, Span, Spanned};
@@ -101,15 +101,13 @@ pub struct PinnedId(u64);
 /// The result of successfully compiling a package.
 #[derive(Debug, Clone)]
 pub struct BuiltPackage {
-    pub build_target: BuildTarget,
-    pub json_abi_program: ProgramABI,
+    pub descriptor: PackageDescriptor,
+    pub program_abi: ProgramABI,
     pub storage_slots: Vec<StorageSlot>,
-    pub bytecode: BuiltPackageBytecode,
     pub warnings: Vec<CompileWarning>,
-    pub tree_type: TreeType,
     source_map: SourceMap,
-    pub pkg_name: String,
-    pub built_pkg_descriptor: BuiltPackageDescriptor,
+    pub tree_type: TreeType,
+    pub bytecode: BuiltPackageBytecode,
     /// `Some` for contract member builds where tests were included. This is
     /// required so that we can deploy once instance of the contract (without
     /// tests) with a valid contract ID before executing the tests as scripts.
@@ -118,21 +116,21 @@ pub struct BuiltPackage {
     pub bytecode_without_tests: Option<BuiltPackageBytecode>,
 }
 
+/// The package descriptors that a `BuiltPackage` holds so that the source used for building the
+/// package can be retrieved later on.
+#[derive(Debug, Clone)]
+pub struct PackageDescriptor {
+    pub name: String,
+    pub target: BuildTarget,
+    pub manifest_file: PackageManifestFile,
+    pub pinned: Pinned,
+}
+
 /// The bytecode associated with a built package along with its entry points.
 #[derive(Debug, Clone)]
 pub struct BuiltPackageBytecode {
     pub bytes: Vec<u8>,
     pub entries: Vec<PkgEntry>,
-}
-
-/// The package descriptors that a `BuiltPackage` holds so that the source used for building the
-/// package can be retrieved later on.
-#[derive(Debug, Clone)]
-pub struct BuiltPackageDescriptor {
-    /// The manifest file of the package.
-    pub manifest_file: PackageManifestFile,
-    /// The pinned version of the package.
-    pub pinned: Pinned,
 }
 
 /// Represents a package entry point.
@@ -175,6 +173,26 @@ pub enum Built {
     /// Represents a workspace build.
     Workspace(BuiltWorkspace),
 }
+
+/// The result of the `compile` function, i.e. compiling a single package.
+pub struct CompiledPackage {
+    pub source_map: SourceMap,
+    pub tree_type: TreeType,
+    pub program_abi: ProgramABI,
+    pub storage_slots: Vec<StorageSlot>,
+    pub bytecode: BuiltPackageBytecode,
+    pub namespace: namespace::Root,
+    pub warnings: Vec<CompileWarning>,
+}
+
+/// Compiled contract dependency parts relevant to calculating a contract's ID.
+pub struct CompiledContractDependency {
+    pub bytecode: Vec<u8>,
+    pub storage_slots: Vec<StorageSlot>,
+}
+
+/// The set of compiled contract dependencies, provided to dependency namespace construction.
+pub type CompiledContractDeps = HashMap<NodeIx, CompiledContractDependency>;
 
 /// A package uniquely identified by name along with its source.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
@@ -425,29 +443,27 @@ impl BuiltPackage {
 
         self.write_bytecode(&bin_path)?;
 
-        let json_abi_program_stem = format!("{pkg_name}-abi");
-        let json_abi_program_path = output_dir
-            .join(json_abi_program_stem)
-            .with_extension("json");
-        match &self.json_abi_program {
-            ProgramABI::Fuel(json_abi_program) => {
-                if !json_abi_program.functions.is_empty() {
-                    let file = File::create(json_abi_program_path)?;
+        let program_abi_stem = format!("{pkg_name}-abi");
+        let program_abi_path = output_dir.join(program_abi_stem).with_extension("json");
+        match &self.program_abi {
+            ProgramABI::Fuel(program_abi) => {
+                if !program_abi.functions.is_empty() {
+                    let file = File::create(program_abi_path)?;
                     let res = if minify.json_abi {
-                        serde_json::to_writer(&file, &json_abi_program)
+                        serde_json::to_writer(&file, &program_abi)
                     } else {
-                        serde_json::to_writer_pretty(&file, &json_abi_program)
+                        serde_json::to_writer_pretty(&file, &program_abi)
                     };
                     res?
                 }
             }
-            ProgramABI::Evm(json_abi_program) => {
-                if !json_abi_program.is_empty() {
-                    let file = File::create(json_abi_program_path)?;
+            ProgramABI::Evm(program_abi) => {
+                if !program_abi.is_empty() {
+                    let file = File::create(program_abi_path)?;
                     let res = if minify.json_abi {
-                        serde_json::to_writer(&file, &json_abi_program)
+                        serde_json::to_writer(&file, &program_abi)
                     } else {
-                        serde_json::to_writer_pretty(&file, &json_abi_program)
+                        serde_json::to_writer_pretty(&file, &program_abi)
                     };
                     res?
                 }
@@ -461,11 +477,9 @@ impl BuiltPackage {
         match self.tree_type {
             TreeType::Contract => {
                 // For contracts, emit a JSON file with all the initialized storage slots.
-                let json_storage_slots_stem = format!("{pkg_name}-storage_slots");
-                let json_storage_slots_path = output_dir
-                    .join(json_storage_slots_stem)
-                    .with_extension("json");
-                let storage_slots_file = File::create(json_storage_slots_path)?;
+                let storage_slots_stem = format!("{pkg_name}-storage_slots");
+                let storage_slots_path = output_dir.join(storage_slots_stem).with_extension("json");
+                let storage_slots_file = File::create(storage_slots_path)?;
                 let res = if minify.json_storage_slots {
                     serde_json::to_writer(&storage_slots_file, &self.storage_slots)
                 } else {
@@ -503,7 +517,7 @@ impl Built {
     pub fn into_members(self) -> Result<HashMap<String, BuiltPackage>> {
         match self {
             Built::Package(built_pkg) => {
-                Ok(std::iter::once((built_pkg.pkg_name.clone(), *built_pkg)).collect())
+                Ok(std::iter::once((built_pkg.descriptor.name.clone(), *built_pkg)).collect())
             }
             Built::Workspace(built_workspace) => Ok(built_workspace),
         }
@@ -1501,7 +1515,7 @@ pub const CONTRACT_ID_CONSTANT_NAME: &str = "CONTRACT_ID";
 /// then the std prelude will also be added.
 pub fn dependency_namespace(
     lib_namespace_map: &HashMap<NodeIx, namespace::Module>,
-    compiled_contract_deps: &HashMap<NodeIx, BuiltPackage>,
+    compiled_contract_deps: &CompiledContractDeps,
     graph: &Graph,
     node: NodeIx,
     constants: BTreeMap<String, ConfigTimeConstant>,
@@ -1528,13 +1542,11 @@ pub fn dependency_namespace(
                 .expect("no namespace module"),
             DepKind::Contract { salt } => {
                 let mut constants = BTreeMap::default();
-                let compiled_dep = compiled_contract_deps.get(&dep_node);
-                let dep_contract_id = match compiled_dep {
-                    Some(dep_contract_compiled) => contract_id(dep_contract_compiled, &salt),
+                let dep_contract_id = compiled_contract_deps
+                    .get(&dep_node)
+                    .map(|dep| contract_id(dep.bytecode.clone(), dep.storage_slots.clone(), &salt))
                     // On `check` we don't compile contracts, so we use a placeholder.
-                    None => ContractId::default(),
-                };
-
+                    .unwrap_or_default();
                 // Construct namespace with contract id
                 let contract_id_value = format!("0x{dep_contract_id}");
                 let contract_id_constant = ConfigTimeConstant {
@@ -1638,18 +1650,17 @@ fn find_core_dep(graph: &Graph, node: NodeIx) -> Option<NodeIx> {
 
 /// Compiles the package to an AST.
 pub fn compile_ast(
-    engines: Engines<'_>,
-    manifest: &PackageManifestFile,
-    build_target: BuildTarget,
+    pkg: &PackageDescriptor,
     build_profile: &BuildProfile,
+    engines: Engines<'_>,
     namespace: namespace::Module,
     package_name: &str,
 ) -> Result<CompileResult<ty::TyProgram>> {
-    let source = manifest.entry_string()?;
+    let source = pkg.manifest_file.entry_string()?;
     let sway_build_config = sway_build_config(
-        manifest.dir(),
-        &manifest.entry_path(),
-        build_target,
+        pkg.manifest_file.dir(),
+        &pkg.manifest_file.entry_path(),
+        pkg.target,
         build_profile,
     )?;
     let ast_res = sway_core::compile_to_ast(
@@ -1681,19 +1692,12 @@ pub fn compile_ast(
 ///
 /// Scripts and Predicates will be compiled to bytecode and will not emit any JSON ABI.
 pub fn compile(
-    pkg: &Pinned,
-    manifest: &PackageManifestFile,
-    compile_ctx: CompilePkgCtx,
+    pkg: &PackageDescriptor,
+    profile: &BuildProfile,
+    engines: Engines<'_>,
     namespace: namespace::Module,
     source_map: &mut SourceMap,
-) -> Result<(BuiltPackage, namespace::Root)> {
-    let CompilePkgCtx {
-        profile,
-        engines,
-        target,
-        without_tests_bytecode,
-        ..
-    } = compile_ctx;
+) -> Result<CompiledPackage> {
     // Time the given expression and print the result if `build_config.time_phases` is true.
     macro_rules! time_expr {
         ($description:expr, $expression:expr) => {{
@@ -1712,10 +1716,10 @@ pub fn compile(
         }};
     }
 
-    let entry_path = manifest.entry_path();
+    let entry_path = pkg.manifest_file.entry_path();
     let sway_build_config = time_expr!(
         "produce `sway_core::BuildConfig`",
-        sway_build_config(manifest.dir(), &entry_path, *target, profile)?
+        sway_build_config(pkg.manifest_file.dir(), &entry_path, pkg.target, profile)?
     );
     let terse_mode = profile.terse;
     let fail = |warnings, errors| {
@@ -1726,7 +1730,7 @@ pub fn compile(
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
     let ast_res = time_expr!(
         "compile to ast",
-        compile_ast(engines, manifest, *target, profile, namespace, &pkg.name)?
+        compile_ast(pkg, profile, engines, namespace, &pkg.name)?
     );
     let typed_program = match ast_res.value.as_ref() {
         None => return fail(&ast_res.warnings, &ast_res.errors),
@@ -1751,7 +1755,7 @@ pub fn compile(
         sway_core::ast_to_asm(engines, &ast_res, &sway_build_config)
     );
 
-    let mut json_abi_program = match target {
+    let mut program_abi = match pkg.target {
         BuildTarget::Fuel => {
             let mut types = vec![];
             ProgramABI::Fuel(time_expr!(
@@ -1806,51 +1810,45 @@ pub fn compile(
         sway_core::asm_to_bytecode(asm_res, source_map)
     );
 
-    match bc_res.value {
-        Some(CompiledBytecode {
-            bytecode: bytes,
-            config_const_offsets: config_offsets,
-        }) if bc_res.errors.is_empty()
-            && (bc_res.warnings.is_empty() || !profile.error_on_warnings) =>
-        {
-            print_warnings(terse_mode, &pkg.name, &bc_res.warnings, &tree_type);
+    let errored =
+        !bc_res.errors.is_empty() || (!bc_res.warnings.is_empty() && profile.error_on_warnings);
 
-            if let ProgramABI::Fuel(ref mut json_abi_program) = json_abi_program {
-                if let Some(ref mut configurables) = json_abi_program.configurables {
-                    // Filter out all dead configurables (i.e. ones without offsets in the
-                    // bytecode)
-                    configurables.retain(|c| config_offsets.contains_key(&c.name));
+    let compiled = match bc_res.value {
+        Some(compiled) if !errored => compiled,
+        _ => return fail(&bc_res.warnings, &bc_res.errors),
+    };
 
-                    // Set the actual offsets in the JSON object
-                    for (config, offset) in config_offsets {
-                        if let Some(idx) = configurables.iter().position(|c| c.name == config) {
-                            configurables[idx].offset = offset
-                        }
-                    }
+    print_warnings(terse_mode, &pkg.name, &bc_res.warnings, &tree_type);
+
+    // TODO: This should probably be in `fuel_abi_json::generate_json_abi_program`?
+    // If ABI requires knowing config offsets, they should be inputs to ABI gen.
+    if let ProgramABI::Fuel(ref mut program_abi) = program_abi {
+        if let Some(ref mut configurables) = program_abi.configurables {
+            // Filter out all dead configurables (i.e. ones without offsets in the bytecode)
+            configurables.retain(|c| compiled.config_const_offsets.contains_key(&c.name));
+            // Set the actual offsets in the JSON object
+            for (config, offset) in compiled.config_const_offsets {
+                if let Some(idx) = configurables.iter().position(|c| c.name == config) {
+                    configurables[idx].offset = offset
                 }
             }
-
-            let built_pkg_descriptor = BuiltPackageDescriptor {
-                manifest_file: manifest.clone(),
-                pinned: pkg.clone(),
-            };
-            let bytecode = BuiltPackageBytecode { bytes, entries };
-            let built_package = BuiltPackage {
-                build_target: *target,
-                json_abi_program,
-                storage_slots,
-                bytecode,
-                warnings: bc_res.warnings,
-                tree_type,
-                source_map: source_map.to_owned(),
-                pkg_name: pkg.name.clone(),
-                built_pkg_descriptor,
-                bytecode_without_tests: without_tests_bytecode,
-            };
-            Ok((built_package, namespace))
         }
-        _ => fail(&bc_res.warnings, &bc_res.errors),
     }
+
+    let bytecode = BuiltPackageBytecode {
+        bytes: compiled.bytecode,
+        entries,
+    };
+    let compiled_package = CompiledPackage {
+        source_map: source_map.clone(),
+        program_abi,
+        storage_slots,
+        tree_type,
+        bytecode,
+        namespace,
+        warnings: bc_res.warnings,
+    };
+    Ok(compiled_package)
 }
 
 impl PkgEntry {
@@ -2093,15 +2091,20 @@ fn print_pkg_summary_header(built_pkg: &BuiltPackage) {
     let padded_ty_str = format!("{prog_ty_str:>10}");
     let padding = &padded_ty_str[..padded_ty_str.len() - prog_ty_str.len()];
     let ty_ansi = ansi_term::Colour::Green.bold().paint(prog_ty_str);
-    let name_ansi = ansi_term::Style::new().bold().paint(&built_pkg.pkg_name);
+    let name_ansi = ansi_term::Style::new()
+        .bold()
+        .paint(&built_pkg.descriptor.name);
     info!("{padding}{ty_ansi} {name_ansi}");
 }
 
 /// Returns the ContractId of a built_package contract with specified `salt`.
-pub fn contract_id(built_package: &BuiltPackage, salt: &fuel_tx::Salt) -> ContractId {
+pub fn contract_id(
+    bytecode: Vec<u8>,
+    mut storage_slots: Vec<StorageSlot>,
+    salt: &fuel_tx::Salt,
+) -> ContractId {
     // Construct the contract ID
-    let contract = Contract::from(built_package.bytecode.bytes.clone());
-    let mut storage_slots = built_package.storage_slots.clone();
+    let contract = Contract::from(bytecode);
     storage_slots.sort();
     let state_root = Contract::initial_state_root(storage_slots.iter());
     contract.id(salt, &contract.root(), &state_root)
@@ -2132,20 +2135,6 @@ fn validate_contract_deps(graph: &Graph) -> Result<()> {
     Ok(())
 }
 
-pub struct CompilePkgCtx<'a> {
-    lib_namespace_map: &'a HashMap<NodeIx, namespace::Module>,
-    compiled_contract_deps: &'a HashMap<NodeIx, BuiltPackage>,
-    constants: BTreeMap<String, ConfigTimeConstant>,
-    profile: &'a BuildProfile,
-    plan: &'a BuildPlan,
-    engines: Engines<'a>,
-    target: &'a BuildTarget,
-    /// Contains the bytecode of the current package compiled without tests. Since we are
-    /// compiling each contract without tests first, this will be only `Some(..)` for contract
-    /// members.
-    without_tests_bytecode: Option<BuiltPackageBytecode>,
-}
-
 /// Build an entire forc package and return the built_package output.
 ///
 /// This compiles all packages (including dependencies) in the order specified by the `BuildPlan`.
@@ -2158,32 +2147,6 @@ pub fn build(
     outputs: &HashSet<NodeIx>,
     const_inject_map: &ConstInjectionMap,
 ) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
-    fn compile_pkg(
-        node: NodeIx,
-        source_map: &mut SourceMap,
-        compile_ctx: CompilePkgCtx,
-    ) -> Result<(BuiltPackage, sway_core::namespace::Root)> {
-        let plan = compile_ctx.plan;
-        let graph = plan.graph();
-        let pkg = &graph[node];
-        let manifest = &plan.manifest_map()[&pkg.id()];
-
-        let dep_namespace = match dependency_namespace(
-            compile_ctx.lib_namespace_map,
-            compile_ctx.compiled_contract_deps,
-            graph,
-            node,
-            compile_ctx.constants.clone(),
-            compile_ctx.engines,
-        ) {
-            Ok(o) => o,
-            Err(errs) => {
-                print_on_failure(compile_ctx.profile.terse, &[], &errs);
-                bail!("Failed to compile {}", pkg.name);
-            }
-        };
-        compile(pkg, manifest, compile_ctx, dep_namespace, source_map)
-    }
     let mut built_packages = Vec::new();
 
     let required: HashSet<NodeIx> = outputs
@@ -2215,10 +2178,22 @@ pub fn build(
             &pkg.source.display_compiling(manifest.dir()),
         );
 
+        let descriptor = PackageDescriptor {
+            name: pkg.name.clone(),
+            target,
+            pinned: pkg.clone(),
+            manifest_file: manifest.clone(),
+        };
+
+        let fail = |warnings, errors| {
+            print_on_failure(profile.terse, warnings, errors);
+            bail!("Failed to compile {}", pkg.name);
+        };
+
         let is_contract_dependency = is_contract_dependency(plan.graph(), node);
         // If we are building a contract and tests are enabled or we are building a contract
         // dependency, we need the tests exlcuded bytecode.
-        let without_tests_bytecode = if (include_tests
+        let bytecode_without_tests = if (include_tests
             && matches!(manifest.program_type(), Ok(TreeType::Contract)))
             || is_contract_dependency
         {
@@ -2232,26 +2207,41 @@ pub fn build(
                 include_tests: false,
                 ..profile.clone()
             };
-            let compile_pkg_context = CompilePkgCtx {
-                lib_namespace_map: &lib_namespace_map,
-                compiled_contract_deps: &compiled_contract_deps,
-                constants: manifest.config_time_constants(),
-                profile: &profile,
-                plan,
+
+            let dep_namespace = match dependency_namespace(
+                &lib_namespace_map,
+                &compiled_contract_deps,
+                plan.graph(),
+                node,
+                manifest.config_time_constants().clone(),
                 engines,
-                target: &target,
-                without_tests_bytecode: None,
+            ) {
+                Ok(o) => o,
+                Err(errs) => return fail(&[], &errs),
             };
-            let (built_contract_without_tests, _) =
-                compile_pkg(node, &mut source_map, compile_pkg_context)?;
+            let compiled_without_tests = compile(
+                &descriptor,
+                &profile,
+                engines,
+                dep_namespace,
+                &mut source_map,
+            )?;
+
             // If this contract is built because tests are enabled we need to insert CONTRACT_ID
             // for the contract.
             if is_contract_dependency {
-                compiled_contract_deps.insert(node, built_contract_without_tests.clone());
+                let compiled_contract_dep = CompiledContractDependency {
+                    bytecode: compiled_without_tests.bytecode.bytes.clone(),
+                    storage_slots: compiled_without_tests.storage_slots.clone(),
+                };
+                compiled_contract_deps.insert(node, compiled_contract_dep);
             } else {
                 // `forc-test` interpreter deployments are done with zeroed salt.
-                let contract_id =
-                    contract_id(&built_contract_without_tests, &fuel_tx::Salt::zeroed());
+                let contract_id = contract_id(
+                    compiled_without_tests.bytecode.bytes.clone(),
+                    compiled_without_tests.storage_slots,
+                    &fuel_tx::Salt::zeroed(),
+                );
                 let contract_id_constant_name = CONTRACT_ID_CONSTANT_NAME.to_string();
                 let contract_id_value = format!("0x{contract_id}");
                 let contract_id_constant = ConfigTimeConstant {
@@ -2262,22 +2252,25 @@ pub fn build(
                 let constant_declarations = vec![(contract_id_constant_name, contract_id_constant)];
                 const_inject_map.insert(pkg.clone(), constant_declarations);
             }
-            Some(built_contract_without_tests.bytecode)
+
+            Some(compiled_without_tests.bytecode)
         } else {
             None
         };
 
-        let constants = if let Some(injected_ctc) = const_inject_map.get(pkg) {
-            let mut constants = manifest.config_time_constants();
-            constants.extend(
-                injected_ctc
-                    .iter()
-                    .map(|(name, ctc)| (name.clone(), ctc.clone())),
-            );
-            constants
-        } else {
-            manifest.config_time_constants()
-        };
+        let constants = const_inject_map
+            .get(pkg)
+            .map(|injected_ctc| {
+                let mut constants = manifest.config_time_constants();
+                constants.extend(
+                    injected_ctc
+                        .iter()
+                        .map(|(name, ctc)| (name.clone(), ctc.clone())),
+                );
+                constants
+            })
+            .unwrap_or_else(|| manifest.config_time_constants());
+
         // Build all non member nodes with tests disabled by overriding the current profile.
         let profile = if !plan.member_nodes().any(|member| member == node) {
             BuildProfile {
@@ -2287,38 +2280,51 @@ pub fn build(
         } else {
             profile.clone()
         };
-        let compile_pkg_context = CompilePkgCtx {
-            lib_namespace_map: &lib_namespace_map,
-            compiled_contract_deps: &compiled_contract_deps,
+
+        let dep_namespace = match dependency_namespace(
+            &lib_namespace_map,
+            &compiled_contract_deps,
+            plan.graph(),
+            node,
             constants,
-            profile: &profile,
-            plan,
             engines,
-            target: &target,
-            without_tests_bytecode,
+        ) {
+            Ok(o) => o,
+            Err(errs) => return fail(&[], &errs),
         };
-        let (mut built_package, namespace) =
-            compile_pkg(node, &mut source_map, compile_pkg_context)?;
-        if let TreeType::Library = built_package.tree_type {
-            let mut namespace = namespace::Module::from(namespace);
+        let mut compiled = compile(
+            &descriptor,
+            &profile,
+            engines,
+            dep_namespace,
+            &mut source_map,
+        )?;
+
+        if let TreeType::Library = compiled.tree_type {
+            let mut namespace = namespace::Module::from(compiled.namespace);
             namespace.name = Some(Ident::new_no_span(pkg.name.clone()));
-            namespace.span = Some(
-                Span::new(
-                    manifest.entry_string()?,
-                    0,
-                    0,
-                    Some(manifest.entry_path().into()),
-                )
-                .unwrap(),
-            );
             lib_namespace_map.insert(node, namespace);
         }
-        source_map.insert_dependency(manifest.dir());
-        if let ProgramABI::Fuel(ref mut json_abi_program) = built_package.json_abi_program {
-            standardize_json_abi_types(json_abi_program);
+        source_map.insert_dependency(descriptor.manifest_file.dir());
+
+        // TODO: This should probably be in `fuel_abi_json::generate_json_abi_program`?
+        if let ProgramABI::Fuel(ref mut program_abi) = compiled.program_abi {
+            standardize_json_abi_types(program_abi);
         }
+
+        let built_pkg = BuiltPackage {
+            descriptor,
+            program_abi: compiled.program_abi,
+            storage_slots: compiled.storage_slots,
+            source_map: compiled.source_map,
+            tree_type: compiled.tree_type,
+            bytecode: compiled.bytecode,
+            warnings: compiled.warnings,
+            bytecode_without_tests,
+        };
+
         if outputs.contains(&node) {
-            built_packages.push((node, built_package));
+            built_packages.push((node, built_pkg));
         }
     }
 

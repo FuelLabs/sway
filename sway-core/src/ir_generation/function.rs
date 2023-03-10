@@ -531,15 +531,21 @@ impl<'eng> FnCompiler<'eng> {
                     .get_storage_key()
                     .add_metadatum(context, span_md_idx))
             }
-            Intrinsic::Eq => {
+            Intrinsic::Eq | Intrinsic::Gt | Intrinsic::Lt => {
                 let lhs = &arguments[0];
                 let rhs = &arguments[1];
                 let lhs_value = self.compile_expression(context, md_mgr, lhs)?;
                 let rhs_value = self.compile_expression(context, md_mgr, rhs)?;
+                let pred = match kind {
+                    Intrinsic::Eq => Predicate::Equal,
+                    Intrinsic::Gt => Predicate::GreaterThan,
+                    Intrinsic::Lt => Predicate::LessThan,
+                    _ => unreachable!(),
+                };
                 Ok(self
                     .current_block
                     .ins(context)
-                    .cmp(Predicate::Equal, lhs_value, rhs_value))
+                    .cmp(pred, lhs_value, rhs_value))
             }
             Intrinsic::Gtf => {
                 // The index is just a Value
@@ -729,12 +735,21 @@ impl<'eng> FnCompiler<'eng> {
                     }
                 }
             }
-            Intrinsic::Add | Intrinsic::Sub | Intrinsic::Mul | Intrinsic::Div => {
+            Intrinsic::Add
+            | Intrinsic::Sub
+            | Intrinsic::Mul
+            | Intrinsic::Div
+            | Intrinsic::And
+            | Intrinsic::Or
+            | Intrinsic::Xor => {
                 let op = match kind {
                     Intrinsic::Add => BinaryOpKind::Add,
                     Intrinsic::Sub => BinaryOpKind::Sub,
                     Intrinsic::Mul => BinaryOpKind::Mul,
                     Intrinsic::Div => BinaryOpKind::Div,
+                    Intrinsic::And => BinaryOpKind::And,
+                    Intrinsic::Or => BinaryOpKind::Or,
+                    Intrinsic::Xor => BinaryOpKind::Xor,
                     _ => unreachable!(),
                 };
                 let lhs = &arguments[0];

@@ -1,13 +1,23 @@
+use std::ops::{BitAnd, BitOr, BitXor};
+
 use crate::{
+    asm_generation::from_ir::ir_type_size_in_bytes,
     decl_engine::DeclEngine,
     engine_threading::*,
-    language::{ty, CallPath},
+    language::{
+        ty::{self, TyIntrinsicFunctionKind},
+        CallPath,
+    },
     metadata::MetadataManager,
     semantic_analysis::*,
     TypeEngine,
 };
 
-use super::{convert::convert_literal_to_constant, function::FnCompiler, types::*};
+use super::{
+    convert::{convert_literal_to_constant, convert_resolved_typeid},
+    function::FnCompiler,
+    types::*,
+};
 
 use sway_error::error::CompileError;
 use sway_ir::{
@@ -16,7 +26,7 @@ use sway_ir::{
     metadata::combine as md_combine,
     module::Module,
     value::Value,
-    Instruction,
+    Instruction, Type,
 };
 use sway_types::{ident::Ident, span::Spanned};
 use sway_utils::mapped_stack::MappedStack;
@@ -446,8 +456,10 @@ fn const_eval_typed_expr(
         ty::TyExpressionVariant::MatchExp { desugared, .. } => {
             const_eval_typed_expr(lookup, known_consts, desugared)?
         }
+        ty::TyExpressionVariant::IntrinsicFunction(kind) => {
+            const_eval_intrinsic(lookup, known_consts, kind)?
+        }
         ty::TyExpressionVariant::ArrayIndex { .. }
-        | ty::TyExpressionVariant::IntrinsicFunction(_)
         | ty::TyExpressionVariant::CodeBlock(_)
         | ty::TyExpressionVariant::Reassignment(_)
         | ty::TyExpressionVariant::StorageReassignment(_)
@@ -464,6 +476,129 @@ fn const_eval_typed_expr(
         | ty::TyExpressionVariant::Continue
         | ty::TyExpressionVariant::WhileLoop { .. } => None,
     })
+}
+
+fn const_eval_intrinsic(
+    lookup: &mut LookupEnv,
+    known_consts: &mut MappedStack<Ident, Constant>,
+    intrinsic: &TyIntrinsicFunctionKind,
+) -> Result<Option<Constant>, CompileError> {
+    let args = intrinsic
+        .arguments
+        .iter()
+        .filter_map(|arg| const_eval_typed_expr(lookup, known_consts, arg).transpose())
+        .collect::<Result<Vec<_>, CompileError>>()?;
+
+    if args.len() != intrinsic.arguments.len() {
+        // We couldn't const-eval all arguments.
+        return Ok(None);
+    }
+    match intrinsic.kind {
+        sway_ast::Intrinsic::Add
+        | sway_ast::Intrinsic::Sub
+        | sway_ast::Intrinsic::Mul
+        | sway_ast::Intrinsic::Div
+        | sway_ast::Intrinsic::And
+        | sway_ast::Intrinsic::Or
+        | sway_ast::Intrinsic::Xor => {
+            let ty = args[0].ty;
+            assert!(
+                args.len() == 2 && ty.is_uint(lookup.context) && ty.eq(lookup.context, &args[1].ty)
+            );
+            let (ConstantValue::Uint(arg1), ConstantValue::Uint(ref arg2)) = (&args[0].value, &args[1].value)
+            else {
+                panic!("Type checker allowed incorrect args to binary op");
+            };
+            // All arithmetic is done as if it were u64
+            let result = match intrinsic.kind {
+                sway_ast::Intrinsic::Add => arg1.checked_add(*arg2),
+                sway_ast::Intrinsic::Sub => arg1.checked_sub(*arg2),
+                sway_ast::Intrinsic::Mul => arg1.checked_mul(*arg2),
+                sway_ast::Intrinsic::Div => arg1.checked_div(*arg2),
+                sway_ast::Intrinsic::And => Some(arg1.bitand(arg2)),
+                sway_ast::Intrinsic::Or => Some(arg1.bitor(*arg2)),
+                sway_ast::Intrinsic::Xor => Some(arg1.bitxor(*arg2)),
+                _ => unreachable!(),
+            };
+            match result {
+                Some(sum) => Ok(Some(Constant {
+                    ty,
+                    value: ConstantValue::Uint(sum),
+                })),
+                None => Ok(None),
+            }
+        }
+        sway_ast::Intrinsic::SizeOfType => {
+            let targ = &intrinsic.type_arguments[0];
+            let ir_type = convert_resolved_typeid(
+                lookup.type_engine,
+                lookup.decl_engine,
+                lookup.context,
+                &targ.type_id,
+                &targ.span,
+            )?;
+            Ok(Some(Constant {
+                ty: Type::get_uint64(lookup.context),
+                value: ConstantValue::Uint(ir_type_size_in_bytes(lookup.context, &ir_type)),
+            }))
+        }
+        sway_ast::Intrinsic::SizeOfVal => {
+            let val = &intrinsic.arguments[0];
+            let type_id = val.return_type;
+            let ir_type = convert_resolved_typeid(
+                lookup.type_engine,
+                lookup.decl_engine,
+                lookup.context,
+                &type_id,
+                &val.span,
+            )?;
+            Ok(Some(Constant {
+                ty: Type::get_uint64(lookup.context),
+                value: ConstantValue::Uint(ir_type_size_in_bytes(lookup.context, &ir_type)),
+            }))
+        }
+        sway_ast::Intrinsic::Eq => {
+            assert!(args.len() == 2);
+            Ok(Some(Constant {
+                ty: Type::get_bool(lookup.context),
+                value: ConstantValue::Bool(args[0].eq(lookup.context, &args[1])),
+            }))
+        }
+        sway_ast::Intrinsic::Gt => {
+            let (ConstantValue::Uint(val1), ConstantValue::Uint(val2)) = (&args[0].value, &args[1].value)
+                else {
+                    unreachable!("Type checker allowed non integer value for GreaterThan")
+                };
+            Ok(Some(Constant {
+                ty: Type::get_bool(lookup.context),
+                value: ConstantValue::Bool(val1 > val2),
+            }))
+        }
+        sway_ast::Intrinsic::Lt => {
+            let (ConstantValue::Uint(val1), ConstantValue::Uint(val2)) = (&args[0].value, &args[1].value)
+                else {
+                    unreachable!("Type checker allowed non integer value for LessThan")
+                };
+            Ok(Some(Constant {
+                ty: Type::get_bool(lookup.context),
+                value: ConstantValue::Bool(val1 < val2),
+            }))
+        }
+        sway_ast::Intrinsic::AddrOf => Ok(None),
+        sway_ast::Intrinsic::PtrAdd => Ok(None),
+        sway_ast::Intrinsic::PtrSub => Ok(None),
+        sway_ast::Intrinsic::GetStorageKey
+        | sway_ast::Intrinsic::IsReferenceType
+        | sway_ast::Intrinsic::Gtf
+        | sway_ast::Intrinsic::StateClear
+        | sway_ast::Intrinsic::StateLoadWord
+        | sway_ast::Intrinsic::StateStoreWord
+        | sway_ast::Intrinsic::StateLoadQuad
+        | sway_ast::Intrinsic::StateStoreQuad
+        | sway_ast::Intrinsic::Log
+        | sway_ast::Intrinsic::Revert
+        | sway_ast::Intrinsic::Smo => Ok(None),
+    }
 }
 
 fn const_eval_typed_ast_node(
