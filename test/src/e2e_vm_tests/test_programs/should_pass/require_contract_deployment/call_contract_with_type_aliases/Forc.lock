@@ -1,5 +1,5 @@
 [[package]]
-name = 'contract_with_type_aliases'
+name = 'call_contract_with_type_aliases'
 source = 'member'
 dependencies = [
     'contract_with_type_aliases_abi',
@@ -8,14 +8,14 @@ dependencies = [
 
 [[package]]
 name = 'contract_with_type_aliases_abi'
-source = 'path+from-root-1E2CCB134AE96F6B'
+source = 'path+from-root-D10E4C231B4FF7BF'
 dependencies = ['std']
 
 [[package]]
 name = 'core'
-source = 'path+from-root-1E2CCB134AE96F6B'
+source = 'path+from-root-D10E4C231B4FF7BF'
 
 [[package]]
 name = 'std'
-source = 'path+from-root-1E2CCB134AE96F6B'
+source = 'path+from-root-D10E4C231B4FF7BF'
 dependencies = ['core']

@@ -1,20 +1,6 @@
 contract;
 
-type IdentityAlias = Identity;
-
-struct IdentityAliasWrapper {
-    i: IdentityAlias,
-}
-
-type IdentityAliasWrapperAlias = IdentityAliasWrapper;
-
-struct Generic<T> {
-    f: T,
-}
-
-abi MyContract {
-    fn foo(x: AssetId, y: [IdentityAlias; 2], z: IdentityAliasWrapperAlias, w: Generic<IdentityAliasWrapperAlias>) -> AssetId;
-}
+use contract_with_type_aliases_abi::*;
 
 impl MyContract for Contract {
     fn foo(
@@ -22,7 +8,8 @@ impl MyContract for Contract {
         y: [IdentityAlias; 2],
         z: IdentityAliasWrapperAlias,
         w: Generic<IdentityAliasWrapperAlias>,
-    ) -> AssetId {
-        x
+        u: (AssetId, AssetId),
+    ) -> (AssetId, [IdentityAlias; 2], IdentityAliasWrapperAlias, Generic<IdentityAliasWrapperAlias>, (AssetId, AssetId)) {
+        (x, y, z, w, u)
     }
 }

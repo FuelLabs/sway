@@ -1497,8 +1497,18 @@ impl ty::TyExpression {
             )
         };
 
+        fn get_array_type(ty: TypeId, type_engine: &TypeEngine) -> Option<TypeInfo> {
+            match &type_engine.get(ty) {
+                TypeInfo::Array(..) => Some(type_engine.get(ty)),
+                TypeInfo::Alias { ty, .. } => get_array_type(ty.type_id, type_engine),
+                _ => None,
+            }
+        }
+
         // If the return type is a static array then create a `ty::TyExpressionVariant::ArrayIndex`.
-        if let TypeInfo::Array(elem_type, _) = type_engine.get(prefix_te.return_type) {
+        if let Some(TypeInfo::Array(elem_type, _)) =
+            get_array_type(prefix_te.return_type, type_engine)
+        {
             let type_info_u64 = TypeInfo::UnsignedInteger(IntegerBits::SixtyFour);
             let ctx = ctx
                 .with_help_text("")

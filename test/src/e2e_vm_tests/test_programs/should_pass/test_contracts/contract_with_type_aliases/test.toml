@@ -1,4 +1,4 @@
 category = "compile"
 validate_abi = true
 validate_storage_slots = true
-expected_warnings = 12
+expected_warnings = 5
