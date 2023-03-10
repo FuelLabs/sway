@@ -3413,6 +3413,16 @@ ABI.</p>
 <p><strong>Description:</strong> Returns whether <code>lhs</code> and <code>rhs</code> are equal.</p>
 <p><strong>Constraints:</strong> <code>T</code> is <code>bool</code>, <code>u8</code>, <code>u16</code>, <code>u32</code>, <code>u64</code>, or <code>raw_ptr</code>.</p>
 <hr />
+<pre><code class="language-sway">__gt&lt;T&gt;(lhs: T, rhs: T) -&gt; bool
+</code></pre>
+<p><strong>Description:</strong> Returns whether <code>lhs</code> is greater than <code>rhs</code>.</p>
+<p><strong>Constraints:</strong> <code>T</code> is <code>u8</code>, <code>u16</code>, <code>u32</code>, <code>u64</code>.</p>
+<hr />
+<pre><code class="language-sway">__lt&lt;T&gt;(lhs: T, rhs: T) -&gt; bool
+</code></pre>
+<p><strong>Description:</strong> Returns whether <code>lhs</code> is less than <code>rhs</code>.</p>
+<p><strong>Constraints:</strong> <code>T</code> is <code>u8</code>, <code>u16</code>, <code>u32</code>, <code>u64</code>.</p>
+<hr />
 <pre><code class="language-sway">__gtf&lt;T&gt;(index: u64, tx_field_id: u64) -&gt; T
 </code></pre>
 <p><strong>Description:</strong> Returns transaction field with ID <code>tx_field_id</code> at index <code>index</code>, if applicable. This is a wrapper around FuelVM's <a href="https://fuellabs.github.io/fuel-specs/master/vm/instruction_set#gtf-get-transaction-fields"><code>gtf</code> instruction</a>. The resuting field is cast to <code>T</code>.</p>
@@ -3466,6 +3476,21 @@ ABI.</p>
 <pre><code class="language-sway">__div&lt;T&gt;(lhs: T, rhs: T) -&gt; T
 </code></pre>
 <p><strong>Description:</strong> Divides <code>lhs</code> by <code>rhs</code>.</p>
+<p><strong>Constraints:</strong> <code>T</code> is an integer type, i.e. <code>u8</code>, <code>u16</code>, <code>u32</code>, <code>u64</code>.</p>
+<hr />
+<pre><code class="language-sway">__and&lt;T&gt;(lhs: T, rhs: T) -&gt; T
+</code></pre>
+<p><strong>Description:</strong> Bitwise AND <code>lhs</code> and <code>rhs</code>.</p>
+<p><strong>Constraints:</strong> <code>T</code> is an integer type, i.e. <code>u8</code>, <code>u16</code>, <code>u32</code>, <code>u64</code>.</p>
+<hr />
+<pre><code class="language-sway">or&lt;T&gt;(lhs: T, rhs: T) -&gt; T
+</code></pre>
+<p><strong>Description:</strong> Bitwise OR <code>lhs</code> and <code>rhs</code>.</p>
+<p><strong>Constraints:</strong> <code>T</code> is an integer type, i.e. <code>u8</code>, <code>u16</code>, <code>u32</code>, <code>u64</code>.</p>
+<hr />
+<pre><code class="language-sway">__xor&lt;T&gt;(lhs: T, rhs: T) -&gt; T
+</code></pre>
+<p><strong>Description:</strong> Bitwise XOR <code>lhs</code> and <code>rhs</code>.</p>
 <p><strong>Constraints:</strong> <code>T</code> is an integer type, i.e. <code>u8</code>, <code>u16</code>, <code>u32</code>, <code>u64</code>.</p>
 <hr />
 <pre><code class="language-sway">__revert(code: u64)
