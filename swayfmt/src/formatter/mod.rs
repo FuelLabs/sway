@@ -1,16 +1,15 @@
 use self::shape::Shape;
-use crate::comments::CommentsContext;
+use crate::comments::{write_comments, CommentsContext};
 use crate::parse::parse_file;
 use crate::utils::map::comments::CommentMap;
-use crate::utils::map::{
-    comments::handle_comments, newline::handle_newlines, newline_style::apply_newline_style,
-};
+use crate::utils::map::{newline::handle_newlines, newline_style::apply_newline_style};
 pub use crate::{
     config::manifest::Config,
     error::{ConfigError, FormatterError},
 };
 use std::{fmt::Write, path::Path, sync::Arc};
 use sway_core::BuildConfig;
+use sway_types::Spanned;
 
 pub(crate) mod shape;
 
@@ -74,15 +73,13 @@ impl Formatter {
 
         let mut formatted_code = String::from(&raw_formatted_code);
 
-        // Add comments
-        handle_comments(
-            Arc::from(src),
-            &module,
-            Arc::from(formatted_code.clone()),
-            path.clone(),
+        // Write post-module comments
+        write_comments(
             &mut formatted_code,
-            &mut self.comments_context.map,
+            module.span().end()..src.len() + 1,
+            self,
         )?;
+
         // Add newline sequences
         handle_newlines(
             Arc::from(src),
