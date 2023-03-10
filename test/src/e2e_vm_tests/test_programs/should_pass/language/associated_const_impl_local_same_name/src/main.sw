@@ -6,10 +6,7 @@ impl Struct {
     const ID: u32 = 1;
 }
 
-impl Struct {
-    const ID2: u32 = 2;
-}
-
 fn main() -> u64 {
+  const ID: u32 = 1;
   Struct::ID
 }
