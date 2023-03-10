@@ -74,3 +74,81 @@ impl ParseToEnd for Annotated<Module> {
         Ok((module, consumed))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use insta::*;
+    use std::sync::Arc;
+
+    fn parse_annotated_module(input: &str) -> Annotated<Module> {
+        let handler = <_>::default();
+        let ts = crate::token::lex(&handler, &Arc::from(input), 0, input.len(), None).unwrap();
+        Parser::new(&handler, &ts)
+            .parse_to_end()
+            .map(|(m, _)| m)
+            .unwrap_or_else(|_| panic!("Parse error: {:?}", handler.consume().0))
+    }
+
+    #[test]
+    fn parse_noop_script_module() {
+        assert_ron_snapshot!(parse_annotated_module(r#"
+            script;
+        
+            fn main() {
+                ()
+            }
+        "#,), @r###"
+        Annotated(
+          attribute_list: [],
+          value: Module(
+            kind: Script(
+              script_token: ScriptToken(
+                span: (13, 19),
+              ),
+            ),
+            semicolon_token: SemicolonToken(
+              span: (19, 20),
+            ),
+            items: [
+              Annotated(
+                attribute_list: [],
+                value: Fn(ItemFn(
+                  fn_signature: FnSignature(
+                    visibility: None,
+                    fn_token: FnToken(
+                      span: (42, 44),
+                    ),
+                    name: Ident(
+                      to_string: "main",
+                      span: (45, 49),
+                    ),
+                    generics: None,
+                    arguments: Parens(
+                      inner: Static(Punctuated(
+                        value_separator_pairs: [],
+                        final_value_opt: None,
+                      )),
+                      span: (49, 51),
+                    ),
+                    return_type_opt: None,
+                    where_clause_opt: None,
+                  ),
+                  body: Braces(
+                    inner: CodeBlockContents(
+                      statements: [],
+                      final_expr_opt: Some(Tuple(Parens(
+                        inner: Nil,
+                        span: (70, 72),
+                      ))),
+                    ),
+                    span: (52, 86),
+                  ),
+                )),
+              ),
+            ],
+          ),
+        )
+        "###);
+    }
+}

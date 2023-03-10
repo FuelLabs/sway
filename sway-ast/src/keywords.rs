@@ -14,7 +14,7 @@ pub trait Keyword: Spanned + Sized {
 
 macro_rules! define_keyword (
     ($ty_name:ident, $keyword:literal) => {
-        #[derive(Clone, Debug)]
+        #[derive(Clone, Debug, Serialize)]
         pub struct $ty_name {
             span: Span,
         }
@@ -99,7 +99,7 @@ pub trait Token: Spanned + Sized {
 
 macro_rules! define_token (
     ($ty_name:ident, $description:literal, [$($punct_kinds:ident),*], [$($not_followed_by:ident),*]) => {
-        #[derive(Clone, Debug)]
+        #[derive(Clone, Debug, Serialize)]
         pub struct $ty_name {
             span: Span,
         }

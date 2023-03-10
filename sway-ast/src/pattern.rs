@@ -1,6 +1,6 @@
 use crate::priv_prelude::*;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub enum Pattern {
     Wildcard {
         underscore_token: UnderscoreToken,
@@ -51,7 +51,7 @@ impl Spanned for Pattern {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub enum PatternStructField {
     Rest {
         token: DoubleDotToken,
