@@ -1,4 +1,4 @@
-library asset_operations;
+library;
 
 // ANCHOR: mint_import
 use std::token::mint;

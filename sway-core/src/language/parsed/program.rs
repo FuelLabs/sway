@@ -1,5 +1,4 @@
 use super::ParseModule;
-use sway_types::Ident;
 
 /// A parsed, but not yet type-checked, Sway program.
 ///
@@ -18,7 +17,7 @@ pub enum TreeType {
     Predicate,
     Script,
     Contract,
-    Library { name: Ident },
+    Library,
 }
 
 impl std::fmt::Display for TreeType {
@@ -30,7 +29,7 @@ impl std::fmt::Display for TreeType {
                 Self::Predicate => "predicate",
                 Self::Script => "script",
                 Self::Contract => "contract",
-                Self::Library { .. } => "library",
+                Self::Library => "library",
             }
         )
     }

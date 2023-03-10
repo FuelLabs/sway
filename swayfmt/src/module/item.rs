@@ -11,7 +11,7 @@ impl Format for ItemKind {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         match self {
-            Dependency(item_dep) => item_dep.format(formatted_code, formatter),
+            Submodule(item_mod) => item_mod.format(formatted_code, formatter),
             Use(item_use) => item_use.format(formatted_code, formatter),
             Struct(item_struct) => item_struct.format(formatted_code, formatter),
             Enum(item_enum) => item_enum.format(formatted_code, formatter),
@@ -29,7 +29,7 @@ impl Format for ItemKind {
 impl LeafSpans for ItemKind {
     fn leaf_spans(&self) -> Vec<ByteSpan> {
         match self {
-            Dependency(item_dep) => item_dep.leaf_spans(),
+            Submodule(item_mod) => item_mod.leaf_spans(),
             Struct(item_struct) => item_struct.leaf_spans(),
             Enum(item_enum) => item_enum.leaf_spans(),
             Fn(item_fn) => item_fn.leaf_spans(),

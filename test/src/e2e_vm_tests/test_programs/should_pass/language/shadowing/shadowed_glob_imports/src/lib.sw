@@ -1,4 +1,4 @@
-library lib;
+library;
 
 pub const X1 = 5;
 pub const X2 = 5;

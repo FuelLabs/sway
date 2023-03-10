@@ -1,4 +1,4 @@
-library math;
+library;
 
 pub trait Root {
     fn sqrt(self) -> Self;

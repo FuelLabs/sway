@@ -1,4 +1,4 @@
-library r#enum;
+library;
 
 pub enum AnEnum {
     Variant: (),

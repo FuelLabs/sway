@@ -1,4 +1,4 @@
-library context_testing_abi;
+library;
 
 abi ContextTesting {
     fn get_id() -> ContractId;

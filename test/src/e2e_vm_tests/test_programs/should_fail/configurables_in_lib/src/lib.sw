@@ -1,4 +1,4 @@
-library lib;
+library;
 
 configurable {
     C0: bool = true,

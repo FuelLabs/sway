@@ -85,13 +85,30 @@ impl CallPath {
         }
     }
 
+    pub fn as_vec_string(&self) -> Vec<String> {
+        self.prefixes
+            .iter()
+            .map(|p| p.to_string())
+            .chain(std::iter::once(self.suffix.to_string()))
+            .collect::<Vec<_>>()
+    }
+
+    /// Convert a given `CallPath` to an symbol to a full `CallPath` from the root of the project
+    /// in which the symbol is declared. For example, given a path `pkga::SOME_CONST` where `pkga`
+    /// is an _internal_ library of a package named `my_project`, the corresponding call path is
+    /// `my_project::pkga::SOME_CONST`.
+    ///
+    /// Paths to _external_ libraries such `std::lib1::lib2::my_obj` are considered full already
+    /// and are left unchanged since `std` is a root of the package `std`.
     pub fn to_fullpath(&self, namespace: &mut Namespace) -> CallPath {
         if self.is_absolute {
             return self.clone();
         }
 
-        let mut full_trait_name = self.clone();
         if self.prefixes.is_empty() {
+            // Given a path to a symbol that has no prefixes, discover the path to the symbol as a
+            // combination of the package name in which the symbol is defined and the path to the
+            // current submodule.
             let mut synonym_prefixes = vec![];
             let mut submodule_name_in_synonym_prefixes = false;
 
@@ -118,12 +135,38 @@ impl CallPath {
             }
             prefixes.extend(synonym_prefixes);
 
-            full_trait_name = CallPath {
+            CallPath {
                 prefixes,
                 suffix: self.suffix.clone(),
                 is_absolute: true,
             }
+        } else if let Some(m) = namespace.submodule(&[self.prefixes[0].clone()]) {
+            // If some prefixes are already present, attempt to complete the path by adding the
+            // package name and the path to the current submodule.
+            //
+            // If the path starts with an external module (i.e. a module that is imported in
+            // `Forc.toml`, then do not change it since it's a complete path already.
+            if m.is_external {
+                self.clone()
+            } else {
+                let mut prefixes: Vec<Ident> = vec![];
+                if let Some(pkg_name) = &namespace.root().module.name {
+                    prefixes.push(pkg_name.clone());
+                }
+                for mod_path in namespace.mod_path() {
+                    prefixes.push(mod_path.clone());
+                }
+
+                prefixes.extend(self.prefixes.clone());
+
+                CallPath {
+                    prefixes,
+                    suffix: self.suffix.clone(),
+                    is_absolute: true,
+                }
+            }
+        } else {
+            self.clone()
         }
-        full_trait_name
     }
 }

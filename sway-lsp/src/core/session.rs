@@ -6,13 +6,14 @@ use crate::{
         runnable::{Runnable, RunnableMainFn, RunnableTestFn},
     },
     core::{
-        document::TextDocument, sync::SyncWorkspace, token::get_range_from_span,
+        document::TextDocument,
+        sync::SyncWorkspace,
+        token::{get_range_from_span, TypedAstToken},
         token_map::TokenMap,
     },
     error::{DocumentError, LanguageServerError},
     traverse::{
-        dependency::Dependency, lexed_tree::LexedTree, parsed_tree::ParsedTree,
-        typed_tree::TypedTree,
+        dependency, lexed_tree, parsed_tree::ParsedTree, typed_tree::TypedTree, ParseContext,
     },
 };
 use dashmap::DashMap;
@@ -75,11 +76,8 @@ impl Session {
     }
 
     pub fn init(&self, uri: &Url) -> Result<ProjectDirectory, LanguageServerError> {
-        *self.type_engine.write() = <_>::default();
-
-        *self.decl_engine.write() = <_>::default();
-
         let manifest_dir = PathBuf::from(uri.path());
+
         // Create a new temp dir that clones the current workspace
         // and store manifest and temp paths
         self.sync.create_temp_dir_from_workspace(&manifest_dir)?;
@@ -146,6 +144,9 @@ impl Session {
             warnings: vec![],
             errors: vec![],
         };
+
+        *self.type_engine.write() = <_>::default();
+        *self.decl_engine.write() = <_>::default();
         let type_engine = &*self.type_engine.read();
         let decl_engine = &*self.decl_engine.read();
         let engines = Engines::new(type_engine, decl_engine);
@@ -172,25 +173,24 @@ impl Session {
 
             let ast_res = CompileResult::new(typed, warnings, errors);
             let typed_program = self.compile_res_to_typed_program(&ast_res)?;
+            let ctx = ParseContext::new(&self.token_map, engines);
 
             // The final element in the results is the main program.
             if i == results_len - 1 {
                 // First, populate our token_map with sway keywords.
-                let lexed_tree = LexedTree::new(&self.token_map);
-                lexed_tree.parse(&lexed);
+                lexed_tree::parse(&lexed, &ctx);
 
                 // Next, populate our token_map with un-typed yet parsed ast nodes.
-                let parsed_tree = ParsedTree::new(type_engine, &self.token_map);
+                let parsed_tree = ParsedTree::new(&ctx);
                 parsed_tree.collect_module_spans(&parsed);
-                self.parse_ast_to_tokens(&parsed, |an| parsed_tree.traverse_node(an));
+                self.parse_ast_to_tokens(&parsed, &ctx, |an, _ctx| parsed_tree.traverse_node(an));
 
                 // Finally, create runnables and populate our token_map with typed ast nodes.
                 self.create_runnables(typed_program);
 
-                let typed_tree =
-                    TypedTree::new(engines, &self.token_map, &typed_program.root.namespace);
+                let typed_tree = TypedTree::new(&ctx, &typed_program.root.namespace);
                 typed_tree.collect_module_spans(typed_program);
-                self.parse_ast_to_typed_tokens(typed_program, |node| {
+                self.parse_ast_to_typed_tokens(typed_program, &ctx, |node, _ctx| {
                     typed_tree.traverse_node(node)
                 });
 
@@ -201,11 +201,12 @@ impl Session {
                 diagnostics = get_diagnostics(&ast_res.warnings, &ast_res.errors);
             } else {
                 // Collect tokens from dependencies and the standard library prelude.
-                let dependency = Dependency::new(&self.token_map);
-                self.parse_ast_to_tokens(&parsed, |an| dependency.collect_parsed_declaration(an));
+                self.parse_ast_to_tokens(&parsed, &ctx, |an, ctx| {
+                    dependency::collect_parsed_declaration(an, ctx)
+                });
 
-                self.parse_ast_to_typed_tokens(typed_program, |node| {
-                    dependency.collect_typed_declaration(node)
+                self.parse_ast_to_typed_tokens(typed_program, &ctx, |node, ctx| {
+                    dependency::collect_typed_declaration(node, ctx)
                 });
             }
         }
@@ -216,7 +217,7 @@ impl Session {
         let (_, token) = self.token_map.token_at_position(url, position)?;
         let token_ranges = self
             .token_map
-            .all_references_of_token(&token, &self.type_engine.read())
+            .all_references_of_token(&token, &self.type_engine.read(), &self.decl_engine.read())
             .map(|(ident, _)| get_range_from_span(&ident.span()))
             .collect();
 
@@ -230,7 +231,9 @@ impl Session {
     ) -> Option<GotoDefinitionResponse> {
         self.token_map
             .token_at_position(&uri, position)
-            .and_then(|(_, token)| token.declared_token_ident(&self.type_engine.read()))
+            .and_then(|(_, token)| {
+                token.declared_token_ident(&self.type_engine.read(), &self.decl_engine.read())
+            })
             .and_then(|decl_ident| {
                 let range = get_range_from_span(&decl_ident.span());
                 decl_ident.span().path().and_then(|path| {
@@ -244,10 +247,34 @@ impl Session {
             })
     }
 
-    pub fn completion_items(&self) -> Option<Vec<CompletionItem>> {
-        Some(capabilities::completion::to_completion_items(
-            self.token_map(),
-        ))
+    pub fn completion_items(
+        &self,
+        uri: &Url,
+        position: Position,
+        trigger_char: String,
+    ) -> Option<Vec<CompletionItem>> {
+        let shifted_position = Position {
+            line: position.line,
+            character: position.character - trigger_char.len() as u32 - 1,
+        };
+        let (ident_to_complete, _) = self.token_map.token_at_position(uri, shifted_position)?;
+        let fn_tokens = self
+            .token_map
+            .tokens_at_position(uri, shifted_position, Some(true));
+        let (_, fn_token) = fn_tokens.first()?;
+        let compiled_program = &*self.compiled_program.read();
+
+        if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.typed.clone() {
+            let program = compiled_program.typed.clone()?;
+            return Some(capabilities::completion::to_completion_items(
+                &program.root.namespace,
+                Engines::new(&self.type_engine.read(), &self.decl_engine.read()),
+                &ident_to_complete,
+                &fn_decl,
+                position,
+            ));
+        }
+        None
     }
 
     pub fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
@@ -350,7 +377,12 @@ impl Session {
     }
 
     /// Parse the [ParseProgram] AST to populate the [TokenMap] with parsed AST nodes.
-    fn parse_ast_to_tokens(&self, parse_program: &ParseProgram, f: impl Fn(&AstNode)) {
+    fn parse_ast_to_tokens(
+        &self,
+        parse_program: &ParseProgram,
+        ctx: &ParseContext,
+        f: impl Fn(&AstNode, &ParseContext),
+    ) {
         let root_nodes = parse_program.root.tree.root_nodes.iter();
         let sub_nodes = parse_program
             .root
@@ -358,11 +390,16 @@ impl Session {
             .iter()
             .flat_map(|(_, submodule)| &submodule.module.tree.root_nodes);
 
-        root_nodes.chain(sub_nodes).for_each(f);
+        root_nodes.chain(sub_nodes).for_each(|n| f(n, ctx));
     }
 
     /// Parse the [ty::TyProgram] AST to populate the [TokenMap] with typed AST nodes.
-    fn parse_ast_to_typed_tokens(&self, typed_program: &ty::TyProgram, f: impl Fn(&ty::TyAstNode)) {
+    fn parse_ast_to_typed_tokens(
+        &self,
+        typed_program: &ty::TyProgram,
+        ctx: &ParseContext,
+        f: impl Fn(&ty::TyAstNode, &ParseContext),
+    ) {
         let root_nodes = typed_program.root.all_nodes.iter();
         let sub_nodes = typed_program
             .root
@@ -370,7 +407,7 @@ impl Session {
             .iter()
             .flat_map(|(_, submodule)| submodule.module.all_nodes.iter());
 
-        root_nodes.chain(sub_nodes).for_each(f);
+        root_nodes.chain(sub_nodes).for_each(|n| f(n, ctx));
     }
 
     /// Get a reference to the [ty::TyProgram] AST.
@@ -389,7 +426,7 @@ impl Session {
     /// Create runnables if the `TyProgramKind` of the `TyProgram` is a script.
     fn create_runnables(&self, typed_program: &ty::TyProgram) {
         // Insert runnable test functions.
-        let decl_engine = &*self.decl_engine.read();
+        let decl_engine = &self.decl_engine.read();
         for (decl, _) in typed_program.test_fns(decl_engine) {
             // Get the span of the first attribute if it exists, otherwise use the span of the function name.
             let span = decl

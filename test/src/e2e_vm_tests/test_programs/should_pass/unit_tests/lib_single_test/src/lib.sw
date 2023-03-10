@@ -1,4 +1,4 @@
-library single_lib_test;
+library;
 
 #[test]
 fn test_meaning_of_life() {

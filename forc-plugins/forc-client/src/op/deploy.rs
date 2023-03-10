@@ -83,7 +83,7 @@ pub async fn deploy_pkg(
         .unwrap_or(crate::default::NODE_URL);
     let client = FuelClient::new(node_url)?;
 
-    let bytecode = compiled.bytecode.clone().into();
+    let bytecode = &compiled.bytecode.bytes;
     let salt = match (command.salt.salt, command.random_salt) {
         (Some(salt), false) => salt,
         (None, true) => rand::random(),
@@ -95,13 +95,13 @@ pub async fn deploy_pkg(
     let mut storage_slots = compiled.storage_slots.clone();
     storage_slots.sort();
 
-    let contract = Contract::from(compiled.bytecode.clone());
+    let contract = Contract::from(bytecode.clone());
     let root = contract.root();
     let state_root = Contract::initial_state_root(storage_slots.iter());
     let contract_id = contract.id(&salt, &root, &state_root);
     info!("Contract id: 0x{}", hex::encode(contract_id));
 
-    let tx = TransactionBuilder::create(bytecode, salt, storage_slots.clone())
+    let tx = TransactionBuilder::create(bytecode.as_slice().into(), salt, storage_slots.clone())
         .gas_limit(command.gas.limit)
         .gas_price(command.gas.price)
         // TODO: Spec says maturity should be u32, but fuel-tx wants u64.
@@ -156,6 +156,7 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::BuildOpts {
             terse: cmd.pkg.terse,
             locked: cmd.pkg.locked,
             output_directory: cmd.pkg.output_directory.clone(),
+            json_abi_with_callpaths: cmd.pkg.json_abi_with_callpaths,
         },
         print: pkg::PrintOpts {
             ast: cmd.print.ast,

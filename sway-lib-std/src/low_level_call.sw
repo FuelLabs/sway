@@ -1,4 +1,4 @@
-library low_level_call;
+library;
 
 use ::assert::assert;
 use ::bytes::Bytes;

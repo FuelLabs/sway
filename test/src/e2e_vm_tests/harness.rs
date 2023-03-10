@@ -127,6 +127,7 @@ pub(crate) async fn runs_on_node(
 pub(crate) enum VMExecutionResult {
     Fuel(ProgramState, Vec<Receipt>),
     Evm(revm::ExecutionResult),
+    MidenVM(miden::ExecutionTrace),
 }
 
 /// Very basic check that code does indeed run in the VM.
@@ -134,7 +135,7 @@ pub(crate) fn runs_in_vm(
     script: BuiltPackage,
     script_data: Option<Vec<u8>>,
 ) -> Result<VMExecutionResult> {
-    match script.build_target {
+    match script.descriptor.target {
         BuildTarget::Fuel => {
             let storage = MemoryStorage::default();
 
@@ -148,7 +149,7 @@ pub(crate) fn runs_in_vm(
                 ..ConsensusParameters::DEFAULT
             };
 
-            let tx = TransactionBuilder::script(script.bytecode, script_data)
+            let tx = TransactionBuilder::script(script.bytecode.bytes, script_data)
                 .add_unsigned_coin_input(rng.gen(), rng.gen(), 1, Default::default(), rng.gen(), 0)
                 .gas_limit(fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx)
                 .maturity(maturity)
@@ -168,7 +169,7 @@ pub(crate) fn runs_in_vm(
 
             // Transaction to create the smart contract
             evm.env.tx.transact_to = revm::TransactTo::create();
-            evm.env.tx.data = bytes::Bytes::from(script.bytecode.into_boxed_slice());
+            evm.env.tx.data = bytes::Bytes::from(script.bytecode.bytes.into_boxed_slice());
             let result = evm.transact_commit();
 
             match result.out {
@@ -189,6 +190,25 @@ pub(crate) fn runs_in_vm(
                 }
             }
         }
+        BuildTarget::MidenVM => {
+            use miden::{Assembler, ProgramInputs};
+
+            // instantiate the assembler
+            let assembler = Assembler::default();
+
+            let bytecode_str = std::str::from_utf8(&script.bytecode.bytes)?;
+
+            // compile Miden assembly source code into a program
+            let program = assembler.compile(bytecode_str).unwrap();
+
+            // execute the program with no inputs
+            let _trace = miden::execute(&program, &ProgramInputs::none()).unwrap();
+
+            let execution_trace = miden::execute(&program, &ProgramInputs::none())
+                .map_err(|e| anyhow::anyhow!("Failed to execute on MidenVM: {e:?}"))?;
+
+            Ok(VMExecutionResult::MidenVM(execution_trace))
+        }
     }
 }
 
@@ -201,10 +221,11 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
         build_target: run_config.build_target,
         pkg: forc_pkg::PkgOpts {
             path: Some(format!(
-                "{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}"
+                "{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}",
             )),
             locked: run_config.locked,
             terse: false,
+            json_abi_with_callpaths: true,
             ..Default::default()
         },
         ..Default::default()
@@ -286,9 +307,10 @@ pub(crate) fn test_json_abi(file_name: &str, built_package: &BuiltPackage) -> Re
 
 fn emit_json_abi(file_name: &str, built_package: &BuiltPackage) -> Result<()> {
     tracing::info!("ABI gen {} ...", file_name.bold());
-    let json_abi = match &built_package.json_abi_program {
+    let json_abi = match &built_package.program_abi {
         ProgramABI::Fuel(abi) => serde_json::json!(abi),
         ProgramABI::Evm(abi) => serde_json::json!(abi),
+        ProgramABI::MidenVM(_) => todo!(),
     };
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let file = std::fs::File::create(format!(

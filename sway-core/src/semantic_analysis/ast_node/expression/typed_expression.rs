@@ -18,10 +18,11 @@ pub(crate) use self::{
 
 use crate::{
     asm_lang::{virtual_ops::VirtualOp, virtual_register::VirtualRegister},
+    decl_engine::DeclEngineIndex,
     error::*,
     language::{
         parsed::*,
-        ty::{self, GetDeclRef, TyImplItem},
+        ty::{self, TyImplItem},
         *,
     },
     semantic_analysis::*,
@@ -56,8 +57,8 @@ impl ty::TyExpression {
 
         let call_path = CallPath {
             prefixes: vec![
-                Ident::new_with_override("core", span.clone()),
-                Ident::new_with_override("ops", span.clone()),
+                Ident::new_with_override("core".into(), span.clone()),
+                Ident::new_with_override("ops".into(), span.clone()),
             ],
             suffix: Op {
                 op_variant: OpVariant::Equals,
@@ -80,12 +81,7 @@ impl ty::TyExpression {
             warnings,
             errors
         );
-        let method = check!(
-            CompileResult::from(decl_engine.get_function(&decl_ref, &method_name_binding.span())),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        let method = decl_engine.get_function(&decl_ref);
         // check that the number of parameters and the number of the arguments is the same
         check!(
             check_function_arguments_arity(arguments.len(), &method, &call_path, false),
@@ -385,7 +381,7 @@ impl ty::TyExpression {
         name: Ident,
         span: Span,
     ) -> CompileResult<ty::TyExpression> {
-        let mut warnings = vec![];
+        let warnings = vec![];
         let mut errors = vec![];
 
         let decl_engine = ctx.decl_engine;
@@ -405,42 +401,34 @@ impl ty::TyExpression {
                         name: decl_name.clone(),
                         span: name.span(),
                         mutability: *mutability,
-                        call_path: None,
+                        call_path: Some(
+                            CallPath::from(decl_name.clone()).to_fullpath(ctx.namespace),
+                        ),
                     },
                     span,
                 }
             }
             Some(ty::TyDeclaration::ConstantDeclaration { decl_id, .. }) => {
                 let ty::TyConstantDeclaration {
-                    name: decl_name,
+                    call_path: decl_name,
                     type_ascription,
                     ..
-                } = check!(
-                    CompileResult::from(decl_engine.get_constant(decl_id, &span)),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                } = decl_engine.get_constant(decl_id);
                 ty::TyExpression {
                     return_type: type_ascription.type_id,
                     // Although this isn't strictly a 'variable' expression we can treat it as one for
                     // this context.
                     expression: ty::TyExpressionVariant::VariableExpression {
-                        name: decl_name,
+                        name: decl_name.suffix.clone(),
                         span: name.span(),
                         mutability: ty::VariableMutability::Immutable,
-                        call_path: None,
+                        call_path: Some(decl_name.to_fullpath(ctx.namespace)),
                     },
                     span,
                 }
             }
             Some(ty::TyDeclaration::AbiDeclaration { decl_id, .. }) => {
-                let decl = check!(
-                    CompileResult::from(decl_engine.get_abi(decl_id, &span)),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                let decl = decl_engine.get_abi(decl_id);
                 ty::TyExpression {
                     return_type: decl.create_type_id(engines),
                     expression: ty::TyExpressionVariant::AbiName(AbiName::Known(decl.name.into())),
@@ -487,7 +475,7 @@ impl ty::TyExpression {
 
         // check that the decl is a function decl
         let _ = check!(
-            unknown_decl.expect_function(decl_engine, &span),
+            unknown_decl.expect_function(decl_engine),
             return err(warnings, errors),
             warnings,
             errors
@@ -495,7 +483,7 @@ impl ty::TyExpression {
 
         instantiate_function_application(
             ctx,
-            unknown_decl.get_decl_ref().unwrap(),
+            unknown_decl.get_fun_decl_ref().unwrap(),
             call_path_binding,
             Some(arguments),
             span,
@@ -919,8 +907,7 @@ impl ty::TyExpression {
         }
 
         let storage_fields = check!(
-            ctx.namespace
-                .get_storage_field_descriptors(decl_engine, span),
+            ctx.namespace.get_storage_field_descriptors(decl_engine),
             return err(warnings, errors),
             warnings,
             errors
@@ -932,7 +919,6 @@ impl ty::TyExpression {
                 Engines::new(type_engine, decl_engine),
                 checkee,
                 &storage_fields,
-                span
             ),
             return err(warnings, errors),
             warnings,
@@ -1014,7 +1000,8 @@ impl ty::TyExpression {
             };
             ctx.namespace
                 .resolve_call_path(&probe_call_path)
-                .flat_map(|decl| decl.expect_enum(decl_engine, &before.inner.span()))
+                .flat_map(|decl| decl.expect_enum())
+                .map(|decl_ref| decl_engine.get_enum(&decl_ref))
                 .flat_map(|decl| decl.expect_variant_from_name(&suffix).map(drop))
                 .value
                 .is_none()
@@ -1115,9 +1102,9 @@ impl ty::TyExpression {
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
                 .ok(&mut function_probe_warnings, &mut function_probe_errors)
                 .and_then(|decl| {
-                    decl.expect_function(decl_engine, &span)
+                    decl.expect_function(decl_engine)
                         .ok(&mut function_probe_warnings, &mut function_probe_errors)
-                        .map(|_s| (decl.get_decl_ref().unwrap(), call_path_binding))
+                        .map(|_s| (decl.get_fun_decl_ref().unwrap(), call_path_binding))
                 })
         };
 
@@ -1135,11 +1122,9 @@ impl ty::TyExpression {
                 span: call_path_binding.span,
             };
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
-                .flat_map(|unknown_decl| {
-                    unknown_decl.expect_enum(decl_engine, &call_path_binding.span())
-                })
+                .flat_map(|unknown_decl| unknown_decl.expect_enum())
                 .ok(&mut enum_probe_warnings, &mut enum_probe_errors)
-                .map(|enum_decl| (enum_decl, variant_name, call_path_binding))
+                .map(|enum_decl_ref| (enum_decl_ref, variant_name, call_path_binding))
         };
 
         // Check if this could be a constant
@@ -1149,20 +1134,25 @@ impl ty::TyExpression {
             let mut call_path_binding = unknown_call_path_binding.clone();
 
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
-                .flat_map(|unknown_decl| {
-                    unknown_decl.expect_const(decl_engine, &call_path_binding.span())
-                })
+                .flat_map(|unknown_decl| unknown_decl.expect_const(decl_engine))
                 .ok(&mut const_probe_warnings, &mut const_probe_errors)
                 .map(|const_decl| (const_decl, call_path_binding))
         };
 
         // compare the results of the checks
         let exp = match (is_module, maybe_function, maybe_enum, maybe_const) {
-            (false, None, Some((enum_decl, variant_name, call_path_binding)), None) => {
+            (false, None, Some((enum_decl_ref, variant_name, call_path_binding)), None) => {
                 warnings.append(&mut enum_probe_warnings);
                 errors.append(&mut enum_probe_errors);
                 check!(
-                    instantiate_enum(ctx, enum_decl, variant_name, args, call_path_binding, &span),
+                    instantiate_enum(
+                        ctx,
+                        &enum_decl_ref,
+                        variant_name,
+                        args,
+                        call_path_binding,
+                        &span
+                    ),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1208,7 +1198,7 @@ impl ty::TyExpression {
                     );
                 }
                 check!(
-                    instantiate_constant_decl(const_decl, call_path_binding),
+                    instantiate_constant_decl(ctx, const_decl, call_path_binding),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1268,20 +1258,12 @@ impl ty::TyExpression {
             errors
         );
         let ty::TyAbiDeclaration {
-            name,
             interface_surface,
             items,
             span,
             ..
         } = match abi {
-            ty::TyDeclaration::AbiDeclaration { decl_id, .. } => {
-                check!(
-                    CompileResult::from(decl_engine.get_abi(&decl_id, &span)),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                )
-            }
+            ty::TyDeclaration::AbiDeclaration { decl_id, .. } => decl_engine.get_abi(&decl_id),
             ty::TyDeclaration::VariableDeclaration(ref decl) => {
                 let ty::TyVariableDeclaration { body: expr, .. } = &**decl;
                 let ret_ty = type_engine.get(expr.return_type);
@@ -1305,7 +1287,7 @@ impl ty::TyExpression {
                             errors
                         );
                         check!(
-                            unknown_decl.expect_abi(decl_engine, &span),
+                            unknown_decl.expect_abi(decl_engine),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -1353,16 +1335,11 @@ impl ty::TyExpression {
         for item in interface_surface.into_iter() {
             match item {
                 ty::TyTraitInterfaceItem::TraitFn(decl_ref) => {
-                    let method = check!(
-                        CompileResult::from(decl_engine.get_trait_fn(&decl_ref, &name.span())),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
+                    let method = decl_engine.get_trait_fn(&decl_ref);
                     abi_items.push(TyImplItem::Fn(
                         decl_engine
                             .insert(method.to_dummy_func(Mode::ImplAbiFn))
-                            .with_parent(decl_engine, &decl_ref),
+                            .with_parent(decl_engine, decl_ref.id.into()),
                     ));
                 }
             }
@@ -1551,10 +1528,10 @@ impl ty::TyExpression {
                 inner: MethodName::FromTrait {
                     call_path: CallPath {
                         prefixes: vec![
-                            Ident::new_with_override("core", span.clone()),
-                            Ident::new_with_override("ops", span.clone()),
+                            Ident::new_with_override("core".into(), span.clone()),
+                            Ident::new_with_override("ops".into(), span.clone()),
                         ],
-                        suffix: Ident::new_with_override("index", span.clone()),
+                        suffix: Ident::new_with_override("index".into(), span.clone()),
                         is_absolute: true,
                     },
                 },

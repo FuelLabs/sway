@@ -4,6 +4,7 @@
 members = [
   "abi_supertraits",
   "arrays",
+  "methods_and_associated_functions",
   "asm_return_tuple_pointer",
   "break_and_continue",
   "cei_analysis",

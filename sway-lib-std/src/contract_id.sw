@@ -1,5 +1,5 @@
 //! A wrapper around the `b256` type to help enhance type-safety.
-library contract_id;
+library;
 
 use ::intrinsics::size_of_val;
 use ::convert::From;

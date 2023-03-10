@@ -1,7 +1,7 @@
 contract;
 
-dep r#abi;
-dep errors;
+mod r#abi;
+mod errors;
 
 use abi::IdentityExample;
 use errors::MyError;

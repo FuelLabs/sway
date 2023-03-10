@@ -1,6 +1,6 @@
 script;
 
-dep consts;
+mod consts;
 
 use consts::adder;
 

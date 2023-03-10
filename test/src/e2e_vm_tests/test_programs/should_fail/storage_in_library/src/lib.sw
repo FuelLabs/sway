@@ -1,1 +1,1 @@
-dep inner;
+mod inner;

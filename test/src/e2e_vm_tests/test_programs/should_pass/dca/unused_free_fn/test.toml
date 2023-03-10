@@ -3,3 +3,4 @@ category = "compile"
 # check: $()fn free_fn() {}
 # nextln: $()This function is never called.
 
+expected_warnings = 1

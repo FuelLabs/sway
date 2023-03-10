@@ -1,4 +1,4 @@
-library tuples;
+library;
 
 fn syntax() {
     // ANCHOR: declare

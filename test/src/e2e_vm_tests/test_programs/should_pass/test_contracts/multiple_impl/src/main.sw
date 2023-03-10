@@ -1,7 +1,7 @@
 contract;
 
-dep testlib;
-dep testlib2;
+mod testlib;
+mod testlib2;
 use testlib2::bar;
 
 abi TestContr {

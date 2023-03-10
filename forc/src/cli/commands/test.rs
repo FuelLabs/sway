@@ -62,7 +62,7 @@ pub(crate) fn exec(cmd: Command) -> Result<()> {
     match tested {
         forc_test::Tested::Workspace(pkgs) => {
             for pkg in pkgs {
-                let built = &pkg.built.pkg_name;
+                let built = &pkg.built.descriptor.name;
                 info!("\n   tested -- {built}\n");
                 print_tested_pkg(&pkg, &test_print_opts)?;
             }
@@ -85,10 +85,11 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> Res
             false => ("FAILED", Colour::Red),
         };
         info!(
-            "      test {} ... {} ({:?})",
+            "      test {} ... {} ({:?}, {} gas)",
             test.name,
             color.paint(state),
-            test.duration
+            test.duration,
+            test.gas_used
         );
 
         // If logs are enabled, print them.
@@ -159,6 +160,7 @@ fn opts_from_cmd(cmd: Command) -> forc_test::Opts {
             terse: cmd.build.pkg.terse,
             locked: cmd.build.pkg.locked,
             output_directory: cmd.build.pkg.output_directory,
+            json_abi_with_callpaths: cmd.build.pkg.json_abi_with_callpaths,
         },
         print: pkg::PrintOpts {
             ast: cmd.build.print.ast,

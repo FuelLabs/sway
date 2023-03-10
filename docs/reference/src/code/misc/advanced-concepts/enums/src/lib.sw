@@ -1,4 +1,4 @@
-library enums;
+library;
 
 // ANCHOR: u64_example
 pub enum T {

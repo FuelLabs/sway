@@ -8,6 +8,7 @@ use super::{
         register_sequencer::RegisterSequencer,
     },
     programs::{AbstractEntry, AbstractProgram, FinalProgram, ProgramKind},
+    MidenVMAsmBuilder,
 };
 
 use crate::{err, ok, BuildConfig, BuildTarget, CompileResult, CompileWarning};
@@ -82,6 +83,7 @@ fn compile_module_to_asm(
             context,
         )),
         BuildTarget::EVM => Box::new(EvmAsmBuilder::new(kind, context)),
+        BuildTarget::MidenVM => Box::new(MidenVMAsmBuilder::new(kind, context)),
     };
 
     // Pre-create labels for all functions before we generate other code, so we can call them
@@ -159,6 +161,7 @@ fn compile_module_to_asm(
             ops: result.ops,
             abi: result.abi,
         },
+        AsmBuilderResult::MidenVM(result) => FinalProgram::MidenVM { ops: result.ops },
     };
 
     ok(final_program, warnings, errors)
