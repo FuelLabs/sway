@@ -545,6 +545,9 @@ impl<'ir> FuelAsmBuilder<'ir> {
             BinaryOpKind::Sub => Either::Left(VirtualOp::SUB(res_reg.clone(), val1_reg, val2_reg)),
             BinaryOpKind::Mul => Either::Left(VirtualOp::MUL(res_reg.clone(), val1_reg, val2_reg)),
             BinaryOpKind::Div => Either::Left(VirtualOp::DIV(res_reg.clone(), val1_reg, val2_reg)),
+            BinaryOpKind::And => Either::Left(VirtualOp::AND(res_reg.clone(), val1_reg, val2_reg)),
+            BinaryOpKind::Or => Either::Left(VirtualOp::OR(res_reg.clone(), val1_reg, val2_reg)),
+            BinaryOpKind::Xor => Either::Left(VirtualOp::XOR(res_reg.clone(), val1_reg, val2_reg)),
         };
         self.cur_bytecode.push(Op {
             opcode,
@@ -621,12 +624,28 @@ impl<'ir> FuelAsmBuilder<'ir> {
         let lhs_reg = self.value_to_register(lhs_value);
         let rhs_reg = self.value_to_register(rhs_value);
         let res_reg = self.reg_seqr.next();
+        let comment = String::new();
+        let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
         match pred {
             Predicate::Equal => {
                 self.cur_bytecode.push(Op {
                     opcode: Either::Left(VirtualOp::EQ(res_reg.clone(), lhs_reg, rhs_reg)),
-                    comment: String::new(),
-                    owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+                    comment,
+                    owning_span,
+                });
+            }
+            Predicate::LessThan => {
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::LT(res_reg.clone(), lhs_reg, rhs_reg)),
+                    comment,
+                    owning_span,
+                });
+            }
+            Predicate::GreaterThan => {
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::GT(res_reg.clone(), lhs_reg, rhs_reg)),
+                    comment,
+                    owning_span,
                 });
             }
         }

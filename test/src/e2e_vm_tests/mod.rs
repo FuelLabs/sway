@@ -324,7 +324,7 @@ impl TestContext {
                             .map(move |test| {
                                 format!(
                                     "{}: Test '{}' failed with state {:?}, expected: {:?}",
-                                    tested_pkg.built.pkg_name,
+                                    tested_pkg.built.descriptor.name,
                                     test.name,
                                     test.state,
                                     test.condition,
