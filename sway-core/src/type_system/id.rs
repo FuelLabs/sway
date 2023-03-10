@@ -304,6 +304,10 @@ impl TypeId {
             (TypeInfo::Custom { call_path, .. }, TypeInfo::Struct(decl_ref)) => {
                 call_path.suffix != decl_engine.get_struct(&decl_ref).call_path.suffix
             }
+            (TypeInfo::Custom { call_path, .. }, TypeInfo::Alias { name, .. }) => {
+                dbg!("Am I here?");
+                dbg!(call_path.suffix != name)
+            }
             (TypeInfo::Custom { .. }, _) => true,
             _ => false,
         }
