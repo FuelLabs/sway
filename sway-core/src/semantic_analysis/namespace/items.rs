@@ -1,5 +1,10 @@
 use crate::{
-    decl_engine::*, engine_threading::Engines, error::*, language::ty, namespace::*, type_system::*,
+    decl_engine::*,
+    engine_threading::Engines,
+    error::*,
+    language::ty::{self, TyStorageDeclaration},
+    namespace::*,
+    type_system::*,
 };
 
 use super::TraitMap;
@@ -169,17 +174,20 @@ impl Items {
         self.declared_storage.is_some()
     }
 
+    pub fn get_declared_storage(&self, decl_engine: &DeclEngine) -> Option<TyStorageDeclaration> {
+        self.declared_storage
+            .as_ref()
+            .map(|decl_ref| decl_engine.get_storage(decl_ref))
+    }
+
     pub(crate) fn get_storage_field_descriptors(
         &self,
         decl_engine: &DeclEngine,
     ) -> CompileResult<Vec<ty::TyStorageField>> {
         let warnings = vec![];
         let mut errors = vec![];
-        match self.declared_storage {
-            Some(ref decl_ref) => {
-                let storage = decl_engine.get_storage(decl_ref);
-                ok(storage.fields, warnings, errors)
-            }
+        match self.get_declared_storage(decl_engine) {
+            Some(storage) => ok(storage.fields, warnings, errors),
             None => {
                 let msg = "unknown source location";
                 let span = Span::new(Arc::from(msg), 0, msg.len(), None).unwrap();

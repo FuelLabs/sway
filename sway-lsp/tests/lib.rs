@@ -906,6 +906,95 @@ async fn go_to_definition_for_traits() {
 }
 
 #[tokio::test]
+async fn go_to_definition_for_storage() {
+    let (mut service, _) = LspService::new(Backend::new);
+    let uri = init_and_open(
+        &mut service,
+        test_fixtures_dir().join("tokens/storage/src/main.sw"),
+    )
+    .await;
+    let mut i = 0..;
+
+    let mut go_to = GotoDefinition {
+        req_uri: &uri,
+        req_line: 24,
+        req_char: 9,
+        def_line: 12,
+        def_start_char: 0,
+        def_end_char: 7,
+        def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
+    };
+    // storage
+    let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 25, 8, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 26, 8, &mut i).await;
+
+    let mut go_to = GotoDefinition {
+        req_uri: &uri,
+        req_line: 24,
+        req_char: 17,
+        def_line: 13,
+        def_start_char: 4,
+        def_end_char: 8,
+        def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
+    };
+    // storage.var1
+    let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 25, 17, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 26, 17, &mut i).await;
+
+    let go_to = GotoDefinition {
+        req_uri: &uri,
+        req_line: 24,
+        req_char: 21,
+        def_line: 3,
+        def_start_char: 4,
+        def_end_char: 5,
+        def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
+    };
+    // storage.var1.x
+    let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
+
+    let go_to = GotoDefinition {
+        req_uri: &uri,
+        req_line: 25,
+        req_char: 21,
+        def_line: 4,
+        def_start_char: 4,
+        def_end_char: 5,
+        def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
+    };
+    // storage.var1.y
+    let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
+
+    let go_to = GotoDefinition {
+        req_uri: &uri,
+        req_line: 26,
+        req_char: 21,
+        def_line: 5,
+        def_start_char: 4,
+        def_end_char: 5,
+        def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
+    };
+    // storage.var1.z
+    let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
+
+    let go_to = GotoDefinition {
+        req_uri: &uri,
+        req_line: 26,
+        req_char: 23,
+        def_line: 9,
+        def_start_char: 4,
+        def_end_char: 5,
+        def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
+    };
+    // storage.var1.z.x
+    let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
+
+    shutdown_and_exit(&mut service).await;
+}
+
+#[tokio::test]
 async fn go_to_definition_for_variables() {
     let (mut service, _) = LspService::new(Backend::new);
     let uri = init_and_open(
