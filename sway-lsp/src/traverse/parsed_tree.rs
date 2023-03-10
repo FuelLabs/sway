@@ -346,7 +346,7 @@ impl Parse for IntrinsicFunctionExpression {
             to_ident_key(&self.name),
             Token::from_parsed(
                 AstToken::Intrinsic(self.kind_binding.inner.clone()),
-                SymbolKind::Function,
+                SymbolKind::Intrinsic,
             ),
         );
         self.arguments.iter().for_each(|arg| arg.parse(ctx));

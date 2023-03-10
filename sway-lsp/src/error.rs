@@ -10,6 +10,8 @@ pub enum LanguageServerError {
     DocumentError(#[from] DocumentError),
     #[error(transparent)]
     DirectoryError(#[from] DirectoryError),
+    #[error(transparent)]
+    RenameError(#[from] RenameError),
 
     // Top level errors
     #[error("Failed to create build plan. {0}")]
@@ -58,4 +60,14 @@ pub enum DirectoryError {
     StripPrefixError(std::path::StripPrefixError),
     #[error("Unable to create Url from path {:?}", path)]
     UrlFromPathFailed { path: String },
+}
+
+#[derive(Debug, Error, PartialEq, Eq)]
+pub enum RenameError {
+    #[error("No token was found in the token map at that position")]
+    TokenNotFound,
+    #[error("Token is not part of the users workspace")]
+    TokenNotPartOfWorkspace,
+    #[error("Keywords and instrinsics are unable to be renamed")]
+    UnableToRenameKeyword,
 }
