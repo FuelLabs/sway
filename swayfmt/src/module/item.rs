@@ -22,7 +22,7 @@ impl Format for ItemKind {
             Const(item_const) => item_const.format(formatted_code, formatter),
             Storage(item_storage) => item_storage.format(formatted_code, formatter),
             Configurable(item_configurable) => item_configurable.format(formatted_code, formatter),
-            TypeAlias(_item_type_alias) => todo!(),
+            TypeAlias(item_type_alias) => item_type_alias.format(formatted_code, formatter),
         }
     }
 }
@@ -41,7 +41,7 @@ impl LeafSpans for ItemKind {
             Impl(item_impl) => item_impl.leaf_spans(),
             Use(item_use) => item_use.leaf_spans(),
             Configurable(item_configurable) => item_configurable.leaf_spans(),
-            TypeAlias(_item_type_alias) => todo!(),
+            TypeAlias(item_type_alias) => item_type_alias.leaf_spans(),
         }
     }
 }

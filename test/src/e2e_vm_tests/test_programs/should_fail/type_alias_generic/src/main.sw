@@ -4,5 +4,4 @@ struct Generic {}
 
 type MyGeneric = Generi;
 
-fn main() {
-}
+fn main() {}

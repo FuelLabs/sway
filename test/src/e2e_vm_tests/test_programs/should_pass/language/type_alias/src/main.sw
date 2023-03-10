@@ -10,21 +10,28 @@ type TupleAlias = (MyTypeAlias1, MyTypeAlias2);
 type MyU64 = u64;
 
 impl MyType {
-    fn bar0(self) -> u64 { 0 }
+    fn bar0(self) -> u64 {
+        0
+    }
 }
 
 impl MyTypeAlias1 {
-    fn bar1(self) -> u64 { 1 }
+    fn bar1(self) -> u64 {
+        1
+    }
 }
 
 impl MyTypeAlias2 {
-    fn bar2(self) -> u64 { 2 }
+    fn bar2(self) -> u64 {
+        2
+    }
 }
 
 impl MyTypeAlias3 {
-    fn bar3(self) -> u64 { 3 }
+    fn bar3(self) -> u64 {
+        3
+    }
 }
-
 
 impl core::ops::Eq for MyTypeAlias2 {
     fn eq(self, other: Self) -> bool {
@@ -33,28 +40,29 @@ impl core::ops::Eq for MyTypeAlias2 {
 }
 
 struct GenericStruct<T> {
-    x: T
+    x: T,
 }
 
-fn foo(x: AssetId) -> AssetId { 
+fn foo(x: AssetId) -> AssetId {
     AssetId::from(x.value)
 }
 
-fn struct_tests() {
-    /* Structs */
-    let x = AssetId { value: 0x0000000000000000000000000000000000000000000000000000000000000001 };
+fn struct_tests() { /* Structs */
+    let x = AssetId {
+        value: 0x0000000000000000000000000000000000000000000000000000000000000001,
+    };
     let y: AssetId = x;
     let z = AssetId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
-    foo(x); 
-    let t = MyTypeAlias2 { 
-        x: std::contract_id::AssetId { 
-            value:  0x0000000000000000000000000000000000000000000000000000000000000001
-        } 
+    foo(x);
+    let t = MyTypeAlias2 {
+        x: std::contract_id::AssetId {
+            value: 0x0000000000000000000000000000000000000000000000000000000000000001,
+        },
     };
-    let t2 = MyTypeAlias3 { 
-        x: AssetId { 
-            value:  0x0000000000000000000000000000000000000000000000000000000000000001
-        } 
+    let t2 = MyTypeAlias3 {
+        x: AssetId {
+            value: 0x0000000000000000000000000000000000000000000000000000000000000001,
+        },
     };
     assert(x == z && t.x.value == y.value && t.x.value == t2.x.value && z.value == y.value);
 
@@ -62,14 +70,10 @@ fn struct_tests() {
     assert(t2.bar0() == 0 && t2.bar1() == 1 && t2.bar2() == 2 && t2.bar3() == 3);
     assert(t == t2);
 
-    let s: GenericStruct<MyU64> = GenericStruct { 
-        x: 42
-    };
+    let s: GenericStruct<MyU64> = GenericStruct { x: 42 };
     assert(s.x == 42);
 
-    let s: GenericStruct<MyTypeAlias3> = GenericStruct { 
-        x: t
-    };
+    let s: GenericStruct<MyTypeAlias3> = GenericStruct { x: t };
     assert(s.x == t);
 
     let tuple: TupleAlias = (t, t);
@@ -78,14 +82,14 @@ fn struct_tests() {
 }
 
 type MyIdentity = Identity;
-fn noop1(x: MyIdentity) -> MyIdentity { 
+fn noop1(x: MyIdentity) -> MyIdentity {
     match x {
         Identity::ContractId(a) => MyIdentity::ContractId(a),
         Identity::Address(a) => MyIdentity::Address(a),
     }
 }
 
-fn noop2(x: Identity) -> Identity { 
+fn noop2(x: Identity) -> Identity {
     match x {
         Identity::ContractId(a) => Identity::ContractId(a),
         Identity::Address(a) => Identity::Address(a),
@@ -100,19 +104,27 @@ type MyEnumTypeAlias2 = MyEnumTypeAlias1;
 type MyEnumTypeAlias3 = MyEnumTypeAlias1;
 
 impl MyEnumType {
-    fn bar0(self) -> u64 { 0 }
+    fn bar0(self) -> u64 {
+        0
+    }
 }
 
 impl MyEnumTypeAlias1 {
-    fn bar1(self) -> u64 { 1 }
+    fn bar1(self) -> u64 {
+        1
+    }
 }
 
 impl MyEnumTypeAlias2 {
-    fn bar2(self) -> u64 { 2 }
+    fn bar2(self) -> u64 {
+        2
+    }
 }
 
 impl MyEnumTypeAlias3 {
-    fn bar3(self) -> u64 { 3 }
+    fn bar3(self) -> u64 {
+        3
+    }
 }
 
 impl core::ops::Eq for MyEnumTypeAlias2 {
@@ -124,7 +136,9 @@ impl core::ops::Eq for MyEnumTypeAlias2 {
 }
 
 fn enum_tests() {
-    let x = ContractId { value: 0x0000000000000000000000000000000000000000000000000000000000000001 };
+    let x = ContractId {
+        value: 0x0000000000000000000000000000000000000000000000000000000000000001,
+    };
     let z = AssetId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
     let o = Option::Some(x);
     if let Option::Some(AssetId { value }) = o {
@@ -143,7 +157,6 @@ fn enum_tests() {
         _ => revert(42),
     }
     assert(id1 == id2); // test trait `Eq`
-
     let id3 = MyIdentity::Address(Address::from(0x1111111111111111111111111111111111111111111111111111111111111111));
     let id4 = MyIdentity::Address(Address::from(0x1111111111111111111111111111111111111111111111111111111111111111));
     match id3 {

@@ -17,5 +17,4 @@ impl Alias2 {
     fn foo() {}
 }
 
-fn main() {
-}
+fn main() {}
