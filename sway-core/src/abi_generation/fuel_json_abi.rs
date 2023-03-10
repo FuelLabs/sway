@@ -227,11 +227,11 @@ fn generate_json_configurables(
         .iter()
         .map(
             |TyConstantDeclaration {
-                 name,
+                 call_path,
                  type_ascription,
                  ..
              }| program_abi::Configurable {
-                name: name.to_string(),
+                name: call_path.suffix.to_string(),
                 application: program_abi::TypeApplication {
                     name: "".to_string(),
                     type_id: type_ascription.type_id.index(),
@@ -775,7 +775,8 @@ impl TypeInfo {
         match self {
             Unknown => "unknown".into(),
             UnknownGeneric { name, .. } => name.to_string(),
-            TypeInfo::Placeholder(_) => "_".to_string(),
+            Placeholder(_) => "_".to_string(),
+            TypeParam(n) => format!("typeparam({n})"),
             Str(x) => format!("str[{}]", x.val()),
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",

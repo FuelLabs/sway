@@ -1373,7 +1373,11 @@ mod ir_builder {
                     .as_constant(context, config.ty.clone());
                 let config_val =
                     Value::new_configurable(context, as_const).add_metadatum(context, opt_metadata);
-                module.add_global_configurable(context, config.value_name.clone(), config_val);
+                module.add_global_configurable(
+                    context,
+                    vec![config.value_name.clone()],
+                    config_val,
+                );
                 (config.value_name.clone(), config_val)
             })
             .collect()

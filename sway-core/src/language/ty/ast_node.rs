@@ -3,7 +3,6 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use sway_error::error::CompileError;
 use sway_types::{Ident, Span};
 
 use crate::{
@@ -146,24 +145,13 @@ impl TyAstNode {
     }
 
     /// Returns `true` if this AST node will be exported in a library, i.e. it is a public declaration.
-    pub(crate) fn is_public(&self, decl_engine: &DeclEngine) -> CompileResult<bool> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let public = match &self.content {
-            TyAstNodeContent::Declaration(decl) => {
-                let visibility = check!(
-                    decl.visibility(decl_engine),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                visibility.is_public()
-            }
+    pub(crate) fn is_public(&self, decl_engine: &DeclEngine) -> bool {
+        match &self.content {
+            TyAstNodeContent::Declaration(decl) => decl.visibility(decl_engine).is_public(),
             TyAstNodeContent::Expression(_)
             | TyAstNodeContent::SideEffect(_)
             | TyAstNodeContent::ImplicitReturnExpression(_) => false,
-        };
-        ok(public, warnings, errors)
+        }
     }
 
     /// Check to see if this node is a function declaration with generic type parameters.
@@ -204,11 +192,7 @@ impl TyAstNode {
         }
     }
 
-    pub(crate) fn is_entry_point(
-        &self,
-        decl_engine: &DeclEngine,
-        tree_type: &TreeType,
-    ) -> Result<bool, CompileError> {
+    pub(crate) fn is_entry_point(&self, decl_engine: &DeclEngine, tree_type: &TreeType) -> bool {
         match tree_type {
             TreeType::Predicate | TreeType::Script => {
                 // Predicates and scripts have main and test functions as entry points.
@@ -223,9 +207,9 @@ impl TyAstNode {
                         ..
                     } => {
                         let decl = decl_engine.get_function(decl_id);
-                        Ok(decl.is_entry())
+                        decl.is_entry()
                     }
-                    _ => Ok(false),
+                    _ => false,
                 }
             }
             TreeType::Contract | TreeType::Library { .. } => match self {
@@ -239,7 +223,7 @@ impl TyAstNode {
                     ..
                 } => {
                     let decl = decl_engine.get_function(decl_id);
-                    Ok(decl.visibility == Visibility::Public || decl.is_test())
+                    decl.visibility == Visibility::Public || decl.is_test()
                 }
                 TyAstNode {
                     content:
@@ -249,19 +233,19 @@ impl TyAstNode {
                             ..
                         }),
                     ..
-                } => Ok(decl_engine.get_trait(decl_id).visibility.is_public()),
+                } => decl_engine.get_trait(decl_id).visibility.is_public(),
                 TyAstNode {
                     content:
                         TyAstNodeContent::Declaration(TyDeclaration::StructDeclaration(decl_ref)),
                     ..
                 } => {
                     let struct_decl = decl_engine.get_struct(decl_ref);
-                    Ok(struct_decl.visibility == Visibility::Public)
+                    struct_decl.visibility == Visibility::Public
                 }
                 TyAstNode {
                     content: TyAstNodeContent::Declaration(TyDeclaration::ImplTrait { .. }),
                     ..
-                } => Ok(true),
+                } => true,
                 TyAstNode {
                     content:
                         TyAstNodeContent::Declaration(TyDeclaration::ConstantDeclaration {
@@ -272,9 +256,9 @@ impl TyAstNode {
                     ..
                 } => {
                     let decl = decl_engine.get_constant(decl_id);
-                    Ok(decl.visibility.is_public())
+                    decl.visibility.is_public()
                 }
-                _ => Ok(false),
+                _ => false,
             },
         }
     }

@@ -1507,10 +1507,13 @@ pub fn dependency_namespace(
     constants: BTreeMap<String, ConfigTimeConstant>,
     engines: Engines<'_>,
 ) -> Result<namespace::Module, vec1::Vec1<CompileError>> {
-    let mut namespace = namespace::Module::default_with_constants(engines, constants)?;
-
+    // TODO: Clean this up when config-time constants v1 are removed.
     let node_idx = &graph[node];
-    namespace.name = Some(Ident::new_no_span(node_idx.name.clone()));
+    let name = Some(Ident::new_no_span(node_idx.name.clone()));
+    let mut namespace =
+        namespace::Module::default_with_constants(engines, constants, name.clone())?;
+    namespace.is_external = true;
+    namespace.name = name;
 
     // Add direct dependencies.
     let mut core_added = false;
@@ -1540,7 +1543,13 @@ pub fn dependency_namespace(
                     public: true,
                 };
                 constants.insert(CONTRACT_ID_CONSTANT_NAME.to_string(), contract_id_constant);
-                namespace::Module::default_with_constants(engines, constants)?
+                let node_idx = &graph[dep_node];
+                let name = Some(Ident::new_no_span(node_idx.name.clone()));
+                let mut ns =
+                    namespace::Module::default_with_constants(engines, constants, name.clone())?;
+                ns.is_external = true;
+                ns.name = name;
+                ns
             }
         };
         namespace.insert_submodule(dep_name, dep_namespace);

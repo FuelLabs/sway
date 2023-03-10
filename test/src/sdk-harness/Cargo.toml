@@ -12,7 +12,7 @@ fuel-core = { version = "0.17", default-features = false }
 fuel-core-client = { version = "0.17", default-features = false }
 fuel-types = "0.26"
 fuel-vm = "0.26"
-fuels = { version = "0.36", features = ["fuel-core-lib"] }
+fuels = { version = "0.37", features = ["fuel-core-lib"] }
 hex = "0.4.3"
 rand = "0.8"
 sha2 = "0.10"
