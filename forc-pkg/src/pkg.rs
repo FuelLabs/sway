@@ -26,6 +26,7 @@ use std::{
     hash::{Hash, Hasher},
     path::{Path, PathBuf},
     str::FromStr,
+    sync::Arc,
 };
 use sway_core::{
     abi_generation::{
@@ -162,14 +163,12 @@ pub struct PkgTestEntry {
 }
 
 /// The result of successfully compiling a workspace.
-///
-/// This is a map from each member package name to its associated built package.
-pub type BuiltWorkspace = HashMap<String, BuiltPackage>;
+pub type BuiltWorkspace = Vec<Arc<BuiltPackage>>;
 
 #[derive(Debug, Clone)]
 pub enum Built {
     /// Represents a standalone package build.
-    Package(Box<BuiltPackage>),
+    Package(Arc<BuiltPackage>),
     /// Represents a workspace build.
     Workspace(BuiltWorkspace),
 }
@@ -513,23 +512,30 @@ impl BuiltPackage {
 }
 
 impl Built {
-    /// Returns a map between pinned packages and their corresponding built package.
-    pub fn into_members(self) -> Result<HashMap<Pinned, BuiltPackage>> {
+    /// Returns an iterator yielding all member built packages.
+    pub fn into_members<'a>(
+        &'a self,
+    ) -> Box<dyn Iterator<Item = (&Pinned, Arc<BuiltPackage>)> + 'a> {
+        // NOTE: Pkg clones in this function are only reference increments not inner value clones.
+        // Since pkg is of type `Arc<_>`. So it is not a heavy opeartion.
         match self {
-            Built::Package(built_pkg) => {
-                Ok(std::iter::once((built_pkg.descriptor.pinned.clone(), *built_pkg)).collect())
+            Built::Package(pkg) => {
+                let pinned = &pkg.as_ref().descriptor.pinned;
+                let pkg = pkg.clone();
+                Box::new(std::iter::once((pinned, pkg)))
             }
-            Built::Workspace(built_workspace) => Ok(built_workspace
-                .into_values()
-                .map(|pkg| (pkg.descriptor.pinned.clone(), pkg))
-                .collect()),
+            Built::Workspace(workspace) => Box::new(
+                workspace
+                    .iter()
+                    .map(|pkg| (&pkg.descriptor.pinned, pkg.clone())),
+            ),
         }
     }
 
     /// Tries to retrieve the `Built` as a `BuiltPackage`.
-    pub fn expect_pkg(self) -> Result<BuiltPackage> {
+    pub fn expect_pkg(self) -> Result<Arc<BuiltPackage>> {
         match self {
-            Built::Package(built_pkg) => Ok(*built_pkg),
+            Built::Package(built_pkg) => Ok(built_pkg),
             Built::Workspace(_) => bail!("expected `Built` to be `Built::Package`"),
         }
     }
@@ -2059,7 +2065,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
     let outputs = member_filter.filter_outputs(&build_plan, outputs);
 
     // Build it!
-    let mut built_workspace = HashMap::new();
+    let mut built_workspace = Vec::new();
     let build_start = std::time::Instant::now();
     let built_packages = build(
         &build_plan,
@@ -2089,15 +2095,16 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
             built_package.write_debug_info(outfile.as_ref())?;
         }
         built_package.write_output(minify.clone(), &pkg_manifest.project.name, &output_dir)?;
-        built_workspace.insert(pinned.name.clone(), built_package);
+        built_workspace.push(Arc::new(built_package));
     }
 
     match curr_manifest {
         Some(pkg_manifest) => {
             let built_pkg = built_workspace
-                .remove(&pkg_manifest.project.name.to_string())
+                .into_iter()
+                .find(|pkg| pkg.descriptor.manifest_file == *pkg_manifest)
                 .expect("package didn't exist in workspace");
-            Ok(Built::Package(Box::new(built_pkg)))
+            Ok(Built::Package(built_pkg))
         }
         None => Ok(Built::Workspace(built_workspace)),
     }

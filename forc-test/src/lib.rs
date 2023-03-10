@@ -68,17 +68,17 @@ pub enum BuiltTests {
 #[derive(Debug)]
 pub enum PackageTests {
     Contract(ContractToTest),
-    NonContract(pkg::BuiltPackage),
+    NonContract(Arc<pkg::BuiltPackage>),
 }
 
 /// A built contract ready for test execution.
 #[derive(Debug)]
 pub struct ContractToTest {
     /// Tests included contract.
-    pub pkg: pkg::BuiltPackage,
+    pub pkg: Arc<pkg::BuiltPackage>,
     /// Bytecode of the contract without tests.
     pub without_tests_bytecode: pkg::BuiltPackageBytecode,
-    pub contract_dependencies: Vec<pkg::BuiltPackage>,
+    pub contract_dependencies: Vec<Arc<pkg::BuiltPackage>>,
 }
 
 /// The set of options provided to the `test` function.
@@ -215,16 +215,16 @@ impl BuiltTests {
     /// `contract_dependencies` represents ordered (by deployment order) packages that needs to be deployed for each package, before executing the test.
     pub(crate) fn from_built(
         built: Built,
-        contract_dependencies: &HashMap<pkg::Pinned, Vec<pkg::BuiltPackage>>,
+        contract_dependencies: &HashMap<pkg::Pinned, Vec<Arc<pkg::BuiltPackage>>>,
     ) -> anyhow::Result<BuiltTests> {
         let built = match built {
             Built::Package(built_pkg) => BuiltTests::Package(PackageTests::from_built_pkg(
-                *built_pkg,
+                built_pkg,
                 contract_dependencies,
             )),
             Built::Workspace(built_workspace) => {
                 let pkg_tests = built_workspace
-                    .into_values()
+                    .into_iter()
                     .map(|built_pkg| PackageTests::from_built_pkg(built_pkg, contract_dependencies))
                     .collect();
                 BuiltTests::Workspace(pkg_tests)
@@ -248,11 +248,11 @@ impl<'a> PackageTests {
 
     /// Construct a `PackageTests` from `BuiltPackage`.
     fn from_built_pkg(
-        built_pkg: BuiltPackage,
-        contract_dependencies: &HashMap<pkg::Pinned, Vec<pkg::BuiltPackage>>,
+        built_pkg: Arc<BuiltPackage>,
+        contract_dependencies: &HashMap<pkg::Pinned, Vec<Arc<pkg::BuiltPackage>>>,
     ) -> PackageTests {
         let built_without_tests_bytecode = built_pkg.bytecode_without_tests.clone();
-        let contract_dependencies: Vec<pkg::BuiltPackage> = contract_dependencies
+        let contract_dependencies: Vec<Arc<pkg::BuiltPackage>> = contract_dependencies
             .get(&built_pkg.descriptor.pinned)
             .cloned()
             .unwrap_or_default();
@@ -443,26 +443,28 @@ pub fn build(opts: Opts) -> anyhow::Result<BuiltTests> {
     let build_opts = opts.into_build_opts();
     let build_plan = pkg::BuildPlan::from_build_opts(&build_opts)?;
     let built = pkg::build_with_options(build_opts)?;
-    let mut built_members = built.clone().into_members()?;
+    let built_members: HashMap<&pkg::Pinned, Arc<BuiltPackage>> = built.into_members().collect();
 
     // For each member node collect their contract dependencies.
-    let member_contract_dependencies: HashMap<pkg::Pinned, Vec<pkg::BuiltPackage>> = build_plan
-        .member_nodes()
-        .map(|member_node| {
-            let graph = build_plan.graph();
-            let pinned_member = graph[member_node].clone();
-            let pinned_contract_dependencies: Vec<pkg::Pinned> = build_plan
-                .contract_dependencies(member_node)
-                .map(|contract_depency_node_ix| graph[contract_depency_node_ix].clone())
-                .collect();
-            let contract_dependencies = pinned_contract_dependencies
-                .iter()
-                .filter_map(|pinned| built_members.remove(pinned))
-                .collect();
+    let member_contract_dependencies: HashMap<pkg::Pinned, Vec<Arc<pkg::BuiltPackage>>> =
+        build_plan
+            .member_nodes()
+            .map(|member_node| {
+                let graph = build_plan.graph();
+                let pinned_member = graph[member_node].clone();
+                let pinned_contract_dependencies: Vec<pkg::Pinned> = build_plan
+                    .contract_dependencies(member_node)
+                    .map(|contract_depency_node_ix| graph[contract_depency_node_ix].clone())
+                    .collect();
+                let contract_dependencies = pinned_contract_dependencies
+                    .iter()
+                    .filter_map(|pinned| built_members.get(pinned))
+                    .cloned()
+                    .collect();
 
-            (pinned_member, contract_dependencies)
-        })
-        .collect();
+                (pinned_member, contract_dependencies)
+            })
+            .collect();
     BuiltTests::from_built(built, &member_contract_dependencies)
 }
 
