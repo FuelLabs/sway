@@ -1,6 +1,6 @@
 use crate::priv_prelude::*;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct ItemTypeAlias {
     pub visibility: Option<PubToken>,
     pub name: Ident,

@@ -454,14 +454,9 @@ impl ty::TyDeclaration {
                     span,
                 };
 
-                let decl_ref = decl_engine.insert(decl);
-                let decl = ty::TyDeclaration::TypeAliasDeclaration {
-                    name: decl_ref.name,
-                    decl_id: decl_ref.id,
-                    decl_span: decl_ref.decl_span,
-                };
+                let decl: ty::TyDeclaration = decl_engine.insert(decl).into();
 
-                // insert the type alias decl into namespace
+                // insert the type alias name and decl into namespace
                 check!(
                     ctx.namespace.insert_symbol(name, decl.clone()),
                     return err(warnings, errors),

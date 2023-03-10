@@ -839,3 +839,12 @@ impl From<DeclRef<DeclId<TyStorageDeclaration>>> for TyDeclaration {
         }
     }
 }
+impl From<DeclRef<DeclId<TyTypeAliasDeclaration>>> for TyDeclaration {
+    fn from(decl_ref: DeclRef<DeclId<TyTypeAliasDeclaration>>) -> Self {
+        TyDeclaration::TypeAliasDeclaration {
+            name: decl_ref.name().clone(),
+            decl_id: *decl_ref.id(),
+            decl_span: decl_ref.decl_span().clone(),
+        }
+    }
+}

@@ -1199,7 +1199,8 @@ impl TypeInfo {
             | TypeInfo::Tuple(_)
             | TypeInfo::B256
             | TypeInfo::UnknownGeneric { .. }
-            | TypeInfo::Numeric => ok((), warnings, errors),
+            | TypeInfo::Numeric
+            | TypeInfo::Alias { .. } => ok((), warnings, errors),
             TypeInfo::Unknown
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
@@ -1211,8 +1212,7 @@ impl TypeInfo {
             | TypeInfo::Array(_, _)
             | TypeInfo::Storage { .. }
             | TypeInfo::Placeholder(_)
-            | TypeInfo::TypeParam(_)
-            | TypeInfo::Alias { .. } => {
+            | TypeInfo::TypeParam(_) => {
                 errors.push(CompileError::Unimplemented(
                     "matching on this type is unsupported right now",
                     span.clone(),
@@ -1244,15 +1244,15 @@ impl TypeInfo {
             | TypeInfo::Str(_)
             | TypeInfo::Array(_, _)
             | TypeInfo::Contract
-            | TypeInfo::Numeric => ok((), warnings, errors),
+            | TypeInfo::Numeric
+            | TypeInfo::Alias { .. } => ok((), warnings, errors),
             TypeInfo::Unknown
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::SelfType
             | TypeInfo::Storage { .. }
             | TypeInfo::Placeholder(_)
-            | TypeInfo::TypeParam(_)
-            | TypeInfo::Alias { .. } => {
+            | TypeInfo::TypeParam(_) => {
                 errors.push(CompileError::Unimplemented(
                     "implementing traits on this type is unsupported right now",
                     span.clone(),

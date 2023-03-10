@@ -1,0 +1,6 @@
+category = "fail"
+# check: $()type MyType = UnknownType
+# check: $()This declaration is never used.
+
+# check: $()type MyType = UnknownType;
+# nextln: $()Could not find symbol "UnknownType" in this scope.
