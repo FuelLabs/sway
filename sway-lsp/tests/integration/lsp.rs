@@ -2,7 +2,7 @@
 //! The methods are used to build and send requests and notifications to the LSP service
 //! and assert the expected responses.
 
-use crate::{GotoDefinition, HoverDocumentation};
+use crate::{GotoDefinition, HoverDocumentation, Rename, RequestParams};
 use assert_json_diff::assert_json_eq;
 use serde_json::json;
 use std::{borrow::Cow, path::Path};
@@ -468,4 +468,28 @@ pub(crate) async fn hover_request<'a>(
         );
     }
     hover
+}
+
+pub(crate) async fn prepare_rename_request<'a>(
+    service: &mut LspService<Backend>,
+    req: &'a RequestParams<'a>,
+    ids: &mut impl Iterator<Item = i64>,
+) -> PrepareRenameResponse {
+    let params = json!({
+        "textDocument": {
+            "uri": req.uri,
+        },
+        "position": {
+            "line": req.line,
+            "character": req.char
+        }
+    });
+    let rename = build_request_with_id("textDocument/prepareRename", params, ids.next().unwrap());
+    let response = call_request(service, rename.clone())
+        .await
+        .unwrap()
+        .unwrap();
+    let value = response.result().unwrap().clone();
+    let prepare_rename_res: Option<PrepareRenameResponse> = serde_json::from_value(value).unwrap();
+    prepare_rename_res.unwrap()
 }
