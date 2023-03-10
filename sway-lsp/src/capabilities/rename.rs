@@ -43,6 +43,7 @@ pub fn rename(
     ) {
         let mut range = get_range_from_span(&ident.span());
         if ident.is_raw_ident() {
+            eprintln!("ident is raw: {:#?}", ident);
             // Make sure the start char starts at the begining,
             // taking the r# tokens into account.
             range.start.character -= RAW_IDENTIFIER.len() as u32;

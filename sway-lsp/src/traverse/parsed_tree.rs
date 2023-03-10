@@ -655,8 +655,13 @@ impl Parse for VariableDeclaration {
             // We want to use the span from variable.name to construct a
             // new Ident as the name_override_opt can be set to one of the
             // const prefixes and not the actual token name.
+            let ident = if self.name.is_raw_ident() {
+                Ident::new_with_raw(self.name.span(), true)
+            } else {
+                Ident::new(self.name.span())
+            };
             ctx.tokens.insert(
-                to_ident_key(&Ident::new(self.name.span())),
+                to_ident_key(&ident),
                 Token::from_parsed(
                     AstToken::Declaration(Declaration::VariableDeclaration(self.clone())),
                     symbol_kind,

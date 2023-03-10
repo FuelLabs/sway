@@ -1623,17 +1623,31 @@ async fn rename() {
     .await;
     let mut i = 0..;
 
-    // let req = RequestParams {
-    //     uri: &uri,
-    //     line: 19,
-    //     char: 13,
-    // };
-    // let rename = Rename {
-    //     req: &req,
-    //     new_name: "pnt",
-    // };
-    //let _ = lsp::prepare_rename_request(&mut service, &req, &mut i).await;
-    //let _ = lsp::rename_request(&mut service, &rename, &mut i).await;
+    // struct expression variable
+    let req = RequestParams {
+        uri: &uri,
+        line: 19,
+        char: 13,
+    };
+    let rename = Rename {
+        req: &req,
+        new_name: "pnt",
+    };
+    let _ = lsp::prepare_rename_request(&mut service, &req, &mut i).await;
+    let _ = lsp::rename_request(&mut service, &rename, &mut i).await;
+
+    // Enum
+    let req = RequestParams {
+        uri: &uri,
+        line: 18,
+        char: 17,
+    };
+    let rename = Rename {
+        req: &req,
+        new_name: "MyEnum",
+    };
+    let _ = lsp::prepare_rename_request(&mut service, &req, &mut i).await;
+    let _ = lsp::rename_request(&mut service, &rename, &mut i).await;
 
     // Enum Variant
     let req = RequestParams {
@@ -1648,6 +1662,18 @@ async fn rename() {
     let _ = lsp::prepare_rename_request(&mut service, &req, &mut i).await;
     let _ = lsp::rename_request(&mut service, &rename, &mut i).await;
 
+    // raw identifier syntax
+    let req = RequestParams {
+        uri: &uri,
+        line: 24,
+        char: 16,
+    };
+    let rename = Rename {
+        req: &req,
+        new_name: "new_var_name",
+    };
+    let _ = lsp::prepare_rename_request(&mut service, &req, &mut i).await;
+    let _ = lsp::rename_request(&mut service, &rename, &mut i).await;
 }
 
 #[tokio::test]
