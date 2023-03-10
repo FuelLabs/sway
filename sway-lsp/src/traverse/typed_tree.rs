@@ -309,7 +309,10 @@ impl<'a> TypedTree<'a> {
                     self.handle_expression(&field.initializer);
                 }
             }
-            ty::TyDeclaration::TypeAliasDeclaration { .. } => todo!(),
+            ty::TyDeclaration::TypeAliasDeclaration { decl_id, .. } => {
+                let type_alias_decl = decl_engine.get_type_alias(decl_id);
+                self.collect_type_alias_decl(&type_alias_decl);
+            }
         }
     }
 
@@ -1410,6 +1413,22 @@ impl<'a> TypedTree<'a> {
         }
 
         self.collect_type_argument(&field.type_argument);
+    }
+
+    fn collect_type_alias_decl(&self, type_alias_decl: &ty::TyTypeAliasDeclaration) {
+        if let Some(mut token) = self
+            .ctx
+            .tokens
+            .try_get_mut(&to_ident_key(&type_alias_decl.name))
+            .try_unwrap()
+        {
+            token.typed = Some(TypedAstToken::TypedTypeAliasDeclaration(
+                type_alias_decl.clone(),
+            ));
+            token.type_def = Some(TypeDefinition::Ident(type_alias_decl.name.clone()));
+        }
+
+        self.collect_type_argument(&type_alias_decl.ty);
     }
 }
 

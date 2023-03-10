@@ -1,9 +1,4 @@
 category = "fail"
-# check: $()struct Generic<T> {}
-# check: $()This struct is never used.
-
-# check: $()type MyGeneric = Generic;
-# check: $()This declaration is never used.
 
 # check: $()type MyGeneric = Generic;
 # nextln: $()"Generic" needs type arguments.

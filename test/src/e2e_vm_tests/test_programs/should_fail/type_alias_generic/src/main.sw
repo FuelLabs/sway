@@ -1,7 +1,9 @@
 script;
 
-struct Generic {}
+#[allow(dead_code)]
+struct Generic<T> {}
 
-type MyGeneric = Generi;
+#[allow(dead_code)]
+type MyGeneric = Generic;
 
 fn main() {}

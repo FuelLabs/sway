@@ -983,8 +983,16 @@ impl Parse for TypeArgument {
 }
 
 impl Parse for TypeAliasDeclaration {
-    fn parse(&self, _ctx: &ParseContext) {
-        todo!()
+    fn parse(&self, ctx: &ParseContext) {
+        ctx.tokens.insert(
+            to_ident_key(&self.name),
+            Token::from_parsed(
+                AstToken::Declaration(Declaration::TypeAliasDeclaration(self.clone())),
+                SymbolKind::Type,
+            ),
+        );
+        self.ty.parse(ctx);
+        self.attributes.parse(ctx);
     }
 }
 
