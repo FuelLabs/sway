@@ -7,7 +7,7 @@ use crate::{
 
 use sway_ast::{
     attribute::Annotated,
-    expr::{IfControlFlow, ReassignmentOp, ReassignmentOpVariant},
+    expr::{LoopControlFlow, ReassignmentOp, ReassignmentOpVariant},
     ty::TyTupleDescriptor,
     AbiCastArgs, AngleBrackets, AsmBlock, Assignable, AttributeDecl, Braces, CodeBlockContents,
     CommaToken, DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor,
@@ -2454,7 +2454,7 @@ fn if_expr_to_expression(
         None => None,
         Some((_else_token, tail)) => {
             let expression = match tail {
-                IfControlFlow::Break(braced_code_block_contents) => {
+                LoopControlFlow::Break(braced_code_block_contents) => {
                     braced_code_block_contents_to_expression(
                         context,
                         handler,
@@ -2462,7 +2462,7 @@ fn if_expr_to_expression(
                         braced_code_block_contents,
                     )?
                 }
-                IfControlFlow::Continue(if_expr) => {
+                LoopControlFlow::Continue(if_expr) => {
                     if_expr_to_expression(context, handler, engines, *if_expr)?
                 }
             };

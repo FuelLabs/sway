@@ -302,7 +302,7 @@ pub struct IfExpr {
     pub then_block: Braces<CodeBlockContents>,
     pub else_opt: Option<(
         ElseToken,
-        IfControlFlow<Braces<CodeBlockContents>, Box<IfExpr>>,
+        LoopControlFlow<Braces<CodeBlockContents>, Box<IfExpr>>,
     )>,
 }
 
@@ -318,7 +318,7 @@ pub enum IfCondition {
 }
 
 #[derive(Clone, Debug, Serialize)]
-pub enum IfControlFlow<B, C = ()> {
+pub enum LoopControlFlow<B, C = ()> {
     Continue(C),
     Break(B),
 }
@@ -328,8 +328,8 @@ impl Spanned for IfExpr {
         let start = self.if_token.span();
         let end = match &self.else_opt {
             Some((_else_token, tail)) => match tail {
-                IfControlFlow::Break(block) => block.span(),
-                IfControlFlow::Continue(if_expr) => if_expr.span(),
+                LoopControlFlow::Break(block) => block.span(),
+                LoopControlFlow::Continue(if_expr) => if_expr.span(),
             },
             None => self.then_block.span(),
         };

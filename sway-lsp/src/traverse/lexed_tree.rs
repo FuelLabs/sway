@@ -3,7 +3,7 @@ use crate::{
     traverse::{Parse, ParseContext},
 };
 use sway_ast::{
-    expr::IfControlFlow, ty::TyTupleDescriptor, Assignable, CodeBlockContents, ConfigurableField,
+    expr::LoopControlFlow, ty::TyTupleDescriptor, Assignable, CodeBlockContents, ConfigurableField,
     Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor, FnArg, FnArgs, FnSignature,
     IfCondition, IfExpr, ItemAbi, ItemConfigurable, ItemConst, ItemEnum, ItemFn, ItemImpl,
     ItemImplItem, ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemUse, MatchBranchKind,
@@ -563,10 +563,10 @@ impl Parse for IfExpr {
         if let Some((else_token, control_flow)) = &self.else_opt {
             insert_keyword(ctx, else_token.span());
             match control_flow {
-                IfControlFlow::Break(block) => {
+                LoopControlFlow::Break(block) => {
                     block.get().parse(ctx);
                 }
-                IfControlFlow::Continue(if_expr) => {
+                LoopControlFlow::Continue(if_expr) => {
                     if_expr.parse(ctx);
                 }
             }

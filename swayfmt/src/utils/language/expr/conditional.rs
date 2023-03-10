@@ -11,7 +11,7 @@ use crate::{
 };
 use std::{fmt::Write, ops::Range};
 use sway_ast::{
-    expr::IfControlFlow, token::Delimiter, IfCondition, IfExpr, MatchBranch, MatchBranchKind,
+    expr::LoopControlFlow, token::Delimiter, IfCondition, IfExpr, MatchBranch, MatchBranchKind,
 };
 use sway_types::Spanned;
 
@@ -185,11 +185,11 @@ fn format_else_opt(
         }
         write!(else_if_str, "{}", else_token.span().as_str())?;
         match &control_flow {
-            IfControlFlow::Continue(if_expr) => {
+            LoopControlFlow::Continue(if_expr) => {
                 write!(else_if_str, " ")?;
                 if_expr.format(&mut else_if_str, formatter)?
             }
-            IfControlFlow::Break(code_block_contents) => {
+            LoopControlFlow::Break(code_block_contents) => {
                 IfExpr::open_curly_brace(&mut else_if_str, formatter)?;
                 code_block_contents
                     .get()
@@ -394,8 +394,8 @@ impl LeafSpans for IfExpr {
         if let Some(else_block) = &self.else_opt {
             collected_spans.push(ByteSpan::from(else_block.0.span()));
             let mut else_body_spans = match &else_block.1 {
-                IfControlFlow::Continue(if_expr) => if_expr.leaf_spans(),
-                IfControlFlow::Break(else_body) => else_body.leaf_spans(),
+                LoopControlFlow::Continue(if_expr) => if_expr.leaf_spans(),
+                LoopControlFlow::Break(else_body) => else_body.leaf_spans(),
             };
             collected_spans.append(&mut else_body_spans);
         }
