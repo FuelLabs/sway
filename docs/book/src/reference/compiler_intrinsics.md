@@ -62,7 +62,6 @@ __lt<T>(lhs: T, rhs: T) -> bool
 **Constraints:** `T` is `u8`, `u16`, `u32`, `u64`.
 ___
 
-
 ```sway
 __gtf<T>(index: u64, tx_field_id: u64) -> T
 ```
