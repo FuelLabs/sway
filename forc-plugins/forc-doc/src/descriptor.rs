@@ -15,7 +15,7 @@ trait RequiredMethods {
 impl RequiredMethods for Vec<DeclRefTraitFn> {
     fn to_methods(&self, decl_engine: &DeclEngine) -> Vec<TyTraitFn> {
         self.iter()
-            .map(|DeclRef { id, .. }| decl_engine.get_trait_fn(id))
+            .map(|decl_ref| decl_engine.get_trait_fn(decl_ref))
             .collect()
     }
 }

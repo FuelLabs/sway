@@ -1339,7 +1339,7 @@ impl ty::TyExpression {
                     abi_items.push(TyImplItem::Fn(
                         decl_engine
                             .insert(method.to_dummy_func(Mode::ImplAbiFn))
-                            .with_parent(decl_engine, decl_ref.id.into()),
+                            .with_parent(decl_engine, (*decl_ref.id()).into()),
                     ));
                 }
             }

@@ -54,13 +54,35 @@ pub type DeclRefMixedInterface = DeclRef<InterfaceDeclId>;
 pub struct DeclRef<I> {
     /// The name of the declaration.
     // NOTE: In the case of storage, the name is "storage".
-    pub name: Ident,
+    name: Ident,
 
     /// The index into the [DeclEngine].
-    pub id: I,
+    id: I,
 
     /// The [Span] of the entire declaration.
-    pub decl_span: Span,
+    decl_span: Span,
+}
+
+impl<I> DeclRef<I> {
+    pub(crate) fn new(name: Ident, id: I, decl_span: Span) -> Self {
+        DeclRef {
+            name,
+            id,
+            decl_span,
+        }
+    }
+
+    pub fn name(&self) -> &Ident {
+        &self.name
+    }
+
+    pub fn id(&self) -> &I {
+        &self.id
+    }
+
+    pub fn decl_span(&self) -> &Span {
+        &self.decl_span
+    }
 }
 
 impl<T> DeclRef<DeclId<T>>
@@ -133,16 +155,6 @@ where
         decl_engine
             .insert(decl)
             .with_parent(decl_engine, self.id.into())
-    }
-}
-
-impl<I> DeclRef<I> {
-    pub(crate) fn new(name: Ident, id: I, decl_span: Span) -> Self {
-        DeclRef {
-            name,
-            id,
-            decl_span,
-        }
     }
 }
 

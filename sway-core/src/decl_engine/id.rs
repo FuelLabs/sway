@@ -71,13 +71,13 @@ impl<T> From<&mut DeclId<T>> for DeclId<T> {
 
 impl<T> From<&DeclRef<DeclId<T>>> for DeclId<T> {
     fn from(value: &DeclRef<DeclId<T>>) -> Self {
-        value.id
+        *value.id()
     }
 }
 
 impl<T> From<&mut DeclRef<DeclId<T>>> for DeclId<T> {
     fn from(value: &mut DeclRef<DeclId<T>>) -> Self {
-        value.id
+        *value.id()
     }
 }
 

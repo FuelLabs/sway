@@ -889,7 +889,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             // it in the namespace. if not then we need to check to see if the namespace contains
             // the decl id parents (the original generic non monomorphized decl id).
             let mut exists = false;
-            let parents = decl_engine.find_all_parents(engines, &function_decl_ref.id);
+            let parents = decl_engine.find_all_parents(engines, &function_decl_ref.id().clone());
             for parent in parents.iter() {
                 if let Ok(parent_decl_id) = DeclId::try_from(parent) {
                     let parent = decl_engine.get_function(&parent_decl_id);
@@ -909,11 +909,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                     engines,
                     &ty::TyAstNode {
                         content: ty::TyAstNodeContent::Declaration(
-                            ty::TyDeclaration::FunctionDeclaration {
-                                name: function_decl_ref.name.clone(),
-                                decl_id: function_decl_ref.id,
-                                decl_span: function_decl_ref.decl_span.clone(),
-                            },
+                            function_decl_ref.clone().into(),
                         ),
                         span: expression_span.clone(),
                     },

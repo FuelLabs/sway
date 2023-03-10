@@ -90,7 +90,7 @@ pub(crate) fn instantiate_function_application(
     let return_type = function_decl.return_type.clone();
     let new_decl_ref = decl_engine
         .insert(function_decl)
-        .with_parent(decl_engine, function_decl_ref.id.into());
+        .with_parent(decl_engine, (*function_decl_ref.id()).into());
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {

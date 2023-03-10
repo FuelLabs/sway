@@ -90,7 +90,7 @@ impl ty::TyTraitDeclaration {
                     dummy_interface_surface.push(ty::TyImplItem::Fn(
                         decl_engine
                             .insert(method.to_dummy_func(Mode::NonAbi))
-                            .with_parent(decl_engine, decl_ref.id.into()),
+                            .with_parent(decl_engine, (*decl_ref.id()).into()),
                     ));
                     new_interface_surface.push(ty::TyTraitInterfaceItem::TraitFn(decl_ref));
                     method.name.clone()
@@ -171,7 +171,8 @@ impl ty::TyTraitDeclaration {
         for item in interface_surface.iter() {
             match item {
                 ty::TyTraitInterfaceItem::TraitFn(decl_ref) => {
-                    interface_surface_item_refs.insert(decl_ref.name.clone(), item.clone());
+                    interface_surface_item_refs
+                        .insert(decl_ref.name().clone().clone(), item.clone());
                 }
             }
         }
@@ -186,7 +187,7 @@ impl ty::TyTraitDeclaration {
             let decl_ref = match &item {
                 ty::TyTraitItem::Fn(decl_ref) => decl_ref,
             };
-            impld_item_refs.insert(decl_ref.name.clone(), item.clone());
+            impld_item_refs.insert(decl_ref.name().clone().clone(), item.clone());
         }
 
         (interface_surface_item_refs, impld_item_refs)
@@ -219,7 +220,8 @@ impl ty::TyTraitDeclaration {
         for item in interface_surface.iter() {
             match item {
                 ty::TyTraitInterfaceItem::TraitFn(decl_ref) => {
-                    interface_surface_item_refs.insert(decl_ref.name.clone(), item.clone());
+                    interface_surface_item_refs
+                        .insert(decl_ref.name().clone().clone(), item.clone());
                 }
             }
         }
@@ -228,7 +230,7 @@ impl ty::TyTraitDeclaration {
         for item in items.iter() {
             match item {
                 ty::TyTraitItem::Fn(decl_ref) => {
-                    item_refs.insert(decl_ref.name.clone(), item.clone());
+                    item_refs.insert(decl_ref.name().clone().clone(), item.clone());
                 }
             }
         }
@@ -258,7 +260,7 @@ impl ty::TyTraitDeclaration {
                         TyTraitItem::Fn(
                             decl_engine
                                 .insert(method)
-                                .with_parent(decl_engine, decl_ref.id.into()),
+                                .with_parent(decl_engine, (*decl_ref.id()).into()),
                         ),
                     );
                 }
@@ -310,7 +312,7 @@ impl ty::TyTraitDeclaration {
                     all_items.push(TyImplItem::Fn(
                         ctx.decl_engine
                             .insert(method.to_dummy_func(Mode::NonAbi))
-                            .with_parent(ctx.decl_engine, decl_ref.id.into()),
+                            .with_parent(ctx.decl_engine, (*decl_ref.id()).into()),
                     ));
                 }
             }
@@ -324,7 +326,7 @@ impl ty::TyTraitDeclaration {
                     all_items.push(TyImplItem::Fn(
                         ctx.decl_engine
                             .insert(method)
-                            .with_parent(ctx.decl_engine, decl_ref.id.into()),
+                            .with_parent(ctx.decl_engine, (*decl_ref.id()).into()),
                     ));
                 }
             }

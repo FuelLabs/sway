@@ -111,7 +111,7 @@ impl TyProgram {
                         // add methods to the ABI only if they come from an ABI implementation
                         // and not a (super)trait implementation for Contract
                         if let Some(trait_decl_ref) = trait_decl_ref {
-                            if matches!(trait_decl_ref.id, InterfaceDeclId::Abi(_)) {
+                            if matches!(*trait_decl_ref.id(), InterfaceDeclId::Abi(_)) {
                                 for item in items {
                                     match item {
                                         TyImplItem::Fn(method_ref) => {

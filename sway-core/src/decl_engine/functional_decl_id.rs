@@ -60,15 +60,15 @@ impl std::fmt::Display for FunctionalDeclId {
 impl TryFrom<DeclRefMixedFunctional> for DeclRefFunction {
     type Error = CompileError;
     fn try_from(value: DeclRefMixedFunctional) -> Result<Self, Self::Error> {
-        match value.id {
-            FunctionalDeclId::Function(id) => Ok(DeclRef {
-                name: value.name,
+        match value.id().clone() {
+            FunctionalDeclId::Function(id) => Ok(DeclRef::new(
+                value.name().clone(),
                 id,
-                decl_span: value.decl_span,
-            }),
+                value.decl_span().clone(),
+            )),
             actually @ FunctionalDeclId::TraitFn(_) => Err(CompileError::DeclIsNotAFunction {
                 actually: actually.to_string(),
-                span: value.decl_span,
+                span: value.decl_span().clone(),
             }),
         }
     }

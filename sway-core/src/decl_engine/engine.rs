@@ -53,11 +53,11 @@ macro_rules! decl_engine_index {
 
             fn insert(&self, decl: $decl) -> DeclRef<DeclId<$decl>> {
                 let span = decl.span();
-                DeclRef {
-                    name: decl.name().clone(),
-                    id: DeclId::new(self.$slab.insert(decl)),
-                    decl_span: span,
-                }
+                DeclRef::new(
+                    decl.name().clone(),
+                    DeclId::new(self.$slab.insert(decl)),
+                    span,
+                )
             }
         }
     };
