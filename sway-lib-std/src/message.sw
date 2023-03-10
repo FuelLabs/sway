@@ -1,4 +1,4 @@
-library message;
+library;
 
 use ::alloc::alloc_bytes;
 use ::bytes::Bytes;

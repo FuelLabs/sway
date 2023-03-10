@@ -311,7 +311,6 @@ impl TestResult {
         let file_str = fs::read_to_string(&*file_path)?;
         let line_number = file_str[..span_start]
             .chars()
-            .into_iter()
             .filter(|&c| c == '\n')
             .count();
         Ok(TestDetails {

@@ -170,7 +170,10 @@ impl ty::TyMatchExpression {
                 // NOTE: This manual construction of the expression can (and
                 // most likely will) lead to an otherwise improperly typed
                 // expression, in most cases.
-                if !type_engine.get(self.value_type_id).has_valid_constructor() {
+                if !type_engine
+                    .get(self.value_type_id)
+                    .has_valid_constructor(decl_engine)
+                {
                     let condition = ty::TyExpression {
                         expression: ty::TyExpressionVariant::Literal(Literal::Boolean(true)),
                         return_type: type_engine.insert(decl_engine, TypeInfo::Boolean),

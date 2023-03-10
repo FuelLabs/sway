@@ -1,13 +1,13 @@
 use crate::{Parse, ParseResult, ParseToEnd, Parser, ParserConsumed};
 
 use sway_ast::keywords::{
-    AbiToken, ClassToken, ConfigurableToken, ConstToken, DepToken, EnumToken, FnToken, ImplToken,
+    AbiToken, ClassToken, ConfigurableToken, ConstToken, EnumToken, FnToken, ImplToken, ModToken,
     MutToken, OpenAngleBracketToken, RefToken, SelfToken, SemicolonToken, StorageToken,
     StructToken, TraitToken, UseToken, WhereToken,
 };
 use sway_ast::{
-    Dependency, FnArg, FnArgs, FnSignature, ItemConst, ItemEnum, ItemFn, ItemKind, ItemStruct,
-    ItemTrait, ItemUse, TypeField,
+    FnArg, FnArgs, FnSignature, ItemConst, ItemEnum, ItemFn, ItemKind, ItemStruct, ItemTrait,
+    ItemUse, Submodule, TypeField,
 };
 use sway_error::parser_error::ParseErrorKind;
 
@@ -30,8 +30,8 @@ impl Parse for ItemKind {
 
         let mut visibility = parser.take();
 
-        let kind = if let Some(item) = parser.guarded_parse::<DepToken, Dependency>()? {
-            ItemKind::Dependency(item)
+        let kind = if let Some(item) = parser.guarded_parse::<ModToken, Submodule>()? {
+            ItemKind::Submodule(item)
         } else if let Some(mut item) = parser.guarded_parse::<UseToken, ItemUse>()? {
             item.visibility = visibility.take();
             ItemKind::Use(item)

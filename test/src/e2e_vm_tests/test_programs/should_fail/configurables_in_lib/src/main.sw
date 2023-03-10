@@ -1,6 +1,6 @@
 script;
 
-dep lib;
+mod lib;
 
 use lib::*;
 

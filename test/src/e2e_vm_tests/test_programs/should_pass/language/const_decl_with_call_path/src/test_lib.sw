@@ -1,3 +1,3 @@
-library test_lib;
+library;
 
 pub const NUMBER: u64 = 10;

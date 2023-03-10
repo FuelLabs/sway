@@ -59,7 +59,7 @@ impl Items {
         match self.declared_storage {
             Some(ref decl_ref) => {
                 let storage = decl_engine.get_storage(&decl_ref.id);
-                storage.apply_storage_load(type_engine, fields, storage_fields)
+                storage.apply_storage_load(type_engine, decl_engine, fields, storage_fields)
             }
             None => {
                 errors.push(CompileError::NoDeclaredStorage {
@@ -156,7 +156,7 @@ impl Items {
         self.implemented_traits.insert_for_type(engines, type_id);
     }
 
-    pub(crate) fn get_methods_for_type(
+    pub fn get_methods_for_type(
         &self,
         engines: Engines<'_>,
         type_id: TypeId,
@@ -201,6 +201,7 @@ impl Items {
         let mut errors = vec![];
 
         let type_engine = engines.te();
+        let decl_engine = engines.de();
 
         let symbol = match self.symbols.get(base_name).cloned() {
             Some(s) => s,
@@ -232,15 +233,12 @@ impl Items {
             };
             match (resolved_type, projection) {
                 (
-                    TypeInfo::Struct {
-                        call_path: struct_name,
-                        fields,
-                        ..
-                    },
+                    TypeInfo::Struct(decl_ref),
                     ty::ProjectionKind::StructField { name: field_name },
                 ) => {
+                    let struct_decl = decl_engine.get_struct(&decl_ref);
                     let field_type_opt = {
-                        fields.iter().find_map(
+                        struct_decl.fields.iter().find_map(
                             |ty::TyStructField {
                                  type_argument,
                                  name,
@@ -258,14 +256,15 @@ impl Items {
                         Some(field_type) => field_type,
                         None => {
                             // gather available fields for the error message
-                            let available_fields = fields
+                            let available_fields = struct_decl
+                                .fields
                                 .iter()
                                 .map(|field| field.name.as_str())
                                 .collect::<Vec<_>>();
 
                             errors.push(CompileError::FieldNotFound {
                                 field_name: field_name.clone(),
-                                struct_name: struct_name.suffix,
+                                struct_name: struct_decl.call_path.suffix,
                                 available_fields: available_fields.join(", "),
                                 span: field_name.span(),
                             });

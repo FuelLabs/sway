@@ -1,6 +1,6 @@
 contract;
 
-dep foo;
+mod foo;
 
 struct A {
     a: Option<Option<u32>>,

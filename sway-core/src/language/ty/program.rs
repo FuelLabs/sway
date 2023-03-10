@@ -28,7 +28,7 @@ impl TyProgram {
         engines: Engines<'_>,
         root: &TyModule,
         kind: parsed::TreeType,
-        module_span: Span,
+        package_name: &str,
     ) -> CompileResult<(
         TyProgramKind,
         Vec<TyDeclaration>,
@@ -48,10 +48,8 @@ impl TyProgram {
                 Self::validate_root(
                     engines,
                     &submodule.module,
-                    parsed::TreeType::Library {
-                        name: submodule.library_name.clone(),
-                    },
-                    submodule.library_name.span().clone(),
+                    parsed::TreeType::Library,
+                    package_name,
                 ),
                 continue,
                 warnings,
@@ -185,7 +183,7 @@ impl TyProgram {
                             let type_info = ty_engine.get(field.type_argument.type_id);
                             let type_info_str = engines.help_out(&type_info).to_string();
                             let raw_ptr_type = type_info
-                                .extract_nested_types(ty_engine, &field.span)
+                                .extract_nested_types(engines, &field.span)
                                 .value
                                 .and_then(|value| {
                                     value
@@ -204,18 +202,20 @@ impl TyProgram {
 
                 TyProgramKind::Contract { abi_entries }
             }
-            parsed::TreeType::Library { name } => {
+            parsed::TreeType::Library => {
                 if !configurables.is_empty() {
                     errors.push(CompileError::ConfigurableInLibrary {
-                        span: configurables[0].name.span(),
+                        span: configurables[0].call_path.suffix.span(),
                     });
                 }
-                TyProgramKind::Library { name }
+                TyProgramKind::Library {
+                    name: package_name.to_string(),
+                }
             }
             parsed::TreeType::Predicate => {
                 // A predicate must have a main function and that function must return a boolean.
                 if mains.is_empty() {
-                    errors.push(CompileError::NoPredicateMainFunction(module_span));
+                    errors.push(CompileError::NoPredicateMainFunction(root.span.clone()));
                     return err(vec![], errors);
                 }
                 if mains.len() > 1 {
@@ -238,7 +238,7 @@ impl TyProgram {
             parsed::TreeType::Script => {
                 // A script must have exactly one main function.
                 if mains.is_empty() {
-                    errors.push(CompileError::NoScriptMainFunction(module_span));
+                    errors.push(CompileError::NoScriptMainFunction(root.span.clone()));
                     return err(vec![], errors);
                 }
                 if mains.len() > 1 {
@@ -255,7 +255,7 @@ impl TyProgram {
                 let nested_types = check!(
                     main_return_type_info
                         .clone()
-                        .extract_nested_types(ty_engine, &main_func.return_type.span),
+                        .extract_nested_types(engines, &main_func.return_type.span),
                     vec![],
                     warnings,
                     errors
@@ -359,18 +359,11 @@ impl CollectTypesMetadata for TyProgram {
                 for module in std::iter::once(&self.root).chain(
                     self.root
                         .submodules_recursive()
-                        .into_iter()
                         .map(|(_, submod)| &submod.module),
                 ) {
                     for node in module.all_nodes.iter() {
-                        let is_public = check!(
-                            node.is_public(decl_engine),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
                         let is_generic_function = node.is_generic_function(decl_engine);
-                        if is_public {
+                        if node.is_public(decl_engine) {
                             let node_metadata = check!(
                                 node.collect_types_metadata(ctx),
                                 return err(warnings, errors),
@@ -400,7 +393,6 @@ impl CollectTypesMetadata for TyProgram {
         for module in std::iter::once(&self.root).chain(
             self.root
                 .submodules_recursive()
-                .into_iter()
                 .map(|(_, submod)| &submod.module),
         ) {
             for node in module.all_nodes.iter() {
@@ -429,7 +421,7 @@ pub enum TyProgramKind {
         abi_entries: Vec<TyFunctionDeclaration>,
     },
     Library {
-        name: Ident,
+        name: String,
     },
     Predicate {
         main_function: TyFunctionDeclaration,
@@ -444,7 +436,7 @@ impl TyProgramKind {
     pub fn tree_type(&self) -> parsed::TreeType {
         match self {
             TyProgramKind::Contract { .. } => parsed::TreeType::Contract,
-            TyProgramKind::Library { name } => parsed::TreeType::Library { name: name.clone() },
+            TyProgramKind::Library { .. } => parsed::TreeType::Library,
             TyProgramKind::Predicate { .. } => parsed::TreeType::Predicate,
             TyProgramKind::Script { .. } => parsed::TreeType::Script,
         }

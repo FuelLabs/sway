@@ -1,5 +1,5 @@
 // ANCHOR: abi_library
-library wallet_abi;
+library;
 
 // ANCHOR: abi
 abi Wallet {

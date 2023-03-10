@@ -1,7 +1,7 @@
 use crate::{
     engine_threading::Engines,
     error::*,
-    language::{parsed::*, ty, Visibility},
+    language::{parsed::*, ty},
     semantic_analysis::*,
     transform::to_parsed_lang,
     Ident, Namespace,
@@ -24,7 +24,7 @@ use sway_types::{span::Span, ConfigTimeConstant, Spanned};
 /// A single `Module` within a Sway project.
 ///
 /// A `Module` is most commonly associated with an individual file of Sway code, e.g. a top-level
-/// script/predicate/contract file or some library dependency whether introduced via `dep` or the
+/// script/predicate/contract file or some library dependency whether introduced via `mod` or the
 /// `[dependencies]` table of a `forc` manifest.
 ///
 /// A `Module` contains a set of all items that exist within the lexical scope via declaration or
@@ -34,25 +34,31 @@ pub struct Module {
     /// Submodules of the current module represented as an ordered map from each submodule's name
     /// to the associated `Module`.
     ///
-    /// Submodules are normally introduced in Sway code with the `dep foo;` syntax where `foo` is
+    /// Submodules are normally introduced in Sway code with the `mod foo;` syntax where `foo` is
     /// some library dependency that we include as a submodule.
     ///
     /// Note that we *require* this map to be ordered to produce deterministic codegen results.
     pub(crate) submodules: im::OrdMap<ModuleName, Module>,
     /// The set of symbols, implementations, synonyms and aliases present within this module.
     items: Items,
-    /// Name of the module, package name for root module, library name for other modules.
-    /// Library name used is the same as declared in `library name;`.
+    /// Name of the module, package name for root module, module name for other modules.
+    /// Module name used is the same as declared in `mod name;`.
     pub name: Option<Ident>,
+    /// Empty span at the beginning of the file implementing the module
+    pub span: Option<Span>,
+    /// Indicates whether the module is external to the current package. External modules are
+    /// imported in the `Forc.toml` file.
+    pub is_external: bool,
 }
 
 impl Module {
     pub fn default_with_constants(
         engines: Engines<'_>,
         constants: BTreeMap<String, ConfigTimeConstant>,
+        name: Option<Ident>,
     ) -> Result<Self, vec1::Vec1<CompileError>> {
         let handler = <_>::default();
-        Module::default_with_constants_inner(&handler, engines, constants).map_err(|_| {
+        Module::default_with_constants_inner(&handler, engines, constants, name).map_err(|_| {
             let (errors, warnings) = handler.consume();
             assert!(warnings.is_empty());
 
@@ -65,6 +71,7 @@ impl Module {
         handler: &Handler,
         engines: Engines<'_>,
         constants: BTreeMap<String, ConfigTimeConstant>,
+        ns_name: Option<Ident>,
     ) -> Result<Self, ErrorEmitted> {
         // it would be nice to one day maintain a span from the manifest file, but
         // we don't keep that around so we just use the span from the generated const decl instead.
@@ -127,6 +134,9 @@ impl Module {
                 span: const_item_span.clone(),
             };
             let mut ns = Namespace::init_root(Default::default());
+            // This is pretty hacky but that's okay because of this code is being removed pretty soon
+            ns.root.module.name = ns_name.clone();
+            ns.root.module.is_external = true;
             let type_check_ctx = TypeCheckContext::from_root(&mut ns, engines);
             let typed_node = ty::TyAstNode::type_check(type_check_ctx, ast_node)
                 .unwrap(&mut vec![], &mut vec![]);
@@ -223,13 +233,7 @@ impl Module {
         let implemented_traits = src_ns.implemented_traits.clone();
         let mut symbols_and_decls = vec![];
         for (symbol, decl) in src_ns.symbols.iter() {
-            let visibility = check!(
-                decl.visibility(decl_engine),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            if visibility == Visibility::Public {
+            if decl.visibility(decl_engine).is_public() {
                 symbols_and_decls.push((symbol.clone(), decl.clone()));
             }
         }
@@ -280,13 +284,7 @@ impl Module {
             .map(|(symbol, (_, _, decl))| (symbol.clone(), decl.clone()))
             .collect::<Vec<_>>();
         for (symbol, decl) in src_ns.symbols.iter() {
-            let visibility = check!(
-                decl.visibility(decl_engine),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            if visibility == Visibility::Public {
+            if decl.visibility(decl_engine).is_public() {
                 symbols_and_decls.push((symbol.clone(), decl.clone()));
             }
         }
@@ -360,13 +358,7 @@ impl Module {
         let mut impls_to_insert = TraitMap::default();
         match src_ns.symbols.get(item).cloned() {
             Some(decl) => {
-                let visibility = check!(
-                    decl.visibility(decl_engine),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                if visibility != Visibility::Public {
+                if !decl.visibility(decl_engine).is_public() {
                     errors.push(CompileError::ImportPrivateSymbol {
                         name: item.clone(),
                         span: item.span(),

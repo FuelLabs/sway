@@ -1,4 +1,4 @@
-library lib;
+library;
 
 pub struct MyStruct0 {}
 pub enum MyEnum0 {}

@@ -1,7 +1,7 @@
 script;
 
-dep my_add;
-dep my_a;
+mod my_add;
+mod my_a;
 
 impl my_add::MyAdd for u64 {
     fn my_add(self, other: Self) -> Self {

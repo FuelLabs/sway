@@ -1,4 +1,4 @@
-library asset;
+library;
 
 use core::ops::Eq;
 

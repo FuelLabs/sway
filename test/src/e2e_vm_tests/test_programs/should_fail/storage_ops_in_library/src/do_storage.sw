@@ -1,4 +1,4 @@
-library do_storage;
+library;
 
 const KEY: b256 = 0xfafafafafafafafafafafafafafafafafafafafafafafafafafafafafafafafa;
 

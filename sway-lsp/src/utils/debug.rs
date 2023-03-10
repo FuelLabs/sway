@@ -81,12 +81,12 @@ pub(crate) fn print_decl_engine_types(
                     let trait_decl = decl_engine.get_trait(decl_id);
                     format!("{trait_decl:#?}")
                 }
-                ty::TyDeclaration::StructDeclaration { decl_id, .. } => {
-                    let struct_decl = decl_engine.get_struct(decl_id);
+                ty::TyDeclaration::StructDeclaration(decl_ref) => {
+                    let struct_decl = decl_engine.get_struct(decl_ref);
                     format!("{struct_decl:#?}")
                 }
-                ty::TyDeclaration::EnumDeclaration { decl_id, .. } => {
-                    let enum_decl = decl_engine.get_enum(decl_id);
+                ty::TyDeclaration::EnumDeclaration(decl_ref) => {
+                    let enum_decl = decl_engine.get_enum(decl_ref);
                     format!("{enum_decl:#?}")
                 }
                 ty::TyDeclaration::AbiDeclaration { decl_id, .. } => {

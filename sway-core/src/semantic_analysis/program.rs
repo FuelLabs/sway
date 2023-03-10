@@ -19,15 +19,15 @@ impl ty::TyProgram {
         engines: Engines<'_>,
         parsed: &ParseProgram,
         initial_namespace: namespace::Module,
+        package_name: &str,
     ) -> CompileResult<Self> {
         let mut namespace = Namespace::init_root(initial_namespace);
         let ctx =
             TypeCheckContext::from_root(&mut namespace, engines).with_kind(parsed.kind.clone());
         let ParseProgram { root, kind } = parsed;
-        let mod_span = root.tree.span.clone();
         let mod_res = ty::TyModule::type_check(ctx, root);
         mod_res.flat_map(|root| {
-            let res = Self::validate_root(engines, &root, kind.clone(), mod_span);
+            let res = Self::validate_root(engines, &root, kind.clone(), package_name);
             res.map(|(kind, declarations, configurables)| Self {
                 kind,
                 root,

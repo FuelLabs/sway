@@ -57,8 +57,8 @@ impl ty::TyExpression {
 
         let call_path = CallPath {
             prefixes: vec![
-                Ident::new_with_override("core", span.clone()),
-                Ident::new_with_override("ops", span.clone()),
+                Ident::new_with_override("core".into(), span.clone()),
+                Ident::new_with_override("ops".into(), span.clone()),
             ],
             suffix: Op {
                 op_variant: OpVariant::Equals,
@@ -401,14 +401,16 @@ impl ty::TyExpression {
                         name: decl_name.clone(),
                         span: name.span(),
                         mutability: *mutability,
-                        call_path: None,
+                        call_path: Some(
+                            CallPath::from(decl_name.clone()).to_fullpath(ctx.namespace),
+                        ),
                     },
                     span,
                 }
             }
             Some(ty::TyDeclaration::ConstantDeclaration { decl_id, .. }) => {
                 let ty::TyConstantDeclaration {
-                    name: decl_name,
+                    call_path: decl_name,
                     type_ascription,
                     ..
                 } = decl_engine.get_constant(decl_id);
@@ -417,10 +419,10 @@ impl ty::TyExpression {
                     // Although this isn't strictly a 'variable' expression we can treat it as one for
                     // this context.
                     expression: ty::TyExpressionVariant::VariableExpression {
-                        name: decl_name,
+                        name: decl_name.suffix.clone(),
                         span: name.span(),
                         mutability: ty::VariableMutability::Immutable,
-                        call_path: None,
+                        call_path: Some(decl_name.to_fullpath(ctx.namespace)),
                     },
                     span,
                 }
@@ -998,7 +1000,8 @@ impl ty::TyExpression {
             };
             ctx.namespace
                 .resolve_call_path(&probe_call_path)
-                .flat_map(|decl| decl.expect_enum(decl_engine))
+                .flat_map(|decl| decl.expect_enum())
+                .map(|decl_ref| decl_engine.get_enum(&decl_ref))
                 .flat_map(|decl| decl.expect_variant_from_name(&suffix).map(drop))
                 .value
                 .is_none()
@@ -1119,9 +1122,9 @@ impl ty::TyExpression {
                 span: call_path_binding.span,
             };
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
-                .flat_map(|unknown_decl| unknown_decl.expect_enum(decl_engine))
+                .flat_map(|unknown_decl| unknown_decl.expect_enum())
                 .ok(&mut enum_probe_warnings, &mut enum_probe_errors)
-                .map(|enum_decl| (enum_decl, variant_name, call_path_binding))
+                .map(|enum_decl_ref| (enum_decl_ref, variant_name, call_path_binding))
         };
 
         // Check if this could be a constant
@@ -1138,11 +1141,18 @@ impl ty::TyExpression {
 
         // compare the results of the checks
         let exp = match (is_module, maybe_function, maybe_enum, maybe_const) {
-            (false, None, Some((enum_decl, variant_name, call_path_binding)), None) => {
+            (false, None, Some((enum_decl_ref, variant_name, call_path_binding)), None) => {
                 warnings.append(&mut enum_probe_warnings);
                 errors.append(&mut enum_probe_errors);
                 check!(
-                    instantiate_enum(ctx, enum_decl, variant_name, args, call_path_binding, &span),
+                    instantiate_enum(
+                        ctx,
+                        &enum_decl_ref,
+                        variant_name,
+                        args,
+                        call_path_binding,
+                        &span
+                    ),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1188,7 +1198,7 @@ impl ty::TyExpression {
                     );
                 }
                 check!(
-                    instantiate_constant_decl(const_decl, call_path_binding),
+                    instantiate_constant_decl(ctx, const_decl, call_path_binding),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1518,10 +1528,10 @@ impl ty::TyExpression {
                 inner: MethodName::FromTrait {
                     call_path: CallPath {
                         prefixes: vec![
-                            Ident::new_with_override("core", span.clone()),
-                            Ident::new_with_override("ops", span.clone()),
+                            Ident::new_with_override("core".into(), span.clone()),
+                            Ident::new_with_override("ops".into(), span.clone()),
                         ],
-                        suffix: Ident::new_with_override("index", span.clone()),
+                        suffix: Ident::new_with_override("index".into(), span.clone()),
                         is_absolute: true,
                     },
                 },

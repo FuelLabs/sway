@@ -1,7 +1,7 @@
 script;
 
-dep lib;
-use A::{B, C, D,};
+mod lib;
+use lib::{B, C, D,};
 
 fn main() -> u64 {
     let x = B {

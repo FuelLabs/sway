@@ -81,21 +81,6 @@ impl ReplaceSelfType for TyEnumDeclaration {
     }
 }
 
-impl CreateTypeId for TyEnumDeclaration {
-    fn create_type_id(&self, engines: Engines<'_>) -> TypeId {
-        let type_engine = engines.te();
-        let decl_engine = engines.de();
-        type_engine.insert(
-            decl_engine,
-            TypeInfo::Enum {
-                call_path: self.call_path.clone(),
-                variant_types: self.variants.clone(),
-                type_parameters: self.type_parameters.clone(),
-            },
-        )
-    }
-}
-
 impl Spanned for TyEnumDeclaration {
     fn span(&self) -> Span {
         self.span.clone()
@@ -164,7 +149,7 @@ impl PartialEqWithEngines for TyEnumVariant {
 }
 
 impl OrdWithEngines for TyEnumVariant {
-    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
+    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
         let TyEnumVariant {
             name: ln,
             type_argument: lta,
@@ -184,7 +169,7 @@ impl OrdWithEngines for TyEnumVariant {
             attributes: _,
         } = other;
         ln.cmp(rn)
-            .then_with(|| lta.cmp(rta, type_engine))
+            .then_with(|| lta.cmp(rta, engines))
             .then_with(|| lt.cmp(rt))
     }
 }

@@ -1,4 +1,4 @@
-library data_structures;
+library;
 
 pub struct SomeStruct<T> {
     a: T,

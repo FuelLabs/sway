@@ -1,4 +1,4 @@
-library parsing_logs;
+library;
 
 abi TestContract {
     fn produce_logs_values() -> ();

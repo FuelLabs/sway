@@ -1,4 +1,4 @@
-library ops;
+library;
 
 use ::primitives::*;
 
@@ -121,7 +121,7 @@ pub trait Mod {
 impl Mod for u64 {
     fn modulo(self, other: Self) -> Self {
         asm(r1: self, r2: other, r3) {
-            mod r3 r1 r2;
+            r#mod r3 r1 r2;
             r3: u64
         }
     }
@@ -130,7 +130,7 @@ impl Mod for u64 {
 impl Mod for u32 {
     fn modulo(self, other: Self) -> Self {
         asm(r1: self, r2: other, r3) {
-            mod r3 r1 r2;
+            r#mod r3 r1 r2;
             r3: u32
         }
     }
@@ -139,7 +139,7 @@ impl Mod for u32 {
 impl Mod for u16 {
     fn modulo(self, other: Self) -> Self {
         asm(r1: self, r2: other, r3) {
-            mod r3 r1 r2;
+            r#mod r3 r1 r2;
             r3: u16
         }
     }
@@ -148,7 +148,7 @@ impl Mod for u16 {
 impl Mod for u8 {
     fn modulo(self, other: Self) -> Self {
         asm(r1: self, r2: other, r3) {
-            mod r3 r1 r2;
+            r#mod r3 r1 r2;
             r3: u8
         }
     }

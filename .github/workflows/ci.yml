@@ -228,7 +228,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.17.0
+        image: ghcr.io/fuellabs/fuel-core:v0.17.4
         ports:
           - 4000:4000
     steps:
@@ -278,7 +278,7 @@ jobs:
       - name: Build All Tests
         run: cd test/src/sdk-harness && bash build.sh --locked && cd ../../../
       - name: Cargo Test sway-lib-std
-        run: cargo test --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
+        run: cargo test --locked --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
 
   forc-unit-tests:
     runs-on: ubuntu-latest
@@ -294,6 +294,42 @@ jobs:
       - name: Run Unit Tests
         run: forc build --path sway-lib-core && forc test --path sway-lib-core && forc build --path sway-lib-std && forc test --path sway-lib-std
 
+  forc-pkg-fuels-deps-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo-deps
+        run: cargo install cargo-deps
+
+      # We require this check to avoid cyclic dependencies between 'fuels' and 'forc-pkg'.
+      # Detailed explanation is found in the echo below.
+      - name: Check 'forc-pkg' dependencies for 'fuels' crates
+        run: |
+          deps=$(cargo deps --manifest-path forc-pkg/Cargo.toml)
+
+          case "$deps" in
+            *fuels*)
+              echo -e "\nFound dependency on a 'fuels' crate.
+          To avoid cyclic dependencies between 'fuels' and 'forc-pkg',
+          we want to avoid using 'fuels' crates in 'forc-pkg' since 'fuels-rs' depends on 'forc-pkg' for its integration tests.
+
+          To fix this, please remove any 'fuels' dependency from forc-pkg/Cargo.toml.
+
+          Detailed explanation here: https://github.com/FuelLabs/fuels-rs/issues/752#issuecomment-1386242106"
+              exit 1
+              ;;
+            *)
+              exit 0
+              ;;
+          esac
+
+ 
   cargo-test-workspace:
     runs-on: ubuntu-latest
     steps:

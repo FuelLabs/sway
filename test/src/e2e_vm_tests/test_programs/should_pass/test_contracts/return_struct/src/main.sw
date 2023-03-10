@@ -1,7 +1,7 @@
 contract;
 
-dep interface;
-dep data_structures;
+mod data_structures;
+mod interface;
 
 use interface::MyContract;
 use data_structures::MyStruct;

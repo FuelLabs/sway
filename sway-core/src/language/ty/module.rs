@@ -1,16 +1,17 @@
-use sway_types::{Ident, Span};
+use sway_types::Span;
 
 use crate::{
     decl_engine::{DeclEngine, DeclRef, DeclRefFunction},
     language::ty::*,
-    language::DepName,
+    language::ModName,
     semantic_analysis::namespace,
     transform,
 };
 
 #[derive(Clone, Debug)]
 pub struct TyModule {
-    pub submodules: Vec<(DepName, TySubmodule)>,
+    pub span: Span,
+    pub submodules: Vec<(ModName, TySubmodule)>,
     pub namespace: namespace::Module,
     pub all_nodes: Vec<TyAstNode>,
     pub attributes: transform::AttributesMap,
@@ -18,18 +19,17 @@ pub struct TyModule {
 
 #[derive(Clone, Debug)]
 pub struct TySubmodule {
-    pub library_name: Ident,
     pub module: TyModule,
-    pub dependency_path_span: Span,
+    pub mod_name_span: Span,
 }
 
 /// Iterator type for iterating over submodules.
 ///
 /// Used rather than `impl Iterator` to enable recursive submodule iteration.
 pub struct SubmodulesRecursive<'module> {
-    submods: std::slice::Iter<'module, (DepName, TySubmodule)>,
+    submods: std::slice::Iter<'module, (ModName, TySubmodule)>,
     current: Option<(
-        &'module (DepName, TySubmodule),
+        &'module (ModName, TySubmodule),
         Box<SubmodulesRecursive<'module>>,
     )>,
 }
@@ -69,7 +69,7 @@ impl TyModule {
 }
 
 impl<'module> Iterator for SubmodulesRecursive<'module> {
-    type Item = &'module (DepName, TySubmodule);
+    type Item = &'module (ModName, TySubmodule);
     fn next(&mut self) -> Option<Self::Item> {
         loop {
             self.current = match self.current.take() {

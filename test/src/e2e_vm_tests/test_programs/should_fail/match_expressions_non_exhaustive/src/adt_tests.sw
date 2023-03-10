@@ -1,4 +1,4 @@
-library adt_tests;
+library;
 
 struct Point {
     x: u64,

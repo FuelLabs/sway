@@ -446,7 +446,7 @@ impl ty::TyImplTrait {
             prefixes: vec![],
             suffix: match &type_engine.get(implementing_for.type_id) {
                 TypeInfo::Custom { call_path, .. } => call_path.suffix.clone(),
-                _ => Ident::new_with_override("r#Self", implementing_for.span()),
+                _ => Ident::new_with_override("r#Self".into(), implementing_for.span()),
             },
             is_absolute: false,
         };
@@ -957,7 +957,6 @@ fn type_check_impl_method(
         unconstrained_type_parameters_in_this_function
             .difference(&unconstrained_type_parameters_in_the_type)
             .cloned()
-            .into_iter()
             .map(|x| x.thing)
             .collect::<Vec<_>>();
     impl_method

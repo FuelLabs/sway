@@ -105,6 +105,16 @@ impl Namespace {
         self.root.resolve_call_path(&self.mod_path, call_path)
     }
 
+    /// Short-hand for calling [Root::resolve_call_path_with_visibility_check] on `root` with the `mod_path`.
+    pub(crate) fn resolve_call_path_with_visibility_check(
+        &self,
+        engines: Engines<'_>,
+        call_path: &CallPath,
+    ) -> CompileResult<&ty::TyDeclaration> {
+        self.root
+            .resolve_call_path_with_visibility_check(engines, &self.mod_path, call_path)
+    }
+
     /// Short-hand for calling [Root::resolve_type_with_self] on `root` with the `mod_path`.
     pub(crate) fn resolve_type_with_self(
         &mut self,
@@ -313,17 +323,23 @@ impl Namespace {
     /// [SubmoduleNamespace] type. When dropped, the [SubmoduleNamespace] resets the `mod_path`
     /// back to the original path so that we can continue type-checking the current module after
     /// finishing with the dependency.
-    pub(crate) fn enter_submodule(&mut self, dep_name: Ident) -> SubmoduleNamespace {
+    pub(crate) fn enter_submodule(
+        &mut self,
+        mod_name: Ident,
+        module_span: Span,
+    ) -> SubmoduleNamespace {
         let init = self.init.clone();
-        self.submodules.entry(dep_name.to_string()).or_insert(init);
+        self.submodules.entry(mod_name.to_string()).or_insert(init);
         let submod_path: Vec<_> = self
             .mod_path
             .iter()
             .cloned()
-            .chain(Some(dep_name.clone()))
+            .chain(Some(mod_name.clone()))
             .collect();
         let parent_mod_path = std::mem::replace(&mut self.mod_path, submod_path);
-        self.name = Some(dep_name);
+        self.name = Some(mod_name);
+        self.span = Some(module_span);
+        self.is_external = false;
         SubmoduleNamespace {
             namespace: self,
             parent_mod_path,

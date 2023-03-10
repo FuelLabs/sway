@@ -1,4 +1,4 @@
-library nested_struct_args;
+library;
 
 pub struct Inner {
     foo: u64

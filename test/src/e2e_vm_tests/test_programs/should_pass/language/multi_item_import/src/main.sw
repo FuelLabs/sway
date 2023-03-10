@@ -1,6 +1,6 @@
 script;
 
-dep bar;
+mod bar;
 
 use ::bar::{Bar1 as MyBar1, Bar2, double_bar::{DoubleBar1::{self as MyDoubleBar1}, DoubleBar2::{self as MyDoubleBar2}, DoubleBar3}};
 

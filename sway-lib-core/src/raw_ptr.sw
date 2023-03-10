@@ -1,4 +1,4 @@
-library raw_ptr;
+library;
 
 impl raw_ptr {
     /// Returns `true` if the pointer is null.
