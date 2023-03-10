@@ -1636,7 +1636,6 @@ async fn rename() {
     let _ = lsp::prepare_rename_request(&mut service, &req, &mut i).await;
 }
 
-
 #[tokio::test]
 async fn publish_diagnostics_dead_code_warning() {
     let (mut service, socket) = LspService::new(Backend::new);

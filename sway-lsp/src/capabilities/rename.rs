@@ -19,6 +19,20 @@ pub fn rename(
     url: Url,
     position: Position,
 ) -> Option<WorkspaceEdit> {
+    let compiler_keywords: Vec<_> = sway_parse::RESERVED_KEYWORDS
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+
+    // Make sure the new name is not a keyword
+    if compiler_keywords.contains(&new_name) {
+        return None;
+    }
+    // Identifiers cannot begin with a double underscore, this is reserved for compiler intrinsics.
+    if new_name.starts_with("__") {
+        return None;
+    }
+
     let (_, token) = session.token_map().token_at_position(&url, position)?;
     let mut edits = Vec::new();
 
