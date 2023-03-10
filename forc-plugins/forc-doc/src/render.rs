@@ -1158,8 +1158,8 @@ impl BlockTitle {
 impl DocBlockTitle for TyDeclaration {
     fn as_block_title(&self) -> BlockTitle {
         match self {
-            TyDeclaration::StructDeclaration(_) => BlockTitle::Structs,
-            TyDeclaration::EnumDeclaration(_) => BlockTitle::Enums,
+            TyDeclaration::StructDeclaration { .. } => BlockTitle::Structs,
+            TyDeclaration::EnumDeclaration { .. } => BlockTitle::Enums,
             TyDeclaration::TraitDeclaration { .. } => BlockTitle::Traits,
             TyDeclaration::AbiDeclaration { .. } => BlockTitle::Abi,
             TyDeclaration::StorageDeclaration { .. } => BlockTitle::ContractStorage,

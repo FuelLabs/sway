@@ -287,9 +287,13 @@ impl TypeBinding<CallPath> {
                     decl_span,
                 }
             }
-            ty::TyDeclaration::EnumDeclaration(original_decl_ref) => {
+            ty::TyDeclaration::EnumDeclaration {
+                decl_id: original_id,
+                name,
+                decl_span,
+            } => {
                 // get the copy from the declaration engine
-                let mut new_copy = decl_engine.get_enum(&original_decl_ref);
+                let mut new_copy = decl_engine.get_enum(&original_id);
 
                 // monomorphize the copy, in place
                 check!(
@@ -313,11 +317,19 @@ impl TypeBinding<CallPath> {
                     type_engine.insert(decl_engine, TypeInfo::Enum(new_decl_ref.clone())),
                 );
 
-                ty::TyDeclaration::EnumDeclaration(new_decl_ref)
+                ty::TyDeclaration::EnumDeclaration {
+                    name,
+                    decl_id: new_decl_ref.id,
+                    decl_span,
+                }
             }
-            ty::TyDeclaration::StructDeclaration(original_decl_ref) => {
+            ty::TyDeclaration::StructDeclaration {
+                decl_id: original_id,
+                name,
+                decl_span,
+            } => {
                 // get the copy from the declaration engine
-                let mut new_copy = decl_engine.get_struct(&original_decl_ref);
+                let mut new_copy = decl_engine.get_struct(&original_id);
 
                 // monomorphize the copy, in place
                 check!(
@@ -341,7 +353,11 @@ impl TypeBinding<CallPath> {
                     type_engine.insert(decl_engine, TypeInfo::Struct(new_decl_ref.clone())),
                 );
 
-                ty::TyDeclaration::StructDeclaration(new_decl_ref)
+                ty::TyDeclaration::StructDeclaration {
+                    name,
+                    decl_id: new_decl_ref.id,
+                    decl_span,
+                }
             }
             _ => unknown_decl,
         };
