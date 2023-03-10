@@ -129,7 +129,7 @@ pub enum FnReturnType {
 
 #[derive(Clone, Debug)]
 pub struct ImplicitReturn {
-    span: Span,
+    pub span: Span,
 }
 
 impl ImplicitReturn {

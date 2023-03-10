@@ -2,15 +2,15 @@ use crate::{Parse, ParseResult, ParseToEnd, Parser, ParserConsumed};
 
 use sway_ast::keywords::{
     AbiToken, ClassToken, ConfigurableToken, ConstToken, DepToken, EnumToken, FnToken, ImplToken,
-    MutToken, OpenAngleBracketToken, RefToken, SelfToken, SemicolonToken, StorageToken,
-    StructToken, TraitToken, UseToken, WhereToken,
+    MutToken, OpenAngleBracketToken, OpenCurlyBraceToken, RefToken, SelfToken, SemicolonToken,
+    StorageToken, StructToken, TraitToken, UseToken, WhereToken,
 };
 use sway_ast::{
-    Braces, CodeBlockContents, Dependency, FnArg, FnArgs, FnReturnType, FnSignature,
-    ImplicitReturn, ItemConst, ItemEnum, ItemFn, ItemKind, ItemStruct, ItemTrait, ItemUse,
-    TypeField,
+    Dependency, FnArg, FnArgs, FnReturnType, FnSignature, ImplicitReturn, ItemConst, ItemEnum,
+    ItemFn, ItemKind, ItemStruct, ItemTrait, ItemUse, TypeField,
 };
 use sway_error::parser_error::ParseErrorKind;
+use sway_types::Spanned;
 
 mod item_abi;
 mod item_configurable;
@@ -145,20 +145,34 @@ impl Parse for FnArg {
 
 impl Parse for FnSignature {
     fn parse(parser: &mut Parser) -> ParseResult<FnSignature> {
+        let visibility = parser.take();
+        let fn_token = parser.parse()?;
+        let name = parser.parse()?;
+        let generics = parser.guarded_parse::<OpenAngleBracketToken, _>()?;
+        let arguments = parser.parse()?;
+        let mut where_clause_opt = None;
+        let return_type = match parser.take() {
+            Some(right_arrow_token) => {
+                let ty = parser.parse()?;
+                where_clause_opt = parser.guarded_parse::<WhereToken, _>()?;
+                FnReturnType::TypedReturn((right_arrow_token, ty))
+            }
+            None => {
+                where_clause_opt = parser.guarded_parse::<WhereToken, _>()?;
+                let Some(open_curly_brace) = parser.peek::<OpenCurlyBraceToken>();
+                FnReturnType::Implicit(ImplicitReturn {
+                    span: open_curly_brace.span(),
+                })
+            }
+        };
         Ok(FnSignature {
-            visibility: parser.take(),
-            fn_token: parser.parse()?,
-            name: parser.parse()?,
-            generics: parser.guarded_parse::<OpenAngleBracketToken, _>()?,
-            arguments: parser.parse()?,
-            return_type: match parser.take() {
-                Some(right_arrow_token) => {
-                    let ty = parser.parse()?;
-                    FnReturnType::TypedReturn((right_arrow_token, ty))
-                }
-                None => FnReturnType::Implicit(ImplicitReturn),
-            },
-            where_clause_opt: parser.guarded_parse::<WhereToken, _>()?,
+            visibility,
+            fn_token,
+            name,
+            generics,
+            arguments,
+            return_type,
+            where_clause_opt,
         })
     }
 }
