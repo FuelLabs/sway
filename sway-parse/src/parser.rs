@@ -99,6 +99,8 @@ impl<'a, 'e> Parser<'a, 'e> {
         Ok(Some((value, consumed)))
     }
 
+    /// Get rid of enter_delimited once parsing of delimiters is finished.
+    /// Implement the same type of logic that AngleBracketToken uses for parsing.
     pub fn enter_delimited(
         &mut self,
         expected_delimiter: OpeningDelimiter,

@@ -13,7 +13,7 @@ impl Parse for Ty {
         // and patterns of (ty,) are parsed as one-artity tuples with one element ty
         if let Some((mut parser, span)) = parser.enter_delimited(OpeningDelimiter::Parenthesis) {
             if let Some(_consumed) = parser.check_empty() {
-                return Ok(Ty::Tuple(Parens::new(TyTupleDescriptor::Nil, span)));
+                return Ok(Ty::Tuple(Parens::new(TyTupleDescriptor::Nil)));
             }
             let head = parser.parse()?;
             if let Some(comma_token) = parser.take() {
@@ -23,7 +23,7 @@ impl Parse for Ty {
                     comma_token,
                     tail,
                 };
-                return Ok(Ty::Tuple(Parens::new(tuple, span)));
+                return Ok(Ty::Tuple(Parens::new(tuple)));
             }
             if parser.check_empty().is_some() {
                 return Ok(*head);

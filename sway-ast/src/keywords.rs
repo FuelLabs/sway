@@ -245,7 +245,7 @@ macro_rules! define_opening_delimiter_token (
     ($ty_name:ident, $description:literal, [$($delimiter_kind:ident)*]) => {
         #[derive(Clone, Debug)]
         pub struct $ty_name {
-            span: Span,
+            pub(crate) span: Span,
         }
 
         impl Spanned for $ty_name {
@@ -293,7 +293,7 @@ macro_rules! define_closing_delimiter_token (
     ($ty_name:ident, $description:literal, [$($delimiter_kind:ident)*]) => {
         #[derive(Clone, Debug)]
         pub struct $ty_name {
-            span: Span,
+            pub(crate) span: Span,
         }
 
         impl Spanned for $ty_name {

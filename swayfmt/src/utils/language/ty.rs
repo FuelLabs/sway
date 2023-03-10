@@ -7,7 +7,7 @@ use sway_ast::{
     brackets::SquareBrackets,
     expr::Expr,
     keywords::{StrToken, Token, UnderscoreToken},
-    token::Delimiter,
+    token::Delimiters,
     ty::{Ty, TyArrayDescriptor, TyTupleDescriptor},
 };
 use sway_types::Spanned;
@@ -20,9 +20,9 @@ impl Format for Ty {
     ) -> Result<(), FormatterError> {
         match self {
             Self::Array(arr_descriptor) => {
-                write!(formatted_code, "{}", Delimiter::Bracket.as_open_char())?;
+                write!(formatted_code, "{}", Delimiters::Bracket.as_open_char())?;
                 arr_descriptor.get().format(formatted_code, formatter)?;
-                write!(formatted_code, "{}", Delimiter::Bracket.as_close_char())?;
+                write!(formatted_code, "{}", Delimiters::Bracket.as_close_char())?;
                 Ok(())
             }
             Self::Infer { underscore_token } => format_infer(formatted_code, underscore_token),
@@ -31,9 +31,13 @@ impl Format for Ty {
                 format_str(formatted_code, str_token.clone(), length.clone())
             }
             Self::Tuple(tup_descriptor) => {
-                write!(formatted_code, "{}", Delimiter::Parenthesis.as_open_char())?;
+                write!(formatted_code, "{}", Delimiters::Parenthesis.as_open_char())?;
                 tup_descriptor.get().format(formatted_code, formatter)?;
-                write!(formatted_code, "{}", Delimiter::Parenthesis.as_close_char())?;
+                write!(
+                    formatted_code,
+                    "{}",
+                    Delimiters::Parenthesis.as_close_char()
+                )?;
                 Ok(())
             }
         }
@@ -71,9 +75,9 @@ fn format_str(
         formatted_code,
         "{}{}{}{}",
         str_token.span().as_str(),
-        Delimiter::Bracket.as_open_char(),
+        Delimiters::Bracket.as_open_char(),
         length.into_inner().span().as_str(),
-        Delimiter::Bracket.as_close_char()
+        Delimiters::Bracket.as_close_char()
     )?;
     Ok(())
 }

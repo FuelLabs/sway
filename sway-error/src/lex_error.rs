@@ -13,22 +13,22 @@ pub struct LexError {
 pub enum LexErrorKind {
     #[error("unclosed multiline comment")]
     UnclosedMultilineComment { unclosed_indices: Vec<usize> },
-    #[error("unexpected close delimiter")]
-    UnexpectedCloseDelimiter {
+    #[error("unexpected closing delimiter")]
+    UnexpectedClosingDelimiter {
         position: usize,
-        close_delimiter: ClosingDelimiter,
+        closing_delimiter: ClosingDelimiter,
     },
     #[error("mismatched delimiters")]
     MismatchedDelimiters {
         open_position: usize,
         close_position: usize,
-        open_delimiter: OpeningDelimiter,
-        close_delimiter: ClosingDelimiter,
+        opening_delimiter: OpeningDelimiter,
+        closing_delimiter: ClosingDelimiter,
     },
     #[error("unclosed delimiter")]
     UnclosedDelimiter {
         open_position: usize,
-        open_delimiter: OpeningDelimiter,
+        opening_delimiter: OpeningDelimiter,
     },
     #[error("unclosed string literal")]
     UnclosedStringLiteral { position: usize },

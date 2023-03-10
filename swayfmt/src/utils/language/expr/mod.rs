@@ -13,7 +13,7 @@ use sway_ast::{
     brackets::Parens,
     keywords::{CommaToken, DotToken},
     punctuated::Punctuated,
-    token::Delimiter,
+    token::Delimiters,
     Braces, CodeBlockContents, Expr, ExprStructField, MatchBranch, PathExpr, PathExprSegment,
 };
 use sway_types::Spanned;
@@ -575,14 +575,14 @@ impl Parenthesis for Expr {
         line: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Parenthesis.as_open_char())?;
+        write!(line, "{}", Delimiters::Parenthesis.as_open_char())?;
         Ok(())
     }
     fn close_parenthesis(
         line: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Parenthesis.as_close_char())?;
+        write!(line, "{}", Delimiters::Parenthesis.as_close_char())?;
         Ok(())
     }
 }
@@ -592,14 +592,14 @@ impl SquareBracket for Expr {
         line: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Bracket.as_open_char())?;
+        write!(line, "{}", Delimiters::Bracket.as_open_char())?;
         Ok(())
     }
     fn close_square_bracket(
         line: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Bracket.as_close_char())?;
+        write!(line, "{}", Delimiters::Bracket.as_close_char())?;
         Ok(())
     }
 }

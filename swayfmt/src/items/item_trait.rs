@@ -8,7 +8,7 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{keywords::Token, token::Delimiter, ItemTrait, ItemTraitItem, Traits};
+use sway_ast::{keywords::Token, token::Delimiters, ItemTrait, ItemTraitItem, Traits};
 use sway_types::Spanned;
 
 impl Format for ItemTrait {
@@ -118,7 +118,7 @@ impl CurlyBrace for ItemTrait {
     ) -> Result<(), FormatterError> {
         let brace_style = formatter.config.items.item_brace_style;
         formatter.shape.block_indent(&formatter.config);
-        let open_brace = Delimiter::Brace.as_open_char();
+        let open_brace = Delimiters::Brace.as_open_char();
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add openning brace to the next line.
@@ -136,7 +136,7 @@ impl CurlyBrace for ItemTrait {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         formatter.shape.block_unindent(&formatter.config);
-        write!(line, "\n{}", Delimiter::Brace.as_close_char())?;
+        write!(line, "\n{}", Delimiters::Brace.as_close_char())?;
         Ok(())
     }
 }

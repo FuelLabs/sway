@@ -174,8 +174,8 @@ fn parse_stmt<'a>(parser: &mut Parser<'a, '_>) -> ParseResult<StmtOrTail<'a>> {
             Some((_, OpenCurlyBraceToken))
         )
         || matches!(
-            parser.peek::<(ConfigurableToken, Delimiter)>(),
-            Some((_, Delimiter::Brace))
+            parser.peek::<(ConfigurableToken, OpenCurlyBraceToken)>(),
+            Some((_, OpenCurlyBraceToken))
         )
     {
         return stmt(Statement::Item(parser.parse()?));
@@ -625,7 +625,7 @@ fn parse_atom(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
     }
     if let Some((mut parser, span)) = parser.enter_delimited(OpeningDelimiter::Parenthesis) {
         if let Some(_consumed) = parser.check_empty() {
-            return Ok(Expr::Tuple(Parens::new(ExprTupleDescriptor::Nil, span)));
+            return Ok(Expr::Tuple(Parens::new(ExprTupleDescriptor::Nil)));
         }
         let head = parser.parse()?;
         if let Some(comma_token) = parser.take() {
@@ -635,10 +635,10 @@ fn parse_atom(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
                 comma_token,
                 tail,
             };
-            return Ok(Expr::Tuple(Parens::new(tuple, span)));
+            return Ok(Expr::Tuple(Parens::new(tuple)));
         }
         if let Some(_consumed) = parser.check_empty() {
-            return Ok(Expr::Parens(Parens::new(head, span)));
+            return Ok(Expr::Parens(Parens::new(head)));
         }
         return Err(
             parser.emit_error(ParseErrorKind::ExpectedCommaOrCloseParenInTupleOrParenExpression)

@@ -8,7 +8,7 @@ use crate::{
 use std::fmt::Write;
 use sway_ast::{
     expr::asm::{AsmBlock, AsmBlockContents, AsmFinalExpr, AsmRegisterDeclaration},
-    token::Delimiter,
+    token::Delimiters,
     Instruction,
 };
 use sway_types::Spanned;
@@ -74,14 +74,14 @@ impl Parenthesis for AsmBlock {
         line: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Parenthesis.as_open_char())?;
+        write!(line, "{}", Delimiters::Parenthesis.as_open_char())?;
         Ok(())
     }
     fn close_parenthesis(
         line: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Parenthesis.as_close_char())?;
+        write!(line, "{}", Delimiters::Parenthesis.as_close_char())?;
         Ok(())
     }
 }
@@ -94,10 +94,10 @@ impl CurlyBrace for AsmBlock {
         formatter.shape.block_indent(&formatter.config);
         match formatter.shape.code_line.line_style {
             LineStyle::Inline => {
-                write!(line, " {} ", Delimiter::Brace.as_open_char())?;
+                write!(line, " {} ", Delimiters::Brace.as_open_char())?;
             }
             _ => {
-                writeln!(line, " {}", Delimiter::Brace.as_open_char())?;
+                writeln!(line, " {}", Delimiters::Brace.as_open_char())?;
             }
         }
         Ok(())
@@ -109,14 +109,14 @@ impl CurlyBrace for AsmBlock {
         formatter.shape.block_unindent(&formatter.config);
         match formatter.shape.code_line.line_style {
             LineStyle::Inline => {
-                write!(line, " {}", Delimiter::Brace.as_close_char())?;
+                write!(line, " {}", Delimiters::Brace.as_close_char())?;
             }
             _ => {
                 write!(
                     line,
                     "{}{}",
                     formatter.shape.indent.to_string(&formatter.config)?,
-                    Delimiter::Brace.as_close_char()
+                    Delimiters::Brace.as_close_char()
                 )?;
             }
         }

@@ -13,7 +13,7 @@ use crate::{
 use std::{fmt::Write, ops::Range};
 use sway_ast::{
     keywords::{MutToken, RefToken, SelfToken, Token},
-    token::Delimiter,
+    token::Delimiters,
     FnArg, FnArgs, FnSignature, ItemFn,
 };
 use sway_types::Spanned;
@@ -76,7 +76,7 @@ impl CurlyBrace for ItemFn {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         let brace_style = formatter.config.items.item_brace_style;
-        let open_brace = Delimiter::Brace.as_open_char();
+        let open_brace = Delimiters::Brace.as_open_char();
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add openning brace to the next line.
@@ -109,7 +109,7 @@ impl CurlyBrace for ItemFn {
             line,
             "{}{}",
             formatter.shape.indent.to_string(&formatter.config)?,
-            Delimiter::Brace.as_close_char()
+            Delimiters::Brace.as_close_char()
         )?;
 
         Ok(())
@@ -263,7 +263,7 @@ impl Parenthesis for FnSignature {
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let open_paren = Delimiter::Parenthesis.as_open_char();
+        let open_paren = Delimiters::Parenthesis.as_open_char();
         match formatter.shape.code_line.line_style {
             LineStyle::Multiline => {
                 formatter.shape.block_indent(&formatter.config);
@@ -280,7 +280,7 @@ impl Parenthesis for FnSignature {
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let close_paren = Delimiter::Parenthesis.as_close_char();
+        let close_paren = Delimiters::Parenthesis.as_close_char();
         match formatter.shape.code_line.line_style {
             LineStyle::Multiline => {
                 formatter.shape.block_unindent(&formatter.config);

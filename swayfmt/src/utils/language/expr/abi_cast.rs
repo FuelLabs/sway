@@ -6,7 +6,7 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{token::Delimiter, AbiCastArgs};
+use sway_ast::{token::Delimiters, AbiCastArgs};
 use sway_types::Spanned;
 
 impl Format for AbiCastArgs {
@@ -30,7 +30,7 @@ impl Parenthesis for AbiCastArgs {
         line: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Parenthesis.as_open_char())?;
+        write!(line, "{}", Delimiters::Parenthesis.as_open_char())?;
         Ok(())
     }
 
@@ -38,7 +38,7 @@ impl Parenthesis for AbiCastArgs {
         line: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Parenthesis.as_close_char())?;
+        write!(line, "{}", Delimiters::Parenthesis.as_close_char())?;
         Ok(())
     }
 }

@@ -1,41 +1,5 @@
 use crate::priv_prelude::*;
 
-// macro_rules! define_brackets (
-//     ($ty_name:ident, $open:O, $close:C) => {
-//         #[derive(Clone, Debug)]
-//         pub struct $ty_name<T> {
-//             pub open_token: $open,
-//             pub inner: T,
-//             pub close_token: $close,
-//         }
-
-//         impl<T> $ty_name<T> {
-//             pub fn new<'a>(inner: T) -> $ty_name<T> {
-//                 $ty_name {
-//                     inner,
-//                 }
-//             }
-
-//             pub fn get(&self) -> &T {
-//                 &self.inner
-//             }
-
-//             pub fn into_inner(self) -> T {
-//                 self.inner
-//             }
-//         }
-
-//         impl<T> Spanned for $ty_name<T> {
-//             fn span(&self) -> Span {
-//                 Span::join(
-//                     self.open_token.span(),
-//                     self.close_token.span(),
-//                 )
-//             }
-//         }
-//     };
-// );
-
 #[derive(Clone, Debug)]
 pub struct Braces<T> {
     pub open_token: OpenCurlyBraceToken,
@@ -62,6 +26,18 @@ pub struct Parens<T> {
     pub close_token: CloseParenthesisToken,
 }
 impl<T> Parens<T> {
+    /// Should only ever be used for destructuring syntactic sugar since it does not have a literal span.
+    pub fn new(inner: T) -> Self {
+        Self {
+            open_token: OpenParenthesisToken {
+                span: Span::dummy(),
+            },
+            inner,
+            close_token: CloseParenthesisToken {
+                span: Span::dummy(),
+            },
+        }
+    }
     pub fn get(&self) -> &T {
         &self.inner
     }
@@ -81,6 +57,18 @@ pub struct SquareBrackets<T> {
     pub close_token: CloseSquareBracketToken,
 }
 impl<T> SquareBrackets<T> {
+    /// Should only ever be used for destructuring syntactic sugar since it does not have a literal span.
+    pub fn new(inner: T) -> Self {
+        Self {
+            open_token: OpenSquareBracketToken {
+                span: Span::dummy(),
+            },
+            inner,
+            close_token: CloseSquareBracketToken {
+                span: Span::dummy(),
+            },
+        }
+    }
     pub fn get(&self) -> &T {
         &self.inner
     }

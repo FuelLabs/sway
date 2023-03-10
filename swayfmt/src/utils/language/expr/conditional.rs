@@ -13,7 +13,7 @@ use std::{
     fmt::Write,
     ops::{ControlFlow, Range},
 };
-use sway_ast::{token::Delimiter, IfCondition, IfExpr, MatchBranch, MatchBranchKind};
+use sway_ast::{token::Delimiters, IfCondition, IfExpr, MatchBranch, MatchBranchKind};
 use sway_types::Spanned;
 
 impl Format for IfExpr {
@@ -210,7 +210,7 @@ impl CurlyBrace for IfExpr {
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let open_brace = Delimiter::Brace.as_open_char();
+        let open_brace = Delimiters::Brace.as_open_char();
         match formatter.shape.code_line.line_style {
             LineStyle::Multiline => {
                 formatter.shape.code_line.reset_width();
@@ -239,14 +239,14 @@ impl CurlyBrace for IfExpr {
         formatter.shape.block_unindent(&formatter.config);
         match formatter.shape.code_line.line_style {
             LineStyle::Inline => {
-                write!(line, "{}", Delimiter::Brace.as_close_char())?;
+                write!(line, "{}", Delimiters::Brace.as_close_char())?;
             }
             _ => {
                 write!(
                     line,
                     "{}{}",
                     formatter.shape.indent.to_string(&formatter.config)?,
-                    Delimiter::Brace.as_close_char()
+                    Delimiters::Brace.as_close_char()
                 )?;
             }
         }
@@ -306,7 +306,7 @@ impl CurlyBrace for MatchBranch {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         formatter.shape.block_indent(&formatter.config);
-        writeln!(line, "{}", Delimiter::Brace.as_open_char())?;
+        writeln!(line, "{}", Delimiters::Brace.as_open_char())?;
 
         Ok(())
     }
@@ -319,7 +319,7 @@ impl CurlyBrace for MatchBranch {
             line,
             "{}{}",
             formatter.shape.indent.to_string(&formatter.config)?,
-            Delimiter::Brace.as_close_char()
+            Delimiters::Brace.as_close_char()
         )?;
 
         Ok(())
@@ -375,14 +375,14 @@ impl CurlyBrace for MatchBranchKind {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         formatter.shape.block_indent(&formatter.config);
-        write!(line, "{}", Delimiter::Brace.as_open_char())?;
+        write!(line, "{}", Delimiters::Brace.as_open_char())?;
         Ok(())
     }
     fn close_curly_brace(
         line: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Brace.as_close_char())?;
+        write!(line, "{}", Delimiters::Brace.as_close_char())?;
         Ok(())
     }
 }

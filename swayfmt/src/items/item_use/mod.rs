@@ -10,7 +10,7 @@ use crate::{
 };
 use std::fmt::Write;
 use sway_ast::{
-    token::{Delimiter, PunctKind},
+    token::{Delimiters, PunctKind},
     ItemUse, UseTree,
 };
 use sway_types::Spanned;
@@ -153,9 +153,9 @@ impl CurlyBrace for UseTree {
         match formatter.shape.code_line.line_style {
             LineStyle::Multiline => {
                 formatter.shape.block_indent(&formatter.config);
-                writeln!(line, "{}", Delimiter::Brace.as_open_char())?;
+                writeln!(line, "{}", Delimiters::Brace.as_open_char())?;
             }
-            _ => write!(line, "{}", Delimiter::Brace.as_open_char())?,
+            _ => write!(line, "{}", Delimiters::Brace.as_open_char())?,
         }
 
         Ok(())
@@ -171,10 +171,10 @@ impl CurlyBrace for UseTree {
                     line,
                     "{}{}",
                     formatter.shape.indent.to_string(&formatter.config)?,
-                    Delimiter::Brace.as_close_char()
+                    Delimiters::Brace.as_close_char()
                 )?;
             }
-            _ => write!(line, "{}", Delimiter::Brace.as_close_char())?,
+            _ => write!(line, "{}", Delimiters::Brace.as_close_char())?,
         }
 
         Ok(())

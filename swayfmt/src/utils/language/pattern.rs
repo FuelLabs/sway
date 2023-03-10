@@ -11,7 +11,7 @@ use crate::{
 };
 use std::fmt::Write;
 use sway_ast::{
-    token::Delimiter, Braces, CommaToken, ExprTupleDescriptor, PathExpr, Pattern,
+    token::Delimiters, Braces, CommaToken, ExprTupleDescriptor, PathExpr, Pattern,
     PatternStructField, Punctuated,
 };
 use sway_types::Spanned;
@@ -127,14 +127,14 @@ impl Parenthesis for Pattern {
         line: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Parenthesis.as_open_char())?;
+        write!(line, "{}", Delimiters::Parenthesis.as_open_char())?;
         Ok(())
     }
     fn close_parenthesis(
         line: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Parenthesis.as_close_char())?;
+        write!(line, "{}", Delimiters::Parenthesis.as_close_char())?;
         Ok(())
     }
 }
@@ -147,12 +147,12 @@ impl CurlyBrace for Pattern {
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add openning brace to the next line.
-                write!(line, "\n{}", Delimiter::Brace.as_open_char())?;
+                write!(line, "\n{}", Delimiters::Brace.as_open_char())?;
                 formatter.shape.block_indent(&formatter.config);
             }
             _ => {
                 // Add opening brace to the same line
-                write!(line, " {}", Delimiter::Brace.as_open_char())?;
+                write!(line, " {}", Delimiters::Brace.as_open_char())?;
                 formatter.shape.block_indent(&formatter.config);
             }
         }
@@ -166,12 +166,12 @@ impl CurlyBrace for Pattern {
         // Unindent by one block
         formatter.shape.block_unindent(&formatter.config);
         match formatter.shape.code_line.line_style {
-            LineStyle::Inline => write!(line, "{}", Delimiter::Brace.as_close_char())?,
+            LineStyle::Inline => write!(line, "{}", Delimiters::Brace.as_close_char())?,
             _ => write!(
                 line,
                 "{}{}",
                 formatter.shape.indent.to_string(&formatter.config)?,
-                Delimiter::Brace.as_close_char()
+                Delimiters::Brace.as_close_char()
             )?,
         }
 

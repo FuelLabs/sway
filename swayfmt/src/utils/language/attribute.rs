@@ -9,7 +9,7 @@ use crate::{
 use std::fmt::Write;
 use sway_ast::{
     attribute::{Annotated, Attribute, AttributeDecl, AttributeHashKind},
-    token::{Delimiter, PunctKind},
+    token::{Delimiters, PunctKind},
 };
 use sway_types::{constants::DOC_COMMENT_ATTRIBUTE_NAME, Spanned};
 
@@ -144,14 +144,14 @@ impl SquareBracket for AttributeDecl {
         line: &mut String,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Bracket.as_open_char())?;
+        write!(line, "{}", Delimiters::Bracket.as_open_char())?;
         Ok(())
     }
     fn close_square_bracket(
         line: &mut String,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        writeln!(line, "{}", Delimiter::Bracket.as_close_char())?;
+        writeln!(line, "{}", Delimiters::Bracket.as_close_char())?;
         Ok(())
     }
 }
@@ -161,14 +161,14 @@ impl Parenthesis for AttributeDecl {
         line: &mut String,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Parenthesis.as_open_char())?;
+        write!(line, "{}", Delimiters::Parenthesis.as_open_char())?;
         Ok(())
     }
     fn close_parenthesis(
         line: &mut String,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiter::Parenthesis.as_close_char())?;
+        write!(line, "{}", Delimiters::Parenthesis.as_close_char())?;
         Ok(())
     }
 }

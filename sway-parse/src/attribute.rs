@@ -40,19 +40,13 @@ impl<T: Parse> Parse for Annotated<T> {
             let value = Ident::new_no_trim(doc_comment.content_span.clone());
             attribute_list.push(AttributeDecl {
                 hash_kind: AttributeHashKind::Outer(HashToken::new(doc_comment.span.clone())),
-                attribute: SquareBrackets::new(
-                    Punctuated::single(Attribute {
-                        name: Ident::new_with_override(
-                            DOC_COMMENT_ATTRIBUTE_NAME,
-                            doc_comment.span.clone(),
-                        ),
-                        args: Some(Parens::new(
-                            Punctuated::single(value),
-                            doc_comment.content_span,
-                        )),
-                    }),
-                    doc_comment.span,
-                ),
+                attribute: SquareBrackets::new(Punctuated::single(Attribute {
+                    name: Ident::new_with_override(
+                        DOC_COMMENT_ATTRIBUTE_NAME,
+                        doc_comment.span.clone(),
+                    ),
+                    args: Some(Parens::new(Punctuated::single(value))),
+                })),
             });
         }
         while let Some(attr) = parser.guarded_parse::<HashToken, _>()? {

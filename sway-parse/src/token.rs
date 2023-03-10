@@ -238,9 +238,9 @@ pub fn lex_commented(
                     // fn foo() // <-- Parser expects grouped tokens in `{ ... }` here.
                     //     let x = 0;
                     // } // <- This recovery.
-                    let kind = LexErrorKind::UnexpectedCloseDelimiter {
+                    let kind = LexErrorKind::UnexpectedClosingDelimiter {
                         position: index,
-                        close_delimiter,
+                        closing_delimiter: close_delimiter,
                     };
                     let span = span_one(&l, index, character);
                     error(l.handler, LexError { kind, span });
@@ -251,8 +251,8 @@ pub fn lex_commented(
                         let kind = LexErrorKind::MismatchedDelimiters {
                             open_position: open_index,
                             close_position: index,
-                            open_delimiter,
-                            close_delimiter,
+                            opening_delimiter: open_delimiter,
+                            closing_delimiter: close_delimiter,
                         };
                         let span = span_one(&l, index, character);
                         error(l.handler, LexError { kind, span });
@@ -301,13 +301,14 @@ pub fn lex_commented(
     }
 
     // Recover all unclosed delimiters.
-    while let Some((parent, open_index, open_delimiter)) = parent_token_trees.pop() {
+    while let Some((parent, open_index, opening_delimiter)) = parent_token_trees.pop() {
         let kind = LexErrorKind::UnclosedDelimiter {
             open_position: open_index,
-            open_delimiter,
+            opening_delimiter,
         };
-        let span = span_one(&l, open_index, open_delimiter.as_char());
+        let span = span_one(&l, open_index, opening_delimiter.as_char());
         error(l.handler, LexError { kind, span });
+        let closing = opening_delimiter.get_closing_delimiter();
 
         token_trees = lex_close_delimiter(
             &mut l,
@@ -315,7 +316,10 @@ pub fn lex_commented(
             parent,
             token_trees,
             open_index,
-            open_delimiter,
+            Delimiters {
+                opening: opening_delimiter,
+                closing,
+            },
         );
     }
     Ok(CommentedTokenStream {

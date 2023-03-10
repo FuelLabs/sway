@@ -7,7 +7,7 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{token::Delimiter, CodeBlockContents};
+use sway_ast::{token::Delimiters, CodeBlockContents};
 
 impl Format for CodeBlockContents {
     fn format(
@@ -68,11 +68,11 @@ impl CurlyBrace for CodeBlockContents {
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add openning brace to the next line.
-                write!(line, "\n{}", Delimiter::Brace.as_open_char())?;
+                write!(line, "\n{}", Delimiters::Brace.as_open_char())?;
             }
             _ => {
                 // Add opening brace to the same line
-                write!(line, " {}", Delimiter::Brace.as_open_char())?;
+                write!(line, " {}", Delimiters::Brace.as_open_char())?;
             }
         }
 
@@ -88,7 +88,7 @@ impl CurlyBrace for CodeBlockContents {
             line,
             "{}{}",
             formatter.shape.indent.to_string(&formatter.config)?,
-            Delimiter::Brace.as_close_char()
+            Delimiters::Brace.as_close_char()
         )?;
         Ok(())
     }

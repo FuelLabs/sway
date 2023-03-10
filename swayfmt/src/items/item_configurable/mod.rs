@@ -10,7 +10,7 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{keywords::Token, token::Delimiter, ConfigurableField, ItemConfigurable};
+use sway_ast::{keywords::Token, token::Delimiters, ConfigurableField, ItemConfigurable};
 use sway_types::Spanned;
 
 #[cfg(test)]
@@ -136,7 +136,7 @@ impl CurlyBrace for ItemConfigurable {
     ) -> Result<(), FormatterError> {
         let brace_style = formatter.config.items.item_brace_style;
         formatter.shape.block_indent(&formatter.config);
-        let open_brace = Delimiter::Brace.as_open_char();
+        let open_brace = Delimiters::Brace.as_open_char();
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add opening brace to the next line.
@@ -161,7 +161,7 @@ impl CurlyBrace for ItemConfigurable {
             line,
             "{}{}",
             formatter.shape.indent.to_string(&formatter.config)?,
-            Delimiter::Brace.as_close_char()
+            Delimiters::Brace.as_close_char()
         )?;
 
         Ok(())

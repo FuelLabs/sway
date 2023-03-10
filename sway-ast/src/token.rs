@@ -102,6 +102,14 @@ impl OpeningDelimiter {
             OpeningDelimiter::AngleBracket => '<',
         }
     }
+    pub fn get_closing_delimiter(&self) -> ClosingDelimiter {
+        match self {
+            Self::Parenthesis => ClosingDelimiter::Parenthesis,
+            Self::CurlyBrace => ClosingDelimiter::CurlyBrace,
+            Self::SquareBracket => ClosingDelimiter::SquareBracket,
+            Self::AngleBracket => ClosingDelimiter::AngleBracket,
+        }
+    }
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ClosingDelimiter {

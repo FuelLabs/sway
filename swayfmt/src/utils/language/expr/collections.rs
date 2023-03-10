@@ -6,7 +6,7 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{token::Delimiter, ExprArrayDescriptor, ExprTupleDescriptor};
+use sway_ast::{token::Delimiters, ExprArrayDescriptor, ExprTupleDescriptor};
 use sway_types::Spanned;
 
 impl Format for ExprTupleDescriptor {
@@ -54,9 +54,9 @@ impl Parenthesis for ExprTupleDescriptor {
         match formatter.shape.code_line.line_style {
             LineStyle::Multiline => {
                 formatter.shape.block_indent(&formatter.config);
-                writeln!(line, "{}", Delimiter::Parenthesis.as_open_char())?;
+                writeln!(line, "{}", Delimiters::Parenthesis.as_open_char())?;
             }
-            _ => write!(line, "{}", Delimiter::Parenthesis.as_open_char())?,
+            _ => write!(line, "{}", Delimiters::Parenthesis.as_open_char())?,
         }
 
         Ok(())
@@ -72,10 +72,10 @@ impl Parenthesis for ExprTupleDescriptor {
                     line,
                     "{}{}",
                     formatter.shape.indent.to_string(&formatter.config)?,
-                    Delimiter::Parenthesis.as_close_char()
+                    Delimiters::Parenthesis.as_close_char()
                 )?;
             }
-            _ => write!(line, "{}", Delimiter::Parenthesis.as_close_char())?,
+            _ => write!(line, "{}", Delimiters::Parenthesis.as_close_char())?,
         }
 
         Ok(())
@@ -117,9 +117,9 @@ impl SquareBracket for ExprArrayDescriptor {
         match formatter.shape.code_line.line_style {
             LineStyle::Multiline => {
                 formatter.shape.block_indent(&formatter.config);
-                write!(line, "{}", Delimiter::Bracket.as_open_char())?;
+                write!(line, "{}", Delimiters::Bracket.as_open_char())?;
             }
-            _ => write!(line, "{}", Delimiter::Bracket.as_open_char())?,
+            _ => write!(line, "{}", Delimiters::Bracket.as_open_char())?,
         }
 
         Ok(())
@@ -135,10 +135,10 @@ impl SquareBracket for ExprArrayDescriptor {
                     line,
                     "{}{}",
                     formatter.shape.indent.to_string(&formatter.config)?,
-                    Delimiter::Bracket.as_close_char()
+                    Delimiters::Bracket.as_close_char()
                 )?;
             }
-            _ => write!(line, "{}", Delimiter::Bracket.as_close_char())?,
+            _ => write!(line, "{}", Delimiters::Bracket.as_close_char())?,
         }
 
         Ok(())
