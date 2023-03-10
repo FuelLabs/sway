@@ -962,7 +962,7 @@ fn generate_json_abi_attributes_map(
                 .flat_map(|(_attr_kind, attrs)| {
                     attrs.iter().map(|attr| program_abi::Attribute {
                         name: attr.name.to_string(),
-                        arguments: attr.args.iter().map(|arg| arg.to_string()).collect(),
+                        arguments: attr.args.iter().map(|arg| arg.name.to_string()).collect(),
                     })
                 })
                 .collect(),
