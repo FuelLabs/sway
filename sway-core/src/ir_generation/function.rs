@@ -162,8 +162,8 @@ impl<'eng> FnCompiler<'eng> {
                         span: ast_node.span.clone(),
                     })
                 }
-                ty::TyDeclaration::EnumDeclaration(decl_ref) => {
-                    let ted = self.decl_engine.get_enum(decl_ref);
+                ty::TyDeclaration::EnumDeclaration { decl_id, .. } => {
+                    let ted = self.decl_engine.get_enum(decl_id);
                     create_enum_aggregate(
                         self.type_engine,
                         self.decl_engine,
