@@ -957,7 +957,6 @@ fn type_check_impl_method(
         unconstrained_type_parameters_in_this_function
             .difference(&unconstrained_type_parameters_in_the_type)
             .cloned()
-            .into_iter()
             .map(|x| x.thing)
             .collect::<Vec<_>>();
     impl_method

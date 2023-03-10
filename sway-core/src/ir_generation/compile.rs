@@ -201,19 +201,24 @@ pub(crate) fn compile_constants(
 ) -> Result<(), CompileError> {
     let (type_engine, decl_engine) = engines.unwrap();
     for decl_name in module_ns.get_all_declared_symbols() {
-        compile_const_decl(
-            &mut LookupEnv {
-                type_engine,
-                decl_engine,
-                context,
-                md_mgr,
-                module,
-                module_ns: Some(module_ns),
-                function_compiler: None,
-                lookup: compile_const_decl,
-            },
-            decl_name,
-        )?;
+        if let Some(ty::TyDeclaration::ConstantDeclaration { decl_id, .. }) =
+            module_ns.symbols.get(decl_name)
+        {
+            let ty::TyConstantDeclaration { call_path, .. } = engines.de().get_constant(decl_id);
+            compile_const_decl(
+                &mut LookupEnv {
+                    type_engine,
+                    decl_engine,
+                    context,
+                    md_mgr,
+                    module,
+                    module_ns: Some(module_ns),
+                    function_compiler: None,
+                    lookup: compile_const_decl,
+                },
+                &call_path,
+            )?;
+        }
     }
 
     for submodule_ns in module_ns.submodules().values() {
@@ -256,7 +261,7 @@ fn compile_declarations(
                         function_compiler: None,
                         lookup: compile_const_decl,
                     },
-                    &decl.name,
+                    &decl.call_path,
                 )?;
             }
 

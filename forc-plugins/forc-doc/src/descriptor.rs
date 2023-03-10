@@ -293,7 +293,7 @@ impl Descriptor {
                 if !document_private_items && const_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
-                    let item_name = const_decl.name;
+                    let item_name = const_decl.call_path.suffix;
                     let attrs_opt = (!const_decl.attributes.is_empty())
                         .then(|| const_decl.attributes.to_html_string());
 

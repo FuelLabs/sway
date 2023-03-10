@@ -8,7 +8,7 @@ mod svec_enum;
 mod svec_str;
 mod svec_struct;
 mod svec_tuple;
-mod svec_u8;
 mod svec_u16;
 mod svec_u32;
 mod svec_u64;
+mod svec_u8;

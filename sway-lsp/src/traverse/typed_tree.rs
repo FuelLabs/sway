@@ -519,16 +519,10 @@ impl<'a> TypedTree<'a> {
                     self.collect_call_path_prefixes(&call_path.prefixes);
                 }
 
-                let span = if let Some(call_path) = call_path {
-                    call_path.suffix.span()
-                } else {
-                    span.clone()
-                };
-
                 if let Some(mut token) = self
                     .ctx
                     .tokens
-                    .try_get_mut(&to_ident_key(&Ident::new(span)))
+                    .try_get_mut(&to_ident_key(&Ident::new(span.clone())))
                     .try_unwrap()
                 {
                     token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
@@ -907,7 +901,8 @@ impl<'a> TypedTree<'a> {
                     .try_unwrap()
                 {
                     token.typed = Some(TypedAstToken::TypedScrutinee(scrutinee.clone()));
-                    token.type_def = Some(TypeDefinition::Ident(const_decl.name.clone()));
+                    token.type_def =
+                        Some(TypeDefinition::Ident(const_decl.call_path.suffix.clone()));
                 }
             }
             Literal(_) => {
@@ -1318,11 +1313,11 @@ impl<'a> TypedTree<'a> {
         if let Some(mut token) = self
             .ctx
             .tokens
-            .try_get_mut(&to_ident_key(&const_decl.name))
+            .try_get_mut(&to_ident_key(&const_decl.call_path.suffix))
             .try_unwrap()
         {
             token.typed = Some(TypedAstToken::TypedConstantDeclaration(const_decl.clone()));
-            token.type_def = Some(TypeDefinition::Ident(const_decl.name.clone()));
+            token.type_def = Some(TypeDefinition::Ident(const_decl.call_path.suffix.clone()));
         }
 
         if let Some(call_path_tree) = &const_decl.type_ascription.call_path_tree {

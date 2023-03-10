@@ -339,6 +339,7 @@ impl Namespace {
         let parent_mod_path = std::mem::replace(&mut self.mod_path, submod_path);
         self.name = Some(mod_name);
         self.span = Some(module_span);
+        self.is_external = false;
         SubmoduleNamespace {
             namespace: self,
             parent_mod_path,
