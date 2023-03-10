@@ -1,6 +1,10 @@
 use crate::{
-    decl_engine::DeclEngine, engine_threading::*, language::ty, metadata::MetadataManager,
-    semantic_analysis::*, TypeEngine,
+    decl_engine::DeclEngine,
+    engine_threading::*,
+    language::{ty, CallPath},
+    metadata::MetadataManager,
+    semantic_analysis::*,
+    TypeEngine,
 };
 
 use super::{convert::convert_literal_to_constant, function::FnCompiler, types::*};
@@ -14,10 +18,7 @@ use sway_ir::{
     value::Value,
     Instruction,
 };
-use sway_types::{
-    ident::{BaseIdent, Ident},
-    span::Spanned,
-};
+use sway_types::{ident::Ident, span::Spanned};
 use sway_utils::mapped_stack::MappedStack;
 
 pub(crate) struct LookupEnv<'a> {
@@ -28,17 +29,19 @@ pub(crate) struct LookupEnv<'a> {
     pub(crate) module: Module,
     pub(crate) module_ns: Option<&'a namespace::Module>,
     pub(crate) function_compiler: Option<&'a FnCompiler<'a>>,
-    pub(crate) lookup: fn(&mut LookupEnv, &Ident) -> Result<Option<Value>, CompileError>,
+    pub(crate) lookup: fn(&mut LookupEnv, &CallPath) -> Result<Option<Value>, CompileError>,
 }
 
 pub(crate) fn compile_const_decl(
     env: &mut LookupEnv,
-    name: &Ident,
+    call_path: &CallPath,
 ) -> Result<Option<Value>, CompileError> {
     // Check if it's a processed local constant.
     if let Some(fn_compiler) = env.function_compiler {
         let mut found_local = false;
-        if let Some(local_var) = fn_compiler.get_function_var(env.context, name.as_str()) {
+        if let Some(local_var) =
+            fn_compiler.get_function_var(env.context, call_path.suffix.as_str())
+        {
             found_local = true;
             if let Some(constant) = local_var.get_initializer(env.context) {
                 return Ok(Some(Value::new_constant(env.context, constant.clone())));
@@ -66,7 +69,7 @@ pub(crate) fn compile_const_decl(
             }
         }
 
-        if let Some(value) = fn_compiler.get_function_arg(env.context, name.as_str()) {
+        if let Some(value) = fn_compiler.get_function_arg(env.context, call_path.suffix.as_str()) {
             found_local = true;
             if value.get_constant(env.context).is_some() {
                 return Ok(Some(value));
@@ -80,29 +83,30 @@ pub(crate) fn compile_const_decl(
 
     // Check if it's a processed global constant.
     match (
-        env.module.get_global_constant(env.context, name.as_str()),
         env.module
-            .get_global_configurable(env.context, name.as_str()),
+            .get_global_constant(env.context, &call_path.as_vec_string()),
+        env.module
+            .get_global_configurable(env.context, &call_path.as_vec_string()),
         env.module_ns,
     ) {
         (Some(const_val), _, _) => Ok(Some(const_val)),
         (_, Some(config_val), _) => Ok(Some(config_val)),
         (None, None, Some(module_ns)) => {
             // See if we it's a global const and whether we can compile it *now*.
-            let decl = module_ns.check_symbol(name)?;
+            let decl = module_ns.check_symbol(&call_path.suffix)?;
             let decl_name_value = match decl {
                 ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
                     let ty::TyConstantDeclaration {
-                        name,
+                        call_path,
                         value,
                         is_configurable,
                         ..
                     } = env.decl_engine.get_constant(decl_id);
-                    Some((name, value, is_configurable))
+                    Some((call_path, value, is_configurable))
                 }
                 _otherwise => None,
             };
-            if let Some((name, Some(value), is_configurable)) = decl_name_value {
+            if let Some((call_path, Some(value), is_configurable)) = decl_name_value {
                 let const_val = compile_constant_expression(
                     Engines::new(env.type_engine, env.decl_engine),
                     env.context,
@@ -110,20 +114,20 @@ pub(crate) fn compile_const_decl(
                     env.module,
                     env.module_ns,
                     env.function_compiler,
-                    &name,
+                    &call_path,
                     &value,
                     is_configurable,
                 )?;
                 if !is_configurable {
                     env.module.add_global_constant(
                         env.context,
-                        name.as_str().to_owned(),
+                        call_path.as_vec_string().to_vec(),
                         const_val,
                     );
                 } else {
                     env.module.add_global_configurable(
                         env.context,
-                        name.as_str().to_owned(),
+                        call_path.as_vec_string().to_vec(),
                         const_val,
                     );
                 }
@@ -144,7 +148,7 @@ pub(super) fn compile_constant_expression(
     module: Module,
     module_ns: Option<&namespace::Module>,
     function_compiler: Option<&FnCompiler>,
-    name: &BaseIdent,
+    call_path: &CallPath,
     const_expr: &ty::TyExpression,
     is_configurable: bool,
 ) -> Result<Value, CompileError> {
@@ -163,7 +167,7 @@ pub(super) fn compile_constant_expression(
         Ok(Value::new_constant(context, constant_evaluated).add_metadatum(context, span_id_idx))
     } else {
         let config_const_name =
-            md_mgr.config_const_name_to_md(context, &std::rc::Rc::from(name.as_str()));
+            md_mgr.config_const_name_to_md(context, &std::rc::Rc::from(call_path.suffix.as_str()));
         let metadata = md_combine(context, &span_id_idx, &config_const_name);
         Ok(Value::new_configurable(context, constant_evaluated).add_metadatum(context, metadata))
     }
@@ -256,12 +260,18 @@ fn const_eval_typed_expr(
             }
             res
         }
-        ty::TyExpressionVariant::VariableExpression { name, .. } => match known_consts.get(name) {
-            // 1. Check if name is in known_consts.
+        ty::TyExpressionVariant::VariableExpression {
+            name, call_path, ..
+        } => match known_consts.get(name) {
+            // 1. Check if name/call_path is in known_consts.
             Some(cvs) => Some(cvs.clone()),
             None => {
+                let call_path = match call_path {
+                    Some(call_path) => call_path.clone(),
+                    None => CallPath::from(name.clone()),
+                };
                 // 2. Check if name is a global constant.
-                (lookup.lookup)(lookup, name)
+                (lookup.lookup)(lookup, &call_path)
                     .ok()
                     .flatten()
                     .and_then(|v| v.get_constant(lookup.context).cloned())

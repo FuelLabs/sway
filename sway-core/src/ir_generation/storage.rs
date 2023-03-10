@@ -141,11 +141,10 @@ pub fn serialize_to_storage_slots(
             // Return a list of `StorageSlot`s
             // First get the keys then get the values
             (0..(ir_type_size_in_bytes(context, ty) + 31) / 32)
-                .into_iter()
                 .map(|i| add_to_b256(get_storage_key(ix, indices), i))
-                .zip((0..packed.len() / 4).into_iter().map(|i| {
+                .zip((0..packed.len() / 4).map(|i| {
                     Bytes32::new(
-                        Vec::from_iter((0..4).into_iter().flat_map(|j| *packed[4 * i + j]))
+                        Vec::from_iter((0..4).flat_map(|j| *packed[4 * i + j]))
                             .try_into()
                             .unwrap(),
                     )
@@ -178,11 +177,9 @@ pub fn serialize_to_words(constant: &Constant, context: &Context, ty: &Type) -> 
         ConstantValue::Uint(n) if ty.is_uint(context) => {
             vec![Bytes8::new(n.to_be_bytes())]
         }
-        ConstantValue::B256(b) if ty.is_b256(context) => Vec::from_iter(
-            (0..4)
-                .into_iter()
-                .map(|i| Bytes8::new(b[8 * i..8 * i + 8].try_into().unwrap())),
-        ),
+        ConstantValue::B256(b) if ty.is_b256(context) => {
+            Vec::from_iter((0..4).map(|i| Bytes8::new(b[8 * i..8 * i + 8].try_into().unwrap())))
+        }
         ConstantValue::String(s) if ty.is_string(context) => {
             // Turn the bytes into serialized words (Bytes8).
             let mut s = s.clone();
@@ -191,9 +188,9 @@ pub fn serialize_to_words(constant: &Constant, context: &Context, ty: &Type) -> 
             assert!(s.len() % 8 == 0);
 
             // Group into words
-            Vec::from_iter((0..s.len() / 8).into_iter().map(|i| {
+            Vec::from_iter((0..s.len() / 8).map(|i| {
                 Bytes8::new(
-                    Vec::from_iter((0..8).into_iter().map(|j| s[8 * i + j]))
+                    Vec::from_iter((0..8).map(|j| s[8 * i + j]))
                         .try_into()
                         .unwrap(),
                 )

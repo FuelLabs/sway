@@ -656,7 +656,6 @@ impl TraitMap {
                     .value
                     .values()
                     .cloned()
-                    .into_iter()
                     .flat_map(|item| match item {
                         ty::TyTraitItem::Fn(decl_ref) => Some(decl_ref),
                     })
@@ -701,7 +700,7 @@ impl TraitMap {
             if &map_trait_name == trait_name
                 && are_equal_minus_dynamic_types(engines, type_id, e.key.type_id)
             {
-                let mut trait_items = e.value.values().cloned().into_iter().collect::<Vec<_>>();
+                let mut trait_items = e.value.values().cloned().collect::<Vec<_>>();
                 items.append(&mut trait_items);
             }
         }

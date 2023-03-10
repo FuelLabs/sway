@@ -205,7 +205,7 @@ impl TyProgram {
             parsed::TreeType::Library => {
                 if !configurables.is_empty() {
                     errors.push(CompileError::ConfigurableInLibrary {
-                        span: configurables[0].name.span(),
+                        span: configurables[0].call_path.suffix.span(),
                     });
                 }
                 TyProgramKind::Library {
@@ -359,18 +359,11 @@ impl CollectTypesMetadata for TyProgram {
                 for module in std::iter::once(&self.root).chain(
                     self.root
                         .submodules_recursive()
-                        .into_iter()
                         .map(|(_, submod)| &submod.module),
                 ) {
                     for node in module.all_nodes.iter() {
-                        let is_public = check!(
-                            node.is_public(decl_engine),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
                         let is_generic_function = node.is_generic_function(decl_engine);
-                        if is_public {
+                        if node.is_public(decl_engine) {
                             let node_metadata = check!(
                                 node.collect_types_metadata(ctx),
                                 return err(warnings, errors),
@@ -400,7 +393,6 @@ impl CollectTypesMetadata for TyProgram {
         for module in std::iter::once(&self.root).chain(
             self.root
                 .submodules_recursive()
-                .into_iter()
                 .map(|(_, submod)| &submod.module),
         ) {
             for node in module.all_nodes.iter() {

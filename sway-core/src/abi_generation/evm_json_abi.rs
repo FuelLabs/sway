@@ -85,7 +85,8 @@ pub fn json_abi_str(
     match type_info {
         Unknown => "unknown".into(),
         UnknownGeneric { name, .. } => name.to_string(),
-        TypeInfo::Placeholder(_) => "_".to_string(),
+        Placeholder(_) => "_".to_string(),
+        TypeParam(n) => format!("typeparam({n})"),
         Str(x) => format!("str[{}]", x.val()),
         UnsignedInteger(x) => match x {
             IntegerBits::Eight => "uint8",
