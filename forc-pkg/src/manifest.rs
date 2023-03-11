@@ -607,7 +607,7 @@ impl BuildProfile {
             time_phases: false,
             include_tests: false,
             error_on_warnings: false,
-            reverse_errors: false,
+            reverse_errors: true,
         }
     }
 

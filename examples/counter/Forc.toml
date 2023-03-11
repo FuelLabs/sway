@@ -6,3 +6,4 @@ name = "counter"
 
 [dependencies]
 std = { path = "../../sway-lib-std" }
+
