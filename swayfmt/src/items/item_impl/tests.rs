@@ -74,3 +74,17 @@ fmt_test_item!(  normal_with_generics
                 }
             }"
 );
+
+fmt_test_item!(  empty_fn_args
+"impl TestContract for Contract {
+    fn return_configurables() -> (u8, bool, [u32; 3], str[4], StructWithGeneric<u8>, EnumWithGeneric<bool>) {
+        (U8, BOOL, ARRAY, STR_4, STRUCT, ENUM)
+    }
+}",
+intermediate_whitespace
+"impl TestContract for Contract {
+    fn return_configurables(  ) -> ( u8, bool, [u32; 3], str[4], StructWithGeneric<u8>, EnumWithGeneric<bool>  )  {
+        ( U8,   BOOL, ARRAY, STR_4, STRUCT, ENUM )
+     }
+}"
+);

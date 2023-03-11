@@ -170,12 +170,32 @@ fn format_fn_sig(
     if let Some(generics) = &fn_sig.generics {
         generics.format(formatted_code, formatter)?;
     }
+
+    let fn_args = fn_sig.arguments.get();
+
+    if let FnArgs::Static(args) = fn_args {
+        if args.value_separator_pairs.is_empty() && args.final_value_opt.is_none() {
+            formatter
+                .shape
+                .code_line
+                .update_line_style(LineStyle::Inline);
+        }
+    };
     // `(`
     FnSignature::open_parenthesis(formatted_code, formatter)?;
     // FnArgs
     format_fn_args(fn_sig.arguments.get(), formatted_code, formatter)?;
     // `)`
     FnSignature::close_parenthesis(formatted_code, formatter)?;
+
+    if let FnArgs::Static(args) = fn_args {
+        if args.value_separator_pairs.is_empty() && args.final_value_opt.is_none() {
+            formatter
+                .shape
+                .code_line
+                .update_line_style(LineStyle::Multiline);
+        }
+    };
     // `return_type_opt`
     if let Some((right_arrow, ty)) = &fn_sig.return_type_opt {
         write!(
