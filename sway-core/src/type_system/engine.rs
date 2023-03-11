@@ -192,32 +192,6 @@ impl TypeEngine {
         }
     }
 
-    /// Replace any instances of the [TypeInfo::SelfType] variant with
-    /// `self_type` in both `received` and `expected`, then unify `received` and
-    /// `expected`.
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) fn unify_with_self(
-        &self,
-        decl_engine: &DeclEngine,
-        mut received: TypeId,
-        mut expected: TypeId,
-        self_type: TypeId,
-        span: &Span,
-        help_text: &str,
-        err_override: Option<CompileError>,
-    ) -> (Vec<CompileWarning>, Vec<CompileError>) {
-        received.replace_self_type(Engines::new(self, decl_engine), self_type);
-        expected.replace_self_type(Engines::new(self, decl_engine), self_type);
-        self.unify(
-            decl_engine,
-            received,
-            expected,
-            span,
-            help_text,
-            err_override,
-        )
-    }
-
     /// Make the types of `received` and `expected` equivalent (or produce an
     /// error if there is a conflict between them).
     ///
@@ -520,32 +494,6 @@ impl TypeEngine {
             _ => type_id,
         };
         ok(type_id, warnings, errors)
-    }
-
-    /// Replace any instances of the [TypeInfo::SelfType] variant with
-    /// `self_type` in `type_id`, then resolve `type_id`.
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) fn resolve_with_self(
-        &self,
-        decl_engine: &DeclEngine,
-        mut type_id: TypeId,
-        self_type: TypeId,
-        span: &Span,
-        enforce_type_arguments: EnforceTypeArguments,
-        type_info_prefix: Option<&Path>,
-        namespace: &mut Namespace,
-        mod_path: &Path,
-    ) -> CompileResult<TypeId> {
-        type_id.replace_self_type(Engines::new(self, decl_engine), self_type);
-        self.resolve(
-            decl_engine,
-            type_id,
-            span,
-            enforce_type_arguments,
-            type_info_prefix,
-            namespace,
-            mod_path,
-        )
     }
 
     /// Pretty print method for printing the [TypeEngine]. This method is

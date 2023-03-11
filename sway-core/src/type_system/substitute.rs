@@ -6,6 +6,8 @@ use std::{
     vec::IntoIter,
 };
 
+use itertools::Itertools;
+
 use super::*;
 use crate::{
     decl_engine::{DeclEngine, DeclEngineIndex},
@@ -27,78 +29,104 @@ pub trait SubstTypes {
 /// this list.
 #[derive(Debug, Clone, Default)]
 pub struct TypeSubstList {
-    list: Vec<TypeParameter>,
+    self_type: Option<TypeParameter>,
+    type_params: BTreeMap<String, TypeParameter>,
 }
 
 impl TypeSubstList {
     pub(crate) fn new() -> TypeSubstList {
-        TypeSubstList { list: vec![] }
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn is_empty(&self) -> bool {
-        self.list.is_empty()
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn len(&self) -> usize {
-        self.list.len()
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn push(&mut self, type_param: TypeParameter) {
-        self.list.push(type_param);
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn iter(&self) -> Iter<'_, TypeParameter> {
-        self.list.iter()
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn into_iter(self) -> IntoIter<TypeParameter> {
-        self.list.into_iter()
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn iter_mut(&mut self) -> IterMut<'_, TypeParameter> {
-        self.list.iter_mut()
-    }
-}
-
-impl std::iter::FromIterator<TypeParameter> for TypeSubstList {
-    fn from_iter<T: IntoIterator<Item = TypeParameter>>(iter: T) -> Self {
         TypeSubstList {
-            list: iter.into_iter().collect::<Vec<TypeParameter>>(),
+            self_type: None,
+            type_params: BTreeMap::new(),
         }
+    }
+
+    pub(crate) fn is_empty(&self) -> bool {
+        todo!();
+        // self.type_params.is_empty()
+    }
+
+    pub(crate) fn len(&self) -> usize {
+        todo!();
+        // self.type_params.len()
+    }
+
+    pub(crate) fn push(&mut self, type_param: TypeParameter) {
+        todo!();
+        // self.type_params.push(type_param);
+    }
+
+    pub(crate) fn iter(&self) -> Iter<'_, TypeParameter> {
+        todo!();
+        // self.type_params.iter()
+    }
+
+    pub(crate) fn into_iter(self) -> IntoIter<TypeParameter> {
+        todo!();
+        // self.type_params.into_iter()
+    }
+
+    pub(crate) fn iter_mut(&mut self) -> IterMut<'_, TypeParameter> {
+        todo!();
+        // self.type_params.iter_mut()
     }
 }
 
 impl EqWithEngines for TypeSubstList {}
 impl PartialEqWithEngines for TypeSubstList {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        self.list.eq(&other.list, engines)
+        let TypeSubstList {
+            self_type: lst,
+            type_params: ll,
+        } = self;
+        let TypeSubstList {
+            self_type: rst,
+            type_params: rl,
+        } = other;
+        lst.eq(rst, engines)
+            && ll
+                .values()
+                .collect_vec()
+                .eq(&rl.values().collect_vec(), engines)
     }
 }
 
 impl HashWithEngines for TypeSubstList {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        self.list.hash(state, engines);
+        let TypeSubstList {
+            self_type,
+            type_params,
+        } = self;
+        self_type.hash(state, engines);
+        type_params.values().collect_vec().hash(state, engines);
     }
 }
 
 impl OrdWithEngines for TypeSubstList {
     fn cmp(&self, other: &Self, engines: Engines<'_>) -> std::cmp::Ordering {
-        let TypeSubstList { list: ll } = self;
-        let TypeSubstList { list: rl } = other;
-        ll.cmp(rl, engines)
+        let TypeSubstList {
+            self_type: lst,
+            type_params: ll,
+        } = self;
+        let TypeSubstList {
+            self_type: rst,
+            type_params: rl,
+        } = other;
+        lst.cmp(rst, engines).then_with(|| {
+            ll.values()
+                .collect_vec()
+                .cmp(&rl.values().collect_vec(), engines)
+        })
     }
 }
 
 impl SubstTypes for TypeSubstList {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.list
-            .iter_mut()
+        if let Some(ref mut self_type) = self.self_type {
+            self_type.subst(type_mapping, engines);
+        }
+        self.type_params
+            .values_mut()
             .for_each(|x| x.subst(type_mapping, engines));
     }
 }
@@ -340,7 +368,6 @@ impl TypeSubstMap {
             }
             (TypeInfo::Unknown, TypeInfo::Unknown)
             | (TypeInfo::Boolean, TypeInfo::Boolean)
-            | (TypeInfo::SelfType, TypeInfo::SelfType)
             | (TypeInfo::B256, TypeInfo::B256)
             | (TypeInfo::Numeric, TypeInfo::Numeric)
             | (TypeInfo::Contract, TypeInfo::Contract)
@@ -419,7 +446,7 @@ impl TypeSubstMap {
             TypeInfo::Custom { .. } => iter_for_match(engines, self, &type_info),
             TypeInfo::UnknownGeneric { .. } => iter_for_match(engines, self, &type_info),
             TypeInfo::Placeholder(_) => iter_for_match(engines, self, &type_info),
-            TypeInfo::TypeParam(_) => None,
+            TypeInfo::TypeParam { .. } => None,
             TypeInfo::Struct(decl_ref) => {
                 let mut decl = decl_engine.get_struct(&decl_ref);
                 let mut need_to_create_new = false;
@@ -514,7 +541,6 @@ impl TypeSubstMap {
             | TypeInfo::UnsignedInteger(..)
             | TypeInfo::Boolean
             | TypeInfo::ContractCaller { .. }
-            | TypeInfo::SelfType
             | TypeInfo::B256
             | TypeInfo::Numeric
             | TypeInfo::RawUntypedPtr

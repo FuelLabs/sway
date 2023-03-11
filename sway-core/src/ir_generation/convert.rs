@@ -147,13 +147,12 @@ fn convert_resolved_type(
         // Unsupported types which shouldn't exist in the AST after type checking and
         // monomorphisation.
         TypeInfo::Custom { .. } => reject_type!("Custom"),
-        TypeInfo::SelfType { .. } => reject_type!("Self"),
         TypeInfo::Contract => reject_type!("Contract"),
         TypeInfo::ContractCaller { .. } => reject_type!("ContractCaller"),
         TypeInfo::Unknown => reject_type!("Unknown"),
         TypeInfo::UnknownGeneric { .. } => reject_type!("Generic"),
         TypeInfo::Placeholder(_) => reject_type!("Placeholder"),
-        TypeInfo::TypeParam(_) => reject_type!("TypeParam"),
+        TypeInfo::TypeParam { .. } => reject_type!("TypeParam"),
         TypeInfo::ErrorRecovery => reject_type!("Error recovery"),
         TypeInfo::Storage { .. } => reject_type!("Storage"),
     })

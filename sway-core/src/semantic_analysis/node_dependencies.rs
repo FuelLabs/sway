@@ -824,14 +824,13 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         } => name.suffix.as_str(),
         TypeInfo::Tuple(fields) if fields.is_empty() => "unit",
         TypeInfo::Tuple(..) => "tuple",
-        TypeInfo::SelfType => "self",
         TypeInfo::B256 => "b256",
         TypeInfo::Numeric => "numeric",
         TypeInfo::Contract => "contract",
         TypeInfo::ErrorRecovery => "err_recov",
         TypeInfo::Unknown => "unknown",
         TypeInfo::UnknownGeneric { name, .. } => return format!("generic {name}"),
-        TypeInfo::TypeParam(_) => "type param",
+        TypeInfo::TypeParam { .. } => "type param",
         TypeInfo::Placeholder(_) => "_",
         TypeInfo::ContractCaller { abi_name, .. } => {
             return format!("contract caller {abi_name}");

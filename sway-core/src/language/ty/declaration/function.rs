@@ -39,49 +39,6 @@ impl Named for TyFunctionDeclaration {
     }
 }
 
-impl EqWithEngines for TyFunctionDeclaration {}
-impl PartialEqWithEngines for TyFunctionDeclaration {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        self.name == other.name
-            && self.body.eq(&other.body, engines)
-            && self.parameters.eq(&other.parameters, engines)
-            && self.return_type.eq(&other.return_type, engines)
-            && self.type_parameters.eq(&other.type_parameters, engines)
-            && self.visibility == other.visibility
-            && self.is_contract_call == other.is_contract_call
-            && self.purity == other.purity
-    }
-}
-
-impl HashWithEngines for TyFunctionDeclaration {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let TyFunctionDeclaration {
-            name,
-            body,
-            parameters,
-            return_type,
-            type_parameters,
-            visibility,
-            is_contract_call,
-            purity,
-            // these fields are not hashed because they aren't relevant/a
-            // reliable source of obj v. obj distinction
-            span: _,
-            attributes: _,
-            implementing_type: _,
-            where_clause: _,
-        } = self;
-        name.hash(state);
-        body.hash(state, engines);
-        parameters.hash(state, engines);
-        return_type.hash(state, engines);
-        type_parameters.hash(state, engines);
-        visibility.hash(state);
-        is_contract_call.hash(state);
-        purity.hash(state);
-    }
-}
-
 impl SubstTypes for TyFunctionDeclaration {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.type_parameters
@@ -92,25 +49,6 @@ impl SubstTypes for TyFunctionDeclaration {
             .for_each(|x| x.subst(type_mapping, engines));
         self.return_type.subst(type_mapping, engines);
         self.body.subst(type_mapping, engines);
-    }
-}
-
-impl ReplaceSelfType for TyFunctionDeclaration {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
-        self.parameters
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
-        self.return_type.replace_self_type(engines, self_type);
-        self.body.replace_self_type(engines, self_type);
-    }
-}
-
-impl ReplaceDecls for TyFunctionDeclaration {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
-        self.body.replace_decls(decl_mapping, engines);
     }
 }
 
@@ -397,14 +335,6 @@ impl HashWithEngines for TyFunctionParameter {
 impl SubstTypes for TyFunctionParameter {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.type_argument.type_id.subst(type_mapping, engines);
-    }
-}
-
-impl ReplaceSelfType for TyFunctionParameter {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.type_argument
-            .type_id
-            .replace_self_type(engines, self_type);
     }
 }
 

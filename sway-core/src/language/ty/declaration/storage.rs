@@ -22,27 +22,6 @@ impl Named for TyStorageDeclaration {
     }
 }
 
-impl EqWithEngines for TyStorageDeclaration {}
-impl PartialEqWithEngines for TyStorageDeclaration {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        self.fields.eq(&other.fields, engines) && self.attributes == other.attributes
-    }
-}
-
-impl HashWithEngines for TyStorageDeclaration {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let TyStorageDeclaration {
-            fields,
-            // these fields are not hashed because they aren't relevant/a
-            // reliable source of obj v. obj distinction
-            span: _,
-            attributes: _,
-            storage_keyword: _,
-        } = self;
-        fields.hash(state, engines);
-    }
-}
-
 impl Spanned for TyStorageDeclaration {
     fn span(&self) -> Span {
         self.span.clone()

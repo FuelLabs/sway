@@ -91,15 +91,6 @@ impl SubstTypes for TypeParameter {
     }
 }
 
-impl ReplaceSelfType for TypeParameter {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.type_id.replace_self_type(engines, self_type);
-        self.trait_constraints
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
-    }
-}
-
 impl Spanned for TypeParameter {
     fn span(&self) -> Span {
         self.name_ident.span()
@@ -219,71 +210,6 @@ impl TypeParameter {
             trait_constraints_span,
         };
         ok(type_parameter, warnings, errors)
-    }
-
-    /// Creates a [DeclMapping] from a list of [TypeParameter]s.
-    pub(crate) fn gather_decl_mapping_from_trait_constraints(
-        mut ctx: TypeCheckContext,
-        type_parameters: &[TypeParameter],
-        access_span: &Span,
-    ) -> CompileResult<DeclMapping> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
-        let mut interface_item_refs: InterfaceItemMap = BTreeMap::new();
-        let mut item_refs: ItemMap = BTreeMap::new();
-        let mut impld_item_refs: ItemMap = BTreeMap::new();
-
-        for type_param in type_parameters.iter() {
-            let TypeParameter {
-                type_id,
-                trait_constraints,
-                ..
-            } = type_param;
-
-            // Check to see if the trait constraints are satisfied.
-            check!(
-                ctx.namespace
-                    .implemented_traits
-                    .check_if_trait_constraints_are_satisfied_for_type(
-                        *type_id,
-                        trait_constraints,
-                        access_span,
-                        ctx.engines()
-                    ),
-                continue,
-                warnings,
-                errors
-            );
-
-            for trait_constraint in trait_constraints.iter() {
-                let TraitConstraint {
-                    trait_name,
-                    type_arguments: trait_type_arguments,
-                } = trait_constraint;
-
-                let (trait_interface_item_refs, trait_item_refs, trait_impld_item_refs) = check!(
-                    handle_trait(ctx.by_ref(), *type_id, trait_name, trait_type_arguments),
-                    continue,
-                    warnings,
-                    errors
-                );
-                interface_item_refs.extend(trait_interface_item_refs);
-                item_refs.extend(trait_item_refs);
-                impld_item_refs.extend(trait_impld_item_refs);
-            }
-        }
-
-        if errors.is_empty() {
-            let decl_mapping = DeclMapping::from_interface_and_item_and_impld_decl_refs(
-                interface_item_refs,
-                item_refs,
-                impld_item_refs,
-            );
-            ok(decl_mapping, warnings, errors)
-        } else {
-            err(warnings, errors)
-        }
     }
 }
 

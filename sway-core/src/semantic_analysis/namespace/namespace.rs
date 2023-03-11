@@ -115,21 +115,20 @@ impl Namespace {
             .resolve_call_path_with_visibility_check(engines, &self.mod_path, call_path)
     }
 
-    /// Short-hand for calling [Root::resolve_type_with_self] on `root` with the `mod_path`.
-    pub(crate) fn resolve_type_with_self(
+    /// Short-hand for calling [Root::resolve] on `root` and with the
+    /// `mod_path`.
+    pub(crate) fn resolve_type(
         &mut self,
         engines: Engines<'_>,
         type_id: TypeId,
-        self_type: TypeId,
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
         type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
         let mod_path = self.mod_path.clone();
-        engines.te().resolve_with_self(
+        engines.te().resolve(
             engines.de(),
             type_id,
-            self_type,
             span,
             enforce_type_arguments,
             type_info_prefix,
@@ -138,39 +137,17 @@ impl Namespace {
         )
     }
 
-    /// Short-hand for calling [Root::resolve_type_without_self] on `root` and with the `mod_path`.
-    pub(crate) fn resolve_type_without_self(
-        &mut self,
-        engines: Engines<'_>,
-        type_id: TypeId,
-        span: &Span,
-        type_info_prefix: Option<&Path>,
-    ) -> CompileResult<TypeId> {
-        let mod_path = self.mod_path.clone();
-        engines.te().resolve(
-            engines.de(),
-            type_id,
-            span,
-            EnforceTypeArguments::Yes,
-            type_info_prefix,
-            self,
-            &mod_path,
-        )
-    }
-
-    /// Given a method and a type (plus a `self_type` to potentially
-    /// resolve it), find that method in the namespace. Requires `args_buf`
-    /// because of some special casing for the standard library where we pull
-    /// the type from the arguments buffer.
+    /// Given a method and a type, find that method in the namespace. Requires
+    /// `args_buf` because of some special casing for the standard library where
+    /// we pull the type from the arguments buffer.
     ///
     /// This function will generate a missing method error if the method is not
     /// found.
     pub(crate) fn find_method_for_type(
         &mut self,
-        mut type_id: TypeId,
+        type_id: TypeId,
         method_prefix: &Path,
         method_name: &Ident,
-        self_type: TypeId,
         args_buf: &VecDeque<ty::TyExpression>,
         engines: Engines<'_>,
     ) -> CompileResult<DeclRefFunction> {
@@ -197,8 +174,6 @@ impl Namespace {
 
         // grab the local methods from the local module
         let local_methods = local_module.get_methods_for_type(engines, type_id);
-
-        type_id.replace_self_type(engines, self_type);
 
         // resolve the type
         let type_id = check!(

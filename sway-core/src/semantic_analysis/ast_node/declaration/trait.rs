@@ -49,9 +49,9 @@ impl ty::TyTraitDeclaration {
         let engines = ctx.engines();
 
         // A temporary namespace for checking within the trait's scope.
-        let self_type = type_engine.insert(decl_engine, TypeInfo::SelfType);
+        let self_type: TypeId = todo!();
         let mut trait_namespace = ctx.namespace.clone();
-        let mut ctx = ctx.scoped(&mut trait_namespace).with_self_type(self_type);
+        let mut ctx = ctx.scoped(&mut trait_namespace);
 
         // Type check the type parameters. This will also insert them into the
         // current namespace.
@@ -305,7 +305,6 @@ impl ty::TyTraitDeclaration {
             match item {
                 ty::TyTraitInterfaceItem::TraitFn(decl_ref) => {
                     let mut method = decl_engine.get_trait_fn(decl_ref);
-                    method.replace_self_type(engines, type_id);
                     method.subst(&type_mapping, engines);
                     all_items.push(TyImplItem::Fn(
                         ctx.decl_engine
@@ -319,7 +318,6 @@ impl ty::TyTraitDeclaration {
             match item {
                 ty::TyTraitItem::Fn(decl_ref) => {
                     let mut method = decl_engine.get_function(decl_ref);
-                    method.replace_self_type(engines, type_id);
                     method.subst(&type_mapping, engines);
                     all_items.push(TyImplItem::Fn(
                         ctx.decl_engine

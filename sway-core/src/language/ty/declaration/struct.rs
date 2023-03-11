@@ -30,35 +30,6 @@ impl Named for TyStructDeclaration {
     }
 }
 
-impl EqWithEngines for TyStructDeclaration {}
-impl PartialEqWithEngines for TyStructDeclaration {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        self.call_path.suffix == other.call_path.suffix
-            && self.fields.eq(&other.fields, engines)
-            && self.type_parameters.eq(&other.type_parameters, engines)
-            && self.visibility == other.visibility
-    }
-}
-
-impl HashWithEngines for TyStructDeclaration {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let TyStructDeclaration {
-            call_path,
-            fields,
-            type_parameters,
-            visibility,
-            // these fields are not hashed because they aren't relevant/a
-            // reliable source of obj v. obj distinction
-            span: _,
-            attributes: _,
-        } = self;
-        call_path.suffix.hash(state);
-        fields.hash(state, engines);
-        type_parameters.hash(state, engines);
-        visibility.hash(state);
-    }
-}
-
 impl SubstTypes for TyStructDeclaration {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.fields
@@ -67,17 +38,6 @@ impl SubstTypes for TyStructDeclaration {
         self.type_parameters
             .iter_mut()
             .for_each(|x| x.subst(type_mapping, engines));
-    }
-}
-
-impl ReplaceSelfType for TyStructDeclaration {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.fields
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
     }
 }
 
@@ -180,11 +140,5 @@ impl OrdWithEngines for TyStructField {
 impl SubstTypes for TyStructField {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.type_argument.subst_inner(type_mapping, engines);
-    }
-}
-
-impl ReplaceSelfType for TyStructField {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.type_argument.replace_self_type(engines, self_type);
     }
 }

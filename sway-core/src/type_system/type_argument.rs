@@ -91,12 +91,6 @@ impl From<&TypeParameter> for TypeArgument {
     }
 }
 
-impl ReplaceSelfType for TypeArgument {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.type_id.replace_self_type(engines, self_type);
-    }
-}
-
 impl SubstTypes for TypeArgument {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.type_id.subst(type_mapping, engines);

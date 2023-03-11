@@ -14,8 +14,7 @@ use crate::{
         ty::{self, TyImplItem},
         CallPath,
     },
-    type_system::{SubstTypes, TypeId},
-    ReplaceSelfType, TraitConstraint, TypeArgument, TypeInfo, TypeSubstMap,
+    type_system::*,
 };
 
 #[derive(Clone, Debug)]
@@ -598,8 +597,6 @@ impl TraitMap {
                         *map_type_id,
                         *type_id,
                     );
-                    let new_self_type = type_engine.insert(decl_engine, TypeInfo::SelfType);
-                    type_id.replace_self_type(engines, new_self_type);
                     let trait_items: TraitItems = map_trait_items
                         .clone()
                         .into_iter()
@@ -610,7 +607,6 @@ impl TraitMap {
                             };
                             let mut decl = decl_engine.get(*decl_ref.id());
                             decl.subst(&type_mapping, engines);
-                            decl.replace_self_type(engines, new_self_type);
                             let new_ref = decl_engine
                                 .insert(decl)
                                 .with_parent(decl_engine, (*decl_ref.id()).into());
@@ -820,7 +816,6 @@ pub(crate) fn are_equal_minus_dynamic_types(
         // TypeId, they may later resolve to be different types in the type
         // engine
         (TypeInfo::Unknown, TypeInfo::Unknown) => false,
-        (TypeInfo::SelfType, TypeInfo::SelfType) => false,
         (TypeInfo::Numeric, TypeInfo::Numeric) => false,
         (TypeInfo::Storage { .. }, TypeInfo::Storage { .. }) => false,
 

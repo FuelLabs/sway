@@ -1,5 +1,4 @@
 use crate::{engine_threading::*, language::parsed, transform, type_system::*};
-use std::hash::{Hash, Hasher};
 
 use sway_types::{Ident, Named, Span, Spanned};
 
@@ -16,52 +15,6 @@ pub struct TyAbiDeclaration {
     pub items: Vec<TyTraitItem>,
     pub span: Span,
     pub attributes: transform::AttributesMap,
-}
-
-impl EqWithEngines for TyAbiDeclaration {}
-impl PartialEqWithEngines for TyAbiDeclaration {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        let TyAbiDeclaration {
-            name: ln,
-            interface_surface: lis,
-            supertraits: ls,
-            items: li,
-            // these fields are not compared because they aren't relevant/a
-            // reliable source of obj v. obj distinction
-            attributes: _,
-            span: _,
-        } = self;
-        let TyAbiDeclaration {
-            name: rn,
-            interface_surface: ris,
-            supertraits: rs,
-            items: ri,
-            // these fields are not compared because they aren't relevant/a
-            // reliable source of obj v. obj distinction
-            attributes: _,
-            span: _,
-        } = other;
-        ln == rn && lis.eq(ris, engines) && li.eq(ri, engines) && ls.eq(rs, engines)
-    }
-}
-
-impl HashWithEngines for TyAbiDeclaration {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let TyAbiDeclaration {
-            name,
-            interface_surface,
-            items,
-            supertraits,
-            // these fields are not hashed because they aren't relevant/a
-            // reliable source of obj v. obj distinction
-            attributes: _,
-            span: _,
-        } = self;
-        name.hash(state);
-        interface_surface.hash(state, engines);
-        items.hash(state, engines);
-        supertraits.hash(state, engines);
-    }
 }
 
 impl CreateTypeId for TyAbiDeclaration {

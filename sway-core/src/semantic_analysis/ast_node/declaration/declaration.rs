@@ -30,7 +30,7 @@ impl ty::TyDeclaration {
                 is_mutable,
             }) => {
                 type_ascription.type_id = check!(
-                    ctx.resolve_type_with_self(
+                    ctx.resolve_type(
                         type_ascription.type_id,
                         &type_ascription.span,
                         EnforceTypeArguments::Yes,
@@ -88,7 +88,7 @@ impl ty::TyDeclaration {
                 span,
             }) => {
                 type_ascription.type_id = check!(
-                    ctx.resolve_type_with_self(
+                    ctx.resolve_type(
                         type_ascription.type_id,
                         &span,
                         EnforceTypeArguments::No,
@@ -388,7 +388,12 @@ impl ty::TyDeclaration {
                 } in fields
                 {
                     type_argument.type_id = check!(
-                        ctx.resolve_type_without_self(type_argument.type_id, &name.span(), None),
+                        ctx.resolve_type(
+                            type_argument.type_id,
+                            &name.span(),
+                            EnforceTypeArguments::Yes,
+                            None
+                        ),
                         return err(warnings, errors),
                         warnings,
                         errors

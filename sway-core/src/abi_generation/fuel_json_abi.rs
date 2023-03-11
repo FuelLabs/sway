@@ -776,7 +776,7 @@ impl TypeInfo {
             Unknown => "unknown".into(),
             UnknownGeneric { name, .. } => name.to_string(),
             Placeholder(_) => "_".to_string(),
-            TypeParam(n) => format!("typeparam({n})"),
+            TypeParam { indexing_name, .. } => format!("typeparam({indexing_name})"),
             Str(x) => format!("str[{}]", x.val()),
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",
@@ -794,7 +794,6 @@ impl TypeInfo {
                     .collect::<Vec<String>>();
                 format!("({})", field_strs.join(", "))
             }
-            SelfType => "Self".into(),
             B256 => "b256".into(),
             Numeric => "u64".into(), // u64 is the default
             Contract => "contract".into(),

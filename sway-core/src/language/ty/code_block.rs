@@ -32,22 +32,6 @@ impl SubstTypes for TyCodeBlock {
     }
 }
 
-impl ReplaceSelfType for TyCodeBlock {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.contents
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
-    }
-}
-
-impl ReplaceDecls for TyCodeBlock {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
-        self.contents
-            .iter_mut()
-            .for_each(|x| x.replace_decls(decl_mapping, engines));
-    }
-}
-
 impl DeterministicallyAborts for TyCodeBlock {
     fn deterministically_aborts(&self, decl_engine: &DeclEngine, check_call_body: bool) -> bool {
         self.contents

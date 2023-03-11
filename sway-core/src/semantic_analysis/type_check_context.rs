@@ -30,14 +30,6 @@ pub struct TypeCheckContext<'a> {
     /// The declaration engine holds declarations.
     pub(crate) decl_engine: &'a DeclEngine,
 
-    // The following set of fields are intentionally private. When a `TypeCheckContext` is passed
-    // into a new node during type checking, these fields should be updated using the `with_*`
-    // methods which provides a new `TypeCheckContext`, ensuring we don't leak our changes into
-    // the parent nodes.
-    /// While type-checking an `impl` (whether inherent or for a `trait`/`abi`) this represents the
-    /// type for which we are implementing. For example in `impl Foo {}` or `impl Trait for Foo
-    /// {}`, this represents the type ID of `Foo`.
-    self_type: TypeId,
     /// While type-checking an expression, this indicates the expected type.
     ///
     /// Assists type inference.
@@ -85,8 +77,6 @@ impl<'a> TypeCheckContext<'a> {
             decl_engine,
             type_annotation: type_engine.insert(decl_engine, TypeInfo::Unknown),
             help_text: "",
-            // TODO: Contract? Should this be passed in based on program kind (aka TreeType)?
-            self_type: type_engine.insert(decl_engine, TypeInfo::Contract),
             mode: Mode::NonAbi,
             purity: Purity::default(),
             kind: TreeType::Contract,
@@ -106,7 +96,6 @@ impl<'a> TypeCheckContext<'a> {
         TypeCheckContext {
             namespace: self.namespace,
             type_annotation: self.type_annotation,
-            self_type: self.self_type,
             mode: self.mode,
             help_text: self.help_text,
             purity: self.purity,
@@ -122,7 +111,6 @@ impl<'a> TypeCheckContext<'a> {
         TypeCheckContext {
             namespace,
             type_annotation: self.type_annotation,
-            self_type: self.self_type,
             mode: self.mode,
             help_text: self.help_text,
             purity: self.purity,
@@ -183,11 +171,6 @@ impl<'a> TypeCheckContext<'a> {
         Self { kind, ..self }
     }
 
-    /// Map this `TypeCheckContext` instance to a new one with the given purity.
-    pub(crate) fn with_self_type(self, self_type: TypeId) -> Self {
-        Self { self_type, ..self }
-    }
-
     /// Map this `TypeCheckContext` instance to a new one with
     /// `disallow_functions` set to `true`.
     pub(crate) fn disallow_functions(self) -> Self {
@@ -229,10 +212,6 @@ impl<'a> TypeCheckContext<'a> {
         self.kind.clone()
     }
 
-    pub(crate) fn self_type(&self) -> TypeId {
-        self.self_type
-    }
-
     pub(crate) fn functions_disallowed(&self) -> bool {
         self.disallow_functions
     }
@@ -262,48 +241,34 @@ impl<'a> TypeCheckContext<'a> {
         )
     }
 
-    /// Short-hand for calling [Namespace::resolve_type_with_self] with the `self_type` provided by
-    /// the `TypeCheckContext`.
-    pub(crate) fn resolve_type_with_self(
+    /// Short-hand for calling [Namespace::resolve_type].
+    pub(crate) fn resolve_type(
         &mut self,
         type_id: TypeId,
         span: &Span,
         enforce_type_args: EnforceTypeArguments,
         type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
-        self.namespace.resolve_type_with_self(
+        self.namespace.resolve_type(
             self.engines(),
             type_id,
-            self.self_type,
             span,
             enforce_type_args,
             type_info_prefix,
         )
     }
 
-    /// Short-hand for calling [Namespace::resolve_type_without_self]
-    pub(crate) fn resolve_type_without_self(
-        &mut self,
-        type_id: TypeId,
-        span: &Span,
-        type_info_prefix: Option<&Path>,
-    ) -> CompileResult<TypeId> {
-        self.namespace
-            .resolve_type_without_self(self.engines(), type_id, span, type_info_prefix)
-    }
-
-    /// Short-hand around `type_system::unify_with_self`, where the `TypeCheckContext` provides the
-    /// type annotation, self type and help text.
-    pub(crate) fn unify_with_self(
+    /// Short-hand around `type_system::unify`, where the `TypeCheckContext`
+    /// provides the type annotation and help text.
+    pub(crate) fn unify_with_type_annotation(
         &self,
         ty: TypeId,
         span: &Span,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
-        self.type_engine.unify_with_self(
+        self.type_engine.unify(
             self.decl_engine,
             ty,
             self.type_annotation(),
-            self.self_type(),
             span,
             self.help_text(),
             None,

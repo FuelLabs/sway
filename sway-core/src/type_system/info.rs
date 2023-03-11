@@ -93,10 +93,12 @@ pub enum TypeInfo {
     /// https://doc.rust-lang.org/nightly/nightly-rustc/src/rustc_type_ir/sty.rs.html#208
     Placeholder(TypeParameter),
     /// Represents a type created from a type parameter.
-    ///
-    /// NOTE: This type is *not used yet*.
-    // https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.TyKind.html#variant.Param
-    TypeParam(usize),
+    TypeParam {
+        /// Used for indexing into a [TypeSubstList].
+        indexing_name: String,
+        /// Used for debugging.
+        debug_ident: Ident,
+    },
     Str(Length),
     UnsignedInteger(IntegerBits),
     Enum(DeclRefEnum),
@@ -118,7 +120,6 @@ pub enum TypeInfo {
         call_path: CallPath,
         type_arguments: Option<Vec<TypeArgument>>,
     },
-    SelfType,
     B256,
     /// This means that specific type of a number is not yet known. It will be
     /// determined via inference at a later time.
@@ -195,8 +196,8 @@ impl HashWithEngines for TypeInfo {
             TypeInfo::Placeholder(ty) => {
                 ty.hash(state, engines);
             }
-            TypeInfo::TypeParam(n) => {
-                n.hash(state);
+            TypeInfo::TypeParam { indexing_name, .. } => {
+                indexing_name.hash(state);
             }
             TypeInfo::Numeric
             | TypeInfo::Boolean
@@ -204,7 +205,6 @@ impl HashWithEngines for TypeInfo {
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery
             | TypeInfo::Unknown
-            | TypeInfo::SelfType
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice => {}
         }
@@ -227,7 +227,14 @@ impl PartialEqWithEngines for TypeInfo {
                 },
             ) => l == r && ltc.eq(rtc, engines),
             (Self::Placeholder(l), Self::Placeholder(r)) => l.eq(r, engines),
-            (Self::TypeParam(l), Self::TypeParam(r)) => l == r,
+            (
+                Self::TypeParam {
+                    indexing_name: lin, ..
+                },
+                Self::TypeParam {
+                    indexing_name: rin, ..
+                },
+            ) => lin == rin,
             (
                 Self::Custom {
                     call_path: l_name,
@@ -297,7 +304,6 @@ impl PartialEqWithEngines for TypeInfo {
 impl OrdWithEngines for TypeInfo {
     fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
         let type_engine = engines.te();
-        let decl_engine = engines.de();
         match (self, other) {
             (
                 Self::UnknownGeneric {
@@ -325,25 +331,9 @@ impl OrdWithEngines for TypeInfo {
                 .then_with(|| l_type_args.as_deref().cmp(&r_type_args.as_deref(), engines)),
             (Self::Str(l), Self::Str(r)) => l.val().cmp(&r.val()),
             (Self::UnsignedInteger(l), Self::UnsignedInteger(r)) => l.cmp(r),
-            (Self::Enum(l_decl_ref), Self::Enum(r_decl_ref)) => {
-                let l_decl = decl_engine.get_enum(l_decl_ref);
-                let r_decl = decl_engine.get_enum(r_decl_ref);
-                l_decl
-                    .call_path
-                    .suffix
-                    .cmp(&r_decl.call_path.suffix)
-                    .then_with(|| l_decl.type_parameters.cmp(&r_decl.type_parameters, engines))
-                    .then_with(|| l_decl.variants.cmp(&r_decl.variants, engines))
-            }
+            (Self::Enum(l_decl_ref), Self::Enum(r_decl_ref)) => l_decl_ref.cmp(r_decl_ref, engines),
             (Self::Struct(l_decl_ref), Self::Struct(r_decl_ref)) => {
-                let l_decl = decl_engine.get_struct(l_decl_ref);
-                let r_decl = decl_engine.get_struct(r_decl_ref);
-                l_decl
-                    .call_path
-                    .suffix
-                    .cmp(&r_decl.call_path.suffix)
-                    .then_with(|| l_decl.type_parameters.cmp(&r_decl.type_parameters, engines))
-                    .then_with(|| l_decl.fields.cmp(&r_decl.fields, engines))
+                l_decl_ref.cmp(r_decl_ref, engines)
             }
             (Self::Tuple(l), Self::Tuple(r)) => l.cmp(r, engines),
             (
@@ -378,7 +368,7 @@ impl DisplayWithEngines for TypeInfo {
             Unknown => "unknown".into(),
             UnknownGeneric { name, .. } => name.to_string(),
             Placeholder(_) => "_".to_string(),
-            TypeParam(n) => format!("typeparam({n})"),
+            TypeParam { indexing_name, .. } => format!("typeparam({indexing_name})"),
             Str(x) => format!("str[{}]", x.val()),
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",
@@ -398,7 +388,6 @@ impl DisplayWithEngines for TypeInfo {
                     .collect::<Vec<String>>();
                 format!("({})", field_strs.join(", "))
             }
-            SelfType => "Self".into(),
             B256 => "b256".into(),
             Numeric => "numeric".into(),
             Contract => "contract".into(),
@@ -464,7 +453,7 @@ impl UnconstrainedTypeParameters for TypeInfo {
         let type_engine = engines.te();
         let type_parameter_info = type_engine.get(type_parameter.type_id);
         match self {
-            TypeInfo::TypeParam(_) => false,
+            TypeInfo::TypeParam { .. } => false,
             TypeInfo::UnknownGeneric {
                 trait_constraints, ..
             } => {
@@ -551,7 +540,6 @@ impl UnconstrainedTypeParameters for TypeInfo {
             | TypeInfo::UnsignedInteger(_)
             | TypeInfo::Boolean
             | TypeInfo::ContractCaller { .. }
-            | TypeInfo::SelfType
             | TypeInfo::B256
             | TypeInfo::Numeric
             | TypeInfo::Contract
@@ -582,16 +570,15 @@ impl TypeInfo {
             TypeInfo::Tuple(_) => 8,
             TypeInfo::ContractCaller { .. } => 9,
             TypeInfo::Custom { .. } => 10,
-            TypeInfo::SelfType => 11,
-            TypeInfo::B256 => 12,
-            TypeInfo::Numeric => 13,
-            TypeInfo::Contract => 14,
-            TypeInfo::ErrorRecovery => 15,
-            TypeInfo::Array(_, _) => 16,
-            TypeInfo::Storage { .. } => 17,
-            TypeInfo::RawUntypedPtr => 18,
-            TypeInfo::RawUntypedSlice => 19,
-            TypeInfo::TypeParam(_) => 20,
+            TypeInfo::B256 => 11,
+            TypeInfo::Numeric => 12,
+            TypeInfo::Contract => 13,
+            TypeInfo::ErrorRecovery => 14,
+            TypeInfo::Array(_, _) => 15,
+            TypeInfo::Storage { .. } => 16,
+            TypeInfo::RawUntypedPtr => 17,
+            TypeInfo::RawUntypedSlice => 18,
+            TypeInfo::TypeParam { .. } => 19,
         }
     }
 
@@ -931,7 +918,6 @@ impl TypeInfo {
             | TypeInfo::Boolean
             | TypeInfo::Tuple(_)
             | TypeInfo::ContractCaller { .. }
-            | TypeInfo::SelfType
             | TypeInfo::B256
             | TypeInfo::Numeric
             | TypeInfo::RawUntypedPtr
@@ -941,7 +927,7 @@ impl TypeInfo {
             | TypeInfo::Array(_, _)
             | TypeInfo::Storage { .. }
             | TypeInfo::Placeholder(_)
-            | TypeInfo::TypeParam(_) => {
+            | TypeInfo::TypeParam { .. } => {
                 errors.push(CompileError::TypeArgumentsNotAllowed { span: span.clone() });
                 err(warnings, errors)
             }
@@ -1040,7 +1026,6 @@ impl TypeInfo {
                 | TypeInfo::UnsignedInteger(_)
                 | TypeInfo::Boolean
                 | TypeInfo::ContractCaller { .. }
-                | TypeInfo::SelfType
                 | TypeInfo::B256
                 | TypeInfo::Numeric
                 | TypeInfo::RawUntypedPtr
@@ -1049,7 +1034,7 @@ impl TypeInfo {
                 | TypeInfo::Placeholder(_) => {
                     inner_types.insert(type_id);
                 }
-                TypeInfo::TypeParam(_) | TypeInfo::ErrorRecovery => {}
+                TypeInfo::TypeParam { .. } | TypeInfo::ErrorRecovery => {}
             }
             inner_types
         };
@@ -1100,7 +1085,6 @@ impl TypeInfo {
             | TypeInfo::UnsignedInteger(_)
             | TypeInfo::Boolean
             | TypeInfo::ContractCaller { .. }
-            | TypeInfo::SelfType
             | TypeInfo::B256
             | TypeInfo::Numeric
             | TypeInfo::Contract
@@ -1108,7 +1092,7 @@ impl TypeInfo {
             | TypeInfo::RawUntypedSlice
             | TypeInfo::ErrorRecovery
             | TypeInfo::Placeholder(_)
-            | TypeInfo::TypeParam(_) => {}
+            | TypeInfo::TypeParam { .. } => {}
         }
         inner_types
     }
@@ -1135,13 +1119,12 @@ impl TypeInfo {
             | TypeInfo::RawUntypedSlice
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::Custom { .. }
-            | TypeInfo::SelfType
             | TypeInfo::Str(_)
             | TypeInfo::Contract
             | TypeInfo::Array(_, _)
             | TypeInfo::Storage { .. }
             | TypeInfo::Placeholder(_)
-            | TypeInfo::TypeParam(_) => {
+            | TypeInfo::TypeParam { .. } => {
                 errors.push(CompileError::Unimplemented(
                     "matching on this type is unsupported right now",
                     span.clone(),
@@ -1177,10 +1160,9 @@ impl TypeInfo {
             TypeInfo::Unknown
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::ContractCaller { .. }
-            | TypeInfo::SelfType
             | TypeInfo::Storage { .. }
             | TypeInfo::Placeholder(_)
-            | TypeInfo::TypeParam(_) => {
+            | TypeInfo::TypeParam { .. } => {
                 errors.push(CompileError::Unimplemented(
                     "implementing traits on this type is unsupported right now",
                     span.clone(),
@@ -1323,8 +1305,8 @@ impl TypeInfo {
             | TypeInfo::RawUntypedSlice
             | TypeInfo::Contract
             | TypeInfo::Placeholder(_)
-            | TypeInfo::TypeParam(_) => {}
-            TypeInfo::Custom { .. } | TypeInfo::SelfType => {
+            | TypeInfo::TypeParam { .. } => {}
+            TypeInfo::Custom { .. } => {
                 errors.push(CompileError::Internal(
                     "did not expect to find this type here",
                     span.clone(),
@@ -1673,14 +1655,13 @@ impl TypeInfo {
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::Custom { .. }
-            | TypeInfo::SelfType
             | TypeInfo::Tuple(_)
             | TypeInfo::Array(_, _)
             | TypeInfo::Contract
             | TypeInfo::Storage { .. }
             | TypeInfo::Numeric
             | TypeInfo::Placeholder(_)
-            | TypeInfo::TypeParam(_) => true,
+            | TypeInfo::TypeParam { .. } => true,
         }
     }
 

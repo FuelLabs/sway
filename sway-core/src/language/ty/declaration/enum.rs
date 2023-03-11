@@ -30,35 +30,6 @@ impl Named for TyEnumDeclaration {
     }
 }
 
-impl EqWithEngines for TyEnumDeclaration {}
-impl PartialEqWithEngines for TyEnumDeclaration {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        self.call_path.suffix == other.call_path.suffix
-            && self.type_parameters.eq(&other.type_parameters, engines)
-            && self.variants.eq(&other.variants, engines)
-            && self.visibility == other.visibility
-    }
-}
-
-impl HashWithEngines for TyEnumDeclaration {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let TyEnumDeclaration {
-            call_path,
-            type_parameters,
-            variants,
-            visibility,
-            // these fields are not hashed because they aren't relevant/a
-            // reliable source of obj v. obj distinction
-            span: _,
-            attributes: _,
-        } = self;
-        call_path.suffix.hash(state);
-        variants.hash(state, engines);
-        type_parameters.hash(state, engines);
-        visibility.hash(state);
-    }
-}
-
 impl SubstTypes for TyEnumDeclaration {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.variants
@@ -67,17 +38,6 @@ impl SubstTypes for TyEnumDeclaration {
         self.type_parameters
             .iter_mut()
             .for_each(|x| x.subst(type_mapping, engines));
-    }
-}
-
-impl ReplaceSelfType for TyEnumDeclaration {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.variants
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
     }
 }
 
@@ -177,11 +137,5 @@ impl OrdWithEngines for TyEnumVariant {
 impl SubstTypes for TyEnumVariant {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.type_argument.subst_inner(type_mapping, engines);
-    }
-}
-
-impl ReplaceSelfType for TyEnumVariant {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.type_argument.replace_self_type(engines, self_type);
     }
 }

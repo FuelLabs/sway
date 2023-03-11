@@ -126,7 +126,6 @@ impl<'a> UnifyCheck<'a> {
             (_, Unknown) => true,
 
             (Boolean, Boolean) => true,
-            (SelfType, SelfType) => true,
             (B256, B256) => true,
             (Numeric, Numeric) => true,
             (Contract, Contract) => true,

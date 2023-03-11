@@ -1,8 +1,3 @@
-use std::{
-    collections::{HashMap, HashSet, VecDeque},
-    sync::RwLock,
-};
-
 use sway_types::{Named, Spanned};
 
 use crate::{
@@ -27,8 +22,6 @@ pub struct DeclEngine {
     abi_slab: ConcurrentSlab<TyAbiDeclaration>,
     constant_slab: ConcurrentSlab<TyConstantDeclaration>,
     enum_slab: ConcurrentSlab<TyEnumDeclaration>,
-
-    parents: RwLock<HashMap<FunctionalDeclId, Vec<FunctionalDeclId>>>,
 }
 
 pub trait DeclEngineIndex<T>
@@ -80,54 +73,20 @@ impl DeclEngine {
     #[allow(clippy::map_entry)]
     pub(crate) fn find_all_parents<'a, T>(
         &self,
-        engines: Engines<'_>,
-        index: &'a T,
+        _engines: Engines<'_>,
+        _index: &'a T,
     ) -> Vec<FunctionalDeclId>
     where
         FunctionalDeclId: From<&'a T>,
     {
-        let index: FunctionalDeclId = FunctionalDeclId::from(index);
-        let parents = self.parents.read().unwrap();
-        let mut acc_parents: HashMap<FunctionalDeclId, FunctionalDeclId> = HashMap::new();
-        let mut already_checked: HashSet<FunctionalDeclId> = HashSet::new();
-        let mut left_to_check: VecDeque<FunctionalDeclId> = VecDeque::from([index]);
-        while let Some(curr) = left_to_check.pop_front() {
-            if !already_checked.insert(curr.clone()) {
-                continue;
-            }
-            if let Some(curr_parents) = parents.get(&curr) {
-                for curr_parent in curr_parents.iter() {
-                    if !acc_parents.contains_key(curr_parent) {
-                        acc_parents.insert(curr_parent.clone(), curr_parent.clone());
-                    }
-                    if !left_to_check.iter().any(|x| match (x, curr_parent) {
-                        (
-                            FunctionalDeclId::TraitFn(x_id),
-                            FunctionalDeclId::TraitFn(curr_parent_id),
-                        ) => self.get(*x_id).eq(&self.get(*curr_parent_id), engines),
-                        (
-                            FunctionalDeclId::Function(x_id),
-                            FunctionalDeclId::Function(curr_parent_id),
-                        ) => self.get(*x_id).eq(&self.get(*curr_parent_id), engines),
-                        _ => false,
-                    }) {
-                        left_to_check.push_back(curr_parent.clone());
-                    }
-                }
-            }
-        }
-        acc_parents.values().cloned().collect()
+        todo!()
     }
 
-    pub(crate) fn register_parent<I>(&self, index: FunctionalDeclId, parent: FunctionalDeclId)
+    pub(crate) fn register_parent<I>(&self, _index: FunctionalDeclId, _parent: FunctionalDeclId)
     where
         FunctionalDeclId: From<DeclId<I>>,
     {
-        let mut parents = self.parents.write().unwrap();
-        parents
-            .entry(index)
-            .and_modify(|e| e.push(parent.clone()))
-            .or_insert_with(|| vec![parent]);
+        todo!();
     }
 
     pub fn get_function<'a, T>(&self, index: &'a T) -> ty::TyFunctionDeclaration

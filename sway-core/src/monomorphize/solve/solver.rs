@@ -118,7 +118,7 @@ impl<'a> Solver<'a> {
             TypeInfo::Unknown => todo!(),
             TypeInfo::UnknownGeneric { .. } => todo!(),
             TypeInfo::Placeholder(_) => todo!(),
-            TypeInfo::TypeParam(_) => todo!(),
+            TypeInfo::TypeParam { .. } => todo!(),
             TypeInfo::Enum { .. } => todo!(),
             TypeInfo::Struct { .. } => todo!(),
             TypeInfo::Tuple(elems) => {
@@ -138,7 +138,6 @@ impl<'a> Solver<'a> {
             }
             TypeInfo::ContractCaller { .. } => todo!(),
             TypeInfo::Custom { .. } => todo!(),
-            TypeInfo::SelfType => todo!(),
             TypeInfo::Numeric => todo!(),
             TypeInfo::ErrorRecovery => todo!(),
             TypeInfo::Array(_, _) => todo!(),

@@ -11,7 +11,9 @@ use crate::{
     type_system::*,
 };
 
-/// An ID used to refer to an item in the [DeclEngine](super::decl_engine::DeclEngine)
+/// An ID used to refer to an item in the
+/// [DeclEngine](super::decl_engine::DeclEngine).
+/// [DeclId]'s are unique to one declaration in Sway source code.
 #[derive(Debug)]
 pub struct DeclId<T>(usize, PhantomData<T>);
 
@@ -136,55 +138,6 @@ impl SubstTypes for DeclId<TyEnumDeclaration> {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(*self);
         decl.subst(type_mapping, engines);
-        decl_engine.replace(*self, decl);
-    }
-}
-
-impl ReplaceSelfType for DeclId<TyFunctionDeclaration> {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(*self);
-        decl.replace_self_type(engines, self_type);
-        decl_engine.replace(*self, decl);
-    }
-}
-impl ReplaceSelfType for DeclId<TyTraitDeclaration> {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(*self);
-        decl.replace_self_type(engines, self_type);
-        decl_engine.replace(*self, decl);
-    }
-}
-impl ReplaceSelfType for DeclId<TyTraitFn> {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(*self);
-        decl.replace_self_type(engines, self_type);
-        decl_engine.replace(*self, decl);
-    }
-}
-impl ReplaceSelfType for DeclId<TyImplTrait> {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(*self);
-        decl.replace_self_type(engines, self_type);
-        decl_engine.replace(*self, decl);
-    }
-}
-impl ReplaceSelfType for DeclId<TyStructDeclaration> {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(*self);
-        decl.replace_self_type(engines, self_type);
-        decl_engine.replace(*self, decl);
-    }
-}
-impl ReplaceSelfType for DeclId<TyEnumDeclaration> {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(*self);
-        decl.replace_self_type(engines, self_type);
         decl_engine.replace(*self, decl);
     }
 }

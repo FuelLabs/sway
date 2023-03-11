@@ -55,6 +55,8 @@ pub enum TyDeclaration {
     AbiDeclaration {
         name: Ident,
         decl_id: DeclId<TyAbiDeclaration>,
+        // used just for the "self type"---abis cannot contain generics
+        type_subst_list: Template<TypeSubstList>,
         decl_span: Span,
     },
     // If type parameters are defined for a function, they are put in the namespace just for
@@ -73,7 +75,6 @@ pub enum TyDeclaration {
 impl EqWithEngines for TyDeclaration {}
 impl PartialEqWithEngines for TyDeclaration {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        let decl_engine = engines.de();
         let type_engine = engines.te();
         match (self, other) {
             (Self::VariableDeclaration(x), Self::VariableDeclaration(y)) => x.eq(y, engines),
@@ -88,69 +89,79 @@ impl PartialEqWithEngines for TyDeclaration {
                     decl_id: rid,
                     ..
                 },
-            ) => ln == rn && decl_engine.get(*lid).eq(&decl_engine.get(*rid), engines),
+            ) => ln == rn && lid == rid,
 
             (
                 Self::FunctionDeclaration {
                     name: ln,
                     decl_id: lid,
+                    type_subst_list: lsl,
                     ..
                 },
                 Self::FunctionDeclaration {
                     name: rn,
                     decl_id: rid,
+                    type_subst_list: rsl,
                     ..
                 },
-            ) => ln == rn && decl_engine.get(*lid).eq(&decl_engine.get(*rid), engines),
+            ) => ln == rn && lid == rid && lsl.inner().eq(rsl.inner(), engines),
 
             (
                 Self::TraitDeclaration {
                     name: ln,
                     decl_id: lid,
+                    type_subst_list: lsl,
                     ..
                 },
                 Self::TraitDeclaration {
                     name: rn,
                     decl_id: rid,
+                    type_subst_list: rsl,
                     ..
                 },
-            ) => ln == rn && decl_engine.get(*lid).eq(&decl_engine.get(*rid), engines),
+            ) => ln == rn && lid == rid && lsl.inner().eq(rsl.inner(), engines),
             (
                 Self::StructDeclaration {
                     name: ln,
                     decl_id: lid,
+                    type_subst_list: lsl,
                     ..
                 },
                 Self::StructDeclaration {
                     name: rn,
                     decl_id: rid,
+                    type_subst_list: rsl,
                     ..
                 },
-            ) => ln == rn && decl_engine.get(*lid).eq(&decl_engine.get(*rid), engines),
+            ) => ln == rn && lid == rid && lsl.inner().eq(rsl.inner(), engines),
             (
                 Self::EnumDeclaration {
                     name: ln,
                     decl_id: lid,
+                    type_subst_list: lsl,
                     ..
                 },
                 Self::EnumDeclaration {
                     name: rn,
                     decl_id: rid,
+                    type_subst_list: rsl,
                     ..
                 },
-            ) => ln == rn && decl_engine.get(*lid).eq(&decl_engine.get(*rid), engines),
+            ) => ln == rn && lid == rid && lsl.inner().eq(rsl.inner(), engines),
             (
                 Self::ImplTrait {
                     name: ln,
                     decl_id: lid,
+                    type_subst_list: lsl,
                     ..
                 },
                 Self::ImplTrait {
                     name: rn,
                     decl_id: rid,
+                    type_subst_list: rsl,
                     ..
                 },
-            ) => ln == rn && decl_engine.get(*lid).eq(&decl_engine.get(*rid), engines),
+            ) => ln == rn && lid == rid && lsl.inner().eq(rsl.inner(), engines),
 
             (
                 Self::AbiDeclaration {
@@ -163,11 +174,11 @@ impl PartialEqWithEngines for TyDeclaration {
                     decl_id: rid,
                     ..
                 },
-            ) => ln == rn && decl_engine.get(*lid).eq(&decl_engine.get(*rid), engines),
+            ) => ln == rn && lid == rid,
             (
                 Self::StorageDeclaration { decl_id: lid, .. },
                 Self::StorageDeclaration { decl_id: rid, .. },
-            ) => decl_engine.get(*lid).eq(&decl_engine.get(*rid), engines),
+            ) => lid == rid,
             (
                 Self::GenericTypeForFunctionScope {
                     name: xn,
@@ -187,36 +198,72 @@ impl PartialEqWithEngines for TyDeclaration {
 impl HashWithEngines for TyDeclaration {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
         use TyDeclaration::*;
-        let decl_engine = engines.de();
         let type_engine = engines.te();
         std::mem::discriminant(self).hash(state);
         match self {
             VariableDeclaration(decl) => {
                 decl.hash(state, engines);
             }
-            ConstantDeclaration { decl_id, .. } => {
-                decl_engine.get(*decl_id).hash(state, engines);
+            ConstantDeclaration { name, decl_id, .. } => {
+                name.hash(state);
+                decl_id.hash(state);
             }
-            FunctionDeclaration { decl_id, .. } => {
-                decl_engine.get(*decl_id).hash(state, engines);
+            FunctionDeclaration {
+                name,
+                decl_id,
+                type_subst_list,
+                ..
+            } => {
+                name.hash(state);
+                decl_id.hash(state);
+                type_subst_list.inner().hash(state, engines);
             }
-            TraitDeclaration { decl_id, .. } => {
-                decl_engine.get(*decl_id).hash(state, engines);
+            TraitDeclaration {
+                name,
+                decl_id,
+                type_subst_list,
+                ..
+            } => {
+                name.hash(state);
+                decl_id.hash(state);
+                type_subst_list.inner().hash(state, engines);
             }
-            StructDeclaration { decl_id, .. } => {
-                decl_engine.get(*decl_id).hash(state, engines);
+            StructDeclaration {
+                name,
+                decl_id,
+                type_subst_list,
+                ..
+            } => {
+                name.hash(state);
+                decl_id.hash(state);
+                type_subst_list.inner().hash(state, engines);
             }
-            EnumDeclaration { decl_id, .. } => {
-                decl_engine.get(*decl_id).hash(state, engines);
+            EnumDeclaration {
+                name,
+                decl_id,
+                type_subst_list,
+                ..
+            } => {
+                name.hash(state);
+                decl_id.hash(state);
+                type_subst_list.inner().hash(state, engines);
             }
-            ImplTrait { decl_id, .. } => {
-                decl_engine.get(*decl_id).hash(state, engines);
+            ImplTrait {
+                name,
+                decl_id,
+                type_subst_list,
+                ..
+            } => {
+                name.hash(state);
+                decl_id.hash(state);
+                type_subst_list.inner().hash(state, engines);
             }
-            AbiDeclaration { decl_id, .. } => {
-                decl_engine.get(*decl_id).hash(state, engines);
+            AbiDeclaration { name, decl_id, .. } => {
+                name.hash(state);
+                decl_id.hash(state);
             }
             StorageDeclaration { decl_id, .. } => {
-                decl_engine.get(*decl_id).hash(state, engines);
+                decl_id.hash(state);
             }
             GenericTypeForFunctionScope { name, type_id } => {
                 name.hash(state);
@@ -247,36 +294,6 @@ impl SubstTypes for TyDeclaration {
             ImplTrait {
                 ref mut decl_id, ..
             } => decl_id.subst(type_mapping, engines),
-            // generics in an ABI is unsupported by design
-            AbiDeclaration { .. }
-            | ConstantDeclaration { .. }
-            | StorageDeclaration { .. }
-            | GenericTypeForFunctionScope { .. }
-            | ErrorRecovery(_) => (),
-        }
-    }
-}
-
-impl ReplaceSelfType for TyDeclaration {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        use TyDeclaration::*;
-        match self {
-            VariableDeclaration(ref mut var_decl) => var_decl.replace_self_type(engines, self_type),
-            FunctionDeclaration {
-                ref mut decl_id, ..
-            } => decl_id.replace_self_type(engines, self_type),
-            TraitDeclaration {
-                ref mut decl_id, ..
-            } => decl_id.replace_self_type(engines, self_type),
-            StructDeclaration {
-                ref mut decl_id, ..
-            } => decl_id.replace_self_type(engines, self_type),
-            EnumDeclaration {
-                ref mut decl_id, ..
-            } => decl_id.replace_self_type(engines, self_type),
-            ImplTrait {
-                ref mut decl_id, ..
-            } => decl_id.replace_self_type(engines, self_type),
             // generics in an ABI is unsupported by design
             AbiDeclaration { .. }
             | ConstantDeclaration { .. }
@@ -802,6 +819,7 @@ impl From<DeclRef<DeclId<TyAbiDeclaration>>> for TyDeclaration {
         TyDeclaration::AbiDeclaration {
             name: decl_ref.name().clone(),
             decl_id: *decl_ref.id(),
+            type_subst_list: Template::new(decl_ref.subst_list().clone()),
             decl_span: decl_ref.decl_span().clone(),
         }
     }

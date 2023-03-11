@@ -53,7 +53,12 @@ impl ty::TyImplTrait {
         // resolve the types of the trait type arguments
         for type_arg in trait_type_arguments.iter_mut() {
             type_arg.type_id = check!(
-                ctx.resolve_type_without_self(type_arg.type_id, &type_arg.span, None),
+                ctx.resolve_type(
+                    type_arg.type_id,
+                    &type_arg.span,
+                    EnforceTypeArguments::Yes,
+                    None
+                ),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -63,7 +68,12 @@ impl ty::TyImplTrait {
         // type check the type that we are implementing for
 
         implementing_for.type_id = check!(
-            ctx.resolve_type_without_self(implementing_for.type_id, &implementing_for.span, None),
+            ctx.resolve_type(
+                implementing_for.type_id,
+                &implementing_for.span,
+                EnforceTypeArguments::Yes,
+                None
+            ),
             return err(warnings, errors),
             warnings,
             errors
@@ -95,7 +105,6 @@ impl ty::TyImplTrait {
 
         // Update the context with the new `self` type.
         let mut ctx = ctx
-            .with_self_type(implementing_for.type_id)
             .with_help_text("")
             .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
 
@@ -462,7 +471,12 @@ impl ty::TyImplTrait {
 
         // type check the type that we are implementing for
         implementing_for.type_id = check!(
-            ctx.resolve_type_without_self(implementing_for.type_id, &implementing_for.span, None),
+            ctx.resolve_type(
+                implementing_for.type_id,
+                &implementing_for.span,
+                EnforceTypeArguments::Yes,
+                None
+            ),
             return err(warnings, errors),
             warnings,
             errors
@@ -493,7 +507,6 @@ impl ty::TyImplTrait {
         );
 
         let mut ctx = ctx
-            .with_self_type(implementing_for.type_id)
             .with_help_text("")
             .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
 
@@ -561,7 +574,7 @@ fn type_check_trait_implementation(
 
     let decl_engine = ctx.decl_engine;
     let engines = ctx.engines();
-    let self_type = ctx.self_type();
+    let self_type = todo!();
 
     // Check to see if the type that we are implementing for implements the
     // supertraits of this trait.
@@ -677,45 +690,6 @@ fn type_check_trait_implementation(
 
     let mut all_items_refs: Vec<TyImplItem> = impld_item_refs.values().cloned().collect();
 
-    // Retrieve the methods defined on the trait declaration and transform
-    // them into the correct typing for this impl block by using the type
-    // parameters from the original trait declaration and the type arguments of
-    // the trait name in the current impl block that we are type checking and
-    // using the stub decl ids from the interface surface and the new
-    // decl ids from the newly implemented methods.
-    let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
-        trait_type_parameters
-            .iter()
-            .map(|type_param| type_param.type_id)
-            .collect(),
-        trait_type_arguments
-            .iter()
-            .map(|type_arg| type_arg.type_id)
-            .collect(),
-    );
-    interface_item_refs.extend(supertrait_interface_item_refs);
-    impld_item_refs.extend(supertrait_impld_item_refs);
-    let decl_mapping = DeclMapping::from_interface_and_item_and_impld_decl_refs(
-        interface_item_refs,
-        BTreeMap::new(),
-        impld_item_refs,
-    );
-    for item in trait_items.iter() {
-        match item {
-            TyImplItem::Fn(decl_ref) => {
-                let mut method = decl_engine.get_function(decl_ref);
-                method.replace_decls(&decl_mapping, engines);
-                method.subst(&type_mapping, engines);
-                method.replace_self_type(engines, ctx.self_type());
-                all_items_refs.push(TyImplItem::Fn(
-                    decl_engine
-                        .insert(method)
-                        .with_parent(decl_engine, (*decl_ref.id()).into()),
-                ));
-            }
-        }
-    }
-
     // check that the implementation checklist is complete
     if !method_checklist.is_empty() {
         errors.push(CompileError::MissingInterfaceSurfaceMethods {
@@ -750,7 +724,7 @@ fn type_check_impl_method(
     let type_engine = ctx.type_engine;
     let decl_engine = ctx.decl_engine;
     let engines = ctx.engines();
-    let self_type = ctx.self_type();
+    let self_type: TypeId = todo!();
 
     let mut ctx = ctx
         .by_ref()
@@ -794,11 +768,6 @@ fn type_check_impl_method(
             return err(warnings, errors);
         }
     };
-
-    // replace instances of `TypeInfo::SelfType` with a fresh
-    // `TypeInfo::SelfType` to avoid replacing types in the stub trait
-    // declaration
-    impl_method_signature.replace_self_type(engines, self_type);
 
     // ensure this fn decl's parameters and signature lines up with the one
     // in the trait
@@ -1079,7 +1048,7 @@ fn handle_supertraits(
 
     let mut interface_surface_item_ids: InterfaceItemMap = BTreeMap::new();
     let mut impld_item_refs: ItemMap = BTreeMap::new();
-    let self_type = ctx.self_type();
+    let self_type = todo!();
 
     for supertrait in supertraits.iter() {
         // Right now we don't have the ability to support defining a supertrait
