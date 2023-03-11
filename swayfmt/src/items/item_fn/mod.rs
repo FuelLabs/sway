@@ -184,7 +184,7 @@ fn format_fn_sig(
     // `(`
     FnSignature::open_parenthesis(formatted_code, formatter)?;
     // FnArgs
-    format_fn_args(fn_sig.arguments.get(), formatted_code, formatter)?;
+    format_fn_args(fn_args, formatted_code, formatter)?;
     // `)`
     FnSignature::close_parenthesis(formatted_code, formatter)?;
 
