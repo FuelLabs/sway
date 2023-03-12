@@ -329,7 +329,7 @@ jobs:
               ;;
           esac
 
- 
+
   cargo-test-workspace:
     runs-on: ubuntu-latest
     steps:
@@ -642,6 +642,29 @@ jobs:
       - name: Build forc binaries
         run: |
           cross build --profile=release --target ${{ matrix.job.target }} --bins
+
+      - name: Strip release binaries x86_64-linux-gnu
+        if: matrix.job.target == 'x86_64-unknown-linux-gnu'
+        run: |
+          for BINARY in forc forc-fmt forc-lsp forc-deploy forc-run forc-doc forc-tx; do
+            strip "target/${{ matrix.job.target }}/release/$BINARY"
+          done
+      - name: Strip release binaries aarch64-linux-gnu
+        if: matrix.job.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          for BINARY in forc forc-fmt forc-lsp forc-deploy forc-run forc-doc forc-tx; do
+            docker run --rm -v \
+            "$PWD/target:/target:Z" \
+            ghcr.io/cross-rs/${{ matrix.job.target }}:main \
+            aarch64-linux-gnu-strip \
+            /target/${{ matrix.job.target }}/release/$BINARY
+          done
+      - name: Strip release binaries mac
+        if: matrix.job.os == 'macos-latest'
+        run: |
+          for BINARY in forc forc-fmt forc-lsp forc-deploy forc-run forc-doc forc-tx; do
+            strip -x "target/${{ matrix.job.target }}/release/$BINARY"
+          done
 
       - name: Prep Assets
         id: prep_assets
