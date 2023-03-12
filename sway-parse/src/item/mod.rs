@@ -7,7 +7,7 @@ use sway_ast::keywords::{
 };
 use sway_ast::{
     Dependency, FnArg, FnArgs, FnReturnType, FnSignature, ImplicitReturn, ItemConst, ItemEnum,
-    ItemFn, ItemKind, ItemStruct, ItemTrait, ItemUse, TypeField,
+    ItemFn, ItemKind, ItemStruct, ItemTrait, ItemUse, Parens, TypeField,
 };
 use sway_error::parser_error::ParseErrorKind;
 use sway_types::Spanned;
@@ -149,7 +149,7 @@ impl Parse for FnSignature {
         let fn_token = parser.parse()?;
         let name = parser.parse()?;
         let generics = parser.guarded_parse::<OpenAngleBracketToken, _>()?;
-        let arguments = parser.parse()?;
+        let arguments: Parens<FnArgs> = parser.parse()?;
         let mut where_clause_opt = None;
         let return_type = match parser.take() {
             Some(right_arrow_token) => {
@@ -159,10 +159,14 @@ impl Parse for FnSignature {
             }
             None => {
                 where_clause_opt = parser.guarded_parse::<WhereToken, _>()?;
-                let Some(open_curly_brace) = parser.peek::<OpenCurlyBraceToken>();
-                FnReturnType::Implicit(ImplicitReturn {
-                    span: open_curly_brace.span(),
-                })
+                // If there is no opening curly brace token we recover by using the span
+                // of the closing parenthesis token from the parsed arguments variable.
+                let span = if let Some(open_curly_brace) = parser.peek::<OpenCurlyBraceToken>() {
+                    open_curly_brace.span()
+                } else {
+                    arguments.close_token.span()
+                };
+                FnReturnType::Implicit(ImplicitReturn { span })
             }
         };
         Ok(FnSignature {
