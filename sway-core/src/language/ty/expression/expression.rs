@@ -246,32 +246,17 @@ impl CollectTypesMetadata for TyExpression {
             }
             StructFieldAccess {
                 prefix,
-                struct_ref,
-                field_instantiation_span,
+                resolved_type_of_parent,
                 ..
             } => {
-                let struct_decl = decl_engine.get_struct(struct_ref);
-                for type_param in struct_decl.type_parameters.iter() {
-                    ctx.call_site_insert(type_param.type_id, field_instantiation_span.clone())
-                }
-                for field in struct_decl.fields.iter() {
-                    res.append(&mut check!(
-                        field.type_argument.type_id.collect_types_metadata(ctx),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
-                }
-                for type_param in struct_decl.type_parameters.iter() {
-                    res.append(&mut check!(
-                        type_param.type_id.collect_types_metadata(ctx),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
-                }
                 res.append(&mut check!(
                     prefix.collect_types_metadata(ctx),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
+                res.append(&mut check!(
+                    resolved_type_of_parent.collect_types_metadata(ctx),
                     return err(warnings, errors),
                     warnings,
                     errors

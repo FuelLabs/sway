@@ -417,7 +417,7 @@ fn const_eval_typed_expr(
         ty::TyExpressionVariant::StructFieldAccess {
             prefix,
             field_to_access,
-            struct_ref,
+            resolved_type_of_parent,
             ..
         } => match const_eval_typed_expr(lookup, known_consts, prefix)? {
             Some(Constant {
@@ -427,11 +427,16 @@ fn const_eval_typed_expr(
                 let field_kind = ty::ProjectionKind::StructField {
                     name: field_to_access.name.clone(),
                 };
-                get_struct_name_field_index_and_type(lookup.decl_engine, struct_ref, field_kind)
-                    .and_then(|(_struct_name, field_idx_and_type_opt)| {
-                        field_idx_and_type_opt.map(|(field_idx, _field_type)| field_idx)
-                    })
-                    .and_then(|field_idx| fields.get(field_idx as usize).cloned())
+                get_struct_name_field_index_and_type(
+                    lookup.type_engine,
+                    lookup.decl_engine,
+                    *resolved_type_of_parent,
+                    field_kind,
+                )
+                .and_then(|(_struct_name, field_idx_and_type_opt)| {
+                    field_idx_and_type_opt.map(|(field_idx, _field_type)| field_idx)
+                })
+                .and_then(|field_idx| fields.get(field_idx as usize).cloned())
             }
             _ => None,
         },

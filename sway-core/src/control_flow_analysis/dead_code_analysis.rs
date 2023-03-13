@@ -873,6 +873,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
     mut options: NodeConnectionOptions,
 ) -> Result<Vec<NodeIndex>, CompileError> {
     use ty::TyExpressionVariant::*;
+    let type_engine = engines.te();
     let decl_engine = engines.de();
     match expr_variant {
         FunctionApplication {
@@ -1169,7 +1170,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
         StructFieldAccess {
             prefix,
             field_to_access,
-            struct_ref,
+            resolved_type_of_parent,
             field_instantiation_span,
             ..
         } => {
@@ -1184,19 +1185,29 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 field_instantiation_span.clone(),
                 options,
             )?;
-            let struct_call_path = decl_engine.get_struct(struct_ref).call_path;
+
+            let resolved_type_of_parent = type_engine
+                .to_typeinfo(*resolved_type_of_parent, &field_to_access.span)
+                .unwrap_or_else(|_| TypeInfo::Tuple(Vec::new()));
+
+            assert!(matches!(resolved_type_of_parent, TypeInfo::Struct { .. }));
+            let resolved_type_of_parent = match resolved_type_of_parent {
+                TypeInfo::Struct(decl_ref) => decl_engine.get_struct(&decl_ref).call_path,
+                _ => panic!("Called subfield on a non-struct"),
+            };
             let field_name = &field_to_access.name;
             // find the struct field index in the namespace
             let field_ix = match graph
                 .namespace
-                .find_struct_field_idx(struct_call_path.suffix.as_str(), field_name.as_str())
+                .find_struct_field_idx(resolved_type_of_parent.suffix.as_str(), field_name.as_str())
             {
                 Some(ix) => *ix,
                 None => graph.add_node("external struct".into()),
             };
 
-            let this_ix = graph
-                .add_node(format!("Struct field access: {struct_call_path}.{field_name}").into());
+            let this_ix = graph.add_node(
+                format!("Struct field access: {resolved_type_of_parent}.{field_name}").into(),
+            );
             for leaf in leaves {
                 graph.add_edge(*leaf, this_ix, "".into());
             }
@@ -1204,7 +1215,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
 
             if let Some(struct_node_ix) = graph
                 .namespace
-                .find_struct_decl(struct_call_path.suffix.as_str())
+                .find_struct_decl(resolved_type_of_parent.suffix.as_str())
             {
                 graph.add_edge(this_ix, *struct_node_ix, "".into());
             }

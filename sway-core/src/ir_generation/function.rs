@@ -4,7 +4,7 @@ use super::{
 };
 use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
-    decl_engine::{DeclEngine, DeclId, DeclRef},
+    decl_engine::DeclEngine,
     engine_threading::*,
     ir_generation::const_eval::{
         compile_constant_expression, compile_constant_expression_to_constant,
@@ -322,7 +322,7 @@ impl<'eng> FnCompiler<'eng> {
             ty::TyExpressionVariant::StructFieldAccess {
                 prefix,
                 field_to_access,
-                struct_ref,
+                resolved_type_of_parent,
                 ..
             } => {
                 let span_md_idx = md_mgr.span_to_md(context, &field_to_access.span);
@@ -330,7 +330,7 @@ impl<'eng> FnCompiler<'eng> {
                     context,
                     md_mgr,
                     prefix,
-                    struct_ref,
+                    *resolved_type_of_parent,
                     field_to_access,
                     span_md_idx,
                 )
@@ -2184,7 +2184,7 @@ impl<'eng> FnCompiler<'eng> {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         ast_struct_expr: &ty::TyExpression,
-        struct_ref: &DeclRef<DeclId<ty::TyStructDeclaration>>,
+        struct_type_id: TypeId,
         ast_field: &ty::TyStructField,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
@@ -2221,23 +2221,27 @@ impl<'eng> FnCompiler<'eng> {
         let field_kind = ty::ProjectionKind::StructField {
             name: ast_field.name.clone(),
         };
-        let field_idx =
-            match get_struct_name_field_index_and_type(self.decl_engine, struct_ref, field_kind) {
-                None => Err(CompileError::Internal(
-                    "Unknown struct in field expression.",
-                    ast_field.span.clone(),
-                )),
-                Some((struct_name, field_idx_and_type_opt)) => match field_idx_and_type_opt {
-                    None => Err(CompileError::InternalOwned(
-                        format!(
+        let field_idx = match get_struct_name_field_index_and_type(
+            self.type_engine,
+            self.decl_engine,
+            struct_type_id,
+            field_kind,
+        ) {
+            None => Err(CompileError::Internal(
+                "Unknown struct in field expression.",
+                ast_field.span.clone(),
+            )),
+            Some((struct_name, field_idx_and_type_opt)) => match field_idx_and_type_opt {
+                None => Err(CompileError::InternalOwned(
+                    format!(
                         "Unknown field name '{}' for struct '{struct_name}' in field expression.",
                         ast_field.name
                     ),
-                        ast_field.span.clone(),
-                    )),
-                    Some((field_idx, _field_type)) => Ok(field_idx),
-                },
-            }?;
+                    ast_field.span.clone(),
+                )),
+                Some((field_idx, _field_type)) => Ok(field_idx),
+            },
+        }?;
 
         Ok(self
             .current_block

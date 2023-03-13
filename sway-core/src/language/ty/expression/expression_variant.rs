@@ -79,7 +79,7 @@ pub enum TyExpressionVariant {
         prefix: Box<TyExpression>,
         field_to_access: TyStructField,
         field_instantiation_span: Span,
-        struct_ref: DeclRef<DeclId<TyStructDeclaration>>,
+        resolved_type_of_parent: TypeId,
     },
     TupleElemAccess {
         prefix: Box<TyExpression>,
@@ -271,19 +271,21 @@ impl PartialEqWithEngines for TyExpressionVariant {
                 Self::StructFieldAccess {
                     prefix: l_prefix,
                     field_to_access: l_field_to_access,
-                    struct_ref: l_struct_ref,
+                    resolved_type_of_parent: l_resolved_type_of_parent,
                     ..
                 },
                 Self::StructFieldAccess {
                     prefix: r_prefix,
                     field_to_access: r_field_to_access,
-                    struct_ref: r_struct_ref,
+                    resolved_type_of_parent: r_resolved_type_of_parent,
                     ..
                 },
             ) => {
                 (**l_prefix).eq(&**r_prefix, engines)
                     && l_field_to_access.eq(r_field_to_access, engines)
-                    && l_struct_ref.eq(r_struct_ref, engines)
+                    && type_engine
+                        .get(*l_resolved_type_of_parent)
+                        .eq(&type_engine.get(*r_resolved_type_of_parent), engines)
             }
             (
                 Self::TupleElemAccess {
@@ -474,14 +476,16 @@ impl HashWithEngines for TyExpressionVariant {
             Self::StructFieldAccess {
                 prefix,
                 field_to_access,
-                struct_ref,
+                resolved_type_of_parent,
                 // these fields are not hashed because they aren't relevant/a
                 // reliable source of obj v. obj distinction
                 field_instantiation_span: _,
             } => {
                 prefix.hash(state, engines);
                 field_to_access.hash(state, engines);
-                struct_ref.hash(state, engines);
+                type_engine
+                    .get(*resolved_type_of_parent)
+                    .hash(state, engines);
             }
             Self::TupleElemAccess {
                 prefix,
@@ -623,10 +627,10 @@ impl SubstTypes for TyExpressionVariant {
             StructFieldAccess {
                 prefix,
                 field_to_access,
-                ref mut struct_ref,
+                ref mut resolved_type_of_parent,
                 ..
             } => {
-                struct_ref.subst(type_mapping, engines);
+                resolved_type_of_parent.subst(type_mapping, engines);
                 field_to_access.subst(type_mapping, engines);
                 prefix.subst(type_mapping, engines);
             }
@@ -736,10 +740,10 @@ impl ReplaceSelfType for TyExpressionVariant {
             StructFieldAccess {
                 prefix,
                 field_to_access,
-                ref mut struct_ref,
+                ref mut resolved_type_of_parent,
                 ..
             } => {
-                struct_ref.replace_self_type(engines, self_type);
+                resolved_type_of_parent.replace_self_type(engines, self_type);
                 field_to_access.replace_self_type(engines, self_type);
                 prefix.replace_self_type(engines, self_type);
             }
@@ -921,13 +925,13 @@ impl DisplayWithEngines for TyExpressionVariant {
                 format!("abi cast {}", abi_name.suffix.as_str())
             }
             TyExpressionVariant::StructFieldAccess {
-                struct_ref,
+                resolved_type_of_parent,
                 field_to_access,
                 ..
             } => {
                 format!(
                     "\"{}.{}\" struct field access",
-                    struct_ref.name().as_str(),
+                    engines.help_out(*resolved_type_of_parent),
                     field_to_access.name
                 )
             }
