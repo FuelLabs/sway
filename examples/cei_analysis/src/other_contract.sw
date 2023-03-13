@@ -1,4 +1,4 @@
-library other_contract;
+library;
 
 abi OtherContract {
     #[payable]

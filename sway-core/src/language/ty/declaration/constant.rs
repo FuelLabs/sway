@@ -1,17 +1,17 @@
 use std::hash::{Hash, Hasher};
 
-use sway_types::{Ident, Span};
+use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     engine_threading::*,
-    language::{ty::*, Visibility},
+    language::{ty::*, CallPath, Visibility},
     transform,
     type_system::*,
 };
 
 #[derive(Clone, Debug)]
 pub struct TyConstantDeclaration {
-    pub name: Ident,
+    pub call_path: CallPath,
     pub value: Option<TyExpression>,
     pub visibility: Visibility,
     pub is_configurable: bool,
@@ -23,7 +23,7 @@ pub struct TyConstantDeclaration {
 impl EqWithEngines for TyConstantDeclaration {}
 impl PartialEqWithEngines for TyConstantDeclaration {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        self.name == other.name
+        self.call_path == other.call_path
             && self.value.eq(&other.value, engines)
             && self.visibility == other.visibility
             && self.type_ascription.eq(&other.type_ascription, engines)
@@ -34,7 +34,7 @@ impl PartialEqWithEngines for TyConstantDeclaration {
 impl HashWithEngines for TyConstantDeclaration {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
         let TyConstantDeclaration {
-            name,
+            call_path,
             value,
             visibility,
             type_ascription,
@@ -44,10 +44,22 @@ impl HashWithEngines for TyConstantDeclaration {
             attributes: _,
             span: _,
         } = self;
-        name.hash(state);
+        call_path.hash(state);
         value.hash(state, engines);
         visibility.hash(state);
         type_ascription.hash(state, engines);
         is_configurable.hash(state);
+    }
+}
+
+impl Named for TyConstantDeclaration {
+    fn name(&self) -> &Ident {
+        &self.call_path.suffix
+    }
+}
+
+impl Spanned for TyConstantDeclaration {
+    fn span(&self) -> Span {
+        self.span.clone()
     }
 }

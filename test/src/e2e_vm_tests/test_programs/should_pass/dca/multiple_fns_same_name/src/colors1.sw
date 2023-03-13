@@ -1,4 +1,4 @@
-library colors1;
+library;
 
 pub fn color() {
 }

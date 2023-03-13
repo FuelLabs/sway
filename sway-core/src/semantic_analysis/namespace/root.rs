@@ -3,7 +3,7 @@ use sway_types::Spanned;
 
 use crate::{
     error::*,
-    language::{ty, CallPath, Visibility},
+    language::{ty, CallPath},
     CompileResult, Engines, Ident,
 };
 
@@ -53,7 +53,7 @@ impl Root {
         mod_path: &Path,
         call_path: &CallPath,
     ) -> CompileResult<&ty::TyDeclaration> {
-        let mut warnings = vec![];
+        let warnings = vec![];
         let mut errors = vec![];
 
         let result = self.resolve_call_path(mod_path, call_path);
@@ -67,18 +67,14 @@ impl Root {
             value: Some(decl), ..
         } = result
         {
-            let visibility = check!(
-                decl.visibility(engines.de()),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            if visibility != Visibility::Public {
+            if !decl.visibility(engines.de()).is_public() {
                 errors.push(CompileError::ImportPrivateSymbol {
                     name: call_path.suffix.clone(),
                     span: call_path.suffix.span(),
                 });
-                return err(warnings, errors);
+                // Returns ok with error, this allows functions which call this to
+                // also access the returned TyDeclaration and throw more suitable errors.
+                return ok(decl, warnings, errors);
             }
         }
 

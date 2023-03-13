@@ -19,11 +19,7 @@ impl Parse for ModuleKind {
         } else if let Some(predicate_token) = parser.take() {
             Ok(Self::Predicate { predicate_token })
         } else if let Some(library_token) = parser.take() {
-            let name = parser.parse()?;
-            Ok(Self::Library {
-                library_token,
-                name,
-            })
+            Ok(Self::Library { library_token })
         } else {
             Err(parser.emit_error(ParseErrorKind::ExpectedModuleKind))
         }
@@ -47,7 +43,7 @@ impl ParseToEnd for Annotated<Module> {
                     attribute: SquareBrackets::new(
                         Punctuated::single(Attribute {
                             name: Ident::new_with_override(
-                                DOC_COMMENT_ATTRIBUTE_NAME,
+                                DOC_COMMENT_ATTRIBUTE_NAME.to_string(),
                                 doc_comment.span.clone(),
                             ),
                             args: Some(Parens::new(
@@ -76,5 +72,74 @@ impl ParseToEnd for Annotated<Module> {
             },
         };
         Ok((module, consumed))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils::parse_to_end;
+    use insta::*;
+
+    #[test]
+    fn parse_noop_script_module() {
+        assert_ron_snapshot!(parse_to_end::<Annotated<Module>>(r#"
+            script;
+        
+            fn main() {
+                ()
+            }
+        "#,), @r###"
+        Annotated(
+          attribute_list: [],
+          value: Module(
+            kind: Script(
+              script_token: ScriptToken(
+                span: (13, 19),
+              ),
+            ),
+            semicolon_token: SemicolonToken(
+              span: (19, 20),
+            ),
+            items: [
+              Annotated(
+                attribute_list: [],
+                value: Fn(ItemFn(
+                  fn_signature: FnSignature(
+                    visibility: None,
+                    fn_token: FnToken(
+                      span: (42, 44),
+                    ),
+                    name: Ident(
+                      to_string: "main",
+                      span: (45, 49),
+                    ),
+                    generics: None,
+                    arguments: Parens(
+                      inner: Static(Punctuated(
+                        value_separator_pairs: [],
+                        final_value_opt: None,
+                      )),
+                      span: (49, 51),
+                    ),
+                    return_type_opt: None,
+                    where_clause_opt: None,
+                  ),
+                  body: Braces(
+                    inner: CodeBlockContents(
+                      statements: [],
+                      final_expr_opt: Some(Tuple(Parens(
+                        inner: Nil,
+                        span: (70, 72),
+                      ))),
+                    ),
+                    span: (52, 86),
+                  ),
+                )),
+              ),
+            ],
+          ),
+        )
+        "###);
     }
 }

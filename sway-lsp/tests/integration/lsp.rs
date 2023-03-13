@@ -7,6 +7,7 @@ use assert_json_diff::assert_json_eq;
 use serde_json::json;
 use std::{borrow::Cow, path::Path};
 use sway_lsp::server::{self, Backend};
+use sway_lsp_test_utils::extract_result_array;
 use tower::{Service, ServiceExt};
 use tower_lsp::{
     jsonrpc::{Id, Request, Response},
@@ -241,16 +242,7 @@ pub(crate) async fn code_lens_request(service: &mut LspService<Backend>, uri: &U
     });
     let code_lens = build_request_with_id("textDocument/codeLens", params, 1);
     let response = call_request(service, code_lens.clone()).await;
-    let actual_results = response
-        .unwrap()
-        .unwrap()
-        .into_parts()
-        .1
-        .ok()
-        .unwrap()
-        .as_array()
-        .unwrap()
-        .clone();
+    let actual_results = extract_result_array(response);
     let expected_results = vec![
         json!({
           "command": {
@@ -322,6 +314,63 @@ pub(crate) async fn code_lens_request(service: &mut LspService<Backend>, uri: &U
     code_lens
 }
 
+pub(crate) async fn completion_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+    let params = json!({
+        "textDocument": {
+          "uri": uri
+        },
+        "position": {
+          "line": 19,
+          "character": 8
+        },
+        "context": {
+          "triggerKind": 2,
+          "triggerCharacter": "."
+        }
+    });
+    let completion = build_request_with_id("textDocument/completion", params, 1);
+    let response = call_request(service, completion.clone()).await;
+    let actual_results = extract_result_array(response);
+    let expected_results = vec![
+        json!({
+          "kind": 5,
+          "label": "a",
+          "labelDetails": {
+            "description": "bool"
+          }
+        }),
+        json!({
+          "kind": 2,
+          "label": "get(…)",
+          "labelDetails": {
+            "description": "fn(self, MyStruct) -> MyStruct"
+          },
+          "textEdit": {
+            "newText": "get(foo)",
+            "range": {
+              "end": {
+                "character": 8,
+                "line": 19
+              },
+              "start": {
+                "character": 8,
+                "line": 19
+              }
+            }
+          }
+        }),
+    ];
+
+    assert_eq!(actual_results.len(), expected_results.len());
+    for expected in expected_results.iter() {
+        assert!(
+            actual_results.contains(expected),
+            "Expected {actual_results:?} to contain {expected:?}"
+        );
+    }
+    completion
+}
+
 pub(crate) async fn definition_check<'a>(
     service: &mut LspService<Backend>,
     go_to: &'a GotoDefinition<'a>,
@@ -337,8 +386,16 @@ pub(crate) async fn definition_check<'a>(
         .await
         .unwrap()
         .unwrap();
-    let value = response.result().unwrap().clone();
-    if let GotoDefinitionResponse::Scalar(response) = serde_json::from_value(value).unwrap() {
+    let value = response.result().unwrap();
+    let unwrapped_response = serde_json::from_value(value.clone()).unwrap_or_else(|error| {
+        panic!(
+            "Failed to deserialize response: {:?} input: {:#?} error: {}",
+            value.clone(),
+            definition.clone(),
+            error
+        );
+    });
+    if let GotoDefinitionResponse::Scalar(response) = unwrapped_response {
         let uri = response.uri.as_str();
         let range = json!({
             "end": {
@@ -358,7 +415,11 @@ pub(crate) async fn definition_check<'a>(
             go_to.def_path,
         );
     } else {
-        panic!("Expected GotoDefinitionResponse::Scalar");
+        panic!(
+            "Expected GotoDefinitionResponse::Scalar with input {:#?}, got {:?}",
+            definition.clone(),
+            value.clone(),
+        );
     }
     definition
 }
@@ -379,13 +440,32 @@ pub(crate) async fn hover_request<'a>(
     });
     let hover = build_request_with_id("textDocument/hover", params, ids.next().unwrap());
     let response = call_request(service, hover.clone()).await.unwrap().unwrap();
-    let value = response.result().unwrap().clone();
-    let hover_res: Hover = serde_json::from_value(value).unwrap();
+    let value = response.result().unwrap();
+    let unwrapped_response = serde_json::from_value(value.clone()).unwrap_or_else(|error| {
+        panic!(
+            "Failed to deserialize response: {:?} input: {:#?} error: {}",
+            value.clone(),
+            hover.clone(),
+            error
+        );
+    });
+    let hover_res: Hover = serde_json::from_value(unwrapped_response).unwrap_or_else(|error| {
+        panic!(
+            "Failed to deserialize hover: {:?} input: {:#?} error: {}",
+            value.clone(),
+            hover.clone(),
+            error
+        );
+    });
 
     if let HoverContents::Markup(markup_content) = hover_res.contents {
         assert_eq!(hover_docs.documentation, markup_content.value);
     } else {
-        panic!("Expected HoverContents::Markup");
+        panic!(
+            "Expected HoverContents::Markup with input {:#?}, got {:?}",
+            hover.clone(),
+            value.clone(),
+        );
     }
     hover
 }

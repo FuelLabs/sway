@@ -7,26 +7,26 @@ use crate::{
 
 use sway_ast::{
     attribute::Annotated,
-    expr::{ReassignmentOp, ReassignmentOpVariant},
+    expr::{LoopControlFlow, ReassignmentOp, ReassignmentOpVariant},
     ty::TyTupleDescriptor,
     AbiCastArgs, AngleBrackets, AsmBlock, Assignable, AttributeDecl, Braces, CodeBlockContents,
-    CommaToken, Dependency, DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField,
-    ExprTupleDescriptor, FnArg, FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition,
-    IfExpr, Instruction, Intrinsic, Item, ItemAbi, ItemConfigurable, ItemConst, ItemEnum, ItemFn,
-    ItemImpl, ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemTraitItem, ItemUse, LitInt,
-    LitIntType, MatchBranchKind, Module, ModuleKind, Parens, PathExpr, PathExprSegment, PathType,
+    CommaToken, DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor,
+    FnArg, FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition, IfExpr, Instruction,
+    Intrinsic, Item, ItemAbi, ItemConfigurable, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemKind,
+    ItemStorage, ItemStruct, ItemTrait, ItemTraitItem, ItemUse, LitInt, LitIntType,
+    MatchBranchKind, Module, ModuleKind, Parens, PathExpr, PathExprSegment, PathType,
     PathTypeSegment, Pattern, PatternStructField, PubToken, Punctuated, QualifiedPathRoot,
-    Statement, StatementLet, Traits, Ty, TypeField, UseTree, WhereClause,
+    Statement, StatementLet, Submodule, Traits, Ty, TypeField, UseTree, WhereClause,
 };
 use sway_error::convert_parse_tree_error::ConvertParseTreeError;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::warning::{CompileWarning, Warning};
 use sway_types::{
     constants::{
-        DESTRUCTURE_PREFIX, DOC_ATTRIBUTE_NAME, DOC_COMMENT_ATTRIBUTE_NAME, INLINE_ATTRIBUTE_NAME,
-        MATCH_RETURN_VAR_NAME_PREFIX, PAYABLE_ATTRIBUTE_NAME, STORAGE_PURITY_ATTRIBUTE_NAME,
-        STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME, TEST_ATTRIBUTE_NAME,
-        TUPLE_NAME_PREFIX, VALID_ATTRIBUTE_NAMES,
+        ALLOW_ATTRIBUTE_NAME, DESTRUCTURE_PREFIX, DOC_ATTRIBUTE_NAME, DOC_COMMENT_ATTRIBUTE_NAME,
+        INLINE_ATTRIBUTE_NAME, MATCH_RETURN_VAR_NAME_PREFIX, PAYABLE_ATTRIBUTE_NAME,
+        STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
+        TEST_ATTRIBUTE_NAME, TUPLE_NAME_PREFIX, VALID_ATTRIBUTE_NAMES,
     },
     integer_bits::IntegerBits,
 };
@@ -37,7 +37,6 @@ use std::{
     convert::TryFrom,
     iter,
     mem::MaybeUninit,
-    ops::ControlFlow,
     sync::Arc,
 };
 
@@ -58,7 +57,7 @@ pub fn convert_module_kind(kind: &ModuleKind) -> TreeType {
         ModuleKind::Script { .. } => TreeType::Script,
         ModuleKind::Contract { .. } => TreeType::Contract,
         ModuleKind::Predicate { .. } => TreeType::Predicate,
-        ModuleKind::Library { name, .. } => TreeType::Library { name: name.clone() },
+        ModuleKind::Library { .. } => TreeType::Library,
     }
 }
 
@@ -106,7 +105,7 @@ fn item_to_ast_nodes(
 
     let span = item.span();
     let contents = match item.value {
-        ItemKind::Dependency(dependency) => {
+        ItemKind::Submodule(submodule) => {
             // Check that Dependency is not annotated
             if attributes.contains_key(&AttributeKind::DocComment) {
                 let error = ConvertParseTreeError::CannotDocCommentDependency {
@@ -133,13 +132,13 @@ fn item_to_ast_nodes(
             // Check that Dependency comes after only other Dependencies
             let emit_expected_dep_at_beginning = || {
                 let error = ConvertParseTreeError::ExpectedDependencyAtBeginning {
-                    span: dependency.span(),
+                    span: submodule.span(),
                 };
                 handler.emit_err(error.into());
             };
             match prev_item {
                 Some(Annotated {
-                    value: ItemKind::Dependency(_),
+                    value: ItemKind::Submodule(_),
                     ..
                 }) => (),
                 Some(_) => emit_expected_dep_at_beginning(),
@@ -148,7 +147,7 @@ fn item_to_ast_nodes(
             if !is_root {
                 emit_expected_dep_at_beginning();
             }
-            let incl_stmt = dependency_to_include_statement(&dependency);
+            let incl_stmt = submodule_to_include_statement(&submodule);
             vec![AstNodeContent::IncludeStatement(incl_stmt)]
         }
         ItemKind::Use(item_use) => item_use_to_use_statements(context, handler, item_use)?
@@ -831,6 +830,7 @@ fn item_storage_to_storage_declaration(
         attributes,
         span,
         fields,
+        storage_keyword: item_storage.storage_token.into(),
     };
     Ok(storage_declaration)
 }
@@ -1703,10 +1703,8 @@ fn expr_to_expression(
                 MATCH_RETURN_VAR_NAME_PREFIX,
                 context.next_match_expression_return_var_unique_suffix(),
             );
-            let var_decl_name = Ident::new_with_override(
-                Box::leak(match_return_var_name.into_boxed_str()),
-                var_decl_span.clone(),
-            );
+            let var_decl_name =
+                Ident::new_with_override(match_return_var_name, var_decl_span.clone());
 
             let var_decl_exp = Expression {
                 kind: ExpressionKind::Variable(var_decl_name.clone()),
@@ -2109,10 +2107,10 @@ fn op_call(
         inner: MethodName::FromTrait {
             call_path: CallPath {
                 prefixes: vec![
-                    Ident::new_with_override("core", op_span.clone()),
-                    Ident::new_with_override("ops", op_span.clone()),
+                    Ident::new_with_override("core".into(), op_span.clone()),
+                    Ident::new_with_override("ops".into(), op_span.clone()),
                 ],
-                suffix: Ident::new_with_override(name, op_span.clone()),
+                suffix: Ident::new_with_override(name.into(), op_span.clone()),
                 is_absolute: true,
             },
         },
@@ -2457,7 +2455,7 @@ fn if_expr_to_expression(
         None => None,
         Some((_else_token, tail)) => {
             let expression = match tail {
-                ControlFlow::Break(braced_code_block_contents) => {
+                LoopControlFlow::Break(braced_code_block_contents) => {
                     braced_code_block_contents_to_expression(
                         context,
                         handler,
@@ -2465,7 +2463,7 @@ fn if_expr_to_expression(
                         braced_code_block_contents,
                     )?
                 }
-                ControlFlow::Continue(if_expr) => {
+                LoopControlFlow::Continue(if_expr) => {
                     if_expr_to_expression(context, handler, engines, *if_expr)?
                 }
             };
@@ -2624,7 +2622,7 @@ fn literal_to_literal(
                         }
                     }
                 }
-                Some((lit_int_type, _span)) => match lit_int_type {
+                Some((lit_int_type, _)) => match lit_int_type {
                     LitIntType::U8 => {
                         let value = match u8::try_from(parsed) {
                             Ok(value) => value,
@@ -2936,7 +2934,7 @@ fn statement_let_to_ast_nodes(
                         mutable,
                         name,
                     } => (reference, mutable, name),
-                    Pattern::Wildcard { .. } => (None, None, Ident::new_no_span("_")),
+                    Pattern::Wildcard { .. } => (None, None, Ident::new_no_span("_".into())),
                     _ => unreachable!(),
                 };
                 if reference.is_some() {
@@ -2989,10 +2987,8 @@ fn statement_let_to_ast_nodes(
                     DESTRUCTURE_PREFIX,
                     context.next_destructured_struct_unique_suffix()
                 );
-                let destructure_name = Ident::new_with_override(
-                    Box::leak(destructured_name.into_boxed_str()),
-                    path.prefix.name.span(),
-                );
+                let destructure_name =
+                    Ident::new_with_override(destructured_name, path.prefix.name.span());
 
                 // Parse the type ascription and the type ascription span.
                 // In the event that the user did not provide a type ascription,
@@ -3082,8 +3078,7 @@ fn statement_let_to_ast_nodes(
                     TUPLE_NAME_PREFIX,
                     context.next_destructured_tuple_unique_suffix()
                 );
-                let tuple_name =
-                    Ident::new_with_override(Box::leak(tuple_name.into_boxed_str()), span.clone());
+                let tuple_name = Ident::new_with_override(tuple_name, span.clone());
 
                 // Parse the type ascription and the type ascription span.
                 // In the event that the user did not provide a type ascription,
@@ -3174,11 +3169,10 @@ fn statement_let_to_ast_nodes(
     )
 }
 
-fn dependency_to_include_statement(dependency: &Dependency) -> IncludeStatement {
+fn submodule_to_include_statement(dependency: &Submodule) -> IncludeStatement {
     IncludeStatement {
-        _alias: None,
-        span: dependency.span(),
-        _path_span: dependency.path.span(),
+        _span: dependency.span(),
+        _mod_name_span: dependency.name.span(),
     }
 }
 
@@ -3536,7 +3530,7 @@ fn assignable_to_reassignment_target(
             Assignable::Var(name) => {
                 if name.as_str() == "storage" {
                     let idents = idents.into_iter().rev().cloned().collect();
-                    return Ok(ReassignmentTarget::StorageField(idents));
+                    return Ok(ReassignmentTarget::StorageField(name.span(), idents));
                 }
                 break;
             }
@@ -3726,6 +3720,7 @@ fn item_attrs_to_map(
                 INLINE_ATTRIBUTE_NAME => Some(AttributeKind::Inline),
                 TEST_ATTRIBUTE_NAME => Some(AttributeKind::Test),
                 PAYABLE_ATTRIBUTE_NAME => Some(AttributeKind::Payable),
+                ALLOW_ATTRIBUTE_NAME => Some(AttributeKind::Allow),
                 _ => None,
             } {
                 match attrs_map.get_mut(&attr_kind) {
@@ -3734,6 +3729,45 @@ fn item_attrs_to_map(
                     }
                     None => {
                         attrs_map.insert(attr_kind, vec![attribute]);
+                    }
+                }
+            }
+        }
+    }
+
+    // Check attribute arguments
+    for (attribute_kind, attributes) in &attrs_map {
+        for attribute in attributes {
+            // check attribute arguments length
+            let (expected_min_len, expected_max_len) =
+                attribute_kind.clone().expected_args_len_min_max();
+            if attribute.args.len() < expected_min_len
+                || attribute.args.len() > expected_max_len.unwrap_or(usize::MAX)
+            {
+                handler.emit_warn(CompileWarning {
+                    span: attribute.name.span().clone(),
+                    warning_content: Warning::AttributeExpectedNumberOfArguments {
+                        attrib_name: attribute.name.clone(),
+                        received_args: attribute.args.len(),
+                        expected_min_len,
+                        expected_max_len,
+                    },
+                })
+            }
+
+            // check attribute argument value
+            for (index, arg) in attribute.args.iter().enumerate() {
+                let possible_values = attribute_kind.clone().expected_args_values(index);
+                if let Some(possible_values) = possible_values {
+                    if !possible_values.iter().any(|v| v == arg.as_str()) {
+                        handler.emit_warn(CompileWarning {
+                            span: attribute.name.span().clone(),
+                            warning_content: Warning::UnexpectedAttributeArgumentValue {
+                                attrib_name: attribute.name.clone(),
+                                received_value: arg.as_str().to_string(),
+                                expected_values: possible_values,
+                            },
+                        })
                     }
                 }
             }

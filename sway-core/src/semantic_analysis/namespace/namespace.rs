@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::DeclRef,
+    decl_engine::DeclRefFunction,
     engine_threading::*,
     error::*,
     language::{ty, CallPath},
@@ -105,6 +105,16 @@ impl Namespace {
         self.root.resolve_call_path(&self.mod_path, call_path)
     }
 
+    /// Short-hand for calling [Root::resolve_call_path_with_visibility_check] on `root` with the `mod_path`.
+    pub(crate) fn resolve_call_path_with_visibility_check(
+        &self,
+        engines: Engines<'_>,
+        call_path: &CallPath,
+    ) -> CompileResult<&ty::TyDeclaration> {
+        self.root
+            .resolve_call_path_with_visibility_check(engines, &self.mod_path, call_path)
+    }
+
     /// Short-hand for calling [Root::resolve_type_with_self] on `root` with the `mod_path`.
     pub(crate) fn resolve_type_with_self(
         &mut self,
@@ -163,7 +173,7 @@ impl Namespace {
         self_type: TypeId,
         args_buf: &VecDeque<ty::TyExpression>,
         engines: Engines<'_>,
-    ) -> CompileResult<DeclRef> {
+    ) -> CompileResult<DeclRefFunction> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -220,10 +230,10 @@ impl Namespace {
         let mut methods = local_methods;
         methods.append(&mut type_methods);
 
-        let mut matching_method_decl_refs: Vec<DeclRef> = vec![];
+        let mut matching_method_decl_refs: Vec<DeclRefFunction> = vec![];
 
         for decl_ref in methods.into_iter() {
-            if &decl_ref.name == method_name {
+            if &decl_ref.name().clone() == method_name {
                 matching_method_decl_refs.push(decl_ref);
             }
         }
@@ -234,14 +244,9 @@ impl Namespace {
                 // Case where multiple methods exist with the same name
                 // This is the case of https://github.com/FuelLabs/sway/issues/3633
                 // where multiple generic trait impls use the same method name but with different parameter types
-                let mut maybe_method_decl_ref: Option<DeclRef> = Option::None;
+                let mut maybe_method_decl_ref: Option<DeclRefFunction> = None;
                 for decl_ref in matching_method_decl_refs.clone().into_iter() {
-                    let method = check!(
-                        CompileResult::from(decl_engine.get_function(&decl_ref, &decl_ref.span())),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
+                    let method = decl_engine.get_function(&decl_ref);
                     if method.parameters.len() == args_buf.len()
                         && !method.parameters.iter().zip(args_buf.iter()).any(|(p, a)| {
                             !are_equal_minus_dynamic_types(
@@ -318,17 +323,23 @@ impl Namespace {
     /// [SubmoduleNamespace] type. When dropped, the [SubmoduleNamespace] resets the `mod_path`
     /// back to the original path so that we can continue type-checking the current module after
     /// finishing with the dependency.
-    pub(crate) fn enter_submodule(&mut self, dep_name: Ident) -> SubmoduleNamespace {
+    pub(crate) fn enter_submodule(
+        &mut self,
+        mod_name: Ident,
+        module_span: Span,
+    ) -> SubmoduleNamespace {
         let init = self.init.clone();
-        self.submodules.entry(dep_name.to_string()).or_insert(init);
+        self.submodules.entry(mod_name.to_string()).or_insert(init);
         let submod_path: Vec<_> = self
             .mod_path
             .iter()
             .cloned()
-            .chain(Some(dep_name.clone()))
+            .chain(Some(mod_name.clone()))
             .collect();
         let parent_mod_path = std::mem::replace(&mut self.mod_path, submod_path);
-        self.name = Some(dep_name);
+        self.name = Some(mod_name);
+        self.span = Some(module_span);
+        self.is_external = false;
         SubmoduleNamespace {
             namespace: self,
             parent_mod_path,
@@ -361,18 +372,18 @@ impl Namespace {
         )
     }
 
-    pub(crate) fn get_methods_for_type_and_trait_name(
+    pub(crate) fn get_items_for_type_and_trait_name(
         &mut self,
         engines: Engines<'_>,
         type_id: TypeId,
         trait_name: &CallPath,
-    ) -> Vec<DeclRef> {
+    ) -> Vec<ty::TyTraitItem> {
         // Use trait name with full path, improves consistency between
         // this get and inserting in `insert_trait_implementation`.
         let trait_name = trait_name.to_fullpath(self);
 
         self.implemented_traits
-            .get_methods_for_type_and_trait_name(engines, type_id, &trait_name)
+            .get_items_for_type_and_trait_name(engines, type_id, &trait_name)
     }
 }
 

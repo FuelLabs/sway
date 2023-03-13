@@ -46,6 +46,9 @@ pub struct BuildProfile {
     ///  If --build-profile is also provided, forc omits this flag and uses provided build-profile.
     #[clap(long)]
     pub release: bool,
+    /// Treat warnings as errors.
+    #[clap(long)]
+    pub error_on_warnings: bool,
 }
 
 /// Options related to printing stages of compiler output.
@@ -98,6 +101,9 @@ pub struct Pkg {
     /// needs to be updated, Forc will exit with an error
     #[clap(long)]
     pub locked: bool,
+    /// Outputs json abi with callpaths instead of names for struct and enums.
+    #[clap(long)]
+    pub json_abi_with_callpaths: bool,
 }
 
 /// Options related to minifying output.

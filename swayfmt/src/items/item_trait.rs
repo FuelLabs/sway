@@ -1,5 +1,5 @@
 use crate::{
-    comments::write_comments,
+    comments::{rewrite_with_comments, write_comments},
     config::items::ItemBraceStyle,
     formatter::*,
     utils::{
@@ -17,6 +17,8 @@ impl Format for ItemTrait {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        // Required for comment formatting
+        let start_len = formatted_code.len();
         // `pub `
         if let Some(pub_token) = &self.visibility {
             write!(formatted_code, "{} ", pub_token.span().as_str())?;
@@ -95,6 +97,15 @@ impl Format for ItemTrait {
             }
             Self::close_curly_brace(formatted_code, formatter)?;
         };
+
+        rewrite_with_comments::<ItemTrait>(
+            formatter,
+            self.span(),
+            self.leaf_spans(),
+            formatted_code,
+            start_len,
+        )?;
+
         Ok(())
     }
 }

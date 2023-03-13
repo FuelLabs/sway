@@ -1,8 +1,6 @@
-library eq_impls;
+library;
 
-dep data_structures;
-
-use data_structures::{SomeEnum, SomeStruct};
+use ::data_structures::{SomeEnum, SomeStruct};
 use core::ops::Eq;
 
 impl Eq for SomeEnum<u32> {

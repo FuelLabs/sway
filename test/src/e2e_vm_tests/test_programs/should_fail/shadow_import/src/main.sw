@@ -1,6 +1,6 @@
 script;
 
-dep bar;
+mod bar;
 
 // This is okay
 use ::bar::{Bar1, Bar1 as Foo};

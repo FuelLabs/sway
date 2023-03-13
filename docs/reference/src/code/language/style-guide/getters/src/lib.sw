@@ -1,4 +1,4 @@
-library getters;
+library;
 
 // ANCHOR: avoid
 fn get_maximum_deposit() -> u64 {

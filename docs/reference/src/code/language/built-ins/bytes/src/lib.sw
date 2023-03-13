@@ -1,4 +1,4 @@
-library bytes;
+library;
 
 fn syntax() {
     // ANCHOR: syntax

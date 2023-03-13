@@ -1,6 +1,6 @@
 //! Functions to expose 14 of the reserved FuelVM registers for ease of use.
 //! Ref: https://fuellabs.github.io/fuel-specs/master/vm#semantics
-library registers;
+library;
 
 /// Contains overflow & underflow of addition, subtraction, and multiplication.
 pub fn overflow() -> u64 {

@@ -139,14 +139,15 @@ impl<'a> TypeCheckContext<'a> {
     /// Returns the result of the given `with_submod_ctx` function.
     pub fn enter_submodule<T>(
         self,
-        dep_name: Ident,
+        mod_name: Ident,
+        module_span: Span,
         with_submod_ctx: impl FnOnce(TypeCheckContext) -> T,
     ) -> T {
         // We're checking a submodule, so no need to pass through anything other than the
         // namespace. However, we will likely want to pass through the type engine and declaration
         // engine here once they're added.
         let Self { namespace, .. } = self;
-        let mut submod_ns = namespace.enter_submodule(dep_name);
+        let mut submod_ns = namespace.enter_submodule(mod_name, module_span);
         let submod_ctx = TypeCheckContext::from_module_namespace(
             &mut submod_ns,
             Engines::new(self.type_engine, self.decl_engine),

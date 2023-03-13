@@ -2,7 +2,7 @@
 
 Follow this guide to write and deploy a simple smart contract in Sway.
 
-Check out the [Developer Quickstart Guide](https://fuellabs.github.io/fuel-docs/master/developer-quickstart.html) for a step-by-step guide on building a fullstack dapp on Fuel. The guide will walk you through writing a smart contract, setting up a wallet, and building a frontend to interact with your contract.
+Check out the [Developer Quickstart Guide](https://fuelbook.fuel.network/master/quickstart/developer-quickstart.html) for a step-by-step guide on building a fullstack dapp on Fuel. The guide will walk you through writing a smart contract, setting up a wallet, and building a frontend to interact with your contract.
 
 ## Glossary
 
@@ -180,7 +180,7 @@ To deploy `counter_contract` on your local Fuel node, open a new terminal tab an
 forc deploy --unsigned
 ```
 
-where `--url` parameter is the URL where your local node is hosted.
+where `--node-url` parameter is the URL where your local node is hosted.
 
 > **Note**
 > You can't use the same terminal session that is running fuel-core to run any other commands as this will end your fuel-core process.
@@ -201,6 +201,26 @@ TransactionId(HexFormatted(7cef24ea33513733ab78c5daa5328d622d4b38187d0f0d1857b27
 Note the contract ID — you will need it if you want to build out a frontend to interact with this contract.
 
 If `forc-deploy` emits a `no such subcommand` error, try to install it with [fuelup](../introduction/installation.md) or [manually](https://github.com/FuelLabs/sway/releases).
+
+## Deploying the contract with Salt
+
+You can pass a "Salt" using the `--salt` flag passed to your `forc deploy` command as a 256-bit hexadecimal literal, to redeploy a contract that has been deployed already. This is useful for multiple deployments of the same contract.
+
+To add a "Salt" while deploying your contract, you can run the following command:
+
+```bash
+forc deploy --unsigned --salt <Salt> --node-url <key> --gas-price 1
+```
+
+### Randomised Salt
+
+Salt is `0x0000000000000000000000000000000000000000000000000000000000000000` by default. If you do not want to pass a salt manually, you can also use the --random-salt flag to randomise your salt as follows:
+
+```bash
+forc deploy --unsigned --random-salt --node-url <key> --gas-price 1
+```
+
+> Note: To be able to use the `forc deploy` and `forc run` commands, you require the `forc client` plugin that lets you interact with a Fuel node. You can read more about `forc client` [here](../forc/plugins/forc_client/index.md).
 
 ## Testing Your Contract
 

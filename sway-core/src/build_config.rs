@@ -9,6 +9,7 @@ pub enum BuildTarget {
     #[default]
     Fuel,
     EVM,
+    MidenVM,
 }
 
 /// Configuration for the overall build and compilation process.

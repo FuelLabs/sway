@@ -1,4 +1,4 @@
-library test_multiple_attributes;
+library;
 
 #[test, inline(always)]
 fn foo() {}

@@ -105,10 +105,7 @@ impl CollectTypesMetadata for TyExpression {
                         errors
                     ));
                 }
-                let function_decl = match decl_engine.get_function(function_decl_ref, &self.span) {
-                    Ok(decl) => decl,
-                    Err(e) => return err(vec![], vec![e]),
-                };
+                let function_decl = decl_engine.get_function(function_decl_ref);
 
                 ctx.call_site_push();
                 for type_parameter in function_decl.type_parameters {
@@ -148,11 +145,9 @@ impl CollectTypesMetadata for TyExpression {
                 }
             }
             StructExpression { fields, span, .. } => {
-                if let TypeInfo::Struct {
-                    type_parameters, ..
-                } = ctx.type_engine.get(self.return_type)
-                {
-                    for type_parameter in type_parameters {
+                if let TypeInfo::Struct(decl_ref) = ctx.type_engine.get(self.return_type) {
+                    let decl = decl_engine.get_struct(&decl_ref);
+                    for type_parameter in decl.type_parameters {
                         ctx.call_site_insert(type_parameter.type_id, span.clone());
                     }
                 }
@@ -426,10 +421,7 @@ impl DeterministicallyAborts for TyExpression {
                 if !check_call_body {
                     return false;
                 }
-                let function_decl = match decl_engine.get_function(function_decl_ref, &self.span) {
-                    Ok(decl) => decl,
-                    Err(_e) => panic!("failed to get function"),
-                };
+                let function_decl = decl_engine.get_function(function_decl_ref);
                 function_decl
                     .body
                     .deterministically_aborts(decl_engine, check_call_body)

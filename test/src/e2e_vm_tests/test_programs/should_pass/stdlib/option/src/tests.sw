@@ -1,9 +1,7 @@
-library tests;
-
-dep data_structures;
+library;
 
 use core::ops::*;
-use data_structures::*;
+use ::data_structures::*;
 use std::hash::sha256;
 
 /* Currently need to occasionally use `sha256` to compare generic types because

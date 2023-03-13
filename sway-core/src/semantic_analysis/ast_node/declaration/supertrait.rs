@@ -40,12 +40,7 @@ pub(crate) fn insert_supertraits_into_namespace(
             .cloned()
         {
             Some(ty::TyDeclaration::TraitDeclaration { decl_id, .. }) => {
-                let mut trait_decl = check!(
-                    CompileResult::from(decl_engine.get_trait(&decl_id, &supertrait.span())),
-                    break,
-                    warnings,
-                    errors
-                );
+                let mut trait_decl = decl_engine.get_trait(&decl_id);
 
                 // Right now we don't parse type arguments for supertraits, so
                 // we should give this error message to users.
@@ -75,16 +70,11 @@ pub(crate) fn insert_supertraits_into_namespace(
 
                 // Insert the interface surface and methods from this trait into
                 // the namespace.
-                check!(
-                    trait_decl.insert_interface_surface_and_methods_into_namespace(
-                        ctx.by_ref(),
-                        &supertrait.name,
-                        &type_arguments,
-                        type_id
-                    ),
-                    continue,
-                    warnings,
-                    errors
+                trait_decl.insert_interface_surface_and_items_into_namespace(
+                    ctx.by_ref(),
+                    &supertrait.name,
+                    &type_arguments,
+                    type_id,
                 );
 
                 // Recurse to insert versions of interfaces and methods of the

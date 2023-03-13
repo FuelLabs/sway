@@ -139,7 +139,7 @@ pub fn init(command: InitCommand) -> Result<()> {
                 .join("src")
                 .join(constants::LIB_ENTRY),
             // Library names cannot have `-` in them because the Sway compiler does not allow that
-            defaults::default_library(&project_name.replace('-', "_")),
+            defaults::default_library(),
         )?,
         InitType::Package(ProgramType::Predicate) => fs::write(
             Path::new(&project_dir)

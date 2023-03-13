@@ -1,4 +1,4 @@
-library struct_shorthand;
+library;
 
 // ANCHOR: struct_shorthand_definition
 struct Structure {

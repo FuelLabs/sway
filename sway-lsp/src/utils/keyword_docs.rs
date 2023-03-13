@@ -721,8 +721,8 @@ impl KeywordDocs {
         };
 
         // TODO
-        let dep_keyword: ItemMod = parse_quote! {
-            mod dep_keyword {}
+        let mod_keyword: ItemMod = parse_quote! {
+            mod mod_keyword {}
         };
 
         // TODO
@@ -782,7 +782,7 @@ impl KeywordDocs {
             contract_keyword,
             predicate_keyword,
             library_keyword,
-            dep_keyword,
+            mod_keyword,
             abi_keyword,
             storage_keyword,
             asm_keyword,
