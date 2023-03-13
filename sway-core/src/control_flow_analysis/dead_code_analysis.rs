@@ -879,17 +879,17 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
         FunctionApplication {
             call_path: name,
             arguments,
-            function_decl_ref,
+            fn_ref,
             ..
         } => {
-            let fn_decl = decl_engine.get_function(function_decl_ref);
+            let fn_decl = decl_engine.get_function(fn_ref);
             let mut is_external = false;
 
             // in the case of monomorphized functions, first check if we already have a node for
             // it in the namespace. if not then we need to check to see if the namespace contains
             // the decl id parents (the original generic non monomorphized decl id).
             let mut exists = false;
-            let parents = decl_engine.find_all_parents(engines, &function_decl_ref.id().clone());
+            let parents = decl_engine.find_all_parents(engines, &fn_ref.id().clone());
             for parent in parents.iter() {
                 if let Ok(parent_decl_id) = DeclId::try_from(parent) {
                     let parent = decl_engine.get_function(&parent_decl_id);
@@ -908,9 +908,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 let (l_leaves, _new_exit_node) = connect_node(
                     engines,
                     &ty::TyAstNode {
-                        content: ty::TyAstNodeContent::Declaration(
-                            function_decl_ref.clone().into(),
-                        ),
+                        content: ty::TyAstNodeContent::Declaration(fn_ref.clone().into()),
                         span: expression_span.clone(),
                     },
                     graph,
@@ -941,12 +939,8 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                     )
                 });
 
-            let trait_fn_node_idx = get_trait_fn_node_index(
-                engines,
-                function_decl_ref.clone(),
-                expression_span,
-                graph,
-            )?;
+            let trait_fn_node_idx =
+                get_trait_fn_node_index(engines, fn_ref.clone(), expression_span, graph)?;
             if let Some(trait_fn_node_idx) = trait_fn_node_idx {
                 if fn_entrypoint != *trait_fn_node_idx {
                     graph.add_edge(fn_entrypoint, *trait_fn_node_idx, "".into());

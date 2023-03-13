@@ -239,7 +239,7 @@ impl<'eng> FnCompiler<'eng> {
                 call_path: name,
                 contract_call_params,
                 arguments,
-                function_decl_ref,
+                fn_ref,
                 self_state_idx,
                 selector,
                 type_binding: _,
@@ -256,7 +256,7 @@ impl<'eng> FnCompiler<'eng> {
                         span_md_idx,
                     )
                 } else {
-                    let function_decl = self.decl_engine.get_function(function_decl_ref);
+                    let function_decl = self.decl_engine.get_function(fn_ref);
                     self.compile_fn_call(
                         context,
                         md_mgr,

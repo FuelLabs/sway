@@ -20,7 +20,7 @@ pub enum TyExpressionVariant {
         call_path: CallPath,
         contract_call_params: HashMap<String, TyExpression>,
         arguments: Vec<(Ident, TyExpression)>,
-        function_decl_ref: DeclRefFunction,
+        fn_ref: DeclRefFunction,
         /// If this is `Some(val)` then `val` is the metadata. If this is `None`, then
         /// there is no selector.
         self_state_idx: Option<StateIndex>,
@@ -142,25 +142,25 @@ impl PartialEqWithEngines for TyExpressionVariant {
                 Self::FunctionApplication {
                     call_path: l_name,
                     arguments: l_arguments,
-                    function_decl_ref: l_function_decl_ref,
+                    fn_ref: l_fn_ref,
                     ..
                 },
                 Self::FunctionApplication {
                     call_path: r_name,
                     arguments: r_arguments,
-                    function_decl_ref: r_function_decl_ref,
+                    fn_ref: r_fn_ref,
                     ..
                 },
             ) => {
-                let l_function_decl = decl_engine.get_function(l_function_decl_ref);
-                let r_function_decl = decl_engine.get_function(r_function_decl_ref);
+                let l_fn_decl = decl_engine.get_function(l_fn_ref);
+                let r_fn_decl = decl_engine.get_function(r_fn_ref);
                 l_name == r_name
                     && l_arguments.len() == r_arguments.len()
                     && l_arguments
                         .iter()
                         .zip(r_arguments.iter())
                         .all(|((xa, xb), (ya, yb))| xa == ya && xb.eq(yb, engines))
-                    && l_function_decl.body.eq(&r_function_decl.body, engines)
+                    && l_fn_decl.body.eq(&r_fn_decl.body, engines)
             }
             (
                 Self::LazyOperator {
@@ -388,7 +388,7 @@ impl HashWithEngines for TyExpressionVariant {
             Self::FunctionApplication {
                 call_path,
                 arguments,
-                function_decl_ref,
+                fn_ref,
                 // these fields are not hashed because they aren't relevant/a
                 // reliable source of obj v. obj distinction
                 contract_call_params: _,
@@ -397,7 +397,7 @@ impl HashWithEngines for TyExpressionVariant {
                 type_binding: _,
             } => {
                 call_path.hash(state);
-                function_decl_ref.hash(state, engines);
+                fn_ref.hash(state, engines);
                 arguments.iter().for_each(|(name, arg)| {
                     name.hash(state);
                     arg.hash(state, engines);
@@ -570,16 +570,16 @@ impl SubstTypes for TyExpressionVariant {
             Literal(..) => (),
             FunctionApplication {
                 arguments,
-                ref mut function_decl_ref,
+                ref mut fn_ref,
                 ..
             } => {
                 arguments
                     .iter_mut()
                     .for_each(|(_ident, expr)| expr.subst(type_mapping, engines));
-                let new_decl_ref = function_decl_ref
+                let new_decl_ref = fn_ref
                     .clone()
                     .subst_types_and_insert_new(type_mapping, engines);
-                function_decl_ref.replace_id((&new_decl_ref).into());
+                fn_ref.replace_id((&new_decl_ref).into());
             }
             LazyOperator { lhs, rhs, .. } => {
                 (*lhs).subst(type_mapping, engines);
@@ -690,16 +690,16 @@ impl ReplaceSelfType for TyExpressionVariant {
             Literal(..) => (),
             FunctionApplication {
                 arguments,
-                ref mut function_decl_ref,
+                ref mut fn_ref,
                 ..
             } => {
                 arguments
                     .iter_mut()
                     .for_each(|(_ident, expr)| expr.replace_self_type(engines, self_type));
-                let new_decl_ref = function_decl_ref
+                let new_decl_ref = fn_ref
                     .clone()
                     .replace_self_type_and_insert_new(engines, self_type);
-                function_decl_ref.replace_id((&new_decl_ref).into());
+                fn_ref.replace_id((&new_decl_ref).into());
             }
             LazyOperator { lhs, rhs, .. } => {
                 (*lhs).replace_self_type(engines, self_type);
@@ -803,15 +803,15 @@ impl ReplaceDecls for TyExpressionVariant {
         match self {
             Literal(..) => (),
             FunctionApplication {
-                ref mut function_decl_ref,
+                ref mut fn_ref,
                 ref mut arguments,
                 ..
             } => {
-                function_decl_ref.replace_decls(decl_mapping, engines);
-                let new_decl_ref = function_decl_ref
+                fn_ref.replace_decls(decl_mapping, engines);
+                let new_decl_ref = fn_ref
                     .clone()
                     .replace_decls_and_insert_new(decl_mapping, engines);
-                function_decl_ref.replace_id((&new_decl_ref).into());
+                fn_ref.replace_id((&new_decl_ref).into());
                 for (_, arg) in arguments.iter_mut() {
                     arg.replace_decls(decl_mapping, engines);
                 }

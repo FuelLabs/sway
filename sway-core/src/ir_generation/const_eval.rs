@@ -232,9 +232,7 @@ fn const_eval_typed_expr(
     Ok(match &expr.expression {
         ty::TyExpressionVariant::Literal(l) => Some(convert_literal_to_constant(lookup.context, l)),
         ty::TyExpressionVariant::FunctionApplication {
-            arguments,
-            function_decl_ref,
-            ..
+            arguments, fn_ref, ..
         } => {
             let mut actuals_const: Vec<_> = vec![];
             for arg in arguments {
@@ -255,7 +253,7 @@ fn const_eval_typed_expr(
             }
 
             // TODO: Handle more than one statement in the block.
-            let function_decl = lookup.decl_engine.get_function(function_decl_ref);
+            let function_decl = lookup.decl_engine.get_function(fn_ref);
             if function_decl.body.contents.len() > 1 {
                 return Ok(None);
             }

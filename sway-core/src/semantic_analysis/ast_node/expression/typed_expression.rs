@@ -101,7 +101,7 @@ impl ty::TyExpression {
                 call_path,
                 contract_call_params: HashMap::new(),
                 arguments: args_and_names,
-                function_decl_ref: decl_ref,
+                fn_ref: decl_ref,
                 self_state_idx: None,
                 selector: None,
                 type_binding: None,
