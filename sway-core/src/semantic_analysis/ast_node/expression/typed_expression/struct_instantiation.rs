@@ -131,7 +131,7 @@ pub(crate) fn struct_instantiation(
         expression: ty::TyExpressionVariant::StructExpression {
             struct_name,
             fields: typed_fields,
-            span: inner_span,
+            instantiation_span: inner_span,
             call_path_binding,
         },
         return_type: type_id,

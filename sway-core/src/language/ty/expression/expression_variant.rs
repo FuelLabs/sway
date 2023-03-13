@@ -52,7 +52,7 @@ pub enum TyExpressionVariant {
     StructExpression {
         struct_name: Ident,
         fields: Vec<TyStructExpressionField>,
-        span: Span,
+        instantiation_span: Span,
         call_path_binding: TypeBinding<CallPath>,
     },
     CodeBlock(TyCodeBlock),
@@ -217,13 +217,13 @@ impl PartialEqWithEngines for TyExpressionVariant {
                 Self::StructExpression {
                     struct_name: l_struct_name,
                     fields: l_fields,
-                    span: l_span,
+                    instantiation_span: l_span,
                     call_path_binding: _,
                 },
                 Self::StructExpression {
                     struct_name: r_struct_name,
                     fields: r_fields,
-                    span: r_span,
+                    instantiation_span: r_span,
                     call_path_binding: _,
                 },
             ) => {
@@ -434,7 +434,7 @@ impl HashWithEngines for TyExpressionVariant {
                 fields,
                 // these fields are not hashed because they aren't relevant/a
                 // reliable source of obj v. obj distinction
-                span: _,
+                instantiation_span: _,
                 call_path_binding: _,
             } => {
                 struct_name.hash(state);
