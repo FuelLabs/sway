@@ -240,7 +240,7 @@ impl<V> StorageVec<V> {
     ///
     /// * `value` - The item being added to the end of the vector.
     ///
-    /// ### Number of Number of Storage Accesseses
+    /// ### Number of Number of Storage Accesses
     ///
     /// * Reads: `1`
     /// * Writes: `2`
