@@ -21,9 +21,27 @@ pub struct TyAbiDeclaration {
 impl EqWithEngines for TyAbiDeclaration {}
 impl PartialEqWithEngines for TyAbiDeclaration {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        self.name == other.name
-            && self.interface_surface.eq(&other.interface_surface, engines)
-            && self.items.eq(&other.items, engines)
+        let TyAbiDeclaration {
+            name: ln,
+            interface_surface: lis,
+            supertraits: ls,
+            items: li,
+            // these fields are not compared because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            attributes: _,
+            span: _,
+        } = self;
+        let TyAbiDeclaration {
+            name: rn,
+            interface_surface: ris,
+            supertraits: rs,
+            items: ri,
+            // these fields are not compared because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            attributes: _,
+            span: _,
+        } = other;
+        ln == rn && lis.eq(ris, engines) && li.eq(ri, engines) && ls.eq(rs, engines)
     }
 }
 
