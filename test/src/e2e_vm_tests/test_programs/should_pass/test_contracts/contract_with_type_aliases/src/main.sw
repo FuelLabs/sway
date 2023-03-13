@@ -9,7 +9,8 @@ impl MyContract for Contract {
         z: IdentityAliasWrapperAlias,
         w: Generic<IdentityAliasWrapperAlias>,
         u: (AssetId, AssetId),
-    ) -> (AssetId, [IdentityAlias; 2], IdentityAliasWrapperAlias, Generic<IdentityAliasWrapperAlias>, (AssetId, AssetId)) {
-        (x, y, z, w, u)
+        s: StringTy,
+    ) -> (AssetId, [IdentityAlias; 2], IdentityAliasWrapperAlias, Generic<IdentityAliasWrapperAlias>, (AssetId, AssetId), StringTy) {
+        (x, y, z, w, u, s)
     }
 }

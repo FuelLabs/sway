@@ -3,4 +3,4 @@ authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
 implicit-std = false
 license = "Apache-2.0"
-name = "type_alias_private"
+name = "type_alias_lib_shadowing"

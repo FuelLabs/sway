@@ -6,7 +6,7 @@
       "inputs": [
         {
           "name": "x",
-          "type": 9,
+          "type": 10,
           "typeArguments": null
         },
         {
@@ -16,16 +16,16 @@
         },
         {
           "name": "z",
-          "type": 7,
+          "type": 8,
           "typeArguments": null
         },
         {
           "name": "w",
-          "type": 6,
+          "type": 7,
           "typeArguments": [
             {
               "name": "",
-              "type": 7,
+              "type": 8,
               "typeArguments": null
             }
           ]
@@ -33,6 +33,11 @@
         {
           "name": "u",
           "type": 0,
+          "typeArguments": null
+        },
+        {
+          "name": "s",
+          "type": 6,
           "typeArguments": null
         }
       ],
@@ -51,12 +56,12 @@
       "components": [
         {
           "name": "__tuple_element",
-          "type": 9,
+          "type": 10,
           "typeArguments": null
         },
         {
           "name": "__tuple_element",
-          "type": 9,
+          "type": 10,
           "typeArguments": null
         }
       ],
@@ -68,7 +73,7 @@
       "components": [
         {
           "name": "__tuple_element",
-          "type": 9,
+          "type": 10,
           "typeArguments": null
         },
         {
@@ -78,16 +83,16 @@
         },
         {
           "name": "__tuple_element",
-          "type": 7,
+          "type": 8,
           "typeArguments": null
         },
         {
           "name": "__tuple_element",
-          "type": 6,
+          "type": 7,
           "typeArguments": [
             {
               "name": "",
-              "type": 7,
+              "type": 8,
               "typeArguments": null
             }
           ]
@@ -96,9 +101,14 @@
           "name": "__tuple_element",
           "type": 0,
           "typeArguments": null
+        },
+        {
+          "name": "__tuple_element",
+          "type": 6,
+          "typeArguments": null
         }
       ],
-      "type": "(_, _, _, _, _)",
+      "type": "(_, _, _, _, _, _)",
       "typeId": 1,
       "typeParameters": null
     },
@@ -124,12 +134,12 @@
       "components": [
         {
           "name": "Address",
-          "type": 8,
+          "type": 9,
           "typeArguments": null
         },
         {
           "name": "ContractId",
-          "type": 9,
+          "type": 10,
           "typeArguments": null
         }
       ],
@@ -144,6 +154,12 @@
       "typeParameters": null
     },
     {
+      "components": null,
+      "type": "str[9]",
+      "typeId": 6,
+      "typeParameters": null
+    },
+    {
       "components": [
         {
           "name": "f",
@@ -152,7 +168,7 @@
         }
       ],
       "type": "struct contract_with_type_aliases_abi::Generic",
-      "typeId": 6,
+      "typeId": 7,
       "typeParameters": [
         5
       ]
@@ -166,18 +182,6 @@
         }
       ],
       "type": "struct contract_with_type_aliases_abi::IdentityAliasWrapper",
-      "typeId": 7,
-      "typeParameters": null
-    },
-    {
-      "components": [
-        {
-          "name": "value",
-          "type": 3,
-          "typeArguments": null
-        }
-      ],
-      "type": "struct std::address::Address",
       "typeId": 8,
       "typeParameters": null
     },
@@ -189,8 +193,20 @@
           "typeArguments": null
         }
       ],
-      "type": "struct std::contract_id::ContractId",
+      "type": "struct std::address::Address",
       "typeId": 9,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "value",
+          "type": 3,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct std::contract_id::ContractId",
+      "typeId": 10,
       "typeParameters": null
     }
   ]

@@ -1,4 +1,4 @@
 category = "fail"
 
-# check: $()type MyGeneric = Generic;
-# nextln: $()"Generic" needs type arguments.
+# check: $()type MyType = MyStruct;
+# nextln: $()The name `MyType` is defined multiple times

@@ -1801,11 +1801,18 @@ impl TypeInfo {
         engines: Engines<'_>,
         debug_string: impl Into<String>,
         debug_span: &Span,
-    ) -> CompileResult<&Vec<TypeArgument>> {
+    ) -> CompileResult<Vec<TypeArgument>> {
         let warnings = vec![];
         let errors = vec![];
         match self {
-            TypeInfo::Tuple(elems) => ok(elems, warnings, errors),
+            TypeInfo::Tuple(elems) => ok(elems.to_vec(), warnings, errors),
+            TypeInfo::Alias {
+                ty: TypeArgument { type_id, .. },
+                ..
+            } => engines
+                .te()
+                .get(*type_id)
+                .expect_tuple(engines, debug_string, debug_span),
             TypeInfo::ErrorRecovery => err(warnings, errors),
             a => err(
                 vec![],

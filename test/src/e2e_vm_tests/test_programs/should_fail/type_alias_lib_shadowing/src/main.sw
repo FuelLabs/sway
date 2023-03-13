@@ -1,9 +1,13 @@
 script;
 
-#[allow(dead_code)]
-struct Generic<T> {}
+mod lib;
+
+use lib::MyType;
 
 #[allow(dead_code)]
-type MyGeneric = Generic;
+struct MyStruct {}
+
+#[allow(dead_code)]
+type MyType = MyStruct;
 
 fn main() {}

@@ -1,4 +1,4 @@
 category = "fail"
 
-# check: $()type MyGeneric = Generic;
-# nextln: $()"Generic" needs type arguments.
+# check: $()fn foo(x: lib::Alias) {}
+# nextln: $()Symbol "Alias" is private.

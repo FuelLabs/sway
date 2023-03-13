@@ -2,23 +2,8 @@ script;
 
 use contract_with_type_aliases_abi::*;
 
-type Array = [contract_with_type_aliases_abi::IdentityAlias; 2];
-type Tuple = (AssetId, AssetId);
-
-impl core::ops::Eq for Array {
-    fn eq(self, other: Self) -> bool {
-        self[0] == other[0] && self[1] == other[1]
-    }
-}
-
-impl core::ops::Eq for (AssetId, AssetId) {
-    fn eq(self, other: Self) -> bool {
-        self.0 == other.0 && self.1 == other.1
-    }
-}
-
 fn main() {
-    let caller = abi(MyContract, 0x8c3e0b0bf4c3d29494d9f58431fd849638367873da301ae4f290d023a8c79bea);
+    let caller = abi(MyContract, 0x053e36f2a57c40dbedbb3b265aa41fdf496b97bc778cbfe09b31dbe1ddf684e0);
 
     let x = AssetId::from(0x0101010101010101010101010101010101010101010101010101010101010101);
 
@@ -33,11 +18,14 @@ fn main() {
 
     let u = (x, x);
 
-    let (x_result, y_result, z_result, w_result) = caller.foo(x, y, z, w, u);
+    let s = "fuelfuel0";
+
+    let (x_result, y_result, z_result, w_result, u_result, s_result) = caller.foo(x, y, z, w, u, s);
 
     assert(x == x_result);
     assert(y == y_result);
     assert(z == z_result);
     assert(w.f == w_result.f);
-    assert(u == u);
+    assert(u == u_result);
+    assert(s == s_result);
 }

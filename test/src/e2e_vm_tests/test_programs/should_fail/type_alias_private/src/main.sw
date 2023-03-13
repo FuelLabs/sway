@@ -1,9 +1,9 @@
 script;
 
-#[allow(dead_code)]
-struct Generic<T> {}
+mod lib;
 
-#[allow(dead_code)]
-type MyGeneric = Generic;
+fn foo(x: lib::Alias) {}
 
-fn main() {}
+fn main() {
+    foo();
+}
