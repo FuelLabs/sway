@@ -1,7 +1,7 @@
 use crate::{Parse, ParseResult, ParseToEnd, Parser, ParserConsumed};
 
 use sway_ast::{
-    attribute::{Annotated, Attribute, AttributeHashKind},
+    attribute::{Annotated, Attribute, AttributeArg, AttributeHashKind},
     brackets::SquareBrackets,
     keywords::{HashBangToken, Token},
     token::{DocComment, DocStyle},
@@ -34,7 +34,7 @@ impl ParseToEnd for Annotated<Module> {
             let doc_comment = parser.parse::<DocComment>()?;
             // TODO: Use a Literal instead of an Ident when Attribute args
             // start supporting them and remove `Ident::new_no_trim`.
-            let value = Ident::new_no_trim(doc_comment.content_span.clone());
+            let name = Ident::new_no_trim(doc_comment.content_span.clone());
             match &doc_comment.doc_style {
                 DocStyle::Inner => attribute_list.push(AttributeDecl {
                     hash_kind: AttributeHashKind::Inner(HashBangToken::new(
@@ -47,7 +47,7 @@ impl ParseToEnd for Annotated<Module> {
                                 doc_comment.span.clone(),
                             ),
                             args: Some(Parens::new(
-                                Punctuated::single(value),
+                                Punctuated::single(AttributeArg { name, value: None }),
                                 doc_comment.content_span,
                             )),
                         }),

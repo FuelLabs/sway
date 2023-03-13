@@ -184,9 +184,9 @@ mod tests {
                     .map(|att| {
                         (
                             att.name.as_str(),
-                            att.args
-                                .as_ref()
-                                .map(|arg| arg.get().into_iter().map(|a| a.as_str()).collect()),
+                            att.args.as_ref().map(|arg| {
+                                arg.get().into_iter().map(|a| a.name.as_str()).collect()
+                            }),
                         )
                     })
                     .collect()
@@ -281,6 +281,42 @@ mod tests {
 
         assert!(matches!(item.value, ItemKind::Fn(_)));
         assert_eq!(attributes(&item.attribute_list), vec![[("foo", None)]]);
+    }
+
+    #[test]
+    fn parse_attributes_fn_one_arg_value() {
+        let item = parse::<Item>(
+            r#"
+            #[cfg(target = "evm")]
+            fn f() -> bool {
+                false
+            }
+            "#,
+        );
+
+        assert!(matches!(item.value, ItemKind::Fn(_)));
+        assert_eq!(
+            attributes(&item.attribute_list),
+            vec![[("cfg", Some(vec!["target"]))]]
+        );
+    }
+
+    #[test]
+    fn parse_attributes_fn_two_arg_values() {
+        let item = parse::<Item>(
+            r#"
+            #[cfg(target = "evm", feature = "test")]
+            fn f() -> bool {
+                false
+            }
+            "#,
+        );
+
+        assert!(matches!(item.value, ItemKind::Fn(_)));
+        assert_eq!(
+            attributes(&item.attribute_list),
+            vec![[("cfg", Some(vec!["target", "feature"]))]]
+        );
     }
 
     #[test]
