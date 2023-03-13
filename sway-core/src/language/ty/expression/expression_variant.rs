@@ -50,7 +50,7 @@ pub enum TyExpressionVariant {
         index: Box<TyExpression>,
     },
     StructExpression {
-        struct_name: Ident,
+        struct_ref: DeclRef<DeclId<TyStructDeclaration>>,
         fields: Vec<TyStructExpressionField>,
         instantiation_span: Span,
         call_path_binding: TypeBinding<CallPath>,
@@ -215,19 +215,21 @@ impl PartialEqWithEngines for TyExpressionVariant {
             ) => (**l_prefix).eq(&**r_prefix, engines) && (**l_index).eq(&**r_index, engines),
             (
                 Self::StructExpression {
-                    struct_name: l_struct_name,
+                    struct_ref: l_struct_ref,
                     fields: l_fields,
                     instantiation_span: l_span,
                     call_path_binding: _,
                 },
                 Self::StructExpression {
-                    struct_name: r_struct_name,
+                    struct_ref: r_struct_ref,
                     fields: r_fields,
                     instantiation_span: r_span,
                     call_path_binding: _,
                 },
             ) => {
-                l_struct_name == r_struct_name && l_fields.eq(r_fields, engines) && l_span == r_span
+                l_struct_ref.eq(r_struct_ref, engines)
+                    && l_fields.eq(r_fields, engines)
+                    && l_span == r_span
             }
             (Self::CodeBlock(l0), Self::CodeBlock(r0)) => l0.eq(r0, engines),
             (
@@ -430,14 +432,14 @@ impl HashWithEngines for TyExpressionVariant {
                 index.hash(state, engines);
             }
             Self::StructExpression {
-                struct_name,
+                struct_ref,
                 fields,
                 // these fields are not hashed because they aren't relevant/a
                 // reliable source of obj v. obj distinction
                 instantiation_span: _,
                 call_path_binding: _,
             } => {
-                struct_name.hash(state);
+                struct_ref.hash(state, engines);
                 fields.hash(state, engines);
             }
             Self::CodeBlock(contents) => {
@@ -913,8 +915,8 @@ impl DisplayWithEngines for TyExpressionVariant {
             }
             TyExpressionVariant::Array { .. } => "array".into(),
             TyExpressionVariant::ArrayIndex { .. } => "[..]".into(),
-            TyExpressionVariant::StructExpression { struct_name, .. } => {
-                format!("\"{}\" struct init", struct_name.as_str())
+            TyExpressionVariant::StructExpression { struct_ref, .. } => {
+                format!("\"{}\" struct init", struct_ref.name().as_str())
             }
             TyExpressionVariant::CodeBlock(_) => "code block entry".into(),
             TyExpressionVariant::FunctionParameter => "fn param access".into(),

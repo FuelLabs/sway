@@ -1121,13 +1121,11 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             connect_code_block(engines, a, graph, leaves, exit_node, tree_type, options)
         }
         StructExpression {
-            struct_name,
-            fields,
-            ..
+            struct_ref, fields, ..
         } => {
-            let decl = match graph.namespace.find_struct_decl(struct_name.as_str()) {
+            let decl = match graph.namespace.find_struct_decl(struct_ref.name().as_str()) {
                 Some(ix) => *ix,
-                None => graph.add_node(format!("External struct  {}", struct_name.as_str()).into()),
+                None => graph.add_node(format!("External struct  {}", struct_ref.name()).into()),
             };
             let entry = graph.add_node("Struct declaration entry".into());
             let exit = graph.add_node("Struct declaration exit".into());
@@ -1140,7 +1138,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
 
             // connect the struct fields to the struct if its requested as an option
             if options.force_struct_fields_connection {
-                if let Some(ns) = graph.namespace.get_struct(struct_name).cloned() {
+                if let Some(ns) = graph.namespace.get_struct(struct_ref.name()).cloned() {
                     for (_, field_ix) in ns.fields.iter() {
                         graph.add_edge(decl, *field_ix, "".into());
                     }
