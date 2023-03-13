@@ -115,24 +115,13 @@ impl ParseToEnd for Attribute {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_utils::parse;
     use insta::*;
-    use std::sync::Arc;
     use sway_ast::ItemFn;
-
-    fn parse_annotated<T>(input: &str) -> Annotated<T>
-    where
-        T: Parse,
-    {
-        let handler = <_>::default();
-        let ts = crate::token::lex(&handler, &Arc::from(input), 0, input.len(), None).unwrap();
-        Parser::new(&handler, &ts)
-            .parse()
-            .unwrap_or_else(|_| panic!("Parse error: {:?}", handler.consume().0))
-    }
 
     #[test]
     fn parse_annotated_fn() {
-        assert_ron_snapshot!(parse_annotated::<ItemFn>(r#"
+        assert_ron_snapshot!(parse::<Annotated<ItemFn>>(r#"
             // I will be ignored.
             //! I will be ignored.
             /// This is a doc comment.

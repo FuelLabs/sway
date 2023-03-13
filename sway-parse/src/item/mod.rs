@@ -167,16 +167,8 @@ impl Parse for FnSignature {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use crate::test_utils::parse;
     use sway_ast::{AttributeDecl, Item, ItemTraitItem};
-
-    fn parse_item(input: &str) -> Item {
-        let handler = <_>::default();
-        let ts = crate::token::lex(&handler, &Arc::from(input), 0, input.len(), None).unwrap();
-        Parser::new(&handler, &ts)
-            .parse()
-            .unwrap_or_else(|_| panic!("Parse error: {:?}", handler.consume().0))
-    }
 
     // Attribute name and its list of parameters
     type ParameterizedAttr<'a> = (&'a str, Option<Vec<&'a str>>);
@@ -204,7 +196,7 @@ mod tests {
 
     #[test]
     fn parse_doc_comment() {
-        let item = parse_item(
+        let item = parse::<Item>(
             r#"
             // I will be ignored.
             //! I will be ignored.
@@ -225,7 +217,7 @@ mod tests {
 
     #[test]
     fn parse_doc_comment_struct() {
-        let item = parse_item(
+        let item = parse::<Item>(
             r#"
             // I will be ignored.
             //! I will be ignored. 
@@ -264,7 +256,7 @@ mod tests {
 
     #[test]
     fn parse_attributes_none() {
-        let item = parse_item(
+        let item = parse::<Item>(
             r#"
             fn f() -> bool {
                 false
@@ -278,7 +270,7 @@ mod tests {
 
     #[test]
     fn parse_attributes_fn_basic() {
-        let item = parse_item(
+        let item = parse::<Item>(
             r#"
             #[foo]
             fn f() -> bool {
@@ -293,7 +285,7 @@ mod tests {
 
     #[test]
     fn parse_attributes_fn_two_basic() {
-        let item = parse_item(
+        let item = parse::<Item>(
             r#"
             #[foo]
             #[bar]
@@ -313,7 +305,7 @@ mod tests {
 
     #[test]
     fn parse_attributes_fn_one_arg() {
-        let item = parse_item(
+        let item = parse::<Item>(
             r#"
             #[foo(one)]
             fn f() -> bool {
@@ -331,7 +323,7 @@ mod tests {
 
     #[test]
     fn parse_attributes_fn_empty_parens() {
-        let item = parse_item(
+        let item = parse::<Item>(
             r#"
             #[foo()]
             fn f() -> bool {
@@ -349,7 +341,7 @@ mod tests {
 
     #[test]
     fn parse_attributes_fn_zero_and_one_arg() {
-        let item = parse_item(
+        let item = parse::<Item>(
             r#"
             #[bar]
             #[foo(one)]
@@ -368,7 +360,7 @@ mod tests {
 
     #[test]
     fn parse_attributes_fn_one_and_zero_arg() {
-        let item = parse_item(
+        let item = parse::<Item>(
             r#"
             #[foo(one)]
             #[bar]
@@ -387,7 +379,7 @@ mod tests {
 
     #[test]
     fn parse_attributes_fn_two_args() {
-        let item = parse_item(
+        let item = parse::<Item>(
             r#"
             #[foo(one, two)]
             fn f() -> bool {
@@ -405,7 +397,7 @@ mod tests {
 
     #[test]
     fn parse_attributes_fn_zero_one_and_three_args() {
-        let item = parse_item(
+        let item = parse::<Item>(
             r#"
             #[bar]
             #[foo(one)]
@@ -429,7 +421,7 @@ mod tests {
 
     #[test]
     fn parse_attributes_fn_zero_one_and_three_args_in_one_attribute_decl() {
-        let item = parse_item(
+        let item = parse::<Item>(
             r#"
             #[bar, foo(one), baz(two,three,four)]
             fn f() -> bool {
@@ -451,7 +443,7 @@ mod tests {
 
     #[test]
     fn parse_attributes_trait() {
-        let item = parse_item(
+        let item = parse::<Item>(
             r#"
             trait T {
                 #[foo(one)]
@@ -505,7 +497,7 @@ mod tests {
 
     #[test]
     fn parse_attributes_abi() {
-        let item = parse_item(
+        let item = parse::<Item>(
             r#"
             abi A {
                 #[bar(one, two, three)]
@@ -564,7 +556,7 @@ mod tests {
 
     #[test]
     fn parse_attributes_doc_comment() {
-        let item = parse_item(
+        let item = parse::<Item>(
             r#"
             /// This is a doc comment.
             /// This is another doc comment.
