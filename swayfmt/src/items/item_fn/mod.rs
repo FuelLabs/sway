@@ -279,33 +279,17 @@ fn format_self(
 impl Parenthesis for FnSignature {
     fn open_parenthesis(
         line: &mut FormattedCode,
-        formatter: &mut Formatter,
+        _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let open_paren = Delimiter::Parenthesis.as_open_char();
-        match formatter.shape.code_line.line_style {
-            LineStyle::Multiline => {
-                write!(line, "{open_paren}")?;
-            }
-            _ => {
-                write!(line, "{open_paren}")?;
-            }
-        }
+        write!(line, "{}", Delimiter::Parenthesis.as_open_char())?;
 
         Ok(())
     }
     fn close_parenthesis(
         line: &mut FormattedCode,
-        formatter: &mut Formatter,
+        _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let close_paren = Delimiter::Parenthesis.as_close_char();
-        match formatter.shape.code_line.line_style {
-            LineStyle::Multiline => {
-                write!(line, "{close_paren}")?;
-            }
-            _ => {
-                write!(line, "{close_paren}")?;
-            }
-        }
+        write!(line, "{}", Delimiter::Parenthesis.as_close_char())?;
 
         Ok(())
     }
