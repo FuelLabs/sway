@@ -20,7 +20,7 @@
 //! `fn my_function() { .. }`, and to use [DeclRef] for cases like function
 //! application `my_function()`.
 
-use std::hash::Hasher;
+use std::hash::{Hash, Hasher};
 
 use sway_types::{Ident, Named, Span, Spanned};
 
@@ -59,6 +59,10 @@ pub struct DeclRef<I> {
     /// The index into the [DeclEngine].
     id: I,
 
+    /// The type substitution list to apply to the `id` field for type
+    /// monomorphization.
+    subst_list: TypeSubstList,
+
     /// The [Span] of the entire declaration.
     decl_span: Span,
 }
@@ -68,6 +72,7 @@ impl<I> DeclRef<I> {
         DeclRef {
             name,
             id,
+            subst_list: TypeSubstList::new(),
             decl_span,
         }
     }
@@ -78,6 +83,10 @@ impl<I> DeclRef<I> {
 
     pub fn id(&self) -> &I {
         &self.id
+    }
+
+    pub(crate) fn subst_list(&self) -> &TypeSubstList {
+        &self.subst_list
     }
 
     pub fn decl_span(&self) -> &Span {
@@ -171,9 +180,25 @@ where
 {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         let decl_engine = engines.de();
-        let left = decl_engine.get(self.id);
-        let right = decl_engine.get(other.id);
-        self.name == other.name && left.eq(&right, engines)
+        let DeclRef {
+            name: ln,
+            id: lid,
+            // these fields are not used in comparison because they aren't
+            // relevant/a reliable source of obj v. obj distinction
+            decl_span: _,
+            // temporarily omitted
+            subst_list: _,
+        } = self;
+        let DeclRef {
+            name: rn,
+            id: rid,
+            // these fields are not used in comparison because they aren't
+            // relevant/a reliable source of obj v. obj distinction
+            decl_span: _,
+            // temporarily omitted
+            subst_list: _,
+        } = other;
+        ln == rn && decl_engine.get(*lid).eq(&decl_engine.get(*rid), engines)
     }
 }
 
@@ -184,8 +209,17 @@ where
 {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
         let decl_engine = engines.de();
-        let decl = decl_engine.get(self.id);
-        decl.hash(state, engines);
+        let DeclRef {
+            name,
+            id,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            decl_span: _,
+            // temporarily omitted
+            subst_list: _,
+        } = self;
+        name.hash(state);
+        decl_engine.get(*id).hash(state, engines);
     }
 }
 

@@ -66,6 +66,7 @@ impl TyProgram {
                 TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration {
                     name,
                     decl_id,
+                    type_subst_list,
                     decl_span,
                 }) => {
                     let func = decl_engine.get_function(decl_id);
@@ -84,6 +85,7 @@ impl TyProgram {
                     declarations.push(TyDeclaration::FunctionDeclaration {
                         name: name.clone(),
                         decl_id: *decl_id,
+                        type_subst_list: type_subst_list.clone(),
                         decl_span: decl_span.clone(),
                     });
                 }
@@ -103,7 +105,6 @@ impl TyProgram {
                     let TyImplTrait {
                         items,
                         implementing_for,
-
                         trait_decl_ref,
                         ..
                     } = decl_engine.get_impl_trait(decl_id);

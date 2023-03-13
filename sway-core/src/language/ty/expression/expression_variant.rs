@@ -135,7 +135,6 @@ impl EqWithEngines for TyExpressionVariant {}
 impl PartialEqWithEngines for TyExpressionVariant {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         let type_engine = engines.te();
-        let decl_engine = engines.de();
         match (self, other) {
             (Self::Literal(l0), Self::Literal(r0)) => l0 == r0,
             (
@@ -152,15 +151,13 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     ..
                 },
             ) => {
-                let l_fn_decl = decl_engine.get_function(l_fn_ref);
-                let r_fn_decl = decl_engine.get_function(r_fn_ref);
                 l_name == r_name
                     && l_arguments.len() == r_arguments.len()
                     && l_arguments
                         .iter()
                         .zip(r_arguments.iter())
                         .all(|((xa, xb), (ya, yb))| xa == ya && xb.eq(yb, engines))
-                    && l_fn_decl.body.eq(&r_fn_decl.body, engines)
+                    && l_fn_ref.eq(r_fn_ref, engines)
             }
             (
                 Self::LazyOperator {

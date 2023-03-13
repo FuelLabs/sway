@@ -2221,26 +2221,23 @@ impl<'eng> FnCompiler<'eng> {
         let field_kind = ty::ProjectionKind::StructField {
             name: ast_field.name.clone(),
         };
-        let field_idx = match get_struct_name_field_index_and_type(
-            self.decl_engine,
-            struct_ref,
-            field_kind,
-        ) {
-            None => Err(CompileError::Internal(
-                "Unknown struct in field expression.",
-                ast_field.span.clone(),
-            )),
-            Some((struct_name, field_idx_and_type_opt)) => match field_idx_and_type_opt {
-                None => Err(CompileError::InternalOwned(
-                    format!(
+        let field_idx =
+            match get_struct_name_field_index_and_type(self.decl_engine, struct_ref, field_kind) {
+                None => Err(CompileError::Internal(
+                    "Unknown struct in field expression.",
+                    ast_field.span.clone(),
+                )),
+                Some((struct_name, field_idx_and_type_opt)) => match field_idx_and_type_opt {
+                    None => Err(CompileError::InternalOwned(
+                        format!(
                         "Unknown field name '{}' for struct '{struct_name}' in field expression.",
                         ast_field.name
                     ),
-                    ast_field.span.clone(),
-                )),
-                Some((field_idx, _field_type)) => Ok(field_idx),
-            },
-        }?;
+                        ast_field.span.clone(),
+                    )),
+                    Some((field_idx, _field_type)) => Ok(field_idx),
+                },
+            }?;
 
         Ok(self
             .current_block
