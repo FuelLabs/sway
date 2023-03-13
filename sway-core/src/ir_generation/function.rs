@@ -336,11 +336,14 @@ impl<'eng> FnCompiler<'eng> {
                 )
             }
             ty::TyExpressionVariant::EnumInstantiation {
-                enum_decl,
+                enum_ref,
                 tag,
                 contents,
                 ..
-            } => self.compile_enum_expr(context, md_mgr, enum_decl, *tag, contents.as_deref()),
+            } => {
+                let enum_decl = self.decl_engine.get_enum(enum_ref);
+                self.compile_enum_expr(context, md_mgr, &enum_decl, *tag, contents.as_deref())
+            }
             ty::TyExpressionVariant::Tuple { fields } => {
                 self.compile_tuple_expr(context, md_mgr, fields, span_md_idx)
             }

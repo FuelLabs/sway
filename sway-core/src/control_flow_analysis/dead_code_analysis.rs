@@ -1041,15 +1041,16 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 .unwrap_or_else(|| leaves.to_vec()))
         }
         EnumInstantiation {
-            enum_decl,
+            enum_ref,
             variant_name,
             contents,
             ..
         } => {
+            let enum_decl = decl_engine.get_enum(enum_ref);
             // connect this particular instantiation to its variants declaration
             connect_enum_instantiation(
                 engines,
-                enum_decl,
+                &enum_decl,
                 contents,
                 variant_name,
                 graph,

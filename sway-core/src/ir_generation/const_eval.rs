@@ -381,11 +381,12 @@ fn const_eval_typed_expr(
             })
         }
         ty::TyExpressionVariant::EnumInstantiation {
-            enum_decl,
+            enum_ref,
             tag,
             contents,
             ..
         } => {
+            let enum_decl = lookup.decl_engine.get_enum(enum_ref);
             let aggregate = create_enum_aggregate(
                 lookup.type_engine,
                 lookup.decl_engine,

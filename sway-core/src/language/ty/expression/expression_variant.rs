@@ -89,7 +89,7 @@ pub enum TyExpressionVariant {
     },
     EnumInstantiation {
         /// for printing
-        enum_decl: TyEnumDeclaration,
+        enum_ref: DeclRef<DeclId<TyEnumDeclaration>>,
         /// for printing
         variant_name: Ident,
         tag: usize,
@@ -310,21 +310,21 @@ impl PartialEqWithEngines for TyExpressionVariant {
             }
             (
                 Self::EnumInstantiation {
-                    enum_decl: l_enum_decl,
+                    enum_ref: l_enum_ref,
                     variant_name: l_variant_name,
                     tag: l_tag,
                     contents: l_contents,
                     ..
                 },
                 Self::EnumInstantiation {
-                    enum_decl: r_enum_decl,
+                    enum_ref: r_enum_ref,
                     variant_name: r_variant_name,
                     tag: r_tag,
                     contents: r_contents,
                     ..
                 },
             ) => {
-                l_enum_decl.eq(r_enum_decl, engines)
+                l_enum_ref.eq(r_enum_ref, engines)
                     && l_variant_name == r_variant_name
                     && l_tag == r_tag
                     && if let (Some(l_contents), Some(r_contents)) = (l_contents, r_contents) {
@@ -503,7 +503,7 @@ impl HashWithEngines for TyExpressionVariant {
                     .hash(state, engines);
             }
             Self::EnumInstantiation {
-                enum_decl,
+                enum_ref,
                 variant_name,
                 tag,
                 contents,
@@ -512,7 +512,7 @@ impl HashWithEngines for TyExpressionVariant {
                 variant_instantiation_span: _,
                 call_path_binding: _,
             } => {
-                enum_decl.hash(state, engines);
+                enum_ref.hash(state, engines);
                 variant_name.hash(state);
                 tag.hash(state);
                 if let Some(x) = contents.as_ref() {
@@ -644,11 +644,9 @@ impl SubstTypes for TyExpressionVariant {
                 prefix.subst(type_mapping, engines);
             }
             EnumInstantiation {
-                enum_decl,
-                contents,
-                ..
+                enum_ref, contents, ..
             } => {
-                enum_decl.subst(type_mapping, engines);
+                enum_ref.subst(type_mapping, engines);
                 if let Some(ref mut contents) = contents {
                     contents.subst(type_mapping, engines)
                 };
@@ -759,11 +757,9 @@ impl ReplaceSelfType for TyExpressionVariant {
                 prefix.replace_self_type(engines, self_type);
             }
             EnumInstantiation {
-                enum_decl,
-                contents,
-                ..
+                enum_ref, contents, ..
             } => {
-                enum_decl.replace_self_type(engines, self_type);
+                enum_ref.replace_self_type(engines, self_type);
                 if let Some(ref mut contents) = contents {
                     contents.replace_self_type(engines, self_type)
                 };
@@ -858,7 +854,7 @@ impl ReplaceDecls for TyExpressionVariant {
                 prefix.replace_decls(decl_mapping, engines);
             }
             EnumInstantiation {
-                enum_decl: _,
+                enum_ref: _,
                 contents,
                 ..
             } => {
@@ -956,13 +952,13 @@ impl DisplayWithEngines for TyExpressionVariant {
             }
             TyExpressionVariant::EnumInstantiation {
                 tag,
-                enum_decl,
+                enum_ref,
                 variant_name,
                 ..
             } => {
                 format!(
                     "{}::{} enum instantiation (tag: {})",
-                    enum_decl.call_path.suffix.as_str(),
+                    enum_ref.name().as_str(),
                     variant_name.as_str(),
                     tag
                 )

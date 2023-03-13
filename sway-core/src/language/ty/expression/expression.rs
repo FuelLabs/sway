@@ -281,11 +281,12 @@ impl CollectTypesMetadata for TyExpression {
                 ));
             }
             EnumInstantiation {
-                enum_decl,
+                enum_ref,
                 contents,
                 call_path_binding,
                 ..
             } => {
+                let enum_decl = decl_engine.get_enum(enum_ref);
                 for type_param in enum_decl.type_parameters.iter() {
                     ctx.call_site_insert(type_param.type_id, call_path_binding.inner.suffix.span())
                 }

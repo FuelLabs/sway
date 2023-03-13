@@ -661,7 +661,7 @@ impl<'a> TypedTree<'a> {
             ty::TyExpressionVariant::EnumInstantiation {
                 variant_name,
                 variant_instantiation_span,
-                enum_decl,
+                enum_ref,
                 contents,
                 call_path_binding,
                 ..
@@ -673,8 +673,7 @@ impl<'a> TypedTree<'a> {
                     .try_unwrap()
                 {
                     token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
-                    token.type_def =
-                        Some(TypeDefinition::Ident(enum_decl.call_path.suffix.clone()));
+                    token.type_def = Some(TypeDefinition::Ident(enum_ref.name().clone()));
                 }
 
                 for type_arg in &call_path_binding.type_arguments.to_vec() {
