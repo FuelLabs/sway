@@ -1,6 +1,5 @@
-use crate::{pkg, DepKind, Edge};
+use crate::{pkg, source, DepKind, Edge};
 use anyhow::{anyhow, Result};
-use forc_tracing::{println_green, println_red};
 use petgraph::{visit::EdgeRef, Direction};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -60,10 +59,7 @@ impl PkgLock {
     pub fn from_node(graph: &pkg::Graph, node: pkg::NodeIx, disambiguate: &HashSet<&str>) -> Self {
         let pinned = &graph[node];
         let name = pinned.name.clone();
-        let version = match &pinned.source {
-            pkg::SourcePinned::Registry(reg) => Some(reg.source.version.clone()),
-            _ => None,
-        };
+        let version = pinned.source.semver();
         let source = pinned.source.to_string();
         // Collection of all dependencies, so this includes both contract-dependencies and
         // lib-dependencies
@@ -188,7 +184,7 @@ impl Lock {
             // required.
             let key = pkg.name_disambiguated(&disambiguate).into_owned();
             let name = pkg.name.clone();
-            let source: pkg::SourcePinned = pkg.source.parse().map_err(|e| {
+            let source: source::Pinned = pkg.source.parse().map_err(|e| {
                 anyhow!("invalid 'source' entry for package {} lock: {:?}", name, e)
             })?;
             let pkg = pkg::Pinned { name, source };
@@ -272,7 +268,7 @@ fn pkg_unique_string(name: &str, source: &str) -> String {
 fn pkg_dep_line(
     dep_name: Option<&str>,
     name: &str,
-    source: &pkg::SourcePinned,
+    source: &source::Pinned,
     dep_kind: &DepKind,
     disambiguate: bool,
 ) -> PkgDepLine {
@@ -349,8 +345,15 @@ where
 {
     for pkg in removed {
         if !member_names.contains(&pkg.name) {
-            let name = name_or_git_unique_string(pkg);
-            println_red(&format!("  Removing {name}"));
+            let src = match pkg.source.starts_with(source::git::Pinned::PREFIX) {
+                true => format!(" {}", pkg.source),
+                false => "".to_string(),
+            };
+            tracing::info!(
+                "  {} {}{src}",
+                ansi_term::Colour::Red.bold().paint("Removing"),
+                ansi_term::Style::new().bold().paint(&pkg.name)
+            );
         }
     }
 }
@@ -361,17 +364,16 @@ where
 {
     for pkg in removed {
         if !member_names.contains(&pkg.name) {
-            let name = name_or_git_unique_string(pkg);
-            println_green(&format!("    Adding {name}"));
+            let src = match pkg.source.starts_with(source::git::Pinned::PREFIX) {
+                true => format!(" {}", pkg.source),
+                false => "".to_string(),
+            };
+            tracing::info!(
+                "    {} {}{src}",
+                ansi_term::Colour::Green.bold().paint("Adding"),
+                ansi_term::Style::new().bold().paint(&pkg.name)
+            );
         }
-    }
-}
-
-// Only includes source after the name for git sources for friendlier printing.
-fn name_or_git_unique_string(pkg: &PkgLock) -> Cow<str> {
-    match pkg.source.starts_with(pkg::SourceGitPinned::PREFIX) {
-        true => Cow::Owned(pkg.unique_string()),
-        false => Cow::Borrowed(&pkg.name),
     }
 }
 

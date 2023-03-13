@@ -65,6 +65,11 @@ source = 'member'
 dependencies = ['std']
 
 [[package]]
+name = 'methods_and_associated_functions'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
 name = 'msg_sender'
 source = 'member'
 dependencies = ['std']
@@ -80,7 +85,17 @@ source = 'member'
 dependencies = ['std']
 
 [[package]]
+name = 'option'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
 name = 'ownership'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'result'
 source = 'member'
 dependencies = ['std']
 

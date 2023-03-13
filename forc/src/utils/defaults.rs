@@ -47,13 +47,12 @@ fn main() {
     .into()
 }
 
-pub(crate) fn default_library(project_name: &str) -> String {
-    format!(
-        "library {project_name};
+pub(crate) fn default_library() -> String {
+    "library;
 
 // anything `pub` here will be exported as a part of this library's API
 "
-    )
+    .into()
 }
 
 pub(crate) fn default_predicate() -> String {

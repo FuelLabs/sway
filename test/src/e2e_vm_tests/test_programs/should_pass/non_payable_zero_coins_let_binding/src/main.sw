@@ -1,6 +1,6 @@
 script;
 
-dep wallet_abi;
+mod wallet_abi;
 
 use std::constants::ZERO_B256;
 use wallet_abi::Wallet;

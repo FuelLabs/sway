@@ -2,6 +2,7 @@ use sway_error::error::CompileError;
 use sway_types::{BaseIdent, Ident, Span, Spanned};
 
 use crate::{
+    decl_engine::DeclEngineIndex,
     error::*,
     language::{parsed::*, ty, CallPath},
     semantic_analysis::TypeCheckContext,
@@ -20,7 +21,7 @@ impl ty::TyScrutinee {
                 let dummy_type_param = TypeParameter {
                     type_id,
                     initial_type_id: type_id,
-                    name_ident: BaseIdent::new_with_override("_", span.clone()),
+                    name_ident: BaseIdent::new_with_override("_".into(), span.clone()),
                     trait_constraints: vec![],
                     trait_constraints_span: Span::dummy(),
                 };
@@ -62,7 +63,7 @@ fn type_check_variable(
     name: Ident,
     span: Span,
 ) -> CompileResult<ty::TyScrutinee> {
-    let mut warnings = vec![];
+    let warnings = vec![];
     let mut errors = vec![];
 
     let type_engine = ctx.type_engine;
@@ -71,12 +72,7 @@ fn type_check_variable(
     let typed_scrutinee = match ctx.namespace.resolve_symbol(&name).value {
         // If this variable is a constant, then we turn it into a [TyScrutinee::Constant](ty::TyScrutinee::Constant).
         Some(ty::TyDeclaration::ConstantDeclaration { decl_id, .. }) => {
-            let constant_decl = check!(
-                CompileResult::from(decl_engine.get_constant(decl_id, &span)),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
+            let constant_decl = decl_engine.get_constant(decl_id);
             let value = match constant_decl.value {
                 Some(ref value) => value,
                 None => {
@@ -132,12 +128,13 @@ fn type_check_struct(
         warnings,
         errors
     );
-    let mut struct_decl = check!(
-        unknown_decl.expect_struct(decl_engine, &span),
+    let original_struct_decl_ref = check!(
+        unknown_decl.expect_struct(),
         return err(warnings, errors),
         warnings,
         errors
     );
+    let mut struct_decl = decl_engine.get_struct(&original_struct_decl_ref);
 
     // monomorphize the struct definition
     check!(
@@ -207,12 +204,18 @@ fn type_check_struct(
         return err(warnings, errors);
     }
 
+    let decl_name = struct_decl.call_path.suffix.clone();
+    let new_struct_decl_ref = ctx.engines().de().insert(struct_decl);
+
     let typed_scrutinee = ty::TyScrutinee {
-        type_id: struct_decl.create_type_id(ctx.engines()),
+        type_id: ctx
+            .engines()
+            .te()
+            .insert(decl_engine, TypeInfo::Struct(new_struct_decl_ref)),
         span,
         variant: ty::TyScrutineeVariant::StructScrutinee {
             struct_name,
-            decl_name: struct_decl.call_path.suffix,
+            decl_name,
             fields: typed_fields,
         },
     };
@@ -228,7 +231,6 @@ fn type_check_enum(
 ) -> CompileResult<ty::TyScrutinee> {
     let mut warnings = vec![];
     let mut errors = vec![];
-
     let decl_engine = ctx.decl_engine;
 
     let mut prefixes = call_path.prefixes.clone();
@@ -255,12 +257,13 @@ fn type_check_enum(
         warnings,
         errors
     );
-    let mut enum_decl = check!(
-        unknown_decl.expect_enum(decl_engine, &enum_callpath.span()),
+    let original_decl_ref = check!(
+        unknown_decl.expect_enum(),
         return err(warnings, errors),
         warnings,
         errors
     );
+    let mut enum_decl = decl_engine.get_enum(&original_decl_ref);
 
     // monomorphize the enum definition
     check!(
@@ -274,7 +277,6 @@ fn type_check_enum(
         warnings,
         errors
     );
-    let enum_type_id = enum_decl.create_type_id(ctx.engines());
 
     // check to see if the variant exists and grab it if it does
     let variant = check!(
@@ -283,6 +285,13 @@ fn type_check_enum(
         warnings,
         errors
     );
+
+    let decl_name = enum_decl.call_path.suffix.clone();
+    let new_decl_ref = ctx.engines().de().insert(enum_decl);
+    let enum_type_id = ctx
+        .engines()
+        .te()
+        .insert(ctx.engines().de(), TypeInfo::Enum(new_decl_ref));
 
     // type check the nested scrutinee
     let typed_value = check!(
@@ -295,7 +304,7 @@ fn type_check_enum(
     let typed_scrutinee = ty::TyScrutinee {
         variant: ty::TyScrutineeVariant::EnumScrutinee {
             call_path,
-            decl_name: enum_decl.call_path.suffix,
+            decl_name,
             variant: Box::new(variant),
             value: Box::new(typed_value),
         },

@@ -103,8 +103,7 @@ pub fn capabilities() -> ServerCapabilities {
         ),
         document_symbol_provider: Some(OneOf::Left(true)),
         completion_provider: Some(CompletionOptions {
-            resolve_provider: Some(false),
-            trigger_characters: None,
+            trigger_characters: Some(vec![".".to_string()]),
             ..Default::default()
         }),
         document_formatting_provider: Some(OneOf::Left(true)),
@@ -370,12 +369,16 @@ impl LanguageServer for Backend {
         &self,
         params: CompletionParams,
     ) -> jsonrpc::Result<Option<CompletionResponse>> {
+        let trigger_char = params
+            .context
+            .map(|ctx| ctx.trigger_character)
+            .unwrap_or_default()
+            .unwrap_or("".to_string());
+        let position = params.text_document_position.position;
         match self.get_uri_and_session(&params.text_document_position.text_document.uri) {
-            Ok((_, session)) => {
-                // TODO
-                // here we would also need to provide a list of builtin methods not just the ones from the document
-                Ok(session.completion_items().map(CompletionResponse::Array))
-            }
+            Ok((uri, session)) => Ok(session
+                .completion_items(&uri, position, trigger_char)
+                .map(CompletionResponse::Array)),
             Err(err) => {
                 tracing::error!("{}", err.to_string());
                 Ok(None)

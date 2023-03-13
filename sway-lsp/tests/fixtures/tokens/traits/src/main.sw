@@ -1,6 +1,6 @@
 contract;
 
-dep traits;
+mod traits;
 
 use traits::{Test1, Test2};
 

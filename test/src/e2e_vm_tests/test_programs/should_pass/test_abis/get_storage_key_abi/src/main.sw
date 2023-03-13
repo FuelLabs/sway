@@ -1,4 +1,4 @@
-library get_storage_key_abi;
+library;
 
 abi TestContract {
     fn from_f1() -> b256;

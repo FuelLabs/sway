@@ -1,4 +1,5 @@
 use crate::{
+    comments::rewrite_with_comments,
     config::items::ItemBraceStyle,
     formatter::*,
     utils::{
@@ -19,6 +20,9 @@ impl Format for ItemImpl {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        // Required for comment formatting
+        let start_len = formatted_code.len();
+
         write!(formatted_code, "{}", self.impl_token.span().as_str())?;
         if let Some(generic_params) = &self.generic_params_opt {
             generic_params.format(formatted_code, formatter)?;
@@ -46,6 +50,14 @@ impl Format for ItemImpl {
             writeln!(formatted_code)?;
         }
         Self::close_curly_brace(formatted_code, formatter)?;
+
+        rewrite_with_comments::<ItemImpl>(
+            formatter,
+            self.span(),
+            self.leaf_spans(),
+            formatted_code,
+            start_len,
+        )?;
 
         Ok(())
     }

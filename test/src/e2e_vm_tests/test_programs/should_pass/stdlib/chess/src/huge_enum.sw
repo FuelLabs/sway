@@ -1,4 +1,4 @@
-library huge_enum;
+library;
 
 pub enum Huge {
     a1: (),

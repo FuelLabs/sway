@@ -23,9 +23,9 @@ impl Spanned for Item {
 }
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub enum ItemKind {
-    Dependency(Dependency),
+    Submodule(Submodule),
     Use(ItemUse),
     Struct(ItemStruct),
     Enum(ItemEnum),
@@ -41,7 +41,7 @@ pub enum ItemKind {
 impl Spanned for ItemKind {
     fn span(&self) -> Span {
         match self {
-            ItemKind::Dependency(item_dep) => item_dep.span(),
+            ItemKind::Submodule(item_mod) => item_mod.span(),
             ItemKind::Use(item_use) => item_use.span(),
             ItemKind::Struct(item_struct) => item_struct.span(),
             ItemKind::Enum(item_enum) => item_enum.span(),
@@ -56,7 +56,7 @@ impl Spanned for ItemKind {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct TypeField {
     pub name: Ident,
     pub colon_token: ColonToken,
@@ -69,7 +69,7 @@ impl Spanned for TypeField {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub enum FnArgs {
     Static(Punctuated<FnArg, CommaToken>),
     NonStatic {
@@ -80,7 +80,7 @@ pub enum FnArgs {
     },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct FnArg {
     pub pattern: Pattern,
     pub colon_token: ColonToken,
@@ -93,7 +93,7 @@ impl Spanned for FnArg {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct FnSignature {
     pub visibility: Option<PubToken>,
     pub fn_token: FnToken,

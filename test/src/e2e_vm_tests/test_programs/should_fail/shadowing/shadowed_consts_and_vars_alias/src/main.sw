@@ -1,6 +1,6 @@
 script;
 
-dep lib;
+mod lib;
 
 // const shadowing an imported const with alias
 use lib::X as Y;

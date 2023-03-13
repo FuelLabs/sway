@@ -3,7 +3,6 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use sway_error::error::CompileError;
 use sway_types::{Ident, Span};
 
 use crate::{
@@ -20,14 +19,10 @@ pub trait GetDeclIdent {
     fn get_decl_ident(&self) -> Option<Ident>;
 }
 
-pub trait GetDeclRef {
-    fn get_decl_ref(&self) -> Option<DeclRef>;
-}
-
 #[derive(Clone, Debug)]
 pub struct TyAstNode {
     pub content: TyAstNodeContent,
-    pub(crate) span: Span,
+    pub span: Span,
 }
 
 impl EqWithEngines for TyAstNode {}
@@ -150,33 +145,20 @@ impl TyAstNode {
     }
 
     /// Returns `true` if this AST node will be exported in a library, i.e. it is a public declaration.
-    pub(crate) fn is_public(&self, decl_engine: &DeclEngine) -> CompileResult<bool> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let public = match &self.content {
-            TyAstNodeContent::Declaration(decl) => {
-                let visibility = check!(
-                    decl.visibility(decl_engine),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                visibility.is_public()
-            }
+    pub(crate) fn is_public(&self, decl_engine: &DeclEngine) -> bool {
+        match &self.content {
+            TyAstNodeContent::Declaration(decl) => decl.visibility(decl_engine).is_public(),
             TyAstNodeContent::Expression(_)
             | TyAstNodeContent::SideEffect(_)
             | TyAstNodeContent::ImplicitReturnExpression(_) => false,
-        };
-        ok(public, warnings, errors)
+        }
     }
 
     /// Check to see if this node is a function declaration with generic type parameters.
-    pub(crate) fn is_generic_function(&self, decl_engine: &DeclEngine) -> CompileResult<bool> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+    pub(crate) fn is_generic_function(&self, decl_engine: &DeclEngine) -> bool {
         match &self {
             TyAstNode {
-                span,
+                span: _,
                 content:
                     TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration {
                         decl_id, ..
@@ -185,58 +167,38 @@ impl TyAstNode {
             } => {
                 let TyFunctionDeclaration {
                     type_parameters, ..
-                } = check!(
-                    CompileResult::from(decl_engine.get_function(decl_id, span)),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                ok(!type_parameters.is_empty(), warnings, errors)
+                } = decl_engine.get_function(decl_id);
+                !type_parameters.is_empty()
             }
-            _ => ok(false, warnings, errors),
+            _ => false,
         }
     }
 
     /// Check to see if this node is a function declaration of a function annotated as test.
-    pub(crate) fn is_test_function(&self, decl_engine: &DeclEngine) -> CompileResult<bool> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+    pub(crate) fn is_test_function(&self, decl_engine: &DeclEngine) -> bool {
         match &self {
             TyAstNode {
-                span,
+                span: _,
                 content:
                     TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration {
                         decl_id, ..
                     }),
                 ..
             } => {
-                let TyFunctionDeclaration { attributes, .. } = check!(
-                    CompileResult::from(decl_engine.get_function(decl_id, span)),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                ok(
-                    attributes.contains_key(&AttributeKind::Test),
-                    warnings,
-                    errors,
-                )
+                let TyFunctionDeclaration { attributes, .. } = decl_engine.get_function(decl_id);
+                attributes.contains_key(&AttributeKind::Test)
             }
-            _ => ok(false, warnings, errors),
+            _ => false,
         }
     }
 
-    pub(crate) fn is_entry_point(
-        &self,
-        decl_engine: &DeclEngine,
-        tree_type: &TreeType,
-    ) -> Result<bool, CompileError> {
+    pub(crate) fn is_entry_point(&self, decl_engine: &DeclEngine, tree_type: &TreeType) -> bool {
         match tree_type {
             TreeType::Predicate | TreeType::Script => {
                 // Predicates and scripts have main and test functions as entry points.
                 match self {
                     TyAstNode {
-                        span,
+                        span: _,
                         content:
                             TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration {
                                 decl_id,
@@ -244,10 +206,10 @@ impl TyAstNode {
                             }),
                         ..
                     } => {
-                        let decl = decl_engine.get_function(decl_id, span)?;
-                        Ok(decl.is_entry())
+                        let decl = decl_engine.get_function(decl_id);
+                        decl.is_entry()
                     }
-                    _ => Ok(false),
+                    _ => false,
                 }
             }
             TreeType::Contract | TreeType::Library { .. } => match self {
@@ -255,55 +217,50 @@ impl TyAstNode {
                     content:
                         TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration {
                             decl_id,
-                            decl_span,
+                            decl_span: _,
                             ..
                         }),
                     ..
                 } => {
-                    let decl = decl_engine.get_function(decl_id, decl_span)?;
-                    Ok(decl.visibility == Visibility::Public || decl.is_test())
+                    let decl = decl_engine.get_function(decl_id);
+                    decl.visibility == Visibility::Public || decl.is_test()
                 }
                 TyAstNode {
                     content:
                         TyAstNodeContent::Declaration(TyDeclaration::TraitDeclaration {
                             decl_id,
-                            decl_span,
+                            decl_span: _,
                             ..
                         }),
                     ..
-                } => Ok(decl_engine
-                    .get_trait(decl_id, decl_span)?
-                    .visibility
-                    .is_public()),
+                } => decl_engine.get_trait(decl_id).visibility.is_public(),
                 TyAstNode {
                     content:
                         TyAstNodeContent::Declaration(TyDeclaration::StructDeclaration {
-                            decl_id,
-                            decl_span,
-                            ..
+                            decl_id, ..
                         }),
                     ..
                 } => {
-                    let struct_decl = decl_engine.get_struct(decl_id, decl_span)?;
-                    Ok(struct_decl.visibility == Visibility::Public)
+                    let struct_decl = decl_engine.get_struct(decl_id);
+                    struct_decl.visibility == Visibility::Public
                 }
                 TyAstNode {
                     content: TyAstNodeContent::Declaration(TyDeclaration::ImplTrait { .. }),
                     ..
-                } => Ok(true),
+                } => true,
                 TyAstNode {
                     content:
                         TyAstNodeContent::Declaration(TyDeclaration::ConstantDeclaration {
                             decl_id,
-                            decl_span,
+                            decl_span: _,
                             ..
                         }),
                     ..
                 } => {
-                    let decl = decl_engine.get_constant(decl_id, decl_span)?;
-                    Ok(decl.visibility.is_public())
+                    let decl = decl_engine.get_constant(decl_id);
+                    decl.visibility.is_public()
                 }
-                _ => Ok(false),
+                _ => false,
             },
         }
     }

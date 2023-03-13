@@ -1,5 +1,4 @@
 use crate::{
-    comments::write_comments,
     formatter::*,
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
@@ -19,26 +18,16 @@ impl<T: Format + Spanned> Format for Annotated<T> {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let mut attr_end = None;
         // format each `Attribute`
         for attr in &self.attribute_list {
-            // Write trailing comments after the end of the previous attribute
-            if let Some(end) = attr_end {
-                write_comments(formatted_code, end..attr.span().start(), formatter)?;
-            };
             attr.format(formatted_code, formatter)?;
+
             write!(
                 formatted_code,
                 "{}",
                 &formatter.shape.indent.to_string(&formatter.config)?,
             )?;
-            attr_end = Some(attr.span().end());
         }
-
-        // Write trailing comments after the end of the last attribute
-        if let Some(end) = attr_end {
-            write_comments(formatted_code, end..self.value.span().start(), formatter)?;
-        };
         // format `ItemKind`
         self.value.format(formatted_code, formatter)?;
 

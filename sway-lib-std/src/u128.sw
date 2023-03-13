@@ -1,4 +1,4 @@
-library u128;
+library;
 
 use ::assert::assert;
 use ::convert::From;

@@ -1,5 +1,5 @@
 //! Functionality for performing common operations with tokens.
-library token;
+library;
 
 use ::address::Address;
 use ::call_frames::contract_id;

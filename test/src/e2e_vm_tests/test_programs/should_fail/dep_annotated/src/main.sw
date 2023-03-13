@@ -1,13 +1,13 @@
 contract;
 
-dep foo;
+mod foo;
 
 /// This doc comment
 /// should return a parser error
-dep bar;
+mod bar;
 
 #[inline(never)]
-pub dep baz;
+pub mod baz;
 
 fn a() -> bool {
     0 // Test that recovery reaches type checking.

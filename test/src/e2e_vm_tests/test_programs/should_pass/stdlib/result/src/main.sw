@@ -1,7 +1,7 @@
 script;
 
-dep data_structures;
-dep tests;
+mod data_structures;
+mod tests;
 
 use tests::*;
 

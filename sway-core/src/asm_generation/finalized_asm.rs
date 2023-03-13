@@ -1,10 +1,11 @@
 use super::instruction_set::InstructionSet;
+use super::ToMidenBytecode;
 use super::{
     fuel::{checks, data_section::DataSection},
     ProgramABI, ProgramKind,
 };
 use crate::asm_lang::allocated_ops::{AllocatedOp, AllocatedOpcode};
-use crate::decl_engine::DeclRef;
+use crate::decl_engine::DeclRefFunction;
 use crate::error::*;
 use crate::source_map::SourceMap;
 
@@ -36,7 +37,7 @@ pub struct FinalizedEntry {
     pub selector: Option<[u8; 4]>,
     /// If this entry is constructed from a test function contains the declaration id for that
     /// function, otherwise contains `None`.
-    pub test_decl_ref: Option<DeclRef>,
+    pub test_decl_ref: Option<DeclRefFunction>,
 }
 
 /// The bytecode for a sway program as well as the byte offsets of configuration-time constants in
@@ -73,6 +74,14 @@ impl FinalizedAsm {
                     )
                 }
             }
+            InstructionSet::MidenVM { ops } => ok(
+                CompiledBytecode {
+                    bytecode: ops.to_bytecode().into(),
+                    config_const_offsets: Default::default(),
+                },
+                vec![],
+                vec![],
+            ),
         }
     }
 }
@@ -192,5 +201,6 @@ pub fn check_invalid_opcodes(asm: &FinalizedAsm) -> CompileResult<()> {
             ProgramKind::Predicate => checks::check_predicate_opcodes(&ops[..]),
         },
         InstructionSet::Evm { ops: _ } => ok((), vec![], vec![]),
+        InstructionSet::MidenVM { ops: _ } => ok((), vec![], vec![]),
     }
 }

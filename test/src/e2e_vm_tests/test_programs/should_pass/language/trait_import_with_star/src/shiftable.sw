@@ -1,4 +1,4 @@
-library shiftable;
+library;
 
 pub trait MyShift {
     fn my_lsh(self, other: Self) -> Self;

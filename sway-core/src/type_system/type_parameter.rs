@@ -57,7 +57,7 @@ impl PartialEqWithEngines for TypeParameter {
 }
 
 impl OrdWithEngines for TypeParameter {
-    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
+    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
         let TypeParameter {
             type_id: lti,
             name_ident: ln,
@@ -77,12 +77,8 @@ impl OrdWithEngines for TypeParameter {
             initial_type_id: _,
         } = other;
         ln.cmp(rn)
-            .then_with(|| {
-                type_engine
-                    .get(*lti)
-                    .cmp(&type_engine.get(*rti), type_engine)
-            })
-            .then_with(|| ltc.cmp(rtc, type_engine))
+            .then_with(|| engines.te().get(*lti).cmp(&engines.te().get(*rti), engines))
+            .then_with(|| ltc.cmp(rtc, engines))
     }
 }
 
@@ -234,8 +230,9 @@ impl TypeParameter {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let mut original_method_refs: MethodMap = BTreeMap::new();
-        let mut impld_method_refs: MethodMap = BTreeMap::new();
+        let mut interface_item_refs: InterfaceItemMap = BTreeMap::new();
+        let mut item_refs: ItemMap = BTreeMap::new();
+        let mut impld_item_refs: ItemMap = BTreeMap::new();
 
         for type_param in type_parameters.iter() {
             let TypeParameter {
@@ -265,20 +262,24 @@ impl TypeParameter {
                     type_arguments: trait_type_arguments,
                 } = trait_constraint;
 
-                let (trait_original_method_refs, trait_impld_method_refs) = check!(
+                let (trait_interface_item_refs, trait_item_refs, trait_impld_item_refs) = check!(
                     handle_trait(ctx.by_ref(), *type_id, trait_name, trait_type_arguments),
                     continue,
                     warnings,
                     errors
                 );
-                original_method_refs.extend(trait_original_method_refs);
-                impld_method_refs.extend(trait_impld_method_refs);
+                interface_item_refs.extend(trait_interface_item_refs);
+                item_refs.extend(trait_item_refs);
+                impld_item_refs.extend(trait_impld_item_refs);
             }
         }
 
         if errors.is_empty() {
-            let decl_mapping =
-                DeclMapping::from_stub_and_impld_decl_refs(original_method_refs, impld_method_refs);
+            let decl_mapping = DeclMapping::from_interface_and_item_and_impld_decl_refs(
+                interface_item_refs,
+                item_refs,
+                impld_item_refs,
+            );
             ok(decl_mapping, warnings, errors)
         } else {
             err(warnings, errors)
@@ -291,14 +292,15 @@ fn handle_trait(
     type_id: TypeId,
     trait_name: &CallPath,
     type_arguments: &[TypeArgument],
-) -> CompileResult<(MethodMap, MethodMap)> {
+) -> CompileResult<(InterfaceItemMap, ItemMap, ItemMap)> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
     let decl_engine = ctx.decl_engine;
 
-    let mut original_method_refs: MethodMap = BTreeMap::new();
-    let mut impld_method_refs: MethodMap = BTreeMap::new();
+    let mut interface_item_refs: InterfaceItemMap = BTreeMap::new();
+    let mut item_refs: ItemMap = BTreeMap::new();
+    let mut impld_item_refs: ItemMap = BTreeMap::new();
 
     match ctx
         .namespace
@@ -307,37 +309,33 @@ fn handle_trait(
         .cloned()
     {
         Some(ty::TyDeclaration::TraitDeclaration { decl_id, .. }) => {
-            let trait_decl = check!(
-                CompileResult::from(decl_engine.get_trait(&decl_id, &trait_name.suffix.span())),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
+            let trait_decl = decl_engine.get_trait(&decl_id);
 
-            let (trait_original_method_refs, trait_method_refs, trait_impld_method_refs) = check!(
-                trait_decl.retrieve_interface_surface_and_methods_and_implemented_methods_for_type(
+            let (trait_interface_item_refs, trait_item_refs, trait_impld_item_refs) = trait_decl
+                .retrieve_interface_surface_and_items_and_implemented_items_for_type(
                     ctx.by_ref(),
                     type_id,
                     trait_name,
-                    type_arguments
-                ),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            original_method_refs.extend(trait_original_method_refs);
-            original_method_refs.extend(trait_method_refs);
-            impld_method_refs.extend(trait_impld_method_refs);
+                    type_arguments,
+                );
+            interface_item_refs.extend(trait_interface_item_refs);
+            item_refs.extend(trait_item_refs);
+            impld_item_refs.extend(trait_impld_item_refs);
 
             for supertrait in trait_decl.supertraits.iter() {
-                let (supertrait_original_method_refs, supertrait_impld_method_refs) = check!(
+                let (
+                    supertrait_interface_item_refs,
+                    supertrait_item_refs,
+                    supertrait_impld_item_refs,
+                ) = check!(
                     handle_trait(ctx.by_ref(), type_id, &supertrait.name, &[]),
                     continue,
                     warnings,
                     errors
                 );
-                original_method_refs.extend(supertrait_original_method_refs);
-                impld_method_refs.extend(supertrait_impld_method_refs);
+                interface_item_refs.extend(supertrait_interface_item_refs);
+                item_refs.extend(supertrait_item_refs);
+                impld_item_refs.extend(supertrait_impld_item_refs);
             }
         }
         _ => errors.push(CompileError::TraitNotFound {
@@ -347,7 +345,11 @@ fn handle_trait(
     }
 
     if errors.is_empty() {
-        ok((original_method_refs, impld_method_refs), warnings, errors)
+        ok(
+            (interface_item_refs, item_refs, impld_item_refs),
+            warnings,
+            errors,
+        )
     } else {
         err(warnings, errors)
     }

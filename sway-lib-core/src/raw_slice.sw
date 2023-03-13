@@ -1,6 +1,4 @@
-library raw_slice;
-
-dep raw_ptr;
+library;
 
 use ::raw_ptr::*;
 

@@ -1,0 +1,13 @@
+[[package]]
+name = 'configurables_in_script'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-6F15923604F9775D'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-6F15923604F9775D'
+dependencies = ['core']

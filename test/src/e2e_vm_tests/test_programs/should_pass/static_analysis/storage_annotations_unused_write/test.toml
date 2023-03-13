@@ -1,3 +1,4 @@
 category = "compile"
 
 # check: $()This function's storage attributes declaration does not match its actual storage access pattern: 'write' attribute(s) can be removed.
+expected_warnings = 1

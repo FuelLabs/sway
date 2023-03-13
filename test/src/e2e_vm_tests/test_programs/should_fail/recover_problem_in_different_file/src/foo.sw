@@ -1,3 +1,3 @@
-library foo;
+library;
 
 § // Should create lexer problems.

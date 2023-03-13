@@ -1,7 +1,4 @@
-use crate::core::{
-    session::Session,
-    token::{get_range_from_span, AstToken},
-};
+use crate::core::{session::Session, token::get_range_from_span};
 use std::collections::HashMap;
 use std::sync::Arc;
 use sway_types::Spanned;
@@ -17,10 +14,11 @@ pub fn rename(
     let mut edits = Vec::new();
 
     // todo: currently only supports single file rename
-    for (ident, _) in session
-        .token_map()
-        .all_references_of_token(&token, &session.type_engine.read())
-    {
+    for (ident, _) in session.token_map().all_references_of_token(
+        &token,
+        &session.type_engine.read(),
+        &session.decl_engine.read(),
+    ) {
         let range = get_range_from_span(&ident.span());
         edits.push(TextEdit::new(range, new_name.clone()));
     }
@@ -37,12 +35,9 @@ pub fn prepare_rename(
     url: Url,
     position: Position,
 ) -> Option<PrepareRenameResponse> {
-    let (ident, token) = session.token_map().token_at_position(&url, position)?;
-    match token.parsed {
-        AstToken::Reassignment(_) => None,
-        _ => Some(PrepareRenameResponse::RangeWithPlaceholder {
-            range: get_range_from_span(&ident.span()),
-            placeholder: ident.as_str().to_string(),
-        }),
-    }
+    let (ident, ..) = session.token_map().token_at_position(&url, position)?;
+    Some(PrepareRenameResponse::RangeWithPlaceholder {
+        range: get_range_from_span(&ident.span()),
+        placeholder: ident.as_str().to_string(),
+    })
 }

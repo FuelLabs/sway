@@ -20,7 +20,7 @@ pub enum TyExpressionVariant {
         call_path: CallPath,
         contract_call_params: HashMap<String, TyExpression>,
         arguments: Vec<(Ident, TyExpression)>,
-        function_decl_ref: DeclRef,
+        function_decl_ref: DeclRefFunction,
         /// If this is `Some(val)` then `val` is the metadata. If this is `None`, then
         /// there is no selector.
         self_state_idx: Option<StateIndex>,
@@ -135,7 +135,6 @@ impl EqWithEngines for TyExpressionVariant {}
 impl PartialEqWithEngines for TyExpressionVariant {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         let type_engine = engines.te();
-        let decl_engine = engines.de();
         match (self, other) {
             (Self::Literal(l0), Self::Literal(r0)) => l0 == r0,
             (
@@ -152,19 +151,13 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     ..
                 },
             ) => {
-                let l_function_decl = decl_engine
-                    .get_function(l_function_decl_ref, &Span::dummy())
-                    .unwrap();
-                let r_function_decl = decl_engine
-                    .get_function(r_function_decl_ref, &Span::dummy())
-                    .unwrap();
                 l_name == r_name
                     && l_arguments.len() == r_arguments.len()
                     && l_arguments
                         .iter()
                         .zip(r_arguments.iter())
                         .all(|((xa, xb), (ya, yb))| xa == ya && xb.eq(yb, engines))
-                    && l_function_decl.body.eq(&r_function_decl.body, engines)
+                    && l_function_decl_ref.eq(r_function_decl_ref, engines)
             }
             (
                 Self::LazyOperator {

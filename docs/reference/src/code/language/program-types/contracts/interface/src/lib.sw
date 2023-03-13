@@ -1,4 +1,4 @@
-library interface;
+library;
 
 abi Wallet {
     /// When the BASE_ASSET is sent to this function the internal contract balance is incremented
