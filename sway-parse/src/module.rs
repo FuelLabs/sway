@@ -78,21 +78,12 @@ impl ParseToEnd for Annotated<Module> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_utils::parse_to_end;
     use insta::*;
-    use std::sync::Arc;
-
-    fn parse_annotated_module(input: &str) -> Annotated<Module> {
-        let handler = <_>::default();
-        let ts = crate::token::lex(&handler, &Arc::from(input), 0, input.len(), None).unwrap();
-        Parser::new(&handler, &ts)
-            .parse_to_end()
-            .map(|(m, _)| m)
-            .unwrap_or_else(|_| panic!("Parse error: {:?}", handler.consume().0))
-    }
 
     #[test]
     fn parse_noop_script_module() {
-        assert_ron_snapshot!(parse_annotated_module(r#"
+        assert_ron_snapshot!(parse_to_end::<Annotated<Module>>(r#"
             script;
         
             fn main() {
