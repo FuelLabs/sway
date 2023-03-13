@@ -200,9 +200,9 @@ impl TraitMap {
                             if map_trait_items.get(name).is_some() {
                                 errors.push(CompileError::DuplicateDeclDefinedForType {
                                     decl_kind: "method".into(),
-                                    decl_name: decl_ref.name().clone().to_string(),
+                                    decl_name: decl_ref.name().to_string(),
                                     type_implementing_for: engines.help_out(type_id).to_string(),
-                                    span: decl_ref.name().clone().span(),
+                                    span: decl_ref.name().span(),
                                 });
                             }
                         }
