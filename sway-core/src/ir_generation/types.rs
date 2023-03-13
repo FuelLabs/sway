@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::DeclEngine,
+    decl_engine::{DeclEngine, DeclId, DeclRef},
     language::ty,
     type_system::{TypeId, TypeInfo},
     TypeEngine,
@@ -83,17 +83,13 @@ pub(super) fn get_aggregate_for_types(
 }
 
 pub(super) fn get_struct_name_field_index_and_type(
-    type_engine: &TypeEngine,
     decl_engine: &DeclEngine,
-    field_type: TypeId,
+    struct_ref: &DeclRef<DeclId<ty::TyStructDeclaration>>,
     field_kind: ty::ProjectionKind,
 ) -> Option<(String, Option<(u64, TypeId)>)> {
-    let ty_info = type_engine
-        .to_typeinfo(field_type, &field_kind.span())
-        .ok()?;
-    match (ty_info, field_kind) {
-        (TypeInfo::Struct(decl_ref), ty::ProjectionKind::StructField { name: field_name }) => {
-            let decl = decl_engine.get_struct(&decl_ref);
+    match field_kind {
+        ty::ProjectionKind::StructField { name: field_name } => {
+            let decl = decl_engine.get_struct(struct_ref);
             Some((
                 decl.call_path.suffix.as_str().to_owned(),
                 decl.fields

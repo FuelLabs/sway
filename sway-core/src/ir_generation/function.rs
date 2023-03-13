@@ -4,7 +4,7 @@ use super::{
 };
 use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
-    decl_engine::DeclEngine,
+    decl_engine::{DeclEngine, DeclId, DeclRef},
     engine_threading::*,
     ir_generation::const_eval::{
         compile_constant_expression, compile_constant_expression_to_constant,
@@ -322,7 +322,7 @@ impl<'eng> FnCompiler<'eng> {
             ty::TyExpressionVariant::StructFieldAccess {
                 prefix,
                 field_to_access,
-                resolved_type_of_parent,
+                struct_ref,
                 ..
             } => {
                 let span_md_idx = md_mgr.span_to_md(context, &field_to_access.span);
@@ -330,7 +330,7 @@ impl<'eng> FnCompiler<'eng> {
                     context,
                     md_mgr,
                     prefix,
-                    *resolved_type_of_parent,
+                    struct_ref,
                     field_to_access,
                     span_md_idx,
                 )
@@ -2184,7 +2184,7 @@ impl<'eng> FnCompiler<'eng> {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         ast_struct_expr: &ty::TyExpression,
-        struct_type_id: TypeId,
+        struct_ref: &DeclRef<DeclId<ty::TyStructDeclaration>>,
         ast_field: &ty::TyStructField,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
@@ -2222,9 +2222,8 @@ impl<'eng> FnCompiler<'eng> {
             name: ast_field.name.clone(),
         };
         let field_idx = match get_struct_name_field_index_and_type(
-            self.type_engine,
             self.decl_engine,
-            struct_type_id,
+            struct_ref,
             field_kind,
         ) {
             None => Err(CompileError::Internal(
