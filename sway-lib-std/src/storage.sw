@@ -240,6 +240,11 @@ impl<V> StorageVec<V> {
     ///
     /// * `value` - The item being added to the end of the vector.
     ///
+    /// ### Number of Number of Storage Accesses
+    ///
+    /// * Reads: `1`
+    /// * Writes: `2`
+    ///
     /// ### Examples
     ///
     /// ```sway
@@ -252,8 +257,7 @@ impl<V> StorageVec<V> {
     /// fn foo() {
     ///     let five = 5_u64;
     ///     storage.vec.push(five);
-    ///     let retrieved_value = storage.vec.get(0).unwrap();
-    ///     assert(five == retrieved_value);
+    ///     assert(five == storage.vec.get(0).unwrap());
     /// }
     /// ```
     #[storage(read, write)]
@@ -270,6 +274,11 @@ impl<V> StorageVec<V> {
     }
 
     /// Removes the last element of the vector and returns it, `None` if empty.
+    ///
+    /// ### Number of Storage Accesses
+    ///
+    /// * Reads: `2`
+    /// * Writes: `1`
     ///
     /// ### Examples
     ///
@@ -302,7 +311,7 @@ impl<V> StorageVec<V> {
         store(__get_storage_key(), len - 1);
 
         let key = sha256((len - 1, __get_storage_key()));
-        Option::Some::<V>(get::<V>(key).unwrap())
+        get::<V>(key)
     }
 
     /// Gets the value in the given index, `None` if index is out of bounds.
@@ -310,6 +319,10 @@ impl<V> StorageVec<V> {
     /// ### Arguments
     ///
     /// * `index` - The index of the vec to retrieve the item from.
+    ///
+    /// ### Number of Storage Accesses
+    ///
+    /// * Reads: `2`
     ///
     /// ### Examples
     ///
@@ -323,10 +336,8 @@ impl<V> StorageVec<V> {
     /// fn foo() {
     ///     let five = 5_u64;
     ///     storage.vec.push(five);
-    ///     let retrieved_value = storage.vec.get(0).unwrap();
-    ///     assert(five == retrieved_value);
-    ///     let none_value = storage.vec.get(1);
-    ///     assert(none_value.is_none())
+    ///     assert(five == storage.vec.get(0).unwrap());
+    ///     assert(storage.vec.get(1).is_none())
     /// }
     /// ```
     #[storage(read)]
@@ -338,8 +349,7 @@ impl<V> StorageVec<V> {
             return Option::None;
         }
 
-        let key = sha256((index, __get_storage_key()));
-        Option::Some::<V>(get::<V>(key).unwrap())
+        get::<V>(sha256((index, __get_storage_key())))
     }
 
     /// Removes the element in the given index and moves all the elements in the following indexes
@@ -354,6 +364,11 @@ impl<V> StorageVec<V> {
     /// ### Reverts
     ///
     /// Reverts if index is larger or equal to length of the vec.
+    ///
+    /// ### Number of Storage Accesses
+    ///
+    /// * Reads: `2 + self.len() - index`
+    /// * Writes: `self.len() - index`
     ///
     /// ### Examples
     ///
@@ -412,6 +427,11 @@ impl<V> StorageVec<V> {
     ///
     /// Reverts if index is larger or equal to length of the vec.
     ///
+    /// ### Number of Storage Accesses
+    ///
+    /// * Reads: `3`
+    /// * Writes: `2`
+    ///
     /// ### Examples
     ///
     /// ```sway
@@ -427,7 +447,7 @@ impl<V> StorageVec<V> {
     ///     storage.vec.push(15);
     ///     let removed_value = storage.vec.swap_remove(0);
     ///     assert(5 == removed_value);
-    ///     let swapped_value = storage.vec.get(0);
+    ///     let swapped_value = storage.vec.get(0).unwrap();
     ///     assert(15 == swapped_value);
     /// }
     /// ```
@@ -450,6 +470,7 @@ impl<V> StorageVec<V> {
 
         element_to_be_removed
     }
+
     /// Sets or mutates the value at the given index.
     ///
     /// ### Arguments
@@ -460,6 +481,11 @@ impl<V> StorageVec<V> {
     /// ### Reverts
     ///
     /// Reverts if index is larger than or equal to the length of the vec.
+    ///
+    /// ### Number of Storage Accesses
+    ///
+    /// * Reads: `1`
+    /// * Writes: `1`
     ///
     /// ### Examples
     ///
@@ -476,7 +502,7 @@ impl<V> StorageVec<V> {
     ///     storage.vec.push(15);
     ///
     ///     storage.vec.set(0, 20);
-    ///     let set_value = storage.vec.get(0);
+    ///     let set_value = storage.vec.get(0).unwrap();
     ///     assert(20 == set_value);
     /// }
     /// ```
@@ -505,6 +531,11 @@ impl<V> StorageVec<V> {
     ///
     /// Reverts if index is larger than the length of the vec.
     ///
+    /// ### Number of Storage Accesses
+    ///
+    /// * Reads: `if self.len() == index { 1 } else { 1 + self.len() - index }`
+    /// * Writes: `if self.len() == index { 2 } else { 2 + self.len() - index }`
+    ///
     /// ### Examples
     ///
     /// ```sway
@@ -520,9 +551,9 @@ impl<V> StorageVec<V> {
     ///
     ///     storage.vec.insert(1, 10);
     ///
-    ///     assert(5 == storage.vec.get(0));
-    ///     assert(10 == storage.vec.get(1))
-    ///     assert(15 == storage.vec.get(2));
+    ///     assert(5 == storage.vec.get(0).unwrap());
+    ///     assert(10 == storage.vec.get(1).unwrap());
+    ///     assert(15 == storage.vec.get(2).unwrap());
     /// }
     /// ```
     #[storage(read, write)]
@@ -565,6 +596,10 @@ impl<V> StorageVec<V> {
 
     /// Returns the length of the vector.
     ///
+    /// ### Number of Storage Accesses
+    ///
+    /// * Reads: `1`
+    ///
     /// ### Examples
     ///
     /// ```sway
@@ -588,6 +623,10 @@ impl<V> StorageVec<V> {
     }
 
     /// Checks whether the len is zero or not.
+    ///
+    /// ### Number of Storage Accesses
+    ///
+    /// * Reads: `1`
     ///
     /// ### Examples
     ///
@@ -617,6 +656,10 @@ impl<V> StorageVec<V> {
 
     /// Sets the len to zero.
     ///
+    /// ### Number of Storage Accesses
+    ///
+    /// * Clears: `1`
+    ///
     /// ### Examples
     ///
     /// ```sway
@@ -636,7 +679,7 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(write)]
     pub fn clear(self) {
-        store(__get_storage_key(), 0);
+        let _ = clear::<u64>(__get_storage_key());
     }
 }
 
