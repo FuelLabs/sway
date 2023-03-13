@@ -74,6 +74,7 @@ impl ty::TyCodeBlock {
                     if let Some(ty::TyDeclaration::EnumDeclaration {
                         name,
                         decl_id,
+                        type_subst_list: _,
                         decl_span,
                     }) = never_decl_opt
                     {
