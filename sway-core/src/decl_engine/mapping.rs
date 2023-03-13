@@ -53,7 +53,7 @@ impl DeclMapping {
         item_decl_refs: ItemMap,
         impld_decl_refs: ItemMap,
     ) -> DeclMapping {
-        let mut mapping = vec![];
+        let mut mapping: Vec<(SourceDecl, DestinationDecl)> = vec![];
         for (interface_decl_name, interface_item) in interface_decl_refs.into_iter() {
             if let Some(new_item) = impld_decl_refs.get(&interface_decl_name) {
                 #[allow(clippy::infallible_destructuring_match)]

@@ -25,26 +25,31 @@ pub enum TyDeclaration {
     FunctionDeclaration {
         name: Ident,
         decl_id: DeclId<TyFunctionDeclaration>,
+        type_subst_list: Template<TypeSubstList>,
         decl_span: Span,
     },
     TraitDeclaration {
         name: Ident,
         decl_id: DeclId<TyTraitDeclaration>,
+        type_subst_list: Template<TypeSubstList>,
         decl_span: Span,
     },
     StructDeclaration {
         name: Ident,
         decl_id: DeclId<TyStructDeclaration>,
+        type_subst_list: Template<TypeSubstList>,
         decl_span: Span,
     },
     EnumDeclaration {
         name: Ident,
         decl_id: DeclId<TyEnumDeclaration>,
+        type_subst_list: Template<TypeSubstList>,
         decl_span: Span,
     },
     ImplTrait {
         name: Ident,
         decl_id: DeclId<TyImplTrait>,
+        type_subst_list: Template<TypeSubstList>,
         decl_span: Span,
     },
     AbiDeclaration {
@@ -305,6 +310,7 @@ impl TyDeclaration {
         if let TyDeclaration::FunctionDeclaration {
             name,
             decl_id,
+            type_subst_list: _,
             decl_span,
         } = self
         {
@@ -472,6 +478,7 @@ impl TyDeclaration {
             TyDeclaration::EnumDeclaration {
                 name,
                 decl_id,
+                type_subst_list: _,
                 decl_span,
             } => ok(
                 DeclRef::new(name.clone(), *decl_id, decl_span.clone()),
@@ -503,6 +510,7 @@ impl TyDeclaration {
             TyDeclaration::StructDeclaration {
                 name,
                 decl_id,
+                type_subst_list: _,
                 decl_span,
             } => ok(
                 DeclRef::new(name.clone(), *decl_id, decl_span.clone()),
@@ -685,6 +693,7 @@ impl TyDeclaration {
             TyDeclaration::StructDeclaration {
                 name,
                 decl_id,
+                type_subst_list: _,
                 decl_span,
             } => type_engine.insert(
                 decl_engine,
@@ -693,6 +702,7 @@ impl TyDeclaration {
             TyDeclaration::EnumDeclaration {
                 name,
                 decl_id,
+                type_subst_list: _,
                 decl_span,
             } => type_engine.insert(
                 decl_engine,
@@ -776,6 +786,7 @@ impl From<DeclRef<DeclId<TyEnumDeclaration>>> for TyDeclaration {
         TyDeclaration::EnumDeclaration {
             name: decl_ref.name().clone(),
             decl_id: *decl_ref.id(),
+            type_subst_list: Template::new(decl_ref.subst_list().clone()),
             decl_span: decl_ref.decl_span().clone(),
         }
     }
@@ -786,6 +797,7 @@ impl From<DeclRef<DeclId<TyFunctionDeclaration>>> for TyDeclaration {
         TyDeclaration::FunctionDeclaration {
             name: decl_ref.name().clone(),
             decl_id: *decl_ref.id(),
+            type_subst_list: Template::new(decl_ref.subst_list().clone()),
             decl_span: decl_ref.decl_span().clone(),
         }
     }
@@ -796,6 +808,7 @@ impl From<DeclRef<DeclId<TyTraitDeclaration>>> for TyDeclaration {
         TyDeclaration::TraitDeclaration {
             name: decl_ref.name().clone(),
             decl_id: *decl_ref.id(),
+            type_subst_list: Template::new(decl_ref.subst_list().clone()),
             decl_span: decl_ref.decl_span().clone(),
         }
     }
@@ -806,6 +819,7 @@ impl From<DeclRef<DeclId<TyImplTrait>>> for TyDeclaration {
         TyDeclaration::ImplTrait {
             name: decl_ref.name().clone(),
             decl_id: *decl_ref.id(),
+            type_subst_list: Template::new(decl_ref.subst_list().clone()),
             decl_span: decl_ref.decl_span().clone(),
         }
     }
@@ -816,6 +830,7 @@ impl From<DeclRef<DeclId<TyStructDeclaration>>> for TyDeclaration {
         TyDeclaration::StructDeclaration {
             name: decl_ref.name().clone(),
             decl_id: *decl_ref.id(),
+            type_subst_list: Template::new(decl_ref.subst_list().clone()),
             decl_span: decl_ref.decl_span().clone(),
         }
     }

@@ -132,20 +132,12 @@ impl Parse for QualifiedPathRoot {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_utils::parse;
     use insta::*;
-    use std::sync::Arc;
-
-    fn parse_path_expr(input: &str) -> PathExpr {
-        let handler = <_>::default();
-        let ts = crate::token::lex(&handler, &Arc::from(input), 0, input.len(), None).unwrap();
-        Parser::new(&handler, &ts)
-            .parse()
-            .unwrap_or_else(|_| panic!("Parse error: {:?}", handler.consume().0))
-    }
 
     #[test]
     fn parse_nested_path() {
-        assert_ron_snapshot!(parse_path_expr(r#"
+        assert_ron_snapshot!(parse::<PathExpr>(r#"
             std::vec::Vec
         "#,), @r###"
         PathExpr(

@@ -218,6 +218,7 @@ impl ty::TyDeclaration {
                             if let ty::TyDeclaration::TraitDeclaration {
                                 name: supertrait_name,
                                 decl_id: supertrait_decl_id,
+                                type_subst_list: _,
                                 decl_span: supertrait_decl_span,
                             } = supertrait_decl
                             {
@@ -344,6 +345,7 @@ impl ty::TyDeclaration {
                             if let ty::TyDeclaration::TraitDeclaration {
                                 name: supertrait_name,
                                 decl_id: supertrait_decl_id,
+                                type_subst_list: _,
                                 decl_span: supertrait_decl_span,
                             } = supertrait_decl
                             {
