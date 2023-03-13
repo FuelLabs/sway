@@ -28,7 +28,7 @@ fn main() -> D {
 
 // ::check-ir::
 
-// check: fn main($ID: ptr { u64, ( { b256, b256 } | { u64, { u64, ( b256 | u64 ) } } ) }) -> ptr { u64, ( { b256, b256 } | { u64, { u64, ( b256 | u64 ) } } ) }
+// check: fn main() -> ptr { u64, ( { b256, b256 } | { u64, { u64, ( b256 | u64 ) } } ) }
 // check: ret ptr { u64, ( { b256, b256 } | { u64, { u64, ( b256 | u64 ) } } ) }
 
 // ::check-asm::
@@ -43,8 +43,5 @@ fn main() -> D {
 // D is 72 bytes.
 // check: movi $(len_reg=$REG) i72
 // check: mcp  $(ptr_reg=$REG) $REG $len_reg
-// check: lw   $(len_reg=$REG) $(len_data=$ID)
+// check: movi $(len_reg=$REG) i72
 // check: retd  $ptr_reg $len_reg
-
-// check: .data:
-// check: $len_data .word 72

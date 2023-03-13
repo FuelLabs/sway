@@ -19,6 +19,9 @@ fn main() -> (u64, u64) {
 // check: $(c0=$CONFIG) = config u64 42, $(config0_mds=$MD)
 // check: $(c1=$CONFIG) = config u64 42, $(config1_mds=$MD)
 
+// First one is for __ret_value
+// check: get_local ptr { u64, u64 }, $ID
+
 // check: $(temp_ptr=$VAL) = get_local ptr { u64, u64 }, $ID
 
 // check: $(idx_val=$VAL) = const u64 0

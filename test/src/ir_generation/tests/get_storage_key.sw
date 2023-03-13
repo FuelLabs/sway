@@ -36,4 +36,5 @@ impl GetStorageKeyTest for Contract {
 // check: fn $fn_name(self $MD: {  }) -> b256
 // nextln: entry(self: {  }
 // nextln: $(key_val=$VAL) = get_storage_key
-// nextln: ret b256 $key_val
+// nextln: $(ret_val=$VAL) = load $key_val
+// nextln: ret b256 $ret_val

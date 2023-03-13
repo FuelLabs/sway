@@ -3,7 +3,7 @@
 
 use crate::{
     AnalysisResults, Context, Function, Instruction, IrError, Pass, PassMutability, ScopedPass,
-    Value,
+    TypeContent, Value,
 };
 
 pub const MEMCPYOPT_NAME: &str = "memcpyopt";
@@ -55,6 +55,38 @@ fn load_store_to_memcopy(context: &mut Context, function: Function) -> Result<bo
                     } else {
                         None
                     }
+                })
+                .and_then(|candidate @ (_block, _store_val, dst_ptr, _src_ptr)| {
+                    // XXX TEMPORARY 'FIX':
+                    //
+                    // We need to do proper aliasing analysis for this pass.  It's possible to have
+                    // the following:
+                    //
+                    // X = load ptr A       -- dereference A
+                    // store Y to ptr A     -- mutate A
+                    // store X to ptr B     -- store original A to B
+                    //
+                    // Which this pass would convert to:
+                    //
+                    //                      -- DCE the load
+                    // store Y to ptr A     -- mutate A
+                    // memcpy ptr B, ptr A  -- copy _mutated_ A to B
+                    //
+                    // To temporarily avoid this problem we're not going to mem_copy copy types and
+                    // assume (oh, no) that larger types subject to this pass aren't mutated.  This
+                    // only works for now because it has always worked in the past, but there are
+                    // no guarantees this couldn't flare up somewhere.
+                    dst_ptr
+                        .get_type(context)
+                        .and_then(|ptr_ty| ptr_ty.get_inner_type(context))
+                        .map(|ty| match ty.get_content(context) {
+                            TypeContent::Unit | TypeContent::Bool | TypeContent::Pointer(_) => {
+                                false
+                            }
+                            TypeContent::Uint(bits) => *bits > 64,
+                            _ => true,
+                        })?
+                        .then_some(candidate)
                 })
         })
         .collect::<Vec<_>>();

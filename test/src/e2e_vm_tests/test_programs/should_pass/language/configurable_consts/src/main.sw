@@ -22,6 +22,10 @@ impl core::ops::Eq for MyEnum {
     }
 }
 
+// XXX FIX ME:
+// Now that each of reference type constants are demoted to temporaries they don't turn up in the
+// JSON file.  I have no idea why yet.
+
 configurable {
     C0: bool = true,
     C1: u64 = 42,

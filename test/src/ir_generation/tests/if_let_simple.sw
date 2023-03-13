@@ -35,7 +35,7 @@ fn main() -> u64 {
 
 // check: $(idx_1_a=$VAL) = const u64 1
 // check: $(idx_1_b=$VAL) = const u64 1
-// check: $(variant_ptr=$VAL) = get_elem_ptr v15, ptr u64, $idx_1_a, $idx_1_b
+// check: $(variant_ptr=$VAL) = get_elem_ptr $thing_var, ptr u64, $idx_1_a, $idx_1_b
 // check: $(thing_variant_val=$VAL) = load $variant_ptr
 
 // check: $(n_var=$VAL) = get_local ptr u64, n

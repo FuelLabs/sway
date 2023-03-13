@@ -7,7 +7,7 @@
         "typeArguments": null
       },
       "name": "C0",
-      "offset": 3260
+      "offset": 4580
     },
     {
       "configurableType": {
@@ -16,61 +16,7 @@
         "typeArguments": null
       },
       "name": "C1",
-      "offset": 3268
-    },
-    {
-      "configurableType": {
-        "name": "",
-        "type": 2,
-        "typeArguments": null
-      },
-      "name": "C2",
-      "offset": 3284
-    },
-    {
-      "configurableType": {
-        "name": "",
-        "type": 6,
-        "typeArguments": []
-      },
-      "name": "C3",
-      "offset": 3348
-    },
-    {
-      "configurableType": {
-        "name": "",
-        "type": 4,
-        "typeArguments": []
-      },
-      "name": "C4",
-      "offset": 3364
-    },
-    {
-      "configurableType": {
-        "name": "",
-        "type": 4,
-        "typeArguments": []
-      },
-      "name": "C5",
-      "offset": 3380
-    },
-    {
-      "configurableType": {
-        "name": "",
-        "type": 5,
-        "typeArguments": null
-      },
-      "name": "C6",
-      "offset": 3428
-    },
-    {
-      "configurableType": {
-        "name": "",
-        "type": 1,
-        "typeArguments": null
-      },
-      "name": "C7",
-      "offset": 3452
+      "offset": 4588
     }
   ],
   "functions": [

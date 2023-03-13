@@ -1096,6 +1096,9 @@ impl<'ir> FuelAsmBuilder<'ir> {
                     comment: "".into(),
                 });
             } else {
+                // Sometimes (all the time?) a slice type will be `ptr slice`.
+                let ret_type = ret_type.get_inner_type(self.context).unwrap_or(*ret_type);
+
                 // If the type is a pointer then we use RETD to return data.
                 let size_reg = self.reg_seqr.next();
                 if ret_type.is_slice(self.context) {
@@ -1121,7 +1124,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                 } else {
                     let size_in_bytes = ir_type_size_in_bytes(
                         self.context,
-                        &ret_type.get_inner_type(self.context).unwrap_or(*ret_type),
+                        &ret_type.get_inner_type(self.context).unwrap_or(ret_type),
                     );
                     self.immediate_to_reg(
                         size_in_bytes,
@@ -1243,9 +1246,9 @@ impl<'ir> FuelAsmBuilder<'ir> {
         // XXX not required after we have FuelVM specific verifier.
         if !val
             .get_type(self.context)
-            .and_then(|val_ty| val.get_type(self.context).map(|key_ty| (val_ty, key_ty)))
-            .map_or(true, |(val_ty, key_ty)| {
-                val_ty.is_ptr(self.context) || key_ty.is_ptr(self.context)
+            .and_then(|val_ty| key.get_type(self.context).map(|key_ty| (val_ty, key_ty)))
+            .map_or(false, |(val_ty, key_ty)| {
+                val_ty.is_ptr(self.context) && key_ty.is_ptr(self.context)
             })
         {
             return Err(CompileError::Internal(
@@ -1327,17 +1330,13 @@ impl<'ir> FuelAsmBuilder<'ir> {
         // XXX not required after we have FuelVM specific verifier.
         if !store_val
             .get_type(self.context)
-            .and_then(|val_ty| {
-                store_val
-                    .get_type(self.context)
-                    .map(|key_ty| (val_ty, key_ty))
-            })
-            .map_or(true, |(val_ty, key_ty)| {
-                val_ty.is_ptr(self.context) || key_ty.is_ptr(self.context)
+            .and_then(|val_ty| key.get_type(self.context).map(|key_ty| (val_ty, key_ty)))
+            .map_or(false, |(val_ty, key_ty)| {
+                val_ty.is_uint64(self.context) && key_ty.is_ptr(self.context)
             })
         {
             return Err(CompileError::Internal(
-                "Val or key value for state access quad word is not a pointer.",
+                "Val or key value for state store word is not a pointer.",
                 owning_span.unwrap_or_else(Span::dummy),
             ));
         }
@@ -1368,13 +1367,6 @@ impl<'ir> FuelAsmBuilder<'ir> {
             .get_type(self.context)
             .map_or(true, |ty| !self.is_copy_type(&ty))
         {
-            println!(
-                "{}",
-                stored_val
-                    .get_type(self.context)
-                    .unwrap()
-                    .as_string(self.context)
-            );
             Err(CompileError::Internal(
                 "Attempt to store a non-copy type.",
                 owning_span.unwrap_or_else(Span::dummy),

@@ -164,7 +164,9 @@ impl AbstractInstructionSet {
     /// algorithm (https://en.wikipedia.org/wiki/Chaitin%27s_algorithm). The individual steps of
     /// the algorithm are thoroughly explained in register_allocator.rs.
     ///
-    pub(crate) fn allocate_registers(self) -> AllocatedAbstractInstructionSet {
+    pub(crate) fn allocate_registers(
+        self,
+    ) -> Result<AllocatedAbstractInstructionSet, CompileError> {
         // Step 1: Liveness Analysis.
         let live_out = register_allocator::liveness_analysis(&self.ops);
 
@@ -184,7 +186,7 @@ impl AbstractInstructionSet {
         let mut stack = register_allocator::color_interference_graph(&mut interference_graph);
 
         // Step 5: Use the stack to assign a register for each virtual register.
-        let pool = register_allocator::assign_registers(&mut stack);
+        let pool = register_allocator::assign_registers(&mut stack)?;
 
         // Step 6: Update all instructions to use the resulting register pool.
         let mut buf = vec![];
@@ -196,7 +198,7 @@ impl AbstractInstructionSet {
             })
         }
 
-        AllocatedAbstractInstructionSet { ops: buf }
+        Ok(AllocatedAbstractInstructionSet { ops: buf })
     }
 }
 

@@ -1031,7 +1031,7 @@ impl<'eng> FnCompiler<'eng> {
         contract_call_parameters: &HashMap<String, ty::TyExpression>,
         ast_name: &str,
         ast_args: &[(Ident, ty::TyExpression)],
-        return_type: TypeId,
+        ast_return_type: TypeId,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         // XXX This is very FuelVM specific and needs to be broken out of here and called
@@ -1215,7 +1215,9 @@ impl<'eng> FnCompiler<'eng> {
         let asset_id = match contract_call_parameters
             .get(&constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME.to_string())
         {
-            Some(asset_id_expr) => self.compile_ptr_expression(context, md_mgr, asset_id_expr)?,
+            Some(asset_id_expr) => {
+                self.compile_ptr_or_tmp_expression(context, md_mgr, asset_id_expr)?
+            }
             None => {
                 let asset_id_val = convert_literal_to_value(
                     context,
@@ -1247,15 +1249,22 @@ impl<'eng> FnCompiler<'eng> {
                 .add_metadatum(context, span_md_idx),
         };
 
+        // Convert the return type.  If it's a reference type then make it a pointer.
         let return_type = convert_resolved_typeid_no_span(
             self.type_engine,
             self.decl_engine,
             context,
-            &return_type,
+            &ast_return_type,
         )?;
+        let ret_is_copy_type = self.type_engine.get(ast_return_type).is_copy_type();
+        let return_type = if ret_is_copy_type {
+            return_type
+        } else {
+            Type::new_ptr(context, return_type)
+        };
 
         // Insert the contract_call instruction
-        Ok(self
+        let call_val = self
             .current_block
             .ins(context)
             .contract_call(
@@ -1266,7 +1275,14 @@ impl<'eng> FnCompiler<'eng> {
                 asset_id,
                 gas,
             )
-            .add_metadatum(context, span_md_idx))
+            .add_metadatum(context, span_md_idx);
+
+        // If it's a pointer then also load it.
+        Ok(if ret_is_copy_type {
+            call_val
+        } else {
+            self.current_block.ins(context).load(call_val)
+        })
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -1666,7 +1682,7 @@ impl<'eng> FnCompiler<'eng> {
             return Ok(None);
         }
 
-        // Grab these before we move body into compilation.
+        // Grab this before we move body into compilation.
         let return_type = convert_resolved_typeid(
             self.type_engine,
             self.decl_engine,
@@ -1692,14 +1708,14 @@ impl<'eng> FnCompiler<'eng> {
         // otherwise use a store.
         let var_ty = local_var.get_type(context);
         if ir_type_size_in_bytes(context, &var_ty) > 0 {
-            let local_val = self
+            let local_ptr = self
                 .current_block
                 .ins(context)
                 .get_local(local_var)
                 .add_metadatum(context, span_md_idx);
             self.current_block
                 .ins(context)
-                .store(local_val, init_val)
+                .store(local_ptr, init_val)
                 .add_metadatum(context, span_md_idx);
         }
         Ok(None)
@@ -2399,9 +2415,32 @@ impl<'eng> FnCompiler<'eng> {
                  }| {
                     // Take the optional initialiser, map it to an Option<Result<Value>>,
                     // transpose that to Result<Option<Value>> and map that to an AsmArg.
+                    //
+                    // Here we need to compile based on the Sway 'copy-type' vs 'ref-type' since
+                    // ASM args aren't explicitly typed, and if we send in a temporary it might
+                    // be mutated and then discarded.  It *must* be a ptr to *the* ref-type value,
+                    // *or* the value of the copy-type value.
                     initializer
                         .as_ref()
-                        .map(|init_expr| self.compile_expression(context, md_mgr, init_expr))
+                        .map(|init_expr| {
+                            self.compile_ptr_expression(context, md_mgr, init_expr).map(
+                                |init_val| {
+                                    if init_val
+                                        .get_type(context)
+                                        .map_or(false, |ty| ty.is_ptr(context))
+                                        && self
+                                            .type_engine
+                                            .get(init_expr.return_type)
+                                            .is_copy_type()
+                                    {
+                                        // It's a pointer to a copy type.  We need to derefence it.
+                                        self.current_block.ins(context).load(init_val)
+                                    } else {
+                                        init_val
+                                    }
+                                },
+                            )
+                        })
                         .transpose()
                         .map(|init| AsmArg {
                             name: name.clone(),
@@ -2451,124 +2490,119 @@ impl<'eng> FnCompiler<'eng> {
         ty: &Type,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
-        match ty {
-            ty if ty.is_struct(context) => {
-                let temp_name = self.lexical_map.insert_anon();
-                let struct_var = self
-                    .function
-                    .new_local_var(context, temp_name, *ty, None)
-                    .map_err(|ir_error| {
-                        CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
-                    })?;
-                let struct_val = self
+        if ty.is_struct(context) {
+            let temp_name = self.lexical_map.insert_anon();
+            let struct_var = self
+                .function
+                .new_local_var(context, temp_name, *ty, None)
+                .map_err(|ir_error| {
+                    CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+                })?;
+            let struct_val = self
+                .current_block
+                .ins(context)
+                .get_local(struct_var)
+                .add_metadatum(context, span_md_idx);
+
+            let fields = ty.get_field_types(context);
+            for (field_idx, field_type) in fields.into_iter().enumerate() {
+                let field_idx = field_idx as u64;
+
+                // Recurse. The base case is for primitive types that fit in a single storage slot.
+                let mut new_indices = indices.to_owned();
+                new_indices.push(field_idx);
+
+                let val_to_insert = self.compile_storage_read(
+                    context,
+                    _md_mgr,
+                    ix,
+                    &new_indices,
+                    &field_type,
+                    span_md_idx,
+                )?;
+
+                //  Insert the loaded value to the aggregate at the given index
+                let gep_val = self
                     .current_block
                     .ins(context)
-                    .get_local(struct_var)
+                    .get_elem_ptr_with_idx(struct_val, field_type, field_idx)
                     .add_metadatum(context, span_md_idx);
-
-                let fields = ty.get_field_types(context);
-                for (field_idx, field_type) in fields.into_iter().enumerate() {
-                    let field_idx = field_idx as u64;
-
-                    // Recurse. The base case is for primitive types that fit in a single storage slot.
-                    let mut new_indices = indices.to_owned();
-                    new_indices.push(field_idx);
-
-                    let val_to_insert = self.compile_storage_read(
-                        context,
-                        _md_mgr,
-                        ix,
-                        &new_indices,
-                        &field_type,
-                        span_md_idx,
-                    )?;
-
-                    //  Insert the loaded value to the aggregate at the given index
-                    let gep_val = self
-                        .current_block
-                        .ins(context)
-                        .get_elem_ptr_with_idx(struct_val, field_type, field_idx)
-                        .add_metadatum(context, span_md_idx);
-                    self.current_block
-                        .ins(context)
-                        .store(gep_val, val_to_insert)
-                        .add_metadatum(context, span_md_idx);
-                }
-
-                Ok(self
-                    .current_block
-                    .ins(context)
-                    .load(struct_val)
-                    .add_metadatum(context, span_md_idx))
-            }
-            _ => {
-                let storage_key = get_storage_key(ix, indices);
-
-                // New name for the key
-                let mut key_name = format!("{}{}", "key_for_", ix.to_usize());
-                for ix in indices {
-                    key_name = format!("{key_name}_{ix}");
-                }
-                let alias_key_name = self.lexical_map.insert(key_name.as_str().to_owned());
-
-                // Local pointer for the key
-                let key_var = self
-                    .function
-                    .new_local_var(context, alias_key_name, Type::get_b256(context), None)
-                    .map_err(|ir_error| {
-                        CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
-                    })?;
-
-                // Const value for the key from the hash
-                let const_key =
-                    convert_literal_to_value(context, &Literal::B256(storage_key.into()))
-                        .add_metadatum(context, span_md_idx);
-
-                // Convert the key pointer to a value using get_ptr
-                let key_val = self
-                    .current_block
-                    .ins(context)
-                    .get_local(key_var)
-                    .add_metadatum(context, span_md_idx);
-
-                // Store the const hash value to the key pointer value
                 self.current_block
                     .ins(context)
-                    .store(key_val, const_key)
+                    .store(gep_val, val_to_insert)
                     .add_metadatum(context, span_md_idx);
+            }
 
-                match ty.get_content(context) {
-                    TypeContent::Array(..) => Err(CompileError::Internal(
-                        "Arrays in storage have not been implemented yet.",
-                        Span::dummy(),
-                    )),
-                    TypeContent::Slice => Err(CompileError::Internal(
-                        "Slices in storage are not valid.",
-                        Span::dummy(),
-                    )),
-                    TypeContent::Pointer(_) => Err(CompileError::Internal(
-                        "Pointers in storage are not valid.",
-                        Span::dummy(),
-                    )),
-                    TypeContent::B256 => {
-                        self.compile_b256_storage_read(context, ix, indices, &key_val, span_md_idx)
-                    }
-                    TypeContent::Bool | TypeContent::Uint(_) => {
-                        self.compile_uint_or_bool_storage_read(context, &key_val, ty, span_md_idx)
-                    }
-                    TypeContent::String(_) | TypeContent::Union(_) => self
-                        .compile_union_or_string_storage_read(
-                            context,
-                            ix,
-                            indices,
-                            &key_val,
-                            ty,
-                            span_md_idx,
-                        ),
-                    TypeContent::Struct(_) => unreachable!("structs are already handled!"),
-                    TypeContent::Unit => {
-                        Ok(Constant::get_unit(context).add_metadatum(context, span_md_idx))
-                    }
+            Ok(self
+                .current_block
+                .ins(context)
+                .load(struct_val)
+                .add_metadatum(context, span_md_idx))
+        } else {
+            let storage_key = get_storage_key(ix, indices);
+
+            // New name for the key
+            let mut key_name = format!("{}{}", "key_for_", ix.to_usize());
+            for ix in indices {
+                key_name = format!("{key_name}_{ix}");
+            }
+            let alias_key_name = self.lexical_map.insert(key_name.as_str().to_owned());
+
+            // Local pointer for the key
+            let key_var = self
+                .function
+                .new_local_var(context, alias_key_name, Type::get_b256(context), None)
+                .map_err(|ir_error| {
+                    CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+                })?;
+
+            // Const value for the key from the hash
+            let const_key = convert_literal_to_value(context, &Literal::B256(storage_key.into()))
+                .add_metadatum(context, span_md_idx);
+
+            let key_ptr = self
+                .current_block
+                .ins(context)
+                .get_local(key_var)
+                .add_metadatum(context, span_md_idx);
+
+            // Store the const hash value to the key pointer value
+            self.current_block
+                .ins(context)
+                .store(key_ptr, const_key)
+                .add_metadatum(context, span_md_idx);
+
+            match ty.get_content(context) {
+                TypeContent::Array(..) => Err(CompileError::Internal(
+                    "Arrays in storage have not been implemented yet.",
+                    Span::dummy(),
+                )),
+                TypeContent::Slice => Err(CompileError::Internal(
+                    "Slices in storage are not valid.",
+                    Span::dummy(),
+                )),
+                TypeContent::Pointer(_) => Err(CompileError::Internal(
+                    "Pointers in storage are not valid.",
+                    Span::dummy(),
+                )),
+                TypeContent::B256 => {
+                    self.compile_b256_storage_read(context, ix, indices, &key_ptr, span_md_idx)
+                }
+                TypeContent::Bool | TypeContent::Uint(_) => {
+                    self.compile_uint_or_bool_storage_read(context, &key_ptr, ty, span_md_idx)
+                }
+                TypeContent::String(_) | TypeContent::Union(_) => self
+                    .compile_union_or_string_storage_read(
+                        context,
+                        ix,
+                        indices,
+                        &key_ptr,
+                        ty,
+                        span_md_idx,
+                    ),
+                TypeContent::Struct(_) => unreachable!("structs are already handled!"),
+                TypeContent::Unit => {
+                    Ok(Constant::get_unit(context).add_metadatum(context, span_md_idx))
                 }
             }
         }
@@ -2777,7 +2811,7 @@ impl<'eng> FnCompiler<'eng> {
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
 
         // Convert the local pointer created to a value using get_ptr
-        let local_val = self
+        let local_ptr = self
             .current_block
             .ins(context)
             .get_local(local_var)
@@ -2786,8 +2820,14 @@ impl<'eng> FnCompiler<'eng> {
         let one_value = convert_literal_to_value(context, &Literal::U64(1));
         self.current_block
             .ins(context)
-            .state_load_quad_word(local_val, *key_ptr_val, one_value)
+            .state_load_quad_word(local_ptr, *key_ptr_val, one_value)
             .add_metadatum(context, span_md_idx);
+        let local_val = self
+            .current_block
+            .ins(context)
+            .load(local_ptr)
+            .add_metadatum(context, span_md_idx);
+
         Ok(local_val)
     }
 

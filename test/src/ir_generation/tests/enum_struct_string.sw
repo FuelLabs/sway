@@ -30,8 +30,8 @@ fn main() -> u64 {
 
 // check: $(b_val_var=$VAL) = get_local ptr { u64, ( { { string<17>, u64 }, u64, bool } ) }, b_val
 // check: $(idx_val=$VAL) = const u64 0
-// check: $(tag_ptr=$VAL) = get_elem_ptr v26, ptr u64, $idx_val
-// check: $(b_val_tag=$VAL) = load $tag_ptr, !10
+// check: $(tag_ptr=$VAL) = get_elem_ptr $b_val_var, ptr u64, $idx_val
+// check: $(b_val_tag=$VAL) = load $tag_ptr
 // check: $(zero=$VAL) = const u64 0
 // check: $(tag_matches=$VAL) = call $(eq_fn=$ID)($b_val_tag, $zero)
 // check: cbr $tag_matches

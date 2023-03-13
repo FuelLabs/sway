@@ -6,6 +6,8 @@
 ///! Current special cases are:
 ///! - log arguments: These can be any type and should be demoted to pointers if possible.
 ///! - Fuel ASM block arguments: These are assumed to be pointers for 'by-reference' values.
+///! - Fuel ASM block return values: These are also assumed to be pointers for 'by-reference'
+///!   values.
 use crate::{
     asm::AsmArg, AnalysisResults, Context, FuelVmInstruction, Function, Instruction, IrError, Pass,
     PassMutability, ScopedPass, Type, TypeContent, Value,

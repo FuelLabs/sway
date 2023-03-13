@@ -266,10 +266,15 @@ impl<'a> InstructionVerifier<'a> {
     }
 
     fn verify_bitcast(&self, value: &Value, ty: &Type) -> Result<(), IrError> {
+        // The bitsize of bools and unit is 1 which obviously won't match a typical uint.  LLVM
+        // would use `trunc` or `zext` to make types match sizes before casting.  Until we have
+        // similar we'll just make sure the sizes are <= 64 bits.
         let val_ty = value
             .get_type(self.context)
             .ok_or(IrError::VerifyBitcastUnknownSourceType)?;
-        if self.type_bit_size(&val_ty) != self.type_bit_size(ty) {
+        if self.type_bit_size(&val_ty).map_or(false, |sz| sz > 64)
+            || self.type_bit_size(ty).map_or(false, |sz| sz > 64)
+        {
             Err(IrError::VerifyBitcastBetweenInvalidTypes(
                 val_ty.as_string(self.context),
                 ty.as_string(self.context),
