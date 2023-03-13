@@ -17,12 +17,12 @@ abi CalleeContract {
 
 #[test]
 fn test_multi_contract_calls() {
-  let caller = abi(CallerContract, CONTRACT_ID);
-  let callee = abi(CalleeContract, callee_contract::CONTRACT_ID);
+    let caller = abi(CallerContract, CONTRACT_ID);
+    let callee = abi(CalleeContract, callee_contract::CONTRACT_ID);
 
-  let should_be_false = caller.test_false();
-  let should_be_true = callee.test_true();
-  assert(should_be_false == false);
-  assert(should_be_true == true);
+    let should_be_false = caller.test_false();
+    let should_be_true = callee.test_true();
+    assert(should_be_false == false);
+    assert(should_be_true == true);
 }
-// ANCHOR: multi_contract_calls 
+// ANCHOR: multi_contract_calls
