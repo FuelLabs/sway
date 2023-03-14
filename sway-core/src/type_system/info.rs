@@ -818,11 +818,10 @@ impl TypeInfo {
                     decl_engine,
                     error_msg_span,
                 );
-                let name = match name.value {
+                match name.value {
                     Some(name) => name,
                     None => return name,
-                };
-                format!("{name}")
+                }
             }
             _ => {
                 return err(
