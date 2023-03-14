@@ -12,7 +12,7 @@ impl TestAbi for Contract {
   fn deposit(amount: u64) {
     // 1st tuple component is a code block with interaction
     // 2nd tuple component is a code block with effect
-    let pair: (u64, u64) =
+    let _pair: (u64, u64) =
       (
         {
           // interaction

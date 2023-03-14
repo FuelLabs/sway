@@ -9,9 +9,9 @@ enum MyEnum {
 }
 
 fn main() -> u64 {
-  let x = MyEnum::Variant1;
+  let _x = MyEnum::Variant1;
   let y = MyEnum::Variant2 ( 5 ) ;
-  let z = MyEnum::Variant3 ( MyStruct { a: 0, b: 1 } ) ;
+  let _z = MyEnum::Variant3 ( MyStruct { a: 0, b: 1 } ) ;
 
   match y {
     MyEnum::Variant2 ( y ) => y,

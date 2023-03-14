@@ -8,7 +8,7 @@ fn main() -> u64 {
     };
     data.uselessnumber = 43;
 
-    let other = ret_struct().uselessnumber;
+    let _other = ret_struct().uselessnumber;
 
     return data.uselessnumber;
 }

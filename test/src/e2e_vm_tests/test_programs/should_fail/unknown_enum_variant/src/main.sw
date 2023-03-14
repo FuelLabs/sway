@@ -6,6 +6,6 @@ enum MyEnum {
 }
 
 fn main() {
-    let e = MyEnum::C;
+    let _e = MyEnum::C;
 }
 
