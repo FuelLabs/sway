@@ -18,7 +18,7 @@ pub(crate) use self::{
 
 use crate::{
     asm_lang::{virtual_ops::VirtualOp, virtual_register::VirtualRegister},
-    decl_engine::DeclEngineIndex,
+    decl_engine::{DeclEngineIndex, DeclRef},
     error::*,
     language::{
         parsed::*,
@@ -463,9 +463,7 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let decl_engine = ctx.decl_engine;
-
-        // type check the declaration
+        // Grab the declaration.
         let unknown_decl = check!(
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref()),
             return err(warnings, errors),
@@ -473,21 +471,15 @@ impl ty::TyExpression {
             errors
         );
 
-        // check that the decl is a function decl
-        let _ = check!(
-            unknown_decl.expect_function(decl_engine),
+        // Unwrap a fn ref if possible.
+        let fn_ref = check!(
+            unknown_decl.to_fn_ref(),
             return err(warnings, errors),
             warnings,
             errors
         );
 
-        instantiate_function_application(
-            ctx,
-            unknown_decl.get_fun_decl_ref().unwrap(),
-            call_path_binding,
-            Some(arguments),
-            span,
-        )
+        instantiate_function_application(ctx, fn_ref, call_path_binding, Some(arguments), span)
     }
 
     fn type_check_lazy_operator(
@@ -1000,7 +992,7 @@ impl ty::TyExpression {
             };
             ctx.namespace
                 .resolve_call_path(&probe_call_path)
-                .flat_map(|decl| decl.expect_enum())
+                .flat_map(|decl| decl.to_enum_ref())
                 .map(|decl_ref| decl_engine.get_enum(&decl_ref))
                 .flat_map(|decl| decl.expect_variant_from_name(&suffix).map(drop))
                 .value
@@ -1070,8 +1062,6 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let decl_engine = ctx.decl_engine;
-
         // The first step is to determine if the call path refers to a module, enum, or function.
         // If only one exists, then we use that one. Otherwise, if more than one exist, it is
         // an ambiguous reference error.
@@ -1100,12 +1090,9 @@ impl ty::TyExpression {
         let maybe_function = {
             let mut call_path_binding = unknown_call_path_binding.clone();
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
+                .flat_map(|decl| decl.to_fn_ref())
                 .ok(&mut function_probe_warnings, &mut function_probe_errors)
-                .and_then(|decl| {
-                    decl.expect_function(decl_engine)
-                        .ok(&mut function_probe_warnings, &mut function_probe_errors)
-                        .map(|_s| (decl.get_fun_decl_ref().unwrap(), call_path_binding))
-                })
+                .map(|fn_ref| (fn_ref, call_path_binding))
         };
 
         // Check if this could be an enum
@@ -1122,9 +1109,9 @@ impl ty::TyExpression {
                 span: call_path_binding.span,
             };
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
-                .flat_map(|unknown_decl| unknown_decl.expect_enum())
+                .flat_map(|unknown_decl| unknown_decl.to_enum_ref())
                 .ok(&mut enum_probe_warnings, &mut enum_probe_errors)
-                .map(|enum_decl_ref| (enum_decl_ref, variant_name, call_path_binding))
+                .map(|enum_ref| (enum_ref, variant_name, call_path_binding))
         };
 
         // Check if this could be a constant
@@ -1134,31 +1121,24 @@ impl ty::TyExpression {
             let mut call_path_binding = unknown_call_path_binding.clone();
 
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
-                .flat_map(|unknown_decl| unknown_decl.expect_const(decl_engine))
+                .flat_map(|unknown_decl| unknown_decl.to_const_ref())
                 .ok(&mut const_probe_warnings, &mut const_probe_errors)
-                .map(|const_decl| (const_decl, call_path_binding))
+                .map(|const_ref| (const_ref, call_path_binding))
         };
 
         // compare the results of the checks
         let exp = match (is_module, maybe_function, maybe_enum, maybe_const) {
-            (false, None, Some((enum_decl_ref, variant_name, call_path_binding)), None) => {
+            (false, None, Some((enum_ref, variant_name, call_path_binding)), None) => {
                 warnings.append(&mut enum_probe_warnings);
                 errors.append(&mut enum_probe_errors);
                 check!(
-                    instantiate_enum(
-                        ctx,
-                        &enum_decl_ref,
-                        variant_name,
-                        args,
-                        call_path_binding,
-                        &span
-                    ),
+                    instantiate_enum(ctx, &enum_ref, variant_name, args, call_path_binding, &span),
                     return err(warnings, errors),
                     warnings,
                     errors
                 )
             }
-            (false, Some((decl_ref, call_path_binding)), None, None) => {
+            (false, Some((fn_ref, call_path_binding)), None, None) => {
                 warnings.append(&mut function_probe_warnings);
                 errors.append(&mut function_probe_errors);
                 // In case `foo::bar::<TyArgs>::baz(...)` throw an error.
@@ -1171,7 +1151,7 @@ impl ty::TyExpression {
                     );
                 }
                 check!(
-                    instantiate_function_application(ctx, decl_ref, call_path_binding, args, span),
+                    instantiate_function_application(ctx, fn_ref, call_path_binding, args, span),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1184,7 +1164,7 @@ impl ty::TyExpression {
                 ));
                 return err(module_probe_warnings, module_probe_errors);
             }
-            (false, None, None, Some((const_decl, call_path_binding))) => {
+            (false, None, None, Some((const_ref, call_path_binding))) => {
                 warnings.append(&mut const_probe_warnings);
                 errors.append(&mut const_probe_errors);
                 if !call_path_binding.type_arguments.to_vec().is_empty() {
@@ -1198,7 +1178,7 @@ impl ty::TyExpression {
                     );
                 }
                 check!(
-                    instantiate_constant_decl(ctx, const_decl, call_path_binding),
+                    instantiate_constant_decl(ctx, const_ref, call_path_binding),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1257,13 +1237,12 @@ impl ty::TyExpression {
             warnings,
             errors
         );
-        let ty::TyAbiDeclaration {
-            interface_surface,
-            items,
-            span,
-            ..
-        } = match abi {
-            ty::TyDeclaration::AbiDeclaration { decl_id, .. } => decl_engine.get_abi(&decl_id),
+        let abi_ref = match abi {
+            ty::TyDeclaration::AbiDeclaration {
+                name,
+                decl_id,
+                decl_span,
+            } => DeclRef::new(name, decl_id, decl_span),
             ty::TyDeclaration::VariableDeclaration(ref decl) => {
                 let ty::TyVariableDeclaration { body: expr, .. } = &**decl;
                 let ret_ty = type_engine.get(expr.return_type);
@@ -1287,7 +1266,7 @@ impl ty::TyExpression {
                             errors
                         );
                         check!(
-                            unknown_decl.expect_abi(decl_engine),
+                            unknown_decl.to_abi_ref(),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -1320,6 +1299,12 @@ impl ty::TyExpression {
                 return err(warnings, errors);
             }
         };
+        let ty::TyAbiDeclaration {
+            interface_surface,
+            items,
+            span,
+            ..
+        } = decl_engine.get_abi(abi_ref.id());
 
         let return_type = type_engine.insert(
             decl_engine,

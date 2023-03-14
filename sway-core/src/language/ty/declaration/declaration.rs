@@ -449,10 +449,11 @@ impl GetDeclIdent for TyDeclaration {
 }
 
 impl TyDeclaration {
-    /// Retrieves the declaration as an enum declaration.
+    /// Retrieves the declaration as a `DeclRef<DeclId<TyEnumDeclaration>>`.
     ///
-    /// Returns an error if `self` is not a [TyEnumDeclaration].
-    pub(crate) fn expect_enum(&self) -> CompileResult<DeclRefEnum> {
+    /// Returns an error if `self` is not the
+    /// [TyDeclaration][EnumDeclaration] variant.
+    pub(crate) fn to_enum_ref(&self) -> CompileResult<DeclRefEnum> {
         match self {
             TyDeclaration::EnumDeclaration {
                 name,
@@ -475,12 +476,11 @@ impl TyDeclaration {
         }
     }
 
-    /// Retrieves the declaration as a struct declaration.
+    /// Retrieves the declaration as a `DeclRef<DeclId<TyStructDeclaration>>`.
     ///
-    /// Returns an error if `self` is not a [TyStructDeclaration].
-    pub(crate) fn expect_struct(&self) -> CompileResult<DeclRefStruct> {
-        let warnings = vec![];
-        let mut errors = vec![];
+    /// Returns an error if `self` is not the
+    /// [TyDeclaration][StructDeclaration] variant.
+    pub(crate) fn to_struct_ref(&self) -> CompileResult<DeclRefStruct> {
         match self {
             TyDeclaration::StructDeclaration {
                 name,
@@ -493,38 +493,40 @@ impl TyDeclaration {
                 vec![],
             ),
             TyDeclaration::ErrorRecovery(_) => err(vec![], vec![]),
-            decl => {
-                errors.push(CompileError::DeclIsNotAStruct {
+            decl => err(
+                vec![],
+                vec![CompileError::DeclIsNotAStruct {
                     actually: decl.friendly_type_name().to_string(),
                     span: decl.span(),
-                });
-                err(warnings, errors)
-            }
+                }],
+            ),
         }
     }
 
-    /// Retrieves the declaration as a function declaration.
+    /// Retrieves the declaration as a `DeclRef<DeclId<TyFunctionDeclaration>>`.
     ///
-    /// Returns an error if `self` is not a [TyFunctionDeclaration].
-    pub(crate) fn expect_function(
-        &self,
-        decl_engine: &DeclEngine,
-    ) -> CompileResult<TyFunctionDeclaration> {
-        let warnings = vec![];
-        let mut errors = vec![];
+    /// Returns an error if `self` is not the
+    /// [TyDeclaration][FunctionDeclaration] variant.
+    pub(crate) fn to_fn_ref(&self) -> CompileResult<DeclRef<DeclId<TyFunctionDeclaration>>> {
         match self {
-            TyDeclaration::FunctionDeclaration { decl_id, .. } => {
-                let decl = decl_engine.get_function(decl_id);
-                ok(decl, warnings, errors)
-            }
+            TyDeclaration::FunctionDeclaration {
+                name,
+                decl_id,
+                type_subst_list: _,
+                decl_span,
+            } => ok(
+                DeclRef::new(name.clone(), *decl_id, decl_span.clone()),
+                vec![],
+                vec![],
+            ),
             TyDeclaration::ErrorRecovery(_) => err(vec![], vec![]),
-            decl => {
-                errors.push(CompileError::DeclIsNotAFunction {
+            decl => err(
+                vec![],
+                vec![CompileError::DeclIsNotAFunction {
                     actually: decl.friendly_type_name().to_string(),
                     span: decl.span(),
-                });
-                err(warnings, errors)
-            }
+                }],
+            ),
         }
     }
 
@@ -547,14 +549,21 @@ impl TyDeclaration {
         }
     }
 
-    /// Retrieves the declaration as an Abi declaration.
+    /// Retrieves the declaration as a `DeclRef<DeclId<TyAbiDeclaration>>`.
     ///
-    /// Returns an error if `self` is not a [TyAbiDeclaration].
-    pub(crate) fn expect_abi(&self, decl_engine: &DeclEngine) -> CompileResult<TyAbiDeclaration> {
+    /// Returns an error if `self` is not the
+    /// [TyDeclaration][AbiDeclaration] variant.
+    pub(crate) fn to_abi_ref(&self) -> CompileResult<DeclRef<DeclId<TyAbiDeclaration>>> {
         match self {
-            TyDeclaration::AbiDeclaration { decl_id, .. } => {
-                ok(decl_engine.get_abi(decl_id), vec![], vec![])
-            }
+            TyDeclaration::AbiDeclaration {
+                name,
+                decl_id,
+                decl_span,
+            } => ok(
+                DeclRef::new(name.clone(), *decl_id, decl_span.clone()),
+                vec![],
+                vec![],
+            ),
             TyDeclaration::ErrorRecovery(_) => err(vec![], vec![]),
             decl => err(
                 vec![],
@@ -566,27 +575,29 @@ impl TyDeclaration {
         }
     }
 
-    /// Retrieves the declaration as an Constant declaration.
+    /// Retrieves the declaration as a `DeclRef<DeclId<TyConstantDeclaration>>`.
     ///
-    /// Returns an error if `self` is not a [TyConstantDeclaration].
-    pub(crate) fn expect_const(
-        &self,
-        decl_engine: &DeclEngine,
-    ) -> CompileResult<TyConstantDeclaration> {
+    /// Returns an error if `self` is not the
+    /// [TyDeclaration][ConstantDeclaration] variant.
+    pub(crate) fn to_const_ref(&self) -> CompileResult<DeclRef<DeclId<TyConstantDeclaration>>> {
         match self {
-            TyDeclaration::ConstantDeclaration { decl_id, .. } => {
-                ok(decl_engine.get_constant(decl_id), vec![], vec![])
-            }
+            TyDeclaration::ConstantDeclaration {
+                name,
+                decl_id,
+                decl_span,
+            } => ok(
+                DeclRef::new(name.clone(), *decl_id, decl_span.clone()),
+                vec![],
+                vec![],
+            ),
             TyDeclaration::ErrorRecovery(_) => err(vec![], vec![]),
-            decl => {
-                let errors = vec![
-                    (CompileError::DeclIsNotAConstant {
-                        actually: decl.friendly_type_name().to_string(),
-                        span: decl.span(),
-                    }),
-                ];
-                err(vec![], errors)
-            }
+            decl => err(
+                vec![],
+                vec![CompileError::DeclIsNotAConstant {
+                    actually: decl.friendly_type_name().to_string(),
+                    span: decl.span(),
+                }],
+            ),
         }
     }
 
