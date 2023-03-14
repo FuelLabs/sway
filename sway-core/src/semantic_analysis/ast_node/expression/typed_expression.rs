@@ -101,7 +101,7 @@ impl ty::TyExpression {
                 call_path,
                 contract_call_params: HashMap::new(),
                 arguments: args_and_names,
-                function_decl_ref: decl_ref,
+                fn_ref: decl_ref,
                 self_state_idx: None,
                 selector: None,
                 type_binding: None,
@@ -1132,7 +1132,7 @@ impl ty::TyExpression {
                 warnings.append(&mut enum_probe_warnings);
                 errors.append(&mut enum_probe_errors);
                 check!(
-                    instantiate_enum(ctx, &enum_ref, variant_name, args, call_path_binding, &span),
+                    instantiate_enum(ctx, enum_ref, variant_name, args, call_path_binding, &span),
                     return err(warnings, errors),
                     warnings,
                     errors
