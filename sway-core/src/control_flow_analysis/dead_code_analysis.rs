@@ -11,7 +11,7 @@ use crate::{
     Engines, TypeEngine, TypeId,
 };
 use petgraph::{prelude::NodeIndex, visit::Dfs};
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 use sway_error::warning::{CompileWarning, Warning};
 use sway_error::{error::CompileError, type_error::TypeError};
 use sway_types::{constants::ALLOW_DEAD_CODE_NAME, span::Span, Ident, Spanned};
@@ -21,18 +21,83 @@ impl<'cfg> ControlFlowGraph<'cfg> {
         // Dead code is code that has no path from the entry point.
         // Collect all connected nodes by traversing from the entries.
         // The dead nodes are those we did not collect.
-        let mut connected = BTreeSet::new();
+        let mut connected_from_entry = BTreeSet::new();
         let mut dfs = Dfs::empty(&self.graph);
         for &entry in &self.entry_points {
             dfs.move_to(entry);
             while let Some(node) = dfs.next(&self.graph) {
-                connected.insert(node);
+                connected_from_entry.insert(node);
             }
         }
+
+        // Collect all nodes that are connected from another node.
+        let mut connections_count: HashMap<NodeIndex, u32> = HashMap::<NodeIndex, u32>::new();
+        for edge in self.graph.raw_edges() {
+            if let Some(count) = connections_count.get(&edge.target()) {
+                connections_count.insert(edge.target(), count + 1);
+            } else {
+                connections_count.insert(edge.target(), 1);
+            }
+        }
+
+        let is_dead_check = |n: &NodeIndex| {
+            if let ControlFlowGraphNode::ProgramNode {
+                node:
+                    ty::TyAstNode {
+                        content:
+                            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::VariableDeclaration {
+                                ..
+                            }),
+                        ..
+                    },
+                ..
+            } = &self.graph[*n]
+            {
+                // Consider variables declarations dead when count is not greater than 1
+                connections_count
+                    .get(n)
+                    .cloned()
+                    .map_or(true, |count| count <= 1)
+            } else {
+                false
+            }
+        };
+
+        let is_alive_check = |n: &NodeIndex| {
+            if let ControlFlowGraphNode::ProgramNode {
+                node:
+                    ty::TyAstNode {
+                        content:
+                            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::VariableDeclaration {
+                                ..
+                            }),
+                        ..
+                    },
+                ..
+            } = &self.graph[*n]
+            {
+                // Consider variables declarations alive when count is greater than 1
+                connections_count
+                    .get(n)
+                    .cloned()
+                    .map_or(false, |count| count > 1)
+            } else if let ControlFlowGraphNode::StructField { .. } = &self.graph[*n] {
+                // Consider struct field alive when count is greater than 0
+                connections_count
+                    .get(n)
+                    .cloned()
+                    .map_or(false, |count| count > 0)
+            } else {
+                false
+            }
+        };
+
         let dead_nodes: Vec<_> = self
             .graph
             .node_indices()
-            .filter(|n| !connected.contains(n))
+            .filter(|n| {
+                (!connected_from_entry.contains(n) || is_dead_check(n)) && !is_alive_check(n)
+            })
             .collect();
 
         let dead_function_contains_span = |span: &Span| -> bool {
@@ -334,8 +399,8 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
     let decl_engine = engines.de();
     match decl {
         VariableDeclaration(var_decl) => {
-            let ty::TyVariableDeclaration { body, .. } = &**var_decl;
-            connect_expression(
+            let ty::TyVariableDeclaration { body, name, .. } = &**var_decl;
+            let result = connect_expression(
                 engines,
                 &body.expression,
                 graph,
@@ -345,7 +410,19 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
                 tree_type,
                 body.clone().span,
                 options,
-            )
+            );
+            // Insert variable only after connecting body.expressions
+            // This enables:
+            //   let ptr = alloc::<u64>(0);
+            //   let ptr = realloc::<u64>(ptr, 0, 2);
+            // Where previous ptr is used before adding new ptr to variables.
+            graph.namespace.insert_variable(
+                name.clone(),
+                VariableNamespaceEntry {
+                    variable_decl_ix: entry_node,
+                },
+            );
+            result
         }
         ConstantDeclaration { decl_id, .. } => {
             let ty::TyConstantDeclaration {
@@ -855,12 +932,14 @@ fn depth_first_insertion_code_block<'eng: 'cfg, 'cfg>(
 ) -> Result<(Vec<NodeIndex>, Option<NodeIndex>), CompileError> {
     let mut leaves = leaves.to_vec();
     let mut exit_node = exit_node;
+    graph.namespace.push_code_block();
     for node in node_content.contents.iter() {
         let (this_node, l_exit_node) =
             connect_node(engines, node, graph, &leaves, exit_node, tree_type, options)?;
         leaves = this_node;
         exit_node = l_exit_node;
     }
+    graph.namespace.pop_code_block();
     Ok((leaves, exit_node))
 }
 
@@ -930,6 +1009,8 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             call_path: name,
             arguments,
             fn_ref,
+            contract_call_params,
+            selector,
             ..
         } => {
             let fn_decl = decl_engine.get_function(fn_ref);
@@ -1011,6 +1092,39 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             // to an inter-procedural/module analysis approach.
             options.force_struct_fields_connection |= is_external;
 
+            for (_, param_expr) in contract_call_params {
+                connect_expression(
+                    engines,
+                    &param_expr.expression,
+                    graph,
+                    &vec![fn_entrypoint],
+                    exit_node,
+                    "",
+                    tree_type,
+                    param_expr.span.clone(),
+                    options,
+                )?;
+            }
+
+            if let Some(contract_call_params) = selector {
+                let mut current_leaf = vec![fn_entrypoint];
+                current_leaf = connect_expression(
+                    engines,
+                    &contract_call_params.contract_caller.expression,
+                    graph,
+                    &current_leaf,
+                    exit_node,
+                    "",
+                    tree_type,
+                    contract_call_params.contract_caller.span.clone(),
+                    options,
+                )?;
+                // connect final leaf to fn exit
+                for leaf in current_leaf {
+                    graph.add_edge(leaf, fn_exit_point, "".into());
+                }
+            }
+
             // we evaluate every one of the function arguments
             let mut current_leaf = vec![fn_entrypoint];
             for (_name, arg) in arguments {
@@ -1077,18 +1191,25 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             Ok(vec![node])
         }
         VariableExpression { name, .. } => {
-            // Variables may refer to global const declarations.
-            Ok(graph
-                .namespace
-                .get_constant(name)
-                .cloned()
-                .map(|node| {
-                    for leaf in leaves {
-                        graph.add_edge(*leaf, node, "".into());
-                    }
-                    vec![node]
-                })
-                .unwrap_or_else(|| leaves.to_vec()))
+            if let Some(variable_entry) = graph.namespace.get_variable(name) {
+                for leaf in leaves {
+                    graph.add_edge(*leaf, variable_entry.variable_decl_ix, "".into());
+                }
+                Ok(vec![variable_entry.variable_decl_ix])
+            } else {
+                // Variables may refer to global const declarations.
+                Ok(graph
+                    .namespace
+                    .get_constant(name)
+                    .cloned()
+                    .map(|node| {
+                        for leaf in leaves {
+                            graph.add_edge(*leaf, node, "".into());
+                        }
+                        vec![node]
+                    })
+                    .unwrap_or_else(|| leaves.to_vec()))
+            }
         }
         EnumInstantiation {
             enum_ref,
@@ -1623,30 +1744,29 @@ fn connect_code_block<'eng: 'cfg, 'cfg>(
     tree_type: &TreeType,
     options: NodeConnectionOptions,
 ) -> Result<Vec<NodeIndex>, CompileError> {
-    let contents = &block.contents;
     let block_entry = graph.add_node("Code block entry".into());
     for leaf in leaves {
         graph.add_edge(*leaf, block_entry, "".into());
     }
-    let mut current_leaf = vec![block_entry];
-    for node in contents {
-        current_leaf = connect_node(
-            engines,
-            node,
-            graph,
-            &current_leaf,
-            exit_node,
-            tree_type,
-            options,
-        )?
-        .0;
+    let current_leaf = vec![block_entry];
+    let (l_leaves, _l_exit_node) = depth_first_insertion_code_block(
+        engines,
+        block,
+        graph,
+        &current_leaf,
+        exit_node,
+        tree_type,
+        options,
+    )?;
+    if !l_leaves.is_empty() {
+        let block_exit = graph.add_node("Code block exit".into());
+        for leaf in l_leaves {
+            graph.add_edge(leaf, block_exit, "".into());
+        }
+        Ok(vec![block_exit])
+    } else {
+        Ok(vec![])
     }
-
-    let block_exit = graph.add_node("Code block exit".into());
-    for leaf in current_leaf {
-        graph.add_edge(leaf, block_exit, "".into());
-    }
-    Ok(vec![block_exit])
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1770,6 +1890,9 @@ fn construct_dead_code_warning_from_node(
             content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::VariableDeclaration(decl)),
             span,
         } => {
+            if decl.name.as_str().starts_with('_') {
+                return None;
+            }
             // In rare cases, variable declaration spans don't have a path, so we need to check for that
             if decl.name.span().path().is_some() {
                 CompileWarning {

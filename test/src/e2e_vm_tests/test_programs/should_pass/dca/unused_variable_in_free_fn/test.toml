@@ -1,0 +1,9 @@
+category = "compile"
+
+# check: $()fn free_fn() {
+# nextln: $()This function is never called.
+
+# check: $()let dead = used;
+# nextln: $()This declaration is never used.
+
+expected_warnings = 2
