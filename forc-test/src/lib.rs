@@ -1,4 +1,4 @@
-use std::{collections::HashSet, fs, path::PathBuf, sync::Arc};
+use std::{fs, path::PathBuf, sync::Arc};
 
 use forc_pkg as pkg;
 use fuel_abi_types::error_codes::ErrorSignal;
@@ -172,8 +172,6 @@ impl<'a> PackageTests {
 
     /// Run all tests for this package and collect their results.
     pub(crate) fn run_tests(&self) -> anyhow::Result<TestedPackage> {
-        // TODO: Remove this once https://github.com/FuelLabs/sway/issues/3947 is solved.
-        let mut visited_tests = HashSet::new();
         let pkg_with_tests = self.built_pkg_with_tests();
         // TODO: We can easily parallelise this, but let's wait until testing is stable first.
         let tests = pkg_with_tests
@@ -181,7 +179,6 @@ impl<'a> PackageTests {
             .entries
             .iter()
             .filter_map(|entry| entry.kind.test().map(|test| (entry, test)))
-            .filter(|(_, test_entry)| visited_tests.insert(&test_entry.span))
             .map(|(entry, test_entry)| {
                 let offset = u32::try_from(entry.finalized.imm)
                     .expect("test instruction offset out of range");
@@ -323,9 +320,6 @@ impl TestResult {
 impl BuiltTests {
     /// The total number of tests.
     pub fn test_count(&self) -> usize {
-        // TODO: Remove this once https://github.com/FuelLabs/sway/issues/3947 is solved.
-        let mut visited_tests = HashSet::new();
-
         let pkgs: Vec<&PackageTests> = match self {
             BuiltTests::Package(pkg) => vec![pkg],
             BuiltTests::Workspace(workspace) => workspace.iter().collect(),
@@ -337,7 +331,6 @@ impl BuiltTests {
                     .entries
                     .iter()
                     .filter_map(|entry| entry.kind.test().map(|test| (entry, test)))
-                    .filter(|(_, test_entry)| visited_tests.insert(&test_entry.span))
                     .count()
             })
             .sum()

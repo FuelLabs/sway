@@ -1821,6 +1821,7 @@ fn allow_dead_code(attributes: AttributesMap) -> bool {
                 .last()?
                 .args
                 .first()?
+                .name
                 .as_str()
                 == ALLOW_DEAD_CODE_NAME,
         )

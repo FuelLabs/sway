@@ -38,7 +38,7 @@ use sway_ir::{
     MODULEPRINTER_NAME,
 };
 use sway_types::constants::DOC_COMMENT_ATTRIBUTE_NAME;
-use transform::{Attribute, AttributeKind, AttributesMap};
+use transform::{Attribute, AttributeArg, AttributeKind, AttributesMap};
 
 pub use semantic_analysis::namespace::{self, Namespace};
 pub mod types;
@@ -121,7 +121,18 @@ fn module_attrs_to_map(
             let args = attr
                 .args
                 .as_ref()
-                .map(|parens| parens.get().into_iter().cloned().collect())
+                .map(|parens| {
+                    parens
+                        .get()
+                        .into_iter()
+                        .cloned()
+                        .map(|arg| AttributeArg {
+                            name: arg.name.clone(),
+                            value: arg.value.clone(),
+                            span: arg.span(),
+                        })
+                        .collect()
+                })
                 .unwrap_or_else(Vec::new);
 
             let attribute = Attribute {
