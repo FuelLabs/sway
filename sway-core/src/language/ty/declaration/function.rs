@@ -270,6 +270,7 @@ impl TyFunctionDeclaration {
             warnings,
             errors
         );
+        dbg!(&data);
         hasher.update(data);
         let hash = hasher.finalize();
         ok(hash.to_vec(), warnings, errors)

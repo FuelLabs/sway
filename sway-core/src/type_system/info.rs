@@ -822,7 +822,7 @@ impl TypeInfo {
                     Some(name) => name,
                     None => return name,
                 };
-                format!("{name}]")
+                format!("{name}")
             }
             _ => {
                 return err(
