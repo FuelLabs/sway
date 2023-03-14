@@ -946,7 +946,7 @@ fn type_check_impl_method(
             .cloned()
             .map(|x| WithEngines::new(x, engines))
             .collect();
-    let unconstrained_type_parameters_in_the_type: HashSet<WithEngines<'_, TypeParameter>> =
+    let constrained_type_parameters_in_the_type: HashSet<WithEngines<'_, TypeParameter>> =
         self_type
             .unconstrained_type_parameters(engines, impl_type_parameters)
             .into_iter()
@@ -955,7 +955,16 @@ fn type_check_impl_method(
             .collect::<HashSet<_>>();
     let mut unconstrained_type_parameters_to_be_added =
         unconstrained_type_parameters_in_this_function
-            .difference(&unconstrained_type_parameters_in_the_type)
+            .difference(&constrained_type_parameters_in_the_type)
+            .cloned()
+            .collect::<HashSet<_>>()
+            .intersection(
+                &impl_type_parameters
+                    .iter()
+                    .cloned()
+                    .map(|x| engines.help_out(x))
+                    .collect::<HashSet<_>>(),
+            )
             .cloned()
             .map(|x| x.thing)
             .collect::<Vec<_>>();
