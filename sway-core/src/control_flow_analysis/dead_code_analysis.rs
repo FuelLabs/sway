@@ -229,7 +229,6 @@ impl<'cfg> ControlFlowGraph<'cfg> {
     ) -> Result<(), CompileError> {
         // do a depth first traversal and cover individual inner ast nodes
         let decl_engine = engines.de();
-        let mut leaves = vec![];
         let exit_node = Some(graph.add_node(("Program exit".to_string()).into()));
         let mut entry_points = vec![];
         let mut non_entry_points = vec![];
@@ -241,17 +240,15 @@ impl<'cfg> ControlFlowGraph<'cfg> {
             }
         }
         for ast_entrypoint in non_entry_points.into_iter().chain(entry_points) {
-            let (l_leaves, _new_exit_node) = connect_node(
+            let (_l_leaves, _new_exit_node) = connect_node(
                 engines,
                 ast_entrypoint,
                 graph,
-                &leaves,
+                &[],
                 exit_node,
                 tree_type,
                 NodeConnectionOptions::default(),
             )?;
-
-            leaves = l_leaves;
         }
         graph.entry_points = collect_entry_points(decl_engine, tree_type, &graph.graph)?;
         Ok(())
