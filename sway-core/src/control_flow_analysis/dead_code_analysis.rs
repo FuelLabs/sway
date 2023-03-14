@@ -418,9 +418,11 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             connect_storage_declaration(&storage, graph, entry_node, tree_type);
             Ok(leaves.to_vec())
         }
-        ErrorRecovery(_) | GenericTypeForFunctionScope { .. } | TypeAliasDeclaration { .. } => {
+        TypeAliasDeclaration { .. } => {
+            // TODO - handle type aliases properly. For now, always skip DCA for them.
             Ok(leaves.to_vec())
         }
+        ErrorRecovery(_) | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),
     }
 }
 
@@ -1847,7 +1849,7 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
             ty::TyDeclaration::EnumDeclaration { decl_id, .. } => {
                 allow_dead_code(decl_engine.get_enum(decl_id).attributes)
             }
-            ty::TyDeclaration::TypeAliasDeclaration { decl_id, .. } => {
+            ty::TyDeclaration::TypeAliasDeclaration { .. } => {
                 // TODO - handle type aliases properly. For now, always skip DCA for them.
                 true
             }

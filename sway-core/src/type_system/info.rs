@@ -1792,10 +1792,23 @@ impl TypeInfo {
         }
     }
 
-    /// Given a `TypeInfo` `self`, expect that `self` is a `TypeInfo::Tuple`,
-    /// and return its contents.
+    /// Given a `TypeInfo` `self`, expect that `self` is a `TypeInfo::Tuple`, or a
+    /// `TypeInfo::Alias` of a tuple type. Also, return the contents of the tuple.
     ///
-    /// Returns an error if `self` is not a `TypeInfo::Tuple`.
+    /// Note that this works recursively. That is, it supports situations where a tuple has a chain
+    /// of aliases such as:
+    ///
+    /// ```
+    /// type Alias1 = (u64, u64);
+    /// type Alias2 = Alias1;
+    ///
+    /// fn foo(t: Alias2) {
+    ///     let x = t.0;
+    /// }
+    /// ```
+    ///
+    /// Returns an error if `self` is not a `TypeInfo::Tuple` or a `TypeInfo::Alias` of a tuple
+    /// type, transitively.
     pub(crate) fn expect_tuple(
         &self,
         engines: Engines<'_>,
@@ -1825,10 +1838,22 @@ impl TypeInfo {
         }
     }
 
-    /// Given a `TypeInfo` `self`, expect that `self` is a `TypeInfo::Enum`,
-    /// and return its contents.
+    /// Given a `TypeInfo` `self`, expect that `self` is a `TypeInfo::Enum`, or a `TypeInfo::Alias`
+    /// of a enum type. Also, return the contents of the enum.
     ///
-    /// Returns an error if `self` is not a `TypeInfo::Enum`.
+    /// Note that this works recursively. That is, it supports situations where a enum has a chain
+    /// of aliases such as:
+    ///
+    /// ```rust,ignore
+    /// enum MyEnum { X: () }
+    /// type Alias1 = MyEnum;
+    /// type Alias2 = Alias1;
+    ///
+    /// let e = Alias2::X;
+    /// ```
+    ///
+    /// Returns an error if `self` is not a `TypeInfo::Enum` or a `TypeInfo::Alias` of a enum type,
+    /// transitively.
     pub(crate) fn expect_enum(
         &self,
         engines: Engines<'_>,
@@ -1861,7 +1886,7 @@ impl TypeInfo {
     /// Given a `TypeInfo` `self`, expect that `self` is a `TypeInfo::Struct`, or a
     /// `TypeInfo::Alias` of a struct type. Also, return the contents of the struct.
     ///
-    /// Note that this works recursively. That is, it supports a situation where a struct has a
+    /// Note that this works recursively. That is, it supports situations where a struct has a
     /// chain of aliases such as:
     ///
     /// ```
@@ -1873,7 +1898,7 @@ impl TypeInfo {
     /// ```
     ///
     /// Returns an error if `self` is not a `TypeInfo::Struct` or a `TypeInfo::Alias` of a struct
-    /// type.
+    /// type, transitively.
     #[allow(dead_code)]
     pub(crate) fn expect_struct(
         &self,

@@ -411,6 +411,7 @@ pub(crate) fn resolve_method_name(
 ) -> CompileResult<DeclRefFunction> {
     let mut warnings = vec![];
     let mut errors = vec![];
+
     let type_engine = ctx.type_engine;
     let decl_engine = ctx.decl_engine;
     let engines = ctx.engines();

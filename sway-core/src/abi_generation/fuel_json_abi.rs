@@ -606,7 +606,7 @@ impl TypeId {
                         ty.type_id,
                     )
                 } else {
-                    unreachable!();
+                    None
                 }
             }
 
