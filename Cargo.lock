@@ -1768,6 +1768,7 @@ dependencies = [
  "forc-util",
  "fuel-abi-types 0.1.0",
  "git2",
+ "git2_auth",
  "hex",
  "petgraph",
  "semver",
@@ -2411,6 +2412,15 @@ dependencies = [
  "openssl-probe",
  "openssl-sys",
  "url",
+]
+
+[[package]]
+name = "git2_auth"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "02a38c90cc95f790b8e2899622e88213b32a8de166563141870538659adb7232"
+dependencies = [
+ "git2",
 ]
 
 [[package]]

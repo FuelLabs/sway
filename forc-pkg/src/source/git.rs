@@ -4,6 +4,7 @@ use crate::{
 };
 use anyhow::{anyhow, bail, Context, Result};
 use forc_util::git_checkouts_directory;
+use git2_auth::auth_handler::AuthHandler;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::hash_map,
@@ -433,6 +434,17 @@ where
         let _ = std::fs::remove_dir_all(&repo_dir);
     }
 
+    let config = git2::Config::open_default().unwrap();
+
+    // Init auth manager
+    let mut auth_handler = AuthHandler::default_with_config(config);
+
+    // Setup remote callbacks
+    let mut callback = git2::RemoteCallbacks::new();
+    callback.credentials(move |url, username, allowed| {
+        auth_handler.handle_callback(url, username, allowed)
+    });
+
     // Initialise the repository.
     let repo = git2::Repository::init(&repo_dir)
         .map_err(|e| anyhow!("failed to init repo at \"{}\": {}", repo_dir.display(), e))?;
@@ -442,6 +454,8 @@ where
 
     // Fetch the refspecs.
     let mut fetch_opts = git2::FetchOptions::new();
+    fetch_opts.remote_callbacks(callback);
+
     if tags {
         fetch_opts.download_tags(git2::AutotagOption::All);
     }
