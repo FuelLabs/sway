@@ -88,7 +88,6 @@ pub enum TyExpressionVariant {
         elem_to_access_span: Span,
     },
     EnumInstantiation {
-        /// for printing
         enum_ref: DeclRef<DeclId<TyEnumDeclaration>>,
         /// for printing
         variant_name: Ident,
@@ -577,7 +576,7 @@ impl SubstTypes for TyExpressionVariant {
                     .for_each(|(_ident, expr)| expr.subst(type_mapping, engines));
                 let new_decl_ref = fn_ref
                     .clone()
-                    .subst_types_and_insert_new(type_mapping, engines);
+                    .subst_types_and_insert_new_with_parent(type_mapping, engines);
                 fn_ref.replace_id((&new_decl_ref).into());
             }
             LazyOperator { lhs, rhs, .. } => {
@@ -595,9 +594,21 @@ impl SubstTypes for TyExpressionVariant {
                 (*prefix).subst(type_mapping, engines);
                 (*index).subst(type_mapping, engines);
             }
-            StructExpression { fields, .. } => fields
-                .iter_mut()
-                .for_each(|x| x.subst(type_mapping, engines)),
+            StructExpression {
+                struct_ref,
+                fields,
+                instantiation_span: _,
+                call_path_binding: _,
+            } => {
+                let new_struct_ref = struct_ref
+                    .clone()
+                    .subst_types_and_insert_new(type_mapping, engines);
+                struct_ref.replace_id((&new_struct_ref).into());
+                // struct_ref.subst(type_mapping, engines);
+                fields
+                    .iter_mut()
+                    .for_each(|x| x.subst(type_mapping, engines));
+            }
             CodeBlock(block) => {
                 block.subst(type_mapping, engines);
             }
@@ -645,7 +656,11 @@ impl SubstTypes for TyExpressionVariant {
             EnumInstantiation {
                 enum_ref, contents, ..
             } => {
-                enum_ref.subst(type_mapping, engines);
+                let new_enum_ref = enum_ref
+                    .clone()
+                    .subst_types_and_insert_new(type_mapping, engines);
+                enum_ref.replace_id((&new_enum_ref).into());
+                // enum_ref.subst(type_mapping, engines);
                 if let Some(ref mut contents) = contents {
                     contents.subst(type_mapping, engines)
                 };
@@ -695,7 +710,7 @@ impl ReplaceSelfType for TyExpressionVariant {
                     .for_each(|(_ident, expr)| expr.replace_self_type(engines, self_type));
                 let new_decl_ref = fn_ref
                     .clone()
-                    .replace_self_type_and_insert_new(engines, self_type);
+                    .replace_self_type_and_insert_new_with_parent(engines, self_type);
                 fn_ref.replace_id((&new_decl_ref).into());
             }
             LazyOperator { lhs, rhs, .. } => {
@@ -713,9 +728,21 @@ impl ReplaceSelfType for TyExpressionVariant {
                 (*prefix).replace_self_type(engines, self_type);
                 (*index).replace_self_type(engines, self_type);
             }
-            StructExpression { fields, .. } => fields
-                .iter_mut()
-                .for_each(|x| x.replace_self_type(engines, self_type)),
+            StructExpression {
+                struct_ref,
+                fields,
+                instantiation_span: _,
+                call_path_binding: _,
+            } => {
+                let new_struct_ref = struct_ref
+                    .clone()
+                    .replace_self_type_and_insert_new(engines, self_type);
+                struct_ref.replace_id((&new_struct_ref).into());
+                // struct_ref.replace_self_type(engines, self_type);
+                fields
+                    .iter_mut()
+                    .for_each(|x| x.replace_self_type(engines, self_type));
+            }
             CodeBlock(block) => {
                 block.replace_self_type(engines, self_type);
             }
@@ -758,7 +785,11 @@ impl ReplaceSelfType for TyExpressionVariant {
             EnumInstantiation {
                 enum_ref, contents, ..
             } => {
-                enum_ref.replace_self_type(engines, self_type);
+                let new_enum_ref = enum_ref
+                    .clone()
+                    .replace_self_type_and_insert_new(engines, self_type);
+                enum_ref.replace_id((&new_enum_ref).into());
+                // enum_ref.replace_self_type(engines, self_type);
                 if let Some(ref mut contents) = contents {
                     contents.replace_self_type(engines, self_type)
                 };
@@ -805,7 +836,7 @@ impl ReplaceDecls for TyExpressionVariant {
                 fn_ref.replace_decls(decl_mapping, engines);
                 let new_decl_ref = fn_ref
                     .clone()
-                    .replace_decls_and_insert_new(decl_mapping, engines);
+                    .replace_decls_and_insert_new_with_parent(decl_mapping, engines);
                 fn_ref.replace_id((&new_decl_ref).into());
                 for (_, arg) in arguments.iter_mut() {
                     arg.replace_decls(decl_mapping, engines);
@@ -826,7 +857,12 @@ impl ReplaceDecls for TyExpressionVariant {
                 (*prefix).replace_decls(decl_mapping, engines);
                 (*index).replace_decls(decl_mapping, engines);
             }
-            StructExpression { fields, .. } => fields
+            StructExpression {
+                struct_ref: _,
+                fields,
+                instantiation_span: _,
+                call_path_binding: _,
+            } => fields
                 .iter_mut()
                 .for_each(|x| x.replace_decls(decl_mapping, engines)),
             CodeBlock(block) => {

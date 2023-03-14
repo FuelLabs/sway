@@ -609,8 +609,26 @@ impl TraitMap {
                                 ty::TyTraitItem::Fn(decl_ref) => decl_ref,
                             };
                             let mut decl = decl_engine.get(*decl_ref.id());
+                            // println!(
+                            //     "####### before: {}: <{}>",
+                            //     decl.name,
+                            //     decl.parameters
+                            //         .iter()
+                            //         .map(|param| engines.help_out(param).to_string())
+                            //         .collect::<Vec<_>>()
+                            //         .join(", ")
+                            // );
                             decl.subst(&type_mapping, engines);
                             decl.replace_self_type(engines, new_self_type);
+                            // println!(
+                            //     "#######  after: {}: <{}>",
+                            //     decl.name,
+                            //     decl.parameters
+                            //         .iter()
+                            //         .map(|param| engines.help_out(param).to_string())
+                            //         .collect::<Vec<_>>()
+                            //         .join(", ")
+                            // );
                             let new_ref = decl_engine
                                 .insert(decl)
                                 .with_parent(decl_engine, (*decl_ref.id()).into());

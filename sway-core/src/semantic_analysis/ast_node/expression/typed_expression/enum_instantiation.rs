@@ -37,6 +37,21 @@ pub(crate) fn instantiate_enum(
         errors
     );
 
+    // println!(
+    //     "---> {}: <{}>",
+    //     enum_decl.call_path,
+    //     enum_decl
+    //         .type_parameters
+    //         .iter()
+    //         .map(|type_param| format!(
+    //             "{} && {}",
+    //             type_param.type_id.index(),
+    //             engines.help_out(type_engine.get(type_param.type_id))
+    //         ))
+    //         .collect::<Vec<_>>()
+    //         .join(", ")
+    // );
+
     // Return an error if enum variant is of type unit and it is called with parenthesis.
     // args_opt.is_some() returns true when this variant was called with parenthesis.
     if type_engine
