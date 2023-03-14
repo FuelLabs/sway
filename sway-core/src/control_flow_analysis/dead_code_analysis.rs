@@ -1848,7 +1848,8 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
                 allow_dead_code(decl_engine.get_enum(decl_id).attributes)
             }
             ty::TyDeclaration::TypeAliasDeclaration { decl_id, .. } => {
-                allow_dead_code(decl_engine.get_type_alias(decl_id).attributes)
+                // TODO - handle type aliases properly. For now, always skip DCA for them.
+                true
             }
             ty::TyDeclaration::ImplTrait { .. } => false,
             ty::TyDeclaration::AbiDeclaration { .. } => false,

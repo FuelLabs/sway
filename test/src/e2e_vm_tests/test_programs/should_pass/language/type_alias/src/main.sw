@@ -55,7 +55,7 @@ fn struct_tests() { /* Structs */
     };
     let y: AssetId = x;
     let z = AssetId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
-    foo(x);
+    let _ = foo(x);
     let t = MyTypeAlias2 {
         x: std::contract_id::AssetId {
             value: 0x0000000000000000000000000000000000000000000000000000000000000001,
