@@ -786,7 +786,6 @@ impl ReplaceSelfType for TyExpressionVariant {
                     .clone()
                     .replace_self_type_and_insert_new(engines, self_type);
                 enum_ref.replace_id((&new_enum_ref).into());
-                // enum_ref.replace_self_type(engines, self_type);
                 if let Some(ref mut contents) = contents {
                     contents.replace_self_type(engines, self_type)
                 };
