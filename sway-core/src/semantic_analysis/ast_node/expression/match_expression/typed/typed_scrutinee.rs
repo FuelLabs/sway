@@ -287,7 +287,7 @@ fn type_check_enum(
     );
 
     let decl_name = enum_decl.call_path.suffix.clone();
-    let new_decl_ref = ctx.engines().de().insert(enum_decl);
+    let new_decl_ref = ctx.engines().de().insert(enum_decl.clone());
     let enum_type_id = ctx
         .engines()
         .te()

@@ -1,5 +1,7 @@
 script;
 
+mod lib;
+
 struct MyType {
     x: std::contract_id::AssetId,
 }
@@ -81,18 +83,17 @@ fn struct_tests() { /* Structs */
     assert(tuple.1 == t);
 }
 
-type MyIdentity = Identity;
-fn noop1(x: MyIdentity) -> MyIdentity {
+fn noop1(x: lib::MyIdentity) -> lib::MyIdentity {
     match x {
-        Identity::ContractId(a) => MyIdentity::ContractId(a),
-        Identity::Address(a) => MyIdentity::Address(a),
+        lib::MyIdentity2::ContractId(a) => lib::MyIdentity::ContractId(a),
+        lib::MyIdentity::Address(a) => lib::MyIdentity::Address(a),
     }
 }
 
-fn noop2(x: Identity) -> Identity {
+fn noop2(x: lib::MyIdentity2) -> Identity {
     match x {
-        Identity::ContractId(a) => Identity::ContractId(a),
-        Identity::Address(a) => Identity::Address(a),
+        lib::MyIdentity2::ContractId(a) => lib::MyIdentity2::ContractId(a),
+        lib::MyIdentity2::Address(a) => lib::MyIdentity2::Address(a),
     }
 }
 
@@ -150,17 +151,17 @@ fn enum_tests() {
         Option::None => revert(42),
     };
 
-    let id1 = MyIdentity::ContractId(x);
-    let id2 = MyIdentity::ContractId(x);
+    let id1 = lib::MyIdentity::ContractId(x);
+    let id2 = lib::MyIdentity::ContractId(x);
     match id1 {
-        Identity::ContractId(AssetId { value }) => assert(value == 0x0000000000000000000000000000000000000000000000000000000000000001), // Support MyIdentity here
+        lib::MyIdentity::ContractId(AssetId { value }) => assert(value == 0x0000000000000000000000000000000000000000000000000000000000000001),
         _ => revert(42),
     }
     assert(id1 == id2); // test trait `Eq`
-    let id3 = MyIdentity::Address(Address::from(0x1111111111111111111111111111111111111111111111111111111111111111));
-    let id4 = MyIdentity::Address(Address::from(0x1111111111111111111111111111111111111111111111111111111111111111));
+    let id3 = lib::MyIdentity::Address(Address::from(0x1111111111111111111111111111111111111111111111111111111111111111));
+    let id4 = lib::MyIdentity::Address(Address::from(0x1111111111111111111111111111111111111111111111111111111111111111));
     match id3 {
-        Identity::Address(Address { value }) => assert(value == 0x1111111111111111111111111111111111111111111111111111111111111111), // Support MyIdentity here
+        lib::MyIdentity::Address(Address { value }) => assert(value == 0x1111111111111111111111111111111111111111111111111111111111111111),
         _ => revert(42),
     }
     assert(id3 == id4);

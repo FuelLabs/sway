@@ -1,4 +1,4 @@
 category = "run"
 expected_result = { action = "return", value = 0 }
 validate_abi = false
-expected_warnings = 11
+expected_warnings = 12
