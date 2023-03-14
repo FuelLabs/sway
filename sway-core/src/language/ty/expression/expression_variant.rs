@@ -604,7 +604,6 @@ impl SubstTypes for TyExpressionVariant {
                     .clone()
                     .subst_types_and_insert_new(type_mapping, engines);
                 struct_ref.replace_id((&new_struct_ref).into());
-                // struct_ref.subst(type_mapping, engines);
                 fields
                     .iter_mut()
                     .for_each(|x| x.subst(type_mapping, engines));
@@ -660,7 +659,6 @@ impl SubstTypes for TyExpressionVariant {
                     .clone()
                     .subst_types_and_insert_new(type_mapping, engines);
                 enum_ref.replace_id((&new_enum_ref).into());
-                // enum_ref.subst(type_mapping, engines);
                 if let Some(ref mut contents) = contents {
                     contents.subst(type_mapping, engines)
                 };
@@ -738,7 +736,6 @@ impl ReplaceSelfType for TyExpressionVariant {
                     .clone()
                     .replace_self_type_and_insert_new(engines, self_type);
                 struct_ref.replace_id((&new_struct_ref).into());
-                // struct_ref.replace_self_type(engines, self_type);
                 fields
                     .iter_mut()
                     .for_each(|x| x.replace_self_type(engines, self_type));

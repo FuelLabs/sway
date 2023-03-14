@@ -368,22 +368,6 @@ pub struct TyFunctionParameter {
     pub type_argument: TypeArgument,
 }
 
-impl DisplayWithEngines for TyFunctionParameter {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, engines: Engines<'_>) -> std::fmt::Result {
-        let type_engine = engines.te();
-        let ref_str = if self.is_reference { "ref " } else { "" };
-        let mut_str = if self.is_mutable { "mut " } else { "" };
-        write!(
-            f,
-            "{}{}{}: {}",
-            ref_str,
-            mut_str,
-            self.name,
-            engines.help_out(type_engine.get(self.type_argument.type_id))
-        )
-    }
-}
-
 impl EqWithEngines for TyFunctionParameter {}
 impl PartialEqWithEngines for TyFunctionParameter {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {

@@ -220,11 +220,6 @@ impl TypeSubstMap {
         subset: TypeId,
     ) -> TypeSubstMap {
         match (type_engine.get(superset), type_engine.get(subset)) {
-            // (TypeInfo::UnknownGeneric { .. }, _)
-            // | (TypeInfo::Placeholder(_), _)
-            // | (TypeInfo::SelfType, TypeInfo::SelfType) => TypeSubstMap {
-            //     mapping: BTreeMap::from([(superset, subset)]),
-            // },
             (TypeInfo::UnknownGeneric { .. }, _) => TypeSubstMap {
                 mapping: BTreeMap::from([(superset, subset)]),
             },

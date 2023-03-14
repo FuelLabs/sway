@@ -2271,19 +2271,6 @@ impl<'eng> FnCompiler<'eng> {
             context,
             &enum_decl.variants,
         )?;
-        // let engines = Engines::new(self.type_engine, self.decl_engine);
-        // println!(
-        //     "{}: <{}>",
-        //     enum_decl.call_path,
-        //     enum_decl
-        //         .type_parameters
-        //         .iter()
-        //         .map(|type_param| engines
-        //             .help_out(self.type_engine.get(type_param.type_id))
-        //             .to_string())
-        //         .collect::<Vec<_>>()
-        //         .join(", ")
-        // );
         let tag_value =
             Constant::get_uint(context, 64, tag as u64).add_metadatum(context, span_md_idx);
 
