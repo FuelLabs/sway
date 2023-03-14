@@ -344,6 +344,7 @@ impl TyFunctionDeclaration {
             .last()?
             .args
             .first()?
+            .name
             .as_str()
         {
             INLINE_NEVER_NAME => Some(Inline::Never),

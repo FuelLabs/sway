@@ -497,7 +497,7 @@ fn get_attributed_purity(
     match attributes.get(&AttributeKind::Storage) {
         Some(attrs) if !attrs.is_empty() => {
             for arg in attrs.iter().flat_map(|attr| &attr.args) {
-                match arg.as_str() {
+                match arg.name.as_str() {
                     STORAGE_PURITY_READ_NAME => add_impurity(Purity::Reads, Purity::Writes),
                     STORAGE_PURITY_WRITE_NAME => add_impurity(Purity::Writes, Purity::Reads),
                     _otherwise => {
@@ -3730,7 +3730,18 @@ fn item_attrs_to_map(
             let args = attr
                 .args
                 .as_ref()
-                .map(|parens| parens.get().into_iter().cloned().collect())
+                .map(|parens| {
+                    parens
+                        .get()
+                        .into_iter()
+                        .cloned()
+                        .map(|arg| AttributeArg {
+                            name: arg.name.clone(),
+                            value: arg.value.clone(),
+                            span: arg.span(),
+                        })
+                        .collect()
+                })
                 .unwrap_or_else(Vec::new);
 
             let attribute = Attribute {
@@ -3785,12 +3796,12 @@ fn item_attrs_to_map(
             for (index, arg) in attribute.args.iter().enumerate() {
                 let possible_values = attribute_kind.clone().expected_args_values(index);
                 if let Some(possible_values) = possible_values {
-                    if !possible_values.iter().any(|v| v == arg.as_str()) {
+                    if !possible_values.iter().any(|v| v == arg.name.as_str()) {
                         handler.emit_warn(CompileWarning {
                             span: attribute.name.span().clone(),
                             warning_content: Warning::UnexpectedAttributeArgumentValue {
                                 attrib_name: attribute.name.clone(),
-                                received_value: arg.as_str().to_string(),
+                                received_value: arg.name.as_str().to_string(),
                                 expected_values: possible_values,
                             },
                         })
