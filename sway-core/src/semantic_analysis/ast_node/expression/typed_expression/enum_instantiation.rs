@@ -14,7 +14,7 @@ use sway_types::{Ident, Span, Spanned};
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_enum(
     ctx: TypeCheckContext,
-    enum_decl_ref: &DeclRefEnum,
+    enum_ref: DeclRefEnum,
     enum_variant_name: Ident,
     args_opt: Option<Vec<Expression>>,
     call_path_binding: TypeBinding<CallPath>,
@@ -27,7 +27,7 @@ pub(crate) fn instantiate_enum(
     let decl_engine = ctx.decl_engine;
     let engines = ctx.engines();
 
-    let enum_decl = decl_engine.get_enum(enum_decl_ref);
+    let enum_decl = decl_engine.get_enum(&enum_ref);
     let enum_variant = check!(
         enum_decl
             .expect_variant_from_name(&enum_variant_name)
@@ -61,11 +61,11 @@ pub(crate) fn instantiate_enum(
     ) {
         ([], ty) if ty.is_unit() => ok(
             ty::TyExpression {
-                return_type: type_engine.insert(decl_engine, TypeInfo::Enum(enum_decl_ref.clone())),
+                return_type: type_engine.insert(decl_engine, TypeInfo::Enum(enum_ref.clone())),
                 expression: ty::TyExpressionVariant::EnumInstantiation {
                     tag: enum_variant.tag,
                     contents: None,
-                    enum_decl,
+                    enum_ref,
                     variant_name: enum_variant.name,
                     variant_instantiation_span: enum_variant_name.span(),
                     call_path_binding,
@@ -106,12 +106,11 @@ pub(crate) fn instantiate_enum(
 
             ok(
                 ty::TyExpression {
-                    return_type: type_engine
-                        .insert(decl_engine, TypeInfo::Enum(enum_decl_ref.clone())),
+                    return_type: type_engine.insert(decl_engine, TypeInfo::Enum(enum_ref.clone())),
                     expression: ty::TyExpressionVariant::EnumInstantiation {
                         tag: enum_variant.tag,
                         contents: Some(Box::new(typed_expr)),
-                        enum_decl,
+                        enum_ref,
                         variant_name: enum_variant.name,
                         variant_instantiation_span: enum_variant_name.span(),
                         call_path_binding,
