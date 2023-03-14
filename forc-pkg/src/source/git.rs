@@ -14,11 +14,18 @@ use std::{
 use tracing::info;
 use url::Url;
 
+/// A git url, either starts with `git@` or `http`.
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
+pub enum GitUrl {
+    Ssh(String),
+    Http(Url),
+}
+
 /// A git repo with a `Forc.toml` manifest at its root.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct Source {
     /// The URL at which the repository is located.
-    pub repo: Url,
+    pub repo: GitUrl,
     /// A git reference, e.g. a branch or tag.
     pub reference: Reference,
 }
@@ -245,6 +252,15 @@ impl fmt::Display for Reference {
     }
 }
 
+impl fmt::Display for GitUrl {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            GitUrl::Ssh(ssh) => write!(f, "{ssh}"),
+            GitUrl::Http(http) => http.fmt(f),
+        }
+    }
+}
+
 impl FromStr for Pinned {
     type Err = PinnedParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -260,7 +276,7 @@ impl FromStr for Pinned {
 
         // Parse the `repo` URL.
         let repo_str = s.split('?').next().ok_or(PinnedParseError::Url)?;
-        let repo = Url::parse(repo_str).map_err(|_| PinnedParseError::Url)?;
+        let repo = GitUrl::from_str(repo_str).map_err(|_| PinnedParseError::Url)?;
         let s = &s[repo_str.len() + "?".len()..];
 
         // Parse the git reference and commit hash. This can be any of either:
@@ -310,10 +326,24 @@ impl From<Pinned> for source::Pinned {
     }
 }
 
+impl FromStr for GitUrl {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        if s.starts_with("git") {
+            // TODO: We should probably parse for and detect any errors with this as well.
+            Ok(Self::Ssh(s.to_string()))
+        } else {
+            let url = Url::parse(s)?;
+            Ok(Self::Http(url))
+        }
+    }
+}
+
 /// The name to use for a package's git repository under the user's forc directory.
-fn git_repo_dir_name(name: &str, repo: &Url) -> String {
+fn git_repo_dir_name(name: &str, repo: &GitUrl) -> String {
     use std::hash::{Hash, Hasher};
-    fn hash_url(url: &Url) -> u64 {
+    fn hash_url(url: &GitUrl) -> u64 {
         let mut hasher = hash_map::DefaultHasher::new();
         url.hash(&mut hasher);
         hasher.finish()
@@ -349,7 +379,7 @@ fn validate_git_commit_hash(commit_hash: &str) -> Result<()> {
 /// A unique `fetch_id` may be specified to avoid contention over the git repo directory in the
 /// case that multiple processes or threads may be building different projects that may require
 /// fetching the same dependency.
-fn tmp_git_repo_dir(fetch_id: u64, name: &str, repo: &Url) -> PathBuf {
+fn tmp_git_repo_dir(fetch_id: u64, name: &str, repo: &GitUrl) -> PathBuf {
     let repo_dir_name = format!("{:x}-{}", fetch_id, git_repo_dir_name(name, repo));
     git_checkouts_directory().join("tmp").join(repo_dir_name)
 }
@@ -415,7 +445,7 @@ where
     if tags {
         fetch_opts.download_tags(git2::AutotagOption::All);
     }
-    repo.remote_anonymous(source.repo.as_str())?
+    repo.remote_anonymous(&source.repo.to_string())?
         .fetch(&refspecs, Some(&mut fetch_opts), None)
         .with_context(|| {
             format!(
@@ -460,7 +490,7 @@ pub fn pin(fetch_id: u64, name: &str, source: Source) -> Result<Pinned> {
 /// ```
 ///
 /// where `<repo_url_hash>` is a hash of the source repository URL.
-pub fn commit_path(name: &str, repo: &Url, commit_hash: &str) -> PathBuf {
+pub fn commit_path(name: &str, repo: &GitUrl, commit_hash: &str) -> PathBuf {
     let repo_dir_name = git_repo_dir_name(name, repo);
     git_checkouts_directory()
         .join(repo_dir_name)
@@ -659,35 +689,35 @@ fn test_source_git_pinned_parsing() {
     let expected = [
         Pinned {
             source: Source {
-                repo: Url::parse("https://github.com/foo/bar").unwrap(),
+                repo: GitUrl::from_str("https://github.com/foo/bar").unwrap(),
                 reference: Reference::Branch("baz".to_string()),
             },
             commit_hash: "64092602dd6158f3e41d775ed889389440a2cd86".to_string(),
         },
         Pinned {
             source: Source {
-                repo: Url::parse("https://github.com/fuellabs/sway-lib-std").unwrap(),
+                repo: GitUrl::from_str("https://github.com/fuellabs/sway-lib-std").unwrap(),
                 reference: Reference::Tag("v0.1.0".to_string()),
             },
             commit_hash: "0000000000000000000000000000000000000000".to_string(),
         },
         Pinned {
             source: Source {
-                repo: Url::parse("https://github.com/fuellabs/sway-lib-core").unwrap(),
+                repo: GitUrl::from_str("https://github.com/fuellabs/sway-lib-core").unwrap(),
                 reference: Reference::Tag("v0.0.1".to_string()),
             },
             commit_hash: "0000000000000000000000000000000000000000".to_string(),
         },
         Pinned {
             source: Source {
-                repo: Url::parse("https://some-git-host.com/owner/repo").unwrap(),
+                repo: GitUrl::from_str("https://some-git-host.com/owner/repo").unwrap(),
                 reference: Reference::Rev("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF".to_string()),
             },
             commit_hash: "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF".to_string(),
         },
         Pinned {
             source: Source {
-                repo: Url::parse("https://some-git-host.com/owner/repo").unwrap(),
+                repo: GitUrl::from_str("https://some-git-host.com/owner/repo").unwrap(),
                 reference: Reference::DefaultBranch,
             },
             commit_hash: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".to_string(),
