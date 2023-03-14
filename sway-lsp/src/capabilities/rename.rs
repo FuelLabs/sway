@@ -36,10 +36,10 @@ pub fn rename(
         ));
     }
 
-    let (ident, token) = session
+    let (_, token) = session
         .token_map()
         .token_at_position(&url, position)
-        .ok_or_else(|| RenameError::TokenNotFound)?;
+        .ok_or(RenameError::TokenNotFound)?;
     let mut map_of_changes: HashMap<Url, Vec<TextEdit>> = HashMap::new();
     for (ident, _) in session.token_map().all_references_of_token(
         &token,
@@ -53,8 +53,8 @@ pub fn rename(
             range.start.character -= RAW_IDENTIFIER.len() as u32;
         }
         if let Some(path) = ident.span().path() {
-            let url = session.sync.url_from_path(&path)?;
-            session.sync.to_workspace_url(url).map(|url| {
+            let url = session.sync.url_from_path(path)?;
+            if let Some(url) = session.sync.to_workspace_url(url) {
                 let edit = TextEdit::new(range, new_name.clone());
                 match map_of_changes.get_mut(&url) {
                     Some(edits) => {
@@ -64,7 +64,7 @@ pub fn rename(
                         map_of_changes.insert(url, vec![edit]);
                     }
                 }
-            });
+            };
         }
     }
 
@@ -80,13 +80,13 @@ pub fn prepare_rename(
     let (ident, token) = session
         .token_map()
         .token_at_position(&url, position)
-        .ok_or_else(|| RenameError::TokenNotFound)?;
+        .ok_or(RenameError::TokenNotFound)?;
 
     // Only let through tokens that are in the users workspace.
     // tokens that are external to the users workspace cannot be renamed.
     let decl_span = token
         .declared_token_span(&session.type_engine.read(), &session.decl_engine.read())
-        .ok_or_else(|| RenameError::TokenNotFound)?;
+        .ok_or(RenameError::TokenNotFound)?;
 
     // Check the span of the tokens defintions to determine if it's in the users workspace.
     if let Some(path) = decl_span.path() {
@@ -108,7 +108,7 @@ pub fn prepare_rename(
     let mut name = ident.as_str().to_string();
     // Prefix r# onto the name if the ident is raw.
     if ident.is_raw_ident() {
-        name = format!("{}{}", RAW_IDENTIFIER, name);
+        name = format!("{RAW_IDENTIFIER}{name}");
     }
 
     Ok(PrepareRenameResponse::RangeWithPlaceholder {
