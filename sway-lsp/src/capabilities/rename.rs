@@ -52,18 +52,20 @@ pub fn rename(
             // taking the r# tokens into account.
             range.start.character -= RAW_IDENTIFIER.len() as u32;
         }
-        let url = session.sync.url_from_path(&ident.span().path().unwrap())?;
-        session.sync.to_workspace_url(url).map(|url| {
-            let edit = TextEdit::new(range, new_name.clone());
-            match map_of_changes.get_mut(&url) {
-                Some(edits) => {
-                    edits.push(edit);
+        if let Some(path) = ident.span().path() {
+            let url = session.sync.url_from_path(&path)?;
+            session.sync.to_workspace_url(url).map(|url| {
+                let edit = TextEdit::new(range, new_name.clone());
+                match map_of_changes.get_mut(&url) {
+                    Some(edits) => {
+                        edits.push(edit);
+                    }
+                    None => {
+                        map_of_changes.insert(url, vec![edit]);
+                    }
                 }
-                None => {
-                    map_of_changes.insert(url, vec![edit]);
-                }
-            }
-        });
+            });
+        }
     }
 
     Ok(WorkspaceEdit::new(map_of_changes))
