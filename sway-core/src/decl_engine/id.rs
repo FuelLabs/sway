@@ -1,5 +1,5 @@
-use std::hash::Hash;
 use std::marker::PhantomData;
+use std::{fmt, hash::Hash};
 
 use crate::{
     decl_engine::*,
@@ -12,8 +12,13 @@ use crate::{
 };
 
 /// An ID used to refer to an item in the [DeclEngine](super::decl_engine::DeclEngine)
-#[derive(Debug)]
 pub struct DeclId<T>(usize, PhantomData<T>);
+
+impl<T> fmt::Debug for DeclId<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("DeclId").field(&self.0).finish()
+    }
+}
 
 impl<T> DeclId<T> {
     pub(crate) fn inner(&self) -> usize {

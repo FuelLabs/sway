@@ -879,17 +879,17 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
         FunctionApplication {
             call_path: name,
             arguments,
-            function_decl_ref,
+            fn_ref,
             ..
         } => {
-            let fn_decl = decl_engine.get_function(function_decl_ref);
+            let fn_decl = decl_engine.get_function(fn_ref);
             let mut is_external = false;
 
             // in the case of monomorphized functions, first check if we already have a node for
             // it in the namespace. if not then we need to check to see if the namespace contains
             // the decl id parents (the original generic non monomorphized decl id).
             let mut exists = false;
-            let parents = decl_engine.find_all_parents(engines, &function_decl_ref.id().clone());
+            let parents = decl_engine.find_all_parents(engines, &fn_ref.id().clone());
             for parent in parents.iter() {
                 if let Ok(parent_decl_id) = DeclId::try_from(parent) {
                     let parent = decl_engine.get_function(&parent_decl_id);
@@ -908,9 +908,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 let (l_leaves, _new_exit_node) = connect_node(
                     engines,
                     &ty::TyAstNode {
-                        content: ty::TyAstNodeContent::Declaration(
-                            function_decl_ref.clone().into(),
-                        ),
+                        content: ty::TyAstNodeContent::Declaration(fn_ref.clone().into()),
                         span: expression_span.clone(),
                     },
                     graph,
@@ -941,12 +939,8 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                     )
                 });
 
-            let trait_fn_node_idx = get_trait_fn_node_index(
-                engines,
-                function_decl_ref.clone(),
-                expression_span,
-                graph,
-            )?;
+            let trait_fn_node_idx =
+                get_trait_fn_node_index(engines, fn_ref.clone(), expression_span, graph)?;
             if let Some(trait_fn_node_idx) = trait_fn_node_idx {
                 if fn_entrypoint != *trait_fn_node_idx {
                     graph.add_edge(fn_entrypoint, *trait_fn_node_idx, "".into());
@@ -1047,15 +1041,16 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 .unwrap_or_else(|| leaves.to_vec()))
         }
         EnumInstantiation {
-            enum_decl,
+            enum_ref,
             variant_name,
             contents,
             ..
         } => {
+            let enum_decl = decl_engine.get_enum(enum_ref);
             // connect this particular instantiation to its variants declaration
             connect_enum_instantiation(
                 engines,
-                enum_decl,
+                &enum_decl,
                 contents,
                 variant_name,
                 graph,
@@ -1126,13 +1121,11 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             connect_code_block(engines, a, graph, leaves, exit_node, tree_type, options)
         }
         StructExpression {
-            struct_name,
-            fields,
-            ..
+            struct_ref, fields, ..
         } => {
-            let decl = match graph.namespace.find_struct_decl(struct_name.as_str()) {
+            let decl = match graph.namespace.find_struct_decl(struct_ref.name().as_str()) {
                 Some(ix) => *ix,
-                None => graph.add_node(format!("External struct  {}", struct_name.as_str()).into()),
+                None => graph.add_node(format!("External struct  {}", struct_ref.name()).into()),
             };
             let entry = graph.add_node("Struct declaration entry".into());
             let exit = graph.add_node("Struct declaration exit".into());
@@ -1145,7 +1138,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
 
             // connect the struct fields to the struct if its requested as an option
             if options.force_struct_fields_connection {
-                if let Some(ns) = graph.namespace.get_struct(struct_name).cloned() {
+                if let Some(ns) = graph.namespace.get_struct(struct_ref.name()).cloned() {
                     for (_, field_ix) in ns.fields.iter() {
                         graph.add_edge(decl, *field_ix, "".into());
                     }
@@ -1809,6 +1802,7 @@ fn allow_dead_code(attributes: AttributesMap) -> bool {
                 .last()?
                 .args
                 .first()?
+                .name
                 .as_str()
                 == ALLOW_DEAD_CODE_NAME,
         )
