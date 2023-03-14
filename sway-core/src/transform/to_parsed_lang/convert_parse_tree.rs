@@ -3110,11 +3110,71 @@ fn statement_let_to_ast_nodes(
                     span: span.clone(),
                 });
 
+                // Acript a second declaration to a tuple of placeholders to check that the tuple
+                // is properly sized to the pattern
+                let placeholders_type_ascription = {
+                    let type_id = engines.te().insert(
+                        engines.de(),
+                        TypeInfo::Tuple(
+                            pat_tuple
+                                .clone()
+                                .into_inner()
+                                .into_iter()
+                                .map(|_| {
+                                    let initial_type_id =
+                                        engines.te().insert(engines.de(), TypeInfo::Unknown);
+                                    let dummy_type_param = TypeParameter {
+                                        type_id: initial_type_id,
+                                        initial_type_id,
+                                        name_ident: Ident::new_with_override(
+                                            "_".into(),
+                                            span.clone(),
+                                        ),
+                                        trait_constraints: vec![],
+                                        trait_constraints_span: Span::dummy(),
+                                    };
+                                    let initial_type_id = engines.te().insert(
+                                        engines.de(),
+                                        TypeInfo::Placeholder(dummy_type_param),
+                                    );
+                                    TypeArgument {
+                                        type_id: initial_type_id,
+                                        initial_type_id,
+                                        call_path_tree: None,
+                                        span: Span::dummy(),
+                                    }
+                                })
+                                .collect(),
+                        ),
+                    );
+                    TypeArgument {
+                        type_id,
+                        initial_type_id: type_id,
+                        span: tuple_name.span(),
+                        call_path_tree: None,
+                    }
+                };
+
                 // create a variable expression that points to the new tuple name that we just created
                 let new_expr = Expression {
-                    kind: ExpressionKind::Variable(tuple_name),
+                    kind: ExpressionKind::Variable(tuple_name.clone()),
                     span: span.clone(),
                 };
+
+                // Override the previous declaration with a tuple of placeholders to check the
+                // shape of the tuple
+                let check_tuple_shape_second = VariableDeclaration {
+                    name: tuple_name,
+                    type_ascription: placeholders_type_ascription,
+                    body: new_expr.clone(),
+                    is_mutable: false,
+                };
+                ast_nodes.push(AstNode {
+                    content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
+                        check_tuple_shape_second,
+                    )),
+                    span: span.clone(),
+                });
 
                 // from the possible type annotation, if the annotation was a tuple annotation,
                 // extract the internal types of the annotation

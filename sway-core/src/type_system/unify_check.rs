@@ -360,6 +360,9 @@ impl<'a> UnifyCheck<'a> {
             for j in (i + 1)..right_types.len() {
                 let a = right_types.get(i).unwrap();
                 let b = right_types.get(j).unwrap();
+                if matches!(a, Placeholder(_)) || matches!(b, Placeholder(_)) {
+                    continue;
+                }
                 if a.eq(b, self.engines) {
                     // if a and b are the same type
                     constraints.push((i, j));
