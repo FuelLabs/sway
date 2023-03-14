@@ -94,6 +94,29 @@ impl<I> DeclRef<I> {
     }
 }
 
+impl<T> DeclRef<DeclId<T>> {
+    pub(crate) fn replace_id(&mut self, index: DeclId<T>) {
+        self.id.replace_id(index);
+    }
+}
+
+impl<T> DeclRef<DeclId<T>>
+where
+    DeclEngine: DeclEngineIndex<T>,
+    T: Named + Spanned + SubstTypes,
+{
+    pub(crate) fn subst_types_and_insert_new(
+        &self,
+        type_mapping: &TypeSubstMap,
+        engines: Engines<'_>,
+    ) -> Self {
+        let decl_engine = engines.de();
+        let mut decl = decl_engine.get(self.id);
+        decl.subst(type_mapping, engines);
+        decl_engine.insert(decl)
+    }
+}
+
 impl<T> DeclRef<DeclId<T>>
 where
     FunctionalDeclId: From<DeclId<T>>,
@@ -103,10 +126,6 @@ where
         decl_engine.register_parent(id.into(), parent);
         self
     }
-
-    pub(crate) fn replace_id(&mut self, index: DeclId<T>) {
-        self.id.replace_id(index);
-    }
 }
 
 impl<T> DeclRef<DeclId<T>>
@@ -115,7 +134,7 @@ where
     DeclEngine: DeclEngineIndex<T>,
     T: Named + Spanned + SubstTypes,
 {
-    pub(crate) fn subst_types_and_insert_new(
+    pub(crate) fn subst_types_and_insert_new_with_parent(
         &self,
         type_mapping: &TypeSubstMap,
         engines: Engines<'_>,

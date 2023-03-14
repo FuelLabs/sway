@@ -1,9 +1,9 @@
 use crate::priv_prelude::{Peek, Peeker};
 use crate::{Parse, ParseBracket, ParseResult, ParseToEnd, Parser, ParserConsumed};
 
-use sway_ast::attribute::{Annotated, Attribute, AttributeDecl, AttributeHashKind};
+use sway_ast::attribute::{Annotated, Attribute, AttributeArg, AttributeDecl, AttributeHashKind};
 use sway_ast::brackets::{Parens, SquareBrackets};
-use sway_ast::keywords::{HashBangToken, HashToken, StorageToken, Token};
+use sway_ast::keywords::{EqToken, HashBangToken, HashToken, StorageToken, Token};
 use sway_ast::punctuated::Punctuated;
 use sway_ast::token::{DocComment, DocStyle};
 use sway_error::parser_error::ParseErrorKind;
@@ -37,7 +37,7 @@ impl<T: Parse> Parse for Annotated<T> {
             let doc_comment = parser.parse::<DocComment>()?;
             // TODO: Use a Literal instead of an Ident when Attribute args
             // start supporting them and remove `Ident::new_no_trim`.
-            let value = Ident::new_no_trim(doc_comment.content_span.clone());
+            let name = Ident::new_no_trim(doc_comment.content_span.clone());
             attribute_list.push(AttributeDecl {
                 hash_kind: AttributeHashKind::Outer(HashToken::new(doc_comment.span.clone())),
                 attribute: SquareBrackets::new(
@@ -47,7 +47,7 @@ impl<T: Parse> Parse for Annotated<T> {
                             doc_comment.span.clone(),
                         ),
                         args: Some(Parens::new(
-                            Punctuated::single(value),
+                            Punctuated::single(AttributeArg { name, value: None }),
                             doc_comment.content_span,
                         )),
                     }),
@@ -90,6 +90,22 @@ impl Parse for AttributeHashKind {
     }
 }
 
+impl Parse for AttributeArg {
+    fn parse(parser: &mut Parser) -> ParseResult<Self> {
+        let name = parser.parse()?;
+        match parser.take::<EqToken>() {
+            Some(_) => {
+                let value = parser.parse()?;
+                Ok(AttributeArg {
+                    name,
+                    value: Some(value),
+                })
+            }
+            None => Ok(AttributeArg { name, value: None }),
+        }
+    }
+}
+
 impl Parse for Attribute {
     fn parse(parser: &mut Parser) -> ParseResult<Self> {
         let name = if let Some(storage) = parser.take::<StorageToken>() {
@@ -115,24 +131,13 @@ impl ParseToEnd for Attribute {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_utils::parse;
     use insta::*;
-    use std::sync::Arc;
     use sway_ast::ItemFn;
-
-    fn parse_annotated<T>(input: &str) -> Annotated<T>
-    where
-        T: Parse,
-    {
-        let handler = <_>::default();
-        let ts = crate::token::lex(&handler, &Arc::from(input), 0, input.len(), None).unwrap();
-        Parser::new(&handler, &ts)
-            .parse()
-            .unwrap_or_else(|_| panic!("Parse error: {:?}", handler.consume().0))
-    }
 
     #[test]
     fn parse_annotated_fn() {
-        assert_ron_snapshot!(parse_annotated::<ItemFn>(r#"
+        assert_ron_snapshot!(parse::<Annotated<ItemFn>>(r#"
             // I will be ignored.
             //! I will be ignored.
             /// This is a doc comment.
@@ -158,9 +163,12 @@ mod tests {
                     args: Some(Parens(
                       inner: Punctuated(
                         value_separator_pairs: [],
-                        final_value_opt: Some(Ident(
-                          to_string: " This is a doc comment.",
-                          span: (85, 108),
+                        final_value_opt: Some(AttributeArg(
+                          name: Ident(
+                            to_string: " This is a doc comment.",
+                            span: (85, 108),
+                          ),
+                          value: None,
                         )),
                       ),
                       span: (85, 108),
@@ -185,9 +193,12 @@ mod tests {
                     args: Some(Parens(
                       inner: Punctuated(
                         value_separator_pairs: [],
-                        final_value_opt: Some(Ident(
-                          to_string: "read",
-                          span: (131, 135),
+                        final_value_opt: Some(AttributeArg(
+                          name: Ident(
+                            to_string: "read",
+                            span: (131, 135),
+                          ),
+                          value: None,
                         )),
                       ),
                       span: (130, 136),
@@ -230,6 +241,55 @@ mod tests {
               span: (160, 194),
             ),
           ),
+        )
+        "###);
+    }
+
+    #[test]
+    fn parse_attribute() {
+        assert_ron_snapshot!(parse::<Attribute>(r#"
+            name(arg1, arg2 = "value", arg3)
+        "#,), @r###"
+        Attribute(
+          name: Ident(
+            to_string: "name",
+            span: (13, 17),
+          ),
+          args: Some(Parens(
+            inner: Punctuated(
+              value_separator_pairs: [
+                (AttributeArg(
+                  name: Ident(
+                    to_string: "arg1",
+                    span: (18, 22),
+                  ),
+                  value: None,
+                ), CommaToken(
+                  span: (22, 23),
+                )),
+                (AttributeArg(
+                  name: Ident(
+                    to_string: "arg2",
+                    span: (24, 28),
+                  ),
+                  value: Some(String(LitString(
+                    span: (31, 38),
+                    parsed: "value",
+                  ))),
+                ), CommaToken(
+                  span: (38, 39),
+                )),
+              ],
+              final_value_opt: Some(AttributeArg(
+                name: Ident(
+                  to_string: "arg3",
+                  span: (40, 44),
+                ),
+                value: None,
+              )),
+            ),
+            span: (17, 45),
+          )),
         )
         "###);
     }

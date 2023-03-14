@@ -1556,9 +1556,10 @@ impl DocStrings for AttributesMap {
         let mut docs = String::new();
 
         if let Some(vec_attrs) = attributes {
-            for ident in vec_attrs.iter().flat_map(|attribute| &attribute.args) {
-                writeln!(docs, "{}", ident.as_str())
-                    .expect("problem appending `ident.as_str()` to `docs` with `writeln` macro.");
+            for arg in vec_attrs.iter().flat_map(|attribute| &attribute.args) {
+                writeln!(docs, "{}", arg.name.as_str()).expect(
+                    "problem appending `arg.name.as_str()` to `docs` with `writeln` macro.",
+                );
             }
         }
         docs

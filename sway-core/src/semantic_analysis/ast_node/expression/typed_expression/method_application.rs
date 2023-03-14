@@ -346,7 +346,7 @@ pub(crate) fn type_check_method_application(
             call_path,
             contract_call_params: contract_call_params_map,
             arguments: typed_arguments_with_names,
-            function_decl_ref: decl_ref,
+            fn_ref: decl_ref,
             self_state_idx,
             selector,
             type_binding: Some(method_name_binding.strip_inner()),

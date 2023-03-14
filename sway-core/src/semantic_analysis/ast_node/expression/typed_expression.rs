@@ -101,7 +101,7 @@ impl ty::TyExpression {
                 call_path,
                 contract_call_params: HashMap::new(),
                 arguments: args_and_names,
-                function_decl_ref: decl_ref,
+                fn_ref: decl_ref,
                 self_state_idx: None,
                 selector: None,
                 type_binding: None,
@@ -1141,18 +1141,11 @@ impl ty::TyExpression {
 
         // compare the results of the checks
         let exp = match (is_module, maybe_function, maybe_enum, maybe_const) {
-            (false, None, Some((enum_decl_ref, variant_name, call_path_binding)), None) => {
+            (false, None, Some((enum_ref, variant_name, call_path_binding)), None) => {
                 warnings.append(&mut enum_probe_warnings);
                 errors.append(&mut enum_probe_errors);
                 check!(
-                    instantiate_enum(
-                        ctx,
-                        &enum_decl_ref,
-                        variant_name,
-                        args,
-                        call_path_binding,
-                        &span
-                    ),
+                    instantiate_enum(ctx, enum_ref, variant_name, args, call_path_binding, &span),
                     return err(warnings, errors),
                     warnings,
                     errors

@@ -1,7 +1,7 @@
 use super::*;
 use crate::{decl_engine::DeclEngine, engine_threading::*};
 
-use std::fmt;
+use std::{collections::HashSet, fmt};
 
 /// A identifier to uniquely refer to our type terms
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd, Debug)]
@@ -88,9 +88,15 @@ impl UnconstrainedTypeParameters for TypeId {
         type_parameter: &TypeParameter,
     ) -> bool {
         let type_engine = engines.te();
-        type_engine
+        let decl_engine = engines.de();
+        let mut all_types: HashSet<TypeId> = type_engine
             .get(*self)
-            .type_parameter_is_unconstrained(engines, type_parameter)
+            .extract_inner_types(type_engine, decl_engine);
+        all_types.insert(*self);
+        let type_parameter_info = type_engine.get(type_parameter.type_id);
+        all_types
+            .iter()
+            .any(|type_id| type_engine.get(*type_id).eq(&type_parameter_info, engines))
     }
 }
 

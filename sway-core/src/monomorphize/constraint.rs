@@ -52,12 +52,12 @@ impl From<&ty::TyExpressionVariant> for Constraint {
             ty::TyExpressionVariant::FunctionApplication {
                 call_path,
                 arguments,
-                function_decl_ref,
+                fn_ref,
                 ..
             } => Constraint::FnCall {
                 call_path: call_path.clone(),
-                decl_id: *function_decl_ref.id(),
-                subst_list: function_decl_ref.subst_list().clone(),
+                decl_id: *fn_ref.id(),
+                subst_list: fn_ref.subst_list().clone(),
                 arguments: args_helper(arguments),
             },
             _ => unimplemented!(),

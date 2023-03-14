@@ -66,7 +66,7 @@ impl ty::TyFunctionParameter {
     }
 
     pub(crate) fn type_check_interface_parameter(
-        ctx: TypeCheckContext,
+        mut ctx: TypeCheckContext,
         parameter: FunctionParameter,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
@@ -84,8 +84,7 @@ impl ty::TyFunctionParameter {
         } = parameter;
 
         type_argument.type_id = check!(
-            ctx.namespace.resolve_type(
-                ctx.engines(),
+            ctx.resolve_type(
                 type_argument.type_id,
                 &type_argument.span,
                 EnforceTypeArguments::Yes,
