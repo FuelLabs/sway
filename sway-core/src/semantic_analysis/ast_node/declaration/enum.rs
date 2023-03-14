@@ -6,7 +6,10 @@ use crate::{
 };
 
 impl ty::TyEnumDeclaration {
-    pub fn type_check(ctx: TypeCheckContext, decl: EnumDeclaration) -> CompileResult<Self> {
+    pub fn type_check(
+        ctx: TypeCheckContext,
+        decl: EnumDeclaration,
+    ) -> CompileResult<(Self, TypeSubstList)> {
         let mut errors = vec![];
         let mut warnings = vec![];
 
@@ -26,7 +29,7 @@ impl ty::TyEnumDeclaration {
 
         // Type check the type parameters. This will also insert them into the
         // current namespace.
-        let new_type_parameters = check!(
+        let (new_type_parameters, type_subst_list) = check!(
             TypeParameter::type_check_type_params(ctx.by_ref(), type_parameters, true),
             return err(warnings, errors),
             warnings,
@@ -56,7 +59,8 @@ impl ty::TyEnumDeclaration {
             attributes,
             visibility,
         };
-        ok(decl, warnings, errors)
+
+        ok((decl, type_subst_list), warnings, errors)
     }
 }
 

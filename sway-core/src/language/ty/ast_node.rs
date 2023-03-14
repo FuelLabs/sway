@@ -56,19 +56,6 @@ impl DisplayWithEngines for TyAstNode {
     }
 }
 
-impl SubstTypes for TyAstNode {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        match self.content {
-            TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
-                exp.subst(type_mapping, engines)
-            }
-            TyAstNodeContent::Declaration(ref mut decl) => decl.subst(type_mapping, engines),
-            TyAstNodeContent::Expression(ref mut expr) => expr.subst(type_mapping, engines),
-            TyAstNodeContent::SideEffect(_) => (),
-        }
-    }
-}
-
 impl CollectTypesMetadata for TyAstNode {
     fn collect_types_metadata(
         &self,

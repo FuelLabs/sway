@@ -7,7 +7,7 @@ use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    decl_engine::{DeclEngineIndex, DeclRefFunction},
+    decl_engine::DeclRefFunction,
     engine_threading::*,
     error::*,
     language::{
@@ -602,14 +602,10 @@ impl TraitMap {
                         .into_iter()
                         .map(|(name, item)| {
                             #[allow(clippy::infallible_destructuring_match)]
-                            let decl_ref = match &item {
-                                ty::TyTraitItem::Fn(decl_ref) => decl_ref,
+                            let mut new_ref = match &item {
+                                ty::TyTraitItem::Fn(decl_ref) => decl_ref.clone(),
                             };
-                            let mut decl = decl_engine.get(*decl_ref.id());
-                            decl.subst(&type_mapping, engines);
-                            let new_ref = decl_engine
-                                .insert(decl)
-                                .with_parent(decl_engine, (*decl_ref.id()).into());
+                            new_ref.subst(&type_mapping, engines);
                             let item = match item {
                                 ty::TyTraitItem::Fn(_) => TyImplItem::Fn(new_ref),
                             };

@@ -8,6 +8,7 @@ use crate::{
         self, TyAbiDeclaration, TyConstantDeclaration, TyEnumDeclaration, TyFunctionDeclaration,
         TyImplTrait, TyStorageDeclaration, TyStructDeclaration, TyTraitDeclaration, TyTraitFn,
     },
+    type_system::TypeSubstList,
 };
 
 /// Used inside of type inference to store declarations.
@@ -30,7 +31,7 @@ where
 {
     fn get(&self, index: DeclId<T>) -> T;
     fn replace(&self, index: DeclId<T>, decl: T);
-    fn insert(&self, decl: T) -> DeclRef<DeclId<T>>;
+    fn insert(&self, decl: T, subst_list: TypeSubstList) -> DeclRef<DeclId<T>>;
 }
 
 macro_rules! decl_engine_index {
@@ -44,11 +45,12 @@ macro_rules! decl_engine_index {
                 self.$slab.replace(index, decl);
             }
 
-            fn insert(&self, decl: $decl) -> DeclRef<DeclId<$decl>> {
+            fn insert(&self, decl: $decl, subst_list: TypeSubstList) -> DeclRef<DeclId<$decl>> {
                 let span = decl.span();
                 DeclRef::new(
                     decl.name().clone(),
                     DeclId::new(self.$slab.insert(decl)),
+                    subst_list,
                     span,
                 )
             }
@@ -80,13 +82,6 @@ impl DeclEngine {
         FunctionalDeclId: From<&'a T>,
     {
         todo!()
-    }
-
-    pub(crate) fn register_parent<I>(&self, _index: FunctionalDeclId, _parent: FunctionalDeclId)
-    where
-        FunctionalDeclId: From<DeclId<I>>,
-    {
-        todo!();
     }
 
     pub fn get_function<'a, T>(&self, index: &'a T) -> ty::TyFunctionDeclaration

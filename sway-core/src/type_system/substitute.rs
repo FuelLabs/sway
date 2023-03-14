@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use std::{
     collections::BTreeMap,
     fmt,
@@ -5,14 +6,11 @@ use std::{
     slice::{Iter, IterMut},
     vec::IntoIter,
 };
-
-use itertools::Itertools;
+use sway_error::error::CompileError;
+use sway_types::{Ident, Span, Spanned};
 
 use super::*;
-use crate::{
-    decl_engine::{DeclEngine, DeclEngineIndex},
-    engine_threading::*,
-};
+use crate::{decl_engine::DeclEngine, engine_threading::*, namespace::Path, Namespace};
 
 pub trait SubstTypes {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>);
@@ -70,6 +68,229 @@ impl TypeSubstList {
         todo!();
         // self.type_params.iter_mut()
     }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn monomorphize(
+        &mut self,
+        namespace: &mut Namespace,
+        engines: Engines<'_>,
+        mod_path: &Path,
+        type_arguments: &mut [TypeArgument],
+        enforce_type_arguments: EnforceTypeArguments,
+        obj_name: &Ident,
+        call_site_span: &Span,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        let type_engine = engines.te();
+        let decl_engine = engines.de();
+
+        // Create the type mapping.
+        // Exit early if needed/possible.
+        let type_mapping = match (self.len(), type_arguments.len()) {
+            (0, 0) => {
+                // Exit early if there are no types to substitute and if there
+                // are no type arguments.
+                return ok((), warnings, errors);
+            }
+            (n, 0) if n > 0 && enforce_type_arguments.is_yes() => {
+                // Exit early if there are types to substitute but no type
+                // arguments were provided.
+                errors.push(CompileError::NeedsTypeArguments {
+                    name: obj_name.clone(),
+                    span: call_site_span.clone(),
+                });
+                return err(warnings, errors);
+            }
+            (0, m) if m > 0 => {
+                // Exit early if there are no types to substitute but type
+                // arguments were provided.
+                let type_arguments_span = type_arguments
+                    .iter()
+                    .map(|x| x.span.clone())
+                    .reduce(Span::join)
+                    .unwrap_or_else(|| obj_name.span());
+                errors.push(CompileError::DoesNotTakeTypeArguments {
+                    name: obj_name.clone(),
+                    span: type_arguments_span,
+                });
+                return err(warnings, errors);
+            }
+            (n, m) if n != m => {
+                // Exit early if the number of types to substitute and the
+                // number of type arguments differ.
+                let type_arguments_span = type_arguments
+                    .iter()
+                    .map(|x| x.span.clone())
+                    .reduce(Span::join)
+                    .unwrap_or_else(|| obj_name.span());
+                errors.push(CompileError::IncorrectNumberOfTypeArguments {
+                    given: type_arguments.len(),
+                    expected: self.len(),
+                    span: type_arguments_span,
+                });
+                return err(warnings, errors);
+            }
+            (n, m) if n == m => {
+                for type_argument in type_arguments.iter_mut() {
+                    type_argument.type_id = check!(
+                        type_engine.resolve(
+                            decl_engine,
+                            type_argument.type_id,
+                            &type_argument.span,
+                            enforce_type_arguments,
+                            None,
+                            namespace,
+                            mod_path
+                        ),
+                        type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+                        warnings,
+                        errors
+                    );
+                }
+                TypeSubstMap::from_type_parameters_and_type_arguments(
+                    self.iter().map(|type_param| type_param.type_id).collect(),
+                    type_arguments
+                        .iter()
+                        .map(|type_arg| type_arg.type_id)
+                        .collect(),
+                )
+            }
+            (_, _) => {
+                // The only case left is:
+                // (n, 0) if n > 0 && enforce_type_arguments.is_no()
+                TypeSubstMap::from_type_parameters(engines, self.iter())
+            }
+        };
+
+        self.subst(&type_mapping, engines);
+        ok((), warnings, errors)
+    }
+
+    // /// Given a `value` of type `T` that is able to be monomorphized and a set
+    // /// of `type_arguments`, monomorphize `value` with the `type_arguments`.
+    // ///
+    // /// When this function is called, it is passed a `T` that is a copy of some
+    // /// original declaration for `T` (let's denote the original with `[T]`).
+    // /// Because monomorphization happens at application time (e.g. function
+    // /// application), we want to be able to modify `value` such that type
+    // /// checking the application of `value` affects only `T` and not `[T]`.
+    // ///
+    // /// So, at a high level, this function does two things. It 1) performs the
+    // /// necessary work to refresh the relevant generic types in `T` so that they
+    // /// are distinct from the generics of the same name in `[T]`. And it 2)
+    // /// applies `type_arguments` (if any are provided) to the type parameters
+    // /// of `value`, unifying the types.
+    // ///
+    // /// There are 4 cases that are handled in this function:
+    // ///
+    // /// 1. `value` does not have type parameters + `type_arguments` is empty:
+    // ///     1a. return ok
+    // /// 2. `value` has type parameters + `type_arguments` is empty:
+    // ///     2a. if the [EnforceTypeArguments::Yes] variant is provided, then
+    // ///         error
+    // ///     2b. refresh the generic types with a [TypeSubstMapping]
+    // /// 3. `value` does have type parameters + `type_arguments` is nonempty:
+    // ///     3a. error
+    // /// 4. `value` has type parameters + `type_arguments` is nonempty:
+    // ///     4a. check to see that the type parameters and `type_arguments` have
+    // ///         the same length
+    // ///     4b. for each type argument in `type_arguments`, resolve the type
+    // ///     4c. refresh the generic types with a [TypeSubstMapping]
+    // #[allow(clippy::too_many_arguments)]
+    // pub(crate) fn monomorphize<T>(
+    //     &self,
+    //     decl_engine: &DeclEngine,
+    //     value: &mut T,
+    //     type_arguments: &mut [TypeArgument],
+    //     enforce_type_arguments: EnforceTypeArguments,
+    //     call_site_span: &Span,
+    //     namespace: &mut Namespace,
+    //     mod_path: &Path,
+    // ) -> CompileResult<()>
+    // where
+    //     T: MonomorphizeHelper + SubstTypes,
+    // {
+    //     let mut warnings = vec![];
+    //     let mut errors = vec![];
+    //     let engines = Engines::new(self, decl_engine);
+    //     match (
+    //         value.type_parameters().is_empty(),
+    //         type_arguments.is_empty(),
+    //     ) {
+    //         (true, true) => ok((), warnings, errors),
+    //         (false, true) => {
+    //             if let EnforceTypeArguments::Yes = enforce_type_arguments {
+    //                 errors.push(CompileError::NeedsTypeArguments {
+    //                     name: value.name().clone(),
+    //                     span: call_site_span.clone(),
+    //                 });
+    //                 return err(warnings, errors);
+    //             }
+    //             let type_mapping =
+    //                 TypeSubstMap::from_type_parameters(engines, value.type_parameters());
+    //             value.subst(&type_mapping, engines);
+    //             ok((), warnings, errors)
+    //         }
+    //         (true, false) => {
+    //             let type_arguments_span = type_arguments
+    //                 .iter()
+    //                 .map(|x| x.span.clone())
+    //                 .reduce(Span::join)
+    //                 .unwrap_or_else(|| value.name().span());
+    //             errors.push(CompileError::DoesNotTakeTypeArguments {
+    //                 name: value.name().clone(),
+    //                 span: type_arguments_span,
+    //             });
+    //             err(warnings, errors)
+    //         }
+    //         (false, false) => {
+    //             let type_arguments_span = type_arguments
+    //                 .iter()
+    //                 .map(|x| x.span.clone())
+    //                 .reduce(Span::join)
+    //                 .unwrap_or_else(|| value.name().span());
+    //             if value.type_parameters().len() != type_arguments.len() {
+    //                 errors.push(CompileError::IncorrectNumberOfTypeArguments {
+    //                     given: type_arguments.len(),
+    //                     expected: value.type_parameters().len(),
+    //                     span: type_arguments_span,
+    //                 });
+    //                 return err(warnings, errors);
+    //             }
+    //             for type_argument in type_arguments.iter_mut() {
+    //                 type_argument.type_id = check!(
+    //                     self.resolve(
+    //                         decl_engine,
+    //                         type_argument.type_id,
+    //                         &type_argument.span,
+    //                         enforce_type_arguments,
+    //                         None,
+    //                         namespace,
+    //                         mod_path
+    //                     ),
+    //                     self.insert(decl_engine, TypeInfo::ErrorRecovery),
+    //                     warnings,
+    //                     errors
+    //                 );
+    //             }
+    //             let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
+    //                 value
+    //                     .type_parameters()
+    //                     .iter()
+    //                     .map(|type_param| type_param.type_id)
+    //                     .collect(),
+    //                 type_arguments
+    //                     .iter()
+    //                     .map(|type_arg| type_arg.type_id)
+    //                     .collect(),
+    //             );
+    //             value.subst(&type_mapping, engines);
+    //             ok((), warnings, errors)
+    //         }
+    //     }
+    // }
 }
 
 impl EqWithEngines for TypeSubstList {}
@@ -184,14 +405,16 @@ impl TypeSubstMap {
     /// `type_parameters`. The [SourceType]s of the resulting [TypeSubstMap] are
     /// the [TypeId]s from `type_parameters` and the [DestinationType]s are the
     /// new [TypeId]s created from a transformation upon `type_parameters`.
-    pub(crate) fn from_type_parameters(
+    pub(crate) fn from_type_parameters<'a, T>(
         engines: Engines<'_>,
-        type_parameters: &[TypeParameter],
-    ) -> TypeSubstMap {
+        type_parameters: T,
+    ) -> TypeSubstMap
+    where
+        T: Iterator<Item = &'a TypeParameter>,
+    {
         let type_engine = engines.te();
         let decl_engine = engines.de();
         let mapping = type_parameters
-            .iter()
             .map(|x| {
                 (
                     x.type_id,
@@ -448,47 +671,31 @@ impl TypeSubstMap {
             TypeInfo::Placeholder(_) => iter_for_match(engines, self, &type_info),
             TypeInfo::TypeParam { .. } => None,
             TypeInfo::Struct(decl_ref) => {
-                let mut decl = decl_engine.get_struct(&decl_ref);
                 let mut need_to_create_new = false;
-                for field in decl.fields.iter_mut() {
-                    if let Some(type_id) = self.find_match(field.type_argument.type_id, engines) {
-                        need_to_create_new = true;
-                        field.type_argument.type_id = type_id;
-                    }
-                }
-                for type_param in decl.type_parameters.iter_mut() {
+                let mut decl_ref = decl_ref.clone();
+                for type_param in decl_ref.subst_list_mut().iter_mut() {
                     if let Some(type_id) = self.find_match(type_param.type_id, engines) {
                         need_to_create_new = true;
                         type_param.type_id = type_id;
                     }
                 }
                 if need_to_create_new {
-                    let new_decl_ref = decl_engine.insert(decl);
-                    Some(type_engine.insert(decl_engine, TypeInfo::Struct(new_decl_ref)))
+                    Some(type_engine.insert(decl_engine, TypeInfo::Struct(decl_ref)))
                 } else {
                     None
                 }
             }
             TypeInfo::Enum(decl_ref) => {
-                let mut decl = decl_engine.get_enum(&decl_ref);
                 let mut need_to_create_new = false;
-
-                for variant in decl.variants.iter_mut() {
-                    if let Some(type_id) = self.find_match(variant.type_argument.type_id, engines) {
-                        need_to_create_new = true;
-                        variant.type_argument.type_id = type_id;
-                    }
-                }
-
-                for type_param in decl.type_parameters.iter_mut() {
+                let mut decl_ref = decl_ref.clone();
+                for type_param in decl_ref.subst_list_mut().iter_mut() {
                     if let Some(type_id) = self.find_match(type_param.type_id, engines) {
                         need_to_create_new = true;
                         type_param.type_id = type_id;
                     }
                 }
                 if need_to_create_new {
-                    let new_decl_ref = decl_engine.insert(decl);
-                    Some(type_engine.insert(decl_engine, TypeInfo::Enum(new_decl_ref)))
+                    Some(type_engine.insert(decl_engine, TypeInfo::Enum(decl_ref)))
                 } else {
                     None
                 }

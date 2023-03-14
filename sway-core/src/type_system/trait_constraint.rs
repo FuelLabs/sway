@@ -185,15 +185,22 @@ impl TraitConstraint {
             .ok(&mut warnings, &mut errors)
             .cloned()
         {
-            Some(ty::TyDeclaration::TraitDeclaration { decl_id, .. }) => {
-                let mut trait_decl = decl_engine.get_trait(&decl_id);
+            Some(ty::TyDeclaration::TraitDeclaration {
+                name,
+                decl_id,
+                type_subst_list,
+                ..
+            }) => {
+                // Create a fresh list.
+                let mut subst_list = type_subst_list.fresh_copy();
 
-                // Monomorphize the trait declaration.
+                // Monomorphize the list.
                 check!(
                     ctx.monomorphize(
-                        &mut trait_decl,
+                        &mut subst_list,
                         &mut type_arguments,
                         EnforceTypeArguments::Yes,
+                        &name,
                         &trait_name.span()
                     ),
                     return err(warnings, errors),
@@ -201,27 +208,44 @@ impl TraitConstraint {
                     errors
                 );
 
-                // Insert the interface surface and methods from this trait into
-                // the namespace.
-                trait_decl.insert_interface_surface_and_items_into_namespace(
-                    ctx.by_ref(),
-                    trait_name,
-                    &type_arguments,
-                    type_id,
-                );
+                todo!();
 
-                // Recursively make the interface surfaces and methods of the
-                // supertraits available to this trait.
-                check!(
-                    insert_supertraits_into_namespace(
-                        ctx.by_ref(),
-                        type_id,
-                        &trait_decl.supertraits
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                // let mut trait_decl = decl_engine.get_trait(&decl_id);
+
+                // // Monomorphize the trait declaration.
+                // check!(
+                //     ctx.monomorphize(
+                //         &mut trait_decl,
+                //         &mut type_arguments,
+                //         EnforceTypeArguments::Yes,
+                //         &trait_name.span()
+                //     ),
+                //     return err(warnings, errors),
+                //     warnings,
+                //     errors
+                // );
+
+                // // Insert the interface surface and methods from this trait into
+                // // the namespace.
+                // trait_decl.insert_interface_surface_and_items_into_namespace(
+                //     ctx.by_ref(),
+                //     trait_name,
+                //     &type_arguments,
+                //     type_id,
+                // );
+
+                // // Recursively make the interface surfaces and methods of the
+                // // supertraits available to this trait.
+                // check!(
+                //     insert_supertraits_into_namespace(
+                //         ctx.by_ref(),
+                //         type_id,
+                //         &trait_decl.supertraits
+                //     ),
+                //     return err(warnings, errors),
+                //     warnings,
+                //     errors
+                // );
             }
             Some(ty::TyDeclaration::AbiDeclaration { .. }) => {
                 errors.push(CompileError::AbiAsSupertrait {

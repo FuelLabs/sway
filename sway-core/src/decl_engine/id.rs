@@ -1,15 +1,7 @@
 use std::marker::PhantomData;
 use std::{fmt, hash::Hash};
 
-use crate::{
-    decl_engine::*,
-    engine_threading::*,
-    language::ty::{
-        TyEnumDeclaration, TyFunctionDeclaration, TyImplTrait, TyStructDeclaration,
-        TyTraitDeclaration, TyTraitFn,
-    },
-    type_system::*,
-};
+use crate::decl_engine::*;
 
 /// An ID used to refer to an item in the
 /// [DeclEngine](super::decl_engine::DeclEngine).
@@ -61,10 +53,6 @@ impl<T> DeclId<T> {
     pub(crate) fn new(id: usize) -> Self {
         DeclId(id, PhantomData)
     }
-
-    pub(crate) fn replace_id(&mut self, index: Self) {
-        self.0 = index.0;
-    }
 }
 
 #[allow(clippy::from_over_into)]
@@ -95,54 +83,5 @@ impl<T> From<&DeclRef<DeclId<T>>> for DeclId<T> {
 impl<T> From<&mut DeclRef<DeclId<T>>> for DeclId<T> {
     fn from(value: &mut DeclRef<DeclId<T>>) -> Self {
         *value.id()
-    }
-}
-
-impl SubstTypes for DeclId<TyFunctionDeclaration> {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(*self);
-        decl.subst(type_mapping, engines);
-        decl_engine.replace(*self, decl);
-    }
-}
-impl SubstTypes for DeclId<TyTraitDeclaration> {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(*self);
-        decl.subst(type_mapping, engines);
-        decl_engine.replace(*self, decl);
-    }
-}
-impl SubstTypes for DeclId<TyTraitFn> {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(*self);
-        decl.subst(type_mapping, engines);
-        decl_engine.replace(*self, decl);
-    }
-}
-impl SubstTypes for DeclId<TyImplTrait> {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(*self);
-        decl.subst(type_mapping, engines);
-        decl_engine.replace(*self, decl);
-    }
-}
-impl SubstTypes for DeclId<TyStructDeclaration> {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(*self);
-        decl.subst(type_mapping, engines);
-        decl_engine.replace(*self, decl);
-    }
-}
-impl SubstTypes for DeclId<TyEnumDeclaration> {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(*self);
-        decl.subst(type_mapping, engines);
-        decl_engine.replace(*self, decl);
     }
 }

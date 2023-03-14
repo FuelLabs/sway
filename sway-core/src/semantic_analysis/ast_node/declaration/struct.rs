@@ -9,7 +9,7 @@ impl ty::TyStructDeclaration {
     pub(crate) fn type_check(
         ctx: TypeCheckContext,
         decl: StructDeclaration,
-    ) -> CompileResult<Self> {
+    ) -> CompileResult<(Self, TypeSubstList)> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -29,7 +29,7 @@ impl ty::TyStructDeclaration {
 
         // Type check the type parameters. This will also insert them into the
         // current namespace.
-        let new_type_parameters = check!(
+        let (new_type_parameters, type_subst_list) = check!(
             TypeParameter::type_check_type_params(ctx.by_ref(), type_parameters, true),
             return err(warnings, errors),
             warnings,
@@ -60,7 +60,7 @@ impl ty::TyStructDeclaration {
             attributes,
         };
 
-        ok(decl, warnings, errors)
+        ok((decl, type_subst_list), warnings, errors)
     }
 }
 

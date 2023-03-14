@@ -20,7 +20,7 @@ impl ty::TyImplTrait {
     pub(crate) fn type_check_impl_trait(
         mut ctx: TypeCheckContext,
         impl_trait: ImplTrait,
-    ) -> CompileResult<Self> {
+    ) -> CompileResult<(Self, TypeSubstList)> {
         let mut errors = vec![];
         let mut warnings = vec![];
 
@@ -43,7 +43,7 @@ impl ty::TyImplTrait {
 
         // Type check the type parameters. This will also insert them into the
         // current namespace.
-        let new_impl_type_parameters = check!(
+        let (new_impl_type_parameters, impl_type_subst_list) = check!(
             TypeParameter::type_check_type_params(ctx.by_ref(), impl_type_parameters, true),
             return err(warnings, errors),
             warnings,
@@ -114,21 +114,30 @@ impl ty::TyImplTrait {
             .ok(&mut warnings, &mut errors)
             .cloned()
         {
-            Some(ty::TyDeclaration::TraitDeclaration { decl_id, .. }) => {
+            Some(ty::TyDeclaration::TraitDeclaration {
+                name,
+                decl_id,
+                type_subst_list,
+                ..
+            }) => {
                 let mut trait_decl = decl_engine.get_trait(&decl_id);
+                let mut subst_list = type_subst_list.fresh_copy();
 
-                // monomorphize the trait declaration
+                // Monomorphize the list.
                 check!(
                     ctx.monomorphize(
-                        &mut trait_decl,
+                        &mut subst_list,
                         &mut trait_type_arguments,
                         EnforceTypeArguments::Yes,
+                        &name,
                         &trait_name.span()
                     ),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
+
+                todo!();
 
                 let new_items = check!(
                     type_check_trait_implementation(
@@ -155,6 +164,7 @@ impl ty::TyImplTrait {
                     trait_decl_ref: Some(DeclRef::new(
                         trait_decl.name.clone(),
                         decl_id.into(),
+                        subst_list,
                         trait_decl.span.clone(),
                     )),
                     span: block_span,
@@ -204,7 +214,12 @@ impl ty::TyImplTrait {
                     impl_type_parameters: vec![], // this is empty because abi definitions don't support generics
                     trait_name,
                     trait_type_arguments: vec![], // this is empty because abi definitions don't support generics
-                    trait_decl_ref: Some(DeclRef::new(abi.name.clone(), decl_id.into(), abi.span)),
+                    trait_decl_ref: Some(DeclRef::new(
+                        abi.name.clone(),
+                        decl_id.into(),
+                        TypeSubstList::new(),
+                        abi.span,
+                    )),
                     span: block_span,
                     items: new_items,
                     implementing_for,
@@ -218,7 +233,7 @@ impl ty::TyImplTrait {
                 return err(warnings, errors);
             }
         };
-        ok(impl_trait, warnings, errors)
+        ok((impl_trait, impl_type_subst_list), warnings, errors)
     }
 
     // If any method contains a call to get_storage_index, then
@@ -431,7 +446,7 @@ impl ty::TyImplTrait {
     pub(crate) fn type_check_impl_self(
         ctx: TypeCheckContext,
         impl_self: ImplSelf,
-    ) -> CompileResult<Self> {
+    ) -> CompileResult<(Self, TypeSubstList)> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -462,7 +477,7 @@ impl ty::TyImplTrait {
 
         // Type check the type parameters. This will also insert them into the
         // current namespace.
-        let new_impl_type_parameters = check!(
+        let (new_impl_type_parameters, impl_type_subst_list) = check!(
             TypeParameter::type_check_type_params(ctx.by_ref(), impl_type_parameters, true),
             return err(warnings, errors),
             warnings,
@@ -516,13 +531,13 @@ impl ty::TyImplTrait {
         for item in items.into_iter() {
             match item {
                 ImplItem::Fn(fn_decl) => {
-                    let fn_decl = check!(
+                    let (fn_decl, subst_list) = check!(
                         ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl, true, true),
                         continue,
                         warnings,
                         errors
                     );
-                    new_items.push(TyImplItem::Fn(decl_engine.insert(fn_decl)));
+                    new_items.push(TyImplItem::Fn(decl_engine.insert(fn_decl, subst_list)));
                 }
             }
         }
@@ -551,7 +566,8 @@ impl ty::TyImplTrait {
             items: new_items,
             implementing_for,
         };
-        ok(impl_trait, warnings, errors)
+
+        ok((impl_trait, impl_type_subst_list), warnings, errors)
     }
 }
 
@@ -662,7 +678,7 @@ fn type_check_trait_implementation(
     for item in impl_items {
         match item {
             ImplItem::Fn(impl_method) => {
-                let impl_method = check!(
+                let (impl_method, subst_list) = check!(
                     type_check_impl_method(
                         ctx.by_ref(),
                         impl_type_parameters,
@@ -682,7 +698,7 @@ fn type_check_trait_implementation(
                 method_checklist.remove(&name);
 
                 // Add this method to the "impld items".
-                let decl_ref = decl_engine.insert(impl_method);
+                let decl_ref = decl_engine.insert(impl_method, subst_list);
                 impld_item_refs.insert(name, TyTraitItem::Fn(decl_ref));
             }
         }
@@ -717,7 +733,7 @@ fn type_check_impl_method(
     is_contract: bool,
     impld_item_refs: &ItemMap,
     method_checklist: &BTreeMap<Ident, ty::TyTraitFn>,
-) -> CompileResult<ty::TyFunctionDeclaration> {
+) -> CompileResult<(ty::TyFunctionDeclaration, TypeSubstList)> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
@@ -740,7 +756,7 @@ fn type_check_impl_method(
     };
 
     // type check the function declaration
-    let mut impl_method = check!(
+    let (mut impl_method, impl_method_subst_list) = check!(
         ty::TyFunctionDeclaration::type_check(ctx.by_ref(), impl_method.clone(), true, false),
         return err(warnings, errors),
         warnings,
@@ -942,7 +958,7 @@ fn type_check_impl_method(
         .append(&mut unconstrained_type_parameters_to_be_added);
 
     if errors.is_empty() {
-        ok(impl_method, warnings, errors)
+        ok((impl_method, impl_method_subst_list), warnings, errors)
     } else {
         err(warnings, errors)
     }

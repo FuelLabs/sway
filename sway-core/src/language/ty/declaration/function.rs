@@ -42,18 +42,18 @@ impl Named for TyFunctionDeclaration {
     }
 }
 
-impl SubstTypes for TyFunctionDeclaration {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-        self.parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-        self.return_type.subst(type_mapping, engines);
-        self.body.subst(type_mapping, engines);
-    }
-}
+// impl SubstTypes for TyFunctionDeclaration {
+//     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+//         self.type_parameters
+//             .iter_mut()
+//             .for_each(|x| x.subst(type_mapping, engines));
+//         self.parameters
+//             .iter_mut()
+//             .for_each(|x| x.subst(type_mapping, engines));
+//         self.return_type.subst(type_mapping, engines);
+//         self.body.subst(type_mapping, engines);
+//     }
+// }
 
 impl Spanned for TyFunctionDeclaration {
     fn span(&self) -> Span {
@@ -153,7 +153,9 @@ impl TyFunctionDeclaration {
 
     /// Used to create a stubbed out function when the function fails to
     /// compile, preventing cascading namespace errors.
-    pub(crate) fn error(decl: parsed::FunctionDeclaration) -> TyFunctionDeclaration {
+    pub(crate) fn error(
+        decl: parsed::FunctionDeclaration,
+    ) -> (TyFunctionDeclaration, TypeSubstList) {
         let parsed::FunctionDeclaration {
             name,
             return_type,
@@ -163,7 +165,7 @@ impl TyFunctionDeclaration {
             where_clause,
             ..
         } = decl;
-        TyFunctionDeclaration {
+        let fn_decl = TyFunctionDeclaration {
             purity,
             name,
             body: TyCodeBlock {
@@ -178,7 +180,8 @@ impl TyFunctionDeclaration {
             return_type,
             type_parameters: Default::default(),
             where_clause,
-        }
+        };
+        (fn_decl, TypeSubstList::new())
     }
 
     /// If there are parameters, join their spans. Otherwise, use the fn name span.

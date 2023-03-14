@@ -1,7 +1,6 @@
 use sway_types::{Span, Spanned};
 
 use crate::{
-    decl_engine::*,
     engine_threading::*,
     error::*,
     language::{ty, CallPath},
@@ -251,48 +250,69 @@ impl TypeBinding<CallPath> {
         // monomorphize the declaration, if needed
         let new_decl = match unknown_decl {
             ty::TyDeclaration::FunctionDeclaration {
+                name,
                 decl_id: original_id,
+                type_subst_list,
                 ..
             } => {
-                // get the copy from the declaration engine
-                let mut new_copy = decl_engine.get_function(&original_id);
+                // Create a fresh list.
+                let mut subst_list = type_subst_list.fresh_copy();
 
-                // monomorphize the copy, in place
-                if let TypeArgs::Regular(_) = self.type_arguments {
-                    check!(
-                        ctx.monomorphize(
-                            &mut new_copy,
-                            self.type_arguments.to_vec_mut(),
-                            EnforceTypeArguments::No,
-                            &self.span
-                        ),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                }
+                // Monomorphize the list.
+                check!(
+                    ctx.monomorphize(
+                        &mut subst_list,
+                        self.type_arguments.to_vec_mut(),
+                        EnforceTypeArguments::No,
+                        &name,
+                        &self.span
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
 
-                // insert the new copy into the declaration engine
-                let new_decl_ref = ctx
-                    .decl_engine
-                    .insert(new_copy)
-                    .with_parent(ctx.decl_engine, original_id.into());
+                todo!()
 
-                new_decl_ref.into()
+                // // get the copy from the declaration engine
+                // let mut new_copy = decl_engine.get_function(&original_id);
+
+                // // monomorphize the copy, in place
+                // if let TypeArgs::Regular(_) = self.type_arguments {
+                //     check!(
+                //         ctx.monomorphize(
+                //             &mut new_copy,
+                //             self.type_arguments.to_vec_mut(),
+                //             EnforceTypeArguments::No,
+                //             &self.span
+                //         ),
+                //         return err(warnings, errors),
+                //         warnings,
+                //         errors
+                //     );
+                // }
+
+                // // insert the new copy into the declaration engine
+                // let new_decl_ref = ctx.decl_engine.insert(new_copy);
+
+                // new_decl_ref.into()
             }
             ty::TyDeclaration::EnumDeclaration {
+                name,
                 decl_id: original_id,
+                type_subst_list,
                 ..
             } => {
-                // get the copy from the declaration engine
-                let mut new_copy = decl_engine.get_enum(&original_id);
+                // Create a fresh list.
+                let mut subst_list = type_subst_list.fresh_copy();
 
-                // monomorphize the copy, in place
+                // Monomorphize the list.
                 check!(
                     ctx.monomorphize(
-                        &mut new_copy,
+                        &mut subst_list,
                         self.type_arguments.to_vec_mut(),
                         EnforceTypeArguments::No,
+                        &name,
                         &self.span
                     ),
                     return err(warnings, errors),
@@ -300,30 +320,51 @@ impl TypeBinding<CallPath> {
                     errors
                 );
 
-                // insert the new copy into the declaration engine
-                let new_decl_ref = ctx.decl_engine.insert(new_copy);
+                todo!()
 
-                // take any trait methods that apply to this type and copy them to the new type
-                ctx.namespace.insert_trait_implementation_for_type(
-                    engines,
-                    type_engine.insert(decl_engine, TypeInfo::Enum(new_decl_ref.clone())),
-                );
+                // // get the copy from the declaration engine
+                // let mut new_copy = decl_engine.get_enum(&original_id);
 
-                new_decl_ref.into()
+                // // monomorphize the copy, in place
+                // check!(
+                //     ctx.monomorphize(
+                //         &mut new_copy,
+                //         self.type_arguments.to_vec_mut(),
+                //         EnforceTypeArguments::No,
+                //         &self.span
+                //     ),
+                //     return err(warnings, errors),
+                //     warnings,
+                //     errors
+                // );
+
+                // // insert the new copy into the declaration engine
+                // let new_decl_ref = ctx.decl_engine.insert(new_copy);
+
+                // // take any trait methods that apply to this type and copy them to the new type
+                // ctx.namespace.insert_trait_implementation_for_type(
+                //     engines,
+                //     type_engine.insert(decl_engine, TypeInfo::Enum(new_decl_ref.clone())),
+                // );
+
+                // new_decl_ref.into()
             }
             ty::TyDeclaration::StructDeclaration {
+                name,
                 decl_id: original_id,
+                type_subst_list,
                 ..
             } => {
-                // get the copy from the declaration engine
-                let mut new_copy = decl_engine.get_struct(&original_id);
+                // Create a fresh list.
+                let mut subst_list = type_subst_list.fresh_copy();
 
-                // monomorphize the copy, in place
+                // Monomorphize the list.
                 check!(
                     ctx.monomorphize(
-                        &mut new_copy,
+                        &mut subst_list,
                         self.type_arguments.to_vec_mut(),
                         EnforceTypeArguments::No,
+                        &name,
                         &self.span
                     ),
                     return err(warnings, errors),
@@ -331,16 +372,34 @@ impl TypeBinding<CallPath> {
                     errors
                 );
 
-                // insert the new copy into the declaration engine
-                let new_decl_ref = ctx.decl_engine.insert(new_copy);
+                todo!()
 
-                // take any trait methods that apply to this type and copy them to the new type
-                ctx.namespace.insert_trait_implementation_for_type(
-                    engines,
-                    type_engine.insert(decl_engine, TypeInfo::Struct(new_decl_ref.clone())),
-                );
+                // // get the copy from the declaration engine
+                // let mut new_copy = decl_engine.get_struct(&original_id);
 
-                new_decl_ref.into()
+                // // monomorphize the copy, in place
+                // check!(
+                //     ctx.monomorphize(
+                //         &mut new_copy,
+                //         self.type_arguments.to_vec_mut(),
+                //         EnforceTypeArguments::No,
+                //         &self.span
+                //     ),
+                //     return err(warnings, errors),
+                //     warnings,
+                //     errors
+                // );
+
+                // // insert the new copy into the declaration engine
+                // let new_decl_ref = ctx.decl_engine.insert(new_copy);
+
+                // // take any trait methods that apply to this type and copy them to the new type
+                // ctx.namespace.insert_trait_implementation_for_type(
+                //     engines,
+                //     type_engine.insert(decl_engine, TypeInfo::Struct(new_decl_ref.clone())),
+                // );
+
+                // new_decl_ref.into()
             }
             _ => unknown_decl,
         };

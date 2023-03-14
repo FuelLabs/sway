@@ -274,46 +274,21 @@ impl HashWithEngines for TyDeclaration {
     }
 }
 
-impl SubstTypes for TyDeclaration {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        use TyDeclaration::*;
-        match self {
-            VariableDeclaration(ref mut var_decl) => var_decl.subst(type_mapping, engines),
-            FunctionDeclaration {
-                ref mut decl_id, ..
-            } => decl_id.subst(type_mapping, engines),
-            TraitDeclaration {
-                ref mut decl_id, ..
-            } => decl_id.subst(type_mapping, engines),
-            StructDeclaration {
-                ref mut decl_id, ..
-            } => decl_id.subst(type_mapping, engines),
-            EnumDeclaration {
-                ref mut decl_id, ..
-            } => decl_id.subst(type_mapping, engines),
-            ImplTrait {
-                ref mut decl_id, ..
-            } => decl_id.subst(type_mapping, engines),
-            // generics in an ABI is unsupported by design
-            AbiDeclaration { .. }
-            | ConstantDeclaration { .. }
-            | StorageDeclaration { .. }
-            | GenericTypeForFunctionScope { .. }
-            | ErrorRecovery(_) => (),
-        }
-    }
-}
-
 impl TyDeclaration {
     pub fn get_fun_decl_ref(&self) -> Option<DeclRefFunction> {
         if let TyDeclaration::FunctionDeclaration {
             name,
             decl_id,
-            type_subst_list: _,
+            type_subst_list,
             decl_span,
         } = self
         {
-            Some(DeclRef::new(name.clone(), *decl_id, decl_span.clone()))
+            Some(DeclRef::new(
+                name.clone(),
+                *decl_id,
+                type_subst_list.fresh_copy(),
+                decl_span.clone(),
+            ))
         } else {
             None
         }
@@ -474,10 +449,15 @@ impl TyDeclaration {
             TyDeclaration::EnumDeclaration {
                 name,
                 decl_id,
-                type_subst_list: _,
+                type_subst_list,
                 decl_span,
             } => ok(
-                DeclRef::new(name.clone(), *decl_id, decl_span.clone()),
+                DeclRef::new(
+                    name.clone(),
+                    *decl_id,
+                    type_subst_list.fresh_copy(),
+                    decl_span.clone(),
+                ),
                 vec![],
                 vec![],
             ),
@@ -502,10 +482,15 @@ impl TyDeclaration {
             TyDeclaration::StructDeclaration {
                 name,
                 decl_id,
-                type_subst_list: _,
+                type_subst_list,
                 decl_span,
             } => ok(
-                DeclRef::new(name.clone(), *decl_id, decl_span.clone()),
+                DeclRef::new(
+                    name.clone(),
+                    *decl_id,
+                    type_subst_list.fresh_copy(),
+                    decl_span.clone(),
+                ),
                 vec![],
                 vec![],
             ),
@@ -679,20 +664,30 @@ impl TyDeclaration {
             TyDeclaration::StructDeclaration {
                 name,
                 decl_id,
-                type_subst_list: _,
+                type_subst_list,
                 decl_span,
             } => type_engine.insert(
                 decl_engine,
-                TypeInfo::Struct(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
+                TypeInfo::Struct(DeclRef::new(
+                    name.clone(),
+                    *decl_id,
+                    type_subst_list.fresh_copy(),
+                    decl_span.clone(),
+                )),
             ),
             TyDeclaration::EnumDeclaration {
                 name,
                 decl_id,
-                type_subst_list: _,
+                type_subst_list,
                 decl_span,
             } => type_engine.insert(
                 decl_engine,
-                TypeInfo::Enum(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
+                TypeInfo::Enum(DeclRef::new(
+                    name.clone(),
+                    *decl_id,
+                    type_subst_list.fresh_copy(),
+                    decl_span.clone(),
+                )),
             ),
             TyDeclaration::StorageDeclaration { decl_id, .. } => {
                 let storage_decl = decl_engine.get_storage(decl_id);

@@ -20,7 +20,7 @@ impl ty::TyFunctionDeclaration {
         fn_decl: FunctionDeclaration,
         is_method: bool,
         is_in_impl_self: bool,
-    ) -> CompileResult<Self> {
+    ) -> CompileResult<(Self, TypeSubstList)> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
@@ -67,7 +67,7 @@ impl ty::TyFunctionDeclaration {
 
         // Type check the type parameters. This will also insert them into the
         // current namespace.
-        let new_type_parameters = check!(
+        let (new_type_parameters, type_subst_list) = check!(
             TypeParameter::type_check_type_params(ctx.by_ref(), type_parameters, false),
             return err(warnings, errors),
             warnings,
@@ -161,7 +161,7 @@ impl ty::TyFunctionDeclaration {
             where_clause,
         };
 
-        ok(function_decl, warnings, errors)
+        ok((function_decl, type_subst_list), warnings, errors)
     }
 }
 

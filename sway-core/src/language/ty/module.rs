@@ -51,7 +51,7 @@ impl TyModule {
         self.all_nodes.iter().filter_map(|node| {
             if let TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration {
                 decl_id,
-                type_subst_list: _,
+                type_subst_list,
                 name,
                 decl_span,
             }) = &node.content
@@ -60,7 +60,12 @@ impl TyModule {
                 if fn_decl.is_test() {
                     return Some((
                         fn_decl,
-                        DeclRef::new(name.clone(), *decl_id, decl_span.clone()),
+                        DeclRef::new(
+                            name.clone(),
+                            *decl_id,
+                            type_subst_list.fresh_copy(),
+                            decl_span.clone(),
+                        ),
                     ));
                 }
             }

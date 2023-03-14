@@ -1,9 +1,6 @@
 use std::hash::Hasher;
 
-use crate::{
-    decl_engine::*, engine_threading::*, language::ty::*, type_system::*,
-    types::DeterministicallyAborts,
-};
+use crate::{decl_engine::*, engine_threading::*, language::ty::*, types::DeterministicallyAborts};
 
 #[derive(Clone, Debug)]
 pub struct TyCodeBlock {
@@ -21,14 +18,6 @@ impl HashWithEngines for TyCodeBlock {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
         let TyCodeBlock { contents } = self;
         contents.hash(state, engines);
-    }
-}
-
-impl SubstTypes for TyCodeBlock {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.contents
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
     }
 }
 

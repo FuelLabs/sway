@@ -53,18 +53,12 @@ impl SubstTypes for TyTraitDeclaration {
             .iter_mut()
             .for_each(|item| match item {
                 TyTraitInterfaceItem::TraitFn(item_ref) => {
-                    let new_item_ref = item_ref
-                        .clone()
-                        .subst_types_and_insert_new_with_parent(type_mapping, engines);
-                    item_ref.replace_id((&new_item_ref).into());
+                    item_ref.subst(type_mapping, engines);
                 }
             });
         self.items.iter_mut().for_each(|item| match item {
             TyTraitItem::Fn(item_ref) => {
-                let new_item_ref = item_ref
-                    .clone()
-                    .subst_types_and_insert_new_with_parent(type_mapping, engines);
-                item_ref.replace_id((&new_item_ref).into());
+                item_ref.subst(type_mapping, engines);
             }
         });
     }

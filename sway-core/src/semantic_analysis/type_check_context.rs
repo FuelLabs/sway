@@ -4,12 +4,10 @@ use crate::{
     language::{parsed::TreeType, Purity},
     namespace::Path,
     semantic_analysis::{ast_node::Mode, Namespace},
-    type_system::{
-        EnforceTypeArguments, MonomorphizeHelper, SubstTypes, TypeArgument, TypeId, TypeInfo,
-    },
-    CompileResult, CompileWarning, TypeEngine,
+    type_system::*,
+    CompileResult,
 };
-use sway_error::error::CompileError;
+use sway_error::{error::CompileError, warning::CompileWarning};
 use sway_types::{span::Span, Ident};
 
 /// Contextual state tracked and accumulated throughout type-checking.
@@ -218,26 +216,26 @@ impl<'a> TypeCheckContext<'a> {
 
     // Provide some convenience functions around the inner context.
 
-    /// Short-hand for calling the `monomorphize` function in the type engine
-    pub(crate) fn monomorphize<T>(
+    /// Short-hand for calling the `monomorphize` function on `subst_list`.
+    pub(crate) fn monomorphize(
         &mut self,
-        value: &mut T,
+        subst_list: &mut TypeSubstList,
         type_arguments: &mut [TypeArgument],
         enforce_type_arguments: EnforceTypeArguments,
+        obj_name: &Ident,
         call_site_span: &Span,
-    ) -> CompileResult<()>
-    where
-        T: MonomorphizeHelper + SubstTypes,
-    {
+    ) -> CompileResult<()> {
         let mod_path = self.namespace.mod_path.clone();
-        self.type_engine.monomorphize(
-            self.decl_engine,
-            value,
+        let engines = self.engines();
+        // Monomorphize the list.
+        subst_list.monomorphize(
+            self.namespace,
+            engines,
+            &mod_path,
             type_arguments,
             enforce_type_arguments,
+            obj_name,
             call_site_span,
-            self.namespace,
-            &mod_path,
         )
     }
 

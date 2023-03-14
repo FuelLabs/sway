@@ -64,6 +64,7 @@ impl TryFrom<DeclRefMixedFunctional> for DeclRefFunction {
             FunctionalDeclId::Function(id) => Ok(DeclRef::new(
                 value.name().clone(),
                 id,
+                value.subst_list().clone(),
                 value.decl_span().clone(),
             )),
             actually @ FunctionalDeclId::TraitFn(_) => Err(CompileError::DeclIsNotAFunction {

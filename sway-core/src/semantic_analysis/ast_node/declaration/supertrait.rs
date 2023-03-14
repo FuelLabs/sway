@@ -39,8 +39,14 @@ pub(crate) fn insert_supertraits_into_namespace(
             .ok(&mut warnings, &mut errors)
             .cloned()
         {
-            Some(ty::TyDeclaration::TraitDeclaration { decl_id, .. }) => {
+            Some(ty::TyDeclaration::TraitDeclaration {
+                name,
+                decl_id,
+                type_subst_list,
+                ..
+            }) => {
                 let mut trait_decl = decl_engine.get_trait(&decl_id);
+                let mut subst_list = type_subst_list.fresh_copy();
 
                 // Right now we don't parse type arguments for supertraits, so
                 // we should give this error message to users.
@@ -55,18 +61,21 @@ pub(crate) fn insert_supertraits_into_namespace(
                 // TODO: right now supertraits can't take type arguments
                 let mut type_arguments = vec![];
 
-                // Monomorphize the trait declaration.
+                // Monomorphize the list.
                 check!(
                     ctx.monomorphize(
-                        &mut trait_decl,
+                        &mut subst_list,
                         &mut type_arguments,
                         EnforceTypeArguments::Yes,
+                        &name,
                         &supertrait.name.span()
                     ),
                     continue,
                     warnings,
                     errors
                 );
+
+                todo!();
 
                 // Insert the interface surface and methods from this trait into
                 // the namespace.

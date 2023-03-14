@@ -24,9 +24,3 @@ impl HashWithEngines for TyStructExpressionField {
         value.hash(state, engines);
     }
 }
-
-impl SubstTypes for TyStructExpressionField {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.value.subst(type_mapping, engines);
-    }
-}

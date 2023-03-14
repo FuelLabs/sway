@@ -111,13 +111,13 @@ impl fmt::Debug for TypeParameter {
 
 impl TypeParameter {
     /// Type check a list of [TypeParameter] and return a new list of
-    /// [TypeParameter]. This will also insert this new list into the current
-    /// namespace.
+    /// [TypeParameter] and a [TypeSubstList]. This will also insert the new
+    /// [TypeParameter] list into the current namespace.
     pub(crate) fn type_check_type_params(
         mut ctx: TypeCheckContext,
         type_params: Vec<TypeParameter>,
         disallow_trait_constraints: bool,
-    ) -> CompileResult<Vec<TypeParameter>> {
+    ) -> CompileResult<(Vec<TypeParameter>, TypeSubstList)> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -139,7 +139,7 @@ impl TypeParameter {
         }
 
         if errors.is_empty() {
-            ok(new_type_params, warnings, errors)
+            ok((new_type_params, todo!()), warnings, errors)
         } else {
             err(warnings, errors)
         }

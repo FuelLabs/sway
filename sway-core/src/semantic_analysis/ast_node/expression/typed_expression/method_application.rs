@@ -416,7 +416,7 @@ pub(crate) fn resolve_method_name(
     let engines = ctx.engines();
 
     // retrieve the function declaration using the components of the method name
-    let decl_ref = match &method_name.inner {
+    let mut fn_ref = match &method_name.inner {
         MethodName::FromType {
             call_path_binding,
             method_name,
@@ -504,15 +504,15 @@ pub(crate) fn resolve_method_name(
         }
     };
 
-    let mut func_decl = decl_engine.get_function(&decl_ref);
-
-    // monomorphize the function declaration
+    // Monomorphize.
     let method_name_span = method_name.span();
+    let fn_name = fn_ref.name().clone();
     check!(
         ctx.monomorphize(
-            &mut func_decl,
+            fn_ref.subst_list_mut(),
             method_name.type_arguments.to_vec_mut(),
             EnforceTypeArguments::No,
+            &fn_name,
             &method_name_span,
         ),
         return err(warnings, errors),
@@ -520,10 +520,5 @@ pub(crate) fn resolve_method_name(
         errors
     );
 
-    let decl_ref = ctx
-        .decl_engine
-        .insert(func_decl)
-        .with_parent(ctx.decl_engine, (*decl_ref.id()).into());
-
-    ok(decl_ref, warnings, errors)
+    ok(fn_ref, warnings, errors)
 }

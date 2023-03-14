@@ -11,7 +11,7 @@ impl ty::TyTraitFn {
     pub(crate) fn type_check(
         mut ctx: TypeCheckContext,
         trait_fn: parsed::TraitFn,
-    ) -> CompileResult<ty::TyTraitFn> {
+    ) -> CompileResult<(Self, TypeSubstList)> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -66,7 +66,7 @@ impl ty::TyTraitFn {
             attributes,
         };
 
-        ok(trait_fn, warnings, errors)
+        ok((trait_fn, todo!()), warnings, errors)
     }
 
     /// This function is used in trait declarations to insert "placeholder"

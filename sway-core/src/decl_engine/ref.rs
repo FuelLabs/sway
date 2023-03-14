@@ -22,7 +22,7 @@
 
 use std::hash::{Hash, Hasher};
 
-use sway_types::{Ident, Named, Span, Spanned};
+use sway_types::{Ident, Span, Spanned};
 
 use crate::{
     decl_engine::*,
@@ -68,11 +68,11 @@ pub struct DeclRef<I> {
 }
 
 impl<I> DeclRef<I> {
-    pub(crate) fn new(name: Ident, id: I, decl_span: Span) -> Self {
+    pub(crate) fn new(name: Ident, id: I, subst_list: TypeSubstList, decl_span: Span) -> Self {
         DeclRef {
             name,
             id,
-            subst_list: TypeSubstList::new(),
+            subst_list,
             decl_span,
         }
     }
@@ -89,62 +89,12 @@ impl<I> DeclRef<I> {
         &self.subst_list
     }
 
+    pub(crate) fn subst_list_mut(&mut self) -> &mut TypeSubstList {
+        &mut self.subst_list
+    }
+
     pub fn decl_span(&self) -> &Span {
         &self.decl_span
-    }
-}
-
-impl<T> DeclRef<DeclId<T>> {
-    pub(crate) fn replace_id(&mut self, index: DeclId<T>) {
-        self.id.replace_id(index);
-    }
-}
-
-impl<T> DeclRef<DeclId<T>>
-where
-    DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + SubstTypes,
-{
-    pub(crate) fn subst_types_and_insert_new(
-        &self,
-        type_mapping: &TypeSubstMap,
-        engines: Engines<'_>,
-    ) -> Self {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self.id);
-        decl.subst(type_mapping, engines);
-        decl_engine.insert(decl)
-    }
-}
-
-impl<T> DeclRef<DeclId<T>>
-where
-    FunctionalDeclId: From<DeclId<T>>,
-{
-    pub(crate) fn with_parent(self, decl_engine: &DeclEngine, parent: FunctionalDeclId) -> Self {
-        let id: DeclId<T> = self.id;
-        decl_engine.register_parent(id.into(), parent);
-        self
-    }
-}
-
-impl<T> DeclRef<DeclId<T>>
-where
-    FunctionalDeclId: From<DeclId<T>>,
-    DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + SubstTypes,
-{
-    pub(crate) fn subst_types_and_insert_new_with_parent(
-        &self,
-        type_mapping: &TypeSubstMap,
-        engines: Engines<'_>,
-    ) -> Self {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self.id);
-        decl.subst(type_mapping, engines);
-        decl_engine
-            .insert(decl)
-            .with_parent(decl_engine, self.id.into())
     }
 }
 
@@ -180,14 +130,13 @@ where
 {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
         let DeclRef {
-            name,
             id,
             subst_list,
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
+            name: _,
             decl_span: _,
         } = self;
-        name.hash(state);
         id.hash(state);
         subst_list.hash(state, engines);
     }
@@ -199,24 +148,22 @@ where
 {
     fn cmp(&self, other: &Self, engines: Engines<'_>) -> std::cmp::Ordering {
         let DeclRef {
-            name: ln,
             id: lid,
             subst_list: lsl,
             // these fields are not used in comparison because they aren't
             // relevant/a reliable source of obj v. obj distinction
+            name: _,
             decl_span: _,
         } = self;
         let DeclRef {
-            name: rn,
             id: rid,
             subst_list: rsl,
             // these fields are not used in comparison because they aren't
             // relevant/a reliable source of obj v. obj distinction
+            name: _,
             decl_span: _,
         } = other;
-        ln.cmp(rn)
-            .then_with(|| lid.cmp(rid))
-            .then_with(|| lsl.cmp(rsl, engines))
+        lid.cmp(rid).then_with(|| lsl.cmp(rsl, engines))
     }
 }
 
@@ -226,16 +173,21 @@ impl<I> Spanned for DeclRef<I> {
     }
 }
 
-impl<T> SubstTypes for DeclRef<DeclId<T>>
-where
-    DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + SubstTypes,
-{
+impl<I> SubstTypes for DeclRef<I> {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self.id);
-        decl.subst(type_mapping, engines);
-        decl_engine.replace(self.id, decl);
+        let DeclRef {
+            subst_list,
+            // This field is excluded because DeclId's are unique and 1:1 with
+            // declarations, so we do not create a new declaration or new DeclId
+            // here. Moreover, all of the generic types for which we are calling
+            // the `subst_inner` method are held inside of the `subst_list`
+            // field.
+            id: _,
+            // these fields are excluded because they do not contain types
+            name: _,
+            decl_span: _,
+        } = self;
+        subst_list.subst(type_mapping, engines);
     }
 }
 
