@@ -1089,12 +1089,12 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             // to an inter-procedural/module analysis approach.
             options.force_struct_fields_connection |= is_external;
 
-            for (_, param_expr) in contract_call_params {
+            for param_expr in contract_call_params.values() {
                 connect_expression(
                     engines,
                     &param_expr.expression,
                     graph,
-                    &vec![fn_entrypoint],
+                    &[fn_entrypoint],
                     exit_node,
                     "",
                     tree_type,
