@@ -1896,7 +1896,7 @@ impl PkgTestEntry {
             .get(&AttributeKind::Test)
             .expect("test declaration is missing test attribute")
             .iter()
-            .flat_map(|attr| attr.args.iter().map(|arg| arg.to_string()))
+            .flat_map(|attr| attr.args.iter().map(|arg| arg.name.to_string()))
             .collect();
 
         let pass_condition = if test_args.is_empty() {
