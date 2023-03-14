@@ -477,9 +477,13 @@ impl LanguageServer for Backend {
             Ok((uri, session)) => {
                 let new_name = params.new_name;
                 let position = params.text_document_position.position;
-                Ok(capabilities::rename::rename(
-                    session, new_name, uri, position,
-                ))
+                match capabilities::rename::rename(session, new_name, uri, position) {
+                    Ok(res) => Ok(Some(res)),
+                    Err(err) => {
+                        tracing::error!("{}", err.to_string());
+                        Ok(None)
+                    }
+                }
             }
             Err(err) => {
                 tracing::error!("{}", err.to_string());

@@ -70,4 +70,8 @@ pub enum RenameError {
     TokenNotPartOfWorkspace,
     #[error("Keywords and instrinsics are unable to be renamed")]
     UnableToRenameKeyword,
+    #[error("Invalid name {:?}: not an identifier", name)]
+    InvalidName { name: String },
+    #[error("Identifiers cannot begin with a double underscore, as that naming convention is reserved for compiler intrinsics.")]
+    InvalidDoubleUnderscore,
 }

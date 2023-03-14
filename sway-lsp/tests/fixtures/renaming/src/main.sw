@@ -1,5 +1,8 @@
 script;
 
+mod test_mod;
+use test_mod::{DeepEnum, DeepStruct};
+
 enum Color {
     Red: (),
     Green: (),
@@ -20,7 +23,12 @@ fn main() {
     let point = Point { x: 10, y: 20 };
     let n = add(point.x, point.y);
     let f = (c, point, n);
+
     // raw identifier syntax 
     let r#struct = ();
     let d = r#struct;
+
+    let _ = DeepStruct::new(30);
+    let _ = DeepEnum::Number(40);
+    let _ = test_mod::test_fun();
 }

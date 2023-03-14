@@ -18,24 +18,29 @@ pub fn rename(
     new_name: String,
     url: Url,
     position: Position,
-) -> Option<WorkspaceEdit> {
+) -> Result<WorkspaceEdit, LanguageServerError> {
     // Make sure the new name is not a keyword
     let compiler_keywords: Vec<_> = sway_parse::RESERVED_KEYWORDS
         .iter()
         .map(|s| s.to_string())
         .collect();
     if compiler_keywords.contains(&new_name) {
-        return None;
+        return Err(LanguageServerError::RenameError(RenameError::InvalidName {
+            name: new_name,
+        }));
     }
     // Identifiers cannot begin with a double underscore, this is reserved for compiler intrinsics.
     if new_name.starts_with("__") {
-        return None;
+        return Err(LanguageServerError::RenameError(
+            RenameError::InvalidDoubleUnderscore,
+        ));
     }
 
-    let (ident, token) = session.token_map().token_at_position(&url, position)?;
-    eprintln!("original ident = {:#?}", ident);
-    let mut edits = Vec::new();
-
+    let (ident, token) = session
+        .token_map()
+        .token_at_position(&url, position)
+        .ok_or_else(|| RenameError::TokenNotFound)?;
+    let mut map_of_changes: HashMap<Url, Vec<TextEdit>> = HashMap::new();
     for (ident, _) in session.token_map().all_references_of_token(
         &token,
         &session.type_engine.read(),
@@ -43,19 +48,25 @@ pub fn rename(
     ) {
         let mut range = get_range_from_span(&ident.span());
         if ident.is_raw_ident() {
-            eprintln!("ident is raw: {:#?}", ident);
             // Make sure the start char starts at the begining,
             // taking the r# tokens into account.
             range.start.character -= RAW_IDENTIFIER.len() as u32;
         }
-        edits.push(TextEdit::new(range, new_name.clone()));
+        let url = session.sync.url_from_path(&ident.span().path().unwrap())?;
+        session.sync.to_workspace_url(url).map(|url| {
+            let edit = TextEdit::new(range, new_name.clone());
+            match map_of_changes.get_mut(&url) {
+                Some(edits) => {
+                    edits.push(edit);
+                }
+                None => {
+                    map_of_changes.insert(url, vec![edit]);
+                }
+            }
+        });
     }
 
-    let mut map_of_changes = HashMap::new();
-    session.sync.to_workspace_url(url).map(|url| {
-        map_of_changes.insert(url, edits);
-        WorkspaceEdit::new(map_of_changes)
-    })
+    Ok(WorkspaceEdit::new(map_of_changes))
 }
 
 pub fn prepare_rename(
