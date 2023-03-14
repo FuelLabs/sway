@@ -20,11 +20,7 @@ pub fn rename(
     position: Position,
 ) -> Result<WorkspaceEdit, LanguageServerError> {
     // Make sure the new name is not a keyword
-    let compiler_keywords: Vec<_> = sway_parse::RESERVED_KEYWORDS
-        .iter()
-        .map(|s| s.to_string())
-        .collect();
-    if compiler_keywords.contains(&new_name) {
+    if sway_parse::RESERVED_KEYWORDS.contains(&new_name) {
         return Err(LanguageServerError::RenameError(RenameError::InvalidName {
             name: new_name,
         }));
@@ -66,6 +62,12 @@ pub fn rename(
                 }
             };
         }
+    }
+
+    // Sort the TextEdits by their range in reverse order so the client 
+    // applies edits from the end of the document to the beginning, preventing issues with offset changes.
+    for edits in map_of_changes.values_mut() {
+        edits.sort_unstable_by(|a, b| b.range.start.cmp(&a.range.start));
     }
 
     Ok(WorkspaceEdit::new(map_of_changes))
