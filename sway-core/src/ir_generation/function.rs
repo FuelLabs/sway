@@ -155,7 +155,7 @@ impl<'eng> FnCompiler<'eng> {
                 }
                 ty::TyDecl::ConstantDecl { decl_id, .. } => {
                     let tcd = self.decl_engine.get_constant(decl_id);
-                    self.compile_const_decl(context, md_mgr, &tcd, span_md_idx)?;
+                    self.compile_const_decl(context, md_mgr, &tcd, span_md_idx, false)?;
                     Ok(None)
                 }
                 ty::TyDecl::EnumDecl { decl_id, .. } => {
@@ -1674,7 +1674,7 @@ impl<'eng> FnCompiler<'eng> {
         if result.is_ok() {
             result
         } else {
-            self.compile_const_decl(context, md_mgr, const_decl, span_md_idx)
+            self.compile_const_decl(context, md_mgr, const_decl, span_md_idx, true)
         }
     }
 
@@ -1779,6 +1779,7 @@ impl<'eng> FnCompiler<'eng> {
         md_mgr: &mut MetadataManager,
         ast_const_decl: &ty::TyConstantDecl,
         span_md_idx: Option<MetadataIndex>,
+        is_const_expression: bool,
     ) -> Result<Value, CompileError> {
         // This is local to the function, so we add it to the locals, rather than the module
         // globals like other const decls.
@@ -1801,45 +1802,51 @@ impl<'eng> FnCompiler<'eng> {
                 value,
                 *is_configurable,
             )?;
-            let local_name = self
-                .lexical_map
-                .insert(call_path.suffix.as_str().to_owned());
-            let return_type = convert_resolved_typeid(
-                self.type_engine,
-                self.decl_engine,
-                context,
-                &value.return_type,
-                &value.span,
-            )?;
 
-            // We compile consts the same as vars are compiled. This is because ASM generation
-            // cannot handle
-            //    1. initializing aggregates
-            //    2. get_ptr()
-            // into the data section.
-            let local_var = self
-                .function
-                .new_local_var(context, local_name, return_type, None)
-                .map_err(|ir_error| {
-                    CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
-                })?;
-
-            // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
-            // otherwise use a store.
-            let var_ty = local_var.get_type(context);
-            Ok(if ir_type_size_in_bytes(context, &var_ty) > 0 {
-                let local_val = self
-                    .current_block
-                    .ins(context)
-                    .get_local(local_var)
-                    .add_metadatum(context, span_md_idx);
-                self.current_block
-                    .ins(context)
-                    .store(local_val, const_expr_val)
-                    .add_metadatum(context, span_md_idx)
+            if is_const_expression {
+                Ok(const_expr_val)
             } else {
-                const_expr_val
-            })
+                let local_name = self
+                    .lexical_map
+                    .insert(call_path.suffix.as_str().to_owned());
+
+                let return_type = convert_resolved_typeid(
+                    self.type_engine,
+                    self.decl_engine,
+                    context,
+                    &value.return_type,
+                    &value.span,
+                )?;
+
+                // We compile consts the same as vars are compiled. This is because ASM generation
+                // cannot handle
+                //    1. initializing aggregates
+                //    2. get_ptr()
+                // into the data section.
+                let local_var = self
+                    .function
+                    .new_local_var(context, local_name, return_type, None)
+                    .map_err(|ir_error| {
+                        CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+                    })?;
+
+                // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
+                // otherwise use a store.
+                let var_ty = local_var.get_type(context);
+                Ok(if ir_type_size_in_bytes(context, &var_ty) > 0 {
+                    let local_val = self
+                        .current_block
+                        .ins(context)
+                        .get_local(local_var)
+                        .add_metadatum(context, span_md_idx);
+                    self.current_block
+                        .ins(context)
+                        .store(local_val, const_expr_val)
+                        .add_metadatum(context, span_md_idx)
+                } else {
+                    const_expr_val
+                })
+            }
         } else {
             unreachable!("cannot compile const declaration without an expression")
         }
