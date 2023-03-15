@@ -201,9 +201,21 @@ fn format_fn_args(
     formatter: &mut Formatter,
 ) -> Result<(), FormatterError> {
     match fn_args {
-        FnArgs::Static(args) => {
-            args.format(formatted_code, formatter)?;
-        }
+        FnArgs::Static(args) => match formatter.shape.code_line.line_style {
+            LineStyle::Multiline => {
+                if !args.value_separator_pairs.is_empty() || args.final_value_opt.is_some() {
+                    formatter.shape.block_indent(&formatter.config);
+                    args.format(formatted_code, formatter)?;
+                    formatter.shape.block_unindent(&formatter.config);
+                    write!(
+                        formatted_code,
+                        "{}",
+                        formatter.shape.indent.to_string(&formatter.config)?
+                    )?;
+                }
+            }
+            _ => args.format(formatted_code, formatter)?,
+        },
         FnArgs::NonStatic {
             self_token,
             ref_self,
@@ -212,6 +224,7 @@ fn format_fn_args(
         } => {
             match formatter.shape.code_line.line_style {
                 LineStyle::Multiline => {
+                    formatter.shape.block_indent(&formatter.config);
                     write!(
                         formatted_code,
                         "\n{}",
@@ -266,39 +279,17 @@ fn format_self(
 impl Parenthesis for FnSignature {
     fn open_parenthesis(
         line: &mut FormattedCode,
-        formatter: &mut Formatter,
+        _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let open_paren = Delimiter::Parenthesis.as_open_char();
-        match formatter.shape.code_line.line_style {
-            LineStyle::Multiline => {
-                formatter.shape.block_indent(&formatter.config);
-                write!(line, "{open_paren}")?;
-            }
-            _ => {
-                write!(line, "{open_paren}")?;
-            }
-        }
+        write!(line, "{}", Delimiter::Parenthesis.as_open_char())?;
 
         Ok(())
     }
     fn close_parenthesis(
         line: &mut FormattedCode,
-        formatter: &mut Formatter,
+        _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let close_paren = Delimiter::Parenthesis.as_close_char();
-        match formatter.shape.code_line.line_style {
-            LineStyle::Multiline => {
-                formatter.shape.block_unindent(&formatter.config);
-                write!(
-                    line,
-                    "{}{close_paren}",
-                    formatter.shape.indent.to_string(&formatter.config)?
-                )?;
-            }
-            _ => {
-                write!(line, "{close_paren}")?;
-            }
-        }
+        write!(line, "{}", Delimiter::Parenthesis.as_close_char())?;
 
         Ok(())
     }

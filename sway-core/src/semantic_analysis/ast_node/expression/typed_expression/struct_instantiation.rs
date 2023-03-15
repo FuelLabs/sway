@@ -86,12 +86,13 @@ pub(crate) fn struct_instantiation(
 
     // extract the struct name and fields from the type info
     let type_info = type_engine.get(type_id);
-    let struct_decl = decl_engine.get_struct(&check!(
+    let struct_ref = check!(
         type_info.expect_struct(engines, &span),
         return err(warnings, errors),
         warnings,
         errors
-    ));
+    );
+    let struct_decl = decl_engine.get_struct(&struct_ref);
     let struct_name = struct_decl.call_path.suffix;
     let struct_fields = struct_decl.fields;
     let mut struct_fields = struct_fields;
@@ -129,9 +130,9 @@ pub(crate) fn struct_instantiation(
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::StructExpression {
-            struct_name,
+            struct_ref,
             fields: typed_fields,
-            span: inner_span,
+            instantiation_span: inner_span,
             call_path_binding,
         },
         return_type: type_id,

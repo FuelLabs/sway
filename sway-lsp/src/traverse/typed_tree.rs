@@ -111,6 +111,10 @@ impl<'a> TypedTree<'a> {
                             let trait_fn = decl_engine.get_trait_fn(trait_fn_decl_ref);
                             self.collect_typed_trait_fn_token(&trait_fn);
                         }
+                        ty::TyTraitInterfaceItem::Constant(decl_ref) => {
+                            let constant = decl_engine.get_constant(decl_ref);
+                            self.collect_const_decl(&constant);
+                        }
                     }
                 }
                 for supertrait in trait_decl.supertraits {
@@ -237,6 +241,10 @@ impl<'a> TypedTree<'a> {
                             let method = decl_engine.get_function(&method_ref);
                             self.collect_typed_fn_decl(&method);
                         }
+                        ty::TyTraitItem::Constant(const_ref) => {
+                            let constant = decl_engine.get_constant(&const_ref);
+                            self.collect_const_decl(&constant);
+                        }
                     }
                 }
 
@@ -271,6 +279,10 @@ impl<'a> TypedTree<'a> {
                         ty::TyTraitInterfaceItem::TraitFn(trait_fn_decl_ref) => {
                             let trait_fn = decl_engine.get_trait_fn(trait_fn_decl_ref);
                             self.collect_typed_trait_fn_token(&trait_fn);
+                        }
+                        ty::TyTraitInterfaceItem::Constant(const_ref) => {
+                            let constant = decl_engine.get_constant(const_ref);
+                            self.collect_const_decl(&constant);
                         }
                     }
                 }
@@ -441,7 +453,7 @@ impl<'a> TypedTree<'a> {
                 call_path,
                 contract_call_params,
                 arguments,
-                function_decl_ref,
+                fn_ref,
                 type_binding,
                 ..
             } => {
@@ -452,7 +464,7 @@ impl<'a> TypedTree<'a> {
                 }
 
                 let implementing_type_name = decl_engine
-                    .get_function(function_decl_ref)
+                    .get_function(fn_ref)
                     .implementing_type
                     .and_then(|impl_type| impl_type.get_decl_ident());
 
@@ -484,7 +496,7 @@ impl<'a> TypedTree<'a> {
                     .try_unwrap()
                 {
                     token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
-                    let function_decl = decl_engine.get_function(function_decl_ref);
+                    let function_decl = decl_engine.get_function(fn_ref);
                     token.type_def = Some(TypeDefinition::Ident(function_decl.name));
                 }
 
@@ -504,7 +516,7 @@ impl<'a> TypedTree<'a> {
                     self.handle_expression(exp);
                 }
 
-                let function_decl = decl_engine.get_function(function_decl_ref);
+                let function_decl = decl_engine.get_function(fn_ref);
                 for node in &function_decl.body.contents {
                     self.traverse_node(node);
                 }
@@ -665,7 +677,7 @@ impl<'a> TypedTree<'a> {
             ty::TyExpressionVariant::EnumInstantiation {
                 variant_name,
                 variant_instantiation_span,
-                enum_decl,
+                enum_ref,
                 contents,
                 call_path_binding,
                 ..
@@ -677,8 +689,7 @@ impl<'a> TypedTree<'a> {
                     .try_unwrap()
                 {
                     token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
-                    token.type_def =
-                        Some(TypeDefinition::Ident(enum_decl.call_path.suffix.clone()));
+                    token.type_def = Some(TypeDefinition::Ident(enum_ref.name().clone()));
                 }
 
                 for type_arg in &call_path_binding.type_arguments.to_vec() {

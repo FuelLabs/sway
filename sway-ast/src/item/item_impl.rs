@@ -3,6 +3,7 @@ use crate::priv_prelude::*;
 #[derive(Clone, Debug, Serialize)]
 pub enum ItemImplItem {
     Fn(ItemFn),
+    Const(ItemConst),
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -25,6 +26,7 @@ impl Spanned for ItemImplItem {
     fn span(&self) -> Span {
         match self {
             ItemImplItem::Fn(fn_decl) => fn_decl.span(),
+            ItemImplItem::Const(const_decl) => const_decl.span(),
         }
     }
 }

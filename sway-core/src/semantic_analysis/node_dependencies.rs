@@ -340,6 +340,9 @@ impl Dependencies {
                             deps.gather_from_type_argument(engines, &param.type_argument)
                         })
                         .gather_from_typeinfo(engines, &sig.return_type),
+                    TraitItem::Constant(const_decl) => {
+                        deps.gather_from_constant_decl(engines, const_decl)
+                    }
                 })
                 .gather_from_iter(methods.iter(), |deps, fn_decl| {
                     deps.gather_from_fn_decl(engines, fn_decl)
@@ -356,6 +359,9 @@ impl Dependencies {
                 .gather_from_type_parameters(impl_type_parameters)
                 .gather_from_iter(items.iter(), |deps, item| match item {
                     ImplItem::Fn(fn_decl) => deps.gather_from_fn_decl(engines, fn_decl),
+                    ImplItem::Constant(const_decl) => {
+                        deps.gather_from_constant_decl(engines, const_decl)
+                    }
                 }),
             Declaration::ImplSelf(ImplSelf {
                 implementing_for,
@@ -365,6 +371,9 @@ impl Dependencies {
                 .gather_from_type_argument(engines, implementing_for)
                 .gather_from_iter(items.iter(), |deps, item| match item {
                     ImplItem::Fn(fn_decl) => deps.gather_from_fn_decl(engines, fn_decl),
+                    ImplItem::Constant(const_decl) => {
+                        deps.gather_from_constant_decl(engines, const_decl)
+                    }
                 }),
             Declaration::AbiDeclaration(AbiDeclaration {
                 interface_surface,
@@ -381,6 +390,9 @@ impl Dependencies {
                             deps.gather_from_type_argument(engines, &param.type_argument)
                         })
                         .gather_from_typeinfo(engines, &sig.return_type),
+                    TraitItem::Constant(const_decl) => {
+                        deps.gather_from_constant_decl(engines, const_decl)
+                    }
                 })
                 .gather_from_iter(methods.iter(), |deps, fn_decl| {
                     deps.gather_from_fn_decl(engines, fn_decl)
@@ -782,6 +794,7 @@ fn decl_name(type_engine: &TypeEngine, decl: &Declaration) -> Option<DependentSy
                     .iter()
                     .map(|item| match item {
                         ImplItem::Fn(fn_decl) => fn_decl.name.as_str(),
+                        ImplItem::Constant(const_decl) => const_decl.name.as_str(),
                     })
                     .collect::<Vec<&str>>()
                     .join(""),
@@ -796,6 +809,7 @@ fn decl_name(type_engine: &TypeEngine, decl: &Declaration) -> Option<DependentSy
                         .iter()
                         .map(|item| match item {
                             ImplItem::Fn(fn_decl) => fn_decl.name.as_str(),
+                            ImplItem::Constant(const_decl) => const_decl.name.as_str(),
                         })
                         .collect::<Vec<&str>>()
                         .join(""),

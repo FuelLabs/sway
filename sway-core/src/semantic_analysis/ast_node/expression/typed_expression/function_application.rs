@@ -97,7 +97,7 @@ pub(crate) fn instantiate_function_application(
             call_path: call_path_binding.inner.clone(),
             contract_call_params: HashMap::new(),
             arguments: typed_arguments_with_names,
-            function_decl_ref: new_decl_ref,
+            fn_ref: new_decl_ref,
             self_state_idx: None,
             selector: None,
             type_binding: Some(call_path_binding.strip_inner()),

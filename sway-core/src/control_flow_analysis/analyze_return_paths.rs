@@ -252,6 +252,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
                 connect_typed_fn_decl(engines, &fn_decl, graph, fn_decl_entry_node)?;
                 methods_and_indexes.push((fn_decl.name.clone(), fn_decl_entry_node));
             }
+            TyImplItem::Constant(_const_decl) => {}
         }
     }
     // Now, insert the methods into the trait method namespace.
