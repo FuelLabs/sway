@@ -129,7 +129,7 @@ fn type_check_struct(
         errors
     );
     let original_struct_decl_ref = check!(
-        unknown_decl.expect_struct(),
+        unknown_decl.to_struct_ref(),
         return err(warnings, errors),
         warnings,
         errors
@@ -258,7 +258,7 @@ fn type_check_enum(
         errors
     );
     let original_decl_ref = check!(
-        unknown_decl.expect_enum(),
+        unknown_decl.to_enum_ref(),
         return err(warnings, errors),
         warnings,
         errors
