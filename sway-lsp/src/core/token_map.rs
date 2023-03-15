@@ -47,6 +47,7 @@ impl TokenMap {
             .filter(move |item| {
                 let ((_, span), token) = item.pair();
                 let decl_span = token.declared_token_span(type_engine, decl_engine);
+                // This condition is true when the current item is the declaration of the token.
                 let does_item_eq_decl = Some(span) == current_type_id.as_ref();
                 current_type_id == decl_span || does_item_eq_decl
             })

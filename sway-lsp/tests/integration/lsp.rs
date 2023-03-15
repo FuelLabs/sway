@@ -216,7 +216,8 @@ pub(crate) async fn highlight_request(service: &mut LspService<Backend>, uri: &U
     let response = call_request(service, highlight.clone()).await;
     let expected = Response::from_ok(
         1.into(),
-        json!([{
+        json!([
+            {
                 "range": {
                     "end": {
                         "character": 41,
@@ -227,7 +228,19 @@ pub(crate) async fn highlight_request(service: &mut LspService<Backend>, uri: &U
                         "line": 45
                     }
                 }
-            }
+            },
+            {
+                "range": {
+                    "end": {
+                        "character": 10,
+                        "line": 10
+                    },
+                    "start": {
+                        "character": 4,
+                        "line": 10
+                    }
+                }
+            },
         ]),
     );
     assert_json_eq!(expected, response.ok().unwrap());
