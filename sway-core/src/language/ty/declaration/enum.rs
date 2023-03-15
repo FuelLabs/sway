@@ -59,30 +59,9 @@ impl HashWithEngines for TyEnumDecl {
     }
 }
 
-impl SubstTypes for TyEnumDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.variants
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-    }
-}
-
 impl Spanned for TyEnumDecl {
     fn span(&self) -> Span {
         self.span.clone()
-    }
-}
-
-impl MonomorphizeHelper for TyEnumDecl {
-    fn type_parameters(&self) -> &[TypeParameter] {
-        &self.type_parameters
-    }
-
-    fn name(&self) -> &Ident {
-        &self.call_path.suffix
     }
 }
 

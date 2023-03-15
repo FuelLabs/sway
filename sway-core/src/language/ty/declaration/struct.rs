@@ -59,30 +59,9 @@ impl HashWithEngines for TyStructDecl {
     }
 }
 
-impl SubstTypes for TyStructDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.fields
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-    }
-}
-
 impl Spanned for TyStructDecl {
     fn span(&self) -> Span {
         self.span.clone()
-    }
-}
-
-impl MonomorphizeHelper for TyStructDecl {
-    fn type_parameters(&self) -> &[TypeParameter] {
-        &self.type_parameters
-    }
-
-    fn name(&self) -> &Ident {
-        &self.call_path.suffix
     }
 }
 

@@ -70,15 +70,3 @@ impl HashWithEngines for TyImplTrait {
         trait_decl_ref.hash(state, engines);
     }
 }
-
-impl SubstTypes for TyImplTrait {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.impl_type_parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-        self.implementing_for.subst_inner(type_mapping, engines);
-        self.items
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-    }
-}

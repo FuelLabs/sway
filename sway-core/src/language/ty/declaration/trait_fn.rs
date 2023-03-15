@@ -64,22 +64,3 @@ impl HashWithEngines for TyTraitFn {
         purity.hash(state);
     }
 }
-
-impl SubstTypes for TyTraitFn {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-        self.return_type.subst(type_mapping, engines);
-    }
-}
-
-impl MonomorphizeHelper for TyTraitFn {
-    fn name(&self) -> &Ident {
-        &self.name
-    }
-
-    fn type_parameters(&self) -> &[TypeParameter] {
-        &[]
-    }
-}

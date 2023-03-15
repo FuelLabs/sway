@@ -46,13 +46,6 @@ impl HashWithEngines for TyReassignment {
     }
 }
 
-impl SubstTypes for TyReassignment {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.rhs.subst(type_mapping, engines);
-        self.lhs_type.subst(type_mapping, engines);
-    }
-}
-
 #[derive(Clone, Debug)]
 pub enum ProjectionKind {
     StructField {

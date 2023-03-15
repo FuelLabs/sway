@@ -131,41 +131,6 @@ impl HashWithEngines for TyTraitItem {
     }
 }
 
-impl SubstTypes for TyTraitDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-        self.interface_surface
-            .iter_mut()
-            .for_each(|item| match item {
-                TyTraitInterfaceItem::TraitFn(item_ref) => {
-                    item_ref.subst(type_mapping, engines);
-                }
-                TyTraitInterfaceItem::Constant(decl_ref) => {
-                    decl_ref.subst(type_mapping, engines);
-                }
-            });
-        self.items.iter_mut().for_each(|item| match item {
-            TyTraitItem::Fn(item_ref) => {
-                item_ref.subst(type_mapping, engines);
-            }
-            TyTraitItem::Constant(item_ref) => {
-                item_ref.subst(type_mapping, engines);
-            }
-        });
-    }
-}
-
-impl SubstTypes for TyTraitItem {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        match self {
-            TyTraitItem::Fn(fn_decl) => fn_decl.subst(type_mapping, engines),
-            TyTraitItem::Constant(const_decl) => const_decl.subst(type_mapping, engines),
-        }
-    }
-}
-
 impl ReplaceFunctionImplementingType for TyTraitItem {
     fn replace_implementing_type(&mut self, engines: Engines<'_>, implementing_type: TyDecl) {
         match self {
@@ -176,15 +141,5 @@ impl ReplaceFunctionImplementingType for TyTraitItem {
                 // ignore, only needed for functions
             }
         }
-    }
-}
-
-impl MonomorphizeHelper for TyTraitDecl {
-    fn name(&self) -> &Ident {
-        &self.name
-    }
-
-    fn type_parameters(&self) -> &[TypeParameter] {
-        &self.type_parameters
     }
 }

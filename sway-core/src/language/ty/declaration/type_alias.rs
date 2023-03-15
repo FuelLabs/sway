@@ -45,12 +45,6 @@ impl HashWithEngines for TyTypeAliasDecl {
     }
 }
 
-impl SubstTypes for TyTypeAliasDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.ty.subst(type_mapping, engines);
-    }
-}
-
 impl CreateTypeId for TyTypeAliasDecl {
     fn create_type_id(&self, engines: Engines<'_>) -> TypeId {
         let type_engine = engines.te();

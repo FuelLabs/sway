@@ -2,7 +2,7 @@ use std::hash::{Hash, Hasher};
 
 use sway_types::Ident;
 
-use crate::{engine_threading::*, language::ty::*, type_system::*};
+use crate::{engine_threading::*, language::ty::*};
 
 #[derive(Clone, Debug)]
 pub struct TyStructExpressionField {
@@ -22,11 +22,5 @@ impl HashWithEngines for TyStructExpressionField {
         let TyStructExpressionField { name, value } = self;
         name.hash(state);
         value.hash(state, engines);
-    }
-}
-
-impl SubstTypes for TyStructExpressionField {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.value.subst(type_mapping, engines);
     }
 }

@@ -44,17 +44,6 @@ impl HashWithEngines for TyIntrinsicFunctionKind {
     }
 }
 
-impl SubstTypes for TyIntrinsicFunctionKind {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        for arg in &mut self.arguments {
-            arg.subst(type_mapping, engines);
-        }
-        for targ in &mut self.type_arguments {
-            targ.type_id.subst(type_mapping, engines);
-        }
-    }
-}
-
 impl DebugWithEngines for TyIntrinsicFunctionKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         let targs = self

@@ -4,10 +4,8 @@ use crate::{
     language::{parsed::TreeType, Purity},
     namespace::Path,
     semantic_analysis::{ast_node::Mode, Namespace},
-    type_system::{
-        EnforceTypeArguments, MonomorphizeHelper, SubstTypes, TypeArgument, TypeId, TypeInfo,
-    },
-    CompileResult, CompileWarning, TypeEngine,
+    type_system::*,
+    CompileResult, CompileWarning,
 };
 use sway_error::error::CompileError;
 use sway_types::{span::Span, Ident};
@@ -246,20 +244,8 @@ impl<'a> TypeCheckContext<'a> {
         type_arguments: &mut [TypeArgument],
         enforce_type_arguments: EnforceTypeArguments,
         call_site_span: &Span,
-    ) -> CompileResult<()>
-    where
-        T: MonomorphizeHelper + SubstTypes,
-    {
-        let mod_path = self.namespace.mod_path.clone();
-        self.type_engine.monomorphize(
-            self.decl_engine,
-            value,
-            type_arguments,
-            enforce_type_arguments,
-            call_site_span,
-            self.namespace,
-            &mod_path,
-        )
+    ) -> CompileResult<()> {
+        todo!()
     }
 
     /// Short-hand for calling [Namespace::resolve_type].

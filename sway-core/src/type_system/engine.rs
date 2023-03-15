@@ -11,7 +11,7 @@ use crate::{
 };
 
 use sway_error::{error::CompileError, type_error::TypeError, warning::CompileWarning};
-use sway_types::{span::Span, Ident, Spanned};
+use sway_types::{span::Span, Spanned};
 
 #[derive(Debug, Default)]
 pub struct TypeEngine {
@@ -117,88 +117,87 @@ impl TypeEngine {
         call_site_span: &Span,
         namespace: &mut Namespace,
         mod_path: &Path,
-    ) -> CompileResult<()>
-    where
-        T: MonomorphizeHelper + SubstTypes,
-    {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let engines = Engines::new(self, decl_engine);
-        match (
-            value.type_parameters().is_empty(),
-            type_arguments.is_empty(),
-        ) {
-            (true, true) => ok((), warnings, errors),
-            (false, true) => {
-                if let EnforceTypeArguments::Yes = enforce_type_arguments {
-                    errors.push(CompileError::NeedsTypeArguments {
-                        name: value.name().clone(),
-                        span: call_site_span.clone(),
-                    });
-                    return err(warnings, errors);
-                }
-                let type_mapping =
-                    TypeSubstMap::from_type_parameters(engines, value.type_parameters());
-                value.subst(&type_mapping, engines);
-                ok((), warnings, errors)
-            }
-            (true, false) => {
-                let type_arguments_span = type_arguments
-                    .iter()
-                    .map(|x| x.span.clone())
-                    .reduce(Span::join)
-                    .unwrap_or_else(|| value.name().span());
-                errors.push(CompileError::DoesNotTakeTypeArguments {
-                    name: value.name().clone(),
-                    span: type_arguments_span,
-                });
-                err(warnings, errors)
-            }
-            (false, false) => {
-                let type_arguments_span = type_arguments
-                    .iter()
-                    .map(|x| x.span.clone())
-                    .reduce(Span::join)
-                    .unwrap_or_else(|| value.name().span());
-                if value.type_parameters().len() != type_arguments.len() {
-                    errors.push(CompileError::IncorrectNumberOfTypeArguments {
-                        given: type_arguments.len(),
-                        expected: value.type_parameters().len(),
-                        span: type_arguments_span,
-                    });
-                    return err(warnings, errors);
-                }
-                for type_argument in type_arguments.iter_mut() {
-                    type_argument.type_id = check!(
-                        self.resolve(
-                            decl_engine,
-                            type_argument.type_id,
-                            &type_argument.span,
-                            enforce_type_arguments,
-                            None,
-                            namespace,
-                            mod_path
-                        ),
-                        self.insert(decl_engine, TypeInfo::ErrorRecovery),
-                        warnings,
-                        errors
-                    );
-                }
-                let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
-                    value
-                        .type_parameters()
-                        .iter()
-                        .map(|type_param| type_param.type_id)
-                        .collect(),
-                    type_arguments
-                        .iter()
-                        .map(|type_arg| type_arg.type_id)
-                        .collect(),
-                );
-                value.subst(&type_mapping, engines);
-                ok((), warnings, errors)
-            }
-        }
+    ) -> CompileResult<()> {
+        todo!()
+
+        // let mut warnings = vec![];
+        // let mut errors = vec![];
+        // let engines = Engines::new(self, decl_engine);
+        // match (
+        //     value.type_parameters().is_empty(),
+        //     type_arguments.is_empty(),
+        // ) {
+        //     (true, true) => ok((), warnings, errors),
+        //     (false, true) => {
+        //         if let EnforceTypeArguments::Yes = enforce_type_arguments {
+        //             errors.push(CompileError::NeedsTypeArguments {
+        //                 name: value.name().clone(),
+        //                 span: call_site_span.clone(),
+        //             });
+        //             return err(warnings, errors);
+        //         }
+        //         let type_mapping =
+        //             TypeSubstMap::from_type_parameters(engines, value.type_parameters());
+        //         value.subst(&type_mapping, engines);
+        //         ok((), warnings, errors)
+        //     }
+        //     (true, false) => {
+        //         let type_arguments_span = type_arguments
+        //             .iter()
+        //             .map(|x| x.span.clone())
+        //             .reduce(Span::join)
+        //             .unwrap_or_else(|| value.name().span());
+        //         errors.push(CompileError::DoesNotTakeTypeArguments {
+        //             name: value.name().clone(),
+        //             span: type_arguments_span,
+        //         });
+        //         err(warnings, errors)
+        //     }
+        //     (false, false) => {
+        //         let type_arguments_span = type_arguments
+        //             .iter()
+        //             .map(|x| x.span.clone())
+        //             .reduce(Span::join)
+        //             .unwrap_or_else(|| value.name().span());
+        //         if value.type_parameters().len() != type_arguments.len() {
+        //             errors.push(CompileError::IncorrectNumberOfTypeArguments {
+        //                 given: type_arguments.len(),
+        //                 expected: value.type_parameters().len(),
+        //                 span: type_arguments_span,
+        //             });
+        //             return err(warnings, errors);
+        //         }
+        //         for type_argument in type_arguments.iter_mut() {
+        //             type_argument.type_id = check!(
+        //                 self.resolve(
+        //                     decl_engine,
+        //                     type_argument.type_id,
+        //                     &type_argument.span,
+        //                     enforce_type_arguments,
+        //                     None,
+        //                     namespace,
+        //                     mod_path
+        //                 ),
+        //                 self.insert(decl_engine, TypeInfo::ErrorRecovery),
+        //                 warnings,
+        //                 errors
+        //             );
+        //         }
+        //         let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
+        //             value
+        //                 .type_parameters()
+        //                 .iter()
+        //                 .map(|type_param| type_param.type_id)
+        //                 .collect(),
+        //             type_arguments
+        //                 .iter()
+        //                 .map(|type_arg| type_arg.type_id)
+        //                 .collect(),
+        //         );
+        //         value.subst(&type_mapping, engines);
+        //         ok((), warnings, errors)
+        //     }
+        // }
     }
 
     /// Make the types of `received` and `expected` equivalent (or produce an
@@ -448,11 +447,6 @@ fn normalize_err(
     (w, e): (Vec<CompileWarning>, Vec<TypeError>),
 ) -> (Vec<CompileWarning>, Vec<CompileError>) {
     (w, e.into_iter().map(CompileError::from).collect())
-}
-
-pub(crate) trait MonomorphizeHelper {
-    fn name(&self) -> &Ident;
-    fn type_parameters(&self) -> &[TypeParameter];
 }
 
 /// This type is used to denote if, during monomorphization, the compiler

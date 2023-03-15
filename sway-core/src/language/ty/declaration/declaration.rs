@@ -253,58 +253,6 @@ impl HashWithEngines for TyDecl {
     }
 }
 
-impl SubstTypes for TyDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        use TyDecl::*;
-        match self {
-            VariableDecl(ref mut var_decl) => var_decl.subst(type_mapping, engines),
-            FunctionDecl {
-                ref mut decl_id, ..
-            } => decl_id.subst(type_mapping, engines),
-            TraitDecl {
-                ref mut decl_id, ..
-            } => decl_id.subst(type_mapping, engines),
-            StructDecl {
-                ref mut decl_id, ..
-            } => decl_id.subst(type_mapping, engines),
-            EnumDecl {
-                ref mut decl_id, ..
-            }
-            | EnumVariantDecl {
-                ref mut decl_id, ..
-            } => decl_id.subst(type_mapping, engines),
-            ImplTrait {
-                ref mut decl_id, ..
-            } => decl_id.subst(type_mapping, engines),
-            TypeAliasDecl {
-                ref mut decl_id, ..
-            } => decl_id.subst(type_mapping, engines),
-            // generics in an ABI is unsupported by design
-            AbiDecl { .. }
-            | ConstantDecl { .. }
-            | StorageDecl { .. }
-            | GenericTypeForFunctionScope { .. }
-            | ErrorRecovery(_) => (),
-        }
-    }
-}
-
-impl TyDecl {
-    pub fn get_fun_decl_ref(&self) -> Option<DeclRefFunction> {
-        if let TyDecl::FunctionDecl {
-            name,
-            decl_id,
-            subst_list: _,
-            decl_span,
-        } = self
-        {
-            Some(DeclRef::new(name.clone(), *decl_id, decl_span.clone()))
-        } else {
-            None
-        }
-    }
-}
-
 impl Spanned for TyDecl {
     fn span(&self) -> Span {
         use TyDecl::*;
@@ -504,6 +452,20 @@ impl GetDeclIdent for TyDecl {
 }
 
 impl TyDecl {
+    pub fn get_fun_decl_ref(&self) -> Option<DeclRefFunction> {
+        if let TyDecl::FunctionDecl {
+            name,
+            decl_id,
+            subst_list: _,
+            decl_span,
+        } = self
+        {
+            Some(DeclRef::new(name.clone(), *decl_id, decl_span.clone()))
+        } else {
+            None
+        }
+    }
+
     /// Retrieves the declaration as a `DeclRef<DeclId<TyEnumDecl>>`.
     ///
     /// Returns an error if `self` is not the [TyDecl][EnumDecl] variant.

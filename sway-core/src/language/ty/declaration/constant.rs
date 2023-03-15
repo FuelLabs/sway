@@ -80,13 +80,3 @@ impl Spanned for TyConstantDecl {
         self.span.clone()
     }
 }
-
-impl SubstTypes for TyConstantDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.return_type.subst(type_mapping, engines);
-        self.type_ascription.subst(type_mapping, engines);
-        if let Some(expr) = &mut self.value {
-            expr.subst(type_mapping, engines);
-        }
-    }
-}

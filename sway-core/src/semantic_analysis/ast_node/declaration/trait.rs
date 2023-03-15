@@ -288,21 +288,14 @@ impl ty::TyTraitDecl {
             .into_iter()
         {
             match item {
-                ty::TyTraitItem::Fn(decl_ref) => {
-                    let mut method = decl_engine.get_function(&decl_ref);
-                    method.subst(&type_mapping, engines);
-                    impld_item_refs.insert(
-                        method.name.clone(),
-                        TyTraitItem::Fn(decl_engine.insert(method)),
-                    );
+                ty::TyTraitItem::Fn(mut decl_ref) => {
+                    decl_ref.subst(&type_mapping, engines);
+                    impld_item_refs.insert(decl_ref.name().clone(), TyTraitItem::Fn(decl_ref));
                 }
-                ty::TyTraitItem::Constant(decl_ref) => {
-                    let mut const_decl = decl_engine.get_constant(&decl_ref);
-                    const_decl.subst(&type_mapping, engines);
-                    impld_item_refs.insert(
-                        const_decl.call_path.suffix.clone(),
-                        TyTraitItem::Constant(decl_engine.insert(const_decl)),
-                    );
+                ty::TyTraitItem::Constant(mut decl_ref) => {
+                    decl_ref.subst(&type_mapping, engines);
+                    impld_item_refs
+                        .insert(decl_ref.name().clone(), TyTraitItem::Constant(decl_ref));
                 }
             }
         }

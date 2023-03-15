@@ -86,32 +86,9 @@ impl HashWithEngines for TyFunctionDecl {
     }
 }
 
-impl SubstTypes for TyFunctionDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-        self.parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-        self.return_type.subst(type_mapping, engines);
-        self.body.subst(type_mapping, engines);
-    }
-}
-
 impl Spanned for TyFunctionDecl {
     fn span(&self) -> Span {
         self.span.clone()
-    }
-}
-
-impl MonomorphizeHelper for TyFunctionDecl {
-    fn type_parameters(&self) -> &[TypeParameter] {
-        &self.type_parameters
-    }
-
-    fn name(&self) -> &Ident {
-        &self.name
     }
 }
 
@@ -374,12 +351,6 @@ impl HashWithEngines for TyFunctionParameter {
         type_argument.hash(state, engines);
         is_reference.hash(state);
         is_mutable.hash(state);
-    }
-}
-
-impl SubstTypes for TyFunctionParameter {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.type_argument.type_id.subst(type_mapping, engines);
     }
 }
 

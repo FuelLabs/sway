@@ -44,11 +44,3 @@ impl HashWithEngines for TyVariableDecl {
         mutability.hash(state);
     }
 }
-
-impl SubstTypes for TyVariableDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.return_type.subst(type_mapping, engines);
-        self.type_ascription.subst(type_mapping, engines);
-        self.body.subst(type_mapping, engines)
-    }
-}

@@ -2,7 +2,7 @@ use std::hash::{Hash, Hasher};
 
 use sway_types::Ident;
 
-use crate::{engine_threading::*, language::ty::*, type_system::*};
+use crate::{engine_threading::*, language::ty::*};
 
 #[derive(Clone, Debug)]
 pub struct TyAsmRegisterDeclaration {
@@ -27,14 +27,6 @@ impl HashWithEngines for TyAsmRegisterDeclaration {
         name.hash(state);
         if let Some(x) = initializer.as_ref() {
             x.hash(state, engines)
-        }
-    }
-}
-
-impl SubstTypes for TyAsmRegisterDeclaration {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        if let Some(ref mut initializer) = self.initializer {
-            initializer.subst(type_mapping, engines)
         }
     }
 }

@@ -5,7 +5,7 @@ pub(crate) use super::{
         binding::{TypeArgs, TypeBinding, TypeCheckTypeBinding},
         create_type_id::CreateTypeId,
     },
-    engine::{EnforceTypeArguments, MonomorphizeHelper},
+    engine::EnforceTypeArguments,
     info::VecSet,
     substitute::{subst_list::SubstList, subst_map::TypeSubstMap, subst_types::SubstTypes},
 };
