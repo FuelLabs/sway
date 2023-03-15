@@ -28,6 +28,7 @@ fn main() {
     let r#struct = ();
     let _ = r#struct;
 
+    // Types from external modules can be renamed
     let _ = DeepStruct::new(30);
     let _ = DeepEnum::Number(40);
     let _ = test_mod::test_fun();

@@ -2,7 +2,7 @@
 //! The methods are used to build and send requests and notifications to the LSP service
 //! and assert the expected responses.
 
-use crate::{GotoDefinition, HoverDocumentation, Rename, RequestParams};
+use crate::{GotoDefinition, HoverDocumentation, Rename};
 use assert_json_diff::assert_json_eq;
 use serde_json::json;
 use std::{borrow::Cow, path::Path};
@@ -472,16 +472,16 @@ pub(crate) async fn hover_request<'a>(
 
 pub(crate) async fn prepare_rename_request<'a>(
     service: &mut LspService<Backend>,
-    req: &'a RequestParams<'a>,
+    rename: &'a Rename<'a>,
     ids: &mut impl Iterator<Item = i64>,
-) -> PrepareRenameResponse {
+) -> Option<PrepareRenameResponse> {
     let params = json!({
         "textDocument": {
-            "uri": req.uri,
+            "uri": rename.req_uri,
         },
         "position": {
-            "line": req.line,
-            "character": req.char
+            "line": rename.req_line,
+            "character": rename.req_char
         }
     });
     let rename = build_request_with_id("textDocument/prepareRename", params, ids.next().unwrap());
@@ -491,7 +491,7 @@ pub(crate) async fn prepare_rename_request<'a>(
         .unwrap();
     let value = response.result().unwrap().clone();
     let prepare_rename_res: Option<PrepareRenameResponse> = serde_json::from_value(value).unwrap();
-    prepare_rename_res.unwrap()
+    prepare_rename_res
 }
 
 pub(crate) async fn rename_request<'a>(
@@ -501,11 +501,11 @@ pub(crate) async fn rename_request<'a>(
 ) -> WorkspaceEdit {
     let params = json!({
         "textDocument": {
-            "uri": rename.req.uri,
+            "uri": rename.req_uri,
         },
         "position": {
-            "line": rename.req.line,
-            "character": rename.req.char
+            "line": rename.req_line,
+            "character": rename.req_char
         },
         "newName": rename.new_name
     });
