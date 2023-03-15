@@ -158,22 +158,16 @@ impl Namespace {
         )
     }
 
-    /// Given a method and a type (plus a `self_type` to potentially
-    /// resolve it), find that method in the namespace. Requires `args_buf`
-    /// because of some special casing for the standard library where we pull
-    /// the type from the arguments buffer.
-    ///
-    /// This function will generate a missing method error if the method is not
-    /// found.
-    pub(crate) fn find_method_for_type(
+    /// Given a name and a type (plus a `self_type` to potentially
+    /// resolve it), find items matching in the namespace.
+    pub(crate) fn find_items_for_type(
         &mut self,
         mut type_id: TypeId,
-        method_prefix: &Path,
-        method_name: &Ident,
+        item_prefix: &Path,
+        item_name: &Ident,
         self_type: TypeId,
-        args_buf: &VecDeque<ty::TyExpression>,
         engines: Engines<'_>,
-    ) -> CompileResult<DeclRefFunction> {
+    ) -> CompileResult<Vec<ty::TyTraitItem>> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -195,8 +189,8 @@ impl Namespace {
             errors
         );
 
-        // grab the local methods from the local module
-        let local_methods = local_module.get_methods_for_type(engines, type_id);
+        // grab the local items from the local module
+        let local_items = local_module.get_items_for_type(engines, type_id);
 
         type_id.replace_self_type(engines, self_type);
 
@@ -205,11 +199,11 @@ impl Namespace {
             type_engine.resolve(
                 decl_engine,
                 type_id,
-                &method_name.span(),
+                &item_name.span(),
                 EnforceTypeArguments::No,
                 None,
                 self,
-                method_prefix
+                item_prefix
             ),
             type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
             warnings,
@@ -218,25 +212,74 @@ impl Namespace {
 
         // grab the module where the type itself is declared
         let type_module = check!(
-            self.root().check_submodule(method_prefix),
+            self.root().check_submodule(item_prefix),
             return err(warnings, errors),
             warnings,
             errors
         );
 
-        // grab the methods from where the type is declared
-        let mut type_methods = type_module.get_methods_for_type(engines, type_id);
+        // grab the items from where the type is declared
+        let mut type_items = type_module.get_items_for_type(engines, type_id);
 
-        let mut methods = local_methods;
-        methods.append(&mut type_methods);
+        let mut items = local_items;
+        items.append(&mut type_items);
 
-        let mut matching_method_decl_refs: Vec<DeclRefFunction> = vec![];
+        let mut matching_item_decl_refs: Vec<ty::TyTraitItem> = vec![];
 
-        for decl_ref in methods.into_iter() {
-            if &decl_ref.name().clone() == method_name {
-                matching_method_decl_refs.push(decl_ref);
+        for item in items.into_iter() {
+            match &item {
+                ty::TyTraitItem::Fn(decl_ref) => {
+                    if decl_ref.name() == item_name {
+                        matching_item_decl_refs.push(item.clone());
+                    }
+                }
+                ty::TyTraitItem::Constant(decl_ref) => {
+                    if decl_ref.name() == item_name {
+                        matching_item_decl_refs.push(item.clone());
+                    }
+                }
             }
         }
+
+        ok(matching_item_decl_refs, warnings, errors)
+    }
+
+    /// Given a name and a type (plus a `self_type` to potentially
+    /// resolve it), find that method in the namespace. Requires `args_buf`
+    /// because of some special casing for the standard library where we pull
+    /// the type from the arguments buffer.
+    ///
+    /// This function will generate a missing method error if the method is not
+    /// found.
+    pub(crate) fn find_method_for_type(
+        &mut self,
+        type_id: TypeId,
+        method_prefix: &Path,
+        method_name: &Ident,
+        self_type: TypeId,
+        args_buf: &VecDeque<ty::TyExpression>,
+        engines: Engines<'_>,
+    ) -> CompileResult<DeclRefFunction> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        let decl_engine = engines.de();
+        let type_engine = engines.te();
+
+        let matching_item_decl_refs = check!(
+            self.find_items_for_type(type_id, method_prefix, method_name, self_type, engines),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        let matching_method_decl_refs = matching_item_decl_refs
+            .into_iter()
+            .flat_map(|item| match item {
+                ty::TyTraitItem::Fn(decl_ref) => Some(decl_ref),
+                ty::TyTraitItem::Constant(_) => None,
+            })
+            .collect::<Vec<_>>();
 
         let matching_method_decl_ref = match matching_method_decl_refs.len().cmp(&1) {
             Ordering::Equal => matching_method_decl_refs.get(0).cloned(),

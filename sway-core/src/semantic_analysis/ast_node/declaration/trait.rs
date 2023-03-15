@@ -104,7 +104,7 @@ impl ty::TyTraitDeclaration {
                     );
                     let decl_ref = ctx.decl_engine.insert(const_decl.clone());
                     new_interface_surface.push(ty::TyTraitInterfaceItem::Constant(decl_ref));
-                    const_decl.name
+                    const_decl.call_path.suffix.clone()
                 }
             };
 

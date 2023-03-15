@@ -464,7 +464,7 @@ impl ty::TyExpression {
         let mut errors = vec![];
 
         // Grab the declaration.
-        let unknown_decl = check!(
+        let (unknown_decl, _type_id) = check!(
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref()),
             return err(warnings, errors),
             warnings,
@@ -1091,7 +1091,7 @@ impl ty::TyExpression {
         let maybe_function = {
             let mut call_path_binding = unknown_call_path_binding.clone();
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
-                .flat_map(|decl| decl.to_fn_ref())
+                .flat_map(|(decl, _type_id)| decl.to_fn_ref())
                 .ok(&mut function_probe_warnings, &mut function_probe_errors)
                 .map(|fn_ref| (fn_ref, call_path_binding))
         };
@@ -1110,7 +1110,7 @@ impl ty::TyExpression {
                 span: call_path_binding.span,
             };
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
-                .flat_map(|unknown_decl| unknown_decl.to_enum_ref())
+                .flat_map(|(unknown_decl, _type_id)| unknown_decl.to_enum_ref())
                 .ok(&mut enum_probe_warnings, &mut enum_probe_errors)
                 .map(|enum_ref| (enum_ref, variant_name, call_path_binding))
         };
@@ -1122,7 +1122,7 @@ impl ty::TyExpression {
             let mut call_path_binding = unknown_call_path_binding.clone();
 
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
-                .flat_map(|unknown_decl| unknown_decl.to_const_ref())
+                .flat_map(|(unknown_decl, _type_id)| unknown_decl.to_const_ref())
                 .ok(&mut const_probe_warnings, &mut const_probe_errors)
                 .map(|const_ref| (const_ref, call_path_binding))
         };
