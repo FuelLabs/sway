@@ -180,8 +180,6 @@ To deploy `counter_contract` on your local Fuel node, open a new terminal tab an
 forc deploy --unsigned
 ```
 
-where `--node-url` parameter is the URL where your local node is hosted.
-
 > **Note**
 > You can't use the same terminal session that is running fuel-core to run any other commands as this will end your fuel-core process.
 
@@ -219,6 +217,8 @@ Salt is `0x0000000000000000000000000000000000000000000000000000000000000000` by 
 ```bash
 forc deploy --unsigned --random-salt --node-url <key> --gas-price 1
 ```
+
+where `--node-url` parameter is the URL where your local node is hosted.
 
 > Note: To be able to use the `forc deploy` and `forc run` commands, you require the `forc client` plugin that lets you interact with a Fuel node. You can read more about `forc client` [here](../forc/plugins/forc_client/index.md).
 
