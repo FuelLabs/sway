@@ -74,15 +74,6 @@ impl SubstTypes for TyTraitFn {
     }
 }
 
-impl ReplaceSelfType for TyTraitFn {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.parameters
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
-        self.return_type.replace_self_type(engines, self_type);
-    }
-}
-
 impl MonomorphizeHelper for TyTraitFn {
     fn name(&self) -> &Ident {
         &self.name

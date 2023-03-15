@@ -38,11 +38,3 @@ impl SubstTypes for TyAsmRegisterDeclaration {
         }
     }
 }
-
-impl ReplaceSelfType for TyAsmRegisterDeclaration {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        if let Some(ref mut initializer) = self.initializer {
-            initializer.replace_self_type(engines, self_type)
-        }
-    }
-}

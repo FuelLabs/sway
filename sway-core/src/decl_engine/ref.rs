@@ -118,23 +118,6 @@ where
 }
 impl<T> DeclRef<DeclId<T>>
 where
-    DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + ReplaceSelfType,
-{
-    pub(crate) fn replace_self_type_and_insert_new(
-        &self,
-        engines: Engines<'_>,
-        self_type: TypeId,
-    ) -> Self {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(&self.id);
-        decl.replace_self_type(engines, self_type);
-        decl_engine.insert(decl)
-    }
-}
-
-impl<T> DeclRef<DeclId<T>>
-where
     FunctionalDeclId: From<DeclId<T>>,
 {
     pub(crate) fn with_parent(self, decl_engine: &DeclEngine, parent: FunctionalDeclId) -> Self {
@@ -158,25 +141,6 @@ where
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(&self.id);
         decl.subst(type_mapping, engines);
-        decl_engine
-            .insert(decl)
-            .with_parent(decl_engine, self.id.into())
-    }
-}
-impl<T> DeclRef<DeclId<T>>
-where
-    FunctionalDeclId: From<DeclId<T>>,
-    DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + ReplaceSelfType,
-{
-    pub(crate) fn replace_self_type_and_insert_new_with_parent(
-        &self,
-        engines: Engines<'_>,
-        self_type: TypeId,
-    ) -> Self {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(&self.id);
-        decl.replace_self_type(engines, self_type);
         decl_engine
             .insert(decl)
             .with_parent(decl_engine, self.id.into())
@@ -312,19 +276,6 @@ where
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(&self.id);
         decl.subst(type_mapping, engines);
-        decl_engine.replace(self.id, decl);
-    }
-}
-
-impl<T> ReplaceSelfType for DeclRef<DeclId<T>>
-where
-    DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + ReplaceSelfType,
-{
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(&self.id);
-        decl.replace_self_type(engines, self_type);
         decl_engine.replace(self.id, decl);
     }
 }

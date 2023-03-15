@@ -53,13 +53,6 @@ impl SubstTypes for TyReassignment {
     }
 }
 
-impl ReplaceSelfType for TyReassignment {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.rhs.replace_self_type(engines, self_type);
-        self.lhs_type.replace_self_type(engines, self_type);
-    }
-}
-
 impl ReplaceDecls for TyReassignment {
     fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
         self.rhs.replace_decls(decl_mapping, engines);

@@ -51,12 +51,6 @@ impl SubstTypes for TyTypeAliasDecl {
     }
 }
 
-impl ReplaceSelfType for TyTypeAliasDecl {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.ty.replace_self_type(engines, self_type);
-    }
-}
-
 impl CreateTypeId for TyTypeAliasDecl {
     fn create_type_id(&self, engines: Engines<'_>) -> TypeId {
         let type_engine = engines.te();

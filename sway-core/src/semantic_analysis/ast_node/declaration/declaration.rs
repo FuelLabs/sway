@@ -29,7 +29,7 @@ impl ty::TyDecl {
                 is_mutable,
             }) => {
                 type_ascription.type_id = check!(
-                    ctx.resolve_type_with_self(
+                    ctx.resolve_type(
                         type_ascription.type_id,
                         &type_ascription.span,
                         EnforceTypeArguments::Yes,
@@ -310,7 +310,12 @@ impl ty::TyDecl {
                 } in fields
                 {
                     type_argument.type_id = check!(
-                        ctx.resolve_type_without_self(type_argument.type_id, &name.span(), None),
+                        ctx.resolve_type(
+                            type_argument.type_id,
+                            &name.span(),
+                            EnforceTypeArguments::Yes,
+                            None
+                        ),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -358,7 +363,7 @@ impl ty::TyDecl {
 
                 // Resolve the type that the type alias replaces
                 let new_ty = check!(
-                    ctx.resolve_type_with_self(ty.type_id, &span, EnforceTypeArguments::Yes, None),
+                    ctx.resolve_type(ty.type_id, &span, EnforceTypeArguments::Yes, None),
                     type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
                     warnings,
                     errors

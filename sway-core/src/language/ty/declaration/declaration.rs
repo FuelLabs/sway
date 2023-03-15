@@ -289,42 +289,6 @@ impl SubstTypes for TyDecl {
     }
 }
 
-impl ReplaceSelfType for TyDecl {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        use TyDecl::*;
-        match self {
-            VariableDecl(ref mut var_decl) => var_decl.replace_self_type(engines, self_type),
-            FunctionDecl {
-                ref mut decl_id, ..
-            } => decl_id.replace_self_type(engines, self_type),
-            TraitDecl {
-                ref mut decl_id, ..
-            } => decl_id.replace_self_type(engines, self_type),
-            StructDecl {
-                ref mut decl_id, ..
-            } => decl_id.replace_self_type(engines, self_type),
-            EnumDecl {
-                ref mut decl_id, ..
-            }
-            | EnumVariantDecl {
-                ref mut decl_id, ..
-            } => decl_id.replace_self_type(engines, self_type),
-            ImplTrait {
-                ref mut decl_id, ..
-            } => decl_id.replace_self_type(engines, self_type),
-            TypeAliasDecl {
-                ref mut decl_id, ..
-            } => decl_id.replace_self_type(engines, self_type),
-            // generics in an ABI is unsupported by design
-            AbiDecl { .. }
-            | ConstantDecl { .. }
-            | StorageDecl { .. }
-            | GenericTypeForFunctionScope { .. }
-            | ErrorRecovery(_) => (),
-        }
-    }
-}
-
 impl TyDecl {
     pub fn get_fun_decl_ref(&self) -> Option<DeclRefFunction> {
         if let TyDecl::FunctionDecl {

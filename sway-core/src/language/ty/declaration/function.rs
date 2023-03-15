@@ -99,19 +99,6 @@ impl SubstTypes for TyFunctionDecl {
     }
 }
 
-impl ReplaceSelfType for TyFunctionDecl {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
-        self.parameters
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
-        self.return_type.replace_self_type(engines, self_type);
-        self.body.replace_self_type(engines, self_type);
-    }
-}
-
 impl ReplaceDecls for TyFunctionDecl {
     fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
         self.body.replace_decls(decl_mapping, engines);
@@ -399,14 +386,6 @@ impl HashWithEngines for TyFunctionParameter {
 impl SubstTypes for TyFunctionParameter {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.type_argument.type_id.subst(type_mapping, engines);
-    }
-}
-
-impl ReplaceSelfType for TyFunctionParameter {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.type_argument
-            .type_id
-            .replace_self_type(engines, self_type);
     }
 }
 

@@ -112,35 +112,14 @@ impl Namespace {
             .resolve_call_path_with_visibility_check(engines, &self.mod_path, call_path)
     }
 
-    /// Short-hand for calling [Root::resolve_type_with_self] on `root` with the `mod_path`.
-    pub(crate) fn resolve_type_with_self(
+    /// Short-hand for calling [TypeEngine::resolve] with `self` and the
+    /// `mod_path`.
+    pub(crate) fn resolve_type(
         &mut self,
         engines: Engines<'_>,
         type_id: TypeId,
-        self_type: TypeId,
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
-        type_info_prefix: Option<&Path>,
-    ) -> CompileResult<TypeId> {
-        let mod_path = self.mod_path.clone();
-        engines.te().resolve_with_self(
-            engines.de(),
-            type_id,
-            self_type,
-            span,
-            enforce_type_arguments,
-            type_info_prefix,
-            self,
-            &mod_path,
-        )
-    }
-
-    /// Short-hand for calling [Root::resolve_type_without_self] on `root` and with the `mod_path`.
-    pub(crate) fn resolve_type_without_self(
-        &mut self,
-        engines: Engines<'_>,
-        type_id: TypeId,
-        span: &Span,
         type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
         let mod_path = self.mod_path.clone();
@@ -148,7 +127,7 @@ impl Namespace {
             engines.de(),
             type_id,
             span,
-            EnforceTypeArguments::Yes,
+            enforce_type_arguments,
             type_info_prefix,
             self,
             &mod_path,
@@ -189,7 +168,8 @@ impl Namespace {
         // grab the local items from the local module
         let local_items = local_module.get_items_for_type(engines, type_id);
 
-        type_id.replace_self_type(engines, self_type);
+        todo!();
+        // type_id.replace_self_type(engines, self_type);
 
         // resolve the type
         let type_id = check!(

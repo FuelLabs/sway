@@ -32,7 +32,7 @@ impl ty::TyConstantDecl {
         } = decl;
 
         type_ascription.type_id = check!(
-            ctx.resolve_type_with_self(
+            ctx.resolve_type(
                 type_ascription.type_id,
                 &type_ascription.span,
                 EnforceTypeArguments::No,

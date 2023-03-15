@@ -178,64 +178,6 @@ impl SubstTypes for TyTraitItem {
     }
 }
 
-impl ReplaceSelfType for TyTraitDecl {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
-        self.interface_surface
-            .iter_mut()
-            .for_each(|item| match item {
-                TyTraitInterfaceItem::TraitFn(item_ref) => {
-                    let new_item_ref = item_ref
-                        .clone()
-                        .replace_self_type_and_insert_new_with_parent(engines, self_type);
-                    item_ref.replace_id(*new_item_ref.id());
-                }
-                TyTraitInterfaceItem::Constant(decl_ref) => {
-                    let new_decl_ref = decl_ref
-                        .clone()
-                        .replace_self_type_and_insert_new(engines, self_type);
-                    decl_ref.replace_id(*new_decl_ref.id());
-                }
-            });
-        self.items.iter_mut().for_each(|item| match item {
-            TyTraitItem::Fn(item_ref) => {
-                let new_item_ref = item_ref
-                    .clone()
-                    .replace_self_type_and_insert_new_with_parent(engines, self_type);
-                item_ref.replace_id(*new_item_ref.id());
-            }
-            TyTraitItem::Constant(item_ref) => {
-                let new_decl_ref = item_ref
-                    .clone()
-                    .replace_self_type_and_insert_new(engines, self_type);
-                item_ref.replace_id(*new_decl_ref.id());
-            }
-        });
-    }
-}
-
-impl ReplaceSelfType for TyTraitInterfaceItem {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        match self {
-            TyTraitInterfaceItem::TraitFn(fn_decl) => fn_decl.replace_self_type(engines, self_type),
-            TyTraitInterfaceItem::Constant(const_decl) => {
-                const_decl.replace_self_type(engines, self_type)
-            }
-        }
-    }
-}
-
-impl ReplaceSelfType for TyTraitItem {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        match self {
-            TyTraitItem::Fn(fn_decl) => fn_decl.replace_self_type(engines, self_type),
-            TyTraitItem::Constant(const_decl) => const_decl.replace_self_type(engines, self_type),
-        }
-    }
-}
-
 impl ReplaceFunctionImplementingType for TyTraitItem {
     fn replace_implementing_type(&mut self, engines: Engines<'_>, implementing_type: TyDecl) {
         match self {

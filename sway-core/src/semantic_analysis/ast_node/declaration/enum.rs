@@ -71,7 +71,7 @@ impl ty::TyEnumVariant {
         let decl_engine = ctx.decl_engine;
         let mut type_argument = variant.type_argument;
         type_argument.type_id = check!(
-            ctx.resolve_type_with_self(
+            ctx.resolve_type(
                 type_argument.type_id,
                 &type_argument.span,
                 EnforceTypeArguments::Yes,

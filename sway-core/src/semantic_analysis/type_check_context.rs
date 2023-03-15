@@ -262,48 +262,34 @@ impl<'a> TypeCheckContext<'a> {
         )
     }
 
-    /// Short-hand for calling [Namespace::resolve_type_with_self] with the `self_type` provided by
-    /// the `TypeCheckContext`.
-    pub(crate) fn resolve_type_with_self(
+    /// Short-hand for calling [Namespace::resolve_type].
+    pub(crate) fn resolve_type(
         &mut self,
         type_id: TypeId,
         span: &Span,
         enforce_type_args: EnforceTypeArguments,
         type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
-        self.namespace.resolve_type_with_self(
+        self.namespace.resolve_type(
             self.engines(),
             type_id,
-            self.self_type,
             span,
             enforce_type_args,
             type_info_prefix,
         )
     }
 
-    /// Short-hand for calling [Namespace::resolve_type_without_self]
-    pub(crate) fn resolve_type_without_self(
-        &mut self,
-        type_id: TypeId,
-        span: &Span,
-        type_info_prefix: Option<&Path>,
-    ) -> CompileResult<TypeId> {
-        self.namespace
-            .resolve_type_without_self(self.engines(), type_id, span, type_info_prefix)
-    }
-
-    /// Short-hand around `type_system::unify_with_self`, where the `TypeCheckContext` provides the
-    /// type annotation, self type and help text.
-    pub(crate) fn unify_with_self(
+    /// Short-hand around `type_system::unify`, where the
+    /// `TypeCheckContext` provides the type annotation and help text.
+    pub(crate) fn unify_with_type_annotation(
         &self,
         ty: TypeId,
         span: &Span,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
-        self.type_engine.unify_with_self(
+        self.type_engine.unify(
             self.decl_engine,
             ty,
             self.type_annotation(),
-            self.self_type(),
             span,
             self.help_text(),
             None,

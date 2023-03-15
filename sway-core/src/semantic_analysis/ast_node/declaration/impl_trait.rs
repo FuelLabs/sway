@@ -54,7 +54,12 @@ impl ty::TyImplTrait {
         // resolve the types of the trait type arguments
         for type_arg in trait_type_arguments.iter_mut() {
             type_arg.type_id = check!(
-                ctx.resolve_type_without_self(type_arg.type_id, &type_arg.span, None),
+                ctx.resolve_type(
+                    type_arg.type_id,
+                    &type_arg.span,
+                    EnforceTypeArguments::Yes,
+                    None
+                ),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -64,7 +69,12 @@ impl ty::TyImplTrait {
         // type check the type that we are implementing for
 
         implementing_for.type_id = check!(
-            ctx.resolve_type_without_self(implementing_for.type_id, &implementing_for.span, None),
+            ctx.resolve_type(
+                implementing_for.type_id,
+                &implementing_for.span,
+                EnforceTypeArguments::Yes,
+                None
+            ),
             return err(warnings, errors),
             warnings,
             errors
@@ -475,7 +485,12 @@ impl ty::TyImplTrait {
 
         // type check the type that we are implementing for
         implementing_for.type_id = check!(
-            ctx.resolve_type_without_self(implementing_for.type_id, &implementing_for.span, None),
+            ctx.resolve_type(
+                implementing_for.type_id,
+                &implementing_for.span,
+                EnforceTypeArguments::Yes,
+                None
+            ),
             return err(warnings, errors),
             warnings,
             errors
@@ -760,30 +775,17 @@ fn type_check_trait_implementation(
     );
     interface_item_refs.extend(supertrait_interface_item_refs);
     impld_item_refs.extend(supertrait_impld_item_refs);
-    let decl_mapping = DeclMapping::from_interface_and_item_and_impld_decl_refs(
-        interface_item_refs,
-        BTreeMap::new(),
-        impld_item_refs,
-    );
     for item in trait_items.iter() {
         match item {
             TyImplItem::Fn(decl_ref) => {
-                let mut method = decl_engine.get_function(decl_ref);
-                method.replace_decls(&decl_mapping, engines);
-                method.subst(&type_mapping, engines);
-                method.replace_self_type(engines, ctx.self_type());
-                all_items_refs.push(TyImplItem::Fn(
-                    decl_engine
-                        .insert(method)
-                        .with_parent(decl_engine, (*decl_ref.id()).into()),
-                ));
+                let mut decl_ref = decl_ref.clone();
+                decl_ref.subst(&type_mapping, engines);
+                all_items_refs.push(TyImplItem::Fn(decl_ref));
             }
             TyImplItem::Constant(decl_ref) => {
-                let mut const_decl = decl_engine.get_constant(decl_ref);
-                const_decl.replace_decls(&decl_mapping, engines);
-                const_decl.subst(&type_mapping, engines);
-                const_decl.replace_self_type(engines, ctx.self_type());
-                all_items_refs.push(TyImplItem::Constant(decl_engine.insert(const_decl)));
+                let mut decl_ref = decl_ref.clone();
+                decl_ref.subst(&type_mapping, engines);
+                all_items_refs.push(TyImplItem::Constant(decl_ref));
             }
         }
     }
@@ -877,11 +879,6 @@ fn type_check_impl_method(
             return err(warnings, errors);
         }
     };
-
-    // replace instances of `TypeInfo::SelfType` with a fresh
-    // `TypeInfo::SelfType` to avoid replacing types in the stub trait
-    // declaration
-    impl_method_signature.replace_self_type(engines, self_type);
 
     // ensure this fn decl's parameters and signature lines up with the one
     // in the trait
@@ -1076,7 +1073,6 @@ fn type_check_const_decl(
     let type_engine = ctx.type_engine;
     let decl_engine = ctx.decl_engine;
     let engines = ctx.engines();
-    let self_type = ctx.self_type();
 
     let mut ctx = ctx
         .by_ref()
@@ -1111,7 +1107,7 @@ fn type_check_const_decl(
     }
 
     // Ensure that the constant checklist contains this constant.
-    let mut const_decl_signature = match constant_checklist.get(&const_name) {
+    let const_decl_signature = match constant_checklist.get(&const_name) {
         Some(const_decl) => const_decl.clone(),
         None => {
             errors.push(CompileError::ConstantNotAPartOfInterfaceSurface {
@@ -1122,11 +1118,6 @@ fn type_check_const_decl(
             return err(warnings, errors);
         }
     };
-
-    // replace instances of `TypeInfo::SelfType` with a fresh
-    // `TypeInfo::SelfType` to avoid replacing types in the stub constant
-    // declaration
-    const_decl_signature.replace_self_type(engines, self_type);
 
     // unify the types from the constant with the constant signature
     if !type_engine.get(const_decl.type_ascription.type_id).eq(

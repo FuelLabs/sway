@@ -4,7 +4,6 @@ pub(crate) use super::{
     ast_elements::{
         binding::{TypeArgs, TypeBinding, TypeCheckTypeBinding},
         create_type_id::CreateTypeId,
-        replace_self_type::ReplaceSelfType,
     },
     engine::{EnforceTypeArguments, MonomorphizeHelper},
     info::VecSet,
