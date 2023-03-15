@@ -3,11 +3,11 @@
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
 license = "Apache-2.0"
-name = "caller_contract"
+name = "caller"
 
 [dependencies]
 std = { path = "../../../sway-lib-std/" }
 
 [contract-dependencies]
-callee_contract = { path = "../callee_contract" }
+callee = { path = "../callee" }
 # ANCHOR: multi_contract_call_toml

@@ -18,7 +18,7 @@ abi CalleeContract {
 #[test]
 fn test_multi_contract_calls() {
     let caller = abi(CallerContract, CONTRACT_ID);
-    let callee = abi(CalleeContract, callee_contract::CONTRACT_ID);
+    let callee = abi(CalleeContract, callee::CONTRACT_ID);
 
     let should_be_false = caller.test_false();
     let should_be_true = callee.test_true();
