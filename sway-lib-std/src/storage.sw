@@ -1,6 +1,6 @@
 library;
 
-use ::alloc::{alloc, realloc_bytes};
+use ::alloc::{alloc, alloc_bytes, realloc_bytes};
 use ::assert::assert;
 use ::hash::sha256;
 use ::option::Option;
@@ -135,6 +135,87 @@ pub fn clear<T>(key: b256) -> bool {
 
     // Clear `number_of_slots * 32` bytes starting at storage slot `key`.
     __state_clear(key, number_of_slots)
+}
+
+/// Store a raw_slice from the heap into storage.
+///
+/// ### Arguments
+///
+/// * `key` - The storage slot at which the variable will be stored.
+/// * `slice` - The raw_slice to be stored.
+///
+/// ### Examples
+///
+/// ```sway
+/// use std::{storage::{store, get}, constants::ZERO_B256};
+///
+/// let five = 5_u64;
+/// store(ZERO_B256, five);
+/// let stored_five = get::<u64>(ZERO_B256).unwrap();
+/// assert(five == stored_five);
+/// ```
+#[storage(write)]
+pub fn store_slice<T>(key: b256, slice: raw_slice) {
+    // Get the number of storage slots needed based on the size of bytes.
+    let number_of_slots = (slice.len_bytes() + 31) >> 5;
+    let mut ptr = slice.ptr();
+
+    // The capacity needs to be a multiple of 32 bytes so we can 
+    // make the 'quad' storage instruction store without accessing unallocated heap memory.
+    ptr = realloc_bytes(ptr, slice.len_bytes(), number_of_slots * 32);
+
+    // Store `number_of_slots * 32` bytes starting at storage slot `key`.
+    let _ = __state_store_quad(sha256(key), ptr, number_of_slots);
+
+    // Store the length of the bytes
+    store(key, slice.len_bytes());
+}
+
+/// Load a raw_slice from storage.
+///
+/// If no value was previously stored at `key`, `Option::None` is returned. Otherwise,
+/// `Option::Some(value)` is returned, where `value` is the value stored at `key`.
+///
+/// ### Arguments
+///
+/// * `key` - The storage slot to load the value from.
+///
+/// ### Examples
+///
+/// ```sway
+/// use std::{storage::{store, get}, constants::ZERO_B256};
+///
+/// let five = 5_u64;
+/// store(ZERO_B256, five);
+/// let stored_five = get::<u64>(ZERO_B256);
+/// assert(five == stored_five);
+/// ```
+#[storage(read)]
+pub fn get_slice(key: b256) -> Option<raw_slice> {
+    // Get the length of the slice that is stored.
+    let len = get::<u64>(key).unwrap_or(0);
+
+    if len > 0 {
+        // Get the number of storage slots needed based on the size.
+        let number_of_slots = (len + 31) >> 5;
+        let ptr = alloc_bytes(number_of_slots * 32);
+
+        // Load the stored slice into the pointer.
+        let _ = __state_load_quad(sha256(key), ptr, number_of_slots);
+
+        Option::Some(asm(ptr: (ptr, len)) { ptr: raw_slice })
+    } else {
+        Option::None
+    }
+}
+
+pub trait StorableSlice<T> {
+    #[storage(write)]
+    fn store(self, argument: T);
+    #[storage(read)]
+    fn load(self) -> Option<T>;
+    #[storage(read)]
+    fn len(self) -> u64;
 }
 
 /// A persistent key-value pair mapping struct.
@@ -642,7 +723,7 @@ impl<V> StorageVec<V> {
 
 pub struct StorageBytes {}
 
-impl StorageBytes {
+impl StorableSlice<Bytes> for StorageBytes {
     /// Takes a `Bytes` type and stores the underlying collection of tightly packed bytes.
     ///
     /// ### Arguments
@@ -662,26 +743,13 @@ impl StorageBytes {
     ///     bytes.push(7_u8);
     ///     bytes.push(9_u8);
     ///
-    ///     storage.stored_bytes.store_bytes(bytes);
+    ///     storage.stored_bytes.store(bytes);
     /// }
     /// ```
     #[storage(write)]
-    pub fn store_bytes(self, mut bytes: Bytes) {
-        // Get the number of storage slots needed based on the size of bytes.
-        let number_of_slots = (bytes.len() + 31) >> 5;
-
-        // The bytes capacity needs to be greater than or a multiple of 32 bytes so we can 
-        // make the 'quad' storage instruction store without accessing unallocated heap memory.
-        if bytes.buf.cap < number_of_slots * 32 {
-            bytes.buf.ptr = realloc_bytes(bytes.buf.ptr, bytes.buf.cap, number_of_slots * 32);
-        }
-
-        // Store `number_of_slots * 32` bytes starting at storage slot `key`.
-        let key = sha256(__get_storage_key());
-        let _ = __state_store_quad(key, bytes.buf.ptr, number_of_slots);
-
-        // Store the length of the bytes
-        store(__get_storage_key(), bytes.len());
+    fn store(self, bytes: Bytes) {
+        let key = __get_storage_key();
+        store_slice(key, bytes.as_raw_slice());
     }
 
     /// Constructs a `Bytes` type from a collection of tightly packed bytes in storage.
@@ -698,32 +766,25 @@ impl StorageBytes {
     ///     bytes.push(5_u8);
     ///     bytes.push(7_u8);
     ///     bytes.push(9_u8);
-    ///     storage.stored_bytes.write_bytes(bytes);
+    ///     storage.stored_bytes.store(bytes);
     ///
-    ///     let retrieved_bytes = storage.stored_bytes.into_bytes(key);
+    ///     let retrieved_bytes = storage.stored_bytes.load(key);
     ///     assert(bytes == retrieved_bytes);
     /// }
     /// ```
     #[storage(read)]
-    pub fn into_bytes(self) -> Option<Bytes> {
-        // Get the length of the bytes and create a new `Bytes` type on the heap.
-        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
-
-        if len > 0 {
-            // Get the number of storage slots needed based on the size of bytes.
-            let number_of_slots = (len + 31) >> 5;
-
-            // Create a new bytes type with a capacity that is a multiple of 32 bytes so we can 
-            // make the 'quad' storage instruction read without overflowing.
-            let mut bytes = Bytes::with_capacity(number_of_slots * 32);
-            bytes.len = len;
-
-            // Load the stores bytes into the `Bytes` type pointer.
-            let _ = __state_load_quad(sha256(__get_storage_key()), bytes.buf.ptr, number_of_slots);
-
-            Option::Some(bytes)
-        } else {
-            Option::None
+    fn load(self) -> Option<Bytes> {
+        let key = __get_storage_key();
+        match get_slice(key) {
+            Option::Some(s) => {
+                 Option::Some(Bytes::from_raw_slice(s))
+            },
+            Option::None => Option::None,
         }
+    }
+
+    #[storage(read)]
+    fn len(self) -> u64 {
+        get::<u64>(__get_storage_key()).unwrap_or(0)
     }
 }

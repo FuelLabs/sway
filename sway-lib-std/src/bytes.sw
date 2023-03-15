@@ -668,6 +668,17 @@ impl Bytes {
         // clear `other`
         other.clear();
     }
+
+    pub fn from_raw_slice(slice: raw_slice) -> Bytes {
+        let buf = RawBytes {
+            ptr: slice.ptr(),
+            cap: slice.len_bytes(),
+        };
+        Self {
+            buf,
+            len: buf.cap,
+        }
+    }
 }
 
 impl core::ops::Eq for Bytes {
@@ -680,6 +691,13 @@ impl core::ops::Eq for Bytes {
             meq result r2 r3 r4;
             result: bool
         }
+    }
+}
+
+impl AsRawSlice for Bytes {
+    /// Returns a raw slice to all of the elements in the vector.
+    fn as_raw_slice(self) -> raw_slice {
+        asm(ptr: (self.buf.ptr(), self.len)) { ptr: raw_slice }
     }
 }
 
@@ -1114,6 +1132,26 @@ fn test_keccak256() {
 
     // The u8 bytes [5, 7, 9, 0, 0, 0, 0, 0] are equivalent to the u64 integer "362268190631264256"
     assert(keccak256(362268190631264256) == bytes.keccak256());
+}
+
+#[test()]
+fn test_into_raw_slice() {
+    let val: b256 = 0x3497297632836282349729763283628234972976328362823497297632836282;
+    let slice_1 = asm(ptr: (__addr_of(val), 32)) { ptr: raw_slice };
+    let mut bytes = Bytes::from_raw_slice(slice_1);
+    let slice_2: raw_slice = bytes.as_raw_slice();
+    assert(slice_1.ptr() == slice_2.ptr());
+    assert(slice_1.len_bytes() == slice_2.len_bytes());
+}
+
+#[test()]
+fn test_as_raw_slice() {
+    let val: b256 = 0x3497297632836282349729763283628234972976328362823497297632836282;
+    let slice_1 = asm(ptr: (__addr_of(val), 32)) { ptr: raw_slice };
+    let mut bytes = Bytes::from_raw_slice(slice_1);
+    let slice_2: raw_slice = bytes.as_raw_slice();
+    assert(slice_1.ptr() == slice_2.ptr());
+    assert(slice_1.len_bytes() == slice_2.len_bytes());
 }
 
 #[test]
