@@ -719,7 +719,7 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(read, write)]
     pub fn swap(self, element1_index: u64, element2_index: u64) {
-        let len = get::<u64>(__get_storage_key()).unwrap();
+        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
         assert(element1_index < len);
         assert(element2_index < len);
 
