@@ -40,6 +40,7 @@ fn main() -> bool {
     assert(sub_max_again.c == 0);
     assert(sub_max_again.d == u64::max());
 
+    // Test reassignment
     second = second - U256::min();
     assert(second.a == 0);
     assert(second.b == 0);
