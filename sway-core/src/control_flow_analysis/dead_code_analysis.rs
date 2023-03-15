@@ -512,9 +512,10 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
         if let InterfaceDeclId::Trait(trait_decl_id) = &trait_decl_ref.id() {
             let trait_decl = decl_engine.get_trait(trait_decl_id);
             for trait_item in trait_decl.items {
-                let ty::TyTraitItem::Fn(func_decl_ref) = trait_item;
-                let functional_decl_id = decl_engine.get_function(&func_decl_ref);
-                trait_items_method_names.push(functional_decl_id.name.as_str().to_string());
+                if let ty::TyTraitItem::Fn(func_decl_ref) = trait_item {
+                    let functional_decl_id = decl_engine.get_function(&func_decl_ref);
+                    trait_items_method_names.push(functional_decl_id.name.as_str().to_string());
+                }
             }
         }
     }
