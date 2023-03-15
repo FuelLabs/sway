@@ -1,3 +1,6 @@
+//! This module takes a list of [Constraint]s, solves them (if they are
+//! solvable), and outputs a list of [Instruction]s to apply to a typed AST.
+
 pub(crate) mod instruction_result;
 pub(crate) mod iteration_report;
 pub(crate) mod solver;

@@ -1,3 +1,6 @@
+//! This module applies a list of [Instruction]s to a typed AST to
+//! monomorphize it.
+
 pub(crate) mod code_block;
 pub(crate) mod context;
 pub(crate) mod declaration;
@@ -11,6 +14,7 @@ use sway_error::handler::{ErrorEmitted, Handler};
 
 use crate::{language::ty, monomorphize::priv_prelude::*, Engines};
 
+/// Uses [Instruction]s to monomorphize a typed AST.
 pub(crate) fn apply_instructions(
     engines: Engines<'_>,
     handler: &Handler,
