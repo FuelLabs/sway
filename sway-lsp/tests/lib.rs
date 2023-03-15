@@ -34,15 +34,11 @@ pub(crate) struct HoverDocumentation<'a> {
     documentation: &'a str,
 }
 
-pub(crate) struct RequestParams<'a> {
-    uri: &'a Url,
-    line: i32,
-    char: i32,
-}
-
 /// Contains data required to evaluate a rename request.
 pub(crate) struct Rename<'a> {
-    req: &'a RequestParams<'a>,
+    req_uri: &'a Url,
+    req_line: i32,
+    req_char: i32,
     new_name: &'a str,
 }
 
@@ -1624,52 +1620,40 @@ async fn rename() {
     let mut i = 0..;
 
     // struct expression variable
-    let req = RequestParams {
-        uri: &uri,
-        line: 19,
-        char: 13,
-    };
     let rename = Rename {
-        req: &req,
+        req_uri: &uri,
+        req_line: 19,
+        req_char: 13,
         new_name: "pnt",
     };
     let _ = lsp::prepare_rename_request(&mut service, &req, &mut i).await;
     let _ = lsp::rename_request(&mut service, &rename, &mut i).await;
 
     // Enum
-    let req = RequestParams {
-        uri: &uri,
-        line: 18,
-        char: 17,
-    };
     let rename = Rename {
-        req: &req,
+        req_uri: &uri,
+        req_line: 18,
+        req_char: 17,
         new_name: "MyEnum",
     };
     let _ = lsp::prepare_rename_request(&mut service, &req, &mut i).await;
     let _ = lsp::rename_request(&mut service, &rename, &mut i).await;
 
     // Enum Variant
-    let req = RequestParams {
-        uri: &uri,
-        line: 18,
-        char: 20,
-    };
     let rename = Rename {
-        req: &req,
+        req_uri: &uri,
+        req_line: 18,
+        req_char: 20,
         new_name: "Pink",
     };
     let _ = lsp::prepare_rename_request(&mut service, &req, &mut i).await;
     let _ = lsp::rename_request(&mut service, &rename, &mut i).await;
 
     // raw identifier syntax
-    let req = RequestParams {
-        uri: &uri,
-        line: 24,
-        char: 16,
-    };
     let rename = Rename {
-        req: &req,
+        req_uri: &uri,
+        req_line: 24,
+        req_char: 16,
         new_name: "new_var_name",
     };
     let _ = lsp::prepare_rename_request(&mut service, &req, &mut i).await;
