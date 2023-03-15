@@ -411,11 +411,11 @@ impl ty::TyExpression {
             Some(ty::TyDeclaration::ConstantDeclaration { decl_id, .. }) => {
                 let ty::TyConstantDeclaration {
                     call_path: decl_name,
-                    type_ascription,
+                    return_type,
                     ..
                 } = decl_engine.get_constant(decl_id);
                 ty::TyExpression {
-                    return_type: type_ascription.type_id,
+                    return_type,
                     // Although this isn't strictly a 'variable' expression we can treat it as one for
                     // this context.
                     expression: ty::TyExpressionVariant::VariableExpression {
@@ -1062,7 +1062,8 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        // The first step is to determine if the call path refers to a module, enum, or function.
+        // The first step is to determine if the call path refers to a module, enum, function
+        // or constant.
         // If only one exists, then we use that one. Otherwise, if more than one exist, it is
         // an ambiguous reference error.
 
@@ -1196,7 +1197,6 @@ impl ty::TyExpression {
                 return err(warnings, errors);
             }
         };
-
         ok(exp, warnings, errors)
     }
 
@@ -1326,6 +1326,10 @@ impl ty::TyExpression {
                             .insert(method.to_dummy_func(Mode::ImplAbiFn))
                             .with_parent(decl_engine, (*decl_ref.id()).into()),
                     ));
+                }
+                ty::TyTraitInterfaceItem::Constant(decl_ref) => {
+                    let const_decl = decl_engine.get_constant(&decl_ref);
+                    abi_items.push(TyImplItem::Constant(decl_engine.insert(const_decl)));
                 }
             }
         }

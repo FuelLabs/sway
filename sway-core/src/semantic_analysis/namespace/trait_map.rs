@@ -120,6 +120,9 @@ impl TraitMap {
                 TyImplItem::Fn(decl_ref) => {
                     trait_items.insert(decl_ref.name().clone().to_string(), item.clone());
                 }
+                TyImplItem::Constant(decl_ref) => {
+                    trait_items.insert(decl_ref.name().to_string(), item.clone());
+                }
             }
         }
 
@@ -200,6 +203,16 @@ impl TraitMap {
                             if map_trait_items.get(name).is_some() {
                                 errors.push(CompileError::DuplicateDeclDefinedForType {
                                     decl_kind: "method".into(),
+                                    decl_name: decl_ref.name().to_string(),
+                                    type_implementing_for: engines.help_out(type_id).to_string(),
+                                    span: decl_ref.name().span(),
+                                });
+                            }
+                        }
+                        ty::TyTraitItem::Constant(decl_ref) => {
+                            if map_trait_items.get(name).is_some() {
+                                errors.push(CompileError::DuplicateDeclDefinedForType {
+                                    decl_kind: "constant".into(),
                                     decl_name: decl_ref.name().to_string(),
                                     type_implementing_for: engines.help_out(type_id).to_string(),
                                     span: decl_ref.name().span(),
@@ -603,21 +616,23 @@ impl TraitMap {
                     let trait_items: TraitItems = map_trait_items
                         .clone()
                         .into_iter()
-                        .map(|(name, item)| {
-                            #[allow(clippy::infallible_destructuring_match)]
-                            let decl_ref = match &item {
-                                ty::TyTraitItem::Fn(decl_ref) => decl_ref,
-                            };
-                            let mut decl = decl_engine.get(*decl_ref.id());
-                            decl.subst(&type_mapping, engines);
-                            decl.replace_self_type(engines, new_self_type);
-                            let new_ref = decl_engine
-                                .insert(decl)
-                                .with_parent(decl_engine, (*decl_ref.id()).into());
-                            let item = match item {
-                                ty::TyTraitItem::Fn(_) => TyImplItem::Fn(new_ref),
-                            };
-                            (name, item)
+                        .map(|(name, item)| match &item {
+                            ty::TyTraitItem::Fn(decl_ref) => {
+                                let mut decl = decl_engine.get(*decl_ref.id());
+                                decl.subst(&type_mapping, engines);
+                                decl.replace_self_type(engines, new_self_type);
+                                let new_ref = decl_engine
+                                    .insert(decl)
+                                    .with_parent(decl_engine, decl_ref.id().into());
+                                (name, TyImplItem::Fn(new_ref))
+                            }
+                            ty::TyTraitItem::Constant(decl_ref) => {
+                                let mut decl = decl_engine.get(*decl_ref.id());
+                                decl.subst(&type_mapping, engines);
+                                decl.replace_self_type(engines, new_self_type);
+                                let new_ref = decl_engine.insert(decl);
+                                (name, TyImplItem::Constant(new_ref))
+                            }
                         })
                         .collect();
                     trait_map.insert_inner(map_trait_name.clone(), *type_id, trait_items, engines);
@@ -658,6 +673,7 @@ impl TraitMap {
                     .cloned()
                     .flat_map(|item| match item {
                         ty::TyTraitItem::Fn(decl_ref) => Some(decl_ref),
+                        ty::TyTraitItem::Constant(_) => None,
                     })
                     .collect::<Vec<_>>();
                 methods.append(&mut trait_items);

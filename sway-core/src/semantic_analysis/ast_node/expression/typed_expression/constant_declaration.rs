@@ -16,7 +16,7 @@ pub(crate) fn instantiate_constant_decl(
     let const_decl = ctx.decl_engine.get_constant(const_ref.id());
     ok(
         ty::TyExpression {
-            return_type: const_decl.type_ascription.type_id,
+            return_type: const_decl.return_type,
             span: call_path_binding.span(),
             expression: ty::TyExpressionVariant::VariableExpression {
                 name: const_decl.call_path.suffix,
