@@ -22,7 +22,7 @@ fn test_multi_contract_calls() {
 
     let should_be_false = caller.test_false();
     let should_be_true = callee.test_true();
-    assert(should_be_false == false);
-    assert(should_be_true == true);
+    assert(!should_be_false);
+    assert(should_be_true);
 }
 // ANCHOR: multi_contract_calls
