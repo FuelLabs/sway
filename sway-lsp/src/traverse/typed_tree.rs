@@ -111,6 +111,10 @@ impl<'a> TypedTree<'a> {
                             let trait_fn = decl_engine.get_trait_fn(trait_fn_decl_ref);
                             self.collect_typed_trait_fn_token(&trait_fn);
                         }
+                        ty::TyTraitInterfaceItem::Constant(decl_ref) => {
+                            let constant = decl_engine.get_constant(decl_ref);
+                            self.collect_const_decl(&constant);
+                        }
                     }
                 }
                 for supertrait in trait_decl.supertraits {
@@ -237,6 +241,10 @@ impl<'a> TypedTree<'a> {
                             let method = decl_engine.get_function(&method_ref);
                             self.collect_typed_fn_decl(&method);
                         }
+                        ty::TyTraitItem::Constant(const_ref) => {
+                            let constant = decl_engine.get_constant(&const_ref);
+                            self.collect_const_decl(&constant);
+                        }
                     }
                 }
 
@@ -271,6 +279,10 @@ impl<'a> TypedTree<'a> {
                         ty::TyTraitInterfaceItem::TraitFn(trait_fn_decl_ref) => {
                             let trait_fn = decl_engine.get_trait_fn(trait_fn_decl_ref);
                             self.collect_typed_trait_fn_token(&trait_fn);
+                        }
+                        ty::TyTraitInterfaceItem::Constant(const_ref) => {
+                            let constant = decl_engine.get_constant(const_ref);
+                            self.collect_const_decl(&constant);
                         }
                     }
                 }

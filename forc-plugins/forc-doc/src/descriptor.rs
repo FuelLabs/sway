@@ -128,6 +128,7 @@ impl Descriptor {
                                     .into_iter()
                                     .flat_map(|item| match item {
                                         TyTraitInterfaceItem::TraitFn(fn_decl) => Some(fn_decl),
+                                        _ => None,
                                     })
                                     .collect::<Vec<_>>()
                                     .to_methods(decl_engine),
@@ -170,6 +171,7 @@ impl Descriptor {
                             .into_iter()
                             .flat_map(|item| match item {
                                 TyTraitInterfaceItem::TraitFn(fn_decl) => Some(fn_decl),
+                                _ => None,
                             })
                             .collect::<Vec<_>>()
                             .to_methods(decl_engine),
