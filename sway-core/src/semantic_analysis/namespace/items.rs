@@ -161,13 +161,26 @@ impl Items {
         self.implemented_traits.insert_for_type(engines, type_id);
     }
 
+    pub fn get_items_for_type(
+        &self,
+        engines: Engines<'_>,
+        type_id: TypeId,
+    ) -> Vec<ty::TyTraitItem> {
+        self.implemented_traits.get_items_for_type(engines, type_id)
+    }
+
     pub fn get_methods_for_type(
         &self,
         engines: Engines<'_>,
         type_id: TypeId,
     ) -> Vec<DeclRefFunction> {
-        self.implemented_traits
-            .get_methods_for_type(engines, type_id)
+        self.get_items_for_type(engines, type_id)
+            .into_iter()
+            .filter_map(|item| match item {
+                ty::TyTraitItem::Fn(decl_ref) => Some(decl_ref),
+                ty::TyTraitItem::Constant(_decl_ref) => None,
+            })
+            .collect::<Vec<_>>()
     }
 
     pub(crate) fn has_storage_declared(&self) -> bool {

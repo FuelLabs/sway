@@ -550,6 +550,10 @@ fn item_trait_to_trait_declaration(
                     fn_signature_to_trait_fn(context, handler, engines, fn_sig, attributes)
                         .map(TraitItem::TraitFn)
                 }
+                ItemTraitItem::Const(const_decl) => {
+                    item_const_to_const_decl(context, handler, engines, const_decl, attributes)
+                        .map(TraitItem::Constant)
+                }
             }
         })
         .collect::<Result<_, _>>()?;
@@ -605,6 +609,10 @@ fn item_impl_to_declaration(
                 sway_ast::ItemImplItem::Fn(fn_item) => {
                     item_fn_to_function_declaration(context, handler, engines, fn_item, attributes)
                         .map(ImplItem::Fn)
+                }
+                sway_ast::ItemImplItem::Const(const_item) => {
+                    item_const_to_const_decl(context, handler, engines, const_item, attributes)
+                        .map(ImplItem::Constant)
                 }
             }
         })
@@ -709,6 +717,10 @@ fn item_abi_to_abi_declaration(
                             )?;
                             Ok(TraitItem::TraitFn(trait_fn))
                         }
+                        ItemTraitItem::Const(const_decl) => item_const_to_const_decl(
+                            context, handler, engines, const_decl, attributes,
+                        )
+                        .map(TraitItem::Constant),
                     }
                 })
                 .collect::<Result<_, _>>()?
@@ -1220,6 +1232,33 @@ fn ty_to_type_argument(
         span,
     };
     Ok(type_argument)
+}
+
+fn item_const_to_const_decl(
+    context: &mut Context,
+    handler: &Handler,
+    engines: Engines<'_>,
+    item: ItemConst,
+    attributes: AttributesMap,
+) -> Result<ConstantDeclaration, ErrorEmitted> {
+    let span = item.name.span();
+    let value = match item.expr_opt {
+        Some(expr) => Some(expr_to_expression(context, handler, engines, expr)?),
+        None => None,
+    };
+    let type_ascription = match item.ty_opt {
+        Some((_, ty)) => ty_to_type_argument(context, handler, engines, ty)?,
+        None => engines.te().insert(engines.de(), TypeInfo::Unknown).into(),
+    };
+    Ok(ConstantDeclaration {
+        name: item.name,
+        type_ascription,
+        value,
+        visibility: Visibility::Public,
+        is_configurable: true,
+        attributes,
+        span,
+    })
 }
 
 fn fn_signature_to_trait_fn(

@@ -333,13 +333,17 @@ impl ReplaceDecls for DeclRefFunction {
     fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
         let decl_engine = engines.de();
         if let Some(new_decl_ref) = decl_mapping.find_match(self.id.into()) {
-            self.id = new_decl_ref;
+            if let FunctionalDeclId::Function(new_decl_ref) = new_decl_ref {
+                self.id = new_decl_ref;
+            }
             return;
         }
         let all_parents = decl_engine.find_all_parents(engines, &self.id);
         for parent in all_parents.iter() {
             if let Some(new_decl_ref) = decl_mapping.find_match(parent.clone()) {
-                self.id = new_decl_ref;
+                if let FunctionalDeclId::Function(new_decl_ref) = new_decl_ref {
+                    self.id = new_decl_ref;
+                }
                 return;
             }
         }

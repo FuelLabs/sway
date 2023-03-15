@@ -528,6 +528,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
                 )?;
                 methods_and_indexes.push((fn_decl.name.clone(), fn_decl_entry_node));
             }
+            TyImplItem::Constant(_const_decl) => {}
         }
     }
     // we also want to add an edge from the methods back to the trait, so if a method gets called,
@@ -607,6 +608,7 @@ fn connect_abi_declaration(
                     }
                 }
             }
+            ty::TyTraitInterfaceItem::Constant(_) => todo!(),
         }
     }
 

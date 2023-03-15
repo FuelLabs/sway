@@ -702,6 +702,7 @@ impl Parse for TraitDeclaration {
         );
         self.interface_surface.iter().for_each(|item| match item {
             TraitItem::TraitFn(trait_fn) => trait_fn.parse(ctx),
+            TraitItem::Constant(const_decl) => const_decl.parse(ctx),
         });
         self.methods.iter().for_each(|func_dec| {
             func_dec.parse(ctx);
@@ -771,6 +772,7 @@ impl Parse for ImplTrait {
         });
         self.items.iter().for_each(|item| match item {
             ImplItem::Fn(fn_decl) => fn_decl.parse(ctx),
+            ImplItem::Constant(const_decl) => const_decl.parse(ctx),
         });
     }
 }
@@ -800,6 +802,7 @@ impl Parse for ImplSelf {
         });
         self.items.iter().for_each(|item| match item {
             ImplItem::Fn(fn_decl) => fn_decl.parse(ctx),
+            ImplItem::Constant(const_decl) => const_decl.parse(ctx),
         });
     }
 }
@@ -815,6 +818,7 @@ impl Parse for AbiDeclaration {
         );
         self.interface_surface.iter().for_each(|item| match item {
             TraitItem::TraitFn(trait_fn) => trait_fn.parse(ctx),
+            TraitItem::Constant(const_decl) => const_decl.parse(ctx),
         });
         self.supertraits.iter().for_each(|supertrait| {
             supertrait.parse(ctx);
