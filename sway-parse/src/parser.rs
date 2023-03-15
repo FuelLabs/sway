@@ -104,7 +104,7 @@ impl<'a, 'e> Parser<'a, 'e> {
     pub fn enter_delimited(
         &mut self,
         expected_delimiter: OpeningDelimiter,
-    ) -> Option<(Parser<'_, '_>, Span)> {
+    ) -> Option<Parser<'_, '_>> {
         match self.token_trees {
             [TokenTree::Group(Group {
                 delimiters,
@@ -119,7 +119,7 @@ impl<'a, 'e> Parser<'a, 'e> {
                     full_span: token_stream.span(),
                     handler: self.handler,
                 };
-                Some((parser, span.clone()))
+                Some(parser)
             }
             _ => None,
         }
