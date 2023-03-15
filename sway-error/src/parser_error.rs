@@ -1,4 +1,4 @@
-use sway_ast::token::PunctKind;
+use sway_ast::token::{ClosingDelimiter, OpeningDelimiter, PunctKind};
 use sway_types::{Ident, Span};
 use thiserror::Error;
 
@@ -44,12 +44,10 @@ pub enum ParseErrorKind {
     ExpectedType,
     #[error("Unexpected token after array type length.")]
     UnexpectedTokenAfterArrayTypeLength,
-    #[error("Expected an opening brace.")]
-    ExpectedOpenBrace,
-    #[error("Expected an opening parenthesis.")]
-    ExpectedOpenParen,
-    #[error("Expected an opening square bracket.")]
-    ExpectedOpenBracket,
+    #[error("Expected `{}`.", kinds.iter().map(OpeningDelimiter::as_char).collect::<String>())]
+    ExpectedOpeningDelimiter { kinds: Vec<OpeningDelimiter> },
+    #[error("Expected `{}`.", kinds.iter().map(ClosingDelimiter::as_char).collect::<String>())]
+    ExpectedClosingDelimiter { kinds: Vec<ClosingDelimiter> },
     #[error("Expected a literal.")]
     ExpectedLiteral,
     #[error("Expected a module kind (script, contract, predicate or library).")]

@@ -4,8 +4,8 @@ use core::marker::PhantomData;
 use sway_ast::keywords::Keyword;
 use sway_ast::literal::Literal;
 use sway_ast::token::{
-    DocComment, GenericGroup, Group, OpeningDelimiter, Punct, PunctKind, Spacing, TokenStream,
-    TokenTree,
+    ClosingDelimiter, DocComment, GenericGroup, Group, OpeningDelimiter, Punct, PunctKind, Spacing,
+    TokenStream, TokenTree,
 };
 use sway_ast::PubToken;
 use sway_error::error::CompileError;
@@ -238,6 +238,7 @@ impl<'a> Peeker<'a> {
         *self.num_tokens = punct_kinds.len();
         Ok(span)
     }
+    /// remove this method once peek is fully implemented for delimiter tokens
     pub fn peek_open_delimiter(self) -> Result<OpeningDelimiter, Self> {
         match self.token_trees {
             [TokenTree::Group(Group { delimiters, .. }), ..] => {
@@ -247,6 +248,7 @@ impl<'a> Peeker<'a> {
             _ => Err(self),
         }
     }
+    /// There may be a way to combine the function for peeking all delimiters
     pub fn peek_open_delimiter_token(self, delimiter: &[OpeningDelimiter]) -> Result<Span, Self> {
         let (last_punct_kind, first_punct_kinds) = delimiter
             .split_last()
@@ -267,6 +269,37 @@ impl<'a> Peeker<'a> {
                 token_stream,
                 span,
             }) if delimiters.opening == *last_punct_kind => span,
+            _ => return Err(self),
+        };
+        let span_start = match &self.token_trees[0] {
+            TokenTree::Group(GenericGroup { span, .. }) => span,
+            _ => unreachable!(),
+        };
+        let span = Span::join(span_start.clone(), span_end.clone());
+        *self.num_tokens = delimiter.len();
+        Ok(span)
+    }
+
+    pub fn peek_close_delimiter_token(self, delimiter: &[ClosingDelimiter]) -> Result<Span, Self> {
+        let (last_punct_kind, first_punct_kinds) = delimiter
+            .split_last()
+            .unwrap_or_else(|| panic!("peek_open_delimiter called with empty slice"));
+        if self.token_trees.len() < delimiter.len() {
+            return Err(self);
+        }
+        for (open_delim, tt) in first_punct_kinds.iter().zip(self.token_trees.iter()) {
+            match tt {
+                TokenTree::Group(GenericGroup { delimiters, .. })
+                    if delimiters.closing == *open_delim => {}
+                _ => return Err(self),
+            }
+        }
+        let span_end = match &self.token_trees[delimiter.len() - 1] {
+            TokenTree::Group(GenericGroup {
+                delimiters,
+                token_stream,
+                span,
+            }) if delimiters.closing == *last_punct_kind => span,
             _ => return Err(self),
         };
         let span_start = match &self.token_trees[0] {

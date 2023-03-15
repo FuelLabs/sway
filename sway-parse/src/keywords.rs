@@ -1,6 +1,6 @@
 use crate::{Parse, ParseResult, Parser, Peek, Peeker};
 
-use sway_ast::{keywords::*, token::OpeningDelimiter};
+use sway_ast::keywords::*;
 use sway_error::parser_error::ParseErrorKind;
 use sway_types::Spanned;
 
@@ -158,13 +158,8 @@ fn parse_open_delimiter<T: OpenDelimiterToken + Peek>(parser: &mut Parser) -> Pa
     match parser.take() {
         Some(value) => Ok(value),
         None => {
-            let err = match T::DELIMITER_KIND {
-                [OpeningDelimiter::Parenthesis] => ParseErrorKind::ExpectedOpenParen,
-                [OpeningDelimiter::CurlyBrace] => ParseErrorKind::ExpectedOpenBrace,
-                [OpeningDelimiter::SquareBracket] => ParseErrorKind::ExpectedOpenBracket,
-                [OpeningDelimiter::AngleBracket] => ParseErrorKind::ExpectedOpenBracket,
-            };
-            Err(parser.emit_error(err))
+            let kinds = T::DELIMITER_KIND.to_owned();
+            Err(parser.emit_error(ParseErrorKind::ExpectedOpeningDelimiter { kinds }))
         }
     }
 }
@@ -192,6 +187,46 @@ open_delimiter_impls!(
     OpenCurlyBraceToken,
     OpenSquareBracketToken,
     OpenAngleBracketToken
+);
+
+fn peek_close_delimiter<T: CloseDelimiterToken>(peeker: Peeker<'_>) -> Option<T> {
+    let span = peeker.peek_close_delimiter_token(T::DELIMITER_KIND).ok()?;
+    Some(T::new(span))
+}
+
+fn parse_close_delimiter<T: CloseDelimiterToken + Peek>(parser: &mut Parser) -> ParseResult<T> {
+    match parser.take() {
+        Some(value) => Ok(value),
+        None => {
+            let kinds = T::DELIMITER_KIND.to_owned();
+            Err(parser.emit_error(ParseErrorKind::ExpectedClosingDelimiter { kinds }))
+        }
+    }
+}
+
+macro_rules! close_delimiter_impls {
+    ($($ty:ty),*) => {
+        $(
+            impl Peek for $ty {
+                fn peek(peeker: Peeker<'_>) -> Option<Self> {
+                    peek_close_delimiter(peeker)
+                }
+            }
+
+            impl Parse for $ty {
+                fn parse(parser: &mut Parser) -> ParseResult<Self> {
+                    parse_close_delimiter(parser)
+                }
+            }
+        )*
+    };
+}
+
+close_delimiter_impls!(
+    CloseParenthesisToken,
+    CloseCurlyBraceToken,
+    CloseSquareBracketToken,
+    CloseAngleBracketToken
 );
 
 // Keep this in sync with the list in `sway-ast/keywords.rs` defined by define_keyword!

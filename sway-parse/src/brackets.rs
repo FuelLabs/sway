@@ -83,24 +83,9 @@ macro_rules! impl_brackets (
                 }
             }
         }
-
-        impl<T> Parse for $ty_name<T>
-        where
-            T: ParseToEnd,
-        {
-            fn parse(parser: &mut Parser) -> ParseResult<$ty_name<T>> {
-                match parser.enter_delimited(OpeningDelimiter::$delimiter) {
-                    Some((parser, span)) => {
-                        let (inner, _consumed) = parser.parse_to_end()?;
-                        Ok($ty_name { open_token, inner, close_token })
-                    },
-                    None => Err(parser.emit_error(ParseErrorKind::$error)),
-                }
-            }
-        }
     };
 );
 
-impl_brackets!(Braces, CurlyBrace, ExpectedOpenBrace);
+impl_brackets!(Braces, CurlyBrace, ExpectedOpenCurlyBrace);
 impl_brackets!(Parens, Parenthesis, ExpectedOpenParen);
-impl_brackets!(SquareBrackets, SquareBracket, ExpectedOpenBracket);
+impl_brackets!(SquareBrackets, SquareBracket, ExpectedOpenSquareBracket);
