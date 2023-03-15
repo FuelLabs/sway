@@ -115,6 +115,7 @@ impl<'a> CodeAction<'a, TyStructDeclaration> for StructNewCodeAction<'a> {
                 sway_core::language::ty::TyTraitItem::Fn(fn_decl) => {
                     fn_decl.span().as_str().contains("fn new")
                 }
+                sway_core::language::ty::TyTraitItem::Constant(_) => false,
             })
         {
             Some(CodeActionDisabled {
