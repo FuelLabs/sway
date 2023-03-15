@@ -11,7 +11,7 @@ impl Parse for Ty {
     fn parse(parser: &mut Parser) -> ParseResult<Ty> {
         // parse parens carefully, such that only patterns of (ty) are parsed as ty,
         // and patterns of (ty,) are parsed as one-artity tuples with one element ty
-        if let Some((mut parser, span)) = parser.enter_delimited(OpeningDelimiter::Parenthesis) {
+        if let Some(mut parser) = parser.enter_delimited(OpeningDelimiter::Parenthesis) {
             if let Some(_consumed) = parser.check_empty() {
                 return Ok(Ty::Tuple(Parens::new(TyTupleDescriptor::Nil)));
             }
