@@ -416,7 +416,7 @@ macro_rules! testgen {
                 }
 
                 #[tokio::test]
-                async fn can_reverse() {
+                async fn can_reverse_even_len() {
                     let instance = get_contract_instance().await;
 
                     push(&instance, $arg0).await;
@@ -437,6 +437,27 @@ macro_rules! testgen {
                     assert_eq!(get(&instance, 1).await, $arg1);
                     assert_eq!(get(&instance, 2).await, $arg2);
                     assert_eq!(get(&instance, 3).await, $arg3);
+                }
+
+                #[tokio::test]
+                async fn can_reverse_odd_len() {
+                    let instance = get_contract_instance().await;
+
+                    push(&instance, $arg0).await;
+                    push(&instance, $arg1).await;
+                    push(&instance, $arg2).await;
+
+                    reverse(&instance).await;
+
+                    assert_eq!(get(&instance, 0).await, $arg2);
+                    assert_eq!(get(&instance, 1).await, $arg1);
+                    assert_eq!(get(&instance, 2).await, $arg0);
+
+                    reverse(&instance).await;
+
+                    assert_eq!(get(&instance, 0).await, $arg0);
+                    assert_eq!(get(&instance, 1).await, $arg1);
+                    assert_eq!(get(&instance, 2).await, $arg2);
                 }
 
                 #[tokio::test]

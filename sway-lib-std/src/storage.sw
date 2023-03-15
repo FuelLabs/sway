@@ -737,7 +737,7 @@ impl<V> StorageVec<V> {
 
     /// Returns the first element of the vector, or `None` if it is empty.
     ///
-    /// ### Storage Access
+    /// ### Number of Storage Accesses
     ///
     /// * Reads: `2`
     ///
@@ -746,14 +746,14 @@ impl<V> StorageVec<V> {
     /// ```sway
     /// storage {
     ///     vec: StorageVec<u64> = StorageVec {},
-    ///     vec2: StorageVec<u64> = StorageVec {},
     /// }
     ///
     /// fn foo() {
+    ///    assert(storage.vec.first().is_none());
+    ///
     ///     storage.vec.push(5);
     ///
-    ///     assert(5 == storage.vec.first());
-    ///     assert(storage.vec2.first().is_none());
+    ///     assert(5 == storage.vec.first().unwrwap());
     /// }
     /// ```
     #[storage(read)]
@@ -766,7 +766,7 @@ impl<V> StorageVec<V> {
 
     /// Returns the last element of the vector, or `None` if it is empty.
     ///
-    /// ### Storage Access
+    /// ### Number of Storage Accesses
     ///
     /// * Reads: `2`
     ///
@@ -775,15 +775,15 @@ impl<V> StorageVec<V> {
     /// ```sway
     /// storage {
     ///     vec: StorageVec<u64> = StorageVec {},
-    ///     vec2: StorageVec<u64> = StorageVec {},
     /// }
     ///
     /// fn foo() {
+    ///    assert(storage.vec.last().is_none());
+    ///
     ///     storage.vec.push(5);
     ///     storage.vec.push(10);
     ///
     ///     assert(10 == storage.vec.last().unwrap());
-    ///     assert(storage.vec2.last().is_none());
     /// }
     /// ```
     #[storage(read)]
@@ -796,7 +796,7 @@ impl<V> StorageVec<V> {
 
     /// Reverses the order of elements in the vector, in place.
     ///
-    /// ### Storage Access
+    /// ### Number of Storage Accesses
     ///
     /// * Reads: `1 + (2 * (self.len() / 2))`
     /// * Writes: `2 * (self.len() / 2)`
@@ -847,7 +847,7 @@ impl<V> StorageVec<V> {
     ///
     /// * value - Value to copy to each element of the vector.
     ///
-    /// ### Storage Access
+    /// ### Number of Storage Accesses
     ///
     /// * Reads: `1`
     /// * Writes: `self.len()`
@@ -892,7 +892,7 @@ impl<V> StorageVec<V> {
     /// * new_len - The new length to expand or truncate to
     /// * value - The value to fill into new slots if the `new_len` is greater than the current length
     ///
-    /// ### Storage Access
+    /// ### Number of Storage Accesses
     ///
     /// * Reads - `1`
     /// * Writes - `if new_len > self.len() { new_len - len + 1 } else { 1 }`
@@ -902,38 +902,32 @@ impl<V> StorageVec<V> {
     /// ```sway
     /// storage {
     ///     vec: StorageVec<u64> = StorageVec {},
-    ///     vec2: StorageVec<u64> = StorageVec {},
     /// }
     ///
     /// fn foo() {
     ///     storage.vec.push(5);
     ///     storage.vec.push(10);
-    ///     storage.vec.push(15);
     ///     storage.vec.resize(4, 20);
     ///
     ///     assert(5 == storage.vec.get(0).unwrap());
     ///     assert(10 == storage.vec.get(1).unwrap());
-    ///     assert(15 == storage.vec.get(2).unwrap());
+    ///     assert(20 == storage.vec.get(2).unwrap());
     ///     assert(20 == storage.vec.get(3).unwrap());
     ///
-    ///     storage.vec2.push(5);
-    ///     storage.vec2.push(10);
-    ///     storage.vec2.push(15);
-    ///     storage.vec2.resize(2, 0);
+    ///     storage.vec.resize(2, 0);
     ///
     ///     assert(5 == storage.vec.get(0).unwrap());
     ///     assert(10 == storage.vec.get(1).unwrap());
+    ///     assert(Option::None == storage.vec.get(2));
+    ///     assert(Option::None == storage.vec.get(3));
     /// }
     /// ```
     #[storage(read, write)]
     pub fn resize(self, new_len: u64, value: V) {
-        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
-        if new_len > len {
-            let mut i = len;
-            while i < new_len {
-                store::<V>(sha256((i, __get_storage_key())), value);
-                i += 1;
-            }
+        let mut len = get::<u64>(__get_storage_key()).unwrap_or(0);
+        while len < new_len {
+            store::<V>(sha256((len, __get_storage_key())), value);
+            len += 1;
         }
         store::<u64>(__get_storage_key(), new_len);
     }
