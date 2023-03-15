@@ -74,4 +74,8 @@ pub enum RenameError {
     InvalidName { name: String },
     #[error("Identifiers cannot begin with a double underscore, as that naming convention is reserved for compiler intrinsics.")]
     InvalidDoubleUnderscore,
+    #[error("The file {:?}: already exists", path)]
+    FileAlreadyExists { path: String },
+    #[error("The module {:?}: cannot be renamed", path)]
+    UnableToRenameModule { path: String },
 }

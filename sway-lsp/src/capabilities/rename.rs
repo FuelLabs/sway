@@ -1,7 +1,7 @@
 use crate::{
     core::{
         session::Session,
-        token::{get_range_from_span, SymbolKind},
+        token::{get_range_from_span, SymbolKind, Token},
     },
     error::{LanguageServerError, RenameError},
 };
@@ -36,6 +36,14 @@ pub fn rename(
         .token_map()
         .token_at_position(&url, position)
         .ok_or(RenameError::TokenNotFound)?;
+
+    // We don't currently allow renaming of module names.
+    if token.kind == SymbolKind::Module {
+        return Err(LanguageServerError::RenameError(
+            RenameError::UnableToRenameModule { path: new_name },
+        ));
+    }
+
     let mut map_of_changes: HashMap<Url, Vec<TextEdit>> = HashMap::new();
     for (ident, _) in session.token_map().all_references_of_token(
         &token,
@@ -64,7 +72,7 @@ pub fn rename(
         }
     }
 
-    // Sort the TextEdits by their range in reverse order so the client 
+    // Sort the TextEdits by their range in reverse order so the client
     // applies edits from the end of the document to the beginning, preventing issues with offset changes.
     for edits in map_of_changes.values_mut() {
         edits.sort_unstable_by(|a, b| b.range.start.cmp(&a.range.start));
@@ -78,7 +86,6 @@ pub fn prepare_rename(
     url: Url,
     position: Position,
 ) -> Result<PrepareRenameResponse, LanguageServerError> {
-    let temp_path = &session.sync.temp_dir()?;
     let (ident, token) = session
         .token_map()
         .token_at_position(&url, position)
@@ -86,18 +93,7 @@ pub fn prepare_rename(
 
     // Only let through tokens that are in the users workspace.
     // tokens that are external to the users workspace cannot be renamed.
-    let decl_span = token
-        .declared_token_span(&session.type_engine.read(), &session.decl_engine.read())
-        .ok_or(RenameError::TokenNotFound)?;
-
-    // Check the span of the tokens defintions to determine if it's in the users workspace.
-    if let Some(path) = decl_span.path() {
-        if !path.starts_with(temp_path) {
-            return Err(LanguageServerError::RenameError(
-                RenameError::TokenNotPartOfWorkspace,
-            ));
-        }
-    }
+    let _ = is_token_in_workspace(&session, &token)?;
 
     // Make sure we don't allow renaming of tokens that
     // are keywords or intrinsics.
@@ -117,4 +113,25 @@ pub fn prepare_rename(
         range: get_range_from_span(&ident.span()),
         placeholder: name,
     })
+}
+
+/// Checks if the token is in the users workspace.
+fn is_token_in_workspace(
+    session: &Arc<Session>,
+    token: &Token,
+) -> Result<bool, LanguageServerError> {
+    let decl_span = token
+        .declared_token_span(&session.type_engine.read(), &session.decl_engine.read())
+        .ok_or(RenameError::TokenNotFound)?;
+
+    // Check the span of the tokens defintions to determine if it's in the users workspace.
+    let temp_path = &session.sync.temp_dir()?;
+    if let Some(path) = decl_span.path() {
+        if !path.starts_with(temp_path) {
+            return Err(LanguageServerError::RenameError(
+                RenameError::TokenNotPartOfWorkspace,
+            ));
+        }
+    }
+    Ok(true)
 }

@@ -26,9 +26,13 @@ fn main() {
 
     // raw identifier syntax 
     let r#struct = ();
-    let d = r#struct;
+    let _ = r#struct;
 
     let _ = DeepStruct::new(30);
     let _ = DeepEnum::Number(40);
     let _ = test_mod::test_fun();
+
+    // external modules can't be renamed
+    let _ = std::constants::ZERO_B256;
+    let _ = core::primitives::b256::min();
 }

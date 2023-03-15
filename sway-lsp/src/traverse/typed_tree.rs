@@ -1076,6 +1076,7 @@ impl<'a> TypedTree<'a> {
                     .submodule(mod_path)
                     .and_then(|tgt_submod| tgt_submod.span.clone())
                 {
+                    token.kind = SymbolKind::Module;
                     token.type_def = Some(TypeDefinition::Ident(Ident::new(span)));
                 }
             }
