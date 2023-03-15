@@ -589,7 +589,7 @@ macro_rules! testgen {
 
 
                 #[tokio::test]
-                #[should_panic(expected = "revert_id: 0")]
+                #[should_panic(expected = "revert_id: 18446744073709486084")]
                 async fn cant_swap() {
                     let instance = get_contract_instance().await;
 
