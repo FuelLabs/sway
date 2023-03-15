@@ -140,30 +140,18 @@ impl SubstTypes for TyTraitDecl {
             .iter_mut()
             .for_each(|item| match item {
                 TyTraitInterfaceItem::TraitFn(item_ref) => {
-                    let new_item_ref = item_ref
-                        .clone()
-                        .subst_types_and_insert_new_with_parent(type_mapping, engines);
-                    item_ref.replace_id(*new_item_ref.id());
+                    item_ref.subst(type_mapping, engines);
                 }
                 TyTraitInterfaceItem::Constant(decl_ref) => {
-                    let new_decl_ref = decl_ref
-                        .clone()
-                        .subst_types_and_insert_new(type_mapping, engines);
-                    decl_ref.replace_id(*new_decl_ref.id());
+                    decl_ref.subst(type_mapping, engines);
                 }
             });
         self.items.iter_mut().for_each(|item| match item {
             TyTraitItem::Fn(item_ref) => {
-                let new_item_ref = item_ref
-                    .clone()
-                    .subst_types_and_insert_new_with_parent(type_mapping, engines);
-                item_ref.replace_id(*new_item_ref.id());
+                item_ref.subst(type_mapping, engines);
             }
             TyTraitItem::Constant(item_ref) => {
-                let new_decl_ref = item_ref
-                    .clone()
-                    .subst_types_and_insert_new_with_parent(type_mapping, engines);
-                item_ref.replace_id(*new_decl_ref.id());
+                item_ref.subst(type_mapping, engines);
             }
         });
     }

@@ -1023,14 +1023,8 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             // in the case of monomorphized functions, first check if we already have a node for
             // it in the namespace. if not then we need to check to see if the namespace contains
             // the decl id parents (the original generic non monomorphized decl id).
-            let mut exists = false;
-            let parents = decl_engine.find_all_parents(engines, &fn_ref.id().clone());
-            for parent in parents.iter() {
-                if let Ok(parent_decl_id) = DeclId::try_from(parent) {
-                    let parent = decl_engine.get_function(&parent_decl_id);
-                    exists |= graph.namespace.get_function(&parent).is_some();
-                }
-            }
+            let exists = false;
+            todo!();
 
             // find the function in the namespace
             let fn_namespace_entry = graph.namespace.get_function(&fn_decl).cloned();

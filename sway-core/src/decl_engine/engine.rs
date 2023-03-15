@@ -1,14 +1,8 @@
-use std::{
-    collections::{HashMap, HashSet, VecDeque},
-    sync::RwLock,
-};
-
 use sway_types::{Named, Spanned};
 
 use crate::{
     concurrent_slab::ConcurrentSlab,
     decl_engine::*,
-    engine_threading::*,
     language::ty::{
         self, TyAbiDecl, TyConstantDecl, TyEnumDecl, TyFunctionDecl, TyImplTrait, TyStorageDecl,
         TyStructDecl, TyTraitDecl, TyTraitFn, TyTypeAliasDecl,
@@ -28,8 +22,6 @@ pub struct DeclEngine {
     constant_slab: ConcurrentSlab<TyConstantDecl>,
     enum_slab: ConcurrentSlab<TyEnumDecl>,
     type_alias_slab: ConcurrentSlab<TyTypeAliasDecl>,
-
-    parents: RwLock<HashMap<FunctionalDeclId, Vec<FunctionalDeclId>>>,
 }
 
 pub trait DeclEngineGet<I, U> {
@@ -142,63 +134,6 @@ decl_engine_index!(enum_slab, ty::TyEnumDecl);
 decl_engine_index!(type_alias_slab, ty::TyTypeAliasDecl);
 
 impl DeclEngine {
-    /// Given a [DeclRef] `index`, finds all the parents of `index` and all the
-    /// recursive parents of those parents, and so on. Does not perform
-    /// duplicated computation---if the parents of a [DeclRef] have already been
-    /// found, we do not find them again.
-    #[allow(clippy::map_entry)]
-    pub(crate) fn find_all_parents<'a, T>(
-        &self,
-        engines: Engines<'_>,
-        index: &'a T,
-    ) -> Vec<FunctionalDeclId>
-    where
-        FunctionalDeclId: From<&'a T>,
-    {
-        let index: FunctionalDeclId = FunctionalDeclId::from(index);
-        let parents = self.parents.read().unwrap();
-        let mut acc_parents: HashMap<FunctionalDeclId, FunctionalDeclId> = HashMap::new();
-        let mut already_checked: HashSet<FunctionalDeclId> = HashSet::new();
-        let mut left_to_check: VecDeque<FunctionalDeclId> = VecDeque::from([index]);
-        while let Some(curr) = left_to_check.pop_front() {
-            if !already_checked.insert(curr.clone()) {
-                continue;
-            }
-            if let Some(curr_parents) = parents.get(&curr) {
-                for curr_parent in curr_parents.iter() {
-                    if !acc_parents.contains_key(curr_parent) {
-                        acc_parents.insert(curr_parent.clone(), curr_parent.clone());
-                    }
-                    if !left_to_check.iter().any(|x| match (x, curr_parent) {
-                        (
-                            FunctionalDeclId::TraitFn(x_id),
-                            FunctionalDeclId::TraitFn(curr_parent_id),
-                        ) => self.get(x_id).eq(&self.get(curr_parent_id), engines),
-                        (
-                            FunctionalDeclId::Function(x_id),
-                            FunctionalDeclId::Function(curr_parent_id),
-                        ) => self.get(x_id).eq(&self.get(curr_parent_id), engines),
-                        _ => false,
-                    }) {
-                        left_to_check.push_back(curr_parent.clone());
-                    }
-                }
-            }
-        }
-        acc_parents.values().cloned().collect()
-    }
-
-    pub(crate) fn register_parent<I>(&self, index: FunctionalDeclId, parent: FunctionalDeclId)
-    where
-        FunctionalDeclId: From<DeclId<I>>,
-    {
-        let mut parents = self.parents.write().unwrap();
-        parents
-            .entry(index)
-            .and_modify(|e| e.push(parent.clone()))
-            .or_insert_with(|| vec![parent]);
-    }
-
     /// Friendly helper method for calling the `get` method from the
     /// implementation of [DeclEngineGet] for [DeclEngine]
     ///

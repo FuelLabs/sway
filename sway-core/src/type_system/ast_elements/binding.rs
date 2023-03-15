@@ -281,10 +281,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
             }
         }
         // Insert the new copy into the declaration engine.
-        let new_fn_ref = ctx
-            .decl_engine
-            .insert(new_copy)
-            .with_parent(ctx.decl_engine, fn_ref.id().into());
+        let new_fn_ref = ctx.decl_engine.insert(new_copy);
         ok((new_fn_ref, None), warnings, errors)
     }
 }

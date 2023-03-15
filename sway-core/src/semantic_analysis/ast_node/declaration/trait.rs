@@ -88,9 +88,7 @@ impl ty::TyTraitDecl {
                     );
                     let decl_ref = decl_engine.insert(method.clone());
                     dummy_interface_surface.push(ty::TyImplItem::Fn(
-                        decl_engine
-                            .insert(method.to_dummy_func(Mode::NonAbi))
-                            .with_parent(decl_engine, (*decl_ref.id()).into()),
+                        decl_engine.insert(method.to_dummy_func(Mode::NonAbi)),
                     ));
                     new_interface_surface.push(ty::TyTraitInterfaceItem::TraitFn(decl_ref));
                     method.name.clone()
@@ -295,11 +293,7 @@ impl ty::TyTraitDecl {
                     method.subst(&type_mapping, engines);
                     impld_item_refs.insert(
                         method.name.clone(),
-                        TyTraitItem::Fn(
-                            decl_engine
-                                .insert(method)
-                                .with_parent(decl_engine, (*decl_ref.id()).into()),
-                        ),
+                        TyTraitItem::Fn(decl_engine.insert(method)),
                     );
                 }
                 ty::TyTraitItem::Constant(decl_ref) => {

@@ -1409,9 +1409,7 @@ impl ty::TyExpression {
                 ty::TyTraitInterfaceItem::TraitFn(decl_ref) => {
                     let method = decl_engine.get_trait_fn(&decl_ref);
                     abi_items.push(TyImplItem::Fn(
-                        decl_engine
-                            .insert(method.to_dummy_func(Mode::ImplAbiFn))
-                            .with_parent(decl_engine, (*decl_ref.id()).into()),
+                        decl_engine.insert(method.to_dummy_func(Mode::ImplAbiFn)),
                     ));
                 }
                 ty::TyTraitInterfaceItem::Constant(decl_ref) => {

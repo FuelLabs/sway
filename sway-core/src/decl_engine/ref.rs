@@ -116,36 +116,6 @@ where
         decl_engine.insert(decl)
     }
 }
-impl<T> DeclRef<DeclId<T>>
-where
-    FunctionalDeclId: From<DeclId<T>>,
-{
-    pub(crate) fn with_parent(self, decl_engine: &DeclEngine, parent: FunctionalDeclId) -> Self {
-        let id: DeclId<T> = self.id;
-        decl_engine.register_parent(id.into(), parent);
-        self
-    }
-}
-
-impl<T> DeclRef<DeclId<T>>
-where
-    FunctionalDeclId: From<DeclId<T>>,
-    DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + SubstTypes,
-{
-    pub(crate) fn subst_types_and_insert_new_with_parent(
-        &self,
-        type_mapping: &TypeSubstMap,
-        engines: Engines<'_>,
-    ) -> Self {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(&self.id);
-        decl.subst(type_mapping, engines);
-        decl_engine
-            .insert(decl)
-            .with_parent(decl_engine, self.id.into())
-    }
-}
 
 impl<T> EqWithEngines for DeclRef<DeclId<T>>
 where
