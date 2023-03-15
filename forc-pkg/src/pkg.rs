@@ -1721,9 +1721,8 @@ pub fn compile(
         "produce `sway_core::BuildConfig`",
         sway_build_config(pkg.manifest_file.dir(), &entry_path, pkg.target, profile)?
     );
-    let terse_mode = build_profile.terse;
-    let reverse_errors = build_profile.reverse_errors;
     let terse_mode = profile.terse;
+    let reverse_errors = profile.reverse_errors;
     let fail = |warnings, errors| {
         print_on_failure(terse_mode, warnings, errors, reverse_errors);
         bail!("Failed to compile {}", pkg.name);
@@ -2188,7 +2187,7 @@ pub fn build(
         };
 
         let fail = |warnings, errors| {
-            print_on_failure(profile.terse, warnings, errors);
+            print_on_failure(profile.terse, warnings, errors, profile.reverse_errors);
             bail!("Failed to compile {}", pkg.name);
         };
 
@@ -2296,7 +2295,6 @@ pub fn build(
                 print_on_failure(profile.terse, &[], &errs, profile.reverse_errors);
                 bail!("Failed to compile {}", pkg.name);
             }
-            Err(errs) => return fail(&[], &errs),
         };
         let mut compiled = compile(
             &descriptor,

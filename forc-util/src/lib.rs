@@ -237,7 +237,7 @@ pub fn print_on_failure(
     let w_len = warnings.len();
 
     if !terse_mode {
-        if dbg!(reverse_errors) {
+        if reverse_errors {
             warnings.iter().rev().for_each(format_warning);
             errors.iter().rev().for_each(format_err);
         } else {
