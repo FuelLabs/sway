@@ -730,7 +730,7 @@ impl<V> StorageVec<V> {
         let element1_key = sha256((element1_index, __get_storage_key()));
         let element2_key = sha256((element2_index, __get_storage_key()));
 
-        let element1_value: V = get::<V>(element1_key).unwrap();
+        let element1_value = get::<V>(element1_key).unwrap();
         store::<V>(element1_key, get::<V>(element2_key).unwrap());
         store::<V>(element2_key, element1_value);
     }
