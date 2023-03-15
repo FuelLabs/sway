@@ -96,11 +96,11 @@ fn test_fail() {
 Unit tests can call methods of external contracts if those contracts are added as contract dependencies, i.e. in the the [`contract-dependencies`](../forc/manifest_reference.md#the-contract-dependencies-section) section of the manifest file. An example of such calls is shown below:
 
 ```sway
-{{#include ../../../../examples/multi_contract_calls/caller_contract/src/main.sw:multi_contract_calls}}
+{{#include ../../../../examples/multi_contract_calls/caller/src/main.sw:multi_contract_calls}}
 ```
 
 Example `Forc.toml` for contract above:
 
 ```toml
-{{#include ../../../../examples/multi_contract_calls/caller_contract/Forc.toml:multi_contract_call_toml}}
+{{#include ../../../../examples/multi_contract_calls/caller/Forc.toml:multi_contract_call_toml}}
 ```
