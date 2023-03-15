@@ -1,14 +1,34 @@
 use std::{path::PathBuf, sync::Arc};
 
 use serde::{Deserialize, Serialize};
+use strum::EnumString;
 
 #[derive(
-    Clone, Copy, Debug, Default, Eq, PartialEq, Hash, Serialize, Deserialize, clap::ValueEnum,
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    Eq,
+    PartialEq,
+    Hash,
+    Serialize,
+    Deserialize,
+    clap::ValueEnum,
+    EnumString,
 )]
 pub enum BuildTarget {
     #[default]
+    #[serde(rename = "fuel")]
+    #[clap(name = "fuel")]
+    #[strum(serialize = "fuel")]
     Fuel,
+    #[serde(rename = "evm")]
+    #[clap(name = "evm")]
+    #[strum(serialize = "evm")]
     EVM,
+    #[serde(rename = "midenvm")]
+    #[clap(name = "midenvm")]
+    #[strum(serialize = "midenvm")]
     MidenVM,
 }
 
