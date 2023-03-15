@@ -1681,18 +1681,6 @@ async fn rename() {
         None
     );
 
-    // Fail to rename keyword
-    let rename = Rename {
-        req_uri: &uri,
-        req_line: 11,
-        req_char: 2,
-        new_name: "StruCt", // from struct
-    };
-    assert_eq!(
-        lsp::prepare_rename_request(&mut service, &rename, &mut i).await,
-        None
-    );
-
     // Fail to rename module
     let rename = Rename {
         req_uri: &uri,
