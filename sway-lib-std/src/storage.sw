@@ -693,7 +693,7 @@ impl<V> StorageVec<V> {
     ///
     /// * If `element1_index` or `element2_index` is greater than the length of the vector.
     ///
-    /// ### Storage Access
+    /// ### Number of Storage Accesses
     ///
     /// * Reads: `3`
     /// * Writes: `2`
