@@ -416,7 +416,6 @@ You will require the plugin <a href="https://github.com/FuelLabs/forc-wallet">fo
 </blockquote>
 <pre><code class="language-sh">forc deploy --unsigned
 </code></pre>
-<p>where <code>--node-url</code> parameter is the URL where your local node is hosted.</p>
 <blockquote>
 <p><strong>Note</strong>
 You can't use the same terminal session that is running fuel-core to run any other commands as this will end your fuel-core process.</p>
@@ -442,6 +441,7 @@ TransactionId(HexFormatted(7cef24ea33513733ab78c5daa5328d622d4b38187d0f0d1857b27
 <p>Salt is <code>0x0000000000000000000000000000000000000000000000000000000000000000</code> by default. If you do not want to pass a salt manually, you can also use the --random-salt flag to randomise your salt as follows:</p>
 <pre><code class="language-bash">forc deploy --unsigned --random-salt --node-url &lt;key&gt; --gas-price 1
 </code></pre>
+<p>where <code>--node-url</code> parameter is the URL where your local node is hosted.</p>
 <blockquote>
 <p>Note: To be able to use the <code>forc deploy</code> and <code>forc run</code> commands, you require the <code>forc client</code> plugin that lets you interact with a Fuel node. You can read more about <code>forc client</code> <a href="introduction/../forc/plugins/forc_client/index.html">here</a>.</p>
 </blockquote>
