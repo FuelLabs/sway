@@ -54,6 +54,8 @@ pub struct TestResult {
 }
 
 const TEST_METADATA_SEED: u64 = 0x7E57u64;
+/// A mapping from each member package of a build plan to its compiled contract dependencies.
+type ContractDependencyMap = HashMap<pkg::Pinned, Vec<Arc<pkg::BuiltPackage>>>;
 
 /// A package or a workspace that has been built, ready for test execution.
 pub enum BuiltTests {
@@ -153,7 +155,7 @@ impl TestSetup {
     fn contract_ids(&self) -> impl Iterator<Item = tx::ContractId> + '_ {
         self.contract_dependency_ids()
             .cloned()
-            .chain(self.root_contract_id().into_iter())
+            .chain(self.root_contract_id())
     }
 }
 
@@ -174,11 +176,6 @@ impl ContractToTest {
         let mut interpreter =
             vm::interpreter::Interpreter::with_storage(storage, params, GasCosts::default());
 
-        // Root contract is the contract that we are going to be running the tests of, after this
-        // deployment.
-        let (root_contract_id, root_contract_tx) =
-            deployment_transaction(&self.pkg, &self.without_tests_bytecode, params);
-
         // Iterate and create deployment transactions for contract dependencies of the root
         // contract.
         let contract_dependency_setups = self
@@ -194,6 +191,11 @@ impl ContractToTest {
                 Ok(contract_id)
             })
             .collect::<anyhow::Result<Vec<_>>>()?;
+
+        // Root contract is the contract that we are going to be running the tests of, after this
+        // deployment.
+        let (root_contract_id, root_contract_tx) =
+            deployment_transaction(&self.pkg, &self.without_tests_bytecode, params);
 
         // Deploy the root contract.
         interpreter.transact(root_contract_tx)?;
@@ -215,7 +217,7 @@ impl BuiltTests {
     /// `contract_dependencies` represents ordered (by deployment order) packages that needs to be deployed for each package, before executing the test.
     pub(crate) fn from_built(
         built: Built,
-        contract_dependencies: &HashMap<pkg::Pinned, Vec<Arc<pkg::BuiltPackage>>>,
+        contract_dependencies: &ContractDependencyMap,
     ) -> anyhow::Result<BuiltTests> {
         let built = match built {
             Built::Package(built_pkg) => BuiltTests::Package(PackageTests::from_built_pkg(
@@ -249,7 +251,7 @@ impl<'a> PackageTests {
     /// Construct a `PackageTests` from `BuiltPackage`.
     fn from_built_pkg(
         built_pkg: Arc<BuiltPackage>,
-        contract_dependencies: &HashMap<pkg::Pinned, Vec<Arc<pkg::BuiltPackage>>>,
+        contract_dependencies: &ContractDependencyMap,
     ) -> PackageTests {
         let built_without_tests_bytecode = built_pkg.bytecode_without_tests.clone();
         let contract_dependencies: Vec<Arc<pkg::BuiltPackage>> = contract_dependencies
@@ -452,13 +454,10 @@ pub fn build(opts: Opts) -> anyhow::Result<BuiltTests> {
             .map(|member_node| {
                 let graph = build_plan.graph();
                 let pinned_member = graph[member_node].clone();
-                let pinned_contract_dependencies: Vec<pkg::Pinned> = build_plan
+                let contract_dependencies = build_plan
                     .contract_dependencies(member_node)
                     .map(|contract_depency_node_ix| graph[contract_depency_node_ix].clone())
-                    .collect();
-                let contract_dependencies = pinned_contract_dependencies
-                    .iter()
-                    .filter_map(|pinned| built_members.get(pinned))
+                    .filter_map(|pinned| built_members.get(&pinned))
                     .cloned()
                     .collect();
 
