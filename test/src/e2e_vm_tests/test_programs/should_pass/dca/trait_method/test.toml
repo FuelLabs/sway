@@ -1,3 +1,7 @@
 category = "compile"
-expected_warnings = 0
+
+# check: $()fn method2(self) -> MyStruct {
+# check: $()This method is never called.
+
+expected_warnings = 1
 

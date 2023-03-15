@@ -506,9 +506,10 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
         }
     };
     let trait_entry = graph.namespace.find_trait(trait_name).cloned();
+    // Collect the methods that are directly implemented in the trait.
     let mut trait_items_method_names = Vec::new();
     if let Some(trait_decl_ref) = trait_decl_ref {
-        if let InterfaceDeclId::Trait(trait_decl_id) = &trait_decl_ref.id {
+        if let InterfaceDeclId::Trait(trait_decl_id) = &trait_decl_ref.id() {
             let trait_decl = decl_engine.get_trait(trait_decl_id);
             for trait_item in trait_decl.items {
                 let ty::TyTraitItem::Fn(func_decl_ref) = trait_item;
@@ -537,7 +538,9 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
                                 TreeType::Library { .. } | TreeType::Contract
                             )
                         } else {
-                            // trait_entry not found which means it probably is compiled in another library
+                            // trait_entry not found which means it is an external trait.
+                            // As the trait is external we assume it is within a library
+                            // thus we can return true directly.
                             true
                         }
                     } else {

@@ -1,4 +1,4 @@
-library trait_method_lib;
+library;
 
 pub struct MyStruct {
 
