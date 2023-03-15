@@ -30,35 +30,6 @@ impl Named for TyEnumDecl {
     }
 }
 
-impl EqWithEngines for TyEnumDecl {}
-impl PartialEqWithEngines for TyEnumDecl {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        self.call_path.suffix == other.call_path.suffix
-            && self.type_parameters.eq(&other.type_parameters, engines)
-            && self.variants.eq(&other.variants, engines)
-            && self.visibility == other.visibility
-    }
-}
-
-impl HashWithEngines for TyEnumDecl {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let TyEnumDecl {
-            call_path,
-            type_parameters,
-            variants,
-            visibility,
-            // these fields are not hashed because they aren't relevant/a
-            // reliable source of obj v. obj distinction
-            span: _,
-            attributes: _,
-        } = self;
-        call_path.suffix.hash(state);
-        variants.hash(state, engines);
-        type_parameters.hash(state, engines);
-        visibility.hash(state);
-    }
-}
-
 impl Spanned for TyEnumDecl {
     fn span(&self) -> Span {
         self.span.clone()

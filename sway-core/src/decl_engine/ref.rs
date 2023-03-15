@@ -22,7 +22,7 @@
 
 use std::hash::{Hash, Hasher};
 
-use sway_types::{Ident, Named, Span, Spanned};
+use sway_types::{Ident, Span, Spanned};
 
 use crate::{
     decl_engine::*,
@@ -94,98 +94,48 @@ impl<I> DeclRef<I> {
     }
 }
 
-impl<T> EqWithEngines for DeclRef<DeclId<T>>
+impl<I> EqWithEngines for DeclRef<I> where I: Eq {}
+impl<I> PartialEqWithEngines for DeclRef<I>
 where
-    DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + PartialEqWithEngines + EqWithEngines,
-{
-}
-impl<T> PartialEqWithEngines for DeclRef<DeclId<T>>
-where
-    DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + PartialEqWithEngines,
+    I: PartialEq,
 {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        let decl_engine = engines.de();
         let DeclRef {
             name: ln,
             id: lid,
+            subst_list: lsl,
             // these fields are not used in comparison because they aren't
             // relevant/a reliable source of obj v. obj distinction
             decl_span: _,
-            // temporarily omitted
-            subst_list: _,
         } = self;
         let DeclRef {
             name: rn,
             id: rid,
+            subst_list: rsl,
             // these fields are not used in comparison because they aren't
             // relevant/a reliable source of obj v. obj distinction
             decl_span: _,
-            // temporarily omitted
-            subst_list: _,
         } = other;
-        ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), engines)
+        ln == rn && lid == rid && lsl.eq(rsl, engines)
     }
 }
 
-impl<T> HashWithEngines for DeclRef<DeclId<T>>
+impl<I> HashWithEngines for DeclRef<I>
 where
-    DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + HashWithEngines,
+    I: Hash,
 {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let decl_engine = engines.de();
         let DeclRef {
             name,
             id,
+            subst_list,
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
             decl_span: _,
-            // temporarily omitted
-            subst_list: _,
         } = self;
         name.hash(state);
-        decl_engine.get(id).hash(state, engines);
-    }
-}
-
-impl EqWithEngines for DeclRefMixedInterface {}
-impl PartialEqWithEngines for DeclRefMixedInterface {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        let decl_engine = engines.de();
-        match (&self.id, &other.id) {
-            (InterfaceDeclId::Abi(self_id), InterfaceDeclId::Abi(other_id)) => {
-                let left = decl_engine.get(self_id);
-                let right = decl_engine.get(other_id);
-                self.name == other.name && left.eq(&right, engines)
-            }
-            (InterfaceDeclId::Trait(self_id), InterfaceDeclId::Trait(other_id)) => {
-                let left = decl_engine.get(self_id);
-                let right = decl_engine.get(other_id);
-                self.name == other.name && left.eq(&right, engines)
-            }
-            _ => false,
-        }
-    }
-}
-
-impl HashWithEngines for DeclRefMixedInterface {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        match self.id {
-            InterfaceDeclId::Abi(id) => {
-                state.write_u8(0);
-                let decl_engine = engines.de();
-                let decl = decl_engine.get(&id);
-                decl.hash(state, engines);
-            }
-            InterfaceDeclId::Trait(id) => {
-                state.write_u8(1);
-                let decl_engine = engines.de();
-                let decl = decl_engine.get(&id);
-                decl.hash(state, engines);
-            }
-        }
+        id.hash(state);
+        subst_list.hash(state, engines);
     }
 }
 

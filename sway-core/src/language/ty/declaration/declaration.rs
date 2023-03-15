@@ -85,7 +85,6 @@ pub enum TyDecl {
 impl EqWithEngines for TyDecl {}
 impl PartialEqWithEngines for TyDecl {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        let decl_engine = engines.de();
         let type_engine = engines.te();
         match (self, other) {
             (Self::VariableDecl(x), Self::VariableDecl(y)) => x.eq(y, engines),
@@ -100,69 +99,79 @@ impl PartialEqWithEngines for TyDecl {
                     decl_id: rid,
                     ..
                 },
-            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), engines),
+            ) => ln == rn && lid == rid,
 
             (
                 Self::FunctionDecl {
                     name: ln,
                     decl_id: lid,
+                    subst_list: lsl,
                     ..
                 },
                 Self::FunctionDecl {
                     name: rn,
                     decl_id: rid,
+                    subst_list: rsl,
                     ..
                 },
-            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), engines),
+            ) => ln == rn && lid == rid && lsl.inner().eq(rsl.inner(), engines),
 
             (
                 Self::TraitDecl {
                     name: ln,
                     decl_id: lid,
+                    subst_list: lsl,
                     ..
                 },
                 Self::TraitDecl {
                     name: rn,
                     decl_id: rid,
+                    subst_list: rsl,
                     ..
                 },
-            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), engines),
+            ) => ln == rn && lid == rid && lsl.inner().eq(rsl.inner(), engines),
             (
                 Self::StructDecl {
                     name: ln,
                     decl_id: lid,
+                    subst_list: lsl,
                     ..
                 },
                 Self::StructDecl {
                     name: rn,
                     decl_id: rid,
+                    subst_list: rsl,
                     ..
                 },
-            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), engines),
+            ) => ln == rn && lid == rid && lsl.inner().eq(rsl.inner(), engines),
             (
                 Self::EnumDecl {
                     name: ln,
                     decl_id: lid,
+                    subst_list: lsl,
                     ..
                 },
                 Self::EnumDecl {
                     name: rn,
                     decl_id: rid,
+                    subst_list: rsl,
                     ..
                 },
-            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), engines),
+            ) => ln == rn && lid == rid && lsl.inner().eq(rsl.inner(), engines),
             (
                 Self::ImplTrait {
                     name: ln,
                     decl_id: lid,
+                    subst_list: lsl,
                     ..
                 },
                 Self::ImplTrait {
                     name: rn,
                     decl_id: rid,
+                    subst_list: rsl,
                     ..
                 },
-            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), engines),
+            ) => ln == rn && lid == rid && lsl.inner().eq(rsl.inner(), engines),
 
             (
                 Self::AbiDecl {
@@ -175,14 +184,14 @@ impl PartialEqWithEngines for TyDecl {
                     decl_id: rid,
                     ..
                 },
-            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), engines),
+            ) => ln == rn && lid == rid,
             (Self::StorageDecl { decl_id: lid, .. }, Self::StorageDecl { decl_id: rid, .. }) => {
-                decl_engine.get(lid).eq(&decl_engine.get(rid), engines)
+                lid == rid
             }
             (
                 Self::TypeAliasDecl { decl_id: lid, .. },
                 Self::TypeAliasDecl { decl_id: rid, .. },
-            ) => decl_engine.get(lid).eq(&decl_engine.get(rid), engines),
+            ) => lid == rid,
             (
                 Self::GenericTypeForFunctionScope {
                     name: xn,
@@ -202,7 +211,6 @@ impl PartialEqWithEngines for TyDecl {
 impl HashWithEngines for TyDecl {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
         use TyDecl::*;
-        let decl_engine = engines.de();
         let type_engine = engines.te();
         std::mem::discriminant(self).hash(state);
         match self {
@@ -210,39 +218,66 @@ impl HashWithEngines for TyDecl {
                 decl.hash(state, engines);
             }
             ConstantDecl { decl_id, .. } => {
-                decl_engine.get(decl_id).hash(state, engines);
+                decl_id.hash(state);
             }
-            FunctionDecl { decl_id, .. } => {
-                decl_engine.get(decl_id).hash(state, engines);
+            FunctionDecl {
+                decl_id,
+                subst_list,
+                ..
+            } => {
+                decl_id.hash(state);
+                subst_list.inner().hash(state, engines);
             }
-            TraitDecl { decl_id, .. } => {
-                decl_engine.get(decl_id).hash(state, engines);
+            TraitDecl {
+                decl_id,
+                subst_list,
+                ..
+            } => {
+                decl_id.hash(state);
+                subst_list.inner().hash(state, engines);
             }
-            StructDecl { decl_id, .. } => {
-                decl_engine.get(decl_id).hash(state, engines);
+            StructDecl {
+                decl_id,
+                subst_list,
+                ..
+            } => {
+                decl_id.hash(state);
+                subst_list.inner().hash(state, engines);
             }
-            EnumDecl { decl_id, .. } => {
-                decl_engine.get(decl_id).hash(state, engines);
+            EnumDecl {
+                decl_id,
+                subst_list,
+                ..
+            } => {
+                decl_id.hash(state);
+                subst_list.inner().hash(state, engines);
             }
             EnumVariantDecl {
                 decl_id,
                 variant_name,
+                subst_list,
                 ..
             } => {
-                decl_engine.get(decl_id).hash(state, engines);
+                decl_id.hash(state);
+                subst_list.inner().hash(state, engines);
                 variant_name.hash(state);
             }
-            ImplTrait { decl_id, .. } => {
-                decl_engine.get(decl_id).hash(state, engines);
+            ImplTrait {
+                decl_id,
+                subst_list,
+                ..
+            } => {
+                decl_id.hash(state);
+                subst_list.inner().hash(state, engines);
             }
             AbiDecl { decl_id, .. } => {
-                decl_engine.get(decl_id).hash(state, engines);
+                decl_id.hash(state);
             }
             TypeAliasDecl { decl_id, .. } => {
-                decl_engine.get(decl_id).hash(state, engines);
+                decl_id.hash(state);
             }
             StorageDecl { decl_id, .. } => {
-                decl_engine.get(decl_id).hash(state, engines);
+                decl_id.hash(state);
             }
             GenericTypeForFunctionScope { name, type_id } => {
                 name.hash(state);

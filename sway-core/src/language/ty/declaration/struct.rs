@@ -30,35 +30,6 @@ impl Named for TyStructDecl {
     }
 }
 
-impl EqWithEngines for TyStructDecl {}
-impl PartialEqWithEngines for TyStructDecl {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        self.call_path.suffix == other.call_path.suffix
-            && self.fields.eq(&other.fields, engines)
-            && self.type_parameters.eq(&other.type_parameters, engines)
-            && self.visibility == other.visibility
-    }
-}
-
-impl HashWithEngines for TyStructDecl {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let TyStructDecl {
-            call_path,
-            fields,
-            type_parameters,
-            visibility,
-            // these fields are not hashed because they aren't relevant/a
-            // reliable source of obj v. obj distinction
-            span: _,
-            attributes: _,
-        } = self;
-        call_path.suffix.hash(state);
-        fields.hash(state, engines);
-        type_parameters.hash(state, engines);
-        visibility.hash(state);
-    }
-}
-
 impl Spanned for TyStructDecl {
     fn span(&self) -> Span {
         self.span.clone()

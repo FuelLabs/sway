@@ -1,5 +1,3 @@
-use std::hash::{Hash, Hasher};
-
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
@@ -47,87 +45,6 @@ impl Named for TyTraitDecl {
 impl Spanned for TyTraitDecl {
     fn span(&self) -> Span {
         self.span.clone()
-    }
-}
-
-impl EqWithEngines for TyTraitDecl {}
-impl PartialEqWithEngines for TyTraitDecl {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        self.name == other.name
-            && self.type_parameters.eq(&other.type_parameters, engines)
-            && self.interface_surface.eq(&other.interface_surface, engines)
-            && self.items.eq(&other.items, engines)
-            && self.supertraits.eq(&other.supertraits, engines)
-            && self.visibility == other.visibility
-    }
-}
-
-impl HashWithEngines for TyTraitDecl {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let TyTraitDecl {
-            name,
-            type_parameters,
-            interface_surface,
-            items,
-            supertraits,
-            visibility,
-            // these fields are not hashed because they aren't relevant/a
-            // reliable source of obj v. obj distinction
-            attributes: _,
-            span: _,
-        } = self;
-        name.hash(state);
-        type_parameters.hash(state, engines);
-        interface_surface.hash(state, engines);
-        items.hash(state, engines);
-        supertraits.hash(state, engines);
-        visibility.hash(state);
-    }
-}
-
-impl EqWithEngines for TyTraitInterfaceItem {}
-impl PartialEqWithEngines for TyTraitInterfaceItem {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        match (self, other) {
-            (TyTraitInterfaceItem::TraitFn(id), TyTraitInterfaceItem::TraitFn(other_id)) => {
-                id.eq(other_id, engines)
-            }
-            (TyTraitInterfaceItem::Constant(id), TyTraitInterfaceItem::Constant(other_id)) => {
-                id.eq(other_id, engines)
-            }
-            _ => false,
-        }
-    }
-}
-
-impl EqWithEngines for TyTraitItem {}
-impl PartialEqWithEngines for TyTraitItem {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        match (self, other) {
-            (TyTraitItem::Fn(id), TyTraitItem::Fn(other_id)) => id.eq(other_id, engines),
-            (TyTraitItem::Constant(id), TyTraitItem::Constant(other_id)) => {
-                id.eq(other_id, engines)
-            }
-            _ => false,
-        }
-    }
-}
-
-impl HashWithEngines for TyTraitInterfaceItem {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        match self {
-            TyTraitInterfaceItem::TraitFn(fn_decl) => fn_decl.hash(state, engines),
-            TyTraitInterfaceItem::Constant(const_decl) => const_decl.hash(state, engines),
-        }
-    }
-}
-
-impl HashWithEngines for TyTraitItem {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        match self {
-            TyTraitItem::Fn(fn_decl) => fn_decl.hash(state, engines),
-            TyTraitItem::Constant(const_decl) => const_decl.hash(state, engines),
-        }
     }
 }
 

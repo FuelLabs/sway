@@ -1,12 +1,7 @@
-use std::hash::{Hash, Hasher};
-
 use sway_error::error::CompileError;
 use sway_types::{state::StateIndex, Ident, Named, Span, Spanned};
 
-use crate::{
-    decl_engine::DeclEngine, engine_threading::*, error::*, language::ty::*, transform,
-    type_system::*,
-};
+use crate::{decl_engine::DeclEngine, error::*, language::ty::*, transform, type_system::*};
 
 #[derive(Clone, Debug)]
 pub struct TyStorageDecl {
@@ -19,27 +14,6 @@ pub struct TyStorageDecl {
 impl Named for TyStorageDecl {
     fn name(&self) -> &Ident {
         &self.storage_keyword
-    }
-}
-
-impl EqWithEngines for TyStorageDecl {}
-impl PartialEqWithEngines for TyStorageDecl {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        self.fields.eq(&other.fields, engines) && self.attributes == other.attributes
-    }
-}
-
-impl HashWithEngines for TyStorageDecl {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let TyStorageDecl {
-            fields,
-            // these fields are not hashed because they aren't relevant/a
-            // reliable source of obj v. obj distinction
-            span: _,
-            attributes: _,
-            storage_keyword: _,
-        } = self;
-        fields.hash(state, engines);
     }
 }
 
@@ -173,30 +147,4 @@ pub struct TyStorageField {
     pub initializer: TyExpression,
     pub(crate) span: Span,
     pub attributes: transform::AttributesMap,
-}
-
-impl EqWithEngines for TyStorageField {}
-impl PartialEqWithEngines for TyStorageField {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        self.name == other.name
-            && self.type_argument.eq(&other.type_argument, engines)
-            && self.initializer.eq(&other.initializer, engines)
-    }
-}
-
-impl HashWithEngines for TyStorageField {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let TyStorageField {
-            name,
-            type_argument,
-            initializer,
-            // these fields are not hashed because they aren't relevant/a
-            // reliable source of obj v. obj distinction
-            span: _,
-            attributes: _,
-        } = self;
-        name.hash(state);
-        type_argument.hash(state, engines);
-        initializer.hash(state, engines);
-    }
 }

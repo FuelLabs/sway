@@ -43,49 +43,6 @@ impl Named for TyFunctionDecl {
     }
 }
 
-impl EqWithEngines for TyFunctionDecl {}
-impl PartialEqWithEngines for TyFunctionDecl {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        self.name == other.name
-            && self.body.eq(&other.body, engines)
-            && self.parameters.eq(&other.parameters, engines)
-            && self.return_type.eq(&other.return_type, engines)
-            && self.type_parameters.eq(&other.type_parameters, engines)
-            && self.visibility == other.visibility
-            && self.is_contract_call == other.is_contract_call
-            && self.purity == other.purity
-    }
-}
-
-impl HashWithEngines for TyFunctionDecl {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let TyFunctionDecl {
-            name,
-            body,
-            parameters,
-            return_type,
-            type_parameters,
-            visibility,
-            is_contract_call,
-            purity,
-            // these fields are not hashed because they aren't relevant/a
-            // reliable source of obj v. obj distinction
-            span: _,
-            attributes: _,
-            implementing_type: _,
-            where_clause: _,
-        } = self;
-        name.hash(state);
-        body.hash(state, engines);
-        parameters.hash(state, engines);
-        return_type.hash(state, engines);
-        type_parameters.hash(state, engines);
-        visibility.hash(state);
-        is_contract_call.hash(state);
-        purity.hash(state);
-    }
-}
-
 impl Spanned for TyFunctionDecl {
     fn span(&self) -> Span {
         self.span.clone()
