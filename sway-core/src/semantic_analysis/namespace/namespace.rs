@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::DeclRefFunction,
+    decl_engine::{DeclRefConstant, DeclRefFunction},
     engine_threading::*,
     error::*,
     language::{ty, CallPath},
@@ -331,6 +331,45 @@ impl Namespace {
             });
         }
         err(warnings, errors)
+    }
+
+    /// Given a name and a type (plus a `self_type` to potentially
+    /// resolve it), find that method in the namespace. Requires `args_buf`
+    /// because of some special casing for the standard library where we pull
+    /// the type from the arguments buffer.
+    ///
+    /// This function will generate a missing method error if the method is not
+    /// found.
+    pub(crate) fn find_constant_for_type(
+        &mut self,
+        type_id: TypeId,
+        item_name: &Ident,
+        self_type: TypeId,
+        engines: Engines<'_>,
+    ) -> CompileResult<DeclRefConstant> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        let matching_item_decl_refs = check!(
+            self.find_items_for_type(type_id, &Vec::<Ident>::new(), item_name, self_type, engines),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        let matching_constant_decl_refs = matching_item_decl_refs
+            .into_iter()
+            .flat_map(|item| match item {
+                ty::TyTraitItem::Fn(_decl_ref) => None,
+                ty::TyTraitItem::Constant(decl_ref) => Some(decl_ref),
+            })
+            .collect::<Vec<_>>();
+
+        if let Some(constant_decl_ref) = matching_constant_decl_refs.first() {
+            ok(constant_decl_ref.clone(), warnings, errors)
+        } else {
+            err(warnings, errors)
+        }
     }
 
     /// Short-hand for performing a [Module::star_import] with `mod_path` as the destination.

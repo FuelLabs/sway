@@ -18,7 +18,7 @@ pub(crate) use self::{
 
 use crate::{
     asm_lang::{virtual_ops::VirtualOp, virtual_register::VirtualRegister},
-    decl_engine::{DeclEngineIndex, DeclRef},
+    decl_engine::{DeclEngineIndex, DeclRef, DeclRefConstant},
     error::*,
     language::{
         parsed::*,
@@ -1119,12 +1119,12 @@ impl ty::TyExpression {
         let mut const_probe_warnings = vec![];
         let mut const_probe_errors = vec![];
         let maybe_const = {
-            let mut call_path_binding = unknown_call_path_binding.clone();
-
-            TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
-                .flat_map(|(unknown_decl, _type_id)| unknown_decl.to_const_ref())
-                .ok(&mut const_probe_warnings, &mut const_probe_errors)
-                .map(|const_ref| (const_ref, call_path_binding))
+            Self::probe_const_decl(
+                &unknown_call_path_binding,
+                &mut ctx,
+                &mut const_probe_warnings,
+                &mut const_probe_errors,
+            )
         };
 
         // compare the results of the checks
@@ -1198,6 +1198,76 @@ impl ty::TyExpression {
             }
         };
         ok(exp, warnings, errors)
+    }
+
+    fn probe_const_decl(
+        unknown_call_path_binding: &TypeBinding<CallPath>,
+        ctx: &mut TypeCheckContext,
+        const_probe_warnings: &mut Vec<CompileWarning>,
+        const_probe_errors: &mut Vec<CompileError>,
+    ) -> Option<(DeclRefConstant, TypeBinding<CallPath>)> {
+        let mut call_path_binding = unknown_call_path_binding.clone();
+
+        let type_info_opt = call_path_binding
+            .clone()
+            .inner
+            .prefixes
+            .last()
+            .map(|type_name| {
+                type_name_to_type_info_opt(type_name).unwrap_or(TypeInfo::Custom {
+                    call_path: type_name.clone().into(),
+                    type_arguments: None,
+                })
+            });
+
+        if let Some(TypeInfo::SelfType) = type_info_opt {
+            call_path_binding.strip_prefixes();
+        }
+
+        let const_opt = TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
+            .flat_map(|(unknown_decl, _type_id)| unknown_decl.to_const_ref())
+            .ok(const_probe_warnings, const_probe_errors)
+            .map(|const_decl| (const_decl, call_path_binding.clone()));
+        if const_opt.is_some() {
+            return const_opt;
+        }
+
+        *const_probe_warnings = vec![];
+        *const_probe_errors = vec![];
+
+        // If we didn't find a constant, check for the constant inside the impl.
+        let suffix = call_path_binding.inner.suffix.clone();
+        let const_call_path = call_path_binding.inner.rshift();
+
+        let mut const_call_path_binding = TypeBinding {
+            inner: const_call_path,
+            type_arguments: call_path_binding.type_arguments.clone(),
+            span: call_path_binding.span.clone(),
+        };
+
+        let struct_type_id = match check!(
+            TypeBinding::type_check_with_ident(&mut const_call_path_binding, ctx.by_ref()),
+            return None,
+            const_probe_warnings,
+            const_probe_errors
+        ) {
+            (ty::TyDeclaration::StructDeclaration { .. }, Some(type_id)) => type_id,
+            _ => return None,
+        };
+
+        let const_decl_ref = check!(
+            ctx.namespace.find_constant_for_type(
+                struct_type_id,
+                &suffix,
+                ctx.self_type(),
+                ctx.engines(),
+            ),
+            return None,
+            const_probe_warnings,
+            const_probe_errors
+        );
+
+        Some((const_decl_ref, call_path_binding.clone()))
     }
 
     #[allow(clippy::too_many_arguments)]

@@ -1,7 +1,7 @@
 use sway_types::Spanned;
 
 use crate::{
-    decl_engine::{DeclId, DeclRef},
+    decl_engine::DeclRefConstant,
     error::*,
     language::{ty, CallPath},
     semantic_analysis::TypeCheckContext,
@@ -10,7 +10,7 @@ use crate::{
 
 pub(crate) fn instantiate_constant_decl(
     ctx: TypeCheckContext,
-    const_ref: DeclRef<DeclId<ty::TyConstantDeclaration>>,
+    const_ref: DeclRefConstant,
     call_path_binding: TypeBinding<CallPath>,
 ) -> CompileResult<ty::TyExpression> {
     let const_decl = ctx.decl_engine.get_constant(const_ref.id());

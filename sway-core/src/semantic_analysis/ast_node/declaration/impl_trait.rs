@@ -527,7 +527,22 @@ impl ty::TyImplTrait {
                         warnings,
                         errors
                     );
-                    new_items.push(TyImplItem::Constant(decl_engine.insert(const_decl)));
+                    let decl_ref = decl_engine.insert(const_decl);
+                    new_items.push(TyImplItem::Constant(decl_ref.clone()));
+
+                    check!(
+                        ctx.namespace.insert_symbol(
+                            decl_ref.name().clone(),
+                            ty::TyDeclaration::ConstantDeclaration {
+                                name: decl_ref.name().clone(),
+                                decl_id: *decl_ref.id(),
+                                decl_span: decl_ref.span().clone()
+                            }
+                        ),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
                 }
             }
         }
