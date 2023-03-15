@@ -224,7 +224,7 @@
           "typeArguments": null
         }
       ],
-      "type": "enum Option",
+      "type": "enum std::option::Option",
       "typeId": 2,
       "typeParameters": [
         3
@@ -265,7 +265,7 @@
           "typeArguments": null
         }
       ],
-      "type": "struct Quad",
+      "type": "struct basic_storage_abi::Quad",
       "typeId": 5,
       "typeParameters": null
     },
@@ -282,7 +282,7 @@
           "typeArguments": null
         }
       ],
-      "type": "struct RawVec",
+      "type": "struct std::vec::RawVec",
       "typeId": 6,
       "typeParameters": [
         3
@@ -307,7 +307,7 @@
           "typeArguments": null
         }
       ],
-      "type": "struct Vec",
+      "type": "struct std::vec::Vec",
       "typeId": 7,
       "typeParameters": [
         3

@@ -20,9 +20,23 @@
 //!
 //!   #[foo(bar, bar)]
 
-use sway_types::{Ident, Span};
+use sway_ast::Literal;
+use sway_types::{constants::ALLOW_DEAD_CODE_NAME, Ident, Span, Spanned};
 
 use std::{collections::HashMap, hash::Hash, sync::Arc};
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AttributeArg {
+    pub name: Ident,
+    pub value: Option<Literal>,
+    pub span: Span,
+}
+
+impl Spanned for AttributeArg {
+    fn span(&self) -> Span {
+        self.span.clone()
+    }
+}
 
 /// An attribute has a name (i.e "doc", "storage"),
 /// a vector of possible arguments and
@@ -30,7 +44,7 @@ use std::{collections::HashMap, hash::Hash, sync::Arc};
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Attribute {
     pub name: Ident,
-    pub args: Vec<Ident>,
+    pub args: Vec<AttributeArg>,
     pub span: Span,
 }
 
@@ -43,6 +57,36 @@ pub enum AttributeKind {
     Inline,
     Test,
     Payable,
+    Allow,
+}
+
+impl AttributeKind {
+    // Returns tuple with the mininum and maximum number of expected args
+    // None can be returned in the second position of the tuple if there is no maximum
+    pub fn expected_args_len_min_max(self) -> (usize, Option<usize>) {
+        match self {
+            AttributeKind::Doc => (0, None),
+            AttributeKind::DocComment => (0, None),
+            AttributeKind::Storage => (0, None),
+            AttributeKind::Inline => (0, None),
+            AttributeKind::Test => (0, None),
+            AttributeKind::Payable => (0, None),
+            AttributeKind::Allow => (1, Some(1)),
+        }
+    }
+
+    // Returns the expected values for an attribute argument
+    pub fn expected_args_values(self, _arg_index: usize) -> Option<Vec<String>> {
+        match self {
+            AttributeKind::Doc => None,
+            AttributeKind::DocComment => None,
+            AttributeKind::Storage => None,
+            AttributeKind::Inline => None,
+            AttributeKind::Test => None,
+            AttributeKind::Payable => None,
+            AttributeKind::Allow => Some(vec![ALLOW_DEAD_CODE_NAME.to_string()]),
+        }
+    }
 }
 
 /// Stores the attributes associated with the type.

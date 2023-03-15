@@ -3,7 +3,6 @@ pub use {
         assignable::Assignable,
         attribute::{Annotated, Attribute, AttributeDecl},
         brackets::{AngleBrackets, Braces, Parens, SquareBrackets},
-        dependency::Dependency,
         expr::{
             asm::{AsmBlock, AsmImmediate},
             op_code::Instruction,
@@ -30,12 +29,14 @@ pub use {
         pattern::Pattern,
         punctuated::Punctuated,
         statement::{Statement, StatementLet},
+        submodule::Submodule,
         token::{Delimiter, Group, Punct, PunctKind, Spacing, TokenStream, TokenTree},
         ty::Ty,
         where_clause::{WhereBound, WhereClause},
     },
     extension_trait::extension_trait,
     num_bigint::BigUint,
+    serde::{Serialize, Serializer},
     std::{
         fmt, marker::PhantomData, mem, ops::ControlFlow, path::PathBuf, str::FromStr, sync::Arc,
     },

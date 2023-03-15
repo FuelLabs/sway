@@ -1,1 +1,3 @@
-library test_mod;
+library;
+
+mod deep_mod;

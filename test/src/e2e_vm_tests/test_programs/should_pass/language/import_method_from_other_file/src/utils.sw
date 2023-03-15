@@ -1,4 +1,4 @@
-library utils;
+library;
 
 use core::ops::Eq;
 use ::asset::Asset;

@@ -1,4 +1,7 @@
-use std::hash::{Hash, Hasher};
+use std::{
+    collections::HashSet,
+    hash::{Hash, Hasher},
+};
 
 use sha2::{Digest, Sha256};
 
@@ -13,7 +16,7 @@ use crate::{
 
 use sway_types::{
     constants::{INLINE_ALWAYS_NAME, INLINE_NEVER_NAME},
-    Ident, Span, Spanned,
+    Ident, Named, Span, Spanned,
 };
 
 #[derive(Clone, Debug)]
@@ -31,6 +34,12 @@ pub struct TyFunctionDeclaration {
     pub is_contract_call: bool,
     pub purity: Purity,
     pub where_clause: Vec<(Ident, Vec<TraitConstraint>)>,
+}
+
+impl Named for TyFunctionDeclaration {
+    fn name(&self) -> &Ident {
+        &self.name
+    }
 }
 
 impl EqWithEngines for TyFunctionDeclaration {}
@@ -131,31 +140,29 @@ impl UnconstrainedTypeParameters for TyFunctionDeclaration {
         type_parameter: &TypeParameter,
     ) -> bool {
         let type_engine = engines.te();
-        let type_parameter_info = type_engine.get(type_parameter.type_id);
-        if self
+        let decl_engine = engines.de();
+        let mut all_types: HashSet<TypeId> = self
             .type_parameters
             .iter()
-            .map(|type_param| type_engine.get(type_param.type_id))
-            .any(|x| x.eq(&type_parameter_info, engines))
-        {
-            return false;
-        }
-        if self
-            .parameters
+            .map(|type_param| type_param.type_id)
+            .collect();
+        all_types.extend(self.parameters.iter().flat_map(|param| {
+            let mut inner = type_engine
+                .get(param.type_argument.type_id)
+                .extract_inner_types(type_engine, decl_engine);
+            inner.insert(param.type_argument.type_id);
+            inner
+        }));
+        all_types.extend(
+            type_engine
+                .get(self.return_type.type_id)
+                .extract_inner_types(type_engine, decl_engine),
+        );
+        all_types.insert(self.return_type.type_id);
+        let type_parameter_info = type_engine.get(type_parameter.type_id);
+        all_types
             .iter()
-            .map(|param| type_engine.get(param.type_argument.type_id))
-            .any(|x| x.eq(&type_parameter_info, engines))
-        {
-            return true;
-        }
-        if type_engine
-            .get(self.return_type.type_id)
-            .eq(&type_parameter_info, engines)
-        {
-            return true;
-        }
-
-        false
+            .any(|type_id| type_engine.get(*type_id).eq(&type_parameter_info, engines))
     }
 }
 
@@ -253,12 +260,13 @@ impl TyFunctionDeclaration {
     pub fn to_fn_selector_value_untruncated(
         &self,
         type_engine: &TypeEngine,
+        decl_engine: &DeclEngine,
     ) -> CompileResult<Vec<u8>> {
         let mut errors = vec![];
         let mut warnings = vec![];
         let mut hasher = Sha256::new();
         let data = check!(
-            self.to_selector_name(type_engine),
+            self.to_selector_name(type_engine, decl_engine),
             return err(warnings, errors),
             warnings,
             errors
@@ -271,11 +279,15 @@ impl TyFunctionDeclaration {
     /// Converts a [TyFunctionDeclaration] into a value that is to be used in contract function
     /// selectors.
     /// Hashes the name and parameters using SHA256, and then truncates to four bytes.
-    pub fn to_fn_selector_value(&self, type_engine: &TypeEngine) -> CompileResult<[u8; 4]> {
+    pub fn to_fn_selector_value(
+        &self,
+        type_engine: &TypeEngine,
+        decl_engine: &DeclEngine,
+    ) -> CompileResult<[u8; 4]> {
         let mut errors = vec![];
         let mut warnings = vec![];
         let hash = check!(
-            self.to_fn_selector_value_untruncated(type_engine),
+            self.to_fn_selector_value_untruncated(type_engine, decl_engine),
             return err(warnings, errors),
             warnings,
             errors
@@ -286,7 +298,11 @@ impl TyFunctionDeclaration {
         ok(buf, warnings, errors)
     }
 
-    pub fn to_selector_name(&self, type_engine: &TypeEngine) -> CompileResult<String> {
+    pub fn to_selector_name(
+        &self,
+        type_engine: &TypeEngine,
+        decl_engine: &DeclEngine,
+    ) -> CompileResult<String> {
         let mut errors = vec![];
         let mut warnings = vec![];
         let named_params = self
@@ -296,7 +312,7 @@ impl TyFunctionDeclaration {
                 type_engine
                     .to_typeinfo(type_argument.type_id, &type_argument.span)
                     .expect("unreachable I think?")
-                    .to_selector_name(type_engine, &type_argument.span)
+                    .to_selector_name(type_engine, decl_engine, &type_argument.span)
             })
             .filter_map(|name| name.ok(&mut warnings, &mut errors))
             .collect::<Vec<String>>();
@@ -328,6 +344,7 @@ impl TyFunctionDeclaration {
             .last()?
             .args
             .first()?
+            .name
             .as_str()
         {
             INLINE_NEVER_NAME => Some(Inline::Never),

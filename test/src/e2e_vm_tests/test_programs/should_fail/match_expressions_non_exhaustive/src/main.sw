@@ -1,8 +1,8 @@
 script;
 
-dep primitive_tests;
-dep adt_tests;
-dep complex_tests;
+mod primitive_tests;
+mod adt_tests;
+mod complex_tests;
 
 use primitive_tests::*;
 use adt_tests::*;

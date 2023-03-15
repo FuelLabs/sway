@@ -1,6 +1,6 @@
 script; 
 
-dep foo;
+mod foo;
 
 struct S<T> { }
 
@@ -12,6 +12,6 @@ impl<T> S<T> {
 
 fn main() -> u64 {
   let a = S::<u64> { };
-  let b = foo::baz::ExampleStruct::<bool> { a_field: 5u64 };
+  let b = foo::bar::ExampleStruct::<bool> { a_field: 5u64 };
   return a.f();
 }

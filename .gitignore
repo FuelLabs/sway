@@ -15,8 +15,3 @@ sway-lib-std/Forc.lock
 
 # Forc's build directory
 out
-
-# Don't lock example or lib-std test harnesses in order to try and catch
-# accidental upstream patch release breakage before users do.
-examples/*/Cargo.lock
-test/src/sdk-harness/Cargo.lock

@@ -1,7 +1,7 @@
 script;
 // This tests importing other files.
 
-dep a_dependency;
+mod foo;
 
 use foo::Foo as MyFoo;
 

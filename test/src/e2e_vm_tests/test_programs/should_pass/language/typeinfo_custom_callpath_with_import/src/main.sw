@@ -1,6 +1,6 @@
 script;
 
-dep foo;
+mod foo;
 
 use foo::*;
 

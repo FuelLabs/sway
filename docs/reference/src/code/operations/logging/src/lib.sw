@@ -1,4 +1,4 @@
-library logging;
+library;
 
 // ANCHOR: logging
 fn log_data(number: u64) {

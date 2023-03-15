@@ -82,7 +82,7 @@ html {
   }
 }
 body {
-  font: 1rem/1.5 "Source Serif 4", NanumBarunGothic, serif;
+  font: 16px/1.4 "Source Serif 4", NanumBarunGothic, serif;
   margin: 0;
   position: relative;
   overflow-wrap: break-word;
@@ -249,7 +249,7 @@ ol ol {
   margin-bottom: 0.625em;
 }
 p {
-  margin: 0 0 0.75em 0;
+    margin: 0 0 .6em 0;
 }
 summary {
   outline: none;
@@ -363,7 +363,7 @@ nav.sub {
 }
 .sidebar {
   font-size: 0.875rem;
-  width: 250px;
+  width: 200px;
   min-width: 200px;
   overflow-y: scroll;
   position: sticky;
@@ -371,12 +371,17 @@ nav.sub {
   top: 0;
   left: 0;
 }
-.sidebar-elems,
 .sidebar > .location {
   padding-left: 24px;
 }
 .sidebar .location {
-  overflow-wrap: anywhere;
+    border: 1px solid;
+    font-size: 17px;
+    margin: 30px 10px 20px 10px;
+    text-align: center;
+    word-wrap: break-word;
+    font-weight: inherit;
+    padding: 0;
 }
 .swaydoc.source .sidebar {
   width: 50px;
@@ -413,7 +418,17 @@ nav.sub {
   visibility: visible;
 }
 #all-types {
-  margin-top: 1em;
+  text-align: center;
+  border: 1px solid;
+  margin: 0 10px;
+  margin-bottom: 10px;
+  display: block;
+  border-radius: 7px;
+}
+a#all-types:hover,
+a#all-types:active {
+  background-color: var(--sidebar-background-color-hover);
+  color: #c5c5c5;
 }
 * {
   scrollbar-width: initial;
@@ -475,7 +490,7 @@ nav.sub {
 h2.location a {
   display: block;
   padding: 0.25rem;
-  margin-left: -0.25rem;
+  margin-left: 2em;
   text-overflow: ellipsis;
   overflow: hidden;
 }
@@ -1993,4 +2008,7 @@ details.swaydoc-toggle[open] > summary.hideme::after {
 }
 .example-links ul {
   margin-bottom: 0;
+}
+#all-types>p {
+    margin: 5px 0;
 }

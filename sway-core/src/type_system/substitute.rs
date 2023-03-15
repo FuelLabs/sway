@@ -1,9 +1,18 @@
-use std::{collections::BTreeMap, fmt};
+use std::{
+    collections::BTreeMap,
+    fmt,
+    hash::Hasher,
+    slice::{Iter, IterMut},
+    vec::IntoIter,
+};
 
 use super::*;
-use crate::engine_threading::*;
+use crate::{
+    decl_engine::{DeclEngine, DeclEngineIndex},
+    engine_threading::*,
+};
 
-pub(crate) trait SubstTypes {
+pub trait SubstTypes {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>);
 
     fn subst(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
@@ -13,12 +22,85 @@ pub(crate) trait SubstTypes {
     }
 }
 
+/// A list of types that serve as the list of type params for type substitution.
+/// Any types of the [TypeParam][TypeInfo::TypeParam] variant will point to an index in
+/// this list.
+#[derive(Debug, Clone, Default)]
+pub struct TypeSubstList {
+    list: Vec<TypeParameter>,
+}
+
+impl TypeSubstList {
+    pub(crate) fn new() -> TypeSubstList {
+        TypeSubstList { list: vec![] }
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn is_empty(&self) -> bool {
+        self.list.is_empty()
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn len(&self) -> usize {
+        self.list.len()
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn push(&mut self, type_param: TypeParameter) {
+        self.list.push(type_param);
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn iter(&self) -> Iter<'_, TypeParameter> {
+        self.list.iter()
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn into_iter(self) -> IntoIter<TypeParameter> {
+        self.list.into_iter()
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn iter_mut(&mut self) -> IterMut<'_, TypeParameter> {
+        self.list.iter_mut()
+    }
+}
+
+impl std::iter::FromIterator<TypeParameter> for TypeSubstList {
+    fn from_iter<T: IntoIterator<Item = TypeParameter>>(iter: T) -> Self {
+        TypeSubstList {
+            list: iter.into_iter().collect::<Vec<TypeParameter>>(),
+        }
+    }
+}
+
+impl EqWithEngines for TypeSubstList {}
+impl PartialEqWithEngines for TypeSubstList {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        self.list.eq(&other.list, engines)
+    }
+}
+
+impl HashWithEngines for TypeSubstList {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        self.list.hash(state, engines);
+    }
+}
+
+impl SubstTypes for TypeSubstList {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        self.list
+            .iter_mut()
+            .for_each(|x| x.subst(type_mapping, engines));
+    }
+}
+
 type SourceType = TypeId;
 type DestinationType = TypeId;
 
 /// The [TypeSubstMap] is used to create a mapping between a [SourceType] (LHS)
 /// and a [DestinationType] (RHS).
-pub(crate) struct TypeSubstMap {
+pub struct TypeSubstMap {
     mapping: BTreeMap<SourceType, DestinationType>,
 }
 
@@ -133,6 +215,7 @@ impl TypeSubstMap {
     /// they can be used for `subset`.
     pub(crate) fn from_superset_and_subset(
         type_engine: &TypeEngine,
+        decl_engine: &DeclEngine,
         superset: TypeId,
         subset: TypeId,
     ) -> TypeSubstMap {
@@ -159,46 +242,48 @@ impl TypeSubstMap {
                     .collect::<Vec<_>>();
                 TypeSubstMap::from_superset_and_subset_helper(
                     type_engine,
+                    decl_engine,
                     type_parameters,
                     type_arguments,
                 )
             }
-            (
-                TypeInfo::Enum {
-                    type_parameters, ..
-                },
-                TypeInfo::Enum {
-                    type_parameters: type_arguments,
-                    ..
-                },
-            ) => {
-                let type_parameters = type_parameters
+            (TypeInfo::Enum(decl_ref_params), TypeInfo::Enum(decl_ref_args)) => {
+                let decl_params = decl_engine.get_enum(&decl_ref_params);
+                let decl_args = decl_engine.get_enum(&decl_ref_args);
+                let type_parameters = decl_params
+                    .type_parameters
                     .iter()
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
-                let type_arguments = type_arguments.iter().map(|x| x.type_id).collect::<Vec<_>>();
+                let type_arguments = decl_args
+                    .type_parameters
+                    .iter()
+                    .map(|x| x.type_id)
+                    .collect::<Vec<_>>();
                 TypeSubstMap::from_superset_and_subset_helper(
                     type_engine,
+                    decl_engine,
                     type_parameters,
                     type_arguments,
                 )
             }
-            (
-                TypeInfo::Struct {
-                    type_parameters, ..
-                },
-                TypeInfo::Struct {
-                    type_parameters: type_arguments,
-                    ..
-                },
-            ) => {
-                let type_parameters = type_parameters
+            (TypeInfo::Struct(decl_ref_params), TypeInfo::Struct(decl_ref_args)) => {
+                let decl_params = decl_engine.get_struct(&decl_ref_params);
+                let decl_args = decl_engine.get_struct(&decl_ref_args);
+
+                let type_parameters = decl_params
+                    .type_parameters
                     .iter()
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
-                let type_arguments = type_arguments.iter().map(|x| x.type_id).collect::<Vec<_>>();
+                let type_arguments = decl_args
+                    .type_parameters
+                    .iter()
+                    .map(|x| x.type_id)
+                    .collect::<Vec<_>>();
                 TypeSubstMap::from_superset_and_subset_helper(
                     type_engine,
+                    decl_engine,
                     type_parameters,
                     type_arguments,
                 )
@@ -206,6 +291,7 @@ impl TypeSubstMap {
             (TypeInfo::Tuple(type_parameters), TypeInfo::Tuple(type_arguments)) => {
                 TypeSubstMap::from_superset_and_subset_helper(
                     type_engine,
+                    decl_engine,
                     type_parameters
                         .iter()
                         .map(|x| x.type_id)
@@ -216,6 +302,7 @@ impl TypeSubstMap {
             (TypeInfo::Array(type_parameter, _), TypeInfo::Array(type_argument, _)) => {
                 TypeSubstMap::from_superset_and_subset_helper(
                     type_engine,
+                    decl_engine,
                     vec![type_parameter.type_id],
                     vec![type_argument.type_id],
                 )
@@ -238,6 +325,7 @@ impl TypeSubstMap {
                     .collect::<Vec<_>>();
                 TypeSubstMap::from_superset_and_subset_helper(
                     type_engine,
+                    decl_engine,
                     type_parameters,
                     type_arguments,
                 )
@@ -266,6 +354,7 @@ impl TypeSubstMap {
     /// with each [SourceType]s and [DestinationType]s in the original [TypeSubstMap].
     fn from_superset_and_subset_helper(
         type_engine: &TypeEngine,
+        decl_engine: &DeclEngine,
         type_parameters: Vec<SourceType>,
         type_arguments: Vec<DestinationType>,
     ) -> TypeSubstMap {
@@ -274,7 +363,7 @@ impl TypeSubstMap {
 
         for (s, d) in type_mapping.mapping.clone().iter() {
             type_mapping.mapping.extend(
-                TypeSubstMap::from_superset_and_subset(type_engine, *s, *d)
+                TypeSubstMap::from_superset_and_subset(type_engine, decl_engine, *s, *d)
                     .mapping
                     .iter(),
             );
@@ -322,83 +411,49 @@ impl TypeSubstMap {
             TypeInfo::Custom { .. } => iter_for_match(engines, self, &type_info),
             TypeInfo::UnknownGeneric { .. } => iter_for_match(engines, self, &type_info),
             TypeInfo::Placeholder(_) => iter_for_match(engines, self, &type_info),
-            TypeInfo::Struct {
-                fields,
-                call_path,
-                type_parameters,
-            } => {
+            TypeInfo::TypeParam(_) => None,
+            TypeInfo::Struct(decl_ref) => {
+                let mut decl = decl_engine.get_struct(&decl_ref);
                 let mut need_to_create_new = false;
-                let fields = fields
-                    .into_iter()
-                    .map(|mut field| {
-                        if let Some(type_id) = self.find_match(field.type_argument.type_id, engines)
-                        {
-                            need_to_create_new = true;
-                            field.type_argument.type_id = type_id;
-                        }
-                        field
-                    })
-                    .collect::<Vec<_>>();
-                let type_parameters = type_parameters
-                    .into_iter()
-                    .map(|mut type_param| {
-                        if let Some(type_id) = self.find_match(type_param.type_id, engines) {
-                            need_to_create_new = true;
-                            type_param.type_id = type_id;
-                        }
-                        type_param
-                    })
-                    .collect::<Vec<_>>();
+                for field in decl.fields.iter_mut() {
+                    if let Some(type_id) = self.find_match(field.type_argument.type_id, engines) {
+                        need_to_create_new = true;
+                        field.type_argument.type_id = type_id;
+                    }
+                }
+                for type_param in decl.type_parameters.iter_mut() {
+                    if let Some(type_id) = self.find_match(type_param.type_id, engines) {
+                        need_to_create_new = true;
+                        type_param.type_id = type_id;
+                    }
+                }
                 if need_to_create_new {
-                    Some(type_engine.insert(
-                        decl_engine,
-                        TypeInfo::Struct {
-                            fields,
-                            call_path,
-                            type_parameters,
-                        },
-                    ))
+                    let new_decl_ref = decl_engine.insert(decl);
+                    Some(type_engine.insert(decl_engine, TypeInfo::Struct(new_decl_ref)))
                 } else {
                     None
                 }
             }
-            TypeInfo::Enum {
-                variant_types,
-                call_path,
-                type_parameters,
-            } => {
+            TypeInfo::Enum(decl_ref) => {
+                let mut decl = decl_engine.get_enum(&decl_ref);
                 let mut need_to_create_new = false;
-                let variant_types = variant_types
-                    .into_iter()
-                    .map(|mut variant| {
-                        if let Some(type_id) =
-                            self.find_match(variant.type_argument.type_id, engines)
-                        {
-                            need_to_create_new = true;
-                            variant.type_argument.type_id = type_id;
-                        }
-                        variant
-                    })
-                    .collect::<Vec<_>>();
-                let type_parameters = type_parameters
-                    .into_iter()
-                    .map(|mut type_param| {
-                        if let Some(type_id) = self.find_match(type_param.type_id, engines) {
-                            need_to_create_new = true;
-                            type_param.type_id = type_id;
-                        }
-                        type_param
-                    })
-                    .collect::<Vec<_>>();
+
+                for variant in decl.variants.iter_mut() {
+                    if let Some(type_id) = self.find_match(variant.type_argument.type_id, engines) {
+                        need_to_create_new = true;
+                        variant.type_argument.type_id = type_id;
+                    }
+                }
+
+                for type_param in decl.type_parameters.iter_mut() {
+                    if let Some(type_id) = self.find_match(type_param.type_id, engines) {
+                        need_to_create_new = true;
+                        type_param.type_id = type_id;
+                    }
+                }
                 if need_to_create_new {
-                    Some(type_engine.insert(
-                        decl_engine,
-                        TypeInfo::Enum {
-                            variant_types,
-                            type_parameters,
-                            call_path,
-                        },
-                    ))
+                    let new_decl_ref = decl_engine.insert(decl);
+                    Some(type_engine.insert(decl_engine, TypeInfo::Enum(new_decl_ref)))
                 } else {
                     None
                 }

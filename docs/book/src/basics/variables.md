@@ -46,22 +46,18 @@ If the value declared cannot be assigned to the declared type, there will be an 
 
 ## Configuration-time Constants
 
-It is possible to define and initialize constant variables in the manifest file `Forc.toml` of a Sway project. These constants then become visible and usable in the corresponding Sway program. Such variables are called configuration-time constants and have to be defined in their own section called `[constants]` in the manifest file. The syntax for declaring such constants is as follows:
+Configuration-time constants (or configurable constants) are special constants that behave like regular constants in the sense that they cannot change during program execution, but they can be configured _after_ the Sway program has been built. The Rust and TS SDKs allow updating the values of these constants by injecting new values for them directly in the bytecode without having to build the program again. These are useful for contract factories and behave somewhat similarly to `immutable` variables from languages like Solidity.
+
+Configuration-time constants are declared inside a `configurable` block and require a type ascription and an initializer as follows:
 
 ```sway
-{{#include ../../../../examples/config_time_constants/Forc.toml:constants}}
+{{#include ../../../../examples/config_time_constants/src/main.sw:configurable_block}}
 ```
 
-Notice that each constant requires two fields: a `type` and a `value`.
+At most one `configurable` block is allowed in a Sway project. Moreover, `configurable` blocks are not allowed in libraries.
 
-> **Note**
-> Because configuration-time constants are _constants_, they are immutable and cannot be made otherwise.
-
-The constants defined above can now be used in a Sway program that uses the manifest file as follows:
+Configurable constants can be read directly just like regular constants:
 
 ```sway
-{{#include ../../../../examples/config_time_constants/src/main.sw}}
+{{#include ../../../../examples/config_time_constants/src/main.sw:using_configurables}}
 ```
-
-> **Note**
-> Currently, it is only possible to define configuration-time constants that have [primitive types](built_in_types.md#primitive-types) and that are initialized using literals. This will change in the future.

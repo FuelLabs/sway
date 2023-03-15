@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::DeclRef,
+    decl_engine::{DeclRefConstant, DeclRefFunction},
     engine_threading::*,
     error::*,
     language::{ty, CallPath},
@@ -105,6 +105,16 @@ impl Namespace {
         self.root.resolve_call_path(&self.mod_path, call_path)
     }
 
+    /// Short-hand for calling [Root::resolve_call_path_with_visibility_check] on `root` with the `mod_path`.
+    pub(crate) fn resolve_call_path_with_visibility_check(
+        &self,
+        engines: Engines<'_>,
+        call_path: &CallPath,
+    ) -> CompileResult<&ty::TyDeclaration> {
+        self.root
+            .resolve_call_path_with_visibility_check(engines, &self.mod_path, call_path)
+    }
+
     /// Short-hand for calling [Root::resolve_type_with_self] on `root` with the `mod_path`.
     pub(crate) fn resolve_type_with_self(
         &mut self,
@@ -148,22 +158,16 @@ impl Namespace {
         )
     }
 
-    /// Given a method and a type (plus a `self_type` to potentially
-    /// resolve it), find that method in the namespace. Requires `args_buf`
-    /// because of some special casing for the standard library where we pull
-    /// the type from the arguments buffer.
-    ///
-    /// This function will generate a missing method error if the method is not
-    /// found.
-    pub(crate) fn find_method_for_type(
+    /// Given a name and a type (plus a `self_type` to potentially
+    /// resolve it), find items matching in the namespace.
+    pub(crate) fn find_items_for_type(
         &mut self,
         mut type_id: TypeId,
-        method_prefix: &Path,
-        method_name: &Ident,
+        item_prefix: &Path,
+        item_name: &Ident,
         self_type: TypeId,
-        args_buf: &VecDeque<ty::TyExpression>,
         engines: Engines<'_>,
-    ) -> CompileResult<DeclRef> {
+    ) -> CompileResult<Vec<ty::TyTraitItem>> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -185,8 +189,8 @@ impl Namespace {
             errors
         );
 
-        // grab the local methods from the local module
-        let local_methods = local_module.get_methods_for_type(engines, type_id);
+        // grab the local items from the local module
+        let local_items = local_module.get_items_for_type(engines, type_id);
 
         type_id.replace_self_type(engines, self_type);
 
@@ -195,11 +199,11 @@ impl Namespace {
             type_engine.resolve(
                 decl_engine,
                 type_id,
-                &method_name.span(),
+                &item_name.span(),
                 EnforceTypeArguments::No,
                 None,
                 self,
-                method_prefix
+                item_prefix
             ),
             type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
             warnings,
@@ -208,25 +212,74 @@ impl Namespace {
 
         // grab the module where the type itself is declared
         let type_module = check!(
-            self.root().check_submodule(method_prefix),
+            self.root().check_submodule(item_prefix),
             return err(warnings, errors),
             warnings,
             errors
         );
 
-        // grab the methods from where the type is declared
-        let mut type_methods = type_module.get_methods_for_type(engines, type_id);
+        // grab the items from where the type is declared
+        let mut type_items = type_module.get_items_for_type(engines, type_id);
 
-        let mut methods = local_methods;
-        methods.append(&mut type_methods);
+        let mut items = local_items;
+        items.append(&mut type_items);
 
-        let mut matching_method_decl_refs: Vec<DeclRef> = vec![];
+        let mut matching_item_decl_refs: Vec<ty::TyTraitItem> = vec![];
 
-        for decl_ref in methods.into_iter() {
-            if &decl_ref.name == method_name {
-                matching_method_decl_refs.push(decl_ref);
+        for item in items.into_iter() {
+            match &item {
+                ty::TyTraitItem::Fn(decl_ref) => {
+                    if decl_ref.name() == item_name {
+                        matching_item_decl_refs.push(item.clone());
+                    }
+                }
+                ty::TyTraitItem::Constant(decl_ref) => {
+                    if decl_ref.name() == item_name {
+                        matching_item_decl_refs.push(item.clone());
+                    }
+                }
             }
         }
+
+        ok(matching_item_decl_refs, warnings, errors)
+    }
+
+    /// Given a name and a type (plus a `self_type` to potentially
+    /// resolve it), find that method in the namespace. Requires `args_buf`
+    /// because of some special casing for the standard library where we pull
+    /// the type from the arguments buffer.
+    ///
+    /// This function will generate a missing method error if the method is not
+    /// found.
+    pub(crate) fn find_method_for_type(
+        &mut self,
+        type_id: TypeId,
+        method_prefix: &Path,
+        method_name: &Ident,
+        self_type: TypeId,
+        args_buf: &VecDeque<ty::TyExpression>,
+        engines: Engines<'_>,
+    ) -> CompileResult<DeclRefFunction> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        let decl_engine = engines.de();
+        let type_engine = engines.te();
+
+        let matching_item_decl_refs = check!(
+            self.find_items_for_type(type_id, method_prefix, method_name, self_type, engines),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        let matching_method_decl_refs = matching_item_decl_refs
+            .into_iter()
+            .flat_map(|item| match item {
+                ty::TyTraitItem::Fn(decl_ref) => Some(decl_ref),
+                ty::TyTraitItem::Constant(_) => None,
+            })
+            .collect::<Vec<_>>();
 
         let matching_method_decl_ref = match matching_method_decl_refs.len().cmp(&1) {
             Ordering::Equal => matching_method_decl_refs.get(0).cloned(),
@@ -234,14 +287,9 @@ impl Namespace {
                 // Case where multiple methods exist with the same name
                 // This is the case of https://github.com/FuelLabs/sway/issues/3633
                 // where multiple generic trait impls use the same method name but with different parameter types
-                let mut maybe_method_decl_ref: Option<DeclRef> = Option::None;
+                let mut maybe_method_decl_ref: Option<DeclRefFunction> = None;
                 for decl_ref in matching_method_decl_refs.clone().into_iter() {
-                    let method = check!(
-                        CompileResult::from(decl_engine.get_function(&decl_ref, &decl_ref.span())),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
+                    let method = decl_engine.get_function(&decl_ref);
                     if method.parameters.len() == args_buf.len()
                         && !method.parameters.iter().zip(args_buf.iter()).any(|(p, a)| {
                             !are_equal_minus_dynamic_types(
@@ -285,6 +333,45 @@ impl Namespace {
         err(warnings, errors)
     }
 
+    /// Given a name and a type (plus a `self_type` to potentially
+    /// resolve it), find that method in the namespace. Requires `args_buf`
+    /// because of some special casing for the standard library where we pull
+    /// the type from the arguments buffer.
+    ///
+    /// This function will generate a missing method error if the method is not
+    /// found.
+    pub(crate) fn find_constant_for_type(
+        &mut self,
+        type_id: TypeId,
+        item_name: &Ident,
+        self_type: TypeId,
+        engines: Engines<'_>,
+    ) -> CompileResult<DeclRefConstant> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        let matching_item_decl_refs = check!(
+            self.find_items_for_type(type_id, &Vec::<Ident>::new(), item_name, self_type, engines),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        let matching_constant_decl_refs = matching_item_decl_refs
+            .into_iter()
+            .flat_map(|item| match item {
+                ty::TyTraitItem::Fn(_decl_ref) => None,
+                ty::TyTraitItem::Constant(decl_ref) => Some(decl_ref),
+            })
+            .collect::<Vec<_>>();
+
+        if let Some(constant_decl_ref) = matching_constant_decl_refs.first() {
+            ok(constant_decl_ref.clone(), warnings, errors)
+        } else {
+            err(warnings, errors)
+        }
+    }
+
     /// Short-hand for performing a [Module::star_import] with `mod_path` as the destination.
     pub(crate) fn star_import(&mut self, src: &Path, engines: Engines<'_>) -> CompileResult<()> {
         self.root.star_import(src, &self.mod_path, engines)
@@ -318,17 +405,23 @@ impl Namespace {
     /// [SubmoduleNamespace] type. When dropped, the [SubmoduleNamespace] resets the `mod_path`
     /// back to the original path so that we can continue type-checking the current module after
     /// finishing with the dependency.
-    pub(crate) fn enter_submodule(&mut self, dep_name: Ident) -> SubmoduleNamespace {
+    pub(crate) fn enter_submodule(
+        &mut self,
+        mod_name: Ident,
+        module_span: Span,
+    ) -> SubmoduleNamespace {
         let init = self.init.clone();
-        self.submodules.entry(dep_name.to_string()).or_insert(init);
+        self.submodules.entry(mod_name.to_string()).or_insert(init);
         let submod_path: Vec<_> = self
             .mod_path
             .iter()
             .cloned()
-            .chain(Some(dep_name.clone()))
+            .chain(Some(mod_name.clone()))
             .collect();
         let parent_mod_path = std::mem::replace(&mut self.mod_path, submod_path);
-        self.name = Some(dep_name);
+        self.name = Some(mod_name);
+        self.span = Some(module_span);
+        self.is_external = false;
         SubmoduleNamespace {
             namespace: self,
             parent_mod_path,
@@ -361,18 +454,18 @@ impl Namespace {
         )
     }
 
-    pub(crate) fn get_methods_for_type_and_trait_name(
+    pub(crate) fn get_items_for_type_and_trait_name(
         &mut self,
         engines: Engines<'_>,
         type_id: TypeId,
         trait_name: &CallPath,
-    ) -> Vec<DeclRef> {
+    ) -> Vec<ty::TyTraitItem> {
         // Use trait name with full path, improves consistency between
         // this get and inserting in `insert_trait_implementation`.
         let trait_name = trait_name.to_fullpath(self);
 
         self.implemented_traits
-            .get_methods_for_type_and_trait_name(engines, type_id, &trait_name)
+            .get_items_for_type_and_trait_name(engines, type_id, &trait_name)
     }
 }
 

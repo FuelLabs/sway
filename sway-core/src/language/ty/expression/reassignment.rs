@@ -164,6 +164,7 @@ pub struct TyStorageReassignment {
     pub fields: Vec<TyStorageReassignDescriptor>,
     pub(crate) ix: StateIndex,
     pub rhs: TyExpression,
+    pub storage_keyword_span: Span,
 }
 
 impl EqWithEngines for TyStorageReassignment {}
@@ -177,7 +178,14 @@ impl PartialEqWithEngines for TyStorageReassignment {
 
 impl HashWithEngines for TyStorageReassignment {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let TyStorageReassignment { fields, ix, rhs } = self;
+        let TyStorageReassignment {
+            fields,
+            ix,
+            rhs,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            storage_keyword_span: _,
+        } = self;
         fields.hash(state, engines);
         ix.hash(state);
         rhs.hash(state, engines);

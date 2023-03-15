@@ -1,4 +1,4 @@
-library loop;
+library;
 
 pub fn loop() -> bool {
     let mut x = 0;

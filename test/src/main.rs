@@ -4,6 +4,7 @@ mod ir_generation;
 use anyhow::Result;
 use clap::Parser;
 use forc_tracing::init_tracing_subscriber;
+use std::str::FromStr;
 use sway_core::BuildTarget;
 use tracing::Instrument;
 
@@ -78,9 +79,8 @@ async fn main() -> Result<()> {
         first_only: cli.first_only,
     };
     let build_target = match cli.build_target {
-        Some(target) => match target.to_lowercase().as_str() {
-            "fuel" => BuildTarget::Fuel,
-            "evm" => BuildTarget::EVM,
+        Some(target) => match BuildTarget::from_str(target.as_str()) {
+            Ok(target) => target,
             _ => panic!("unexpected build target"),
         },
         None => BuildTarget::default(),

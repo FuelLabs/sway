@@ -1,13 +1,13 @@
 use crate::{Parse, ParseResult, ParseToEnd, Parser, ParserConsumed};
 
 use sway_ast::keywords::{
-    AbiToken, ClassToken, ConfigurableToken, ConstToken, DepToken, EnumToken, FnToken, ImplToken,
+    AbiToken, ClassToken, ConfigurableToken, ConstToken, EnumToken, FnToken, ImplToken, ModToken,
     MutToken, OpenAngleBracketToken, RefToken, SelfToken, SemicolonToken, StorageToken,
     StructToken, TraitToken, UseToken, WhereToken,
 };
 use sway_ast::{
-    Dependency, FnArg, FnArgs, FnSignature, ItemConst, ItemEnum, ItemFn, ItemKind, ItemStruct,
-    ItemTrait, ItemUse, TypeField,
+    FnArg, FnArgs, FnSignature, ItemConst, ItemEnum, ItemFn, ItemKind, ItemStruct, ItemTrait,
+    ItemUse, Submodule, TypeField,
 };
 use sway_error::parser_error::ParseErrorKind;
 
@@ -30,8 +30,8 @@ impl Parse for ItemKind {
 
         let mut visibility = parser.take();
 
-        let kind = if let Some(item) = parser.guarded_parse::<DepToken, Dependency>()? {
-            ItemKind::Dependency(item)
+        let kind = if let Some(item) = parser.guarded_parse::<ModToken, Submodule>()? {
+            ItemKind::Submodule(item)
         } else if let Some(mut item) = parser.guarded_parse::<UseToken, ItemUse>()? {
             item.visibility = visibility.take();
             ItemKind::Use(item)
@@ -167,16 +167,8 @@ impl Parse for FnSignature {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use crate::test_utils::parse;
     use sway_ast::{AttributeDecl, Item, ItemTraitItem};
-
-    fn parse_item(input: &str) -> Item {
-        let handler = <_>::default();
-        let ts = crate::token::lex(&handler, &Arc::from(input), 0, input.len(), None).unwrap();
-        Parser::new(&handler, &ts)
-            .parse()
-            .unwrap_or_else(|_| panic!("Parse error: {:?}", handler.consume().0))
-    }
 
     // Attribute name and its list of parameters
     type ParameterizedAttr<'a> = (&'a str, Option<Vec<&'a str>>);
@@ -192,9 +184,9 @@ mod tests {
                     .map(|att| {
                         (
                             att.name.as_str(),
-                            att.args
-                                .as_ref()
-                                .map(|arg| arg.get().into_iter().map(|a| a.as_str()).collect()),
+                            att.args.as_ref().map(|arg| {
+                                arg.get().into_iter().map(|a| a.name.as_str()).collect()
+                            }),
                         )
                     })
                     .collect()
@@ -204,7 +196,7 @@ mod tests {
 
     #[test]
     fn parse_doc_comment() {
-        let item = parse_item(
+        let item = parse::<Item>(
             r#"
             // I will be ignored.
             //! I will be ignored.
@@ -225,7 +217,7 @@ mod tests {
 
     #[test]
     fn parse_doc_comment_struct() {
-        let item = parse_item(
+        let item = parse::<Item>(
             r#"
             // I will be ignored.
             //! I will be ignored. 
@@ -264,7 +256,7 @@ mod tests {
 
     #[test]
     fn parse_attributes_none() {
-        let item = parse_item(
+        let item = parse::<Item>(
             r#"
             fn f() -> bool {
                 false
@@ -278,7 +270,7 @@ mod tests {
 
     #[test]
     fn parse_attributes_fn_basic() {
-        let item = parse_item(
+        let item = parse::<Item>(
             r#"
             #[foo]
             fn f() -> bool {
@@ -292,8 +284,44 @@ mod tests {
     }
 
     #[test]
+    fn parse_attributes_fn_one_arg_value() {
+        let item = parse::<Item>(
+            r#"
+            #[cfg(target = "evm")]
+            fn f() -> bool {
+                false
+            }
+            "#,
+        );
+
+        assert!(matches!(item.value, ItemKind::Fn(_)));
+        assert_eq!(
+            attributes(&item.attribute_list),
+            vec![[("cfg", Some(vec!["target"]))]]
+        );
+    }
+
+    #[test]
+    fn parse_attributes_fn_two_arg_values() {
+        let item = parse::<Item>(
+            r#"
+            #[cfg(target = "evm", feature = "test")]
+            fn f() -> bool {
+                false
+            }
+            "#,
+        );
+
+        assert!(matches!(item.value, ItemKind::Fn(_)));
+        assert_eq!(
+            attributes(&item.attribute_list),
+            vec![[("cfg", Some(vec!["target", "feature"]))]]
+        );
+    }
+
+    #[test]
     fn parse_attributes_fn_two_basic() {
-        let item = parse_item(
+        let item = parse::<Item>(
             r#"
             #[foo]
             #[bar]
@@ -313,7 +341,7 @@ mod tests {
 
     #[test]
     fn parse_attributes_fn_one_arg() {
-        let item = parse_item(
+        let item = parse::<Item>(
             r#"
             #[foo(one)]
             fn f() -> bool {
@@ -331,7 +359,7 @@ mod tests {
 
     #[test]
     fn parse_attributes_fn_empty_parens() {
-        let item = parse_item(
+        let item = parse::<Item>(
             r#"
             #[foo()]
             fn f() -> bool {
@@ -349,7 +377,7 @@ mod tests {
 
     #[test]
     fn parse_attributes_fn_zero_and_one_arg() {
-        let item = parse_item(
+        let item = parse::<Item>(
             r#"
             #[bar]
             #[foo(one)]
@@ -368,7 +396,7 @@ mod tests {
 
     #[test]
     fn parse_attributes_fn_one_and_zero_arg() {
-        let item = parse_item(
+        let item = parse::<Item>(
             r#"
             #[foo(one)]
             #[bar]
@@ -387,7 +415,7 @@ mod tests {
 
     #[test]
     fn parse_attributes_fn_two_args() {
-        let item = parse_item(
+        let item = parse::<Item>(
             r#"
             #[foo(one, two)]
             fn f() -> bool {
@@ -405,7 +433,7 @@ mod tests {
 
     #[test]
     fn parse_attributes_fn_zero_one_and_three_args() {
-        let item = parse_item(
+        let item = parse::<Item>(
             r#"
             #[bar]
             #[foo(one)]
@@ -429,7 +457,7 @@ mod tests {
 
     #[test]
     fn parse_attributes_fn_zero_one_and_three_args_in_one_attribute_decl() {
-        let item = parse_item(
+        let item = parse::<Item>(
             r#"
             #[bar, foo(one), baz(two,three,four)]
             fn f() -> bool {
@@ -451,7 +479,7 @@ mod tests {
 
     #[test]
     fn parse_attributes_trait() {
-        let item = parse_item(
+        let item = parse::<Item>(
             r#"
             trait T {
                 #[foo(one)]
@@ -476,7 +504,6 @@ mod tests {
             let trait_item = decls.next();
             assert!(trait_item.is_some());
             let (annotated, _) = trait_item.unwrap();
-            #[allow(irrefutable_let_patterns)]
             if let ItemTraitItem::Fn(_fn_sig) = &annotated.value {
                 assert_eq!(
                     attributes(&annotated.attribute_list),
@@ -505,7 +532,7 @@ mod tests {
 
     #[test]
     fn parse_attributes_abi() {
-        let item = parse_item(
+        let item = parse::<Item>(
             r#"
             abi A {
                 #[bar(one, two, three)]
@@ -564,7 +591,7 @@ mod tests {
 
     #[test]
     fn parse_attributes_doc_comment() {
-        let item = parse_item(
+        let item = parse::<Item>(
             r#"
             /// This is a doc comment.
             /// This is another doc comment.

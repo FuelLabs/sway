@@ -1,8 +1,8 @@
 script;
 
-dep heaven;
-dep earth;
-dep hell;
+mod heaven;
+mod earth;
+mod hell;
 
 use heaven::UNKNOWN_DEITY_VALUE;
 use earth::MAN;

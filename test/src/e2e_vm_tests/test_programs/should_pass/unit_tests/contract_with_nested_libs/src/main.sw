@@ -1,6 +1,6 @@
 contract;
 
-dep inner;
+mod inner;
 
 abi MyContract {
     fn foo();

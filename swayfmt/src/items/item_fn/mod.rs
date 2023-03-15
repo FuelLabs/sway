@@ -1,5 +1,5 @@
 use crate::{
-    comments::{has_comments, write_comments},
+    comments::{rewrite_with_comments, write_comments},
     config::items::ItemBraceStyle,
     formatter::{
         shape::{ExprKind, LineStyle},
@@ -10,7 +10,7 @@ use crate::{
         {CurlyBrace, Parenthesis},
     },
 };
-use std::{fmt::Write, ops::Range};
+use std::fmt::Write;
 use sway_ast::{
     keywords::{MutToken, RefToken, SelfToken, Token},
     token::Delimiter,
@@ -27,6 +27,9 @@ impl Format for ItemFn {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        // Required for comment formatting
+        let start_len = formatted_code.len();
+
         formatter.with_shape(
             formatter
                 .shape
@@ -38,17 +41,31 @@ impl Format for ItemFn {
                     Self::open_curly_brace(formatted_code, formatter)?;
                     formatter.shape.block_indent(&formatter.config);
                     body.format(formatted_code, formatter)?;
+
+                    if let Some(final_expr_opt) = body.final_expr_opt.as_ref() {
+                        write_comments(
+                            formatted_code,
+                            final_expr_opt.span().end()..self.span().end(),
+                            formatter,
+                        )?;
+                    }
+
                     Self::close_curly_brace(formatted_code, formatter)?;
                 } else {
                     Self::open_curly_brace(formatted_code, formatter)?;
-                    let range: Range<usize> = self.span().into();
-                    let comments = formatter.comments_context.map.comments_between(&range);
-                    if has_comments(comments) {
-                        formatter.shape.block_indent(&formatter.config);
-                        write_comments(formatted_code, range, formatter)?;
-                    }
+                    formatter.shape.block_indent(&formatter.config);
+                    write_comments(formatted_code, self.span().into(), formatter)?;
+                    formatter.shape.block_unindent(&formatter.config);
                     Self::close_curly_brace(formatted_code, formatter)?;
                 }
+
+                rewrite_with_comments::<ItemFn>(
+                    formatter,
+                    self.span(),
+                    self.leaf_spans(),
+                    formatted_code,
+                    start_len,
+                )?;
 
                 Ok(())
             },
@@ -184,9 +201,21 @@ fn format_fn_args(
     formatter: &mut Formatter,
 ) -> Result<(), FormatterError> {
     match fn_args {
-        FnArgs::Static(args) => {
-            args.format(formatted_code, formatter)?;
-        }
+        FnArgs::Static(args) => match formatter.shape.code_line.line_style {
+            LineStyle::Multiline => {
+                if !args.value_separator_pairs.is_empty() || args.final_value_opt.is_some() {
+                    formatter.shape.block_indent(&formatter.config);
+                    args.format(formatted_code, formatter)?;
+                    formatter.shape.block_unindent(&formatter.config);
+                    write!(
+                        formatted_code,
+                        "{}",
+                        formatter.shape.indent.to_string(&formatter.config)?
+                    )?;
+                }
+            }
+            _ => args.format(formatted_code, formatter)?,
+        },
         FnArgs::NonStatic {
             self_token,
             ref_self,
@@ -195,6 +224,7 @@ fn format_fn_args(
         } => {
             match formatter.shape.code_line.line_style {
                 LineStyle::Multiline => {
+                    formatter.shape.block_indent(&formatter.config);
                     write!(
                         formatted_code,
                         "\n{}",
@@ -249,39 +279,17 @@ fn format_self(
 impl Parenthesis for FnSignature {
     fn open_parenthesis(
         line: &mut FormattedCode,
-        formatter: &mut Formatter,
+        _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let open_paren = Delimiter::Parenthesis.as_open_char();
-        match formatter.shape.code_line.line_style {
-            LineStyle::Multiline => {
-                formatter.shape.block_indent(&formatter.config);
-                write!(line, "{open_paren}")?;
-            }
-            _ => {
-                write!(line, "{open_paren}")?;
-            }
-        }
+        write!(line, "{}", Delimiter::Parenthesis.as_open_char())?;
 
         Ok(())
     }
     fn close_parenthesis(
         line: &mut FormattedCode,
-        formatter: &mut Formatter,
+        _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let close_paren = Delimiter::Parenthesis.as_close_char();
-        match formatter.shape.code_line.line_style {
-            LineStyle::Multiline => {
-                formatter.shape.block_unindent(&formatter.config);
-                write!(
-                    line,
-                    "{}{close_paren}",
-                    formatter.shape.indent.to_string(&formatter.config)?
-                )?;
-            }
-            _ => {
-                write!(line, "{close_paren}")?;
-            }
-        }
+        write!(line, "{}", Delimiter::Parenthesis.as_close_char())?;
 
         Ok(())
     }
@@ -296,6 +304,12 @@ impl Format for FnArg {
         self.pattern.format(formatted_code, formatter)?;
         // `: `
         write!(formatted_code, "{} ", self.colon_token.span().as_str())?;
+
+        write_comments(
+            formatted_code,
+            self.colon_token.span().end()..self.ty.span().start(),
+            formatter,
+        )?;
         // `Ty`
         self.ty.format(formatted_code, formatter)?;
 

@@ -1,6 +1,6 @@
 //! Helper functions for accessing data from call frames.
 //! [Call frames](https://fuellabs.github.io/fuel-specs/master/vm#call-frames) store metadata across untrusted inter-contract calls.
-library call_frames;
+library;
 
 use ::registers::frame_ptr;
 use ::contract_id::ContractId;

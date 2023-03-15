@@ -1,4 +1,4 @@
-library vec;
+library;
 
 use ::alloc::{alloc, realloc};
 use ::assert::assert;

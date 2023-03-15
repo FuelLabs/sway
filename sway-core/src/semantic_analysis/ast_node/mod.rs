@@ -103,7 +103,8 @@ impl ty::TyAstNode {
                 r#type: engines.help_out(node.type_info(type_engine)).to_string(),
             };
             assert_or_warn!(
-                node.type_info(type_engine).can_safely_ignore(type_engine),
+                node.type_info(type_engine)
+                    .can_safely_ignore(type_engine, decl_engine),
                 warnings,
                 node.span.clone(),
                 warning
@@ -119,6 +120,7 @@ pub(crate) fn reassign_storage_subfield(
     fields: Vec<Ident>,
     rhs: Expression,
     span: Span,
+    storage_keyword_span: Span,
 ) -> CompileResult<ty::TyStorageReassignment> {
     let mut errors = vec![];
     let mut warnings = vec![];
@@ -134,8 +136,7 @@ pub(crate) fn reassign_storage_subfield(
     }
 
     let storage_fields = check!(
-        ctx.namespace
-            .get_storage_field_descriptors(decl_engine, &span),
+        ctx.namespace.get_storage_field_descriptors(decl_engine),
         return err(warnings, errors),
         warnings,
         errors
@@ -168,7 +169,7 @@ pub(crate) fn reassign_storage_subfield(
     });
 
     let update_available_struct_fields = |id: TypeId| match type_engine.get(id) {
-        TypeInfo::Struct { fields, .. } => fields,
+        TypeInfo::Struct(decl_ref) => decl_engine.get_struct(&decl_ref).fields,
         _ => vec![],
     };
     let mut curr_type = initial_field_type;
@@ -219,6 +220,7 @@ pub(crate) fn reassign_storage_subfield(
 
     ok(
         ty::TyStorageReassignment {
+            storage_keyword_span,
             fields: type_checked_buf,
             ix,
             rhs,

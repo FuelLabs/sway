@@ -7,7 +7,7 @@ use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    decl_engine::DeclRef,
+    decl_engine::DeclEngineIndex,
     engine_threading::*,
     error::*,
     language::{
@@ -15,7 +15,7 @@ use crate::{
         CallPath,
     },
     type_system::{SubstTypes, TypeId},
-    ReplaceSelfType, TraitConstraint, TypeArgument, TypeEngine, TypeInfo, TypeSubstMap,
+    ReplaceSelfType, TraitConstraint, TypeArgument, TypeInfo, TypeSubstMap,
 };
 
 #[derive(Clone, Debug)]
@@ -29,10 +29,10 @@ impl PartialEqWithEngines for TraitSuffix {
     }
 }
 impl OrdWithEngines for TraitSuffix {
-    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self, engines: Engines<'_>) -> std::cmp::Ordering {
         self.name
             .cmp(&other.name)
-            .then_with(|| self.args.cmp(&other.args, type_engine))
+            .then_with(|| self.args.cmp(&other.args, engines))
     }
 }
 
@@ -44,10 +44,10 @@ impl<T: PartialEqWithEngines> PartialEqWithEngines for CallPath<T> {
     }
 }
 impl<T: OrdWithEngines> OrdWithEngines for CallPath<T> {
-    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
+    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
         self.prefixes
             .cmp(&other.prefixes)
-            .then_with(|| self.suffix.cmp(&other.suffix, type_engine))
+            .then_with(|| self.suffix.cmp(&other.suffix, engines))
             .then_with(|| self.is_absolute.cmp(&other.is_absolute))
     }
 }
@@ -61,9 +61,9 @@ struct TraitKey {
 }
 
 impl OrdWithEngines for TraitKey {
-    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self, engines: Engines<'_>) -> std::cmp::Ordering {
         self.name
-            .cmp(&other.name, type_engine)
+            .cmp(&other.name, engines)
             .then_with(|| self.type_id.cmp(&other.type_id))
     }
 }
@@ -118,7 +118,10 @@ impl TraitMap {
         for item in items.iter() {
             match item {
                 TyImplItem::Fn(decl_ref) => {
-                    trait_items.insert(decl_ref.name.to_string(), item.clone());
+                    trait_items.insert(decl_ref.name().clone().to_string(), item.clone());
+                }
+                TyImplItem::Constant(decl_ref) => {
+                    trait_items.insert(decl_ref.name().to_string(), item.clone());
                 }
             }
         }
@@ -200,9 +203,19 @@ impl TraitMap {
                             if map_trait_items.get(name).is_some() {
                                 errors.push(CompileError::DuplicateDeclDefinedForType {
                                     decl_kind: "method".into(),
-                                    decl_name: decl_ref.name.to_string(),
+                                    decl_name: decl_ref.name().to_string(),
                                     type_implementing_for: engines.help_out(type_id).to_string(),
-                                    span: decl_ref.name.span(),
+                                    span: decl_ref.name().span(),
+                                });
+                            }
+                        }
+                        ty::TyTraitItem::Constant(decl_ref) => {
+                            if map_trait_items.get(name).is_some() {
+                                errors.push(CompileError::DuplicateDeclDefinedForType {
+                                    decl_kind: "constant".into(),
+                                    decl_name: decl_ref.name().to_string(),
+                                    type_implementing_for: engines.help_out(type_id).to_string(),
+                                    span: decl_ref.name().span(),
                                 });
                             }
                         }
@@ -346,7 +359,7 @@ impl TraitMap {
         for oe in other.trait_impls.into_iter() {
             let pos = self
                 .trait_impls
-                .binary_search_by(|se| se.key.cmp(&oe.key, engines.te()));
+                .binary_search_by(|se| se.key.cmp(&oe.key, engines));
 
             match pos {
                 Ok(pos) => self.trait_impls[pos].value.extend(oe.value.into_iter()),
@@ -370,7 +383,7 @@ impl TraitMap {
     ///
     /// `data.sw`:
     /// ```ignore
-    /// library data;
+    /// library;
     ///
     /// enum MyResult<T, E> {
     ///     Ok: T,
@@ -403,7 +416,7 @@ impl TraitMap {
     /// ```ignore
     /// script;
     ///
-    /// dep data;
+    /// mod data;
     ///
     /// use data::Data;
     ///
@@ -464,11 +477,14 @@ impl TraitMap {
     /// with those entries for `Data<T, T>`.
     pub(crate) fn filter_by_type(&self, type_id: TypeId, engines: Engines<'_>) -> TraitMap {
         let type_engine = engines.te();
+        let decl_engine = engines.de();
         // a curried version of the decider protocol to use in the helper functions
         let decider = |type_info: &TypeInfo, map_type_info: &TypeInfo| {
             type_info.is_subset_of(map_type_info, engines)
         };
-        let mut all_types = type_engine.get(type_id).extract_inner_types(type_engine);
+        let mut all_types = type_engine
+            .get(type_id)
+            .extract_inner_types(type_engine, decl_engine);
         all_types.insert(type_id);
         let all_types = all_types.into_iter().collect::<Vec<_>>();
         self.filter_by_type_inner(engines, all_types, decider)
@@ -487,7 +503,7 @@ impl TraitMap {
     ///
     /// `my_double.sw`:
     /// ```ignore
-    /// library my_double;
+    /// library;
     ///
     /// pub trait MyDouble<T> {
     ///     fn my_double(self, input: T) -> T;
@@ -496,7 +512,7 @@ impl TraitMap {
     ///
     /// `my_point.sw`:
     /// ```ignore
-    /// library my_point;
+    /// library;
     ///
     /// use ::my_double::MyDouble;
     ///
@@ -516,8 +532,8 @@ impl TraitMap {
     /// ```ignore
     /// script;
     ///
-    /// dep my_double;
-    /// dep my_point;
+    /// mod my_double;
+    /// mod my_point;
     ///
     /// use my_point::MyPoint;
     ///
@@ -538,6 +554,7 @@ impl TraitMap {
         engines: Engines<'_>,
     ) -> TraitMap {
         let type_engine = engines.te();
+        let decl_engine = engines.de();
         // a curried version of the decider protocol to use in the helper functions
         let decider = |type_info: &TypeInfo, map_type_info: &TypeInfo| {
             type_info.is_subset_of(map_type_info, engines)
@@ -546,7 +563,7 @@ impl TraitMap {
         let mut trait_map = self.filter_by_type_inner(engines, vec![type_id], decider);
         let all_types = type_engine
             .get(type_id)
-            .extract_inner_types(type_engine)
+            .extract_inner_types(type_engine, decl_engine)
             .into_iter()
             .collect::<Vec<_>>();
         // a curried version of the decider protocol to use in the helper functions
@@ -580,7 +597,7 @@ impl TraitMap {
         {
             for type_id in all_types.iter_mut() {
                 let type_info = type_engine.get(*type_id);
-                if !type_info.can_change() && *type_id == *map_type_id {
+                if !type_info.can_change(decl_engine) && *type_id == *map_type_id {
                     trait_map.insert_inner(
                         map_trait_name.clone(),
                         *type_id,
@@ -588,28 +605,34 @@ impl TraitMap {
                         engines,
                     );
                 } else if decider(&type_info, &type_engine.get(*map_type_id)) {
-                    let type_mapping =
-                        TypeSubstMap::from_superset_and_subset(type_engine, *map_type_id, *type_id);
+                    let type_mapping = TypeSubstMap::from_superset_and_subset(
+                        type_engine,
+                        decl_engine,
+                        *map_type_id,
+                        *type_id,
+                    );
                     let new_self_type = type_engine.insert(decl_engine, TypeInfo::SelfType);
                     type_id.replace_self_type(engines, new_self_type);
                     let trait_items: TraitItems = map_trait_items
                         .clone()
                         .into_iter()
-                        .map(|(name, item)| {
-                            #[allow(clippy::infallible_destructuring_match)]
-                            let decl_ref = match &item {
-                                ty::TyTraitItem::Fn(decl_ref) => decl_ref,
-                            };
-                            let mut decl = decl_engine.get(decl_ref);
-                            decl.subst(&type_mapping, engines);
-                            decl.replace_self_type(engines, new_self_type);
-                            let new_ref = decl_engine
-                                .insert_wrapper(decl_ref.name.clone(), decl, decl_ref.span())
-                                .with_parent(decl_engine, decl_ref);
-                            let item = match item {
-                                ty::TyTraitItem::Fn(_) => TyImplItem::Fn(new_ref),
-                            };
-                            (name, item)
+                        .map(|(name, item)| match &item {
+                            ty::TyTraitItem::Fn(decl_ref) => {
+                                let mut decl = decl_engine.get(*decl_ref.id());
+                                decl.subst(&type_mapping, engines);
+                                decl.replace_self_type(engines, new_self_type);
+                                let new_ref = decl_engine
+                                    .insert(decl)
+                                    .with_parent(decl_engine, decl_ref.id().into());
+                                (name, TyImplItem::Fn(new_ref))
+                            }
+                            ty::TyTraitItem::Constant(decl_ref) => {
+                                let mut decl = decl_engine.get(*decl_ref.id());
+                                decl.subst(&type_mapping, engines);
+                                decl.replace_self_type(engines, new_self_type);
+                                let new_ref = decl_engine.insert(decl);
+                                (name, TyImplItem::Constant(new_ref))
+                            }
                         })
                         .collect();
                     trait_map.insert_inner(map_trait_name.clone(), *type_id, trait_items, engines);
@@ -628,35 +651,27 @@ impl TraitMap {
     /// - this method does not translate types from the found entries to the
     ///     `type_id` (like in `filter_by_type()`). This is because the only
     ///     entries that qualify as hits are equivalents of `type_id`
-    pub(crate) fn get_methods_for_type(
+    pub(crate) fn get_items_for_type(
         &self,
         engines: Engines<'_>,
         type_id: TypeId,
-    ) -> Vec<DeclRef> {
+    ) -> Vec<ty::TyTraitItem> {
         let type_engine = engines.te();
-        let mut methods = vec![];
+        let mut items = vec![];
         // small performance gain in bad case
         if type_engine
             .get(type_id)
             .eq(&TypeInfo::ErrorRecovery, engines)
         {
-            return methods;
+            return items;
         }
         for entry in self.trait_impls.iter() {
             if are_equal_minus_dynamic_types(engines, type_id, entry.key.type_id) {
-                let mut trait_items = entry
-                    .value
-                    .values()
-                    .cloned()
-                    .into_iter()
-                    .flat_map(|item| match item {
-                        ty::TyTraitItem::Fn(decl_ref) => Some(decl_ref),
-                    })
-                    .collect::<Vec<_>>();
-                methods.append(&mut trait_items);
+                let mut trait_items = entry.value.values().cloned().collect::<Vec<_>>();
+                items.append(&mut trait_items);
             }
         }
-        methods
+        items
     }
 
     /// Find the entries in `self` that are equivalent to `type_id` with trait
@@ -669,20 +684,20 @@ impl TraitMap {
     /// - this method does not translate types from the found entries to the
     ///     `type_id` (like in `filter_by_type()`). This is because the only
     ///     entries that qualify as hits are equivalents of `type_id`
-    pub(crate) fn get_methods_for_type_and_trait_name(
+    pub(crate) fn get_items_for_type_and_trait_name(
         &self,
         engines: Engines<'_>,
         type_id: TypeId,
         trait_name: &CallPath,
-    ) -> Vec<DeclRef> {
+    ) -> Vec<ty::TyTraitItem> {
         let type_engine = engines.te();
-        let mut methods = vec![];
+        let mut items = vec![];
         // small performance gain in bad case
         if type_engine
             .get(type_id)
             .eq(&TypeInfo::ErrorRecovery, engines)
         {
-            return methods;
+            return items;
         }
         for e in self.trait_impls.iter() {
             let map_trait_name = CallPath {
@@ -693,19 +708,11 @@ impl TraitMap {
             if &map_trait_name == trait_name
                 && are_equal_minus_dynamic_types(engines, type_id, e.key.type_id)
             {
-                let mut trait_methods = e
-                    .value
-                    .values()
-                    .cloned()
-                    .into_iter()
-                    .flat_map(|item| match item {
-                        ty::TyTraitItem::Fn(decl_ref) => Some(decl_ref),
-                    })
-                    .collect::<Vec<_>>();
-                methods.append(&mut trait_methods);
+                let mut trait_items = e.value.values().cloned().collect::<Vec<_>>();
+                items.append(&mut trait_items);
             }
         }
-        methods
+        items
     }
 
     /// Checks to see if the trait constraints are satisfied for a given type.
@@ -814,6 +821,7 @@ pub(crate) fn are_equal_minus_dynamic_types(
     }
 
     let type_engine = engines.te();
+    let decl_engine = engines.de();
 
     match (type_engine.get(left), type_engine.get(right)) {
         // these cases are false because, unless left and right have the same
@@ -865,20 +873,12 @@ pub(crate) fn are_equal_minus_dynamic_types(
                         acc && are_equal_minus_dynamic_types(engines, left.type_id, right.type_id)
                     })
         }
-        (
-            TypeInfo::Enum {
-                call_path: l_name,
-                variant_types: l_variant_types,
-                type_parameters: l_type_parameters,
-            },
-            TypeInfo::Enum {
-                call_path: r_name,
-                variant_types: r_variant_types,
-                type_parameters: r_type_parameters,
-            },
-        ) => {
-            l_name.suffix == r_name.suffix
-                && l_variant_types.iter().zip(r_variant_types.iter()).fold(
+        (TypeInfo::Enum(l_decl_ref), TypeInfo::Enum(r_decl_ref)) => {
+            let l_decl = decl_engine.get_enum(&l_decl_ref);
+            let r_decl = decl_engine.get_enum(&r_decl_ref);
+            l_decl.call_path.suffix == r_decl.call_path.suffix
+                && l_decl.call_path.suffix.span() == r_decl.call_path.suffix.span()
+                && l_decl.variants.iter().zip(r_decl.variants.iter()).fold(
                     true,
                     |acc, (left, right)| {
                         acc && left.name == right.name
@@ -889,45 +889,39 @@ pub(crate) fn are_equal_minus_dynamic_types(
                             )
                     },
                 )
-                && l_type_parameters.iter().zip(r_type_parameters.iter()).fold(
-                    true,
-                    |acc, (left, right)| {
-                        acc && left.name_ident == right.name_ident
-                            && are_equal_minus_dynamic_types(engines, left.type_id, right.type_id)
-                    },
-                )
-        }
-        (
-            TypeInfo::Struct {
-                call_path: l_name,
-                fields: l_fields,
-                type_parameters: l_type_parameters,
-            },
-            TypeInfo::Struct {
-                call_path: r_name,
-                fields: r_fields,
-                type_parameters: r_type_parameters,
-            },
-        ) => {
-            l_name.suffix == r_name.suffix
-                && l_fields
+                && l_decl
+                    .type_parameters
                     .iter()
-                    .zip(r_fields.iter())
+                    .zip(r_decl.type_parameters.iter())
                     .fold(true, |acc, (left, right)| {
+                        acc && left.name_ident == right.name_ident
+                            && are_equal_minus_dynamic_types(engines, left.type_id, right.type_id)
+                    })
+        }
+        (TypeInfo::Struct(l_decl_ref), TypeInfo::Struct(r_decl_ref)) => {
+            let l_decl = decl_engine.get_struct(&l_decl_ref);
+            let r_decl = decl_engine.get_struct(&r_decl_ref);
+            l_decl.call_path.suffix == r_decl.call_path.suffix
+                && l_decl.call_path.suffix.span() == r_decl.call_path.suffix.span()
+                && l_decl.fields.iter().zip(r_decl.fields.iter()).fold(
+                    true,
+                    |acc, (left, right)| {
                         acc && left.name == right.name
                             && are_equal_minus_dynamic_types(
                                 engines,
                                 left.type_argument.type_id,
                                 right.type_argument.type_id,
                             )
-                    })
-                && l_type_parameters.iter().zip(r_type_parameters.iter()).fold(
-                    true,
-                    |acc, (left, right)| {
-                        acc && left.name_ident == right.name_ident
-                            && are_equal_minus_dynamic_types(engines, left.type_id, right.type_id)
                     },
                 )
+                && l_decl
+                    .type_parameters
+                    .iter()
+                    .zip(r_decl.type_parameters.iter())
+                    .fold(true, |acc, (left, right)| {
+                        acc && left.name_ident == right.name_ident
+                            && are_equal_minus_dynamic_types(engines, left.type_id, right.type_id)
+                    })
         }
         (TypeInfo::Tuple(l), TypeInfo::Tuple(r)) => {
             if l.len() != r.len() {

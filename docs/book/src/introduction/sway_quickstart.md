@@ -2,7 +2,7 @@
 
 Follow this guide to write and deploy a simple smart contract in Sway.
 
-Check out the [Developer Quickstart Guide](https://fuellabs.github.io/fuel-docs/master/developer-quickstart.html) for a step-by-step guide on building a fullstack dapp on Fuel. The guide will walk you through writing a smart contract, setting up a wallet, and building a frontend to interact with your contract.
+Check out the [Developer Quickstart Guide](https://fuelbook.fuel.network/master/quickstart/developer-quickstart.html) for a step-by-step guide on building a fullstack dapp on Fuel. The guide will walk you through writing a smart contract, setting up a wallet, and building a frontend to interact with your contract.
 
 ## Glossary
 
@@ -180,8 +180,6 @@ To deploy `counter_contract` on your local Fuel node, open a new terminal tab an
 forc deploy --unsigned
 ```
 
-where `--node-url` parameter is the URL where your local node is hosted.
-
 > **Note**
 > You can't use the same terminal session that is running fuel-core to run any other commands as this will end your fuel-core process.
 
@@ -219,6 +217,8 @@ Salt is `0x0000000000000000000000000000000000000000000000000000000000000000` by 
 ```bash
 forc deploy --unsigned --random-salt --node-url <key> --gas-price 1
 ```
+
+where `--node-url` parameter is the URL where your local node is hosted.
 
 > Note: To be able to use the `forc deploy` and `forc run` commands, you require the `forc client` plugin that lets you interact with a Fuel node. You can read more about `forc client` [here](../forc/plugins/forc_client/index.md).
 

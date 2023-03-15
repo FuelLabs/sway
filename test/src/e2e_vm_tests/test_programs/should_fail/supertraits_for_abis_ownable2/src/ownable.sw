@@ -1,4 +1,4 @@
-library ownable;
+library;
 
 pub struct OwnershipTransferred {
     previous_owner: b256,

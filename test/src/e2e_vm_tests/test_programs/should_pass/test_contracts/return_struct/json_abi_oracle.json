@@ -47,7 +47,7 @@
           "typeArguments": null
         }
       ],
-      "type": "enum Option",
+      "type": "enum std::option::Option",
       "typeId": 1,
       "typeParameters": [
         2
@@ -61,7 +61,7 @@
     },
     {
       "components": [],
-      "type": "struct MyStruct",
+      "type": "struct data_structures::MyStruct",
       "typeId": 3,
       "typeParameters": null
     }

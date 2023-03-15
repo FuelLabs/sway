@@ -93,7 +93,7 @@ impl CollectTypesMetadata for TyExpression {
         match &self.expression {
             FunctionApplication {
                 arguments,
-                function_decl_ref,
+                fn_ref,
                 call_path,
                 ..
             } => {
@@ -105,10 +105,7 @@ impl CollectTypesMetadata for TyExpression {
                         errors
                     ));
                 }
-                let function_decl = match decl_engine.get_function(function_decl_ref, &self.span) {
-                    Ok(decl) => decl,
-                    Err(e) => return err(vec![], vec![e]),
-                };
+                let function_decl = decl_engine.get_function(fn_ref);
 
                 ctx.call_site_push();
                 for type_parameter in function_decl.type_parameters {
@@ -147,13 +144,15 @@ impl CollectTypesMetadata for TyExpression {
                     }
                 }
             }
-            StructExpression { fields, span, .. } => {
-                if let TypeInfo::Struct {
-                    type_parameters, ..
-                } = ctx.type_engine.get(self.return_type)
-                {
-                    for type_parameter in type_parameters {
-                        ctx.call_site_insert(type_parameter.type_id, span.clone());
+            StructExpression {
+                fields,
+                instantiation_span,
+                ..
+            } => {
+                if let TypeInfo::Struct(decl_ref) = ctx.type_engine.get(self.return_type) {
+                    let decl = decl_engine.get_struct(&decl_ref);
+                    for type_parameter in decl.type_parameters {
+                        ctx.call_site_insert(type_parameter.type_id, instantiation_span.clone());
                     }
                 }
                 for field in fields.iter() {
@@ -282,11 +281,12 @@ impl CollectTypesMetadata for TyExpression {
                 ));
             }
             EnumInstantiation {
-                enum_decl,
+                enum_ref,
                 contents,
                 call_path_binding,
                 ..
             } => {
+                let enum_decl = decl_engine.get_enum(enum_ref);
                 for type_param in enum_decl.type_parameters.iter() {
                     ctx.call_site_insert(type_param.type_id, call_path_binding.inner.suffix.span())
                 }
@@ -419,17 +419,12 @@ impl DeterministicallyAborts for TyExpression {
         use TyExpressionVariant::*;
         match &self.expression {
             FunctionApplication {
-                function_decl_ref,
-                arguments,
-                ..
+                fn_ref, arguments, ..
             } => {
                 if !check_call_body {
                     return false;
                 }
-                let function_decl = match decl_engine.get_function(function_decl_ref, &self.span) {
-                    Ok(decl) => decl,
-                    Err(_e) => panic!("failed to get function"),
-                };
+                let function_decl = decl_engine.get_function(fn_ref);
                 function_decl
                     .body
                     .deterministically_aborts(decl_engine, check_call_body)

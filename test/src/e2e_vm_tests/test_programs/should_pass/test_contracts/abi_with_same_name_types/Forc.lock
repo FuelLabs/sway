@@ -1,0 +1,13 @@
+[[package]]
+name = 'abi_with_same_name_types'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-CB93C045115475F5'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-CB93C045115475F5'
+dependencies = ['core']

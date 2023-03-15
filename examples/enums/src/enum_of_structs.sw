@@ -1,4 +1,4 @@
-library enum_of_structs;
+library;
 
 struct Item {
     price: u64,

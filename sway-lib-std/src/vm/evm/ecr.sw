@@ -1,4 +1,4 @@
-library ecr;
+library;
 
 use ::b512::B512;
 use ::registers::error;

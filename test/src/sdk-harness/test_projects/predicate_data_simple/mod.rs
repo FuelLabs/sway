@@ -2,10 +2,9 @@ use fuel_vm::fuel_asm::{op, RegId};
 use fuels::{
     core::abi_encoder::ABIEncoder,
     prelude::*,
-    programs::execution_script::ExecutableFuelCall,
     signers::wallet::Wallet,
     test_helpers::Config,
-    tx::{Address, AssetId, Contract, Input, Output, Transaction, TxPointer, UtxoId},
+    tx::{Address, AssetId, Contract, Input, Output, TxPointer, UtxoId},
     types::{resource::Resource, Token},
 };
 use std::str::FromStr;
@@ -56,16 +55,14 @@ async fn create_predicate(
 
     let output_coin = Output::coin(predicate_address, amount_to_predicate, asset_id);
     let output_change = Output::change(wallet.address().into(), 0, asset_id.into());
-    let mut tx = Transaction::script(
-        1,
-        1000000,
-        0,
-        op::ret(RegId::ONE).to_bytes().to_vec(),
-        vec![],
+
+    let mut tx = ScriptTransaction::new(
         wallet_coins,
         vec![output_coin, output_change],
-        vec![],
-    );
+        TxParameters::new(Some(1), Some(1_000_000), None),
+    )
+    .with_script(op::ret(RegId::ONE).to_bytes().to_vec());
+
     wallet.sign_transaction(&mut tx).await.unwrap();
     wallet
         .get_provider()
@@ -121,19 +118,18 @@ async fn submit_to_predicate(
 
     let output_coin = Output::coin(receiver_address, total_amount_in_predicate, asset_id);
     let output_change = Output::change(predicate_address, 0, asset_id);
-    let new_tx = Transaction::script(
-        0,
-        1000000,
-        0,
-        vec![],
-        vec![],
+
+    let new_tx = ScriptTransaction::new(
         inputs,
         vec![output_coin, output_change],
-        vec![],
+        TxParameters::new(None, Some(1_000_000), None),
     );
 
-    let script = ExecutableFuelCall::new(new_tx);
-    let _call_result = script.execute(&wallet.get_provider().unwrap()).await;
+    let _call_result = wallet
+        .get_provider()
+        .unwrap()
+        .send_transaction(&new_tx)
+        .await;
 }
 
 async fn get_balance(wallet: &Wallet, address: Address, asset_id: AssetId) -> u64 {

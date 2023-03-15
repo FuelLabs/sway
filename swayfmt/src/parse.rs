@@ -37,3 +37,14 @@ pub fn parse_format<P: sway_parse::Parse + crate::Format>(input: &str) -> String
     parsed.format(&mut buf, &mut <_>::default()).unwrap();
     buf
 }
+
+/// Partially parses an AST node that implements sway_parse::Parse.
+/// This is used to insert comments locally.
+pub fn parse_snippet<P: sway_parse::Parse + crate::Format>(
+    input: &str,
+) -> Result<P, ParseFileError> {
+    with_handler(|handler| {
+        let token_stream = sway_parse::lex(handler, &input.into(), 0, input.len(), None)?;
+        sway_parse::Parser::new(handler, &token_stream).parse::<P>()
+    })
+}

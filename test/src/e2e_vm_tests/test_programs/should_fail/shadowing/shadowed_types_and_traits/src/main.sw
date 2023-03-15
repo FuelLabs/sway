@@ -1,6 +1,6 @@
 script;
 
-dep lib;
+mod lib;
 
 // Check for shadowing library imports
 use lib::{MyAbi1, MyEnum1, MyStruct1, MyTrait1};

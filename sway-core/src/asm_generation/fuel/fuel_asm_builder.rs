@@ -13,7 +13,7 @@ use crate::{
         ProgramKind,
     },
     asm_lang::{virtual_register::*, Label, Op, VirtualImmediate12, VirtualImmediate18, VirtualOp},
-    decl_engine::DeclRef,
+    decl_engine::DeclRefFunction,
     error::*,
     fuel_prelude::fuel_crypto::Hasher,
     metadata::MetadataManager,
@@ -63,7 +63,7 @@ pub struct FuelAsmBuilder<'ir> {
 
     // Final resulting VM bytecode ops; entry functions with their function and label, and regular
     // non-entry functions.
-    pub(super) entries: Vec<(Function, Label, Vec<Op>, Option<DeclRef>)>,
+    pub(super) entries: Vec<(Function, Label, Vec<Op>, Option<DeclRefFunction>)>,
     pub(super) non_entries: Vec<Vec<Op>>,
 
     // In progress VM bytecode ops.
@@ -73,7 +73,12 @@ pub struct FuelAsmBuilder<'ir> {
 pub type FuelAsmBuilderResult = (
     DataSection,
     RegisterSequencer,
-    Vec<(Function, Label, AbstractInstructionSet, Option<DeclRef>)>,
+    Vec<(
+        Function,
+        Label,
+        AbstractInstructionSet,
+        Option<DeclRefFunction>,
+    )>,
     Vec<AbstractInstructionSet>,
 );
 
@@ -540,6 +545,9 @@ impl<'ir> FuelAsmBuilder<'ir> {
             BinaryOpKind::Sub => Either::Left(VirtualOp::SUB(res_reg.clone(), val1_reg, val2_reg)),
             BinaryOpKind::Mul => Either::Left(VirtualOp::MUL(res_reg.clone(), val1_reg, val2_reg)),
             BinaryOpKind::Div => Either::Left(VirtualOp::DIV(res_reg.clone(), val1_reg, val2_reg)),
+            BinaryOpKind::And => Either::Left(VirtualOp::AND(res_reg.clone(), val1_reg, val2_reg)),
+            BinaryOpKind::Or => Either::Left(VirtualOp::OR(res_reg.clone(), val1_reg, val2_reg)),
+            BinaryOpKind::Xor => Either::Left(VirtualOp::XOR(res_reg.clone(), val1_reg, val2_reg)),
         };
         self.cur_bytecode.push(Op {
             opcode,
@@ -616,12 +624,28 @@ impl<'ir> FuelAsmBuilder<'ir> {
         let lhs_reg = self.value_to_register(lhs_value);
         let rhs_reg = self.value_to_register(rhs_value);
         let res_reg = self.reg_seqr.next();
+        let comment = String::new();
+        let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
         match pred {
             Predicate::Equal => {
                 self.cur_bytecode.push(Op {
                     opcode: Either::Left(VirtualOp::EQ(res_reg.clone(), lhs_reg, rhs_reg)),
-                    comment: String::new(),
-                    owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+                    comment,
+                    owning_span,
+                });
+            }
+            Predicate::LessThan => {
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::LT(res_reg.clone(), lhs_reg, rhs_reg)),
+                    comment,
+                    owning_span,
+                });
+            }
+            Predicate::GreaterThan => {
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::GT(res_reg.clone(), lhs_reg, rhs_reg)),
+                    comment,
+                    owning_span,
                 });
             }
         }
@@ -2072,8 +2096,8 @@ impl<'ir> FuelAsmBuilder<'ir> {
             })
     }
 
-    // Same as `opt_value_to_register` but returns a new register if no register is found or if
-    // `value` is not a constant.
+    /// Same as [`opt_value_to_register`] but returns a new register if no register is found or if
+    /// `value` is not a constant.
     pub(super) fn value_to_register(&mut self, value: &Value) -> VirtualRegister {
         match self.opt_value_to_register(value) {
             Some(reg) => reg,

@@ -1,6 +1,6 @@
 script;
 
-dep utils;
+mod utils;
 use utils::Foo;
 
 

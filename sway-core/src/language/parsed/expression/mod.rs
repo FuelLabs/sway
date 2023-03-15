@@ -223,7 +223,7 @@ pub enum ExpressionKind {
 #[derive(Debug, Clone)]
 pub enum ReassignmentTarget {
     VariableExpression(Box<Expression>),
-    StorageField(Vec<Ident>),
+    StorageField(Span, Vec<Ident>),
 }
 
 #[derive(Debug, Clone)]
@@ -247,7 +247,7 @@ pub(crate) struct Op {
 
 impl Op {
     pub fn to_var_name(&self) -> Ident {
-        Ident::new_with_override(self.op_variant.as_str(), self.span.clone())
+        Ident::new_with_override(self.op_variant.as_str().to_string(), self.span.clone())
     }
 }
 

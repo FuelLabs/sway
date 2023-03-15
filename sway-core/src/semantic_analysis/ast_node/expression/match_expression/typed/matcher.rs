@@ -1,6 +1,6 @@
 use crate::{
     error::{err, ok},
-    language::{ty, Literal},
+    language::{ty, CallPath, Literal},
     semantic_analysis::{
         ast_node::expression::typed_expression::{
             instantiate_struct_field_access, instantiate_tuple_index_access,
@@ -92,12 +92,16 @@ pub(crate) fn matcher(
     );
 
     match variant {
-        ty::TyScrutineeVariant::CatchAll => ok((vec![], vec![]), warnings, errors),
-        ty::TyScrutineeVariant::Literal(value) => match_literal(exp, value, span),
-        ty::TyScrutineeVariant::Variable(name) => match_variable(exp, name),
-        ty::TyScrutineeVariant::Constant(name, _, const_decl) => {
-            match_constant(exp, name, const_decl.type_ascription.type_id, span)
+        ty::TyScrutineeVariant::CatchAll => ok((vec![], vec![]), vec![], vec![]),
+        ty::TyScrutineeVariant::Literal(value) => {
+            ok(match_literal(exp, value, span), vec![], vec![])
         }
+        ty::TyScrutineeVariant::Variable(name) => ok(match_variable(exp, name), vec![], vec![]),
+        ty::TyScrutineeVariant::Constant(name, _, const_decl) => ok(
+            match_constant(ctx, exp, name, const_decl.type_ascription.type_id, span),
+            vec![],
+            vec![],
+        ),
         ty::TyScrutineeVariant::StructScrutinee { fields, .. } => match_struct(ctx, exp, fields),
         ty::TyScrutineeVariant::EnumScrutinee { value, variant, .. } => {
             match_enum(ctx, exp, *variant, *value, span)
@@ -106,11 +110,7 @@ pub(crate) fn matcher(
     }
 }
 
-fn match_literal(
-    exp: &ty::TyExpression,
-    scrutinee: Literal,
-    span: Span,
-) -> CompileResult<MatcherResult> {
+fn match_literal(exp: &ty::TyExpression, scrutinee: Literal, span: Span) -> MatcherResult {
     let match_req_map = vec![(
         exp.to_owned(),
         ty::TyExpression {
@@ -120,30 +120,31 @@ fn match_literal(
         },
     )];
     let match_decl_map = vec![];
-    ok((match_req_map, match_decl_map), vec![], vec![])
+    (match_req_map, match_decl_map)
 }
 
-fn match_variable(exp: &ty::TyExpression, scrutinee_name: Ident) -> CompileResult<MatcherResult> {
+fn match_variable(exp: &ty::TyExpression, scrutinee_name: Ident) -> MatcherResult {
     let match_req_map = vec![];
     let match_decl_map = vec![(scrutinee_name, exp.to_owned())];
 
-    ok((match_req_map, match_decl_map), vec![], vec![])
+    (match_req_map, match_decl_map)
 }
 
 fn match_constant(
+    ctx: TypeCheckContext,
     exp: &ty::TyExpression,
     scrutinee_name: Ident,
     scrutinee_type_id: TypeId,
     span: Span,
-) -> CompileResult<MatcherResult> {
+) -> MatcherResult {
     let match_req_map = vec![(
         exp.to_owned(),
         ty::TyExpression {
             expression: ty::TyExpressionVariant::VariableExpression {
-                name: scrutinee_name,
+                name: scrutinee_name.clone(),
                 span: span.clone(),
                 mutability: ty::VariableMutability::Immutable,
-                call_path: None,
+                call_path: Some(CallPath::from(scrutinee_name).to_fullpath(ctx.namespace)),
             },
             return_type: scrutinee_type_id,
             span,
@@ -151,7 +152,7 @@ fn match_constant(
     )];
     let match_decl_map = vec![];
 
-    ok((match_req_map, match_decl_map), vec![], vec![])
+    (match_req_map, match_decl_map)
 }
 
 fn match_struct(
