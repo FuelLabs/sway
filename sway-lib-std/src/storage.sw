@@ -889,8 +889,8 @@ impl<V> StorageVec<V> {
     ///
     /// ### Arguments
     ///
-    /// new_len - The new length to expand or truncate to
-    /// value - The value to fill into new slots if the `new_len` is greater than the current length
+    /// * new_len - The new length to expand or truncate to
+    /// * value - The value to fill into new slots if the `new_len` is greater than the current length
     ///
     /// ### Storage Access
     ///
