@@ -146,25 +146,6 @@ where
             .with_parent(decl_engine, self.id.into())
     }
 }
-impl<T> DeclRef<DeclId<T>>
-where
-    FunctionalDeclId: From<DeclId<T>>,
-    DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + ReplaceDecls,
-{
-    pub(crate) fn replace_decls_and_insert_new_with_parent(
-        &self,
-        decl_mapping: &DeclMapping,
-        engines: Engines<'_>,
-    ) -> Self {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(&self.id);
-        decl.replace_decls(decl_mapping, engines);
-        decl_engine
-            .insert(decl)
-            .with_parent(decl_engine, self.id.into())
-    }
-}
 
 impl<T> EqWithEngines for DeclRef<DeclId<T>>
 where
@@ -277,27 +258,6 @@ where
         let mut decl = decl_engine.get(&self.id);
         decl.subst(type_mapping, engines);
         decl_engine.replace(self.id, decl);
-    }
-}
-
-impl ReplaceDecls for DeclRefFunction {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
-        let decl_engine = engines.de();
-        if let Some(new_decl_ref) = decl_mapping.find_match(self.id.into()) {
-            if let FunctionalDeclId::Function(new_decl_ref) = new_decl_ref {
-                self.id = new_decl_ref;
-            }
-            return;
-        }
-        let all_parents = decl_engine.find_all_parents(engines, &self.id);
-        for parent in all_parents.iter() {
-            if let Some(new_decl_ref) = decl_mapping.find_match(parent.clone()) {
-                if let FunctionalDeclId::Function(new_decl_ref) = new_decl_ref {
-                    self.id = new_decl_ref;
-                }
-                return;
-            }
-        }
     }
 }
 

@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::{DeclEngineInsert, DeclRefFunction, ReplaceDecls},
+    decl_engine::*,
     error::*,
     language::{ty, *},
     semantic_analysis::{ast_node::*, TypeCheckContext},
@@ -22,7 +22,7 @@ pub(crate) fn instantiate_function_application(
     let decl_engine = ctx.decl_engine;
     let engines = ctx.engines();
 
-    let mut function_decl = decl_engine.get_function(&function_decl_ref);
+    let function_decl = decl_engine.get_function(&function_decl_ref);
 
     if arguments.is_none() {
         errors.push(CompileError::MissingParenthesesForFunction {
@@ -73,36 +73,17 @@ pub(crate) fn instantiate_function_application(
     ctx.namespace
         .insert_trait_implementation_for_type(engines, function_decl.return_type.type_id);
 
-    // Handle the trait constraints. This includes checking to see if the trait
-    // constraints are satisfied and replacing old decl ids based on the
-    // constraint with new decl ids based on the new type.
-    let decl_mapping = check!(
-        TypeParameter::gather_decl_mapping_from_trait_constraints(
-            ctx.by_ref(),
-            &function_decl.type_parameters,
-            &call_path_binding.span()
-        ),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-    function_decl.replace_decls(&decl_mapping, engines);
-    let return_type = function_decl.return_type.clone();
-    let new_decl_ref = decl_engine
-        .insert(function_decl)
-        .with_parent(decl_engine, (*function_decl_ref.id()).into());
-
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {
             call_path: call_path_binding.inner.clone(),
             contract_call_params: HashMap::new(),
             arguments: typed_arguments_with_names,
-            fn_ref: new_decl_ref,
+            fn_ref: function_decl_ref,
             self_state_idx: None,
             selector: None,
             type_binding: Some(call_path_binding.strip_inner()),
         },
-        return_type: return_type.type_id,
+        return_type: function_decl.return_type.type_id,
         span,
     };
 

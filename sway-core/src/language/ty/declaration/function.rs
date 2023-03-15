@@ -99,12 +99,6 @@ impl SubstTypes for TyFunctionDecl {
     }
 }
 
-impl ReplaceDecls for TyFunctionDecl {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
-        self.body.replace_decls(decl_mapping, engines);
-    }
-}
-
 impl Spanned for TyFunctionDecl {
     fn span(&self) -> Span {
         self.span.clone()

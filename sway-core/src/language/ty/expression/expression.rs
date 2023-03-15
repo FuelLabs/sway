@@ -51,12 +51,6 @@ impl SubstTypes for TyExpression {
     }
 }
 
-impl ReplaceDecls for TyExpression {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
-        self.expression.replace_decls(decl_mapping, engines);
-    }
-}
-
 impl DisplayWithEngines for TyExpression {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         write!(

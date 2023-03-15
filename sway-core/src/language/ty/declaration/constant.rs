@@ -3,7 +3,6 @@ use std::hash::{Hash, Hasher};
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
-    decl_engine::{DeclMapping, ReplaceDecls},
     engine_threading::*,
     language::{ty::*, CallPath, Visibility},
     transform,
@@ -88,14 +87,6 @@ impl SubstTypes for TyConstantDecl {
         self.type_ascription.subst(type_mapping, engines);
         if let Some(expr) = &mut self.value {
             expr.subst(type_mapping, engines);
-        }
-    }
-}
-
-impl ReplaceDecls for TyConstantDecl {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
-        if let Some(expr) = &mut self.value {
-            expr.replace_decls(decl_mapping, engines);
         }
     }
 }
