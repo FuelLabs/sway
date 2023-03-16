@@ -378,6 +378,7 @@ impl ty::TyImplTrait {
                 | ty::TyDeclaration::AbiDeclaration { .. }
                 | ty::TyDeclaration::GenericTypeForFunctionScope { .. }
                 | ty::TyDeclaration::ErrorRecovery(_)
+                | ty::TyDeclaration::TypeAliasDeclaration { .. }
                 | ty::TyDeclaration::StorageDeclaration { .. } => Ok(false),
             }
         }

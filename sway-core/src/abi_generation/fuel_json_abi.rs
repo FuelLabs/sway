@@ -273,6 +273,9 @@ impl TypeId {
                 (TypeInfo::Custom { .. }, TypeInfo::Enum { .. }) => type_engine
                     .get(resolved_type_id)
                     .json_abi_str(ctx, type_engine, decl_engine),
+                (TypeInfo::Custom { .. }, TypeInfo::Alias { .. }) => type_engine
+                    .get(resolved_type_id)
+                    .json_abi_str(ctx, type_engine, decl_engine),
                 (TypeInfo::Tuple(fields), TypeInfo::Tuple(resolved_fields)) => {
                     assert_eq!(fields.len(), resolved_fields.len());
                     let field_strs = fields
@@ -593,6 +596,20 @@ impl TypeId {
                     None
                 }
             }
+            TypeInfo::Alias { .. } => {
+                if let TypeInfo::Alias { ty, .. } = type_engine.get(resolved_type_id) {
+                    ty.initial_type_id.get_json_type_components(
+                        ctx,
+                        type_engine,
+                        decl_engine,
+                        types,
+                        ty.type_id,
+                    )
+                } else {
+                    None
+                }
+            }
+
             _ => None,
         }
     }
@@ -820,6 +837,7 @@ impl TypeInfo {
             Storage { .. } => "contract storage".into(),
             RawUntypedPtr => "raw untyped ptr".into(),
             RawUntypedSlice => "raw untyped slice".into(),
+            Alias { ty, .. } => ty.json_abi_str(ctx, type_engine, decl_engine),
         }
     }
 }

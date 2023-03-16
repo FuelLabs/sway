@@ -68,6 +68,11 @@ pub enum TyDeclaration {
         decl_id: DeclId<TyStorageDeclaration>,
         decl_span: Span,
     },
+    TypeAliasDeclaration {
+        name: Ident,
+        decl_id: DeclId<TyTypeAliasDeclaration>,
+        decl_span: Span,
+    },
 }
 
 impl EqWithEngines for TyDeclaration {}
@@ -169,6 +174,10 @@ impl PartialEqWithEngines for TyDeclaration {
                 Self::StorageDeclaration { decl_id: rid, .. },
             ) => decl_engine.get(*lid).eq(&decl_engine.get(*rid), engines),
             (
+                Self::TypeAliasDeclaration { decl_id: lid, .. },
+                Self::TypeAliasDeclaration { decl_id: rid, .. },
+            ) => decl_engine.get(*lid).eq(&decl_engine.get(*rid), engines),
+            (
                 Self::GenericTypeForFunctionScope {
                     name: xn,
                     type_id: xti,
@@ -215,6 +224,9 @@ impl HashWithEngines for TyDeclaration {
             AbiDeclaration { decl_id, .. } => {
                 decl_engine.get(*decl_id).hash(state, engines);
             }
+            TypeAliasDeclaration { decl_id, .. } => {
+                decl_engine.get(*decl_id).hash(state, engines);
+            }
             StorageDeclaration { decl_id, .. } => {
                 decl_engine.get(*decl_id).hash(state, engines);
             }
@@ -247,6 +259,9 @@ impl SubstTypes for TyDeclaration {
             ImplTrait {
                 ref mut decl_id, ..
             } => decl_id.subst(type_mapping, engines),
+            TypeAliasDeclaration {
+                ref mut decl_id, ..
+            } => decl_id.subst(type_mapping, engines),
             // generics in an ABI is unsupported by design
             AbiDeclaration { .. }
             | ConstantDeclaration { .. }
@@ -275,6 +290,9 @@ impl ReplaceSelfType for TyDeclaration {
                 ref mut decl_id, ..
             } => decl_id.replace_self_type(engines, self_type),
             ImplTrait {
+                ref mut decl_id, ..
+            } => decl_id.replace_self_type(engines, self_type),
+            TypeAliasDeclaration {
                 ref mut decl_id, ..
             } => decl_id.replace_self_type(engines, self_type),
             // generics in an ABI is unsupported by design
@@ -313,6 +331,7 @@ impl Spanned for TyDeclaration {
             | ImplTrait { decl_span, .. }
             | ConstantDeclaration { decl_span, .. }
             | StorageDeclaration { decl_span, .. }
+            | TypeAliasDeclaration { decl_span, .. }
             | AbiDeclaration { decl_span, .. }
             | StructDeclaration { decl_span, .. }
             | EnumDeclaration { decl_span, .. } => decl_span.clone(),
@@ -420,6 +439,7 @@ impl CollectTypesMetadata for TyDeclaration {
             | EnumDeclaration { .. }
             | ImplTrait { .. }
             | AbiDeclaration { .. }
+            | TypeAliasDeclaration { .. }
             | GenericTypeForFunctionScope { .. } => vec![],
         };
         if errors.is_empty() {
@@ -439,6 +459,7 @@ impl GetDeclIdent for TyDeclaration {
             | TyDeclaration::ConstantDeclaration { name, .. }
             | TyDeclaration::ImplTrait { name, .. }
             | TyDeclaration::AbiDeclaration { name, .. }
+            | TyDeclaration::TypeAliasDeclaration { name, .. }
             | TyDeclaration::GenericTypeForFunctionScope { name, .. }
             | TyDeclaration::StructDeclaration { name, .. }
             | TyDeclaration::EnumDeclaration { name, .. } => Some(name.clone()),
@@ -451,9 +472,8 @@ impl GetDeclIdent for TyDeclaration {
 impl TyDeclaration {
     /// Retrieves the declaration as a `DeclRef<DeclId<TyEnumDeclaration>>`.
     ///
-    /// Returns an error if `self` is not the
-    /// [TyDeclaration][EnumDeclaration] variant.
-    pub(crate) fn to_enum_ref(&self) -> CompileResult<DeclRefEnum> {
+    /// Returns an error if `self` is not the [TyDeclaration][EnumDeclaration] variant.
+    pub(crate) fn to_enum_ref(&self, engines: Engines) -> CompileResult<DeclRefEnum> {
         match self {
             TyDeclaration::EnumDeclaration {
                 name,
@@ -465,6 +485,10 @@ impl TyDeclaration {
                 vec![],
                 vec![],
             ),
+            TyDeclaration::TypeAliasDeclaration { decl_id, .. } => {
+                let TyTypeAliasDeclaration { ty, span, .. } = engines.de().get_type_alias(decl_id);
+                engines.te().get(ty.type_id).expect_enum(engines, "", &span)
+            }
             TyDeclaration::ErrorRecovery(_) => err(vec![], vec![]),
             decl => err(
                 vec![],
@@ -478,9 +502,8 @@ impl TyDeclaration {
 
     /// Retrieves the declaration as a `DeclRef<DeclId<TyStructDeclaration>>`.
     ///
-    /// Returns an error if `self` is not the
-    /// [TyDeclaration][StructDeclaration] variant.
-    pub(crate) fn to_struct_ref(&self) -> CompileResult<DeclRefStruct> {
+    /// Returns an error if `self` is not the [TyDeclaration][StructDeclaration] variant.
+    pub(crate) fn to_struct_ref(&self, engines: Engines) -> CompileResult<DeclRefStruct> {
         match self {
             TyDeclaration::StructDeclaration {
                 name,
@@ -492,6 +515,10 @@ impl TyDeclaration {
                 vec![],
                 vec![],
             ),
+            TyDeclaration::TypeAliasDeclaration { decl_id, .. } => {
+                let TyTypeAliasDeclaration { ty, span, .. } = engines.de().get_type_alias(decl_id);
+                engines.te().get(ty.type_id).expect_struct(engines, &span)
+            }
             TyDeclaration::ErrorRecovery(_) => err(vec![], vec![]),
             decl => err(
                 vec![],
@@ -640,6 +667,7 @@ impl TyDeclaration {
             GenericTypeForFunctionScope { .. } => "generic type parameter",
             ErrorRecovery(_) => "error",
             StorageDeclaration { .. } => "contract storage declaration",
+            TypeAliasDeclaration { .. } => "type alias declaration",
         }
     }
 
@@ -655,6 +683,7 @@ impl TyDeclaration {
             ImplTrait { .. } => "impl_trait",
             FunctionDeclaration { .. } => "fn",
             ConstantDeclaration { .. } => "constant",
+            TypeAliasDeclaration { .. } => "type alias",
             _ => unreachable!("these items are non-documentable"),
         }
     }
@@ -697,6 +726,10 @@ impl TyDeclaration {
                     },
                 )
             }
+            TyDeclaration::TypeAliasDeclaration { decl_id, .. } => {
+                let decl = decl_engine.get_type_alias(decl_id);
+                decl.create_type_id(engines)
+            }
             TyDeclaration::GenericTypeForFunctionScope { type_id, .. } => *type_id,
             decl => {
                 errors.push(CompileError::NotAType {
@@ -731,6 +764,10 @@ impl TyDeclaration {
             }
             FunctionDeclaration { decl_id, .. } => {
                 let TyFunctionDeclaration { visibility, .. } = decl_engine.get_function(decl_id);
+                visibility
+            }
+            TypeAliasDeclaration { decl_id, .. } => {
+                let TyTypeAliasDeclaration { visibility, .. } = decl_engine.get_type_alias(decl_id);
                 visibility
             }
             GenericTypeForFunctionScope { .. }
@@ -821,6 +858,15 @@ impl From<DeclRef<DeclId<TyAbiDeclaration>>> for TyDeclaration {
 impl From<DeclRef<DeclId<TyStorageDeclaration>>> for TyDeclaration {
     fn from(decl_ref: DeclRef<DeclId<TyStorageDeclaration>>) -> Self {
         TyDeclaration::StorageDeclaration {
+            decl_id: *decl_ref.id(),
+            decl_span: decl_ref.decl_span().clone(),
+        }
+    }
+}
+impl From<DeclRef<DeclId<TyTypeAliasDeclaration>>> for TyDeclaration {
+    fn from(decl_ref: DeclRef<DeclId<TyTypeAliasDeclaration>>) -> Self {
+        TyDeclaration::TypeAliasDeclaration {
+            name: decl_ref.name().clone(),
             decl_id: *decl_ref.id(),
             decl_span: decl_ref.decl_span().clone(),
         }

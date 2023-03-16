@@ -187,6 +187,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
         | StructDeclaration { .. }
         | EnumDeclaration { .. }
         | StorageDeclaration { .. }
+        | TypeAliasDeclaration { .. }
         | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),
         VariableDeclaration(_) | ConstantDeclaration { .. } => {
             let entry_node = graph.add_node(ControlFlowGraphNode::from_node(node));

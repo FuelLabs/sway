@@ -205,6 +205,12 @@ impl<'eng> FnCompiler<'eng> {
                         span: ast_node.span.clone(),
                     })
                 }
+                ty::TyDeclaration::TypeAliasDeclaration { .. } => {
+                    Err(CompileError::UnexpectedDeclaration {
+                        decl_type: "type alias",
+                        span: ast_node.span.clone(),
+                    })
+                }
             },
             ty::TyAstNodeContent::Expression(te) => {
                 // An expression with an ignored return value... I assume.
