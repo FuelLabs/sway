@@ -143,6 +143,7 @@ impl<'a> Solver<'a> {
             TypeInfo::ErrorRecovery => todo!(),
             TypeInfo::Array(_, _) => todo!(),
             TypeInfo::Storage { .. } => todo!(),
+            TypeInfo::Alias { .. } => todo!(),
             TypeInfo::Str(_)
             | TypeInfo::UnsignedInteger(_)
             | TypeInfo::Boolean

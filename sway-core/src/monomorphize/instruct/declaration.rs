@@ -27,6 +27,7 @@ pub(crate) fn instruct_decl(
         ty::TyDeclaration::GenericTypeForFunctionScope { .. } => todo!(),
         ty::TyDeclaration::StorageDeclaration { .. } => todo!(),
         ty::TyDeclaration::ErrorRecovery(_) => {}
+        ty::TyDeclaration::TypeAliasDeclaration { .. } => todo!(),
     }
 
     Ok(())
