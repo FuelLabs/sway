@@ -2244,7 +2244,7 @@ pub fn build(
             )?;
 
             // If this contract is built because:
-            // 1) its a contract dependency, or
+            // 1) it is a contract dependency, or
             // 2) tests are enabled,
             // we need to insert its CONTRACT_ID into a map for later use.
             if is_contract_dependency {
