@@ -370,7 +370,9 @@ impl core::ops::Subtract for U256 {
         if self == other {
             return Self::min();
         } else if other == Self::min() {
-            return self;
+            // Manually clone `self`. Otherwise, we may have a `MemoryOverflow`
+            // issue with code that looks like: `x = x - other`
+            return U256::from((self.a, self.b, self.c, self.d));
         }
         // If trying to subtract a larger number, panic.
         assert(self > other);
