@@ -7,7 +7,7 @@ use crate::{
 };
 use std::fmt::Write;
 use sway_ast::{
-    attribute::{Annotated, Attribute, AttributeDecl, AttributeHashKind},
+    attribute::{Annotated, Attribute, AttributeArg, AttributeDecl, AttributeHashKind},
     token::{Delimiter, PunctKind},
 };
 use sway_types::{constants::DOC_COMMENT_ATTRIBUTE_NAME, Spanned};
@@ -35,6 +35,31 @@ impl<T: Format + Spanned> Format for Annotated<T> {
     }
 }
 
+impl Format for AttributeArg {
+    fn format(
+        &self,
+        formatted_code: &mut FormattedCode,
+        _formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        write!(formatted_code, "{}", self.name.span().as_str())?;
+        if let Some(value) = &self.value {
+            write!(formatted_code, " = {}", value.span().as_str())?;
+        }
+
+        Ok(())
+    }
+}
+impl LeafSpans for AttributeArg {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = Vec::new();
+        collected_spans.push(ByteSpan::from(self.name.span()));
+        if let Some(value) = &self.value {
+            collected_spans.push(ByteSpan::from(value.span()));
+        }
+        collected_spans
+    }
+}
+
 impl Format for AttributeDecl {
     fn format(
         &self,
@@ -55,12 +80,16 @@ impl Format for AttributeDecl {
                 .map(|args| args.inner.final_value_opt.as_ref())
             {
                 match self.hash_kind {
-                    AttributeHashKind::Inner(_) => {
-                        writeln!(formatted_code, "//!{}", doc_comment.as_str().trim_end())?
-                    }
-                    AttributeHashKind::Outer(_) => {
-                        writeln!(formatted_code, "///{}", doc_comment.as_str().trim_end())?
-                    }
+                    AttributeHashKind::Inner(_) => writeln!(
+                        formatted_code,
+                        "//!{}",
+                        doc_comment.name.as_str().trim_end()
+                    )?,
+                    AttributeHashKind::Outer(_) => writeln!(
+                        formatted_code,
+                        "///{}",
+                        doc_comment.name.as_str().trim_end()
+                    )?,
                 }
             }
             return Ok(());

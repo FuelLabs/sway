@@ -221,6 +221,14 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                             errors
                         );
                     }
+                    ty::TyImplItem::Constant(decl_ref) => {
+                        check!(
+                            validate_const_decl(engines, decl_ref.id()),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                    }
                 }
             }
         }
@@ -274,6 +282,15 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                     errors
                 );
             }
+        }
+        ty::TyDeclaration::TypeAliasDeclaration { decl_id, .. } => {
+            let ty::TyTypeAliasDeclaration { ty, span, .. } = decl_engine.get_type_alias(decl_id);
+            check!(
+                check_type(engines, ty.type_id, span, false),
+                (),
+                warnings,
+                errors
+            );
         }
         ty::TyDeclaration::GenericTypeForFunctionScope { .. }
         | ty::TyDeclaration::ErrorRecovery(_) => {}

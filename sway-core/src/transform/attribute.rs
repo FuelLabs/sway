@@ -20,9 +20,23 @@
 //!
 //!   #[foo(bar, bar)]
 
-use sway_types::{constants::ALLOW_DEAD_CODE_NAME, Ident, Span};
+use sway_ast::Literal;
+use sway_types::{constants::ALLOW_DEAD_CODE_NAME, Ident, Span, Spanned};
 
 use std::{collections::HashMap, hash::Hash, sync::Arc};
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AttributeArg {
+    pub name: Ident,
+    pub value: Option<Literal>,
+    pub span: Span,
+}
+
+impl Spanned for AttributeArg {
+    fn span(&self) -> Span {
+        self.span.clone()
+    }
+}
 
 /// An attribute has a name (i.e "doc", "storage"),
 /// a vector of possible arguments and
@@ -30,7 +44,7 @@ use std::{collections::HashMap, hash::Hash, sync::Arc};
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Attribute {
     pub name: Ident,
-    pub args: Vec<Ident>,
+    pub args: Vec<AttributeArg>,
     pub span: Span,
 }
 

@@ -53,9 +53,25 @@ pub enum AttributeHashKind {
 }
 
 #[derive(Clone, Debug, Serialize)]
+pub struct AttributeArg {
+    pub name: Ident,
+    pub value: Option<Literal>,
+}
+
+impl Spanned for AttributeArg {
+    fn span(&self) -> Span {
+        if let Some(value) = &self.value {
+            Span::join(self.name.span(), value.span())
+        } else {
+            self.name.span()
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize)]
 pub struct Attribute {
     pub name: Ident,
-    pub args: Option<Parens<Punctuated<Ident, CommaToken>>>,
+    pub args: Option<Parens<Punctuated<AttributeArg, CommaToken>>>,
 }
 
 impl Spanned for Attribute {

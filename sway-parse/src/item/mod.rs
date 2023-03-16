@@ -3,11 +3,11 @@ use crate::{Parse, ParseResult, ParseToEnd, Parser, ParserConsumed};
 use sway_ast::keywords::{
     AbiToken, ClassToken, ConfigurableToken, ConstToken, EnumToken, FnToken, ImplToken, ModToken,
     MutToken, OpenAngleBracketToken, RefToken, SelfToken, SemicolonToken, StorageToken,
-    StructToken, TraitToken, UseToken, WhereToken,
+    StructToken, TraitToken, TypeToken, UseToken, WhereToken,
 };
 use sway_ast::{
     FnArg, FnArgs, FnSignature, ItemConst, ItemEnum, ItemFn, ItemKind, ItemStruct, ItemTrait,
-    ItemUse, Submodule, TypeField,
+    ItemTypeAlias, ItemUse, Submodule, TypeField,
 };
 use sway_error::parser_error::ParseErrorKind;
 
@@ -20,6 +20,7 @@ mod item_impl;
 mod item_storage;
 mod item_struct;
 mod item_trait;
+mod item_type_alias;
 mod item_use;
 
 impl Parse for ItemKind {
@@ -62,6 +63,9 @@ impl Parse for ItemKind {
             ItemKind::Storage(item)
         } else if let Some(item) = parser.guarded_parse::<ConfigurableToken, _>()? {
             ItemKind::Configurable(item)
+        } else if let Some(mut item) = parser.guarded_parse::<TypeToken, ItemTypeAlias>()? {
+            item.visibility = visibility.take();
+            ItemKind::TypeAlias(item)
         } else {
             return Err(parser.emit_error(ParseErrorKind::ExpectedAnItem));
         };
@@ -184,9 +188,9 @@ mod tests {
                     .map(|att| {
                         (
                             att.name.as_str(),
-                            att.args
-                                .as_ref()
-                                .map(|arg| arg.get().into_iter().map(|a| a.as_str()).collect()),
+                            att.args.as_ref().map(|arg| {
+                                arg.get().into_iter().map(|a| a.name.as_str()).collect()
+                            }),
                         )
                     })
                     .collect()
@@ -281,6 +285,42 @@ mod tests {
 
         assert!(matches!(item.value, ItemKind::Fn(_)));
         assert_eq!(attributes(&item.attribute_list), vec![[("foo", None)]]);
+    }
+
+    #[test]
+    fn parse_attributes_fn_one_arg_value() {
+        let item = parse::<Item>(
+            r#"
+            #[cfg(target = "evm")]
+            fn f() -> bool {
+                false
+            }
+            "#,
+        );
+
+        assert!(matches!(item.value, ItemKind::Fn(_)));
+        assert_eq!(
+            attributes(&item.attribute_list),
+            vec![[("cfg", Some(vec!["target"]))]]
+        );
+    }
+
+    #[test]
+    fn parse_attributes_fn_two_arg_values() {
+        let item = parse::<Item>(
+            r#"
+            #[cfg(target = "evm", feature = "test")]
+            fn f() -> bool {
+                false
+            }
+            "#,
+        );
+
+        assert!(matches!(item.value, ItemKind::Fn(_)));
+        assert_eq!(
+            attributes(&item.attribute_list),
+            vec![[("cfg", Some(vec!["target", "feature"]))]]
+        );
     }
 
     #[test]
@@ -468,7 +508,6 @@ mod tests {
             let trait_item = decls.next();
             assert!(trait_item.is_some());
             let (annotated, _) = trait_item.unwrap();
-            #[allow(irrefutable_let_patterns)]
             if let ItemTraitItem::Fn(_fn_sig) = &annotated.value {
                 assert_eq!(
                     attributes(&annotated.attribute_list),

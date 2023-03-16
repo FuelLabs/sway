@@ -340,6 +340,9 @@ impl Dependencies {
                             deps.gather_from_type_argument(engines, &param.type_argument)
                         })
                         .gather_from_typeinfo(engines, &sig.return_type),
+                    TraitItem::Constant(const_decl) => {
+                        deps.gather_from_constant_decl(engines, const_decl)
+                    }
                 })
                 .gather_from_iter(methods.iter(), |deps, fn_decl| {
                     deps.gather_from_fn_decl(engines, fn_decl)
@@ -356,6 +359,9 @@ impl Dependencies {
                 .gather_from_type_parameters(impl_type_parameters)
                 .gather_from_iter(items.iter(), |deps, item| match item {
                     ImplItem::Fn(fn_decl) => deps.gather_from_fn_decl(engines, fn_decl),
+                    ImplItem::Constant(const_decl) => {
+                        deps.gather_from_constant_decl(engines, const_decl)
+                    }
                 }),
             Declaration::ImplSelf(ImplSelf {
                 implementing_for,
@@ -365,6 +371,9 @@ impl Dependencies {
                 .gather_from_type_argument(engines, implementing_for)
                 .gather_from_iter(items.iter(), |deps, item| match item {
                     ImplItem::Fn(fn_decl) => deps.gather_from_fn_decl(engines, fn_decl),
+                    ImplItem::Constant(const_decl) => {
+                        deps.gather_from_constant_decl(engines, const_decl)
+                    }
                 }),
             Declaration::AbiDeclaration(AbiDeclaration {
                 interface_surface,
@@ -381,6 +390,9 @@ impl Dependencies {
                             deps.gather_from_type_argument(engines, &param.type_argument)
                         })
                         .gather_from_typeinfo(engines, &sig.return_type),
+                    TraitItem::Constant(const_decl) => {
+                        deps.gather_from_constant_decl(engines, const_decl)
+                    }
                 })
                 .gather_from_iter(methods.iter(), |deps, fn_decl| {
                     deps.gather_from_fn_decl(engines, fn_decl)
@@ -395,6 +407,9 @@ impl Dependencies {
                         deps.gather_from_type_argument(engines, type_argument)
                     },
                 ),
+            Declaration::TypeAliasDeclaration(TypeAliasDeclaration { ty, .. }) => {
+                self.gather_from_type_argument(engines, ty)
+            }
         }
     }
 
@@ -686,6 +701,7 @@ impl Dependencies {
                 decl_engine.get_enum(decl_ref).variants.iter(),
                 |deps, variant| deps.gather_from_type_argument(engines, &variant.type_argument),
             ),
+            TypeInfo::Alias { ty, .. } => self.gather_from_type_argument(engines, ty),
             _ => self,
         }
     }
@@ -766,6 +782,7 @@ fn decl_name(type_engine: &TypeEngine, decl: &Declaration) -> Option<DependentSy
         Declaration::EnumDeclaration(decl) => dep_sym(decl.name.clone()),
         Declaration::TraitDeclaration(decl) => dep_sym(decl.name.clone()),
         Declaration::AbiDeclaration(decl) => dep_sym(decl.name.clone()),
+        Declaration::TypeAliasDeclaration(decl) => dep_sym(decl.name.clone()),
 
         // These have the added complexity of converting CallPath and/or TypeInfo into a name.
         Declaration::ImplSelf(decl) => {
@@ -777,6 +794,7 @@ fn decl_name(type_engine: &TypeEngine, decl: &Declaration) -> Option<DependentSy
                     .iter()
                     .map(|item| match item {
                         ImplItem::Fn(fn_decl) => fn_decl.name.as_str(),
+                        ImplItem::Constant(const_decl) => const_decl.name.as_str(),
                     })
                     .collect::<Vec<&str>>()
                     .join(""),
@@ -791,6 +809,7 @@ fn decl_name(type_engine: &TypeEngine, decl: &Declaration) -> Option<DependentSy
                         .iter()
                         .map(|item| match item {
                             ImplItem::Fn(fn_decl) => fn_decl.name.as_str(),
+                            ImplItem::Constant(const_decl) => const_decl.name.as_str(),
                         })
                         .collect::<Vec<&str>>()
                         .join(""),
@@ -842,6 +861,7 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Storage { .. } => "contract storage",
         TypeInfo::RawUntypedPtr => "raw untyped ptr",
         TypeInfo::RawUntypedSlice => "raw untyped slice",
+        TypeInfo::Alias { .. } => "alias",
     }
     .to_string()
 }

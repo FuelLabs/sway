@@ -85,7 +85,7 @@ fn format_doc_attributes(token: &Token) -> String {
         doc_comment = attributes
             .iter()
             .map(|attribute| {
-                let comment = attribute.args.first().unwrap().as_str();
+                let comment = attribute.args.first().unwrap().name.as_str();
                 format!("{comment}\n")
             })
             .collect()

@@ -205,6 +205,12 @@ impl<'eng> FnCompiler<'eng> {
                         span: ast_node.span.clone(),
                     })
                 }
+                ty::TyDeclaration::TypeAliasDeclaration { .. } => {
+                    Err(CompileError::UnexpectedDeclaration {
+                        decl_type: "type alias",
+                        span: ast_node.span.clone(),
+                    })
+                }
             },
             ty::TyAstNodeContent::Expression(te) => {
                 // An expression with an ignored return value... I assume.
@@ -239,7 +245,7 @@ impl<'eng> FnCompiler<'eng> {
                 call_path: name,
                 contract_call_params,
                 arguments,
-                function_decl_ref,
+                fn_ref,
                 self_state_idx,
                 selector,
                 type_binding: _,
@@ -256,7 +262,7 @@ impl<'eng> FnCompiler<'eng> {
                         span_md_idx,
                     )
                 } else {
-                    let function_decl = self.decl_engine.get_function(function_decl_ref);
+                    let function_decl = self.decl_engine.get_function(fn_ref);
                     self.compile_fn_call(
                         context,
                         md_mgr,
@@ -336,11 +342,14 @@ impl<'eng> FnCompiler<'eng> {
                 )
             }
             ty::TyExpressionVariant::EnumInstantiation {
-                enum_decl,
+                enum_ref,
                 tag,
                 contents,
                 ..
-            } => self.compile_enum_expr(context, md_mgr, enum_decl, *tag, contents.as_deref()),
+            } => {
+                let enum_decl = self.decl_engine.get_enum(enum_ref);
+                self.compile_enum_expr(context, md_mgr, &enum_decl, *tag, contents.as_deref())
+            }
             ty::TyExpressionVariant::Tuple { fields } => {
                 self.compile_tuple_expr(context, md_mgr, fields, span_md_idx)
             }

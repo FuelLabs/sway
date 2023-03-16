@@ -111,16 +111,18 @@ impl Items {
                 )
                 // constant shadowing a variable
                 | (VariableDeclaration { .. }, ConstantDeclaration { .. })
-                // type shadowing another type
+                // type or type alias shadowing another type or type alias
                 // trait/abi shadowing another trait/abi
-                // type shadowing a trait/abi or vice versa
+                // type or type alias shadowing a trait/abi, or vice versa
                 | (
                     StructDeclaration { .. }
                     | EnumDeclaration { .. }
+                    | TypeAliasDeclaration { .. }
                     | TraitDeclaration { .. }
                     | AbiDeclaration { .. },
                     StructDeclaration { .. }
                     | EnumDeclaration { .. }
+                    | TypeAliasDeclaration { .. }
                     | TraitDeclaration { .. }
                     | AbiDeclaration { .. },
                 ) => errors.push(CompileError::NameDefinedMultipleTimes { name: name.to_string(), span: name.span() }),
@@ -161,13 +163,26 @@ impl Items {
         self.implemented_traits.insert_for_type(engines, type_id);
     }
 
+    pub fn get_items_for_type(
+        &self,
+        engines: Engines<'_>,
+        type_id: TypeId,
+    ) -> Vec<ty::TyTraitItem> {
+        self.implemented_traits.get_items_for_type(engines, type_id)
+    }
+
     pub fn get_methods_for_type(
         &self,
         engines: Engines<'_>,
         type_id: TypeId,
     ) -> Vec<DeclRefFunction> {
-        self.implemented_traits
-            .get_methods_for_type(engines, type_id)
+        self.get_items_for_type(engines, type_id)
+            .into_iter()
+            .filter_map(|item| match item {
+                ty::TyTraitItem::Fn(decl_ref) => Some(decl_ref),
+                ty::TyTraitItem::Constant(_decl_ref) => None,
+            })
+            .collect::<Vec<_>>()
     }
 
     pub(crate) fn has_storage_declared(&self) -> bool {

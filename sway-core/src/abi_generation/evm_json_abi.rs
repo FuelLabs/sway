@@ -130,6 +130,7 @@ pub fn json_abi_str(
         Storage { .. } => "contract storage".into(),
         RawUntypedPtr => "raw untyped ptr".into(),
         RawUntypedSlice => "raw untyped slice".into(),
+        Alias { ty, .. } => json_abi_str_type_arg(ty, type_engine, decl_engine),
     }
 }
 
