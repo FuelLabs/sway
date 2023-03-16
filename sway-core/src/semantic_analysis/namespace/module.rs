@@ -111,11 +111,9 @@ impl Module {
         };
 
         if !has_literal {
-            return Err(
-                handler.emit_err(CompileError::ContractDepIdConstantNotALiteral {
-                    span: const_item_span,
-                }),
-            );
+            return Err(handler.emit_err(CompileError::ContractIdValueNotALiteral {
+                span: const_item_span,
+            }));
         }
 
         let ast_node = AstNode {
@@ -137,7 +135,7 @@ impl Module {
             ty::TyAstNodeContent::Declaration(decl) => decl,
             _ => {
                 return Err(
-                    handler.emit_err(CompileError::ContractDepIdConstantNotAConstDecl {
+                    handler.emit_err(CompileError::ContractIdConstantNotAConstDecl {
                         span: const_item_span,
                     }),
                 );

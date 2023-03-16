@@ -582,10 +582,10 @@ pub enum CompileError {
     BreakOutsideLoop { span: Span },
     #[error("\"continue\" used outside of a loop")]
     ContinueOutsideLoop { span: Span },
-    #[error("Configuration-time constant value is not a constant item.")]
-    ContractDepIdConstantNotAConstDecl { span: Span },
-    #[error("Configuration-time constant value is not a literal.")]
-    ContractDepIdConstantNotALiteral { span: Span },
+    #[error("Contract ID is not a constant item.")]
+    ContractIdConstantNotAConstDecl { span: Span },
+    #[error("Contract ID value is not a literal.")]
+    ContractIdValueNotALiteral { span: Span },
     #[error("The type \"{ty}\" is not allowed in storage.")]
     TypeNotAllowedInContractStorage { ty: String, span: Span },
     #[error("ref mut parameter not allowed for main()")]
@@ -785,8 +785,8 @@ impl Spanned for CompileError {
             IntrinsicIncorrectNumTArgs { span, .. } => span.clone(),
             BreakOutsideLoop { span } => span.clone(),
             ContinueOutsideLoop { span } => span.clone(),
-            ContractDepIdConstantNotAConstDecl { span } => span.clone(),
-            ContractDepIdConstantNotALiteral { span } => span.clone(),
+            ContractIdConstantNotAConstDecl { span } => span.clone(),
+            ContractIdValueNotALiteral { span } => span.clone(),
             TypeNotAllowedInContractStorage { span, .. } => span.clone(),
             RefMutableNotAllowedInMain { span, .. } => span.clone(),
             PointerReturnNotAllowedInMain { span } => span.clone(),
