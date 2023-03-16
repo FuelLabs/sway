@@ -1492,7 +1492,6 @@ impl<'ir> FuelAsmBuilder<'ir> {
                 })
             })
             .ok_or_else(|| {
-                //println!("UNKNOWN VALUE: {:?}", value.with_context(self.context));
                 CompileError::Internal(
                     "An attempt to get register for unknown Value.",
                     Span::dummy(),
