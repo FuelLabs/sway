@@ -51,7 +51,7 @@ Configurable constants are special constants that behave like regular constants 
 Configurable constants are declared inside a `configurable` block and require a type ascription and an initializer as follows:
 
 ```sway
-{{#include ../../../../examples/configurable_block/src/main.sw:configurable_block}}
+{{#include ../../../../examples/configurable_constants/src/main.sw:configurable_block}}
 ```
 
 At most one `configurable` block is allowed in a Sway project. Moreover, `configurable` blocks are not allowed in libraries.
@@ -59,5 +59,5 @@ At most one `configurable` block is allowed in a Sway project. Moreover, `config
 Configurable constants can be read directly just like regular constants:
 
 ```sway
-{{#include ../../../../examples/configurable_block/src/main.sw:using_configurables}}
+{{#include ../../../../examples/configurable_constants/src/main.sw:using_configurables}}
 ```
