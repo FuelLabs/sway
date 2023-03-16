@@ -504,7 +504,6 @@ mod tests {
             let trait_item = decls.next();
             assert!(trait_item.is_some());
             let (annotated, _) = trait_item.unwrap();
-            #[allow(irrefutable_let_patterns)]
             if let ItemTraitItem::Fn(_fn_sig) = &annotated.value {
                 assert_eq!(
                     attributes(&annotated.attribute_list),

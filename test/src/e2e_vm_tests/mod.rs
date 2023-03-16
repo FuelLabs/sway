@@ -16,6 +16,7 @@ use regex::Regex;
 use std::collections::HashSet;
 use std::io::stdout;
 use std::io::Write;
+use std::str::FromStr;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -712,10 +713,8 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription> {
 
 fn get_test_abi_from_value(value: &toml::Value) -> Result<BuildTarget> {
     match value.as_str() {
-        Some(target) => match target {
-            "fuel" => Ok(BuildTarget::Fuel),
-            "evm" => Ok(BuildTarget::EVM),
-            "miden-vm" | "midenvm" => Ok(BuildTarget::MidenVM),
+        Some(target) => match BuildTarget::from_str(target) {
+            Ok(target) => Ok(target),
             _ => Err(anyhow!(format!("Unknown build target: {target}"))),
         },
         None => Err(anyhow!("Invalid TOML value")),

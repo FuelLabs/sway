@@ -119,6 +119,14 @@ impl TyProgram {
                                             let method = decl_engine.get_function(&method_ref);
                                             abi_entries.push(method);
                                         }
+                                        TyImplItem::Constant(const_ref) => {
+                                            let const_decl = decl_engine.get_constant(&const_ref);
+                                            declarations.push(TyDeclaration::ConstantDeclaration {
+                                                name: const_decl.name().clone(),
+                                                decl_id: *const_ref.id(),
+                                                decl_span: const_decl.span,
+                                            });
+                                        }
                                     }
                                 }
                             }
