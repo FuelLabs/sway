@@ -172,7 +172,7 @@ enum TestTy {
     ],
     PathType     : root::
 example::
-    type,
+    some_type,
     TupleNil: (),
     Tuple: (   u64,
         u32
@@ -184,7 +184,7 @@ enum TestTy {
     Infer: _,
     Array: [u8; 40],
     String: str[4],
-    PathType: root::example::type,
+    PathType: root::example::some_type,
     TupleNil: (),
     Tuple: (u64, u32),
 }

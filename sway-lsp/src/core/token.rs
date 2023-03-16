@@ -57,6 +57,7 @@ pub enum AstToken {
 /// The `TypedAstToken` holds the types produced by the [sway_core::language::ty::TyProgram].
 #[derive(Debug, Clone)]
 pub enum TypedAstToken {
+    TypedTypeAliasDeclaration(ty::TyTypeAliasDeclaration),
     TypedDeclaration(ty::TyDeclaration),
     TypedExpression(ty::TyExpression),
     TypedScrutinee(ty::TyScrutinee),
@@ -68,6 +69,7 @@ pub enum TypedAstToken {
     TypedTraitFn(ty::TyTraitFn),
     TypedSupertrait(Supertrait),
     TypedStorageField(ty::TyStorageField),
+    TyStorageResassignment(Box<ty::TyStorageReassignment>),
     TyStorageAccessDescriptor(ty::TyStorageAccessDescriptor),
     TypeCheckedStorageReassignDescriptor(ty::TyStorageReassignDescriptor),
     TypedReassignment(ty::TyReassignment),
@@ -88,6 +90,7 @@ pub enum SymbolKind {
     Const,
     Struct,
     Trait,
+    Storage,
     Enum,
     Variant,
     BoolLiteral,
@@ -100,6 +103,7 @@ pub enum SymbolKind {
     Module,
     TypeParameter,
     Keyword,
+    Type,
     Unknown,
 }
 

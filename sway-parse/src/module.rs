@@ -1,7 +1,7 @@
 use crate::{Parse, ParseResult, ParseToEnd, Parser, ParserConsumed};
 
 use sway_ast::{
-    attribute::{Annotated, Attribute, AttributeHashKind},
+    attribute::{Annotated, Attribute, AttributeArg, AttributeHashKind},
     brackets::SquareBrackets,
     keywords::{HashBangToken, Token},
     token::{DocComment, DocStyle},
@@ -34,7 +34,7 @@ impl ParseToEnd for Annotated<Module> {
             let doc_comment = parser.parse::<DocComment>()?;
             // TODO: Use a Literal instead of an Ident when Attribute args
             // start supporting them and remove `Ident::new_no_trim`.
-            let value = Ident::new_no_trim(doc_comment.content_span.clone());
+            let name = Ident::new_no_trim(doc_comment.content_span.clone());
             match &doc_comment.doc_style {
                 DocStyle::Inner => attribute_list.push(AttributeDecl {
                     hash_kind: AttributeHashKind::Inner(HashBangToken::new(
@@ -47,7 +47,7 @@ impl ParseToEnd for Annotated<Module> {
                                 doc_comment.span.clone(),
                             ),
                             args: Some(Parens::new(
-                                Punctuated::single(value),
+                                Punctuated::single(AttributeArg { name, value: None }),
                                 doc_comment.content_span,
                             )),
                         }),
@@ -72,5 +72,74 @@ impl ParseToEnd for Annotated<Module> {
             },
         };
         Ok((module, consumed))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils::parse_to_end;
+    use insta::*;
+
+    #[test]
+    fn parse_noop_script_module() {
+        assert_ron_snapshot!(parse_to_end::<Annotated<Module>>(r#"
+            script;
+        
+            fn main() {
+                ()
+            }
+        "#,), @r###"
+        Annotated(
+          attribute_list: [],
+          value: Module(
+            kind: Script(
+              script_token: ScriptToken(
+                span: (13, 19),
+              ),
+            ),
+            semicolon_token: SemicolonToken(
+              span: (19, 20),
+            ),
+            items: [
+              Annotated(
+                attribute_list: [],
+                value: Fn(ItemFn(
+                  fn_signature: FnSignature(
+                    visibility: None,
+                    fn_token: FnToken(
+                      span: (42, 44),
+                    ),
+                    name: Ident(
+                      to_string: "main",
+                      span: (45, 49),
+                    ),
+                    generics: None,
+                    arguments: Parens(
+                      inner: Static(Punctuated(
+                        value_separator_pairs: [],
+                        final_value_opt: None,
+                      )),
+                      span: (49, 51),
+                    ),
+                    return_type_opt: None,
+                    where_clause_opt: None,
+                  ),
+                  body: Braces(
+                    inner: CodeBlockContents(
+                      statements: [],
+                      final_expr_opt: Some(Tuple(Parens(
+                        inner: Nil,
+                        span: (70, 72),
+                      ))),
+                    ),
+                    span: (52, 86),
+                  ),
+                )),
+              ),
+            ],
+          ),
+        )
+        "###);
     }
 }

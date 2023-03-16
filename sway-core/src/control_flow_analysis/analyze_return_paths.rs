@@ -187,6 +187,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
         | StructDeclaration { .. }
         | EnumDeclaration { .. }
         | StorageDeclaration { .. }
+        | TypeAliasDeclaration { .. }
         | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),
         VariableDeclaration(_) | ConstantDeclaration { .. } => {
             let entry_node = graph.add_node(ControlFlowGraphNode::from_node(node));
@@ -251,6 +252,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
                 connect_typed_fn_decl(engines, &fn_decl, graph, fn_decl_entry_node)?;
                 methods_and_indexes.push((fn_decl.name.clone(), fn_decl_entry_node));
             }
+            TyImplItem::Constant(_const_decl) => {}
         }
     }
     // Now, insert the methods into the trait method namespace.

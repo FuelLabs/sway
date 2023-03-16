@@ -1,31 +1,31 @@
 use crate::priv_prelude::*;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct AsmBlock {
     pub asm_token: AsmToken,
     pub registers: Parens<Punctuated<AsmRegisterDeclaration, CommaToken>>,
     pub contents: Braces<AsmBlockContents>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct AsmRegisterDeclaration {
     pub register: Ident,
     pub value_opt: Option<(ColonToken, Box<Expr>)>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct AsmBlockContents {
     pub instructions: Vec<(Instruction, SemicolonToken)>,
     pub final_expr_opt: Option<AsmFinalExpr>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct AsmFinalExpr {
     pub register: Ident,
     pub ty_opt: Option<(ColonToken, Ty)>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct AsmImmediate {
     pub span: Span,
     pub parsed: BigUint,

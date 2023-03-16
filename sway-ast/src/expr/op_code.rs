@@ -2,7 +2,7 @@ use crate::priv_prelude::*;
 
 macro_rules! define_op_code (
     ($ty_name:ident, $s:literal) => (
-        #[derive(Clone, Debug)]
+        #[derive(Clone, Debug, Serialize)]
         pub struct $ty_name {
             span: Span,
         }
@@ -106,7 +106,7 @@ macro_rules! define_op_codes (
             }
         )*
 
-        #[derive(Clone, Debug)]
+        #[derive(Clone, Debug, Serialize)]
         pub enum Instruction {
             $($op_name {
                 token: $ty_name,
