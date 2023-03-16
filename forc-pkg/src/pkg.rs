@@ -1542,11 +1542,17 @@ pub fn dependency_namespace(
     graph: &Graph,
     node: NodeIx,
     engines: Engines<'_>,
+    contract_id_value: Option<String>,
 ) -> Result<namespace::Module, vec1::Vec1<CompileError>> {
     // TODO: Clean this up when config-time constants v1 are removed.
     let node_idx = &graph[node];
     let name = Some(Ident::new_no_span(node_idx.name.clone()));
-    let mut namespace = namespace::Module::default();
+    let mut namespace = if let Some(contract_id_value) = contract_id_value {
+        namespace::Module::default_with_contract_deps(engines, name.clone(), contract_id_value)?
+    } else {
+        namespace::Module::default()
+    };
+
     namespace.is_external = true;
     namespace.name = name;
 
@@ -2181,7 +2187,10 @@ pub fn build(
     let decl_engine = DeclEngine::default();
     let engines = Engines::new(&type_engine, &decl_engine);
     let include_tests = profile.include_tests;
-    let mut const_inject_map = const_inject_map.clone();
+
+    // This is the Contract ID of the current contract being compiled.
+    // We will need this for `forc test`.
+    let mut contract_id_value: Option<String> = None;
 
     let mut lib_namespace_map = Default::default();
     let mut compiled_contract_deps = HashMap::new();
@@ -2237,6 +2246,7 @@ pub fn build(
                 plan.graph(),
                 node,
                 engines,
+                None,
             ) {
                 Ok(o) => o,
                 Err(errs) => return fail(&[], &errs),
@@ -2264,10 +2274,7 @@ pub fn build(
                     compiled_without_tests.storage_slots,
                     &fuel_tx::Salt::zeroed(),
                 );
-                let contract_id_constant_name = CONTRACT_ID_CONSTANT_NAME.to_string();
-                let contract_id_value = format!("0x{contract_id}");
-                let constant_declarations = vec![(contract_id_constant_name, contract_id_value)];
-                const_inject_map.insert(pkg.clone(), constant_declarations);
+                contract_id_value = Some(format!("0x{contract_id}"));
             }
             Some(compiled_without_tests.bytecode)
         } else {
@@ -2290,6 +2297,7 @@ pub fn build(
             plan.graph(),
             node,
             engines,
+            contract_id_value.clone(),
         ) {
             Ok(o) => o,
             Err(errs) => return fail(&[], &errs),
@@ -2488,6 +2496,7 @@ pub fn check(
             &plan.graph,
             node,
             engines,
+            None,
         )
         .expect("failed to create dependency namespace");
 
