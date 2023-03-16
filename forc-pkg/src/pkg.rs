@@ -267,8 +267,8 @@ pub struct MinifyOpts {
     pub json_storage_slots: bool,
 }
 
-type ConstName = String;
-type ConstInjectionMap = HashMap<Pinned, Vec<(ConstName, String)>>;
+/// Represents a compiled contract ID as a pub const in a contract.
+type ContractIdConst = String;
 
 /// The set of options provided to the `build` functions.
 #[derive(Default)]
@@ -295,8 +295,6 @@ pub struct BuildOpts {
     pub error_on_warnings: bool,
     /// Include all test functions within the build.
     pub tests: bool,
-    /// List of constants to inject for each package.
-    pub const_inject_map: ConstInjectionMap,
     /// The set of options to filter by member project kind.
     pub member_filter: MemberFilter,
 }
@@ -390,14 +388,6 @@ impl BuildOpts {
     pub fn include_tests(self, include_tests: bool) -> Self {
         Self {
             tests: include_tests,
-            ..self
-        }
-    }
-
-    /// Return a `BuildOpts` with modified `injection_map` field.
-    pub fn const_injection_map(self, const_inject_map: ConstInjectionMap) -> Self {
-        Self {
-            const_inject_map,
             ..self
         }
     }
@@ -1542,7 +1532,7 @@ pub fn dependency_namespace(
     graph: &Graph,
     node: NodeIx,
     engines: Engines<'_>,
-    contract_id_value: Option<String>,
+    contract_id_value: Option<ContractIdConst>,
 ) -> Result<namespace::Module, vec1::Vec1<CompileError>> {
     // TODO: Clean this up when config-time constants v1 are removed.
     let node_idx = &graph[node];
@@ -2027,7 +2017,6 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         binary_outfile,
         debug_outfile,
         pkg,
-        const_inject_map,
         build_target,
         member_filter,
         ..
@@ -2069,13 +2058,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
     // Build it!
     let mut built_workspace = Vec::new();
     let build_start = std::time::Instant::now();
-    let built_packages = build(
-        &build_plan,
-        *build_target,
-        &build_profile,
-        &outputs,
-        const_inject_map,
-    )?;
+    let built_packages = build(&build_plan, *build_target, &build_profile, &outputs)?;
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
 
     let finished = ansi_term::Colour::Green.bold().paint("Finished");
@@ -2174,7 +2157,6 @@ pub fn build(
     target: BuildTarget,
     profile: &BuildProfile,
     outputs: &HashSet<NodeIx>,
-    const_inject_map: &ConstInjectionMap,
 ) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
     let mut built_packages = Vec::new();
 
@@ -2190,7 +2172,7 @@ pub fn build(
 
     // This is the Contract ID of the current contract being compiled.
     // We will need this for `forc test`.
-    let mut contract_id_value: Option<String> = None;
+    let mut contract_id_value: Option<ContractIdConst> = None;
 
     let mut lib_namespace_map = Default::default();
     let mut compiled_contract_deps = HashMap::new();
@@ -2240,6 +2222,8 @@ pub fn build(
                 ..profile.clone()
             };
 
+            // `ContractIdConst` is a None here since we do not yet have a
+            // contract ID value at this point.
             let dep_namespace = match dependency_namespace(
                 &lib_namespace_map,
                 &compiled_contract_deps,
@@ -2274,6 +2258,7 @@ pub fn build(
                     compiled_without_tests.storage_slots,
                     &fuel_tx::Salt::zeroed(),
                 );
+                // We finally set the contract ID value here to use for compilation later.
                 contract_id_value = Some(format!("0x{contract_id}"));
             }
             Some(compiled_without_tests.bytecode)
