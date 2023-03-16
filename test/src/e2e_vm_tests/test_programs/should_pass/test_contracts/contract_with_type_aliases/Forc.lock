@@ -1,0 +1,21 @@
+[[package]]
+name = 'contract_with_type_aliases'
+source = 'member'
+dependencies = [
+    'contract_with_type_aliases_abi',
+    'std',
+]
+
+[[package]]
+name = 'contract_with_type_aliases_abi'
+source = 'path+from-root-1E2CCB134AE96F6B'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-1E2CCB134AE96F6B'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-1E2CCB134AE96F6B'
+dependencies = ['core']

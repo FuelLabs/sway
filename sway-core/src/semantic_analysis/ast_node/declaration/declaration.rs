@@ -355,6 +355,44 @@ impl ty::TyDeclaration {
                 );
                 decl_ref.into()
             }
+            parsed::Declaration::TypeAliasDeclaration(decl) => {
+                let span = decl.name.span();
+                let name = decl.name.clone();
+                let ty = decl.ty;
+
+                // Resolve the type that the type alias replaces
+                let new_ty = check!(
+                    ctx.resolve_type_with_self(ty.type_id, &span, EnforceTypeArguments::Yes, None),
+                    type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors
+                );
+
+                // create the type alias decl using the resolved type above
+                let decl = ty::TyTypeAliasDeclaration {
+                    name: name.clone(),
+                    attributes: decl.attributes,
+                    ty: TypeArgument {
+                        initial_type_id: ty.initial_type_id,
+                        type_id: new_ty,
+                        call_path_tree: ty.call_path_tree,
+                        span: ty.span,
+                    },
+                    visibility: decl.visibility,
+                    span,
+                };
+
+                let decl: ty::TyDeclaration = decl_engine.insert(decl).into();
+
+                // insert the type alias name and decl into namespace
+                check!(
+                    ctx.namespace.insert_symbol(name, decl.clone()),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                decl
+            }
         };
 
         ok(decl, warnings, errors)

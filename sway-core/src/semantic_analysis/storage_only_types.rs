@@ -283,6 +283,15 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                 );
             }
         }
+        ty::TyDeclaration::TypeAliasDeclaration { decl_id, .. } => {
+            let ty::TyTypeAliasDeclaration { ty, span, .. } = decl_engine.get_type_alias(decl_id);
+            check!(
+                check_type(engines, ty.type_id, span, false),
+                (),
+                warnings,
+                errors
+            );
+        }
         ty::TyDeclaration::GenericTypeForFunctionScope { .. }
         | ty::TyDeclaration::ErrorRecovery(_) => {}
     }

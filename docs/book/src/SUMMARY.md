@@ -37,6 +37,7 @@
   - [Access Control](./blockchain-development/access_control.md)
   - [Calling Contracts](./blockchain-development/calling_contracts.md)
 - [Advanced Concepts](./advanced/index.md)
+  - [Advanced Types](./advanced/advanced_types.md)
   - [Generic Types](./advanced/generic_types.md)
   - [Traits](./advanced/traits.md)
   - [Assembly](./advanced/assembly.md)
