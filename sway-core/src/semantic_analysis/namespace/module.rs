@@ -51,23 +51,24 @@ pub struct Module {
 }
 
 impl Module {
-    pub fn default_with_contract_deps(
+    pub fn default_with_contract_id(
         engines: Engines<'_>,
         name: Option<Ident>,
         contract_id_value: String,
     ) -> Result<Self, vec1::Vec1<CompileError>> {
         let handler = <_>::default();
-        Module::default_with_contract_deps_inner(&handler, engines, name, contract_id_value)
-            .map_err(|_| {
+        Module::default_with_contract_id_inner(&handler, engines, name, contract_id_value).map_err(
+            |_| {
                 let (errors, warnings) = handler.consume();
                 assert!(warnings.is_empty());
 
                 // Invariant: `.value == None` => `!errors.is_empty()`.
                 vec1::Vec1::try_from_vec(errors).unwrap()
-            })
+            },
+        )
     }
 
-    fn default_with_contract_deps_inner(
+    fn default_with_contract_id_inner(
         handler: &Handler,
         engines: Engines<'_>,
         ns_name: Option<Ident>,

@@ -17,7 +17,7 @@ use petgraph::{
 };
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{hash_map, BTreeMap, BTreeSet, HashMap, HashSet},
+    collections::{hash_map, BTreeSet, HashMap, HashSet},
     fmt,
     fs::{self, File},
     hash::{Hash, Hasher},
@@ -1538,7 +1538,7 @@ pub fn dependency_namespace(
     let node_idx = &graph[node];
     let name = Some(Ident::new_no_span(node_idx.name.clone()));
     let mut namespace = if let Some(contract_id_value) = contract_id_value {
-        namespace::Module::default_with_contract_deps(engines, name.clone(), contract_id_value)?
+        namespace::Module::default_with_contract_id(engines, name.clone(), contract_id_value)?
     } else {
         namespace::Module::default()
     };
@@ -1558,7 +1558,6 @@ pub fn dependency_namespace(
                 .cloned()
                 .expect("no namespace module"),
             DepKind::Contract { salt } => {
-                let mut constants = BTreeMap::default();
                 let dep_contract_id = compiled_contract_deps
                     .get(&dep_node)
                     .map(|dep| contract_id(dep.bytecode.clone(), dep.storage_slots.clone(), &salt))
@@ -1566,13 +1565,9 @@ pub fn dependency_namespace(
                     .unwrap_or_default();
                 // Construct namespace with contract id
                 let contract_id_value = format!("0x{dep_contract_id}");
-                constants.insert(
-                    CONTRACT_ID_CONSTANT_NAME.to_string(),
-                    contract_id_value.clone(),
-                );
                 let node_idx = &graph[dep_node];
                 let name = Some(Ident::new_no_span(node_idx.name.clone()));
-                let mut ns = namespace::Module::default_with_contract_deps(
+                let mut ns = namespace::Module::default_with_contract_id(
                     engines,
                     name.clone(),
                     contract_id_value,
