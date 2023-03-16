@@ -233,8 +233,9 @@ pub fn clear_slice(key: b256) -> bool {
     let len = get::<u64>(key).unwrap_or(0);
     let number_of_slots = (len + 31) >> 5;
 
-    // Clear `number_of_slots * 32` bytes starting at storage slot `key`.
-    __state_clear(key, len)
+    // Clear `number_of_slots` bytes starting at storage slot `key`.
+    store(key, 0);
+    __state_clear(sha256(key), number_of_slots)
 }
 
 pub trait StorableSlice<T> {
