@@ -4,23 +4,29 @@ use sway_error::{
     type_error::TypeError,
     warning::{CompileWarning, Warning},
 };
-use sway_types::{integer_bits::IntegerBits, Ident, Span, Spanned};
+use sway_types::{integer_bits::IntegerBits, Span, Spanned};
 
-use crate::{engine_threading::*, language::ty, type_system::priv_prelude::*};
+use crate::{decl_engine::*, engine_threading::*, type_system::priv_prelude::*};
 
 use super::occurs_check::OccursCheck;
 
 /// Helper struct to aid in type unification.
 pub(crate) struct Unifier<'a> {
     engines: Engines<'a>,
+    type_subst_stack_top: &'a SubstList,
     help_text: String,
 }
 
 impl<'a> Unifier<'a> {
     /// Creates a new [Unifier].
-    pub(crate) fn new(engines: Engines<'a>, help_text: &str) -> Unifier<'a> {
+    pub(crate) fn new(
+        engines: Engines<'a>,
+        type_subst_stack_top: &'a SubstList,
+        help_text: &str,
+    ) -> Unifier<'a> {
         Unifier {
             engines,
+            type_subst_stack_top,
             help_text: help_text.to_string(),
         }
     }
@@ -82,6 +88,17 @@ impl<'a> Unifier<'a> {
             self.engines.te().slab.get(received.index()),
             self.engines.te().slab.get(expected.index()),
         ) {
+            (TypeParam { index, .. }, _) => self.unify(
+                self.type_subst_stack_top.index(index).unwrap().type_id,
+                expected,
+                span,
+            ),
+            (_, TypeParam { index, .. }) => self.unify(
+                received,
+                self.type_subst_stack_top.index(index).unwrap().type_id,
+                span,
+            ),
+
             // If they have the same `TypeInfo`, then we either compare them for
             // correctness or perform further unification.
             (Boolean, Boolean) => (vec![], vec![]),
@@ -96,26 +113,7 @@ impl<'a> Unifier<'a> {
             (Array(re, rc), Array(ee, ec)) if rc.val() == ec.val() => {
                 self.unify_arrays(received, expected, span, re.type_id, ee.type_id)
             }
-            (Struct(r_decl_ref), Struct(e_decl_ref)) => {
-                let r_decl = self.engines.de().get_struct(&r_decl_ref);
-                let e_decl = self.engines.de().get_struct(&e_decl_ref);
-
-                self.unify_structs(
-                    received,
-                    expected,
-                    span,
-                    (
-                        r_decl.call_path.suffix,
-                        r_decl.type_parameters,
-                        r_decl.fields,
-                    ),
-                    (
-                        e_decl.call_path.suffix,
-                        e_decl.type_parameters,
-                        e_decl.fields,
-                    ),
-                )
-            }
+            (Struct(r), Struct(e)) => self.unify_decl_refs(received, expected, span, r, e),
 
             // Type aliases and the types they encapsulate coerce to each other.
             (Alias { ty, .. }, _) => self.unify(ty.type_id, expected, span),
@@ -127,26 +125,7 @@ impl<'a> Unifier<'a> {
             {
                 (vec![], vec![])
             }
-            (Enum(r_decl_ref), Enum(e_decl_ref)) => {
-                let r_decl = self.engines.de().get_enum(&r_decl_ref);
-                let e_decl = self.engines.de().get_enum(&e_decl_ref);
-
-                self.unify_enums(
-                    received,
-                    expected,
-                    span,
-                    (
-                        r_decl.call_path.suffix,
-                        r_decl.type_parameters,
-                        r_decl.variants,
-                    ),
-                    (
-                        e_decl.call_path.suffix,
-                        e_decl.type_parameters,
-                        e_decl.variants,
-                    ),
-                )
-            }
+            (Enum(r), Enum(e)) => self.unify_decl_refs(received, expected, span, r, e),
 
             // For integers and numerics, we (potentially) unify the numeric
             // with the integer.
@@ -333,82 +312,49 @@ impl<'a> Unifier<'a> {
         (warnings, vec![])
     }
 
-    fn unify_structs(
+    fn unify_subst_lists(
         &self,
-        received: TypeId,
-        expected: TypeId,
-        span: &Span,
-        r: (Ident, Vec<TypeParameter>, Vec<ty::TyStructField>),
-        e: (Ident, Vec<TypeParameter>, Vec<ty::TyStructField>),
+        r: &SubstList,
+        e: &SubstList,
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let (rn, rtps, rfs) = r;
-        let (en, etps, efs) = e;
-        if rn == en && rfs.len() == efs.len() && rtps.len() == etps.len() {
-            rfs.iter().zip(efs.iter()).for_each(|(rf, ef)| {
-                append!(
-                    self.unify(rf.type_argument.type_id, ef.type_argument.type_id, &rf.span),
-                    warnings,
-                    errors
-                );
-            });
-            rtps.iter().zip(etps.iter()).for_each(|(rtp, etp)| {
-                append!(
-                    self.unify(rtp.type_id, etp.type_id, &rtp.name_ident.span()),
-                    warnings,
-                    errors
-                );
-            });
-        } else {
-            let (received, expected) = self.assign_args(received, expected);
-            errors.push(TypeError::MismatchedType {
-                expected,
-                received,
-                help_text: self.help_text.clone(),
-                span: span.clone(),
-            });
+        if r.len() != e.len() {
+            panic!();
         }
-        (warnings, errors)
+        r.elems().into_iter().zip(e.elems().into_iter()).fold(
+            (vec![], vec![]),
+            |(mut warnings, mut errors), (r, e)| {
+                append!(
+                    self.unify(r.type_id, e.type_id, &r.name_ident.span()),
+                    warnings,
+                    errors
+                );
+                (warnings, errors)
+            },
+        )
     }
 
-    fn unify_enums(
+    fn unify_decl_refs<T>(
         &self,
         received: TypeId,
         expected: TypeId,
         span: &Span,
-        r: (Ident, Vec<TypeParameter>, Vec<ty::TyEnumVariant>),
-        e: (Ident, Vec<TypeParameter>, Vec<ty::TyEnumVariant>),
+        r: DeclRef<DeclId<T>>,
+        e: DeclRef<DeclId<T>>,
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let (rn, rtps, rvs) = r;
-        let (en, etps, evs) = e;
-        if rn == en && rvs.len() == evs.len() && rtps.len() == etps.len() {
-            rvs.iter().zip(evs.iter()).for_each(|(rv, ev)| {
-                append!(
-                    self.unify(rv.type_argument.type_id, ev.type_argument.type_id, &rv.span),
-                    warnings,
-                    errors
-                );
-            });
-            rtps.iter().zip(etps.iter()).for_each(|(rtp, etp)| {
-                append!(
-                    self.unify(rtp.type_id, etp.type_id, &rtp.name_ident.span()),
-                    warnings,
-                    errors
-                );
-            });
+        if r.id() == e.id() {
+            self.unify_subst_lists(r.subst_list(), e.subst_list())
         } else {
             let (received, expected) = self.assign_args(received, expected);
-            errors.push(TypeError::MismatchedType {
-                expected,
-                received,
-                help_text: self.help_text.clone(),
-                span: span.clone(),
-            });
+            (
+                vec![],
+                vec![TypeError::MismatchedType {
+                    expected,
+                    received,
+                    help_text: self.help_text.clone(),
+                    span: span.clone(),
+                }],
+            )
         }
-        (warnings, errors)
     }
 
     fn unify_arrays(

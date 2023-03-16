@@ -187,6 +187,7 @@ fn unify_return_statements(
                 decl_engine,
                 stmt.return_type,
                 return_type,
+                &ctx.namespace.type_subst_stack_top(),
                 &stmt.span,
                 "Return statement must return the declared function return type.",
                 None,

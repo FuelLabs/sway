@@ -1,6 +1,4 @@
-use std::{collections::BTreeMap, hash::Hasher};
-
-use itertools::Itertools;
+use std::hash::Hasher;
 
 use crate::{engine_threading::*, type_system::priv_prelude::*};
 
@@ -9,46 +7,49 @@ use crate::{engine_threading::*, type_system::priv_prelude::*};
 /// point to an element in this collection.
 #[derive(Debug, Clone, Default)]
 pub struct SubstList {
-    list: BTreeMap<String, TypeParameter>,
+    list: Vec<TypeParameter>,
 }
 
 impl SubstList {
     pub(crate) fn new() -> SubstList {
-        SubstList {
-            list: BTreeMap::new(),
-        }
+        SubstList { list: vec![] }
     }
 
-    #[allow(dead_code)]
     pub(crate) fn is_empty(&self) -> bool {
         self.list.is_empty()
     }
 
-    #[allow(dead_code)]
     pub(crate) fn len(&self) -> usize {
         self.list.len()
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn insert(&mut self, name: String, type_param: TypeParameter) {
-        self.list.insert(name, type_param);
+    pub(crate) fn push(&mut self, type_param: TypeParameter) {
+        self.list.push(type_param);
     }
 
     pub(crate) fn elems(&self) -> Vec<&TypeParameter> {
-        self.list.iter().map(|(_, type_param)| type_param).collect()
+        self.list.iter().collect()
     }
 
-    #[allow(dead_code)]
     pub(crate) fn elems_mut(&mut self) -> Vec<&mut TypeParameter> {
+        self.list.iter_mut().collect()
+    }
+
+    pub(crate) fn into_elems(self) -> Vec<TypeParameter> {
+        self.list.into_iter().collect()
+    }
+
+    pub(crate) fn index(&self, index: usize) -> Option<&TypeParameter> {
+        self.list.get(index)
+    }
+
+    pub(crate) fn apply_type_args(&mut self, type_args: Vec<TypeArgument>) {
         self.list
             .iter_mut()
-            .map(|(_, type_param)| type_param)
-            .collect()
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn into_elems(self) -> Vec<TypeParameter> {
-        self.list.into_values().collect()
+            .zip(type_args.iter())
+            .for_each(|(type_param, type_arg)| {
+                type_param.type_id = type_arg.type_id;
+            });
     }
 }
 
@@ -57,16 +58,14 @@ impl PartialEqWithEngines for SubstList {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         let SubstList { list: ll } = self;
         let SubstList { list: rl } = other;
-        ll.values()
-            .collect_vec()
-            .eq(&rl.values().collect_vec(), engines)
+        ll.eq(rl, engines)
     }
 }
 
 impl HashWithEngines for SubstList {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
         let SubstList { list } = self;
-        list.values().collect_vec().hash(state, engines);
+        list.hash(state, engines);
     }
 }
 
@@ -74,9 +73,7 @@ impl OrdWithEngines for SubstList {
     fn cmp(&self, other: &Self, engines: Engines<'_>) -> std::cmp::Ordering {
         let SubstList { list: ll } = self;
         let SubstList { list: rl } = other;
-        ll.values()
-            .collect_vec()
-            .cmp(&rl.values().collect_vec(), engines)
+        ll.cmp(rl, engines)
     }
 }
 
@@ -84,6 +81,28 @@ impl SubstTypes for SubstList {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.list
             .iter_mut()
-            .for_each(|(_, x)| x.subst(type_mapping, engines));
+            .for_each(|x| x.subst(type_mapping, engines));
+    }
+}
+
+impl CreateCopy<SubstList> for SubstList {
+    fn scoped_copy(&self, engines: Engines<'_>) -> Self {
+        let type_engine = engines.te();
+        let decl_engine = engines.de();
+        let list = self
+            .list
+            .clone()
+            .into_iter()
+            .map(|mut type_param| {
+                type_param.type_id =
+                    type_engine.insert(decl_engine, TypeInfo::Placeholder(type_param.clone()));
+                type_param
+            })
+            .collect();
+        SubstList { list }
+    }
+
+    fn unscoped_copy(&self) -> Self {
+        self.clone()
     }
 }

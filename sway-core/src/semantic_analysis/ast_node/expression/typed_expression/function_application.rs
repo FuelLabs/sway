@@ -146,6 +146,7 @@ fn unify_arguments_and_parameters(
                 decl_engine,
                 arg.return_type,
                 param.type_argument.type_id,
+                &ctx.namespace.type_subst_stack_top(),
                 &arg.span,
                 "The argument that has been provided to this function's type does \
             not match the declared type of the parameter in the function \

@@ -135,13 +135,13 @@ impl TypeParameter {
                 }];
                 return err(vec![], errors);
             }
-            let ((subst_list_name, subst_list_param), body_type_param) = check!(
-                TypeParameter::type_check(ctx.by_ref(), type_param),
+            let (subst_list_param, body_type_param) = check!(
+                TypeParameter::type_check(ctx.by_ref(), type_param, type_subst_list.len()),
                 continue,
                 warnings,
                 errors
             );
-            type_subst_list.insert(subst_list_name, subst_list_param);
+            type_subst_list.push(subst_list_param);
             new_type_params.push(body_type_param);
         }
 
@@ -161,7 +161,8 @@ impl TypeParameter {
     fn type_check(
         mut ctx: TypeCheckContext,
         type_parameter: TypeParameter,
-    ) -> CompileResult<((String, Self), Self)> {
+        next_index: usize,
+    ) -> CompileResult<(Self, Self)> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -186,11 +187,10 @@ impl TypeParameter {
             );
         }
 
-        let subst_list_name = canonicalize_name(name_ident.as_str());
         let body_id = type_engine.insert(
             decl_engine,
             TypeInfo::TypeParam {
-                index_name: subst_list_name.clone(),
+                index: next_index,
                 debug_name: name_ident.clone(),
             },
         );
@@ -239,16 +239,6 @@ impl TypeParameter {
             trait_constraints_span,
         };
 
-        ok(
-            ((subst_list_name, subst_list_param), body_type_param),
-            warnings,
-            errors,
-        )
+        ok((subst_list_param, body_type_param), warnings, errors)
     }
-}
-
-fn canonicalize_name(name: &str) -> String {
-    let mut new_name = "$$".to_string();
-    new_name.push_str(name);
-    new_name
 }

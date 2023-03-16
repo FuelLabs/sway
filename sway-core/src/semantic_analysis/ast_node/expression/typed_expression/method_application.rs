@@ -385,6 +385,7 @@ fn unify_arguments_and_parameters(
                 decl_engine,
                 arg.return_type,
                 param.type_argument.type_id,
+                &ctx.namespace.type_subst_stack_top(),
                 &arg.span,
                 "This argument's type is not castable to the declared parameter type.",
                 Some(CompileError::ArgumentParameterTypeMismatch {

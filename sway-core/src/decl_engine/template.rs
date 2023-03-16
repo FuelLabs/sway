@@ -1,3 +1,5 @@
+use crate::{CreateCopy, Engines};
+
 /// An object that is a template for copies from the template.
 ///
 /// This is predominantly used with [SubstList](crate::type_system::SubstList)
@@ -24,13 +26,20 @@ where
         &self.0
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn into_inner(self) -> T {
-        self.0
+    pub(crate) fn fresh_copy(&self) -> T {
+        todo!()
+    }
+}
+
+impl<T> CreateCopy<T> for Template<T>
+where
+    T: Clone + CreateCopy<T>,
+{
+    fn scoped_copy(&self, engines: Engines<'_>) -> T {
+        self.0.scoped_copy(engines)
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn fresh_copy(&self) -> T {
-        self.0.clone()
+    fn unscoped_copy(&self) -> T {
+        self.0.unscoped_copy()
     }
 }

@@ -86,7 +86,7 @@ pub fn json_abi_str(
         Unknown => "unknown".into(),
         UnknownGeneric { name, .. } => name.to_string(),
         Placeholder(_) => "_".to_string(),
-        TypeParam { index_name, .. } => format!("typeparam({index_name})"),
+        TypeParam { index, .. } => format!("typeparam({index})"),
         Str(x) => format!("str[{}]", x.val()),
         UnsignedInteger(x) => match x {
             IntegerBits::Eight => "uint8",

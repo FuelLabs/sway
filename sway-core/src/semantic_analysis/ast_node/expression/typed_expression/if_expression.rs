@@ -34,6 +34,7 @@ pub(crate) fn instantiate_if_expression(
                 ctx.decl_engine,
                 then.return_type,
                 ty_to_check,
+                &ctx.namespace.type_subst_stack_top(),
                 &then.span,
                 "`then` branch must return expected type.",
                 None
@@ -57,6 +58,7 @@ pub(crate) fn instantiate_if_expression(
                     ctx.decl_engine,
                     r#else.return_type,
                     ty_to_check,
+                    &ctx.namespace.type_subst_stack_top(),
                     &r#else.span,
                     "`else` branch must return expected type.",
                     None
@@ -78,6 +80,7 @@ pub(crate) fn instantiate_if_expression(
             ctx.decl_engine,
             then.return_type,
             r#else_ret_ty,
+            &ctx.namespace.type_subst_stack_top(),
             &span,
             "The two branches of an if expression must return the same type.",
             None,

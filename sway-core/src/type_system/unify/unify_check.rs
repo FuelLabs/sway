@@ -1,15 +1,18 @@
-use crate::{engine_threading::*, type_system::priv_prelude::*};
-use sway_types::Spanned;
+use crate::{decl_engine::*, engine_threading::*, type_system::priv_prelude::*};
 
 /// Helper struct to aid in type coercion.
 pub(crate) struct UnifyCheck<'a> {
     engines: Engines<'a>,
+    type_subst_stack_top: &'a SubstList,
 }
 
 impl<'a> UnifyCheck<'a> {
     /// Creates a new [UnifyCheck].
-    pub(crate) fn new(engines: Engines<'a>) -> UnifyCheck<'a> {
-        UnifyCheck { engines }
+    pub(crate) fn new(engines: Engines<'a>, type_subst_stack_top: &'a SubstList) -> UnifyCheck<'a> {
+        UnifyCheck {
+            engines,
+            type_subst_stack_top,
+        }
     }
 
     /// Given two [TypeId]'s `left` and `right`, check to see if `left` can be
@@ -100,6 +103,15 @@ impl<'a> UnifyCheck<'a> {
         let left_info = self.engines.te().get(left);
         let right_info = self.engines.te().get(right);
         match (left_info, right_info) {
+            (TypeParam { index, .. }, _) => self.check(
+                self.type_subst_stack_top.index(index).unwrap().type_id,
+                right,
+            ),
+            (_, TypeParam { index, .. }) => self.check(
+                left,
+                self.type_subst_stack_top.index(index).unwrap().type_id,
+            ),
+
             // the placeholder type can be coerced into any type
             (Placeholder(_), _) => true,
             // any type can be coerced into the placeholder type
@@ -180,62 +192,8 @@ impl<'a> UnifyCheck<'a> {
             {
                 true
             }
-            (Enum(l_decl_ref), Enum(r_decl_ref)) => {
-                let l_decl = self.engines.de().get_enum(&l_decl_ref);
-                let r_decl = self.engines.de().get_enum(&r_decl_ref);
-                let l_names = l_decl
-                    .variants
-                    .iter()
-                    .map(|x| x.name.clone())
-                    .collect::<Vec<_>>();
-                let r_names = r_decl
-                    .variants
-                    .iter()
-                    .map(|x| x.name.clone())
-                    .collect::<Vec<_>>();
-                let l_types = l_decl
-                    .type_parameters
-                    .iter()
-                    .map(|x| x.type_id)
-                    .collect::<Vec<_>>();
-                let r_types = r_decl
-                    .type_parameters
-                    .iter()
-                    .map(|x| x.type_id)
-                    .collect::<Vec<_>>();
-                l_decl.call_path.suffix == r_decl.call_path.suffix
-                    && l_decl.call_path.suffix.span() == r_decl.call_path.suffix.span()
-                    && l_names == r_names
-                    && self.check_multiple(&l_types, &r_types)
-            }
-            (Struct(l_decl_ref), Struct(r_decl_ref)) => {
-                let l_decl = self.engines.de().get_struct(&l_decl_ref);
-                let r_decl = self.engines.de().get_struct(&r_decl_ref);
-                let l_names = l_decl
-                    .fields
-                    .iter()
-                    .map(|x| x.name.clone())
-                    .collect::<Vec<_>>();
-                let r_names = r_decl
-                    .fields
-                    .iter()
-                    .map(|x| x.name.clone())
-                    .collect::<Vec<_>>();
-                let l_types = l_decl
-                    .type_parameters
-                    .iter()
-                    .map(|x| x.type_id)
-                    .collect::<Vec<_>>();
-                let r_types = r_decl
-                    .type_parameters
-                    .iter()
-                    .map(|x| x.type_id)
-                    .collect::<Vec<_>>();
-                l_decl.call_path.suffix == r_decl.call_path.suffix
-                    && l_decl.call_path.suffix.span() == r_decl.call_path.suffix.span()
-                    && l_names == r_names
-                    && self.check_multiple(&l_types, &r_types)
-            }
+            (Enum(l), Enum(r)) => self.check_decl_ref(l, r),
+            (Struct(l), Struct(r)) => self.check_decl_ref(l, r),
 
             // For contract callers, they can be coerced if they have the same
             // name and at least one has an address of `None`
@@ -262,6 +220,22 @@ impl<'a> UnifyCheck<'a> {
 
             (a, b) => a.eq(&b, self.engines),
         }
+    }
+
+    fn check_decl_ref<T>(&self, left: DeclRef<DeclId<T>>, right: DeclRef<DeclId<T>>) -> bool {
+        left.id() == right.id() && self.check_type_subst_list(left.subst_list(), right.subst_list())
+    }
+
+    fn check_type_subst_list(&self, left: &SubstList, right: &SubstList) -> bool {
+        let preprocess = |subst_list: &SubstList| -> Vec<TypeId> {
+            subst_list
+                .elems()
+                .into_iter()
+                .map(|type_param| type_param.type_id)
+                .collect()
+        };
+
+        left.len() == right.len() && self.check_multiple(&preprocess(left), &preprocess(right))
     }
 
     /// Given two lists of [TypeId]'s `left` and `right`, check to see if

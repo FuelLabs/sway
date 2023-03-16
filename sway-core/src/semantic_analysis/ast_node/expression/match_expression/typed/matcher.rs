@@ -82,6 +82,7 @@ pub(crate) fn matcher(
             decl_engine,
             type_id,
             exp.return_type,
+            &ctx.namespace.type_subst_stack_top(),
             &span,
             "",
             None

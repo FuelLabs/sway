@@ -276,6 +276,7 @@ impl<'a> TypeCheckContext<'a> {
             self.decl_engine,
             ty,
             self.type_annotation(),
+            &self.namespace.type_subst_stack_top(),
             span,
             self.help_text(),
             None,

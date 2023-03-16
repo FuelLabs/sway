@@ -7,7 +7,10 @@ pub(crate) use super::{
     },
     engine::EnforceTypeArguments,
     info::VecSet,
-    substitute::{subst_list::SubstList, subst_map::TypeSubstMap, subst_types::SubstTypes},
+    substitute::{
+        create_copy::CreateCopy, subst_list::SubstList, subst_map::TypeSubstMap,
+        subst_types::SubstTypes,
+    },
 };
 
 pub use super::{

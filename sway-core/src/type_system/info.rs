@@ -98,7 +98,7 @@ pub enum TypeInfo {
     /// NOTE: This type is *not used yet*.
     // https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.TyKind.html#variant.Param
     TypeParam {
-        index_name: String,
+        index: usize,
         debug_name: Ident,
     },
     Str(Length),
@@ -206,10 +206,10 @@ impl HashWithEngines for TypeInfo {
                 ty.hash(state, engines);
             }
             TypeInfo::TypeParam {
-                index_name,
+                index,
                 debug_name: _,
             } => {
-                index_name.hash(state);
+                index.hash(state);
             }
             TypeInfo::Alias { name, ty } => {
                 name.hash(state);
@@ -246,14 +246,14 @@ impl PartialEqWithEngines for TypeInfo {
             (Self::Placeholder(l), Self::Placeholder(r)) => l.eq(r, engines),
             (
                 Self::TypeParam {
-                    index_name: lin,
+                    index: li,
                     debug_name: _,
                 },
                 Self::TypeParam {
-                    index_name: rin,
+                    index: ri,
                     debug_name: _,
                 },
-            ) => lin == rin,
+            ) => li == ri,
             (
                 Self::Custom {
                     call_path: l_name,
@@ -492,7 +492,7 @@ impl DebugWithEngines for TypeInfo {
             Unknown => "unknown".into(),
             UnknownGeneric { name, .. } => name.to_string(),
             Placeholder(_) => "_".to_string(),
-            TypeParam { index_name, .. } => format!("typeparam({index_name})"),
+            TypeParam { index, .. } => format!("typeparam({index})"),
             Str(x) => format!("str[{}]", x.val()),
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",

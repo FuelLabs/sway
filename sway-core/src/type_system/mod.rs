@@ -119,7 +119,7 @@ fn generic_enum_resolution() {
     let ty_2 = type_engine.insert(&decl_engine, TypeInfo::Enum(decl_ref_2));
 
     // Unify them together...
-    let (_, errors) = type_engine.unify(&decl_engine, ty_1, ty_2, &sp, "", None);
+    let (_, errors) = type_engine.unify(&decl_engine, ty_1, ty_2, todo!(), &sp, "", None);
     assert!(errors.is_empty());
 
     if let TypeInfo::Enum(decl_ref_1) = type_engine.get(ty_1) {
@@ -146,7 +146,7 @@ fn basic_numeric_unknown() {
     let id2 = type_engine.insert(&decl_engine, TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
-    let (_, errors) = type_engine.unify(&decl_engine, id, id2, &sp, "", None);
+    let (_, errors) = type_engine.unify(&decl_engine, id, id2, todo!(), &sp, "", None);
     assert!(errors.is_empty());
 
     assert!(matches!(
@@ -167,7 +167,7 @@ fn unify_numerics() {
     let id2 = type_engine.insert(&decl_engine, TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
-    let (_, errors) = type_engine.unify(&decl_engine, id2, id, &sp, "", None);
+    let (_, errors) = type_engine.unify(&decl_engine, id2, id, todo!(), &sp, "", None);
     assert!(errors.is_empty());
 
     assert!(matches!(
@@ -188,7 +188,7 @@ fn unify_numerics_2() {
     let id2 = type_engine.insert(&decl_engine, TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
-    let (_, errors) = type_engine.unify(&decl_engine, id, id2, &sp, "", None);
+    let (_, errors) = type_engine.unify(&decl_engine, id, id2, todo!(), &sp, "", None);
     assert!(errors.is_empty());
 
     assert!(matches!(

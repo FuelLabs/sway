@@ -2,6 +2,7 @@ use core::fmt::Write;
 use hashbrown::hash_map::RawEntryMut;
 use hashbrown::HashMap;
 use std::sync::RwLock;
+use sway_types::Ident;
 
 use crate::concurrent_slab::ListDisplay;
 use crate::error::{err, ok};
@@ -77,129 +78,6 @@ impl TypeEngine {
             .exists(|x| ti.is_subset_of(x, Engines::new(self, decl_engine)))
     }
 
-    /// Given a `value` of type `T` that is able to be monomorphized and a set
-    /// of `type_arguments`, monomorphize `value` with the `type_arguments`.
-    ///
-    /// When this function is called, it is passed a `T` that is a copy of some
-    /// original declaration for `T` (let's denote the original with `[T]`).
-    /// Because monomorphization happens at application time (e.g. function
-    /// application), we want to be able to modify `value` such that type
-    /// checking the application of `value` affects only `T` and not `[T]`.
-    ///
-    /// So, at a high level, this function does two things. It 1) performs the
-    /// necessary work to refresh the relevant generic types in `T` so that they
-    /// are distinct from the generics of the same name in `[T]`. And it 2)
-    /// applies `type_arguments` (if any are provided) to the type parameters
-    /// of `value`, unifying the types.
-    ///
-    /// There are 4 cases that are handled in this function:
-    ///
-    /// 1. `value` does not have type parameters + `type_arguments` is empty:
-    ///     1a. return ok
-    /// 2. `value` has type parameters + `type_arguments` is empty:
-    ///     2a. if the [EnforceTypeArguments::Yes] variant is provided, then
-    ///         error
-    ///     2b. refresh the generic types with a [TypeSubstMapping]
-    /// 3. `value` does have type parameters + `type_arguments` is nonempty:
-    ///     3a. error
-    /// 4. `value` has type parameters + `type_arguments` is nonempty:
-    ///     4a. check to see that the type parameters and `type_arguments` have
-    ///         the same length
-    ///     4b. for each type argument in `type_arguments`, resolve the type
-    ///     4c. refresh the generic types with a [TypeSubstMapping]
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) fn monomorphize<T>(
-        &self,
-        decl_engine: &DeclEngine,
-        value: &mut T,
-        type_arguments: &mut [TypeArgument],
-        enforce_type_arguments: EnforceTypeArguments,
-        call_site_span: &Span,
-        namespace: &mut Namespace,
-        mod_path: &Path,
-    ) -> CompileResult<()> {
-        todo!()
-
-        // let mut warnings = vec![];
-        // let mut errors = vec![];
-        // let engines = Engines::new(self, decl_engine);
-        // match (
-        //     value.type_parameters().is_empty(),
-        //     type_arguments.is_empty(),
-        // ) {
-        //     (true, true) => ok((), warnings, errors),
-        //     (false, true) => {
-        //         if let EnforceTypeArguments::Yes = enforce_type_arguments {
-        //             errors.push(CompileError::NeedsTypeArguments {
-        //                 name: value.name().clone(),
-        //                 span: call_site_span.clone(),
-        //             });
-        //             return err(warnings, errors);
-        //         }
-        //         let type_mapping =
-        //             TypeSubstMap::from_type_parameters(engines, value.type_parameters());
-        //         value.subst(&type_mapping, engines);
-        //         ok((), warnings, errors)
-        //     }
-        //     (true, false) => {
-        //         let type_arguments_span = type_arguments
-        //             .iter()
-        //             .map(|x| x.span.clone())
-        //             .reduce(Span::join)
-        //             .unwrap_or_else(|| value.name().span());
-        //         errors.push(CompileError::DoesNotTakeTypeArguments {
-        //             name: value.name().clone(),
-        //             span: type_arguments_span,
-        //         });
-        //         err(warnings, errors)
-        //     }
-        //     (false, false) => {
-        //         let type_arguments_span = type_arguments
-        //             .iter()
-        //             .map(|x| x.span.clone())
-        //             .reduce(Span::join)
-        //             .unwrap_or_else(|| value.name().span());
-        //         if value.type_parameters().len() != type_arguments.len() {
-        //             errors.push(CompileError::IncorrectNumberOfTypeArguments {
-        //                 given: type_arguments.len(),
-        //                 expected: value.type_parameters().len(),
-        //                 span: type_arguments_span,
-        //             });
-        //             return err(warnings, errors);
-        //         }
-        //         for type_argument in type_arguments.iter_mut() {
-        //             type_argument.type_id = check!(
-        //                 self.resolve(
-        //                     decl_engine,
-        //                     type_argument.type_id,
-        //                     &type_argument.span,
-        //                     enforce_type_arguments,
-        //                     None,
-        //                     namespace,
-        //                     mod_path
-        //                 ),
-        //                 self.insert(decl_engine, TypeInfo::ErrorRecovery),
-        //                 warnings,
-        //                 errors
-        //             );
-        //         }
-        //         let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
-        //             value
-        //                 .type_parameters()
-        //                 .iter()
-        //                 .map(|type_param| type_param.type_id)
-        //                 .collect(),
-        //             type_arguments
-        //                 .iter()
-        //                 .map(|type_arg| type_arg.type_id)
-        //                 .collect(),
-        //         );
-        //         value.subst(&type_mapping, engines);
-        //         ok((), warnings, errors)
-        //     }
-        // }
-    }
-
     /// Make the types of `received` and `expected` equivalent (or produce an
     /// error if there is a conflict between them).
     ///
@@ -207,17 +85,19 @@ impl TypeEngine {
     /// `expected`, except in cases where `received` has more type information
     /// than `expected` (e.g. when `expected` is a generic type and `received`
     /// is not).
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn unify(
         &self,
         decl_engine: &DeclEngine,
         received: TypeId,
         expected: TypeId,
+        type_subst_stack_top: &SubstList,
         span: &Span,
         help_text: &str,
         err_override: Option<CompileError>,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
         let engines = Engines::new(self, decl_engine);
-        if !UnifyCheck::new(engines).check(received, expected) {
+        if !UnifyCheck::new(engines, type_subst_stack_top).check(received, expected) {
             // create a "mismatched type" error unless the `err_override`
             // argument has been provided
             let mut errors = vec![];
@@ -236,8 +116,9 @@ impl TypeEngine {
             }
             return (vec![], errors);
         }
-        let (warnings, errors) =
-            normalize_err(Unifier::new(engines, help_text).unify(received, expected, span));
+        let (warnings, errors) = normalize_err(
+            Unifier::new(engines, type_subst_stack_top, help_text).unify(received, expected, span),
+        );
         if errors.is_empty() {
             (warnings, errors)
         } else if err_override.is_some() {
@@ -258,6 +139,87 @@ impl TypeEngine {
         }
     }
 
+    pub(crate) fn compare_subst_list_and_args(
+        &self,
+        subst_list: &SubstList,
+        type_args: &[TypeArgument],
+        enforce_type_args: EnforceTypeArguments,
+        obj_name: &Ident,
+        call_site_span: &Span,
+    ) -> CompileResult<()> {
+        let warnings = vec![];
+        let mut errors = vec![];
+
+        let type_arguments_span = type_args
+            .iter()
+            .map(|x| x.span.clone())
+            .reduce(Span::join)
+            .unwrap_or_else(|| obj_name.span());
+
+        match (subst_list.len(), type_args.len()) {
+            (n, 0) if n > 0 && enforce_type_args.is_yes() => {
+                errors.push(CompileError::NeedsTypeArguments {
+                    name: obj_name.clone(),
+                    span: call_site_span.clone(),
+                });
+                return err(warnings, errors);
+            }
+            (0, m) if m > 0 => {
+                errors.push(CompileError::DoesNotTakeTypeArguments {
+                    name: obj_name.clone(),
+                    span: type_arguments_span,
+                });
+                return err(warnings, errors);
+            }
+            (n, m) if n != m => {
+                errors.push(CompileError::IncorrectNumberOfTypeArguments {
+                    given: type_args.len(),
+                    expected: subst_list.len(),
+                    span: type_arguments_span,
+                });
+                return err(warnings, errors);
+            }
+            _ => {}
+        }
+
+        ok((), warnings, errors)
+    }
+
+    pub(crate) fn resolve_type_args(
+        &self,
+        namespace: &mut Namespace,
+        decl_engine: &DeclEngine,
+        mod_path: &Path,
+        type_args: &mut [TypeArgument],
+        enforce_type_args: EnforceTypeArguments,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        for type_arg in type_args.iter_mut() {
+            type_arg.type_id = check!(
+                self.resolve(
+                    decl_engine,
+                    type_arg.type_id,
+                    &type_arg.span,
+                    enforce_type_args,
+                    None,
+                    namespace,
+                    mod_path
+                ),
+                self.insert(decl_engine, TypeInfo::ErrorRecovery),
+                warnings,
+                errors
+            );
+        }
+
+        if errors.is_empty() {
+            ok((), warnings, errors)
+        } else {
+            err(warnings, errors)
+        }
+    }
+
     /// Resolve the type of the given [TypeId], replacing any instances of
     /// [TypeInfo::Custom] with either a monomorphized struct, monomorphized
     /// enum, or a reference to a type parameter.
@@ -267,7 +229,7 @@ impl TypeEngine {
         decl_engine: &DeclEngine,
         type_id: TypeId,
         span: &Span,
-        enforce_type_arguments: EnforceTypeArguments,
+        enforce_type_args: EnforceTypeArguments,
         type_info_prefix: Option<&Path>,
         namespace: &mut Namespace,
         mod_path: &Path,
@@ -281,6 +243,20 @@ impl TypeEngine {
                 call_path,
                 type_arguments,
             } => {
+                let mut type_args = type_arguments.unwrap_or_default();
+                check!(
+                    self.resolve_type_args(
+                        namespace,
+                        decl_engine,
+                        mod_path,
+                        &mut type_args,
+                        enforce_type_args
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+
                 match namespace
                     .root()
                     .resolve_call_path_with_visibility_check(engines, module_path, &call_path)
@@ -288,77 +264,53 @@ impl TypeEngine {
                     .cloned()
                 {
                     Some(ty::TyDecl::StructDecl {
-                        decl_id: original_id,
-                        ..
+                        name,
+                        decl_id,
+                        subst_list,
+                        decl_span,
                     }) => {
-                        // get the copy from the declaration engine
-                        let mut new_copy = decl_engine.get_struct(&original_id);
-
-                        // monomorphize the copy, in place
                         check!(
-                            self.monomorphize(
-                                decl_engine,
-                                &mut new_copy,
-                                &mut type_arguments.unwrap_or_default(),
-                                enforce_type_arguments,
-                                span,
-                                namespace,
-                                mod_path
-                            ),
-                            return err(warnings, errors),
-                            warnings,
-                            errors,
-                        );
-
-                        // insert the new copy in the decl engine
-                        let new_decl_ref = decl_engine.insert(new_copy, todo!());
-
-                        // create the type id from the copy
-                        let type_id = engines
-                            .te()
-                            .insert(decl_engine, TypeInfo::Struct(new_decl_ref));
-
-                        // take any trait methods that apply to this type and copy them to the new type
-                        namespace.insert_trait_implementation_for_type(engines, type_id);
-
-                        // return the id
-                        type_id
-                    }
-                    Some(ty::TyDecl::EnumDecl {
-                        decl_id: original_id,
-                        ..
-                    }) => {
-                        // get the copy from the declaration engine
-                        let mut new_copy = decl_engine.get_enum(&original_id);
-
-                        // monomorphize the copy, in place
-                        check!(
-                            self.monomorphize(
-                                decl_engine,
-                                &mut new_copy,
-                                &mut type_arguments.unwrap_or_default(),
-                                enforce_type_arguments,
-                                span,
-                                namespace,
-                                mod_path
+                            self.compare_subst_list_and_args(
+                                subst_list.inner(),
+                                &type_args,
+                                enforce_type_args,
+                                &name,
+                                span
                             ),
                             return err(warnings, errors),
                             warnings,
                             errors
                         );
-
-                        // insert the new copy in the decl engine
-                        let new_decl_ref = decl_engine.insert(new_copy, todo!());
-
-                        // create the type id from the copy
-                        let type_id = engines
-                            .te()
-                            .insert(decl_engine, TypeInfo::Enum(new_decl_ref));
-
-                        // take any trait methods that apply to this type and copy them to the new type
+                        let mut subst_list = subst_list.scoped_copy(engines);
+                        subst_list.apply_type_args(type_args);
+                        let struct_ref = DeclRef::new(name, decl_id, subst_list, decl_span);
+                        let type_id = self.insert(decl_engine, TypeInfo::Struct(struct_ref));
                         namespace.insert_trait_implementation_for_type(engines, type_id);
-
-                        // return the id
+                        type_id
+                    }
+                    Some(ty::TyDecl::EnumDecl {
+                        name,
+                        decl_id,
+                        subst_list,
+                        decl_span,
+                    }) => {
+                        check!(
+                            self.compare_subst_list_and_args(
+                                subst_list.inner(),
+                                &type_args,
+                                enforce_type_args,
+                                &name,
+                                span
+                            ),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        let mut subst_list = subst_list.scoped_copy(engines);
+                        subst_list.apply_type_args(type_args);
+                        let struct_ref = DeclRef::new(name, decl_id, subst_list, decl_span);
+                        let type_id = self.insert(decl_engine, TypeInfo::Enum(struct_ref));
+                        namespace.insert_trait_implementation_for_type(engines, type_id);
                         type_id
                     }
                     Some(ty::TyDecl::TypeAliasDecl {
@@ -391,7 +343,7 @@ impl TypeEngine {
                         decl_engine,
                         elem_ty.type_id,
                         span,
-                        enforce_type_arguments,
+                        enforce_type_args,
                         None,
                         namespace,
                         mod_path
@@ -409,7 +361,7 @@ impl TypeEngine {
                             decl_engine,
                             type_argument.type_id,
                             span,
-                            enforce_type_arguments,
+                            enforce_type_args,
                             None,
                             namespace,
                             mod_path
@@ -482,4 +434,10 @@ fn normalize_err(
 pub(crate) enum EnforceTypeArguments {
     Yes,
     No,
+}
+
+impl EnforceTypeArguments {
+    pub(crate) fn is_yes(&self) -> bool {
+        matches!(self, EnforceTypeArguments::Yes)
+    }
 }

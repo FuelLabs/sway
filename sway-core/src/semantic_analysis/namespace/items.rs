@@ -360,7 +360,14 @@ impl Items {
         ok((symbol, parent_rover), warnings, errors)
     }
 
+    /// Returns a mutable reference to the [SubstList] stack.
     pub(crate) fn type_subst_stack_mut(&mut self) -> &mut Vec<SubstList> {
         &mut self.type_subst_stack
+    }
+
+    /// Returns the top element of the [SubstList] stack. If there is no top
+    /// element, then an empty [SubstList] is created and returned.
+    pub(crate) fn type_subst_stack_top(&self) -> SubstList {
+        self.type_subst_stack.last().cloned().unwrap_or_default()
     }
 }
