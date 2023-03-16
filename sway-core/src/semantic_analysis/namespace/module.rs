@@ -86,7 +86,7 @@ impl Module {
         let mut parser = Parser::new(handler, &token_stream);
         // perform the parse
         let const_item: ItemConst = parser.parse()?;
-        let const_item_span = const_item.span().clone();
+        let const_item_span = const_item.span();
 
         // perform the conversions from parser code to parse tree types
         let name = const_item.name.clone();
@@ -123,7 +123,7 @@ impl Module {
         };
         let mut ns = Namespace::init_root(Default::default());
         // This is pretty hacky but that's okay because of this code is being removed pretty soon
-        ns.root.module.name = ns_name.clone();
+        ns.root.module.name = ns_name;
         ns.root.module.is_external = true;
         let type_check_ctx = TypeCheckContext::from_root(&mut ns, engines);
         let typed_node =
