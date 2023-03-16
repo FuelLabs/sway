@@ -583,9 +583,9 @@ pub enum CompileError {
     #[error("\"continue\" used outside of a loop")]
     ContinueOutsideLoop { span: Span },
     #[error("Configuration-time constant value is not a constant item.")]
-    ConfigTimeConstantNotAConstDecl { span: Span },
+    ContractDepIdConstantNotAConstDecl { span: Span },
     #[error("Configuration-time constant value is not a literal.")]
-    ConfigTimeConstantNotALiteral { span: Span },
+    ContractDepIdConstantNotALiteral { span: Span },
     #[error("The type \"{ty}\" is not allowed in storage.")]
     TypeNotAllowedInContractStorage { ty: String, span: Span },
     #[error("ref mut parameter not allowed for main()")]
@@ -785,8 +785,8 @@ impl Spanned for CompileError {
             IntrinsicIncorrectNumTArgs { span, .. } => span.clone(),
             BreakOutsideLoop { span } => span.clone(),
             ContinueOutsideLoop { span } => span.clone(),
-            ConfigTimeConstantNotAConstDecl { span } => span.clone(),
-            ConfigTimeConstantNotALiteral { span } => span.clone(),
+            ContractDepIdConstantNotAConstDecl { span } => span.clone(),
+            ContractDepIdConstantNotALiteral { span } => span.clone(),
             TypeNotAllowedInContractStorage { span, .. } => span.clone(),
             RefMutableNotAllowedInMain { span, .. } => span.clone(),
             PointerReturnNotAllowedInMain { span } => span.clone(),

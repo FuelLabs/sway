@@ -1,9 +1,6 @@
 use crate::{
     lock::Lock,
-    manifest::{
-        BuildProfile, ConfigTimeConstant, Dependency, ManifestFile, MemberManifestFiles,
-        PackageManifestFile,
-    },
+    manifest::{BuildProfile, Dependency, ManifestFile, MemberManifestFiles, PackageManifestFile},
     source::{self, Source},
     CORE, PRELUDE, STD,
 };
@@ -271,7 +268,7 @@ pub struct MinifyOpts {
 }
 
 type ConstName = String;
-type ConstInjectionMap = HashMap<Pinned, Vec<(ConstName, ConfigTimeConstant)>>;
+type ConstInjectionMap = HashMap<Pinned, Vec<(ConstName, String)>>;
 
 /// The set of options provided to the `build` functions.
 #[derive(Default)]
@@ -1544,14 +1541,12 @@ pub fn dependency_namespace(
     compiled_contract_deps: &CompiledContractDeps,
     graph: &Graph,
     node: NodeIx,
-    constants: BTreeMap<String, ConfigTimeConstant>,
     engines: Engines<'_>,
 ) -> Result<namespace::Module, vec1::Vec1<CompileError>> {
     // TODO: Clean this up when config-time constants v1 are removed.
     let node_idx = &graph[node];
     let name = Some(Ident::new_no_span(node_idx.name.clone()));
-    let mut namespace =
-        namespace::Module::default_with_constants(engines, constants, name.clone())?;
+    let mut namespace = namespace::Module::default();
     namespace.is_external = true;
     namespace.name = name;
 
@@ -1575,16 +1570,17 @@ pub fn dependency_namespace(
                     .unwrap_or_default();
                 // Construct namespace with contract id
                 let contract_id_value = format!("0x{dep_contract_id}");
-                let contract_id_constant = ConfigTimeConstant {
-                    r#type: "b256".to_string(),
-                    value: contract_id_value,
-                    public: true,
-                };
-                constants.insert(CONTRACT_ID_CONSTANT_NAME.to_string(), contract_id_constant);
+                constants.insert(
+                    CONTRACT_ID_CONSTANT_NAME.to_string(),
+                    contract_id_value.clone(),
+                );
                 let node_idx = &graph[dep_node];
                 let name = Some(Ident::new_no_span(node_idx.name.clone()));
-                let mut ns =
-                    namespace::Module::default_with_constants(engines, constants, name.clone())?;
+                let mut ns = namespace::Module::default_with_contract_deps(
+                    engines,
+                    name.clone(),
+                    contract_id_value,
+                )?;
                 ns.is_external = true;
                 ns.name = name;
                 ns
@@ -2240,7 +2236,6 @@ pub fn build(
                 &compiled_contract_deps,
                 plan.graph(),
                 node,
-                manifest.config_time_constants().clone(),
                 engines,
             ) {
                 Ok(o) => o,
@@ -2271,31 +2266,13 @@ pub fn build(
                 );
                 let contract_id_constant_name = CONTRACT_ID_CONSTANT_NAME.to_string();
                 let contract_id_value = format!("0x{contract_id}");
-                let contract_id_constant = ConfigTimeConstant {
-                    r#type: "b256".to_string(),
-                    value: contract_id_value.clone(),
-                    public: true,
-                };
-                let constant_declarations = vec![(contract_id_constant_name, contract_id_constant)];
+                let constant_declarations = vec![(contract_id_constant_name, contract_id_value)];
                 const_inject_map.insert(pkg.clone(), constant_declarations);
             }
             Some(compiled_without_tests.bytecode)
         } else {
             None
         };
-
-        let constants = const_inject_map
-            .get(pkg)
-            .map(|injected_ctc| {
-                let mut constants = manifest.config_time_constants();
-                constants.extend(
-                    injected_ctc
-                        .iter()
-                        .map(|(name, ctc)| (name.clone(), ctc.clone())),
-                );
-                constants
-            })
-            .unwrap_or_else(|| manifest.config_time_constants());
 
         // Build all non member nodes with tests disabled by overriding the current profile.
         let profile = if !plan.member_nodes().any(|member| member == node) {
@@ -2312,7 +2289,6 @@ pub fn build(
             &compiled_contract_deps,
             plan.graph(),
             node,
-            constants,
             engines,
         ) {
             Ok(o) => o,
@@ -2506,13 +2482,11 @@ pub fn check(
     for &node in plan.compilation_order.iter() {
         let pkg = &plan.graph[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
-        let constants = manifest.config_time_constants();
         let dep_namespace = dependency_namespace(
             &lib_namespace_map,
             &compiled_contract_deps,
             &plan.graph,
             node,
-            constants,
             engines,
         )
         .expect("failed to create dependency namespace");
