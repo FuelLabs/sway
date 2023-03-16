@@ -5,7 +5,7 @@ library;
 
 // Blockchain types
 use ::address::Address;
-use ::contract_id::ContractId;
+use ::contract_id::{ContractId, AssetId};
 use ::identity::Identity;
 
 // Collections

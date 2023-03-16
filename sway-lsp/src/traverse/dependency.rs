@@ -37,9 +37,9 @@ pub fn collect_typed_declaration(node: &ty::TyAstNode, ctx: &ParseContext) {
 
         let ident = match declaration {
             ty::TyDeclaration::VariableDeclaration(variable) => variable.name.clone(),
-            ty::TyDeclaration::StructDeclaration(decl_ref) => decl_ref.name.clone(),
-            ty::TyDeclaration::EnumDeclaration(decl_ref) => decl_ref.name.clone(),
-            ty::TyDeclaration::TraitDeclaration { name, .. }
+            ty::TyDeclaration::StructDeclaration { name, .. }
+            | ty::TyDeclaration::EnumDeclaration { name, .. }
+            | ty::TyDeclaration::TraitDeclaration { name, .. }
             | ty::TyDeclaration::FunctionDeclaration { name, .. }
             | ty::TyDeclaration::ConstantDeclaration { name, .. } => name.clone(),
             _ => return,

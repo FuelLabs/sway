@@ -1,7 +1,7 @@
 use crate::priv_prelude::*;
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub enum Ty {
     Path(PathType),
     Tuple(Parens<TyTupleDescriptor>),
@@ -37,7 +37,7 @@ impl Ty {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub enum TyTupleDescriptor {
     Nil,
     Cons {
@@ -62,7 +62,7 @@ impl TyTupleDescriptor {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct TyArrayDescriptor {
     pub ty: Box<Ty>,
     pub semicolon_token: SemicolonToken,

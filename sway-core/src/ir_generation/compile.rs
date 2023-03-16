@@ -290,6 +290,7 @@ fn compile_declarations(
             | ty::TyDeclaration::AbiDeclaration { .. }
             | ty::TyDeclaration::GenericTypeForFunctionScope { .. }
             | ty::TyDeclaration::StorageDeclaration { .. }
+            | ty::TyDeclaration::TypeAliasDeclaration { .. }
             | ty::TyDeclaration::ErrorRecovery(_) => (),
         }
     }
@@ -448,7 +449,7 @@ fn compile_fn(
     let storage_md_idx = md_mgr.purity_to_md(context, *purity);
     let mut metadata = md_combine(context, &span_md_idx, &storage_md_idx);
 
-    let decl_index = test_decl_ref.map(|decl_ref| decl_ref.id);
+    let decl_index = test_decl_ref.map(|decl_ref| *decl_ref.id());
     if let Some(decl_index) = decl_index {
         let test_decl_index_md_idx = md_mgr.test_decl_index_to_md(context, decl_index);
         metadata = md_combine(context, &metadata, &test_decl_index_md_idx);

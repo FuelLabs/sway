@@ -223,7 +223,7 @@ pub enum ExpressionKind {
 #[derive(Debug, Clone)]
 pub enum ReassignmentTarget {
     VariableExpression(Box<Expression>),
-    StorageField(Vec<Ident>),
+    StorageField(Span, Vec<Ident>),
 }
 
 #[derive(Debug, Clone)]

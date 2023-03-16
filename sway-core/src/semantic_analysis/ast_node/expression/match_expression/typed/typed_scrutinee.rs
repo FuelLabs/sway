@@ -129,7 +129,7 @@ fn type_check_struct(
         errors
     );
     let original_struct_decl_ref = check!(
-        unknown_decl.expect_struct(),
+        unknown_decl.to_struct_ref(ctx.engines()),
         return err(warnings, errors),
         warnings,
         errors
@@ -258,7 +258,7 @@ fn type_check_enum(
         errors
     );
     let original_decl_ref = check!(
-        unknown_decl.expect_enum(),
+        unknown_decl.to_enum_ref(ctx.engines()),
         return err(warnings, errors),
         warnings,
         errors
@@ -287,7 +287,7 @@ fn type_check_enum(
     );
 
     let decl_name = enum_decl.call_path.suffix.clone();
-    let new_decl_ref = ctx.engines().de().insert(enum_decl);
+    let new_decl_ref = ctx.engines().de().insert(enum_decl.clone());
     let enum_type_id = ctx
         .engines()
         .te()

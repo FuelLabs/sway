@@ -1,5 +1,8 @@
 use super::*;
-use crate::language::{parsed::CodeBlock, ty};
+use crate::{
+    decl_engine::DeclRef,
+    language::{parsed::CodeBlock, ty},
+};
 
 impl ty::TyCodeBlock {
     pub(crate) fn type_check(
@@ -68,12 +71,17 @@ impl ty::TyCodeBlock {
                         .resolve_symbol(&never_mod_path, &never_ident)
                         .value;
 
-                    if let Some(ty::TyDeclaration::EnumDeclaration(never_decl_ref)) = never_decl_opt
+                    if let Some(ty::TyDeclaration::EnumDeclaration {
+                        name,
+                        decl_id,
+                        type_subst_list: _,
+                        decl_span,
+                    }) = never_decl_opt
                     {
-                        return ctx
-                            .engines()
-                            .te()
-                            .insert(decl_engine, TypeInfo::Enum(never_decl_ref.clone()));
+                        return ctx.engines().te().insert(
+                            decl_engine,
+                            TypeInfo::Enum(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
+                        );
                     }
 
                     ctx.type_engine.insert(decl_engine, TypeInfo::Unknown)

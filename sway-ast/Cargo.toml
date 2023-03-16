@@ -10,6 +10,7 @@ description = "Sway's parser"
 
 [dependencies]
 extension-trait = "1.0.1"
-num-bigint = "0.4.3"
+num-bigint = { version = "0.4.3", features = ["serde"] }
 num-traits = "0.2.14"
+serde = { version = "1.0", features = ["derive"] }
 sway-types = { version = "0.35.5", path = "../sway-types" }

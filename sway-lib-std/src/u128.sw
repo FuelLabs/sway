@@ -378,7 +378,9 @@ impl Power for U128 {
         }
 
         if exp == one {
-            return self;
+            // Manually clone `self`. Otherwise, we may have a `MemoryOverflow`
+            // issue with code that looks like: `x = x.pow(other)`
+            return U128::from((self.upper, self.lower));
         }
 
         while exp & one == zero {

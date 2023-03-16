@@ -12,6 +12,7 @@ use crate::{
     language::ty::{
         self, TyAbiDeclaration, TyConstantDeclaration, TyEnumDeclaration, TyFunctionDeclaration,
         TyImplTrait, TyStorageDeclaration, TyStructDeclaration, TyTraitDeclaration, TyTraitFn,
+        TyTypeAliasDeclaration,
     },
 };
 
@@ -27,6 +28,7 @@ pub struct DeclEngine {
     abi_slab: ConcurrentSlab<TyAbiDeclaration>,
     constant_slab: ConcurrentSlab<TyConstantDeclaration>,
     enum_slab: ConcurrentSlab<TyEnumDeclaration>,
+    type_alias_slab: ConcurrentSlab<TyTypeAliasDeclaration>,
 
     parents: RwLock<HashMap<FunctionalDeclId, Vec<FunctionalDeclId>>>,
 }
@@ -53,11 +55,11 @@ macro_rules! decl_engine_index {
 
             fn insert(&self, decl: $decl) -> DeclRef<DeclId<$decl>> {
                 let span = decl.span();
-                DeclRef {
-                    name: decl.name().clone(),
-                    id: DeclId::new(self.$slab.insert(decl)),
-                    decl_span: span,
-                }
+                DeclRef::new(
+                    decl.name().clone(),
+                    DeclId::new(self.$slab.insert(decl)),
+                    span,
+                )
             }
         }
     };
@@ -71,6 +73,7 @@ decl_engine_index!(storage_slab, ty::TyStorageDeclaration);
 decl_engine_index!(abi_slab, ty::TyAbiDeclaration);
 decl_engine_index!(constant_slab, ty::TyConstantDeclaration);
 decl_engine_index!(enum_slab, ty::TyEnumDeclaration);
+decl_engine_index!(type_alias_slab, ty::TyTypeAliasDeclaration);
 
 impl DeclEngine {
     /// Given a [DeclRef] `index`, finds all the parents of `index` and all the
@@ -191,5 +194,12 @@ impl DeclEngine {
         DeclId<ty::TyEnumDeclaration>: From<&'a T>,
     {
         self.enum_slab.get(DeclId::from(index).inner())
+    }
+
+    pub fn get_type_alias<'a, T, I>(&self, index: &'a T) -> ty::TyTypeAliasDeclaration
+    where
+        DeclId<I>: From<&'a T>,
+    {
+        self.type_alias_slab.get(DeclId::from(index).inner())
     }
 }

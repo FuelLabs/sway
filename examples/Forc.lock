@@ -142,6 +142,11 @@ name = 'tuples'
 source = 'member'
 
 [[package]]
+name = 'type_aliases'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
 name = 'vec'
 source = 'member'
 dependencies = ['std']

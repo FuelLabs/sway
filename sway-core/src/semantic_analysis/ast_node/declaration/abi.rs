@@ -73,6 +73,10 @@ impl ty::TyAbiDeclaration {
                         ctx.decl_engine.insert(method),
                     ));
                 }
+                TraitItem::Constant(_) => {
+                    // not implemented for now since abis and traits will be unified soon
+                    todo!();
+                }
             }
         }
 

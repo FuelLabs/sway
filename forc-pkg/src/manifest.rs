@@ -125,7 +125,7 @@ impl ManifestFile {
 type PatchMap = BTreeMap<String, Dependency>;
 
 /// A [PackageManifest] that was deserialized from a file at a particular path.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PackageManifestFile {
     /// The deserialized `Forc.toml`.
     manifest: PackageManifest,
@@ -134,7 +134,7 @@ pub struct PackageManifestFile {
 }
 
 /// A direct mapping to a `Forc.toml`.
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct PackageManifest {
     pub project: Project,
@@ -148,7 +148,7 @@ pub struct PackageManifest {
     pub contract_dependencies: Option<BTreeMap<String, ContractDependency>>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct Project {
     pub authors: Option<Vec<String>>,
@@ -161,14 +161,14 @@ pub struct Project {
     pub forc_version: Option<semver::Version>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct Network {
     #[serde(default = "default_url")]
     pub url: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct ContractDependency {
     #[serde(flatten)]
@@ -177,7 +177,7 @@ pub struct ContractDependency {
     pub salt: fuel_tx::Salt,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum Dependency {
     /// In the simple format, only a version is specified, eg.
@@ -189,7 +189,7 @@ pub enum Dependency {
     Detailed(DependencyDetails),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct DependencyDetails {
     pub(crate) version: Option<String>,
@@ -202,7 +202,7 @@ pub struct DependencyDetails {
 }
 
 /// Parameters to pass through to the `sway_core::BuildConfig` during compilation.
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct BuildProfile {
     pub print_ast: bool,

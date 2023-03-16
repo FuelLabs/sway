@@ -157,8 +157,8 @@ impl<'eng> FnCompiler<'eng> {
                     self.compile_const_decl(context, md_mgr, tcd, span_md_idx)?;
                     Ok(None)
                 }
-                ty::TyDeclaration::EnumDeclaration(decl_ref) => {
-                    let ted = self.decl_engine.get_enum(decl_ref);
+                ty::TyDeclaration::EnumDeclaration { decl_id, .. } => {
+                    let ted = self.decl_engine.get_enum(decl_id);
                     create_tagged_union_type(
                         self.type_engine,
                         self.decl_engine,
@@ -167,6 +167,12 @@ impl<'eng> FnCompiler<'eng> {
                     )
                     .map(|_| ())?;
                     Ok(None)
+                }
+                ty::TyDeclaration::TypeAliasDeclaration { .. } => {
+                    Err(CompileError::UnexpectedDeclaration {
+                        decl_type: "type alias",
+                        span: ast_node.span.clone(),
+                    })
                 }
                 ty::TyDeclaration::ImplTrait { .. } => {
                     // XXX What if we ignore the trait implementation???  Potentially since
@@ -263,7 +269,7 @@ impl<'eng> FnCompiler<'eng> {
                 call_path: name,
                 contract_call_params,
                 arguments,
-                function_decl_ref,
+                fn_ref,
                 self_state_idx,
                 selector,
                 type_binding: _,
@@ -280,7 +286,7 @@ impl<'eng> FnCompiler<'eng> {
                         span_md_idx,
                     )
                 } else {
-                    let function_decl = self.decl_engine.get_function(function_decl_ref);
+                    let function_decl = self.decl_engine.get_function(fn_ref);
                     self.compile_fn_call(
                         context,
                         md_mgr,
@@ -361,11 +367,14 @@ impl<'eng> FnCompiler<'eng> {
                 )
             }
             ty::TyExpressionVariant::EnumInstantiation {
-                enum_decl,
+                enum_ref,
                 tag,
                 contents,
                 ..
-            } => self.compile_enum_expr(context, md_mgr, enum_decl, *tag, contents.as_deref()),
+            } => {
+                let enum_decl = self.decl_engine.get_enum(enum_ref);
+                self.compile_enum_expr(context, md_mgr, &enum_decl, *tag, contents.as_deref())
+            }
             ty::TyExpressionVariant::Tuple { fields } => {
                 self.compile_tuple_expr(context, md_mgr, fields, span_md_idx)
             }
@@ -555,15 +564,21 @@ impl<'eng> FnCompiler<'eng> {
                     .get_storage_key()
                     .add_metadatum(context, span_md_idx))
             }
-            Intrinsic::Eq => {
+            Intrinsic::Eq | Intrinsic::Gt | Intrinsic::Lt => {
                 let lhs = &arguments[0];
                 let rhs = &arguments[1];
                 let lhs_value = self.compile_expression(context, md_mgr, lhs)?;
                 let rhs_value = self.compile_expression(context, md_mgr, rhs)?;
+                let pred = match kind {
+                    Intrinsic::Eq => Predicate::Equal,
+                    Intrinsic::Gt => Predicate::GreaterThan,
+                    Intrinsic::Lt => Predicate::LessThan,
+                    _ => unreachable!(),
+                };
                 Ok(self
                     .current_block
                     .ins(context)
-                    .cmp(Predicate::Equal, lhs_value, rhs_value))
+                    .cmp(pred, lhs_value, rhs_value))
             }
             Intrinsic::Gtf => {
                 // The index is just a Value
@@ -756,12 +771,21 @@ impl<'eng> FnCompiler<'eng> {
                     }
                 }
             }
-            Intrinsic::Add | Intrinsic::Sub | Intrinsic::Mul | Intrinsic::Div => {
+            Intrinsic::Add
+            | Intrinsic::Sub
+            | Intrinsic::Mul
+            | Intrinsic::Div
+            | Intrinsic::And
+            | Intrinsic::Or
+            | Intrinsic::Xor => {
                 let op = match kind {
                     Intrinsic::Add => BinaryOpKind::Add,
                     Intrinsic::Sub => BinaryOpKind::Sub,
                     Intrinsic::Mul => BinaryOpKind::Mul,
                     Intrinsic::Div => BinaryOpKind::Div,
+                    Intrinsic::And => BinaryOpKind::And,
+                    Intrinsic::Or => BinaryOpKind::Or,
+                    Intrinsic::Xor => BinaryOpKind::Xor,
                     _ => unreachable!(),
                 };
                 let lhs = &arguments[0];

@@ -45,6 +45,24 @@ __eq<T>(lhs: T, rhs: T) -> bool
 ___
 
 ```sway
+__gt<T>(lhs: T, rhs: T) -> bool
+```
+
+**Description:** Returns whether `lhs` is greater than `rhs`.
+
+**Constraints:** `T` is `u8`, `u16`, `u32`, `u64`.
+___
+
+```sway
+__lt<T>(lhs: T, rhs: T) -> bool
+```
+
+**Description:** Returns whether `lhs` is less than `rhs`.
+
+**Constraints:** `T` is `u8`, `u16`, `u32`, `u64`.
+___
+
+```sway
 __gtf<T>(index: u64, tx_field_id: u64) -> T
 ```
 
@@ -152,6 +170,35 @@ __div<T>(lhs: T, rhs: T) -> T
 
 **Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
 
+___
+
+```sway
+__and<T>(lhs: T, rhs: T) -> T
+```
+
+**Description:** Bitwise AND `lhs` and `rhs`.
+
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+
+___
+
+```sway
+or<T>(lhs: T, rhs: T) -> T
+```
+
+**Description:** Bitwise OR `lhs` and `rhs`.
+
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+
+___
+
+```sway
+__xor<T>(lhs: T, rhs: T) -> T
+```
+
+**Description:** Bitwise XOR `lhs` and `rhs`.
+
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
 ___
 
 ```sway

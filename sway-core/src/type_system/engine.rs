@@ -413,9 +413,12 @@ impl TypeEngine {
                     .ok(&mut warnings, &mut errors)
                     .cloned()
                 {
-                    Some(ty::TyDeclaration::StructDeclaration(original_decl_ref)) => {
+                    Some(ty::TyDeclaration::StructDeclaration {
+                        decl_id: original_id,
+                        ..
+                    }) => {
                         // get the copy from the declaration engine
-                        let mut new_copy = decl_engine.get_struct(&original_decl_ref);
+                        let mut new_copy = decl_engine.get_struct(&original_id);
 
                         // monomorphize the copy, in place
                         check!(
@@ -447,9 +450,12 @@ impl TypeEngine {
                         // return the id
                         type_id
                     }
-                    Some(ty::TyDeclaration::EnumDeclaration(original_decl_ref)) => {
+                    Some(ty::TyDeclaration::EnumDeclaration {
+                        decl_id: original_id,
+                        ..
+                    }) => {
                         // get the copy from the declaration engine
-                        let mut new_copy = decl_engine.get_enum(&original_decl_ref);
+                        let mut new_copy = decl_engine.get_enum(&original_id);
 
                         // monomorphize the copy, in place
                         check!(
@@ -479,6 +485,20 @@ impl TypeEngine {
                         namespace.insert_trait_implementation_for_type(engines, type_id);
 
                         // return the id
+                        type_id
+                    }
+                    Some(ty::TyDeclaration::TypeAliasDeclaration {
+                        decl_id: original_id,
+                        ..
+                    }) => {
+                        let new_copy = decl_engine.get_type_alias(&original_id);
+
+                        // TODO: monomorphize the copy, in place, when generic type aliases are
+                        // supported
+
+                        let type_id = new_copy.create_type_id(engines);
+                        namespace.insert_trait_implementation_for_type(engines, type_id);
+
                         type_id
                     }
                     Some(ty::TyDeclaration::GenericTypeForFunctionScope { type_id, .. }) => type_id,

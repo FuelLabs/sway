@@ -14,7 +14,7 @@ fn main() {
     match result {
         // The division was valid
         Option::Some(x) => std::logging::log(x),
-         // The division was invalid
+        // The division was invalid
         Option::None => std::logging::log("Cannot divide by 0"),
     }
 }

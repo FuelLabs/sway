@@ -1,0 +1,3 @@
+category = "fail"
+
+# check: $()Constants are missing from this trait implementation: ID

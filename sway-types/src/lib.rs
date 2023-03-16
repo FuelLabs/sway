@@ -98,7 +98,7 @@ where
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct ConfigTimeConstant {
     pub r#type: String,
     pub value: String,

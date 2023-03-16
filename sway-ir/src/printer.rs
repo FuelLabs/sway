@@ -405,6 +405,9 @@ fn instruction_to_doc<'a>(
                     BinaryOpKind::Sub => "sub",
                     BinaryOpKind::Mul => "mul",
                     BinaryOpKind::Div => "div",
+                    BinaryOpKind::And => "and",
+                    BinaryOpKind::Or => "or",
+                    BinaryOpKind::Xor => "xor",
                 };
                 maybe_constant_to_doc(context, md_namer, namer, arg1)
                     .append(maybe_constant_to_doc(context, md_namer, namer, arg2))
@@ -471,6 +474,8 @@ fn instruction_to_doc<'a>(
             Instruction::Cmp(pred, lhs_value, rhs_value) => {
                 let pred_str = match pred {
                     Predicate::Equal => "eq",
+                    Predicate::LessThan => "lt",
+                    Predicate::GreaterThan => "gt",
                 };
                 maybe_constant_to_doc(context, md_namer, namer, lhs_value)
                     .append(maybe_constant_to_doc(context, md_namer, namer, rhs_value))
