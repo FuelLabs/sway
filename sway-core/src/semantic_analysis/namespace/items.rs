@@ -111,16 +111,18 @@ impl Items {
                 )
                 // constant shadowing a variable
                 | (VariableDeclaration { .. }, ConstantDeclaration { .. })
-                // type shadowing another type
+                // type or type alias shadowing another type or type alias
                 // trait/abi shadowing another trait/abi
-                // type shadowing a trait/abi or vice versa
+                // type or type alias shadowing a trait/abi, or vice versa
                 | (
                     StructDeclaration { .. }
                     | EnumDeclaration { .. }
+                    | TypeAliasDeclaration { .. }
                     | TraitDeclaration { .. }
                     | AbiDeclaration { .. },
                     StructDeclaration { .. }
                     | EnumDeclaration { .. }
+                    | TypeAliasDeclaration { .. }
                     | TraitDeclaration { .. }
                     | AbiDeclaration { .. },
                 ) => errors.push(CompileError::NameDefinedMultipleTimes { name: name.to_string(), span: name.span() }),

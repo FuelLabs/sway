@@ -20,6 +20,7 @@ pub use {
             item_storage::ItemStorage,
             item_struct::ItemStruct,
             item_trait::{ItemTrait, Traits},
+            item_type_alias::ItemTypeAlias,
             item_use::ItemUse,
             FnSignature, Item, ItemKind, TypeField,
         },

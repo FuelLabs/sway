@@ -157,12 +157,14 @@ impl Pattern {
                 Pattern::Tuple(new_elems)
             }
             ty::TyScrutineeVariant::EnumScrutinee {
-                call_path, value, ..
+                call_path,
+                decl_name,
+                value,
+                ..
             } => {
-                let enum_name = call_path.prefixes.last().unwrap().to_string();
                 let variant_name = call_path.suffix.to_string();
                 Pattern::Enum(EnumPattern {
-                    enum_name,
+                    enum_name: decl_name.to_string(),
                     variant_name,
                     value: Box::new(check!(
                         Pattern::from_scrutinee(*value),

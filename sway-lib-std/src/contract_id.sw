@@ -25,3 +25,7 @@ impl From<b256> for ContractId {
         self.value
     }
 }
+
+/// The `AssetId` type is simply an alias for `ContractId` that represents the ID of a native asset
+/// which matches the ID of the contract that implements that asset.
+pub type AssetId = ContractId;

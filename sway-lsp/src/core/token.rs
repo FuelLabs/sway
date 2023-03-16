@@ -57,6 +57,7 @@ pub enum AstToken {
 /// The `TypedAstToken` holds the types produced by the [sway_core::language::ty::TyProgram].
 #[derive(Debug, Clone)]
 pub enum TypedAstToken {
+    TypedTypeAliasDeclaration(ty::TyTypeAliasDeclaration),
     TypedDeclaration(ty::TyDeclaration),
     TypedExpression(ty::TyExpression),
     TypedScrutinee(ty::TyScrutinee),
@@ -102,6 +103,7 @@ pub enum SymbolKind {
     Module,
     TypeParameter,
     Keyword,
+    Type,
     Unknown,
 }
 
