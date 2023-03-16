@@ -1,3 +1,4 @@
+use crate::priv_prelude::ParseToEnd;
 use crate::{Parse, ParseResult, Parser};
 
 use sway_ast::brackets::{Braces, Parens, SquareBrackets};
@@ -21,7 +22,7 @@ use sway_error::parser_error::ParseErrorKind;
 pub trait ParseBracket<T>: Sized {
     fn try_parse(parser: &mut Parser) -> ParseResult<Option<Self>>
     where
-        T: Parse;
+        T: ParseToEnd;
 
     fn parse_all_inner(
         parser: &mut Parser,
@@ -49,11 +50,11 @@ macro_rules! impl_brackets (
         impl<T> ParseBracket<T> for $ty_name<T> {
             fn try_parse(parser: &mut Parser) -> ParseResult<Option<$ty_name<T>>>
             where
-                T: Parse
+                T: ParseToEnd
             {
-                if let Some(open_token) = parser.peek::<$open_token>() {
-                    let inner = parser.parse()?;
-                    match parser.peek::<$close_token>() {
+                if let Some(open_token) = parser.guarded_parse::<$open_token, _>()? {
+                    let (inner, _consumed) = parser.parse_to_end::<T>()?;
+                    match parser.guarded_parse::<$close_token, _>()? {
                        Some(close_token) => Ok(Some(
                             $ty_name {
                                 open_token,
@@ -74,9 +75,9 @@ macro_rules! impl_brackets (
             where
                 T: Parse
             {
-                if let Some(open_token) = parser.peek::<$open_token>() {
+                if let Some(open_token) = parser.guarded_parse::<$open_token, _>()? {
                     let inner = parser.parse()?;
-                    match parser.peek::<$close_token>() {
+                    match parser.guarded_parse::<$close_token, _>()? {
                        Some(close_token) => {
                             if !parser.is_empty() {
                                 return Err(on_error(*parser))
@@ -102,9 +103,9 @@ macro_rules! impl_brackets (
             where
                 T: Parse
             {
-                if let Some(open_token) = parser.peek::<$open_token>() {
+                if let Some(open_token) = parser.guarded_parse::<$open_token, _>()? {
                     let inner = parser.parse()?;
-                    match parser.peek::<$close_token>() {
+                    match parser.guarded_parse::<$close_token, _>()? {
                        Some(close_token) => {
                             if !parser.is_empty() {
                                 return Err(on_error(*parser))
@@ -122,7 +123,33 @@ macro_rules! impl_brackets (
                 }
                 Ok(None)
             }
+        }
 
+        impl<T> Parse for $ty_name<T>
+        where
+            T: ParseToEnd
+        {
+            fn parse(
+                parser: &mut Parser,
+            ) -> ParseResult<$ty_name<T>>
+            {
+                if let Some(open_token) = parser.guarded_parse::<$open_token, _>()? {
+                    let (inner, _consumed) = parser.parse_to_end::<T>()?;
+                    match parser.guarded_parse::<$close_token, _>()? {
+                       Some(close_token) => {
+                            Ok(Some(
+                                $ty_name {
+                                    open_token,
+                                    inner,
+                                    close_token,
+                                })
+                            )
+                        },
+                        None => Err(parser.emit_error(ParseErrorKind::ExpectedClosingDelimiter { kinds: vec![$close_kind] }))
+                    };
+                }
+                Err(parser.emit_error(ParseErrorKind::ExpectedOpeningDelimiter { kinds: vec![$open_kind] }))
+            }
         }
     };
 );

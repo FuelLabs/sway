@@ -623,7 +623,7 @@ fn parse_atom(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
     if let Some(array_inner) = SquareBrackets::try_parse(parser)? {
         return Ok(Expr::Array(array_inner));
     }
-    if let Some((mut parser, span)) = parser.enter_delimited(OpeningDelimiter::Parenthesis) {
+    if let Some(mut parser) = parser.enter_delimited(OpeningDelimiter::Parenthesis) {
         if let Some(_consumed) = parser.check_empty() {
             return Ok(Expr::Tuple(Parens::new(ExprTupleDescriptor::Nil)));
         }
