@@ -109,7 +109,7 @@ impl<'a, 'e> Parser<'a, 'e> {
             [TokenTree::Group(Group {
                 delimiters,
                 token_stream,
-                span,
+                span: _,
             }), rest @ ..]
                 if delimiters.opening == expected_delimiter =>
             {
@@ -266,7 +266,7 @@ impl<'a> Peeker<'a> {
         let span_end = match &self.token_trees[delimiter.len() - 1] {
             TokenTree::Group(GenericGroup {
                 delimiters,
-                token_stream,
+                token_stream: _,
                 span,
             }) if delimiters.opening == *last_punct_kind => span,
             _ => return Err(self),
@@ -297,7 +297,7 @@ impl<'a> Peeker<'a> {
         let span_end = match &self.token_trees[delimiter.len() - 1] {
             TokenTree::Group(GenericGroup {
                 delimiters,
-                token_stream,
+                token_stream: _,
                 span,
             }) if delimiters.closing == *last_punct_kind => span,
             _ => return Err(self),
