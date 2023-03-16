@@ -127,7 +127,7 @@ impl TestContext {
                 let compiled = result?;
 
                 let compiled = match compiled {
-                    forc_pkg::Built::Package(built_pkg) => *built_pkg,
+                    forc_pkg::Built::Package(built_pkg) => built_pkg.as_ref().clone(),
                     forc_pkg::Built::Workspace(_) => {
                         panic!("workspaces are not supported in the test suite yet")
                     }
@@ -209,11 +209,16 @@ impl TestContext {
                                 built_pkg.warnings.len()
                             )));
                         }
-                        vec![(name.clone(), *built_pkg)]
+                        vec![(name.clone(), built_pkg.as_ref().clone())]
                     }
                     forc_pkg::Built::Workspace(built_workspace) => built_workspace
                         .iter()
-                        .map(|(n, b)| (n.clone(), b.clone()))
+                        .map(|built_pkg| {
+                            (
+                                built_pkg.descriptor.pinned.name.clone(),
+                                built_pkg.as_ref().clone(),
+                            )
+                        })
                         .collect(),
                 };
 

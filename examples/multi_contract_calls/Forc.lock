@@ -1,0 +1,19 @@
+[[package]]
+name = 'callee'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'caller'
+source = 'member'
+dependencies = ['std']
+contract-dependencies = ['callee']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-9B44250BDFED688D'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-9B44250BDFED688D'
+dependencies = ['core']
