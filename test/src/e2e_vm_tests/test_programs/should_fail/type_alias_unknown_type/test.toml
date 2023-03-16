@@ -1,0 +1,3 @@
+category = "fail"
+# check: $()type MyType = UnknownType;
+# nextln: $()Could not find symbol "UnknownType" in this scope.

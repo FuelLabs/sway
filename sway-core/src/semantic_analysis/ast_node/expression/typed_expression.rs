@@ -992,7 +992,7 @@ impl ty::TyExpression {
             };
             ctx.namespace
                 .resolve_call_path(&probe_call_path)
-                .flat_map(|decl| decl.to_enum_ref())
+                .flat_map(|decl| decl.to_enum_ref(ctx.engines()))
                 .map(|decl_ref| decl_engine.get_enum(&decl_ref))
                 .flat_map(|decl| decl.expect_variant_from_name(&suffix).map(drop))
                 .value
@@ -1110,7 +1110,7 @@ impl ty::TyExpression {
                 span: call_path_binding.span,
             };
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
-                .flat_map(|(unknown_decl, _type_id)| unknown_decl.to_enum_ref())
+                .flat_map(|(unknown_decl, _type_id)| unknown_decl.to_enum_ref(ctx.engines()))
                 .ok(&mut enum_probe_warnings, &mut enum_probe_errors)
                 .map(|enum_ref| (enum_ref, variant_name, call_path_binding))
         };
@@ -1556,8 +1556,18 @@ impl ty::TyExpression {
             )
         };
 
+        fn get_array_type(ty: TypeId, type_engine: &TypeEngine) -> Option<TypeInfo> {
+            match &type_engine.get(ty) {
+                TypeInfo::Array(..) => Some(type_engine.get(ty)),
+                TypeInfo::Alias { ty, .. } => get_array_type(ty.type_id, type_engine),
+                _ => None,
+            }
+        }
+
         // If the return type is a static array then create a `ty::TyExpressionVariant::ArrayIndex`.
-        if let TypeInfo::Array(elem_type, _) = type_engine.get(prefix_te.return_type) {
+        if let Some(TypeInfo::Array(elem_type, _)) =
+            get_array_type(prefix_te.return_type, type_engine)
+        {
             let type_info_u64 = TypeInfo::UnsignedInteger(IntegerBits::SixtyFour);
             let ctx = ctx
                 .with_help_text("")

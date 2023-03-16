@@ -6,9 +6,9 @@ use sway_ast::{
     expr::LoopControlFlow, ty::TyTupleDescriptor, Assignable, CodeBlockContents, ConfigurableField,
     Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor, FnArg, FnArgs, FnSignature,
     IfCondition, IfExpr, ItemAbi, ItemConfigurable, ItemConst, ItemEnum, ItemFn, ItemImpl,
-    ItemImplItem, ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemUse, MatchBranchKind,
-    ModuleKind, Pattern, PatternStructField, Statement, StatementLet, StorageField, Ty, TypeField,
-    UseTree,
+    ItemImplItem, ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemTypeAlias, ItemUse,
+    MatchBranchKind, ModuleKind, Pattern, PatternStructField, Statement, StatementLet,
+    StorageField, Ty, TypeField, UseTree,
 };
 use sway_core::language::lexed::LexedProgram;
 use sway_types::{Ident, Span, Spanned};
@@ -85,6 +85,9 @@ impl Parse for ItemKind {
             }
             ItemKind::Configurable(item_configurable) => {
                 item_configurable.parse(ctx);
+            }
+            ItemKind::TypeAlias(item_type_alias) => {
+                item_type_alias.parse(ctx);
             }
         }
     }
@@ -405,6 +408,17 @@ impl Parse for ConfigurableField {
     fn parse(&self, ctx: &ParseContext) {
         self.ty.parse(ctx);
         self.initializer.parse(ctx);
+    }
+}
+
+impl Parse for ItemTypeAlias {
+    fn parse(&self, ctx: &ParseContext) {
+        if let Some(visibility) = &self.visibility {
+            insert_keyword(ctx, visibility.span());
+        }
+        insert_keyword(ctx, self.type_token.span());
+
+        self.ty.parse(ctx);
     }
 }
 

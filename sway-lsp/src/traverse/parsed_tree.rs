@@ -25,8 +25,8 @@ use sway_core::{
             Scrutinee, StorageAccessExpression, StorageDeclaration, StorageField,
             StructDeclaration, StructExpression, StructExpressionField, StructField,
             StructScrutineeField, SubfieldExpression, Supertrait, TraitDeclaration, TraitFn,
-            TraitItem, TupleIndexExpression, UseStatement, VariableDeclaration,
-            WhileLoopExpression,
+            TraitItem, TupleIndexExpression, TypeAliasDeclaration, UseStatement,
+            VariableDeclaration, WhileLoopExpression,
         },
         CallPathTree, Literal,
     },
@@ -126,6 +126,7 @@ impl Parse for Declaration {
             Declaration::AbiDeclaration(decl) => decl.parse(ctx),
             Declaration::ConstantDeclaration(decl) => decl.parse(ctx),
             Declaration::StorageDeclaration(decl) => decl.parse(ctx),
+            Declaration::TypeAliasDeclaration(decl) => decl.parse(ctx),
         }
     }
 }
@@ -982,6 +983,20 @@ impl Parse for TypeArgument {
                 }
             }
         }
+    }
+}
+
+impl Parse for TypeAliasDeclaration {
+    fn parse(&self, ctx: &ParseContext) {
+        ctx.tokens.insert(
+            to_ident_key(&self.name),
+            Token::from_parsed(
+                AstToken::Declaration(Declaration::TypeAliasDeclaration(self.clone())),
+                SymbolKind::Type,
+            ),
+        );
+        self.ty.parse(ctx);
+        self.attributes.parse(ctx);
     }
 }
 

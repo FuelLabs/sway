@@ -824,6 +824,13 @@ pub(crate) fn are_equal_minus_dynamic_types(
     let decl_engine = engines.de();
 
     match (type_engine.get(left), type_engine.get(right)) {
+        // when a type alias is encoutered, defer the decision to the type it contains (i.e. the
+        // type it aliases with)
+        (TypeInfo::Alias { ty, .. }, _) => {
+            are_equal_minus_dynamic_types(engines, ty.type_id, right)
+        }
+        (_, TypeInfo::Alias { ty, .. }) => are_equal_minus_dynamic_types(engines, left, ty.type_id),
+
         // these cases are false because, unless left and right have the same
         // TypeId, they may later resolve to be different types in the type
         // engine
