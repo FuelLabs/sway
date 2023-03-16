@@ -40,6 +40,7 @@ pub use crate::{
         item_storage::{ItemStorage, StorageField},
         item_struct::ItemStruct,
         item_trait::{ItemTrait, ItemTraitItem, Traits},
+        item_type_alias::ItemTypeAlias,
         item_use::{ItemUse, UseTree},
         FnArg, FnArgs, FnSignature, Item, ItemKind, TypeField,
     },
