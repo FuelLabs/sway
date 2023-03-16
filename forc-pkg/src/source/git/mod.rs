@@ -1,10 +1,10 @@
+mod auth;
 use crate::{
     manifest::{self, PackageManifestFile},
     source,
 };
 use anyhow::{anyhow, bail, Context, Result};
 use forc_util::git_checkouts_directory;
-use git2_auth::auth_handler::AuthHandler;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::hash_map,
@@ -437,7 +437,7 @@ where
     let config = git2::Config::open_default().unwrap();
 
     // Init auth manager
-    let mut auth_handler = AuthHandler::default_with_config(config);
+    let mut auth_handler = auth::AuthHandler::default_with_config(config);
 
     // Setup remote callbacks
     let mut callback = git2::RemoteCallbacks::new();
