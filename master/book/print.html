@@ -3159,6 +3159,47 @@ fn test_fail() {
 <blockquote>
 <p><strong>Note:</strong> When running <code>forc test</code>, your contract will be built twice: first <em>without</em> unit tests in order to determine the contract's ID, then a second time <em>with</em> unit tests with the <code>CONTRACT_ID</code> provided to their namespace. This <code>CONTRACT_ID</code> can be used with the <code>abi</code> cast to enable contract calls within unit tests.</p>
 </blockquote>
+<p>Unit tests can call methods of external contracts if those contracts are added as contract dependencies, i.e. in the the <a href="testing/../forc/manifest_reference.html#the-contract-dependencies-section"><code>contract-dependencies</code></a> section of the manifest file. An example of such calls is shown below:</p>
+<pre><code class="language-sway">contract;
+
+abi CallerContract {
+    fn test_false() -&gt; bool;
+}
+
+impl CallerContract for Contract {
+    fn test_false() -&gt; bool {
+        false
+    }
+}
+
+abi CalleeContract {
+    fn test_true() -&gt; bool;
+}
+
+#[test]
+fn test_multi_contract_calls() {
+    let caller = abi(CallerContract, CONTRACT_ID);
+    let callee = abi(CalleeContract, callee::CONTRACT_ID);
+
+    let should_be_false = caller.test_false();
+    let should_be_true = callee.test_true();
+    assert(!should_be_false);
+    assert(should_be_true);
+}
+</code></pre>
+<p>Example <code>Forc.toml</code> for contract above:</p>
+<pre><code class="language-toml">[project]
+authors = [&quot;Fuel Labs &lt;contact@fuel.sh&gt;&quot;]
+entry = &quot;main.sw&quot;
+license = &quot;Apache-2.0&quot;
+name = &quot;caller&quot;
+
+[dependencies]
+std = { path = &quot;../../../sway-lib-std/&quot; }
+
+[contract-dependencies]
+callee = { path = &quot;../callee&quot; }
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="testing-with-rust"><a class="header" href="#testing-with-rust">Testing with Rust</a></h1>
 <p>A common use of Sway is for writing contracts or scripts that exist as part of a
 wider Rust application. In order to test the interaction between our Sway code
