@@ -23,7 +23,7 @@ source = 'member'
 dependencies = ['std']
 
 [[package]]
-name = 'configurable_block'
+name = 'configurable_constants'
 source = 'member'
 
 [[package]]
