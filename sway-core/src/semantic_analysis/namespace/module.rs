@@ -51,11 +51,8 @@ pub struct Module {
 }
 
 impl Module {
-    /// `contract_id_value` is injected here via forc-pkg when producing the `dependency_namespace` for a contract which:
-    /// 1) has tests enabled, or
-    /// 2) is a contract dependency.
-    ///
-    /// This allows us to provide a contract's `CONTRACT_ID` constant to its own unit tests, or to other contracts dependent on `CONTRACT_ID`.
+    /// `contract_id_value` is injected here via forc-pkg when producing the `dependency_namespace` for a contract which has tests enabled.
+    /// This allows us to provide a contract's `CONTRACT_ID` constant to its own unit tests.
     ///
     /// This will eventually be refactored out of `sway-core` in favor of creating temporary package dependencies for providing these
     /// `CONTRACT_ID`-containing modules: https://github.com/FuelLabs/sway/issues/3077
