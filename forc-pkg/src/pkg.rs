@@ -1526,6 +1526,9 @@ pub const CONTRACT_ID_CONSTANT_NAME: &str = "CONTRACT_ID";
 ///
 /// This function also ensures that if `std` exists in the graph,
 /// then the std prelude will also be added.
+///
+/// `contract_id_value` should only be Some when producing the `dependency_namespace` for a contract with tests enabled.
+/// This allows us to provide a contract's `CONTRACT_ID` constant to its own unit tests.
 pub fn dependency_namespace(
     lib_namespace_map: &HashMap<NodeIx, namespace::Module>,
     compiled_contract_deps: &CompiledContractDeps,
@@ -2255,7 +2258,7 @@ pub fn build(
                     compiled_without_tests.storage_slots,
                     &fuel_tx::Salt::zeroed(),
                 );
-                // We finally set the contract ID value here to use for compilation later.
+                // We finally set the contract ID value here to use for compilation later if tests are enabled.
                 contract_id_value = Some(format!("0x{contract_id}"));
             }
             Some(compiled_without_tests.bytecode)
@@ -2273,6 +2276,7 @@ pub fn build(
             profile.clone()
         };
 
+        // Note that the contract ID value here is only Some if tests are enabled.
         let dep_namespace = match dependency_namespace(
             &lib_namespace_map,
             &compiled_contract_deps,
@@ -2284,6 +2288,7 @@ pub fn build(
             Ok(o) => o,
             Err(errs) => return fail(&[], &errs),
         };
+
         let mut compiled = compile(
             &descriptor,
             &profile,
