@@ -582,8 +582,12 @@ pub enum CompileError {
     BreakOutsideLoop { span: Span },
     #[error("\"continue\" used outside of a loop")]
     ContinueOutsideLoop { span: Span },
+    /// This will be removed once loading contract IDs in a dependency namespace is refactored and no longer manual:
+    /// https://github.com/FuelLabs/sway/issues/3077
     #[error("Contract ID is not a constant item.")]
     ContractIdConstantNotAConstDecl { span: Span },
+    /// This will be removed once loading contract IDs in a dependency namespace is refactored and no longer manual:
+    /// https://github.com/FuelLabs/sway/issues/3077
     #[error("Contract ID value is not a literal.")]
     ContractIdValueNotALiteral { span: Span },
     #[error("The type \"{ty}\" is not allowed in storage.")]
