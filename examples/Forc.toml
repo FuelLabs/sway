@@ -30,6 +30,7 @@ members = [
   "structs",
   "subcurrency",
   "tuples",
+  "type_aliases",
   "vec",
   "wallet_abi",
   "wallet_contract_caller_script",

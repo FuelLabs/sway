@@ -32,4 +32,5 @@ mod storage_map;
 mod storage_vec;
 mod token_ops;
 mod tx_fields;
+mod type_aliases;
 mod vec_in_abi;

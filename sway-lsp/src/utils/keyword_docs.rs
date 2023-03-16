@@ -750,6 +750,11 @@ impl KeywordDocs {
             mod configurable_keyword {}
         };
 
+        // TODO
+        let type_keyword: ItemMod = parse_quote! {
+            mod type_keyword {}
+        };
+
         let mut keyword_docs = HashMap::new();
 
         let keywords = vec![
@@ -788,6 +793,7 @@ impl KeywordDocs {
             asm_keyword,
             deref_keyword,
             configurable_keyword,
+            type_keyword,
         ];
 
         keywords.iter().for_each(|keyword| {
