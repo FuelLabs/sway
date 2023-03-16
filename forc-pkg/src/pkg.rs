@@ -2243,8 +2243,10 @@ pub fn build(
                 &mut source_map,
             )?;
 
-            // If this contract is built because tests are enabled we need to insert CONTRACT_ID
-            // for the contract.
+            // If this contract is built because:
+            // 1) its a contract dependency, or
+            // 2) tests are enabled,
+            // we need to insert its CONTRACT_ID into a map for later use.
             if is_contract_dependency {
                 let compiled_contract_dep = CompiledContractDependency {
                     bytecode: compiled_without_tests.bytecode.bytes.clone(),
