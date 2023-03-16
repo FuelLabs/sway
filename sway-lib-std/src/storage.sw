@@ -147,15 +147,15 @@ pub fn clear<T>(key: b256) -> bool {
 /// ### Examples
 ///
 /// ```sway
-/// use std::{storage::{store, get}, constants::ZERO_B256};
+/// use std::{alloc::alloc_bytes, storage::{store_slice, get_slice}, constants::ZERO_B256};
 ///
-/// let five = 5_u64;
-/// store(ZERO_B256, five);
-/// let stored_five = get::<u64>(ZERO_B256).unwrap();
-/// assert(five == stored_five);
+/// let slice = asm(ptr: (alloc_bytes(1), 1)) { ptr: raw_slice };
+/// store_slice(ZERO_B256, slice);
+/// let stored_slice = get_slice(ZERO_B256).unwrap();
+/// assert(slice == stored_slice);
 /// ```
 #[storage(write)]
-pub fn store_slice<T>(key: b256, slice: raw_slice) {
+pub fn store_slice(key: b256, slice: raw_slice) {
     // Get the number of storage slots needed based on the size of bytes.
     let number_of_slots = (slice.len_bytes() + 31) >> 5;
     let mut ptr = slice.ptr();
@@ -183,12 +183,12 @@ pub fn store_slice<T>(key: b256, slice: raw_slice) {
 /// ### Examples
 ///
 /// ```sway
-/// use std::{storage::{store, get}, constants::ZERO_B256};
+/// use std::{alloc::alloc_bytes, storage::{store_slice, get_slice}, constants::ZERO_B256};
 ///
-/// let five = 5_u64;
-/// store(ZERO_B256, five);
-/// let stored_five = get::<u64>(ZERO_B256);
-/// assert(five == stored_five);
+/// let slice = asm(ptr: (alloc_bytes(1), 1)) { ptr: raw_slice };
+/// store_slice(ZERO_B256, slice);
+/// let stored_slice = get_slice(ZERO_B256).unwrap();
+/// assert(slice == stored_slice);
 /// ```
 #[storage(read)]
 pub fn get_slice(key: b256) -> Option<raw_slice> {
@@ -209,11 +209,41 @@ pub fn get_slice(key: b256) -> Option<raw_slice> {
     }
 }
 
+/// Clear a sequence of bytes storage slots starting at a some key. Returns a Boolean
+/// indicating whether all of the storage slots cleared were previously set.
+///
+/// ### Arguments
+///
+/// * `key` - The key of the first storage slot that will be cleared
+///
+/// ### Examples
+///
+/// ```sway
+/// use std::{alloc::alloc_bytes, storage::{clear_slice, store_slice, get_slice}, constants::ZERO_B256};
+///
+/// let slice = asm(ptr: (alloc_bytes(1), 1)) { ptr: raw_slice };
+/// store_slice(ZERO_B256, slice);
+/// let cleared = clear_slice(ZERO_B256);
+/// assert(cleared);
+/// assert(get_slice(ZERO_B256).is_none());
+/// ```
+#[storage(read, write)]
+pub fn clear_slice(key: b256) -> bool {
+    // Get the number of storage slots needed based on the length as the ceiling of 
+    let len = get::<u64>(key).unwrap_or(0);
+    let number_of_slots = (len + 31) >> 5;
+
+    // Clear `number_of_slots * 32` bytes starting at storage slot `key`.
+    __state_clear(key, len)
+}
+
 pub trait StorableSlice<T> {
     #[storage(write)]
     fn store(self, argument: T);
     #[storage(read)]
     fn load(self) -> Option<T>;
+    #[storage(read, write)]
+    fn clear(self) -> bool;
     #[storage(read)]
     fn len(self) -> u64;
 }
@@ -768,7 +798,7 @@ impl StorableSlice<Bytes> for StorageBytes {
     ///     bytes.push(9_u8);
     ///     storage.stored_bytes.store(bytes);
     ///
-    ///     let retrieved_bytes = storage.stored_bytes.load(key);
+    ///     let retrieved_bytes = storage.stored_bytes.load(key).unwrap();
     ///     assert(bytes == retrieved_bytes);
     /// }
     /// ```
@@ -783,6 +813,53 @@ impl StorableSlice<Bytes> for StorageBytes {
         }
     }
 
+    /// Clears a collection of tightly packed bytes in storage.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// storage {
+    ///     stored_bytes: StorageBytes = StorageBytes {}
+    /// }
+    ///
+    /// fn foo() {
+    ///     let mut bytes = Bytes::new();
+    ///     bytes.push(5_u8);
+    ///     bytes.push(7_u8);
+    ///     bytes.push(9_u8);
+    ///     storage.stored_bytes.store(bytes);
+    ///
+    ///     let cleared = storage.stored_bytes.clear();
+    ///     assert(cleared);
+    ///     let retrieved_bytes = storage.stored_bytes.load(key);
+    ///     assert(retrieved_bytes.is_none());
+    /// }
+    /// ```
+    #[storage(read, write)]
+    fn clear(self) -> bool {
+        let key = __get_storage_key();
+        clear_slice(key)
+    }
+
+    /// Returns the length of tightly packed bytes in storage.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// storage {
+    ///     stored_bytes: StorageBytes = StorageBytes {}
+    /// }
+    ///
+    /// fn foo() {
+    ///     let mut bytes = Bytes::new();
+    ///     bytes.push(5_u8);
+    ///     bytes.push(7_u8);
+    ///     bytes.push(9_u8);
+    ///     storage.stored_bytes.store(bytes);
+    ///
+    ///     assert(storage.stored_bytes.len() == 3);
+    /// }
+    /// ```
     #[storage(read)]
     fn len(self) -> u64 {
         get::<u64>(__get_storage_key()).unwrap_or(0)
