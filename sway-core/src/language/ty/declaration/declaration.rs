@@ -491,11 +491,16 @@ impl TyDecl {
         if let TyDecl::FunctionDecl {
             name,
             decl_id,
-            subst_list: _,
+            subst_list,
             decl_span,
         } = self
         {
-            Some(DeclRef::new(name.clone(), *decl_id, decl_span.clone()))
+            Some(DeclRef::new(
+                name.clone(),
+                *decl_id,
+                subst_list.fresh_copy(),
+                decl_span.clone(),
+            ))
         } else {
             None
         }
@@ -509,10 +514,15 @@ impl TyDecl {
             TyDecl::EnumDecl {
                 name,
                 decl_id,
-                subst_list: _,
+                subst_list,
                 decl_span,
             } => ok(
-                DeclRef::new(name.clone(), *decl_id, decl_span.clone()),
+                DeclRef::new(
+                    name.clone(),
+                    *decl_id,
+                    subst_list.fresh_copy(),
+                    decl_span.clone(),
+                ),
                 vec![],
                 vec![],
             ),
@@ -539,10 +549,15 @@ impl TyDecl {
             TyDecl::StructDecl {
                 name,
                 decl_id,
-                subst_list: _,
+                subst_list,
                 decl_span,
             } => ok(
-                DeclRef::new(name.clone(), *decl_id, decl_span.clone()),
+                DeclRef::new(
+                    name.clone(),
+                    *decl_id,
+                    subst_list.fresh_copy(),
+                    decl_span.clone(),
+                ),
                 vec![],
                 vec![],
             ),
@@ -569,10 +584,15 @@ impl TyDecl {
             TyDecl::FunctionDecl {
                 name,
                 decl_id,
-                subst_list: _,
+                subst_list,
                 decl_span,
             } => ok(
-                DeclRef::new(name.clone(), *decl_id, decl_span.clone()),
+                DeclRef::new(
+                    name.clone(),
+                    *decl_id,
+                    subst_list.fresh_copy(),
+                    decl_span.clone(),
+                ),
                 vec![],
                 vec![],
             ),
@@ -616,7 +636,7 @@ impl TyDecl {
                 decl_id,
                 decl_span,
             } => ok(
-                DeclRef::new(name.clone(), *decl_id, decl_span.clone()),
+                DeclRef::new(name.clone(), *decl_id, SubstList::new(), decl_span.clone()),
                 vec![],
                 vec![],
             ),
@@ -641,7 +661,7 @@ impl TyDecl {
                 decl_id,
                 decl_span,
             } => ok(
-                DeclRef::new(name.clone(), *decl_id, decl_span.clone()),
+                DeclRef::new(name.clone(), *decl_id, SubstList::new(), decl_span.clone()),
                 vec![],
                 vec![],
             ),
@@ -731,20 +751,30 @@ impl TyDecl {
             TyDecl::StructDecl {
                 name,
                 decl_id,
-                subst_list: _,
+                subst_list,
                 decl_span,
             } => type_engine.insert(
                 decl_engine,
-                TypeInfo::Struct(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
+                TypeInfo::Struct(DeclRef::new(
+                    name.clone(),
+                    *decl_id,
+                    subst_list.fresh_copy(),
+                    decl_span.clone(),
+                )),
             ),
             TyDecl::EnumDecl {
                 name,
                 decl_id,
-                subst_list: _,
+                subst_list,
                 decl_span,
             } => type_engine.insert(
                 decl_engine,
-                TypeInfo::Enum(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
+                TypeInfo::Enum(DeclRef::new(
+                    name.clone(),
+                    *decl_id,
+                    subst_list.fresh_copy(),
+                    decl_span.clone(),
+                )),
             ),
             TyDecl::StorageDecl { decl_id, .. } => {
                 let storage_decl = decl_engine.get_storage(decl_id);

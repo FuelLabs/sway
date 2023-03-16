@@ -1329,7 +1329,7 @@ impl ty::TyExpression {
                 name,
                 decl_id,
                 decl_span,
-            } => DeclRef::new(name, decl_id, decl_span),
+            } => DeclRef::new(name, decl_id, SubstList::new(), decl_span),
             ty::TyDecl::VariableDecl(ref decl) => {
                 let ty::TyVariableDecl { body: expr, .. } = &**decl;
                 let ret_ty = type_engine.get(expr.return_type);
@@ -1409,12 +1409,14 @@ impl ty::TyExpression {
                 ty::TyTraitInterfaceItem::TraitFn(decl_ref) => {
                     let method = decl_engine.get_trait_fn(&decl_ref);
                     abi_items.push(TyImplItem::Fn(
-                        decl_engine.insert(method.to_dummy_func(Mode::ImplAbiFn)),
+                        decl_engine.insert(method.to_dummy_func(Mode::ImplAbiFn), todo!()),
                     ));
                 }
                 ty::TyTraitInterfaceItem::Constant(decl_ref) => {
                     let const_decl = decl_engine.get_constant(&decl_ref);
-                    abi_items.push(TyImplItem::Constant(decl_engine.insert(const_decl)));
+                    abi_items.push(TyImplItem::Constant(
+                        decl_engine.insert(const_decl, todo!()),
+                    ));
                 }
             }
         }

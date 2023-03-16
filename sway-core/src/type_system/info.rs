@@ -97,7 +97,10 @@ pub enum TypeInfo {
     ///
     /// NOTE: This type is *not used yet*.
     // https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.TyKind.html#variant.Param
-    TypeParam(usize),
+    TypeParam {
+        index_name: String,
+        debug_name: Ident,
+    },
     Str(Length),
     UnsignedInteger(IntegerBits),
     Enum(DeclRefEnum),
@@ -202,8 +205,11 @@ impl HashWithEngines for TypeInfo {
             TypeInfo::Placeholder(ty) => {
                 ty.hash(state, engines);
             }
-            TypeInfo::TypeParam(n) => {
-                n.hash(state);
+            TypeInfo::TypeParam {
+                index_name,
+                debug_name: _,
+            } => {
+                index_name.hash(state);
             }
             TypeInfo::Alias { name, ty } => {
                 name.hash(state);
@@ -238,7 +244,16 @@ impl PartialEqWithEngines for TypeInfo {
                 },
             ) => l == r && ltc.eq(rtc, engines),
             (Self::Placeholder(l), Self::Placeholder(r)) => l.eq(r, engines),
-            (Self::TypeParam(l), Self::TypeParam(r)) => l == r,
+            (
+                Self::TypeParam {
+                    index_name: lin,
+                    debug_name: _,
+                },
+                Self::TypeParam {
+                    index_name: rin,
+                    debug_name: _,
+                },
+            ) => lin == rin,
             (
                 Self::Custom {
                     call_path: l_name,
@@ -477,7 +492,7 @@ impl DebugWithEngines for TypeInfo {
             Unknown => "unknown".into(),
             UnknownGeneric { name, .. } => name.to_string(),
             Placeholder(_) => "_".to_string(),
-            TypeParam(n) => format!("typeparam({n})"),
+            TypeParam { index_name, .. } => format!("typeparam({index_name})"),
             Str(x) => format!("str[{}]", x.val()),
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",
@@ -569,7 +584,7 @@ impl TypeInfo {
             TypeInfo::Storage { .. } => 17,
             TypeInfo::RawUntypedPtr => 18,
             TypeInfo::RawUntypedSlice => 19,
-            TypeInfo::TypeParam(_) => 20,
+            TypeInfo::TypeParam { .. } => 20,
             TypeInfo::Alias { .. } => 21,
         }
     }
@@ -941,7 +956,7 @@ impl TypeInfo {
             | TypeInfo::Array(_, _)
             | TypeInfo::Storage { .. }
             | TypeInfo::Placeholder(_)
-            | TypeInfo::TypeParam(_)
+            | TypeInfo::TypeParam { .. }
             | TypeInfo::Alias { .. } => {
                 errors.push(CompileError::TypeArgumentsNotAllowed { span: span.clone() });
                 err(warnings, errors)
@@ -987,7 +1002,7 @@ impl TypeInfo {
             | TypeInfo::Array(_, _)
             | TypeInfo::Storage { .. }
             | TypeInfo::Placeholder(_)
-            | TypeInfo::TypeParam(_) => {
+            | TypeInfo::TypeParam { .. } => {
                 errors.push(CompileError::Unimplemented(
                     "matching on this type is unsupported right now",
                     span.clone(),
@@ -1027,7 +1042,7 @@ impl TypeInfo {
             | TypeInfo::SelfType
             | TypeInfo::Storage { .. }
             | TypeInfo::Placeholder(_)
-            | TypeInfo::TypeParam(_) => {
+            | TypeInfo::TypeParam { .. } => {
                 errors.push(CompileError::Unimplemented(
                     "implementing traits on this type is unsupported right now",
                     span.clone(),
@@ -1063,7 +1078,7 @@ impl TypeInfo {
         match self {
             TypeInfo::Unknown
             | TypeInfo::Placeholder(_)
-            | TypeInfo::TypeParam(_)
+            | TypeInfo::TypeParam { .. }
             | TypeInfo::Str(_)
             | TypeInfo::UnsignedInteger(_)
             | TypeInfo::RawUntypedPtr
@@ -1519,7 +1534,7 @@ impl TypeInfo {
             | TypeInfo::Storage { .. }
             | TypeInfo::Numeric
             | TypeInfo::Placeholder(_)
-            | TypeInfo::TypeParam(_)
+            | TypeInfo::TypeParam { .. }
             | TypeInfo::Alias { .. } => true,
         }
     }

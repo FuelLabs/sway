@@ -168,6 +168,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
             (Some(span), Some(decl_index)) => Some(DeclRef::new(
                 Ident::new(span.clone()),
                 *decl_index,
+                todo!(),
                 span.clone(),
             )),
             _ => None,

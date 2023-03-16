@@ -68,11 +68,11 @@ pub struct DeclRef<I> {
 }
 
 impl<I> DeclRef<I> {
-    pub(crate) fn new(name: Ident, id: I, decl_span: Span) -> Self {
+    pub(crate) fn new(name: Ident, id: I, subst_list: SubstList, decl_span: Span) -> Self {
         DeclRef {
             name,
             id,
-            subst_list: SubstList::new(),
+            subst_list,
             decl_span,
         }
     }

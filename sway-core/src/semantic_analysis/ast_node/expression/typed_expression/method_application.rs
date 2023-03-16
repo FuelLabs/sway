@@ -528,7 +528,7 @@ pub(crate) fn resolve_method_name(
         errors
     );
 
-    let decl_ref = ctx.decl_engine.insert(func_decl);
+    let decl_ref = ctx.decl_engine.insert(func_decl, todo!());
 
     ok(decl_ref, warnings, errors)
 }

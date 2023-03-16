@@ -55,7 +55,7 @@ impl ty::TyAbiDecl {
         for item in interface_surface.into_iter() {
             match item {
                 TraitItem::TraitFn(method) => {
-                    let method = check!(
+                    let (method, type_subst_list) = check!(
                         ty::TyTraitFn::type_check(ctx.by_ref(), method),
                         return err(warnings, errors),
                         warnings,
@@ -70,7 +70,7 @@ impl ty::TyAbiDecl {
                         }
                     }
                     new_interface_surface.push(ty::TyTraitInterfaceItem::TraitFn(
-                        ctx.decl_engine.insert(method),
+                        ctx.decl_engine.insert(method, type_subst_list),
                     ));
                 }
                 TraitItem::Constant(_) => {
@@ -83,7 +83,7 @@ impl ty::TyAbiDecl {
         // Type check the methods.
         let mut new_items = vec![];
         for method in methods.into_iter() {
-            let method = check!(
+            let (method, type_subst_list) = check!(
                 ty::TyFunctionDecl::type_check(ctx.by_ref(), method.clone(), true, false),
                 ty::TyFunctionDecl::error(method.clone()),
                 warnings,
@@ -97,7 +97,9 @@ impl ty::TyAbiDecl {
                     })
                 }
             }
-            new_items.push(TyTraitItem::Fn(ctx.decl_engine.insert(method)));
+            new_items.push(TyTraitItem::Fn(
+                ctx.decl_engine.insert(method, type_subst_list),
+            ));
         }
 
         // Compared to regular traits, we do not insert recursively methods of ABI supertraits

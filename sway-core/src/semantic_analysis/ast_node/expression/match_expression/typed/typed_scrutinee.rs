@@ -209,7 +209,9 @@ fn type_check_struct(
         return err(warnings, errors);
     }
 
-    let struct_ref = decl_engine.insert(struct_decl);
+    let decl_name = struct_decl.call_path.suffix.clone();
+    let struct_ref = decl_engine.insert(struct_decl, todo!());
+
     let typed_scrutinee = ty::TyScrutinee {
         type_id: type_engine.insert(decl_engine, TypeInfo::Struct(struct_ref.clone())),
         span,
@@ -304,6 +306,9 @@ fn type_check_enum(
         errors
     );
 
+    let decl_name = enum_decl.call_path.suffix.clone();
+    let enum_ref = decl_engine.insert(enum_decl.clone(), todo!());
+
     // type check the nested scrutinee
     let typed_value = check!(
         ty::TyScrutinee::type_check(ctx, value),
@@ -312,7 +317,6 @@ fn type_check_enum(
         errors
     );
 
-    let enum_ref = decl_engine.insert(enum_decl);
     let typed_scrutinee = ty::TyScrutinee {
         variant: ty::TyScrutineeVariant::EnumScrutinee {
             enum_ref: enum_ref.clone(),

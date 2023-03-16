@@ -6,7 +6,10 @@ use crate::{
 };
 
 impl ty::TyEnumDecl {
-    pub fn type_check(ctx: TypeCheckContext, decl: EnumDeclaration) -> CompileResult<Self> {
+    pub fn type_check(
+        ctx: TypeCheckContext,
+        decl: EnumDeclaration,
+    ) -> CompileResult<(Self, SubstList)> {
         let mut errors = vec![];
         let mut warnings = vec![];
 
@@ -26,12 +29,15 @@ impl ty::TyEnumDecl {
 
         // Type check the type parameters. This will also insert them into the
         // current namespace.
-        let new_type_parameters = check!(
+        let (new_type_parameters, type_subst_list) = check!(
             TypeParameter::type_check_type_params(ctx.by_ref(), type_parameters, true),
             return err(warnings, errors),
             warnings,
             errors
         );
+        ctx.namespace
+            .type_subst_stack_mut()
+            .push(type_subst_list.clone());
 
         // type check the variants
         let mut variants_buf = vec![];
@@ -56,7 +62,7 @@ impl ty::TyEnumDecl {
             attributes,
             visibility,
         };
-        ok(decl, warnings, errors)
+        ok((decl, type_subst_list), warnings, errors)
     }
 }
 

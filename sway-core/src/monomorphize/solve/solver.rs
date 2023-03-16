@@ -118,7 +118,7 @@ impl<'a> Solver<'a> {
             TypeInfo::Unknown => todo!(),
             TypeInfo::UnknownGeneric { .. } => todo!(),
             TypeInfo::Placeholder(_) => todo!(),
-            TypeInfo::TypeParam(_) => todo!(),
+            TypeInfo::TypeParam { .. } => todo!(),
             TypeInfo::Enum { .. } => todo!(),
             TypeInfo::Struct { .. } => todo!(),
             TypeInfo::Tuple(elems) => {
@@ -166,6 +166,7 @@ impl<'a> Solver<'a> {
         let mut instructions = vec![];
 
         let res: InstructionResult = subst_list
+            .elems()
             .iter()
             .map(|type_param| self.helper_ty_use(type_param.type_id))
             .collect::<Result<_, _>>()?;

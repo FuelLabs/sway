@@ -130,7 +130,7 @@ impl TyFunctionDecl {
 
     /// Used to create a stubbed out function when the function fails to
     /// compile, preventing cascading namespace errors.
-    pub(crate) fn error(decl: parsed::FunctionDeclaration) -> TyFunctionDecl {
+    pub(crate) fn error(decl: parsed::FunctionDeclaration) -> (TyFunctionDecl, SubstList) {
         let parsed::FunctionDeclaration {
             name,
             return_type,
@@ -140,7 +140,7 @@ impl TyFunctionDecl {
             where_clause,
             ..
         } = decl;
-        TyFunctionDecl {
+        let fn_decl = TyFunctionDecl {
             purity,
             name,
             body: TyCodeBlock {
@@ -155,7 +155,8 @@ impl TyFunctionDecl {
             return_type,
             type_parameters: Default::default(),
             where_clause,
-        }
+        };
+        (fn_decl, SubstList::new())
     }
 
     /// If there are parameters, join their spans. Otherwise, use the fn name span.

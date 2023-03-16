@@ -311,7 +311,7 @@ impl TypeEngine {
                         );
 
                         // insert the new copy in the decl engine
-                        let new_decl_ref = decl_engine.insert(new_copy);
+                        let new_decl_ref = decl_engine.insert(new_copy, todo!());
 
                         // create the type id from the copy
                         let type_id = engines
@@ -348,7 +348,7 @@ impl TypeEngine {
                         );
 
                         // insert the new copy in the decl engine
-                        let new_decl_ref = decl_engine.insert(new_copy);
+                        let new_decl_ref = decl_engine.insert(new_copy, todo!());
 
                         // create the type id from the copy
                         let type_id = engines

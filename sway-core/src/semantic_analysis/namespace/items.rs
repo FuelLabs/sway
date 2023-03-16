@@ -43,6 +43,9 @@ pub struct Items {
     pub(crate) use_aliases: UseAliases,
     /// If there is a storage declaration (which are only valid in contracts), store it here.
     pub(crate) declared_storage: Option<DeclRefStorage>,
+
+    /// Stack of [SubstList]'s used during type checking.
+    type_subst_stack: Vec<SubstList>,
 }
 
 impl Items {
@@ -355,5 +358,9 @@ impl Items {
             }
         }
         ok((symbol, parent_rover), warnings, errors)
+    }
+
+    pub(crate) fn type_subst_stack_mut(&mut self) -> &mut Vec<SubstList> {
+        &mut self.type_subst_stack
     }
 }

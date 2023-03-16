@@ -281,7 +281,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
             }
         }
         // Insert the new copy into the declaration engine.
-        let new_fn_ref = ctx.decl_engine.insert(new_copy);
+        let new_fn_ref = ctx.decl_engine.insert(new_copy, todo!());
         ok((new_fn_ref, None), warnings, errors)
     }
 }
@@ -327,7 +327,7 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
             errors
         );
         // Insert the new copy into the declaration engine.
-        let new_struct_ref = ctx.decl_engine.insert(new_copy);
+        let new_struct_ref = ctx.decl_engine.insert(new_copy, todo!());
         // Take any trait items that apply to the old type and copy them to the new type.
         let type_id = type_engine.insert(decl_engine, TypeInfo::Struct(new_struct_ref.clone()));
         ctx.namespace
@@ -383,7 +383,7 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
             errors
         );
         // Insert the new copy into the declaration engine.
-        let new_enum_ref = ctx.decl_engine.insert(new_copy);
+        let new_enum_ref = ctx.decl_engine.insert(new_copy, todo!());
         // Take any trait items that apply to the old type and copy them to the new type.
         let type_id = type_engine.insert(decl_engine, TypeInfo::Enum(new_enum_ref.clone()));
         ctx.namespace

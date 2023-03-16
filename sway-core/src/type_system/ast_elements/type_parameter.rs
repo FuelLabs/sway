@@ -109,18 +109,24 @@ impl fmt::Debug for TypeParameter {
 }
 
 impl TypeParameter {
-    /// Type check a list of [TypeParameter] and return a new list of
-    /// [TypeParameter]. This will also insert this new list into the current
-    /// namespace.
+    /// Type checks a list of [TypeParameter]s and returns a new list of
+    /// [TypeParameter]s and a [SubstList]. This will also insert the list of
+    /// [TypeParameter] into the current namespace.
     pub(crate) fn type_check_type_params(
         mut ctx: TypeCheckContext,
         type_params: Vec<TypeParameter>,
         disallow_trait_constraints: bool,
-    ) -> CompileResult<Vec<TypeParameter>> {
+    ) -> CompileResult<(Vec<TypeParameter>, SubstList)> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
         let mut new_type_params: Vec<TypeParameter> = vec![];
+        let mut type_subst_list = ctx
+            .namespace
+            .type_subst_stack_mut()
+            .last()
+            .cloned()
+            .unwrap_or_default();
 
         for type_param in type_params.into_iter() {
             if disallow_trait_constraints && !type_param.trait_constraints.is_empty() {
@@ -129,24 +135,33 @@ impl TypeParameter {
                 }];
                 return err(vec![], errors);
             }
-            new_type_params.push(check!(
+            let ((subst_list_name, subst_list_param), body_type_param) = check!(
                 TypeParameter::type_check(ctx.by_ref(), type_param),
                 continue,
                 warnings,
                 errors
-            ));
+            );
+            type_subst_list.insert(subst_list_name, subst_list_param);
+            new_type_params.push(body_type_param);
         }
 
         if errors.is_empty() {
-            ok(new_type_params, warnings, errors)
+            ok((new_type_params, type_subst_list), warnings, errors)
         } else {
             err(warnings, errors)
         }
     }
 
-    /// Type checks a [TypeParameter] (including its [TraitConstraint]s) and
-    /// inserts into into the current namespace.
-    fn type_check(mut ctx: TypeCheckContext, type_parameter: TypeParameter) -> CompileResult<Self> {
+    /// Type checks a [TypeParameter] (including its [TraitConstraint]s),
+    /// inserts it into the current namespace, and returns two new
+    /// [TypeParameters]:
+    /// 1. A [TypeParameter] to go in the [SubstList].
+    /// 2. A [TypeParameter] to go in the body of where this was created.
+    ///     References (1) in the [SubstList].
+    fn type_check(
+        mut ctx: TypeCheckContext,
+        type_parameter: TypeParameter,
+    ) -> CompileResult<((String, Self), Self)> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -171,20 +186,26 @@ impl TypeParameter {
             );
         }
 
-        // TODO: add check here to see if the type parameter has a valid name and does not have type parameters
-
-        let type_id = type_engine.insert(
+        let subst_list_name = canonicalize_name(name_ident.as_str());
+        let body_id = type_engine.insert(
             decl_engine,
-            TypeInfo::UnknownGeneric {
-                name: name_ident.clone(),
-                trait_constraints: VecSet(trait_constraints.clone()),
+            TypeInfo::TypeParam {
+                index_name: subst_list_name.clone(),
+                debug_name: name_ident.clone(),
             },
         );
+        let body_type_param = TypeParameter {
+            name_ident: name_ident.clone(),
+            type_id: body_id,
+            initial_type_id,
+            trait_constraints: trait_constraints.clone(),
+            trait_constraints_span: trait_constraints_span.clone(),
+        };
 
         // Insert the trait constraints into the namespace.
         for trait_constraint in trait_constraints.iter() {
             check!(
-                TraitConstraint::insert_into_namespace(ctx.by_ref(), type_id, trait_constraint),
+                TraitConstraint::insert_into_namespace(ctx.by_ref(), body_id, trait_constraint),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -193,21 +214,41 @@ impl TypeParameter {
 
         // Insert the type parameter into the namespace as a dummy type
         // declaration.
-        let type_parameter_decl = ty::TyDecl::GenericTypeForFunctionScope {
-            name: name_ident.clone(),
-            type_id,
-        };
         ctx.namespace
-            .insert_symbol(name_ident.clone(), type_parameter_decl)
+            .insert_symbol(
+                name_ident.clone(),
+                ty::TyDecl::GenericTypeForFunctionScope {
+                    name: name_ident.clone(),
+                    type_id: body_id,
+                },
+            )
             .ok(&mut warnings, &mut errors);
 
-        let type_parameter = TypeParameter {
+        let subst_list_id = type_engine.insert(
+            decl_engine,
+            TypeInfo::UnknownGeneric {
+                name: name_ident.clone(),
+                trait_constraints: VecSet(trait_constraints.clone()),
+            },
+        );
+        let subst_list_param = TypeParameter {
             name_ident,
-            type_id,
+            type_id: subst_list_id,
             initial_type_id,
             trait_constraints,
             trait_constraints_span,
         };
-        ok(type_parameter, warnings, errors)
+
+        ok(
+            ((subst_list_name, subst_list_param), body_type_param),
+            warnings,
+            errors,
+        )
     }
+}
+
+fn canonicalize_name(name: &str) -> String {
+    let mut new_name = "$$".to_string();
+    new_name.push_str(name);
+    new_name
 }

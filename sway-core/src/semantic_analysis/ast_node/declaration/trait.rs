@@ -22,7 +22,7 @@ impl ty::TyTraitDecl {
     pub(crate) fn type_check(
         ctx: TypeCheckContext,
         trait_decl: TraitDeclaration,
-    ) -> CompileResult<Self> {
+    ) -> CompileResult<(Self, SubstList)> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
@@ -55,12 +55,15 @@ impl ty::TyTraitDecl {
 
         // Type check the type parameters. This will also insert them into the
         // current namespace.
-        let new_type_parameters = check!(
+        let (new_type_parameters, type_subst_list) = check!(
             TypeParameter::type_check_type_params(ctx.by_ref(), type_parameters, true),
             return err(warnings, errors),
             warnings,
             errors
         );
+        ctx.namespace
+            .type_subst_stack_mut()
+            .push(type_subst_list.clone());
 
         // Recursively make the interface surfaces and methods of the
         // supertraits available to this trait.
@@ -80,15 +83,15 @@ impl ty::TyTraitDecl {
         for item in interface_surface.into_iter() {
             let decl_name = match item {
                 TraitItem::TraitFn(method) => {
-                    let method = check!(
+                    let (method, type_subst_list) = check!(
                         ty::TyTraitFn::type_check(ctx.by_ref(), method),
                         return err(warnings, errors),
                         warnings,
                         errors
                     );
-                    let decl_ref = decl_engine.insert(method.clone());
+                    let decl_ref = decl_engine.insert(method.clone(), type_subst_list.clone());
                     dummy_interface_surface.push(ty::TyImplItem::Fn(
-                        decl_engine.insert(method.to_dummy_func(Mode::NonAbi)),
+                        decl_engine.insert(method.to_dummy_func(Mode::NonAbi), type_subst_list),
                     ));
                     new_interface_surface.push(ty::TyTraitInterfaceItem::TraitFn(decl_ref));
                     method.name.clone()
@@ -100,7 +103,7 @@ impl ty::TyTraitDecl {
                         warnings,
                         errors
                     );
-                    let decl_ref = ctx.decl_engine.insert(const_decl.clone());
+                    let decl_ref = ctx.decl_engine.insert(const_decl.clone(), SubstList::new());
                     new_interface_surface
                         .push(ty::TyTraitInterfaceItem::Constant(decl_ref.clone()));
 
@@ -155,13 +158,15 @@ impl ty::TyTraitDecl {
         // type check the items
         let mut new_items = vec![];
         for method in methods.into_iter() {
-            let method = check!(
+            let (method, type_subst_list) = check!(
                 ty::TyFunctionDecl::type_check(ctx.by_ref(), method.clone(), true, false),
                 ty::TyFunctionDecl::error(method),
                 warnings,
                 errors
             );
-            new_items.push(ty::TyTraitItem::Fn(decl_engine.insert(method)));
+            new_items.push(ty::TyTraitItem::Fn(
+                decl_engine.insert(method, type_subst_list),
+            ));
         }
 
         let typed_trait_decl = ty::TyTraitDecl {
@@ -174,7 +179,7 @@ impl ty::TyTraitDecl {
             attributes,
             span,
         };
-        ok(typed_trait_decl, warnings, errors)
+        ok((typed_trait_decl, type_subst_list), warnings, errors)
     }
 
     /// Retrieves the interface surface and implemented items for this trait.

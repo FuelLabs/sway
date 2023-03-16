@@ -793,7 +793,7 @@ impl TypeInfo {
             Unknown => "unknown".into(),
             UnknownGeneric { name, .. } => name.to_string(),
             Placeholder(_) => "_".to_string(),
-            TypeParam(n) => format!("typeparam({n})"),
+            TypeParam { index_name, .. } => format!("typeparam({index_name})"),
             Str(x) => format!("str[{}]", x.val()),
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",

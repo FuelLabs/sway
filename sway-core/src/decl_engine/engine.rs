@@ -7,6 +7,7 @@ use crate::{
         self, TyAbiDecl, TyConstantDecl, TyEnumDecl, TyFunctionDecl, TyImplTrait, TyStorageDecl,
         TyStructDecl, TyTraitDecl, TyTraitFn, TyTypeAliasDecl,
     },
+    type_system::SubstList,
 };
 
 /// Used inside of type inference to store declarations.
@@ -32,7 +33,7 @@ pub trait DeclEngineInsert<T>
 where
     T: Named + Spanned,
 {
-    fn insert(&self, decl: T) -> DeclRef<DeclId<T>>;
+    fn insert(&self, decl: T, subst_list: SubstList) -> DeclRef<DeclId<T>>;
 }
 
 pub trait DeclEngineReplace<T> {
@@ -75,11 +76,12 @@ decl_engine_get!(type_alias_slab, ty::TyTypeAliasDecl);
 macro_rules! decl_engine_insert {
     ($slab:ident, $decl:ty) => {
         impl DeclEngineInsert<$decl> for DeclEngine {
-            fn insert(&self, decl: $decl) -> DeclRef<DeclId<$decl>> {
+            fn insert(&self, decl: $decl, subst_list: SubstList) -> DeclRef<DeclId<$decl>> {
                 let span = decl.span();
                 DeclRef::new(
                     decl.name().clone(),
                     DeclId::new(self.$slab.insert(decl)),
+                    subst_list,
                     span,
                 )
             }

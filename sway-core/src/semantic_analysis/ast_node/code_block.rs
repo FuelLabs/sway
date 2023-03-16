@@ -74,13 +74,18 @@ impl ty::TyCodeBlock {
                     if let Some(ty::TyDecl::EnumDecl {
                         name,
                         decl_id,
-                        subst_list: _,
+                        subst_list,
                         decl_span,
                     }) = never_decl_opt
                     {
                         return ctx.engines().te().insert(
                             decl_engine,
-                            TypeInfo::Enum(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
+                            TypeInfo::Enum(DeclRef::new(
+                                name.clone(),
+                                *decl_id,
+                                subst_list.fresh_copy(),
+                                decl_span.clone(),
+                            )),
                         );
                     }
 

@@ -322,7 +322,7 @@ impl TypeSubstMap {
             TypeInfo::Custom { .. } => iter_for_match(engines, self, &type_info),
             TypeInfo::UnknownGeneric { .. } => iter_for_match(engines, self, &type_info),
             TypeInfo::Placeholder(_) => iter_for_match(engines, self, &type_info),
-            TypeInfo::TypeParam(_) => None,
+            TypeInfo::TypeParam { .. } => None,
             TypeInfo::Struct(decl_ref) => {
                 let mut decl = decl_engine.get_struct(&decl_ref);
                 let mut need_to_create_new = false;
@@ -339,7 +339,7 @@ impl TypeSubstMap {
                     }
                 }
                 if need_to_create_new {
-                    let new_decl_ref = decl_engine.insert(decl);
+                    let new_decl_ref = decl_engine.insert(decl, todo!());
                     Some(type_engine.insert(decl_engine, TypeInfo::Struct(new_decl_ref)))
                 } else {
                     None
@@ -363,7 +363,7 @@ impl TypeSubstMap {
                     }
                 }
                 if need_to_create_new {
-                    let new_decl_ref = decl_engine.insert(decl);
+                    let new_decl_ref = decl_engine.insert(decl, todo!());
                     Some(type_engine.insert(decl_engine, TypeInfo::Enum(new_decl_ref)))
                 } else {
                     None
