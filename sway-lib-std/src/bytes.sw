@@ -669,6 +669,7 @@ impl Bytes {
         other.clear();
     }
 
+    // Should be remove and replace when https://github.com/FuelLabs/sway/pull/3882 is resovled
     pub fn from_raw_slice(slice: raw_slice) -> Bytes {
         let buf = RawBytes {
             ptr: slice.ptr(),
