@@ -6,7 +6,7 @@ use crate::{
     engine_threading::*,
     language::ty::{
         TyEnumDeclaration, TyFunctionDeclaration, TyImplTrait, TyStructDeclaration,
-        TyTraitDeclaration, TyTraitFn,
+        TyTraitDeclaration, TyTraitFn, TyTypeAliasDeclaration,
     },
     type_system::*,
 };
@@ -135,6 +135,14 @@ impl SubstTypes for DeclId<TyEnumDeclaration> {
         decl_engine.replace(*self, decl);
     }
 }
+impl SubstTypes for DeclId<TyTypeAliasDeclaration> {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        let decl_engine = engines.de();
+        let mut decl = decl_engine.get(*self);
+        decl.subst(type_mapping, engines);
+        decl_engine.replace(*self, decl);
+    }
+}
 
 impl ReplaceSelfType for DeclId<TyFunctionDeclaration> {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
@@ -177,6 +185,14 @@ impl ReplaceSelfType for DeclId<TyStructDeclaration> {
     }
 }
 impl ReplaceSelfType for DeclId<TyEnumDeclaration> {
+    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+        let decl_engine = engines.de();
+        let mut decl = decl_engine.get(*self);
+        decl.replace_self_type(engines, self_type);
+        decl_engine.replace(*self, decl);
+    }
+}
+impl ReplaceSelfType for DeclId<TyTypeAliasDeclaration> {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(*self);
