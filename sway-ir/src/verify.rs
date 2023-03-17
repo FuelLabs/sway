@@ -725,7 +725,8 @@ impl<'a> InstructionVerifier<'a> {
     }
 
     fn verify_state_clear(&self, key: &Value, number_of_slots: &Value) -> Result<(), IrError> {
-        if !key.get_type(self.context).is(Type::is_b256, self.context) {
+        let key_type = self.get_ptr_type(key, IrError::VerifyStateKeyNonPointer)?;
+        if !key_type.is_b256(self.context) {
             Err(IrError::VerifyStateKeyBadType)
         } else if !number_of_slots
             .get_type(self.context)
