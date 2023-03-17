@@ -23,7 +23,7 @@ source = 'member'
 dependencies = ['std']
 
 [[package]]
-name = 'config_time_constants'
+name = 'configurable_constants'
 source = 'member'
 
 [[package]]
