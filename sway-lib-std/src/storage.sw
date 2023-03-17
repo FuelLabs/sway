@@ -234,7 +234,7 @@ pub fn clear_slice(key: b256) -> bool {
     let len = get::<u64>(key).unwrap_or(0);
     let number_of_slots = (len + 31) >> 5;
 
-    // Clear `number_of_slots` bytes starting at storage slot `key`.
+    // Clear length and `number_of_slots` bytes starting at storage slot `sha256(key)`
     let _ = __state_clear(key, 1);
     __state_clear(sha256(key), number_of_slots)
 }
