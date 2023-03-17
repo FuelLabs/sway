@@ -609,7 +609,7 @@ impl BuildProfile {
             include_tests: false,
             json_abi_with_callpaths: false,
             error_on_warnings: false,
-            reverse_errors: true,
+            reverse_errors: false,
         }
     }
 
