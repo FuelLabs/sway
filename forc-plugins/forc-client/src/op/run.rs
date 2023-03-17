@@ -144,7 +144,6 @@ async fn send_tx(
 }
 
 fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
-    let const_inject_map = std::collections::HashMap::new();
     pkg::BuildOpts {
         pkg: pkg::PkgOpts {
             path: cmd.pkg.path.clone(),
@@ -173,7 +172,6 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
         binary_outfile: cmd.build_output.bin_file.clone(),
         debug_outfile: cmd.build_output.debug_file.clone(),
         tests: false,
-        const_inject_map,
         member_filter: pkg::MemberFilter::only_scripts(),
     }
 }
