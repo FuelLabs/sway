@@ -1020,12 +1020,6 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             let fn_decl = decl_engine.get_function(fn_ref);
             let mut is_external = false;
 
-            // in the case of monomorphized functions, first check if we already have a node for
-            // it in the namespace. if not then we need to check to see if the namespace contains
-            // the decl id parents (the original generic non monomorphized decl id).
-            let exists = false;
-            todo!();
-
             // find the function in the namespace
             let fn_namespace_entry = graph.namespace.get_function(&fn_decl).cloned();
 
@@ -1033,7 +1027,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
 
             // if the parent node exists in this module, then add the monomorphized version
             // to the graph.
-            if fn_namespace_entry.is_none() && exists {
+            if fn_namespace_entry.is_none() {
                 let (l_leaves, _new_exit_node) = connect_node(
                     engines,
                     &ty::TyAstNode {
