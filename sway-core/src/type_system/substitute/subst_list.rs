@@ -43,7 +43,7 @@ impl SubstList {
         self.list.get(index)
     }
 
-    pub(crate) fn apply_type_args(&mut self, type_args: Vec<TypeArgument>) {
+    pub(crate) fn apply_type_args(&mut self, type_args: &[TypeArgument]) {
         self.list
             .iter_mut()
             .zip(type_args.iter())

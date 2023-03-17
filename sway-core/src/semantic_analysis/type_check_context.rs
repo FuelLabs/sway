@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::DeclEngine,
+    decl_engine::{DeclEngine, DeclId, DeclRef},
     engine_threading::*,
     language::{parsed::TreeType, Purity},
     namespace::Path,
@@ -236,6 +236,25 @@ impl<'a> TypeCheckContext<'a> {
     }
 
     // Provide some convenience functions around the inner context.
+
+    pub(crate) fn combine_subst_list_and_args<T>(
+        &mut self,
+        decl_ref: &mut DeclRef<DeclId<T>>,
+        type_args: &mut [TypeArgument],
+        enforce_type_args: EnforceTypeArguments,
+        call_site_span: &Span,
+    ) -> CompileResult<()> {
+        let mod_path = self.namespace.mod_path.clone();
+        self.type_engine.combine_subst_list_and_args(
+            self.namespace,
+            self.decl_engine,
+            &mod_path,
+            decl_ref,
+            type_args,
+            enforce_type_args,
+            call_site_span,
+        )
+    }
 
     /// Short-hand for calling the `monomorphize` function in the type engine
     pub(crate) fn monomorphize<T>(

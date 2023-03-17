@@ -240,20 +240,19 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
             errors
         );
         // Check to see if this is a fn declaration.
-        let fn_ref = check!(
+        let mut fn_ref = check!(
             unknown_decl.to_fn_ref(),
             return err(warnings, errors),
             warnings,
             errors
-        );
-        // Get a new copy from the declaration engine.
-        let mut new_copy = decl_engine.get_function(fn_ref.id());
+        )
+        .scoped_copy(engines);
         match self.type_arguments {
-            // Monomorphize the copy, in place.
             TypeArgs::Regular(_) => {
+                // Monomorphize the copy, in place.
                 check!(
-                    ctx.monomorphize(
-                        &mut new_copy,
+                    ctx.combine_subst_list_and_args(
+                        &mut fn_ref,
                         self.type_arguments.to_vec_mut(),
                         EnforceTypeArguments::No,
                         &self.span
@@ -264,7 +263,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
                 );
             }
             TypeArgs::Prefix(_) => {
-                // Resolve the type arguments without monomorphizing.
+                // Resolve the type arguments without using the fn.
                 for type_argument in self.type_arguments.to_vec_mut().iter_mut() {
                     check!(
                         ctx.resolve_type(
@@ -280,9 +279,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
                 }
             }
         }
-        // Insert the new copy into the declaration engine.
-        let new_fn_ref = ctx.decl_engine.insert(new_copy, todo!());
-        ok((new_fn_ref, None), warnings, errors)
+        ok((fn_ref, None), warnings, errors)
     }
 }
 
@@ -306,18 +303,16 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
             errors
         );
         // Check to see if this is a struct declaration.
-        let struct_ref = check!(
+        let mut struct_ref = check!(
             unknown_decl.to_struct_ref(engines),
             return err(warnings, errors),
             warnings,
             errors
-        );
-        // Get a new copy from the declaration engine.
-        let mut new_copy = decl_engine.get_struct(struct_ref.id());
-        // Monomorphize the copy, in place.
+        )
+        .scoped_copy(engines);
         check!(
-            ctx.monomorphize(
-                &mut new_copy,
+            ctx.combine_subst_list_and_args(
+                &mut struct_ref,
                 self.type_arguments.to_vec_mut(),
                 EnforceTypeArguments::No,
                 &self.span
@@ -326,13 +321,11 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
             warnings,
             errors
         );
-        // Insert the new copy into the declaration engine.
-        let new_struct_ref = ctx.decl_engine.insert(new_copy, todo!());
         // Take any trait items that apply to the old type and copy them to the new type.
-        let type_id = type_engine.insert(decl_engine, TypeInfo::Struct(new_struct_ref.clone()));
+        let type_id = type_engine.insert(decl_engine, TypeInfo::Struct(struct_ref.clone()));
         ctx.namespace
             .insert_trait_implementation_for_type(engines, type_id);
-        ok((new_struct_ref, Some(type_id)), warnings, errors)
+        ok((struct_ref, Some(type_id)), warnings, errors)
     }
 }
 
@@ -355,25 +348,17 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
             warnings,
             errors
         );
-
-        // Get a new copy from the declaration engine.
-        let mut new_copy = if let ty::TyDecl::EnumVariantDecl { decl_id, .. } = &unknown_decl {
-            decl_engine.get_enum(decl_id)
-        } else {
-            // Check to see if this is a enum declaration.
-            let enum_ref = check!(
-                unknown_decl.to_enum_ref(engines),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            decl_engine.get_enum(enum_ref.id())
-        };
-
-        // Monomorphize the copy, in place.
+        // Check to see if this is a enum declaration.
+        let mut enum_ref = check!(
+            unknown_decl.to_enum_ref(engines),
+            return err(warnings, errors),
+            warnings,
+            errors
+        )
+        .scoped_copy(engines);
         check!(
-            ctx.monomorphize(
-                &mut new_copy,
+            ctx.combine_subst_list_and_args(
+                &mut enum_ref,
                 self.type_arguments.to_vec_mut(),
                 EnforceTypeArguments::No,
                 &self.span
@@ -382,13 +367,11 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
             warnings,
             errors
         );
-        // Insert the new copy into the declaration engine.
-        let new_enum_ref = ctx.decl_engine.insert(new_copy, todo!());
         // Take any trait items that apply to the old type and copy them to the new type.
-        let type_id = type_engine.insert(decl_engine, TypeInfo::Enum(new_enum_ref.clone()));
+        let type_id = type_engine.insert(decl_engine, TypeInfo::Enum(enum_ref.clone()));
         ctx.namespace
             .insert_trait_implementation_for_type(engines, type_id);
-        ok((new_enum_ref, Some(type_id)), warnings, errors)
+        ok((enum_ref, Some(type_id)), warnings, errors)
     }
 }
 
@@ -399,9 +382,7 @@ impl TypeCheckTypeBinding<ty::TyConstantDecl> for TypeBinding<CallPath> {
     ) -> CompileResult<(DeclRef<DeclId<ty::TyConstantDecl>>, Option<TypeId>)> {
         let mut warnings = vec![];
         let mut errors = vec![];
-
         let engines = ctx.engines();
-
         // Grab the declaration.
         let unknown_decl = check!(
             ctx.namespace
@@ -411,7 +392,6 @@ impl TypeCheckTypeBinding<ty::TyConstantDecl> for TypeBinding<CallPath> {
             warnings,
             errors
         );
-
         // Check to see if this is a const declaration.
         let const_ref = check!(
             unknown_decl.to_const_ref(),
@@ -419,7 +399,6 @@ impl TypeCheckTypeBinding<ty::TyConstantDecl> for TypeBinding<CallPath> {
             warnings,
             errors
         );
-
         ok((const_ref, None), warnings, errors)
     }
 }

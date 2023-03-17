@@ -220,6 +220,47 @@ impl TypeEngine {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn combine_subst_list_and_args<T>(
+        &self,
+        namespace: &mut Namespace,
+        decl_engine: &DeclEngine,
+        mod_path: &Path,
+        decl_ref: &mut DeclRef<DeclId<T>>,
+        type_args: &mut [TypeArgument],
+        enforce_type_args: EnforceTypeArguments,
+        call_site_span: &Span,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        check!(
+            self.resolve_type_args(
+                namespace,
+                decl_engine,
+                mod_path,
+                type_args,
+                enforce_type_args
+            ),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        check!(
+            self.compare_subst_list_and_args(
+                decl_ref.subst_list(),
+                type_args,
+                enforce_type_args,
+                decl_ref.name(),
+                call_site_span
+            ),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        decl_ref.subst_list_mut().apply_type_args(type_args);
+        ok((), warnings, errors)
+    }
+
     /// Resolve the type of the given [TypeId], replacing any instances of
     /// [TypeInfo::Custom] with either a monomorphized struct, monomorphized
     /// enum, or a reference to a type parameter.
@@ -228,7 +269,7 @@ impl TypeEngine {
         &self,
         decl_engine: &DeclEngine,
         type_id: TypeId,
-        span: &Span,
+        call_site_span: &Span,
         enforce_type_args: EnforceTypeArguments,
         type_info_prefix: Option<&Path>,
         namespace: &mut Namespace,
@@ -244,19 +285,6 @@ impl TypeEngine {
                 type_arguments,
             } => {
                 let mut type_args = type_arguments.unwrap_or_default();
-                check!(
-                    self.resolve_type_args(
-                        namespace,
-                        decl_engine,
-                        mod_path,
-                        &mut type_args,
-                        enforce_type_args
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-
                 match namespace
                     .root()
                     .resolve_call_path_with_visibility_check(engines, module_path, &call_path)
@@ -269,21 +297,22 @@ impl TypeEngine {
                         subst_list,
                         decl_span,
                     }) => {
+                        let mut struct_ref =
+                            DeclRef::new(name, decl_id, subst_list.scoped_copy(engines), decl_span);
                         check!(
-                            self.compare_subst_list_and_args(
-                                subst_list.inner(),
-                                &type_args,
+                            self.combine_subst_list_and_args(
+                                namespace,
+                                decl_engine,
+                                mod_path,
+                                &mut struct_ref,
+                                &mut type_args,
                                 enforce_type_args,
-                                &name,
-                                span
+                                call_site_span
                             ),
                             return err(warnings, errors),
                             warnings,
                             errors
                         );
-                        let mut subst_list = subst_list.scoped_copy(engines);
-                        subst_list.apply_type_args(type_args);
-                        let struct_ref = DeclRef::new(name, decl_id, subst_list, decl_span);
                         let type_id = self.insert(decl_engine, TypeInfo::Struct(struct_ref));
                         namespace.insert_trait_implementation_for_type(engines, type_id);
                         type_id
@@ -294,22 +323,23 @@ impl TypeEngine {
                         subst_list,
                         decl_span,
                     }) => {
+                        let mut enum_ref =
+                            DeclRef::new(name, decl_id, subst_list.scoped_copy(engines), decl_span);
                         check!(
-                            self.compare_subst_list_and_args(
-                                subst_list.inner(),
-                                &type_args,
+                            self.combine_subst_list_and_args(
+                                namespace,
+                                decl_engine,
+                                mod_path,
+                                &mut enum_ref,
+                                &mut type_args,
                                 enforce_type_args,
-                                &name,
-                                span
+                                call_site_span
                             ),
                             return err(warnings, errors),
                             warnings,
                             errors
                         );
-                        let mut subst_list = subst_list.scoped_copy(engines);
-                        subst_list.apply_type_args(type_args);
-                        let struct_ref = DeclRef::new(name, decl_id, subst_list, decl_span);
-                        let type_id = self.insert(decl_engine, TypeInfo::Enum(struct_ref));
+                        let type_id = self.insert(decl_engine, TypeInfo::Enum(enum_ref));
                         namespace.insert_trait_implementation_for_type(engines, type_id);
                         type_id
                     }
@@ -342,7 +372,7 @@ impl TypeEngine {
                     self.resolve(
                         decl_engine,
                         elem_ty.type_id,
-                        span,
+                        call_site_span,
                         enforce_type_args,
                         None,
                         namespace,
@@ -360,7 +390,7 @@ impl TypeEngine {
                         self.resolve(
                             decl_engine,
                             type_argument.type_id,
-                            span,
+                            call_site_span,
                             enforce_type_args,
                             None,
                             namespace,

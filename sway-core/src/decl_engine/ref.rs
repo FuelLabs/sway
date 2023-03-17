@@ -89,6 +89,10 @@ impl<I> DeclRef<I> {
         &self.subst_list
     }
 
+    pub(crate) fn subst_list_mut(&mut self) -> &mut SubstList {
+        &mut self.subst_list
+    }
+
     pub fn decl_span(&self) -> &Span {
         &self.decl_span
     }
@@ -166,5 +170,20 @@ impl ReplaceFunctionImplementingType for DeclRefFunction {
         let mut decl = decl_engine.get(&self.id);
         decl.set_implementing_type(implementing_type);
         decl_engine.replace(self.id, decl);
+    }
+}
+
+impl<T> CreateCopy<DeclRef<DeclId<T>>> for DeclRef<DeclId<T>> {
+    fn scoped_copy(&self, engines: Engines<'_>) -> Self {
+        DeclRef {
+            name: self.name.clone(),
+            id: self.id,
+            subst_list: self.subst_list.scoped_copy(engines),
+            decl_span: self.decl_span.clone(),
+        }
+    }
+
+    fn unscoped_copy(&self) -> Self {
+        self.clone()
     }
 }

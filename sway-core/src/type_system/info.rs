@@ -433,7 +433,7 @@ impl DisplayWithEngines for TypeInfo {
             Unknown => "{unknown}".into(),
             UnknownGeneric { name, .. } => name.to_string(),
             Placeholder(type_param) => type_param.name_ident.to_string(),
-            TypeParam(n) => format!("{n}"),
+            TypeParam { index, .. } => format!("{index}"),
             Str(x) => format!("str[{}]", x.val()),
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",

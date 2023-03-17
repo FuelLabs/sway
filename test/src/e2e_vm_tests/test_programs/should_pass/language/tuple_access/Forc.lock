@@ -1,8 +1,3 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-A4EDABC95499A7B6'
-
-[[package]]
 name = 'tuple_access'
 source = 'member'
-dependencies = ['core']
