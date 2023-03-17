@@ -271,10 +271,9 @@ impl TyProgram {
                         span: main_func.return_type.span.clone(),
                     });
                 }
-                if !main_func
-                    .return_type
-                    .type_id
-                    .extract_any_including_self(engines, &|type_info| {
+                if !ty_engine
+                    .get(main_func.return_type.type_id)
+                    .extract_any(engines, &|type_info| {
                         matches!(type_info, TypeInfo::RawUntypedSlice)
                     })
                     .is_empty()

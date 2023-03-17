@@ -45,7 +45,7 @@ impl CollectTypesMetadata for TypeId {
                 TypeInfo::Placeholder(type_param) => {
                     res.push(TypeMetadata::UnresolvedType(
                         type_param.name_ident,
-                        ctx.call_site_get(&type_id),
+                        ctx.call_site_get(self),
                     ));
                 }
                 _ => {}
