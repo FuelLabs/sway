@@ -553,7 +553,7 @@ impl<'eng> FnCompiler<'eng> {
             }
             Intrinsic::IsReferenceType => {
                 let targ = type_arguments[0].clone();
-                let val = !self.type_engine.get(targ.type_id).is_copy_type();
+                let val = !self.type_engine.get_unaliased(targ.type_id).is_copy_type();
                 Ok(Constant::get_bool(context, val))
             }
             Intrinsic::GetStorageKey => {
@@ -627,7 +627,11 @@ impl<'eng> FnCompiler<'eng> {
 
                 // Reinterpret the result of the `gtf` instruction (which is always `u64`) as type
                 // `T`. This requires an `int_to_ptr` instruction if `T` is a reference type.
-                if self.type_engine.get(target_type.type_id).is_copy_type() {
+                if self
+                    .type_engine
+                    .get_unaliased(target_type.type_id)
+                    .is_copy_type()
+                {
                     Ok(gtf_reg)
                 } else {
                     let ptr_ty = Type::new_ptr(context, target_ir_type);
@@ -679,7 +683,7 @@ impl<'eng> FnCompiler<'eng> {
                 let val_exp = &arguments[1];
                 // Validate that the val_exp is of the right type. We couldn't do it
                 // earlier during type checking as the type arguments may not have been resolved.
-                let val_ty = self.type_engine.to_typeinfo(val_exp.return_type, &span)?;
+                let val_ty = self.type_engine.get_unaliased(val_exp.return_type);
                 if !val_ty.is_copy_type() {
                     return Err(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
@@ -703,7 +707,7 @@ impl<'eng> FnCompiler<'eng> {
                 let number_of_slots_exp = arguments[2].clone();
                 // Validate that the val_exp is of the right type. We couldn't do it
                 // earlier during type checking as the type arguments may not have been resolved.
-                let val_ty = self.type_engine.to_typeinfo(val_exp.return_type, &span)?;
+                let val_ty = self.type_engine.get_unaliased(val_exp.return_type);
                 if !val_ty.eq(&TypeInfo::RawUntypedPtr, engines) {
                     return Err(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
@@ -1076,7 +1080,7 @@ impl<'eng> FnCompiler<'eng> {
                 let arg0 = compiled_args[0];
                 if self
                     .type_engine
-                    .get(ast_args[0].1.return_type)
+                    .get_unaliased(ast_args[0].1.return_type)
                     .is_copy_type()
                 {
                     self.current_block
@@ -1280,7 +1284,10 @@ impl<'eng> FnCompiler<'eng> {
             context,
             &ast_return_type,
         )?;
-        let ret_is_copy_type = self.type_engine.get(ast_return_type).is_copy_type();
+        let ret_is_copy_type = self
+            .type_engine
+            .get_unaliased(ast_return_type)
+            .is_copy_type();
         let return_type = if ret_is_copy_type {
             return_type
         } else {
@@ -1695,12 +1702,7 @@ impl<'eng> FnCompiler<'eng> {
         // Nothing to do for an abi cast declarations. The address specified in them is already
         // provided in each contract call node in the AST.
         if matches!(
-            &self
-                .type_engine
-                .to_typeinfo(body.return_type, &body.span)
-                .map_err(|ty_err| {
-                    CompileError::InternalOwned(format!("{ty_err:?}"), body.span.clone())
-                })?,
+            &self.type_engine.get_unaliased(body.return_type),
             TypeInfo::ContractCaller { .. }
         ) {
             return Ok(None);
@@ -1863,7 +1865,7 @@ impl<'eng> FnCompiler<'eng> {
                 .lhs_indices
                 .iter()
                 .scan(ast_reassignment.lhs_type, |cur_type_id, idx_kind| {
-                    let cur_type_info = self.type_engine.get(*cur_type_id);
+                    let cur_type_info = self.type_engine.get_unaliased(*cur_type_id);
                     Some(match (idx_kind, cur_type_info) {
                         (
                             ProjectionKind::StructField { name: idx_name },
@@ -2173,7 +2175,7 @@ impl<'eng> FnCompiler<'eng> {
         let struct_val = self.compile_ptr_or_tmp_expression(context, md_mgr, ast_struct_expr)?;
 
         // Get the struct type info, with field names.
-        let TypeInfo::Struct(decl_ref) = self.type_engine.get(struct_type_id) else {
+        let TypeInfo::Struct(decl_ref) = self.type_engine.get_unaliased(struct_type_id) else {
             return Err(CompileError::Internal(
                 "Unknown struct in field expression.",
                 ast_field.span.clone(),
@@ -2454,7 +2456,7 @@ impl<'eng> FnCompiler<'eng> {
                                         .map_or(false, |ty| ty.is_ptr(context))
                                         && self
                                             .type_engine
-                                            .get(init_expr.return_type)
+                                            .get_unaliased(init_expr.return_type)
                                             .is_copy_type()
                                     {
                                         // It's a pointer to a copy type.  We need to derefence it.
