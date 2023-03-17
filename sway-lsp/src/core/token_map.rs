@@ -39,22 +39,22 @@ impl TokenMap {
     /// This is useful for the highlighting and renaming LSP capabilities.
     pub fn all_references_of_token<'s>(
         &'s self,
-        token: &Token,
-        engines: Engines<'s>,
+        token_to_match: &Token,
+        type_engine: &'s TypeEngine,
+        decl_engine: &'s DeclEngine,
     ) -> impl 's + Iterator<Item = (Ident, Token)> {
-        let current_type_id = token.declared_token_span(type_engine, decl_engine);
-        self.iter()
-            .filter(move |item| {
-                let ((_, span), token) = item.pair();
-                let decl_span = token.declared_token_span(type_engine, decl_engine);
-                // This condition is true when the current item is the declaration of the token.
-                let does_item_eq_decl = Some(span) == current_type_id.as_ref();
-                current_type_id == decl_span || does_item_eq_decl
-            })
-            .map(|item| {
-                let ((ident, _), token) = item.pair();
-                (ident.clone(), token.clone())
-            })
+        let decl_span_to_match = token_to_match.declared_token_span(type_engine, decl_engine);
+        self.iter().filter_map(move |item| {
+            let ((ident, span), token) = item.pair();
+            let is_same_type =
+                decl_span_to_match == token.declared_token_span(type_engine, decl_engine);
+            let is_decl_of_token = Some(span) == decl_span_to_match.as_ref();
+
+            if is_same_type || is_decl_of_token {
+                return Some((ident.clone(), token.clone()));
+            }
+            None
+        })
     }
 
     /// Given a cursor [Position], return the [Ident] of a token in the

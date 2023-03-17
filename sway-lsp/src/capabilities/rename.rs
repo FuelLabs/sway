@@ -7,8 +7,7 @@ use crate::{
 };
 use std::collections::HashMap;
 use std::sync::Arc;
-use sway_core::Engines;
-use sway_types::Spanned;
+use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{Position, PrepareRenameResponse, TextEdit, Url, WorkspaceEdit};
 
 const RAW_IDENTIFIER: &str = "r#";
@@ -44,39 +43,40 @@ pub fn rename(
         ));
     }
 
-    let mut map_of_changes: HashMap<Url, Vec<TextEdit>> = HashMap::new();
-    for (ident, _) in session.token_map().all_references_of_token(
-        &token,
-        &session.type_engine.read(),
-        &session.decl_engine.read(),
-    ) {
-        let mut range = get_range_from_span(&ident.span());
-        if ident.is_raw_ident() {
-            // Make sure the start char starts at the begining,
-            // taking the r# tokens into account.
-            range.start.character -= RAW_IDENTIFIER.len() as u32;
-        }
-        if let Some(path) = ident.span().path() {
-            let url = session.sync.url_from_path(path)?;
-            if let Some(url) = session.sync.to_workspace_url(url) {
-                let edit = TextEdit::new(range, new_name.clone());
-                match map_of_changes.get_mut(&url) {
-                    Some(edits) => {
-                        edits.push(edit);
-                    }
-                    None => {
-                        map_of_changes.insert(url, vec![edit]);
-                    }
-                }
-            };
-        }
-    }
-
-    // Sort the TextEdits by their range in reverse order so the client
-    // applies edits from the end of the document to the beginning, preventing issues with offset changes.
-    for edits in map_of_changes.values_mut() {
-        edits.sort_unstable_by(|a, b| b.range.start.cmp(&a.range.start));
-    }
+    let map_of_changes: HashMap<Url, Vec<TextEdit>> = session
+        .token_map()
+        .all_references_of_token(
+            &token,
+            &session.type_engine.read(),
+            &session.decl_engine.read(),
+        )
+        .filter_map(|(ident, _)| {
+            let mut range = get_range_from_span(&ident.span());
+            if ident.is_raw_ident() {
+                // Make sure the start char starts at the begining,
+                // taking the r# tokens into account.
+                range.start.character -= RAW_IDENTIFIER.len() as u32;
+            }
+            if let Some(path) = ident.span().path() {
+                let url = session.sync.url_from_path(path).ok()?;
+                if let Some(url) = session.sync.to_workspace_url(url) {
+                    let edit = TextEdit::new(range, new_name.clone());
+                    return Some((url, vec![edit]));
+                };
+            }
+            None
+        })
+        .fold(HashMap::new(), |mut map, (k, mut v)| {
+            map.entry(k)
+                .and_modify(|existing| {
+                    existing.append(&mut v);
+                    // Sort the TextEdits by their range in reverse order so the client applies edits
+                    // from the end of the document to the beginning, preventing issues with offset changes.
+                    existing.sort_unstable_by(|a, b| b.range.start.cmp(&a.range.start))
+                })
+                .or_insert(v);
+            map
+        });
 
     Ok(WorkspaceEdit::new(map_of_changes))
 }
@@ -99,20 +99,24 @@ pub fn prepare_rename(
     // are keywords or intrinsics.
     if matches!(token.kind, SymbolKind::Keyword | SymbolKind::Intrinsic) {
         return Err(LanguageServerError::RenameError(
-            RenameError::UnableToRenameKeyword,
+            RenameError::SymbolKindNotAllowed,
         ));
-    }
-
-    let mut name = ident.as_str().to_string();
-    // Prefix r# onto the name if the ident is raw.
-    if ident.is_raw_ident() {
-        name = format!("{RAW_IDENTIFIER}{name}");
     }
 
     Ok(PrepareRenameResponse::RangeWithPlaceholder {
         range: get_range_from_span(&ident.span()),
-        placeholder: name,
+        placeholder: formatted_name(&ident),
     })
+}
+
+/// Returns the name of the identifier, prefixed with r# if the identifier is raw.
+fn formatted_name(ident: &Ident) -> String {
+    let name = ident.as_str().to_string();
+    // Prefix r# onto the name if the ident is raw.
+    if ident.is_raw_ident() {
+        return format!("{RAW_IDENTIFIER}{name}");
+    }
+    name
 }
 
 /// Checks if the token is in the users workspace.

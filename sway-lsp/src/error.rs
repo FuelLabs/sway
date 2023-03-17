@@ -66,10 +66,10 @@ pub enum DirectoryError {
 pub enum RenameError {
     #[error("No token was found in the token map at that position")]
     TokenNotFound,
-    #[error("Token is not part of the users workspace")]
+    #[error("Token is not part of the user's workspace")]
     TokenNotPartOfWorkspace,
     #[error("Keywords and instrinsics are unable to be renamed")]
-    UnableToRenameKeyword,
+    SymbolKindNotAllowed,
     #[error("Invalid name {:?}: not an identifier", name)]
     InvalidName { name: String },
     #[error("Identifiers cannot begin with a double underscore, as that naming convention is reserved for compiler intrinsics.")]
