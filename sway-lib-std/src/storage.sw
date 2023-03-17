@@ -235,7 +235,7 @@ pub fn clear_slice(key: b256) -> bool {
     let number_of_slots = (len + 31) >> 5;
 
     // Clear `number_of_slots` bytes starting at storage slot `key`.
-    store(key, 0);
+    let _ = __state_clear(key, 1);
     __state_clear(sha256(key), number_of_slots)
 }
 
@@ -872,8 +872,7 @@ impl StorableSlice<Bytes> for StorageBytes {
     /// ### Number of Storage Accesses
     ///
     /// * Reads: `1`
-    /// * Writes: `1`
-    /// * Clears: `1`
+    /// * Clears: `2`
     ///
     /// ### Examples
     ///
