@@ -98,13 +98,6 @@ where
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-pub struct ConfigTimeConstant {
-    pub r#type: String,
-    pub value: String,
-    #[serde(default)]
-    pub public: bool,
-}
 impl AsRef<PathBuf> for Source {
     fn as_ref(&self) -> &PathBuf {
         &self.path
