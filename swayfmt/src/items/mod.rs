@@ -7,4 +7,5 @@ mod item_impl;
 mod item_storage;
 mod item_struct;
 mod item_trait;
+mod item_type_alias;
 mod item_use;

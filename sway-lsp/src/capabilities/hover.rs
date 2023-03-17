@@ -85,7 +85,7 @@ fn format_doc_attributes(token: &Token) -> String {
         doc_comment = attributes
             .iter()
             .map(|attribute| {
-                let comment = attribute.args.first().unwrap().as_str();
+                let comment = attribute.args.first().unwrap().name.as_str();
                 format!("{comment}\n")
             })
             .collect()
@@ -141,8 +141,8 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
                         &token_name,
                     ))
                 }
-                ty::TyDeclaration::StructDeclaration(decl_ref) => {
-                    let struct_decl = decl_engine.get_struct(decl_ref);
+                ty::TyDeclaration::StructDeclaration { decl_id, .. } => {
+                    let struct_decl = decl_engine.get_struct(decl_id);
                     Some(format_visibility_hover(
                         struct_decl.visibility,
                         decl.friendly_type_name(),
@@ -157,8 +157,8 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
                         &token_name,
                     ))
                 }
-                ty::TyDeclaration::EnumDeclaration(decl_ref) => {
-                    let enum_decl = decl_engine.get_enum(decl_ref);
+                ty::TyDeclaration::EnumDeclaration { decl_id, .. } => {
+                    let enum_decl = decl_engine.get_enum(decl_id);
                     Some(format_visibility_hover(
                         enum_decl.visibility,
                         decl.friendly_type_name(),

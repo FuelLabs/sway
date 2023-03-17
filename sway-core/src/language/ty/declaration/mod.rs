@@ -9,6 +9,7 @@ mod storage;
 mod r#struct;
 mod r#trait;
 mod trait_fn;
+mod type_alias;
 mod variable;
 
 pub use abi::*;
@@ -21,4 +22,5 @@ pub use r#struct::*;
 pub use r#trait::*;
 pub use storage::*;
 pub use trait_fn::*;
+pub use type_alias::*;
 pub use variable::*;

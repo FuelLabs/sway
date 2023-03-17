@@ -126,8 +126,9 @@ fn impl_trait_methods(
         .iter()
         .flat_map(|item| match item {
             ty::TyImplItem::Fn(fn_decl) => Some(fn_decl),
+            ty::TyImplItem::Constant(_) => None,
         })
-        .flat_map(|fn_decl| decl_id_to_fn_decls(decl_engine, &fn_decl.id))
+        .flat_map(|fn_decl| decl_id_to_fn_decls(decl_engine, &fn_decl.id().clone()))
         .collect()
 }
 
@@ -244,12 +245,12 @@ fn analyze_expression(
         } => analyze_two_expressions(engines, left, right, block_name, warnings),
         FunctionApplication {
             arguments,
-            function_decl_ref,
+            fn_ref,
             selector,
             call_path,
             ..
         } => {
-            let func = decl_engine.get_function(function_decl_ref);
+            let func = decl_engine.get_function(fn_ref);
             // we don't need to run full analysis on the function body as it will be covered
             // as a separate step of the whole contract analysis
             // we just need function's effects at this point
@@ -582,12 +583,12 @@ fn effects_of_expression(engines: Engines<'_>, expr: &ty::TyExpression) -> HashS
             .cloned()
             .collect(),
         FunctionApplication {
-            function_decl_ref,
+            fn_ref,
             arguments,
             selector,
             ..
         } => {
-            let fn_body = decl_engine.get_function(function_decl_ref).body;
+            let fn_body = decl_engine.get_function(fn_ref).body;
             let mut effs = effects_of_codeblock(engines, &fn_body);
             let args_effs = map_hashsets_union(arguments, |e| effects_of_expression(engines, &e.1));
             effs.extend(args_effs);

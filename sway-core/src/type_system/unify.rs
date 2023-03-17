@@ -125,6 +125,11 @@ impl<'a> Unifier<'a> {
                     ),
                 )
             }
+
+            // Type aliases and the types they encapsulate coerce to each other.
+            (Alias { ty, .. }, _) => self.unify(ty.type_id, expected, span),
+            (_, Alias { ty, .. }) => self.unify(received, ty.type_id, span),
+
             // Let empty enums to coerce to any other type. This is useful for Never enum.
             (Enum(r_decl_ref), _)
                 if self.engines.de().get_enum(&r_decl_ref).variants.is_empty() =>

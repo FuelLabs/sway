@@ -1,4 +1,5 @@
 mod abi;
+mod constant;
 #[allow(clippy::module_inception)]
 mod declaration;
 mod r#enum;

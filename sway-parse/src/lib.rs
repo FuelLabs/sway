@@ -13,6 +13,8 @@ mod pattern;
 mod priv_prelude;
 mod punctuated;
 mod submodule;
+#[cfg(test)]
+mod test_utils;
 mod token;
 mod ty;
 mod where_clause;
