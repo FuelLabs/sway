@@ -234,7 +234,7 @@ async fn clears_bytes() {
 
     assert_eq!(
         instance.methods().len().call().await.unwrap().value,
-        input.clone().as_bytes().len() as u64
+        input.as_bytes().len() as u64
     );
 
     assert!(
