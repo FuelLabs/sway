@@ -140,7 +140,6 @@ impl UnconstrainedTypeParameters for TyFunctionDeclaration {
         type_parameter: &TypeParameter,
     ) -> bool {
         let type_engine = engines.te();
-        let decl_engine = engines.de();
         let mut all_types: HashSet<TypeId> = self
             .type_parameters
             .iter()
@@ -149,14 +148,14 @@ impl UnconstrainedTypeParameters for TyFunctionDeclaration {
         all_types.extend(self.parameters.iter().flat_map(|param| {
             let mut inner = type_engine
                 .get(param.type_argument.type_id)
-                .extract_inner_types(type_engine, decl_engine);
+                .extract_inner_types(engines);
             inner.insert(param.type_argument.type_id);
             inner
         }));
         all_types.extend(
             type_engine
                 .get(self.return_type.type_id)
-                .extract_inner_types(type_engine, decl_engine),
+                .extract_inner_types(engines),
         );
         all_types.insert(self.return_type.type_id);
         let type_parameter_info = type_engine.get(type_parameter.type_id);

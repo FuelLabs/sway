@@ -147,8 +147,13 @@ impl CollectTypesMetadata for TyExpression {
             StructExpression {
                 fields,
                 instantiation_span,
+                struct_ref,
                 ..
             } => {
+                let struct_decl = decl_engine.get_struct(struct_ref);
+                for type_parameter in struct_decl.type_parameters {
+                    ctx.call_site_insert(type_parameter.type_id, instantiation_span.clone());
+                }
                 if let TypeInfo::Struct(decl_ref) = ctx.type_engine.get(self.return_type) {
                     let decl = decl_engine.get_struct(&decl_ref);
                     for type_parameter in decl.type_parameters {

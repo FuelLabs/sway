@@ -477,14 +477,11 @@ impl TraitMap {
     /// with those entries for `Data<T, T>`.
     pub(crate) fn filter_by_type(&self, type_id: TypeId, engines: Engines<'_>) -> TraitMap {
         let type_engine = engines.te();
-        let decl_engine = engines.de();
         // a curried version of the decider protocol to use in the helper functions
         let decider = |type_info: &TypeInfo, map_type_info: &TypeInfo| {
             type_info.is_subset_of(map_type_info, engines)
         };
-        let mut all_types = type_engine
-            .get(type_id)
-            .extract_inner_types(type_engine, decl_engine);
+        let mut all_types = type_engine.get(type_id).extract_inner_types(engines);
         all_types.insert(type_id);
         let all_types = all_types.into_iter().collect::<Vec<_>>();
         self.filter_by_type_inner(engines, all_types, decider)
@@ -554,7 +551,6 @@ impl TraitMap {
         engines: Engines<'_>,
     ) -> TraitMap {
         let type_engine = engines.te();
-        let decl_engine = engines.de();
         // a curried version of the decider protocol to use in the helper functions
         let decider = |type_info: &TypeInfo, map_type_info: &TypeInfo| {
             type_info.is_subset_of(map_type_info, engines)
@@ -563,7 +559,7 @@ impl TraitMap {
         let mut trait_map = self.filter_by_type_inner(engines, vec![type_id], decider);
         let all_types = type_engine
             .get(type_id)
-            .extract_inner_types(type_engine, decl_engine)
+            .extract_inner_types(engines)
             .into_iter()
             .collect::<Vec<_>>();
         // a curried version of the decider protocol to use in the helper functions

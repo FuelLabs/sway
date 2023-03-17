@@ -27,52 +27,31 @@ impl CollectTypesMetadata for TypeId {
         &self,
         ctx: &mut CollectTypesMetadataContext,
     ) -> CompileResult<Vec<TypeMetadata>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        fn filter_fn(type_info: &TypeInfo) -> bool {
+            matches!(type_info, TypeInfo::UnknownGeneric { .. })
+                || matches!(type_info, TypeInfo::Placeholder(_))
+        }
+        let engines = Engines::new(ctx.type_engine, ctx.decl_engine);
+        let possible = self.extract_any_including_self(engines, &filter_fn);
         let mut res = vec![];
-        match ctx.type_engine.get(*self) {
-            TypeInfo::UnknownGeneric {
-                name,
-                trait_constraints,
-            } => {
-                res.push(TypeMetadata::UnresolvedType(name, ctx.call_site_get(self)));
-                for trait_constraint in trait_constraints.iter() {
-                    res.extend(check!(
-                        trait_constraint.collect_types_metadata(ctx),
-                        continue,
-                        warnings,
-                        errors
+        for type_id in possible.into_iter() {
+            match ctx.type_engine.get(type_id) {
+                TypeInfo::UnknownGeneric { name, .. } => {
+                    res.push(TypeMetadata::UnresolvedType(
+                        name,
+                        ctx.call_site_get(&type_id),
                     ));
                 }
-            }
-            TypeInfo::Placeholder(type_param) => {
-                res.push(TypeMetadata::UnresolvedType(
-                    type_param.name_ident,
-                    ctx.call_site_get(self),
-                ));
-            }
-            _ => {}
-        }
-        if let TypeInfo::UnknownGeneric {
-            name,
-            trait_constraints,
-        } = ctx.type_engine.get(*self)
-        {
-            res.push(TypeMetadata::UnresolvedType(name, ctx.call_site_get(self)));
-            for trait_constraint in trait_constraints.iter() {
-                res.extend(check!(
-                    trait_constraint.collect_types_metadata(ctx),
-                    continue,
-                    warnings,
-                    errors
-                ));
+                TypeInfo::Placeholder(type_param) => {
+                    res.push(TypeMetadata::UnresolvedType(
+                        type_param.name_ident,
+                        ctx.call_site_get(&type_id),
+                    ));
+                }
+                _ => {}
             }
         }
-        if errors.is_empty() {
-            ok(res, warnings, errors)
-        } else {
-            err(warnings, errors)
-        }
+        ok(res, vec![], vec![])
     }
 }
 
@@ -241,8 +220,11 @@ impl ReplaceSelfType for TypeId {
 
 impl SubstTypes for TypeId {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        let type_engine = engines.te();
         if let Some(matching_id) = type_mapping.find_match(*self, engines) {
-            *self = matching_id;
+            if !matches!(type_engine.get(matching_id), TypeInfo::ErrorRecovery) {
+                *self = matching_id;
+            }
         }
     }
 }
@@ -254,10 +236,7 @@ impl UnconstrainedTypeParameters for TypeId {
         type_parameter: &TypeParameter,
     ) -> bool {
         let type_engine = engines.te();
-        let decl_engine = engines.de();
-        let mut all_types: HashSet<TypeId> = type_engine
-            .get(*self)
-            .extract_inner_types(type_engine, decl_engine);
+        let mut all_types: HashSet<TypeId> = type_engine.get(*self).extract_inner_types(engines);
         all_types.insert(*self);
         let type_parameter_info = type_engine.get(type_parameter.type_id);
         all_types
@@ -316,5 +295,22 @@ impl TypeId {
             (TypeInfo::Custom { .. }, _) => true,
             _ => false,
         }
+    }
+
+    pub(crate) fn extract_any_including_self<F>(
+        &self,
+        engines: Engines<'_>,
+        filter_fn: &F,
+    ) -> HashSet<TypeId>
+    where
+        F: Fn(&TypeInfo) -> bool,
+    {
+        let type_engine = engines.te();
+        let type_info = type_engine.get(*self);
+        let mut found: HashSet<TypeId> = type_info.extract_any(engines, filter_fn);
+        if filter_fn(&type_info) {
+            found.insert(*self);
+        }
+        found
     }
 }

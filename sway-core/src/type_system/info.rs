@@ -896,178 +896,11 @@ impl TypeInfo {
 
     /// Given a `TypeInfo` `self`, analyze `self` and return all inner
     /// `TypeId`'s of `self`, not including `self`.
-    pub(crate) fn extract_inner_types(
-        &self,
-        type_engine: &TypeEngine,
-        decl_engine: &DeclEngine,
-    ) -> HashSet<TypeId> {
-        let helper = |type_id: TypeId| {
-            let mut inner_types = HashSet::new();
-            match type_engine.get(type_id) {
-                TypeInfo::Enum(decl_ref) => {
-                    let decl = decl_engine.get_enum(&decl_ref);
-                    inner_types.insert(type_id);
-                    for type_param in decl.type_parameters.iter() {
-                        inner_types.extend(
-                            type_engine
-                                .get(type_param.type_id)
-                                .extract_inner_types(type_engine, decl_engine),
-                        );
-                    }
-                    for variant in decl.variants.iter() {
-                        inner_types.extend(
-                            type_engine
-                                .get(variant.type_argument.type_id)
-                                .extract_inner_types(type_engine, decl_engine),
-                        );
-                    }
-                }
-                TypeInfo::Struct(decl_ref) => {
-                    let decl = decl_engine.get_struct(&decl_ref);
-                    inner_types.insert(type_id);
-                    for type_param in decl.type_parameters.iter() {
-                        inner_types.extend(
-                            type_engine
-                                .get(type_param.type_id)
-                                .extract_inner_types(type_engine, decl_engine),
-                        );
-                    }
-                    for field in decl.fields.iter() {
-                        inner_types.extend(
-                            type_engine
-                                .get(field.type_argument.type_id)
-                                .extract_inner_types(type_engine, decl_engine),
-                        );
-                    }
-                }
-                TypeInfo::Custom { type_arguments, .. } => {
-                    inner_types.insert(type_id);
-                    if let Some(type_arguments) = type_arguments {
-                        for type_arg in type_arguments.iter() {
-                            inner_types.extend(
-                                type_engine
-                                    .get(type_arg.type_id)
-                                    .extract_inner_types(type_engine, decl_engine),
-                            );
-                        }
-                    }
-                }
-                TypeInfo::Array(elem_ty, _) => {
-                    inner_types.insert(elem_ty.type_id);
-                    inner_types.extend(
-                        type_engine
-                            .get(type_id)
-                            .extract_inner_types(type_engine, decl_engine),
-                    );
-                }
-                TypeInfo::Tuple(elems) => {
-                    inner_types.insert(type_id);
-                    for elem in elems.iter() {
-                        inner_types.extend(
-                            type_engine
-                                .get(elem.type_id)
-                                .extract_inner_types(type_engine, decl_engine),
-                        );
-                    }
-                }
-                TypeInfo::Storage { fields } => {
-                    inner_types.insert(type_id);
-                    for field in fields.iter() {
-                        inner_types.extend(
-                            type_engine
-                                .get(field.type_argument.type_id)
-                                .extract_inner_types(type_engine, decl_engine),
-                        );
-                    }
-                }
-                TypeInfo::Alias { ty, .. } => {
-                    inner_types.insert(ty.type_id);
-                    inner_types.extend(
-                        type_engine
-                            .get(type_id)
-                            .extract_inner_types(type_engine, decl_engine),
-                    );
-                }
-                TypeInfo::Unknown
-                | TypeInfo::UnknownGeneric { .. }
-                | TypeInfo::Str(_)
-                | TypeInfo::UnsignedInteger(_)
-                | TypeInfo::Boolean
-                | TypeInfo::ContractCaller { .. }
-                | TypeInfo::SelfType
-                | TypeInfo::B256
-                | TypeInfo::Numeric
-                | TypeInfo::RawUntypedPtr
-                | TypeInfo::RawUntypedSlice
-                | TypeInfo::Contract
-                | TypeInfo::Placeholder(_) => {
-                    inner_types.insert(type_id);
-                }
-                TypeInfo::TypeParam(_) | TypeInfo::ErrorRecovery => {}
-            }
-            inner_types
-        };
-
-        let mut inner_types = HashSet::new();
-        match self {
-            TypeInfo::Enum(decl_ref) => {
-                let decl = decl_engine.get_enum(decl_ref);
-                for type_param in decl.type_parameters.iter() {
-                    inner_types.extend(helper(type_param.type_id));
-                }
-                for variant in decl.variants.iter() {
-                    inner_types.extend(helper(variant.type_argument.type_id));
-                }
-            }
-            TypeInfo::Struct(decl_ref) => {
-                let decl = decl_engine.get_struct(decl_ref);
-                for type_param in decl.type_parameters.iter() {
-                    inner_types.extend(helper(type_param.type_id));
-                }
-                for field in decl.fields.iter() {
-                    inner_types.extend(helper(field.type_argument.type_id));
-                }
-            }
-            TypeInfo::Custom { type_arguments, .. } => {
-                if let Some(type_arguments) = type_arguments {
-                    for type_arg in type_arguments.iter() {
-                        inner_types.extend(helper(type_arg.type_id));
-                    }
-                }
-            }
-            TypeInfo::Array(elem_ty, _) => {
-                inner_types.extend(helper(elem_ty.type_id));
-            }
-            TypeInfo::Tuple(elems) => {
-                for elem in elems.iter() {
-                    inner_types.extend(helper(elem.type_id));
-                }
-            }
-            TypeInfo::Storage { fields } => {
-                for field in fields.iter() {
-                    inner_types.extend(helper(field.type_argument.type_id));
-                }
-            }
-            TypeInfo::Alias { ty, .. } => {
-                inner_types.extend(helper(ty.type_id));
-            }
-            TypeInfo::Unknown
-            | TypeInfo::UnknownGeneric { .. }
-            | TypeInfo::Str(_)
-            | TypeInfo::UnsignedInteger(_)
-            | TypeInfo::Boolean
-            | TypeInfo::ContractCaller { .. }
-            | TypeInfo::SelfType
-            | TypeInfo::B256
-            | TypeInfo::Numeric
-            | TypeInfo::Contract
-            | TypeInfo::RawUntypedPtr
-            | TypeInfo::RawUntypedSlice
-            | TypeInfo::ErrorRecovery
-            | TypeInfo::Placeholder(_)
-            | TypeInfo::TypeParam(_) => {}
+    pub(crate) fn extract_inner_types(&self, engines: Engines<'_>) -> HashSet<TypeId> {
+        fn filter_fn(_type_info: &TypeInfo) -> bool {
+            true
         }
-        inner_types
+        self.extract_any(engines, &filter_fn)
     }
 
     /// Given a `TypeInfo` `self`, check to see if `self` is currently
@@ -1155,180 +988,149 @@ impl TypeInfo {
 
     /// Given a `TypeInfo` `self`, analyze `self` and return all nested
     /// `TypeInfo`'s found in `self`, including `self`.
-    pub(crate) fn extract_nested_types(
-        self,
-        engines: Engines<'_>,
-        span: &Span,
-    ) -> CompileResult<Vec<TypeInfo>> {
+    pub(crate) fn extract_nested_types(self, engines: Engines<'_>) -> Vec<TypeInfo> {
         let type_engine = engines.te();
-        let decl_engine = engines.de();
+        let mut inner_types: Vec<TypeInfo> = self
+            .extract_inner_types(engines)
+            .into_iter()
+            .map(|type_id| type_engine.get(type_id))
+            .collect();
+        inner_types.push(self);
+        inner_types
+    }
 
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let mut all_nested_types = vec![self.clone()];
+    pub(crate) fn extract_any<F>(&self, engines: Engines<'_>, filter_fn: &F) -> HashSet<TypeId>
+    where
+        F: Fn(&TypeInfo) -> bool,
+    {
+        let decl_engine = engines.de();
+        let mut found: HashSet<TypeId> = HashSet::new();
         match self {
-            TypeInfo::Enum(decl_ref) => {
-                let decl = decl_engine.get_enum(&decl_ref);
-                for type_parameter in decl.type_parameters.iter() {
-                    let mut nested_types = check!(
-                        type_engine
-                            .get(type_parameter.type_id)
-                            .extract_nested_types(engines, span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
+            TypeInfo::Unknown
+            | TypeInfo::Placeholder(_)
+            | TypeInfo::TypeParam(_)
+            | TypeInfo::Str(_)
+            | TypeInfo::UnsignedInteger(_)
+            | TypeInfo::RawUntypedPtr
+            | TypeInfo::RawUntypedSlice
+            | TypeInfo::Boolean
+            | TypeInfo::SelfType
+            | TypeInfo::B256
+            | TypeInfo::Numeric
+            | TypeInfo::Contract
+            | TypeInfo::ErrorRecovery => {}
+            TypeInfo::Enum(enum_ref) => {
+                let enum_decl = decl_engine.get_enum(enum_ref);
+                for type_param in enum_decl.type_parameters.iter() {
+                    found.extend(
+                        type_param
+                            .type_id
+                            .extract_any_including_self(engines, filter_fn),
                     );
-                    all_nested_types.append(&mut nested_types);
                 }
-                for variant_type in decl.variants.iter() {
-                    let mut nested_types = check!(
-                        type_engine
-                            .get(variant_type.type_argument.type_id)
-                            .extract_nested_types(engines, span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
+                for variant in enum_decl.variants.iter() {
+                    found.extend(
+                        variant
+                            .type_argument
+                            .type_id
+                            .extract_any_including_self(engines, filter_fn),
                     );
-                    all_nested_types.append(&mut nested_types);
-                }
-            }
-            TypeInfo::Struct(decl_ref) => {
-                let decl = decl_engine.get_struct(&decl_ref);
-                for type_parameter in decl.type_parameters.iter() {
-                    let mut nested_types = check!(
-                        type_engine
-                            .get(type_parameter.type_id)
-                            .extract_nested_types(engines, span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    all_nested_types.append(&mut nested_types);
-                }
-                for field in decl.fields.iter() {
-                    let mut nested_types = check!(
-                        type_engine
-                            .get(field.type_argument.type_id)
-                            .extract_nested_types(engines, span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    all_nested_types.append(&mut nested_types);
                 }
             }
-            TypeInfo::Tuple(type_arguments) => {
-                for type_argument in type_arguments.iter() {
-                    let mut nested_types = check!(
-                        type_engine
-                            .get(type_argument.type_id)
-                            .extract_nested_types(engines, span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
+            TypeInfo::Struct(struct_ref) => {
+                let struct_decl = decl_engine.get_struct(struct_ref);
+                for type_param in struct_decl.type_parameters.iter() {
+                    found.extend(
+                        type_param
+                            .type_id
+                            .extract_any_including_self(engines, filter_fn),
                     );
-                    all_nested_types.append(&mut nested_types);
+                }
+                for field in struct_decl.fields.iter() {
+                    found.extend(
+                        field
+                            .type_argument
+                            .type_id
+                            .extract_any_including_self(engines, filter_fn),
+                    );
                 }
             }
-            TypeInfo::Array(elem_ty, _) => {
-                let mut nested_types = check!(
-                    type_engine
-                        .get(elem_ty.type_id)
-                        .extract_nested_types(engines, span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                all_nested_types.append(&mut nested_types);
-            }
-            TypeInfo::Storage { fields } => {
-                for field in fields.iter() {
-                    let mut nested_types = check!(
-                        type_engine
-                            .get(field.type_argument.type_id)
-                            .extract_nested_types(engines, span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    all_nested_types.append(&mut nested_types);
+            TypeInfo::Tuple(elems) => {
+                for elem in elems.iter() {
+                    found.extend(elem.type_id.extract_any_including_self(engines, filter_fn));
                 }
             }
-            TypeInfo::UnknownGeneric {
-                trait_constraints, ..
+            TypeInfo::ContractCaller {
+                abi_name: _,
+                address,
             } => {
-                for trait_constraint in trait_constraints.iter() {
-                    for type_arg in trait_constraint.type_arguments.iter() {
-                        let mut nested_types = check!(
-                            type_engine
-                                .get(type_arg.type_id)
-                                .extract_nested_types(engines, span),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
+                if let Some(address) = address {
+                    found.extend(
+                        address
+                            .return_type
+                            .extract_any_including_self(engines, filter_fn),
+                    );
+                }
+            }
+            TypeInfo::Custom {
+                call_path: _,
+                type_arguments,
+            } => {
+                if let Some(type_arguments) = type_arguments {
+                    for type_arg in type_arguments.iter() {
+                        found.extend(
+                            type_arg
+                                .type_id
+                                .extract_any_including_self(engines, filter_fn),
                         );
-                        all_nested_types.append(&mut nested_types);
                     }
                 }
             }
-            TypeInfo::Alias { ty, .. } => {
-                let mut nested_types = check!(
-                    type_engine
-                        .get(ty.type_id)
-                        .extract_nested_types(engines, span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                all_nested_types.append(&mut nested_types);
+            TypeInfo::Array(ty, _) => {
+                found.extend(ty.type_id.extract_any_including_self(engines, filter_fn));
             }
-            TypeInfo::Unknown
-            | TypeInfo::Str(_)
-            | TypeInfo::UnsignedInteger(_)
-            | TypeInfo::Boolean
-            | TypeInfo::ContractCaller { .. }
-            | TypeInfo::B256
-            | TypeInfo::Numeric
-            | TypeInfo::RawUntypedPtr
-            | TypeInfo::RawUntypedSlice
-            | TypeInfo::Contract
-            | TypeInfo::Placeholder(_)
-            | TypeInfo::TypeParam(_) => {}
-            TypeInfo::Custom { .. } | TypeInfo::SelfType => {
-                errors.push(CompileError::Internal(
-                    "did not expect to find this type here",
-                    span.clone(),
-                ));
-                return err(warnings, errors);
+            TypeInfo::Storage { fields } => {
+                for field in fields.iter() {
+                    found.extend(
+                        field
+                            .type_argument
+                            .type_id
+                            .extract_any_including_self(engines, filter_fn),
+                    );
+                }
             }
-            TypeInfo::ErrorRecovery => {
-                // return an error but don't create a new error message
-                return err(warnings, errors);
+            TypeInfo::Alias { name: _, ty } => {
+                found.extend(ty.type_id.extract_any_including_self(engines, filter_fn));
+            }
+            TypeInfo::UnknownGeneric {
+                name: _,
+                trait_constraints,
+            } => {
+                for trait_constraint in trait_constraints.iter() {
+                    for type_arg in trait_constraint.type_arguments.iter() {
+                        found.extend(
+                            type_arg
+                                .type_id
+                                .extract_any_including_self(engines, filter_fn),
+                        );
+                    }
+                }
             }
         }
-        ok(all_nested_types, warnings, errors)
+        found
     }
 
     pub(crate) fn extract_nested_generics<'a>(
         &self,
         engines: Engines<'a>,
-        span: &Span,
-    ) -> CompileResult<HashSet<WithEngines<'a, TypeInfo>>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let nested_types = check!(
-            self.clone().extract_nested_types(engines, span),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        let generics = HashSet::from_iter(
+    ) -> HashSet<WithEngines<'a, TypeInfo>> {
+        let nested_types = self.clone().extract_nested_types(engines);
+        HashSet::from_iter(
             nested_types
                 .into_iter()
                 .filter(|x| matches!(x, TypeInfo::UnknownGeneric { .. }))
                 .map(|thing| WithEngines::new(thing, engines)),
-        );
-        ok(generics, warnings, errors)
+        )
     }
 
     /// Given two `TypeInfo`'s `self` and `other`, check to see if `self` is

@@ -246,10 +246,10 @@ impl<'a> Unifier<'a> {
                     trait_constraints: etc,
                 },
             ) if rn.as_str() == en.as_str() && rtc.eq(&etc, self.engines) => (vec![], vec![]),
-            (r @ UnknownGeneric { .. }, e) if !self.occurs_check(r.clone(), &e, span) => {
+            (r @ UnknownGeneric { .. }, e) if !self.occurs_check(r.clone(), &e) => {
                 self.replace_received_with_expected(received, expected, &r, e, span)
             }
-            (r, e @ UnknownGeneric { .. }) if !self.occurs_check(e.clone(), &r, span) => {
+            (r, e @ UnknownGeneric { .. }) if !self.occurs_check(e.clone(), &r) => {
                 self.replace_expected_with_received(received, expected, r, &e, span)
             }
 
@@ -269,11 +269,8 @@ impl<'a> Unifier<'a> {
         }
     }
 
-    fn occurs_check(&self, generic: TypeInfo, other: &TypeInfo, span: &Span) -> bool {
-        OccursCheck::new(self.engines)
-            .check(generic, other, span)
-            .value
-            .unwrap_or(true)
+    fn occurs_check(&self, generic: TypeInfo, other: &TypeInfo) -> bool {
+        OccursCheck::new(self.engines).check(generic, other)
     }
 
     fn unify_strs(
