@@ -1,6 +1,7 @@
 use crate::{Parse, ParseBracket, ParseResult, Parser};
 
 use sway_ast::attribute::Annotated;
+use sway_ast::keywords::OpenCurlyBraceToken;
 use sway_ast::{Braces, ItemAbi, ItemFn, ItemTraitItem};
 
 impl Parse for ItemAbi {
@@ -21,7 +22,8 @@ impl Parse for ItemAbi {
                 parser.ban_visibility_qualifier(&fn_signature.visibility)?;
             }
         }
-        let abi_defs_opt: Option<Braces<Vec<Annotated<ItemFn>>>> = Braces::try_parse(parser)?;
+        let abi_defs_opt: Option<Braces<Vec<Annotated<ItemFn>>>> =
+            parser.guarded_parse::<OpenCurlyBraceToken, _>()?;
         if let Some(abi_defs) = &abi_defs_opt {
             for item_fn in abi_defs.get().iter() {
                 parser.ban_visibility_qualifier(&item_fn.value.fn_signature.visibility)?;

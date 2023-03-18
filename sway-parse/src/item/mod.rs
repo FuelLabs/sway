@@ -84,10 +84,8 @@ impl Parse for TypeField {
     }
 }
 
-impl ParseToEnd for FnArgs {
-    fn parse_to_end<'a, 'e>(
-        mut parser: Parser<'a, '_>,
-    ) -> ParseResult<(FnArgs, ParserConsumed<'a>)> {
+impl Parse for FnArgs {
+    fn parse(mut parser: &mut Parser) -> ParseResult<FnArgs> {
         let mut ref_self: Option<RefToken> = None;
         let mut mutable_self: Option<MutToken> = None;
         if parser.peek::<(MutToken, SelfToken)>().is_some()
@@ -100,14 +98,13 @@ impl ParseToEnd for FnArgs {
             Some(self_token) => {
                 match parser.take() {
                     Some(comma_token) => {
-                        let (args, consumed) = parser.parse_to_end()?;
-                        let fn_args = FnArgs::NonStatic {
+                        let args = parser.parse()?;
+                        Ok(FnArgs::NonStatic {
                             self_token,
                             ref_self,
                             mutable_self,
                             args_opt: Some((comma_token, args)),
-                        };
-                        Ok((fn_args, consumed))
+                        })
                     }
                     None => {
                         let fn_args = FnArgs::NonStatic {
@@ -116,18 +113,17 @@ impl ParseToEnd for FnArgs {
                             mutable_self,
                             args_opt: None,
                         };
-                        match parser.check_empty() {
-                            Some(consumed) => Ok((fn_args, consumed)),
-                            None => Err(parser
+                        match parser.is_empty() {
+                            true => Ok(fn_args),
+                            false => Err(parser
                                 .emit_error(ParseErrorKind::ExpectedCommaOrCloseParenInFnArgs)),
                         }
                     }
                 }
             }
             None => {
-                let (args, consumed) = parser.parse_to_end()?;
-                let fn_args = FnArgs::Static(args);
-                Ok((fn_args, consumed))
+                let args = parser.parse()?;
+                Ok(FnArgs::Static(args))
             }
         }
     }

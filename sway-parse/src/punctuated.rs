@@ -2,30 +2,28 @@ use crate::{Parse, ParseResult, ParseToEnd, Parser, ParserConsumed};
 
 use sway_ast::punctuated::Punctuated;
 
-impl<T, P> ParseToEnd for Punctuated<T, P>
+impl<T, P> Parse for Punctuated<T, P>
 where
     T: Parse,
     P: Parse,
 {
-    fn parse_to_end<'a, 'e>(
-        mut parser: Parser<'a, '_>,
-    ) -> ParseResult<(Punctuated<T, P>, ParserConsumed<'a>)> {
+    fn parse(mut parser: &mut Parser) -> ParseResult<Punctuated<T, P>> {
         let mut value_separator_pairs = Vec::new();
         loop {
-            if let Some(consumed) = parser.check_empty() {
+            if parser.is_empty() {
                 let punctuated = Punctuated {
                     value_separator_pairs,
                     final_value_opt: None,
                 };
-                return Ok((punctuated, consumed));
+                return Ok(punctuated);
             }
             let value = parser.parse()?;
-            if let Some(consumed) = parser.check_empty() {
+            if parser.is_empty() {
                 let punctuated = Punctuated {
                     value_separator_pairs,
                     final_value_opt: Some(Box::new(value)),
                 };
-                return Ok((punctuated, consumed));
+                return Ok(punctuated);
             }
             let separator = parser.parse()?;
             value_separator_pairs.push((value, separator));

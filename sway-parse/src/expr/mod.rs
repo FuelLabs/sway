@@ -4,10 +4,11 @@ use core::ops::ControlFlow;
 use sway_ast::brackets::{Braces, Parens, SquareBrackets};
 use sway_ast::expr::{ReassignmentOp, ReassignmentOpVariant};
 use sway_ast::keywords::{
-    AbiToken, AddEqToken, AsmToken, CommaToken, ConfigurableToken, ConstToken, DivEqToken,
-    DoubleColonToken, EnumToken, EqToken, FalseToken, FnToken, IfToken, ImplToken, LetToken,
-    OpenAngleBracketToken, OpenCurlyBraceToken, PubToken, SemicolonToken, ShlEqToken, ShrEqToken,
-    StarEqToken, StorageToken, StructToken, SubEqToken, Token, TraitToken, TrueToken, UseToken,
+    AbiToken, AddEqToken, AsmToken, CloseSquareBracketToken, CommaToken, ConfigurableToken,
+    ConstToken, DivEqToken, DoubleColonToken, EnumToken, EqToken, FalseToken, FnToken, IfToken,
+    ImplToken, LetToken, OpenAngleBracketToken, OpenCurlyBraceToken, PubToken, SemicolonToken,
+    ShlEqToken, ShrEqToken, StarEqToken, StorageToken, StructToken, SubEqToken, Token, TraitToken,
+    TrueToken, UseToken,
 };
 use sway_ast::literal::{LitBool, LitBoolType};
 use sway_ast::punctuated::Punctuated;
@@ -124,39 +125,36 @@ impl Parse for StatementLet {
     }
 }
 
-impl ParseToEnd for CodeBlockContents {
-    fn parse_to_end<'a, 'e>(
-        mut parser: Parser<'a, '_>,
-    ) -> ParseResult<(CodeBlockContents, ParserConsumed<'a>)> {
+impl Parse for CodeBlockContents {
+    fn parse(mut parser: &mut Parser) -> ParseResult<CodeBlockContents> {
         let mut statements = Vec::new();
-        let (final_expr_opt, consumed) = loop {
-            if let Some(consumed) = parser.check_empty() {
-                break (None, consumed);
+        let final_expr_opt = loop {
+            if parser.is_empty() {
+                break None;
             }
             match parse_stmt(&mut parser)? {
                 StmtOrTail::Stmt(s) => statements.push(s),
-                StmtOrTail::Tail(e, c) => break (Some(e), c),
+                StmtOrTail::Tail(e) => break (Some(e)),
             }
         };
-        let code_block_contents = CodeBlockContents {
+        Ok(CodeBlockContents {
             statements,
             final_expr_opt,
-        };
-        Ok((code_block_contents, consumed))
+        })
     }
 }
 
 /// A statement or a tail expression in a block.
 #[allow(clippy::large_enum_variant)]
-enum StmtOrTail<'a> {
+enum StmtOrTail {
     /// A statement.
     Stmt(Statement),
     /// Tail expression in a block.
-    Tail(Box<Expr>, ParserConsumed<'a>),
+    Tail(Box<Expr>),
 }
 
 /// Parses either a statement or a tail expression.
-fn parse_stmt<'a>(parser: &mut Parser<'a, '_>) -> ParseResult<StmtOrTail<'a>> {
+fn parse_stmt(parser: &mut Parser) -> ParseResult<StmtOrTail> {
     let stmt = |s| Ok(StmtOrTail::Stmt(s));
 
     // Try parsing an item as a statement.
@@ -196,8 +194,8 @@ fn parse_stmt<'a>(parser: &mut Parser<'a, '_>) -> ParseResult<StmtOrTail<'a>> {
     }
 
     // Reached EOF? Then an expression is a statement.
-    if let Some(consumed) = parser.check_empty() {
-        return Ok(StmtOrTail::Tail(Box::new(expr), consumed));
+    if parser.is_empty() {
+        return Ok(StmtOrTail::Tail(Box::new(expr)));
     }
 
     // For statements like `if`,
@@ -629,7 +627,7 @@ fn parse_atom(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
         }
         let head = parser.parse()?;
         if let Some(comma_token) = parser.take() {
-            let (tail, _consumed) = parser.parse_to_end()?;
+            let tail = parser.parse()?;
             let tuple = ExprTupleDescriptor::Cons {
                 head,
                 comma_token,
@@ -744,43 +742,41 @@ impl Parse for ExprStructField {
     }
 }
 
-impl ParseToEnd for ExprArrayDescriptor {
-    fn parse_to_end<'a, 'e>(
-        mut parser: Parser<'a, '_>,
-    ) -> ParseResult<(ExprArrayDescriptor, ParserConsumed<'a>)> {
-        if let Some(consumed) = parser.check_empty() {
+impl Parse for ExprArrayDescriptor {
+    fn parse(mut parser: &mut Parser) -> ParseResult<ExprArrayDescriptor> {
+        if parser.is_empty() {
             let punctuated = Punctuated::empty();
             let descriptor = ExprArrayDescriptor::Sequence(punctuated);
-            return Ok((descriptor, consumed));
+            return Ok(descriptor);
         }
         let value = parser.parse()?;
         if let Some(semicolon_token) = parser.take() {
             let length = parser.parse()?;
-            let consumed = match parser.check_empty() {
-                Some(consumed) => consumed,
+            match parser.peek::<CloseSquareBracketToken>() {
+                Some(_) => {
+                    return Ok(ExprArrayDescriptor::Repeat {
+                        value: Box::new(value),
+                        semicolon_token,
+                        length,
+                    })
+                }
                 None => {
                     return Err(parser.emit_error(ParseErrorKind::UnexpectedTokenAfterArrayLength));
                 }
-            };
-            let descriptor = ExprArrayDescriptor::Repeat {
-                value: Box::new(value),
-                semicolon_token,
-                length,
-            };
-            return Ok((descriptor, consumed));
+            }
         }
         if let Some(comma_token) = parser.take() {
-            let (mut punctuated, consumed): (Punctuated<_, _>, _) = parser.parse_to_end()?;
+            let mut punctuated: Punctuated<_, _> = parser.parse()?;
             punctuated
                 .value_separator_pairs
                 .insert(0, (value, comma_token));
             let descriptor = ExprArrayDescriptor::Sequence(punctuated);
-            return Ok((descriptor, consumed));
+            return Ok(descriptor);
         }
-        if let Some(consumed) = parser.check_empty() {
+        if parser.is_empty() {
             let punctuated = Punctuated::single(value);
             let descriptor = ExprArrayDescriptor::Sequence(punctuated);
-            return Ok((descriptor, consumed));
+            return Ok(descriptor);
         }
         Err(parser.emit_error(ParseErrorKind::ExpectedCommaSemicolonOrCloseBracketInArray))
     }

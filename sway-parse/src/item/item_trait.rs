@@ -1,7 +1,7 @@
 use crate::{Parse, ParseBracket, ParseResult, Parser};
 
 use sway_ast::attribute::Annotated;
-use sway_ast::keywords::{FnToken, OpenAngleBracketToken, WhereToken};
+use sway_ast::keywords::{FnToken, OpenAngleBracketToken, OpenCurlyBraceToken, WhereToken};
 use sway_ast::{Braces, ItemFn, ItemTrait, ItemTraitItem, PubToken, Traits};
 use sway_error::parser_error::ParseErrorKind;
 
@@ -39,7 +39,8 @@ impl Parse for ItemTrait {
             }
         }
 
-        let trait_defs_opt: Option<Braces<Vec<Annotated<ItemFn>>>> = Braces::try_parse(parser)?;
+        let trait_defs_opt: Option<Braces<Vec<Annotated<ItemFn>>>> =
+            parser.guarded_parse::<OpenCurlyBraceToken, _>()?;
         if let Some(trait_defs) = &trait_defs_opt {
             for item in trait_defs.get().iter() {
                 parser.ban_visibility_qualifier(&item.value.fn_signature.visibility)?;

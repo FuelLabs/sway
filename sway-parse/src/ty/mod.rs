@@ -1,7 +1,7 @@
 use crate::{Parse, ParseBracket, ParseResult, ParseToEnd, Parser, ParserConsumed};
 
 use sway_ast::brackets::{Parens, SquareBrackets};
-use sway_ast::keywords::{DoubleColonToken, OpenAngleBracketToken};
+use sway_ast::keywords::{CloseSquareBracketToken, DoubleColonToken, OpenAngleBracketToken};
 use sway_ast::token::OpeningDelimiter;
 use sway_ast::ty::{Ty, TyArrayDescriptor, TyTupleDescriptor};
 use sway_error::parser_error::ParseErrorKind;
@@ -17,7 +17,7 @@ impl Parse for Ty {
             }
             let head = parser.parse()?;
             if let Some(comma_token) = parser.take() {
-                let (tail, _consumed) = parser.parse_to_end()?;
+                let tail = parser.parse()?;
                 let tuple = TyTupleDescriptor::Cons {
                     head,
                     comma_token,
@@ -54,24 +54,20 @@ impl Parse for Ty {
     }
 }
 
-impl ParseToEnd for TyArrayDescriptor {
-    fn parse_to_end<'a, 'e>(
-        mut parser: Parser<'a, '_>,
-    ) -> ParseResult<(TyArrayDescriptor, ParserConsumed<'a>)> {
+impl Parse for TyArrayDescriptor {
+    fn parse(mut parser: &mut Parser) -> ParseResult<TyArrayDescriptor> {
         let ty = parser.parse()?;
         let semicolon_token = parser.parse()?;
         let length = parser.parse()?;
-        let consumed = match parser.check_empty() {
-            Some(consumed) => consumed,
+        match parser.peek::<CloseSquareBracketToken>() {
+            Some(_) => Ok(TyArrayDescriptor {
+                ty,
+                semicolon_token,
+                length,
+            }),
             None => {
                 return Err(parser.emit_error(ParseErrorKind::UnexpectedTokenAfterArrayTypeLength))
             }
-        };
-        let descriptor = TyArrayDescriptor {
-            ty,
-            semicolon_token,
-            length,
-        };
-        Ok((descriptor, consumed))
+        }
     }
 }
