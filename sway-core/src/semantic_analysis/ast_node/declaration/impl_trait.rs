@@ -44,7 +44,7 @@ impl ty::TyImplTrait {
 
         // Type check the type parameters. This will also insert them into the
         // current namespace.
-        let (new_impl_type_parameters, impl_type_subst_list) = check!(
+        let (new_impl_type_parameters, impl_subst_list) = check!(
             TypeParameter::type_check_type_params(ctx.by_ref(), impl_type_parameters, true),
             return err(warnings, errors),
             warnings,
@@ -52,7 +52,7 @@ impl ty::TyImplTrait {
         );
         ctx.namespace
             .type_subst_stack_mut()
-            .push(impl_type_subst_list.clone());
+            .push(impl_subst_list.clone());
 
         // resolve the types of the trait type arguments
         for type_arg in trait_type_arguments.iter_mut() {
@@ -118,13 +118,18 @@ impl ty::TyImplTrait {
             .ok(&mut warnings, &mut errors)
             .cloned()
         {
-            Some(ty::TyDecl::TraitDecl { decl_id, .. }) => {
-                let mut trait_decl = decl_engine.get_trait(&decl_id);
-
+            Some(ty::TyDecl::TraitDecl {
+                name,
+                decl_id,
+                subst_list,
+                decl_span,
+            }) => {
+                let mut trait_ref =
+                    DeclRef::new(name, decl_id, subst_list.scoped_copy(engines), decl_span);
                 // monomorphize the trait declaration
                 check!(
-                    ctx.monomorphize(
-                        &mut trait_decl,
+                    ctx.combine_subst_list_and_args(
+                        &mut trait_ref,
                         &mut trait_type_arguments,
                         EnforceTypeArguments::Yes,
                         &trait_name.span()
@@ -133,7 +138,7 @@ impl ty::TyImplTrait {
                     warnings,
                     errors
                 );
-
+                let trait_decl = decl_engine.get_trait(&trait_ref);
                 let new_items = check!(
                     type_check_trait_implementation(
                         ctx.by_ref(),
@@ -156,25 +161,22 @@ impl ty::TyImplTrait {
                     impl_type_parameters: new_impl_type_parameters,
                     trait_name: trait_name.clone(),
                     trait_type_arguments,
-                    trait_decl_ref: Some(DeclRef::new(
-                        trait_decl.name.clone(),
-                        decl_id.into(),
-                        todo!(),
-                        trait_decl.span.clone(),
-                    )),
+                    trait_decl_ref: Some(trait_ref.into()),
                     span: block_span,
                     items: new_items,
                     implementing_for,
                 }
             }
-            Some(ty::TyDecl::AbiDecl { decl_id, .. }) => {
+            Some(ty::TyDecl::AbiDecl {
+                name,
+                decl_id,
+                decl_span,
+            }) => {
                 // if you are comparing this with the `impl_trait` branch above, note that
                 // there are no type arguments here because we don't support generic types
                 // in contract ABIs yet (or ever?) due to the complexity of communicating
                 // the ABI layout in the descriptor file.
-
-                let abi = decl_engine.get_abi(&decl_id);
-
+                let abi_ref = DeclRef::new(name, decl_id, SubstList::new(), decl_span);
                 if !type_engine
                     .get(implementing_for.type_id)
                     .eq(&TypeInfo::Contract, engines)
@@ -184,9 +186,8 @@ impl ty::TyImplTrait {
                         ty: engines.help_out(implementing_for.type_id).to_string(),
                     });
                 }
-
+                let abi = decl_engine.get_abi(&abi_ref);
                 let mut ctx = ctx.with_mode(Mode::ImplAbiFn);
-
                 let new_items = check!(
                     type_check_trait_implementation(
                         ctx.by_ref(),
@@ -209,12 +210,7 @@ impl ty::TyImplTrait {
                     impl_type_parameters: vec![], // this is empty because abi definitions don't support generics
                     trait_name,
                     trait_type_arguments: vec![], // this is empty because abi definitions don't support generics
-                    trait_decl_ref: Some(DeclRef::new(
-                        abi.name.clone(),
-                        decl_id.into(),
-                        todo!(),
-                        abi.span,
-                    )),
+                    trait_decl_ref: Some(abi_ref.into()),
                     span: block_span,
                     items: new_items,
                     implementing_for,
@@ -228,7 +224,7 @@ impl ty::TyImplTrait {
                 return err(warnings, errors);
             }
         };
-        ok((impl_trait, impl_type_subst_list), warnings, errors)
+        ok((impl_trait, impl_subst_list), warnings, errors)
     }
 
     // If any method contains a call to get_storage_index, then
@@ -485,7 +481,7 @@ impl ty::TyImplTrait {
 
         // Type check the type parameters. This will also insert them into the
         // current namespace.
-        let (new_impl_type_parameters, impl_type_subst_list) = check!(
+        let (new_impl_type_parameters, impl_subst_list) = check!(
             TypeParameter::type_check_type_params(ctx.by_ref(), impl_type_parameters, true),
             return err(warnings, errors),
             warnings,
@@ -493,7 +489,7 @@ impl ty::TyImplTrait {
         );
         ctx.namespace
             .type_subst_stack_mut()
-            .push(impl_type_subst_list.clone());
+            .push(impl_subst_list.clone());
 
         // type check the type that we are implementing for
         implementing_for.type_id = check!(
@@ -542,13 +538,13 @@ impl ty::TyImplTrait {
         for item in items.into_iter() {
             match item {
                 ImplItem::Fn(fn_decl) => {
-                    let (fn_decl, type_subst_list) = check!(
+                    let (fn_decl, subst_list) = check!(
                         ty::TyFunctionDecl::type_check(ctx.by_ref(), fn_decl, true, true),
                         continue,
                         warnings,
                         errors
                     );
-                    new_items.push(TyImplItem::Fn(decl_engine.insert(fn_decl, type_subst_list)));
+                    new_items.push(TyImplItem::Fn(decl_engine.insert(fn_decl, subst_list)));
                 }
                 ImplItem::Constant(const_decl) => {
                     let const_decl = check!(
@@ -601,7 +597,7 @@ impl ty::TyImplTrait {
             items: new_items,
             implementing_for,
         };
-        ok((impl_trait, impl_type_subst_list), warnings, errors)
+        ok((impl_trait, impl_subst_list), warnings, errors)
     }
 }
 
@@ -718,7 +714,7 @@ fn type_check_trait_implementation(
     for item in impl_items {
         match item {
             ImplItem::Fn(impl_method) => {
-                let (impl_method, type_subst_list) = check!(
+                let (impl_method, subst_list) = check!(
                     type_check_impl_method(
                         ctx.by_ref(),
                         impl_type_parameters,
@@ -738,7 +734,7 @@ fn type_check_trait_implementation(
                 method_checklist.remove(&name);
 
                 // Add this method to the "impld items".
-                let decl_ref = decl_engine.insert(impl_method, type_subst_list);
+                let decl_ref = decl_engine.insert(impl_method, subst_list);
                 impld_item_refs.insert(name, TyTraitItem::Fn(decl_ref));
             }
             ImplItem::Constant(const_decl) => {
@@ -863,7 +859,7 @@ fn type_check_impl_method(
     };
 
     // type check the function declaration
-    let (mut impl_method, type_subst_list) = check!(
+    let (mut impl_method, subst_list) = check!(
         ty::TyFunctionDecl::type_check(ctx.by_ref(), impl_method.clone(), true, false),
         return err(warnings, errors),
         warnings,
@@ -1065,7 +1061,7 @@ fn type_check_impl_method(
         .append(&mut unconstrained_type_parameters_to_be_added);
 
     if errors.is_empty() {
-        ok((impl_method, type_subst_list), warnings, errors)
+        ok((impl_method, subst_list), warnings, errors)
     } else {
         err(warnings, errors)
     }

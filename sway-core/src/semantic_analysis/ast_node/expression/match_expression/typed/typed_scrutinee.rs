@@ -2,7 +2,6 @@ use sway_error::error::CompileError;
 use sway_types::{BaseIdent, Ident, Span, Spanned};
 
 use crate::{
-    decl_engine::DeclEngineInsert,
     error::*,
     language::{
         parsed::*,
@@ -125,6 +124,7 @@ fn type_check_struct(
 
     let type_engine = ctx.type_engine;
     let decl_engine = ctx.decl_engine;
+    let engines = ctx.engines();
 
     // find the struct definition from the name
     let unknown_decl = check!(
@@ -133,18 +133,18 @@ fn type_check_struct(
         warnings,
         errors
     );
-    let struct_ref = check!(
+    let mut struct_ref = check!(
         unknown_decl.to_struct_ref(ctx.engines()),
         return err(warnings, errors),
         warnings,
         errors
-    );
-    let mut struct_decl = decl_engine.get_struct(&struct_ref);
+    )
+    .scoped_copy(engines);
 
     // monomorphize the struct definition
     check!(
-        ctx.monomorphize(
-            &mut struct_decl,
+        ctx.combine_subst_list_and_args(
+            &mut struct_ref,
             &mut [],
             EnforceTypeArguments::No,
             &struct_name.span()
@@ -153,6 +153,8 @@ fn type_check_struct(
         warnings,
         errors
     );
+
+    let struct_decl = decl_engine.get_struct(&struct_ref);
 
     // type check the fields
     let mut typed_fields = vec![];
@@ -209,9 +211,6 @@ fn type_check_struct(
         return err(warnings, errors);
     }
 
-    let decl_name = struct_decl.call_path.suffix.clone();
-    let struct_ref = decl_engine.insert(struct_decl, todo!());
-
     let typed_scrutinee = ty::TyScrutinee {
         type_id: type_engine.insert(decl_engine, TypeInfo::Struct(struct_ref.clone())),
         span,
@@ -240,9 +239,10 @@ fn type_check_enum(
 
     let type_engine = ctx.type_engine;
     let decl_engine = ctx.decl_engine;
+    let engines = ctx.engines();
 
     let mut prefixes = call_path.prefixes.clone();
-    let (callsite_span, mut enum_decl) = match prefixes.pop() {
+    let (callsite_span, mut enum_ref) = match prefixes.pop() {
         Some(enum_name) => {
             let enum_callpath = CallPath {
                 suffix: enum_name,
@@ -256,13 +256,14 @@ fn type_check_enum(
                 warnings,
                 errors
             );
-            let enum_ref = check!(
+            let mut enum_ref = check!(
                 unknown_decl.to_enum_ref(ctx.engines()),
                 return err(warnings, errors),
                 warnings,
                 errors
-            );
-            (enum_callpath.span(), decl_engine.get_enum(&enum_ref))
+            )
+            .scoped_copy(engines);
+            (enum_callpath.span(), enum_ref)
         }
         None => {
             // we may have an imported variant
@@ -272,31 +273,34 @@ fn type_check_enum(
                 warnings,
                 errors
             );
-            if let TyDecl::EnumVariantDecl { decl_id, .. } = decl {
-                (call_path.suffix.span(), decl_engine.get_enum(&decl_id))
-            } else {
-                errors.push(CompileError::EnumNotFound {
-                    name: call_path.suffix.clone(),
-                    span: call_path.suffix.span(),
-                });
-                return err(warnings, errors);
-            }
+            todo!()
+            // if let TyDecl::EnumVariantDecl { decl_id, .. } = decl {
+            //     (call_path.suffix.span(), decl_engine.get_enum(&decl_id))
+            // } else {
+            //     errors.push(CompileError::EnumNotFound {
+            //         name: call_path.suffix.clone(),
+            //         span: call_path.suffix.span(),
+            //     });
+            //     return err(warnings, errors);
+            // }
         }
     };
     let variant_name = call_path.suffix.clone();
 
     // monomorphize the enum definition
     check!(
-        ctx.monomorphize(
-            &mut enum_decl,
+        ctx.combine_subst_list_and_args(
+            &mut enum_ref,
             &mut [],
             EnforceTypeArguments::No,
-            &callsite_span,
+            &call_path.span()
         ),
         return err(warnings, errors),
         warnings,
         errors
     );
+
+    let enum_decl = decl_engine.get_enum(&enum_ref);
 
     // check to see if the variant exists and grab it if it does
     let variant = check!(
@@ -305,9 +309,6 @@ fn type_check_enum(
         warnings,
         errors
     );
-
-    let decl_name = enum_decl.call_path.suffix.clone();
-    let enum_ref = decl_engine.insert(enum_decl.clone(), todo!());
 
     // type check the nested scrutinee
     let typed_value = check!(

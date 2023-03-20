@@ -2,10 +2,11 @@ use sway_error::error::CompileError;
 use sway_types::Spanned;
 
 use crate::{
+    decl_engine::DeclRef,
     error::*,
     language::{parsed, ty},
     semantic_analysis::TypeCheckContext,
-    EnforceTypeArguments, TypeId,
+    CreateCopy, EnforceTypeArguments, TypeId,
 };
 
 /// Recursively insert the interface surfaces and methods from supertraits to
@@ -19,6 +20,7 @@ pub(crate) fn insert_supertraits_into_namespace(
     let mut errors = vec![];
 
     let decl_engine = ctx.decl_engine;
+    let engines = ctx.engines();
 
     for supertrait in supertraits.iter() {
         // Right now we don't have the ability to support defining a supertrait
@@ -39,35 +41,38 @@ pub(crate) fn insert_supertraits_into_namespace(
             .ok(&mut warnings, &mut errors)
             .cloned()
         {
-            Some(ty::TyDecl::TraitDecl { decl_id, .. }) => {
-                let mut trait_decl = decl_engine.get_trait(&decl_id);
-
+            Some(ty::TyDecl::TraitDecl {
+                name,
+                decl_id,
+                subst_list,
+                decl_span,
+            }) => {
+                let mut trait_ref =
+                    DeclRef::new(name, decl_id, subst_list.scoped_copy(engines), decl_span);
                 // Right now we don't parse type arguments for supertraits, so
                 // we should give this error message to users.
-                if !trait_decl.type_parameters.is_empty() {
+                if !decl_engine.get_trait(&trait_ref).type_parameters.is_empty() {
                     errors.push(CompileError::Unimplemented(
                         "Using generic traits as supertraits is not supported yet.",
                         supertrait.name.span(),
                     ));
                     continue;
                 }
-
                 // TODO: right now supertraits can't take type arguments
                 let mut type_arguments = vec![];
-
                 // Monomorphize the trait declaration.
                 check!(
-                    ctx.monomorphize(
-                        &mut trait_decl,
+                    ctx.combine_subst_list_and_args(
+                        &mut trait_ref,
                         &mut type_arguments,
                         EnforceTypeArguments::Yes,
                         &supertrait.name.span()
                     ),
-                    continue,
+                    return err(warnings, errors),
                     warnings,
                     errors
                 );
-
+                let trait_decl = decl_engine.get_trait(&trait_ref);
                 // Insert the interface surface and methods from this trait into
                 // the namespace.
                 trait_decl.insert_interface_surface_and_items_into_namespace(
@@ -76,7 +81,6 @@ pub(crate) fn insert_supertraits_into_namespace(
                     &type_arguments,
                     type_id,
                 );
-
                 // Recurse to insert versions of interfaces and methods of the
                 // *super* supertraits.
                 check!(

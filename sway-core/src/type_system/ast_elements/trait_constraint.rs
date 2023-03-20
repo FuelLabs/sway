@@ -7,6 +7,7 @@ use sway_error::error::CompileError;
 use sway_types::{Span, Spanned};
 
 use crate::{
+    decl_engine::DeclRef,
     engine_threading::*,
     error::*,
     language::{parsed::Supertrait, ty, CallPath},
@@ -172,6 +173,7 @@ impl TraitConstraint {
         let mut errors = vec![];
 
         let decl_engine = ctx.decl_engine;
+        let engines = ctx.engines();
 
         let TraitConstraint {
             trait_name,
@@ -186,13 +188,18 @@ impl TraitConstraint {
             .ok(&mut warnings, &mut errors)
             .cloned()
         {
-            Some(ty::TyDecl::TraitDecl { decl_id, .. }) => {
-                let mut trait_decl = decl_engine.get_trait(&decl_id);
-
+            Some(ty::TyDecl::TraitDecl {
+                name,
+                decl_id,
+                subst_list,
+                decl_span,
+            }) => {
+                let mut trait_ref =
+                    DeclRef::new(name, decl_id, subst_list.scoped_copy(engines), decl_span);
                 // Monomorphize the trait declaration.
                 check!(
-                    ctx.monomorphize(
-                        &mut trait_decl,
+                    ctx.combine_subst_list_and_args(
+                        &mut trait_ref,
                         &mut type_arguments,
                         EnforceTypeArguments::Yes,
                         &trait_name.span()
@@ -201,7 +208,7 @@ impl TraitConstraint {
                     warnings,
                     errors
                 );
-
+                let trait_decl = decl_engine.get_trait(&trait_ref);
                 // Insert the interface surface and methods from this trait into
                 // the namespace.
                 trait_decl.insert_interface_surface_and_items_into_namespace(
@@ -210,7 +217,6 @@ impl TraitConstraint {
                     &type_arguments,
                     type_id,
                 );
-
                 // Recursively make the interface surfaces and methods of the
                 // supertraits available to this trait.
                 check!(

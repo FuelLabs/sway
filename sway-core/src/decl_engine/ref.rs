@@ -187,3 +187,17 @@ impl<T> CreateCopy<DeclRef<DeclId<T>>> for DeclRef<DeclId<T>> {
         self.clone()
     }
 }
+
+impl<T> From<DeclRef<DeclId<T>>> for DeclRef<InterfaceDeclId>
+where
+    InterfaceDeclId: From<DeclId<T>>,
+{
+    fn from(decl_ref: DeclRef<DeclId<T>>) -> Self {
+        DeclRef {
+            name: decl_ref.name,
+            id: decl_ref.id.into(),
+            subst_list: decl_ref.subst_list,
+            decl_span: decl_ref.decl_span,
+        }
+    }
+}

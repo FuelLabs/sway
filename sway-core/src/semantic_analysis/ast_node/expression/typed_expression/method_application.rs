@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::{DeclEngineInsert, DeclRefFunction},
+    decl_engine::DeclRefFunction,
     error::*,
     language::{parsed::*, ty, *},
     semantic_analysis::*,
@@ -422,7 +422,7 @@ pub(crate) fn resolve_method_name(
     let engines = ctx.engines();
 
     // retrieve the function declaration using the components of the method name
-    let decl_ref = match &method_name.inner {
+    let fn_ref = match &method_name.inner {
         MethodName::FromType {
             call_path_binding,
             method_name,
@@ -513,23 +513,21 @@ pub(crate) fn resolve_method_name(
         }
     };
 
-    let mut func_decl = decl_engine.get_function(&decl_ref);
+    let mut fn_ref = fn_ref.scoped_copy(engines);
 
     // monomorphize the function declaration
     let method_name_span = method_name.span();
     check!(
-        ctx.monomorphize(
-            &mut func_decl,
+        ctx.combine_subst_list_and_args(
+            &mut fn_ref,
             method_name.type_arguments.to_vec_mut(),
             EnforceTypeArguments::No,
-            &method_name_span,
+            &method_name_span
         ),
         return err(warnings, errors),
         warnings,
         errors
     );
 
-    let decl_ref = ctx.decl_engine.insert(func_decl, todo!());
-
-    ok(decl_ref, warnings, errors)
+    ok(fn_ref, warnings, errors)
 }

@@ -256,17 +256,6 @@ impl<'a> TypeCheckContext<'a> {
         )
     }
 
-    /// Short-hand for calling the `monomorphize` function in the type engine
-    pub(crate) fn monomorphize<T>(
-        &mut self,
-        value: &mut T,
-        type_arguments: &mut [TypeArgument],
-        enforce_type_arguments: EnforceTypeArguments,
-        call_site_span: &Span,
-    ) -> CompileResult<()> {
-        todo!()
-    }
-
     /// Short-hand for calling [Namespace::resolve_type].
     pub(crate) fn resolve_type(
         &mut self,
