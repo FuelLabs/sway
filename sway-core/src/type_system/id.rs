@@ -4,7 +4,7 @@ use crate::{
     engine_threading::*,
 };
 
-use std::{collections::HashSet, fmt};
+use std::{collections::BTreeSet, fmt};
 
 /// A identifier to uniquely refer to our type terms
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd, Debug)]
@@ -236,7 +236,7 @@ impl UnconstrainedTypeParameters for TypeId {
         type_parameter: &TypeParameter,
     ) -> bool {
         let type_engine = engines.te();
-        let mut all_types: HashSet<TypeId> = type_engine.get(*self).extract_inner_types(engines);
+        let mut all_types: BTreeSet<TypeId> = type_engine.get(*self).extract_inner_types(engines);
         all_types.insert(*self);
         let type_parameter_info = type_engine.get(type_parameter.type_id);
         all_types
@@ -301,13 +301,13 @@ impl TypeId {
         &self,
         engines: Engines<'_>,
         filter_fn: &F,
-    ) -> HashSet<TypeId>
+    ) -> BTreeSet<TypeId>
     where
         F: Fn(&TypeInfo) -> bool,
     {
         let type_engine = engines.te();
         let type_info = type_engine.get(*self);
-        let mut found: HashSet<TypeId> = type_info.extract_any(engines, filter_fn);
+        let mut found: BTreeSet<TypeId> = type_info.extract_any(engines, filter_fn);
         if filter_fn(&type_info) {
             found.insert(*self);
         }

@@ -10,7 +10,7 @@ use sway_types::{integer_bits::IntegerBits, span::Span, Spanned};
 
 use std::{
     cmp::Ordering,
-    collections::HashSet,
+    collections::{BTreeSet, HashSet},
     fmt,
     hash::{Hash, Hasher},
 };
@@ -896,7 +896,7 @@ impl TypeInfo {
 
     /// Given a `TypeInfo` `self`, analyze `self` and return all inner
     /// `TypeId`'s of `self`, not including `self`.
-    pub(crate) fn extract_inner_types(&self, engines: Engines<'_>) -> HashSet<TypeId> {
+    pub(crate) fn extract_inner_types(&self, engines: Engines<'_>) -> BTreeSet<TypeId> {
         fn filter_fn(_type_info: &TypeInfo) -> bool {
             true
         }
@@ -999,12 +999,12 @@ impl TypeInfo {
         inner_types
     }
 
-    pub(crate) fn extract_any<F>(&self, engines: Engines<'_>, filter_fn: &F) -> HashSet<TypeId>
+    pub(crate) fn extract_any<F>(&self, engines: Engines<'_>, filter_fn: &F) -> BTreeSet<TypeId>
     where
         F: Fn(&TypeInfo) -> bool,
     {
         let decl_engine = engines.de();
-        let mut found: HashSet<TypeId> = HashSet::new();
+        let mut found: BTreeSet<TypeId> = BTreeSet::new();
         match self {
             TypeInfo::Unknown
             | TypeInfo::Placeholder(_)
