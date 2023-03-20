@@ -33,26 +33,57 @@ pub struct DeclEngine {
     parents: RwLock<HashMap<FunctionalDeclId, Vec<FunctionalDeclId>>>,
 }
 
-pub trait DeclEngineIndex<T>
+pub trait DeclEngineGet<I, U> {
+    fn get(&self, index: &I) -> U;
+}
+
+pub trait DeclEngineInsert<T>
 where
     T: Named + Spanned,
 {
-    fn get(&self, index: DeclId<T>) -> T;
-    fn replace(&self, index: DeclId<T>, decl: T);
     fn insert(&self, decl: T) -> DeclRef<DeclId<T>>;
 }
 
-macro_rules! decl_engine_index {
+pub trait DeclEngineReplace<T> {
+    fn replace(&self, index: DeclId<T>, decl: T);
+}
+
+pub trait DeclEngineIndex<T>:
+    DeclEngineGet<DeclId<T>, T> + DeclEngineInsert<T> + DeclEngineReplace<T>
+where
+    T: Named + Spanned,
+{
+}
+
+macro_rules! decl_engine_get {
     ($slab:ident, $decl:ty) => {
-        impl DeclEngineIndex<$decl> for DeclEngine {
-            fn get(&self, index: DeclId<$decl>) -> $decl {
+        impl DeclEngineGet<DeclId<$decl>, $decl> for DeclEngine {
+            fn get(&self, index: &DeclId<$decl>) -> $decl {
                 self.$slab.get(index.inner())
             }
+        }
 
-            fn replace(&self, index: DeclId<$decl>, decl: $decl) {
-                self.$slab.replace(index, decl);
+        impl DeclEngineGet<DeclRef<DeclId<$decl>>, $decl> for DeclEngine {
+            fn get(&self, index: &DeclRef<DeclId<$decl>>) -> $decl {
+                self.$slab.get(index.id().inner())
             }
+        }
+    };
+}
+decl_engine_get!(function_slab, ty::TyFunctionDeclaration);
+decl_engine_get!(trait_slab, ty::TyTraitDeclaration);
+decl_engine_get!(trait_fn_slab, ty::TyTraitFn);
+decl_engine_get!(impl_trait_slab, ty::TyImplTrait);
+decl_engine_get!(struct_slab, ty::TyStructDeclaration);
+decl_engine_get!(storage_slab, ty::TyStorageDeclaration);
+decl_engine_get!(abi_slab, ty::TyAbiDeclaration);
+decl_engine_get!(constant_slab, ty::TyConstantDeclaration);
+decl_engine_get!(enum_slab, ty::TyEnumDeclaration);
+decl_engine_get!(type_alias_slab, ty::TyTypeAliasDeclaration);
 
+macro_rules! decl_engine_insert {
+    ($slab:ident, $decl:ty) => {
+        impl DeclEngineInsert<$decl> for DeclEngine {
             fn insert(&self, decl: $decl) -> DeclRef<DeclId<$decl>> {
                 let span = decl.span();
                 DeclRef::new(
@@ -62,6 +93,42 @@ macro_rules! decl_engine_index {
                 )
             }
         }
+    };
+}
+decl_engine_insert!(function_slab, ty::TyFunctionDeclaration);
+decl_engine_insert!(trait_slab, ty::TyTraitDeclaration);
+decl_engine_insert!(trait_fn_slab, ty::TyTraitFn);
+decl_engine_insert!(impl_trait_slab, ty::TyImplTrait);
+decl_engine_insert!(struct_slab, ty::TyStructDeclaration);
+decl_engine_insert!(storage_slab, ty::TyStorageDeclaration);
+decl_engine_insert!(abi_slab, ty::TyAbiDeclaration);
+decl_engine_insert!(constant_slab, ty::TyConstantDeclaration);
+decl_engine_insert!(enum_slab, ty::TyEnumDeclaration);
+decl_engine_insert!(type_alias_slab, ty::TyTypeAliasDeclaration);
+
+macro_rules! decl_engine_replace {
+    ($slab:ident, $decl:ty) => {
+        impl DeclEngineReplace<$decl> for DeclEngine {
+            fn replace(&self, index: DeclId<$decl>, decl: $decl) {
+                self.$slab.replace(index, decl);
+            }
+        }
+    };
+}
+decl_engine_replace!(function_slab, ty::TyFunctionDeclaration);
+decl_engine_replace!(trait_slab, ty::TyTraitDeclaration);
+decl_engine_replace!(trait_fn_slab, ty::TyTraitFn);
+decl_engine_replace!(impl_trait_slab, ty::TyImplTrait);
+decl_engine_replace!(struct_slab, ty::TyStructDeclaration);
+decl_engine_replace!(storage_slab, ty::TyStorageDeclaration);
+decl_engine_replace!(abi_slab, ty::TyAbiDeclaration);
+decl_engine_replace!(constant_slab, ty::TyConstantDeclaration);
+decl_engine_replace!(enum_slab, ty::TyEnumDeclaration);
+decl_engine_replace!(type_alias_slab, ty::TyTypeAliasDeclaration);
+
+macro_rules! decl_engine_index {
+    ($slab:ident, $decl:ty) => {
+        impl DeclEngineIndex<$decl> for DeclEngine {}
     };
 }
 decl_engine_index!(function_slab, ty::TyFunctionDeclaration);
@@ -107,11 +174,11 @@ impl DeclEngine {
                         (
                             FunctionalDeclId::TraitFn(x_id),
                             FunctionalDeclId::TraitFn(curr_parent_id),
-                        ) => self.get(*x_id).eq(&self.get(*curr_parent_id), engines),
+                        ) => self.get(x_id).eq(&self.get(curr_parent_id), engines),
                         (
                             FunctionalDeclId::Function(x_id),
                             FunctionalDeclId::Function(curr_parent_id),
-                        ) => self.get(*x_id).eq(&self.get(*curr_parent_id), engines),
+                        ) => self.get(x_id).eq(&self.get(curr_parent_id), engines),
                         _ => false,
                     }) {
                         left_to_check.push_back(curr_parent.clone());
@@ -133,73 +200,123 @@ impl DeclEngine {
             .or_insert_with(|| vec![parent]);
     }
 
-    pub fn get_function<'a, T>(&self, index: &'a T) -> ty::TyFunctionDeclaration
+    /// Friendly helper method for calling the `get` method from the
+    /// implementation of [DeclEngineGet] for [DeclEngine]
+    ///
+    /// Calling [DeclEngine][get] directly is equivalent to this method, but
+    /// this method adds additional syntax that some users may find helpful.
+    pub fn get_function<I>(&self, index: &I) -> ty::TyFunctionDeclaration
     where
-        DeclId<ty::TyFunctionDeclaration>: From<&'a T>,
+        DeclEngine: DeclEngineGet<I, ty::TyFunctionDeclaration>,
     {
-        self.function_slab.get(DeclId::from(index).inner())
+        self.get(index)
     }
 
-    pub fn get_trait<'a, T>(&self, index: &'a T) -> ty::TyTraitDeclaration
+    /// Friendly helper method for calling the `get` method from the
+    /// implementation of [DeclEngineGet] for [DeclEngine]
+    ///
+    /// Calling [DeclEngine][get] directly is equivalent to this method, but
+    /// this method adds additional syntax that some users may find helpful.
+    pub fn get_trait<I>(&self, index: &I) -> ty::TyTraitDeclaration
     where
-        DeclId<ty::TyTraitDeclaration>: From<&'a T>,
+        DeclEngine: DeclEngineGet<I, ty::TyTraitDeclaration>,
     {
-        self.trait_slab.get(DeclId::from(index).inner())
+        self.get(index)
     }
 
-    pub fn get_trait_fn<'a, T>(&self, index: &'a T) -> ty::TyTraitFn
+    /// Friendly helper method for calling the `get` method from the
+    /// implementation of [DeclEngineGet] for [DeclEngine]
+    ///
+    /// Calling [DeclEngine][get] directly is equivalent to this method, but
+    /// this method adds additional syntax that some users may find helpful.
+    pub fn get_trait_fn<I>(&self, index: &I) -> ty::TyTraitFn
     where
-        DeclId<ty::TyTraitFn>: From<&'a T>,
+        DeclEngine: DeclEngineGet<I, ty::TyTraitFn>,
     {
-        self.trait_fn_slab.get(DeclId::from(index).inner())
+        self.get(index)
     }
 
-    pub fn get_impl_trait<'a, T>(&self, index: &'a T) -> ty::TyImplTrait
+    /// Friendly helper method for calling the `get` method from the
+    /// implementation of [DeclEngineGet] for [DeclEngine]
+    ///
+    /// Calling [DeclEngine][get] directly is equivalent to this method, but
+    /// this method adds additional syntax that some users may find helpful.
+    pub fn get_impl_trait<I>(&self, index: &I) -> ty::TyImplTrait
     where
-        DeclId<ty::TyImplTrait>: From<&'a T>,
+        DeclEngine: DeclEngineGet<I, ty::TyImplTrait>,
     {
-        self.impl_trait_slab.get(DeclId::from(index).inner())
+        self.get(index)
     }
 
-    pub fn get_struct<'a, T>(&self, index: &'a T) -> ty::TyStructDeclaration
+    /// Friendly helper method for calling the `get` method from the
+    /// implementation of [DeclEngineGet] for [DeclEngine]
+    ///
+    /// Calling [DeclEngine][get] directly is equivalent to this method, but
+    /// this method adds additional syntax that some users may find helpful.
+    pub fn get_struct<I>(&self, index: &I) -> ty::TyStructDeclaration
     where
-        DeclId<ty::TyStructDeclaration>: From<&'a T>,
+        DeclEngine: DeclEngineGet<I, ty::TyStructDeclaration>,
     {
-        self.struct_slab.get(DeclId::from(index).inner())
+        self.get(index)
     }
 
-    pub fn get_storage<'a, T>(&self, index: &'a T) -> ty::TyStorageDeclaration
+    /// Friendly helper method for calling the `get` method from the
+    /// implementation of [DeclEngineGet] for [DeclEngine].
+    ///
+    /// Calling [DeclEngine][get] directly is equivalent to this method, but
+    /// this method adds additional syntax that some users may find helpful.
+    pub fn get_storage<I>(&self, index: &I) -> ty::TyStorageDeclaration
     where
-        DeclId<ty::TyStorageDeclaration>: From<&'a T>,
+        DeclEngine: DeclEngineGet<I, ty::TyStorageDeclaration>,
     {
-        self.storage_slab.get(DeclId::from(index).inner())
+        self.get(index)
     }
 
-    pub fn get_abi<'a, T>(&self, index: &'a T) -> ty::TyAbiDeclaration
+    /// Friendly helper method for calling the `get` method from the
+    /// implementation of [DeclEngineGet] for [DeclEngine]
+    ///
+    /// Calling [DeclEngine][get] directly is equivalent to this method, but
+    /// this method adds additional syntax that some users may find helpful.
+    pub fn get_abi<I>(&self, index: &I) -> ty::TyAbiDeclaration
     where
-        DeclId<ty::TyAbiDeclaration>: From<&'a T>,
+        DeclEngine: DeclEngineGet<I, ty::TyAbiDeclaration>,
     {
-        self.abi_slab.get(DeclId::from(index).inner())
+        self.get(index)
     }
 
-    pub fn get_constant<'a, T>(&self, index: &'a T) -> ty::TyConstantDeclaration
+    /// Friendly helper method for calling the `get` method from the
+    /// implementation of [DeclEngineGet] for [DeclEngine]
+    ///
+    /// Calling [DeclEngine][get] directly is equivalent to this method, but
+    /// this method adds additional syntax that some users may find helpful.
+    pub fn get_constant<I>(&self, index: &I) -> ty::TyConstantDeclaration
     where
-        DeclId<ty::TyConstantDeclaration>: From<&'a T>,
+        DeclEngine: DeclEngineGet<I, ty::TyConstantDeclaration>,
     {
-        self.constant_slab.get(DeclId::from(index).inner())
+        self.get(index)
     }
 
-    pub fn get_enum<'a, T>(&self, index: &'a T) -> ty::TyEnumDeclaration
+    /// Friendly helper method for calling the `get` method from the
+    /// implementation of [DeclEngineGet] for [DeclEngine]
+    ///
+    /// Calling [DeclEngine][get] directly is equivalent to this method, but
+    /// this method adds additional syntax that some users may find helpful.
+    pub fn get_enum<I>(&self, index: &I) -> ty::TyEnumDeclaration
     where
-        DeclId<ty::TyEnumDeclaration>: From<&'a T>,
+        DeclEngine: DeclEngineGet<I, ty::TyEnumDeclaration>,
     {
-        self.enum_slab.get(DeclId::from(index).inner())
+        self.get(index)
     }
 
-    pub fn get_type_alias<'a, T, I>(&self, index: &'a T) -> ty::TyTypeAliasDeclaration
+    /// Friendly helper method for calling the `get` method from the
+    /// implementation of [DeclEngineGet] for [DeclEngine]
+    ///
+    /// Calling [DeclEngine][get] directly is equivalent to this method, but
+    /// this method adds additional syntax that some users may find helpful.
+    pub fn get_type_alias<I>(&self, index: &I) -> ty::TyTypeAliasDeclaration
     where
-        DeclId<I>: From<&'a T>,
+        DeclEngine: DeclEngineGet<I, ty::TyTypeAliasDeclaration>,
     {
-        self.type_alias_slab.get(DeclId::from(index).inner())
+        self.get(index)
     }
 }

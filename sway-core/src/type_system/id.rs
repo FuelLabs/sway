@@ -1,6 +1,6 @@
 use super::*;
 use crate::{
-    decl_engine::{DeclEngine, DeclEngineIndex},
+    decl_engine::{DeclEngine, DeclEngineInsert},
     engine_threading::*,
 };
 

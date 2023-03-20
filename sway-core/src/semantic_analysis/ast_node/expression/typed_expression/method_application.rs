@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::{DeclEngineIndex, DeclRefFunction},
+    decl_engine::{DeclEngineInsert, DeclRefFunction},
     error::*,
     language::{parsed::*, ty, *},
     semantic_analysis::*,

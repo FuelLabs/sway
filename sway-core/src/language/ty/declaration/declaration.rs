@@ -93,7 +93,7 @@ impl PartialEqWithEngines for TyDeclaration {
                     decl_id: rid,
                     ..
                 },
-            ) => ln == rn && decl_engine.get(*lid).eq(&decl_engine.get(*rid), engines),
+            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), engines),
 
             (
                 Self::FunctionDeclaration {
@@ -106,7 +106,7 @@ impl PartialEqWithEngines for TyDeclaration {
                     decl_id: rid,
                     ..
                 },
-            ) => ln == rn && decl_engine.get(*lid).eq(&decl_engine.get(*rid), engines),
+            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), engines),
 
             (
                 Self::TraitDeclaration {
@@ -119,7 +119,7 @@ impl PartialEqWithEngines for TyDeclaration {
                     decl_id: rid,
                     ..
                 },
-            ) => ln == rn && decl_engine.get(*lid).eq(&decl_engine.get(*rid), engines),
+            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), engines),
             (
                 Self::StructDeclaration {
                     name: ln,
@@ -131,7 +131,7 @@ impl PartialEqWithEngines for TyDeclaration {
                     decl_id: rid,
                     ..
                 },
-            ) => ln == rn && decl_engine.get(*lid).eq(&decl_engine.get(*rid), engines),
+            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), engines),
             (
                 Self::EnumDeclaration {
                     name: ln,
@@ -143,7 +143,7 @@ impl PartialEqWithEngines for TyDeclaration {
                     decl_id: rid,
                     ..
                 },
-            ) => ln == rn && decl_engine.get(*lid).eq(&decl_engine.get(*rid), engines),
+            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), engines),
             (
                 Self::ImplTrait {
                     name: ln,
@@ -155,7 +155,7 @@ impl PartialEqWithEngines for TyDeclaration {
                     decl_id: rid,
                     ..
                 },
-            ) => ln == rn && decl_engine.get(*lid).eq(&decl_engine.get(*rid), engines),
+            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), engines),
 
             (
                 Self::AbiDeclaration {
@@ -168,15 +168,15 @@ impl PartialEqWithEngines for TyDeclaration {
                     decl_id: rid,
                     ..
                 },
-            ) => ln == rn && decl_engine.get(*lid).eq(&decl_engine.get(*rid), engines),
+            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), engines),
             (
                 Self::StorageDeclaration { decl_id: lid, .. },
                 Self::StorageDeclaration { decl_id: rid, .. },
-            ) => decl_engine.get(*lid).eq(&decl_engine.get(*rid), engines),
+            ) => decl_engine.get(lid).eq(&decl_engine.get(rid), engines),
             (
                 Self::TypeAliasDeclaration { decl_id: lid, .. },
                 Self::TypeAliasDeclaration { decl_id: rid, .. },
-            ) => decl_engine.get(*lid).eq(&decl_engine.get(*rid), engines),
+            ) => decl_engine.get(lid).eq(&decl_engine.get(rid), engines),
             (
                 Self::GenericTypeForFunctionScope {
                     name: xn,
@@ -204,31 +204,31 @@ impl HashWithEngines for TyDeclaration {
                 decl.hash(state, engines);
             }
             ConstantDeclaration { decl_id, .. } => {
-                decl_engine.get(*decl_id).hash(state, engines);
+                decl_engine.get(decl_id).hash(state, engines);
             }
             FunctionDeclaration { decl_id, .. } => {
-                decl_engine.get(*decl_id).hash(state, engines);
+                decl_engine.get(decl_id).hash(state, engines);
             }
             TraitDeclaration { decl_id, .. } => {
-                decl_engine.get(*decl_id).hash(state, engines);
+                decl_engine.get(decl_id).hash(state, engines);
             }
             StructDeclaration { decl_id, .. } => {
-                decl_engine.get(*decl_id).hash(state, engines);
+                decl_engine.get(decl_id).hash(state, engines);
             }
             EnumDeclaration { decl_id, .. } => {
-                decl_engine.get(*decl_id).hash(state, engines);
+                decl_engine.get(decl_id).hash(state, engines);
             }
             ImplTrait { decl_id, .. } => {
-                decl_engine.get(*decl_id).hash(state, engines);
+                decl_engine.get(decl_id).hash(state, engines);
             }
             AbiDeclaration { decl_id, .. } => {
-                decl_engine.get(*decl_id).hash(state, engines);
+                decl_engine.get(decl_id).hash(state, engines);
             }
             TypeAliasDeclaration { decl_id, .. } => {
-                decl_engine.get(*decl_id).hash(state, engines);
+                decl_engine.get(decl_id).hash(state, engines);
             }
             StorageDeclaration { decl_id, .. } => {
-                decl_engine.get(*decl_id).hash(state, engines);
+                decl_engine.get(decl_id).hash(state, engines);
             }
             GenericTypeForFunctionScope { name, type_id } => {
                 name.hash(state);

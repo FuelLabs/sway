@@ -1,7 +1,7 @@
 use sway_types::{Named, Spanned};
 
 use crate::{
-    decl_engine::{DeclEngineIndex, DeclRef, ReplaceFunctionImplementingType},
+    decl_engine::{DeclEngineInsert, DeclRef, ReplaceFunctionImplementingType},
     error::*,
     language::{parsed, ty},
     semantic_analysis::TypeCheckContext,

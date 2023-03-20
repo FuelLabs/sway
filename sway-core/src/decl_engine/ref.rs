@@ -111,7 +111,7 @@ where
         engines: Engines<'_>,
     ) -> Self {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self.id);
+        let mut decl = decl_engine.get(&self.id);
         decl.subst(type_mapping, engines);
         decl_engine.insert(decl)
     }
@@ -127,7 +127,7 @@ where
         self_type: TypeId,
     ) -> Self {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self.id);
+        let mut decl = decl_engine.get(&self.id);
         decl.replace_self_type(engines, self_type);
         decl_engine.insert(decl)
     }
@@ -156,7 +156,7 @@ where
         engines: Engines<'_>,
     ) -> Self {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self.id);
+        let mut decl = decl_engine.get(&self.id);
         decl.subst(type_mapping, engines);
         decl_engine
             .insert(decl)
@@ -175,7 +175,7 @@ where
         self_type: TypeId,
     ) -> Self {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self.id);
+        let mut decl = decl_engine.get(&self.id);
         decl.replace_self_type(engines, self_type);
         decl_engine
             .insert(decl)
@@ -194,7 +194,7 @@ where
         engines: Engines<'_>,
     ) -> Self {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self.id);
+        let mut decl = decl_engine.get(&self.id);
         decl.replace_decls(decl_mapping, engines);
         decl_engine
             .insert(decl)
@@ -233,7 +233,7 @@ where
             // temporarily omitted
             subst_list: _,
         } = other;
-        ln == rn && decl_engine.get(*lid).eq(&decl_engine.get(*rid), engines)
+        ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), engines)
     }
 }
 
@@ -254,7 +254,7 @@ where
             subst_list: _,
         } = self;
         name.hash(state);
-        decl_engine.get(*id).hash(state, engines);
+        decl_engine.get(id).hash(state, engines);
     }
 }
 
@@ -264,13 +264,13 @@ impl PartialEqWithEngines for DeclRefMixedInterface {
         let decl_engine = engines.de();
         match (&self.id, &other.id) {
             (InterfaceDeclId::Abi(self_id), InterfaceDeclId::Abi(other_id)) => {
-                let left = decl_engine.get(*self_id);
-                let right = decl_engine.get(*other_id);
+                let left = decl_engine.get(self_id);
+                let right = decl_engine.get(other_id);
                 self.name == other.name && left.eq(&right, engines)
             }
             (InterfaceDeclId::Trait(self_id), InterfaceDeclId::Trait(other_id)) => {
-                let left = decl_engine.get(*self_id);
-                let right = decl_engine.get(*other_id);
+                let left = decl_engine.get(self_id);
+                let right = decl_engine.get(other_id);
                 self.name == other.name && left.eq(&right, engines)
             }
             _ => false,
@@ -284,13 +284,13 @@ impl HashWithEngines for DeclRefMixedInterface {
             InterfaceDeclId::Abi(id) => {
                 state.write_u8(0);
                 let decl_engine = engines.de();
-                let decl = decl_engine.get(id);
+                let decl = decl_engine.get(&id);
                 decl.hash(state, engines);
             }
             InterfaceDeclId::Trait(id) => {
                 state.write_u8(1);
                 let decl_engine = engines.de();
-                let decl = decl_engine.get(id);
+                let decl = decl_engine.get(&id);
                 decl.hash(state, engines);
             }
         }
@@ -310,7 +310,7 @@ where
 {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self.id);
+        let mut decl = decl_engine.get(&self.id);
         decl.subst(type_mapping, engines);
         decl_engine.replace(self.id, decl);
     }
@@ -323,7 +323,7 @@ where
 {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self.id);
+        let mut decl = decl_engine.get(&self.id);
         decl.replace_self_type(engines, self_type);
         decl_engine.replace(self.id, decl);
     }
@@ -357,7 +357,7 @@ impl ReplaceFunctionImplementingType for DeclRefFunction {
         implementing_type: ty::TyDeclaration,
     ) {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self.id);
+        let mut decl = decl_engine.get(&self.id);
         decl.set_implementing_type(implementing_type);
         decl_engine.replace(self.id, decl);
     }
