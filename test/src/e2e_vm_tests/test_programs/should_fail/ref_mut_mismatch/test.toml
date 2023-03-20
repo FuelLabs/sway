@@ -6,3 +6,5 @@ category = "fail"
 
 # check: $()foo(0);
 # nextln: $()Cannot pass immutable argument to mutable parameter.
+
+expected_warnings = 1

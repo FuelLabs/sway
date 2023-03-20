@@ -3,8 +3,4 @@ authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
 implicit-std = false
 license = "Apache-2.0"
-name = "config_time_constants_non_literal"
-
-
-[constants]
-some_contract_addr = { type = "S", value = "S { x:0 }" }
+name = "unused_variable_in_free_fn"

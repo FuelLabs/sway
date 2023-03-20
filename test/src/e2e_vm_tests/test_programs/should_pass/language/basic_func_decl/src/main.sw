@@ -19,11 +19,11 @@ fn main() -> bool {
     eight_args(my_struct, my_enum, my_struct_with_enum, d, e, f, g, h);
 
     // test some comparisons
-    let ls_than = 4 < 5;
-    let gt_than = 5 > 4;
-    let le = 4 <= 4;
-    let ge = 4 >= 4;
-    let eq = 5 == 5;
+    let _ls_than = 4 < 5;
+    let _gt_than = 5 > 4;
+    let _le = 4 <= 4;
+    let _ge = 4 >= 4;
+    let _eq = 5 == 5;
 
     return true;
 }

@@ -10,7 +10,6 @@ use std::{
 };
 
 use sway_core::{fuel_prelude::fuel_tx, language::parsed::TreeType, parse_tree_type, BuildTarget};
-pub use sway_types::ConfigTimeConstant;
 use sway_utils::constants;
 
 /// The name of a workspace member package.
@@ -142,7 +141,6 @@ pub struct PackageManifest {
     pub dependencies: Option<BTreeMap<String, Dependency>>,
     pub patch: Option<BTreeMap<String, PatchMap>>,
     /// A list of [configuration-time constants](https://github.com/FuelLabs/sway/issues/1498).
-    pub constants: Option<BTreeMap<String, ConfigTimeConstant>>,
     pub build_target: Option<BTreeMap<String, BuildTarget>>,
     build_profile: Option<BTreeMap<String, BuildProfile>>,
     pub contract_dependencies: Option<BTreeMap<String, ContractDependency>>,
@@ -350,10 +348,6 @@ impl PackageManifestFile {
                 false => dir.join(path).canonicalize().ok(),
             }
         })
-    }
-    /// Getter for the config time constants on the manifest.
-    pub fn config_time_constants(&self) -> BTreeMap<String, ConfigTimeConstant> {
-        self.constants.as_ref().cloned().unwrap_or_default()
     }
 
     /// Returns the workspace manifest file if this `PackageManifestFile` is one of the members.
