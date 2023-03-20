@@ -7,8 +7,8 @@ fn gimme_a_struct() -> Dummy {
 }
 
 fn main() -> u64 {
-    let Dummy { value1, value2 } = gimme_a_struct();
-    let Dummy { value1, value2 }: Dummy = gimme_a_struct();
+    let Dummy { value1: _value1, value2: _value2 } = gimme_a_struct();
+    let Dummy { value1: _value1, value2: _value2 }: Dummy = gimme_a_struct();
     let data = Data {
         value: 42,
     };

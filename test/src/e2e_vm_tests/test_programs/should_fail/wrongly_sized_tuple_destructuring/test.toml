@@ -1,6 +1,6 @@
 category = "fail"
 
-# check: let (b, c) = a;
+# check: let (_b, _c) = a;
 # nextln: $()Mismatched types.
 # nextln: $()expected: (_, _)
 # nextln: $()found:    (bool, u64, u64).
