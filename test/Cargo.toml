@@ -1,9 +1,9 @@
 [package]
 name = "test"
 version = "0.0.0"
-authors = ["Fuel Labs <contact@fuel.sh>"]
-edition = "2021"
 publish = false
+authors.workspace = true
+edition.workspace = true
 
 [dependencies]
 anyhow = "1.0.41"
