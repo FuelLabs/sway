@@ -18,6 +18,6 @@ fn main() -> u64 {
     let a = Data1 {
         value: 7
     };
-    let c = a.get();
+    let _c = a.get();
     0
 }

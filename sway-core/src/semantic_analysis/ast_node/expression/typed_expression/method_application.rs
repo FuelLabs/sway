@@ -283,7 +283,10 @@ pub(crate) fn type_check_method_application(
     // build the function selector
     let selector = if method.is_contract_call {
         let contract_caller = args_buf.pop_front();
-        let contract_address = match contract_caller.map(|x| type_engine.get(x.return_type)) {
+        let contract_address = match contract_caller
+            .clone()
+            .map(|x| type_engine.get(x.return_type))
+        {
             Some(TypeInfo::ContractCaller { address, .. }) => address,
             _ => {
                 errors.push(CompileError::Internal(
@@ -307,9 +310,11 @@ pub(crate) fn type_check_method_application(
             warnings,
             errors
         );
+        let contract_caller = contract_caller.unwrap();
         Some(ty::ContractCallParams {
             func_selector,
             contract_address,
+            contract_caller: Box::new(contract_caller),
         })
     } else {
         None

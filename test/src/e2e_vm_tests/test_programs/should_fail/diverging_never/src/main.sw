@@ -1,7 +1,7 @@
 script;
 
 fn main() {
-    let b = {
+    let _b = {
         return 5;
     }[0];
 }

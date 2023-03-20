@@ -1,6 +1,6 @@
 script;
 
 fn main() -> bool {
-    let o = Option::None;
+    let _o = Option::None;
     true
 }

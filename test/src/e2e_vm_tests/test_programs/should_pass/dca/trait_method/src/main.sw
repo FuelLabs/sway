@@ -24,6 +24,6 @@ impl MyTrait2 for MyStruct {
 
 fn main() {
     let s = MyStruct {};
-    let b = s.trait_method();
-    let b = s.trait_method2();
+    let _b = s.trait_method();
+    let _b = s.trait_method2();
 }
