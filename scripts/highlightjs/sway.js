@@ -101,6 +101,10 @@ export default function(hljs) {
         ]
       },
       {
+        scope: 'meta',
+        match: /#\[.*\]/,
+      },
+      {
         className: 'symbol',
         begin: /'[a-zA-Z_][a-zA-Z0-9_]*/
       },

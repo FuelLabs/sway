@@ -1,11 +1,12 @@
 use crate::priv_prelude::*;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub enum ItemImplItem {
     Fn(ItemFn),
+    Const(ItemConst),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct ItemImpl {
     pub impl_token: ImplToken,
     pub generic_params_opt: Option<GenericParams>,
@@ -25,6 +26,7 @@ impl Spanned for ItemImplItem {
     fn span(&self) -> Span {
         match self {
             ItemImplItem::Fn(fn_decl) => fn_decl.span(),
+            ItemImplItem::Const(const_decl) => const_decl.span(),
         }
     }
 }

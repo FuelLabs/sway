@@ -159,11 +159,12 @@ pub enum FuelVmInstruction {
     },
 }
 
+/// Comparison operations.
 #[derive(Debug, Clone, Copy)]
 pub enum Predicate {
-    /// Equivalence.
     Equal,
-    // More soon.  NotEqual, LessThan, LessThanOrEqual, GreaterThan, GreaterThanOrEqual.
+    LessThan,
+    GreaterThan,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -172,6 +173,9 @@ pub enum BinaryOpKind {
     Sub,
     Mul,
     Div,
+    And,
+    Or,
+    Xor,
 }
 
 /// Special registers in the Fuel Virtual Machine.

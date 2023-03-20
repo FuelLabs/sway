@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-A6EAB8F92CD55881'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-A6EAB8F92CD55881'
+dependencies = ['core']
+
+[[package]]
+name = 'trait_method_neq'
+source = 'member'
+dependencies = ['std']

@@ -4,7 +4,7 @@ use crate::{
     engine_threading::*,
 };
 
-use std::fmt;
+use std::{collections::HashSet, fmt};
 
 /// A identifier to uniquely refer to our type terms
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd, Debug)]
@@ -211,6 +211,12 @@ impl ReplaceSelfType for TypeId {
                         None
                     }
                 }
+                TypeInfo::Alias { name, mut ty } => {
+                    helper(ty.type_id, engines, self_type).map(|type_id| {
+                        ty.type_id = type_id;
+                        type_engine.insert(decl_engine, TypeInfo::Alias { name, ty })
+                    })
+                }
                 TypeInfo::Unknown
                 | TypeInfo::UnknownGeneric { .. }
                 | TypeInfo::Str(_)
@@ -248,9 +254,15 @@ impl UnconstrainedTypeParameters for TypeId {
         type_parameter: &TypeParameter,
     ) -> bool {
         let type_engine = engines.te();
-        type_engine
+        let decl_engine = engines.de();
+        let mut all_types: HashSet<TypeId> = type_engine
             .get(*self)
-            .type_parameter_is_unconstrained(engines, type_parameter)
+            .extract_inner_types(type_engine, decl_engine);
+        all_types.insert(*self);
+        let type_parameter_info = type_engine.get(type_parameter.type_id);
+        all_types
+            .iter()
+            .any(|type_id| type_engine.get(*type_id).eq(&type_parameter_info, engines))
     }
 }
 
@@ -297,6 +309,9 @@ impl TypeId {
             }
             (TypeInfo::Custom { call_path, .. }, TypeInfo::Struct(decl_ref)) => {
                 call_path.suffix != decl_engine.get_struct(&decl_ref).call_path.suffix
+            }
+            (TypeInfo::Custom { call_path, .. }, TypeInfo::Alias { name, .. }) => {
+                call_path.suffix != name
             }
             (TypeInfo::Custom { .. }, _) => true,
             _ => false,

@@ -1,7 +1,7 @@
 use crate::{Parse, ParseResult, Parser};
 
 use sway_ast::attribute::Annotated;
-use sway_ast::keywords::{FnToken, OpenAngleBracketToken, WhereToken};
+use sway_ast::keywords::{ConstToken, FnToken, OpenAngleBracketToken, SemicolonToken, WhereToken};
 use sway_ast::{Braces, ItemImpl, ItemImplItem, PubToken, Ty};
 use sway_error::parser_error::ParseErrorKind;
 
@@ -10,6 +10,10 @@ impl Parse for ItemImplItem {
         if parser.peek::<PubToken>().is_some() || parser.peek::<FnToken>().is_some() {
             let fn_decl = parser.parse()?;
             Ok(ItemImplItem::Fn(fn_decl))
+        } else if let Some(_const_keyword) = parser.peek::<ConstToken>() {
+            let const_decl = parser.parse()?;
+            parser.parse::<SemicolonToken>()?;
+            Ok(ItemImplItem::Const(const_decl))
         } else {
             Err(parser.emit_error(ParseErrorKind::ExpectedAnItem))
         }
@@ -29,7 +33,6 @@ impl Parse for ItemImpl {
         let contents: Braces<Vec<Annotated<ItemImplItem>>> = parser.parse()?;
         if trait_opt.is_some() {
             for annotated in contents.get().iter() {
-                #[allow(irrefutable_let_patterns)]
                 if let ItemImplItem::Fn(item_fn) = &annotated.value {
                     parser.ban_visibility_qualifier(&item_fn.fn_signature.visibility)?;
                 }

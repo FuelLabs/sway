@@ -71,6 +71,8 @@ pub enum CompileError {
     MultipleDefinitionsOfFunction { name: Ident, span: Span },
     #[error("Name \"{name}\" is defined multiple times.")]
     MultipleDefinitionsOfName { name: Ident, span: Span },
+    #[error("Constant \"{name}\" was already defined in scope.")]
+    MultipleDefinitionsOfConstant { name: Ident, span: Span },
     #[error("Assignment to immutable variable. Variable {name} is not declared as mutable.")]
     AssignmentToNonMutable { name: Ident, span: Span },
     #[error(
@@ -126,6 +128,17 @@ pub enum CompileError {
     FunctionNotAPartOfInterfaceSurface {
         name: Ident,
         interface_name: InterfaceName,
+        span: Span,
+    },
+    #[error("Constant \"{name}\" is not a part of {interface_name}'s interface surface.")]
+    ConstantNotAPartOfInterfaceSurface {
+        name: Ident,
+        interface_name: InterfaceName,
+        span: Span,
+    },
+    #[error("Constants are missing from this trait implementation: {missing_constants}")]
+    MissingInterfaceSurfaceConstants {
+        missing_constants: String,
         span: Span,
     },
     #[error("Functions are missing from this trait implementation: {missing_functions}")]
@@ -214,6 +227,8 @@ pub enum CompileError {
     DeclIsNotStorage { actually: String, span: Span },
     #[error("This is a {actually}, not a constant")]
     DeclIsNotAConstant { actually: String, span: Span },
+    #[error("This is a {actually}, not a type alias")]
+    DeclIsNotATypeAlias { actually: String, span: Span },
     #[error(
         "Field \"{field_name}\" not found on struct \"{struct_name}\". Available fields are:\n \
          {available_fields}"
@@ -639,6 +654,7 @@ impl Spanned for CompileError {
             NoScriptMainFunction(span) => span.clone(),
             MultipleDefinitionsOfFunction { span, .. } => span.clone(),
             MultipleDefinitionsOfName { span, .. } => span.clone(),
+            MultipleDefinitionsOfConstant { span, .. } => span.clone(),
             AssignmentToNonMutable { span, .. } => span.clone(),
             MutableParameterNotSupported { span, .. } => span.clone(),
             ImmutableArgumentToMutableParameter { span } => span.clone(),
@@ -649,6 +665,8 @@ impl Spanned for CompileError {
             MismatchedTypeInInterfaceSurface { span, .. } => span.clone(),
             UnknownTrait { span, .. } => span.clone(),
             FunctionNotAPartOfInterfaceSurface { span, .. } => span.clone(),
+            ConstantNotAPartOfInterfaceSurface { span, .. } => span.clone(),
+            MissingInterfaceSurfaceConstants { span, .. } => span.clone(),
             MissingInterfaceSurfaceMethods { span, .. } => span.clone(),
             IncorrectNumberOfTypeArguments { span, .. } => span.clone(),
             DoesNotTakeTypeArguments { span, .. } => span.clone(),
@@ -736,6 +754,7 @@ impl Spanned for CompileError {
             DeclIsNotATraitFn { span, .. } => span.clone(),
             DeclIsNotStorage { span, .. } => span.clone(),
             DeclIsNotAConstant { span, .. } => span.clone(),
+            DeclIsNotATypeAlias { span, .. } => span.clone(),
             ImpureInNonContract { span, .. } => span.clone(),
             ImpureInPureContext { span, .. } => span.clone(),
             ParameterRefMutabilityMismatch { span, .. } => span.clone(),

@@ -78,6 +78,7 @@ impl AbiImplCodeAction<'_> {
                                 None,
                             )
                         }
+                        ty::TyTraitInterfaceItem::Constant(_) => unreachable!(),
                     }
                 })
                 .collect::<Vec<String>>()

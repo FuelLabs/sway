@@ -4,7 +4,7 @@ use std::u256::U256;
 
 fn main() -> bool {
     let first = U256::from((0, 0, 0, 0));
-    let second = U256::from((0, 0, 0, 1));
+    let mut second = U256::from((0, 0, 0, 1));
     let max_u64 = U256::from((0, 0, 0, u64::max()));
 
     let one = first + second;
@@ -39,6 +39,13 @@ fn main() -> bool {
     let sub_max_again = add_of_two - two;
     assert(sub_max_again.c == 0);
     assert(sub_max_again.d == u64::max());
+
+    // Test reassignment
+    second = second - U256::min();
+    assert(second.a == 0);
+    assert(second.b == 0);
+    assert(second.c == 0);
+    assert(second.d == 1);
 
     let zero_in_between = U256::from((0, 1, 0, 10));
     let d_nonzero = U256::from((0, 0, 0, 12));

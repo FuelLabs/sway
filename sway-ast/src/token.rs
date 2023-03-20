@@ -129,6 +129,25 @@ pub enum CommentKind {
     /// var foo = 1; // Trailing comment
     /// ```
     Trailing,
+
+    /// An inlined comment is a block comment nested between 2 tokens without a newline after it.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn some_function(baz: /* inlined comment */ u64) {}
+    /// ```
+    Inlined,
+
+    /// A multiline comment is a block comment that may be nested between 2 tokens with 1 or more newlines within it.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn some_function(baz: /* multiline
+    ///                          comment */ u64) {}
+    /// ```
+    Multilined,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]

@@ -20,7 +20,7 @@
 //! `fn my_function() { .. }`, and to use [DeclRef] for cases like function
 //! application `my_function()`.
 
-use std::hash::Hasher;
+use std::hash::{Hash, Hasher};
 
 use sway_types::{Ident, Named, Span, Spanned};
 
@@ -54,13 +54,83 @@ pub type DeclRefMixedInterface = DeclRef<InterfaceDeclId>;
 pub struct DeclRef<I> {
     /// The name of the declaration.
     // NOTE: In the case of storage, the name is "storage".
-    pub name: Ident,
+    name: Ident,
 
     /// The index into the [DeclEngine].
-    pub id: I,
+    id: I,
+
+    /// The type substitution list to apply to the `id` field for type
+    /// monomorphization.
+    subst_list: TypeSubstList,
 
     /// The [Span] of the entire declaration.
-    pub decl_span: Span,
+    decl_span: Span,
+}
+
+impl<I> DeclRef<I> {
+    pub(crate) fn new(name: Ident, id: I, decl_span: Span) -> Self {
+        DeclRef {
+            name,
+            id,
+            subst_list: TypeSubstList::new(),
+            decl_span,
+        }
+    }
+
+    pub fn name(&self) -> &Ident {
+        &self.name
+    }
+
+    pub fn id(&self) -> &I {
+        &self.id
+    }
+
+    pub(crate) fn subst_list(&self) -> &TypeSubstList {
+        &self.subst_list
+    }
+
+    pub fn decl_span(&self) -> &Span {
+        &self.decl_span
+    }
+}
+
+impl<T> DeclRef<DeclId<T>> {
+    pub(crate) fn replace_id(&mut self, index: DeclId<T>) {
+        self.id.replace_id(index);
+    }
+}
+
+impl<T> DeclRef<DeclId<T>>
+where
+    DeclEngine: DeclEngineIndex<T>,
+    T: Named + Spanned + SubstTypes,
+{
+    pub(crate) fn subst_types_and_insert_new(
+        &self,
+        type_mapping: &TypeSubstMap,
+        engines: Engines<'_>,
+    ) -> Self {
+        let decl_engine = engines.de();
+        let mut decl = decl_engine.get(self.id);
+        decl.subst(type_mapping, engines);
+        decl_engine.insert(decl)
+    }
+}
+impl<T> DeclRef<DeclId<T>>
+where
+    DeclEngine: DeclEngineIndex<T>,
+    T: Named + Spanned + ReplaceSelfType,
+{
+    pub(crate) fn replace_self_type_and_insert_new(
+        &self,
+        engines: Engines<'_>,
+        self_type: TypeId,
+    ) -> Self {
+        let decl_engine = engines.de();
+        let mut decl = decl_engine.get(self.id);
+        decl.replace_self_type(engines, self_type);
+        decl_engine.insert(decl)
+    }
 }
 
 impl<T> DeclRef<DeclId<T>>
@@ -72,10 +142,6 @@ where
         decl_engine.register_parent(id.into(), parent);
         self
     }
-
-    pub(crate) fn replace_id(&mut self, index: DeclId<T>) {
-        self.id.replace_id(index);
-    }
 }
 
 impl<T> DeclRef<DeclId<T>>
@@ -84,7 +150,7 @@ where
     DeclEngine: DeclEngineIndex<T>,
     T: Named + Spanned + SubstTypes,
 {
-    pub(crate) fn subst_types_and_insert_new(
+    pub(crate) fn subst_types_and_insert_new_with_parent(
         &self,
         type_mapping: &TypeSubstMap,
         engines: Engines<'_>,
@@ -103,7 +169,7 @@ where
     DeclEngine: DeclEngineIndex<T>,
     T: Named + Spanned + ReplaceSelfType,
 {
-    pub(crate) fn replace_self_type_and_insert_new(
+    pub(crate) fn replace_self_type_and_insert_new_with_parent(
         &self,
         engines: Engines<'_>,
         self_type: TypeId,
@@ -122,7 +188,7 @@ where
     DeclEngine: DeclEngineIndex<T>,
     T: Named + Spanned + ReplaceDecls,
 {
-    pub(crate) fn replace_decls_and_insert_new(
+    pub(crate) fn replace_decls_and_insert_new_with_parent(
         &self,
         decl_mapping: &DeclMapping,
         engines: Engines<'_>,
@@ -133,16 +199,6 @@ where
         decl_engine
             .insert(decl)
             .with_parent(decl_engine, self.id.into())
-    }
-}
-
-impl<I> DeclRef<I> {
-    pub(crate) fn new(name: Ident, id: I, decl_span: Span) -> Self {
-        DeclRef {
-            name,
-            id,
-            decl_span,
-        }
     }
 }
 
@@ -159,9 +215,25 @@ where
 {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         let decl_engine = engines.de();
-        let left = decl_engine.get(self.id);
-        let right = decl_engine.get(other.id);
-        self.name == other.name && left.eq(&right, engines)
+        let DeclRef {
+            name: ln,
+            id: lid,
+            // these fields are not used in comparison because they aren't
+            // relevant/a reliable source of obj v. obj distinction
+            decl_span: _,
+            // temporarily omitted
+            subst_list: _,
+        } = self;
+        let DeclRef {
+            name: rn,
+            id: rid,
+            // these fields are not used in comparison because they aren't
+            // relevant/a reliable source of obj v. obj distinction
+            decl_span: _,
+            // temporarily omitted
+            subst_list: _,
+        } = other;
+        ln == rn && decl_engine.get(*lid).eq(&decl_engine.get(*rid), engines)
     }
 }
 
@@ -172,8 +244,17 @@ where
 {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
         let decl_engine = engines.de();
-        let decl = decl_engine.get(self.id);
-        decl.hash(state, engines);
+        let DeclRef {
+            name,
+            id,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            decl_span: _,
+            // temporarily omitted
+            subst_list: _,
+        } = self;
+        name.hash(state);
+        decl_engine.get(*id).hash(state, engines);
     }
 }
 
@@ -252,13 +333,17 @@ impl ReplaceDecls for DeclRefFunction {
     fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
         let decl_engine = engines.de();
         if let Some(new_decl_ref) = decl_mapping.find_match(self.id.into()) {
-            self.id = new_decl_ref;
+            if let FunctionalDeclId::Function(new_decl_ref) = new_decl_ref {
+                self.id = new_decl_ref;
+            }
             return;
         }
         let all_parents = decl_engine.find_all_parents(engines, &self.id);
         for parent in all_parents.iter() {
             if let Some(new_decl_ref) = decl_mapping.find_match(parent.clone()) {
-                self.id = new_decl_ref;
+                if let FunctionalDeclId::Function(new_decl_ref) = new_decl_ref {
+                    self.id = new_decl_ref;
+                }
                 return;
             }
         }

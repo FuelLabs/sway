@@ -218,8 +218,16 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                 match item {
                     ty::TyImplItem::Fn(decl_ref) => {
                         check!(
-                            validate_fn_decl(engines, &decl_ref.id),
+                            validate_fn_decl(engines, &decl_ref.id().clone()),
                             (),
+                            warnings,
+                            errors
+                        );
+                    }
+                    ty::TyImplItem::Constant(decl_ref) => {
+                        check!(
+                            validate_const_decl(engines, decl_ref.id()),
+                            return err(warnings, errors),
                             warnings,
                             errors
                         );
@@ -227,8 +235,8 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                 }
             }
         }
-        ty::TyDeclaration::StructDeclaration(decl_ref) => {
-            let ty::TyStructDeclaration { fields, .. } = decl_engine.get_struct(decl_ref);
+        ty::TyDeclaration::StructDeclaration { decl_id, .. } => {
+            let ty::TyStructDeclaration { fields, .. } = decl_engine.get_struct(decl_id);
             for field in fields {
                 check!(
                     check_type(
@@ -243,8 +251,8 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                 );
             }
         }
-        ty::TyDeclaration::EnumDeclaration(decl_ref) => {
-            let ty::TyEnumDeclaration { variants, .. } = decl_engine.get_enum(decl_ref);
+        ty::TyDeclaration::EnumDeclaration { decl_id, .. } => {
+            let ty::TyEnumDeclaration { variants, .. } = decl_engine.get_enum(decl_id);
             for variant in variants {
                 check!(
                     check_type(
@@ -277,6 +285,15 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                     errors
                 );
             }
+        }
+        ty::TyDeclaration::TypeAliasDeclaration { decl_id, .. } => {
+            let ty::TyTypeAliasDeclaration { ty, span, .. } = decl_engine.get_type_alias(decl_id);
+            check!(
+                check_type(engines, ty.type_id, span, false),
+                (),
+                warnings,
+                errors
+            );
         }
         ty::TyDeclaration::GenericTypeForFunctionScope { .. }
         | ty::TyDeclaration::ErrorRecovery(_) => {}

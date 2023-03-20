@@ -2,14 +2,13 @@ use crate::{
     core::token::{to_ident_key, AstToken, SymbolKind, Token},
     traverse::{Parse, ParseContext},
 };
-use std::ops::ControlFlow;
 use sway_ast::{
-    ty::TyTupleDescriptor, Assignable, CodeBlockContents, ConfigurableField, Expr,
-    ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor, FnArg, FnArgs, FnSignature,
+    expr::LoopControlFlow, ty::TyTupleDescriptor, Assignable, CodeBlockContents, ConfigurableField,
+    Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor, FnArg, FnArgs, FnSignature,
     IfCondition, IfExpr, ItemAbi, ItemConfigurable, ItemConst, ItemEnum, ItemFn, ItemImpl,
-    ItemImplItem, ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemUse, MatchBranchKind,
-    ModuleKind, Pattern, PatternStructField, Statement, StatementLet, StorageField, Ty, TypeField,
-    UseTree,
+    ItemImplItem, ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemTypeAlias, ItemUse,
+    MatchBranchKind, ModuleKind, Pattern, PatternStructField, Statement, StatementLet,
+    StorageField, Ty, TypeField, UseTree,
 };
 use sway_core::language::lexed::LexedProgram;
 use sway_types::{Ident, Span, Spanned};
@@ -86,6 +85,9 @@ impl Parse for ItemKind {
             }
             ItemKind::Configurable(item_configurable) => {
                 item_configurable.parse(ctx);
+            }
+            ItemKind::TypeAlias(item_type_alias) => {
+                item_type_alias.parse(ctx);
             }
         }
     }
@@ -299,6 +301,7 @@ impl Parse for ItemTrait {
             .iter()
             .for_each(|(annotated, _)| match &annotated.value {
                 sway_ast::ItemTraitItem::Fn(fn_sig) => fn_sig.parse(ctx),
+                sway_ast::ItemTraitItem::Const(item_const) => item_const.parse(ctx),
             });
 
         if let Some(trait_defs_opt) = &self.trait_defs_opt {
@@ -329,6 +332,7 @@ impl Parse for ItemImpl {
             .iter()
             .for_each(|item| match &item.value {
                 ItemImplItem::Fn(fn_decl) => fn_decl.parse(ctx),
+                ItemImplItem::Const(const_decl) => const_decl.parse(ctx),
             });
     }
 }
@@ -342,6 +346,7 @@ impl Parse for ItemAbi {
             .iter()
             .for_each(|(annotated, _)| match &annotated.value {
                 sway_ast::ItemTraitItem::Fn(fn_sig) => fn_sig.parse(ctx),
+                sway_ast::ItemTraitItem::Const(item_const) => item_const.parse(ctx),
             });
 
         if let Some(abi_defs_opt) = self.abi_defs_opt.as_ref() {
@@ -403,6 +408,17 @@ impl Parse for ConfigurableField {
     fn parse(&self, ctx: &ParseContext) {
         self.ty.parse(ctx);
         self.initializer.parse(ctx);
+    }
+}
+
+impl Parse for ItemTypeAlias {
+    fn parse(&self, ctx: &ParseContext) {
+        if let Some(visibility) = &self.visibility {
+            insert_keyword(ctx, visibility.span());
+        }
+        insert_keyword(ctx, self.type_token.span());
+
+        self.ty.parse(ctx);
     }
 }
 
@@ -564,10 +580,10 @@ impl Parse for IfExpr {
         if let Some((else_token, control_flow)) = &self.else_opt {
             insert_keyword(ctx, else_token.span());
             match control_flow {
-                ControlFlow::Break(block) => {
+                LoopControlFlow::Break(block) => {
                     block.get().parse(ctx);
                 }
-                ControlFlow::Continue(if_expr) => {
+                LoopControlFlow::Continue(if_expr) => {
                     if_expr.parse(ctx);
                 }
             }

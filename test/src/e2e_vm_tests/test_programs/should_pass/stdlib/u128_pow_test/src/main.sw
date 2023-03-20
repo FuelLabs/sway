@@ -43,5 +43,10 @@ fn main() -> bool {
     pow_of_u_128 = u_128.pow(U128::from((0, 3)));
     assert(pow_of_u_128 == U128::from((0, 1728)));
 
+    // Test reassignment
+    u_128 = U128::from((0, 13));
+    u_128 = u_128.pow(U128::from((0, 1)));
+    assert(u_128 == U128::from((0, 13)));
+
     true
 }

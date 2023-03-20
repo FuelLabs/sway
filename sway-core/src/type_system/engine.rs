@@ -69,6 +69,17 @@ impl TypeEngine {
         self.slab.get(id.index())
     }
 
+    /// Performs a lookup of `id` into the [TypeEngine] recursing when finding a
+    /// [TypeInfo::Alias].
+    pub fn get_unaliased(&self, id: TypeId) -> TypeInfo {
+        // A slight infinite loop concern if we somehow have self-referential aliases, but that
+        // shouldn't be possible.
+        match self.slab.get(id.index()) {
+            TypeInfo::Alias { ty, .. } => self.get_unaliased(ty.type_id),
+            ty_info => ty_info,
+        }
+    }
+
     /// Denotes the given [TypeId] as being used with storage.
     pub(crate) fn set_type_as_storage_only(&self, id: TypeId) {
         self.storage_only_types.insert(self.get(id));
@@ -413,9 +424,12 @@ impl TypeEngine {
                     .ok(&mut warnings, &mut errors)
                     .cloned()
                 {
-                    Some(ty::TyDeclaration::StructDeclaration(original_decl_ref)) => {
+                    Some(ty::TyDeclaration::StructDeclaration {
+                        decl_id: original_id,
+                        ..
+                    }) => {
                         // get the copy from the declaration engine
-                        let mut new_copy = decl_engine.get_struct(&original_decl_ref);
+                        let mut new_copy = decl_engine.get_struct(&original_id);
 
                         // monomorphize the copy, in place
                         check!(
@@ -447,9 +461,12 @@ impl TypeEngine {
                         // return the id
                         type_id
                     }
-                    Some(ty::TyDeclaration::EnumDeclaration(original_decl_ref)) => {
+                    Some(ty::TyDeclaration::EnumDeclaration {
+                        decl_id: original_id,
+                        ..
+                    }) => {
                         // get the copy from the declaration engine
-                        let mut new_copy = decl_engine.get_enum(&original_decl_ref);
+                        let mut new_copy = decl_engine.get_enum(&original_id);
 
                         // monomorphize the copy, in place
                         check!(
@@ -479,6 +496,20 @@ impl TypeEngine {
                         namespace.insert_trait_implementation_for_type(engines, type_id);
 
                         // return the id
+                        type_id
+                    }
+                    Some(ty::TyDeclaration::TypeAliasDeclaration {
+                        decl_id: original_id,
+                        ..
+                    }) => {
+                        let new_copy = decl_engine.get_type_alias(&original_id);
+
+                        // TODO: monomorphize the copy, in place, when generic type aliases are
+                        // supported
+
+                        let type_id = new_copy.create_type_id(engines);
+                        namespace.insert_trait_implementation_for_type(engines, type_id);
+
                         type_id
                     }
                     Some(ty::TyDeclaration::GenericTypeForFunctionScope { type_id, .. }) => type_id,

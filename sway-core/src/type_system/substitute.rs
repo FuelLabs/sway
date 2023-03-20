@@ -1,4 +1,10 @@
-use std::{collections::BTreeMap, fmt};
+use std::{
+    collections::BTreeMap,
+    fmt,
+    hash::Hasher,
+    slice::{Iter, IterMut},
+    vec::IntoIter,
+};
 
 use super::*;
 use crate::{
@@ -13,6 +19,79 @@ pub trait SubstTypes {
         if !type_mapping.is_empty() {
             self.subst_inner(type_mapping, engines);
         }
+    }
+}
+
+/// A list of types that serve as the list of type params for type substitution.
+/// Any types of the [TypeParam][TypeInfo::TypeParam] variant will point to an index in
+/// this list.
+#[derive(Debug, Clone, Default)]
+pub struct TypeSubstList {
+    list: Vec<TypeParameter>,
+}
+
+impl TypeSubstList {
+    pub(crate) fn new() -> TypeSubstList {
+        TypeSubstList { list: vec![] }
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn is_empty(&self) -> bool {
+        self.list.is_empty()
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn len(&self) -> usize {
+        self.list.len()
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn push(&mut self, type_param: TypeParameter) {
+        self.list.push(type_param);
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn iter(&self) -> Iter<'_, TypeParameter> {
+        self.list.iter()
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn into_iter(self) -> IntoIter<TypeParameter> {
+        self.list.into_iter()
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn iter_mut(&mut self) -> IterMut<'_, TypeParameter> {
+        self.list.iter_mut()
+    }
+}
+
+impl std::iter::FromIterator<TypeParameter> for TypeSubstList {
+    fn from_iter<T: IntoIterator<Item = TypeParameter>>(iter: T) -> Self {
+        TypeSubstList {
+            list: iter.into_iter().collect::<Vec<TypeParameter>>(),
+        }
+    }
+}
+
+impl EqWithEngines for TypeSubstList {}
+impl PartialEqWithEngines for TypeSubstList {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        self.list.eq(&other.list, engines)
+    }
+}
+
+impl HashWithEngines for TypeSubstList {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        self.list.hash(state, engines);
+    }
+}
+
+impl SubstTypes for TypeSubstList {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        self.list
+            .iter_mut()
+            .for_each(|x| x.subst(type_mapping, engines));
     }
 }
 
@@ -421,6 +500,12 @@ impl TypeSubstMap {
                 } else {
                     None
                 }
+            }
+            TypeInfo::Alias { name, mut ty } => {
+                self.find_match(ty.type_id, engines).map(|type_id| {
+                    ty.type_id = type_id;
+                    type_engine.insert(decl_engine, TypeInfo::Alias { name, ty })
+                })
             }
             TypeInfo::Unknown
             | TypeInfo::Str(..)

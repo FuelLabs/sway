@@ -111,14 +111,18 @@ impl<'a> TypedTree<'a> {
                             let trait_fn = decl_engine.get_trait_fn(trait_fn_decl_ref);
                             self.collect_typed_trait_fn_token(&trait_fn);
                         }
+                        ty::TyTraitInterfaceItem::Constant(decl_ref) => {
+                            let constant = decl_engine.get_constant(decl_ref);
+                            self.collect_const_decl(&constant);
+                        }
                     }
                 }
                 for supertrait in trait_decl.supertraits {
                     self.collect_supertrait(&supertrait);
                 }
             }
-            ty::TyDeclaration::StructDeclaration(decl_ref) => {
-                let struct_decl = decl_engine.get_struct(decl_ref);
+            ty::TyDeclaration::StructDeclaration { decl_id, .. } => {
+                let struct_decl = decl_engine.get_struct(decl_id);
                 if let Some(mut token) = self
                     .ctx
                     .tokens
@@ -145,8 +149,8 @@ impl<'a> TypedTree<'a> {
                     }
                 }
             }
-            ty::TyDeclaration::EnumDeclaration(decl_ref) => {
-                let enum_decl = decl_engine.get_enum(decl_ref);
+            ty::TyDeclaration::EnumDeclaration { decl_id, .. } => {
+                let enum_decl = decl_engine.get_enum(decl_id);
                 if let Some(mut token) = self
                     .ctx
                     .tokens
@@ -212,7 +216,7 @@ impl<'a> TypedTree<'a> {
                     token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
 
                     token.type_def = if let Some(decl_ref) = &trait_decl_ref {
-                        match &decl_ref.id {
+                        match &decl_ref.id().clone() {
                             InterfaceDeclId::Abi(decl_id) => {
                                 let abi_decl = decl_engine.get_abi(decl_id);
                                 Some(TypeDefinition::Ident(abi_decl.name))
@@ -236,6 +240,10 @@ impl<'a> TypedTree<'a> {
                         ty::TyTraitItem::Fn(method_ref) => {
                             let method = decl_engine.get_function(&method_ref);
                             self.collect_typed_fn_decl(&method);
+                        }
+                        ty::TyTraitItem::Constant(const_ref) => {
+                            let constant = decl_engine.get_constant(&const_ref);
+                            self.collect_const_decl(&constant);
                         }
                     }
                 }
@@ -271,6 +279,10 @@ impl<'a> TypedTree<'a> {
                         ty::TyTraitInterfaceItem::TraitFn(trait_fn_decl_ref) => {
                             let trait_fn = decl_engine.get_trait_fn(trait_fn_decl_ref);
                             self.collect_typed_trait_fn_token(&trait_fn);
+                        }
+                        ty::TyTraitInterfaceItem::Constant(const_ref) => {
+                            let constant = decl_engine.get_constant(const_ref);
+                            self.collect_const_decl(&constant);
                         }
                     }
                 }
@@ -308,6 +320,10 @@ impl<'a> TypedTree<'a> {
 
                     self.handle_expression(&field.initializer);
                 }
+            }
+            ty::TyDeclaration::TypeAliasDeclaration { decl_id, .. } => {
+                let type_alias_decl = decl_engine.get_type_alias(decl_id);
+                self.collect_type_alias_decl(&type_alias_decl);
             }
         }
     }
@@ -437,7 +453,7 @@ impl<'a> TypedTree<'a> {
                 call_path,
                 contract_call_params,
                 arguments,
-                function_decl_ref,
+                fn_ref,
                 type_binding,
                 ..
             } => {
@@ -448,7 +464,7 @@ impl<'a> TypedTree<'a> {
                 }
 
                 let implementing_type_name = decl_engine
-                    .get_function(function_decl_ref)
+                    .get_function(fn_ref)
                     .implementing_type
                     .and_then(|impl_type| impl_type.get_decl_ident());
 
@@ -480,7 +496,7 @@ impl<'a> TypedTree<'a> {
                     .try_unwrap()
                 {
                     token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
-                    let function_decl = decl_engine.get_function(function_decl_ref);
+                    let function_decl = decl_engine.get_function(fn_ref);
                     token.type_def = Some(TypeDefinition::Ident(function_decl.name));
                 }
 
@@ -500,7 +516,7 @@ impl<'a> TypedTree<'a> {
                     self.handle_expression(exp);
                 }
 
-                let function_decl = decl_engine.get_function(function_decl_ref);
+                let function_decl = decl_engine.get_function(fn_ref);
                 for node in &function_decl.body.contents {
                     self.traverse_node(node);
                 }
@@ -664,7 +680,7 @@ impl<'a> TypedTree<'a> {
             ty::TyExpressionVariant::EnumInstantiation {
                 variant_name,
                 variant_instantiation_span,
-                enum_decl,
+                enum_ref,
                 contents,
                 call_path_binding,
                 ..
@@ -676,8 +692,7 @@ impl<'a> TypedTree<'a> {
                     .try_unwrap()
                 {
                     token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
-                    token.type_def =
-                        Some(TypeDefinition::Ident(enum_decl.call_path.suffix.clone()));
+                    token.type_def = Some(TypeDefinition::Ident(enum_ref.name().clone()));
                 }
 
                 for type_arg in &call_path_binding.type_arguments.to_vec() {
@@ -801,18 +816,91 @@ impl<'a> TypedTree<'a> {
                 }
             }
             ty::TyExpressionVariant::StorageReassignment(storage_reassignment) => {
-                for field in &storage_reassignment.fields {
+                let type_engine = self.ctx.engines.te();
+                let decl_engine = self.ctx.engines.de();
+
+                // collect storage keyword
+                if let Some(mut token) = self
+                    .ctx
+                    .tokens
+                    .try_get_mut(&to_ident_key(&Ident::new(
+                        storage_reassignment.storage_keyword_span.clone(),
+                    )))
+                    .try_unwrap()
+                {
+                    token.typed = Some(TypedAstToken::TyStorageResassignment(
+                        storage_reassignment.clone(),
+                    ));
+                    if let Some(storage) = self.namespace.get_declared_storage(decl_engine) {
+                        token.type_def = Some(TypeDefinition::Ident(storage.storage_keyword));
+                    }
+                }
+
+                if let Some((head_field, tail_fields)) = storage_reassignment.fields.split_first() {
+                    // collect the first ident as a field of the storage definition
                     if let Some(mut token) = self
                         .ctx
                         .tokens
-                        .try_get_mut(&to_ident_key(&field.name))
+                        .try_get_mut(&to_ident_key(&head_field.name))
                         .try_unwrap()
                     {
                         token.typed = Some(TypedAstToken::TypeCheckedStorageReassignDescriptor(
-                            field.clone(),
+                            head_field.clone(),
                         ));
+
+                        if let Some(storage_field) = self
+                            .namespace
+                            .get_declared_storage(decl_engine)
+                            .and_then(|storage| {
+                                // find the corresponding field in the storage declaration
+                                storage
+                                    .fields
+                                    .into_iter()
+                                    .find(|f| f.name.as_str() == head_field.name.as_str())
+                            })
+                        {
+                            token.type_def = Some(TypeDefinition::Ident(storage_field.name));
+                        }
+                    }
+
+                    // collect the rest of the idents as fields of their respective types
+                    for (field, container_type_id) in tail_fields
+                        .iter()
+                        .zip(storage_reassignment.fields.iter().map(|f| f.type_id))
+                    {
+                        if let Some(mut token) = self
+                            .ctx
+                            .tokens
+                            .try_get_mut(&to_ident_key(&field.name))
+                            .try_unwrap()
+                        {
+                            token.typed = Some(
+                                TypedAstToken::TypeCheckedStorageReassignDescriptor(field.clone()),
+                            );
+
+                            match type_engine.get(container_type_id) {
+                                TypeInfo::Struct(decl_ref) => {
+                                    if let Some(field_name) = decl_engine
+                                        .get_struct(&decl_ref)
+                                        .fields
+                                        .iter()
+                                        .find(|struct_field| {
+                                            // find the corresponding field in the containing type declaration
+                                            struct_field.name.as_str() == field.name.as_str()
+                                        })
+                                        .map(|struct_field| struct_field.name.clone())
+                                    {
+                                        token.type_def = Some(TypeDefinition::Ident(field_name));
+                                    }
+                                }
+                                _ => {
+                                    token.type_def = Some(TypeDefinition::TypeId(field.type_id));
+                                }
+                            }
+                        }
                     }
                 }
+
                 self.handle_expression(&storage_reassignment.rhs);
             }
             ty::TyExpressionVariant::Return(exp) => self.handle_expression(exp),
@@ -1339,6 +1427,22 @@ impl<'a> TypedTree<'a> {
         }
 
         self.collect_type_argument(&field.type_argument);
+    }
+
+    fn collect_type_alias_decl(&self, type_alias_decl: &ty::TyTypeAliasDeclaration) {
+        if let Some(mut token) = self
+            .ctx
+            .tokens
+            .try_get_mut(&to_ident_key(&type_alias_decl.name))
+            .try_unwrap()
+        {
+            token.typed = Some(TypedAstToken::TypedTypeAliasDeclaration(
+                type_alias_decl.clone(),
+            ));
+            token.type_def = Some(TypeDefinition::Ident(type_alias_decl.name.clone()));
+        }
+
+        self.collect_type_argument(&type_alias_decl.ty);
     }
 }
 

@@ -111,11 +111,21 @@ fn combine_cmp(context: &mut Context, function: &Function) -> bool {
                     let val2 = val2.get_constant(context).unwrap();
                     match pred {
                         Predicate::Equal => {
-                            if val1.eq(context, val2) {
-                                Some((inst_val, block, true))
-                            } else {
-                                Some((inst_val, block, false))
-                            }
+                                Some((inst_val, block, val1.eq(context, val2)))
+                        }
+                        Predicate::GreaterThan => {
+                            let (ConstantValue::Uint(val1), ConstantValue::Uint(val2)) = (&val1.value, &val2.value)
+                            else {
+                                unreachable!("Type checker allowed non integer value for GreaterThan")
+                            };
+                            Some((inst_val, block, val1 > val2))
+                        }
+                        Predicate::LessThan => {
+                            let (ConstantValue::Uint(val1), ConstantValue::Uint(val2)) = (&val1.value, &val2.value)
+                            else {
+                                unreachable!("Type checker allowed non integer value for LessThan")
+                            };
+                            Some((inst_val, block, val1 < val2))
                         }
                     }
                 }

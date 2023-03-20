@@ -1,5 +1,5 @@
 use crate::{
-    comments::write_comments,
+    comments::{rewrite_with_comments, write_comments},
     config::items::ItemBraceStyle,
     formatter::*,
     utils::{
@@ -17,6 +17,8 @@ impl Format for ItemTrait {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        // Required for comment formatting
+        let start_len = formatted_code.len();
         // `pub `
         if let Some(pub_token) = &self.visibility {
             write!(formatted_code, "{} ", pub_token.span().as_str())?;
@@ -76,6 +78,16 @@ impl Format for ItemTrait {
                         fn_signature.format(formatted_code, formatter)?;
                         writeln!(formatted_code, "{}", semicolon_token.ident().as_str())?;
                     }
+                    sway_ast::ItemTraitItem::Const(const_decl) => {
+                        // format `Annotated<ItemConst>`
+                        write!(
+                            formatted_code,
+                            "{}",
+                            formatter.shape.indent.to_string(&formatter.config)?,
+                        )?;
+                        const_decl.format(formatted_code, formatter)?;
+                        writeln!(formatted_code, "{}", semicolon_token.ident().as_str())?;
+                    }
                 }
             }
         }
@@ -95,6 +107,15 @@ impl Format for ItemTrait {
             }
             Self::close_curly_brace(formatted_code, formatter)?;
         };
+
+        rewrite_with_comments::<ItemTrait>(
+            formatter,
+            self.span(),
+            self.leaf_spans(),
+            formatted_code,
+            start_len,
+        )?;
+
         Ok(())
     }
 }
@@ -107,6 +128,7 @@ impl Format for ItemTraitItem {
     ) -> Result<(), FormatterError> {
         match self {
             ItemTraitItem::Fn(fn_decl) => fn_decl.format(formatted_code, formatter),
+            ItemTraitItem::Const(const_decl) => const_decl.format(formatted_code, formatter),
         }
     }
 }
@@ -185,6 +207,9 @@ impl LeafSpans for ItemTraitItem {
         let mut collected_spans = Vec::new();
         match &self {
             ItemTraitItem::Fn(fn_sig) => collected_spans.append(&mut fn_sig.leaf_spans()),
+            ItemTraitItem::Const(const_decl) => {
+                collected_spans.append(&mut const_decl.leaf_spans())
+            }
         };
         collected_spans
     }

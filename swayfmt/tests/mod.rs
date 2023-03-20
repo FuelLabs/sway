@@ -172,7 +172,7 @@ enum TestTy {
     ],
     PathType     : root::
 example::
-    type,
+    some_type,
     TupleNil: (),
     Tuple: (   u64,
         u32
@@ -184,7 +184,7 @@ enum TestTy {
     Infer: _,
     Array: [u8; 40],
     String: str[4],
-    PathType: root::example::type,
+    PathType: root::example::some_type,
     TupleNil: (),
     Tuple: (u64, u32),
 }
@@ -494,7 +494,6 @@ pub struct Foo { // Here is a comment
 
 
     bazzz:u64
-
              //  ________ ___  ___  _______   ___               ___       ________  ________  ________
              // |\  _____\\  \|\  \|\  ___ \ |\  \             |\  \     |\   __  \|\   __  \|\   ____\
              // \ \  \__/\ \  \\\  \ \   __/|\ \  \            \ \  \    \ \  \|\  \ \  \|\ /\ \  \___|_
@@ -504,24 +503,23 @@ pub struct Foo { // Here is a comment
              //     \|__|    \|_______|\|_______|\|_______|        \|_______|\|__|\|__|\|_______|\_________\
              //                                                                                  \|_________|
 }
-// This is a comment
 "#,
         r#"contract;
 // This is a comment, for this one to be placed correctly we need to have Module visitor implemented
 pub struct Foo { // Here is a comment
+
     // Trying some ASCII art
     baz: u64,
     bazzz: u64,
-             //  ________ ___  ___  _______   ___               ___       ________  ________  ________
-             // |\  _____\\  \|\  \|\  ___ \ |\  \             |\  \     |\   __  \|\   __  \|\   ____\
-             // \ \  \__/\ \  \\\  \ \   __/|\ \  \            \ \  \    \ \  \|\  \ \  \|\ /\ \  \___|_
-             //  \ \   __\\ \  \\\  \ \  \_|/_\ \  \            \ \  \    \ \   __  \ \   __  \ \_____  \
-             //   \ \  \_| \ \  \\\  \ \  \_|\ \ \  \____        \ \  \____\ \  \ \  \ \  \|\  \|____|\  \
-             //    \ \__\   \ \_______\ \_______\ \_______\       \ \_______\ \__\ \__\ \_______\____\_\  \
-             //     \|__|    \|_______|\|_______|\|_______|        \|_______|\|__|\|__|\|_______|\_________\
-             //                                                                                  \|_________|
+    //  ________ ___  ___  _______   ___               ___       ________  ________  ________
+    // |\  _____\\  \|\  \|\  ___ \ |\  \             |\  \     |\   __  \|\   __  \|\   ____\
+    // \ \  \__/\ \  \\\  \ \   __/|\ \  \            \ \  \    \ \  \|\  \ \  \|\ /\ \  \___|_
+    //  \ \   __\\ \  \\\  \ \  \_|/_\ \  \            \ \  \    \ \   __  \ \   __  \ \_____  \
+    //   \ \  \_| \ \  \\\  \ \  \_|\ \ \  \____        \ \  \____\ \  \ \  \ \  \|\  \|____|\  \
+    //    \ \__\   \ \_______\ \_______\ \_______\       \ \_______\ \__\ \__\ \_______\____\_\  \
+    //     \|__|    \|_______|\|_______|\|_______|        \|_______|\|__|\|__|\|_______|\_________\
+    //                                                                                  \|_________|
 }
-// This is a comment
 "#,
     );
 }
@@ -575,6 +573,9 @@ fn comments_empty_fns() {
 
 fn single_comment_same_line() { /* a comment */ }
 
+fn single_comment_same_line_trailing() {  // a comment
+}
+
 fn single_comment() -> bool {
     // TODO: This is a TODO
 }
@@ -586,8 +587,9 @@ fn multiline_comments() {
 }"#,
         r#"contract;
 
-fn single_comment_same_line() {
-    /* a comment */
+fn single_comment_same_line() { /* a comment */ }
+
+fn single_comment_same_line_trailing() { // a comment
 }
 
 fn single_comment() -> bool {
@@ -624,9 +626,9 @@ pub enum Bazz { // Here is a comment
 pub enum Bazz { // Here is a comment
     // Trying some ASCII art
     baz: (),
-    bazzz: (),//-----
-              //--D--
-              //-----
+    bazzz: (), //-----
+    //--D--
+    //-----
 }
 "#,
     );
