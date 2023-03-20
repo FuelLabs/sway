@@ -427,7 +427,7 @@ fn item_fn_to_function_declaration(
     attributes: AttributesMap,
 ) -> Result<FunctionDeclaration, ErrorEmitted> {
     let span = item_fn.span();
-    let return_type = match item_fn.fn_signature.return_type_opt {
+    let return_type = match item_fn.fn_signature.return_type {
         FnReturnType::TypedReturn((_right_arrow, ty)) => {
             ty_to_type_argument(context, handler, engines, ty)?
         }
@@ -1233,7 +1233,7 @@ fn fn_signature_to_trait_fn(
 ) -> Result<TraitFn, ErrorEmitted> {
     let return_type_span = match &fn_signature.return_type {
         FnReturnType::TypedReturn((_right_arrow_token, ty)) => ty.span(),
-        FnReturnType::Implicit(implicit_return) => implicit_return.span,
+        FnReturnType::Implicit(implicit_return) => implicit_return.span.clone(),
     };
     let trait_fn = TraitFn {
         name: fn_signature.name,
@@ -1245,7 +1245,7 @@ fn fn_signature_to_trait_fn(
             engines,
             fn_signature.arguments.into_inner(),
         )?,
-        return_type: match fn_signature.return_type_opt {
+        return_type: match fn_signature.return_type {
             FnReturnType::TypedReturn((_right_arrow_token, ty)) => {
                 ty_to_type_info(context, handler, engines, ty)?
             }

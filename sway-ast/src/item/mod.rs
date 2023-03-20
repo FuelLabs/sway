@@ -131,9 +131,3 @@ pub enum FnReturnType {
 pub struct ImplicitReturn {
     pub span: Span,
 }
-
-impl ImplicitReturn {
-    pub fn from_span(span: Span) -> Self {
-        Self { span }
-    }
-}
