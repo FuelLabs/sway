@@ -11,12 +11,12 @@ use sway_ast::{
     ty::TyTupleDescriptor,
     AbiCastArgs, AngleBrackets, AsmBlock, Assignable, AttributeDecl, Braces, CodeBlockContents,
     CommaToken, Dependency, DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField,
-    ExprTupleDescriptor, FnArg, FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition,
-    IfExpr, Instruction, Intrinsic, Item, ItemAbi, ItemConfigurable, ItemConst, ItemEnum, ItemFn,
-    ItemImpl, ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemTraitItem, ItemUse, LitInt,
-    LitIntType, MatchBranchKind, Module, ModuleKind, Parens, PathExpr, PathExprSegment, PathType,
-    PathTypeSegment, Pattern, PatternStructField, PubToken, Punctuated, QualifiedPathRoot,
-    Statement, StatementLet, Traits, Ty, TypeField, UseTree, WhereClause,
+    ExprTupleDescriptor, FnArg, FnArgs, FnReturnType, FnSignature, GenericArgs, GenericParams,
+    IfCondition, IfExpr, Instruction, Intrinsic, Item, ItemAbi, ItemConfigurable, ItemConst,
+    ItemEnum, ItemFn, ItemImpl, ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemTraitItem,
+    ItemUse, LitInt, LitIntType, MatchBranchKind, Module, ModuleKind, Parens, PathExpr,
+    PathExprSegment, PathType, PathTypeSegment, Pattern, PatternStructField, PubToken, Punctuated,
+    QualifiedPathRoot, Statement, StatementLet, Traits, Ty, TypeField, UseTree, WhereClause,
 };
 use sway_error::convert_parse_tree_error::ConvertParseTreeError;
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -428,15 +428,17 @@ fn item_fn_to_function_declaration(
 ) -> Result<FunctionDeclaration, ErrorEmitted> {
     let span = item_fn.span();
     let return_type = match item_fn.fn_signature.return_type_opt {
-        Some((_right_arrow, ty)) => ty_to_type_argument(context, handler, engines, ty)?,
-        None => {
+        FnReturnType::TypedReturn((_right_arrow, ty)) => {
+            ty_to_type_argument(context, handler, engines, ty)?
+        }
+        FnReturnType::Implicit(implicit_return) => {
             let type_id = engines
                 .te()
                 .insert(engines.de(), TypeInfo::Tuple(Vec::new()));
             TypeArgument {
                 type_id,
                 initial_type_id: type_id,
-                span: item_fn.fn_signature.span(),
+                span: implicit_return.span,
                 call_path_tree: None,
             }
         }
@@ -1230,8 +1232,8 @@ fn fn_signature_to_trait_fn(
     attributes: AttributesMap,
 ) -> Result<TraitFn, ErrorEmitted> {
     let return_type_span = match &fn_signature.return_type {
-        Some((_right_arrow_token, ty)) => ty.span(),
-        None => Span::dummy(),
+        FnReturnType::TypedReturn((_right_arrow_token, ty)) => ty.span(),
+        FnReturnType::Implicit(implicit_return) => implicit_return.span,
     };
     let trait_fn = TraitFn {
         name: fn_signature.name,
@@ -1244,8 +1246,10 @@ fn fn_signature_to_trait_fn(
             fn_signature.arguments.into_inner(),
         )?,
         return_type: match fn_signature.return_type_opt {
-            Some((_right_arrow_token, ty)) => ty_to_type_info(context, handler, engines, ty)?,
-            None => TypeInfo::Tuple(Vec::new()),
+            FnReturnType::TypedReturn((_right_arrow_token, ty)) => {
+                ty_to_type_info(context, handler, engines, ty)?
+            }
+            FnReturnType::Implicit(_) => TypeInfo::Tuple(Vec::new()),
         },
         return_type_span,
     };
