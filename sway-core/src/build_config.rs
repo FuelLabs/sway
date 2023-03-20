@@ -40,7 +40,8 @@ pub struct BuildConfig {
     // The canonical file path to the root module.
     // E.g. `/home/user/project/src/main.sw`.
     pub(crate) canonical_root_module: Arc<PathBuf>,
-    pub(crate) print_dca_graph: bool,
+    pub(crate) print_dca_graph: Option<String>,
+    pub(crate) print_dca_graph_url_format: Option<String>,
     pub(crate) print_intermediate_asm: bool,
     pub(crate) print_finalized_asm: bool,
     pub(crate) print_ir: bool,
@@ -81,7 +82,8 @@ impl BuildConfig {
         Self {
             build_target,
             canonical_root_module: Arc::new(canonical_root_module),
-            print_dca_graph: false,
+            print_dca_graph: None,
+            print_dca_graph_url_format: None,
             print_intermediate_asm: false,
             print_finalized_asm: false,
             print_ir: false,
@@ -89,9 +91,16 @@ impl BuildConfig {
         }
     }
 
-    pub fn print_dca_graph(self, a: bool) -> Self {
+    pub fn print_dca_graph(self, a: Option<String>) -> Self {
         Self {
             print_dca_graph: a,
+            ..self
+        }
+    }
+
+    pub fn print_dca_graph_url_format(self, a: Option<String>) -> Self {
+        Self {
+            print_dca_graph_url_format: a,
             ..self
         }
     }
