@@ -1,7 +1,9 @@
-use super::*;
 use crate::{
     decl_engine::{DeclEngine, DeclEngineInsert},
     engine_threading::*,
+    error::*,
+    type_system::priv_prelude::*,
+    types::*,
 };
 
 use std::{collections::BTreeSet, fmt};

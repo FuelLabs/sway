@@ -4,7 +4,7 @@ use std::{
     hash::{BuildHasher, Hash, Hasher},
 };
 
-use crate::{decl_engine::DeclEngine, TypeEngine};
+use crate::{decl_engine::DeclEngine, type_system::TypeEngine};
 
 #[derive(Clone, Copy)]
 pub struct Engines<'a> {

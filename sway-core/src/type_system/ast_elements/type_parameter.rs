@@ -4,7 +4,7 @@ use crate::{
     error::*,
     language::{ty, CallPath},
     semantic_analysis::*,
-    type_system::*,
+    type_system::priv_prelude::*,
 };
 
 use sway_error::error::CompileError;

@@ -40,6 +40,7 @@ use sway_ir::{
 };
 use sway_types::constants::DOC_COMMENT_ATTRIBUTE_NAME;
 use transform::{Attribute, AttributeArg, AttributeKind, AttributesMap};
+use types::*;
 
 pub use semantic_analysis::namespace::{self, Namespace};
 pub mod types;

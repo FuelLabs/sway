@@ -6,7 +6,7 @@ use crate::{
     error::*,
     language::{ty, CallPath},
     semantic_analysis::TypeCheckContext,
-    type_system::*,
+    type_system::priv_prelude::*,
     Ident,
 };
 

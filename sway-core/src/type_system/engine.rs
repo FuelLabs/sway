@@ -4,16 +4,14 @@ use hashbrown::HashMap;
 use std::sync::RwLock;
 
 use crate::concurrent_slab::ListDisplay;
+use crate::error::{err, ok};
 use crate::{
-    concurrent_slab::ConcurrentSlab, decl_engine::*, engine_threading::*, language::ty,
-    namespace::Path, type_system::*, Namespace,
+    concurrent_slab::ConcurrentSlab, decl_engine::*, engine_threading::*, error::*, language::ty,
+    namespace::Path, type_system::priv_prelude::*, Namespace,
 };
 
 use sway_error::{error::CompileError, type_error::TypeError, warning::CompileWarning};
 use sway_types::{span::Span, Ident, Spanned};
-
-use super::unify::Unifier;
-use super::unify_check::UnifyCheck;
 
 #[derive(Debug, Default)]
 pub struct TypeEngine {

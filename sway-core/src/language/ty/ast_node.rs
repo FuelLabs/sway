@@ -12,7 +12,7 @@ use crate::{
     language::{parsed::TreeType, ty::*, Visibility},
     transform::AttributeKind,
     type_system::*,
-    types::DeterministicallyAborts,
+    types::*,
 };
 
 pub trait GetDeclIdent {

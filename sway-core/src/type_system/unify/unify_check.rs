@@ -1,14 +1,14 @@
-use crate::{engine_threading::*, type_system::*};
+use crate::{engine_threading::*, type_system::priv_prelude::*};
 use sway_types::Spanned;
 
 /// Helper struct to aid in type coercion.
-pub(super) struct UnifyCheck<'a> {
+pub(crate) struct UnifyCheck<'a> {
     engines: Engines<'a>,
 }
 
 impl<'a> UnifyCheck<'a> {
     /// Creates a new [UnifyCheck].
-    pub(super) fn new(engines: Engines<'a>) -> UnifyCheck<'a> {
+    pub(crate) fn new(engines: Engines<'a>) -> UnifyCheck<'a> {
         UnifyCheck { engines }
     }
 
@@ -90,7 +90,7 @@ impl<'a> UnifyCheck<'a> {
     /// constraints---if the trait constraints of `right` can be coerced into
     /// the trait constraints of `left`, then we know that `right` has unique
     /// methods.
-    pub(super) fn check(&self, left: TypeId, right: TypeId) -> bool {
+    pub(crate) fn check(&self, left: TypeId, right: TypeId) -> bool {
         use TypeInfo::*;
 
         if left == right {

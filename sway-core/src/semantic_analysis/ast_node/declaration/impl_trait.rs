@@ -14,6 +14,7 @@ use crate::{
     },
     semantic_analysis::{Mode, TypeCheckContext},
     type_system::*,
+    types::*,
 };
 
 impl ty::TyImplTrait {

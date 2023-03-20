@@ -3,8 +3,9 @@ use crate::{
     language::{ty, Visibility},
     metadata::MetadataManager,
     semantic_analysis::namespace,
-    type_system::{LogId, MessageId, TypeId},
-    Engines, TypeEngine,
+    type_system::*,
+    types::*,
+    Engines,
 };
 
 use super::{

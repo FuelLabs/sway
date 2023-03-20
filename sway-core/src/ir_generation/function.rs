@@ -14,9 +14,8 @@ use crate::{
         *,
     },
     metadata::MetadataManager,
-    type_system::{LogId, MessageId, TypeId, TypeInfo},
-    types::DeterministicallyAborts,
-    TypeEngine,
+    type_system::*,
+    types::*,
 };
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::error::{CompileError, Hint};
