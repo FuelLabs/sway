@@ -904,7 +904,7 @@ fn test_swap() {
 
 #[test()]
 fn test_set() {
-    let (mut bytes, a, b, c) = setup();
+    let (mut bytes, a, _b, c) = setup();
     assert(bytes.len() == 3);
     let d = 11u8;
 
@@ -969,7 +969,7 @@ fn test_bytes_limits() {
 
 #[test()]
 fn test_split_at() {
-    let (mut original, a, b, c) = setup();
+    let (mut original, _a, _b, _c) = setup();
     assert(original.len() == 3);
     let index = 1;
     let (left, right) = original.split_at(index);
@@ -981,7 +981,7 @@ fn test_split_at() {
 
 #[test()]
 fn test_split_at_0() {
-    let (mut original, a, b, c) = setup();
+    let (mut original, _a, _b, _c) = setup();
     assert(original.len() == 3);
     let index = 0;
     let (left, right) = original.split_at(index);
@@ -993,7 +993,7 @@ fn test_split_at_0() {
 
 #[test()]
 fn test_split_at_len() {
-    let (mut original, a, b, c) = setup();
+    let (mut original, _a, _b, _c) = setup();
     assert(original.len() == 3);
     let index = 3;
     let (left, right) = original.split_at(index);
@@ -1025,8 +1025,8 @@ fn test_append() {
 
     let first_length = bytes.len();
     let second_length = bytes2.len();
-    let first_cap = bytes.capacity();
-    let second_cap = bytes2.capacity();
+    let _first_cap = bytes.capacity();
+    let _second_cap = bytes2.capacity();
     bytes.append(bytes2);
     assert(bytes.len() == first_length + second_length);
     assert(bytes.capacity() == first_length + first_length);
@@ -1063,8 +1063,8 @@ fn test_append_to_empty_bytes() {
     let (mut bytes2, a, b, c) = setup();
     assert(bytes2.len() == 3);
 
-    let first_length = bytes.len();
-    let first_cap = bytes.capacity();
+    let _first_length = bytes.len();
+    let _first_cap = bytes.capacity();
     let second_length = bytes2.len();
     let second_cap = bytes2.capacity();
     bytes.append(bytes2);
@@ -1084,8 +1084,8 @@ fn test_append_to_empty_bytes() {
 
 #[test()]
 fn test_eq() {
-    let (mut bytes, a, b, c) = setup();
-    let (mut bytes2, a, b, c) = setup();
+    let (mut bytes, _a, _b, _c) = setup();
+    let (mut bytes2, _a, _b, _c) = setup();
     assert(bytes == bytes2);
 
     let d = 5u8;
@@ -1110,7 +1110,7 @@ fn test_eq() {
 #[test()]
 fn test_sha256() {
     use ::hash::sha256;
-    let (mut bytes, a, b, c) = setup();
+    let (mut bytes, _a, _b, _c) = setup();
     bytes.push(0u8);
     bytes.push(0u8);
     bytes.push(0u8);
@@ -1124,7 +1124,7 @@ fn test_sha256() {
 #[test()]
 fn test_keccak256() {
     use ::hash::keccak256;
-    let (mut bytes, a, b, c) = setup();
+    let (mut bytes, _a, _b, _c) = setup();
     bytes.push(0u8);
     bytes.push(0u8);
     bytes.push(0u8);

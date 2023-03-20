@@ -2,10 +2,10 @@ script;
 // This test tests two-pass compilation and allowing usages before declarations.
 
 fn main() -> bool {
-    let a = 42;
+    let _a = 42;
 
     // fn before decl
-    let x = the_number_five();
+    let _x = the_number_five();
 
     // enum before decl
     let z = AnEnum::Variant;
@@ -22,7 +22,7 @@ fn main() -> bool {
         b: z,
     };
 
-    let v = WrapperEnum::Variant(u);
+    let _v = WrapperEnum::Variant(u);
 
     if let AnEnum::Variant = AnEnum::Variant {
         void();

@@ -87,6 +87,14 @@ impl HashWithEngines for TypeSubstList {
     }
 }
 
+impl OrdWithEngines for TypeSubstList {
+    fn cmp(&self, other: &Self, engines: Engines<'_>) -> std::cmp::Ordering {
+        let TypeSubstList { list: ll } = self;
+        let TypeSubstList { list: rl } = other;
+        ll.cmp(rl, engines)
+    }
+}
+
 impl SubstTypes for TypeSubstList {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.list

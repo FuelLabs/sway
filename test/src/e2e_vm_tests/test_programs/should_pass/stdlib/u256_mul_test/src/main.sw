@@ -3,8 +3,8 @@ script;
 use std::u256::U256;
 
 fn main() -> bool {
-    let zero = U256::from((0, 0, 0, 0));
-    let one = U256::from((0, 0, 0, 1));
+    let _zero = U256::from((0, 0, 0, 0));
+    let _one = U256::from((0, 0, 0, 1));
     let two = U256::from((0, 0, 0, 2));
     let max_u64 = U256::from((0, 0, 0, u64::max()));
 

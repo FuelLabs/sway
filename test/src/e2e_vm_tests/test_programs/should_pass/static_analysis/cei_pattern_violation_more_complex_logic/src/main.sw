@@ -51,7 +51,7 @@ impl EnglishAuction for Contract {
         let auction = storage.auctions.get(auction_id);
         require(auction.is_some(), 42);
 
-        let mut auction = auction.unwrap();
+        let mut _auction = auction.unwrap();
         let sender = msg_sender().unwrap();
 
         let sender_deposit = storage.deposits.get((sender, auction_id));
