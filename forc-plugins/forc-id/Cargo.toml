@@ -1,0 +1,26 @@
+[package]
+name = "forc-id"
+version = "0.35.5"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+edition = "2021"
+homepage = "https://fuel.network/"
+license = "Apache-2.0"
+repository = "https://github.com/FuelLabs/sway"
+description = "A `forc` plugin for determining contract or predicate ids."
+
+[dependencies]
+anyhow = "1"
+clap = { version = "3.1", features = ["derive"] }
+forc-util = { version = "0.35.5", path = "../../forc-util" }
+tracing = "0.1"
+
+[[bin]]
+name = "forc-contract-id"
+path = "src/bin/contract_id.rs"
+
+[[bin]]
+name = "forc-predicate-id"
+path = "src/bin/predicate_id.rs"
+
+[lib]
+path = "src/lib.rs"
