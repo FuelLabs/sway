@@ -34,7 +34,6 @@ pub fn const_demotion(
         .flat_map(|(_block, inst)| inst.get_instruction(context).unwrap().get_operands())
         .filter_map(|val| {
             val.get_constant(context)
-                .or_else(|| val.get_configurable(context))
                 .and_then(|c| match c.ty.get_content(context) {
                     TypeContent::Unit | TypeContent::Bool | TypeContent::Pointer(_) => None,
                     TypeContent::Uint(bits) if *bits <= 64 => None,

@@ -1386,10 +1386,18 @@ impl<'ir> FuelAsmBuilder<'ir> {
             .get_type(self.context)
             .map_or(true, |ty| !self.is_copy_type(&ty))
         {
-            Err(CompileError::Internal(
-                "Attempt to store a non-copy type.",
-                owning_span.unwrap_or_else(Span::dummy),
-            ))
+            // NOTE: Very hacky special case here which must be fixed.  We've been given a
+            // configurable constant which doesn't have a pointer type and shouldn't still be using
+            // `store`.
+            if stored_val.is_configurable(self.context) {
+                // So we know it's not a copy type so we actually need a MCP.
+                self.compile_mem_copy_val(instr_val, dst_val, stored_val)
+            } else {
+                Err(CompileError::Internal(
+                    "Attempt to store a non-copy type.",
+                    owning_span.unwrap_or_else(Span::dummy),
+                ))
+            }
         } else {
             let dst_reg = self.value_to_register(dst_val)?;
             let val_reg = self.value_to_register(stored_val)?;
