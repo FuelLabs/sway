@@ -218,3 +218,34 @@ async fn stores_string_twice() {
         .await
         .unwrap();
 }
+
+#[tokio::test]
+async fn clears_bytes() {
+    let instance = setup().await;
+
+    let input = String::from("Fuel is blazingly fast!");
+
+    instance
+        .methods()
+        .store_bytes(input.clone().as_bytes().into())
+        .call()
+        .await
+        .unwrap();
+
+    assert_eq!(
+        instance.methods().len().call().await.unwrap().value,
+        input.as_bytes().len() as u64
+    );
+
+    assert!(
+        instance
+            .methods()
+            .clear_stored_bytes()
+            .call()
+            .await
+            .unwrap()
+            .value
+    );
+
+    assert_eq!(instance.methods().len().call().await.unwrap().value, 0);
+}
