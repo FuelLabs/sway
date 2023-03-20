@@ -96,14 +96,14 @@ fn main() -> u64 {
         En1::NoVal => assert(false),
     }
     match EN1b {
-        En1::Int(i) => assert(false),
+        En1::Int(_i) => assert(false),
         En1::Arr(arr) => {
             assert(arr[0] == ARR1[0] && arr[1] == ARR1[1] && arr[2] == ARR1[2]);
         }
         En1::NoVal => assert(false),
     }
     match EN1c {
-        En1::Int(i) => assert(false),
+        En1::Int(_i) => assert(false),
         En1::Arr(_) => assert(false),
         En1::NoVal => assert(true),
     }

@@ -13,12 +13,12 @@ struct S<T> {
 }
 
 fn main() -> bool {
-    let ary_u64: [u64; 2] = get_array_pair(1, 2);
+    let _ary_u64: [u64; 2] = get_array_pair(1, 2);
 
     let s = S {
         a: [0_u64; 10]
     };
-    let t = (s.a)[9];
+    let _t = (s.a)[9];
 
     let ary_bool = get_array_pair(false, true);
     idx_array_pair(ary_bool, 1)

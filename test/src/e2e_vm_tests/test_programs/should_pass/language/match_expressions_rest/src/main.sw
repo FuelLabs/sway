@@ -45,7 +45,7 @@ fn main() -> u64 {
     let l = Line { p1: p, p2: p };
 
     match l {
-        Line { p1, .. } => {}
+        Line { p1: _p1, .. } => {}
     }
 
     match l {
@@ -55,8 +55,8 @@ fn main() -> u64 {
     let k = Kind::Point(p);
 
     match k {
-        Kind::Point(Point { x, .. }) => {},
-        Kind::Point3D(Point3D { z, .. }) => {},
+        Kind::Point(Point { x: _x, .. }) => {},
+        Kind::Point3D(Point3D { z: _z, .. }) => {},
         Kind::Line(Line { p1: Point { .. }, p2: Point { .. } }) => {},
     }
 

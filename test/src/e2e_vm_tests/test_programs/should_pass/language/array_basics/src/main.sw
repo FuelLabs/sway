@@ -6,13 +6,13 @@ struct S {
 }
 
 fn main() -> bool {
-    let a: [bool;
+    let _a: [bool;
     5] = [true, true, true, false, true];
     let b: [u32;
     10] = [3;
     10];
-    let c = [0x01, 0x02, 0x03];
-    let d = [0;
+    let _c = [0x01, 0x02, 0x03];
+    let _d = [0;
     10];
     let e: [[u64;
     4];
@@ -25,7 +25,7 @@ fn main() -> bool {
         foo: 1, bar: 2
     }
     ];
-    let h = i()[2];
+    let _h = i()[2];
 
     b[0] == b[9] && e[0][1] + e[1][2] == 9 && g[0].foo + g[1].bar == 12 && j(g) && /* a.len() == 5 && */
     true
