@@ -156,12 +156,7 @@ fn check_type(
         warnings,
         errors
     );
-    let nested_types = check!(
-        type_info.clone().extract_nested_types(engines, &span),
-        vec![],
-        warnings,
-        errors
-    );
+    let nested_types = type_info.clone().extract_nested_types(engines);
     for ty in nested_types {
         if ignore_self && ty.eq(&type_info, engines) {
             continue;

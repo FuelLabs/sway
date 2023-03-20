@@ -189,19 +189,18 @@ impl TyProgram {
                     {
                         let storage_decl = decl_engine.get_storage(decl_id);
                         for field in storage_decl.fields.iter() {
-                            let type_info = ty_engine.get(field.type_argument.type_id);
-                            let type_info_str = engines.help_out(&type_info).to_string();
-                            let raw_ptr_type = type_info
-                                .extract_nested_types(engines, &field.span)
-                                .value
-                                .and_then(|value| {
-                                    value
-                                        .into_iter()
-                                        .find(|ty| matches!(ty, TypeInfo::RawUntypedPtr))
-                                });
-                            if raw_ptr_type.is_some() {
+                            if !field
+                                .type_argument
+                                .type_id
+                                .extract_any_including_self(engines, &|type_info| {
+                                    matches!(type_info, TypeInfo::RawUntypedPtr)
+                                })
+                                .is_empty()
+                            {
                                 errors.push(CompileError::TypeNotAllowedInContractStorage {
-                                    ty: type_info_str,
+                                    ty: engines
+                                        .help_out(&ty_engine.get(field.type_argument.type_id))
+                                        .to_string(),
                                     span: field.span.clone(),
                                 });
                             }
@@ -260,27 +259,24 @@ impl TyProgram {
                 // Directly returning a `raw_slice` is allowed, which will be just mapped to a RETD.
                 // TODO: Allow returning nested `raw_slice`s when our spec supports encoding DSTs.
                 let main_func = mains.remove(0);
-                let main_return_type_info = ty_engine.get(main_func.return_type.type_id);
-                let nested_types = check!(
-                    main_return_type_info
-                        .clone()
-                        .extract_nested_types(engines, &main_func.return_type.span),
-                    vec![],
-                    warnings,
-                    errors
-                );
-                if nested_types
-                    .iter()
-                    .any(|ty| matches!(ty, TypeInfo::RawUntypedPtr))
+                if !main_func
+                    .return_type
+                    .type_id
+                    .extract_any_including_self(engines, &|type_info| {
+                        matches!(type_info, TypeInfo::RawUntypedPtr)
+                    })
+                    .is_empty()
                 {
                     errors.push(CompileError::PointerReturnNotAllowedInMain {
                         span: main_func.return_type.span.clone(),
                     });
                 }
-                if !matches!(main_return_type_info, TypeInfo::RawUntypedSlice)
-                    && nested_types
-                        .iter()
-                        .any(|ty| matches!(ty, TypeInfo::RawUntypedSlice))
+                if !ty_engine
+                    .get(main_func.return_type.type_id)
+                    .extract_any(engines, &|type_info| {
+                        matches!(type_info, TypeInfo::RawUntypedSlice)
+                    })
+                    .is_empty()
                 {
                     errors.push(CompileError::NestedSliceReturnNotAllowedInMain {
                         span: main_func.return_type.span.clone(),

@@ -463,17 +463,9 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        // Grab the declaration.
-        let (unknown_decl, _type_id) = check!(
-            TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref()),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-
-        // Unwrap a fn ref if possible.
-        let fn_ref = check!(
-            unknown_decl.to_fn_ref(),
+        // Grab the fn declaration.
+        let (fn_ref, _): (DeclRefFunction, _) = check!(
+            TypeBinding::type_check(&mut call_path_binding, ctx.by_ref()),
             return err(warnings, errors),
             warnings,
             errors
@@ -1087,19 +1079,17 @@ impl ty::TyExpression {
         // Check if this could be a function
         let mut function_probe_warnings = Vec::new();
         let mut function_probe_errors = Vec::new();
-
-        let maybe_function = {
+        let maybe_function: Option<(DeclRefFunction, _)> = {
             let mut call_path_binding = unknown_call_path_binding.clone();
-            TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
-                .flat_map(|(decl, _type_id)| decl.to_fn_ref())
+            TypeBinding::type_check(&mut call_path_binding, ctx.by_ref())
                 .ok(&mut function_probe_warnings, &mut function_probe_errors)
-                .map(|fn_ref| (fn_ref, call_path_binding))
+                .map(|(fn_ref, _)| (fn_ref, call_path_binding))
         };
 
         // Check if this could be an enum
         let mut enum_probe_warnings = vec![];
         let mut enum_probe_errors = vec![];
-        let maybe_enum = {
+        let maybe_enum: Option<(DeclRefEnum, _, _)> = {
             let call_path_binding = unknown_call_path_binding.clone();
             let variant_name = call_path_binding.inner.suffix.clone();
             let enum_call_path = call_path_binding.inner.rshift();
@@ -1109,10 +1099,9 @@ impl ty::TyExpression {
                 type_arguments: call_path_binding.type_arguments,
                 span: call_path_binding.span,
             };
-            TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
-                .flat_map(|(unknown_decl, _type_id)| unknown_decl.to_enum_ref(ctx.engines()))
+            TypeBinding::type_check(&mut call_path_binding, ctx.by_ref())
                 .ok(&mut enum_probe_warnings, &mut enum_probe_errors)
-                .map(|enum_ref| (enum_ref, variant_name, call_path_binding))
+                .map(|(enum_ref, _)| (enum_ref, variant_name, call_path_binding))
         };
 
         // Check if this could be a constant
@@ -1224,10 +1213,10 @@ impl ty::TyExpression {
             call_path_binding.strip_prefixes();
         }
 
-        let const_opt = TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
-            .flat_map(|(unknown_decl, _type_id)| unknown_decl.to_const_ref())
-            .ok(const_probe_warnings, const_probe_errors)
-            .map(|const_decl| (const_decl, call_path_binding.clone()));
+        let const_opt: Option<(DeclRefConstant, _)> =
+            TypeBinding::type_check(&mut call_path_binding, ctx.by_ref())
+                .ok(const_probe_warnings, const_probe_errors)
+                .map(|(const_ref, _)| (const_ref, call_path_binding.clone()));
         if const_opt.is_some() {
             return const_opt;
         }
@@ -1245,19 +1234,16 @@ impl ty::TyExpression {
             span: call_path_binding.span.clone(),
         };
 
-        let struct_type_id = match check!(
-            TypeBinding::type_check_with_ident(&mut const_call_path_binding, ctx.by_ref()),
+        let (_, struct_type_id): (DeclRefStruct, _) = check!(
+            TypeBinding::type_check(&mut const_call_path_binding, ctx.by_ref()),
             return None,
             const_probe_warnings,
             const_probe_errors
-        ) {
-            (ty::TyDeclaration::StructDeclaration { .. }, Some(type_id)) => type_id,
-            _ => return None,
-        };
+        );
 
         let const_decl_ref = check!(
             ctx.namespace.find_constant_for_type(
-                struct_type_id,
+                struct_type_id.unwrap(),
                 &suffix,
                 ctx.self_type(),
                 ctx.engines(),

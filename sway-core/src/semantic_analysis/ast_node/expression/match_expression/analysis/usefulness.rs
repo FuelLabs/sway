@@ -223,12 +223,7 @@ pub(crate) fn check_match_expression_usefulness(
         return ok((witness_report, arms_reachability), warnings, errors);
     }
 
-    let factory = check!(
-        ConstructorFactory::new(engines, type_id, &span),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    let factory = ConstructorFactory::new(engines, type_id);
     for scrutinee in scrutinees.into_iter() {
         let pat = check!(
             Pattern::from_scrutinee(scrutinee.clone()),

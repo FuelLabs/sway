@@ -1,7 +1,5 @@
 use crate::{engine_threading::*, type_system::*};
 
-use sway_types::Span;
-
 /// Helper struct to perform the occurs check.
 ///
 /// ---
@@ -32,22 +30,8 @@ impl<'a> OccursCheck<'a> {
     /// NOTE: This implementation assumes that `other` =/ `generic`, in which
     /// case the occurs check would return `false`, as this is a valid
     /// unification.
-    pub(super) fn check(
-        &self,
-        generic: TypeInfo,
-        other: &TypeInfo,
-        span: &Span,
-    ) -> CompileResult<bool> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
-        let other_generics = check!(
-            other.extract_nested_generics(self.engines, span),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        let occurs = other_generics.contains(&self.engines.help_out(generic));
-        ok(occurs, warnings, errors)
+    pub(super) fn check(&self, generic: TypeInfo, other: &TypeInfo) -> bool {
+        let other_generics = other.extract_nested_generics(self.engines);
+        other_generics.contains(&self.engines.help_out(generic))
     }
 }
