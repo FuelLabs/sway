@@ -22,6 +22,10 @@ where
         Template(value)
     }
 
+    pub(crate) fn inner(&self) -> &T {
+        &self.0
+    }
+
     #[allow(dead_code)]
     pub(crate) fn into_inner(self) -> T {
         self.0

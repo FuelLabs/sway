@@ -12,7 +12,6 @@ use crate::{
 };
 
 /// An ID used to refer to an item in the [DeclEngine](super::decl_engine::DeclEngine)
-#[derive(Ord, PartialOrd)]
 pub struct DeclId<T>(usize, PhantomData<T>);
 
 impl<T> fmt::Debug for DeclId<T> {
@@ -43,6 +42,16 @@ impl<T> Hash for DeclId<T> {
 impl<T> PartialEq for DeclId<T> {
     fn eq(&self, other: &Self) -> bool {
         self.0.eq(&other.0)
+    }
+}
+impl<T> PartialOrd for DeclId<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.0.partial_cmp(&other.0)
+    }
+}
+impl<T> Ord for DeclId<T> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.0.cmp(&other.0)
     }
 }
 
