@@ -351,6 +351,12 @@ impl Block {
         }
     }
 
+    /// Remove instructions from block that satisfy a given predicate.
+    pub fn remove_instructions<T: Fn(Value) -> bool>(&self, context: &mut Context, pred: T) {
+        let ins = &mut context.blocks[self.0].instructions;
+        ins.retain(|value| !pred(*value));
+    }
+
     /// Replace an instruction in this block with another.  Will return a ValueNotFound on error.
     /// Any use of the old instruction value will also be replaced by the new value throughout the
     /// owning function.
