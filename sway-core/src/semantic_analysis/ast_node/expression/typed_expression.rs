@@ -18,7 +18,7 @@ pub(crate) use self::{
 
 use crate::{
     asm_lang::{virtual_ops::VirtualOp, virtual_register::VirtualRegister},
-    decl_engine::{DeclEngineIndex, DeclRef, DeclRefConstant},
+    decl_engine::*,
     error::*,
     language::{
         parsed::*,
@@ -1062,8 +1062,8 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        // The first step is to determine if the call path refers to a module, enum, function
-        // or constant.
+        // The first step is to determine if the call path refers to a module,
+        // enum, function or constant.
         // If only one exists, then we use that one. Otherwise, if more than one exist, it is
         // an ambiguous reference error.
 
