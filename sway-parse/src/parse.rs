@@ -1,6 +1,7 @@
 use crate::keywords::RESERVED_KEYWORDS;
 use crate::{ParseResult, Parser, ParserConsumed, Peeker};
 
+use sway_ast::keywords::{CloseCurlyBraceToken, CloseParenthesisToken, CloseSquareBracketToken};
 use sway_ast::token::OpeningDelimiter;
 use sway_ast::Intrinsic;
 use sway_error::parser_error::ParseErrorKind;
@@ -95,6 +96,24 @@ where
         loop {
             if let Some(consumed) = parser.check_empty() {
                 return Ok((ret, consumed));
+            }
+            let value = parser.parse()?;
+            ret.push(value);
+        }
+    }
+}
+impl<T> Parse for Vec<T>
+where
+    T: Parse,
+{
+    fn parse(mut parser: &mut Parser) -> ParseResult<Vec<T>> {
+        let mut ret = Vec::new();
+        loop {
+            if parser.peek::<CloseCurlyBraceToken>().is_some()
+                || parser.peek::<CloseParenthesisToken>().is_some()
+                || parser.peek::<CloseSquareBracketToken>().is_some()
+            {
+                return Ok(ret);
             }
             let value = parser.parse()?;
             ret.push(value);

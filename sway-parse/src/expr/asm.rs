@@ -7,6 +7,7 @@ use num_bigint::BigUint;
 use sway_ast::expr::asm::{
     AsmBlock, AsmBlockContents, AsmFinalExpr, AsmImmediate, AsmRegisterDeclaration,
 };
+use sway_ast::keywords::CloseCurlyBraceToken;
 use sway_error::parser_error::ParseErrorKind;
 use sway_types::{Ident, Spanned};
 
@@ -40,48 +41,44 @@ impl Parse for AsmRegisterDeclaration {
     }
 }
 
-impl ParseToEnd for AsmBlockContents {
-    fn parse_to_end<'a, 'e>(
-        mut parser: Parser<'a, '_>,
-    ) -> ParseResult<(AsmBlockContents, ParserConsumed<'a>)> {
+impl Parse for AsmBlockContents {
+    fn parse(mut parser: &mut Parser) -> ParseResult<AsmBlockContents> {
         let mut instructions = Vec::new();
-        let (final_expr_opt, consumed) = loop {
-            if let Some(consumed) = parser.check_empty() {
-                break (None, consumed);
+        let final_expr_opt = loop {
+            if parser.peek::<CloseCurlyBraceToken>().is_some() {
+                break None;
             }
             let ident = parser.parse()?;
-            if let Some(consumed) = parser.check_empty() {
-                let final_expr = AsmFinalExpr {
+            if parser.peek::<CloseCurlyBraceToken>().is_some() {
+                break Some(AsmFinalExpr {
                     register: ident,
                     ty_opt: None,
-                };
-                break (Some(final_expr), consumed);
+                });
             }
             if let Some(colon_token) = parser.take() {
                 let ty = parser.parse()?;
-                let consumed = match parser.check_empty() {
-                    Some(consumed) => consumed,
+                match parser.peek::<CloseCurlyBraceToken>() {
+                    Some(_) => {
+                        break Some(AsmFinalExpr {
+                            register: ident,
+                            ty_opt: Some((colon_token, ty)),
+                        })
+                    }
                     None => {
                         return Err(
                             parser.emit_error(ParseErrorKind::UnexpectedTokenAfterAsmReturnType)
                         );
                     }
-                };
-                let final_expr = AsmFinalExpr {
-                    register: ident,
-                    ty_opt: Some((colon_token, ty)),
-                };
-                break (Some(final_expr), consumed);
+                }
             }
             let instruction = parse_instruction(ident, &mut parser)?;
             let semicolon_token = parser.parse()?;
             instructions.push((instruction, semicolon_token));
         };
-        let contents = AsmBlockContents {
+        Ok(AsmBlockContents {
             instructions,
             final_expr_opt,
-        };
-        Ok((contents, consumed))
+        })
     }
 }
 

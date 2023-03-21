@@ -4,11 +4,11 @@ use core::ops::ControlFlow;
 use sway_ast::brackets::{Braces, Parens, SquareBrackets};
 use sway_ast::expr::{ReassignmentOp, ReassignmentOpVariant};
 use sway_ast::keywords::{
-    AbiToken, AddEqToken, AsmToken, CloseSquareBracketToken, CommaToken, ConfigurableToken,
-    ConstToken, DivEqToken, DoubleColonToken, EnumToken, EqToken, FalseToken, FnToken, IfToken,
-    ImplToken, LetToken, OpenAngleBracketToken, OpenCurlyBraceToken, PubToken, SemicolonToken,
-    ShlEqToken, ShrEqToken, StarEqToken, StorageToken, StructToken, SubEqToken, Token, TraitToken,
-    TrueToken, UseToken,
+    AbiToken, AddEqToken, AsmToken, CloseAngleBracketToken, CloseSquareBracketToken, CommaToken,
+    ConfigurableToken, ConstToken, DivEqToken, DoubleColonToken, EnumToken, EqToken, FalseToken,
+    FnToken, IfToken, ImplToken, LetToken, OpenAngleBracketToken, OpenCurlyBraceToken, PubToken,
+    SemicolonToken, ShlEqToken, ShrEqToken, StarEqToken, StorageToken, StructToken, SubEqToken,
+    Token, TraitToken, TrueToken, UseToken,
 };
 use sway_ast::literal::{LitBool, LitBoolType};
 use sway_ast::punctuated::Punctuated;
@@ -24,22 +24,17 @@ use sway_types::{Ident, Span, Spanned};
 mod asm;
 pub mod op_code;
 
-impl ParseToEnd for AbiCastArgs {
-    fn parse_to_end<'a, 'e>(
-        mut parser: Parser<'a, '_>,
-    ) -> ParseResult<(AbiCastArgs, ParserConsumed<'a>)> {
+impl Parse for AbiCastArgs {
+    fn parse(mut parser: &mut Parser) -> ParseResult<AbiCastArgs> {
         let name = parser.parse()?;
         let comma_token = parser.parse()?;
         let address = parser.parse()?;
-        match parser.check_empty() {
-            Some(consumed) => {
-                let abi_cast_args = AbiCastArgs {
-                    name,
-                    comma_token,
-                    address,
-                };
-                Ok((abi_cast_args, consumed))
-            }
+        match parser.peek::<CloseAngleBracketToken>() {
+            Some(_) => Ok(AbiCastArgs {
+                name,
+                comma_token,
+                address,
+            }),
             None => Err(parser.emit_error(ParseErrorKind::UnexpectedTokenAfterAbiAddress)),
         }
     }

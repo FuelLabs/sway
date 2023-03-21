@@ -39,8 +39,7 @@ impl Parse for ItemTrait {
             }
         }
 
-        let trait_defs_opt: Option<Braces<Vec<Annotated<ItemFn>>>> =
-            parser.guarded_parse::<OpenCurlyBraceToken, _>()?;
+        let trait_defs_opt: Option<Braces<Vec<Annotated<ItemFn>>>> = Braces::try_parse(parser)?;
         if let Some(trait_defs) = &trait_defs_opt {
             for item in trait_defs.get().iter() {
                 parser.ban_visibility_qualifier(&item.value.fn_signature.visibility)?;
