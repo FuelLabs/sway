@@ -33,7 +33,7 @@ pub(crate) use unconstrained_type_parameters::*;
 use crate::error::*;
 #[cfg(test)]
 use crate::{
-    decl_engine::DeclEngineIndex, language::ty::TyEnumDeclaration, transform::AttributesMap,
+    decl_engine::DeclEngineInsert, language::ty::TyEnumDeclaration, transform::AttributesMap,
 };
 use std::fmt::Debug;
 

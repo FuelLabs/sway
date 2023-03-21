@@ -2,7 +2,7 @@ use sway_error::error::CompileError;
 use sway_types::{BaseIdent, Ident, Span, Spanned};
 
 use crate::{
-    decl_engine::DeclEngineIndex,
+    decl_engine::DeclEngineInsert,
     error::*,
     language::{parsed::*, ty, CallPath},
     semantic_analysis::TypeCheckContext,
