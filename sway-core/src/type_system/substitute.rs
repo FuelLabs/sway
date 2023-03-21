@@ -23,16 +23,16 @@ pub trait SubstTypes {
 }
 
 /// A list of types that serve as the list of type params for type substitution.
-/// Any types of the [TypeParam][TypeInfo::TypeParam] variant will point to an index in
-/// this list.
+/// Any types of the [TypeParam][TypeInfo::TypeParam] variant will point to an
+/// index in this list.
 #[derive(Debug, Clone, Default)]
-pub struct TypeSubstList {
+pub struct SubstList {
     list: Vec<TypeParameter>,
 }
 
-impl TypeSubstList {
-    pub(crate) fn new() -> TypeSubstList {
-        TypeSubstList { list: vec![] }
+impl SubstList {
+    pub(crate) fn new() -> SubstList {
+        SubstList { list: vec![] }
     }
 
     #[allow(dead_code)]
@@ -66,36 +66,36 @@ impl TypeSubstList {
     }
 }
 
-impl std::iter::FromIterator<TypeParameter> for TypeSubstList {
+impl std::iter::FromIterator<TypeParameter> for SubstList {
     fn from_iter<T: IntoIterator<Item = TypeParameter>>(iter: T) -> Self {
-        TypeSubstList {
+        SubstList {
             list: iter.into_iter().collect::<Vec<TypeParameter>>(),
         }
     }
 }
 
-impl EqWithEngines for TypeSubstList {}
-impl PartialEqWithEngines for TypeSubstList {
+impl EqWithEngines for SubstList {}
+impl PartialEqWithEngines for SubstList {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         self.list.eq(&other.list, engines)
     }
 }
 
-impl HashWithEngines for TypeSubstList {
+impl HashWithEngines for SubstList {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
         self.list.hash(state, engines);
     }
 }
 
-impl OrdWithEngines for TypeSubstList {
+impl OrdWithEngines for SubstList {
     fn cmp(&self, other: &Self, engines: Engines<'_>) -> std::cmp::Ordering {
-        let TypeSubstList { list: ll } = self;
-        let TypeSubstList { list: rl } = other;
+        let SubstList { list: ll } = self;
+        let SubstList { list: rl } = other;
         ll.cmp(rl, engines)
     }
 }
 
-impl SubstTypes for TypeSubstList {
+impl SubstTypes for SubstList {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.list
             .iter_mut()

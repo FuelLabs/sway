@@ -20,7 +20,7 @@ pub(crate) enum Constraint {
     FnCall {
         call_path: CallPath,
         decl_id: DeclId<ty::TyFunctionDeclaration>,
-        subst_list: TypeSubstList,
+        subst_list: SubstList,
         arguments: Vec<TypeId>,
     },
 }
