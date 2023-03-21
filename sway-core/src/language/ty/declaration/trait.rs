@@ -143,13 +143,13 @@ impl SubstTypes for TyTraitDeclaration {
                     let new_item_ref = item_ref
                         .clone()
                         .subst_types_and_insert_new_with_parent(type_mapping, engines);
-                    item_ref.replace_id((&new_item_ref).into());
+                    item_ref.replace_id(*new_item_ref.id());
                 }
                 TyTraitInterfaceItem::Constant(decl_ref) => {
                     let new_decl_ref = decl_ref
                         .clone()
                         .subst_types_and_insert_new(type_mapping, engines);
-                    decl_ref.replace_id((&new_decl_ref).into());
+                    decl_ref.replace_id(*new_decl_ref.id());
                 }
             });
         self.items.iter_mut().for_each(|item| match item {
@@ -157,13 +157,13 @@ impl SubstTypes for TyTraitDeclaration {
                 let new_item_ref = item_ref
                     .clone()
                     .subst_types_and_insert_new_with_parent(type_mapping, engines);
-                item_ref.replace_id((&new_item_ref).into());
+                item_ref.replace_id(*new_item_ref.id());
             }
             TyTraitItem::Constant(item_ref) => {
-                let new_item_ref = item_ref
+                let new_decl_ref = item_ref
                     .clone()
                     .subst_types_and_insert_new_with_parent(type_mapping, engines);
-                item_ref.replace_id((&new_item_ref).into());
+                item_ref.replace_id(*new_decl_ref.id());
             }
         });
     }
@@ -190,13 +190,13 @@ impl ReplaceSelfType for TyTraitDeclaration {
                     let new_item_ref = item_ref
                         .clone()
                         .replace_self_type_and_insert_new_with_parent(engines, self_type);
-                    item_ref.replace_id((&new_item_ref).into());
+                    item_ref.replace_id(*new_item_ref.id());
                 }
                 TyTraitInterfaceItem::Constant(decl_ref) => {
-                    let new_decl_id = decl_ref
+                    let new_decl_ref = decl_ref
                         .clone()
                         .replace_self_type_and_insert_new(engines, self_type);
-                    decl_ref.replace_id((&new_decl_id).into());
+                    decl_ref.replace_id(*new_decl_ref.id());
                 }
             });
         self.items.iter_mut().for_each(|item| match item {
@@ -204,13 +204,13 @@ impl ReplaceSelfType for TyTraitDeclaration {
                 let new_item_ref = item_ref
                     .clone()
                     .replace_self_type_and_insert_new_with_parent(engines, self_type);
-                item_ref.replace_id((&new_item_ref).into());
+                item_ref.replace_id(*new_item_ref.id());
             }
             TyTraitItem::Constant(item_ref) => {
-                let new_item_ref = item_ref
+                let new_decl_ref = item_ref
                     .clone()
                     .replace_self_type_and_insert_new(engines, self_type);
-                item_ref.replace_id((&new_item_ref).into());
+                item_ref.replace_id(*new_decl_ref.id());
             }
         });
     }
