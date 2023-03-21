@@ -141,11 +141,21 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
                 })
         })
         .collect();
+
+    // if we have A replaces B and B replaces C, then A must replace C also.
+    fn closure(
+        candidates: &FxHashMap<LocalVar, LocalVar>,
+        src_local: &LocalVar,
+    ) -> Option<LocalVar> {
+        candidates
+            .get(src_local)
+            .map(|replace_with| closure(candidates, replace_with).unwrap_or(replace_with.clone()))
+    }
     // Because we can't borrow context for both iterating and replacing, do it in 2 steps.
     let replaces: Vec<_> = function
         .instruction_iter(context)
         .filter_map(|(_block, value)| match value.get_instruction(context) {
-            Some(Instruction::GetLocal(local)) => candidates.get(local).map(|replace_with| {
+            Some(Instruction::GetLocal(local)) => closure(&candidates, local).map(|replace_with| {
                 (
                     value,
                     ValueDatum::Instruction(Instruction::GetLocal(replace_with.clone())),
