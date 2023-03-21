@@ -2,52 +2,44 @@
 
 Firstly, thank you for taking interest in advancing the Sway language formatter! This guide will walk you through installation and best practices for contributing to this project.
 
-> **Pre-Installation:** If you've previously installed `forc-fmt` via `fuelup`, you will need to uninstall it in order to use the binary compiled from source.
-
-```sh
-# find fuelup `forc-fmt` binary
-which forc-fmt
-# output: `~/.fuelup/bin/forc-fmt`
-#
-# remove fuelup `forc-fmt` binary
-rm ~/.fuelup/bin/forc-fmt
-```
-
 ## Installation
 
-> **Note:** `cargo` is a prerequisite to this build.
+To start working on the formatter, you need the [Rust toolchain](https://www.rust-lang.org/tools/install).
+
+Clone the Sway repo into your preferred directory and run the formatter tests to ensure everything works as expected before you make local changes:
 
 ```sh
-# 1. move to your preferred directory
-#    example: cd ~/Code/
-#
-# 2. clone the Sway repo
-git clone https://github.com/FuelLabs/sway.git
-#
-# 3. build from manifest and move the compiled result to your `.cargo/bin` folder
-cargo build --path ~/sway/forc-plugins/forc-fmt/Cargo.toml && mv ~/sway/target/debug/forc-fmt ~/.cargo/bin
+# from /sway
+cd swayfmt && cargo test
 ```
 
 ## Testing
 
-You should test your changes both using the test suite as well as manually.
+You can either test that your changes work correctly by writing new tests or manually running the formatter.
 
-Before you make changes, let's ensure that the test suite runs fine:
-
-```sh
-# from the root
-cd swayfmt && cargo test
-```
+### Writing new tests (Recommended)
 
 `swayfmt` has an extensive test suite that should pass both locally and within the CI to ensure reliability. This is used
 to ensure that there isn't regression introduced along with new changes. If your changes include fixing bugs or adding
-a new feature, please also include new tests accompanying your PR where possible. You may look at [formatter/mod.rs](https://github.com/FuelLabs/sway/blob/master/swayfmt/src/formatter/mod.rs)
-for examples on how you may test your changes.
+a new feature, please also include new tests accompanying your PR where possible.
 
-To manually test the formatter, be sure to have `forc` installed then move into a Sway project directory and execute the binary:
+There are both isolated tests based on an item or expression and full-bodied tests based on source code in the codebase.
+
+The first kind are found in `tests.rs` adjacent to the kind of expression or item file and rely on macros for setup.
+For example, you may find the tests related to structs located next to the module that implements struct formatting.
+
+The second kind are found within `tests` folder. These tests ensure that a full piece of source code is correctly parsed and
+formatted.
+
+You should look at existing tests for examples on how you may test your changes.
+
+### Running the formatter
+
+To manually run the formatter, you can create a dummy Sway file and execute the formatter from `cargo`:
 
 ```sh
-forc fmt
+# copy paste some Sway code into my_file.sw and run the formatter from cargo
+cargo run --bin=forc-fmt my_file.sw
 ```
 
 ## Contribution Guidelines
