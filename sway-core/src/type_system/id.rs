@@ -59,17 +59,6 @@ impl CollectTypesMetadata for TypeId {
     }
 }
 
-impl SubstTypes for TypeId {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        let type_engine = engines.te();
-        if let Some(matching_id) = type_mapping.find_match(*self, engines) {
-            if !matches!(type_engine.get(matching_id), TypeInfo::ErrorRecovery) {
-                *self = matching_id;
-            }
-        }
-    }
-}
-
 impl UnconstrainedTypeParameters for TypeId {
     fn type_parameter_is_unconstrained(
         &self,

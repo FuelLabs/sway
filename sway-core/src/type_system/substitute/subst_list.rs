@@ -77,14 +77,6 @@ impl OrdWithEngines for SubstList {
     }
 }
 
-impl SubstTypes for SubstList {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.list
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-    }
-}
-
 impl CreateCopy<SubstList> for SubstList {
     fn scoped_copy(&self, engines: Engines<'_>) -> Self {
         let type_engine = engines.te();

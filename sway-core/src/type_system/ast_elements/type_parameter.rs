@@ -76,15 +76,6 @@ impl OrdWithEngines for TypeParameter {
     }
 }
 
-impl SubstTypes for TypeParameter {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.type_id.subst(type_mapping, engines);
-        self.trait_constraints
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-    }
-}
-
 impl Spanned for TypeParameter {
     fn span(&self) -> Span {
         self.name_ident.span()

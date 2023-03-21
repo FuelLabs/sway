@@ -115,9 +115,3 @@ impl OrdWithEngines for TyStructField {
         ln.cmp(rn).then_with(|| lta.cmp(rta, engines))
     }
 }
-
-impl SubstTypes for TyStructField {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.type_argument.subst_inner(type_mapping, engines);
-    }
-}

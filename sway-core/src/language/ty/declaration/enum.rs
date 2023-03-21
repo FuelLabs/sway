@@ -112,9 +112,3 @@ impl OrdWithEngines for TyEnumVariant {
             .then_with(|| lt.cmp(rt))
     }
 }
-
-impl SubstTypes for TyEnumVariant {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.type_argument.subst_inner(type_mapping, engines);
-    }
-}

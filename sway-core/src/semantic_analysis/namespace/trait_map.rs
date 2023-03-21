@@ -599,30 +599,31 @@ impl TraitMap {
                         engines,
                     );
                 } else if decider(&type_info, &type_engine.get(*map_type_id)) {
-                    let type_mapping = TypeSubstMap::from_superset_and_subset(
-                        type_engine,
-                        decl_engine,
-                        *map_type_id,
-                        *type_id,
-                    );
-                    type_id.subst(&type_mapping, engines);
-                    let trait_items: TraitItems = map_trait_items
-                        .clone()
-                        .into_iter()
-                        .map(|(name, item)| match &item {
-                            ty::TyTraitItem::Fn(decl_ref) => {
-                                let mut decl_ref = decl_ref.clone();
-                                decl_ref.subst(&type_mapping, engines);
-                                (name, TyImplItem::Fn(decl_ref))
-                            }
-                            ty::TyTraitItem::Constant(decl_ref) => {
-                                let mut decl_ref = decl_ref.clone();
-                                decl_ref.subst(&type_mapping, engines);
-                                (name, TyImplItem::Constant(decl_ref))
-                            }
-                        })
-                        .collect();
-                    trait_map.insert_inner(map_trait_name.clone(), *type_id, trait_items, engines);
+                    todo!();
+                    // let type_mapping = TypeSubstMap::from_superset_and_subset(
+                    //     type_engine,
+                    //     decl_engine,
+                    //     *map_type_id,
+                    //     *type_id,
+                    // );
+                    // type_id.subst(&type_mapping, engines);
+                    // let trait_items: TraitItems = map_trait_items
+                    //     .clone()
+                    //     .into_iter()
+                    //     .map(|(name, item)| match &item {
+                    //         ty::TyTraitItem::Fn(decl_ref) => {
+                    //             let mut decl_ref = decl_ref.clone();
+                    //             decl_ref.subst(&type_mapping, engines);
+                    //             (name, TyImplItem::Fn(decl_ref))
+                    //         }
+                    //         ty::TyTraitItem::Constant(decl_ref) => {
+                    //             let mut decl_ref = decl_ref.clone();
+                    //             decl_ref.subst(&type_mapping, engines);
+                    //             (name, TyImplItem::Constant(decl_ref))
+                    //         }
+                    //     })
+                    //     .collect();
+                    // trait_map.insert_inner(map_trait_name.clone(), *type_id, trait_items, engines);
                 }
             }
         }

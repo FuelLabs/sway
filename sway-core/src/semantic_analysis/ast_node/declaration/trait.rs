@@ -9,11 +9,7 @@ use sway_types::{style::is_upper_camel_case, Ident, Spanned};
 use crate::{
     decl_engine::*,
     error::*,
-    language::{
-        parsed::*,
-        ty::{self, TyImplItem, TyTraitItem},
-        CallPath,
-    },
+    language::{parsed::*, ty, CallPath},
     semantic_analysis::{declaration::insert_supertraits_into_namespace, Mode, TypeCheckContext},
     type_system::*,
 };
@@ -277,33 +273,34 @@ impl ty::TyTraitDecl {
         }
 
         // Retrieve the implemented items for this type.
-        let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
-            type_parameters
-                .iter()
-                .map(|type_param| type_param.type_id)
-                .collect(),
-            type_arguments
-                .iter()
-                .map(|type_arg| type_arg.type_id)
-                .collect(),
-        );
-        for item in ctx
-            .namespace
-            .get_items_for_type_and_trait_name(engines, type_id, call_path)
-            .into_iter()
-        {
-            match item {
-                ty::TyTraitItem::Fn(mut decl_ref) => {
-                    decl_ref.subst(&type_mapping, engines);
-                    impld_item_refs.insert(decl_ref.name().clone(), TyTraitItem::Fn(decl_ref));
-                }
-                ty::TyTraitItem::Constant(mut decl_ref) => {
-                    decl_ref.subst(&type_mapping, engines);
-                    impld_item_refs
-                        .insert(decl_ref.name().clone(), TyTraitItem::Constant(decl_ref));
-                }
-            }
-        }
+        todo!();
+        // let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
+        //     type_parameters
+        //         .iter()
+        //         .map(|type_param| type_param.type_id)
+        //         .collect(),
+        //     type_arguments
+        //         .iter()
+        //         .map(|type_arg| type_arg.type_id)
+        //         .collect(),
+        // );
+        // for item in ctx
+        //     .namespace
+        //     .get_items_for_type_and_trait_name(engines, type_id, call_path)
+        //     .into_iter()
+        // {
+        //     match item {
+        //         ty::TyTraitItem::Fn(mut decl_ref) => {
+        //             decl_ref.subst(&type_mapping, engines);
+        //             impld_item_refs.insert(decl_ref.name().clone(), TyTraitItem::Fn(decl_ref));
+        //         }
+        //         ty::TyTraitItem::Constant(mut decl_ref) => {
+        //             decl_ref.subst(&type_mapping, engines);
+        //             impld_item_refs
+        //                 .insert(decl_ref.name().clone(), TyTraitItem::Constant(decl_ref));
+        //         }
+        //     }
+        // }
 
         (interface_surface_item_refs, item_refs, impld_item_refs)
     }
@@ -330,57 +327,57 @@ impl ty::TyTraitDecl {
         // Retrieve the trait items for this trait. Transform them into the
         // correct typing for this impl block by using the type parameters from
         // the original trait declaration and the given type arguments.
-        let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
-            type_parameters
-                .iter()
-                .map(|type_param| type_param.type_id)
-                .collect(),
-            type_arguments
-                .iter()
-                .map(|type_arg| type_arg.type_id)
-                .collect(),
-        );
-
-        for item in interface_surface.iter() {
-            match item {
-                ty::TyTraitInterfaceItem::TraitFn(decl_ref) => {
-                    let mut decl_ref = decl_ref.clone();
-                    decl_ref.subst(&type_mapping, engines);
-                    todo!();
-                    // all_items.push(TyImplItem::Fn(
-                    //     ctx.decl_engine
-                    //         .insert(method.to_dummy_func(Mode::NonAbi))
-                    //         .with_parent(ctx.decl_engine, (*decl_ref.id()).into()),
-                    // ));
-                }
-                ty::TyTraitInterfaceItem::Constant(decl_ref) => {
-                    let mut decl_ref = decl_ref.clone();
-                    decl_ref.subst(&type_mapping, engines);
-                    ctx.namespace.insert_symbol(
-                        decl_ref.name().clone(),
-                        ty::TyDecl::ConstantDecl {
-                            name: decl_ref.name().clone(),
-                            decl_id: *decl_ref.id(),
-                            decl_span: decl_ref.decl_span().clone(),
-                        },
-                    );
-                }
-            }
-        }
-        for item in items.iter() {
-            match item {
-                ty::TyTraitItem::Fn(decl_ref) => {
-                    let mut decl_ref = decl_ref.clone();
-                    decl_ref.subst(&type_mapping, engines);
-                    all_items.push(TyImplItem::Fn(decl_ref));
-                }
-                ty::TyTraitItem::Constant(decl_ref) => {
-                    let mut decl_ref = decl_ref.clone();
-                    decl_ref.subst(&type_mapping, engines);
-                    all_items.push(TyImplItem::Constant(decl_ref));
-                }
-            }
-        }
+        todo!();
+        // let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
+        //     type_parameters
+        //         .iter()
+        //         .map(|type_param| type_param.type_id)
+        //         .collect(),
+        //     type_arguments
+        //         .iter()
+        //         .map(|type_arg| type_arg.type_id)
+        //         .collect(),
+        // );
+        // for item in interface_surface.iter() {
+        //     match item {
+        //         ty::TyTraitInterfaceItem::TraitFn(decl_ref) => {
+        //             let mut decl_ref = decl_ref.clone();
+        //             decl_ref.subst(&type_mapping, engines);
+        //             todo!();
+        //             // all_items.push(TyImplItem::Fn(
+        //             //     ctx.decl_engine
+        //             //         .insert(method.to_dummy_func(Mode::NonAbi))
+        //             //         .with_parent(ctx.decl_engine, (*decl_ref.id()).into()),
+        //             // ));
+        //         }
+        //         ty::TyTraitInterfaceItem::Constant(decl_ref) => {
+        //             let mut decl_ref = decl_ref.clone();
+        //             decl_ref.subst(&type_mapping, engines);
+        //             ctx.namespace.insert_symbol(
+        //                 decl_ref.name().clone(),
+        //                 ty::TyDeclaration::ConstantDeclaration {
+        //                     name: decl_ref.name().clone(),
+        //                     decl_id: *decl_ref.id(),
+        //                     decl_span: decl_ref.decl_span().clone(),
+        //                 },
+        //             );
+        //         }
+        //     }
+        // }
+        // for item in items.iter() {
+        //     match item {
+        //         ty::TyTraitItem::Fn(decl_ref) => {
+        //             let mut decl_ref = decl_ref.clone();
+        //             decl_ref.subst(&type_mapping, engines);
+        //             all_items.push(TyImplItem::Fn(decl_ref));
+        //         }
+        //         ty::TyTraitItem::Constant(decl_ref) => {
+        //             let mut decl_ref = decl_ref.clone();
+        //             decl_ref.subst(&type_mapping, engines);
+        //             all_items.push(TyImplItem::Constant(decl_ref));
+        //         }
+        //     }
+        // }
 
         // Insert the methods of the trait into the namespace.
         // Specifically do not check for conflicting definitions because

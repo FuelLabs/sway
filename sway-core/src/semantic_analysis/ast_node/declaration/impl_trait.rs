@@ -771,32 +771,33 @@ fn type_check_trait_implementation(
     // the trait name in the current impl block that we are type checking and
     // using the stub decl ids from the interface surface and the new
     // decl ids from the newly implemented methods.
-    let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
-        trait_type_parameters
-            .iter()
-            .map(|type_param| type_param.type_id)
-            .collect(),
-        trait_type_arguments
-            .iter()
-            .map(|type_arg| type_arg.type_id)
-            .collect(),
-    );
-    interface_item_refs.extend(supertrait_interface_item_refs);
-    impld_item_refs.extend(supertrait_impld_item_refs);
-    for item in trait_items.iter() {
-        match item {
-            TyImplItem::Fn(decl_ref) => {
-                let mut decl_ref = decl_ref.clone();
-                decl_ref.subst(&type_mapping, engines);
-                all_items_refs.push(TyImplItem::Fn(decl_ref));
-            }
-            TyImplItem::Constant(decl_ref) => {
-                let mut decl_ref = decl_ref.clone();
-                decl_ref.subst(&type_mapping, engines);
-                all_items_refs.push(TyImplItem::Constant(decl_ref));
-            }
-        }
-    }
+    todo!();
+    // let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
+    //     trait_type_parameters
+    //         .iter()
+    //         .map(|type_param| type_param.type_id)
+    //         .collect(),
+    //     trait_type_arguments
+    //         .iter()
+    //         .map(|type_arg| type_arg.type_id)
+    //         .collect(),
+    // );
+    // interface_item_refs.extend(supertrait_interface_item_refs);
+    // impld_item_refs.extend(supertrait_impld_item_refs);
+    // for item in trait_items.iter() {
+    //     match item {
+    //         TyImplItem::Fn(decl_ref) => {
+    //             let mut decl_ref = decl_ref.clone();
+    //             decl_ref.subst(&type_mapping, engines);
+    //             all_items_refs.push(TyImplItem::Fn(decl_ref));
+    //         }
+    //         TyImplItem::Constant(decl_ref) => {
+    //             let mut decl_ref = decl_ref.clone();
+    //             decl_ref.subst(&type_mapping, engines);
+    //             all_items_refs.push(TyImplItem::Constant(decl_ref));
+    //         }
+    //     }
+    // }
 
     // check that the implementation checklist is complete
     if !method_checklist.is_empty() {

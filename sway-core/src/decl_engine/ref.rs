@@ -149,21 +149,6 @@ impl<I> Spanned for DeclRef<I> {
     }
 }
 
-impl<I> SubstTypes for DeclRef<I> {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        let DeclRef {
-            subst_list,
-            // this field is excluded because DeclId's are in a 1:1 relation
-            // with source-code declarations
-            id: _,
-            // these fields are excluded because they do not contain types
-            name: _,
-            decl_span: _,
-        } = self;
-        subst_list.subst(type_mapping, engines);
-    }
-}
-
 impl ReplaceFunctionImplementingType for DeclRefFunction {
     fn replace_implementing_type(&mut self, engines: Engines<'_>, implementing_type: ty::TyDecl) {
         let decl_engine = engines.de();
