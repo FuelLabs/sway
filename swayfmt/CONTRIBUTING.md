@@ -28,17 +28,18 @@ There are both isolated tests based on an item or expression and full-bodied tes
 The first kind are found in `tests.rs` adjacent to the kind of expression or item file and rely on macros for setup.
 For example, you may find the tests related to structs located next to the module that implements struct formatting.
 
-The second kind are found within `tests` folder. These tests ensure that a full piece of source code is correctly parsed and
-formatted.
+The second kind are found within the `tests` folder. These tests ensure that a full piece of source code is correctly parsed and
+formatted. These tests are also nicely setup by a function `check()` that only requires you to input a wrong piece of code and an expected
+piece of code.
 
-You should look at existing tests for examples on how you may test your changes.
+You are recommended to look at existing tests for examples on how you may test your changes.
 
 ### Running the formatter
 
 To manually run the formatter, you can create a dummy Sway file and execute the formatter from `cargo`:
 
 ```sh
-# copy paste some Sway code into my_file.sw and run the formatter from cargo
+# copy paste some Sway code into my_file.sw and run the formatter from cargo while in the Sway project root
 cargo run --bin=forc-fmt my_file.sw
 ```
 
