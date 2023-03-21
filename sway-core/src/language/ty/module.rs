@@ -51,7 +51,7 @@ impl TyModule {
         self.all_nodes.iter().filter_map(|node| {
             if let TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration {
                 decl_id,
-                type_subst_list: _,
+                subst_list: _,
                 name,
                 decl_span,
             }) = &node.content

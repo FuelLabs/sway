@@ -61,7 +61,7 @@ pub struct DeclRef<I> {
 
     /// The type substitution list to apply to the `id` field for type
     /// monomorphization.
-    subst_list: TypeSubstList,
+    subst_list: SubstList,
 
     /// The [Span] of the entire declaration.
     decl_span: Span,
@@ -72,7 +72,7 @@ impl<I> DeclRef<I> {
         DeclRef {
             name,
             id,
-            subst_list: TypeSubstList::new(),
+            subst_list: SubstList::new(),
             decl_span,
         }
     }
@@ -85,7 +85,7 @@ impl<I> DeclRef<I> {
         &self.id
     }
 
-    pub(crate) fn subst_list(&self) -> &TypeSubstList {
+    pub(crate) fn subst_list(&self) -> &SubstList {
         &self.subst_list
     }
 
