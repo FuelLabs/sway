@@ -73,7 +73,7 @@ impl Root {
                     span: call_path.suffix.span(),
                 });
                 // Returns ok with error, this allows functions which call this to
-                // also access the returned TyDeclaration and throw more suitable errors.
+                // also access the returned TyDecl and throw more suitable errors.
                 return ok(decl, warnings, errors);
             }
         }

@@ -115,7 +115,7 @@ fn replace_self_with_type_str(type_str: String, parent_type_info: &TypeInfo) -> 
 
 /// Returns the [TypeId] of an ident that may include field accesses and may be incomplete.
 /// For the first part of the ident, it looks for instantiation in the scope of the given
-/// [TyFunctionDeclaration]. For example, given `a.b.c`, it will return the type ID of `c`
+/// [TyFunctionDecl]. For example, given `a.b.c`, it will return the type ID of `c`
 /// if it can resolve `a` in the given function.
 fn type_id_of_raw_ident(
     engines: Engines,
@@ -167,7 +167,7 @@ fn type_id_of_raw_ident(
 }
 
 /// Returns the [TypeId] of an ident by looking for its instantiation within the scope of the
-/// given [TyFunctionDeclaration].
+/// given [TyFunctionDecl].
 fn type_id_of_local_ident(ident_name: &str, fn_decl: &TyFunctionDecl) -> Option<TypeId> {
     fn_decl
         .parameters

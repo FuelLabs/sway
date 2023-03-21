@@ -27,7 +27,7 @@ pub(crate) enum Descriptor {
 }
 
 impl Descriptor {
-    /// Decides whether a [TyDeclaration] is [Descriptor::Documentable].
+    /// Decides whether a [TyDecl] is [Descriptor::Documentable].
     pub(crate) fn from_typed_decl(
         decl_engine: &DeclEngine,
         ty_decl: &TyDecl,

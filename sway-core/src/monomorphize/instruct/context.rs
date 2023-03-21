@@ -65,23 +65,20 @@ type StructMap = HashMap<DeclId<ty::TyStructDecl>, Vec<Instruction>>;
 type EnumMap = HashMap<DeclId<ty::TyEnumDecl>, Vec<Instruction>>;
 
 pub(crate) struct InstructionItems {
-    /// A map of [TyFunctionDeclaration](ty::TyFunctionDeclaration) [DeclId]s to
-    /// be monomorphized.
+    /// A map of [TyFunctionDecl](ty::TyFunctionDecl) [DeclId]s to be
+    /// monomorphized.
     fn_map: FnMap,
 
-    /// A map of [TyTraitDeclaration](ty::TyTraitDeclaration) [DeclId]s to be
-    /// monomorphized.
+    /// A map of [TyTraitDecl](ty::TyTraitDecl) [DeclId]s to be monomorphized.
     trait_map: TraitMap,
 
     /// A map of [TyImplTrait](ty::TyImplTrait) [DeclId]s to be monomorphized.
     impl_trait_map: ImplTraitMap,
 
-    /// A map of [TyStructDeclaration](ty::TyStructDeclaration) [DeclId]s to be
-    /// monomorphized.
+    /// A map of [TyStructDecl](ty::TyStructDecl) [DeclId]s to be monomorphized.
     struct_map: StructMap,
 
-    /// A map of [TyEnumDeclaration](ty::TyEnumDeclaration) [DeclId]s to be
-    /// monomorphized.
+    /// A map of [TyEnumDecl](ty::TyEnumDecl) [DeclId]s to be monomorphized.
     enum_map: EnumMap,
 
     /// The list of instructions not included in any of the previous fields.

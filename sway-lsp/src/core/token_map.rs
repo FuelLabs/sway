@@ -132,7 +132,7 @@ impl TokenMap {
             .collect()
     }
 
-    /// Uses the [TypeId] to find the associated [ty::TyDeclaration] in the TokenMap.
+    /// Uses the [TypeId] to find the associated [ty::TyDecl] in the TokenMap.
     ///
     /// This is useful when dealing with tokens that are of the [sway_core::language::ty::TyExpression] type in the AST.
     /// For example, we can then use the `return_type` field which is a [TypeId] to retrieve the declaration Token.
@@ -152,8 +152,8 @@ impl TokenMap {
             })
     }
 
-    /// Returns the [ty::TyStructDeclaration] associated with the TypeId if it
-    /// exists within the TokenMap.
+    /// Returns the [ty::TyStructDecl] associated with the TypeId if it exists
+    /// within the TokenMap.
     pub fn struct_declaration_of_type_id(
         &self,
         engines: Engines<'_>,

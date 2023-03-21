@@ -5,7 +5,8 @@ use sway_types::{Ident, Named, Span, Spanned};
 
 use super::{TyTraitInterfaceItem, TyTraitItem};
 
-/// A [TyAbiDeclaration] contains the type-checked version of the parse tree's `AbiDeclaration`.
+/// A [TyAbiDecl] contains the type-checked version of the parse tree's
+/// `AbiDeclaration`.
 #[derive(Clone, Debug)]
 pub struct TyAbiDecl {
     /// The name of the abi trait (also known as a "contract trait")

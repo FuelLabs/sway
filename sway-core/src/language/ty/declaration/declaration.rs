@@ -470,9 +470,9 @@ impl GetDeclIdent for TyDecl {
 }
 
 impl TyDecl {
-    /// Retrieves the declaration as a `DeclRef<DeclId<TyEnumDeclaration>>`.
+    /// Retrieves the declaration as a `DeclRef<DeclId<TyEnumDecl>>`.
     ///
-    /// Returns an error if `self` is not the [TyDeclaration][EnumDeclaration] variant.
+    /// Returns an error if `self` is not the [TyDecl][EnumDecl] variant.
     pub(crate) fn to_enum_ref(&self, engines: Engines) -> CompileResult<DeclRefEnum> {
         match self {
             TyDecl::EnumDecl {
@@ -500,9 +500,9 @@ impl TyDecl {
         }
     }
 
-    /// Retrieves the declaration as a `DeclRef<DeclId<TyStructDeclaration>>`.
+    /// Retrieves the declaration as a `DeclRef<DeclId<TyStructDecl>>`.
     ///
-    /// Returns an error if `self` is not the [TyDeclaration][StructDeclaration] variant.
+    /// Returns an error if `self` is not the [TyDecl][StructDecl] variant.
     pub(crate) fn to_struct_ref(&self, engines: Engines) -> CompileResult<DeclRefStruct> {
         match self {
             TyDecl::StructDecl {
@@ -530,10 +530,9 @@ impl TyDecl {
         }
     }
 
-    /// Retrieves the declaration as a `DeclRef<DeclId<TyFunctionDeclaration>>`.
+    /// Retrieves the declaration as a `DeclRef<DeclId<TyFunctionDecl>>`.
     ///
-    /// Returns an error if `self` is not the
-    /// [TyDeclaration][FunctionDeclaration] variant.
+    /// Returns an error if `self` is not the [TyDecl][FunctionDecl] variant.
     pub(crate) fn to_fn_ref(&self) -> CompileResult<DeclRef<DeclId<TyFunctionDecl>>> {
         match self {
             TyDecl::FunctionDecl {
@@ -559,7 +558,7 @@ impl TyDecl {
 
     /// Retrieves the declaration as a variable declaration.
     ///
-    /// Returns an error if `self` is not a [TyVariableDeclaration].
+    /// Returns an error if `self` is not a [TyVariableDecl].
     pub(crate) fn expect_variable(&self) -> CompileResult<&TyVariableDecl> {
         let warnings = vec![];
         let mut errors = vec![];
@@ -576,10 +575,9 @@ impl TyDecl {
         }
     }
 
-    /// Retrieves the declaration as a `DeclRef<DeclId<TyAbiDeclaration>>`.
+    /// Retrieves the declaration as a `DeclRef<DeclId<TyAbiDecl>>`.
     ///
-    /// Returns an error if `self` is not the
-    /// [TyDeclaration][AbiDeclaration] variant.
+    /// Returns an error if `self` is not the [TyDecl][AbiDecl] variant.
     pub(crate) fn to_abi_ref(&self) -> CompileResult<DeclRef<DeclId<TyAbiDecl>>> {
         match self {
             TyDecl::AbiDecl {
@@ -602,10 +600,9 @@ impl TyDecl {
         }
     }
 
-    /// Retrieves the declaration as a `DeclRef<DeclId<TyConstantDeclaration>>`.
+    /// Retrieves the declaration as a `DeclRef<DeclId<TyConstantDecl>>`.
     ///
-    /// Returns an error if `self` is not the
-    /// [TyDeclaration][ConstantDeclaration] variant.
+    /// Returns an error if `self` is not the [TyDecl][ConstantDecl] variant.
     pub(crate) fn to_const_ref(&self) -> CompileResult<DeclRef<DeclId<TyConstantDecl>>> {
         match self {
             TyDecl::ConstantDecl {

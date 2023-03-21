@@ -276,7 +276,7 @@ impl TyFunctionDecl {
         ok(hash.to_vec(), warnings, errors)
     }
 
-    /// Converts a [TyFunctionDeclaration] into a value that is to be used in contract function
+    /// Converts a [TyFunctionDecl] into a value that is to be used in contract function
     /// selectors.
     /// Hashes the name and parameters using SHA256, and then truncates to four bytes.
     pub fn to_fn_selector_value(
