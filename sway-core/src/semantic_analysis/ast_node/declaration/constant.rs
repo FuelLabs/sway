@@ -5,14 +5,14 @@ use crate::{
     error::*,
     language::{
         parsed::{self, *},
-        ty::{self, TyConstantDeclaration},
+        ty::{self, TyConstantDecl},
         CallPath,
     },
     semantic_analysis::*,
     EnforceTypeArguments, Engines, TypeInfo,
 };
 
-impl ty::TyConstantDeclaration {
+impl ty::TyConstantDecl {
     pub fn type_check(mut ctx: TypeCheckContext, decl: ConstantDeclaration) -> CompileResult<Self> {
         let mut errors = vec![];
         let mut warnings = vec![];
@@ -89,7 +89,7 @@ impl ty::TyConstantDeclaration {
         call_path = call_path.to_fullpath(ctx.namespace);
 
         // create the const decl
-        let decl = ty::TyConstantDeclaration {
+        let decl = ty::TyConstantDecl {
             call_path,
             attributes,
             is_configurable,
@@ -105,10 +105,7 @@ impl ty::TyConstantDeclaration {
 
     /// Used to create a stubbed out constant when the constant fails to
     /// compile, preventing cascading namespace errors.
-    pub(crate) fn error(
-        engines: Engines<'_>,
-        decl: parsed::ConstantDeclaration,
-    ) -> TyConstantDeclaration {
+    pub(crate) fn error(engines: Engines<'_>, decl: parsed::ConstantDeclaration) -> TyConstantDecl {
         let type_engine = engines.te();
         let decl_engine = engines.de();
         let parsed::ConstantDeclaration {
@@ -119,7 +116,7 @@ impl ty::TyConstantDeclaration {
             ..
         } = decl;
         let call_path: CallPath = name.into();
-        TyConstantDeclaration {
+        TyConstantDecl {
             call_path,
             span,
             attributes: Default::default(),

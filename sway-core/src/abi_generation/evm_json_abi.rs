@@ -3,7 +3,7 @@ use sway_types::integer_bits::IntegerBits;
 use crate::{
     asm_generation::EvmAbiResult,
     decl_engine::DeclEngine,
-    language::ty::{TyFunctionDeclaration, TyProgram, TyProgramKind},
+    language::ty::{TyFunctionDecl, TyProgram, TyProgramKind},
     Engines, TypeArgument, TypeEngine, TypeId, TypeInfo,
 };
 
@@ -183,7 +183,7 @@ pub fn json_abi_param_type(
 }
 
 pub(self) fn generate_json_abi_function(
-    fn_decl: &TyFunctionDeclaration,
+    fn_decl: &TyFunctionDecl,
     type_engine: &TypeEngine,
     decl_engine: &DeclEngine,
 ) -> ethabi::operation::Operation {

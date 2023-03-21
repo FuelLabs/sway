@@ -5,7 +5,7 @@ use crate::{
     type_system::*,
 };
 
-impl ty::TyEnumDeclaration {
+impl ty::TyEnumDecl {
     pub fn type_check(ctx: TypeCheckContext, decl: EnumDeclaration) -> CompileResult<Self> {
         let mut errors = vec![];
         let mut warnings = vec![];
@@ -48,7 +48,7 @@ impl ty::TyEnumDeclaration {
         call_path = call_path.to_fullpath(ctx.namespace);
 
         // create the enum decl
-        let decl = ty::TyEnumDeclaration {
+        let decl = ty::TyEnumDecl {
             call_path,
             type_parameters: new_type_parameters,
             variants: variants_buf,

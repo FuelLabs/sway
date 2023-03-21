@@ -197,7 +197,7 @@ fn unify_arguments_and_parameters(
 
 pub(crate) fn check_function_arguments_arity(
     arguments_len: usize,
-    function_decl: &ty::TyFunctionDeclaration,
+    function_decl: &ty::TyFunctionDecl,
     call_path: &CallPath,
     is_method_call_syntax_used: bool,
 ) -> CompileResult<()> {

@@ -9,9 +9,7 @@ mod unify;
 pub use priv_prelude::*;
 
 #[cfg(test)]
-use crate::{
-    decl_engine::DeclEngineInsert, language::ty::TyEnumDeclaration, transform::AttributesMap,
-};
+use crate::{decl_engine::DeclEngineInsert, language::ty::TyEnumDecl, transform::AttributesMap};
 
 #[cfg(test)]
 use sway_types::{integer_bits::IntegerBits, Span};
@@ -69,7 +67,7 @@ fn generic_enum_resolution() {
         attributes: transform::AttributesMap::default(),
     }];
 
-    let decl_ref_1 = decl_engine.insert(TyEnumDeclaration {
+    let decl_ref_1 = decl_engine.insert(TyEnumDecl {
         call_path: result_name.clone().into(),
         type_parameters: vec![placeholder_type_param],
         variants: variant_types,
@@ -104,7 +102,7 @@ fn generic_enum_resolution() {
         trait_constraints: vec![],
         trait_constraints_span: sp.clone(),
     };
-    let decl_ref_2 = decl_engine.insert(TyEnumDeclaration {
+    let decl_ref_2 = decl_engine.insert(TyEnumDecl {
         call_path: result_name.into(),
         type_parameters: vec![type_param],
         variants: variant_types.clone(),

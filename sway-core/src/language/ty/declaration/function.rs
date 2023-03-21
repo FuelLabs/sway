@@ -21,11 +21,11 @@ use sway_types::{
 };
 
 #[derive(Clone, Debug)]
-pub struct TyFunctionDeclaration {
+pub struct TyFunctionDecl {
     pub name: Ident,
     pub body: TyCodeBlock,
     pub parameters: Vec<TyFunctionParameter>,
-    pub implementing_type: Option<TyDeclaration>,
+    pub implementing_type: Option<TyDecl>,
     pub span: Span,
     pub attributes: transform::AttributesMap,
     pub type_parameters: Vec<TypeParameter>,
@@ -37,14 +37,14 @@ pub struct TyFunctionDeclaration {
     pub where_clause: Vec<(Ident, Vec<TraitConstraint>)>,
 }
 
-impl Named for TyFunctionDeclaration {
+impl Named for TyFunctionDecl {
     fn name(&self) -> &Ident {
         &self.name
     }
 }
 
-impl EqWithEngines for TyFunctionDeclaration {}
-impl PartialEqWithEngines for TyFunctionDeclaration {
+impl EqWithEngines for TyFunctionDecl {}
+impl PartialEqWithEngines for TyFunctionDecl {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         self.name == other.name
             && self.body.eq(&other.body, engines)
@@ -57,9 +57,9 @@ impl PartialEqWithEngines for TyFunctionDeclaration {
     }
 }
 
-impl HashWithEngines for TyFunctionDeclaration {
+impl HashWithEngines for TyFunctionDecl {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let TyFunctionDeclaration {
+        let TyFunctionDecl {
             name,
             body,
             parameters,
@@ -86,7 +86,7 @@ impl HashWithEngines for TyFunctionDeclaration {
     }
 }
 
-impl SubstTypes for TyFunctionDeclaration {
+impl SubstTypes for TyFunctionDecl {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.type_parameters
             .iter_mut()
@@ -99,7 +99,7 @@ impl SubstTypes for TyFunctionDeclaration {
     }
 }
 
-impl ReplaceSelfType for TyFunctionDeclaration {
+impl ReplaceSelfType for TyFunctionDecl {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         self.type_parameters
             .iter_mut()
@@ -112,19 +112,19 @@ impl ReplaceSelfType for TyFunctionDeclaration {
     }
 }
 
-impl ReplaceDecls for TyFunctionDeclaration {
+impl ReplaceDecls for TyFunctionDecl {
     fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
         self.body.replace_decls(decl_mapping, engines);
     }
 }
 
-impl Spanned for TyFunctionDeclaration {
+impl Spanned for TyFunctionDecl {
     fn span(&self) -> Span {
         self.span.clone()
     }
 }
 
-impl MonomorphizeHelper for TyFunctionDeclaration {
+impl MonomorphizeHelper for TyFunctionDecl {
     fn type_parameters(&self) -> &[TypeParameter] {
         &self.type_parameters
     }
@@ -134,7 +134,7 @@ impl MonomorphizeHelper for TyFunctionDeclaration {
     }
 }
 
-impl UnconstrainedTypeParameters for TyFunctionDeclaration {
+impl UnconstrainedTypeParameters for TyFunctionDecl {
     fn type_parameter_is_unconstrained(
         &self,
         engines: Engines<'_>,
@@ -166,7 +166,7 @@ impl UnconstrainedTypeParameters for TyFunctionDeclaration {
     }
 }
 
-impl CollectTypesMetadata for TyFunctionDeclaration {
+impl CollectTypesMetadata for TyFunctionDecl {
     fn collect_types_metadata(
         &self,
         ctx: &mut CollectTypesMetadataContext,
@@ -208,14 +208,14 @@ impl CollectTypesMetadata for TyFunctionDeclaration {
     }
 }
 
-impl TyFunctionDeclaration {
-    pub(crate) fn set_implementing_type(&mut self, decl: TyDeclaration) {
+impl TyFunctionDecl {
+    pub(crate) fn set_implementing_type(&mut self, decl: TyDecl) {
         self.implementing_type = Some(decl);
     }
 
     /// Used to create a stubbed out function when the function fails to
     /// compile, preventing cascading namespace errors.
-    pub(crate) fn error(decl: parsed::FunctionDeclaration) -> TyFunctionDeclaration {
+    pub(crate) fn error(decl: parsed::FunctionDeclaration) -> TyFunctionDecl {
         let parsed::FunctionDeclaration {
             name,
             return_type,
@@ -225,7 +225,7 @@ impl TyFunctionDeclaration {
             where_clause,
             ..
         } = decl;
-        TyFunctionDeclaration {
+        TyFunctionDecl {
             purity,
             name,
             body: TyCodeBlock {
@@ -423,7 +423,7 @@ pub struct TyFunctionSig {
 }
 
 impl TyFunctionSig {
-    pub fn from_fn_decl(fn_decl: &TyFunctionDeclaration) -> Self {
+    pub fn from_fn_decl(fn_decl: &TyFunctionDecl) -> Self {
         Self {
             return_type: fn_decl.return_type.type_id,
             parameters: fn_decl

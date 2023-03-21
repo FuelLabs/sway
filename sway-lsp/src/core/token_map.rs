@@ -141,7 +141,7 @@ impl TokenMap {
         type_engine: &TypeEngine,
         decl_engine: &DeclEngine,
         type_id: &TypeId,
-    ) -> Option<ty::TyDeclaration> {
+    ) -> Option<ty::TyDecl> {
         token::ident_of_type_id(type_engine, decl_engine, type_id)
             .and_then(|decl_ident| self.try_get(&token::to_ident_key(&decl_ident)).try_unwrap())
             .map(|item| item.value().clone())
@@ -158,14 +158,12 @@ impl TokenMap {
         &self,
         engines: Engines<'_>,
         type_id: &TypeId,
-    ) -> Option<ty::TyStructDeclaration> {
+    ) -> Option<ty::TyStructDecl> {
         let type_engine = engines.te();
         let decl_engine = engines.de();
         self.declaration_of_type_id(type_engine, decl_engine, type_id)
             .and_then(|decl| match decl {
-                ty::TyDeclaration::StructDeclaration { decl_id, .. } => {
-                    Some(decl_engine.get_struct(&decl_id))
-                }
+                ty::TyDecl::StructDecl { decl_id, .. } => Some(decl_engine.get_struct(&decl_id)),
                 _ => None,
             })
     }

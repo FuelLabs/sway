@@ -28,21 +28,21 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::ty::{
-        self, TyAbiDeclaration, TyConstantDeclaration, TyEnumDeclaration, TyFunctionDeclaration,
-        TyImplTrait, TyStorageDeclaration, TyStructDeclaration, TyTraitDeclaration, TyTraitFn,
+        self, TyAbiDecl, TyConstantDecl, TyEnumDecl, TyFunctionDecl, TyImplTrait, TyStorageDecl,
+        TyStructDecl, TyTraitDecl, TyTraitFn,
     },
     type_system::*,
 };
 
-pub type DeclRefFunction = DeclRef<DeclId<TyFunctionDeclaration>>;
-pub type DeclRefTrait = DeclRef<DeclId<TyTraitDeclaration>>;
+pub type DeclRefFunction = DeclRef<DeclId<TyFunctionDecl>>;
+pub type DeclRefTrait = DeclRef<DeclId<TyTraitDecl>>;
 pub type DeclRefTraitFn = DeclRef<DeclId<TyTraitFn>>;
 pub type DeclRefImplTrait = DeclRef<DeclId<TyImplTrait>>;
-pub type DeclRefStruct = DeclRef<DeclId<TyStructDeclaration>>;
-pub type DeclRefStorage = DeclRef<DeclId<TyStorageDeclaration>>;
-pub type DeclRefAbi = DeclRef<DeclId<TyAbiDeclaration>>;
-pub type DeclRefConstant = DeclRef<DeclId<TyConstantDeclaration>>;
-pub type DeclRefEnum = DeclRef<DeclId<TyEnumDeclaration>>;
+pub type DeclRefStruct = DeclRef<DeclId<TyStructDecl>>;
+pub type DeclRefStorage = DeclRef<DeclId<TyStorageDecl>>;
+pub type DeclRefAbi = DeclRef<DeclId<TyAbiDecl>>;
+pub type DeclRefConstant = DeclRef<DeclId<TyConstantDecl>>;
+pub type DeclRefEnum = DeclRef<DeclId<TyEnumDecl>>;
 
 pub type DeclRefMixedFunctional = DeclRef<FunctionalDeclId>;
 pub type DeclRefMixedInterface = DeclRef<InterfaceDeclId>;
@@ -351,11 +351,7 @@ impl ReplaceDecls for DeclRefFunction {
 }
 
 impl ReplaceFunctionImplementingType for DeclRefFunction {
-    fn replace_implementing_type(
-        &mut self,
-        engines: Engines<'_>,
-        implementing_type: ty::TyDeclaration,
-    ) {
+    fn replace_implementing_type(&mut self, engines: Engines<'_>, implementing_type: ty::TyDecl) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(&self.id);
         decl.set_implementing_type(implementing_type);

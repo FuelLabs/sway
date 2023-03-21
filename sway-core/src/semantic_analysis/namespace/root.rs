@@ -31,7 +31,7 @@ impl Root {
         &self,
         mod_path: &Path,
         call_path: &CallPath,
-    ) -> CompileResult<&ty::TyDeclaration> {
+    ) -> CompileResult<&ty::TyDecl> {
         let symbol_path: Vec<_> = mod_path
             .iter()
             .chain(&call_path.prefixes)
@@ -52,7 +52,7 @@ impl Root {
         engines: Engines<'_>,
         mod_path: &Path,
         call_path: &CallPath,
-    ) -> CompileResult<&ty::TyDeclaration> {
+    ) -> CompileResult<&ty::TyDecl> {
         let warnings = vec![];
         let mut errors = vec![];
 
@@ -90,7 +90,7 @@ impl Root {
         &self,
         mod_path: &Path,
         symbol: &Ident,
-    ) -> CompileResult<&ty::TyDeclaration> {
+    ) -> CompileResult<&ty::TyDecl> {
         self.check_submodule(mod_path).flat_map(|module| {
             let true_symbol = self[mod_path]
                 .use_aliases

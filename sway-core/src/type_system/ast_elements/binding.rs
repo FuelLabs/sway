@@ -220,11 +220,11 @@ pub(crate) trait TypeCheckTypeBinding<T> {
     ) -> CompileResult<(DeclRef<DeclId<T>>, Option<TypeId>)>;
 }
 
-impl TypeCheckTypeBinding<ty::TyFunctionDeclaration> for TypeBinding<CallPath> {
+impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
     fn type_check(
         &mut self,
         mut ctx: TypeCheckContext,
-    ) -> CompileResult<(DeclRef<DeclId<ty::TyFunctionDeclaration>>, Option<TypeId>)> {
+    ) -> CompileResult<(DeclRef<DeclId<ty::TyFunctionDecl>>, Option<TypeId>)> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_engine = ctx.type_engine;
@@ -289,11 +289,11 @@ impl TypeCheckTypeBinding<ty::TyFunctionDeclaration> for TypeBinding<CallPath> {
     }
 }
 
-impl TypeCheckTypeBinding<ty::TyStructDeclaration> for TypeBinding<CallPath> {
+impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
     fn type_check(
         &mut self,
         mut ctx: TypeCheckContext,
-    ) -> CompileResult<(DeclRef<DeclId<ty::TyStructDeclaration>>, Option<TypeId>)> {
+    ) -> CompileResult<(DeclRef<DeclId<ty::TyStructDecl>>, Option<TypeId>)> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_engine = ctx.type_engine;
@@ -339,11 +339,11 @@ impl TypeCheckTypeBinding<ty::TyStructDeclaration> for TypeBinding<CallPath> {
     }
 }
 
-impl TypeCheckTypeBinding<ty::TyEnumDeclaration> for TypeBinding<CallPath> {
+impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
     fn type_check(
         &mut self,
         mut ctx: TypeCheckContext,
-    ) -> CompileResult<(DeclRef<DeclId<ty::TyEnumDeclaration>>, Option<TypeId>)> {
+    ) -> CompileResult<(DeclRef<DeclId<ty::TyEnumDecl>>, Option<TypeId>)> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_engine = ctx.type_engine;
@@ -389,11 +389,11 @@ impl TypeCheckTypeBinding<ty::TyEnumDeclaration> for TypeBinding<CallPath> {
     }
 }
 
-impl TypeCheckTypeBinding<ty::TyConstantDeclaration> for TypeBinding<CallPath> {
+impl TypeCheckTypeBinding<ty::TyConstantDecl> for TypeBinding<CallPath> {
     fn type_check(
         &mut self,
         ctx: TypeCheckContext,
-    ) -> CompileResult<(DeclRef<DeclId<ty::TyConstantDeclaration>>, Option<TypeId>)> {
+    ) -> CompileResult<(DeclRef<DeclId<ty::TyConstantDecl>>, Option<TypeId>)> {
         let mut warnings = vec![];
         let mut errors = vec![];
 

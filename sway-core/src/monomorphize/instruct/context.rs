@@ -58,11 +58,11 @@ impl<'a> InstructContext<'a> {
     }
 }
 
-type FnMap = HashMap<DeclId<ty::TyFunctionDeclaration>, Vec<Instruction>>;
-type TraitMap = HashMap<DeclId<ty::TyTraitDeclaration>, Vec<Instruction>>;
+type FnMap = HashMap<DeclId<ty::TyFunctionDecl>, Vec<Instruction>>;
+type TraitMap = HashMap<DeclId<ty::TyTraitDecl>, Vec<Instruction>>;
 type ImplTraitMap = HashMap<DeclId<ty::TyImplTrait>, Vec<Instruction>>;
-type StructMap = HashMap<DeclId<ty::TyStructDeclaration>, Vec<Instruction>>;
-type EnumMap = HashMap<DeclId<ty::TyEnumDeclaration>, Vec<Instruction>>;
+type StructMap = HashMap<DeclId<ty::TyStructDecl>, Vec<Instruction>>;
+type EnumMap = HashMap<DeclId<ty::TyEnumDecl>, Vec<Instruction>>;
 
 pub(crate) struct InstructionItems {
     /// A map of [TyFunctionDeclaration](ty::TyFunctionDeclaration) [DeclId]s to

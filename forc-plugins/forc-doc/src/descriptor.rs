@@ -6,7 +6,7 @@ use crate::{
 use anyhow::Result;
 use sway_core::{
     decl_engine::*,
-    language::ty::{TyDeclaration, TyTraitFn, TyTraitInterfaceItem},
+    language::ty::{TyDecl, TyTraitFn, TyTraitInterfaceItem},
 };
 
 trait RequiredMethods {
@@ -30,16 +30,16 @@ impl Descriptor {
     /// Decides whether a [TyDeclaration] is [Descriptor::Documentable].
     pub(crate) fn from_typed_decl(
         decl_engine: &DeclEngine,
-        ty_decl: &TyDeclaration,
+        ty_decl: &TyDecl,
         module_info: ModuleInfo,
         document_private_items: bool,
     ) -> Result<Self> {
         const CONTRACT_STORAGE: &str = "Contract Storage";
 
         use swayfmt::parse;
-        use TyDeclaration::*;
+        use TyDecl::*;
         match ty_decl {
-            StructDeclaration { decl_id, .. } => {
+            StructDecl { decl_id, .. } => {
                 let struct_decl = decl_engine.get_struct(decl_id);
                 if !document_private_items && struct_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
@@ -75,7 +75,7 @@ impl Descriptor {
                     }))
                 }
             }
-            EnumDeclaration { decl_id, .. } => {
+            EnumDecl { decl_id, .. } => {
                 let enum_decl = decl_engine.get_enum(decl_id);
                 if !document_private_items && enum_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
@@ -111,7 +111,7 @@ impl Descriptor {
                     }))
                 }
             }
-            TraitDeclaration { decl_id, .. } => {
+            TraitDecl { decl_id, .. } => {
                 let trait_decl = decl_engine.get_trait(decl_id);
                 if !document_private_items && trait_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
@@ -158,7 +158,7 @@ impl Descriptor {
                     }))
                 }
             }
-            AbiDeclaration { decl_id, .. } => {
+            AbiDecl { decl_id, .. } => {
                 let abi_decl = decl_engine.get_abi(decl_id);
                 let item_name = abi_decl.name;
                 let attrs_opt =
@@ -198,7 +198,7 @@ impl Descriptor {
                     raw_attributes: attrs_opt,
                 }))
             }
-            StorageDeclaration { decl_id, .. } => {
+            StorageDecl { decl_id, .. } => {
                 let storage_decl = decl_engine.get_storage(decl_id);
                 let item_name = sway_types::BaseIdent::new_no_trim(
                     sway_types::span::Span::from_string(CONTRACT_STORAGE.to_string()),
@@ -260,7 +260,7 @@ impl Descriptor {
             //         raw_attributes: None,
             //     }))
             // }
-            FunctionDeclaration { decl_id, .. } => {
+            FunctionDecl { decl_id, .. } => {
                 let fn_decl = decl_engine.get_function(decl_id);
                 if !document_private_items && fn_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
@@ -290,7 +290,7 @@ impl Descriptor {
                     }))
                 }
             }
-            ConstantDeclaration { decl_id, .. } => {
+            ConstantDecl { decl_id, .. } => {
                 let const_decl = decl_engine.get_constant(decl_id);
                 if !document_private_items && const_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)

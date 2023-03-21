@@ -388,8 +388,8 @@ impl ty::TyExpression {
         let engines = ctx.engines();
 
         let exp = match ctx.namespace.resolve_symbol(&name).value {
-            Some(ty::TyDeclaration::VariableDeclaration(decl)) => {
-                let ty::TyVariableDeclaration {
+            Some(ty::TyDecl::VariableDecl(decl)) => {
+                let ty::TyVariableDecl {
                     name: decl_name,
                     mutability,
                     return_type,
@@ -408,8 +408,8 @@ impl ty::TyExpression {
                     span,
                 }
             }
-            Some(ty::TyDeclaration::ConstantDeclaration { decl_id, .. }) => {
-                let ty::TyConstantDeclaration {
+            Some(ty::TyDecl::ConstantDecl { decl_id, .. }) => {
+                let ty::TyConstantDecl {
                     call_path: decl_name,
                     return_type,
                     ..
@@ -427,7 +427,7 @@ impl ty::TyExpression {
                     span,
                 }
             }
-            Some(ty::TyDeclaration::AbiDeclaration { decl_id, .. }) => {
+            Some(ty::TyDecl::AbiDecl { decl_id, .. }) => {
                 let decl = decl_engine.get_abi(decl_id);
                 ty::TyExpression {
                     return_type: decl.create_type_id(engines),
@@ -1294,13 +1294,13 @@ impl ty::TyExpression {
             errors
         );
         let abi_ref = match abi {
-            ty::TyDeclaration::AbiDeclaration {
+            ty::TyDecl::AbiDecl {
                 name,
                 decl_id,
                 decl_span,
             } => DeclRef::new(name, decl_id, decl_span),
-            ty::TyDeclaration::VariableDeclaration(ref decl) => {
-                let ty::TyVariableDeclaration { body: expr, .. } = &**decl;
+            ty::TyDecl::VariableDecl(ref decl) => {
+                let ty::TyVariableDecl { body: expr, .. } = &**decl;
                 let ret_ty = type_engine.get(expr.return_type);
                 let abi_name = match ret_ty {
                     TypeInfo::ContractCaller { abi_name, .. } => abi_name,
@@ -1355,7 +1355,7 @@ impl ty::TyExpression {
                 return err(warnings, errors);
             }
         };
-        let ty::TyAbiDeclaration {
+        let ty::TyAbiDecl {
             interface_surface,
             items,
             span,
