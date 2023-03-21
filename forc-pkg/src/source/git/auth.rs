@@ -10,7 +10,7 @@ pub(crate) struct AuthHandler {
 impl AuthHandler {
     /// Creates a new `AuthHandler` from all fields of the struct. If there are no specific reasons
     /// not to, `default_with_config` should be prefered.
-    pub(crate) fn new(
+    fn new(
         config: git2::Config,
         ssh_authentication_attempt: bool,
         plain_user_pass_attempt: bool,
