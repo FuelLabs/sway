@@ -174,5 +174,6 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
         debug_outfile: cmd.build_output.debug_file.clone(),
         tests: false,
         member_filter: pkg::MemberFilter::only_scripts(),
+        experimental_storage: cmd.build_profile.experimental_storage,
     }
 }

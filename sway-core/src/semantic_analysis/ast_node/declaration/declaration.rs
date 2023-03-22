@@ -3,11 +3,13 @@ use sway_types::{Named, Spanned};
 use crate::{
     decl_engine::{DeclEngineInsert, DeclRef, ReplaceFunctionImplementingType},
     error::*,
-    language::{parsed, ty},
+    language::{parsed, ty, ty::TyImplItem},
     semantic_analysis::TypeCheckContext,
     type_system::*,
     CompileResult,
 };
+
+use std::collections::{BTreeMap, HashSet};
 
 impl ty::TyDecl {
     pub(crate) fn type_check(
@@ -195,6 +197,7 @@ impl ty::TyDecl {
                     warnings,
                     errors
                 );
+
                 let impl_trait_decl: ty::TyDecl = decl_engine.insert(impl_trait.clone()).into();
                 impl_trait.items.iter_mut().for_each(|item| {
                     item.replace_implementing_type(engines, impl_trait_decl.clone());
@@ -209,20 +212,84 @@ impl ty::TyDecl {
                     warnings,
                     errors
                 );
-                check!(
-                    ctx.namespace.insert_trait_implementation(
-                        impl_trait.trait_name.clone(),
-                        impl_trait.trait_type_arguments.clone(),
-                        impl_trait.implementing_for.type_id,
-                        &impl_trait.items,
-                        &impl_trait.span,
-                        true,
-                        engines,
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+
+                // Set of all type IDs that have corresponding items implemented for them in this
+                // `impl` block. In most cases, this is a single type ID that is equal to
+                // `impl_trait.implementing_for.type_id`.
+                let mut processed_ids = HashSet::new();
+
+                // This is a map from type IDs to a vector of impl items. In most cases, all the
+                // items are available to `impl_trait.implementing_for.type_id` (i.e. `Self`).
+                // However, there are situations where `self`, in some of the impl methods, has a
+                // type ascription that is different from `Self`. In that case, we have to keep
+                // track of which impl items are available to which type ID.
+                //
+                // For now, only `std::core::experimental::StorageHandle` is allowed as a type
+                // ascription for `self`, so check that here as well
+                let type_id_to_impl_items: BTreeMap<TypeId, Vec<TyImplItem>> = impl_trait
+                    .items
+                    .iter()
+                    .map(|item| match item {
+                        TyImplItem::Fn(func) => {
+                            // For function items, check if the first argument is `self`. If so,
+                            // map the corresponding type ID to this item. Make sure that type IDs
+                            // that are subset of each other are uniqued using `processed_ids`.
+                            let func = decl_engine.get_function(func);
+                            (
+                                match func.parameters.first() {
+                                    Some(first_arg) if first_arg.is_self() => {
+                                        let self_type_id = first_arg.type_argument.type_id;
+                                        match processed_ids.iter().find(|p| {
+                                            type_engine
+                                                .get(self_type_id)
+                                                .is_subset_of(&type_engine.get(**p), engines)
+                                        }) {
+                                            Some(id) => *id,
+                                            _ => {
+                                                processed_ids.insert(self_type_id);
+                                                self_type_id
+                                            }
+                                        }
+                                    }
+                                    _ => impl_trait.implementing_for.type_id,
+                                },
+                                item,
+                            )
+                        }
+                        _ => {
+                            // Other items are only available for `Self`
+                            (impl_trait.implementing_for.type_id, item)
+                        }
+                    })
+                    .fold(
+                        BTreeMap::new(),
+                        |mut acc: BTreeMap<TypeId, Vec<_>>, (type_id, item)| {
+                            acc.entry(type_id)
+                                .and_modify(|v| v.push(item.clone()))
+                                .or_insert(vec![item.clone()]);
+                            acc
+                        },
+                    );
+
+                // For each type ID discovered in type_id_to_impl_items, insert the collected items
+                // into the trait map
+                for type_id in type_id_to_impl_items.keys() {
+                    check!(
+                        ctx.namespace.insert_trait_implementation(
+                            impl_trait.trait_name.clone(),
+                            impl_trait.trait_type_arguments.clone(),
+                            *type_id,
+                            &type_id_to_impl_items[type_id],
+                            &impl_trait.span,
+                            true,
+                            engines,
+                        ),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                }
+
                 let impl_trait_decl: ty::TyDecl = decl_engine.insert(impl_trait.clone()).into();
                 impl_trait.items.iter_mut().for_each(|item| {
                     item.replace_implementing_type(engines, impl_trait_decl.clone())

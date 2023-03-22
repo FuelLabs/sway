@@ -1,5 +1,8 @@
 use super::{
-    compile::compile_function, convert::*, lexical_map::LexicalMap, storage::get_storage_key,
+    compile::compile_function,
+    convert::*,
+    lexical_map::LexicalMap,
+    storage::{add_to_b256, get_storage_key},
     types::*,
 };
 use crate::{
@@ -68,9 +71,11 @@ pub(crate) struct FnCompiler<'eng> {
     logged_types_map: HashMap<TypeId, LogId>,
     // This is a map from the type IDs of a message data type and the ID of the corresponding smo
     messages_types_map: HashMap<TypeId, MessageId>,
+    experimental_storage: bool,
 }
 
 impl<'eng> FnCompiler<'eng> {
+    #[allow(clippy::too_many_arguments)]
     pub(super) fn new(
         engines: Engines<'eng>,
         context: &mut Context,
@@ -78,6 +83,7 @@ impl<'eng> FnCompiler<'eng> {
         function: Function,
         logged_types_map: &HashMap<TypeId, LogId>,
         messages_types_map: &HashMap<TypeId, MessageId>,
+        experimental_storage: bool,
     ) -> Self {
         let (type_engine, decl_engine) = engines.unwrap();
         let lexical_map = LexicalMap::from_iter(
@@ -98,6 +104,7 @@ impl<'eng> FnCompiler<'eng> {
             current_fn_param: None,
             logged_types_map: logged_types_map.clone(),
             messages_types_map: messages_types_map.clone(),
+            experimental_storage,
         }
     }
 
@@ -394,13 +401,7 @@ impl<'eng> FnCompiler<'eng> {
             }
             ty::TyExpressionVariant::StorageAccess(access) => {
                 let span_md_idx = md_mgr.span_to_md(context, &access.span());
-                self.compile_storage_access(
-                    context,
-                    md_mgr,
-                    &access.fields,
-                    &access.ix,
-                    span_md_idx,
-                )
+                self.compile_storage_access(context, &access.fields, &access.ix, span_md_idx)
             }
             ty::TyExpressionVariant::IntrinsicFunction(kind) => {
                 self.compile_intrinsic_function(context, md_mgr, kind, ast_expr.span.clone())
@@ -1377,6 +1378,7 @@ impl<'eng> FnCompiler<'eng> {
                     &self.messages_types_map,
                     is_entry,
                     None,
+                    self.experimental_storage,
                 )?
                 .unwrap();
                 self.recreated_fns.insert(fn_key, new_func);
@@ -2397,7 +2399,6 @@ impl<'eng> FnCompiler<'eng> {
     fn compile_storage_access(
         &mut self,
         context: &mut Context,
-        md_mgr: &mut MetadataManager,
         fields: &[ty::TyStorageAccessDescriptor],
         ix: &StateIndex,
         span_md_idx: Option<MetadataIndex>,
@@ -2421,9 +2422,24 @@ impl<'eng> FnCompiler<'eng> {
             &fields[1..],
         )?;
 
+        // Get the IR type of the storage variable
+        let base_type = convert_resolved_typeid_no_span(
+            self.type_engine,
+            self.decl_engine,
+            context,
+            &base_type,
+        )?;
+
         // Do the actual work. This is a recursive function because we want to drill down
         // to load each primitive type in the storage field in its own storage slot.
-        self.compile_storage_read(context, md_mgr, ix, &field_idcs, &access_type, span_md_idx)
+        self.compile_storage_read(
+            context,
+            ix,
+            &field_idcs,
+            &base_type,
+            &access_type,
+            span_md_idx,
+        )
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -2510,16 +2526,38 @@ impl<'eng> FnCompiler<'eng> {
             .add_metadatum(context, whole_block_span_md_idx))
     }
 
+    /// Get the offset, in words, to a particular field in an aggregate type.
+    fn get_offset(
+        &mut self,
+        context: &mut Context,
+        ty: &Type,
+        indices: &[u64],
+    ) -> Result<u64, CompileError> {
+        let mut offset = 0;
+        let mut ty_at_idx = *ty;
+        for index in indices.iter() {
+            let fields = ty_at_idx.get_field_types(context);
+            for (field_idx, field_type) in fields.into_iter().enumerate() {
+                if (field_idx as u64) >= *index {
+                    ty_at_idx = field_type;
+                    break;
+                }
+                offset += ir_type_size_in_bytes(context, &field_type);
+            }
+        }
+        Ok(offset / 8)
+    }
+
     fn compile_storage_read(
         &mut self,
         context: &mut Context,
-        _md_mgr: &mut MetadataManager,
         ix: &StateIndex,
         indices: &[u64],
+        base_type: &Type,
         ty: &Type,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
-        if ty.is_struct(context) {
+        if ty.is_struct(context) && !self.experimental_storage {
             let temp_name = self.lexical_map.insert_anon();
             let struct_var = self
                 .function
@@ -2543,9 +2581,9 @@ impl<'eng> FnCompiler<'eng> {
 
                 let val_to_insert = self.compile_storage_read(
                     context,
-                    _md_mgr,
                     ix,
                     &new_indices,
+                    base_type,
                     &field_type,
                     span_md_idx,
                 )?;
@@ -2568,13 +2606,31 @@ impl<'eng> FnCompiler<'eng> {
                 .load(struct_val)
                 .add_metadatum(context, span_md_idx))
         } else {
-            let storage_key = get_storage_key(ix, indices);
-
             // New name for the key
             let mut key_name = format!("{}{}", "key_for_", ix.to_usize());
-            for ix in indices {
-                key_name = format!("{key_name}_{ix}");
-            }
+
+            // Get the actual storage key as a `Bytes32` as well as the offset, in words,
+            // within the slot. The offset depends on what field of the top level storage
+            // variable is being accessed.
+            let (storage_key, offset_within_slot) = if !self.experimental_storage {
+                for ix in indices {
+                    key_name = format!("{key_name}_{ix}");
+                }
+                (get_storage_key(ix, indices), 0)
+            } else {
+                let offset_in_words = self.get_offset(context, base_type, indices)?;
+                let offset_in_slots = offset_in_words / 4;
+                let offset_remaining = offset_in_words % 4;
+
+                // The storage key we need is the storage key of the top level storage variable
+                // plus the offset, in number of slots, computed above. The offset within this
+                // particular slot is the remaining offset, in words.
+                (
+                    add_to_b256(get_storage_key::<u64>(ix, &[]), offset_in_slots),
+                    offset_remaining,
+                )
+            };
+
             let alias_key_name = self.lexical_map.insert(key_name.as_str().to_owned());
 
             // Local pointer for the key
@@ -2595,43 +2651,89 @@ impl<'eng> FnCompiler<'eng> {
                 .get_local(key_var)
                 .add_metadatum(context, span_md_idx);
 
-            // Store the const hash value to the key pointer value
-            self.current_block
-                .ins(context)
-                .store(key_ptr, const_key)
-                .add_metadatum(context, span_md_idx);
+            if self.experimental_storage {
+                // The type of a storage access is `StorageKey` which is a struct containing
+                // a `b256` and ` u64`.
+                let b256_ty = Type::get_b256(context);
+                let uint64_ty = Type::get_uint64(context);
+                let storage_key_aggregate = Type::new_struct(context, vec![b256_ty, uint64_ty]);
 
-            match ty.get_content(context) {
-                TypeContent::Array(..) => Err(CompileError::Internal(
-                    "Arrays in storage have not been implemented yet.",
-                    Span::dummy(),
-                )),
-                TypeContent::Slice => Err(CompileError::Internal(
-                    "Slices in storage are not valid.",
-                    Span::dummy(),
-                )),
-                TypeContent::Pointer(_) => Err(CompileError::Internal(
-                    "Pointers in storage are not valid.",
-                    Span::dummy(),
-                )),
-                TypeContent::B256 => {
-                    self.compile_b256_storage_read(context, ix, indices, &key_ptr, span_md_idx)
-                }
-                TypeContent::Bool | TypeContent::Uint(_) => {
-                    self.compile_uint_or_bool_storage_read(context, &key_ptr, ty, span_md_idx)
-                }
-                TypeContent::String(_) | TypeContent::Union(_) => self
-                    .compile_union_or_string_storage_read(
-                        context,
-                        ix,
-                        indices,
-                        &key_ptr,
-                        ty,
-                        span_md_idx,
-                    ),
-                TypeContent::Struct(_) => unreachable!("structs are already handled!"),
-                TypeContent::Unit => {
-                    Ok(Constant::get_unit(context).add_metadatum(context, span_md_idx))
+                // Local variable holding the `StorageKey` struct
+                let storage_key_local_name = self.lexical_map.insert_anon();
+                let storage_key_ptr = self
+                    .function
+                    .new_local_var(context, storage_key_local_name, storage_key_aggregate, None)
+                    .map_err(|ir_error| {
+                        CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+                    })?;
+                let storage_key = self
+                    .current_block
+                    .ins(context)
+                    .get_local(storage_key_ptr)
+                    .add_metadatum(context, span_md_idx);
+
+                // Store the key as the first field in the `StorageKey` struct
+                let gep_0_val =
+                    self.current_block
+                        .ins(context)
+                        .get_elem_ptr_with_idx(storage_key, b256_ty, 0);
+                self.current_block
+                    .ins(context)
+                    .store(gep_0_val, const_key)
+                    .add_metadatum(context, span_md_idx);
+
+                // Store the offset as the second field in the `StorageKey` struct
+                let offset_within_slot_val = Constant::get_uint(context, 64, offset_within_slot);
+                let gep_1_val = self.current_block.ins(context).get_elem_ptr_with_idx(
+                    storage_key,
+                    uint64_ty,
+                    1,
+                );
+                self.current_block
+                    .ins(context)
+                    .store(gep_1_val, offset_within_slot_val)
+                    .add_metadatum(context, span_md_idx);
+
+                Ok(storage_key)
+            } else {
+                // Store the const hash value to the key pointer value
+                self.current_block
+                    .ins(context)
+                    .store(key_ptr, const_key)
+                    .add_metadatum(context, span_md_idx);
+
+                match ty.get_content(context) {
+                    TypeContent::Array(..) => Err(CompileError::Internal(
+                        "Arrays in storage have not been implemented yet.",
+                        Span::dummy(),
+                    )),
+                    TypeContent::Slice => Err(CompileError::Internal(
+                        "Slices in storage are not valid.",
+                        Span::dummy(),
+                    )),
+                    TypeContent::Pointer(_) => Err(CompileError::Internal(
+                        "Pointers in storage are not valid.",
+                        Span::dummy(),
+                    )),
+                    TypeContent::B256 => {
+                        self.compile_b256_storage_read(context, ix, indices, &key_ptr, span_md_idx)
+                    }
+                    TypeContent::Bool | TypeContent::Uint(_) => {
+                        self.compile_uint_or_bool_storage_read(context, &key_ptr, ty, span_md_idx)
+                    }
+                    TypeContent::String(_) | TypeContent::Union(_) => self
+                        .compile_union_or_string_storage_read(
+                            context,
+                            ix,
+                            indices,
+                            &key_ptr,
+                            ty,
+                            span_md_idx,
+                        ),
+                    TypeContent::Struct(_) => unreachable!("structs are already handled!"),
+                    TypeContent::Unit => {
+                        Ok(Constant::get_unit(context).add_metadatum(context, span_md_idx))
+                    }
                 }
             }
         }

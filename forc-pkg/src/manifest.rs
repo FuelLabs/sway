@@ -213,6 +213,7 @@ pub struct BuildProfile {
     pub include_tests: bool,
     pub json_abi_with_callpaths: bool,
     pub error_on_warnings: bool,
+    pub experimental_storage: bool,
 }
 
 impl Dependency {
@@ -607,6 +608,7 @@ impl BuildProfile {
             include_tests: false,
             json_abi_with_callpaths: false,
             error_on_warnings: false,
+            experimental_storage: false,
         }
     }
 
@@ -622,6 +624,7 @@ impl BuildProfile {
             include_tests: false,
             json_abi_with_callpaths: false,
             error_on_warnings: false,
+            experimental_storage: false,
         }
     }
 }
