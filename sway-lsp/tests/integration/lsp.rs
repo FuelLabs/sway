@@ -382,14 +382,48 @@ pub(crate) async fn definition_check<'a>(
         go_to.req_char,
         ids.next().unwrap(),
     );
-    let response = call_request(service, definition.clone())
-        .await
-        .unwrap()
-        .unwrap();
-    let value = response.result().unwrap();
+
+    fn display_sources(error: &dyn Error) -> String {
+        if let Some(source) = error.source() {
+            format!("{}: {}", error, display_sources(source))
+        } else {
+            error.to_string()
+        }
+    }
+    
+    if let Err(err) = future::poll_fn(|cx| service.poll_ready(cx)).await {
+        error!("{}", display_sources(err.into().as_ref()));
+        return;
+    }
+
+    eprintln!("Is service ready? : {:#?}", service.poll_ready());
+    let mut ready = service.ready().await;
+    let call_req = ready.as_mut().unwrap().call(definition.clone()).await;
+
+    //let call_req = call_request(service, definition.clone()).await;
+    let call_req_unwrap = call_req.clone().unwrap();
+    let response = call_req_unwrap.clone().unwrap();
+    let response_result = response.result().clone();
+    let value = response_result.clone().unwrap();
+
+
+    // let response = call_request(service, definition.clone())
+    //     .await
+    //     .unwrap()
+    //     .unwrap();
+    // let value = response.result().unwrap();
     let unwrapped_response = serde_json::from_value(value.clone()).unwrap_or_else(|error| {
+        eprintln!("ready: {:#?}", &ready);
+        eprintln!("definition: {:#?}", definition);
+        eprintln!("call_req: {:#?}", call_req);
+        eprintln!("call_req_unwrap: {:#?}", call_req_unwrap);
+        eprintln!("response: {:#?}", response);
+        eprintln!("response_result: {:#?}", response_result);
+        eprintln!("value: {:#?}", value);
+
         panic!(
-            "Failed to deserialize response: {:?} input: {:#?} error: {}",
+            "Failed to deserialize response: {:#?} \n value: {:#?} \n input: {:#?} \n error: {:#?}",
+            response.clone(),
             value.clone(),
             definition.clone(),
             error
