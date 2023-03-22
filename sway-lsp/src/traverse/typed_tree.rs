@@ -972,32 +972,33 @@ impl<'a> TypedTree<'a> {
                 }
             }
             EnumScrutinee {
-                call_path,
-                decl_name,
+                enum_ref,
                 variant,
                 value,
+                instantiation_call_path,
             } => {
-                let prefixes = if let Some((last, prefixes)) = call_path.prefixes.split_last() {
-                    // the last prefix of the call path is not a module but a type
-                    if let Some(mut token) = self
-                        .ctx
-                        .tokens
-                        .try_get_mut(&to_ident_key(last))
-                        .try_unwrap()
-                    {
-                        token.typed = Some(TypedAstToken::TypedScrutinee(scrutinee.clone()));
-                        token.type_def = Some(TypeDefinition::Ident(decl_name.clone()));
-                    }
-                    prefixes
-                } else {
-                    &call_path.prefixes
-                };
+                let prefixes =
+                    if let Some((last, prefixes)) = instantiation_call_path.prefixes.split_last() {
+                        // the last prefix of the call path is not a module but a type
+                        if let Some(mut token) = self
+                            .ctx
+                            .tokens
+                            .try_get_mut(&to_ident_key(last))
+                            .try_unwrap()
+                        {
+                            token.typed = Some(TypedAstToken::TypedScrutinee(scrutinee.clone()));
+                            token.type_def = Some(TypeDefinition::Ident(enum_ref.name().clone()));
+                        }
+                        prefixes
+                    } else {
+                        &instantiation_call_path.prefixes
+                    };
                 self.collect_call_path_prefixes(prefixes);
 
                 if let Some(mut token) = self
                     .ctx
                     .tokens
-                    .try_get_mut(&to_ident_key(&call_path.suffix))
+                    .try_get_mut(&to_ident_key(enum_ref.name()))
                     .try_unwrap()
                 {
                     token.typed = Some(TypedAstToken::TypedScrutinee(scrutinee.clone()));

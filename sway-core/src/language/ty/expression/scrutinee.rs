@@ -1,7 +1,7 @@
 use sway_types::{Ident, Span};
 
 use crate::{
-    decl_engine::DeclRefStruct,
+    decl_engine::{DeclRefEnum, DeclRefStruct},
     language::{ty::*, *},
     type_system::*,
 };
@@ -24,12 +24,11 @@ pub enum TyScrutineeVariant {
         fields: Vec<TyStructScrutineeField>,
         instantiation_span: Span,
     },
-    #[allow(dead_code)]
     EnumScrutinee {
-        call_path: CallPath,
+        enum_ref: DeclRefEnum,
         variant: Box<TyEnumVariant>,
-        decl_name: Ident,
         value: Box<TyScrutinee>,
+        instantiation_call_path: CallPath,
     },
     Tuple(Vec<TyScrutinee>),
 }

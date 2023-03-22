@@ -107,9 +107,12 @@ pub(crate) fn matcher(
             fields,
             ..
         } => match_struct(ctx, exp, fields),
-        ty::TyScrutineeVariant::EnumScrutinee { value, variant, .. } => {
-            match_enum(ctx, exp, *variant, *value, span)
-        }
+        ty::TyScrutineeVariant::EnumScrutinee {
+            enum_ref: _,
+            variant,
+            value,
+            ..
+        } => match_enum(ctx, exp, *variant, *value, span),
         ty::TyScrutineeVariant::Tuple(elems) => match_tuple(ctx, exp, elems, span),
     }
 }

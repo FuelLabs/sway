@@ -255,13 +255,13 @@ fn type_check_enum(
         warnings,
         errors
     );
-    let original_decl_ref = check!(
+    let enum_ref = check!(
         unknown_decl.to_enum_ref(ctx.engines()),
         return err(warnings, errors),
         warnings,
         errors
     );
-    let mut enum_decl = decl_engine.get_enum(&original_decl_ref);
+    let mut enum_decl = decl_engine.get_enum(&enum_ref);
 
     // monomorphize the enum definition
     check!(
@@ -284,10 +284,6 @@ fn type_check_enum(
         errors
     );
 
-    let decl_name = enum_decl.call_path.suffix.clone();
-    let new_decl_ref = decl_engine.insert(enum_decl.clone());
-    let enum_type_id = type_engine.insert(decl_engine, TypeInfo::Enum(new_decl_ref));
-
     // type check the nested scrutinee
     let typed_value = check!(
         ty::TyScrutinee::type_check(ctx, value),
@@ -296,14 +292,15 @@ fn type_check_enum(
         errors
     );
 
+    let enum_ref = decl_engine.insert(enum_decl);
     let typed_scrutinee = ty::TyScrutinee {
         variant: ty::TyScrutineeVariant::EnumScrutinee {
-            call_path,
-            decl_name,
+            enum_ref: enum_ref.clone(),
             variant: Box::new(variant),
             value: Box::new(typed_value),
+            instantiation_call_path: call_path,
         },
-        type_id: enum_type_id,
+        type_id: type_engine.insert(decl_engine, TypeInfo::Enum(enum_ref)),
         span,
     };
 
