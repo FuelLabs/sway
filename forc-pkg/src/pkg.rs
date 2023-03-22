@@ -297,6 +297,8 @@ pub struct BuildOpts {
     pub tests: bool,
     /// The set of options to filter by member project kind.
     pub member_filter: MemberFilter,
+    /// Enable the experimental storage implementation and UI.
+    pub experimental_storage: bool,
 }
 
 /// The set of options to filter type of projects to build in a workspace.
@@ -1510,7 +1512,8 @@ pub fn sway_build_config(
     .print_finalized_asm(build_profile.print_finalized_asm)
     .print_intermediate_asm(build_profile.print_intermediate_asm)
     .print_ir(build_profile.print_ir)
-    .include_tests(build_profile.include_tests);
+    .include_tests(build_profile.include_tests)
+    .experimental_storage(build_profile.experimental_storage);
     Ok(build_config)
 }
 
@@ -1952,6 +1955,7 @@ fn build_profile_from_opts(
         time_phases,
         tests,
         error_on_warnings,
+        experimental_storage,
         ..
     } = build_options;
     let mut selected_build_profile = BuildProfile::DEBUG;
@@ -1997,6 +2001,7 @@ fn build_profile_from_opts(
     profile.include_tests |= tests;
     profile.json_abi_with_callpaths |= pkg.json_abi_with_callpaths;
     profile.error_on_warnings |= error_on_warnings;
+    profile.experimental_storage |= experimental_storage;
 
     Ok((selected_build_profile.to_string(), profile))
 }

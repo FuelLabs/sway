@@ -7,7 +7,7 @@ use crate::{
 };
 
 use sway_error::error::CompileError;
-use sway_types::Spanned;
+use sway_types::{Ident, Spanned};
 
 impl ty::TyFunctionParameter {
     pub(crate) fn type_check(
@@ -21,6 +21,8 @@ impl ty::TyFunctionParameter {
         let type_engine = ctx.type_engine;
         let decl_engine = ctx.decl_engine;
 
+        let is_self = parameter.is_self();
+
         let FunctionParameter {
             name,
             is_reference,
@@ -28,6 +30,9 @@ impl ty::TyFunctionParameter {
             mutability_span,
             mut type_argument,
         } = parameter;
+
+        let is_self_and_is_ascribed =
+            is_self && !matches!(type_engine.get(type_argument.type_id), TypeInfo::SelfType);
 
         type_argument.type_id = check!(
             ctx.resolve_type_with_self(
@@ -40,6 +45,37 @@ impl ty::TyFunctionParameter {
             warnings,
             errors,
         );
+
+        // If this parameter is `self` and if it is type ascribed, then check that the type
+        // ascribed is `core::experimental::storage::StorageHandle`. Otherwise, emit an error. In
+        // the future, we may want to allow more types such as `Self`.
+        if is_self_and_is_ascribed {
+            match type_engine.get(type_argument.type_id) {
+                TypeInfo::Struct(decl_ref) => {
+                    let struct_decl = decl_engine.get_struct(&decl_ref);
+                    if !(struct_decl.call_path.prefixes
+                        == vec![
+                            Ident::new_no_span("core".into()),
+                            Ident::new_no_span("experimental".into()),
+                            Ident::new_no_span("storage".into()),
+                        ]
+                        && struct_decl.call_path.suffix
+                            == Ident::new_no_span("StorageHandle".into()))
+                    {
+                        errors.push(CompileError::InvalidSelfParamterType {
+                            r#type: ctx.engines().help_out(type_argument.type_id).to_string(),
+                            span: name.span(),
+                        });
+                    }
+                }
+                _ => {
+                    errors.push(CompileError::InvalidSelfParamterType {
+                        r#type: ctx.engines().help_out(type_argument.type_id).to_string(),
+                        span: name.span(),
+                    });
+                }
+            }
+        }
 
         if !is_from_method {
             let mutability = ty::VariableMutability::new_from_ref_mut(is_reference, is_mutable);

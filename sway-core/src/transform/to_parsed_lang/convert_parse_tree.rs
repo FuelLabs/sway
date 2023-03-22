@@ -1085,6 +1085,7 @@ fn fn_args_to_function_parameters(
             self_token,
             ref_self,
             mutable_self,
+            ty,
             args_opt,
         } => {
             let mutability_span = match (&ref_self, &mutable_self) {
@@ -1093,7 +1094,13 @@ fn fn_args_to_function_parameters(
                 (Some(reference), None) => reference.span(),
                 (Some(reference), Some(mutable)) => Span::join(reference.span(), mutable.span()),
             };
-            let type_id = engines.te().insert(engines.de(), TypeInfo::SelfType);
+            let type_id = match ty {
+                None => engines.te().insert(engines.de(), TypeInfo::SelfType),
+                Some(ty) => engines.te().insert(
+                    engines.de(),
+                    ty_to_type_info(context, handler, engines, ty.1)?,
+                ),
+            };
             let mut function_parameters = vec![FunctionParameter {
                 name: Ident::new(self_token.span()),
                 is_reference: ref_self.is_some(),

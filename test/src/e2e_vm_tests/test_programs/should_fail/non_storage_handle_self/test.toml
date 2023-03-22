@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()fn foo(self: u64, foo: u64) {}
+# nextln $()invalid `self` parameter type: u64

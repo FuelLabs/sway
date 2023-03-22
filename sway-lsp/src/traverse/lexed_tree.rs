@@ -495,6 +495,7 @@ impl Parse for FnArgs {
                 ref_self,
                 mutable_self,
                 args_opt,
+                ..
             } => {
                 insert_keyword(ctx, self_token.span());
                 if let Some(ref_token) = ref_self {
