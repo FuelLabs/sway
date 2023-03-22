@@ -84,27 +84,52 @@ pub enum TypedAstToken {
 /// These variants are used to represent the semantic type of the [Token].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SymbolKind {
-    Field,
-    ValueParam,
-    Function,
-    Const,
-    Struct,
-    Trait,
-    Storage,
-    Enum,
-    Variant,
+    /// Emitted for the boolean literals `true` and `false`.
     BoolLiteral,
-    ByteLiteral,
-    StringLiteral,
-    NumericLiteral,
-    Variable,
+    /// Emitted for builtin types like `u32`, and `str`.
     BuiltinType,
+    /// Emitted for byte literals.
+    ByteLiteral,
+    /// Emitted for constants.
+    Const,
+    /// Emitted for derive helper attributes.
     DeriveHelper,
-    Module,
-    TypeParameter,
+    /// Emitted for enums.
+    Enum,
+    /// Emitted for struct fields.
+    Field,
+    /// Emitted for free-standing & associated functions.
+    Function,
+    /// Emitted for keywords.
     Keyword,
-    Type,
+    /// Emitted for modules.
+    Module,
+    /// Emitted for numeric literals.
+    NumericLiteral,
+    /// Emitted for the self function parameter and self path-specifier.
+    SelfKeyword,
+    /// Emitted for the Self type parameter.
+    SelfTypeKeyword,
+    /// Emitted for storage.
+    Storage,
+    /// Emitted for string literals.
+    StringLiteral,
+    /// Emitted for structs.
+    Struct,
+    /// Emitted for traits.
+    Trait,
+    /// Emitted for type aliases.
+    TypeAlias,
+    /// Emitted for type parameters.
+    TypeParameter,
+    /// Emitted for generic tokens that have no mapping.
     Unknown,
+    /// Emitted for non-self function parameters.
+    ValueParam,
+    /// Emitted for enum variants.
+    Variant,
+    /// Emitted for locals.
+    Variable,
 }
 
 #[derive(Debug, Clone)]
@@ -200,7 +225,21 @@ pub fn ident_of_type_id(
 
 /// Intended to be used during traversal of the [sway_core::language::parsed::ParseProgram] AST.
 /// We can then use the [TypeInfo] to infer the semantic type of the token before type-checking.
-pub fn type_info_to_symbol_kind(type_engine: &TypeEngine, type_info: &TypeInfo) -> SymbolKind {
+pub fn type_info_to_symbol_kind(
+    type_engine: &TypeEngine,
+    type_info: &TypeInfo,
+    type_span: Option<&Span>,
+) -> SymbolKind {
+    // This is necessary because the type engine resolves `Self` & `self` to the type it refers to.
+    // We want to keep the semantics of these keywords.
+    if let Some(type_span) = type_span {
+        if type_span.as_str() == "Self" {
+            return SymbolKind::SelfTypeKeyword;
+        } else if type_span.as_str() == "self" {
+            return SymbolKind::SelfKeyword;
+        }
+    }
+
     match type_info {
         TypeInfo::UnsignedInteger(..) | TypeInfo::Boolean | TypeInfo::B256 => {
             SymbolKind::BuiltinType
@@ -212,8 +251,9 @@ pub fn type_info_to_symbol_kind(type_engine: &TypeEngine, type_info: &TypeInfo) 
         TypeInfo::Enum { .. } => SymbolKind::Enum,
         TypeInfo::Array(elem_ty, ..) => {
             let type_info = type_engine.get(elem_ty.type_id);
-            type_info_to_symbol_kind(type_engine, &type_info)
+            type_info_to_symbol_kind(type_engine, &type_info, Some(&elem_ty.span()))
         }
+        TypeInfo::SelfType => SymbolKind::SelfTypeKeyword,
         _ => SymbolKind::Unknown,
     }
 }
