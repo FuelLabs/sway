@@ -835,6 +835,10 @@ impl WorkspaceManifest {
                     member_path
                 );
             }
+            if Self::from_file(&member_path).is_ok() {
+                bail!("Unexpected nested workspace '{}'. Workspaces are currently only allowed in the project root.", member.display());
+            };
+
             let member_manifest_file = PackageManifestFile::from_file(member_path.clone())?;
             let pkg_name = member_manifest_file.manifest.project.name;
             pkg_name_to_paths
