@@ -160,7 +160,7 @@ impl<'a> Solver<'a> {
         &self,
         _handler: &Handler,
         decl_id: DeclId<ty::TyFunctionDeclaration>,
-        subst_list: TypeSubstList,
+        subst_list: SubstList,
         _arguments: Vec<TypeId>,
     ) -> Result<InstructionResult, ErrorEmitted> {
         let mut instructions = vec![];
