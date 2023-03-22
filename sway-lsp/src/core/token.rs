@@ -84,27 +84,52 @@ pub enum TypedAstToken {
 /// These variants are used to represent the semantic type of the [Token].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SymbolKind {
-    Field,
-    ValueParam,
-    Function,
-    Const,
-    Struct,
-    Trait,
-    Storage,
-    Enum,
-    Variant,
+    /// Emitted for the boolean literals `true` and `false`.
     BoolLiteral,
-    ByteLiteral,
-    StringLiteral,
-    NumericLiteral,
-    Variable,
+    /// Emitted for builtin types like `u32`, and `str`.
     BuiltinType,
+    /// Emitted for byte literals.
+    ByteLiteral,
+    /// Emitted for constants.
+    Const,
+    /// Emitted for derive helper attributes.
     DeriveHelper,
-    Module,
-    TypeParameter,
+    /// Emitted for enums.
+    Enum,
+    /// Emitted for struct fields.
+    Field,
+    /// Emitted for free-standing & associated functions.
+    Function,
+    /// Emitted for keywords.
     Keyword,
-    Type,
+    /// Emitted for modules.
+    Module,
+    /// Emitted for numeric literals.
+    NumericLiteral,
+    /// Emitted for the self function parameter and self path-specifier.
+    SelfKeyword,
+    /// Emitted for the Self type parameter.
+    SelfTypeKeyword,
+    /// Emitted for storage.
+    Storage,
+    /// Emitted for string literals.
+    StringLiteral,
+    /// Emitted for structs.
+    Struct,
+    /// Emitted for traits.
+    Trait,
+    /// Emitted for type aliases and `Self` in `impl`s.
+    TypeAlias,
+    /// Emitted for type parameters.
+    TypeParameter,
+    /// Emitted for generic tokens that have no mapping.
     Unknown,
+    /// Emitted for non-self function parameters.
+    ValueParam,
+    /// Emitted for enum variants.
+    Variant,
+    /// Emitted for locals.
+    Variable,
 }
 
 #[derive(Debug, Clone)]

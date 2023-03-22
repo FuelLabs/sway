@@ -992,7 +992,7 @@ impl Parse for TypeAliasDeclaration {
             to_ident_key(&self.name),
             Token::from_parsed(
                 AstToken::Declaration(Declaration::TypeAliasDeclaration(self.clone())),
-                SymbolKind::Type,
+                SymbolKind::TypeAlias,
             ),
         );
         self.ty.parse(ctx);
