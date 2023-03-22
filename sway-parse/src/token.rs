@@ -264,8 +264,8 @@ pub fn lex_commented(
                         token_trees,
                         open_index,
                         Delimiters {
-                            opening: open_delimiter,
-                            closing: close_delimiter,
+                            opening: Some(open_delimiter),
+                            closing: Some(close_delimiter),
                         },
                     );
                 }
@@ -308,7 +308,6 @@ pub fn lex_commented(
         };
         let span = span_one(&l, open_index, opening_delimiter.as_char());
         error(l.handler, LexError { kind, span });
-        let closing = opening_delimiter.get_closing_delimiter();
 
         token_trees = lex_close_delimiter(
             &mut l,
@@ -317,8 +316,8 @@ pub fn lex_commented(
             token_trees,
             open_index,
             Delimiters {
-                opening: opening_delimiter,
-                closing,
+                opening: Some(opening_delimiter),
+                closing: None,
             },
         );
     }
@@ -336,8 +335,7 @@ fn lex_close_delimiter(
     open_index: usize,
     delimiters: Delimiters,
 ) -> Vec<CommentedTokenTree> {
-    let start_index = open_index + delimiters.opening.as_char().len_utf8();
-    let full_span = span(l, start_index, index);
+    let full_span = span(l, open_index, index);
     let group = CommentedGroup {
         token_stream: CommentedTokenStream {
             token_trees,

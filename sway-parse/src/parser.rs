@@ -110,17 +110,22 @@ impl<'a, 'e> Parser<'a, 'e> {
                 delimiters,
                 token_stream,
                 span: _,
-            }), rest @ ..]
-                if delimiters.opening == expected_delimiter =>
-            {
-                self.token_trees = rest;
-                let parser = Parser {
-                    token_trees: token_stream.token_trees(),
-                    full_span: token_stream.span(),
-                    handler: self.handler,
-                };
-                Some(parser)
-            }
+            }), rest @ ..] => match delimiters.opening {
+                Some(delim) => {
+                    if delim == expected_delimiter {
+                        self.token_trees = rest;
+                        let parser = Parser {
+                            token_trees: token_stream.token_trees(),
+                            full_span: token_stream.span(),
+                            handler: self.handler,
+                        };
+                        Some(parser)
+                    } else {
+                        None
+                    }
+                }
+                None => None,
+            },
             _ => None,
         }
     }
@@ -242,8 +247,11 @@ impl<'a> Peeker<'a> {
     pub fn peek_open_delimiter(self) -> Result<OpeningDelimiter, Self> {
         match self.token_trees {
             [TokenTree::Group(Group { delimiters, .. }), ..] => {
-                *self.num_tokens = 1;
-                Ok(delimiters.opening.clone())
+                if let Some(open_delim) = delimiters.opening {
+                    *self.num_tokens = 1;
+                    return Ok(open_delim);
+                }
+                Err(self)
             }
             _ => Err(self),
         }
@@ -258,8 +266,13 @@ impl<'a> Peeker<'a> {
         }
         for (open_delim, tt) in first_punct_kinds.iter().zip(self.token_trees.iter()) {
             match tt {
-                TokenTree::Group(GenericGroup { delimiters, .. })
-                    if delimiters.opening == *open_delim => {}
+                TokenTree::Group(GenericGroup { delimiters, .. }) => {
+                    if let Some(delim) = delimiters.opening {
+                        if delim != *open_delim {
+                            return Err(self);
+                        }
+                    }
+                }
                 _ => return Err(self),
             }
         }
@@ -268,7 +281,16 @@ impl<'a> Peeker<'a> {
                 delimiters,
                 token_stream: _,
                 span,
-            }) if delimiters.opening == *last_punct_kind => span,
+            }) => match delimiters.opening {
+                Some(delim) => {
+                    if delim == *last_punct_kind {
+                        span
+                    } else {
+                        return Err(self);
+                    }
+                }
+                None => return Err(self),
+            },
             _ => return Err(self),
         };
         let span_start = match &self.token_trees[0] {
@@ -283,14 +305,19 @@ impl<'a> Peeker<'a> {
     pub fn peek_close_delimiter_token(self, delimiter: &[ClosingDelimiter]) -> Result<Span, Self> {
         let (last_punct_kind, first_punct_kinds) = delimiter
             .split_last()
-            .unwrap_or_else(|| panic!("peek_open_delimiter called with empty slice"));
+            .unwrap_or_else(|| panic!("peek_close_delimiter called with empty slice"));
         if self.token_trees.len() < delimiter.len() {
             return Err(self);
         }
-        for (open_delim, tt) in first_punct_kinds.iter().zip(self.token_trees.iter()) {
+        for (close_delim, tt) in first_punct_kinds.iter().zip(self.token_trees.iter()) {
             match tt {
-                TokenTree::Group(GenericGroup { delimiters, .. })
-                    if delimiters.closing == *open_delim => {}
+                TokenTree::Group(GenericGroup { delimiters, .. }) => {
+                    if let Some(delim) = delimiters.closing {
+                        if delim != *close_delim {
+                            return Err(self);
+                        }
+                    }
+                }
                 _ => return Err(self),
             }
         }
@@ -299,7 +326,16 @@ impl<'a> Peeker<'a> {
                 delimiters,
                 token_stream: _,
                 span,
-            }) if delimiters.closing == *last_punct_kind => span,
+            }) => match delimiters.closing {
+                Some(delim) => {
+                    if delim == *last_punct_kind {
+                        span
+                    } else {
+                        return Err(self);
+                    }
+                }
+                None => return Err(self),
+            },
             _ => return Err(self),
         };
         let span_start = match &self.token_trees[0] {

@@ -83,8 +83,8 @@ impl<T> Spanned for GenericGroup<T> {
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Delimiters {
-    pub opening: OpeningDelimiter,
-    pub closing: ClosingDelimiter,
+    pub opening: Option<OpeningDelimiter>,
+    pub closing: Option<ClosingDelimiter>,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum OpeningDelimiter {
