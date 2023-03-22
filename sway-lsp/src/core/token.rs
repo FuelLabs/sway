@@ -234,12 +234,12 @@ pub fn type_info_to_symbol_kind(
     // We want to keep the semantics of these keywords.
     if let Some(type_span) = type_span {
         if type_span.as_str() == "Self" {
-            return SymbolKind::SelfTypeKeyword
+            return SymbolKind::SelfTypeKeyword;
         } else if type_span.as_str() == "self" {
-            return SymbolKind::SelfKeyword
+            return SymbolKind::SelfKeyword;
         }
     }
-    
+
     match type_info {
         TypeInfo::UnsignedInteger(..) | TypeInfo::Boolean | TypeInfo::B256 => {
             SymbolKind::BuiltinType
