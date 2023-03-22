@@ -1231,15 +1231,8 @@ impl<'a> TypedTree<'a> {
         let type_engine = self.ctx.engines.te();
         let decl_engine = self.ctx.engines.de();
         let type_info = type_engine.get(type_id);
-        // This is necessary because the type engine resolves `Self` & `self` to the type it refers to.
-        // We want to keep the semantics of these keywords.
-        let symbol_kind = if type_span.as_str() == "Self" {
-            SymbolKind::SelfTypeKeyword
-        } else if type_span.as_str() == "self" {
-            SymbolKind::SelfKeyword
-        } else {
-            type_info_to_symbol_kind(type_engine, &type_info)
-        };
+        let symbol_kind = 
+            type_info_to_symbol_kind(type_engine, &type_info, Some(&type_span));
         match &type_info {
             TypeInfo::Array(type_arg, ..) => {
                 self.collect_type_argument(type_arg);

@@ -225,7 +225,21 @@ pub fn ident_of_type_id(
 
 /// Intended to be used during traversal of the [sway_core::language::parsed::ParseProgram] AST.
 /// We can then use the [TypeInfo] to infer the semantic type of the token before type-checking.
-pub fn type_info_to_symbol_kind(type_engine: &TypeEngine, type_info: &TypeInfo) -> SymbolKind {
+pub fn type_info_to_symbol_kind(
+    type_engine: &TypeEngine,
+    type_info: &TypeInfo,
+    type_span: Option<&Span>,
+) -> SymbolKind {
+    // This is necessary because the type engine resolves `Self` & `self` to the type it refers to.
+    // We want to keep the semantics of these keywords.
+    if let Some(type_span) = type_span {
+        if type_span.as_str() == "Self" {
+            return SymbolKind::SelfTypeKeyword
+        } else if type_span.as_str() == "self" {
+            return SymbolKind::SelfKeyword
+        }
+    }
+    
     match type_info {
         TypeInfo::UnsignedInteger(..) | TypeInfo::Boolean | TypeInfo::B256 => {
             SymbolKind::BuiltinType
@@ -237,7 +251,7 @@ pub fn type_info_to_symbol_kind(type_engine: &TypeEngine, type_info: &TypeInfo) 
         TypeInfo::Enum { .. } => SymbolKind::Enum,
         TypeInfo::Array(elem_ty, ..) => {
             let type_info = type_engine.get(elem_ty.type_id);
-            type_info_to_symbol_kind(type_engine, &type_info)
+            type_info_to_symbol_kind(type_engine, &type_info, Some(&elem_ty.span()))
         }
         TypeInfo::SelfType => SymbolKind::SelfTypeKeyword,
         _ => SymbolKind::Unknown,

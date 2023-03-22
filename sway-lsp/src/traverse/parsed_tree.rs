@@ -458,7 +458,7 @@ impl Parse for MethodApplicationExpression {
         } = &self.method_name_binding.inner
         {
             let (type_info, ident) = &call_path_binding.inner.suffix;
-            collect_type_info_token(ctx, type_info, Some(ident.span()));
+            collect_type_info_token(ctx, type_info, Some(&ident.span()));
         }
         self.method_name_binding
             .type_arguments
@@ -886,7 +886,7 @@ impl Parse for TraitFn {
         self.parameters.iter().for_each(|param| {
             param.parse(ctx);
         });
-        collect_type_info_token(ctx, &self.return_type, Some(self.return_type_span.clone()));
+        collect_type_info_token(ctx, &self.return_type, Some(&self.return_type_span));
         self.attributes.parse(ctx);
     }
 }
@@ -977,7 +977,7 @@ impl Parse for TypeArgument {
                 }
             }
             _ => {
-                let symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), &type_info);
+                let symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), &type_info, None);
                 if let Some(tree) = &self.call_path_tree {
                     let token =
                         Token::from_parsed(AstToken::TypeArgument(self.clone()), symbol_kind);
@@ -1002,8 +1002,8 @@ impl Parse for TypeAliasDeclaration {
     }
 }
 
-fn collect_type_info_token(ctx: &ParseContext, type_info: &TypeInfo, type_span: Option<Span>) {
-    let symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), type_info);
+fn collect_type_info_token(ctx: &ParseContext, type_info: &TypeInfo, type_span: Option<&Span>) {
+    let symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), type_info, type_span);
     match type_info {
         TypeInfo::Str(length) => {
             let ident = Ident::new(length.span());
@@ -1041,7 +1041,7 @@ fn collect_type_info_token(ctx: &ParseContext, type_info: &TypeInfo, type_span: 
         }
         _ => {
             if let Some(type_span) = type_span {
-                let ident = Ident::new(type_span);
+                let ident = Ident::new(type_span.clone());
                 ctx.tokens.insert(
                     to_ident_key(&ident),
                     Token::from_parsed(AstToken::Ident(ident.clone()), symbol_kind),
