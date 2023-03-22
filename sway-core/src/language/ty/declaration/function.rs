@@ -12,6 +12,7 @@ use crate::{
     language::{parsed, ty::*, Inline, Purity, Visibility},
     transform,
     type_system::*,
+    types::*,
 };
 
 use sway_types::{

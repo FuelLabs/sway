@@ -11,7 +11,8 @@ use crate::{
     error::*,
     language::{parsed::Supertrait, ty, CallPath},
     semantic_analysis::{declaration::insert_supertraits_into_namespace, TypeCheckContext},
-    type_system::*,
+    type_system::priv_prelude::*,
+    types::*,
     CompileResult,
 };
 

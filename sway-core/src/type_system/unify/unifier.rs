@@ -6,10 +6,12 @@ use sway_error::{
 };
 use sway_types::{integer_bits::IntegerBits, Ident, Span, Spanned};
 
-use crate::{engine_threading::*, language::ty, type_system::*};
+use crate::{engine_threading::*, language::ty, type_system::priv_prelude::*};
+
+use super::occurs_check::OccursCheck;
 
 /// Helper struct to aid in type unification.
-pub(super) struct Unifier<'a> {
+pub(crate) struct Unifier<'a> {
     engines: Engines<'a>,
     arguments_are_flipped: bool,
     help_text: String,
@@ -17,7 +19,7 @@ pub(super) struct Unifier<'a> {
 
 impl<'a> Unifier<'a> {
     /// Creates a new [Unifier].
-    pub(super) fn new(engines: Engines<'a>, help_text: &str) -> Unifier<'a> {
+    pub(crate) fn new(engines: Engines<'a>, help_text: &str) -> Unifier<'a> {
         Unifier {
             engines,
             arguments_are_flipped: false,
@@ -27,7 +29,7 @@ impl<'a> Unifier<'a> {
 
     /// Takes `self` and returns a new [Unifier] with the contents of self and
     /// `flip_arguments` set to `true`.
-    pub(super) fn flip_arguments(self) -> Unifier<'a> {
+    pub(crate) fn flip_arguments(self) -> Unifier<'a> {
         Unifier {
             arguments_are_flipped: true,
             ..self
@@ -75,7 +77,7 @@ impl<'a> Unifier<'a> {
     }
 
     /// Performs type unification with `received` and `expected`.
-    pub(super) fn unify(
+    pub(crate) fn unify(
         &self,
         received: TypeId,
         expected: TypeId,

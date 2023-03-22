@@ -5,6 +5,7 @@ use crate::{
     language::{parsed, ty::*, Purity},
     semantic_analysis::storage_only_types,
     type_system::*,
+    types::*,
     Engines,
 };
 

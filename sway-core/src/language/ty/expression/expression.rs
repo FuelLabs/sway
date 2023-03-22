@@ -8,7 +8,7 @@ use crate::{
     error::*,
     language::{ty::*, Literal},
     type_system::*,
-    types::DeterministicallyAborts,
+    types::*,
 };
 
 #[derive(Clone, Debug)]

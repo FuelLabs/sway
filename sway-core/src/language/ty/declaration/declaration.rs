@@ -12,6 +12,7 @@ use crate::{
     error::*,
     language::{ty::*, Visibility},
     type_system::*,
+    types::*,
 };
 
 #[derive(Clone, Debug)]

@@ -1,8 +1,9 @@
-use super::*;
 use crate::{
     decl_engine::{DeclEngine, DeclRefEnum, DeclRefStruct},
     engine_threading::*,
+    error::*,
     language::{ty, CallPath},
+    type_system::priv_prelude::*,
     Ident,
 };
 use sway_error::error::CompileError;
