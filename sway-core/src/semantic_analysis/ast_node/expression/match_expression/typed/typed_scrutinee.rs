@@ -119,6 +119,7 @@ fn type_check_struct(
     let mut warnings = vec![];
     let mut errors = vec![];
 
+    let type_engine = ctx.type_engine;
     let decl_engine = ctx.decl_engine;
 
     // find the struct definition from the name
@@ -128,13 +129,13 @@ fn type_check_struct(
         warnings,
         errors
     );
-    let original_struct_decl_ref = check!(
+    let struct_ref = check!(
         unknown_decl.to_struct_ref(ctx.engines()),
         return err(warnings, errors),
         warnings,
         errors
     );
-    let mut struct_decl = decl_engine.get_struct(&original_struct_decl_ref);
+    let mut struct_decl = decl_engine.get_struct(&struct_ref);
 
     // monomorphize the struct definition
     check!(
@@ -204,19 +205,14 @@ fn type_check_struct(
         return err(warnings, errors);
     }
 
-    let decl_name = struct_decl.call_path.suffix.clone();
-    let new_struct_decl_ref = ctx.engines().de().insert(struct_decl);
-
+    let struct_ref = decl_engine.insert(struct_decl);
     let typed_scrutinee = ty::TyScrutinee {
-        type_id: ctx
-            .engines()
-            .te()
-            .insert(decl_engine, TypeInfo::Struct(new_struct_decl_ref)),
+        type_id: type_engine.insert(decl_engine, TypeInfo::Struct(struct_ref.clone())),
         span,
         variant: ty::TyScrutineeVariant::StructScrutinee {
-            struct_name,
-            decl_name,
+            struct_ref,
             fields: typed_fields,
+            instantiation_span: struct_name.span(),
         },
     };
 
@@ -231,6 +227,8 @@ fn type_check_enum(
 ) -> CompileResult<ty::TyScrutinee> {
     let mut warnings = vec![];
     let mut errors = vec![];
+
+    let type_engine = ctx.type_engine;
     let decl_engine = ctx.decl_engine;
 
     let mut prefixes = call_path.prefixes.clone();
@@ -287,11 +285,8 @@ fn type_check_enum(
     );
 
     let decl_name = enum_decl.call_path.suffix.clone();
-    let new_decl_ref = ctx.engines().de().insert(enum_decl.clone());
-    let enum_type_id = ctx
-        .engines()
-        .te()
-        .insert(ctx.engines().de(), TypeInfo::Enum(new_decl_ref));
+    let new_decl_ref = decl_engine.insert(enum_decl.clone());
+    let enum_type_id = type_engine.insert(decl_engine, TypeInfo::Enum(new_decl_ref));
 
     // type check the nested scrutinee
     let typed_value = check!(

@@ -122,9 +122,9 @@ impl Pattern {
             ty::TyScrutineeVariant::Literal(value) => Pattern::from_literal(value),
             ty::TyScrutineeVariant::Constant(_, value, _) => Pattern::from_literal(value),
             ty::TyScrutineeVariant::StructScrutinee {
-                struct_name,
+                struct_ref,
                 fields,
-                ..
+                instantiation_span: _,
             } => {
                 let mut new_fields = vec![];
                 for field in fields.into_iter() {
@@ -140,7 +140,7 @@ impl Pattern {
                     new_fields.push((field.field.as_str().to_string(), f));
                 }
                 Pattern::Struct(StructPattern {
-                    struct_name: struct_name.to_string(),
+                    struct_name: struct_ref.name().to_string(),
                     fields: new_fields,
                 })
             }

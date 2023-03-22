@@ -941,18 +941,18 @@ impl<'a> TypedTree<'a> {
                 }
             }
             StructScrutinee {
-                struct_name,
-                decl_name,
+                struct_ref,
                 fields,
+                instantiation_span: _,
             } => {
                 if let Some(mut token) = self
                     .ctx
                     .tokens
-                    .try_get_mut(&to_ident_key(struct_name))
+                    .try_get_mut(&to_ident_key(struct_ref.name()))
                     .try_unwrap()
                 {
                     token.typed = Some(TypedAstToken::TypedScrutinee(scrutinee.clone()));
-                    token.type_def = Some(TypeDefinition::Ident(decl_name.clone()));
+                    token.type_def = Some(TypeDefinition::Ident(struct_ref.name().clone()));
                 }
 
                 for field in fields {
