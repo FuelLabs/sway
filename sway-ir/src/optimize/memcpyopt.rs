@@ -45,6 +45,7 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
     let mut loads_map = FxHashMap::<LocalVar, Vec<Value>>::default();
     let mut stores_map = FxHashMap::<LocalVar, Vec<Value>>::default();
     let mut instr_info_map = FxHashMap::<Value, InstInfo>::default();
+    let mut asm_uses = FxHashSet::<LocalVar>::default();
 
     fn get_local(context: &Context, val: Value) -> Option<LocalVar> {
         match val.get_instruction(context) {
@@ -74,6 +75,15 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
                         .and_modify(|stores| stores.push(inst))
                         .or_insert(vec![inst]);
                     instr_info_map.insert(inst, info());
+                }
+            }
+            Instruction::AsmBlock(_, args) => {
+                for arg in args {
+                    if let Some(arg) = arg.initializer {
+                        if let Some(local) = get_local(context, arg) {
+                            asm_uses.insert(local);
+                        }
+                    }
                 }
             }
             _ => (),
@@ -134,9 +144,11 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
                         })
                     {
                         None
-                    } else {
+                    } else if !asm_uses.contains(&dst_local) {
                         to_delete.insert(instr_val);
                         Some((dst_local, src_local))
+                    } else {
+                        None
                     }
                 })
         })
