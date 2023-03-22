@@ -197,6 +197,8 @@ impl Parse for Expression {
                 {
                     let symbol_kind = if name.as_str().contains(DESTRUCTURE_PREFIX) {
                         SymbolKind::Struct
+                    } else if name.as_str() == "self" {
+                        SymbolKind::SelfKeyword
                     } else {
                         SymbolKind::Variable
                     };

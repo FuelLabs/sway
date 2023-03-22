@@ -118,7 +118,7 @@ pub enum SymbolKind {
     Struct,
     /// Emitted for traits.
     Trait,
-    /// Emitted for type aliases and `Self` in `impl`s.
+    /// Emitted for type aliases.
     TypeAlias,
     /// Emitted for type parameters.
     TypeParameter,
@@ -239,6 +239,7 @@ pub fn type_info_to_symbol_kind(type_engine: &TypeEngine, type_info: &TypeInfo) 
             let type_info = type_engine.get(elem_ty.type_id);
             type_info_to_symbol_kind(type_engine, &type_info)
         }
+        TypeInfo::SelfType => SymbolKind::SelfTypeKeyword,
         _ => SymbolKind::Unknown,
     }
 }
