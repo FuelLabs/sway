@@ -72,8 +72,8 @@ impl ty::TyTraitFn {
     /// This function is used in trait declarations to insert "placeholder"
     /// functions in the methods. This allows the methods to use functions
     /// declared in the interface surface.
-    pub(crate) fn to_dummy_func(&self, mode: Mode) -> ty::TyFunctionDeclaration {
-        ty::TyFunctionDeclaration {
+    pub(crate) fn to_dummy_func(&self, mode: Mode) -> ty::TyFunctionDecl {
+        ty::TyFunctionDecl {
             purity: self.purity,
             name: self.name.clone(),
             body: ty::TyCodeBlock { contents: vec![] },

@@ -20,9 +20,9 @@ enum SaleError {
 
 fn main() -> u64 {
     let x = Result::Ok::<u64, SaleError>(5u64);
-    let mut y = Result::Err::<u64, SaleError>(SaleError::NotEnoughInventory("foo"));
+    let mut _y = Result::Err::<u64, SaleError>(SaleError::NotEnoughInventory("foo"));
     // should be the same type
-    y = x;
+    _y = x;
     5
 }
 

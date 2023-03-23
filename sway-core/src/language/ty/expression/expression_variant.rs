@@ -50,7 +50,7 @@ pub enum TyExpressionVariant {
         index: Box<TyExpression>,
     },
     StructExpression {
-        struct_ref: DeclRef<DeclId<TyStructDeclaration>>,
+        struct_ref: DeclRef<DeclId<TyStructDecl>>,
         fields: Vec<TyStructExpressionField>,
         instantiation_span: Span,
         call_path_binding: TypeBinding<CallPath>,
@@ -88,7 +88,7 @@ pub enum TyExpressionVariant {
         elem_to_access_span: Span,
     },
     EnumInstantiation {
-        enum_ref: DeclRef<DeclId<TyEnumDeclaration>>,
+        enum_ref: DeclRef<DeclId<TyEnumDecl>>,
         /// for printing
         variant_name: Ident,
         tag: usize,
@@ -577,7 +577,7 @@ impl SubstTypes for TyExpressionVariant {
                 let new_decl_ref = fn_ref
                     .clone()
                     .subst_types_and_insert_new_with_parent(type_mapping, engines);
-                fn_ref.replace_id((&new_decl_ref).into());
+                fn_ref.replace_id(*new_decl_ref.id());
             }
             LazyOperator { lhs, rhs, .. } => {
                 (*lhs).subst(type_mapping, engines);
@@ -603,7 +603,7 @@ impl SubstTypes for TyExpressionVariant {
                 let new_struct_ref = struct_ref
                     .clone()
                     .subst_types_and_insert_new(type_mapping, engines);
-                struct_ref.replace_id((&new_struct_ref).into());
+                struct_ref.replace_id(*new_struct_ref.id());
                 fields
                     .iter_mut()
                     .for_each(|x| x.subst(type_mapping, engines));
@@ -658,7 +658,7 @@ impl SubstTypes for TyExpressionVariant {
                 let new_enum_ref = enum_ref
                     .clone()
                     .subst_types_and_insert_new(type_mapping, engines);
-                enum_ref.replace_id((&new_enum_ref).into());
+                enum_ref.replace_id(*new_enum_ref.id());
                 if let Some(ref mut contents) = contents {
                     contents.subst(type_mapping, engines)
                 };
@@ -709,7 +709,7 @@ impl ReplaceSelfType for TyExpressionVariant {
                 let new_decl_ref = fn_ref
                     .clone()
                     .replace_self_type_and_insert_new_with_parent(engines, self_type);
-                fn_ref.replace_id((&new_decl_ref).into());
+                fn_ref.replace_id(*new_decl_ref.id());
             }
             LazyOperator { lhs, rhs, .. } => {
                 (*lhs).replace_self_type(engines, self_type);
@@ -735,7 +735,7 @@ impl ReplaceSelfType for TyExpressionVariant {
                 let new_struct_ref = struct_ref
                     .clone()
                     .replace_self_type_and_insert_new(engines, self_type);
-                struct_ref.replace_id((&new_struct_ref).into());
+                struct_ref.replace_id(*new_struct_ref.id());
                 fields
                     .iter_mut()
                     .for_each(|x| x.replace_self_type(engines, self_type));
@@ -785,7 +785,7 @@ impl ReplaceSelfType for TyExpressionVariant {
                 let new_enum_ref = enum_ref
                     .clone()
                     .replace_self_type_and_insert_new(engines, self_type);
-                enum_ref.replace_id((&new_enum_ref).into());
+                enum_ref.replace_id(*new_enum_ref.id());
                 if let Some(ref mut contents) = contents {
                     contents.replace_self_type(engines, self_type)
                 };
@@ -833,7 +833,7 @@ impl ReplaceDecls for TyExpressionVariant {
                 let new_decl_ref = fn_ref
                     .clone()
                     .replace_decls_and_insert_new_with_parent(decl_mapping, engines);
-                fn_ref.replace_id((&new_decl_ref).into());
+                fn_ref.replace_id(*new_decl_ref.id());
                 for (_, arg) in arguments.iter_mut() {
                     arg.replace_decls(decl_mapping, engines);
                 }

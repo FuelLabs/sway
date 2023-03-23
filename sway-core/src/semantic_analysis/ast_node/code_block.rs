@@ -71,10 +71,10 @@ impl ty::TyCodeBlock {
                         .resolve_symbol(&never_mod_path, &never_ident)
                         .value;
 
-                    if let Some(ty::TyDeclaration::EnumDeclaration {
+                    if let Some(ty::TyDecl::EnumDecl {
                         name,
                         decl_id,
-                        type_subst_list: _,
+                        subst_list: _,
                         decl_span,
                     }) = never_decl_opt
                     {

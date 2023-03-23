@@ -110,7 +110,7 @@ impl ty::TyFunctionParameter {
 fn insert_into_namespace(ctx: TypeCheckContext, typed_parameter: &ty::TyFunctionParameter) {
     ctx.namespace.insert_symbol(
         typed_parameter.name.clone(),
-        ty::TyDeclaration::VariableDeclaration(Box::new(ty::TyVariableDeclaration {
+        ty::TyDecl::VariableDecl(Box::new(ty::TyVariableDecl {
             name: typed_parameter.name.clone(),
             body: ty::TyExpression {
                 expression: ty::TyExpressionVariant::FunctionParameter,

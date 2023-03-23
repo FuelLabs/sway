@@ -8,7 +8,7 @@ members = [
   "asm_return_tuple_pointer",
   "break_and_continue",
   "cei_analysis",
-  "config_time_constants",
+  "configurable_constants",
   "counter",
   "enums",
   "fizzbuzz",

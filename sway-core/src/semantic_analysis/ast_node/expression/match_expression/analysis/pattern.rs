@@ -122,9 +122,9 @@ impl Pattern {
             ty::TyScrutineeVariant::Literal(value) => Pattern::from_literal(value),
             ty::TyScrutineeVariant::Constant(_, value, _) => Pattern::from_literal(value),
             ty::TyScrutineeVariant::StructScrutinee {
-                struct_name,
+                struct_ref,
                 fields,
-                ..
+                instantiation_call_path: _,
             } => {
                 let mut new_fields = vec![];
                 for field in fields.into_iter() {
@@ -140,7 +140,7 @@ impl Pattern {
                     new_fields.push((field.field.as_str().to_string(), f));
                 }
                 Pattern::Struct(StructPattern {
-                    struct_name: struct_name.to_string(),
+                    struct_name: struct_ref.name().to_string(),
                     fields: new_fields,
                 })
             }
@@ -157,23 +157,20 @@ impl Pattern {
                 Pattern::Tuple(new_elems)
             }
             ty::TyScrutineeVariant::EnumScrutinee {
-                call_path,
-                decl_name,
+                enum_ref,
+                variant,
                 value,
                 ..
-            } => {
-                let variant_name = call_path.suffix.to_string();
-                Pattern::Enum(EnumPattern {
-                    enum_name: decl_name.to_string(),
-                    variant_name,
-                    value: Box::new(check!(
-                        Pattern::from_scrutinee(*value),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    )),
-                })
-            }
+            } => Pattern::Enum(EnumPattern {
+                enum_name: enum_ref.name().to_string(),
+                variant_name: variant.name.to_string(),
+                value: Box::new(check!(
+                    Pattern::from_scrutinee(*value),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )),
+            }),
         };
         ok(pat, warnings, errors)
     }

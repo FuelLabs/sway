@@ -3,10 +3,10 @@ script;
 use std::u128::*;
 
 fn main() -> bool {
-    let one = U128::from((0, 1));
+    let _one = U128::from((0, 1));
     let two = U128::from((0, 2));
     let max_u64 = U128::from((0, u64::max()));
-    let one_upper = U128::from((1, 0));
+    let _one_upper = U128::from((1, 0));
 
     let mul_128_of_two = max_u64 * two;
     assert(mul_128_of_two.upper == 1);

@@ -2,7 +2,7 @@ use super::{EntryPoint, ExitPoint};
 use crate::{
     language::{
         parsed::TreeType,
-        ty::{self, TyFunctionDeclaration, TyFunctionSig},
+        ty::{self, TyFunctionDecl, TyFunctionSig},
         CallPath,
     },
     type_system::TypeInfo,
@@ -35,6 +35,11 @@ pub(crate) struct TraitNamespaceEntry {
 }
 
 #[derive(Default, Clone)]
+pub(crate) struct VariableNamespaceEntry {
+    pub(crate) variable_decl_ix: NodeIndex,
+}
+
+#[derive(Default, Clone)]
 /// This namespace holds mappings from various declarations to their indexes in the graph. This is
 /// used for connecting those vertices when the declarations are instantiated.
 ///
@@ -52,20 +57,23 @@ pub struct ControlFlowNamespace {
     pub(crate) struct_namespace: HashMap<String, StructNamespaceEntry>,
     pub(crate) const_namespace: HashMap<Ident, NodeIndex>,
     pub(crate) storage: HashMap<Ident, NodeIndex>,
+    pub(crate) code_blocks: Vec<ControlFlowCodeBlock>,
+}
+
+#[derive(Default, Clone)]
+pub struct ControlFlowCodeBlock {
+    pub(crate) variables: HashMap<Ident, VariableNamespaceEntry>,
 }
 
 impl ControlFlowNamespace {
-    pub(crate) fn get_function(
-        &self,
-        fn_decl: &TyFunctionDeclaration,
-    ) -> Option<&FunctionNamespaceEntry> {
+    pub(crate) fn get_function(&self, fn_decl: &TyFunctionDecl) -> Option<&FunctionNamespaceEntry> {
         let ident: IdentUnique = fn_decl.name.clone().into();
         self.function_namespace
             .get(&(ident, TyFunctionSig::from_fn_decl(fn_decl)))
     }
     pub(crate) fn insert_function(
         &mut self,
-        fn_decl: &ty::TyFunctionDeclaration,
+        fn_decl: &ty::TyFunctionDecl,
         entry: FunctionNamespaceEntry,
     ) {
         let ident = &fn_decl.name;
@@ -194,5 +202,26 @@ impl ControlFlowNamespace {
             .get(struct_name)?
             .fields
             .get(field_name)
+    }
+    pub(crate) fn push_code_block(&mut self) {
+        self.code_blocks.push(ControlFlowCodeBlock {
+            variables: HashMap::<Ident, VariableNamespaceEntry>::new(),
+        });
+    }
+    pub(crate) fn pop_code_block(&mut self) {
+        self.code_blocks.pop();
+    }
+    pub(crate) fn insert_variable(&mut self, name: Ident, entry: VariableNamespaceEntry) {
+        if let Some(code_block) = self.code_blocks.last_mut() {
+            code_block.variables.insert(name, entry);
+        }
+    }
+    pub(crate) fn get_variable(&mut self, name: &Ident) -> Option<VariableNamespaceEntry> {
+        for code_block in self.code_blocks.iter().rev() {
+            if let Some(entry) = code_block.variables.get(name).cloned() {
+                return Some(entry);
+            }
+        }
+        None
     }
 }

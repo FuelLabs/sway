@@ -1,41 +1,15 @@
-mod binding;
-mod collect_types_metadata;
-mod create_type_id;
+mod ast_elements;
 mod engine;
 mod id;
 mod info;
-mod length;
-mod occurs_check;
-mod replace_self_type;
+mod priv_prelude;
 mod substitute;
-mod trait_constraint;
-mod type_argument;
-mod type_parameter;
-mod unconstrained_type_parameters;
 mod unify;
-mod unify_check;
 
-pub(crate) use binding::*;
-pub(crate) use collect_types_metadata::*;
-pub(crate) use create_type_id::*;
-pub use engine::*;
-pub use id::*;
-pub use info::*;
-pub use length::*;
-use occurs_check::*;
-pub(crate) use replace_self_type::*;
-pub(crate) use substitute::*;
-pub use trait_constraint::*;
-pub use type_argument::*;
-pub use type_parameter::*;
-pub(crate) use unconstrained_type_parameters::*;
+pub use priv_prelude::*;
 
-use crate::error::*;
 #[cfg(test)]
-use crate::{
-    decl_engine::DeclEngineIndex, language::ty::TyEnumDeclaration, transform::AttributesMap,
-};
-use std::fmt::Debug;
+use crate::{decl_engine::DeclEngineInsert, language::ty::TyEnumDecl, transform::AttributesMap};
 
 #[cfg(test)]
 use sway_types::{integer_bits::IntegerBits, Span};
@@ -93,7 +67,7 @@ fn generic_enum_resolution() {
         attributes: transform::AttributesMap::default(),
     }];
 
-    let decl_ref_1 = decl_engine.insert(TyEnumDeclaration {
+    let decl_ref_1 = decl_engine.insert(TyEnumDecl {
         call_path: result_name.clone().into(),
         type_parameters: vec![placeholder_type_param],
         variants: variant_types,
@@ -128,7 +102,7 @@ fn generic_enum_resolution() {
         trait_constraints: vec![],
         trait_constraints_span: sp.clone(),
     };
-    let decl_ref_2 = decl_engine.insert(TyEnumDeclaration {
+    let decl_ref_2 = decl_engine.insert(TyEnumDecl {
         call_path: result_name.into(),
         type_parameters: vec![type_param],
         variants: variant_types.clone(),
