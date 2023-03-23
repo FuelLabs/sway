@@ -10,7 +10,6 @@ use std::{
 };
 
 use sway_core::{fuel_prelude::fuel_tx, language::parsed::TreeType, parse_tree_type, BuildTarget};
-pub use sway_types::ConfigTimeConstant;
 use sway_utils::constants;
 
 /// The name of a workspace member package.
@@ -125,7 +124,7 @@ impl ManifestFile {
 type PatchMap = BTreeMap<String, Dependency>;
 
 /// A [PackageManifest] that was deserialized from a file at a particular path.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PackageManifestFile {
     /// The deserialized `Forc.toml`.
     manifest: PackageManifest,
@@ -134,7 +133,7 @@ pub struct PackageManifestFile {
 }
 
 /// A direct mapping to a `Forc.toml`.
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct PackageManifest {
     pub project: Project,
@@ -142,13 +141,12 @@ pub struct PackageManifest {
     pub dependencies: Option<BTreeMap<String, Dependency>>,
     pub patch: Option<BTreeMap<String, PatchMap>>,
     /// A list of [configuration-time constants](https://github.com/FuelLabs/sway/issues/1498).
-    pub constants: Option<BTreeMap<String, ConfigTimeConstant>>,
     pub build_target: Option<BTreeMap<String, BuildTarget>>,
     build_profile: Option<BTreeMap<String, BuildProfile>>,
     pub contract_dependencies: Option<BTreeMap<String, ContractDependency>>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct Project {
     pub authors: Option<Vec<String>>,
@@ -161,14 +159,14 @@ pub struct Project {
     pub forc_version: Option<semver::Version>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct Network {
     #[serde(default = "default_url")]
     pub url: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct ContractDependency {
     #[serde(flatten)]
@@ -177,7 +175,7 @@ pub struct ContractDependency {
     pub salt: fuel_tx::Salt,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum Dependency {
     /// In the simple format, only a version is specified, eg.
@@ -189,7 +187,7 @@ pub enum Dependency {
     Detailed(DependencyDetails),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct DependencyDetails {
     pub(crate) version: Option<String>,
@@ -202,7 +200,7 @@ pub struct DependencyDetails {
 }
 
 /// Parameters to pass through to the `sway_core::BuildConfig` during compilation.
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct BuildProfile {
     pub print_ast: bool,
@@ -349,10 +347,6 @@ impl PackageManifestFile {
                 false => dir.join(path).canonicalize().ok(),
             }
         })
-    }
-    /// Getter for the config time constants on the manifest.
-    pub fn config_time_constants(&self) -> BTreeMap<String, ConfigTimeConstant> {
-        self.constants.as_ref().cloned().unwrap_or_default()
     }
 
     /// Returns the workspace manifest file if this `PackageManifestFile` is one of the members.
@@ -841,6 +835,10 @@ impl WorkspaceManifest {
                     member_path
                 );
             }
+            if Self::from_file(&member_path).is_ok() {
+                bail!("Unexpected nested workspace '{}'. Workspaces are currently only allowed in the project root.", member.display());
+            };
+
             let member_manifest_file = PackageManifestFile::from_file(member_path.clone())?;
             let pkg_name = member_manifest_file.manifest.project.name;
             pkg_name_to_paths

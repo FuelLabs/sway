@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::{DeclEngineIndex, DeclRefFunction, ReplaceDecls},
+    decl_engine::{DeclEngineInsert, DeclRefFunction, ReplaceDecls},
     error::*,
     language::{ty, *},
     semantic_analysis::{ast_node::*, TypeCheckContext},
@@ -90,14 +90,14 @@ pub(crate) fn instantiate_function_application(
     let return_type = function_decl.return_type.clone();
     let new_decl_ref = decl_engine
         .insert(function_decl)
-        .with_parent(decl_engine, function_decl_ref.id.into());
+        .with_parent(decl_engine, (*function_decl_ref.id()).into());
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {
             call_path: call_path_binding.inner.clone(),
             contract_call_params: HashMap::new(),
             arguments: typed_arguments_with_names,
-            function_decl_ref: new_decl_ref,
+            fn_ref: new_decl_ref,
             self_state_idx: None,
             selector: None,
             type_binding: Some(call_path_binding.strip_inner()),

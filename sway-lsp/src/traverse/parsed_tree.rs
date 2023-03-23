@@ -25,8 +25,8 @@ use sway_core::{
             Scrutinee, StorageAccessExpression, StorageDeclaration, StorageField,
             StructDeclaration, StructExpression, StructExpressionField, StructField,
             StructScrutineeField, SubfieldExpression, Supertrait, TraitDeclaration, TraitFn,
-            TraitItem, TreeType, TupleIndexExpression, UseStatement, VariableDeclaration,
-            WhileLoopExpression,
+            TraitItem, TupleIndexExpression, TypeAliasDeclaration, UseStatement,
+            VariableDeclaration, WhileLoopExpression,
         },
         CallPathTree, Literal,
     },
@@ -50,38 +50,31 @@ impl<'a> ParsedTree<'a> {
         node.parse(self.ctx);
     }
 
-    /// Collects the library name and the module name from the dep statement
+    /// Collects module names from the mod statements
     pub fn collect_module_spans(&self, parse_program: &ParseProgram) {
-        if let TreeType::Library { name } = &parse_program.kind {
-            self.ctx.tokens.insert(
-                to_ident_key(name),
-                Token::from_parsed(AstToken::LibraryName(name.clone()), SymbolKind::Module),
-            );
-        }
         self.collect_parse_module(&parse_program.root);
     }
 
     fn collect_parse_module(&self, parse_module: &ParseModule) {
+        self.ctx.tokens.insert(
+            to_ident_key(&Ident::new(parse_module.span.clone())),
+            Token::from_parsed(
+                AstToken::LibrarySpan(parse_module.span.clone()),
+                SymbolKind::Module,
+            ),
+        );
         for (
             _,
             ParseSubmodule {
-                library_name,
                 module,
-                dependency_path_span,
+                mod_name_span,
                 ..
             },
         ) in &parse_module.submodules
         {
             self.ctx.tokens.insert(
-                to_ident_key(&Ident::new(dependency_path_span.clone())),
+                to_ident_key(&Ident::new(mod_name_span.clone())),
                 Token::from_parsed(AstToken::IncludeStatement, SymbolKind::Module),
-            );
-            self.ctx.tokens.insert(
-                to_ident_key(library_name),
-                Token::from_parsed(
-                    AstToken::LibraryName(library_name.clone()),
-                    SymbolKind::Module,
-                ),
             );
             self.collect_parse_module(module);
         }
@@ -133,6 +126,7 @@ impl Parse for Declaration {
             Declaration::AbiDeclaration(decl) => decl.parse(ctx),
             Declaration::ConstantDeclaration(decl) => decl.parse(ctx),
             Declaration::StorageDeclaration(decl) => decl.parse(ctx),
+            Declaration::TypeAliasDeclaration(decl) => decl.parse(ctx),
         }
     }
 }
@@ -203,6 +197,8 @@ impl Parse for Expression {
                 {
                     let symbol_kind = if name.as_str().contains(DESTRUCTURE_PREFIX) {
                         SymbolKind::Struct
+                    } else if name.as_str() == "self" {
+                        SymbolKind::SelfKeyword
                     } else {
                         SymbolKind::Variable
                     };
@@ -327,7 +323,13 @@ impl Parse for ReassignmentExpression {
             ReassignmentTarget::VariableExpression(exp) => {
                 exp.parse(ctx);
             }
-            ReassignmentTarget::StorageField(idents) => {
+            ReassignmentTarget::StorageField(storage_keyword_span, idents) => {
+                let storage_ident = Ident::new(storage_keyword_span.clone());
+                ctx.tokens.insert(
+                    to_ident_key(&storage_ident),
+                    Token::from_parsed(AstToken::Ident(storage_ident), SymbolKind::Storage),
+                );
+
                 for ident in idents {
                     ctx.tokens.insert(
                         to_ident_key(ident),
@@ -456,7 +458,7 @@ impl Parse for MethodApplicationExpression {
         } = &self.method_name_binding.inner
         {
             let (type_info, ident) = &call_path_binding.inner.suffix;
-            collect_type_info_token(ctx, type_info, Some(ident.span()));
+            collect_type_info_token(ctx, type_info, Some(&ident.span()));
         }
         self.method_name_binding
             .type_arguments
@@ -703,6 +705,7 @@ impl Parse for TraitDeclaration {
         );
         self.interface_surface.iter().for_each(|item| match item {
             TraitItem::TraitFn(trait_fn) => trait_fn.parse(ctx),
+            TraitItem::Constant(const_decl) => const_decl.parse(ctx),
         });
         self.methods.iter().for_each(|func_dec| {
             func_dec.parse(ctx);
@@ -772,6 +775,7 @@ impl Parse for ImplTrait {
         });
         self.items.iter().for_each(|item| match item {
             ImplItem::Fn(fn_decl) => fn_decl.parse(ctx),
+            ImplItem::Constant(const_decl) => const_decl.parse(ctx),
         });
     }
 }
@@ -801,6 +805,7 @@ impl Parse for ImplSelf {
         });
         self.items.iter().for_each(|item| match item {
             ImplItem::Fn(fn_decl) => fn_decl.parse(ctx),
+            ImplItem::Constant(const_decl) => const_decl.parse(ctx),
         });
     }
 }
@@ -816,6 +821,7 @@ impl Parse for AbiDeclaration {
         );
         self.interface_surface.iter().for_each(|item| match item {
             TraitItem::TraitFn(trait_fn) => trait_fn.parse(ctx),
+            TraitItem::Constant(const_decl) => const_decl.parse(ctx),
         });
         self.supertraits.iter().for_each(|supertrait| {
             supertrait.parse(ctx);
@@ -880,7 +886,7 @@ impl Parse for TraitFn {
         self.parameters.iter().for_each(|param| {
             param.parse(ctx);
         });
-        collect_type_info_token(ctx, &self.return_type, Some(self.return_type_span.clone()));
+        collect_type_info_token(ctx, &self.return_type, Some(&self.return_type_span));
         self.attributes.parse(ctx);
     }
 }
@@ -971,7 +977,7 @@ impl Parse for TypeArgument {
                 }
             }
             _ => {
-                let symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), &type_info);
+                let symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), &type_info, None);
                 if let Some(tree) = &self.call_path_tree {
                     let token =
                         Token::from_parsed(AstToken::TypeArgument(self.clone()), symbol_kind);
@@ -982,8 +988,22 @@ impl Parse for TypeArgument {
     }
 }
 
-fn collect_type_info_token(ctx: &ParseContext, type_info: &TypeInfo, type_span: Option<Span>) {
-    let symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), type_info);
+impl Parse for TypeAliasDeclaration {
+    fn parse(&self, ctx: &ParseContext) {
+        ctx.tokens.insert(
+            to_ident_key(&self.name),
+            Token::from_parsed(
+                AstToken::Declaration(Declaration::TypeAliasDeclaration(self.clone())),
+                SymbolKind::TypeAlias,
+            ),
+        );
+        self.ty.parse(ctx);
+        self.attributes.parse(ctx);
+    }
+}
+
+fn collect_type_info_token(ctx: &ParseContext, type_info: &TypeInfo, type_span: Option<&Span>) {
+    let symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), type_info, type_span);
     match type_info {
         TypeInfo::Str(length) => {
             let ident = Ident::new(length.span());
@@ -1021,7 +1041,7 @@ fn collect_type_info_token(ctx: &ParseContext, type_info: &TypeInfo, type_span: 
         }
         _ => {
             if let Some(type_span) = type_span {
-                let ident = Ident::new(type_span);
+                let ident = Ident::new(type_span.clone());
                 ctx.tokens.insert(
                     to_ident_key(&ident),
                     Token::from_parsed(AstToken::Ident(ident.clone()), symbol_kind),

@@ -22,7 +22,7 @@ jobs:
   build-sway-lib-core:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -36,7 +36,7 @@ jobs:
   build-sway-lib-std:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -50,7 +50,7 @@ jobs:
   build-sway-examples:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -62,7 +62,7 @@ jobs:
   forc-fmt-check-sway-examples:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -74,7 +74,7 @@ jobs:
   build-mdbook:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -123,7 +123,7 @@ jobs:
   build-forc-doc-sway-lib-std:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -140,7 +140,7 @@ jobs:
   build-forc-test-project:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -172,7 +172,7 @@ jobs:
   cargo-build-workspace:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -186,7 +186,7 @@ jobs:
   cargo-clippy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -199,7 +199,7 @@ jobs:
   cargo-toml-fmt-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -215,7 +215,7 @@ jobs:
   cargo-fmt-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -228,11 +228,11 @@ jobs:
     runs-on: ubuntu-latest
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.17.0
+        image: ghcr.io/fuellabs/fuel-core:v0.17.4
         ports:
           - 4000:4000
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -244,7 +244,7 @@ jobs:
   cargo-run-e2e-test-evm:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -256,7 +256,7 @@ jobs:
   cargo-run-e2e-test-midenvm:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -269,7 +269,7 @@ jobs:
   cargo-test-lib-std:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -278,12 +278,12 @@ jobs:
       - name: Build All Tests
         run: cd test/src/sdk-harness && bash build.sh --locked && cd ../../../
       - name: Cargo Test sway-lib-std
-        run: cargo test --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
+        run: cargo test --locked --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
 
   forc-unit-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -297,7 +297,7 @@ jobs:
   forc-pkg-fuels-deps-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -329,11 +329,11 @@ jobs:
               ;;
           esac
 
- 
+
   cargo-test-workspace:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -345,7 +345,7 @@ jobs:
   cargo-unused-deps-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -410,7 +410,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
@@ -483,7 +483,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Docker meta
         id: meta
@@ -545,7 +545,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Docker meta
         id: meta
@@ -620,7 +620,7 @@ jobs:
             svm_target_platform: macosx-aarch64
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
@@ -643,6 +643,29 @@ jobs:
         run: |
           cross build --profile=release --target ${{ matrix.job.target }} --bins
 
+      - name: Strip release binaries x86_64-linux-gnu
+        if: matrix.job.target == 'x86_64-unknown-linux-gnu'
+        run: |
+          for BINARY in forc forc-fmt forc-lsp forc-deploy forc-run forc-doc forc-tx forc-submit; do
+            strip "target/${{ matrix.job.target }}/release/$BINARY"
+          done
+      - name: Strip release binaries aarch64-linux-gnu
+        if: matrix.job.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          for BINARY in forc forc-fmt forc-lsp forc-deploy forc-run forc-doc forc-tx forc-submit; do
+            docker run --rm -v \
+            "$PWD/target:/target:Z" \
+            ghcr.io/cross-rs/${{ matrix.job.target }}:main \
+            aarch64-linux-gnu-strip \
+            /target/${{ matrix.job.target }}/release/$BINARY
+          done
+      - name: Strip release binaries mac
+        if: matrix.job.os == 'macos-latest'
+        run: |
+          for BINARY in forc forc-fmt forc-lsp forc-deploy forc-run forc-doc forc-tx forc-submit; do
+            strip -x "target/${{ matrix.job.target }}/release/$BINARY"
+          done
+
       - name: Prep Assets
         id: prep_assets
         env:
@@ -653,7 +676,7 @@ jobs:
           ZIP_FILE_NAME=forc-binaries-${{ env.PLATFORM_NAME }}_${{ env.ARCH }}.tar.gz
           echo "ZIP_FILE_NAME=$ZIP_FILE_NAME" >> $GITHUB_ENV
           mkdir -pv ./forc-binaries
-          for BINARY in forc forc-fmt forc-lsp forc-deploy forc-run forc-doc forc-tx; do
+          for BINARY in forc forc-fmt forc-lsp forc-deploy forc-run forc-doc forc-tx forc-submit; do
             cp "target/${{ matrix.job.target }}/release/$BINARY" ./forc-binaries
           done
           tar -czvf $ZIP_FILE_NAME ./forc-binaries

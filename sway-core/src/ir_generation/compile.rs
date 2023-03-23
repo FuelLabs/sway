@@ -3,8 +3,9 @@ use crate::{
     language::{ty, Visibility},
     metadata::MetadataManager,
     semantic_analysis::namespace,
-    type_system::{LogId, MessageId, TypeId},
-    Engines, TypeEngine,
+    type_system::*,
+    types::*,
+    Engines,
 };
 
 use super::{
@@ -201,19 +202,24 @@ pub(crate) fn compile_constants(
 ) -> Result<(), CompileError> {
     let (type_engine, decl_engine) = engines.unwrap();
     for decl_name in module_ns.get_all_declared_symbols() {
-        compile_const_decl(
-            &mut LookupEnv {
-                type_engine,
-                decl_engine,
-                context,
-                md_mgr,
-                module,
-                module_ns: Some(module_ns),
-                function_compiler: None,
-                lookup: compile_const_decl,
-            },
-            decl_name,
-        )?;
+        if let Some(ty::TyDeclaration::ConstantDeclaration { decl_id, .. }) =
+            module_ns.symbols.get(decl_name)
+        {
+            let ty::TyConstantDeclaration { call_path, .. } = engines.de().get_constant(decl_id);
+            compile_const_decl(
+                &mut LookupEnv {
+                    type_engine,
+                    decl_engine,
+                    context,
+                    md_mgr,
+                    module,
+                    module_ns: Some(module_ns),
+                    function_compiler: None,
+                    lookup: compile_const_decl,
+                },
+                &call_path,
+            )?;
+        }
     }
 
     for submodule_ns in module_ns.submodules().values() {
@@ -256,7 +262,7 @@ fn compile_declarations(
                         function_compiler: None,
                         lookup: compile_const_decl,
                     },
-                    &decl.name,
+                    &decl.call_path,
                 )?;
             }
 
@@ -285,6 +291,7 @@ fn compile_declarations(
             | ty::TyDeclaration::AbiDeclaration { .. }
             | ty::TyDeclaration::GenericTypeForFunctionScope { .. }
             | ty::TyDeclaration::StorageDeclaration { .. }
+            | ty::TyDeclaration::TypeAliasDeclaration { .. }
             | ty::TyDeclaration::ErrorRecovery(_) => (),
         }
     }
@@ -461,7 +468,7 @@ fn compile_fn_with_args(
     let storage_md_idx = md_mgr.purity_to_md(context, *purity);
     let mut metadata = md_combine(context, &span_md_idx, &storage_md_idx);
 
-    let decl_index = test_decl_ref.map(|decl_ref| decl_ref.id);
+    let decl_index = test_decl_ref.map(|decl_ref| *decl_ref.id());
     if let Some(decl_index) = decl_index {
         let test_decl_index_md_idx = md_mgr.test_decl_index_to_md(context, decl_index);
         metadata = md_combine(context, &metadata, &test_decl_index_md_idx);

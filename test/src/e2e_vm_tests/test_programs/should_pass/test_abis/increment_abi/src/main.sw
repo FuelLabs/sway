@@ -1,4 +1,4 @@
-library increment_abi;
+library;
 
 abi Incrementor {
     #[storage(read, write)]

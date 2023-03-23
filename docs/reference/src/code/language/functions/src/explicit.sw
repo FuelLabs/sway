@@ -1,4 +1,4 @@
-library explicit;
+library;
 
 // ANCHOR: main
 fn main() -> bool {

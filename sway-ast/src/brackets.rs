@@ -2,7 +2,7 @@ use crate::priv_prelude::*;
 
 macro_rules! define_brackets (
     ($ty_name:ident) => {
-        #[derive(Clone, Debug)]
+        #[derive(Clone, Debug, Serialize)]
         pub struct $ty_name<T> {
             pub inner: T,
             pub span: Span,
@@ -37,7 +37,7 @@ define_brackets!(Braces);
 define_brackets!(Parens);
 define_brackets!(SquareBrackets);
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct AngleBrackets<T> {
     pub open_angle_bracket_token: OpenAngleBracketToken,
     pub inner: T,

@@ -15,7 +15,7 @@ trait RequiredMethods {
 impl RequiredMethods for Vec<DeclRefTraitFn> {
     fn to_methods(&self, decl_engine: &DeclEngine) -> Vec<TyTraitFn> {
         self.iter()
-            .map(|DeclRef { id, .. }| decl_engine.get_trait_fn(id))
+            .map(|decl_ref| decl_engine.get_trait_fn(decl_ref))
             .collect()
     }
 }
@@ -39,8 +39,8 @@ impl Descriptor {
         use swayfmt::parse;
         use TyDeclaration::*;
         match ty_decl {
-            StructDeclaration(decl_ref) => {
-                let struct_decl = decl_engine.get_struct(decl_ref);
+            StructDeclaration { decl_id, .. } => {
+                let struct_decl = decl_engine.get_struct(decl_id);
                 if !document_private_items && struct_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
@@ -75,8 +75,8 @@ impl Descriptor {
                     }))
                 }
             }
-            EnumDeclaration(decl_ref) => {
-                let enum_decl = decl_engine.get_enum(decl_ref);
+            EnumDeclaration { decl_id, .. } => {
+                let enum_decl = decl_engine.get_enum(decl_id);
                 if !document_private_items && enum_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
@@ -128,6 +128,7 @@ impl Descriptor {
                                     .into_iter()
                                     .flat_map(|item| match item {
                                         TyTraitInterfaceItem::TraitFn(fn_decl) => Some(fn_decl),
+                                        _ => None,
                                     })
                                     .collect::<Vec<_>>()
                                     .to_methods(decl_engine),
@@ -170,6 +171,7 @@ impl Descriptor {
                             .into_iter()
                             .flat_map(|item| match item {
                                 TyTraitInterfaceItem::TraitFn(fn_decl) => Some(fn_decl),
+                                _ => None,
                             })
                             .collect::<Vec<_>>()
                             .to_methods(decl_engine),
@@ -293,7 +295,7 @@ impl Descriptor {
                 if !document_private_items && const_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
-                    let item_name = const_decl.name;
+                    let item_name = const_decl.call_path.suffix;
                     let attrs_opt = (!const_decl.attributes.is_empty())
                         .then(|| const_decl.attributes.to_html_string());
 

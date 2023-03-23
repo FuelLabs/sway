@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::{DeclEngineIndex, DeclRefFunction},
+    decl_engine::{DeclEngineInsert, DeclRefFunction},
     error::*,
     language::{parsed::*, ty, *},
     semantic_analysis::*,
@@ -283,7 +283,10 @@ pub(crate) fn type_check_method_application(
     // build the function selector
     let selector = if method.is_contract_call {
         let contract_caller = args_buf.pop_front();
-        let contract_address = match contract_caller.map(|x| type_engine.get(x.return_type)) {
+        let contract_address = match contract_caller
+            .clone()
+            .map(|x| type_engine.get(x.return_type))
+        {
             Some(TypeInfo::ContractCaller { address, .. }) => address,
             _ => {
                 errors.push(CompileError::Internal(
@@ -307,9 +310,11 @@ pub(crate) fn type_check_method_application(
             warnings,
             errors
         );
+        let contract_caller = contract_caller.unwrap();
         Some(ty::ContractCallParams {
             func_selector,
             contract_address,
+            contract_caller: Box::new(contract_caller),
         })
     } else {
         None
@@ -346,7 +351,7 @@ pub(crate) fn type_check_method_application(
             call_path,
             contract_call_params: contract_call_params_map,
             arguments: typed_arguments_with_names,
-            function_decl_ref: decl_ref,
+            fn_ref: decl_ref,
             self_state_idx,
             selector,
             type_binding: Some(method_name_binding.strip_inner()),
@@ -527,7 +532,7 @@ pub(crate) fn resolve_method_name(
     let decl_ref = ctx
         .decl_engine
         .insert(func_decl)
-        .with_parent(ctx.decl_engine, decl_ref.id.into());
+        .with_parent(ctx.decl_engine, (*decl_ref.id()).into());
 
     ok(decl_ref, warnings, errors)
 }

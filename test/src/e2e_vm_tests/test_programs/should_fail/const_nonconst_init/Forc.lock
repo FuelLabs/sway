@@ -1,8 +1,0 @@
-[[package]]
-name = 'const_nonconst_init'
-source = 'member'
-dependencies = ['core']
-
-[[package]]
-name = 'core'
-source = 'path+from-root-E57A3612ABF8CF11'

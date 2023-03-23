@@ -11,7 +11,7 @@ impl Format for ItemKind {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         match self {
-            Dependency(item_dep) => item_dep.format(formatted_code, formatter),
+            Submodule(item_mod) => item_mod.format(formatted_code, formatter),
             Use(item_use) => item_use.format(formatted_code, formatter),
             Struct(item_struct) => item_struct.format(formatted_code, formatter),
             Enum(item_enum) => item_enum.format(formatted_code, formatter),
@@ -22,6 +22,7 @@ impl Format for ItemKind {
             Const(item_const) => item_const.format(formatted_code, formatter),
             Storage(item_storage) => item_storage.format(formatted_code, formatter),
             Configurable(item_configurable) => item_configurable.format(formatted_code, formatter),
+            TypeAlias(item_type_alias) => item_type_alias.format(formatted_code, formatter),
         }
     }
 }
@@ -29,7 +30,7 @@ impl Format for ItemKind {
 impl LeafSpans for ItemKind {
     fn leaf_spans(&self) -> Vec<ByteSpan> {
         match self {
-            Dependency(item_dep) => item_dep.leaf_spans(),
+            Submodule(item_mod) => item_mod.leaf_spans(),
             Struct(item_struct) => item_struct.leaf_spans(),
             Enum(item_enum) => item_enum.leaf_spans(),
             Fn(item_fn) => item_fn.leaf_spans(),
@@ -40,6 +41,7 @@ impl LeafSpans for ItemKind {
             Impl(item_impl) => item_impl.leaf_spans(),
             Use(item_use) => item_use.leaf_spans(),
             Configurable(item_configurable) => item_configurable.leaf_spans(),
+            TypeAlias(item_type_alias) => item_type_alias.leaf_spans(),
         }
     }
 }

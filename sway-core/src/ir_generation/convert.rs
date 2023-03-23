@@ -143,6 +143,9 @@ fn convert_resolved_type(
         }
         TypeInfo::RawUntypedPtr => Type::get_uint64(context),
         TypeInfo::RawUntypedSlice => Type::get_slice(context),
+        TypeInfo::Alias { ty, .. } => {
+            convert_resolved_typeid(type_engine, decl_engine, context, &ty.type_id, span)?
+        }
 
         // Unsupported types which shouldn't exist in the AST after type checking and
         // monomorphisation.
@@ -153,6 +156,7 @@ fn convert_resolved_type(
         TypeInfo::Unknown => reject_type!("Unknown"),
         TypeInfo::UnknownGeneric { .. } => reject_type!("Generic"),
         TypeInfo::Placeholder(_) => reject_type!("Placeholder"),
+        TypeInfo::TypeParam(_) => reject_type!("TypeParam"),
         TypeInfo::ErrorRecovery => reject_type!("Error recovery"),
         TypeInfo::Storage { .. } => reject_type!("Storage"),
     })

@@ -1,9 +1,9 @@
 //! Functionality for performing common operations with tokens.
-library token;
+library;
 
 use ::address::Address;
 use ::call_frames::contract_id;
-use ::contract_id::ContractId;
+use ::contract_id::{ContractId, AssetId};
 use ::error_signals::FAILED_TRANSFER_TO_ADDRESS_SIGNAL;
 use ::identity::Identity;
 use ::revert::revert;
@@ -145,7 +145,7 @@ pub fn burn(amount: u64) {
 /// ### Arguments
 ///
 /// * `amount` - The amount of tokens to transfer.
-/// * `asset_id` - The `ContractId` of the token to transfer.
+/// * `asset_id` - The `AssetId` of the token to transfer.
 /// * `to` - The `Identity` of the recipient.
 ///
 /// ### Reverts
@@ -165,7 +165,7 @@ pub fn burn(amount: u64) {
 /// transfer(500, BASE_ASSET_ID, to_address);
 /// transfer(500, BASE_ASSET_ID, to_contract_id);
 /// ```
-pub fn transfer(amount: u64, asset_id: ContractId, to: Identity) {
+pub fn transfer(amount: u64, asset_id: AssetId, to: Identity) {
     match to {
         Identity::Address(addr) => transfer_to_address(amount, asset_id, addr),
         Identity::ContractId(id) => force_transfer_to_contract(amount, asset_id, id),
@@ -184,7 +184,7 @@ pub fn transfer(amount: u64, asset_id: ContractId, to: Identity) {
 /// ### Arguments
 ///
 /// * `amount` - The amount of tokens to transfer.
-/// * `asset_id` - The `ContractId` of the token to transfer.
+/// * `asset_id` - The `AssetId` of the token to transfer.
 /// * `to` - The `ContractId` of the recipient contract.
 ///
 /// ### Reverts
@@ -201,7 +201,7 @@ pub fn transfer(amount: u64, asset_id: ContractId, to: Identity) {
 /// let to_contract_id = Identity::ContractId(ContractId::from(ZERO_B256));
 /// force_transfer_to_contract(500, BASE_ASSET_ID, to_contract_id);
 /// ```
-pub fn force_transfer_to_contract(amount: u64, asset_id: ContractId, to: ContractId) {
+pub fn force_transfer_to_contract(amount: u64, asset_id: AssetId, to: ContractId) {
     asm(r1: amount, r2: asset_id.value, r3: to.value) {
         tr r3 r1 r2;
     }
@@ -213,7 +213,7 @@ pub fn force_transfer_to_contract(amount: u64, asset_id: ContractId, to: Contrac
 /// ### Arguments
 ///
 /// * `amount` - The amount of tokens to transfer.
-/// * `asset_id` - The `ContractId` of the token to transfer.
+/// * `asset_id` - The `AssetId` of the token to transfer.
 /// * `to` - The `Address` of the recipient user.
 ///
 /// ### Reverts
@@ -231,7 +231,7 @@ pub fn force_transfer_to_contract(amount: u64, asset_id: ContractId, to: Contrac
 /// let to_address = Identity::Address(Address::from(ZERO_B256));
 /// transfer_to_address(500, BASE_ASSET_ID, to_address);
 /// ```
-pub fn transfer_to_address(amount: u64, asset_id: ContractId, to: Address) {
+pub fn transfer_to_address(amount: u64, asset_id: AssetId, to: Address) {
     // maintain a manual index as we only have `while` loops in sway atm:
     let mut index = 0;
 

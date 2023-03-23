@@ -1,6 +1,6 @@
 //! Getters for fields on transaction inputs.
 //! This includes `Input::Coins`, `Input::Messages` and `Input::Contracts`.
-library inputs;
+library;
 
 use ::address::Address;
 use ::assert::assert;

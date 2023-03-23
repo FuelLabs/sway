@@ -2,7 +2,7 @@ use sway_error::error::CompileError;
 use sway_types::Spanned;
 
 use crate::{
-    decl_engine::DeclEngineIndex,
+    decl_engine::DeclEngineInsert,
     error::*,
     language::{
         parsed::*,
@@ -72,6 +72,10 @@ impl ty::TyAbiDeclaration {
                     new_interface_surface.push(ty::TyTraitInterfaceItem::TraitFn(
                         ctx.decl_engine.insert(method),
                     ));
+                }
+                TraitItem::Constant(_) => {
+                    // not implemented for now since abis and traits will be unified soon
+                    todo!();
                 }
             }
         }

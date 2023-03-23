@@ -5,7 +5,7 @@ use std::revert::*;
 
 fn third_match<A>(value: A) -> u8 {
   match value {
-    foo => 5u8,
+    _foo => 5u8,
   }
 }
 
@@ -65,7 +65,7 @@ fn double<Y>(the_second: Y) -> Y {
 
 fn generic_match<G>(value: G) -> u64 {
   match value {
-    foo => 3u64,
+    _foo => 3u64,
   }
 }
 

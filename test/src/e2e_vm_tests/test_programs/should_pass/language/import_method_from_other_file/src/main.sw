@@ -1,8 +1,8 @@
 script;
 
-dep context;
-dep asset;
-dep utils;
+mod context;
+mod asset;
+mod utils;
 
 use context::Context;
 use utils::Wrapper;

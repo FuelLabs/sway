@@ -886,15 +886,15 @@ fn render_type_anchor(
             let enum_decl = render_plan.decl_engine.get_enum(&decl_ref);
             if !render_plan.document_private_items && enum_decl.visibility.is_private() {
                 Ok(box_html! {
-                    : decl_ref.name.as_str();
+                    : decl_ref.name().clone().as_str();
                 })
             } else {
                 let module_info = ModuleInfo::from_call_path(enum_decl.call_path);
-                let file_name = format!("enum.{}.html", decl_ref.name.as_str());
+                let file_name = format!("enum.{}.html", decl_ref.name().clone().as_str());
                 let href = module_info.file_path_from_location(&file_name, current_module_info)?;
                 Ok(box_html! {
                     a(class="enum", href=href) {
-                        : decl_ref.name.as_str();
+                        : decl_ref.name().clone().as_str();
                     }
                 })
             }
@@ -903,15 +903,15 @@ fn render_type_anchor(
             let struct_decl = render_plan.decl_engine.get_struct(&decl_ref);
             if !render_plan.document_private_items && struct_decl.visibility.is_private() {
                 Ok(box_html! {
-                    : decl_ref.name.as_str();
+                    : decl_ref.name().clone().as_str();
                 })
             } else {
                 let module_info = ModuleInfo::from_call_path(struct_decl.call_path);
-                let file_name = format!("struct.{}.html", decl_ref.name.as_str());
+                let file_name = format!("struct.{}.html", decl_ref.name().clone().as_str());
                 let href = module_info.file_path_from_location(&file_name, current_module_info)?;
                 Ok(box_html! {
                     a(class="struct", href=href) {
-                        : decl_ref.name.as_str();
+                        : decl_ref.name().clone().as_str();
                     }
                 })
             }
@@ -1159,8 +1159,8 @@ impl BlockTitle {
 impl DocBlockTitle for TyDeclaration {
     fn as_block_title(&self) -> BlockTitle {
         match self {
-            TyDeclaration::StructDeclaration(_) => BlockTitle::Structs,
-            TyDeclaration::EnumDeclaration(_) => BlockTitle::Enums,
+            TyDeclaration::StructDeclaration { .. } => BlockTitle::Structs,
+            TyDeclaration::EnumDeclaration { .. } => BlockTitle::Enums,
             TyDeclaration::TraitDeclaration { .. } => BlockTitle::Traits,
             TyDeclaration::AbiDeclaration { .. } => BlockTitle::Abi,
             TyDeclaration::StorageDeclaration { .. } => BlockTitle::ContractStorage,
@@ -1560,9 +1560,10 @@ impl DocStrings for AttributesMap {
         let mut docs = String::new();
 
         if let Some(vec_attrs) = attributes {
-            for ident in vec_attrs.iter().flat_map(|attribute| &attribute.args) {
-                writeln!(docs, "{}", ident.as_str())
-                    .expect("problem appending `ident.as_str()` to `docs` with `writeln` macro.");
+            for arg in vec_attrs.iter().flat_map(|attribute| &attribute.args) {
+                writeln!(docs, "{}", arg.name.as_str()).expect(
+                    "problem appending `arg.name.as_str()` to `docs` with `writeln` macro.",
+                );
             }
         }
         docs

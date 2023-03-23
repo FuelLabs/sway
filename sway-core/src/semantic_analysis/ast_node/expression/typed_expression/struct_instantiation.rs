@@ -2,6 +2,7 @@ use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
+    decl_engine::DeclRefStruct,
     error::*,
     language::{parsed::*, ty, CallPath},
     semantic_analysis::TypeCheckContext,
@@ -24,7 +25,8 @@ pub(crate) fn struct_instantiation(
     // We need the call_path_binding to have types that point to proper definitions so the LSP can
     // look for them, but its types haven't been resolved yet.
     // To that end we do a dummy type check which has the side effect of resolving the types.
-    let _ = TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref());
+    let _: CompileResult<(DeclRefStruct, _)> =
+        TypeBinding::type_check(&mut call_path_binding, ctx.by_ref());
 
     let TypeBinding {
         inner: CallPath {
@@ -86,12 +88,13 @@ pub(crate) fn struct_instantiation(
 
     // extract the struct name and fields from the type info
     let type_info = type_engine.get(type_id);
-    let struct_decl = decl_engine.get_struct(&check!(
+    let struct_ref = check!(
         type_info.expect_struct(engines, &span),
         return err(warnings, errors),
         warnings,
         errors
-    ));
+    );
+    let struct_decl = decl_engine.get_struct(&struct_ref);
     let struct_name = struct_decl.call_path.suffix;
     let struct_fields = struct_decl.fields;
     let mut struct_fields = struct_fields;
@@ -129,9 +132,9 @@ pub(crate) fn struct_instantiation(
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::StructExpression {
-            struct_name,
+            struct_ref,
             fields: typed_fields,
-            span: inner_span,
+            instantiation_span: inner_span,
             call_path_binding,
         },
         return_type: type_id,

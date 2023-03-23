@@ -7,17 +7,17 @@ Libraries in Sway are files used to define new common behavior. The most promine
 Libraries are defined using the `library` keyword at the beginning of a file, followed by a name so that they can be imported.
 
 ```sway
-library my_library;
+library;
 
 // library code
 ```
 
 A good reference library to use when learning library design is the [Sway Standard Library](../introduction/standard_library.html). For example, the standard library offers an [implementation](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/option.sw) of `enum Option<T>` which is a generic type that represents either the existence of a value using the variant `Some(..)` or a value's absence using the variant `None`. The [Sway file implementing `Option<T>`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/option.sw) has the following structure:
 
-- The `library` keyword followed by the name of the library:
+- The `library` keyword:
 
 ```sway
-library option;
+library;
 ```
 
 - A `use` statement that imports `revert` from another library _inside_ the standard library:
@@ -63,26 +63,39 @@ name = "my_library"
 
 which denotes the authors, an entry file, the name by which it can be imported, and any dependencies.
 
-For large libraries, it is recommended to have a `lib.sw` entry point re-export all other sub-libraries. For example, the `lib.sw` of the standard library looks like:
+For large libraries, it is recommended to have a `lib.sw` entry point re-export all other sub-libraries.
+
+The `mod` keyword registers a submodule, making its items (such as functions and structs) accessible from the parent library.
+If used at the top level it will refer to a file in the `src` folder and in other cases in a folder named after the library in which it is defined.
+
+For example, the `lib.sw` of the standard library looks like:
 
 ```sway
-library std;
+library;
 
-dep block;
-dep storage;
-dep constants;
+mod block;
+mod storage;
+mod constants;
+mod vm;
 // .. Other deps
 ```
 
-with other libraries contained in the `src` folder, like the block library (inside of `block.sw`):
+with other libraries contained in the `src` folder, like the vm library (inside of `src/vm.sw`):
 
 ```sway
-library block;
+library;
 
-// Implementation of the `block` library
+mod evm;
+// ...
 ```
 
-The `dep` keyword in the main library includes a dependency on another library, making all of its items (such as functions and structs) accessible from the main library. The `dep` keyword simply makes the library a dependency and fully accessible within the current context.
+and it's own sub-library evm located in `src/vm/evm.sw`:
+
+```sway
+library;
+
+// ...
+```
 
 ## Using Libraries
 
@@ -90,7 +103,8 @@ There are two types of Sway libraries, based on their location and how they can 
 
 ### Internal Libraries
 
-Internal libraries are located within the project's `src` directory alongside `main.sw` as shown below:
+Internal libraries are located within the project's `src` directory alongside
+`main.sw` or in the appropriate folders as shown below:
 
 ```bash
 $ tree
@@ -99,16 +113,18 @@ $ tree
 ├── Forc.toml
 └── src
     ├── internal_lib.sw
-    └── main.sw
+    ├── main.sw
+    └── internal_lib
+        └── nested_lib.sw
 ```
 
 As `internal_lib` is an internal library, it can be imported into `main.sw` as follows:
 
-- Use the `dep` keyword followed by the library name to make the internal library a dependancy
+- Use the `mod` keyword followed by the library name to make the internal library a dependancy
 - Use the `use` keyword with a `::` separating the name of the library and the imported item(s)
 
 ```sway
-dep internal_lib; // Assuming the library name in `internal_lib.sw` is `internal_lib`
+mod internal_lib; // Assuming the library name in `internal_lib.sw` is `internal_lib`
 
 use internal_lib::mint;
 

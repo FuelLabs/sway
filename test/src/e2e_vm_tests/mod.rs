@@ -16,6 +16,7 @@ use regex::Regex;
 use std::collections::HashSet;
 use std::io::stdout;
 use std::io::Write;
+use std::str::FromStr;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -126,7 +127,7 @@ impl TestContext {
                 let compiled = result?;
 
                 let compiled = match compiled {
-                    forc_pkg::Built::Package(built_pkg) => *built_pkg,
+                    forc_pkg::Built::Package(built_pkg) => built_pkg.as_ref().clone(),
                     forc_pkg::Built::Workspace(_) => {
                         panic!("workspaces are not supported in the test suite yet")
                     }
@@ -208,11 +209,16 @@ impl TestContext {
                                 built_pkg.warnings.len()
                             )));
                         }
-                        vec![(name.clone(), *built_pkg)]
+                        vec![(name.clone(), built_pkg.as_ref().clone())]
                     }
                     forc_pkg::Built::Workspace(built_workspace) => built_workspace
                         .iter()
-                        .map(|(n, b)| (n.clone(), b.clone()))
+                        .map(|built_pkg| {
+                            (
+                                built_pkg.descriptor.pinned.name.clone(),
+                                built_pkg.as_ref().clone(),
+                            )
+                        })
                         .collect(),
                 };
 
@@ -324,7 +330,7 @@ impl TestContext {
                             .map(move |test| {
                                 format!(
                                     "{}: Test '{}' failed with state {:?}, expected: {:?}",
-                                    tested_pkg.built.pkg_name,
+                                    tested_pkg.built.descriptor.name,
                                     test.name,
                                     test.state,
                                     test.condition,
@@ -707,10 +713,8 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription> {
 
 fn get_test_abi_from_value(value: &toml::Value) -> Result<BuildTarget> {
     match value.as_str() {
-        Some(target) => match target {
-            "fuel" => Ok(BuildTarget::Fuel),
-            "evm" => Ok(BuildTarget::EVM),
-            "miden-vm" | "midenvm" => Ok(BuildTarget::MidenVM),
+        Some(target) => match BuildTarget::from_str(target) {
+            Ok(target) => Ok(target),
             _ => Err(anyhow!(format!("Unknown build target: {target}"))),
         },
         None => Err(anyhow!("Invalid TOML value")),

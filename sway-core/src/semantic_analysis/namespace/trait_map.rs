@@ -7,7 +7,7 @@ use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    decl_engine::{DeclEngineIndex, DeclRefFunction},
+    decl_engine::{DeclEngineGet, DeclEngineInsert},
     engine_threading::*,
     error::*,
     language::{
@@ -118,7 +118,10 @@ impl TraitMap {
         for item in items.iter() {
             match item {
                 TyImplItem::Fn(decl_ref) => {
-                    trait_items.insert(decl_ref.name.to_string(), item.clone());
+                    trait_items.insert(decl_ref.name().clone().to_string(), item.clone());
+                }
+                TyImplItem::Constant(decl_ref) => {
+                    trait_items.insert(decl_ref.name().to_string(), item.clone());
                 }
             }
         }
@@ -200,9 +203,19 @@ impl TraitMap {
                             if map_trait_items.get(name).is_some() {
                                 errors.push(CompileError::DuplicateDeclDefinedForType {
                                     decl_kind: "method".into(),
-                                    decl_name: decl_ref.name.to_string(),
+                                    decl_name: decl_ref.name().to_string(),
                                     type_implementing_for: engines.help_out(type_id).to_string(),
-                                    span: decl_ref.name.span(),
+                                    span: decl_ref.name().span(),
+                                });
+                            }
+                        }
+                        ty::TyTraitItem::Constant(decl_ref) => {
+                            if map_trait_items.get(name).is_some() {
+                                errors.push(CompileError::DuplicateDeclDefinedForType {
+                                    decl_kind: "constant".into(),
+                                    decl_name: decl_ref.name().to_string(),
+                                    type_implementing_for: engines.help_out(type_id).to_string(),
+                                    span: decl_ref.name().span(),
                                 });
                             }
                         }
@@ -370,7 +383,7 @@ impl TraitMap {
     ///
     /// `data.sw`:
     /// ```ignore
-    /// library data;
+    /// library;
     ///
     /// enum MyResult<T, E> {
     ///     Ok: T,
@@ -403,7 +416,7 @@ impl TraitMap {
     /// ```ignore
     /// script;
     ///
-    /// dep data;
+    /// mod data;
     ///
     /// use data::Data;
     ///
@@ -464,14 +477,11 @@ impl TraitMap {
     /// with those entries for `Data<T, T>`.
     pub(crate) fn filter_by_type(&self, type_id: TypeId, engines: Engines<'_>) -> TraitMap {
         let type_engine = engines.te();
-        let decl_engine = engines.de();
         // a curried version of the decider protocol to use in the helper functions
         let decider = |type_info: &TypeInfo, map_type_info: &TypeInfo| {
             type_info.is_subset_of(map_type_info, engines)
         };
-        let mut all_types = type_engine
-            .get(type_id)
-            .extract_inner_types(type_engine, decl_engine);
+        let mut all_types = type_engine.get(type_id).extract_inner_types(engines);
         all_types.insert(type_id);
         let all_types = all_types.into_iter().collect::<Vec<_>>();
         self.filter_by_type_inner(engines, all_types, decider)
@@ -490,7 +500,7 @@ impl TraitMap {
     ///
     /// `my_double.sw`:
     /// ```ignore
-    /// library my_double;
+    /// library;
     ///
     /// pub trait MyDouble<T> {
     ///     fn my_double(self, input: T) -> T;
@@ -499,7 +509,7 @@ impl TraitMap {
     ///
     /// `my_point.sw`:
     /// ```ignore
-    /// library my_point;
+    /// library;
     ///
     /// use ::my_double::MyDouble;
     ///
@@ -519,8 +529,8 @@ impl TraitMap {
     /// ```ignore
     /// script;
     ///
-    /// dep my_double;
-    /// dep my_point;
+    /// mod my_double;
+    /// mod my_point;
     ///
     /// use my_point::MyPoint;
     ///
@@ -541,7 +551,6 @@ impl TraitMap {
         engines: Engines<'_>,
     ) -> TraitMap {
         let type_engine = engines.te();
-        let decl_engine = engines.de();
         // a curried version of the decider protocol to use in the helper functions
         let decider = |type_info: &TypeInfo, map_type_info: &TypeInfo| {
             type_info.is_subset_of(map_type_info, engines)
@@ -550,7 +559,7 @@ impl TraitMap {
         let mut trait_map = self.filter_by_type_inner(engines, vec![type_id], decider);
         let all_types = type_engine
             .get(type_id)
-            .extract_inner_types(type_engine, decl_engine)
+            .extract_inner_types(engines)
             .into_iter()
             .collect::<Vec<_>>();
         // a curried version of the decider protocol to use in the helper functions
@@ -603,21 +612,23 @@ impl TraitMap {
                     let trait_items: TraitItems = map_trait_items
                         .clone()
                         .into_iter()
-                        .map(|(name, item)| {
-                            #[allow(clippy::infallible_destructuring_match)]
-                            let decl_ref = match &item {
-                                ty::TyTraitItem::Fn(decl_ref) => decl_ref,
-                            };
-                            let mut decl = decl_engine.get(decl_ref.id);
-                            decl.subst(&type_mapping, engines);
-                            decl.replace_self_type(engines, new_self_type);
-                            let new_ref = decl_engine
-                                .insert(decl)
-                                .with_parent(decl_engine, decl_ref.id.into());
-                            let item = match item {
-                                ty::TyTraitItem::Fn(_) => TyImplItem::Fn(new_ref),
-                            };
-                            (name, item)
+                        .map(|(name, item)| match &item {
+                            ty::TyTraitItem::Fn(decl_ref) => {
+                                let mut decl = decl_engine.get(decl_ref.id());
+                                decl.subst(&type_mapping, engines);
+                                decl.replace_self_type(engines, new_self_type);
+                                let new_ref = decl_engine
+                                    .insert(decl)
+                                    .with_parent(decl_engine, decl_ref.id().into());
+                                (name, TyImplItem::Fn(new_ref))
+                            }
+                            ty::TyTraitItem::Constant(decl_ref) => {
+                                let mut decl = decl_engine.get(decl_ref.id());
+                                decl.subst(&type_mapping, engines);
+                                decl.replace_self_type(engines, new_self_type);
+                                let new_ref = decl_engine.insert(decl);
+                                (name, TyImplItem::Constant(new_ref))
+                            }
                         })
                         .collect();
                     trait_map.insert_inner(map_trait_name.clone(), *type_id, trait_items, engines);
@@ -636,35 +647,27 @@ impl TraitMap {
     /// - this method does not translate types from the found entries to the
     ///     `type_id` (like in `filter_by_type()`). This is because the only
     ///     entries that qualify as hits are equivalents of `type_id`
-    pub(crate) fn get_methods_for_type(
+    pub(crate) fn get_items_for_type(
         &self,
         engines: Engines<'_>,
         type_id: TypeId,
-    ) -> Vec<DeclRefFunction> {
+    ) -> Vec<ty::TyTraitItem> {
         let type_engine = engines.te();
-        let mut methods = vec![];
+        let mut items = vec![];
         // small performance gain in bad case
         if type_engine
             .get(type_id)
             .eq(&TypeInfo::ErrorRecovery, engines)
         {
-            return methods;
+            return items;
         }
         for entry in self.trait_impls.iter() {
             if are_equal_minus_dynamic_types(engines, type_id, entry.key.type_id) {
-                let mut trait_items = entry
-                    .value
-                    .values()
-                    .cloned()
-                    .into_iter()
-                    .flat_map(|item| match item {
-                        ty::TyTraitItem::Fn(decl_ref) => Some(decl_ref),
-                    })
-                    .collect::<Vec<_>>();
-                methods.append(&mut trait_items);
+                let mut trait_items = entry.value.values().cloned().collect::<Vec<_>>();
+                items.append(&mut trait_items);
             }
         }
-        methods
+        items
     }
 
     /// Find the entries in `self` that are equivalent to `type_id` with trait
@@ -701,7 +704,7 @@ impl TraitMap {
             if &map_trait_name == trait_name
                 && are_equal_minus_dynamic_types(engines, type_id, e.key.type_id)
             {
-                let mut trait_items = e.value.values().cloned().into_iter().collect::<Vec<_>>();
+                let mut trait_items = e.value.values().cloned().collect::<Vec<_>>();
                 items.append(&mut trait_items);
             }
         }
@@ -817,6 +820,13 @@ pub(crate) fn are_equal_minus_dynamic_types(
     let decl_engine = engines.de();
 
     match (type_engine.get(left), type_engine.get(right)) {
+        // when a type alias is encoutered, defer the decision to the type it contains (i.e. the
+        // type it aliases with)
+        (TypeInfo::Alias { ty, .. }, _) => {
+            are_equal_minus_dynamic_types(engines, ty.type_id, right)
+        }
+        (_, TypeInfo::Alias { ty, .. }) => are_equal_minus_dynamic_types(engines, left, ty.type_id),
+
         // these cases are false because, unless left and right have the same
         // TypeId, they may later resolve to be different types in the type
         // engine

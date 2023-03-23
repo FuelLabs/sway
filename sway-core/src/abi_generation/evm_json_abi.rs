@@ -85,7 +85,8 @@ pub fn json_abi_str(
     match type_info {
         Unknown => "unknown".into(),
         UnknownGeneric { name, .. } => name.to_string(),
-        TypeInfo::Placeholder(_) => "_".to_string(),
+        Placeholder(_) => "_".to_string(),
+        TypeParam(n) => format!("typeparam({n})"),
         Str(x) => format!("str[{}]", x.val()),
         UnsignedInteger(x) => match x {
             IntegerBits::Eight => "uint8",
@@ -129,6 +130,7 @@ pub fn json_abi_str(
         Storage { .. } => "contract storage".into(),
         RawUntypedPtr => "raw untyped ptr".into(),
         RawUntypedSlice => "raw untyped slice".into(),
+        Alias { ty, .. } => json_abi_str_type_arg(ty, type_engine, decl_engine),
     }
 }
 

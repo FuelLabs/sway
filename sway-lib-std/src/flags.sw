@@ -1,5 +1,5 @@
 //! Functionality for setting and unsetting FuelVM flags to modify behavior related to the `$err` and `$of` registers.
-library flags;
+library;
 
 use ::registers::flags;
 

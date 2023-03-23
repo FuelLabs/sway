@@ -14,9 +14,8 @@ use crate::{
         *,
     },
     metadata::MetadataManager,
-    type_system::{LogId, MessageId, TypeId, TypeInfo},
-    types::DeterministicallyAborts,
-    TypeEngine,
+    type_system::*,
+    types::*,
 };
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::error::{CompileError, Hint};
@@ -162,8 +161,8 @@ impl<'eng> FnCompiler<'eng> {
                         span: ast_node.span.clone(),
                     })
                 }
-                ty::TyDeclaration::EnumDeclaration(decl_ref) => {
-                    let ted = self.decl_engine.get_enum(decl_ref);
+                ty::TyDeclaration::EnumDeclaration { decl_id, .. } => {
+                    let ted = self.decl_engine.get_enum(decl_id);
                     create_enum_aggregate(
                         self.type_engine,
                         self.decl_engine,
@@ -205,6 +204,12 @@ impl<'eng> FnCompiler<'eng> {
                         span: ast_node.span.clone(),
                     })
                 }
+                ty::TyDeclaration::TypeAliasDeclaration { .. } => {
+                    Err(CompileError::UnexpectedDeclaration {
+                        decl_type: "type alias",
+                        span: ast_node.span.clone(),
+                    })
+                }
             },
             ty::TyAstNodeContent::Expression(te) => {
                 // An expression with an ignored return value... I assume.
@@ -239,7 +244,7 @@ impl<'eng> FnCompiler<'eng> {
                 call_path: name,
                 contract_call_params,
                 arguments,
-                function_decl_ref,
+                fn_ref,
                 self_state_idx,
                 selector,
                 type_binding: _,
@@ -256,7 +261,7 @@ impl<'eng> FnCompiler<'eng> {
                         span_md_idx,
                     )
                 } else {
-                    let function_decl = self.decl_engine.get_function(function_decl_ref);
+                    let function_decl = self.decl_engine.get_function(fn_ref);
                     self.compile_fn_call(
                         context,
                         md_mgr,
@@ -270,9 +275,9 @@ impl<'eng> FnCompiler<'eng> {
             ty::TyExpressionVariant::LazyOperator { op, lhs, rhs } => {
                 self.compile_lazy_op(context, md_mgr, op, lhs, rhs, span_md_idx)
             }
-            ty::TyExpressionVariant::VariableExpression { name, .. } => {
-                self.compile_var_expr(context, name.as_str(), span_md_idx)
-            }
+            ty::TyExpressionVariant::VariableExpression {
+                name, call_path, ..
+            } => self.compile_var_expr(context, call_path, name, span_md_idx),
             ty::TyExpressionVariant::Array { contents } => {
                 self.compile_array_expr(context, md_mgr, contents, span_md_idx)
             }
@@ -336,11 +341,14 @@ impl<'eng> FnCompiler<'eng> {
                 )
             }
             ty::TyExpressionVariant::EnumInstantiation {
-                enum_decl,
+                enum_ref,
                 tag,
                 contents,
                 ..
-            } => self.compile_enum_expr(context, md_mgr, enum_decl, *tag, contents.as_deref()),
+            } => {
+                let enum_decl = self.decl_engine.get_enum(enum_ref);
+                self.compile_enum_expr(context, md_mgr, &enum_decl, *tag, contents.as_deref())
+            }
             ty::TyExpressionVariant::Tuple { fields } => {
                 self.compile_tuple_expr(context, md_mgr, fields, span_md_idx)
             }
@@ -531,15 +539,21 @@ impl<'eng> FnCompiler<'eng> {
                     .get_storage_key()
                     .add_metadatum(context, span_md_idx))
             }
-            Intrinsic::Eq => {
+            Intrinsic::Eq | Intrinsic::Gt | Intrinsic::Lt => {
                 let lhs = &arguments[0];
                 let rhs = &arguments[1];
                 let lhs_value = self.compile_expression(context, md_mgr, lhs)?;
                 let rhs_value = self.compile_expression(context, md_mgr, rhs)?;
+                let pred = match kind {
+                    Intrinsic::Eq => Predicate::Equal,
+                    Intrinsic::Gt => Predicate::GreaterThan,
+                    Intrinsic::Lt => Predicate::LessThan,
+                    _ => unreachable!(),
+                };
                 Ok(self
                     .current_block
                     .ins(context)
-                    .cmp(Predicate::Equal, lhs_value, rhs_value))
+                    .cmp(pred, lhs_value, rhs_value))
             }
             Intrinsic::Gtf => {
                 // The index is just a Value
@@ -729,12 +743,21 @@ impl<'eng> FnCompiler<'eng> {
                     }
                 }
             }
-            Intrinsic::Add | Intrinsic::Sub | Intrinsic::Mul | Intrinsic::Div => {
+            Intrinsic::Add
+            | Intrinsic::Sub
+            | Intrinsic::Mul
+            | Intrinsic::Div
+            | Intrinsic::And
+            | Intrinsic::Or
+            | Intrinsic::Xor => {
                 let op = match kind {
                     Intrinsic::Add => BinaryOpKind::Add,
                     Intrinsic::Sub => BinaryOpKind::Sub,
                     Intrinsic::Mul => BinaryOpKind::Mul,
                     Intrinsic::Div => BinaryOpKind::Div,
+                    Intrinsic::And => BinaryOpKind::And,
+                    Intrinsic::Or => BinaryOpKind::Or,
+                    Intrinsic::Xor => BinaryOpKind::Xor,
                     _ => unreachable!(),
                 };
                 let lhs = &arguments[0];
@@ -1604,16 +1627,22 @@ impl<'eng> FnCompiler<'eng> {
     fn compile_var_expr(
         &mut self,
         context: &mut Context,
-        name: &str,
+        call_path: &Option<CallPath>,
+        name: &Ident,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         let need_to_load = |ty: &Type, context: &Context| {
             ty.is_unit(context) || ty.is_bool(context) || ty.is_uint(context)
         };
 
+        let call_path = match call_path {
+            Some(call_path) => call_path.clone(),
+            None => CallPath::from(name.clone()),
+        };
+
         // We need to check the symbol map first, in case locals are shadowing the args, other
         // locals or even constants.
-        if let Some(var) = self.get_function_var(context, name) {
+        if let Some(var) = self.get_function_var(context, name.as_str()) {
             let local_val = self
                 .current_block
                 .ins(context)
@@ -1636,7 +1665,7 @@ impl<'eng> FnCompiler<'eng> {
             } else {
                 Ok(local_val)
             }
-        } else if let Some(val) = self.function.get_arg(context, name) {
+        } else if let Some(val) = self.function.get_arg(context, name.as_str()) {
             if val
                 .get_argument_type_and_byref(context)
                 .map_or(false, |(_ty, by_ref)| by_ref)
@@ -1649,13 +1678,19 @@ impl<'eng> FnCompiler<'eng> {
             } else {
                 Ok(val)
             }
-        } else if let Some(const_val) = self.module.get_global_constant(context, name) {
+        } else if let Some(const_val) = self
+            .module
+            .get_global_constant(context, &call_path.as_vec_string())
+        {
             Ok(const_val)
-        } else if let Some(config_val) = self.module.get_global_configurable(context, name) {
+        } else if let Some(config_val) = self
+            .module
+            .get_global_configurable(context, &call_path.as_vec_string())
+        {
             Ok(config_val)
         } else {
             Err(CompileError::InternalOwned(
-                format!("Unable to resolve variable '{name}'."),
+                format!("Unable to resolve variable '{}'.", name.as_str()),
                 Span::dummy(),
             ))
         }
@@ -1733,7 +1768,7 @@ impl<'eng> FnCompiler<'eng> {
         // globals like other const decls.
         // `is_configurable` should be `false` here.
         let ty::TyConstantDeclaration {
-            name,
+            call_path,
             value,
             is_configurable,
             ..
@@ -1746,11 +1781,13 @@ impl<'eng> FnCompiler<'eng> {
                 self.module,
                 None,
                 Some(self),
-                &name,
+                &call_path,
                 &value,
                 is_configurable,
             )?;
-            let local_name = self.lexical_map.insert(name.as_str().to_owned());
+            let local_name = self
+                .lexical_map
+                .insert(call_path.suffix.as_str().to_owned());
             let return_type = convert_resolved_typeid(
                 self.type_engine,
                 self.decl_engine,

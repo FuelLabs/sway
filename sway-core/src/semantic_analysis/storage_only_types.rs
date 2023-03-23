@@ -156,12 +156,7 @@ fn check_type(
         warnings,
         errors
     );
-    let nested_types = check!(
-        type_info.clone().extract_nested_types(engines, &span),
-        vec![],
-        warnings,
-        errors
-    );
+    let nested_types = type_info.clone().extract_nested_types(engines);
     for ty in nested_types {
         if ignore_self && ty.eq(&type_info, engines) {
             continue;
@@ -215,8 +210,16 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                 match item {
                     ty::TyImplItem::Fn(decl_ref) => {
                         check!(
-                            validate_fn_decl(engines, &decl_ref.id),
+                            validate_fn_decl(engines, &decl_ref.id().clone()),
                             (),
+                            warnings,
+                            errors
+                        );
+                    }
+                    ty::TyImplItem::Constant(decl_ref) => {
+                        check!(
+                            validate_const_decl(engines, decl_ref.id()),
+                            return err(warnings, errors),
                             warnings,
                             errors
                         );
@@ -224,8 +227,8 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                 }
             }
         }
-        ty::TyDeclaration::StructDeclaration(decl_ref) => {
-            let ty::TyStructDeclaration { fields, .. } = decl_engine.get_struct(decl_ref);
+        ty::TyDeclaration::StructDeclaration { decl_id, .. } => {
+            let ty::TyStructDeclaration { fields, .. } = decl_engine.get_struct(decl_id);
             for field in fields {
                 check!(
                     check_type(
@@ -240,8 +243,8 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                 );
             }
         }
-        ty::TyDeclaration::EnumDeclaration(decl_ref) => {
-            let ty::TyEnumDeclaration { variants, .. } = decl_engine.get_enum(decl_ref);
+        ty::TyDeclaration::EnumDeclaration { decl_id, .. } => {
+            let ty::TyEnumDeclaration { variants, .. } = decl_engine.get_enum(decl_id);
             for variant in variants {
                 check!(
                     check_type(
@@ -275,6 +278,15 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                 );
             }
         }
+        ty::TyDeclaration::TypeAliasDeclaration { decl_id, .. } => {
+            let ty::TyTypeAliasDeclaration { ty, span, .. } = decl_engine.get_type_alias(decl_id);
+            check!(
+                check_type(engines, ty.type_id, span, false),
+                (),
+                warnings,
+                errors
+            );
+        }
         ty::TyDeclaration::GenericTypeForFunctionScope { .. }
         | ty::TyDeclaration::ErrorRecovery(_) => {}
     }
@@ -293,11 +305,13 @@ pub fn validate_const_decl(
     let mut errors: Vec<CompileError> = vec![];
     let decl_engine = engines.de();
     let ty::TyConstantDeclaration {
-        value: expr, name, ..
+        value: expr,
+        call_path,
+        ..
     } = decl_engine.get_constant(decl_id);
     if let Some(expr) = expr {
         check!(
-            check_type(engines, expr.return_type, name.span(), false),
+            check_type(engines, expr.return_type, call_path.suffix.span(), false),
             (),
             warnings,
             errors

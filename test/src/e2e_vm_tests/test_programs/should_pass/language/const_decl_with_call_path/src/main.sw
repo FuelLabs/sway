@@ -1,6 +1,6 @@
 script;
 
-dep test_lib;
+mod test_lib;
 
 fn main() -> u64 {
     let x = test_lib::NUMBER;

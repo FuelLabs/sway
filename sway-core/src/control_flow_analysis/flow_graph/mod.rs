@@ -17,6 +17,8 @@ use petgraph::{graph::EdgeIndex, prelude::NodeIndex};
 mod namespace;
 use namespace::ControlFlowNamespace;
 pub(crate) use namespace::FunctionNamespaceEntry;
+pub(crate) use namespace::TraitNamespaceEntry;
+pub(crate) use namespace::VariableNamespaceEntry;
 
 pub type EntryPoint = NodeIndex;
 pub type ExitPoint = NodeIndex;

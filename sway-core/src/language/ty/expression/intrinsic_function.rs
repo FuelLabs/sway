@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     decl_engine::DeclEngine, engine_threading::*, error::*, language::ty::*, type_system::*,
-    types::DeterministicallyAborts,
+    types::*,
 };
 use itertools::Itertools;
 use sway_ast::Intrinsic;

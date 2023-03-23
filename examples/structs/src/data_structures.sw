@@ -1,4 +1,4 @@
-library data_structures;
+library;
 
 // Declare a struct type
 pub struct Foo {

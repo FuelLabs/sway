@@ -18,20 +18,9 @@ pub(crate) struct ConstructorFactory {
 }
 
 impl ConstructorFactory {
-    pub(crate) fn new(engines: Engines<'_>, type_id: TypeId, span: &Span) -> CompileResult<Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let possible_types = check!(
-            engines
-                .te()
-                .get(type_id)
-                .extract_nested_types(engines, span),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        let factory = ConstructorFactory { possible_types };
-        ok(factory, warnings, errors)
+    pub(crate) fn new(engines: Engines<'_>, type_id: TypeId) -> Self {
+        let possible_types = engines.te().get(type_id).extract_nested_types(engines);
+        ConstructorFactory { possible_types }
     }
 
     /// Given Σ, computes a `Pattern` not present in Σ from the type of the
@@ -314,7 +303,6 @@ impl ConstructorFactory {
                         PatStack::from(
                             all_variants
                                 .difference(&variant_tracker)
-                                .into_iter()
                                 .map(|x| {
                                     Pattern::Enum(EnumPattern {
                                         enum_name: enum_name.to_string(),

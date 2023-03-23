@@ -1,41 +1,23 @@
 use core::fmt::Write;
-use core::hash::Hasher;
 use hashbrown::hash_map::RawEntryMut;
 use hashbrown::HashMap;
-use std::hash::BuildHasher;
 use std::sync::RwLock;
 
 use crate::concurrent_slab::ListDisplay;
+use crate::error::{err, ok};
 use crate::{
-    concurrent_slab::ConcurrentSlab, decl_engine::*, engine_threading::*, language::ty,
-    namespace::Path, type_system::*, Namespace,
+    concurrent_slab::ConcurrentSlab, decl_engine::*, engine_threading::*, error::*, language::ty,
+    namespace::Path, type_system::priv_prelude::*, Namespace,
 };
 
 use sway_error::{error::CompileError, type_error::TypeError, warning::CompileWarning};
 use sway_types::{span::Span, Ident, Spanned};
-
-use super::unify::Unifier;
-use super::unify_check::UnifyCheck;
 
 #[derive(Debug, Default)]
 pub struct TypeEngine {
     pub(super) slab: ConcurrentSlab<TypeInfo>,
     storage_only_types: ConcurrentSlab<TypeInfo>,
     id_map: RwLock<HashMap<TypeInfo, TypeId>>,
-}
-
-fn make_hasher<'a: 'b, 'b, K>(
-    hash_builder: &'a impl BuildHasher,
-    engines: Engines<'b>,
-) -> impl Fn(&K) -> u64 + 'b
-where
-    K: HashWithEngines + ?Sized,
-{
-    move |key: &K| {
-        let mut state = hash_builder.build_hasher();
-        key.hash(&mut state, engines);
-        state.finish()
-    }
 }
 
 impl TypeEngine {
@@ -413,9 +395,12 @@ impl TypeEngine {
                     .ok(&mut warnings, &mut errors)
                     .cloned()
                 {
-                    Some(ty::TyDeclaration::StructDeclaration(original_decl_ref)) => {
+                    Some(ty::TyDeclaration::StructDeclaration {
+                        decl_id: original_id,
+                        ..
+                    }) => {
                         // get the copy from the declaration engine
-                        let mut new_copy = decl_engine.get_struct(&original_decl_ref);
+                        let mut new_copy = decl_engine.get_struct(&original_id);
 
                         // monomorphize the copy, in place
                         check!(
@@ -447,9 +432,12 @@ impl TypeEngine {
                         // return the id
                         type_id
                     }
-                    Some(ty::TyDeclaration::EnumDeclaration(original_decl_ref)) => {
+                    Some(ty::TyDeclaration::EnumDeclaration {
+                        decl_id: original_id,
+                        ..
+                    }) => {
                         // get the copy from the declaration engine
-                        let mut new_copy = decl_engine.get_enum(&original_decl_ref);
+                        let mut new_copy = decl_engine.get_enum(&original_id);
 
                         // monomorphize the copy, in place
                         check!(
@@ -479,6 +467,20 @@ impl TypeEngine {
                         namespace.insert_trait_implementation_for_type(engines, type_id);
 
                         // return the id
+                        type_id
+                    }
+                    Some(ty::TyDeclaration::TypeAliasDeclaration {
+                        decl_id: original_id,
+                        ..
+                    }) => {
+                        let new_copy = decl_engine.get_type_alias(&original_id);
+
+                        // TODO: monomorphize the copy, in place, when generic type aliases are
+                        // supported
+
+                        let type_id = new_copy.create_type_id(engines);
+                        namespace.insert_trait_implementation_for_type(engines, type_id);
+
                         type_id
                     }
                     Some(ty::TyDeclaration::GenericTypeForFunctionScope { type_id, .. }) => type_id,

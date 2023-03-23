@@ -1,4 +1,4 @@
-library namespace;
+library;
 
 // ANCHOR: address
 pub struct Address {

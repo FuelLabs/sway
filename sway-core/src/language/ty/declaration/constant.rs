@@ -3,63 +3,109 @@ use std::hash::{Hash, Hasher};
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
+    decl_engine::{DeclMapping, ReplaceDecls},
     engine_threading::*,
-    language::{ty::*, Visibility},
+    language::{ty::*, CallPath, Visibility},
     transform,
     type_system::*,
 };
 
 #[derive(Clone, Debug)]
 pub struct TyConstantDeclaration {
-    pub name: Ident,
+    pub call_path: CallPath,
     pub value: Option<TyExpression>,
     pub visibility: Visibility,
     pub is_configurable: bool,
     pub attributes: transform::AttributesMap,
+    pub return_type: TypeId,
     pub type_ascription: TypeArgument,
     pub span: Span,
+    pub implementing_type: Option<TyDeclaration>,
 }
 
 impl EqWithEngines for TyConstantDeclaration {}
 impl PartialEqWithEngines for TyConstantDeclaration {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        self.name == other.name
+        let type_engine = engines.te();
+        self.call_path == other.call_path
             && self.value.eq(&other.value, engines)
             && self.visibility == other.visibility
             && self.type_ascription.eq(&other.type_ascription, engines)
             && self.is_configurable == other.is_configurable
+            && type_engine
+                .get(self.return_type)
+                .eq(&type_engine.get(other.return_type), engines)
+            && match (&self.implementing_type, &other.implementing_type) {
+                (Some(self_), Some(other)) => self_.eq(other, engines),
+                _ => false,
+            }
     }
 }
 
 impl HashWithEngines for TyConstantDeclaration {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let type_engine = engines.te();
         let TyConstantDeclaration {
-            name,
+            call_path,
             value,
             visibility,
+            return_type,
             type_ascription,
             is_configurable,
+            implementing_type,
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
             attributes: _,
             span: _,
         } = self;
-        name.hash(state);
+        call_path.hash(state);
         value.hash(state, engines);
         visibility.hash(state);
+        type_engine.get(*return_type).hash(state, engines);
         type_ascription.hash(state, engines);
         is_configurable.hash(state);
+        if let Some(implementing_type) = implementing_type {
+            (*implementing_type).hash(state, engines);
+        }
     }
 }
 
 impl Named for TyConstantDeclaration {
     fn name(&self) -> &Ident {
-        &self.name
+        &self.call_path.suffix
     }
 }
 
 impl Spanned for TyConstantDeclaration {
     fn span(&self) -> Span {
         self.span.clone()
+    }
+}
+
+impl SubstTypes for TyConstantDeclaration {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        self.return_type.subst(type_mapping, engines);
+        self.type_ascription.subst(type_mapping, engines);
+        if let Some(expr) = &mut self.value {
+            expr.subst(type_mapping, engines);
+        }
+    }
+}
+
+impl ReplaceSelfType for TyConstantDeclaration {
+    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+        self.return_type.replace_self_type(engines, self_type);
+        self.type_ascription.replace_self_type(engines, self_type);
+        if let Some(expr) = &mut self.value {
+            expr.replace_self_type(engines, self_type);
+        }
+    }
+}
+
+impl ReplaceDecls for TyConstantDeclaration {
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
+        if let Some(expr) = &mut self.value {
+            expr.replace_decls(decl_mapping, engines);
+        }
     }
 }

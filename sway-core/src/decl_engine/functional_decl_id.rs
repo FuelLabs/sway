@@ -10,6 +10,7 @@ use crate::{
 pub enum FunctionalDeclId {
     TraitFn(DeclId<ty::TyTraitFn>),
     Function(DeclId<ty::TyFunctionDeclaration>),
+    Constant(DeclId<ty::TyConstantDeclaration>),
 }
 
 impl From<DeclId<ty::TyFunctionDeclaration>> for FunctionalDeclId {
@@ -44,6 +45,22 @@ impl From<&mut DeclId<ty::TyTraitFn>> for FunctionalDeclId {
     }
 }
 
+impl From<DeclId<ty::TyConstantDeclaration>> for FunctionalDeclId {
+    fn from(val: DeclId<ty::TyConstantDeclaration>) -> Self {
+        Self::Constant(val)
+    }
+}
+impl From<&DeclId<ty::TyConstantDeclaration>> for FunctionalDeclId {
+    fn from(val: &DeclId<ty::TyConstantDeclaration>) -> Self {
+        Self::Constant(*val)
+    }
+}
+impl From<&mut DeclId<ty::TyConstantDeclaration>> for FunctionalDeclId {
+    fn from(val: &mut DeclId<ty::TyConstantDeclaration>) -> Self {
+        Self::Constant(*val)
+    }
+}
+
 impl std::fmt::Display for FunctionalDeclId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -53,6 +70,9 @@ impl std::fmt::Display for FunctionalDeclId {
             Self::Function(_) => {
                 write!(f, "decl(function)",)
             }
+            Self::Constant(_) => {
+                write!(f, "decl(constant)",)
+            }
         }
     }
 }
@@ -60,15 +80,19 @@ impl std::fmt::Display for FunctionalDeclId {
 impl TryFrom<DeclRefMixedFunctional> for DeclRefFunction {
     type Error = CompileError;
     fn try_from(value: DeclRefMixedFunctional) -> Result<Self, Self::Error> {
-        match value.id {
-            FunctionalDeclId::Function(id) => Ok(DeclRef {
-                name: value.name,
+        match value.id().clone() {
+            FunctionalDeclId::Function(id) => Ok(DeclRef::new(
+                value.name().clone(),
                 id,
-                decl_span: value.decl_span,
-            }),
+                value.decl_span().clone(),
+            )),
             actually @ FunctionalDeclId::TraitFn(_) => Err(CompileError::DeclIsNotAFunction {
                 actually: actually.to_string(),
-                span: value.decl_span,
+                span: value.decl_span().clone(),
+            }),
+            actually @ FunctionalDeclId::Constant(_) => Err(CompileError::DeclIsNotAFunction {
+                actually: actually.to_string(),
+                span: value.decl_span().clone(),
             }),
         }
     }
@@ -86,6 +110,10 @@ impl TryFrom<FunctionalDeclId> for DeclId<TyFunctionDeclaration> {
         match value {
             FunctionalDeclId::Function(id) => Ok(id),
             actually @ FunctionalDeclId::TraitFn(_) => Err(CompileError::DeclIsNotAFunction {
+                actually: actually.to_string(),
+                span: Span::dummy(), // FIXME
+            }),
+            actually @ FunctionalDeclId::Constant(_) => Err(CompileError::DeclIsNotAFunction {
                 actually: actually.to_string(),
                 span: Span::dummy(), // FIXME
             }),

@@ -1,6 +1,6 @@
 use crate::priv_prelude::*;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct ItemUse {
     pub visibility: Option<PubToken>,
     pub use_token: UseToken,
@@ -20,7 +20,7 @@ impl Spanned for ItemUse {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub enum UseTree {
     Group {
         imports: Braces<Punctuated<UseTree, CommaToken>>,

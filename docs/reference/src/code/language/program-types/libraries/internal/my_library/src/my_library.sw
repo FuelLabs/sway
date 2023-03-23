@@ -1,6 +1,6 @@
 // ANCHOR: library
 // ANCHOR: module
-library my_library;
+library;
 // ANCHOR_END: module
 
 // Cannot import because the `pub` keyword is missing

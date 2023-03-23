@@ -1,4 +1,4 @@
-library colors2;
+library;
 
 pub enum Colors {
 	Red: (),

@@ -1,11 +1,11 @@
 //! Defines the Sway standard library prelude.
 //! The prelude consists of implicitly available items,
 //! for which `use` is not required.
-library prelude;
+library;
 
 // Blockchain types
 use ::address::Address;
-use ::contract_id::ContractId;
+use ::contract_id::{ContractId, AssetId};
 use ::identity::Identity;
 
 // Collections

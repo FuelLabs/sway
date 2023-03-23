@@ -1,6 +1,6 @@
 script;
 
-dep helpers;
+mod helpers;
 
 trait Setter<A> {
     fn set(self, new_value: A) -> Self;
