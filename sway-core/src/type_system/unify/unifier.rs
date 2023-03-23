@@ -13,7 +13,6 @@ use super::occurs_check::OccursCheck;
 /// Helper struct to aid in type unification.
 pub(crate) struct Unifier<'a> {
     engines: Engines<'a>,
-    arguments_are_flipped: bool,
     help_text: String,
 }
 
@@ -22,17 +21,7 @@ impl<'a> Unifier<'a> {
     pub(crate) fn new(engines: Engines<'a>, help_text: &str) -> Unifier<'a> {
         Unifier {
             engines,
-            arguments_are_flipped: false,
             help_text: help_text.to_string(),
-        }
-    }
-
-    /// Takes `self` and returns a new [Unifier] with the contents of self and
-    /// `flip_arguments` set to `true`.
-    pub(crate) fn flip_arguments(self) -> Unifier<'a> {
-        Unifier {
-            arguments_are_flipped: true,
-            ..self
         }
     }
 
@@ -305,13 +294,8 @@ impl<'a> Unifier<'a> {
         let mut warnings = vec![];
         let mut errors = vec![];
         for (rf, ef) in rfs.iter().zip(efs.iter()) {
-            let new_span = if self.arguments_are_flipped {
-                &ef.span
-            } else {
-                &rf.span
-            };
             append!(
-                self.unify(rf.type_id, ef.type_id, new_span),
+                self.unify(rf.type_id, ef.type_id, &rf.span),
                 warnings,
                 errors
             );
@@ -328,7 +312,7 @@ impl<'a> Unifier<'a> {
         // E.g., in a variable declaration `let a: u32 = 10u64` the 'expected' type will be
         // the annotation `u32`, and the 'received' type is 'self' of the initialiser, or
         // `u64`.  So we're casting received TO expected.
-        let warnings = match numeric_cast_compat(e, r, self.arguments_are_flipped) {
+        let warnings = match numeric_cast_compat(e, r) {
             NumericCastCompatResult::CastableWithWarning(warn) => {
                 vec![CompileWarning {
                     span: span.clone(),
@@ -363,25 +347,15 @@ impl<'a> Unifier<'a> {
         let (en, etps, efs) = e;
         if rn == en && rfs.len() == efs.len() && rtps.len() == etps.len() {
             rfs.iter().zip(efs.iter()).for_each(|(rf, ef)| {
-                let new_span = if self.arguments_are_flipped {
-                    &ef.span
-                } else {
-                    &rf.span
-                };
                 append!(
-                    self.unify(rf.type_argument.type_id, ef.type_argument.type_id, new_span),
+                    self.unify(rf.type_argument.type_id, ef.type_argument.type_id, &rf.span),
                     warnings,
                     errors
                 );
             });
             rtps.iter().zip(etps.iter()).for_each(|(rtp, etp)| {
-                let new_span = if self.arguments_are_flipped {
-                    etp.name_ident.span()
-                } else {
-                    rtp.name_ident.span()
-                };
                 append!(
-                    self.unify(rtp.type_id, etp.type_id, &new_span),
+                    self.unify(rtp.type_id, etp.type_id, &rtp.name_ident.span()),
                     warnings,
                     errors
                 );
@@ -412,25 +386,15 @@ impl<'a> Unifier<'a> {
         let (en, etps, evs) = e;
         if rn == en && rvs.len() == evs.len() && rtps.len() == etps.len() {
             rvs.iter().zip(evs.iter()).for_each(|(rv, ev)| {
-                let new_span = if self.arguments_are_flipped {
-                    &ev.span
-                } else {
-                    &rv.span
-                };
                 append!(
-                    self.unify(rv.type_argument.type_id, ev.type_argument.type_id, new_span),
+                    self.unify(rv.type_argument.type_id, ev.type_argument.type_id, &rv.span),
                     warnings,
                     errors
                 );
             });
             rtps.iter().zip(etps.iter()).for_each(|(rtp, etp)| {
-                let new_span = if self.arguments_are_flipped {
-                    etp.name_ident.span()
-                } else {
-                    rtp.name_ident.span()
-                };
                 append!(
-                    self.unify(rtp.type_id, etp.type_id, &new_span),
+                    self.unify(rtp.type_id, etp.type_id, &rtp.name_ident.span()),
                     warnings,
                     errors
                 );
@@ -478,24 +442,11 @@ impl<'a> Unifier<'a> {
     {
         let r = self.engines.with_thing(r).to_string();
         let e = self.engines.with_thing(e).to_string();
-        if self.arguments_are_flipped {
-            (e, r)
-        } else {
-            (r, e)
-        }
+        (r, e)
     }
 }
 
-fn numeric_cast_compat(
-    new_size: IntegerBits,
-    old_size: IntegerBits,
-    arguments_are_flipped: bool,
-) -> NumericCastCompatResult {
-    let (new_size, old_size) = if !arguments_are_flipped {
-        (new_size, old_size)
-    } else {
-        (old_size, new_size)
-    };
+fn numeric_cast_compat(new_size: IntegerBits, old_size: IntegerBits) -> NumericCastCompatResult {
     // If this is a downcast, warn for loss of precision. If upcast, then no warning.
     use IntegerBits::*;
     match (new_size, old_size) {

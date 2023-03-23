@@ -265,103 +265,11 @@ impl TypeEngine {
         }
     }
 
-    /// Helper function for making the type of `expected` equivalent to
-    /// `received` for instantiating algebraic data types.
-    ///
-    /// This method simply switches the arguments of `received` and `expected`
-    /// and calls the `unify` method---the main purpose of this method is reduce
-    /// developer overhead during implementation, as it is a little non-intuitive
-    /// why `received` and `expected` should be switched.
-    ///
-    /// Let me explain, take this Sway code:
-    ///
-    /// ```ignore
-    /// enum Option<T> {
-    ///     Some(T),
-    ///     None
-    /// }
-    ///
-    /// struct Wrapper {
-    ///     option: Option<bool>,
-    /// }
-    ///
-    /// fn create_it<T>() -> Wrapper {
-    ///     Wrapper {
-    ///         option: Option::None
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// This is valid Sway code and we should expect it to compile. Here is the
-    /// pseudo-code of roughly what we can expect from type inference:
-    /// 1. `Option::None` is originally found to be of type `Option<T>` (because
-    ///     it is not possible to know what `T` is just from the `None` case)
-    /// 2. we call `unify_adt` with arguments `received` of type `Option<T>` and
-    ///     `expected` of type `Option<bool>`
-    /// 3. we switch `received` and `expected` and call the `unify` method
-    /// 4. we perform type inference with a `received` type of `Option<bool>`
-    ///     and an `expected` type of `Option<T>`
-    /// 5. we perform type inference with a `received` type of `bool` and an
-    ///     `expected` type of `T`
-    /// 6. because we have called the `unify` method (and not the `unify_right`
-    ///     method), we can replace `T` with `bool`
-    ///
-    /// What's important about this is flipping the arguments prioritizes
-    /// unifying `expected`, meaning if both `received` and `expected` are
-    /// generic types, then `expected` will be replaced with `received`.
-    pub(crate) fn unify_adt(
-        &self,
-        decl_engine: &DeclEngine,
-        received: TypeId,
-        expected: TypeId,
-        span: &Span,
-        help_text: &str,
-        err_override: Option<CompileError>,
-    ) -> (Vec<CompileWarning>, Vec<CompileError>) {
-        let engines = Engines::new(self, decl_engine);
-        if !UnifyCheck::new(engines).check(received, expected) {
-            // create a "mismatched type" error unless the `err_override`
-            // argument has been provided
-            let mut errors = vec![];
-            match err_override {
-                Some(err_override) => {
-                    errors.push(err_override);
-                }
-                None => {
-                    errors.push(CompileError::TypeError(TypeError::MismatchedType {
-                        expected: engines.help_out(expected).to_string(),
-                        received: engines.help_out(received).to_string(),
-                        help_text: help_text.to_string(),
-                        span: span.clone(),
-                    }));
-                }
-            }
-            return (vec![], errors);
-        }
-        let (warnings, errors) = normalize_err(
-            Unifier::new(engines, help_text)
-                .flip_arguments()
-                .unify(expected, received, span),
-        );
-        if errors.is_empty() {
-            (warnings, errors)
-        } else if err_override.is_some() {
-            // return the errors from unification unless the `err_override`
-            // argument has been provided
-            (warnings, vec![err_override.unwrap()])
-        } else {
-            (warnings, errors)
-        }
-    }
-
     pub(crate) fn to_typeinfo(&self, id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
         match self.get(id) {
-            TypeInfo::Unknown => {
-                //panic!();
-                Err(TypeError::UnknownType {
-                    span: error_span.clone(),
-                })
-            }
+            TypeInfo::Unknown => Err(TypeError::UnknownType {
+                span: error_span.clone(),
+            }),
             ty => Ok(ty),
         }
     }
