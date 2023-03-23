@@ -773,6 +773,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                             self.immediate_to_reg(
                                 array_elem_size,
                                 size_reg.clone(),
+                                None,
                                 "get size of element",
                                 owning_span.clone(),
                             );
@@ -820,20 +821,14 @@ impl<'ir> FuelAsmBuilder<'ir> {
             // No need to add anything.
             self.reg_map.insert(*instr_val, base_reg);
         } else {
-            let offs_reg = self.reg_seqr.next();
+            let instr_reg = self.reg_seqr.next();
             self.immediate_to_reg(
                 const_offs,
-                offs_reg.clone(),
+                instr_reg.clone(),
+                Some(&base_reg),
                 "get offset to element",
                 owning_span.clone(),
             );
-
-            let instr_reg = self.reg_seqr.next();
-            self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::ADD(instr_reg.clone(), base_reg, offs_reg)),
-                comment: "add offset to base".into(),
-                owning_span,
-            });
             self.reg_map.insert(*instr_val, instr_reg);
         }
 
@@ -853,24 +848,15 @@ impl<'ir> FuelAsmBuilder<'ir> {
                     self.reg_map
                         .insert(*instr_val, self.locals_base_reg().clone());
                 } else {
-                    let offs_reg = self.reg_seqr.next();
+                    let instr_reg = self.reg_seqr.next();
+                    let base_reg = self.locals_base_reg().clone();
                     self.immediate_to_reg(
                         offset,
-                        offs_reg.clone(),
+                        instr_reg.clone(),
+                        Some(&base_reg),
                         "get offset to local",
-                        owning_span.clone(),
-                    );
-
-                    let instr_reg = self.reg_seqr.next();
-                    self.cur_bytecode.push(Op {
-                        opcode: Either::Left(VirtualOp::ADD(
-                            instr_reg.clone(),
-                            self.locals_base_reg().clone(),
-                            offs_reg,
-                        )),
-                        comment: "add offset to locals base".into(),
                         owning_span,
-                    });
+                    );
                     self.reg_map.insert(*instr_val, instr_reg);
                 }
                 Ok(())
@@ -1039,6 +1025,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
             self.immediate_to_reg(
                 size_in_bytes,
                 size_reg.clone(),
+                None,
                 "loading size for LOGD",
                 owning_span.clone(),
             );
@@ -1148,6 +1135,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                     self.immediate_to_reg(
                         size_in_bytes,
                         size_reg.clone(),
+                        None,
                         "get size of returned ref",
                         owning_span.clone(),
                     );
@@ -1530,27 +1518,59 @@ impl<'ir> FuelAsmBuilder<'ir> {
         &mut self,
         imm: u64,
         reg: VirtualRegister,
+        base: Option<&VirtualRegister>,
         comment: S,
         span: Option<Span>,
     ) {
-        if imm <= compiler_constants::EIGHTEEN_BITS {
+        // We have a few different options here.
+        // - If we're given a base to add to and the immediate is small enough we can use ADDI.
+        // - If the immediate is too big for that then we need to MOVI and ADD.
+        // - If the immediate is very big then we LW and ADD.
+        // XXX This can be done with peephole optimisations when we get them.
+        if imm <= compiler_constants::TWELVE_BITS && base.is_some() {
             self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::MOVI(
+                opcode: Either::Left(VirtualOp::ADDI(
                     reg,
-                    VirtualImmediate18 { value: imm as u32 },
+                    base.unwrap().clone(),
+                    VirtualImmediate12 { value: imm as u16 },
                 )),
                 comment: comment.into(),
                 owning_span: span,
             });
+        } else if imm <= compiler_constants::EIGHTEEN_BITS {
+            let comment = comment.into();
+            self.cur_bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::MOVI(
+                    reg.clone(),
+                    VirtualImmediate18 { value: imm as u32 },
+                )),
+                comment: comment.clone(),
+                owning_span: span.clone(),
+            });
+            if let Some(base_reg) = base {
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::ADD(reg.clone(), base_reg.clone(), reg)),
+                    comment,
+                    owning_span: span,
+                });
+            }
         } else {
+            let comment = comment.into();
             let data_id = self
                 .data_section
                 .insert_data_value(Entry::new_word(imm, None, None));
             self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::LWDataId(reg, data_id)),
-                owning_span: span,
-                comment: comment.into(),
+                opcode: Either::Left(VirtualOp::LWDataId(reg.clone(), data_id)),
+                owning_span: span.clone(),
+                comment: comment.clone(),
             });
+            if let Some(base_reg) = base {
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::ADD(reg.clone(), base_reg.clone(), reg)),
+                    comment,
+                    owning_span: span,
+                });
+            }
         }
     }
 

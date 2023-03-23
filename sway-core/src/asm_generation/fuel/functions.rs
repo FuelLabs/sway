@@ -417,35 +417,14 @@ impl<'ir> FuelAsmBuilder<'ir> {
                                 owning_span: None,
                             });
                         }
-                    } else if arg_word_offset * 8 > compiler_constants::TWELVE_BITS {
-                        let offs_reg = self.reg_seqr.next();
+                    } else {
                         self.immediate_to_reg(
                             arg_word_offset * 8,
-                            offs_reg.clone(),
-                            "get offset",
+                            current_arg_reg.clone(),
+                            Some(&args_base_reg),
+                            format!("get offset or arg {name}"),
                             None,
                         );
-                        self.cur_bytecode.push(Op {
-                            opcode: either::Either::Left(VirtualOp::ADD(
-                                current_arg_reg.clone(),
-                                args_base_reg.clone(),
-                                offs_reg,
-                            )),
-                            comment: format!("get offset or arg {name}"),
-                            owning_span: None,
-                        });
-                    } else {
-                        self.cur_bytecode.push(Op {
-                            opcode: either::Either::Left(VirtualOp::ADDI(
-                                current_arg_reg.clone(),
-                                args_base_reg.clone(),
-                                VirtualImmediate12 {
-                                    value: (arg_word_offset * 8) as u16,
-                                },
-                            )),
-                            comment: format!("get address for arg {name}"),
-                            owning_span: None,
-                        });
                     }
 
                     arg_word_offset += size_bytes_in_words!(arg_type_size_bytes);
