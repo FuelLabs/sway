@@ -64,6 +64,13 @@ impl ReplaceDecls for TyExpression {
     }
 }
 
+impl UpdateConstantExpression for TyExpression {
+    fn update_constant_expression(&mut self, engines: Engines<'_>, implementing_type: &TyDecl) {
+        self.expression
+            .update_constant_expression(engines, implementing_type)
+    }
+}
+
 impl DisplayWithEngines for TyExpression {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         write!(
