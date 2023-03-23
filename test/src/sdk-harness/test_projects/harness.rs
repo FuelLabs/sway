@@ -14,6 +14,7 @@ mod evm_ec_recover;
 mod experimental_storage;
 mod experimental_storage_init;
 mod experimental_storage_map;
+mod experimental_storage_nested_maps;
 mod exponentiation;
 mod generics_in_abi;
 mod hashing;

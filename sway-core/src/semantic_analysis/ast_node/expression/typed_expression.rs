@@ -1646,14 +1646,14 @@ impl ty::TyExpression {
                 errors,
             )
         } else {
-            // Otherwise convert into a method call 'index(self, index)' via the std::ops::Index trait.
+            // Otherwise convert into a method call `index(self, index)`
             let method_name = TypeBinding {
                 inner: MethodName::FromTrait {
                     call_path: CallPath {
-                        prefixes: vec![
-                            Ident::new_with_override("core".into(), span.clone()),
-                            Ident::new_with_override("ops".into(), span.clone()),
-                        ],
+                        // Eventually, this should be `core::ops::index` once we are able to implement
+                        // the `Index` trait, but for now, we assume that `index` is part of `impl`
+                        // self for the type of `prefix`.
+                        prefixes: vec![],
                         suffix: Ident::new_with_override("index".into(), span.clone()),
                         is_absolute: true,
                     },
@@ -1760,8 +1760,10 @@ impl ty::TyExpression {
             ReassignmentTarget::VariableExpression(var) => {
                 let mut expr = var;
                 let mut names_vec = Vec::new();
-                let (base_name, final_return_type) = loop {
-                    match expr.kind {
+                let mut projection_index = 0;
+                let mut first_array_index_expr = None;
+                let base_name_and_final_return_type = loop {
+                    match expr.kind.clone() {
                         ExpressionKind::Variable(name) => {
                             // check that the reassigned name exists
                             let unknown_decl = check!(
@@ -1780,7 +1782,7 @@ impl ty::TyExpression {
                                 errors.push(CompileError::AssignmentToNonMutable { name, span });
                                 return err(warnings, errors);
                             }
-                            break (name, variable_decl.body.return_type);
+                            break Some((name, variable_decl.body.return_type));
                         }
                         ExpressionKind::Subfield(SubfieldExpression {
                             prefix,
@@ -1802,6 +1804,19 @@ impl ty::TyExpression {
                             expr = prefix;
                         }
                         ExpressionKind::ArrayIndex(ArrayIndexExpression { prefix, index }) => {
+                            // If this is the right most project (i.e. the first, since the we
+                            // start counting from the right), and if this projection is an array
+                            // index projection, then keep track of the `prefix` and the `index` in
+                            // this case: we may need to call `index_assign()` later on if the
+                            // compiler does not offer an intrinsic way of dealing with this
+                            // reassignment
+                            if projection_index == 0 {
+                                first_array_index_expr = Some(ArrayIndexExpression {
+                                    prefix: prefix.clone(),
+                                    index: index.clone(),
+                                });
+                            }
+
                             let ctx = ctx.by_ref().with_help_text("");
                             let typed_index = check!(
                                 ty::TyExpression::type_check(ctx, index.as_ref().clone()),
@@ -1811,50 +1826,88 @@ impl ty::TyExpression {
                             );
                             names_vec.push(ty::ProjectionKind::ArrayIndex {
                                 index: Box::new(typed_index),
-                                index_span: index.span(),
+                                index_span: index.span().clone(),
                             });
                             expr = prefix;
                         }
-                        _ => {
-                            errors.push(CompileError::InvalidExpressionOnLhs { span });
-                            return err(warnings, errors);
-                        }
+                        _ => break None,
                     }
+                    projection_index += 1;
                 };
-                let names_vec = names_vec.into_iter().rev().collect::<Vec<_>>();
-                let (ty_of_field, _ty_of_parent) = check!(
-                    ctx.namespace
-                        .find_subfield_type(ctx.engines(), &base_name, &names_vec),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                // type check the reassignment
-                let ctx = ctx.with_type_annotation(ty_of_field).with_help_text("");
-                let rhs_span = rhs.span();
-                let rhs = check!(
-                    ty::TyExpression::type_check(ctx, rhs),
-                    ty::TyExpression::error(rhs_span, engines),
-                    warnings,
-                    errors
-                );
 
-                ok(
-                    ty::TyExpression {
-                        expression: ty::TyExpressionVariant::Reassignment(Box::new(
-                            ty::TyReassignment {
-                                lhs_base_name: base_name,
-                                lhs_type: final_return_type,
-                                lhs_indices: names_vec,
-                                rhs,
+                match base_name_and_final_return_type {
+                    Some((base_name, final_return_type)) => {
+                        let names_vec = names_vec.into_iter().rev().collect::<Vec<_>>();
+                        let (ty_of_field, _ty_of_parent) = check!(
+                            ctx.namespace
+                                .find_subfield_type(ctx.engines(), &base_name, &names_vec),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        // type check the reassignment
+                        let ctx = ctx.with_type_annotation(ty_of_field).with_help_text("");
+                        let rhs_span = rhs.span();
+                        let rhs = check!(
+                            ty::TyExpression::type_check(ctx, rhs),
+                            ty::TyExpression::error(rhs_span, engines),
+                            warnings,
+                            errors
+                        );
+
+                        ok(
+                            ty::TyExpression {
+                                expression: ty::TyExpressionVariant::Reassignment(Box::new(
+                                    ty::TyReassignment {
+                                        lhs_base_name: base_name,
+                                        lhs_type: final_return_type,
+                                        lhs_indices: names_vec,
+                                        rhs,
+                                    },
+                                )),
+                                return_type: type_engine
+                                    .insert(decl_engine, TypeInfo::Tuple(Vec::new())),
+                                span,
                             },
-                        )),
-                        return_type: type_engine.insert(decl_engine, TypeInfo::Tuple(Vec::new())),
-                        span,
+                            warnings,
+                            errors,
+                        )
+                    }
+                    None => match first_array_index_expr {
+                        Some(ArrayIndexExpression { prefix, index }) => {
+                            let method_name = TypeBinding {
+                                inner: MethodName::FromTrait {
+                                    call_path: CallPath {
+                                        // Eventually, this should be `core::ops::index_assign`
+                                        // once we are able to implement the `IndexAssign` trait,
+                                        // but for now, we assume that `index_assign` is part of
+                                        // `impl` self for the type of `prefix`.
+                                        prefixes: vec![],
+                                        suffix: Ident::new_with_override(
+                                            "index_assign".into(),
+                                            span.clone(),
+                                        ),
+                                        is_absolute: true,
+                                    },
+                                },
+                                type_arguments: TypeArgs::Regular(vec![]),
+                                span: span.clone(),
+                            };
+
+                            type_check_method_application(
+                                ctx,
+                                method_name,
+                                vec![],
+                                vec![*prefix, *index, rhs],
+                                span,
+                            )
+                        }
+                        None => {
+                            errors.push(CompileError::InvalidExpressionOnLhs { span });
+                            err(warnings, errors)
+                        }
                     },
-                    warnings,
-                    errors,
-                )
+                }
             }
             ReassignmentTarget::StorageField(storage_keyword_span, fields) => {
                 let ctx = ctx
