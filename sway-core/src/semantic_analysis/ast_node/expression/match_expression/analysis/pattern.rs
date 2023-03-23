@@ -124,7 +124,7 @@ impl Pattern {
             ty::TyScrutineeVariant::StructScrutinee {
                 struct_ref,
                 fields,
-                instantiation_span: _,
+                instantiation_call_path: _,
             } => {
                 let mut new_fields = vec![];
                 for field in fields.into_iter() {

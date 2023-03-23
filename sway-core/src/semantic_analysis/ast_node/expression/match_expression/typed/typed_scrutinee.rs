@@ -212,7 +212,11 @@ fn type_check_struct(
         variant: ty::TyScrutineeVariant::StructScrutinee {
             struct_ref,
             fields: typed_fields,
-            instantiation_span: struct_name.span(),
+            instantiation_call_path: CallPath {
+                prefixes: vec![],
+                suffix: struct_name,
+                is_absolute: false,
+            },
         },
     };
 

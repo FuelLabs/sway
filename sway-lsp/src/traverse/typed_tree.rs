@@ -943,12 +943,12 @@ impl<'a> TypedTree<'a> {
             StructScrutinee {
                 struct_ref,
                 fields,
-                instantiation_span: _,
+                instantiation_call_path,
             } => {
                 if let Some(mut token) = self
                     .ctx
                     .tokens
-                    .try_get_mut(&to_ident_key(struct_ref.name()))
+                    .try_get_mut(&to_ident_key(&instantiation_call_path.suffix))
                     .try_unwrap()
                 {
                     token.typed = Some(TypedAstToken::TypedScrutinee(scrutinee.clone()));
@@ -987,7 +987,9 @@ impl<'a> TypedTree<'a> {
                             .try_unwrap()
                         {
                             token.typed = Some(TypedAstToken::TypedScrutinee(scrutinee.clone()));
-                            token.type_def = Some(TypeDefinition::Ident(enum_ref.name().clone()));
+                            token.type_def = Some(TypeDefinition::Ident(
+                                enum_ref.name().clone(), // prefixes.last().cloned().unwrap_or(enum_ref.name().clone()),
+                            ));
                         }
                         prefixes
                     } else {
@@ -998,7 +1000,7 @@ impl<'a> TypedTree<'a> {
                 if let Some(mut token) = self
                     .ctx
                     .tokens
-                    .try_get_mut(&to_ident_key(enum_ref.name()))
+                    .try_get_mut(&to_ident_key(&instantiation_call_path.suffix))
                     .try_unwrap()
                 {
                     token.typed = Some(TypedAstToken::TypedScrutinee(scrutinee.clone()));

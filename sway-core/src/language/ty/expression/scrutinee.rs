@@ -22,7 +22,7 @@ pub enum TyScrutineeVariant {
     StructScrutinee {
         struct_ref: DeclRefStruct,
         fields: Vec<TyStructScrutineeField>,
-        instantiation_span: Span,
+        instantiation_call_path: CallPath,
     },
     EnumScrutinee {
         enum_ref: DeclRefEnum,
