@@ -5,7 +5,7 @@ use crate::{
     type_system::*,
 };
 
-impl ty::TyStructDeclaration {
+impl ty::TyStructDecl {
     pub(crate) fn type_check(
         ctx: TypeCheckContext,
         decl: StructDeclaration,
@@ -51,7 +51,7 @@ impl ty::TyStructDeclaration {
         path = path.to_fullpath(ctx.namespace);
 
         // create the struct decl
-        let decl = ty::TyStructDeclaration {
+        let decl = ty::TyStructDecl {
             call_path: path,
             type_parameters: new_type_parameters,
             fields: new_fields,

@@ -303,7 +303,7 @@ impl TypeEngine {
                     .ok(&mut warnings, &mut errors)
                     .cloned()
                 {
-                    Some(ty::TyDeclaration::StructDeclaration {
+                    Some(ty::TyDecl::StructDecl {
                         decl_id: original_id,
                         ..
                     }) => {
@@ -340,7 +340,7 @@ impl TypeEngine {
                         // return the id
                         type_id
                     }
-                    Some(ty::TyDeclaration::EnumDeclaration {
+                    Some(ty::TyDecl::EnumDecl {
                         decl_id: original_id,
                         ..
                     }) => {
@@ -377,7 +377,7 @@ impl TypeEngine {
                         // return the id
                         type_id
                     }
-                    Some(ty::TyDeclaration::TypeAliasDeclaration {
+                    Some(ty::TyDecl::TypeAliasDecl {
                         decl_id: original_id,
                         ..
                     }) => {
@@ -391,7 +391,7 @@ impl TypeEngine {
 
                         type_id
                     }
-                    Some(ty::TyDeclaration::GenericTypeForFunctionScope { type_id, .. }) => type_id,
+                    Some(ty::TyDecl::GenericTypeForFunctionScope { type_id, .. }) => type_id,
                     _ => {
                         errors.push(CompileError::UnknownTypeName {
                             name: call_path.to_string(),

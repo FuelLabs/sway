@@ -62,7 +62,7 @@ impl ty::TyAstNode {
                     })
                 }
                 AstNodeContent::Declaration(decl) => ty::TyAstNodeContent::Declaration(check!(
-                    ty::TyDeclaration::type_check(ctx, decl),
+                    ty::TyDecl::type_check(ctx, decl),
                     return err(warnings, errors),
                     warnings,
                     errors

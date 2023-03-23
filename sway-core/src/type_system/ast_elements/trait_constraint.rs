@@ -189,7 +189,7 @@ impl TraitConstraint {
             .ok(&mut warnings, &mut errors)
             .cloned()
         {
-            Some(ty::TyDeclaration::TraitDeclaration { decl_id, .. }) => {
+            Some(ty::TyDecl::TraitDecl { decl_id, .. }) => {
                 let mut trait_decl = decl_engine.get_trait(&decl_id);
 
                 // Monomorphize the trait declaration.
@@ -227,11 +227,9 @@ impl TraitConstraint {
                     errors
                 );
             }
-            Some(ty::TyDeclaration::AbiDeclaration { .. }) => {
-                errors.push(CompileError::AbiAsSupertrait {
-                    span: trait_name.span(),
-                })
-            }
+            Some(ty::TyDecl::AbiDecl { .. }) => errors.push(CompileError::AbiAsSupertrait {
+                span: trait_name.span(),
+            }),
             _ => errors.push(CompileError::TraitNotFound {
                 name: trait_name.to_string(),
                 span: trait_name.span(),

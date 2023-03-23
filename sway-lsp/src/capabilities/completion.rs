@@ -1,5 +1,5 @@
 use sway_core::{
-    language::ty::{TyAstNodeContent, TyDeclaration, TyFunctionDeclaration},
+    language::ty::{TyAstNodeContent, TyDecl, TyFunctionDecl},
     namespace::Items,
     Engines, TypeId, TypeInfo,
 };
@@ -13,7 +13,7 @@ pub(crate) fn to_completion_items(
     namespace: &Items,
     engines: Engines<'_>,
     ident_to_complete: &Ident,
-    fn_decl: &TyFunctionDeclaration,
+    fn_decl: &TyFunctionDecl,
     position: Position,
 ) -> Vec<CompletionItem> {
     type_id_of_raw_ident(engines, namespace, ident_to_complete, fn_decl)
@@ -91,7 +91,7 @@ fn completion_items_for_type_id(
 }
 
 /// Returns the [String] of the shortened function signature to display in the completion item's label details.
-fn fn_signature_string(fn_decl: &TyFunctionDeclaration, parent_type_info: &TypeInfo) -> String {
+fn fn_signature_string(fn_decl: &TyFunctionDecl, parent_type_info: &TypeInfo) -> String {
     let params_str = fn_decl
         .parameters
         .iter()
@@ -115,13 +115,13 @@ fn replace_self_with_type_str(type_str: String, parent_type_info: &TypeInfo) -> 
 
 /// Returns the [TypeId] of an ident that may include field accesses and may be incomplete.
 /// For the first part of the ident, it looks for instantiation in the scope of the given
-/// [TyFunctionDeclaration]. For example, given `a.b.c`, it will return the type ID of `c`
+/// [TyFunctionDecl]. For example, given `a.b.c`, it will return the type ID of `c`
 /// if it can resolve `a` in the given function.
 fn type_id_of_raw_ident(
     engines: Engines,
     namespace: &Items,
     ident: &Ident,
-    fn_decl: &TyFunctionDeclaration,
+    fn_decl: &TyFunctionDecl,
 ) -> Option<TypeId> {
     let full_ident = ident.as_str();
 
@@ -167,8 +167,8 @@ fn type_id_of_raw_ident(
 }
 
 /// Returns the [TypeId] of an ident by looking for its instantiation within the scope of the
-/// given [TyFunctionDeclaration].
-fn type_id_of_local_ident(ident_name: &str, fn_decl: &TyFunctionDeclaration) -> Option<TypeId> {
+/// given [TyFunctionDecl].
+fn type_id_of_local_ident(ident_name: &str, fn_decl: &TyFunctionDecl) -> Option<TypeId> {
     fn_decl
         .parameters
         .iter()
@@ -182,9 +182,8 @@ fn type_id_of_local_ident(ident_name: &str, fn_decl: &TyFunctionDeclaration) -> 
         .or_else(|| {
             // Check if there is a variable declaration for this ident
             fn_decl.body.contents.iter().find_map(|node| {
-                if let TyAstNodeContent::Declaration(TyDeclaration::VariableDeclaration(
-                    variable_decl,
-                )) = node.content.clone()
+                if let TyAstNodeContent::Declaration(TyDecl::VariableDecl(variable_decl)) =
+                    node.content.clone()
                 {
                     if variable_decl.name.as_str() == ident_name {
                         return Some(variable_decl.return_type);

@@ -2,7 +2,7 @@ use super::{EntryPoint, ExitPoint};
 use crate::{
     language::{
         parsed::TreeType,
-        ty::{self, TyFunctionDeclaration, TyFunctionSig},
+        ty::{self, TyFunctionDecl, TyFunctionSig},
         CallPath,
     },
     type_system::TypeInfo,
@@ -66,17 +66,14 @@ pub struct ControlFlowCodeBlock {
 }
 
 impl ControlFlowNamespace {
-    pub(crate) fn get_function(
-        &self,
-        fn_decl: &TyFunctionDeclaration,
-    ) -> Option<&FunctionNamespaceEntry> {
+    pub(crate) fn get_function(&self, fn_decl: &TyFunctionDecl) -> Option<&FunctionNamespaceEntry> {
         let ident: IdentUnique = fn_decl.name.clone().into();
         self.function_namespace
             .get(&(ident, TyFunctionSig::from_fn_decl(fn_decl)))
     }
     pub(crate) fn insert_function(
         &mut self,
-        fn_decl: &ty::TyFunctionDeclaration,
+        fn_decl: &ty::TyFunctionDecl,
         entry: FunctionNamespaceEntry,
     ) {
         let ident = &fn_decl.name;

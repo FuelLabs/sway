@@ -69,31 +69,31 @@ pub(crate) fn print_decl_engine_types(
         .iter()
         .map(|n| match &n.content {
             ty::TyAstNodeContent::Declaration(declaration) => match declaration {
-                ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
+                ty::TyDecl::ConstantDecl { decl_id, .. } => {
                     let const_decl = decl_engine.get_constant(decl_id);
                     format!("{const_decl:#?}")
                 }
-                ty::TyDeclaration::FunctionDeclaration { decl_id, .. } => {
+                ty::TyDecl::FunctionDecl { decl_id, .. } => {
                     let func_decl = decl_engine.get_function(decl_id);
                     format!("{func_decl:#?}")
                 }
-                ty::TyDeclaration::TraitDeclaration { decl_id, .. } => {
+                ty::TyDecl::TraitDecl { decl_id, .. } => {
                     let trait_decl = decl_engine.get_trait(decl_id);
                     format!("{trait_decl:#?}")
                 }
-                ty::TyDeclaration::StructDeclaration { decl_id, .. } => {
+                ty::TyDecl::StructDecl { decl_id, .. } => {
                     let struct_decl = decl_engine.get_struct(decl_id);
                     format!("{struct_decl:#?}")
                 }
-                ty::TyDeclaration::EnumDeclaration { decl_id, .. } => {
+                ty::TyDecl::EnumDecl { decl_id, .. } => {
                     let enum_decl = decl_engine.get_enum(decl_id);
                     format!("{enum_decl:#?}")
                 }
-                ty::TyDeclaration::AbiDeclaration { decl_id, .. } => {
+                ty::TyDecl::AbiDecl { decl_id, .. } => {
                     let abi_decl = decl_engine.get_abi(decl_id);
                     format!("{abi_decl:#?}")
                 }
-                ty::TyDeclaration::StorageDeclaration { decl_id, .. } => {
+                ty::TyDecl::StorageDecl { decl_id, .. } => {
                     let storage_decl = decl_engine.get_storage(decl_id);
                     format!("{storage_decl:#?}")
                 }

@@ -5,11 +5,11 @@ use crate::{decl_engine::DeclId, engine_threading::*, language::ty, type_system:
 #[derive(Debug)]
 pub(crate) enum Instruction {
     Type(TypeId, SubstList),
-    FnDecl(DeclId<ty::TyFunctionDeclaration>, SubstList),
-    TraitDecl(DeclId<ty::TyTraitDeclaration>, SubstList),
+    FnDecl(DeclId<ty::TyFunctionDecl>, SubstList),
+    TraitDecl(DeclId<ty::TyTraitDecl>, SubstList),
     ImplTrait(DeclId<ty::TyImplTrait>, SubstList),
-    StructDecl(DeclId<ty::TyStructDeclaration>, SubstList),
-    EnumDecl(DeclId<ty::TyEnumDeclaration>, SubstList),
+    StructDecl(DeclId<ty::TyStructDecl>, SubstList),
+    EnumDecl(DeclId<ty::TyEnumDecl>, SubstList),
 }
 
 impl Instruction {

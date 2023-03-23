@@ -47,9 +47,9 @@ impl TyModule {
     pub fn test_fns<'a: 'b, 'b>(
         &'b self,
         decl_engine: &'a DeclEngine,
-    ) -> impl '_ + Iterator<Item = (TyFunctionDeclaration, DeclRefFunction)> {
+    ) -> impl '_ + Iterator<Item = (TyFunctionDecl, DeclRefFunction)> {
         self.all_nodes.iter().filter_map(|node| {
-            if let TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration {
+            if let TyAstNodeContent::Declaration(TyDecl::FunctionDecl {
                 decl_id,
                 subst_list: _,
                 name,
