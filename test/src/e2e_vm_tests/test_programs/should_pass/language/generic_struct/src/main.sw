@@ -10,7 +10,7 @@ fn get_a<V>(foo: Foo<V>) -> V {
 
 fn main() -> bool {
   let foo = Foo { a: true };
-  let bar = Foo { a: 10 };
+  let _bar = Foo { a: 10 };
 
   get_a(foo)
 }

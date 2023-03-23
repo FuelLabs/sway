@@ -1,3 +1,0 @@
-category = "run"
-expected_result = { action = "return", value = 42 }
-validate_abi = true

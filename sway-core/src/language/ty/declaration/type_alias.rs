@@ -5,7 +5,7 @@ use sway_types::{Ident, Named, Span, Spanned};
 use crate::{engine_threading::*, language::Visibility, transform, type_system::*};
 
 #[derive(Clone, Debug)]
-pub struct TyTypeAliasDeclaration {
+pub struct TyTypeAliasDecl {
     pub name: Ident,
     pub attributes: transform::AttributesMap,
     pub ty: TypeArgument,
@@ -13,14 +13,14 @@ pub struct TyTypeAliasDeclaration {
     pub span: Span,
 }
 
-impl Named for TyTypeAliasDeclaration {
+impl Named for TyTypeAliasDecl {
     fn name(&self) -> &Ident {
         &self.name
     }
 }
 
-impl EqWithEngines for TyTypeAliasDeclaration {}
-impl PartialEqWithEngines for TyTypeAliasDeclaration {
+impl EqWithEngines for TyTypeAliasDecl {}
+impl PartialEqWithEngines for TyTypeAliasDecl {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         self.name == other.name
             && self.ty.eq(&other.ty, engines)
@@ -28,9 +28,9 @@ impl PartialEqWithEngines for TyTypeAliasDeclaration {
     }
 }
 
-impl HashWithEngines for TyTypeAliasDeclaration {
+impl HashWithEngines for TyTypeAliasDecl {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let TyTypeAliasDeclaration {
+        let TyTypeAliasDecl {
             name,
             ty,
             visibility,
@@ -45,19 +45,19 @@ impl HashWithEngines for TyTypeAliasDeclaration {
     }
 }
 
-impl SubstTypes for TyTypeAliasDeclaration {
+impl SubstTypes for TyTypeAliasDecl {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.ty.subst(type_mapping, engines);
     }
 }
 
-impl ReplaceSelfType for TyTypeAliasDeclaration {
+impl ReplaceSelfType for TyTypeAliasDecl {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         self.ty.replace_self_type(engines, self_type);
     }
 }
 
-impl CreateTypeId for TyTypeAliasDeclaration {
+impl CreateTypeId for TyTypeAliasDecl {
     fn create_type_id(&self, engines: Engines<'_>) -> TypeId {
         let type_engine = engines.te();
         let decl_engine = engines.de();
@@ -71,7 +71,7 @@ impl CreateTypeId for TyTypeAliasDeclaration {
     }
 }
 
-impl Spanned for TyTypeAliasDeclaration {
+impl Spanned for TyTypeAliasDecl {
     fn span(&self) -> Span {
         self.span.clone()
     }

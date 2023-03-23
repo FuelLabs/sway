@@ -1,4 +1,4 @@
-use sway_core::language::ty::TyStructDeclaration;
+use sway_core::language::ty::TyStructDecl;
 use tower_lsp::lsp_types::Url;
 
 use crate::capabilities::code_actions::{
@@ -6,12 +6,12 @@ use crate::capabilities::code_actions::{
 };
 
 pub(crate) struct StructImplCodeAction<'a> {
-    decl: &'a TyStructDeclaration,
+    decl: &'a TyStructDecl,
     uri: &'a Url,
 }
 
-impl<'a> CodeAction<'a, TyStructDeclaration> for StructImplCodeAction<'a> {
-    fn new(ctx: CodeActionContext<'a>, decl: &'a TyStructDeclaration) -> Self {
+impl<'a> CodeAction<'a, TyStructDecl> for StructImplCodeAction<'a> {
+    fn new(ctx: CodeActionContext<'a>, decl: &'a TyStructDecl) -> Self {
         Self { decl, uri: ctx.uri }
     }
 
@@ -31,7 +31,7 @@ impl<'a> CodeAction<'a, TyStructDeclaration> for StructImplCodeAction<'a> {
         self.decl.call_path.suffix.to_string()
     }
 
-    fn decl(&self) -> &TyStructDeclaration {
+    fn decl(&self) -> &TyStructDecl {
         self.decl
     }
 

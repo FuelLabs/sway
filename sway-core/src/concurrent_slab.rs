@@ -2,7 +2,7 @@ use std::{fmt, sync::RwLock};
 
 use sway_types::{Named, Spanned};
 
-use crate::{decl_engine::*, engine_threading::*, type_system::TypeId, TypeInfo};
+use crate::{decl_engine::*, engine_threading::*, type_system::*};
 
 #[derive(Debug)]
 pub(crate) struct ConcurrentSlab<T> {

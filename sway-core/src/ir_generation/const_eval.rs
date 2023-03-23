@@ -105,8 +105,8 @@ pub(crate) fn compile_const_decl(
             // See if we it's a global const and whether we can compile it *now*.
             let decl = module_ns.check_symbol(&call_path.suffix)?;
             let decl_name_value = match decl {
-                ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
-                    let ty::TyConstantDeclaration {
+                ty::TyDecl::ConstantDecl { decl_id, .. } => {
+                    let ty::TyConstantDecl {
                         call_path,
                         value,
                         is_configurable,

@@ -14,9 +14,8 @@ use crate::{
         *,
     },
     metadata::MetadataManager,
-    type_system::{LogId, MessageId, TypeId, TypeInfo},
-    types::DeterministicallyAborts,
-    TypeEngine,
+    type_system::*,
+    types::*,
 };
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::error::{CompileError, Hint};
@@ -149,15 +148,15 @@ impl<'eng> FnCompiler<'eng> {
         let span_md_idx = md_mgr.span_to_md(context, &ast_node.span);
         match &ast_node.content {
             ty::TyAstNodeContent::Declaration(td) => match td {
-                ty::TyDeclaration::VariableDeclaration(tvd) => {
+                ty::TyDecl::VariableDecl(tvd) => {
                     self.compile_var_decl(context, md_mgr, tvd, span_md_idx)
                 }
-                ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
+                ty::TyDecl::ConstantDecl { decl_id, .. } => {
                     let tcd = self.decl_engine.get_constant(decl_id);
                     self.compile_const_decl(context, md_mgr, tcd, span_md_idx)?;
                     Ok(None)
                 }
-                ty::TyDeclaration::EnumDeclaration { decl_id, .. } => {
+                ty::TyDecl::EnumDecl { decl_id, .. } => {
                     let ted = self.decl_engine.get_enum(decl_id);
                     create_tagged_union_type(
                         self.type_engine,
@@ -168,13 +167,13 @@ impl<'eng> FnCompiler<'eng> {
                     .map(|_| ())?;
                     Ok(None)
                 }
-                ty::TyDeclaration::TypeAliasDeclaration { .. } => {
+                ty::TyDecl::TypeAliasDecl { .. } => {
                     Err(CompileError::UnexpectedDeclaration {
                         decl_type: "type alias",
                         span: ast_node.span.clone(),
                     })
                 }
-                ty::TyDeclaration::ImplTrait { .. } => {
+                ty::TyDecl::ImplTrait { .. } => {
                     // XXX What if we ignore the trait implementation???  Potentially since
                     // we currently inline everything and below we 'recreate' the functions
                     // lazily as they are called, nothing needs to be done here.  BUT!
@@ -182,15 +181,15 @@ impl<'eng> FnCompiler<'eng> {
                     // compile and then call these properly.
                     Ok(None)
                 }
-                ty::TyDeclaration::FunctionDeclaration { .. } => unexpected_decl("function"),
-                ty::TyDeclaration::TraitDeclaration { .. } => unexpected_decl("trait"),
-                ty::TyDeclaration::StructDeclaration { .. } => unexpected_decl("struct"),
-                ty::TyDeclaration::AbiDeclaration { .. } => unexpected_decl("abi"),
-                ty::TyDeclaration::GenericTypeForFunctionScope { .. } => {
+                ty::TyDecl::FunctionDecl { .. } => unexpected_decl("function"),
+                ty::TyDecl::TraitDecl { .. } => unexpected_decl("trait"),
+                ty::TyDecl::StructDecl { .. } => unexpected_decl("struct"),
+                ty::TyDecl::AbiDecl { .. } => unexpected_decl("abi"),
+                ty::TyDecl::GenericTypeForFunctionScope { .. } => {
                     unexpected_decl("generic type")
                 }
-                ty::TyDeclaration::ErrorRecovery { .. } => unexpected_decl("error recovery"),
-                ty::TyDeclaration::StorageDeclaration { .. } => unexpected_decl("storage"),
+                ty::TyDecl::ErrorRecovery { .. } => unexpected_decl("error recovery"),
+                ty::TyDecl::StorageDecl { .. } => unexpected_decl("storage"),
             },
             ty::TyAstNodeContent::Expression(te) => {
                 // An expression with an ignored return value... I assume.
@@ -1322,7 +1321,7 @@ impl<'eng> FnCompiler<'eng> {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         ast_args: &[(Ident, ty::TyExpression)],
-        callee: &ty::TyFunctionDeclaration,
+        callee: &ty::TyFunctionDecl,
         self_state_idx: Option<StateIndex>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
@@ -1355,7 +1354,7 @@ impl<'eng> FnCompiler<'eng> {
         let new_callee = match self.recreated_fns.get(&fn_key).copied() {
             Some(func) => func,
             None => {
-                let callee_fn_decl = ty::TyFunctionDeclaration {
+                let callee_fn_decl = ty::TyFunctionDecl {
                     type_parameters: Vec::new(),
                     name: Ident::new(Span::from_string(format!(
                         "{}_{}",
@@ -1695,10 +1694,10 @@ impl<'eng> FnCompiler<'eng> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_var_decl: &ty::TyVariableDeclaration,
+        ast_var_decl: &ty::TyVariableDecl,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Option<Value>, CompileError> {
-        let ty::TyVariableDeclaration { name, body, .. } = ast_var_decl;
+        let ty::TyVariableDecl { name, body, .. } = ast_var_decl;
         // Nothing to do for an abi cast declarations. The address specified in them is already
         // provided in each contract call node in the AST.
         if matches!(
@@ -1751,13 +1750,13 @@ impl<'eng> FnCompiler<'eng> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_const_decl: ty::TyConstantDeclaration,
+        ast_const_decl: ty::TyConstantDecl,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<(), CompileError> {
         // This is local to the function, so we add it to the locals, rather than the module
         // globals like other const decls.
         // `is_configurable` should be `false` here.
-        let ty::TyConstantDeclaration {
+        let ty::TyConstantDecl {
             call_path,
             value,
             is_configurable,
@@ -1872,7 +1871,7 @@ impl<'eng> FnCompiler<'eng> {
                             TypeInfo::Struct(decl_ref),
                         ) => {
                             // Get the struct type info, with field names.
-                            let ty::TyStructDeclaration {
+                            let ty::TyStructDecl {
                                 call_path: struct_call_path,
                                 fields: struct_fields,
                                 ..
@@ -2181,7 +2180,7 @@ impl<'eng> FnCompiler<'eng> {
                 ast_field.span.clone(),
             ));
         };
-        let crate::language::ty::TyStructDeclaration {
+        let crate::language::ty::TyStructDecl {
             call_path: struct_call_path,
             fields: struct_fields,
             ..
@@ -2223,7 +2222,7 @@ impl<'eng> FnCompiler<'eng> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        enum_decl: &ty::TyEnumDeclaration,
+        enum_decl: &ty::TyEnumDecl,
         tag: usize,
         contents: Option<&ty::TyExpression>,
     ) -> Result<Value, CompileError> {

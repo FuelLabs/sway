@@ -39,7 +39,7 @@ fn main() -> u64 {
     let mut r#false = 0;
 
     let e = SomeEnum::B(false);
-    let v = match e {
+    let _v = match e {
         SomeEnum::B(true) => {
             1
         },

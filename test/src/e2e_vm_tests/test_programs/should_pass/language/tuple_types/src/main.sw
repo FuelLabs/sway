@@ -22,7 +22,7 @@ fn gimme_a_pair() -> (u32, u64) {
 fn main() -> u32 {
     gimme_a_unit();
     also_gimme_a_unit();
-    let x = gimme_a_single_value();
-    let b = gimme_a_pair();
+    let _x = gimme_a_single_value();
+    let _b = gimme_a_pair();
     123
 }

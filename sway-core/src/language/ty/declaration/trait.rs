@@ -12,10 +12,10 @@ use crate::{
     type_system::*,
 };
 
-use super::TyDeclaration;
+use super::TyDecl;
 
 #[derive(Clone, Debug)]
-pub struct TyTraitDeclaration {
+pub struct TyTraitDecl {
     pub name: Ident,
     pub type_parameters: Vec<TypeParameter>,
     pub interface_surface: Vec<TyTraitInterfaceItem>,
@@ -38,20 +38,20 @@ pub enum TyTraitItem {
     Constant(DeclRefConstant),
 }
 
-impl Named for TyTraitDeclaration {
+impl Named for TyTraitDecl {
     fn name(&self) -> &Ident {
         &self.name
     }
 }
 
-impl Spanned for TyTraitDeclaration {
+impl Spanned for TyTraitDecl {
     fn span(&self) -> Span {
         self.span.clone()
     }
 }
 
-impl EqWithEngines for TyTraitDeclaration {}
-impl PartialEqWithEngines for TyTraitDeclaration {
+impl EqWithEngines for TyTraitDecl {}
+impl PartialEqWithEngines for TyTraitDecl {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         self.name == other.name
             && self.type_parameters.eq(&other.type_parameters, engines)
@@ -62,9 +62,9 @@ impl PartialEqWithEngines for TyTraitDeclaration {
     }
 }
 
-impl HashWithEngines for TyTraitDeclaration {
+impl HashWithEngines for TyTraitDecl {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let TyTraitDeclaration {
+        let TyTraitDecl {
             name,
             type_parameters,
             interface_surface,
@@ -131,7 +131,7 @@ impl HashWithEngines for TyTraitItem {
     }
 }
 
-impl SubstTypes for TyTraitDeclaration {
+impl SubstTypes for TyTraitDecl {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.type_parameters
             .iter_mut()
@@ -143,13 +143,13 @@ impl SubstTypes for TyTraitDeclaration {
                     let new_item_ref = item_ref
                         .clone()
                         .subst_types_and_insert_new_with_parent(type_mapping, engines);
-                    item_ref.replace_id((&new_item_ref).into());
+                    item_ref.replace_id(*new_item_ref.id());
                 }
                 TyTraitInterfaceItem::Constant(decl_ref) => {
                     let new_decl_ref = decl_ref
                         .clone()
                         .subst_types_and_insert_new(type_mapping, engines);
-                    decl_ref.replace_id((&new_decl_ref).into());
+                    decl_ref.replace_id(*new_decl_ref.id());
                 }
             });
         self.items.iter_mut().for_each(|item| match item {
@@ -157,13 +157,13 @@ impl SubstTypes for TyTraitDeclaration {
                 let new_item_ref = item_ref
                     .clone()
                     .subst_types_and_insert_new_with_parent(type_mapping, engines);
-                item_ref.replace_id((&new_item_ref).into());
+                item_ref.replace_id(*new_item_ref.id());
             }
             TyTraitItem::Constant(item_ref) => {
-                let new_item_ref = item_ref
+                let new_decl_ref = item_ref
                     .clone()
                     .subst_types_and_insert_new_with_parent(type_mapping, engines);
-                item_ref.replace_id((&new_item_ref).into());
+                item_ref.replace_id(*new_decl_ref.id());
             }
         });
     }
@@ -178,7 +178,7 @@ impl SubstTypes for TyTraitItem {
     }
 }
 
-impl ReplaceSelfType for TyTraitDeclaration {
+impl ReplaceSelfType for TyTraitDecl {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         self.type_parameters
             .iter_mut()
@@ -190,13 +190,13 @@ impl ReplaceSelfType for TyTraitDeclaration {
                     let new_item_ref = item_ref
                         .clone()
                         .replace_self_type_and_insert_new_with_parent(engines, self_type);
-                    item_ref.replace_id((&new_item_ref).into());
+                    item_ref.replace_id(*new_item_ref.id());
                 }
                 TyTraitInterfaceItem::Constant(decl_ref) => {
-                    let new_decl_id = decl_ref
+                    let new_decl_ref = decl_ref
                         .clone()
                         .replace_self_type_and_insert_new(engines, self_type);
-                    decl_ref.replace_id((&new_decl_id).into());
+                    decl_ref.replace_id(*new_decl_ref.id());
                 }
             });
         self.items.iter_mut().for_each(|item| match item {
@@ -204,13 +204,13 @@ impl ReplaceSelfType for TyTraitDeclaration {
                 let new_item_ref = item_ref
                     .clone()
                     .replace_self_type_and_insert_new_with_parent(engines, self_type);
-                item_ref.replace_id((&new_item_ref).into());
+                item_ref.replace_id(*new_item_ref.id());
             }
             TyTraitItem::Constant(item_ref) => {
-                let new_item_ref = item_ref
+                let new_decl_ref = item_ref
                     .clone()
                     .replace_self_type_and_insert_new(engines, self_type);
-                item_ref.replace_id((&new_item_ref).into());
+                item_ref.replace_id(*new_decl_ref.id());
             }
         });
     }
@@ -237,11 +237,7 @@ impl ReplaceSelfType for TyTraitItem {
 }
 
 impl ReplaceFunctionImplementingType for TyTraitItem {
-    fn replace_implementing_type(
-        &mut self,
-        engines: Engines<'_>,
-        implementing_type: TyDeclaration,
-    ) {
+    fn replace_implementing_type(&mut self, engines: Engines<'_>, implementing_type: TyDecl) {
         match self {
             TyTraitItem::Fn(decl_ref) => {
                 decl_ref.replace_implementing_type(engines, implementing_type)
@@ -253,7 +249,7 @@ impl ReplaceFunctionImplementingType for TyTraitItem {
     }
 }
 
-impl MonomorphizeHelper for TyTraitDeclaration {
+impl MonomorphizeHelper for TyTraitDecl {
     fn name(&self) -> &Ident {
         &self.name
     }

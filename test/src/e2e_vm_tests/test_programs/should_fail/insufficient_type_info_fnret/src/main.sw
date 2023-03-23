@@ -1,7 +1,7 @@
 script;
 
 fn main() {
-    let b = foo::<Option>();
+    let _b = foo::<Option>();
 }
 
 fn foo<T>() -> T {

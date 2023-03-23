@@ -451,7 +451,6 @@ impl core::ops::Multiply for U256 {
                 // `other.b * 2 ^ (64 * 2) * self.b * 2 ^ (62 ^ 2) > 2 ^ (64 * 4)`
                 assert(other.b == 0);
                 let result_b_d = self.b.overflowing_mul(other.d);
-                let result_c_c = self.c.overflowing_mul(other.c);
                 let result_c_d = self.c.overflowing_mul(other.d);
                 let result_d_c = self.d.overflowing_mul(other.c);
                 let result_d_d = self.d.overflowing_mul(other.d);
@@ -468,7 +467,6 @@ impl core::ops::Multiply for U256 {
                 // `other.b * 2 ^ (64 * 2) * self.b * 2 ^ (62 ^ 2) > 2 ^ (64 * 4)`.
                 assert(self.b == 0);
                 let result_b_d = other.b.overflowing_mul(self.d);
-                let result_c_c = other.c.overflowing_mul(self.c);
                 let result_c_d = other.c.overflowing_mul(self.d);
                 let result_d_c = other.d.overflowing_mul(self.c);
                 let result_d_d = other.d.overflowing_mul(self.d);
@@ -522,7 +520,7 @@ impl core::ops::Divide for U256 {
             quotient <<= 1;
             remainder <<= 1;
 
-            let m = self & (one << i);
+            let _m = self & (one << i);
             remainder.d = remainder.d | (self >> i).d & 1;
             // TODO use >= once OrdEq can be implemented.
             if remainder > divisor || remainder == divisor {

@@ -11,7 +11,7 @@ use crate::{
 };
 
 #[derive(Clone, Debug)]
-pub struct TyConstantDeclaration {
+pub struct TyConstantDecl {
     pub call_path: CallPath,
     pub value: Option<TyExpression>,
     pub visibility: Visibility,
@@ -20,11 +20,11 @@ pub struct TyConstantDeclaration {
     pub return_type: TypeId,
     pub type_ascription: TypeArgument,
     pub span: Span,
-    pub implementing_type: Option<TyDeclaration>,
+    pub implementing_type: Option<TyDecl>,
 }
 
-impl EqWithEngines for TyConstantDeclaration {}
-impl PartialEqWithEngines for TyConstantDeclaration {
+impl EqWithEngines for TyConstantDecl {}
+impl PartialEqWithEngines for TyConstantDecl {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         let type_engine = engines.te();
         self.call_path == other.call_path
@@ -42,10 +42,10 @@ impl PartialEqWithEngines for TyConstantDeclaration {
     }
 }
 
-impl HashWithEngines for TyConstantDeclaration {
+impl HashWithEngines for TyConstantDecl {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
         let type_engine = engines.te();
-        let TyConstantDeclaration {
+        let TyConstantDecl {
             call_path,
             value,
             visibility,
@@ -70,19 +70,19 @@ impl HashWithEngines for TyConstantDeclaration {
     }
 }
 
-impl Named for TyConstantDeclaration {
+impl Named for TyConstantDecl {
     fn name(&self) -> &Ident {
         &self.call_path.suffix
     }
 }
 
-impl Spanned for TyConstantDeclaration {
+impl Spanned for TyConstantDecl {
     fn span(&self) -> Span {
         self.span.clone()
     }
 }
 
-impl SubstTypes for TyConstantDeclaration {
+impl SubstTypes for TyConstantDecl {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.return_type.subst(type_mapping, engines);
         self.type_ascription.subst(type_mapping, engines);
@@ -92,7 +92,7 @@ impl SubstTypes for TyConstantDeclaration {
     }
 }
 
-impl ReplaceSelfType for TyConstantDeclaration {
+impl ReplaceSelfType for TyConstantDecl {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         self.return_type.replace_self_type(engines, self_type);
         self.type_ascription.replace_self_type(engines, self_type);
@@ -102,7 +102,7 @@ impl ReplaceSelfType for TyConstantDeclaration {
     }
 }
 
-impl ReplaceDecls for TyConstantDeclaration {
+impl ReplaceDecls for TyConstantDecl {
     fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
         if let Some(expr) = &mut self.value {
             expr.replace_decls(decl_mapping, engines);

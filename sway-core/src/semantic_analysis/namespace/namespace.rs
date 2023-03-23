@@ -93,15 +93,12 @@ impl Namespace {
     }
 
     /// Short-hand for calling [Root::resolve_symbol] on `root` with the `mod_path`.
-    pub(crate) fn resolve_symbol(&self, symbol: &Ident) -> CompileResult<&ty::TyDeclaration> {
+    pub(crate) fn resolve_symbol(&self, symbol: &Ident) -> CompileResult<&ty::TyDecl> {
         self.root.resolve_symbol(&self.mod_path, symbol)
     }
 
     /// Short-hand for calling [Root::resolve_call_path] on `root` with the `mod_path`.
-    pub(crate) fn resolve_call_path(
-        &self,
-        call_path: &CallPath,
-    ) -> CompileResult<&ty::TyDeclaration> {
+    pub(crate) fn resolve_call_path(&self, call_path: &CallPath) -> CompileResult<&ty::TyDecl> {
         self.root.resolve_call_path(&self.mod_path, call_path)
     }
 
@@ -110,7 +107,7 @@ impl Namespace {
         &self,
         engines: Engines<'_>,
         call_path: &CallPath,
-    ) -> CompileResult<&ty::TyDeclaration> {
+    ) -> CompileResult<&ty::TyDecl> {
         self.root
             .resolve_call_path_with_visibility_check(engines, &self.mod_path, call_path)
     }

@@ -1,14 +1,12 @@
 /// An object that is a template for copies from the template.
 ///
-/// This is predominantly used with
-/// [TypeSubstList](crate::type_system::TypeSubstList) and
-/// [TyDeclaration](crate::language::ty::TyDeclaration). The various
-/// variants of [TyDeclaration](crate::language::ty::TyDeclaration) contain
-/// fields `type_subst_list: Template<TypeSubstList>`. This type indicates that
-/// the [TypeSubstList](crate::type_system::TypeSubstList) contained in this
-/// field is simply a template for usages of the
-/// declaration declared in that particular
-/// [TyDeclaration](crate::language::ty::TyDeclaration) node.
+/// This is predominantly used with [SubstList](crate::type_system::SubstList)
+/// and [TyDecl](crate::language::ty::TyDecl). The various variants of
+/// [TyDecl](crate::language::ty::TyDecl) contain fields
+/// `subst_list: Template<SubstList>`. This type indicates that the
+/// [SubstList](crate::type_system::SubstList) contained in this field is simply
+/// a template for usages of the declaration declared in that particular
+/// [TyDecl](crate::language::ty::TyDecl) node.
 #[derive(Clone, Debug)]
 pub struct Template<T>(T)
 where
@@ -20,6 +18,10 @@ where
 {
     pub(crate) fn new(value: T) -> Template<T> {
         Template(value)
+    }
+
+    pub(crate) fn inner(&self) -> &T {
+        &self.0
     }
 
     #[allow(dead_code)]
