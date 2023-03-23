@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-2064A4F50B965AB3'
+
+[[package]]
+name = 'experimental_storage_nested_maps'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-2064A4F50B965AB3'
+dependencies = ['core']

@@ -24,6 +24,10 @@ use core::experimental::storage::StorageKey;
 /// ```
 #[storage(read, write)]
 pub fn write<T>(key: b256, offset: u64, value: T) {
+    if __size_of::<T>() == 0 {
+        return;
+    }
+
     // Get the number of storage slots needed based on the size of `T`
     let number_of_slots = (offset * 8 + __size_of::<T>() + 31) >> 5;
 
@@ -68,6 +72,10 @@ pub fn write<T>(key: b256, offset: u64, value: T) {
 /// ```
 #[storage(read)]
 pub fn read<T>(key: b256, offset: u64) -> Option<T> {
+    if __size_of::<T>() == 0 {
+        return Option::None;
+    }
+
     // NOTE: we are leaking this value on the heap.
     // Get the number of storage slots needed based on the size of `T`
     let number_of_slots = (offset * 8 + __size_of::<T>() + 31) >> 5;
@@ -103,7 +111,7 @@ pub fn read<T>(key: b256, offset: u64) -> Option<T> {
 /// assert(read::<u64>(ZERO_B256, 0).is_none());
 /// ```
 #[storage(write)]
-pub fn clear<T>(key: b256) -> bool {
+fn clear<T>(key: b256) -> bool {
     // Get the number of storage slots needed based on the size of `T` as the ceiling of 
     // `__size_of::<T>() / 32`
     let number_of_slots = (__size_of::<T>() + 31) >> 5;
@@ -116,13 +124,13 @@ impl<T> StorageKey<T> {
     /// Reads a value of type `T` starting at the location specified by `self`. If the value
     /// crosses the boundary of a storage slot, reading continues at the following slot.
     ///
-    /// Returns the value previously stored if a the storage slots read were
-    /// valid and contain `value`. Panics otherwise.
+    /// Returns the value previously stored if the storage slots read were valid and contain 
+    /// `value`. Reverts otherwise.
     ///
-    /// ### Arguments
+    /// ### Reverts
     ///
-    /// None
-    ///
+    /// Reverts if at least one of the storage slots needed to read a value of type `T` is not set.
+    /// 
     /// ### Examples
     ///
     /// ```sway
@@ -226,6 +234,38 @@ impl<K, V> StorageKey<StorageMap<K, V>> {
     }
 
     /// Retrieves the `StorageKey` that describes the raw location in storage of the value
+    /// Inserts a key-value pair into the map using the `[]` operator
+    ///
+    /// This is temporary until we are able to implement `trait IndexAssign`. The Sway compiler will
+    /// de-sugar the index operator `[]` in an assignment expression to a call to `index_assign()`.
+    ///
+    /// ### Arguments
+    ///
+    /// * `key` - The key to which the value is paired.
+    /// * `value` - The value to be stored.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// storage {
+    ///     map: StorageMap<u64, bool> = StorageMap {}
+    /// }
+    ///
+    /// fn foo() {
+    ///     let key = 5_u64;
+    ///     let value = true;
+    ///     storage.map[key] = value; // de-sugars to `storage.map.index_assign(key, value);`
+    ///     let retrieved = storage.map.get(key).read();
+    ///     assert(value == retrieved);
+    /// }
+    /// ```
+    #[storage(read, write)]
+    pub fn index_assign(self, key: K, value: V) {
+        let key = sha256((key, self.key));
+        write::<V>(key, 0, value);
+    }
+
+    /// Retrieves the `StorageKey` that describes the raw location in storage of the value
     /// stored at `key`, regardless of whether a value is actually stored at that location or not.
     ///
     /// ### Arguments
@@ -243,12 +283,43 @@ impl<K, V> StorageKey<StorageMap<K, V>> {
     ///     let key = 5_u64;
     ///     let value = true;
     ///     storage.map.insert(key, value);
-    ///     let retrieved_value = storage.map.get(key).read();
-    ///     assert(value == retrieved_value);
+    ///     let retrieved = storage.map.get(key).read();
+    ///     assert(value == retrieved);
     /// }
     /// ```
     #[storage(read)]
     pub fn get(self, key: K) -> StorageKey<V> {
+        StorageKey {
+            key: sha256((key, self.key)),
+            offset: 0,
+        }
+    }
+
+    /// Retrieves the `StorageKey` that describes the raw location in storage of the value 
+    /// stored at `key`, regardless of whether a value is actually stored at that location or not.
+    ///
+    /// This is temporary until we are able to implement `trait Index`. The Sway compiler will
+    /// de-sugar the index operator `[]` in an expression to a call to `index()`.
+    ///
+    /// ### Arguments
+    ///
+    /// * `key` - The key to which the value is paired.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// storage {
+    ///     map: StorageMap<u64, bool> = StorageMap {}
+    /// }
+    ///
+    /// fn foo() {
+    ///     let key = 5_u64;
+    ///     let value = true;
+    ///     storage.map.insert(key, value);
+    ///     let retrieved = storage.map[key].read(); // de-sugars to `storage.map.get(key).read()`
+    ///     assert(value == retrieved);
+    /// }
+    pub fn index(self, key: K) -> StorageKey<V> {
         StorageKey {
             key: sha256((key, self.key)),
             offset: 0,
