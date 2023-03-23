@@ -88,7 +88,7 @@ pub(crate) fn instantiate_enum(
 
             // unify the value of the argument with the variant
             check!(
-                CompileResult::from(type_engine.unify_adt(
+                CompileResult::from(type_engine.unify(
                     decl_engine,
                     typed_expr.return_type,
                     enum_variant.type_argument.type_id,
