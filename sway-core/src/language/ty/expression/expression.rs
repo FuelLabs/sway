@@ -365,7 +365,11 @@ impl CollectTypesMetadata for TyExpression {
                     errors
                 ));
             }
-            UnsafeDowncast { exp, variant } => {
+            UnsafeDowncast {
+                exp,
+                variant,
+                call_path_decl: _,
+            } => {
                 res.append(&mut check!(
                     exp.collect_types_metadata(ctx),
                     return err(warnings, errors),
