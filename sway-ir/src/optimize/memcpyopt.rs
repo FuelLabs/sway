@@ -142,13 +142,15 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
                             let instr_info = instr_info_map.get(load_val).unwrap();
                             instr_info.block == block && instr_info.pos > pos
                         })
+                        // We don't deal with ASM blocks.
+                        || asm_uses.contains(&dst_local)
+                        // We don't deal part copies.
+                        || dst_local.get_type(context) != src_local.get_type(context)
                     {
                         None
-                    } else if !asm_uses.contains(&dst_local) {
+                    } else {
                         to_delete.insert(instr_val);
                         Some((dst_local, src_local))
-                    } else {
-                        None
                     }
                 })
         })
