@@ -891,7 +891,7 @@ impl<V> StorageVec<V> {
     /// }
     ///
     /// fn foo() {
-    ///    assert(storage.vec.last().is_none());
+    ///     assert(storage.vec.last().is_none());
     ///
     ///     storage.vec.push(5);
     ///     storage.vec.push(10);
