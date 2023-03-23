@@ -862,7 +862,7 @@ impl<V> StorageVec<V> {
     /// }
     ///
     /// fn foo() {
-    ///    assert(storage.vec.first().is_none());
+    ///     assert(storage.vec.first().is_none());
     ///
     ///     storage.vec.push(5);
     ///
