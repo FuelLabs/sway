@@ -987,9 +987,7 @@ impl<'a> TypedTree<'a> {
                             .try_unwrap()
                         {
                             token.typed = Some(TypedAstToken::TypedScrutinee(scrutinee.clone()));
-                            token.type_def = Some(TypeDefinition::Ident(
-                                enum_ref.name().clone(), // prefixes.last().cloned().unwrap_or(enum_ref.name().clone()),
-                            ));
+                            token.type_def = Some(TypeDefinition::Ident(enum_ref.name().clone()));
                         }
                         prefixes
                     } else {
