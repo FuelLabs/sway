@@ -2,17 +2,14 @@ use crate::cmd::predicate_root::Command as PredicateRootCommand;
 use anyhow::Result;
 use forc_pkg as pkg;
 use pkg::build_with_options;
-use sway_core::{fuel_prelude::fuel_tx::Contract, BuildTarget};
-use tracing::info;
+use sway_core::BuildTarget;
 
 pub fn predicate_root(command: PredicateRootCommand) -> Result<()> {
     let build_options = build_opts_from_cmd(command);
-    let built_pkgs = build_with_options(build_options)?;
-    for (_, predicate_member) in built_pkgs.into_members(){
-        let predicate_root = Contract::root_from_code(&predicate_member.as_ref().bytecode.bytes);
-        info!("      Predicate root: {predicate_root}");
-    }
-
+    // Building predicates will output the predicate root by default.
+    // So to display all predicate roots in the current workspace we just need to build the
+    // workspace with a member filter that filters out every project type other than predicates.
+    build_with_options(build_options)?;
     Ok(())
 }
 
