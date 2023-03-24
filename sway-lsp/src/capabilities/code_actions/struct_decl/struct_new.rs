@@ -1,4 +1,4 @@
-use sway_core::language::ty::{TyDeclaration, TyImplTrait, TyStructDeclaration, TyStructField};
+use sway_core::language::ty::{TyDecl, TyImplTrait, TyStructDecl, TyStructField};
 use sway_types::Spanned;
 use tower_lsp::lsp_types::{CodeActionDisabled, Position, Range, Url};
 
@@ -8,13 +8,13 @@ use crate::{
 };
 
 pub(crate) struct StructNewCodeAction<'a> {
-    decl: &'a TyStructDeclaration,
+    decl: &'a TyStructDecl,
     uri: &'a Url,
     existing_impl_decl: Option<TyImplTrait>,
 }
 
-impl<'a> CodeAction<'a, TyStructDeclaration> for StructNewCodeAction<'a> {
-    fn new(ctx: CodeActionContext<'a>, decl: &'a TyStructDeclaration) -> Self {
+impl<'a> CodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
+    fn new(ctx: CodeActionContext<'a>, decl: &'a TyStructDecl) -> Self {
         // Before the other functions are called, we need to determine if the new function
         // should be generated in a new impl block, an existing impl block, or not at all.
         // First, find the first impl block for this struct if it exists.
@@ -22,9 +22,8 @@ impl<'a> CodeAction<'a, TyStructDeclaration> for StructNewCodeAction<'a> {
             .tokens
             .all_references_of_token(ctx.token, ctx.engines.te(), ctx.engines.de())
             .find_map(|(_, token)| {
-                if let Some(TypedAstToken::TypedDeclaration(TyDeclaration::ImplTrait {
-                    decl_id,
-                    ..
+                if let Some(TypedAstToken::TypedDeclaration(TyDecl::ImplTrait {
+                    decl_id, ..
                 })) = token.typed
                 {
                     Some(ctx.engines.de().get_impl_trait(&decl_id))
@@ -96,7 +95,7 @@ impl<'a> CodeAction<'a, TyStructDeclaration> for StructNewCodeAction<'a> {
         self.decl.call_path.suffix.to_string()
     }
 
-    fn decl(&self) -> &TyStructDeclaration {
+    fn decl(&self) -> &TyStructDecl {
         self.decl
     }
 

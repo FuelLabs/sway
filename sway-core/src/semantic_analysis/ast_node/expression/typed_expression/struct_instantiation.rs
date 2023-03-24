@@ -216,7 +216,7 @@ fn unify_field_arguments_and_struct_fields(
     for struct_field in struct_fields.iter() {
         if let Some(typed_field) = typed_fields.iter().find(|x| x.name == struct_field.name) {
             check!(
-                CompileResult::from(type_engine.unify_adt(
+                CompileResult::from(type_engine.unify(
                     decl_engine,
                     typed_field.value.return_type,
                     struct_field.type_argument.type_id,

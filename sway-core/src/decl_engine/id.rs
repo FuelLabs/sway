@@ -5,8 +5,8 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::ty::{
-        TyEnumDeclaration, TyFunctionDeclaration, TyImplTrait, TyStructDeclaration,
-        TyTraitDeclaration, TyTraitFn, TyTypeAliasDeclaration,
+        TyEnumDecl, TyFunctionDecl, TyImplTrait, TyStructDecl, TyTraitDecl, TyTraitFn,
+        TyTypeAliasDecl,
     },
     type_system::*,
 };
@@ -72,7 +72,7 @@ impl<T> Into<usize> for DeclId<T> {
     }
 }
 
-impl SubstTypes for DeclId<TyFunctionDeclaration> {
+impl SubstTypes for DeclId<TyFunctionDecl> {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);
@@ -80,7 +80,7 @@ impl SubstTypes for DeclId<TyFunctionDeclaration> {
         decl_engine.replace(*self, decl);
     }
 }
-impl SubstTypes for DeclId<TyTraitDeclaration> {
+impl SubstTypes for DeclId<TyTraitDecl> {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);
@@ -104,7 +104,7 @@ impl SubstTypes for DeclId<TyImplTrait> {
         decl_engine.replace(*self, decl);
     }
 }
-impl SubstTypes for DeclId<TyStructDeclaration> {
+impl SubstTypes for DeclId<TyStructDecl> {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);
@@ -112,7 +112,7 @@ impl SubstTypes for DeclId<TyStructDeclaration> {
         decl_engine.replace(*self, decl);
     }
 }
-impl SubstTypes for DeclId<TyEnumDeclaration> {
+impl SubstTypes for DeclId<TyEnumDecl> {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);
@@ -120,7 +120,7 @@ impl SubstTypes for DeclId<TyEnumDeclaration> {
         decl_engine.replace(*self, decl);
     }
 }
-impl SubstTypes for DeclId<TyTypeAliasDeclaration> {
+impl SubstTypes for DeclId<TyTypeAliasDecl> {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);
@@ -129,7 +129,7 @@ impl SubstTypes for DeclId<TyTypeAliasDeclaration> {
     }
 }
 
-impl ReplaceSelfType for DeclId<TyFunctionDeclaration> {
+impl ReplaceSelfType for DeclId<TyFunctionDecl> {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);
@@ -137,7 +137,7 @@ impl ReplaceSelfType for DeclId<TyFunctionDeclaration> {
         decl_engine.replace(*self, decl);
     }
 }
-impl ReplaceSelfType for DeclId<TyTraitDeclaration> {
+impl ReplaceSelfType for DeclId<TyTraitDecl> {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);
@@ -161,7 +161,7 @@ impl ReplaceSelfType for DeclId<TyImplTrait> {
         decl_engine.replace(*self, decl);
     }
 }
-impl ReplaceSelfType for DeclId<TyStructDeclaration> {
+impl ReplaceSelfType for DeclId<TyStructDecl> {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);
@@ -169,7 +169,7 @@ impl ReplaceSelfType for DeclId<TyStructDeclaration> {
         decl_engine.replace(*self, decl);
     }
 }
-impl ReplaceSelfType for DeclId<TyEnumDeclaration> {
+impl ReplaceSelfType for DeclId<TyEnumDecl> {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);
@@ -177,7 +177,7 @@ impl ReplaceSelfType for DeclId<TyEnumDeclaration> {
         decl_engine.replace(*self, decl);
     }
 }
-impl ReplaceSelfType for DeclId<TyTypeAliasDeclaration> {
+impl ReplaceSelfType for DeclId<TyTypeAliasDecl> {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);

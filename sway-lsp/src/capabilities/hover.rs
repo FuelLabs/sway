@@ -132,7 +132,7 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
         .as_ref()
         .and_then(|typed_token| match typed_token {
             TypedAstToken::TypedDeclaration(decl) => match decl {
-                ty::TyDeclaration::VariableDeclaration(var_decl) => {
+                ty::TyDecl::VariableDecl(var_decl) => {
                     let type_name =
                         format!("{}", engines.help_out(var_decl.type_ascription.type_id));
                     Some(format_variable_hover(
@@ -141,7 +141,7 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
                         &token_name,
                     ))
                 }
-                ty::TyDeclaration::StructDeclaration { decl_id, .. } => {
+                ty::TyDecl::StructDecl { decl_id, .. } => {
                     let struct_decl = decl_engine.get_struct(decl_id);
                     Some(format_visibility_hover(
                         struct_decl.visibility,
@@ -149,7 +149,7 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
                         &token_name,
                     ))
                 }
-                ty::TyDeclaration::TraitDeclaration { decl_id, .. } => {
+                ty::TyDecl::TraitDecl { decl_id, .. } => {
                     let trait_decl = decl_engine.get_trait(decl_id);
                     Some(format_visibility_hover(
                         trait_decl.visibility,
@@ -157,7 +157,7 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
                         &token_name,
                     ))
                 }
-                ty::TyDeclaration::EnumDeclaration { decl_id, .. } => {
+                ty::TyDecl::EnumDecl { decl_id, .. } => {
                     let enum_decl = decl_engine.get_enum(decl_id);
                     Some(format_visibility_hover(
                         enum_decl.visibility,
@@ -165,7 +165,7 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
                         &token_name,
                     ))
                 }
-                ty::TyDeclaration::AbiDeclaration { .. } => {
+                ty::TyDecl::AbiDecl { .. } => {
                     Some(format!("{} {}", decl.friendly_type_name(), &token_name))
                 }
                 _ => None,

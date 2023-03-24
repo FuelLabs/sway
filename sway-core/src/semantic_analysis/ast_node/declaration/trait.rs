@@ -18,7 +18,7 @@ use crate::{
     type_system::*,
 };
 
-impl ty::TyTraitDeclaration {
+impl ty::TyTraitDecl {
     pub(crate) fn type_check(
         ctx: TypeCheckContext,
         trait_decl: TraitDeclaration,
@@ -97,7 +97,7 @@ impl ty::TyTraitDeclaration {
                 }
                 TraitItem::Constant(const_decl) => {
                     let const_decl = check!(
-                        ty::TyConstantDeclaration::type_check(ctx.by_ref(), const_decl.clone(),),
+                        ty::TyConstantDecl::type_check(ctx.by_ref(), const_decl.clone(),),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -110,7 +110,7 @@ impl ty::TyTraitDeclaration {
                     check!(
                         ctx.namespace.insert_symbol(
                             const_name.clone(),
-                            ty::TyDeclaration::ConstantDeclaration {
+                            ty::TyDecl::ConstantDecl {
                                 name: const_name.clone(),
                                 decl_id: *decl_ref.id(),
                                 decl_span: const_decl.span.clone()
@@ -158,15 +158,15 @@ impl ty::TyTraitDeclaration {
         let mut new_items = vec![];
         for method in methods.into_iter() {
             let method = check!(
-                ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone(), true, false),
-                ty::TyFunctionDeclaration::error(method),
+                ty::TyFunctionDecl::type_check(ctx.by_ref(), method.clone(), true, false),
+                ty::TyFunctionDecl::error(method),
                 warnings,
                 errors
             );
             new_items.push(ty::TyTraitItem::Fn(decl_engine.insert(method)));
         }
 
-        let typed_trait_decl = ty::TyTraitDeclaration {
+        let typed_trait_decl = ty::TyTraitDecl {
             name,
             type_parameters: new_type_parameters,
             interface_surface: new_interface_surface,
@@ -189,7 +189,7 @@ impl ty::TyTraitDeclaration {
         let mut interface_surface_item_refs: InterfaceItemMap = BTreeMap::new();
         let mut impld_item_refs: ItemMap = BTreeMap::new();
 
-        let ty::TyTraitDeclaration {
+        let ty::TyTraitDecl {
             interface_surface, ..
         } = self;
 
@@ -239,7 +239,7 @@ impl ty::TyTraitDeclaration {
         let mut item_refs: ItemMap = BTreeMap::new();
         let mut impld_item_refs: ItemMap = BTreeMap::new();
 
-        let ty::TyTraitDeclaration {
+        let ty::TyTraitDecl {
             interface_surface,
             items,
             type_parameters,
@@ -326,7 +326,7 @@ impl ty::TyTraitDeclaration {
         let decl_engine = ctx.decl_engine;
         let engines = ctx.engines();
 
-        let ty::TyTraitDeclaration {
+        let ty::TyTraitDecl {
             interface_surface,
             items,
             type_parameters,
@@ -366,7 +366,7 @@ impl ty::TyTraitDeclaration {
                     let const_name = const_decl.call_path.suffix.clone();
                     ctx.namespace.insert_symbol(
                         const_name.clone(),
-                        ty::TyDeclaration::ConstantDeclaration {
+                        ty::TyDecl::ConstantDecl {
                             name: const_name,
                             decl_id: *decl_ref.id(),
                             decl_span: const_decl.span.clone(),

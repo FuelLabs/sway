@@ -1,6 +1,6 @@
 use crate::{
     decl_engine::DeclId,
-    language::{ty::TyFunctionDeclaration, Inline, Purity},
+    language::{ty::TyFunctionDecl, Inline, Purity},
 };
 
 use sway_ir::{Context, MetadataIndex, Metadatum, Value};
@@ -23,7 +23,7 @@ pub(crate) struct MetadataManager {
     md_storage_op_cache: HashMap<MetadataIndex, StorageOperation>,
     md_storage_key_cache: HashMap<MetadataIndex, u64>,
     md_inline_cache: HashMap<MetadataIndex, Inline>,
-    md_test_decl_index_cache: HashMap<MetadataIndex, DeclId<TyFunctionDeclaration>>,
+    md_test_decl_index_cache: HashMap<MetadataIndex, DeclId<TyFunctionDecl>>,
     md_config_const_name_cache: HashMap<MetadataIndex, Rc<str>>,
 
     span_md_cache: HashMap<Span, MetadataIndex>,
@@ -31,7 +31,7 @@ pub(crate) struct MetadataManager {
     storage_op_md_cache: HashMap<Purity, MetadataIndex>,
     storage_key_md_cache: HashMap<u64, MetadataIndex>,
     inline_md_cache: HashMap<Inline, MetadataIndex>,
-    test_decl_index_md_cache: HashMap<DeclId<TyFunctionDeclaration>, MetadataIndex>,
+    test_decl_index_md_cache: HashMap<DeclId<TyFunctionDecl>, MetadataIndex>,
     config_const_name_md_cache: HashMap<Rc<str>, MetadataIndex>,
 }
 
@@ -72,7 +72,7 @@ impl MetadataManager {
         &mut self,
         context: &Context,
         md_idx: Option<MetadataIndex>,
-    ) -> Option<DeclId<TyFunctionDeclaration>> {
+    ) -> Option<DeclId<TyFunctionDecl>> {
         Self::for_each_md_idx(context, md_idx, |md_idx| {
             self.md_test_decl_index_cache
                 .get(&md_idx)
@@ -263,7 +263,7 @@ impl MetadataManager {
     pub(crate) fn test_decl_index_to_md(
         &mut self,
         context: &mut Context,
-        decl_index: DeclId<TyFunctionDeclaration>,
+        decl_index: DeclId<TyFunctionDecl>,
     ) -> Option<MetadataIndex> {
         self.test_decl_index_md_cache
             .get(&decl_index)

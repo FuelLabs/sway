@@ -203,7 +203,7 @@ impl TypeParameter {
 
         // Insert the type parameter into the namespace as a dummy type
         // declaration.
-        let type_parameter_decl = ty::TyDeclaration::GenericTypeForFunctionScope {
+        let type_parameter_decl = ty::TyDecl::GenericTypeForFunctionScope {
             name: name_ident.clone(),
             type_id,
         };
@@ -308,7 +308,7 @@ fn handle_trait(
         .ok(&mut warnings, &mut errors)
         .cloned()
     {
-        Some(ty::TyDeclaration::TraitDeclaration { decl_id, .. }) => {
+        Some(ty::TyDecl::TraitDecl { decl_id, .. }) => {
             let trait_decl = decl_engine.get_trait(&decl_id);
 
             let (trait_interface_item_refs, trait_item_refs, trait_impld_item_refs) = trait_decl
