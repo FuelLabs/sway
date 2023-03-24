@@ -6,12 +6,16 @@ edition = "2021"
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/sway"
-description = "A `forc` plugin for determining contract or predicate ids."
+description = "A `forc` plugin for determining contract ids or predicate roots."
 
 [dependencies]
 anyhow = "1"
 clap = { version = "3.1", features = ["derive"] }
+forc = { version = "0.35.5", path = "../../forc" }
+forc-tracing = { version = "0.35.5", path = "../../forc-tracing" }
 forc-util = { version = "0.35.5", path = "../../forc-util" }
+forc-pkg = { version = "0.35.5", path = "../../forc-pkg/" }
+sway-core = { version = "0.35.5", path = "../../sway-core" }
 tracing = "0.1"
 
 [[bin]]
@@ -19,8 +23,8 @@ name = "forc-contract-id"
 path = "src/bin/contract_id.rs"
 
 [[bin]]
-name = "forc-predicate-id"
-path = "src/bin/predicate_id.rs"
+name = "forc-predicate-root"
+path = "src/bin/predicate_root.rs"
 
 [lib]
 path = "src/lib.rs"

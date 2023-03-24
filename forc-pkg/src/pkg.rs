@@ -346,6 +346,16 @@ impl MemberFilter {
         }
     }
 
+    /// Returns a new `BuildFilter`, that only builds predicates.
+    pub fn only_predicates() -> Self {
+        Self {
+            build_contracts: false,
+            build_scripts: false,
+            build_predicates: true,
+            build_libraries: false,
+        }
+    }
+
     /// Filter given target of output nodes according to the this `BuildFilter`.
     pub fn filter_outputs(
         &self,

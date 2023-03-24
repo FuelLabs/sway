@@ -1759,7 +1759,11 @@ version = "0.35.5"
 dependencies = [
  "anyhow",
  "clap 3.2.23",
+ "forc",
+ "forc-pkg",
+ "forc-tracing",
  "forc-util",
+ "sway-core",
  "tracing",
 ]
 
