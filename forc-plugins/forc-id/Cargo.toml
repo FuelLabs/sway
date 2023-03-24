@@ -15,6 +15,7 @@ forc = { version = "0.35.5", path = "../../forc" }
 forc-tracing = { version = "0.35.5", path = "../../forc-tracing" }
 forc-util = { version = "0.35.5", path = "../../forc-util" }
 forc-pkg = { version = "0.35.5", path = "../../forc-pkg/" }
+forc-tx = { version = "0.35.5", path = "../forc-tx" }
 sway-core = { version = "0.35.5", path = "../../sway-core" }
 tracing = "0.1"
 

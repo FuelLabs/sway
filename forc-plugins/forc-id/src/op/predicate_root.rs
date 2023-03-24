@@ -1,7 +1,6 @@
 use crate::cmd::predicate_root::Command as PredicateRootCommand;
 use anyhow::Result;
-use forc_pkg as pkg;
-use pkg::build_with_options;
+use forc_pkg::{self as pkg, build_with_options};
 use sway_core::BuildTarget;
 
 pub fn predicate_root(command: PredicateRootCommand) -> Result<()> {
@@ -39,7 +38,7 @@ fn build_opts_from_cmd(cmd: PredicateRootCommand) -> pkg::BuildOpts {
         release: cmd.build_profile.release,
         error_on_warnings: cmd.build_profile.error_on_warnings,
         binary_outfile: cmd.build_output.bin_file.clone(),
-        debug_outfile: cmd.build_output.debug_file.clone(),
+        debug_outfile: cmd.build_output.debug_file,
         build_target: BuildTarget::default(),
         tests: false,
         member_filter: pkg::MemberFilter::only_predicates(),

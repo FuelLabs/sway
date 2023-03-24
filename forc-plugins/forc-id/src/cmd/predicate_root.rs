@@ -2,8 +2,8 @@ use clap::Parser;
 
 pub use forc::cli::shared::{BuildOutput, BuildProfile, Minify, Pkg, Print};
 
-/// Determine the predicate-root for a predicate forc package, if run against a workspace outputs
-/// all predicte roots in the workspace.
+/// Determine predicate-root for a predicate. For workspaces outputs all predicate roots in the
+/// workspace.
 #[derive(Debug, Default, Parser)]
 #[clap(bin_name = "forc predicate-root", version)]
 pub struct Command {

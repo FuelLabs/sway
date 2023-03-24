@@ -766,6 +766,24 @@ impl BuildPlan {
                 .map(|(n, p)| (n.clone(), p.clone()))
         })
     }
+
+    /// Return the salt for the given pinned pkg, for none contract members returns `None`.
+    pub fn salt(&self, pinned: &Pinned) -> Option<fuel_tx::Salt> {
+        let graph = self.graph();
+        let node_ix = graph
+            .node_indices()
+            .find(|node_ix| graph[*node_ix] == *pinned);
+        node_ix.and_then(|node| {
+            graph
+                .edges_directed(node, Direction::Incoming)
+                .map(|e| match e.weight().kind {
+                    DepKind::Library => None,
+                    DepKind::Contract { salt } => Some(salt),
+                })
+                .next()
+                .flatten()
+        })
+    }
 }
 
 impl Programs {

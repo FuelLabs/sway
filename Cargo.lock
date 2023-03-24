@@ -1762,6 +1762,7 @@ dependencies = [
  "forc",
  "forc-pkg",
  "forc-tracing",
+ "forc-tx",
  "forc-util",
  "sway-core",
  "tracing",
