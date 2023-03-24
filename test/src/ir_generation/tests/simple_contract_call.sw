@@ -38,8 +38,6 @@ fn main() -> u64 {
     0
 }
 
-// regex: ANON=__anon_\d+
-
 // check: local b256 $(contract_id_0_const=$ID) = const b256 0x0c1c50c2bf5ba4bb351b4249a2f5e7d86556fcb4a6ae90465ff6c86126eeb3c0
 // check: local b256 $(asset_id_0_const=$ID) = const b256 0x0000000000000000000000000000000000000000000000000000000000000000
 // check: local b256 $(threes_const=$ID) = const b256 0x3333333333333333333333333333333333333333333333333333333333333333
@@ -56,19 +54,15 @@ fn main() -> u64 {
 // check: local { u64, b256 } s
 
 // check: $(contract_id_0_ptr=$VAL) = get_local ptr b256, $contract_id_0_const
-// check: $(asset_id_0_ptr=$VAL) = get_local ptr b256, $asset_id_0_const
-// check: $(threes_ptr=$VAL) = get_local ptr b256, $threes_const
 // check: $(contract_id_1_ptr=$VAL) = get_local ptr b256, $contract_id_1_const
-// check: $(asset_id_1_ptr=$VAL) = get_local ptr b256, $asset_id_1_const
 // check: $(big_fives_ptr=$VAL) = get_local ptr b256, $big_fives_const
 // check: $(contract_id_2_ptr=$VAL) = get_local ptr b256, $contract_id_2_const
-// check: $(asset_id_2_ptr=$VAL) = get_local ptr b256, $asset_id_2_const
 
 // --- call get_u64() ---
 // check: $(oneone=$VAL) = const u64 1111
 // check: $(user_arg=$VAL) = bitcast $oneone to u64
 
-// check: $(args_ptr=$VAL) = get_local ptr { b256, u64, u64 }, $ANON
+// check: $(args_ptr=$VAL) = get_local ptr { b256, u64, u64 }, $ID
 
 // check: $(idx_0=$VAL) = const u64 0
 // check: $(arg_contract_id=$VAL) = get_elem_ptr $args_ptr, ptr b256, $idx_0
@@ -83,8 +77,7 @@ fn main() -> u64 {
 // check: $(arg_user_ptr=$VAL) = get_elem_ptr $args_ptr, ptr u64, $idx_2
 // check: store $user_arg to $arg_user_ptr
 
-// check: $(asset_id_ptr=$VAL) = get_local ptr b256, $ANON
-// check: mem_copy_val $asset_id_ptr, $asset_id_0_ptr
+// check: $(asset_id_ptr=$VAL) = get_local ptr b256, $ID
 // check: $(coins=$VAL) = const u64 0
 // check: $(gas=$VAL) = const u64 10000
 // check: $(call_res=$VAL) = contract_call u64 get_u64 $args_ptr, $coins, $asset_id_ptr, $gas
@@ -92,11 +85,10 @@ fn main() -> u64 {
 // check: store $call_res to $a_ptr
 
 // --- call get_b256() ---
-// check: $(user_arg_ptr=$VAL) = get_local ptr b256, arg_for_get_b256
-// check: mem_copy_val $user_arg_ptr, $threes_ptr
+// check: $(user_arg_ptr=$VAL) = get_local ptr b256, $threes_const
 // check: $(user_arg=$VAL) = ptr_to_int $user_arg_ptr to u64
 
-// check: $(args_ptr=$VAL) = get_local ptr { b256, u64, u64 }, $ANON
+// check: $(args_ptr=$VAL) = get_local ptr { b256, u64, u64 }, $ID
 
 // check: $(idx_0=$VAL) = const u64 0
 // check: $(arg_contract_id=$VAL) = get_elem_ptr $args_ptr, ptr b256, $idx_0
@@ -111,8 +103,7 @@ fn main() -> u64 {
 // check: $(args_user_ptr=$VAL) = get_elem_ptr $args_ptr, ptr u64, $idx_2
 // check: store $user_arg to $args_user_ptr
 
-// check: $(asset_id_ptr=$VAL) = get_local ptr b256, $ANON
-// check: mem_copy_val $asset_id_ptr, $asset_id_1_ptr
+// check: $(asset_id_ptr=$VAL) = get_local ptr b256, $asset_id_1_const
 // check: $(coins=$VAL) = const u64 0
 // check: $(gas=$VAL) = const u64 20000
 // check: $(call_res=$VAL) = contract_call ptr b256 get_b256 $args_ptr, $coins, $asset_id_ptr, $gas
@@ -133,7 +124,7 @@ fn main() -> u64 {
 
 // check: $(user_arg=$VAL) = ptr_to_int $user_arg_ptr to u64
 
-// check: $(args_ptr=$VAL) = get_local ptr { b256, u64, u64 }, $ANON
+// check: $(args_ptr=$VAL) = get_local ptr { b256, u64, u64 }, $ID
 
 // check: $(idx_0=$VAL) = const u64 0
 // check: $(arg_contract_id=$VAL) = get_elem_ptr $args_ptr, ptr b256, $idx_0
@@ -148,8 +139,7 @@ fn main() -> u64 {
 // check: $(args_user_ptr=$VAL) = get_elem_ptr $args_ptr, ptr u64, $idx_2
 // check: store $user_arg to $args_user_ptr
 
-// check: $(asset_id_ptr=$VAL) = get_local ptr b256, $ANON
-// check: mem_copy_val $asset_id_ptr, $asset_id_2_ptr
+// check: $(asset_id_ptr=$VAL) = get_local ptr b256, $asset_id_2_const
 // check: $(gas=$VAL) = read_register cgas
 // check: $(coins=$VAL) = const u64 0
 // check: $(call_res=$VAL) = contract_call ptr { u64, b256 } get_s $args_ptr, $coins, $asset_id_ptr, $gas

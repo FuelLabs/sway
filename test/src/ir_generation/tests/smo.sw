@@ -21,7 +21,7 @@ fn main() {
 
 // check: $(temp_ptr=$VAL) = get_local ptr { b256, u64, u64 }, $(=__anon_\d+)
 
-// check: $(recip_ptr=$VAL) = get_local ptr b256, recipient
+// check: $(recip_ptr=$VAL) = get_local ptr b256, $ID
 // check: $(idx_0=$VAL) = const u64 0
 // check: $(field_0_ptr=$VAL) = get_elem_ptr $temp_ptr, ptr b256, $idx_0
 // check: mem_copy_val $field_0_ptr, $recip_ptr

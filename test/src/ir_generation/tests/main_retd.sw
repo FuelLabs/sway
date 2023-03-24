@@ -42,6 +42,4 @@ fn main() -> D {
 
 // D is 72 bytes.
 // check: movi $(len_reg=$REG) i72
-// check: mcp  $(ptr_reg=$REG) $REG $len_reg
-// check: movi $(len_reg=$REG) i72
-// check: retd  $ptr_reg $len_reg
+// check: retd  $REG $len_reg

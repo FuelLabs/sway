@@ -3,7 +3,7 @@ script;
 use get_storage_key_abi::TestContract;
 
 fn main() -> u64 {
-    let caller = abi(TestContract, 0xd2c46c62a7cee676489920c1f035ab5669e3f073733b3279d73ac570982711b9);
+    let caller = abi(TestContract, 0x79fd3f7662e227f8ff7bef65b683fa4417b7e9f6d6bdbc0eb4d899ea2d73cad3);
 
     // Get the storage keys directly by calling the contract methods from_f1,
     // from_f2, from_f3, from_f4. The keys correspond to different entries in
