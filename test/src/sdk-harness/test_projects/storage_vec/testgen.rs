@@ -237,6 +237,7 @@ macro_rules! testgen {
                     push(&instance, $arg0).await;
 
                     assert_eq!(len(&instance).await, 1);
+                    assert_eq!(get(&instance, 0).await, $arg0);
                     assert_eq!(pop(&instance).await, $arg0);
                     assert_eq!(len(&instance).await, 0);
                 }
@@ -259,6 +260,12 @@ macro_rules! testgen {
                     push(&instance, $arg2).await;
                     push(&instance, $arg3).await;
 
+                    assert_eq!(len(&instance).await, 4);
+                    assert_eq!(get(&instance, 0).await, $arg0);
+                    assert_eq!(get(&instance, 1).await, $arg1);
+                    assert_eq!(get(&instance, 2).await, $arg2);
+                    assert_eq!(get(&instance, 3).await, $arg3);
+
                     assert_eq!(remove(&instance, 2).await, $arg2);
 
                     assert_eq!(len(&instance).await, 3);
@@ -276,6 +283,12 @@ macro_rules! testgen {
                     push(&instance, $arg2).await;
                     push(&instance, $arg3).await;
 
+                    assert_eq!(len(&instance).await, 4);
+                    assert_eq!(get(&instance, 0).await, $arg0);
+                    assert_eq!(get(&instance, 1).await, $arg1);
+                    assert_eq!(get(&instance, 2).await, $arg2);
+                    assert_eq!(get(&instance, 3).await, $arg3);
+
                     assert_eq!(swap_remove(&instance, 1).await, $arg1);
 
                     assert_eq!(len(&instance).await, 3);
@@ -292,6 +305,12 @@ macro_rules! testgen {
                     push(&instance, $arg1).await;
                     push(&instance, $arg2).await;
                     push(&instance, $arg3).await;
+
+                    assert_eq!(len(&instance).await, 4);
+                    assert_eq!(get(&instance, 0).await, $arg0);
+                    assert_eq!(get(&instance, 1).await, $arg1);
+                    assert_eq!(get(&instance, 2).await, $arg2);
+                    assert_eq!(get(&instance, 3).await, $arg3);
 
                     set(&instance, 0, $arg3).await;
                     set(&instance, 1, $arg2).await;
@@ -316,6 +335,12 @@ macro_rules! testgen {
                     push(&instance, $arg1).await;
                     push(&instance, $arg2).await;
                     push(&instance, $arg3).await;
+
+                    assert_eq!(len(&instance).await, 4);
+                    assert_eq!(get(&instance, 0).await, $arg0);
+                    assert_eq!(get(&instance, 1).await, $arg1);
+                    assert_eq!(get(&instance, 2).await, $arg2);
+                    assert_eq!(get(&instance, 3).await, $arg3);
 
                     insert(&instance, 1, $arg4).await;
 
@@ -363,6 +388,8 @@ macro_rules! testgen {
 
                     push(&instance, $arg0).await;
 
+                    assert!(!is_empty(&instance).await);
+
                     clear(&instance).await;
 
                     assert!(is_empty(&instance).await);
@@ -371,6 +398,8 @@ macro_rules! testgen {
                     push(&instance, $arg1).await;
                     push(&instance, $arg2).await;
                     push(&instance, $arg3).await;
+
+                    assert!(!is_empty(&instance).await);
 
                     clear(&instance).await;
 
@@ -386,6 +415,11 @@ macro_rules! testgen {
                     push(&instance, $arg2).await;
                     push(&instance, $arg3).await;
 
+                    assert_eq!(len(&instance).await, 4);
+                    assert_eq!(get(&instance, 0).await, $arg0);
+                    assert_eq!(get(&instance, 1).await, $arg1);
+                    assert_eq!(get(&instance, 2).await, $arg2);
+                    assert_eq!(get(&instance, 3).await, $arg3);
                     swap(&instance, 0, 3).await;
                     swap(&instance, 1, 2).await;
 
@@ -402,6 +436,10 @@ macro_rules! testgen {
                     push(&instance, $arg0).await;
                     push(&instance, $arg1).await;
 
+                    assert_eq!(len(&instance).await, 2);
+                    assert_eq!(get(&instance, 0).await, $arg0);
+                    assert_eq!(get(&instance, 1).await, $arg1);
+
                     assert_eq!(first(&instance).await, $arg0);
                 }
 
@@ -412,6 +450,9 @@ macro_rules! testgen {
                     push(&instance, $arg0).await;
                     push(&instance, $arg1).await;
 
+                    assert_eq!(len(&instance).await, 2);
+                    assert_eq!(get(&instance, 0).await, $arg0);
+                    assert_eq!(get(&instance, 1).await, $arg1);
                     assert_eq!(last(&instance).await, $arg1);
                 }
 
@@ -424,8 +465,15 @@ macro_rules! testgen {
                     push(&instance, $arg2).await;
                     push(&instance, $arg3).await;
 
+                    assert_eq!(len(&instance).await, 4);
+                    assert_eq!(get(&instance, 0).await, $arg0);
+                    assert_eq!(get(&instance, 1).await, $arg1);
+                    assert_eq!(get(&instance, 2).await, $arg2);
+                    assert_eq!(get(&instance, 3).await, $arg3);
+
                     reverse(&instance).await;
 
+                    assert_eq!(len(&instance).await, 4);
                     assert_eq!(get(&instance, 0).await, $arg3);
                     assert_eq!(get(&instance, 1).await, $arg2);
                     assert_eq!(get(&instance, 2).await, $arg1);
@@ -433,6 +481,7 @@ macro_rules! testgen {
 
                     reverse(&instance).await;
 
+                    assert_eq!(len(&instance).await, 4);
                     assert_eq!(get(&instance, 0).await, $arg0);
                     assert_eq!(get(&instance, 1).await, $arg1);
                     assert_eq!(get(&instance, 2).await, $arg2);
@@ -447,7 +496,14 @@ macro_rules! testgen {
                     push(&instance, $arg1).await;
                     push(&instance, $arg2).await;
 
+                    assert_eq!(len(&instance).await, 3);
+                    assert_eq!(get(&instance, 0).await, $arg0);
+                    assert_eq!(get(&instance, 1).await, $arg1);
+                    assert_eq!(get(&instance, 2).await, $arg2);
+
                     reverse(&instance).await;
+
+                    assert_eq!(len(&instance).await, 3);
 
                     assert_eq!(get(&instance, 0).await, $arg2);
                     assert_eq!(get(&instance, 1).await, $arg1);
@@ -455,6 +511,7 @@ macro_rules! testgen {
 
                     reverse(&instance).await;
 
+                    assert_eq!(len(&instance).await, 3);
                     assert_eq!(get(&instance, 0).await, $arg0);
                     assert_eq!(get(&instance, 1).await, $arg1);
                     assert_eq!(get(&instance, 2).await, $arg2);
@@ -469,8 +526,15 @@ macro_rules! testgen {
                     push(&instance, $arg2).await;
                     push(&instance, $arg3).await;
 
+                    assert_eq!(len(&instance).await, 4);
+                    assert_eq!(get(&instance, 0).await, $arg0);
+                    assert_eq!(get(&instance, 1).await, $arg1);
+                    assert_eq!(get(&instance, 2).await, $arg2);
+                    assert_eq!(get(&instance, 3).await, $arg3);
+
                     fill(&instance, $arg4).await;
 
+                    assert_eq!(len(&instance).await, 4);
                     assert_eq!(get(&instance, 0).await, $arg4);
                     assert_eq!(get(&instance, 1).await, $arg4);
                     assert_eq!(get(&instance, 2).await, $arg4);
@@ -485,6 +549,12 @@ macro_rules! testgen {
                     push(&instance, $arg1).await;
                     push(&instance, $arg2).await;
                     push(&instance, $arg3).await;
+
+                    assert_eq!(len(&instance).await, 4);
+                    assert_eq!(get(&instance, 0).await, $arg0);
+                    assert_eq!(get(&instance, 1).await, $arg1);
+                    assert_eq!(get(&instance, 2).await, $arg2);
+                    assert_eq!(get(&instance, 3).await, $arg3);
 
                     resize(&instance, 6, $arg4).await;
 
@@ -505,6 +575,12 @@ macro_rules! testgen {
                     push(&instance, $arg1).await;
                     push(&instance, $arg2).await;
                     push(&instance, $arg3).await;
+
+                    assert_eq!(len(&instance).await, 4);
+                    assert_eq!(get(&instance, 0).await, $arg0);
+                    assert_eq!(get(&instance, 1).await, $arg1);
+                    assert_eq!(get(&instance, 2).await, $arg2);
+                    assert_eq!(get(&instance, 3).await, $arg3);
 
                     resize(&instance, 2, $arg4).await;
 
