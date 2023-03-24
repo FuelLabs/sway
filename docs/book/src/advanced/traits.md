@@ -70,6 +70,73 @@ The implementation of `MyAbi` for `Contract` must also implement the `ABIsupertr
 
 ABI supertraits are intended to make contract implementations compositional, allowing combining orthogonal contract features using, for instance, libraries.
 
+## Associated Items
+
+Traits can declare different kinds of associated items in their interface surface:
+
+- [functions](#associated-functions)
+- [constants](#associated-constants)
+
+### Associated functions
+
+Associated functions in traits consist of just a function signature, so they have to omit the function body by
+replacing it with a semicolon. This indicates that the implementation must define the function.
+
+```sway
+trait Trait {
+    fn associated_fn(self, b: Self) -> bool;
+}
+```
+
+### Associated constants
+
+Associated constants are constants associated with a type.
+
+```sway
+const ID: u32 = 0;
+```
+
+Associated constants may omit the equals sign and expression to indicate implementations
+must define the constant value.
+
+The identifier is the name of the constant used in the path. The type is the type that the
+definition has to implement.
+
+You can _define_ an associated const directly in the interface surface of a trait:
+
+```sway
+script;
+
+trait ConstantId {
+    const ID: u32 = 0;
+}
+
+fn main() -> u32 {
+  ConstantId::ID
+}
+```
+
+Alternatively, you can also _declare_ it in the trait, and implement it in the interface of the
+types implementing the trait.
+
+```sway
+script;
+
+trait ConstantId {
+    const ID: u32;
+}
+
+struct Struct {}
+
+impl ConstantId for Struct {
+  const ID: u32 = 1;
+}
+
+fn main() -> u32 {
+  Struct::ID
+}
+```
+
 ## Use Cases
 
 ### Custom Types (structs, enums)
