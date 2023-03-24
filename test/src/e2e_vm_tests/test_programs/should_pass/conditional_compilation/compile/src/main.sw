@@ -1,10 +1,13 @@
 script;
 
 configurable {
+  // Only compiles for FVM
   #[cfg(target = "fuel")]
   CFG_VALUE: u64 = 40,
+  // Only compiles for EVM
   #[cfg(target = "evm")]
   CFG_VALUE: () = (),
+  // Never compiles
   #[cfg(target = "fuel")]
   #[cfg(target = "evm")]
   CFG_VALUE: () = (),

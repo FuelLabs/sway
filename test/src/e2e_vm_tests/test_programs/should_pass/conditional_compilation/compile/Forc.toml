@@ -3,5 +3,5 @@ authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
 implicit-std = false
 license = "Apache-2.0"
-name = "conditional_compilation"
+name = "conditional_compilation_compile"
 target = "evm"
