@@ -1,5 +1,5 @@
 use crate::{
-    doc::{Documentation, ModuleInfo, ModulePrefix},
+    doc::{Document, Documentation, ModuleInfo, ModulePrefix},
     RenderPlan,
 };
 use anyhow::{anyhow, Result};
@@ -64,186 +64,11 @@ impl RenderedDocumentation {
                 file_contents: HTMLString::from(doc.clone().render(render_plan.clone())?),
             });
             // Here we gather all of the `doc_links` based on which module they belong to.
-            let location = doc.module_info.location().to_string();
-            match module_map.get_mut(&location) {
-                Some(doc_links) => {
-                    match doc.item_body.ty_decl {
-                        StructDeclaration { .. } => match doc_links.get_mut(&BlockTitle::Structs) {
-                            Some(links) => links.push(doc.link()),
-                            None => {
-                                doc_links.insert(BlockTitle::Structs, vec![doc.link()]);
-                            }
-                        },
-                        EnumDeclaration { .. } => match doc_links.get_mut(&BlockTitle::Enums) {
-                            Some(links) => links.push(doc.link()),
-                            None => {
-                                doc_links.insert(BlockTitle::Enums, vec![doc.link()]);
-                            }
-                        },
-                        TraitDeclaration { .. } => match doc_links.get_mut(&BlockTitle::Traits) {
-                            Some(links) => links.push(doc.link()),
-                            None => {
-                                doc_links.insert(BlockTitle::Traits, vec![doc.link()]);
-                            }
-                        },
-                        AbiDeclaration { .. } => match doc_links.get_mut(&BlockTitle::Abi) {
-                            Some(links) => links.push(doc.link()),
-                            None => {
-                                doc_links.insert(BlockTitle::Abi, vec![doc.link()]);
-                            }
-                        },
-                        StorageDeclaration { .. } => {
-                            match doc_links.get_mut(&BlockTitle::ContractStorage) {
-                                Some(links) => links.push(doc.link()),
-                                None => {
-                                    doc_links.insert(BlockTitle::ContractStorage, vec![doc.link()]);
-                                }
-                            }
-                        }
-                        FunctionDeclaration { .. } => {
-                            match doc_links.get_mut(&BlockTitle::Functions) {
-                                Some(links) => links.push(doc.link()),
-                                None => {
-                                    doc_links.insert(BlockTitle::Functions, vec![doc.link()]);
-                                }
-                            }
-                        }
-                        ConstantDeclaration { .. } => {
-                            match doc_links.get_mut(&BlockTitle::Constants) {
-                                Some(links) => links.push(doc.link()),
-                                None => {
-                                    doc_links.insert(BlockTitle::Constants, vec![doc.link()]);
-                                }
-                            }
-                        }
-                        _ => {} // TODO: ImplTraitDeclaration
-                    }
-                }
-                None => {
-                    let mut doc_links: BTreeMap<BlockTitle, Vec<DocLink>> = BTreeMap::new();
-                    match doc.item_body.ty_decl {
-                        StructDeclaration { .. } => {
-                            doc_links.insert(BlockTitle::Structs, vec![doc.link()]);
-                        }
-                        EnumDeclaration { .. } => {
-                            doc_links.insert(BlockTitle::Enums, vec![doc.link()]);
-                        }
-                        TraitDeclaration { .. } => {
-                            doc_links.insert(BlockTitle::Traits, vec![doc.link()]);
-                        }
-                        AbiDeclaration { .. } => {
-                            doc_links.insert(BlockTitle::Abi, vec![doc.link()]);
-                        }
-                        StorageDeclaration { .. } => {
-                            doc_links.insert(BlockTitle::ContractStorage, vec![doc.link()]);
-                        }
-                        FunctionDeclaration { .. } => {
-                            doc_links.insert(BlockTitle::Functions, vec![doc.link()]);
-                        }
-                        ConstantDeclaration { .. } => {
-                            doc_links.insert(BlockTitle::Constants, vec![doc.link()]);
-                        }
-                        _ => {} // TODO: ImplTraitDeclaration
-                    }
-                    module_map.insert(location.clone(), doc_links);
-                }
-            }
+            populate_doc_links(&doc, &mut module_map);
             // Create links to child modules.
-            let mut module_clone = doc.module_info.clone();
-            let mut child_prefix = PathBuf::new();
-            while let Some(parent_module) = module_clone.parent() {
-                let html_filename = if let Some(child_prefix) = child_prefix.to_str() {
-                    format!("{child_prefix}{INDEX_FILENAME}")
-                } else {
-                    INDEX_FILENAME.to_string()
-                };
-                let module_link = DocLink {
-                    name: location.to_owned(),
-                    module_info: module_clone.to_owned(),
-                    html_filename,
-                    preview_opt: doc.module_info.preview_opt(),
-                };
-                match module_map.get_mut(parent_module) {
-                    Some(doc_links) => match doc_links.get_mut(&BlockTitle::Modules) {
-                        Some(links) => {
-                            if !links.contains(&module_link) {
-                                links.push(module_link)
-                            }
-                        }
-                        None => {
-                            doc_links.insert(BlockTitle::Modules, vec![module_link]);
-                        }
-                    },
-                    None => {
-                        let mut doc_links: BTreeMap<BlockTitle, Vec<DocLink>> = BTreeMap::new();
-                        doc_links.insert(BlockTitle::Modules, vec![module_link]);
-                        module_map.insert(parent_module.clone(), doc_links);
-                    }
-                }
-                let mut parent =
-                    PathBuf::from(module_clone.module_prefixes.pop().unwrap_or_default());
-                parent.push(child_prefix);
-                child_prefix = parent;
-            }
-            println!("{:?}", module_map);
+            populate_modules(&doc, &mut module_map);
             // Above we check for the module a link belongs to, here we want _all_ links so the check is much more shallow.
-            match doc.item_body.ty_decl {
-                StructDeclaration { .. } => match all_docs.links.get_mut(&BlockTitle::Structs) {
-                    Some(links) => links.push(doc.link()),
-                    None => {
-                        all_docs.links.insert(BlockTitle::Structs, vec![doc.link()]);
-                    }
-                },
-                EnumDeclaration { .. } => match all_docs.links.get_mut(&BlockTitle::Enums) {
-                    Some(links) => links.push(doc.link()),
-                    None => {
-                        all_docs.links.insert(BlockTitle::Enums, vec![doc.link()]);
-                    }
-                },
-                TraitDeclaration { .. } => match all_docs.links.get_mut(&BlockTitle::Traits) {
-                    Some(links) => links.push(doc.link()),
-                    None => {
-                        all_docs.links.insert(BlockTitle::Traits, vec![doc.link()]);
-                    }
-                },
-                AbiDeclaration { .. } => match all_docs.links.get_mut(&BlockTitle::Abi) {
-                    Some(links) => links.push(doc.link()),
-                    None => {
-                        all_docs.links.insert(BlockTitle::Abi, vec![doc.link()]);
-                    }
-                },
-                StorageDeclaration { .. } => {
-                    match all_docs.links.get_mut(&BlockTitle::ContractStorage) {
-                        Some(links) => links.push(doc.link()),
-                        None => {
-                            all_docs
-                                .links
-                                .insert(BlockTitle::ContractStorage, vec![doc.link()]);
-                        }
-                    }
-                }
-                FunctionDeclaration { .. } => {
-                    match all_docs.links.get_mut(&BlockTitle::Functions) {
-                        Some(links) => links.push(doc.link()),
-                        None => {
-                            all_docs
-                                .links
-                                .insert(BlockTitle::Functions, vec![doc.link()]);
-                        }
-                    }
-                }
-                ConstantDeclaration { .. } => {
-                    match all_docs.links.get_mut(&BlockTitle::Constants) {
-                        Some(links) => links.push(doc.link()),
-                        None => {
-                            all_docs
-                                .links
-                                .insert(BlockTitle::Constants, vec![doc.link()]);
-                        }
-                    }
-                }
-                _ => {} // TODO: ImplTraitDeclaration
-            }
+            populate_all_doc(&doc, &mut all_docs);
         }
         // ProjectIndex
         match module_map.get(root_module.location()) {
@@ -309,6 +134,186 @@ impl RenderedDocumentation {
         });
 
         Ok(rendered_docs)
+    }
+}
+fn populate_doc_links(
+    doc: &Document,
+    module_map: &mut BTreeMap<ModulePrefix, BTreeMap<BlockTitle, Vec<DocLink>>>,
+) {
+    let location = doc.module_info.location().to_string();
+    match module_map.get_mut(&location) {
+        Some(doc_links) => {
+            match doc.item_body.ty_decl {
+                StructDeclaration { .. } => match doc_links.get_mut(&BlockTitle::Structs) {
+                    Some(links) => links.push(doc.link()),
+                    None => {
+                        doc_links.insert(BlockTitle::Structs, vec![doc.link()]);
+                    }
+                },
+                EnumDeclaration { .. } => match doc_links.get_mut(&BlockTitle::Enums) {
+                    Some(links) => links.push(doc.link()),
+                    None => {
+                        doc_links.insert(BlockTitle::Enums, vec![doc.link()]);
+                    }
+                },
+                TraitDeclaration { .. } => match doc_links.get_mut(&BlockTitle::Traits) {
+                    Some(links) => links.push(doc.link()),
+                    None => {
+                        doc_links.insert(BlockTitle::Traits, vec![doc.link()]);
+                    }
+                },
+                AbiDeclaration { .. } => match doc_links.get_mut(&BlockTitle::Abi) {
+                    Some(links) => links.push(doc.link()),
+                    None => {
+                        doc_links.insert(BlockTitle::Abi, vec![doc.link()]);
+                    }
+                },
+                StorageDeclaration { .. } => {
+                    match doc_links.get_mut(&BlockTitle::ContractStorage) {
+                        Some(links) => links.push(doc.link()),
+                        None => {
+                            doc_links.insert(BlockTitle::ContractStorage, vec![doc.link()]);
+                        }
+                    }
+                }
+                FunctionDeclaration { .. } => match doc_links.get_mut(&BlockTitle::Functions) {
+                    Some(links) => links.push(doc.link()),
+                    None => {
+                        doc_links.insert(BlockTitle::Functions, vec![doc.link()]);
+                    }
+                },
+                ConstantDeclaration { .. } => match doc_links.get_mut(&BlockTitle::Constants) {
+                    Some(links) => links.push(doc.link()),
+                    None => {
+                        doc_links.insert(BlockTitle::Constants, vec![doc.link()]);
+                    }
+                },
+                _ => {} // TODO: ImplTraitDeclaration
+            }
+        }
+        None => {
+            let mut doc_links: BTreeMap<BlockTitle, Vec<DocLink>> = BTreeMap::new();
+            match doc.item_body.ty_decl {
+                StructDeclaration { .. } => {
+                    doc_links.insert(BlockTitle::Structs, vec![doc.link()]);
+                }
+                EnumDeclaration { .. } => {
+                    doc_links.insert(BlockTitle::Enums, vec![doc.link()]);
+                }
+                TraitDeclaration { .. } => {
+                    doc_links.insert(BlockTitle::Traits, vec![doc.link()]);
+                }
+                AbiDeclaration { .. } => {
+                    doc_links.insert(BlockTitle::Abi, vec![doc.link()]);
+                }
+                StorageDeclaration { .. } => {
+                    doc_links.insert(BlockTitle::ContractStorage, vec![doc.link()]);
+                }
+                FunctionDeclaration { .. } => {
+                    doc_links.insert(BlockTitle::Functions, vec![doc.link()]);
+                }
+                ConstantDeclaration { .. } => {
+                    doc_links.insert(BlockTitle::Constants, vec![doc.link()]);
+                }
+                _ => {} // TODO: ImplTraitDeclaration
+            }
+            module_map.insert(location.clone(), doc_links);
+        }
+    }
+}
+fn populate_modules(
+    doc: &Document,
+    module_map: &mut BTreeMap<ModulePrefix, BTreeMap<BlockTitle, Vec<DocLink>>>,
+) {
+    let location = doc.module_info.location();
+    let mut module_clone = doc.module_info.clone();
+    let mut child_prefix = PathBuf::new();
+    while let Some(parent_module) = module_clone.parent() {
+        let html_filename = if let Some(child_prefix) = child_prefix.to_str() {
+            format!("{child_prefix}{INDEX_FILENAME}")
+        } else {
+            INDEX_FILENAME.to_string()
+        };
+        let module_link = DocLink {
+            name: location.to_owned(),
+            module_info: module_clone.to_owned(),
+            html_filename,
+            preview_opt: doc.module_info.preview_opt(),
+        };
+        match module_map.get_mut(parent_module) {
+            Some(doc_links) => match doc_links.get_mut(&BlockTitle::Modules) {
+                Some(links) => {
+                    if !links.contains(&module_link) {
+                        links.push(module_link)
+                    }
+                }
+                None => {
+                    doc_links.insert(BlockTitle::Modules, vec![module_link]);
+                }
+            },
+            None => {
+                let mut doc_links: BTreeMap<BlockTitle, Vec<DocLink>> = BTreeMap::new();
+                doc_links.insert(BlockTitle::Modules, vec![module_link]);
+                module_map.insert(parent_module.clone(), doc_links);
+            }
+        }
+        let mut parent = PathBuf::from(module_clone.module_prefixes.pop().unwrap_or_default());
+        parent.push(child_prefix);
+        child_prefix = parent;
+    }
+    println!("{module_map:?}");
+}
+fn populate_all_doc(doc: &Document, all_docs: &mut DocLinks) {
+    match doc.item_body.ty_decl {
+        StructDeclaration { .. } => match all_docs.links.get_mut(&BlockTitle::Structs) {
+            Some(links) => links.push(doc.link()),
+            None => {
+                all_docs.links.insert(BlockTitle::Structs, vec![doc.link()]);
+            }
+        },
+        EnumDeclaration { .. } => match all_docs.links.get_mut(&BlockTitle::Enums) {
+            Some(links) => links.push(doc.link()),
+            None => {
+                all_docs.links.insert(BlockTitle::Enums, vec![doc.link()]);
+            }
+        },
+        TraitDeclaration { .. } => match all_docs.links.get_mut(&BlockTitle::Traits) {
+            Some(links) => links.push(doc.link()),
+            None => {
+                all_docs.links.insert(BlockTitle::Traits, vec![doc.link()]);
+            }
+        },
+        AbiDeclaration { .. } => match all_docs.links.get_mut(&BlockTitle::Abi) {
+            Some(links) => links.push(doc.link()),
+            None => {
+                all_docs.links.insert(BlockTitle::Abi, vec![doc.link()]);
+            }
+        },
+        StorageDeclaration { .. } => match all_docs.links.get_mut(&BlockTitle::ContractStorage) {
+            Some(links) => links.push(doc.link()),
+            None => {
+                all_docs
+                    .links
+                    .insert(BlockTitle::ContractStorage, vec![doc.link()]);
+            }
+        },
+        FunctionDeclaration { .. } => match all_docs.links.get_mut(&BlockTitle::Functions) {
+            Some(links) => links.push(doc.link()),
+            None => {
+                all_docs
+                    .links
+                    .insert(BlockTitle::Functions, vec![doc.link()]);
+            }
+        },
+        ConstantDeclaration { .. } => match all_docs.links.get_mut(&BlockTitle::Constants) {
+            Some(links) => links.push(doc.link()),
+            None => {
+                all_docs
+                    .links
+                    .insert(BlockTitle::Constants, vec![doc.link()]);
+            }
+        },
+        _ => {} // TODO: ImplTraitDeclaration
     }
 }
 /// The finalized HTML file contents.
