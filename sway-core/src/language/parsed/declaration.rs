@@ -6,6 +6,7 @@ mod impl_trait;
 mod storage;
 mod r#struct;
 mod r#trait;
+mod type_alias;
 mod variable;
 
 pub use abi::*;
@@ -16,6 +17,7 @@ pub use r#enum::*;
 pub use r#struct::*;
 pub use r#trait::*;
 pub use storage::*;
+pub use type_alias::*;
 pub use variable::*;
 
 #[derive(Debug, Clone)]
@@ -30,6 +32,7 @@ pub enum Declaration {
     AbiDeclaration(AbiDeclaration),
     ConstantDeclaration(ConstantDeclaration),
     StorageDeclaration(StorageDeclaration),
+    TypeAliasDeclaration(TypeAliasDeclaration),
 }
 
 impl Declaration {

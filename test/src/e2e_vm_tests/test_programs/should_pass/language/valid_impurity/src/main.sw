@@ -8,7 +8,7 @@ abi ImpurityTest {
 impl ImpurityTest for Contract {
     #[storage(read, write)]
     fn impure_func() -> bool {
-        let a = can_also_read_and_write();
+        let _a = can_also_read_and_write();
         true
     }
 }
@@ -35,8 +35,8 @@ fn can_also_write_only() -> u64 {
 
 #[storage(read, write)]
 fn can_read_and_write() -> u64 {
-    let a = can_also_read_only();
-    let b = can_also_write_only();
+    let _a = can_also_read_only();
+    let _b = can_also_write_only();
     102
 }
 

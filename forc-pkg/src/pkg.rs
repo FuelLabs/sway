@@ -1,9 +1,6 @@
 use crate::{
     lock::Lock,
-    manifest::{
-        BuildProfile, ConfigTimeConstant, Dependency, ManifestFile, MemberManifestFiles,
-        PackageManifestFile,
-    },
+    manifest::{BuildProfile, Dependency, ManifestFile, MemberManifestFiles, PackageManifestFile},
     source::{self, Source},
     CORE, PRELUDE, STD,
 };
@@ -20,12 +17,13 @@ use petgraph::{
 };
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{hash_map, BTreeMap, BTreeSet, HashMap, HashSet},
+    collections::{hash_map, BTreeSet, HashMap, HashSet},
     fmt,
     fs::{self, File},
     hash::{Hash, Hasher},
     path::{Path, PathBuf},
     str::FromStr,
+    sync::Arc,
 };
 use sway_core::{
     abi_generation::{
@@ -162,14 +160,12 @@ pub struct PkgTestEntry {
 }
 
 /// The result of successfully compiling a workspace.
-///
-/// This is a map from each member package name to its associated built package.
-pub type BuiltWorkspace = HashMap<String, BuiltPackage>;
+pub type BuiltWorkspace = Vec<Arc<BuiltPackage>>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Built {
     /// Represents a standalone package build.
-    Package(Box<BuiltPackage>),
+    Package(Arc<BuiltPackage>),
     /// Represents a workspace build.
     Workspace(BuiltWorkspace),
 }
@@ -271,8 +267,8 @@ pub struct MinifyOpts {
     pub json_storage_slots: bool,
 }
 
-type ConstName = String;
-type ConstInjectionMap = HashMap<Pinned, Vec<(ConstName, ConfigTimeConstant)>>;
+/// Represents a compiled contract ID as a pub const in a contract.
+type ContractIdConst = String;
 
 /// The set of options provided to the `build` functions.
 #[derive(Default)]
@@ -299,8 +295,6 @@ pub struct BuildOpts {
     pub error_on_warnings: bool,
     /// Include all test functions within the build.
     pub tests: bool,
-    /// List of constants to inject for each package.
-    pub const_inject_map: ConstInjectionMap,
     /// The set of options to filter by member project kind.
     pub member_filter: MemberFilter,
 }
@@ -394,14 +388,6 @@ impl BuildOpts {
     pub fn include_tests(self, include_tests: bool) -> Self {
         Self {
             tests: include_tests,
-            ..self
-        }
-    }
-
-    /// Return a `BuildOpts` with modified `injection_map` field.
-    pub fn const_injection_map(self, const_inject_map: ConstInjectionMap) -> Self {
-        Self {
-            const_inject_map,
             ..self
         }
     }
@@ -513,20 +499,30 @@ impl BuiltPackage {
 }
 
 impl Built {
-    /// Returns a map between package names and their corresponding built package.
-    pub fn into_members(self) -> Result<HashMap<String, BuiltPackage>> {
+    /// Returns an iterator yielding all member built packages.
+    pub fn into_members<'a>(
+        &'a self,
+    ) -> Box<dyn Iterator<Item = (&Pinned, Arc<BuiltPackage>)> + 'a> {
+        // NOTE: Since pkg is a `Arc<_>`, pkg clones in this function are only reference
+        // increments. `BuiltPackage` struct does not get copied.`
         match self {
-            Built::Package(built_pkg) => {
-                Ok(std::iter::once((built_pkg.descriptor.name.clone(), *built_pkg)).collect())
+            Built::Package(pkg) => {
+                let pinned = &pkg.as_ref().descriptor.pinned;
+                let pkg = pkg.clone();
+                Box::new(std::iter::once((pinned, pkg)))
             }
-            Built::Workspace(built_workspace) => Ok(built_workspace),
+            Built::Workspace(workspace) => Box::new(
+                workspace
+                    .iter()
+                    .map(|pkg| (&pkg.descriptor.pinned, pkg.clone())),
+            ),
         }
     }
 
     /// Tries to retrieve the `Built` as a `BuiltPackage`.
-    pub fn expect_pkg(self) -> Result<BuiltPackage> {
+    pub fn expect_pkg(self) -> Result<Arc<BuiltPackage>> {
         match self {
-            Built::Package(built_pkg) => Ok(*built_pkg),
+            Built::Package(built_pkg) => Ok(built_pkg),
             Built::Workspace(_) => bail!("expected `Built` to be `Built::Package`"),
         }
     }
@@ -683,6 +679,23 @@ impl BuildPlan {
         }
 
         Ok(plan)
+    }
+
+    /// Produce an iterator yielding all contract dependencies of given node in the order of
+    /// compilation.
+    pub fn contract_dependencies(&self, node: NodeIx) -> impl Iterator<Item = NodeIx> + '_ {
+        let graph = self.graph();
+        let connected: HashSet<_> = Dfs::new(graph, node).iter(graph).collect();
+        self.compilation_order()
+            .iter()
+            .cloned()
+            .filter(move |&n| n != node)
+            .filter(|&n| {
+                graph
+                    .edges_directed(n, Direction::Incoming)
+                    .any(|edge| matches!(edge.weight().kind, DepKind::Contract { .. }))
+            })
+            .filter(move |&n| connected.contains(&n))
     }
 
     /// Produce an iterator yielding all workspace member nodes in order of compilation.
@@ -1513,19 +1526,26 @@ pub const CONTRACT_ID_CONSTANT_NAME: &str = "CONTRACT_ID";
 ///
 /// This function also ensures that if `std` exists in the graph,
 /// then the std prelude will also be added.
+///
+/// `contract_id_value` should only be Some when producing the `dependency_namespace` for a contract with tests enabled.
+/// This allows us to provide a contract's `CONTRACT_ID` constant to its own unit tests.
 pub fn dependency_namespace(
     lib_namespace_map: &HashMap<NodeIx, namespace::Module>,
     compiled_contract_deps: &CompiledContractDeps,
     graph: &Graph,
     node: NodeIx,
-    constants: BTreeMap<String, ConfigTimeConstant>,
     engines: Engines<'_>,
+    contract_id_value: Option<ContractIdConst>,
 ) -> Result<namespace::Module, vec1::Vec1<CompileError>> {
     // TODO: Clean this up when config-time constants v1 are removed.
     let node_idx = &graph[node];
     let name = Some(Ident::new_no_span(node_idx.name.clone()));
-    let mut namespace =
-        namespace::Module::default_with_constants(engines, constants, name.clone())?;
+    let mut namespace = if let Some(contract_id_value) = contract_id_value {
+        namespace::Module::default_with_contract_id(engines, name.clone(), contract_id_value)?
+    } else {
+        namespace::Module::default()
+    };
+
     namespace.is_external = true;
     namespace.name = name;
 
@@ -1541,7 +1561,6 @@ pub fn dependency_namespace(
                 .cloned()
                 .expect("no namespace module"),
             DepKind::Contract { salt } => {
-                let mut constants = BTreeMap::default();
                 let dep_contract_id = compiled_contract_deps
                     .get(&dep_node)
                     .map(|dep| contract_id(dep.bytecode.clone(), dep.storage_slots.clone(), &salt))
@@ -1549,16 +1568,13 @@ pub fn dependency_namespace(
                     .unwrap_or_default();
                 // Construct namespace with contract id
                 let contract_id_value = format!("0x{dep_contract_id}");
-                let contract_id_constant = ConfigTimeConstant {
-                    r#type: "b256".to_string(),
-                    value: contract_id_value,
-                    public: true,
-                };
-                constants.insert(CONTRACT_ID_CONSTANT_NAME.to_string(), contract_id_constant);
                 let node_idx = &graph[dep_node];
                 let name = Some(Ident::new_no_span(node_idx.name.clone()));
-                let mut ns =
-                    namespace::Module::default_with_constants(engines, constants, name.clone())?;
+                let mut ns = namespace::Module::default_with_contract_id(
+                    engines,
+                    name.clone(),
+                    contract_id_value,
+                )?;
                 ns.is_external = true;
                 ns.name = name;
                 ns
@@ -1999,7 +2015,6 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         binary_outfile,
         debug_outfile,
         pkg,
-        const_inject_map,
         build_target,
         member_filter,
         ..
@@ -2039,15 +2054,9 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
     let outputs = member_filter.filter_outputs(&build_plan, outputs);
 
     // Build it!
-    let mut built_workspace = HashMap::new();
+    let mut built_workspace = Vec::new();
     let build_start = std::time::Instant::now();
-    let built_packages = build(
-        &build_plan,
-        *build_target,
-        &build_profile,
-        &outputs,
-        const_inject_map,
-    )?;
+    let built_packages = build(&build_plan, *build_target, &build_profile, &outputs)?;
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
 
     let finished = ansi_term::Colour::Green.bold().paint("Finished");
@@ -2069,15 +2078,16 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
             built_package.write_debug_info(outfile.as_ref())?;
         }
         built_package.write_output(minify.clone(), &pkg_manifest.project.name, &output_dir)?;
-        built_workspace.insert(pinned.name.clone(), built_package);
+        built_workspace.push(Arc::new(built_package));
     }
 
     match curr_manifest {
         Some(pkg_manifest) => {
             let built_pkg = built_workspace
-                .remove(&pkg_manifest.project.name.to_string())
+                .into_iter()
+                .find(|pkg| pkg.descriptor.manifest_file == *pkg_manifest)
                 .expect("package didn't exist in workspace");
-            Ok(Built::Package(Box::new(built_pkg)))
+            Ok(Built::Package(built_pkg))
         }
         None => Ok(Built::Workspace(built_workspace)),
     }
@@ -2145,7 +2155,6 @@ pub fn build(
     target: BuildTarget,
     profile: &BuildProfile,
     outputs: &HashSet<NodeIx>,
-    const_inject_map: &ConstInjectionMap,
 ) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
     let mut built_packages = Vec::new();
 
@@ -2158,7 +2167,10 @@ pub fn build(
     let decl_engine = DeclEngine::default();
     let engines = Engines::new(&type_engine, &decl_engine);
     let include_tests = profile.include_tests;
-    let mut const_inject_map = const_inject_map.clone();
+
+    // This is the Contract ID of the current contract being compiled.
+    // We will need this for `forc test`.
+    let mut contract_id_value: Option<ContractIdConst> = None;
 
     let mut lib_namespace_map = Default::default();
     let mut compiled_contract_deps = HashMap::new();
@@ -2208,13 +2220,15 @@ pub fn build(
                 ..profile.clone()
             };
 
+            // `ContractIdConst` is a None here since we do not yet have a
+            // contract ID value at this point.
             let dep_namespace = match dependency_namespace(
                 &lib_namespace_map,
                 &compiled_contract_deps,
                 plan.graph(),
                 node,
-                manifest.config_time_constants().clone(),
                 engines,
+                None,
             ) {
                 Ok(o) => o,
                 Err(errs) => return fail(&[], &errs),
@@ -2227,8 +2241,10 @@ pub fn build(
                 &mut source_map,
             )?;
 
-            // If this contract is built because tests are enabled we need to insert CONTRACT_ID
-            // for the contract.
+            // If this contract is built because:
+            // 1) it is a contract dependency, or
+            // 2) tests are enabled,
+            // we need to insert its CONTRACT_ID into a map for later use.
             if is_contract_dependency {
                 let compiled_contract_dep = CompiledContractDependency {
                     bytecode: compiled_without_tests.bytecode.bytes.clone(),
@@ -2242,34 +2258,13 @@ pub fn build(
                     compiled_without_tests.storage_slots,
                     &fuel_tx::Salt::zeroed(),
                 );
-                let contract_id_constant_name = CONTRACT_ID_CONSTANT_NAME.to_string();
-                let contract_id_value = format!("0x{contract_id}");
-                let contract_id_constant = ConfigTimeConstant {
-                    r#type: "b256".to_string(),
-                    value: contract_id_value.clone(),
-                    public: true,
-                };
-                let constant_declarations = vec![(contract_id_constant_name, contract_id_constant)];
-                const_inject_map.insert(pkg.clone(), constant_declarations);
+                // We finally set the contract ID value here to use for compilation later if tests are enabled.
+                contract_id_value = Some(format!("0x{contract_id}"));
             }
-
             Some(compiled_without_tests.bytecode)
         } else {
             None
         };
-
-        let constants = const_inject_map
-            .get(pkg)
-            .map(|injected_ctc| {
-                let mut constants = manifest.config_time_constants();
-                constants.extend(
-                    injected_ctc
-                        .iter()
-                        .map(|(name, ctc)| (name.clone(), ctc.clone())),
-                );
-                constants
-            })
-            .unwrap_or_else(|| manifest.config_time_constants());
 
         // Build all non member nodes with tests disabled by overriding the current profile.
         let profile = if !plan.member_nodes().any(|member| member == node) {
@@ -2281,17 +2276,19 @@ pub fn build(
             profile.clone()
         };
 
+        // Note that the contract ID value here is only Some if tests are enabled.
         let dep_namespace = match dependency_namespace(
             &lib_namespace_map,
             &compiled_contract_deps,
             plan.graph(),
             node,
-            constants,
             engines,
+            contract_id_value.clone(),
         ) {
             Ok(o) => o,
             Err(errs) => return fail(&[], &errs),
         };
+
         let mut compiled = compile(
             &descriptor,
             &profile,
@@ -2480,14 +2477,13 @@ pub fn check(
     for &node in plan.compilation_order.iter() {
         let pkg = &plan.graph[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
-        let constants = manifest.config_time_constants();
         let dep_namespace = dependency_namespace(
             &lib_namespace_map,
             &compiled_contract_deps,
             &plan.graph,
             node,
-            constants,
             engines,
+            None,
         )
         .expect("failed to create dependency namespace");
 

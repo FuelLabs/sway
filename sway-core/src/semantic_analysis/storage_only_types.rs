@@ -6,7 +6,7 @@ use crate::{
     decl_engine::DeclId,
     engine_threading::*,
     error::*,
-    language::ty::{self, TyConstantDeclaration, TyFunctionDeclaration},
+    language::ty::{self, TyConstantDecl, TyFunctionDecl},
     type_system::*,
 };
 
@@ -156,12 +156,7 @@ fn check_type(
         warnings,
         errors
     );
-    let nested_types = check!(
-        type_info.clone().extract_nested_types(engines, &span),
-        vec![],
-        warnings,
-        errors
-    );
+    let nested_types = type_info.clone().extract_nested_types(engines);
     for ty in nested_types {
         if ignore_self && ty.eq(&type_info, engines) {
             continue;
@@ -176,12 +171,12 @@ fn check_type(
     ok((), warnings, errors)
 }
 
-fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResult<()> {
+fn decl_validate(engines: Engines<'_>, decl: &ty::TyDecl) -> CompileResult<()> {
     let mut warnings: Vec<CompileWarning> = vec![];
     let mut errors: Vec<CompileError> = vec![];
     let decl_engine = engines.de();
     match decl {
-        ty::TyDeclaration::VariableDeclaration(decl) => {
+        ty::TyDecl::VariableDecl(decl) => {
             check!(
                 check_type(engines, decl.body.return_type, decl.name.span(), false),
                 (),
@@ -190,7 +185,7 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
             );
             check!(expr_validate(engines, &decl.body), (), warnings, errors)
         }
-        ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
+        ty::TyDecl::ConstantDecl { decl_id, .. } => {
             check!(
                 validate_const_decl(engines, decl_id),
                 return err(warnings, errors),
@@ -198,7 +193,7 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                 errors
             );
         }
-        ty::TyDeclaration::FunctionDeclaration { decl_id, .. } => {
+        ty::TyDecl::FunctionDecl { decl_id, .. } => {
             check!(
                 validate_fn_decl(engines, decl_id),
                 return err(warnings, errors),
@@ -206,10 +201,10 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                 errors
             );
         }
-        ty::TyDeclaration::AbiDeclaration { .. } | ty::TyDeclaration::TraitDeclaration { .. } => {
+        ty::TyDecl::AbiDecl { .. } | ty::TyDecl::TraitDecl { .. } => {
             // These methods are not typed. They are however handled from ImplTrait.
         }
-        ty::TyDeclaration::ImplTrait { decl_id, .. } => {
+        ty::TyDecl::ImplTrait { decl_id, .. } => {
             let ty::TyImplTrait { items, .. } = decl_engine.get_impl_trait(decl_id);
             for item in items {
                 match item {
@@ -232,8 +227,8 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                 }
             }
         }
-        ty::TyDeclaration::StructDeclaration { decl_id, .. } => {
-            let ty::TyStructDeclaration { fields, .. } = decl_engine.get_struct(decl_id);
+        ty::TyDecl::StructDecl { decl_id, .. } => {
+            let ty::TyStructDecl { fields, .. } = decl_engine.get_struct(decl_id);
             for field in fields {
                 check!(
                     check_type(
@@ -248,8 +243,8 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                 );
             }
         }
-        ty::TyDeclaration::EnumDeclaration { decl_id, .. } => {
-            let ty::TyEnumDeclaration { variants, .. } = decl_engine.get_enum(decl_id);
+        ty::TyDecl::EnumDecl { decl_id, .. } => {
+            let ty::TyEnumDecl { variants, .. } = decl_engine.get_enum(decl_id);
             for variant in variants {
                 check!(
                     check_type(
@@ -264,11 +259,11 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                 );
             }
         }
-        ty::TyDeclaration::StorageDeclaration {
+        ty::TyDecl::StorageDecl {
             decl_id,
             decl_span: _,
         } => {
-            let ty::TyStorageDeclaration { fields, .. } = decl_engine.get_storage(decl_id);
+            let ty::TyStorageDecl { fields, .. } = decl_engine.get_storage(decl_id);
             for field in fields {
                 check!(
                     check_type(
@@ -283,8 +278,16 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                 );
             }
         }
-        ty::TyDeclaration::GenericTypeForFunctionScope { .. }
-        | ty::TyDeclaration::ErrorRecovery(_) => {}
+        ty::TyDecl::TypeAliasDecl { decl_id, .. } => {
+            let ty::TyTypeAliasDecl { ty, span, .. } = decl_engine.get_type_alias(decl_id);
+            check!(
+                check_type(engines, ty.type_id, span, false),
+                (),
+                warnings,
+                errors
+            );
+        }
+        ty::TyDecl::GenericTypeForFunctionScope { .. } | ty::TyDecl::ErrorRecovery(_) => {}
     }
     if errors.is_empty() {
         ok((), warnings, errors)
@@ -295,12 +298,12 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
 
 pub fn validate_const_decl(
     engines: Engines<'_>,
-    decl_id: &DeclId<TyConstantDeclaration>,
+    decl_id: &DeclId<TyConstantDecl>,
 ) -> CompileResult<()> {
     let mut warnings: Vec<CompileWarning> = vec![];
     let mut errors: Vec<CompileError> = vec![];
     let decl_engine = engines.de();
-    let ty::TyConstantDeclaration {
+    let ty::TyConstantDecl {
         value: expr,
         call_path,
         ..
@@ -323,12 +326,12 @@ pub fn validate_const_decl(
 
 pub fn validate_fn_decl(
     engines: Engines<'_>,
-    decl_id: &DeclId<TyFunctionDeclaration>,
+    decl_id: &DeclId<TyFunctionDecl>,
 ) -> CompileResult<()> {
     let mut warnings: Vec<CompileWarning> = vec![];
     let mut errors: Vec<CompileError> = vec![];
     let decl_engine = engines.de();
-    let ty::TyFunctionDeclaration {
+    let ty::TyFunctionDecl {
         body,
         parameters,
         return_type,

@@ -2,7 +2,7 @@ use crate::{
     decl_engine::*,
     engine_threading::Engines,
     error::*,
-    language::ty::{self, TyStorageDeclaration},
+    language::ty::{self, TyStorageDecl},
     namespace::*,
     type_system::*,
 };
@@ -21,8 +21,8 @@ pub(crate) enum GlobImport {
     No,
 }
 
-pub(super) type SymbolMap = im::OrdMap<Ident, ty::TyDeclaration>;
-pub(super) type UseSynonyms = im::HashMap<Ident, (Vec<Ident>, GlobImport, ty::TyDeclaration)>;
+pub(super) type SymbolMap = im::OrdMap<Ident, ty::TyDecl>;
+pub(super) type UseSynonyms = im::HashMap<Ident, (Vec<Ident>, GlobImport, ty::TyDecl)>;
 pub(super) type UseAliases = im::HashMap<String, Ident>;
 
 /// The set of items that exist within some lexical scope via declaration or importing.
@@ -92,37 +92,35 @@ impl Items {
         self.symbols().keys()
     }
 
-    pub(crate) fn insert_symbol(
-        &mut self,
-        name: Ident,
-        item: ty::TyDeclaration,
-    ) -> CompileResult<()> {
+    pub(crate) fn insert_symbol(&mut self, name: Ident, item: ty::TyDecl) -> CompileResult<()> {
         let mut errors = vec![];
 
         let append_shadowing_error =
-            |decl: &ty::TyDeclaration, item: &ty::TyDeclaration, errors: &mut Vec<CompileError>| {
-                use ty::TyDeclaration::*;
+            |decl: &ty::TyDecl, item: &ty::TyDecl, errors: &mut Vec<CompileError>| {
+                use ty::TyDecl::*;
                 match (decl, &item) {
                 // variable shadowing a constant
                 // constant shadowing a constant
                 (
-                    ConstantDeclaration { .. },
-                    VariableDeclaration { .. } | ConstantDeclaration { .. },
+                    ConstantDecl { .. },
+                    VariableDecl { .. } | ConstantDecl { .. },
                 )
                 // constant shadowing a variable
-                | (VariableDeclaration { .. }, ConstantDeclaration { .. })
-                // type shadowing another type
+                | (VariableDecl { .. }, ConstantDecl { .. })
+                // type or type alias shadowing another type or type alias
                 // trait/abi shadowing another trait/abi
-                // type shadowing a trait/abi or vice versa
+                // type or type alias shadowing a trait/abi, or vice versa
                 | (
-                    StructDeclaration { .. }
-                    | EnumDeclaration { .. }
-                    | TraitDeclaration { .. }
-                    | AbiDeclaration { .. },
-                    StructDeclaration { .. }
-                    | EnumDeclaration { .. }
-                    | TraitDeclaration { .. }
-                    | AbiDeclaration { .. },
+                    StructDecl { .. }
+                    | EnumDecl { .. }
+                    | TypeAliasDecl { .. }
+                    | TraitDecl { .. }
+                    | AbiDecl { .. },
+                    StructDecl { .. }
+                    | EnumDecl { .. }
+                    | TypeAliasDecl { .. }
+                    | TraitDecl { .. }
+                    | AbiDecl { .. },
                 ) => errors.push(CompileError::NameDefinedMultipleTimes { name: name.to_string(), span: name.span() }),
                 // Generic parameter shadowing another generic parameter
                 (GenericTypeForFunctionScope { .. }, GenericTypeForFunctionScope { .. }) => {
@@ -144,7 +142,7 @@ impl Items {
         ok((), vec![], errors)
     }
 
-    pub(crate) fn check_symbol(&self, name: &Ident) -> Result<&ty::TyDeclaration, CompileError> {
+    pub(crate) fn check_symbol(&self, name: &Ident) -> Result<&ty::TyDecl, CompileError> {
         self.symbols
             .get(name)
             .ok_or_else(|| CompileError::SymbolNotFound {
@@ -187,7 +185,7 @@ impl Items {
         self.declared_storage.is_some()
     }
 
-    pub fn get_declared_storage(&self, decl_engine: &DeclEngine) -> Option<TyStorageDeclaration> {
+    pub fn get_declared_storage(&self, decl_engine: &DeclEngine) -> Option<TyStorageDecl> {
         self.declared_storage
             .as_ref()
             .map(|decl_ref| decl_engine.get_storage(decl_ref))

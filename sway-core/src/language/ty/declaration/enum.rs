@@ -15,7 +15,7 @@ use crate::{
 };
 
 #[derive(Clone, Debug)]
-pub struct TyEnumDeclaration {
+pub struct TyEnumDecl {
     pub call_path: CallPath,
     pub type_parameters: Vec<TypeParameter>,
     pub attributes: transform::AttributesMap,
@@ -24,14 +24,14 @@ pub struct TyEnumDeclaration {
     pub visibility: Visibility,
 }
 
-impl Named for TyEnumDeclaration {
+impl Named for TyEnumDecl {
     fn name(&self) -> &Ident {
         &self.call_path.suffix
     }
 }
 
-impl EqWithEngines for TyEnumDeclaration {}
-impl PartialEqWithEngines for TyEnumDeclaration {
+impl EqWithEngines for TyEnumDecl {}
+impl PartialEqWithEngines for TyEnumDecl {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         self.call_path.suffix == other.call_path.suffix
             && self.type_parameters.eq(&other.type_parameters, engines)
@@ -40,9 +40,9 @@ impl PartialEqWithEngines for TyEnumDeclaration {
     }
 }
 
-impl HashWithEngines for TyEnumDeclaration {
+impl HashWithEngines for TyEnumDecl {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let TyEnumDeclaration {
+        let TyEnumDecl {
             call_path,
             type_parameters,
             variants,
@@ -59,7 +59,7 @@ impl HashWithEngines for TyEnumDeclaration {
     }
 }
 
-impl SubstTypes for TyEnumDeclaration {
+impl SubstTypes for TyEnumDecl {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.variants
             .iter_mut()
@@ -70,7 +70,7 @@ impl SubstTypes for TyEnumDeclaration {
     }
 }
 
-impl ReplaceSelfType for TyEnumDeclaration {
+impl ReplaceSelfType for TyEnumDecl {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         self.variants
             .iter_mut()
@@ -81,13 +81,13 @@ impl ReplaceSelfType for TyEnumDeclaration {
     }
 }
 
-impl Spanned for TyEnumDeclaration {
+impl Spanned for TyEnumDecl {
     fn span(&self) -> Span {
         self.span.clone()
     }
 }
 
-impl MonomorphizeHelper for TyEnumDeclaration {
+impl MonomorphizeHelper for TyEnumDecl {
     fn type_parameters(&self) -> &[TypeParameter] {
         &self.type_parameters
     }
@@ -97,7 +97,7 @@ impl MonomorphizeHelper for TyEnumDeclaration {
     }
 }
 
-impl TyEnumDeclaration {
+impl TyEnumDecl {
     pub(crate) fn expect_variant_from_name(
         &self,
         variant_name: &Ident,

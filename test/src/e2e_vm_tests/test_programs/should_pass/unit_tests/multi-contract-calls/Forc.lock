@@ -1,0 +1,19 @@
+[[package]]
+name = 'contract2'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'contract_multi_test'
+source = 'member'
+dependencies = ['std']
+contract-dependencies = ['contract2']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-C59B26C9F5F20739'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-C59B26C9F5F20739'
+dependencies = ['core']

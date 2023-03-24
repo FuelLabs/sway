@@ -6,11 +6,11 @@ fn main() -> bool {
     let b = !a; // false
     let c = !( !b); // false
     let d = !( ! !c); // true
-    let e = ( ! ! !(d));
+    let _e = ( ! ! !(d));
     !(and_true(a)) || true
 }
 
 fn and_true(x: bool) -> bool {
-    let y = ! !x;
+    let _y = ! !x;
     x && true
 }

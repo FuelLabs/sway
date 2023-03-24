@@ -227,6 +227,8 @@ pub enum CompileError {
     DeclIsNotStorage { actually: String, span: Span },
     #[error("This is a {actually}, not a constant")]
     DeclIsNotAConstant { actually: String, span: Span },
+    #[error("This is a {actually}, not a type alias")]
+    DeclIsNotATypeAlias { actually: String, span: Span },
     #[error(
         "Field \"{field_name}\" not found on struct \"{struct_name}\". Available fields are:\n \
          {available_fields}"
@@ -580,10 +582,14 @@ pub enum CompileError {
     BreakOutsideLoop { span: Span },
     #[error("\"continue\" used outside of a loop")]
     ContinueOutsideLoop { span: Span },
-    #[error("Configuration-time constant value is not a constant item.")]
-    ConfigTimeConstantNotAConstDecl { span: Span },
-    #[error("Configuration-time constant value is not a literal.")]
-    ConfigTimeConstantNotALiteral { span: Span },
+    /// This will be removed once loading contract IDs in a dependency namespace is refactored and no longer manual:
+    /// https://github.com/FuelLabs/sway/issues/3077
+    #[error("Contract ID is not a constant item.")]
+    ContractIdConstantNotAConstDecl { span: Span },
+    /// This will be removed once loading contract IDs in a dependency namespace is refactored and no longer manual:
+    /// https://github.com/FuelLabs/sway/issues/3077
+    #[error("Contract ID value is not a literal.")]
+    ContractIdValueNotALiteral { span: Span },
     #[error("The type \"{ty}\" is not allowed in storage.")]
     TypeNotAllowedInContractStorage { ty: String, span: Span },
     #[error("ref mut parameter not allowed for main()")]
@@ -752,6 +758,7 @@ impl Spanned for CompileError {
             DeclIsNotATraitFn { span, .. } => span.clone(),
             DeclIsNotStorage { span, .. } => span.clone(),
             DeclIsNotAConstant { span, .. } => span.clone(),
+            DeclIsNotATypeAlias { span, .. } => span.clone(),
             ImpureInNonContract { span, .. } => span.clone(),
             ImpureInPureContext { span, .. } => span.clone(),
             ParameterRefMutabilityMismatch { span, .. } => span.clone(),
@@ -782,8 +789,8 @@ impl Spanned for CompileError {
             IntrinsicIncorrectNumTArgs { span, .. } => span.clone(),
             BreakOutsideLoop { span } => span.clone(),
             ContinueOutsideLoop { span } => span.clone(),
-            ConfigTimeConstantNotAConstDecl { span } => span.clone(),
-            ConfigTimeConstantNotALiteral { span } => span.clone(),
+            ContractIdConstantNotAConstDecl { span } => span.clone(),
+            ContractIdValueNotALiteral { span } => span.clone(),
             TypeNotAllowedInContractStorage { span, .. } => span.clone(),
             RefMutableNotAllowedInMain { span, .. } => span.clone(),
             PointerReturnNotAllowedInMain { span } => span.clone(),

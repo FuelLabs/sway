@@ -13,9 +13,5 @@ pub trait ReplaceDecls {
 }
 
 pub(crate) trait ReplaceFunctionImplementingType {
-    fn replace_implementing_type(
-        &mut self,
-        engines: Engines<'_>,
-        implementing_type: ty::TyDeclaration,
-    );
+    fn replace_implementing_type(&mut self, engines: Engines<'_>, implementing_type: ty::TyDecl);
 }

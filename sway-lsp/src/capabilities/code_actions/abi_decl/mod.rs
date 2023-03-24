@@ -1,6 +1,6 @@
 pub(crate) mod abi_impl;
 
-use sway_core::{decl_engine::id::DeclId, language::ty::TyAbiDeclaration};
+use sway_core::{decl_engine::id::DeclId, language::ty::TyAbiDecl};
 use tower_lsp::lsp_types::CodeActionOrCommand;
 
 use self::abi_impl::AbiImplCodeAction;
@@ -8,7 +8,7 @@ use self::abi_impl::AbiImplCodeAction;
 use super::{CodeAction, CodeActionContext};
 
 pub(crate) fn code_actions(
-    decl_id: &DeclId<TyAbiDeclaration>,
+    decl_id: &DeclId<TyAbiDecl>,
     ctx: CodeActionContext,
 ) -> Option<Vec<CodeActionOrCommand>> {
     let decl = ctx.engines.de().get_abi(decl_id);

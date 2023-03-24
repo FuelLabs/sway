@@ -5,9 +5,10 @@ use sway_types::{Ident, Named, Span, Spanned};
 
 use super::{TyTraitInterfaceItem, TyTraitItem};
 
-/// A [TyAbiDeclaration] contains the type-checked version of the parse tree's `AbiDeclaration`.
+/// A [TyAbiDecl] contains the type-checked version of the parse tree's
+/// `AbiDeclaration`.
 #[derive(Clone, Debug)]
-pub struct TyAbiDeclaration {
+pub struct TyAbiDecl {
     /// The name of the abi trait (also known as a "contract trait")
     pub name: Ident,
     /// The methods a contract is required to implement in order opt in to this interface
@@ -18,10 +19,10 @@ pub struct TyAbiDeclaration {
     pub attributes: transform::AttributesMap,
 }
 
-impl EqWithEngines for TyAbiDeclaration {}
-impl PartialEqWithEngines for TyAbiDeclaration {
+impl EqWithEngines for TyAbiDecl {}
+impl PartialEqWithEngines for TyAbiDecl {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        let TyAbiDeclaration {
+        let TyAbiDecl {
             name: ln,
             interface_surface: lis,
             supertraits: ls,
@@ -31,7 +32,7 @@ impl PartialEqWithEngines for TyAbiDeclaration {
             attributes: _,
             span: _,
         } = self;
-        let TyAbiDeclaration {
+        let TyAbiDecl {
             name: rn,
             interface_surface: ris,
             supertraits: rs,
@@ -45,9 +46,9 @@ impl PartialEqWithEngines for TyAbiDeclaration {
     }
 }
 
-impl HashWithEngines for TyAbiDeclaration {
+impl HashWithEngines for TyAbiDecl {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let TyAbiDeclaration {
+        let TyAbiDecl {
             name,
             interface_surface,
             items,
@@ -64,7 +65,7 @@ impl HashWithEngines for TyAbiDeclaration {
     }
 }
 
-impl CreateTypeId for TyAbiDeclaration {
+impl CreateTypeId for TyAbiDecl {
     fn create_type_id(&self, engines: Engines<'_>) -> TypeId {
         let type_engine = engines.te();
         let decl_engine = engines.de();
@@ -76,13 +77,13 @@ impl CreateTypeId for TyAbiDeclaration {
     }
 }
 
-impl Spanned for TyAbiDeclaration {
+impl Spanned for TyAbiDecl {
     fn span(&self) -> Span {
         self.span.clone()
     }
 }
 
-impl Named for TyAbiDeclaration {
+impl Named for TyAbiDecl {
     fn name(&self) -> &Ident {
         &self.name
     }

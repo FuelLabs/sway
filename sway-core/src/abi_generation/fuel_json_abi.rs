@@ -4,7 +4,7 @@ use sway_types::integer_bits::IntegerBits;
 use crate::{
     decl_engine::DeclEngine,
     language::{
-        ty::{TyConstantDeclaration, TyFunctionDeclaration, TyProgram, TyProgramKind},
+        ty::{TyConstantDecl, TyFunctionDecl, TyProgram, TyProgramKind},
         CallPath,
     },
     transform::AttributesMap,
@@ -190,7 +190,7 @@ fn generate_json_configurables(
         .configurables
         .iter()
         .map(
-            |TyConstantDeclaration {
+            |TyConstantDecl {
                  type_ascription, ..
              }| program_abi::TypeDeclaration {
                 type_id: type_ascription.type_id.index(),
@@ -226,7 +226,7 @@ fn generate_json_configurables(
         .configurables
         .iter()
         .map(
-            |TyConstantDeclaration {
+            |TyConstantDecl {
                  call_path,
                  type_ascription,
                  ..
@@ -271,6 +271,9 @@ impl TypeId {
                     .get(resolved_type_id)
                     .json_abi_str(ctx, type_engine, decl_engine),
                 (TypeInfo::Custom { .. }, TypeInfo::Enum { .. }) => type_engine
+                    .get(resolved_type_id)
+                    .json_abi_str(ctx, type_engine, decl_engine),
+                (TypeInfo::Custom { .. }, TypeInfo::Alias { .. }) => type_engine
                     .get(resolved_type_id)
                     .json_abi_str(ctx, type_engine, decl_engine),
                 (TypeInfo::Tuple(fields), TypeInfo::Tuple(resolved_fields)) => {
@@ -593,6 +596,20 @@ impl TypeId {
                     None
                 }
             }
+            TypeInfo::Alias { .. } => {
+                if let TypeInfo::Alias { ty, .. } = type_engine.get(resolved_type_id) {
+                    ty.initial_type_id.get_json_type_components(
+                        ctx,
+                        type_engine,
+                        decl_engine,
+                        types,
+                        ty.type_id,
+                    )
+                } else {
+                    None
+                }
+            }
+
             _ => None,
         }
     }
@@ -820,6 +837,7 @@ impl TypeInfo {
             Storage { .. } => "contract storage".into(),
             RawUntypedPtr => "raw untyped ptr".into(),
             RawUntypedSlice => "raw untyped slice".into(),
+            Alias { ty, .. } => ty.json_abi_str(ctx, type_engine, decl_engine),
         }
     }
 }
@@ -850,7 +868,7 @@ fn call_path_display(ctx: &mut JsonAbiContext, call_path: &CallPath) -> String {
     buf
 }
 
-impl TyFunctionDeclaration {
+impl TyFunctionDecl {
     pub(self) fn generate_json_abi_function(
         &self,
         ctx: &mut JsonAbiContext,
