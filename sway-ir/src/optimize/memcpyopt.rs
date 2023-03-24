@@ -117,7 +117,7 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
                     // Is the Store source a Load?
                     if let Instruction::Load(src_val_ptr) = src_instr {
                         get_local(context, *src_val_ptr)
-                            .and_then(|src_local| Some((stored_val, dst_local, src_local)))
+                            .map(|src_local| (stored_val, dst_local, src_local))
                     } else {
                         None
                     }
@@ -163,7 +163,7 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
     ) -> Option<LocalVar> {
         candidates
             .get(src_local)
-            .map(|replace_with| closure(candidates, replace_with).unwrap_or(replace_with.clone()))
+            .map(|replace_with| closure(candidates, replace_with).unwrap_or(*replace_with))
     }
     // Because we can't borrow context for both iterating and replacing, do it in 2 steps.
     let replaces: Vec<_> = function
@@ -172,7 +172,7 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
             Some(Instruction::GetLocal(local)) => closure(&candidates, local).map(|replace_with| {
                 (
                     value,
-                    ValueDatum::Instruction(Instruction::GetLocal(replace_with.clone())),
+                    ValueDatum::Instruction(Instruction::GetLocal(replace_with)),
                 )
             }),
             _ => None,

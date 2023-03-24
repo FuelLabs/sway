@@ -167,12 +167,10 @@ impl<'eng> FnCompiler<'eng> {
                     .map(|_| ())?;
                     Ok(None)
                 }
-                ty::TyDecl::TypeAliasDecl { .. } => {
-                    Err(CompileError::UnexpectedDeclaration {
-                        decl_type: "type alias",
-                        span: ast_node.span.clone(),
-                    })
-                }
+                ty::TyDecl::TypeAliasDecl { .. } => Err(CompileError::UnexpectedDeclaration {
+                    decl_type: "type alias",
+                    span: ast_node.span.clone(),
+                }),
                 ty::TyDecl::ImplTrait { .. } => {
                     // XXX What if we ignore the trait implementation???  Potentially since
                     // we currently inline everything and below we 'recreate' the functions
@@ -185,9 +183,7 @@ impl<'eng> FnCompiler<'eng> {
                 ty::TyDecl::TraitDecl { .. } => unexpected_decl("trait"),
                 ty::TyDecl::StructDecl { .. } => unexpected_decl("struct"),
                 ty::TyDecl::AbiDecl { .. } => unexpected_decl("abi"),
-                ty::TyDecl::GenericTypeForFunctionScope { .. } => {
-                    unexpected_decl("generic type")
-                }
+                ty::TyDecl::GenericTypeForFunctionScope { .. } => unexpected_decl("generic type"),
                 ty::TyDecl::ErrorRecovery { .. } => unexpected_decl("error recovery"),
                 ty::TyDecl::StorageDecl { .. } => unexpected_decl("storage"),
             },

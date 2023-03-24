@@ -1531,6 +1531,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
             self.cur_bytecode.push(Op {
                 opcode: Either::Left(VirtualOp::ADDI(
                     reg,
+                    #[allow(clippy::unnecessary_unwrap)]
                     base.unwrap().clone(),
                     VirtualImmediate12 { value: imm as u16 },
                 )),
