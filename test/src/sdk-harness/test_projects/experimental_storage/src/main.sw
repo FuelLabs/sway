@@ -80,7 +80,6 @@ storage {
         z: 0,
         w: 0,
     },
-    map_in_map: StorageMap<u64, StorageHandle<StorageMap<u64, u64>>> = StorageMap {},
 }
 
 abi ExperimentalStorageTest {
@@ -110,9 +109,6 @@ abi ExperimentalStorageTest {
 
     #[storage(read, write)]
     fn map_in_struct_write(key: (u64, u64), value: (u64, u64));
-
-    #[storage(read, write)]
-    fn map_in_map_access();
 }
 
 impl ExperimentalStorageTest for Contract {
@@ -120,13 +116,13 @@ impl ExperimentalStorageTest for Contract {
     fn write_and_read_u64(input: u64) -> u64 {
         let r = storage.x;
         r.write(input);
-        r.read().unwrap()
+        r.read()
     }
 
     #[storage(read, write)]
     fn write_and_read_b256(input: b256) -> b256 {
         storage.y.write(input);
-        storage.y.read().unwrap()
+        storage.y.read()
     }
 
     #[storage(read, write)]
@@ -135,7 +131,7 @@ impl ExperimentalStorageTest for Contract {
         // slot where the second half of `simple` is stored
         storage.simple.z.write(simple.z);
         storage.simple.b.write(simple.b);
-        storage.simple.read().unwrap()
+        storage.simple.read()
     }
 
     #[storage(read, write)]
@@ -149,17 +145,17 @@ impl ExperimentalStorageTest for Contract {
         storage.s.d.write(s.d);
 
         assert(S {
-            a: storage.s.a.read().unwrap(),
-            b: storage.s.b.read().unwrap(),
+            a: storage.s.a.read(),
+            b: storage.s.b.read(),
             c: T {
-                x: storage.s.c.x.read().unwrap(),
-                y: storage.s.c.y.read().unwrap(),
+                x: storage.s.c.x.read(),
+                y: storage.s.c.y.read(),
                 z: M {
-                    u: storage.s.c.z.u.read().unwrap(),
-                    v: storage.s.c.z.v.read().unwrap(),
+                    u: storage.s.c.z.u.read(),
+                    v: storage.s.c.z.v.read(),
                 },
             },
-            d: storage.s.d.read().unwrap(),
+            d: storage.s.d.read(),
         } == s);
 
         // Semi-granular write, granular read
@@ -169,17 +165,17 @@ impl ExperimentalStorageTest for Contract {
         storage.s.d.write(s.d);
 
         assert(S {
-            a: storage.s.a.read().unwrap(),
-            b: storage.s.b.read().unwrap(),
+            a: storage.s.a.read(),
+            b: storage.s.b.read(),
             c: T {
-                x: storage.s.c.x.read().unwrap(),
-                y: storage.s.c.y.read().unwrap(),
+                x: storage.s.c.x.read(),
+                y: storage.s.c.y.read(),
                 z: M {
-                    u: storage.s.c.z.u.read().unwrap(),
-                    v: storage.s.c.z.v.read().unwrap(),
+                    u: storage.s.c.z.u.read(),
+                    v: storage.s.c.z.v.read(),
                 },
             },
-            d: storage.s.d.read().unwrap(),
+            d: storage.s.d.read(),
         } == s);
 
         storage.s.read().unwrap()
@@ -196,21 +192,21 @@ impl ExperimentalStorageTest for Contract {
         storage.s.d.write(s.d);
 
         assert(S {
-            a: storage.s.a.read().unwrap(),
-            b: storage.s.b.read().unwrap(),
-            c: storage.s.c.read().unwrap(),
-            d: storage.s.d.read().unwrap(),
+            a: storage.s.a.read(),
+            b: storage.s.b.read(),
+            c: storage.s.c.read(),
+            d: storage.s.d.read(),
         } == s);
 
         // Coarse write and read
         storage.s.write(s);
 
-        storage.s.read().unwrap()
+        storage.s.read()
     }
 
     #[storage(read)]
     fn map_read(key: u64) -> Option<u64> {
-        storage.map.get(key)
+        storage.map.get(key).try_read()
     }
 
     #[storage(read, write)]
@@ -220,31 +216,12 @@ impl ExperimentalStorageTest for Contract {
 
     #[storage(read)]
     fn map_in_struct_read(key: (u64, u64)) -> (Option<u64>, Option<u64>) {
-        (storage.s2.map0.get(key.0), storage.s2.map1.get(key.1))
+        (storage.s2.map0.get(key.0).try_read(), storage.s2.map1.get(key.1).try_read())
     }
 
     #[storage(read, write)]
     fn map_in_struct_write(key: (u64, u64), value: (u64, u64)) {
         storage.s2.map0.insert(key.0, value.0);
         storage.s2.map1.insert(key.1, value.1);
-    }
-
-    #[storage(read, write)]
-    fn map_in_map_access() {
-        storage.map_in_map.insert(0, StorageHandle {
-            key: std::hash::sha256((storage.map_in_map, 0)),
-            offset: 0,
-        });
-
-        storage.map_in_map.insert(1, StorageHandle {
-            key: std::hash::sha256((storage.map_in_map, 1)),
-            offset: 0,
-        });
-
-        storage.map_in_map.get(0).unwrap().insert(1, 42);
-        assert(storage.map_in_map.get(0).unwrap().get(1).unwrap() == 42);
-
-        storage.map_in_map.get(1).unwrap().insert(1, 24);
-        assert(storage.map_in_map.get(1).unwrap().get(1).unwrap() == 24);
     }
 }

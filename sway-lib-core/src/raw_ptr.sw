@@ -37,14 +37,6 @@ impl raw_ptr {
         };
     }
 
-    /// Copies `count * size_of<T>` bytes from `self` to `dst`.
-    pub fn clear<T>(self, count: u64) {
-        let len = __mul(count, __size_of::<T>());
-        asm(dst: self, len: len) {
-            mcl dst len;
-        };
-    }
-
     /// Writes the given value to the address.
     pub fn write<T>(self, val: T) {
         if __is_reference_type::<T>() {
