@@ -12,10 +12,10 @@ description = "A `forc` plugin for determining contract ids or predicate roots."
 anyhow = "1"
 clap = { version = "3.1", features = ["derive"] }
 forc = { version = "0.35.5", path = "../../forc" }
-forc-tracing = { version = "0.35.5", path = "../../forc-tracing" }
-forc-util = { version = "0.35.5", path = "../../forc-util" }
 forc-pkg = { version = "0.35.5", path = "../../forc-pkg/" }
+forc-tracing = { version = "0.35.5", path = "../../forc-tracing" }
 forc-tx = { version = "0.35.5", path = "../forc-tx" }
+forc-util = { version = "0.35.5", path = "../../forc-util" }
 sway-core = { version = "0.35.5", path = "../../sway-core" }
 tracing = "0.1"
 
