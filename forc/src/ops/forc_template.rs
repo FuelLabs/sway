@@ -2,7 +2,7 @@ use crate::cli::TemplateCommand;
 use anyhow::{anyhow, Context, Result};
 use forc_pkg::{
     manifest::{self, PackageManifest},
-    source::{self, git::GitUrl},
+    source::{self, git::Url},
 };
 use forc_util::validate_name;
 use fs_extra::dir::{copy, CopyOptions};
@@ -22,7 +22,7 @@ pub fn init(command: TemplateCommand) -> Result<()> {
         .unwrap_or_else(|| format!("{}-template-source", command.project_name));
 
     let source = source::git::Source {
-        repo: GitUrl::from_str(&command.url)?,
+        repo: Url::from_str(&command.url)?,
         reference: source::git::Reference::DefaultBranch,
     };
 
