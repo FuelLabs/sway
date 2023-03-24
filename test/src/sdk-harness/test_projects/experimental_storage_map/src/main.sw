@@ -179,7 +179,7 @@ fn _insert_into_u64_to_bool_map_inner(key: u64, value: bool) {
 
 #[storage(read)]
 fn _get_from_u64_to_bool_map_inner(key: u64) -> Option<bool> {
-    storage.map1.get(key)
+    storage.map1.get(key).try_read()
 }
 
 #[storage(read, write)]
@@ -210,7 +210,7 @@ impl StorageMapTest for Contract {
 
     #[storage(read)]
     fn get_from_u64_to_u8_map(key: u64) -> Option<u8> {
-        storage.map2.get(key)
+        storage.map2.get(key).try_read()
     }
 
     #[storage(read, write)]
@@ -225,7 +225,7 @@ impl StorageMapTest for Contract {
 
     #[storage(read)]
     fn get_from_u64_to_u16_map(key: u64) -> Option<u16> {
-        storage.map3.get(key)
+        storage.map3.get(key).try_read()
     }
 
     #[storage(read, write)]
@@ -240,7 +240,7 @@ impl StorageMapTest for Contract {
 
     #[storage(read)]
     fn get_from_u64_to_u32_map(key: u64) -> Option<u32> {
-        storage.map4.get(key)
+        storage.map4.get(key).try_read()
     }
 
     #[storage(read, write)]
@@ -255,7 +255,7 @@ impl StorageMapTest for Contract {
 
     #[storage(read)]
     fn get_from_u64_to_u64_map(key: u64) -> Option<u64> {
-        storage.map5.get(key)
+        storage.map5.get(key).try_read()
     }
 
     #[storage(read, write)]
@@ -270,7 +270,7 @@ impl StorageMapTest for Contract {
 
     #[storage(read)]
     fn get_from_u64_to_tuple_map(key: u64) -> Option<(b256, u8, bool)> {
-        storage.map6.get(key)
+        storage.map6.get(key).try_read()
     }
 
     #[storage(read, write)]
@@ -285,7 +285,7 @@ impl StorageMapTest for Contract {
 
     #[storage(read)]
     fn get_from_u64_to_struct_map(key: u64) -> Option<Struct> {
-        storage.map7.get(key)
+        storage.map7.get(key).try_read()
     }
 
     #[storage(read, write)]
@@ -300,7 +300,7 @@ impl StorageMapTest for Contract {
 
     #[storage(read)]
     fn get_from_u64_to_enum_map(key: u64) -> Option<Enum> {
-        storage.map8.get(key)
+        storage.map8.get(key).try_read()
     }
 
     #[storage(read, write)]
@@ -315,7 +315,7 @@ impl StorageMapTest for Contract {
 
     #[storage(read)]
     fn get_from_u64_to_str_map(key: u64) -> Option<str[33]> {
-        storage.map9.get(key)
+        storage.map9.get(key).try_read()
     }
 
     #[storage(read, write)]
@@ -330,7 +330,7 @@ impl StorageMapTest for Contract {
 
     #[storage(read)]
     fn get_from_u64_to_array_map(key: u64) -> Option<[b256; 3]> {
-        storage.map10.get(key)
+        storage.map10.get(key).try_read()
     }
 
     #[storage(read, write)]
@@ -345,7 +345,7 @@ impl StorageMapTest for Contract {
 
     #[storage(read)]
     fn get_from_bool_to_u64_map(key: bool) -> Option<u64> {
-        storage.map11.get(key)
+        storage.map11.get(key).try_read()
     }
 
     #[storage(read, write)]
@@ -360,7 +360,7 @@ impl StorageMapTest for Contract {
 
     #[storage(read)]
     fn get_from_u8_to_u64_map(key: u8) -> Option<u64> {
-        storage.map12.get(key)
+        storage.map12.get(key).try_read()
     }
 
     #[storage(read, write)]
@@ -375,7 +375,7 @@ impl StorageMapTest for Contract {
 
     #[storage(read)]
     fn get_from_u16_to_u64_map(key: u16) -> Option<u64> {
-        storage.map13.get(key)
+        storage.map13.get(key).try_read()
     }
 
     #[storage(read, write)]
@@ -390,7 +390,7 @@ impl StorageMapTest for Contract {
 
     #[storage(read)]
     fn get_from_u32_to_u64_map(key: u32) -> Option<u64> {
-        storage.map14.get(key)
+        storage.map14.get(key).try_read()
     }
 
     #[storage(read, write)]
@@ -405,7 +405,7 @@ impl StorageMapTest for Contract {
 
     #[storage(read)]
     fn get_from_tuple_to_u64_map(key: (b256, u8, bool)) -> Option<u64> {
-        storage.map15.get(key)
+        storage.map15.get(key).try_read()
     }
 
     #[storage(read, write)]
@@ -420,7 +420,7 @@ impl StorageMapTest for Contract {
 
     #[storage(read)]
     fn get_from_struct_to_u64_map(key: Struct) -> Option<u64> {
-        storage.map16.get(key)
+        storage.map16.get(key).try_read()
     }
 
     #[storage(read, write)]
@@ -435,7 +435,7 @@ impl StorageMapTest for Contract {
 
     #[storage(read)]
     fn get_from_enum_to_u64_map(key: Enum) -> Option<u64> {
-        storage.map17.get(key)
+        storage.map17.get(key).try_read()
     }
 
     #[storage(read, write)]
@@ -450,7 +450,7 @@ impl StorageMapTest for Contract {
 
     #[storage(read)]
     fn get_from_str_to_u64_map(key: str[33]) -> Option<u64> {
-        storage.map18.get(key)
+        storage.map18.get(key).try_read()
     }
 
     #[storage(read, write)]
@@ -465,7 +465,7 @@ impl StorageMapTest for Contract {
 
     #[storage(read)]
     fn get_from_array_to_u64_map(key: [b256; 3]) -> Option<u64> {
-        storage.map19.get(key)
+        storage.map19.get(key).try_read()
     }
 
     #[storage(read, write)]

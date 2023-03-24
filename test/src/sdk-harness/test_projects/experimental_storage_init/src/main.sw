@@ -121,27 +121,27 @@ impl ExperimentalStorageInitTest for Contract {
         let e2: E = E::A(777);
         let string: str[40] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
-        assert(storage.x.read().unwrap() == x);
-        assert(storage.y.read().unwrap() == y);
-        assert(storage.s.read().unwrap() == s);
-        assert(storage.boolean.read().unwrap() == boolean);
-        assert(storage.int8.read().unwrap() == int8);
-        assert(storage.int16.read().unwrap() == int16);
-        assert(storage.int32.read().unwrap() == int32);
-        assert(storage.s.x.read().unwrap() == s.x);
-        assert(storage.s.y.read().unwrap() == s.y);
-        assert(storage.s.z.read().unwrap() == s.z);
-        assert(storage.s.t.read().unwrap() == s.t);
-        assert(storage.s.t.x.read().unwrap() == s.t.x);
-        assert(storage.s.t.y.read().unwrap() == s.t.y);
-        assert(storage.s.t.z.read().unwrap() == s.t.z);
-        assert(storage.s.t.boolean.read().unwrap() == s.t.boolean);
-        assert(storage.s.t.int8.read().unwrap() == s.t.int8);
-        assert(storage.s.t.int16.read().unwrap() == s.t.int16);
-        assert(storage.s.t.int32.read().unwrap() == s.t.int32);
-        assert(storage.e.read().unwrap() == e);
-        assert(storage.e2.read().unwrap() == e2);
-        assert(std::hash::sha256(storage.string.read().unwrap()) == std::hash::sha256(string));
+        assert(storage.x.read() == x);
+        assert(storage.y.read() == y);
+        assert(storage.s.read() == s);
+        assert(storage.boolean.read() == boolean);
+        assert(storage.int8.read() == int8);
+        assert(storage.int16.read() == int16);
+        assert(storage.int32.read() == int32);
+        assert(storage.s.x.read() == s.x);
+        assert(storage.s.y.read() == s.y);
+        assert(storage.s.z.read() == s.z);
+        assert(storage.s.t.read() == s.t);
+        assert(storage.s.t.x.read() == s.t.x);
+        assert(storage.s.t.y.read() == s.t.y);
+        assert(storage.s.t.z.read() == s.t.z);
+        assert(storage.s.t.boolean.read() == s.t.boolean);
+        assert(storage.s.t.int8.read() == s.t.int8);
+        assert(storage.s.t.int16.read() == s.t.int16);
+        assert(storage.s.t.int32.read() == s.t.int32);
+        assert(storage.e.read() == e);
+        assert(storage.e2.read() == e2);
+        assert(std::hash::sha256(storage.string.read()) == std::hash::sha256(string));
         true
     }
 }

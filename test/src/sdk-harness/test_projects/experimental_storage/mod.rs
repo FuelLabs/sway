@@ -156,10 +156,3 @@ async fn maps_in_struct_access() {
         (None, None)
     );
 }
-
-#[tokio::test]
-async fn maps_in_map_access() {
-    let methods = test_experimental_storage_instance().await.methods();
-
-    methods.map_in_map_access().call().await.unwrap();
-}

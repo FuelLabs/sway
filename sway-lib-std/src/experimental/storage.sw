@@ -11,7 +11,7 @@ use core::experimental::storage::StorageHandle;
 ///
 /// * `key` - The storage slot at which the variable will be stored.
 /// * `value` - The value to be stored.
-/// * `offset` - An offset, in words, from the beginning of slot at `key`, at which `value` should 
+/// * `offset` - An offset, in words, from the beginning of slot at `key`, at which `value` should
 ///              be stored.
 ///
 /// ### Examples
@@ -46,16 +46,16 @@ pub fn write<T>(key: b256, offset: u64, value: T) {
     let _ = __state_store_quad(key, padded_value, number_of_slots);
 }
 
-/// Reads a value of type `T` starting at the location specified by `key` and `offset`. If the 
+/// Reads a value of type `T` starting at the location specified by `key` and `offset`. If the
 /// value crosses the boundary of a storage slot, reading continues at the following slot.
 ///
-/// Returns `Option(value)` if a the storage slots read were valid and contain `value`. 
+/// Returns `Option(value)` if a the storage slots read were valid and contain `value`.
 /// Otherwise, return `None`.
 ///
 /// ### Arguments
 ///
 /// * `key` - The storage slot to load the value from.
-/// * `offset` - An offset, in words, from the start of slot at `key`, from which the value should 
+/// * `offset` - An offset, in words, from the start of slot at `key`, from which the value should
 ///              be read.
 ///
 /// ### Examples
@@ -113,10 +113,38 @@ pub fn clear<T>(key: b256) -> bool {
 }
 
 impl<T> StorageHandle<T> {
-    /// Reads a value of type `T` starting at the location specified by `self`. If the value 
+    /// Reads a value of type `T` starting at the location specified by `self`. If the value
     /// crosses the boundary of a storage slot, reading continues at the following slot.
     ///
-    /// Returns `Option(value)` if a the storage slots read were valid and contain `value`. 
+    /// Returns the value previously stored if a the storage slots read were
+    /// valid and contain `value`. Panics otherwise.
+    ///
+    /// ### Arguments
+    ///
+    /// None
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let r: StorageHandle<u64> = StorageHandle {
+    ///         key: 0x0000000000000000000000000000000000000000000000000000000000000000,
+    ///         offset: 2,
+    ///     };
+    ///
+    ///     // Reads the third word from storage slot with key 0x000...0
+    ///     let x:u64 = r.read();
+    /// }
+    /// ```
+    #[storage(read)]
+    pub fn read(self) -> T {
+        read::<T>(self.key, self.offset).unwrap()
+    }
+
+    /// Reads a value of type `T` starting at the location specified by `self`. If the value
+    /// crosses the boundary of a storage slot, reading continues at the following slot.
+    ///
+    /// Returns `Option(value)` if a the storage slots read were valid and contain `value`.
     /// Otherwise, return `None`.
     ///
     /// ### Arguments
@@ -129,17 +157,19 @@ impl<T> StorageHandle<T> {
     /// fn foo() {
     ///     let r: StorageHandle<u64> = StorageHandle {
     ///         key: 0x0000000000000000000000000000000000000000000000000000000000000000,
-    ///         offset: 2,   
+    ///         offset: 2,
     ///     };
-    ///     let x = r.read(); // Reads the third word from storage slot with key 0x000...0
+    ///
+    ///     // Reads the third word from storage slot with key 0x000...0
+    ///     let x:Option<u64> = r.try_read();
     /// }
     /// ```
     #[storage(read)]
-    pub fn read(self) -> Option<T> {
+    pub fn try_read(self) -> Option<T> {
         read(self.key, self.offset)
     }
 
-    /// Writes a value of type `T` starting at the location specified by `self`. If the value 
+    /// Writes a value of type `T` starting at the location specified by `self`. If the value
     /// crosses the boundary of a storage slot, writing continues at the following slot.
     ///
     /// ### Arguments
@@ -152,7 +182,7 @@ impl<T> StorageHandle<T> {
     /// fn foo() {
     ///     let r: StorageHandle<u64> = StorageHandle {
     ///         key: 0x0000000000000000000000000000000000000000000000000000000000000000,
-    ///         offset: 2,   
+    ///         offset: 2,
     ///     };
     ///     let x = r.write(42); // Writes 42 at the third word of storage slot with key 0x000...0
     /// }
@@ -195,10 +225,8 @@ impl<K, V> StorageMap<K, V> {
         write::<V>(key, 0, value);
     }
 
-    /// Retrieves a value previously stored using a key.
-    ///
-    /// If no value was previously stored at `key`, `Option::None` is returned. Otherwise,
-    /// `Option::Some(value)` is returned, where `value` is the value stored at `key`.
+    /// Retrieves the `StorageHandle` that describes the raw location in storage of the value
+    /// stored at `key`, regardless of whether a value is actually stored at that location or not.
     ///
     /// ### Arguments
     ///
@@ -215,14 +243,16 @@ impl<K, V> StorageMap<K, V> {
     ///     let key = 5_u64;
     ///     let value = true;
     ///     storage.map.insert(key, value);
-    ///     let retrieved_value = storage.map.get(key).unwrap();
+    ///     let retrieved_value = storage.map.get(key).read();
     ///     assert(value == retrieved_value);
     /// }
     /// ```
     #[storage(read)]
-    pub fn get(self: StorageHandle<Self>, key: K) -> Option<V> {
-        let key = sha256((key, self.key));
-        read::<V>(key, 0)
+    pub fn get(self: StorageHandle<Self>, key: K) -> StorageHandle<V> {
+        StorageHandle {
+            key: sha256((key, self.key)),
+            offset: 0,
+        }
     }
 
     /// Clears a value previously stored using a key
