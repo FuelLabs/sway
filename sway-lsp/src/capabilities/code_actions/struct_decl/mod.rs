@@ -7,7 +7,7 @@ use sway_core::{decl_engine::id::DeclId, language::ty};
 use tower_lsp::lsp_types::CodeActionOrCommand;
 
 pub(crate) fn code_actions(
-    decl_id: &DeclId<ty::TyStructDeclaration>,
+    decl_id: &DeclId<ty::TyStructDecl>,
     ctx: CodeActionContext,
 ) -> Option<Vec<CodeActionOrCommand>> {
     let decl = ctx.engines.de().get_struct(decl_id);

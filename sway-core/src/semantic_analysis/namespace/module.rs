@@ -285,7 +285,7 @@ impl Module {
             .implemented_traits
             .extend(implemented_traits, engines);
 
-        let mut try_add = |symbol, path, decl: ty::TyDeclaration| {
+        let mut try_add = |symbol, path, decl: ty::TyDecl| {
             dst_ns
                 .use_synonyms
                 .insert(symbol, (path, GlobImport::Yes, decl));

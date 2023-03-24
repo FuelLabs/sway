@@ -50,7 +50,7 @@ pub enum TyExpressionVariant {
         index: Box<TyExpression>,
     },
     StructExpression {
-        struct_ref: DeclRef<DeclId<TyStructDeclaration>>,
+        struct_ref: DeclRef<DeclId<TyStructDecl>>,
         fields: Vec<TyStructExpressionField>,
         instantiation_span: Span,
         call_path_binding: TypeBinding<CallPath>,
@@ -88,7 +88,7 @@ pub enum TyExpressionVariant {
         elem_to_access_span: Span,
     },
     EnumInstantiation {
-        enum_ref: DeclRef<DeclId<TyEnumDeclaration>>,
+        enum_ref: DeclRef<DeclId<TyEnumDecl>>,
         /// for printing
         variant_name: Ident,
         tag: usize,

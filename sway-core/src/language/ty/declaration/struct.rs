@@ -15,7 +15,7 @@ use crate::{
 };
 
 #[derive(Clone, Debug)]
-pub struct TyStructDeclaration {
+pub struct TyStructDecl {
     pub call_path: CallPath,
     pub fields: Vec<TyStructField>,
     pub type_parameters: Vec<TypeParameter>,
@@ -24,14 +24,14 @@ pub struct TyStructDeclaration {
     pub attributes: transform::AttributesMap,
 }
 
-impl Named for TyStructDeclaration {
+impl Named for TyStructDecl {
     fn name(&self) -> &Ident {
         &self.call_path.suffix
     }
 }
 
-impl EqWithEngines for TyStructDeclaration {}
-impl PartialEqWithEngines for TyStructDeclaration {
+impl EqWithEngines for TyStructDecl {}
+impl PartialEqWithEngines for TyStructDecl {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         self.call_path.suffix == other.call_path.suffix
             && self.fields.eq(&other.fields, engines)
@@ -40,9 +40,9 @@ impl PartialEqWithEngines for TyStructDeclaration {
     }
 }
 
-impl HashWithEngines for TyStructDeclaration {
+impl HashWithEngines for TyStructDecl {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let TyStructDeclaration {
+        let TyStructDecl {
             call_path,
             fields,
             type_parameters,
@@ -59,7 +59,7 @@ impl HashWithEngines for TyStructDeclaration {
     }
 }
 
-impl SubstTypes for TyStructDeclaration {
+impl SubstTypes for TyStructDecl {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.fields
             .iter_mut()
@@ -70,7 +70,7 @@ impl SubstTypes for TyStructDeclaration {
     }
 }
 
-impl ReplaceSelfType for TyStructDeclaration {
+impl ReplaceSelfType for TyStructDecl {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         self.fields
             .iter_mut()
@@ -81,13 +81,13 @@ impl ReplaceSelfType for TyStructDeclaration {
     }
 }
 
-impl Spanned for TyStructDeclaration {
+impl Spanned for TyStructDecl {
     fn span(&self) -> Span {
         self.span.clone()
     }
 }
 
-impl MonomorphizeHelper for TyStructDeclaration {
+impl MonomorphizeHelper for TyStructDecl {
     fn type_parameters(&self) -> &[TypeParameter] {
         &self.type_parameters
     }
@@ -97,7 +97,7 @@ impl MonomorphizeHelper for TyStructDeclaration {
     }
 }
 
-impl TyStructDeclaration {
+impl TyStructDecl {
     pub(crate) fn expect_field(&self, field_to_access: &Ident) -> CompileResult<&TyStructField> {
         let warnings = vec![];
         let mut errors = vec![];

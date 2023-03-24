@@ -55,11 +55,11 @@ impl ty::TyProgram {
                 let storage_decl = self
                     .declarations
                     .iter()
-                    .find(|decl| matches!(decl, ty::TyDeclaration::StorageDeclaration { .. }));
+                    .find(|decl| matches!(decl, ty::TyDecl::StorageDecl { .. }));
 
                 // Expecting at most a single storage declaration
                 match storage_decl {
-                    Some(ty::TyDeclaration::StorageDeclaration {
+                    Some(ty::TyDecl::StorageDecl {
                         decl_id,
                         decl_span: _,
                         ..

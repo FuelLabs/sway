@@ -30,9 +30,9 @@ pub(crate) struct Document {
 impl Document {
     /// Creates an HTML file name from the [Document].
     pub(crate) fn html_filename(&self) -> String {
-        use sway_core::language::ty::TyDeclaration::StorageDeclaration;
+        use sway_core::language::ty::TyDecl::StorageDecl;
         let name = match &self.item_body.ty_decl {
-            StorageDeclaration { .. } => None,
+            StorageDecl { .. } => None,
             _ => Some(self.item_header.item_name.as_str()),
         };
 

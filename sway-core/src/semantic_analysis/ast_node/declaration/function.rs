@@ -14,7 +14,7 @@ use crate::{
 };
 use sway_types::{style::is_snake_case, Spanned};
 
-impl ty::TyFunctionDeclaration {
+impl ty::TyFunctionDecl {
     pub fn type_check(
         mut ctx: TypeCheckContext,
         fn_decl: FunctionDeclaration,
@@ -146,7 +146,7 @@ impl ty::TyFunctionDeclaration {
             (visibility, ctx.mode() == Mode::ImplAbiFn)
         };
 
-        let function_decl = ty::TyFunctionDeclaration {
+        let function_decl = ty::TyFunctionDecl {
             name,
             body,
             parameters: new_parameters,
@@ -210,7 +210,7 @@ fn test_function_selector_behavior() {
     let type_engine = TypeEngine::default();
     let decl_engine = DeclEngine::default();
 
-    let decl = ty::TyFunctionDeclaration {
+    let decl = ty::TyFunctionDecl {
         purity: Default::default(),
         name: Ident::new_no_span("foo".into()),
         implementing_type: None,
@@ -232,7 +232,7 @@ fn test_function_selector_behavior() {
 
     assert_eq!(selector_text, "foo()".to_string());
 
-    let decl = ty::TyFunctionDeclaration {
+    let decl = ty::TyFunctionDecl {
         purity: Default::default(),
         name: Ident::new_with_override("bar".into(), Span::dummy()),
         implementing_type: None,

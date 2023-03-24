@@ -8,7 +8,7 @@ use horrorshow::{box_html, helper::doctype, html, prelude::*, Raw};
 use std::{collections::BTreeMap, fmt::Write, path::PathBuf};
 use sway_core::{
     language::ty::{
-        TyDeclaration::{self, *},
+        TyDecl::{self, *},
         TyEnumVariant, TyProgramKind, TyStorageField, TyStructField, TyTraitFn,
     },
     transform::{AttributeKind, AttributesMap},
@@ -144,45 +144,43 @@ fn populate_doc_links(
     match module_map.get_mut(&location) {
         Some(doc_links) => {
             match doc.item_body.ty_decl {
-                StructDeclaration { .. } => match doc_links.get_mut(&BlockTitle::Structs) {
+                StructDecl { .. } => match doc_links.get_mut(&BlockTitle::Structs) {
                     Some(links) => links.push(doc.link()),
                     None => {
                         doc_links.insert(BlockTitle::Structs, vec![doc.link()]);
                     }
                 },
-                EnumDeclaration { .. } => match doc_links.get_mut(&BlockTitle::Enums) {
+                EnumDecl { .. } => match doc_links.get_mut(&BlockTitle::Enums) {
                     Some(links) => links.push(doc.link()),
                     None => {
                         doc_links.insert(BlockTitle::Enums, vec![doc.link()]);
                     }
                 },
-                TraitDeclaration { .. } => match doc_links.get_mut(&BlockTitle::Traits) {
+                TraitDecl { .. } => match doc_links.get_mut(&BlockTitle::Traits) {
                     Some(links) => links.push(doc.link()),
                     None => {
                         doc_links.insert(BlockTitle::Traits, vec![doc.link()]);
                     }
                 },
-                AbiDeclaration { .. } => match doc_links.get_mut(&BlockTitle::Abi) {
+                AbiDecl { .. } => match doc_links.get_mut(&BlockTitle::Abi) {
                     Some(links) => links.push(doc.link()),
                     None => {
                         doc_links.insert(BlockTitle::Abi, vec![doc.link()]);
                     }
                 },
-                StorageDeclaration { .. } => {
-                    match doc_links.get_mut(&BlockTitle::ContractStorage) {
-                        Some(links) => links.push(doc.link()),
-                        None => {
-                            doc_links.insert(BlockTitle::ContractStorage, vec![doc.link()]);
-                        }
+                StorageDecl { .. } => match doc_links.get_mut(&BlockTitle::ContractStorage) {
+                    Some(links) => links.push(doc.link()),
+                    None => {
+                        doc_links.insert(BlockTitle::ContractStorage, vec![doc.link()]);
                     }
-                }
-                FunctionDeclaration { .. } => match doc_links.get_mut(&BlockTitle::Functions) {
+                },
+                FunctionDecl { .. } => match doc_links.get_mut(&BlockTitle::Functions) {
                     Some(links) => links.push(doc.link()),
                     None => {
                         doc_links.insert(BlockTitle::Functions, vec![doc.link()]);
                     }
                 },
-                ConstantDeclaration { .. } => match doc_links.get_mut(&BlockTitle::Constants) {
+                ConstantDecl { .. } => match doc_links.get_mut(&BlockTitle::Constants) {
                     Some(links) => links.push(doc.link()),
                     None => {
                         doc_links.insert(BlockTitle::Constants, vec![doc.link()]);
@@ -194,25 +192,25 @@ fn populate_doc_links(
         None => {
             let mut doc_links: BTreeMap<BlockTitle, Vec<DocLink>> = BTreeMap::new();
             match doc.item_body.ty_decl {
-                StructDeclaration { .. } => {
+                StructDecl { .. } => {
                     doc_links.insert(BlockTitle::Structs, vec![doc.link()]);
                 }
-                EnumDeclaration { .. } => {
+                EnumDecl { .. } => {
                     doc_links.insert(BlockTitle::Enums, vec![doc.link()]);
                 }
-                TraitDeclaration { .. } => {
+                TraitDecl { .. } => {
                     doc_links.insert(BlockTitle::Traits, vec![doc.link()]);
                 }
-                AbiDeclaration { .. } => {
+                AbiDecl { .. } => {
                     doc_links.insert(BlockTitle::Abi, vec![doc.link()]);
                 }
-                StorageDeclaration { .. } => {
+                StorageDecl { .. } => {
                     doc_links.insert(BlockTitle::ContractStorage, vec![doc.link()]);
                 }
-                FunctionDeclaration { .. } => {
+                FunctionDecl { .. } => {
                     doc_links.insert(BlockTitle::Functions, vec![doc.link()]);
                 }
-                ConstantDeclaration { .. } => {
+                ConstantDecl { .. } => {
                     doc_links.insert(BlockTitle::Constants, vec![doc.link()]);
                 }
                 _ => {} // TODO: ImplTraitDeclaration
@@ -265,31 +263,31 @@ fn populate_modules(
 }
 fn populate_all_doc(doc: &Document, all_docs: &mut DocLinks) {
     match doc.item_body.ty_decl {
-        StructDeclaration { .. } => match all_docs.links.get_mut(&BlockTitle::Structs) {
+        StructDecl { .. } => match all_docs.links.get_mut(&BlockTitle::Structs) {
             Some(links) => links.push(doc.link()),
             None => {
                 all_docs.links.insert(BlockTitle::Structs, vec![doc.link()]);
             }
         },
-        EnumDeclaration { .. } => match all_docs.links.get_mut(&BlockTitle::Enums) {
+        EnumDecl { .. } => match all_docs.links.get_mut(&BlockTitle::Enums) {
             Some(links) => links.push(doc.link()),
             None => {
                 all_docs.links.insert(BlockTitle::Enums, vec![doc.link()]);
             }
         },
-        TraitDeclaration { .. } => match all_docs.links.get_mut(&BlockTitle::Traits) {
+        TraitDecl { .. } => match all_docs.links.get_mut(&BlockTitle::Traits) {
             Some(links) => links.push(doc.link()),
             None => {
                 all_docs.links.insert(BlockTitle::Traits, vec![doc.link()]);
             }
         },
-        AbiDeclaration { .. } => match all_docs.links.get_mut(&BlockTitle::Abi) {
+        AbiDecl { .. } => match all_docs.links.get_mut(&BlockTitle::Abi) {
             Some(links) => links.push(doc.link()),
             None => {
                 all_docs.links.insert(BlockTitle::Abi, vec![doc.link()]);
             }
         },
-        StorageDeclaration { .. } => match all_docs.links.get_mut(&BlockTitle::ContractStorage) {
+        StorageDecl { .. } => match all_docs.links.get_mut(&BlockTitle::ContractStorage) {
             Some(links) => links.push(doc.link()),
             None => {
                 all_docs
@@ -297,7 +295,7 @@ fn populate_all_doc(doc: &Document, all_docs: &mut DocLinks) {
                     .insert(BlockTitle::ContractStorage, vec![doc.link()]);
             }
         },
-        FunctionDeclaration { .. } => match all_docs.links.get_mut(&BlockTitle::Functions) {
+        FunctionDecl { .. } => match all_docs.links.get_mut(&BlockTitle::Functions) {
             Some(links) => links.push(doc.link()),
             None => {
                 all_docs
@@ -305,7 +303,7 @@ fn populate_all_doc(doc: &Document, all_docs: &mut DocLinks) {
                     .insert(BlockTitle::Functions, vec![doc.link()]);
             }
         },
-        ConstantDeclaration { .. } => match all_docs.links.get_mut(&BlockTitle::Constants) {
+        ConstantDecl { .. } => match all_docs.links.get_mut(&BlockTitle::Constants) {
             Some(links) => links.push(doc.link()),
             None => {
                 all_docs
@@ -386,7 +384,7 @@ impl Renderable for ItemHeader {
 #[derive(Clone, Debug)]
 pub(crate) struct ItemBody {
     pub(crate) module_info: ModuleInfo,
-    pub(crate) ty_decl: TyDeclaration,
+    pub(crate) ty_decl: TyDecl,
     /// The item name varies depending on type.
     /// We store it during info gathering to avoid
     /// multiple match statements.
@@ -1161,16 +1159,16 @@ impl BlockTitle {
     }
 }
 
-impl DocBlockTitle for TyDeclaration {
+impl DocBlockTitle for TyDecl {
     fn as_block_title(&self) -> BlockTitle {
         match self {
-            TyDeclaration::StructDeclaration { .. } => BlockTitle::Structs,
-            TyDeclaration::EnumDeclaration { .. } => BlockTitle::Enums,
-            TyDeclaration::TraitDeclaration { .. } => BlockTitle::Traits,
-            TyDeclaration::AbiDeclaration { .. } => BlockTitle::Abi,
-            TyDeclaration::StorageDeclaration { .. } => BlockTitle::ContractStorage,
-            TyDeclaration::ConstantDeclaration { .. } => BlockTitle::Constants,
-            TyDeclaration::FunctionDeclaration { .. } => BlockTitle::Functions,
+            TyDecl::StructDecl { .. } => BlockTitle::Structs,
+            TyDecl::EnumDecl { .. } => BlockTitle::Enums,
+            TyDecl::TraitDecl { .. } => BlockTitle::Traits,
+            TyDecl::AbiDecl { .. } => BlockTitle::Abi,
+            TyDecl::StorageDecl { .. } => BlockTitle::ContractStorage,
+            TyDecl::ConstantDecl { .. } => BlockTitle::Constants,
+            TyDecl::FunctionDecl { .. } => BlockTitle::Functions,
             _ => {
                 unreachable!("All other TyDecls are non-documentable and will never be matched on")
             }

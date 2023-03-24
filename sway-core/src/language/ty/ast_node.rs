@@ -136,7 +136,7 @@ impl TyAstNode {
         match &self.content {
             TyAstNodeContent::ImplicitReturnExpression(ref exp) => exp.gather_return_statements(),
             // assignments and  reassignments can happen during control flow and can abort
-            TyAstNodeContent::Declaration(TyDeclaration::VariableDeclaration(decl)) => {
+            TyAstNodeContent::Declaration(TyDecl::VariableDecl(decl)) => {
                 decl.body.gather_return_statements()
             }
             TyAstNodeContent::Expression(exp) => exp.gather_return_statements(),
@@ -159,13 +159,10 @@ impl TyAstNode {
         match &self {
             TyAstNode {
                 span: _,
-                content:
-                    TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration {
-                        decl_id, ..
-                    }),
+                content: TyAstNodeContent::Declaration(TyDecl::FunctionDecl { decl_id, .. }),
                 ..
             } => {
-                let TyFunctionDeclaration {
+                let TyFunctionDecl {
                     type_parameters, ..
                 } = decl_engine.get_function(decl_id);
                 !type_parameters.is_empty()
@@ -179,13 +176,10 @@ impl TyAstNode {
         match &self {
             TyAstNode {
                 span: _,
-                content:
-                    TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration {
-                        decl_id, ..
-                    }),
+                content: TyAstNodeContent::Declaration(TyDecl::FunctionDecl { decl_id, .. }),
                 ..
             } => {
-                let TyFunctionDeclaration { attributes, .. } = decl_engine.get_function(decl_id);
+                let TyFunctionDecl { attributes, .. } = decl_engine.get_function(decl_id);
                 attributes.contains_key(&AttributeKind::Test)
             }
             _ => false,
@@ -199,11 +193,7 @@ impl TyAstNode {
                 match self {
                     TyAstNode {
                         span: _,
-                        content:
-                            TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration {
-                                decl_id,
-                                ..
-                            }),
+                        content: TyAstNodeContent::Declaration(TyDecl::FunctionDecl { decl_id, .. }),
                         ..
                     } => {
                         let decl = decl_engine.get_function(decl_id);
@@ -215,7 +205,7 @@ impl TyAstNode {
             TreeType::Contract | TreeType::Library { .. } => match self {
                 TyAstNode {
                     content:
-                        TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration {
+                        TyAstNodeContent::Declaration(TyDecl::FunctionDecl {
                             decl_id,
                             decl_span: _,
                             ..
@@ -227,7 +217,7 @@ impl TyAstNode {
                 }
                 TyAstNode {
                     content:
-                        TyAstNodeContent::Declaration(TyDeclaration::TraitDeclaration {
+                        TyAstNodeContent::Declaration(TyDecl::TraitDecl {
                             decl_id,
                             decl_span: _,
                             ..
@@ -235,22 +225,19 @@ impl TyAstNode {
                     ..
                 } => decl_engine.get_trait(decl_id).visibility.is_public(),
                 TyAstNode {
-                    content:
-                        TyAstNodeContent::Declaration(TyDeclaration::StructDeclaration {
-                            decl_id, ..
-                        }),
+                    content: TyAstNodeContent::Declaration(TyDecl::StructDecl { decl_id, .. }),
                     ..
                 } => {
                     let struct_decl = decl_engine.get_struct(decl_id);
                     struct_decl.visibility == Visibility::Public
                 }
                 TyAstNode {
-                    content: TyAstNodeContent::Declaration(TyDeclaration::ImplTrait { .. }),
+                    content: TyAstNodeContent::Declaration(TyDecl::ImplTrait { .. }),
                     ..
                 } => true,
                 TyAstNode {
                     content:
-                        TyAstNodeContent::Declaration(TyDeclaration::ConstantDeclaration {
+                        TyAstNodeContent::Declaration(TyDecl::ConstantDecl {
                             decl_id,
                             decl_span: _,
                             ..
@@ -282,7 +269,7 @@ impl TyAstNode {
 
 #[derive(Clone, Debug)]
 pub enum TyAstNodeContent {
-    Declaration(TyDeclaration),
+    Declaration(TyDecl),
     Expression(TyExpression),
     ImplicitReturnExpression(TyExpression),
     // a no-op node used for something that just issues a side effect, like an import statement.

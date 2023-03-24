@@ -105,7 +105,7 @@ impl ty::TyImplTrait {
             .ok(&mut warnings, &mut errors)
             .cloned()
         {
-            Some(ty::TyDeclaration::TraitDeclaration { decl_id, .. }) => {
+            Some(ty::TyDecl::TraitDecl { decl_id, .. }) => {
                 let mut trait_decl = decl_engine.get_trait(&decl_id);
 
                 // monomorphize the trait declaration
@@ -153,7 +153,7 @@ impl ty::TyImplTrait {
                     implementing_for,
                 }
             }
-            Some(ty::TyDeclaration::AbiDeclaration { decl_id, .. }) => {
+            Some(ty::TyDecl::AbiDecl { decl_id, .. }) => {
                 // if you are comparing this with the `impl_trait` branch above, note that
                 // there are no type arguments here because we don't support generic types
                 // in contract ABIs yet (or ever?) due to the complexity of communicating
@@ -351,16 +351,15 @@ impl ty::TyImplTrait {
 
         fn decl_contains_get_storage_index(
             decl_engine: &DeclEngine,
-            decl: &ty::TyDeclaration,
+            decl: &ty::TyDecl,
             access_span: &Span,
         ) -> Result<bool, CompileError> {
             match decl {
-                ty::TyDeclaration::VariableDeclaration(decl) => {
+                ty::TyDecl::VariableDecl(decl) => {
                     expr_contains_get_storage_index(decl_engine, &decl.body, access_span)
                 }
-                ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
-                    let ty::TyConstantDeclaration { value: expr, .. } =
-                        decl_engine.get_constant(decl_id);
+                ty::TyDecl::ConstantDecl { decl_id, .. } => {
+                    let ty::TyConstantDecl { value: expr, .. } = decl_engine.get_constant(decl_id);
                     match expr {
                         Some(expr) => {
                             expr_contains_get_storage_index(decl_engine, &expr, access_span)
@@ -370,16 +369,16 @@ impl ty::TyImplTrait {
                 }
                 // We're already inside a type's impl. So we can't have these
                 // nested functions etc. We just ignore them.
-                ty::TyDeclaration::FunctionDeclaration { .. }
-                | ty::TyDeclaration::TraitDeclaration { .. }
-                | ty::TyDeclaration::StructDeclaration { .. }
-                | ty::TyDeclaration::EnumDeclaration { .. }
-                | ty::TyDeclaration::ImplTrait { .. }
-                | ty::TyDeclaration::AbiDeclaration { .. }
-                | ty::TyDeclaration::GenericTypeForFunctionScope { .. }
-                | ty::TyDeclaration::ErrorRecovery(_)
-                | ty::TyDeclaration::TypeAliasDeclaration { .. }
-                | ty::TyDeclaration::StorageDeclaration { .. } => Ok(false),
+                ty::TyDecl::FunctionDecl { .. }
+                | ty::TyDecl::TraitDecl { .. }
+                | ty::TyDecl::StructDecl { .. }
+                | ty::TyDecl::EnumDecl { .. }
+                | ty::TyDecl::ImplTrait { .. }
+                | ty::TyDecl::AbiDecl { .. }
+                | ty::TyDecl::GenericTypeForFunctionScope { .. }
+                | ty::TyDecl::ErrorRecovery(_)
+                | ty::TyDecl::TypeAliasDecl { .. }
+                | ty::TyDecl::StorageDecl { .. } => Ok(false),
             }
         }
 
@@ -513,7 +512,7 @@ impl ty::TyImplTrait {
             match item {
                 ImplItem::Fn(fn_decl) => {
                     let fn_decl = check!(
-                        ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl, true, true),
+                        ty::TyFunctionDecl::type_check(ctx.by_ref(), fn_decl, true, true),
                         continue,
                         warnings,
                         errors
@@ -522,7 +521,7 @@ impl ty::TyImplTrait {
                 }
                 ImplItem::Constant(const_decl) => {
                     let const_decl = check!(
-                        ty::TyConstantDeclaration::type_check(ctx.by_ref(), const_decl),
+                        ty::TyConstantDecl::type_check(ctx.by_ref(), const_decl),
                         continue,
                         warnings,
                         errors
@@ -533,7 +532,7 @@ impl ty::TyImplTrait {
                     check!(
                         ctx.namespace.insert_symbol(
                             decl_ref.name().clone(),
-                            ty::TyDeclaration::ConstantDeclaration {
+                            ty::TyDecl::ConstantDecl {
                                 name: decl_ref.name().clone(),
                                 decl_id: *decl_ref.id(),
                                 decl_span: decl_ref.span().clone()
@@ -621,7 +620,7 @@ fn type_check_trait_implementation(
 
     // This map keeps track of the remaining constants in the interface surface
     // that still need to be implemented for the trait to be fully implemented.
-    let mut constant_checklist: BTreeMap<Ident, ty::TyConstantDeclaration> = BTreeMap::new();
+    let mut constant_checklist: BTreeMap<Ident, ty::TyConstantDecl> = BTreeMap::new();
 
     // This map keeps track of the interface declaration id's of the trait
     // definition.
@@ -698,7 +697,7 @@ fn type_check_trait_implementation(
                         &impld_item_refs,
                         &method_checklist
                     ),
-                    ty::TyFunctionDeclaration::error(impl_method.clone()),
+                    ty::TyFunctionDecl::error(impl_method.clone()),
                     warnings,
                     errors
                 );
@@ -721,7 +720,7 @@ fn type_check_trait_implementation(
                         &impld_item_refs,
                         &constant_checklist
                     ),
-                    ty::TyConstantDeclaration::error(ctx.engines(), const_decl.clone()),
+                    ty::TyConstantDecl::error(ctx.engines(), const_decl.clone()),
                     warnings,
                     errors
                 );
@@ -823,7 +822,7 @@ fn type_check_impl_method(
     is_contract: bool,
     impld_item_refs: &ItemMap,
     method_checklist: &BTreeMap<Ident, ty::TyTraitFn>,
-) -> CompileResult<ty::TyFunctionDeclaration> {
+) -> CompileResult<ty::TyFunctionDecl> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
@@ -847,7 +846,7 @@ fn type_check_impl_method(
 
     // type check the function declaration
     let mut impl_method = check!(
-        ty::TyFunctionDeclaration::type_check(ctx.by_ref(), impl_method.clone(), true, false),
+        ty::TyFunctionDecl::type_check(ctx.by_ref(), impl_method.clone(), true, false),
         return err(warnings, errors),
         warnings,
         errors
@@ -1065,8 +1064,8 @@ fn type_check_const_decl(
     trait_name: &CallPath,
     is_contract: bool,
     impld_constant_ids: &ItemMap,
-    constant_checklist: &BTreeMap<Ident, ty::TyConstantDeclaration>,
-) -> CompileResult<ty::TyConstantDeclaration> {
+    constant_checklist: &BTreeMap<Ident, ty::TyConstantDecl>,
+) -> CompileResult<ty::TyConstantDecl> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
@@ -1090,7 +1089,7 @@ fn type_check_const_decl(
 
     // type check the constant declaration
     let const_decl = check!(
-        ty::TyConstantDeclaration::type_check(ctx.by_ref(), const_decl.clone()),
+        ty::TyConstantDecl::type_check(ctx.by_ref(), const_decl.clone()),
         return err(warnings, errors),
         warnings,
         errors
@@ -1269,7 +1268,7 @@ fn handle_supertraits(
             .ok(&mut warnings, &mut errors)
             .cloned()
         {
-            Some(ty::TyDeclaration::TraitDeclaration { decl_id, .. }) => {
+            Some(ty::TyDecl::TraitDecl { decl_id, .. }) => {
                 let trait_decl = decl_engine.get_trait(&decl_id);
 
                 // Right now we don't parse type arguments for supertraits, so
@@ -1304,11 +1303,9 @@ fn handle_supertraits(
                 interface_surface_item_ids.extend(next_interface_supertrait_decl_refs);
                 impld_item_refs.extend(next_these_supertrait_decl_refs);
             }
-            Some(ty::TyDeclaration::AbiDeclaration { .. }) => {
-                errors.push(CompileError::AbiAsSupertrait {
-                    span: supertrait.name.span().clone(),
-                })
-            }
+            Some(ty::TyDecl::AbiDecl { .. }) => errors.push(CompileError::AbiAsSupertrait {
+                span: supertrait.name.span().clone(),
+            }),
             _ => errors.push(CompileError::TraitNotFound {
                 name: supertrait.name.to_string(),
                 span: supertrait.name.span(),

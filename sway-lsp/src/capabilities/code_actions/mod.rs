@@ -10,7 +10,7 @@ pub use crate::error::DocumentError;
 use serde_json::Value;
 use std::{collections::HashMap, sync::Arc};
 use sway_core::{
-    language::ty::TyDeclaration,
+    language::ty::TyDecl,
     transform::{AttributeKind, AttributesMap},
     Engines, TypeParameter,
 };
@@ -52,10 +52,8 @@ pub(crate) fn code_actions(
     };
     token.typed.and_then(|typed_token| match typed_token {
         TypedAstToken::TypedDeclaration(decl) => match decl {
-            TyDeclaration::AbiDeclaration { decl_id, .. } => abi_decl::code_actions(&decl_id, ctx),
-            TyDeclaration::StructDeclaration { decl_id, .. } => {
-                struct_decl::code_actions(&decl_id, ctx)
-            }
+            TyDecl::AbiDecl { decl_id, .. } => abi_decl::code_actions(&decl_id, ctx),
+            TyDecl::StructDecl { decl_id, .. } => struct_decl::code_actions(&decl_id, ctx),
             _ => None,
         },
         _ => None,

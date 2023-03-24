@@ -5,7 +5,7 @@ use sway_types::Ident;
 use crate::{engine_threading::*, language::ty::*, type_system::*};
 
 #[derive(Clone, Debug)]
-pub struct TyVariableDeclaration {
+pub struct TyVariableDecl {
     pub name: Ident,
     pub body: TyExpression,
     pub mutability: VariableMutability,
@@ -13,8 +13,8 @@ pub struct TyVariableDeclaration {
     pub type_ascription: TypeArgument,
 }
 
-impl EqWithEngines for TyVariableDeclaration {}
-impl PartialEqWithEngines for TyVariableDeclaration {
+impl EqWithEngines for TyVariableDecl {}
+impl PartialEqWithEngines for TyVariableDecl {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         let type_engine = engines.te();
         self.name == other.name
@@ -27,9 +27,9 @@ impl PartialEqWithEngines for TyVariableDeclaration {
     }
 }
 
-impl HashWithEngines for TyVariableDeclaration {
+impl HashWithEngines for TyVariableDecl {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let TyVariableDeclaration {
+        let TyVariableDecl {
             name,
             body,
             mutability,
@@ -45,7 +45,7 @@ impl HashWithEngines for TyVariableDeclaration {
     }
 }
 
-impl SubstTypes for TyVariableDeclaration {
+impl SubstTypes for TyVariableDecl {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.return_type.subst(type_mapping, engines);
         self.type_ascription.subst(type_mapping, engines);
@@ -53,7 +53,7 @@ impl SubstTypes for TyVariableDeclaration {
     }
 }
 
-impl ReplaceSelfType for TyVariableDeclaration {
+impl ReplaceSelfType for TyVariableDecl {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         self.return_type.replace_self_type(engines, self_type);
         self.type_ascription.replace_self_type(engines, self_type);
