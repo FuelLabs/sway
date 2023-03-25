@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-1BF264D58B073501'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-1BF264D58B073501'
+dependencies = ['core']
+
+[[package]]
+name = 'svec_u64'
+source = 'member'
+dependencies = ['std']
