@@ -76,6 +76,7 @@ library;
 
 use ::result::Result;
 use ::revert::revert;
+use ::ops::Eq;
 
 // ANCHOR: docs_option
 /// `Option` is a type that represents an optional value.
@@ -206,6 +207,20 @@ impl<T> Option<T> {
         match self {
             Option::Some(v) => Result::Ok(v),
             Option::None => Result::Err(err),
+        }
+    }
+}
+
+impl Eq for Option<T> where T: Eq {
+    fn eq(self, other: Self) -> bool {
+        match self {
+            Option::Some(v) => {
+                match other {
+                    Option::Some(other_v) => v == other_v,
+                    Option::None => false,
+                }
+            },
+            Option::None => other.is_none(),
         }
     }
 }
