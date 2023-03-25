@@ -1,3 +1,5 @@
-library subdirectory_test;
+library;
 
-dep sub_dir/mod;
+mod sub_dir;
+
+use core::*;

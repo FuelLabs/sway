@@ -1,13 +1,8 @@
 [[package]]
 name = 'core'
-source = 'path+from-root-2C66FC65A00ECA96'
-
-[[package]]
-name = 'std'
-source = 'git+https://github.com/fuellabs/sway?tag=v0.35.5#49eae2dd93a1957e2a2c2fb3f51b11eb3791fc24'
-dependencies = ['core']
+source = 'path+from-root-461F68C07FF7587C'
 
 [[package]]
 name = 'subdirectory_test'
 source = 'member'
-dependencies = ['std']
+dependencies = ['core']

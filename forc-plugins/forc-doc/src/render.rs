@@ -233,9 +233,9 @@ fn populate_modules(
             INDEX_FILENAME.to_string()
         };
         let module_link = DocLink {
-            name: location.to_owned(),
+            name: module_clone.location().to_owned(),
             module_info: module_clone.to_owned(),
-            html_filename,
+            html_filename: INDEX_FILENAME.to_owned(),
             preview_opt: doc.module_info.preview_opt(),
         };
         match module_map.get_mut(parent_module) {

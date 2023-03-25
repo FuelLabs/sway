@@ -5,3 +5,4 @@ license = "Apache-2.0"
 name = "subdirectory_test"
 
 [dependencies]
+core = { path = "../sway-lib-core" }
