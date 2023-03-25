@@ -223,15 +223,9 @@ fn populate_modules(
     doc: &Document,
     module_map: &mut BTreeMap<ModulePrefix, BTreeMap<BlockTitle, Vec<DocLink>>>,
 ) {
-    let location = doc.module_info.location();
     let mut module_clone = doc.module_info.clone();
     let mut child_prefix = PathBuf::new();
     while let Some(parent_module) = module_clone.parent() {
-        let html_filename = if let Some(child_prefix) = child_prefix.to_str() {
-            format!("{child_prefix}{INDEX_FILENAME}")
-        } else {
-            INDEX_FILENAME.to_string()
-        };
         let module_link = DocLink {
             name: module_clone.location().to_owned(),
             module_info: module_clone.to_owned(),
