@@ -281,6 +281,21 @@ impl TyProgram {
                 }
             }
         };
+        // check if no ref mut arguments passed to a `main()` in a `script` or `predicate`.
+        match &typed_program_kind {
+            TyProgramKind::Script { main_function, .. }
+            | TyProgramKind::Predicate { main_function, .. } => {
+                for param in &main_function.parameters {
+                    if param.is_reference && param.is_mutable {
+                        errors.push(CompileError::RefMutableNotAllowedInMain {
+                            param_name: param.name.clone(),
+                            span: param.name.span(),
+                        })
+                    }
+                }
+            }
+            _ => (),
+        }
         ok(
             (typed_program_kind, declarations, configurables),
             warnings,
