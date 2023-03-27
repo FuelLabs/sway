@@ -457,7 +457,7 @@ impl DisplayWithEngines for TypeInfo {
                     decl.type_parameters.iter().map(|x| x.type_id),
                 )
             }
-            ContractCaller { abi_name, .. } => format!("ContractCaller<{}>", abi_name),
+            ContractCaller { abi_name, .. } => format!("ContractCaller<{abi_name}>"),
             Array(elem_ty, count) => {
                 format!("[{:?}; {}]", engines.help_out(elem_ty), count.val())
             }

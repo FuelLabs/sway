@@ -31,7 +31,7 @@ fn completion_items_for_type_id(
     let mut completion_items = vec![];
     let type_info = engines.te().get(type_id);
 
-    if let TypeInfo::Struct(decl_ref) = type_info.clone() {
+    if let TypeInfo::Struct(decl_ref) = type_info {
         let struct_decl = engines.de().get_struct(&decl_ref.id().clone());
         for field in struct_decl.fields {
             let item = CompletionItem {
