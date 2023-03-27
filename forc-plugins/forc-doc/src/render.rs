@@ -1,5 +1,5 @@
 use crate::{
-    doc::{Document, Documentation, ModuleInfo, ModulePrefix},
+    doc::{Document, Documentation, ModuleInfo, ModulePrefixes},
     RenderPlan,
 };
 use anyhow::{anyhow, Result};
@@ -51,11 +51,12 @@ impl RenderedDocumentation {
             ),
             None => panic!("Project does not contain a root module"),
         };
+        println!("{root_module:#?}");
         let mut all_docs = DocLinks {
             style: DocStyle::AllDoc(program_kind.as_title_str().to_string()),
             links: Default::default(),
         };
-        let mut module_map: BTreeMap<ModulePrefix, BTreeMap<BlockTitle, Vec<DocLink>>> =
+        let mut module_map: BTreeMap<ModulePrefixes, BTreeMap<BlockTitle, Vec<DocLink>>> =
             BTreeMap::new();
         for doc in raw {
             rendered_docs.0.push(RenderedDocument {
@@ -71,7 +72,7 @@ impl RenderedDocumentation {
             populate_all_doc(&doc, &mut all_docs);
         }
         // ProjectIndex
-        match module_map.get(root_module.location()) {
+        match module_map.get(&root_module.module_prefixes) {
             Some(doc_links) => rendered_docs.0.push(RenderedDocument {
                 module_info: root_module.clone(),
                 html_filename: INDEX_FILENAME.to_string(),
@@ -90,7 +91,7 @@ impl RenderedDocumentation {
             None => panic!("Project does not contain a root module."),
         }
         if module_map.len() > 1 {
-            module_map.remove_entry(root_module.location());
+            module_map.remove_entry(&root_module.module_prefixes);
 
             // ModuleIndex(s)
             for (_, doc_links) in module_map {
@@ -138,10 +139,10 @@ impl RenderedDocumentation {
 }
 fn populate_doc_links(
     doc: &Document,
-    module_map: &mut BTreeMap<ModulePrefix, BTreeMap<BlockTitle, Vec<DocLink>>>,
+    module_map: &mut BTreeMap<ModulePrefixes, BTreeMap<BlockTitle, Vec<DocLink>>>,
 ) {
-    let location = doc.module_info.location().to_string();
-    match module_map.get_mut(&location) {
+    let module_prefixes = &doc.module_info.module_prefixes;
+    match module_map.get_mut(module_prefixes) {
         Some(doc_links) => {
             match doc.item_body.ty_decl {
                 StructDecl { .. } => match doc_links.get_mut(&BlockTitle::Structs) {
@@ -215,24 +216,31 @@ fn populate_doc_links(
                 }
                 _ => {} // TODO: ImplTraitDeclaration
             }
-            module_map.insert(location.clone(), doc_links);
+            module_map.insert(module_prefixes.clone(), doc_links);
         }
     }
 }
 fn populate_modules(
     doc: &Document,
-    module_map: &mut BTreeMap<ModulePrefix, BTreeMap<BlockTitle, Vec<DocLink>>>,
+    module_map: &mut BTreeMap<ModulePrefixes, BTreeMap<BlockTitle, Vec<DocLink>>>,
 ) {
     let mut module_clone = doc.module_info.clone();
     let mut child_prefix = PathBuf::new();
-    while let Some(parent_module) = module_clone.parent() {
+    while module_clone.parent().is_some() {
         let module_link = DocLink {
             name: module_clone.location().to_owned(),
             module_info: module_clone.to_owned(),
             html_filename: INDEX_FILENAME.to_owned(),
             preview_opt: doc.module_info.preview_opt(),
         };
-        match module_map.get_mut(parent_module) {
+        let module_prefixes = module_clone
+            .module_prefixes
+            .clone()
+            .split_last()
+            .unwrap()
+            .1
+            .to_vec();
+        match module_map.get_mut(&module_prefixes) {
             Some(doc_links) => match doc_links.get_mut(&BlockTitle::Modules) {
                 Some(links) => {
                     if !links.contains(&module_link) {
@@ -246,14 +254,14 @@ fn populate_modules(
             None => {
                 let mut doc_links: BTreeMap<BlockTitle, Vec<DocLink>> = BTreeMap::new();
                 doc_links.insert(BlockTitle::Modules, vec![module_link]);
-                module_map.insert(parent_module.clone(), doc_links);
+                module_map.insert(module_prefixes.clone(), doc_links);
             }
         }
         let mut parent = PathBuf::from(module_clone.module_prefixes.pop().unwrap_or_default());
         parent.push(child_prefix);
         child_prefix = parent;
     }
-    println!("{module_map:?}");
+    println!("{module_map:#?}");
 }
 fn populate_all_doc(doc: &Document, all_docs: &mut DocLinks) {
     match doc.item_body.ty_decl {

@@ -151,10 +151,10 @@ impl Renderable for Document {
     }
 }
 
-pub(crate) type ModulePrefix = String;
+pub(crate) type ModulePrefixes = Vec<String>;
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) struct ModuleInfo {
-    pub(crate) module_prefixes: Vec<ModulePrefix>,
+    pub(crate) module_prefixes: ModulePrefixes,
     pub(crate) attributes: Option<String>,
 }
 impl ModuleInfo {
