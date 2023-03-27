@@ -4,7 +4,7 @@ use sway_types::integer_bits::IntegerBits;
 use crate::{
     decl_engine::DeclEngine,
     language::{
-        ty::{TyConstantDeclaration, TyFunctionDeclaration, TyProgram, TyProgramKind},
+        ty::{TyConstantDecl, TyFunctionDecl, TyProgram, TyProgramKind},
         CallPath,
     },
     transform::AttributesMap,
@@ -190,7 +190,7 @@ fn generate_json_configurables(
         .configurables
         .iter()
         .map(
-            |TyConstantDeclaration {
+            |TyConstantDecl {
                  type_ascription, ..
              }| program_abi::TypeDeclaration {
                 type_id: type_ascription.type_id.index(),
@@ -226,7 +226,7 @@ fn generate_json_configurables(
         .configurables
         .iter()
         .map(
-            |TyConstantDeclaration {
+            |TyConstantDecl {
                  call_path,
                  type_ascription,
                  ..
@@ -868,7 +868,7 @@ fn call_path_display(ctx: &mut JsonAbiContext, call_path: &CallPath) -> String {
     buf
 }
 
-impl TyFunctionDeclaration {
+impl TyFunctionDecl {
     pub(self) fn generate_json_abi_function(
         &self,
         ctx: &mut JsonAbiContext,

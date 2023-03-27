@@ -2,7 +2,7 @@ use sway_error::error::CompileError;
 use sway_types::Spanned;
 
 use crate::{
-    decl_engine::DeclEngineIndex,
+    decl_engine::DeclEngineInsert,
     error::*,
     language::{
         parsed::*,
@@ -12,7 +12,7 @@ use crate::{
     CompileResult,
 };
 
-impl ty::TyAbiDeclaration {
+impl ty::TyAbiDecl {
     pub(crate) fn type_check(
         ctx: TypeCheckContext,
         abi_decl: AbiDeclaration,
@@ -84,8 +84,8 @@ impl ty::TyAbiDeclaration {
         let mut new_items = vec![];
         for method in methods.into_iter() {
             let method = check!(
-                ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone(), true, false),
-                ty::TyFunctionDeclaration::error(method.clone()),
+                ty::TyFunctionDecl::type_check(ctx.by_ref(), method.clone(), true, false),
+                ty::TyFunctionDecl::error(method.clone()),
                 warnings,
                 errors
             );
@@ -103,7 +103,7 @@ impl ty::TyAbiDeclaration {
         // Compared to regular traits, we do not insert recursively methods of ABI supertraits
         // into the interface surface, we do not want supertrait methods to be available to
         // the ABI user, only the contract methods can use supertrait methods
-        let abi_decl = ty::TyAbiDeclaration {
+        let abi_decl = ty::TyAbiDecl {
             interface_surface: new_interface_surface,
             supertraits,
             items: new_items,
