@@ -123,7 +123,7 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
     let doc_comment = format_doc_attributes(token);
 
     let format_name_with_type = |name: &str, type_id: &TypeId| -> String {
-        let type_name = format!("{:?}", engines.help_out(type_id));
+        let type_name = format!("{}", engines.help_out(type_id));
         format!("{name}: {type_name}")
     };
 
@@ -134,7 +134,7 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
             TypedAstToken::TypedDeclaration(decl) => match decl {
                 ty::TyDecl::VariableDecl(var_decl) => {
                     let type_name =
-                        format!("{:?}", engines.help_out(var_decl.type_ascription.type_id));
+                        format!("{}", engines.help_out(var_decl.type_ascription.type_id));
                     Some(format_variable_hover(
                         var_decl.mutability.is_mutable(),
                         &type_name,
@@ -183,7 +183,7 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
             )),
             TypedAstToken::TypedExpression(expr) => match expr.expression {
                 ty::TyExpressionVariant::Literal { .. } => {
-                    Some(format!("{:?}", engines.help_out(expr.return_type)))
+                    Some(format!("{}", engines.help_out(expr.return_type)))
                 }
                 _ => None,
             },

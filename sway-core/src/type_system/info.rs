@@ -411,6 +411,92 @@ impl OrdWithEngines for TypeInfo {
     }
 }
 
+impl DisplayWithEngines for TypeInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+        use TypeInfo::*;
+        let s = match self {
+            Unknown => "unknown".into(),
+            UnknownGeneric { name, .. } => name.to_string(),
+            Placeholder(type_param) => type_param.name_ident.to_string(),
+            TypeParam(n) => format!("{n}"),
+            Str(x) => format!("str[{}]", x.val()),
+            UnsignedInteger(x) => match x {
+                IntegerBits::Eight => "u8",
+                IntegerBits::Sixteen => "u16",
+                IntegerBits::ThirtyTwo => "u32",
+                IntegerBits::SixtyFour => "u64",
+            }
+            .into(),
+            Boolean => "bool".into(),
+            Custom { call_path, .. } => call_path.suffix.to_string(),
+            Tuple(fields) => {
+                let field_strs = fields
+                    .iter()
+                    .map(|field| format!("{:?}", engines.help_out(field)))
+                    .collect::<Vec<String>>();
+                format!("({})", field_strs.join(", "))
+            }
+            SelfType => "Self".into(),
+            B256 => "b256".into(),
+            Numeric => "numeric".into(),
+            Contract => "contract".into(),
+            ErrorRecovery => "unknown".into(),
+            // Enum(decl_ref) => {
+            //     let decl = engines.de().get_enum(decl_ref);
+            //     print_inner_types(
+            //         engines,
+            //         decl.call_path.suffix.as_str().to_string(),
+            //         decl.type_parameters.iter().map(|x| x.type_id),
+            //     )
+            // }
+            // TODO: type params
+            Enum(decl_ref) => {
+                let type_params = engines
+                    .de()
+                    .get_enum(decl_ref)
+                    .type_parameters
+                    .iter()
+                    .map(|tp| {
+                        eprintln!("tp: {:?}", tp);
+                        tp.name_ident.as_str()
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
+
+                eprintln!("type_params: {:?}", type_params);
+
+                let type_param_string = if type_params.is_empty() {
+                    "".into()
+                } else {
+                    format!("<{}>", type_params)
+                };
+
+                eprintln!("type_param_string: {:?}", type_param_string);
+                format!("{}{}", decl_ref.name(), type_param_string)
+            }
+            // Struct(decl_ref) => {
+            //     let decl = engines.de().get_struct(decl_ref);
+            //     print_inner_types(
+            //         engines,
+            //         decl.call_path.suffix.as_str().to_string(),
+            //         decl.type_parameters.iter().map(|x| x.type_id),
+            //     )
+            // }
+            // TODO: type params
+            Struct(decl_ref) => decl_ref.name().clone().to_string(),
+            ContractCaller { abi_name, .. } => format!("ContractCaller<{}>", abi_name),
+            Array(elem_ty, count) => {
+                format!("[{:?}; {}]", engines.help_out(elem_ty), count.val())
+            }
+            Storage { .. } => "storage".into(),
+            RawUntypedPtr => "pointer".into(),
+            RawUntypedSlice => "slice".into(),
+            Alias { name, .. } => name.to_string(),
+        };
+        write!(f, "{s}")
+    }
+}
+
 impl DebugWithEngines for TypeInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         use TypeInfo::*;
@@ -480,21 +566,6 @@ impl DebugWithEngines for TypeInfo {
             }
         };
         write!(f, "{s}")
-    }
-}
-
-impl TypeInfo {
-    pub fn display_name(&self) -> String {
-        match self {
-            TypeInfo::UnknownGeneric { name, .. } => name.to_string(),
-            TypeInfo::Placeholder(type_param) => type_param.name_ident.to_string(),
-            TypeInfo::Enum(decl_ref) => decl_ref.name().clone().to_string(),
-            TypeInfo::Struct(decl_ref) => decl_ref.name().clone().to_string(),
-            TypeInfo::ContractCaller { abi_name, .. } => abi_name.to_string(),
-            TypeInfo::Custom { call_path, .. } => call_path.to_string(),
-            TypeInfo::Storage { .. } => "storage".into(),
-            _ => format!("{self:?}"),
-        }
     }
 }
 

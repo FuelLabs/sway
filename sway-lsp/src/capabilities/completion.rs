@@ -122,7 +122,7 @@ fn replace_self_with_type_str(
     parent_type_id: &TypeId,
 ) -> String {
     if type_str == "Self" {
-        return format!("{:?}", engines.help_out(parent_type_id));
+        return format!("{}", engines.help_out(parent_type_id));
     }
     type_str
 }
