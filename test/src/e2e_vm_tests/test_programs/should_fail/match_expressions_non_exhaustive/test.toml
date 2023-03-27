@@ -47,3 +47,18 @@ category = "fail"
 
 # check: complex_tests.sw:117:13
 # check: $()Non-exhaustive match expression. Missing patterns `Result::Ok(MyIdentity::Address(MyAddress { inner: 0 }))`, `Result::Ok(MyIdentity::Address(MyAddress { inner: 2 }))`, `Result::Ok(MyIdentity::Address(MyAddress { inner: [4...MAX] }))`
+
+# check: or_patterns.sw:14:5
+# check: $()Non-exhaustive match expression. Missing patterns `[3...MAX]`
+
+# check: or_patterns.sw:22:5
+# check: $()Non-exhaustive match expression. Missing patterns `A { a: _, b: 0 }`, `A { a: _, b: [3...MAX] }`
+
+# check: or_patterns.sw:28:5
+# check: $()Non-exhaustive match expression. Missing patterns `_ | 0 | _ | [4...MAX] | 1 | 0 | 1 | [4...MAX] | _ | 0 | 1 | 0 | _ | [4...MAX] | 1 | [4...MAX]`, `A { a: _, b: 0 } | A { a: _, b: [4...MAX] } | A { a: 1, b: 0 } | A { a: 1, b: [4...MAX] } | A { a: _, b: 0 } | A { a: 1, b: 0 } | A { a: _, b: [4...MAX] } | A { a: 1, b: [4...MAX] }`, `[4...MAX]`, `_`, `1`, `0`, `[4...MAX]`, `[4...MAX]`, `[4...MAX]`
+
+# check: or_patterns.sw:37:5
+# check: $()Non-exhaustive match expression. Missing patterns `B { a: _, b: 0 }`, `B { a: _, b: [2...MAX] }`, `B { a: _, b: 0 }`, `B { a: _, b: [2...MAX] }`, `B { a: _, b: 0 }`, `B { a: _, b: 0 }`, `B { a: _, b: [2...MAX] }`, `B { a: _, b: [2...MAX] }`, `B { a: _, b: 0 }`, `B { a: _, b: [2...MAX] }`, `B { a: _, b: 0 }`, `B { a: _, b: 0 }`, `B { a: _, b: 0 }`, `B { a: _, b: [2...MAX] }`, `B { a: _, b: [2...MAX] }`, `B { a: _, b: [2...MAX] }`, `_`, `_`, `0`, `[2...MAX]`, `0`, `[2...MAX]`
+
+# check: or_patterns.sw:48:5
+# check: $()Non-exhaustive match expression. Missing patterns `A { a: _, b: _ } | 0 | A { a: _, b: _ } | [2...MAX] | _ | 0 | _ | [2...MAX] | A { a: _, b: _ } | 0 | _ | 0 | A { a: _, b: _ } | [2...MAX] | _ | [2...MAX]`, `B { a: A { a: _, b: _ }, b: 0 } | B { a: A { a: _, b: _ }, b: [2...MAX] } | B { a: _, b: 0 } | B { a: _, b: [2...MAX] } | B { a: A { a: _, b: _ }, b: 0 } | B { a: _, b: 0 } | B { a: A { a: _, b: _ }, b: [2...MAX] } | B { a: _, b: [2...MAX] }`, `0`, `[2...MAX]`, `A { a: _, b: _ }`, `_`, `0`, `[2...MAX]`, `0`, `[2...MAX]`, `0`, `[2...MAX]`

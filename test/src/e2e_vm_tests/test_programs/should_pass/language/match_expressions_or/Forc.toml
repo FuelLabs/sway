@@ -1,0 +1,9 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+license = "Apache-2.0"
+name = "or-patterns"
+entry = "main.sw"
+
+[dependencies]
+core = { path = "../../../../../../../sway-lib-core" }
+std = { path = "../../../../../../../sway-lib-std" }

@@ -1030,7 +1030,7 @@ impl<'a> TypedTree<'a> {
 
                 self.handle_scrutinee(value);
             }
-            Tuple(scrutinees) => {
+            Tuple(scrutinees) | Or(scrutinees) => {
                 for s in scrutinees {
                     self.handle_scrutinee(s);
                 }

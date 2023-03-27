@@ -534,7 +534,7 @@ impl Parse for Scrutinee {
                 ctx.tokens.insert(to_ident_key(&call_path.suffix), token);
                 value.parse(ctx);
             }
-            Scrutinee::Tuple { elems, .. } => {
+            Scrutinee::Tuple { elems, .. } | Scrutinee::Or { elems, .. } => {
                 elems.iter().for_each(|elem| elem.parse(ctx));
             }
             Scrutinee::Error { .. } => {

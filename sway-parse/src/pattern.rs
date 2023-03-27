@@ -1,4 +1,4 @@
-use crate::{Parse, ParseBracket, ParseResult, Parser};
+use crate::{Parse, ParseBracket, ParseResult, Parser, Peek};
 
 use sway_ast::brackets::{Braces, Parens};
 use sway_ast::keywords::{DoubleDotToken, FalseToken, TrueToken};
@@ -10,6 +10,40 @@ use sway_types::Spanned;
 
 impl Parse for Pattern {
     fn parse(parser: &mut Parser) -> ParseResult<Pattern> {
+        let combine = |lhs, rhs, pipe_token| Pattern::Or {
+            lhs,
+            pipe_token,
+            rhs,
+        };
+        parse_binary(parser, parse_atomic_pattern, combine)
+    }
+}
+
+fn parse_binary<O: Peek>(
+    parser: &mut Parser,
+    sub: impl Fn(&mut Parser) -> ParseResult<Pattern>,
+    combine: impl Fn(Box<Pattern>, Box<Pattern>, O) -> Pattern,
+) -> ParseResult<Pattern> {
+    let mut expr = sub(parser)?;
+    while let Some((op_token, rhs)) = parse_op_rhs(parser, &sub)? {
+        expr = combine(Box::new(expr), rhs, op_token);
+    }
+    Ok(expr)
+}
+
+fn parse_op_rhs<O: Peek>(
+    parser: &mut Parser,
+    sub: impl Fn(&mut Parser) -> ParseResult<Pattern>,
+) -> ParseResult<Option<(O, Box<Pattern>)>> {
+    if let Some(op_token) = parser.take() {
+        let rhs = Box::new(sub(parser)?);
+        return Ok(Some((op_token, rhs)));
+    }
+    Ok(None)
+}
+
+fn parse_atomic_pattern(parser: &mut Parser) -> ParseResult<Pattern> {
+    {
         let ref_token = parser.take();
         let mut_token = parser.take();
         if ref_token.is_some() || mut_token.is_some() {
