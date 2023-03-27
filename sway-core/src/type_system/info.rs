@@ -441,49 +441,22 @@ impl DisplayWithEngines for TypeInfo {
             Numeric => "numeric".into(),
             Contract => "contract".into(),
             ErrorRecovery => "unknown".into(),
-            // Enum(decl_ref) => {
-            //     let decl = engines.de().get_enum(decl_ref);
-            //     print_inner_types(
-            //         engines,
-            //         decl.call_path.suffix.as_str().to_string(),
-            //         decl.type_parameters.iter().map(|x| x.type_id),
-            //     )
-            // }
-            // TODO: type params
             Enum(decl_ref) => {
-                let type_params = engines
-                    .de()
-                    .get_enum(decl_ref)
-                    .type_parameters
-                    .iter()
-                    .map(|tp| {
-                        eprintln!("tp: {:?}", tp);
-                        tp.name_ident.as_str()
-                    })
-                    .collect::<Vec<_>>()
-                    .join(", ");
-
-                eprintln!("type_params: {:?}", type_params);
-
-                let type_param_string = if type_params.is_empty() {
-                    "".into()
-                } else {
-                    format!("<{}>", type_params)
-                };
-
-                eprintln!("type_param_string: {:?}", type_param_string);
-                format!("{}{}", decl_ref.name(), type_param_string)
+                let decl = engines.de().get_enum(decl_ref);
+                print_inner_types(
+                    engines,
+                    decl.call_path.suffix.as_str().to_string(),
+                    decl.type_parameters.iter().map(|x| x.type_id),
+                )
             }
-            // Struct(decl_ref) => {
-            //     let decl = engines.de().get_struct(decl_ref);
-            //     print_inner_types(
-            //         engines,
-            //         decl.call_path.suffix.as_str().to_string(),
-            //         decl.type_parameters.iter().map(|x| x.type_id),
-            //     )
-            // }
-            // TODO: type params
-            Struct(decl_ref) => decl_ref.name().clone().to_string(),
+            Struct(decl_ref) => {
+                let decl = engines.de().get_struct(decl_ref);
+                print_inner_types(
+                    engines,
+                    decl.call_path.suffix.as_str().to_string(),
+                    decl.type_parameters.iter().map(|x| x.type_id),
+                )
+            }
             ContractCaller { abi_name, .. } => format!("ContractCaller<{}>", abi_name),
             Array(elem_ty, count) => {
                 format!("[{:?}; {}]", engines.help_out(elem_ty), count.val())
