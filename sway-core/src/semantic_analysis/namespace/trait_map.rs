@@ -185,7 +185,7 @@ impl TraitMap {
                             "<{}>",
                             trait_type_args
                                 .iter()
-                                .map(|type_arg| engines.help_out(type_arg).to_string())
+                                .map(|type_arg| format!("{:?}", engines.help_out(type_arg)))
                                 .collect::<Vec<_>>()
                                 .join(", ")
                         )
@@ -193,7 +193,7 @@ impl TraitMap {
                 );
                 errors.push(CompileError::ConflictingImplsForTraitAndType {
                     trait_name: trait_name_str,
-                    type_implementing_for: engines.help_out(type_id).to_string(),
+                    type_implementing_for: format!("{:?}", engines.help_out(type_id)),
                     second_impl_span: impl_span.clone(),
                 });
             } else if types_are_subset && (traits_are_subset || is_impl_self) {
@@ -204,7 +204,10 @@ impl TraitMap {
                                 errors.push(CompileError::DuplicateDeclDefinedForType {
                                     decl_kind: "method".into(),
                                     decl_name: decl_ref.name().to_string(),
-                                    type_implementing_for: engines.help_out(type_id).to_string(),
+                                    type_implementing_for: format!(
+                                        "{:?}",
+                                        engines.help_out(type_id),
+                                    ),
                                     span: decl_ref.name().span(),
                                 });
                             }
@@ -214,7 +217,10 @@ impl TraitMap {
                                 errors.push(CompileError::DuplicateDeclDefinedForType {
                                     decl_kind: "constant".into(),
                                     decl_name: decl_ref.name().to_string(),
-                                    type_implementing_for: engines.help_out(type_id).to_string(),
+                                    type_implementing_for: format!(
+                                        "{:?}",
+                                        engines.help_out(type_id),
+                                    ),
                                     span: decl_ref.name().span(),
                                 });
                             }
@@ -793,7 +799,7 @@ impl TraitMap {
         for trait_name in required_traits_names.difference(&relevant_impld_traits_names) {
             // TODO: use a better span
             errors.push(CompileError::TraitConstraintNotSatisfied {
-                ty: engines.help_out(type_id).to_string(),
+                ty: format!("{:?}", engines.help_out(type_id)),
                 trait_name: trait_name.to_string(),
                 span: access_span.clone(),
             });

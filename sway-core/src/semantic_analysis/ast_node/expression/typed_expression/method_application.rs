@@ -390,8 +390,8 @@ fn unify_arguments_and_parameters(
                 "This argument's type is not castable to the declared parameter type.",
                 Some(CompileError::ArgumentParameterTypeMismatch {
                     span: arg.span.clone(),
-                    provided: engines.help_out(arg.return_type).to_string(),
-                    should_be: engines.help_out(param.type_argument.type_id).to_string(),
+                    provided: format!("{:?}", engines.help_out(arg.return_type)),
+                    should_be: format!("{:?}", engines.help_out(param.type_argument.type_id)),
                 })
             )),
             continue,

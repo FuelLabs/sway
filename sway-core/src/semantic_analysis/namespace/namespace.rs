@@ -323,7 +323,7 @@ impl Namespace {
         {
             errors.push(CompileError::MethodNotFound {
                 method_name: method_name.clone(),
-                type_name: engines.help_out(type_id).to_string(),
+                type_name: format!("{:?}", engines.help_out(type_id)),
                 span: method_name.span(),
             });
         }

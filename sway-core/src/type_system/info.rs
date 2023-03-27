@@ -411,7 +411,7 @@ impl OrdWithEngines for TypeInfo {
     }
 }
 
-impl DisplayWithEngines for TypeInfo {
+impl DebugWithEngines for TypeInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         use TypeInfo::*;
         let s = match self {
@@ -434,7 +434,7 @@ impl DisplayWithEngines for TypeInfo {
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()
-                    .map(|field| engines.help_out(field).to_string())
+                    .map(|field| format!("{:?}", engines.help_out(field)))
                     .collect::<Vec<String>>();
                 format!("({})", field_strs.join(", "))
             }
@@ -461,7 +461,7 @@ impl DisplayWithEngines for TypeInfo {
             }
             ContractCaller { abi_name, address } => {
                 format!(
-                    "contract caller {} ( {} )",
+                    "contract caller {:?} ( {} )",
                     abi_name,
                     address
                         .as_ref()
@@ -470,13 +470,13 @@ impl DisplayWithEngines for TypeInfo {
                 )
             }
             Array(elem_ty, count) => {
-                format!("[{}; {}]", engines.help_out(elem_ty), count.val())
+                format!("[{:?}; {}]", engines.help_out(elem_ty), count.val())
             }
             Storage { .. } => "contract storage".into(),
             RawUntypedPtr => "raw untyped ptr".into(),
             RawUntypedSlice => "raw untyped slice".into(),
             Alias { name, ty } => {
-                format!("type {} = {}", name, engines.help_out(ty))
+                format!("type {} = {:?}", name, engines.help_out(ty))
             }
         };
         write!(f, "{s}")
@@ -1427,7 +1427,7 @@ impl TypeInfo {
             }
             (type_info, _) => {
                 errors.push(CompileError::FieldAccessOnNonStruct {
-                    actually: engines.help_out(type_info).to_string(),
+                    actually: format!("{:?}", engines.help_out(type_info)),
                     span: span.clone(),
                 });
                 err(warnings, errors)
@@ -1522,7 +1522,7 @@ impl TypeInfo {
                 vec![CompileError::NotATuple {
                     name: debug_string.into(),
                     span: debug_span.clone(),
-                    actually: engines.help_out(a).to_string(),
+                    actually: format!("{:?}", engines.help_out(a)),
                 }],
             ),
         }
@@ -1567,7 +1567,7 @@ impl TypeInfo {
                 vec![CompileError::NotAnEnum {
                     name: debug_string.into(),
                     span: debug_span.clone(),
-                    actually: engines.help_out(a).to_string(),
+                    actually: format!("{:?}", engines.help_out(a)),
                 }],
             ),
         }
@@ -1611,7 +1611,7 @@ impl TypeInfo {
                 vec![],
                 vec![CompileError::NotAStruct {
                     span: debug_span.clone(),
-                    actually: engines.help_out(a).to_string(),
+                    actually: format!("{:?}", engines.help_out(a)),
                 }],
             ),
         }
@@ -1731,7 +1731,7 @@ fn print_inner_types(
     inner_types: impl Iterator<Item = TypeId>,
 ) -> String {
     let inner_types = inner_types
-        .map(|x| engines.help_out(x).to_string())
+        .map(|x| format!("{:?}", engines.help_out(x)))
         .collect::<Vec<_>>();
     format!(
         "{}{}",

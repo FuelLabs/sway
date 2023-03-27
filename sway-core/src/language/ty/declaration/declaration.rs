@@ -341,12 +341,12 @@ impl Spanned for TyDecl {
     }
 }
 
-impl DisplayWithEngines for TyDecl {
+impl DebugWithEngines for TyDecl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> std::fmt::Result {
         let type_engine = engines.te();
         write!(
             f,
-            "{} declaration ({})",
+            "{} declaration ({:?})",
             self.friendly_type_name(),
             match self {
                 TyDecl::VariableDecl(decl) => {
@@ -366,12 +366,14 @@ impl DisplayWithEngines for TyDecl {
                     builder.push_str(name.as_str());
                     builder.push_str(": ");
                     builder.push_str(
-                        &engines
-                            .help_out(type_engine.get(type_ascription.type_id))
-                            .to_string(),
+                        format!(
+                            "{:?}",
+                            &engines.help_out(type_engine.get(type_ascription.type_id))
+                        )
+                        .as_str(),
                     );
                     builder.push_str(" = ");
-                    builder.push_str(&engines.help_out(body).to_string());
+                    builder.push_str(&format!("{:?}", engines.help_out(body)));
                     builder
                 }
                 TyDecl::FunctionDecl { name, .. }
@@ -636,7 +638,7 @@ impl TyDecl {
                 let decl = decl_engine.get_impl_trait(decl_id);
                 let implementing_for_type_id = type_engine.get(decl.implementing_for.type_id);
                 format!(
-                    "{} for {}",
+                    "{} for {:?}",
                     self.get_decl_ident()
                         .map_or(String::from(""), |f| f.as_str().to_string()),
                     engines.help_out(implementing_for_type_id)
@@ -731,7 +733,7 @@ impl TyDecl {
             decl => {
                 errors.push(CompileError::NotAType {
                     span: decl.span(),
-                    name: engines.help_out(decl).to_string(),
+                    name: format!("{:?}", engines.help_out(decl)),
                     actually_is: decl.friendly_type_name(),
                 });
                 return err(warnings, errors);

@@ -100,7 +100,7 @@ impl ty::TyAstNode {
         } = node
         {
             let warning = Warning::UnusedReturnValue {
-                r#type: engines.help_out(node.type_info(type_engine)).to_string(),
+                r#type: format!("{:?}", engines.help_out(node.type_info(type_engine))),
             };
             assert_or_warn!(
                 node.type_info(type_engine)

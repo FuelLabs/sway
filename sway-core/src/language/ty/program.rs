@@ -192,9 +192,11 @@ impl TyProgram {
                                 .is_empty()
                             {
                                 errors.push(CompileError::TypeNotAllowedInContractStorage {
-                                    ty: engines
-                                        .help_out(&ty_engine.get(field.type_argument.type_id))
-                                        .to_string(),
+                                    ty: format!(
+                                        "{:?}",
+                                        engines
+                                            .help_out(&ty_engine.get(field.type_argument.type_id))
+                                    ),
                                     span: field.span.clone(),
                                 });
                             }

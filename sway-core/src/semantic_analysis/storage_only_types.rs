@@ -163,7 +163,7 @@ fn check_type(
         }
         if ty_engine.is_type_info_storage_only(decl_engine, &ty) {
             errors.push(CompileError::InvalidStorageOnlyTypeDecl {
-                ty: engines.help_out(ty).to_string(),
+                ty: format!("{:?}", engines.help_out(ty)),
                 span: span.clone(),
             });
         }

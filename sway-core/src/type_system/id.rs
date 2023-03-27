@@ -12,9 +12,15 @@ use std::{collections::BTreeSet, fmt};
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd, Debug)]
 pub struct TypeId(usize);
 
-impl DisplayWithEngines for TypeId {
+// impl DisplayWithEngines for TypeId {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+//         write!(f, "{}", engines.help_out(engines.te().get(*self)))
+//     }
+// }
+
+impl DebugWithEngines for TypeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
-        write!(f, "{}", engines.help_out(engines.te().get(*self)))
+        write!(f, "{:?}", engines.help_out(engines.te().get(*self)))
     }
 }
 

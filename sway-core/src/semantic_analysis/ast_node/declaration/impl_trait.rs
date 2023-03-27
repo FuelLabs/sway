@@ -167,7 +167,7 @@ impl ty::TyImplTrait {
                 {
                     errors.push(CompileError::ImplAbiForNonContract {
                         span: implementing_for.span(),
-                        ty: engines.help_out(implementing_for.type_id).to_string(),
+                        ty: format!("{:?}", engines.help_out(implementing_for.type_id)),
                     });
                 }
 
@@ -928,12 +928,14 @@ fn type_check_impl_method(
                 interface_name: interface_name(),
                 span: impl_method_param.type_argument.span.clone(),
                 decl_type: "function".to_string(),
-                given: engines
-                    .help_out(impl_method_param.type_argument.type_id)
-                    .to_string(),
-                expected: engines
-                    .help_out(impl_method_signature_param.type_argument.type_id)
-                    .to_string(),
+                given: format!(
+                    "{:?}",
+                    engines.help_out(impl_method_param.type_argument.type_id)
+                ),
+                expected: format!(
+                    "{:?}",
+                    engines.help_out(impl_method_signature_param.type_argument.type_id)
+                ),
             });
             continue;
         }
@@ -996,10 +998,8 @@ fn type_check_impl_method(
             interface_name: interface_name(),
             span: impl_method.return_type.span.clone(),
             decl_type: "function".to_string(),
-            expected: engines
-                .help_out(impl_method_signature.return_type)
-                .to_string(),
-            given: engines.help_out(impl_method.return_type).to_string(),
+            expected: format!("{:?}", engines.help_out(impl_method_signature.return_type)),
+            given: format!("{:?}", engines.help_out(impl_method.return_type)),
         });
         return err(warnings, errors);
     }
@@ -1133,12 +1133,11 @@ fn type_check_const_decl(
             interface_name: interface_name(),
             span: const_decl.span.clone(),
             decl_type: "constant".to_string(),
-            given: engines
-                .help_out(const_decl.type_ascription.type_id)
-                .to_string(),
-            expected: engines
-                .help_out(const_decl_signature.type_ascription.type_id)
-                .to_string(),
+            given: format!("{:?}", engines.help_out(const_decl.type_ascription.type_id)),
+            expected: format!(
+                "{:?}",
+                engines.help_out(const_decl_signature.type_ascription.type_id)
+            ),
         });
         return err(warnings, errors);
     }
@@ -1224,7 +1223,7 @@ fn check_for_unconstrained_type_parameters(
     // create an error for all of the leftover generics
     for (k, v) in defined_generics.into_iter() {
         errors.push(CompileError::UnconstrainedGenericParameter {
-            ty: format!("{k}"),
+            ty: format!("{:?}", k),
             span: v,
         });
     }

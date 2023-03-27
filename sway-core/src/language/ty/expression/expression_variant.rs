@@ -921,7 +921,7 @@ impl ReplaceDecls for TyExpressionVariant {
     }
 }
 
-impl DisplayWithEngines for TyExpressionVariant {
+impl DebugWithEngines for TyExpressionVariant {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         let s = match self {
             TyExpressionVariant::Literal(lit) => format!("literal {lit}"),
@@ -937,7 +937,7 @@ impl DisplayWithEngines for TyExpressionVariant {
             TyExpressionVariant::Tuple { fields } => {
                 let fields = fields
                     .iter()
-                    .map(|field| engines.help_out(field).to_string())
+                    .map(|field| format!("{:?}", engines.help_out(field)))
                     .collect::<Vec<_>>()
                     .join(", ");
                 format!("tuple({fields})")
@@ -962,7 +962,7 @@ impl DisplayWithEngines for TyExpressionVariant {
                 ..
             } => {
                 format!(
-                    "\"{}.{}\" struct field access",
+                    "\"{:?}.{}\" struct field access",
                     engines.help_out(*resolved_type_of_parent),
                     field_to_access.name
                 )
@@ -973,7 +973,7 @@ impl DisplayWithEngines for TyExpressionVariant {
                 ..
             } => {
                 format!(
-                    "\"{}.{}\" tuple index",
+                    "\"{:?}.{}\" tuple index",
                     engines.help_out(*resolved_type_of_parent),
                     elem_to_access_num
                 )
@@ -997,20 +997,20 @@ impl DisplayWithEngines for TyExpressionVariant {
             TyExpressionVariant::StorageAccess(access) => {
                 format!("storage field {} access", access.storage_field_name())
             }
-            TyExpressionVariant::IntrinsicFunction(kind) => engines.help_out(kind).to_string(),
+            TyExpressionVariant::IntrinsicFunction(kind) => format!("{:?}", engines.help_out(kind)),
             TyExpressionVariant::AbiName(n) => format!("ABI name {n}"),
             TyExpressionVariant::EnumTag { exp } => {
-                format!("({} as tag)", engines.help_out(exp.return_type))
+                format!("({:?} as tag)", engines.help_out(exp.return_type))
             }
             TyExpressionVariant::UnsafeDowncast { exp, variant } => {
                 format!(
-                    "({} as {})",
+                    "({:?} as {})",
                     engines.help_out(exp.return_type),
                     variant.name
                 )
             }
             TyExpressionVariant::WhileLoop { condition, .. } => {
-                format!("while loop on {}", engines.help_out(&**condition))
+                format!("while loop on {:?}", engines.help_out(&**condition))
             }
             TyExpressionVariant::Break => "break".to_string(),
             TyExpressionVariant::Continue => "continue".to_string(),
@@ -1041,7 +1041,7 @@ impl DisplayWithEngines for TyExpressionVariant {
                 format!("storage reassignment to {place}")
             }
             TyExpressionVariant::Return(exp) => {
-                format!("return {}", engines.help_out(&**exp))
+                format!("return {:?}", engines.help_out(&**exp))
             }
         };
         write!(f, "{s}")
