@@ -13,8 +13,13 @@ impl Data1 {
     fn get2(self) -> u64 {
         self.value
     }
+
+    fn get3(self) -> u64 {
+        self.value
+    }
 }
 
 fn main() -> u64 {
-    0
+    let d = Data1 { value: 42 };
+    d.get3()
 }
