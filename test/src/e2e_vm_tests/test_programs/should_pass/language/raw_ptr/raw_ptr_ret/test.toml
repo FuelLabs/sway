@@ -1,4 +1,2 @@
-category = "fail"
-
-# check: fn main() -> raw_ptr {
-# nextln: $()Returning a `raw_ptr` from `main()` is not allowed.
+category = "run"
+expected_result = { action = "return", value = 67108854 }

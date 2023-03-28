@@ -1,4 +1,2 @@
-category = "fail"
-
-# check: fn main() -> Vec<u64> {
-# nextln: $()Returning a `raw_ptr` from `main()` is not allowed.
+category = "run"
+expected_result = { action = "return_data", value = "0000000003ffffc400000000000000040000000000000003" }

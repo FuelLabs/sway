@@ -1,7 +1,9 @@
 script;
 
 fn main() -> Vec<u64> {
-    let vec = Vec::new();
+    let mut vec = Vec::new();
+    vec.push(124);
+    vec.push(124);
     vec.push(124);
     vec
 }
