@@ -520,7 +520,7 @@ impl DebugWithEngines for TypeInfo {
             }
             ContractCaller { abi_name, address } => {
                 format!(
-                    "contract caller {:?} ( {} )",
+                    "contract caller {} ( {} )",
                     abi_name,
                     address
                         .as_ref()

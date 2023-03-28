@@ -105,7 +105,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                         // different. To save some code duplication,
                         span,
                         function_name: function_name.clone(),
-                        ty: format!("{:?}", engines.help_out(return_ty)),
+                        ty: engines.help_out(return_ty).to_string(),
                     });
                 }
                 next_rovers.append(&mut neighbors);

@@ -73,7 +73,7 @@ pub(crate) fn inlay_hints(
         .map(|var| {
             let range = get_range_from_span(&var.name.span());
             let kind = InlayKind::TypeHint;
-            let label = format!("{}", engines.help_out(var.type_ascription));
+            let label = engines.help_out(var.type_ascription).to_string();
             let inlay_hint = InlayHint { range, kind, label };
             self::inlay_hint(config.render_colons, inlay_hint)
         })

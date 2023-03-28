@@ -90,7 +90,7 @@ pub(crate) fn instantiate_if_expression(
             if !type_engine.get(r#else_ret_ty).is_unit() && r#else.is_none() {
                 errors.push(CompileError::NoElseBranch {
                     span: span.clone(),
-                    r#type: format!("{:?}", engines.help_out(ctx.type_annotation())),
+                    r#type: engines.help_out(ctx.type_annotation()).to_string(),
                 });
             }
         } else {

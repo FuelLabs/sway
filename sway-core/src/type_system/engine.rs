@@ -243,8 +243,8 @@ impl TypeEngine {
                 }
                 None => {
                     errors.push(CompileError::TypeError(TypeError::MismatchedType {
-                        expected: format!("{:?}", engines.help_out(expected)),
-                        received: format!("{:?}", engines.help_out(received)),
+                        expected: engines.help_out(expected).to_string(),
+                        received: engines.help_out(received).to_string(),
                         help_text: help_text.to_string(),
                         span: span.clone(),
                     }));

@@ -107,15 +107,15 @@ impl Literal {
     ) -> CompileError {
         match e.kind() {
             IntErrorKind::PosOverflow => CompileError::IntegerTooLarge {
-                ty: format!("{:?}", engines.help_out(ty)),
+                ty: engines.help_out(ty).to_string(),
                 span,
             },
             IntErrorKind::NegOverflow => CompileError::IntegerTooSmall {
-                ty: format!("{:?}", engines.help_out(ty)),
+                ty: engines.help_out(ty).to_string(),
                 span,
             },
             IntErrorKind::InvalidDigit => CompileError::IntegerContainsInvalidDigit {
-                ty: format!("{:?}", engines.help_out(ty)),
+                ty: engines.help_out(ty).to_string(),
                 span,
             },
             IntErrorKind::Zero | IntErrorKind::Empty | _ => {

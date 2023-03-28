@@ -136,7 +136,7 @@ pub(crate) fn instantiate_enum(
         (_too_many_expressions, ty) => {
             errors.push(CompileError::MoreThanOneEnumInstantiator {
                 span: enum_variant_name.span(),
-                ty: format!("{:?}", engines.help_out(ty)),
+                ty: engines.help_out(ty).to_string(),
             });
             err(warnings, errors)
         }

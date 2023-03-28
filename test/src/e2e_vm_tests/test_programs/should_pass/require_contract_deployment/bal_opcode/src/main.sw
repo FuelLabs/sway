@@ -9,12 +9,11 @@ fn main() -> bool {
 
     let balance_test_contract = abi(BalanceTest, balance_test_contract_id);
     let number = balance_test_contract.get_42 {
-        gas: u64::max()
-    }
-    ();
+        gas: u64::max(),
+    }();
 
     let balance = asm(token_bal, token: BASE_ASSET_ID, id: balance_test_contract_id) {
-        bal token_bal token id;
+        bal  token_bal token id;
         token_bal: u64
     };
     assert(balance == 0);
