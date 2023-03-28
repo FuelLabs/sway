@@ -346,7 +346,7 @@ impl DebugWithEngines for TyDecl {
         let type_engine = engines.te();
         write!(
             f,
-            "{} declaration ({:?})",
+            "{} declaration ({})",
             self.friendly_type_name(),
             match self {
                 TyDecl::VariableDecl(decl) => {
@@ -373,7 +373,7 @@ impl DebugWithEngines for TyDecl {
                         .as_str(),
                     );
                     builder.push_str(" = ");
-                    builder.push_str(&format!("{:?}", engines.help_out(body)));
+                    builder.push_str(format!("{:?}", engines.help_out(body)).as_str());
                     builder
                 }
                 TyDecl::FunctionDecl { name, .. }
