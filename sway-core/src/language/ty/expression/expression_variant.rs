@@ -921,6 +921,13 @@ impl ReplaceDecls for TyExpressionVariant {
     }
 }
 
+impl DisplayWithEngines for TyExpressionVariant {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+        // TODO: Implement user-friendly display strings if needed.
+        DebugWithEngines::fmt(self, f, engines)
+    }
+}
+
 impl DebugWithEngines for TyExpressionVariant {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         let s = match self {

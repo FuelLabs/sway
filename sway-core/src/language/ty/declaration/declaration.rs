@@ -341,6 +341,49 @@ impl Spanned for TyDecl {
     }
 }
 
+impl DisplayWithEngines for TyDecl {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> std::fmt::Result {
+        let type_engine = engines.te();
+        write!(
+            f,
+            "{} declaration ({})",
+            self.friendly_type_name(),
+            match self {
+                TyDecl::VariableDecl(decl) => {
+                    let TyVariableDecl {
+                        mutability,
+                        name,
+                        type_ascription,
+                        body,
+                        ..
+                    } = &**decl;
+                    let mut builder = String::new();
+                    match mutability {
+                        VariableMutability::Mutable => builder.push_str("mut"),
+                        VariableMutability::RefMutable => builder.push_str("ref mut"),
+                        VariableMutability::Immutable => {}
+                    }
+                    builder.push_str(name.as_str());
+                    builder.push_str(": ");
+                    builder.push_str(
+                        &engines
+                            .help_out(type_engine.get(type_ascription.type_id))
+                            .to_string(),
+                    );
+                    builder.push_str(" = ");
+                    builder.push_str(&engines.help_out(body).to_string());
+                    builder
+                }
+                TyDecl::FunctionDecl { name, .. }
+                | TyDecl::TraitDecl { name, .. }
+                | TyDecl::StructDecl { name, .. }
+                | TyDecl::EnumDecl { name, .. } => name.as_str().into(),
+                _ => String::new(),
+            }
+        )
+    }
+}
+
 impl DebugWithEngines for TyDecl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> std::fmt::Result {
         let type_engine = engines.te();
@@ -368,7 +411,7 @@ impl DebugWithEngines for TyDecl {
                     builder.push_str(
                         format!(
                             "{:?}",
-                            &engines.help_out(type_engine.get(type_ascription.type_id))
+                            engines.help_out(type_engine.get(type_ascription.type_id))
                         )
                         .as_str(),
                     );
@@ -733,7 +776,7 @@ impl TyDecl {
             decl => {
                 errors.push(CompileError::NotAType {
                     span: decl.span(),
-                    name: format!("{:?}", engines.help_out(decl)),
+                    name: engines.help_out(decl).to_string(),
                     actually_is: decl.friendly_type_name(),
                 });
                 return err(warnings, errors);

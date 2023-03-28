@@ -1224,7 +1224,7 @@ fn check_for_unconstrained_type_parameters(
     // create an error for all of the leftover generics
     for (k, v) in defined_generics.into_iter() {
         errors.push(CompileError::UnconstrainedGenericParameter {
-            ty: format!("{k:?}"),
+            ty: format!("{k}"),
             span: v,
         });
     }
