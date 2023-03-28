@@ -79,7 +79,7 @@ impl DebugWithEngines for TyIntrinsicFunctionKind {
             .map(|e| format!("{:?}", engines.help_out(e)))
             .join(", ");
 
-        write!(f, "{:?}::<{}>::({})", self.kind, targs, args)
+        write!(f, "{}::<{}>::({})", self.kind, targs, args)
     }
 }
 
