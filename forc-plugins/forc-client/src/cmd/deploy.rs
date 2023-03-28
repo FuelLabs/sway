@@ -17,8 +17,8 @@ pub struct Command {
     pub gas: Gas,
     #[clap(flatten)]
     pub maturity: Maturity,
-    #[clap(flatten)]
-    pub salt: Salt,
+    #[clap(long)]
+    pub salt: Option<Vec<String>>,
     /// Generate a random salt for the contract.
     /// Useful for testing or deploying examples to a shared network.
     #[clap(long)]
