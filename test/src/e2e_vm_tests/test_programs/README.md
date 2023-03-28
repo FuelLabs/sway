@@ -90,7 +90,8 @@ validate_abi = true
 
 And this example is similar but expects return data.
 
-> *Note:* The return data expected is presented as a memory range because that's what the `RETD` opcode returns
+> _Note:_ The return data expected is presented as a memory range because that's what the 
+> `RETD` opcode returns
 
 ```toml
 category = "run"
