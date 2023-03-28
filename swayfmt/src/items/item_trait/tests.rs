@@ -51,3 +51,18 @@ intermediate_whitespace
      fn foo(self);
 }   "
 );
+
+fmt_test_item!(
+trait_commented_fn
+"pub trait MyTrait {
+    /// Comment
+    fn foo(self);
+}",
+
+intermediate_whitespace
+"  pub   trait   MyTrait {
+/// Comment
+      
+     fn foo(self);
+}   "
+);
