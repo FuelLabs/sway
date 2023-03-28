@@ -5,7 +5,7 @@ use crate::{
 use anyhow::{anyhow, Result};
 use comrak::{markdown_to_html, ComrakOptions};
 use horrorshow::{box_html, helper::doctype, html, prelude::*, Raw};
-use std::{collections::BTreeMap, fmt::Write, path::PathBuf};
+use std::{collections::BTreeMap, fmt::Write};
 use sway_core::{
     language::ty::{
         TyDecl::{self, *},
@@ -71,6 +71,7 @@ impl RenderedDocumentation {
             // Above we check for the module a link belongs to, here we want _all_ links so the check is much more shallow.
             populate_all_doc(&doc, &mut all_docs);
         }
+
         // ProjectIndex
         match module_map.get(&root_module.module_prefixes) {
             Some(doc_links) => rendered_docs.0.push(RenderedDocument {
@@ -94,7 +95,7 @@ impl RenderedDocumentation {
             module_map.remove_entry(&root_module.module_prefixes);
 
             // ModuleIndex(s)
-            for (_, doc_links) in module_map {
+            for (module_prefixes, doc_links) in module_map {
                 let module_info_opt = match doc_links.values().last() {
                     Some(doc_links) => doc_links
                         .first()
@@ -109,7 +110,7 @@ impl RenderedDocumentation {
                         file_contents: HTMLString::from(
                             ModuleIndex {
                                 version_opt: None,
-                                module_info,
+                                module_info: module_info.clone(),
                                 module_docs: DocLinks {
                                     style: DocStyle::ModuleIndex,
                                     links: doc_links.to_owned(),
@@ -117,7 +118,25 @@ impl RenderedDocumentation {
                             }
                             .render(render_plan.clone())?,
                         ),
-                    })
+                    });
+                    if module_info.module_prefixes != module_prefixes {
+                        let module_info = ModuleInfo::from_ty_module(module_prefixes, None);
+                        rendered_docs.0.push(RenderedDocument {
+                            module_info: module_info.clone(),
+                            html_filename: INDEX_FILENAME.to_string(),
+                            file_contents: HTMLString::from(
+                                ModuleIndex {
+                                    version_opt: None,
+                                    module_info,
+                                    module_docs: DocLinks {
+                                        style: DocStyle::ModuleIndex,
+                                        links: doc_links.to_owned(),
+                                    },
+                                }
+                                .render(render_plan.clone())?,
+                            ),
+                        })
+                    }
                 }
             }
         }
@@ -225,12 +244,16 @@ fn populate_modules(
     module_map: &mut BTreeMap<ModulePrefixes, BTreeMap<BlockTitle, Vec<DocLink>>>,
 ) {
     let mut module_clone = doc.module_info.clone();
-    let mut child_prefix = PathBuf::new();
     while module_clone.parent().is_some() {
+        let html_filename = if module_clone.depth() > 2 {
+            format!("{}/{INDEX_FILENAME}", module_clone.location())
+        } else {
+            INDEX_FILENAME.to_string()
+        };
         let module_link = DocLink {
             name: module_clone.location().to_owned(),
             module_info: module_clone.to_owned(),
-            html_filename: INDEX_FILENAME.to_owned(),
+            html_filename,
             preview_opt: doc.module_info.preview_opt(),
         };
         let module_prefixes = module_clone
@@ -257,11 +280,8 @@ fn populate_modules(
                 module_map.insert(module_prefixes.clone(), doc_links);
             }
         }
-        let mut parent = PathBuf::from(module_clone.module_prefixes.pop().unwrap_or_default());
-        parent.push(child_prefix);
-        child_prefix = parent;
+        module_clone.module_prefixes.pop();
     }
-    println!("{module_map:#?}");
 }
 fn populate_all_doc(doc: &Document, all_docs: &mut DocLinks) {
     match doc.item_body.ty_decl {
