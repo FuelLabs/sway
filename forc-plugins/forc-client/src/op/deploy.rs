@@ -27,7 +27,7 @@ pub struct DeployedContract {
 type ContractSaltMap = BTreeMap<String, Salt>;
 
 /// Takes the salt input passed via the --salt option, validates them against
-/// the manifests and returns a BTreeMap of contract names to salts.
+/// the manifests and returns a ContractSaltMap (BTreeMap of contract names to salts).
 fn validate_and_parse_salts<'a>(
     salt_args: Vec<String>,
     manifests: impl Iterator<Item = &'a PackageManifestFile>,
