@@ -432,7 +432,7 @@ impl DisplayWithEngines for TypeInfo {
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()
-                    .map(|field| format!("{:?}", engines.help_out(field)))
+                    .map(|field| engines.help_out(field).to_string())
                     .collect::<Vec<String>>();
                 format!("({})", field_strs.join(", "))
             }
