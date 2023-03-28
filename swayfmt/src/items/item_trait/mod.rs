@@ -80,7 +80,6 @@ impl Format for ItemTrait {
                 }
                 match &annotated.value {
                     sway_ast::ItemTraitItem::Fn(fn_signature) => {
-                        // format `Annotated<FnSignature>`
                         write!(
                             formatted_code,
                             "{}",
@@ -90,7 +89,6 @@ impl Format for ItemTrait {
                         writeln!(formatted_code, "{}", semicolon_token.ident().as_str())?;
                     }
                     sway_ast::ItemTraitItem::Const(const_decl) => {
-                        // format `Annotated<ItemConst>`
                         write!(
                             formatted_code,
                             "{}",
