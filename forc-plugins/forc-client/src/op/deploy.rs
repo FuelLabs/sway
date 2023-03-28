@@ -40,7 +40,7 @@ fn validate_and_parse_salts<'a>(
             if contract_salt_map.contains_key(given_contract_name) {
                 bail!("2 salts provided for contract '{given_contract_name}'");
             }
-            contract_salt_map.insert(given_contract_name.to_string(), salt_from_str(&salt)?);
+            contract_salt_map.insert(given_contract_name.to_string(), salt_from_str(salt)?);
         } else {
             bail!("Invalid salt provided - salt must be in the form <CONTRACT_NAME>:<SALT> when deploying a workspace");
         }
@@ -62,7 +62,7 @@ fn validate_and_parse_salts<'a>(
         }
     }
 
-    return Ok(contract_salt_map);
+    Ok(contract_salt_map)
 }
 
 /// Decodes a hexadecimal number into a fuel_tx::Salt.
@@ -132,8 +132,8 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
         {
             let contract_id = deploy_pkg(
                 &command,
-                &member_manifest,
-                &built.built_package(),
+                member_manifest,
+                built.built_package(),
                 contract_salt_map.as_ref(),
             )
             .await?;
@@ -161,7 +161,7 @@ pub async fn deploy_pkg(
     let salt = match (contract_salt_map, command.random_salt) {
         (Some(map), false) => {
             if let Some(salt) = map.get(manifest.project_name()) {
-                salt.clone()
+                *salt
             } else {
                 Default::default()
             }
@@ -317,7 +317,7 @@ mod test {
             );
 
             let got = validate_and_parse_salts(salt_strs.clone(), manifests.values()).unwrap();
-            assert_eq!(got.iter().count(), index + 1);
+            assert_eq!(got.len(), index + 1);
             assert_eq!(got, expected);
         }
     }
@@ -328,8 +328,7 @@ mod test {
         let first_name = manifests.first_key_value().unwrap().0;
         let err_message = format!("2 salts provided for contract '{first_name}'");
         let salt_str = format!(
-            "{}:0x0000000000000000000000000000000000000000000000000000000000000000",
-            first_name
+            "{first_name}:0x0000000000000000000000000000000000000000000000000000000000000000"
         );
 
         assert_eq!(

@@ -44,7 +44,7 @@ pub async fn run(command: cmd::Run) -> Result<Vec<RanScript>> {
             .check_program_type(vec![TreeType::Script])
             .is_ok()
         {
-            let pkg_receipts = run_pkg(&command, &member_manifest, built.built_package()).await?;
+            let pkg_receipts = run_pkg(&command, member_manifest, built.built_package()).await?;
             receipts.push(pkg_receipts);
         }
     }
