@@ -37,6 +37,9 @@ fn validate_and_parse_salts<'a>(
     // Parse all the salt arguments first, and exit if there are errors in this step.
     for salt_arg in salt_args {
         if let Some((given_contract_name, salt)) = salt_arg.split_once(':') {
+            if contract_salt_map.contains_key(given_contract_name) {
+                bail!("2 salts provided for contract '{given_contract_name}'");
+            }
             contract_salt_map.insert(given_contract_name.to_string(), salt_from_str(&salt)?);
         } else {
             bail!("Invalid salt provided - salt must be in the form <CONTRACT_NAME>:<SALT> when deploying a workspace");
@@ -317,6 +320,24 @@ mod test {
             assert_eq!(got.iter().count(), index + 1);
             assert_eq!(got, expected);
         }
+    }
+
+    #[test]
+    fn test_parse_and_validate_salts_duplicate_salt_input() {
+        let manifests = setup_manifest_files();
+        let first_name = manifests.first_key_value().unwrap().0;
+        let err_message = format!("2 salts provided for contract '{first_name}'");
+        let salt_str = format!(
+            "{}:0x0000000000000000000000000000000000000000000000000000000000000000",
+            first_name
+        );
+
+        assert_eq!(
+            validate_and_parse_salts(vec![salt_str.clone(), salt_str], manifests.values())
+                .unwrap_err()
+                .to_string(),
+            err_message,
+        );
     }
 
     #[test]
