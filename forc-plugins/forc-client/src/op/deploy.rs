@@ -296,10 +296,9 @@ mod test {
 
     #[test]
     fn test_parse_and_validate_salts_pass() {
+        let mut manifests = setup_manifest_files();
         let mut expected = ContractSaltMap::new();
         let mut salt_strs = vec![];
-
-        let mut manifests = setup_manifest_files();
 
         // Remove contracts with dependencies
         manifests.remove("contract_with_dep_with_salt_conflict");
@@ -326,10 +325,10 @@ mod test {
     fn test_parse_and_validate_salts_duplicate_salt_input() {
         let manifests = setup_manifest_files();
         let first_name = manifests.first_key_value().unwrap().0;
-        let err_message = format!("2 salts provided for contract '{first_name}'");
         let salt_str = format!(
             "{first_name}:0x0000000000000000000000000000000000000000000000000000000000000000"
         );
+        let err_message = format!("2 salts provided for contract '{first_name}'");
 
         assert_eq!(
             validate_and_parse_salts(vec![salt_str.clone(), salt_str], manifests.values())
@@ -341,9 +340,9 @@ mod test {
 
     #[test]
     fn test_parse_single_salt_multiple_manifests_malformed_input() {
+        let manifests = setup_manifest_files();
         let salt_str =
             "contract_a=0x0000000000000000000000000000000000000000000000000000000000000000";
-        let manifests = setup_manifest_files();
         let err_message =
             "Invalid salt provided - salt must be in the form <CONTRACT_NAME>:<SALT> when deploying a workspace";
 
@@ -357,11 +356,9 @@ mod test {
 
     #[test]
     fn test_parse_multiple_salts_conflict() {
-        let salt_args = vec![
-            "contract_with_dep:0x0000000000000000000000000000000000000000000000000000000000000001"
-                .to_string(),
-        ];
         let manifests = setup_manifest_files();
+        let salt_str =
+            "contract_with_dep:0x0000000000000000000000000000000000000000000000000000000000000001";
         let err_message =
             "Redeclaration of salt using the option '--salt' while a salt exists for contract 'contract_with_dep' \
             under the contract dependencies of the Forc.toml manifest for 'contract_with_dep_with_salt_conflict'\n\
@@ -369,7 +366,7 @@ mod test {
             You declared: '0x0000000000000000000000000000000000000000000000000000000000000001'\n";
 
         assert_eq!(
-            validate_and_parse_salts(salt_args, manifests.values())
+            validate_and_parse_salts(vec![salt_str.to_string()], manifests.values())
                 .unwrap_err()
                 .to_string(),
             err_message,
