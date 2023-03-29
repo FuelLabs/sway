@@ -51,15 +51,16 @@ fn validate_and_parse_salts<'a>(
     }
 
     for manifest in manifests {
-        for dep in manifest.contract_deps() {
-            if let Some(declared_salt) = contract_salt_map.get(dep.0) {
+        for (dep_name, contract_dep) in manifest.contract_deps() {
+            let dep_pkg_name = contract_dep.dependency.package().unwrap_or(&dep_name);
+            if let Some(declared_salt) = contract_salt_map.get(dep_pkg_name) {
                 bail!(
                     "Redeclaration of salt using the option '--salt' while a salt exists for contract '{}' \
                     under the contract dependencies of the Forc.toml manifest for '{}'\n\
                     Existing salt: '0x{}',\nYou declared: '0x{}'\n",
-                    dep.0,
+                    dep_pkg_name,
                     manifest.project_name(),
-                    dep.1.salt,
+                    contract_dep.salt,
                     declared_salt,
                     );
             }
