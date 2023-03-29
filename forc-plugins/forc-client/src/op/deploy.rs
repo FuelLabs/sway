@@ -26,7 +26,7 @@ pub struct DeployedContract {
 
 type ContractSaltMap = BTreeMap<String, Salt>;
 
-/// Takes the salt input passed via the --salt option, validates them against
+/// Takes the contract member salt inputs passed via the --salt option, validates them against
 /// the manifests and returns a ContractSaltMap (BTreeMap of contract names to salts).
 fn validate_and_parse_salts<'a>(
     salt_args: Vec<String>,
@@ -37,10 +37,14 @@ fn validate_and_parse_salts<'a>(
     // Parse all the salt arguments first, and exit if there are errors in this step.
     for salt_arg in salt_args {
         if let Some((given_contract_name, salt)) = salt_arg.split_once(':') {
-            if contract_salt_map.contains_key(given_contract_name) {
-                bail!("2 salts provided for contract '{given_contract_name}'");
-            }
-            contract_salt_map.insert(given_contract_name.to_string(), salt_from_str(salt)?);
+            let salt = salt
+                .parse::<Salt>()
+                .map_err(|e| anyhow::anyhow!(e))
+                .unwrap();
+
+            if let Some(old) = contract_salt_map.insert(given_contract_name.to_string(), salt) {
+                bail!("2 salts provided for contract '{given_contract_name}':\n  {old}\n  {salt}");
+            };
         } else {
             bail!("Invalid salt provided - salt must be in the form <CONTRACT_NAME>:<SALT> when deploying a workspace");
         }
@@ -63,14 +67,6 @@ fn validate_and_parse_salts<'a>(
     }
 
     Ok(contract_salt_map)
-}
-
-/// Decodes a hexadecimal number into a fuel_tx::Salt.
-fn salt_from_str(salt_str: &str) -> Result<Salt> {
-    let mut bytes = [0u8; 32];
-    hex::decode_to_slice(salt_str.replace("0x", ""), &mut bytes)?;
-
-    Ok(Salt::new(bytes))
 }
 
 /// Builds and deploys contract(s). If the given path corresponds to a workspace, all deployable members
@@ -109,7 +105,11 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
 
             // OK to index into salt_input ahd built_pkgs_with_manifest here,
             // since both are known to be len 1.
-            let salt = salt_from_str(&salt_input[0])?;
+
+            let salt = salt_input[0]
+                .parse::<Salt>()
+                .map_err(|e| anyhow::anyhow!(e))
+                .unwrap();
             let mut contract_salt_map = ContractSaltMap::default();
             contract_salt_map.insert(
                 built_pkgs_with_manifest[0]
@@ -277,24 +277,6 @@ mod test {
     }
 
     #[test]
-    fn test_salt_from_str() -> Result<()> {
-        let salt = "0x0000000000000000000000000000000000000000000000000000000000000000";
-
-        assert!(salt_from_str(salt).is_ok());
-        assert!(salt_from_str(&salt[2..]).is_ok()); // trim starting '0x'
-
-        assert!(salt_from_str(&salt[1..]).is_err()); // trim starting '0'
-        assert_eq!(
-            salt_from_str(&salt[..salt.len() - 2])
-                .unwrap_err()
-                .to_string(),
-            "Invalid string length"
-        );
-
-        Ok(())
-    }
-
-    #[test]
     fn test_parse_and_validate_salts_pass() {
         let mut manifests = setup_manifest_files();
         let mut expected = ContractSaltMap::new();
@@ -312,7 +294,7 @@ mod test {
 
             expected.insert(
                 manifest.project_name().to_string(),
-                salt_from_str(salt).unwrap(),
+                salt.parse::<Salt>().unwrap(),
             );
 
             let got = validate_and_parse_salts(salt_strs.clone(), manifests.values()).unwrap();
@@ -325,10 +307,12 @@ mod test {
     fn test_parse_and_validate_salts_duplicate_salt_input() {
         let manifests = setup_manifest_files();
         let first_name = manifests.first_key_value().unwrap().0;
-        let salt_str = format!(
-            "{first_name}:0x0000000000000000000000000000000000000000000000000000000000000000"
-        );
-        let err_message = format!("2 salts provided for contract '{first_name}'");
+        let salt: Salt = "0x0000000000000000000000000000000000000000000000000000000000000000"
+            .parse()
+            .unwrap();
+        let salt_str = format!("{first_name}:{salt}");
+        let err_message =
+            format!("2 salts provided for contract '{first_name}':\n  {salt}\n  {salt}");
 
         assert_eq!(
             validate_and_parse_salts(vec![salt_str.clone(), salt_str], manifests.values())
