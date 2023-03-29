@@ -16,13 +16,27 @@ pub fn create_arg_demotion_pass() -> Pass {
         name: ARGDEMOTION_NAME,
         descr: "By-value function argument demotion to by-reference.",
         deps: Vec::new(),
-        runner: ScopedPass::FunctionPass(PassMutability::Transform(fn_arg_demotion)),
+        runner: ScopedPass::FunctionPass(PassMutability::Transform(arg_demotion)),
     }
 }
 
-pub fn fn_arg_demotion(
+pub fn arg_demotion(
     context: &mut Context,
     _: &AnalysisResults,
+    function: Function,
+) -> Result<bool, IrError> {
+    let mut result = fn_arg_demotion(context, function)?;
+
+    // We also need to be sure that block args within this function are demoted.
+    for block in function.block_iter(context) {
+        result |= demote_block_signature(context, &function, block);
+    }
+
+    Ok(result)
+}
+
+fn fn_arg_demotion(
+    context: &mut Context,
     function: Function,
 ) -> Result<bool, IrError> {
     // The criteria for now for demotion is whether the arg type is larger than 64-bits or is an
@@ -73,11 +87,6 @@ pub fn fn_arg_demotion(
     // and pass a pointer to it.
     for (call_block, call_val) in call_sites {
         demote_caller(context, &function, call_block, call_val, &candidate_args);
-    }
-
-    // We also need to be sure that block args within this function are demoted.
-    for block in function.block_iter(context) {
-        demote_block_signature(context, &function, block)
     }
 
     Ok(true)
@@ -205,7 +214,7 @@ fn demote_caller(
     call_function.replace_value(context, call_val, new_call_val, None);
 }
 
-fn demote_block_signature(context: &mut Context, function: &Function, block: Block) {
+fn demote_block_signature(context: &mut Context, function: &Function, block: Block) -> bool {
     let candidate_args = block
         .arg_iter(context)
         .enumerate()
@@ -217,7 +226,7 @@ fn demote_block_signature(context: &mut Context, function: &Function, block: Blo
         .collect::<Vec<_>>();
 
     if candidate_args.is_empty() {
-        return;
+        return false;
     }
 
     // Update the block signature for each candidate arg.  Create a replacement load for each one.
@@ -280,4 +289,6 @@ fn demote_block_signature(context: &mut Context, function: &Function, block: Blo
             term_val.replace_values(&FxHashMap::from_iter([(arg_val, get_local_val)]));
         }
     }
+
+    true
 }

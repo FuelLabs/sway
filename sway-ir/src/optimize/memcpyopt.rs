@@ -243,7 +243,7 @@ fn load_store_to_memcopy(context: &mut Context, function: Function) -> Result<bo
                     dst_ptr
                         .get_type(context)
                         .and_then(|ptr_ty| ptr_ty.get_pointee_type(context))
-                        .map(|ty| !super::target_fuel::is_demotable_type(context, &ty))?
+                        .map(|ty| super::target_fuel::is_demotable_type(context, &ty))?
                         .then_some(candidate)
                 })
         })
