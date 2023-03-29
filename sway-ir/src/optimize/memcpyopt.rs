@@ -5,7 +5,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     AnalysisResults, Block, Context, Function, Instruction, IrError, LocalVar, Pass,
-    PassMutability, ScopedPass, TypeContent, Value, ValueDatum,
+    PassMutability, ScopedPass, Value, ValueDatum,
 };
 
 pub const MEMCPYOPT_NAME: &str = "memcpyopt";
@@ -242,14 +242,8 @@ fn load_store_to_memcopy(context: &mut Context, function: Function) -> Result<bo
                     // no guarantees this couldn't flare up somewhere.
                     dst_ptr
                         .get_type(context)
-                        .and_then(|ptr_ty| ptr_ty.get_inner_type(context))
-                        .map(|ty| match ty.get_content(context) {
-                            TypeContent::Unit | TypeContent::Bool | TypeContent::Pointer(_) => {
-                                false
-                            }
-                            TypeContent::Uint(bits) => *bits > 64,
-                            _ => true,
-                        })?
+                        .and_then(|ptr_ty| ptr_ty.get_pointee_type(context))
+                        .map(|ty| !super::target_fuel::is_demotable_type(context, &ty))?
                         .then_some(candidate)
                 })
         })

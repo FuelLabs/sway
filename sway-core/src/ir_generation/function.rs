@@ -33,20 +33,21 @@ use std::collections::HashMap;
 ///
 /// This is mostly recursively compiling expressions, as Sway is fairly heavily expression based.
 ///
-/// The rule here is to use compile_expression() when a value is desired, as opposed to a pointer.
-/// This is most of the time, as we try to be target agnostic and not make assuptions about which
-/// values must be used by reference.
+/// The rule here is to use compile_expression_to_value() when a value is desired, as opposed to a
+/// pointer. This is most of the time, as we try to be target agnostic and not make assumptions
+/// about which values must be used by reference.
 ///
-/// compile_expression() will force the result to be a value, by using a temporary if necessary.
+/// compile_expression_to_value() will force the result to be a value, by using a temporary if
+/// necessary.
 ///
-/// compile_ptr_expression() will compile the expression without forcing anything.  If the
-/// expression has a reference type, like getting a struct or an explicit ref arg, it will return a
-/// pointer value, but otherwise will return a value.
+/// compile_expression_to_ptr() will compile the expression and force it to be a pointer, also by
+/// using a temporary if necessary.  This can be slightly dangerous, if the reference is supposed
+/// to be to a particular value but is accidentally made to a temporary value then mutations or
+/// other side-effects might not be applied in the correct context.
 ///
-/// compile_ptr_or_tmp_expression() will compile the expression and force it to be a pointer, also
-/// by using a temporary if necessary.  This can be slightly dangerous, if the reference is
-/// supposed to be to a particular value but is accidentally made to a temporary value then
-/// mutations or other side-effects might not be applied in the correct context.
+/// compile_expression() will compile the expression without forcing anything.  If the expression
+/// has a reference type, like getting a struct or an explicit ref arg, it will return a pointer
+/// value, but otherwise will return a value.
 ///
 /// So in general the methods in FnCompiler will return a pointer if they can and will get it be
 /// forced into a value if that is desired.  All the temporary values are manipulated with simple
@@ -189,23 +190,23 @@ impl<'eng> FnCompiler<'eng> {
             },
             ty::TyAstNodeContent::Expression(te) => {
                 // An expression with an ignored return value... I assume.
-                let value = self.compile_expression(context, md_mgr, te)?;
+                let value = self.compile_expression_to_value(context, md_mgr, te)?;
                 if value.is_diverging(context) {
                     Ok(Some(value))
                 } else {
                     Ok(None)
                 }
             }
-            ty::TyAstNodeContent::ImplicitReturnExpression(te) => {
-                self.compile_expression(context, md_mgr, te).map(Some)
-            }
+            ty::TyAstNodeContent::ImplicitReturnExpression(te) => self
+                .compile_expression_to_value(context, md_mgr, te)
+                .map(Some),
             // a side effect can be () because it just impacts the type system/namespacing.
             // There should be no new IR generated.
             ty::TyAstNodeContent::SideEffect(_) => Ok(None),
         }
     }
 
-    fn compile_expression(
+    fn compile_expression_to_value(
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
@@ -213,7 +214,7 @@ impl<'eng> FnCompiler<'eng> {
     ) -> Result<Value, CompileError> {
         // Compile expression which *may* be a pointer.  We can't return a pointer value here
         // though, so add a `load` to it.
-        self.compile_ptr_expression(context, md_mgr, ast_expr)
+        self.compile_expression(context, md_mgr, ast_expr)
             .map(|val| {
                 if val.get_type(context).map_or(false, |ty| ty.is_ptr(context)) {
                     self.current_block.ins(context).load(val)
@@ -223,7 +224,7 @@ impl<'eng> FnCompiler<'eng> {
             })
     }
 
-    fn compile_ptr_or_tmp_expression(
+    fn compile_expression_to_ptr(
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
@@ -231,7 +232,7 @@ impl<'eng> FnCompiler<'eng> {
     ) -> Result<Value, CompileError> {
         // Compile expression which *may* be a pointer.  We can't return a value so create a
         // temporary here, store the value and return its pointer.
-        let val = self.compile_ptr_expression(context, md_mgr, ast_expr)?;
+        let val = self.compile_expression(context, md_mgr, ast_expr)?;
         let ty = match val.get_type(context) {
             Some(ty) if !ty.is_ptr(context) => ty,
             _ => return Ok(val),
@@ -249,7 +250,7 @@ impl<'eng> FnCompiler<'eng> {
         Ok(tmp_val)
     }
 
-    fn compile_ptr_expression(
+    fn compile_expression(
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
@@ -314,7 +315,7 @@ impl<'eng> FnCompiler<'eng> {
                 ast_expr.span.clone(),
             )),
             ty::TyExpressionVariant::MatchExp { desugared, .. } => {
-                self.compile_expression(context, md_mgr, desugared)
+                self.compile_expression_to_value(context, md_mgr, desugared)
             }
             ty::TyExpressionVariant::IfExp {
                 condition,
@@ -524,7 +525,7 @@ impl<'eng> FnCompiler<'eng> {
                     &exp.return_type,
                     &exp.span,
                 )?;
-                self.compile_expression(context, md_mgr, exp)?;
+                self.compile_expression_to_value(context, md_mgr, exp)?;
                 Ok(Constant::get_uint(
                     context,
                     64,
@@ -562,8 +563,8 @@ impl<'eng> FnCompiler<'eng> {
             Intrinsic::Eq | Intrinsic::Gt | Intrinsic::Lt => {
                 let lhs = &arguments[0];
                 let rhs = &arguments[1];
-                let lhs_value = self.compile_expression(context, md_mgr, lhs)?;
-                let rhs_value = self.compile_expression(context, md_mgr, rhs)?;
+                let lhs_value = self.compile_expression_to_value(context, md_mgr, lhs)?;
+                let rhs_value = self.compile_expression_to_value(context, md_mgr, rhs)?;
                 let pred = match kind {
                     Intrinsic::Eq => Predicate::Equal,
                     Intrinsic::Gt => Predicate::GreaterThan,
@@ -577,7 +578,7 @@ impl<'eng> FnCompiler<'eng> {
             }
             Intrinsic::Gtf => {
                 // The index is just a Value
-                let index = self.compile_expression(context, md_mgr, &arguments[0])?;
+                let index = self.compile_expression_to_value(context, md_mgr, &arguments[0])?;
 
                 // The tx field ID has to be a compile-time constant because it becomes an
                 // immediate
@@ -639,7 +640,7 @@ impl<'eng> FnCompiler<'eng> {
             }
             Intrinsic::AddrOf => {
                 let exp = &arguments[0];
-                let value = self.compile_ptr_expression(context, md_mgr, exp)?;
+                let value = self.compile_expression(context, md_mgr, exp)?;
                 let int_ty = Type::new_uint(context, 64);
                 let span_md_idx = md_mgr.span_to_md(context, &span);
                 Ok(self
@@ -651,9 +652,9 @@ impl<'eng> FnCompiler<'eng> {
             Intrinsic::StateClear => {
                 let key_exp = arguments[0].clone();
                 let number_of_slots_exp = arguments[1].clone();
-                let key_value = self.compile_expression(context, md_mgr, &key_exp)?;
+                let key_value = self.compile_expression_to_value(context, md_mgr, &key_exp)?;
                 let number_of_slots_value =
-                    self.compile_expression(context, md_mgr, &number_of_slots_exp)?;
+                    self.compile_expression_to_value(context, md_mgr, &number_of_slots_exp)?;
                 let span_md_idx = md_mgr.span_to_md(context, &span);
                 let key_var = store_key_in_local_mem(self, context, key_value, span_md_idx)?;
                 Ok(self
@@ -664,7 +665,7 @@ impl<'eng> FnCompiler<'eng> {
             }
             Intrinsic::StateLoadWord => {
                 let exp = &arguments[0];
-                let value = self.compile_expression(context, md_mgr, exp)?;
+                let value = self.compile_expression_to_value(context, md_mgr, exp)?;
                 let span_md_idx = md_mgr.span_to_md(context, &span);
                 let key_var = store_key_in_local_mem(self, context, value, span_md_idx)?;
                 Ok(self
@@ -686,8 +687,8 @@ impl<'eng> FnCompiler<'eng> {
                         hint: Hint::new("This argument must be a copy type".to_string()),
                     });
                 }
-                let key_value = self.compile_expression(context, md_mgr, key_exp)?;
-                let val_value = self.compile_expression(context, md_mgr, val_exp)?;
+                let key_value = self.compile_expression_to_value(context, md_mgr, key_exp)?;
+                let val_value = self.compile_expression_to_value(context, md_mgr, val_exp)?;
                 let span_md_idx = md_mgr.span_to_md(context, &span);
                 let key_var = store_key_in_local_mem(self, context, key_value, span_md_idx)?;
                 Ok(self
@@ -710,10 +711,10 @@ impl<'eng> FnCompiler<'eng> {
                         hint: Hint::new("This argument must be raw_ptr".to_string()),
                     });
                 }
-                let key_value = self.compile_expression(context, md_mgr, &key_exp)?;
-                let val_value = self.compile_expression(context, md_mgr, &val_exp)?;
+                let key_value = self.compile_expression_to_value(context, md_mgr, &key_exp)?;
+                let val_value = self.compile_expression_to_value(context, md_mgr, &val_exp)?;
                 let number_of_slots_value =
-                    self.compile_expression(context, md_mgr, &number_of_slots_exp)?;
+                    self.compile_expression_to_value(context, md_mgr, &number_of_slots_exp)?;
                 let span_md_idx = md_mgr.span_to_md(context, &span);
                 let key_var = store_key_in_local_mem(self, context, key_value, span_md_idx)?;
                 let b256_ty = Type::get_b256(context);
@@ -740,7 +741,7 @@ impl<'eng> FnCompiler<'eng> {
             }
             Intrinsic::Log => {
                 // The log value and the log ID are just Value.
-                let log_val = self.compile_expression(context, md_mgr, &arguments[0])?;
+                let log_val = self.compile_expression_to_value(context, md_mgr, &arguments[0])?;
                 let log_id = match self.logged_types_map.get(&arguments[0].return_type) {
                     None => {
                         return Err(CompileError::Internal(
@@ -789,15 +790,16 @@ impl<'eng> FnCompiler<'eng> {
                 };
                 let lhs = &arguments[0];
                 let rhs = &arguments[1];
-                let lhs_value = self.compile_expression(context, md_mgr, lhs)?;
-                let rhs_value = self.compile_expression(context, md_mgr, rhs)?;
+                let lhs_value = self.compile_expression_to_value(context, md_mgr, lhs)?;
+                let rhs_value = self.compile_expression_to_value(context, md_mgr, rhs)?;
                 Ok(self
                     .current_block
                     .ins(context)
                     .binary_op(op, lhs_value, rhs_value))
             }
             Intrinsic::Revert => {
-                let revert_code_val = self.compile_expression(context, md_mgr, &arguments[0])?;
+                let revert_code_val =
+                    self.compile_expression_to_value(context, md_mgr, &arguments[0])?;
 
                 // The `revert` instruction
                 let span_md_idx = md_mgr.span_to_md(context, &span);
@@ -827,8 +829,8 @@ impl<'eng> FnCompiler<'eng> {
 
                 let lhs = &arguments[0];
                 let count = &arguments[1];
-                let lhs_value = self.compile_expression(context, md_mgr, lhs)?;
-                let count_value = self.compile_expression(context, md_mgr, count)?;
+                let lhs_value = self.compile_expression_to_value(context, md_mgr, lhs)?;
+                let count_value = self.compile_expression_to_value(context, md_mgr, count)?;
                 let rhs_value = self.current_block.ins(context).binary_op(
                     BinaryOpKind::Mul,
                     len_value,
@@ -844,7 +846,8 @@ impl<'eng> FnCompiler<'eng> {
 
                 /* First operand: recipient + message data */
                 // Step 1: compile the user data and get its type
-                let user_message = self.compile_expression(context, md_mgr, &arguments[1])?;
+                let user_message =
+                    self.compile_expression_to_value(context, md_mgr, &arguments[1])?;
                 let user_message_type = user_message.get_type(context).ok_or_else(|| {
                     CompileError::Internal(
                         "Unable to determine type for message data.",
@@ -884,7 +887,7 @@ impl<'eng> FnCompiler<'eng> {
                     .add_metadatum(context, span_md_idx);
 
                 // Step 5: compile the `recipient` and insert it as the first field of the struct
-                let recipient = self.compile_expression(context, md_mgr, &arguments[0])?;
+                let recipient = self.compile_expression_to_value(context, md_mgr, &arguments[0])?;
                 let gep_val = self.current_block.ins(context).get_elem_ptr_with_idx(
                     recipient_and_message,
                     b256_ty,
@@ -933,10 +936,11 @@ impl<'eng> FnCompiler<'eng> {
                 let user_message_size_val = Constant::get_uint(context, 64, user_message_size);
 
                 /* Third operand: the output index */
-                let output_index = self.compile_expression(context, md_mgr, &arguments[2])?;
+                let output_index =
+                    self.compile_expression_to_value(context, md_mgr, &arguments[2])?;
 
                 /* Fourth operand: the amount of coins to send */
-                let coins = self.compile_expression(context, md_mgr, &arguments[3])?;
+                let coins = self.compile_expression_to_value(context, md_mgr, &arguments[3])?;
 
                 Ok(self
                     .current_block
@@ -963,7 +967,7 @@ impl<'eng> FnCompiler<'eng> {
             return Ok(Constant::get_unit(context));
         }
 
-        let ret_value = self.compile_expression(context, md_mgr, ast_expr)?;
+        let ret_value = self.compile_expression_to_value(context, md_mgr, ast_expr)?;
         if ret_value.is_diverging(context) {
             return Ok(ret_value);
         }
@@ -996,13 +1000,13 @@ impl<'eng> FnCompiler<'eng> {
     ) -> Result<Value, CompileError> {
         // Short-circuit: if LHS is true for AND we still must eval the RHS block; for OR we can
         // skip the RHS block, and vice-versa.
-        let lhs_val = self.compile_expression(context, md_mgr, ast_lhs)?;
+        let lhs_val = self.compile_expression_to_value(context, md_mgr, ast_lhs)?;
         let cond_block_end = self.current_block;
         let rhs_block = self.function.create_block(context, None);
         let final_block = self.function.create_block(context, None);
 
         self.current_block = rhs_block;
-        let rhs_val = self.compile_expression(context, md_mgr, ast_rhs)?;
+        let rhs_val = self.compile_expression_to_value(context, md_mgr, ast_rhs)?;
 
         let merge_val_arg_idx = final_block.new_arg(
             context,
@@ -1063,7 +1067,7 @@ impl<'eng> FnCompiler<'eng> {
         // Compile each user argument
         let compiled_args = ast_args
             .iter()
-            .map(|(_, expr)| self.compile_expression(context, md_mgr, expr))
+            .map(|(_, expr)| self.compile_expression_to_value(context, md_mgr, expr))
             .collect::<Result<Vec<Value>, CompileError>>()?;
 
         let u64_ty = Type::get_uint64(context);
@@ -1183,7 +1187,8 @@ impl<'eng> FnCompiler<'eng> {
             .add_metadatum(context, span_md_idx);
 
         // Insert the contract address
-        let addr = self.compile_expression(context, md_mgr, &call_params.contract_address)?;
+        let addr =
+            self.compile_expression_to_value(context, md_mgr, &call_params.contract_address)?;
         let gep_val =
             self.current_block
                 .ins(context)
@@ -1225,7 +1230,7 @@ impl<'eng> FnCompiler<'eng> {
         let coins = match contract_call_parameters
             .get(&constants::CONTRACT_CALL_COINS_PARAMETER_NAME.to_string())
         {
-            Some(coins_expr) => self.compile_expression(context, md_mgr, coins_expr)?,
+            Some(coins_expr) => self.compile_expression_to_value(context, md_mgr, coins_expr)?,
             None => convert_literal_to_value(
                 context,
                 &Literal::U64(constants::CONTRACT_CALL_COINS_PARAMETER_DEFAULT_VALUE),
@@ -1239,7 +1244,7 @@ impl<'eng> FnCompiler<'eng> {
             .get(&constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME.to_string())
         {
             Some(asset_id_expr) => {
-                self.compile_ptr_or_tmp_expression(context, md_mgr, asset_id_expr)?
+                self.compile_expression_to_ptr(context, md_mgr, asset_id_expr)?
             }
             None => {
                 let asset_id_val = convert_literal_to_value(
@@ -1264,7 +1269,7 @@ impl<'eng> FnCompiler<'eng> {
         let gas = match contract_call_parameters
             .get(&constants::CONTRACT_CALL_GAS_PARAMETER_NAME.to_string())
         {
-            Some(gas_expr) => self.compile_expression(context, md_mgr, gas_expr)?,
+            Some(gas_expr) => self.compile_expression_to_value(context, md_mgr, gas_expr)?,
             None => self
                 .current_block
                 .ins(context)
@@ -1383,9 +1388,9 @@ impl<'eng> FnCompiler<'eng> {
         for ((_, expr), param) in ast_args.iter().zip(callee.parameters.iter()) {
             self.current_fn_param = Some(param.clone());
             let arg = if param.is_reference && param.is_mutable {
-                self.compile_ptr_or_tmp_expression(context, md_mgr, expr)
+                self.compile_expression_to_ptr(context, md_mgr, expr)
             } else {
-                self.compile_expression(context, md_mgr, expr)
+                self.compile_expression_to_value(context, md_mgr, expr)
             }?;
             if arg.is_diverging(context) {
                 return Ok(arg);
@@ -1418,7 +1423,7 @@ impl<'eng> FnCompiler<'eng> {
         // Compile the condition expression in the entry block.  Then save the current block so we
         // can jump to the true and false blocks after we've created them.
         let cond_span_md_idx = md_mgr.span_to_md(context, &ast_condition.span);
-        let cond_value = self.compile_expression(context, md_mgr, ast_condition)?;
+        let cond_value = self.compile_expression_to_value(context, md_mgr, ast_condition)?;
         if cond_value.is_diverging(context) {
             return Ok(cond_value);
         }
@@ -1439,14 +1444,14 @@ impl<'eng> FnCompiler<'eng> {
 
         let true_block_begin = self.function.create_block(context, None);
         self.current_block = true_block_begin;
-        let true_value = self.compile_expression(context, md_mgr, ast_then)?;
+        let true_value = self.compile_expression_to_value(context, md_mgr, ast_then)?;
         let true_block_end = self.current_block;
 
         let false_block_begin = self.function.create_block(context, None);
         self.current_block = false_block_begin;
         let false_value = match ast_else {
             None => Constant::get_unit(context),
-            Some(expr) => self.compile_expression(context, md_mgr, expr)?,
+            Some(expr) => self.compile_expression_to_value(context, md_mgr, expr)?,
         };
         let false_block_end = self.current_block;
 
@@ -1512,7 +1517,7 @@ impl<'eng> FnCompiler<'eng> {
         };
 
         // Compile the struct expression.
-        let compiled_value = self.compile_ptr_or_tmp_expression(context, md_mgr, exp)?;
+        let compiled_value = self.compile_expression_to_ptr(context, md_mgr, exp)?;
 
         // Get the variant type.
         let variant_type = enum_type
@@ -1539,7 +1544,7 @@ impl<'eng> FnCompiler<'eng> {
         exp: Box<ty::TyExpression>,
     ) -> Result<Value, CompileError> {
         let tag_span_md_idx = md_mgr.span_to_md(context, &exp.span);
-        let struct_val = self.compile_ptr_or_tmp_expression(context, md_mgr, &exp)?;
+        let struct_val = self.compile_expression_to_ptr(context, md_mgr, &exp)?;
 
         let u64_ty = Type::get_uint64(context);
         Ok(self
@@ -1622,7 +1627,7 @@ impl<'eng> FnCompiler<'eng> {
         // Add the conditional in the cond block which jumps into the body or out to the final
         // block.
         self.current_block = cond_block;
-        let cond_value = self.compile_expression(context, md_mgr, condition)?;
+        let cond_value = self.compile_expression_to_value(context, md_mgr, condition)?;
         if !self.current_block.is_terminated(context) {
             self.current_block.ins(context).conditional_branch(
                 cond_value,
@@ -1715,7 +1720,7 @@ impl<'eng> FnCompiler<'eng> {
         // We must compile the RHS before checking for shadowing, as it will still be in the
         // previous scope.
         let body_deterministically_aborts = body.deterministically_aborts(self.decl_engine, false);
-        let init_val = self.compile_expression(context, md_mgr, body)?;
+        let init_val = self.compile_expression_to_value(context, md_mgr, body)?;
         if init_val.is_diverging(context) || body_deterministically_aborts {
             return Ok(Some(init_val));
         }
@@ -1845,7 +1850,8 @@ impl<'eng> FnCompiler<'eng> {
                 )
             })?;
 
-        let reassign_val = self.compile_expression(context, md_mgr, &ast_reassignment.rhs)?;
+        let reassign_val =
+            self.compile_expression_to_value(context, md_mgr, &ast_reassignment.rhs)?;
         if reassign_val.is_diverging(context) {
             return Ok(reassign_val);
         }
@@ -1901,7 +1907,7 @@ impl<'eng> FnCompiler<'eng> {
                         }
                         (ProjectionKind::ArrayIndex { index, .. }, TypeInfo::Array(elem_ty, _)) => {
                             *cur_type_id = elem_ty.type_id;
-                            self.compile_expression(context, md_mgr, index)
+                            self.compile_expression_to_value(context, md_mgr, index)
                         }
                         _ => Err(CompileError::Internal(
                             "Unknown field in reassignment.",
@@ -1946,7 +1952,7 @@ impl<'eng> FnCompiler<'eng> {
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         // Compile the RHS into a value
-        let rhs = self.compile_expression(context, md_mgr, rhs)?;
+        let rhs = self.compile_expression_to_value(context, md_mgr, rhs)?;
         if rhs.is_diverging(context) {
             return Ok(rhs);
         }
@@ -2005,7 +2011,7 @@ impl<'eng> FnCompiler<'eng> {
 
         // Compile each element and insert it immediately.
         for (idx, elem_expr) in contents.iter().enumerate() {
-            let elem_value = self.compile_expression(context, md_mgr, elem_expr)?;
+            let elem_value = self.compile_expression_to_value(context, md_mgr, elem_expr)?;
             if elem_value.is_diverging(context) {
                 return Ok(elem_value);
             }
@@ -2030,7 +2036,7 @@ impl<'eng> FnCompiler<'eng> {
         index_expr: &ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
-        let array_val = self.compile_ptr_or_tmp_expression(context, md_mgr, array_expr)?;
+        let array_val = self.compile_expression_to_ptr(context, md_mgr, array_expr)?;
         if array_val.is_diverging(context) {
             return Ok(array_val);
         }
@@ -2038,7 +2044,7 @@ impl<'eng> FnCompiler<'eng> {
         // Get the array type and confirm it's an array.
         let array_type = array_val
             .get_type(context)
-            .and_then(|ty| ty.get_inner_type(context))
+            .and_then(|ty| ty.get_pointee_type(context))
             .and_then(|ty| ty.is_array(context).then_some(ty))
             .ok_or_else(|| {
                 CompileError::Internal(
@@ -2072,7 +2078,7 @@ impl<'eng> FnCompiler<'eng> {
             }
         }
 
-        let index_val = self.compile_expression(context, md_mgr, index_expr)?;
+        let index_val = self.compile_expression_to_value(context, md_mgr, index_expr)?;
         if index_val.is_diverging(context) {
             return Ok(index_val);
         }
@@ -2109,7 +2115,8 @@ impl<'eng> FnCompiler<'eng> {
         let mut insert_values = Vec::with_capacity(fields.len());
         let mut field_types = Vec::with_capacity(fields.len());
         for struct_field in fields.iter() {
-            let insert_val = self.compile_expression(context, md_mgr, &struct_field.value)?;
+            let insert_val =
+                self.compile_expression_to_value(context, md_mgr, &struct_field.value)?;
             if insert_val.is_diverging(context) {
                 return Ok(insert_val);
             }
@@ -2167,7 +2174,7 @@ impl<'eng> FnCompiler<'eng> {
         ast_field: &ty::TyStructField,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
-        let struct_val = self.compile_ptr_or_tmp_expression(context, md_mgr, ast_struct_expr)?;
+        let struct_val = self.compile_expression_to_ptr(context, md_mgr, ast_struct_expr)?;
 
         // Get the struct type info, with field names.
         let TypeInfo::Struct(decl_ref) = self.type_engine.get_unaliased(struct_type_id) else {
@@ -2266,7 +2273,8 @@ impl<'eng> FnCompiler<'eng> {
         let field_tys = enum_type.get_field_types(context);
         if field_tys.len() != 1 && contents.is_some() {
             // Insert the value too.
-            let contents_value = self.compile_expression(context, md_mgr, contents.unwrap())?;
+            let contents_value =
+                self.compile_expression_to_value(context, md_mgr, contents.unwrap())?;
             let contents_type = contents_value.get_type(context).ok_or_else(|| {
                 CompileError::Internal(
                     "Unable to get type for enum contents.",
@@ -2309,7 +2317,7 @@ impl<'eng> FnCompiler<'eng> {
                     context,
                     &field_expr.return_type,
                 )?;
-                let init_value = self.compile_expression(context, md_mgr, field_expr)?;
+                let init_value = self.compile_expression_to_value(context, md_mgr, field_expr)?;
                 if init_value.is_diverging(context) {
                     return Ok(init_value);
                 }
@@ -2360,7 +2368,7 @@ impl<'eng> FnCompiler<'eng> {
         idx: usize,
         span: Span,
     ) -> Result<Value, CompileError> {
-        let tuple_value = self.compile_ptr_or_tmp_expression(context, md_mgr, tuple)?;
+        let tuple_value = self.compile_expression_to_ptr(context, md_mgr, tuple)?;
         let tuple_type = convert_resolved_typeid(
             self.type_engine,
             self.decl_engine,
@@ -2444,8 +2452,8 @@ impl<'eng> FnCompiler<'eng> {
                     initializer
                         .as_ref()
                         .map(|init_expr| {
-                            self.compile_ptr_expression(context, md_mgr, init_expr).map(
-                                |init_val| {
+                            self.compile_expression(context, md_mgr, init_expr)
+                                .map(|init_val| {
                                     if init_val
                                         .get_type(context)
                                         .map_or(false, |ty| ty.is_ptr(context))
@@ -2459,8 +2467,7 @@ impl<'eng> FnCompiler<'eng> {
                                     } else {
                                         init_val
                                     }
-                                },
-                            )
+                                })
                         })
                         .transpose()
                         .map(|init| AsmArg {

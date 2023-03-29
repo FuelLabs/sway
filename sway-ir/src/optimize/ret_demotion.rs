@@ -7,7 +7,7 @@
 ///! return value is mem_copied to the new argument instead of being returned by value.
 use crate::{
     AnalysisResults, BlockArgument, Context, Function, Instruction, IrError, Pass, PassMutability,
-    ScopedPass, Type, TypeContent, Value,
+    ScopedPass, Type, Value,
 };
 
 pub const RETDEMOTION_NAME: &str = "retdemotion";
@@ -28,11 +28,7 @@ pub fn ret_val_demotion(
 ) -> Result<bool, IrError> {
     // Reject non-candidate.
     let ret_type = function.get_return_type(context);
-    if match ret_type.get_content(context) {
-        TypeContent::Unit | TypeContent::Bool | TypeContent::Pointer(_) => true,
-        TypeContent::Uint(bits) => *bits <= 64,
-        _ => false,
-    } {
+    if !super::target_fuel::is_demotable_type(context, &ret_type) {
         // Return type fits in a register.
         return Ok(false);
     }

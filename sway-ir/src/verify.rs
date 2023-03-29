@@ -457,7 +457,7 @@ impl<'a> InstructionVerifier<'a> {
         // - The asset_id must be a B256
         let fields = params
             .get_type(self.context)
-            .and_then(|ty| ty.get_inner_type(self.context))
+            .and_then(|ty| ty.get_pointee_type(self.context))
             .map_or_else(std::vec::Vec::new, |ty| ty.get_field_types(self.context));
         if fields.len() != 3
             || !fields[0].is_b256(self.context)
@@ -481,7 +481,7 @@ impl<'a> InstructionVerifier<'a> {
         .and_then(|_| {
             if asset_id
                 .get_type(self.context)
-                .and_then(|ty| ty.get_inner_type(self.context))
+                .and_then(|ty| ty.get_pointee_type(self.context))
                 .is(Type::is_b256, self.context)
             {
                 Ok(())
@@ -504,17 +504,14 @@ impl<'a> InstructionVerifier<'a> {
         elem_ptr_ty: &Type,
         indices: &[Value],
     ) -> Result<(), IrError> {
-        use crate::{constant::ConstantValue, irtype::TypeContent};
+        use crate::constant::ConstantValue;
 
         let base_ty = self.get_ptr_type(base, IrError::VerifyGepFromNonPointer)?;
-        if !matches!(
-            base_ty.get_content(self.context),
-            TypeContent::Struct(_) | TypeContent::Union(_) | TypeContent::Array(..)
-        ) {
+        if base_ty.is_aggregate(self.context) {
             return Err(IrError::VerifyGepOnNonAggregate);
         }
 
-        let Some(elem_inner_ty) = elem_ptr_ty.get_inner_type(self.context) else {
+        let Some(elem_inner_ty) = elem_ptr_ty.get_pointee_type(self.context) else {
             return Err(IrError::VerifyGepElementTypeNonPointer);
         };
 
@@ -815,7 +812,7 @@ impl<'a> InstructionVerifier<'a> {
             .ok_or_else(|| "unknown".to_owned())
             .and_then(|ptr_ty| {
                 ptr_ty
-                    .get_inner_type(self.context)
+                    .get_pointee_type(self.context)
                     .ok_or_else(|| ptr_ty.as_string(self.context))
             })
             .map_err(errfn)

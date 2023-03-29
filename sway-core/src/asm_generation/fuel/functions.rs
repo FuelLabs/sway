@@ -380,7 +380,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                     // be of the pointed to type.  So strip the pointer if necessary.
                     let arg_type = val
                         .get_type(self.context)
-                        .map(|ty| ty.get_inner_type(self.context).unwrap_or(ty))
+                        .map(|ty| ty.get_pointee_type(self.context).unwrap_or(ty))
                         .unwrap();
                     let arg_type_size_bytes = ir_type_size_in_bytes(self.context, &arg_type);
                     if self.is_copy_type(&arg_type) {

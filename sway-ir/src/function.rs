@@ -416,7 +416,7 @@ impl Function {
         for (name, old_var, old_var_content) in old_vars {
             let old_ty = old_var_content
                 .ptr_ty
-                .get_inner_type(context)
+                .get_pointee_type(context)
                 .expect("LocalVar types are always pointers.");
             let new_var = self.new_unique_local_var(
                 context,

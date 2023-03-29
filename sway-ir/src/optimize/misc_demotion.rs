@@ -10,7 +10,7 @@
 ///!   values.
 use crate::{
     asm::AsmArg, AnalysisResults, Context, FuelVmInstruction, Function, Instruction, IrError, Pass,
-    PassMutability, ScopedPass, Type, TypeContent, Value,
+    PassMutability, ScopedPass, Type, Value,
 };
 
 use rustc_hash::FxHashMap;
@@ -52,7 +52,7 @@ fn log_demotion(context: &mut Context, function: Function) -> Result<bool, IrErr
                     log_id,
                 }) = instr
                 {
-                    is_demote_type(context, log_ty)
+                    super::target_fuel::is_demotable_type(context, log_ty)
                         .then_some((block, instr_val, *log_val, *log_ty, *log_id))
                 } else {
                     None
@@ -128,7 +128,8 @@ fn asm_block_arg_demotion(context: &mut Context, function: Function) -> Result<b
                              }| {
                                 initializer.and_then(|init_val| {
                                     init_val.get_type(context).and_then(|ty| {
-                                        is_demote_type(context, &ty).then_some((init_val, ty))
+                                        super::target_fuel::is_demotable_type(context, &ty)
+                                            .then_some((init_val, ty))
                                     })
                                 })
                             },
@@ -208,7 +209,7 @@ fn asm_block_ret_demotion(context: &mut Context, function: Function) -> Result<b
                 // Is the instruction an ASM block?
                 if let Instruction::AsmBlock(asm_block, _args) = instr {
                     let ret_ty = asm_block.get_type(context);
-                    is_demote_type(context, &ret_ty)
+                    super::target_fuel::is_demotable_type(context, &ret_ty)
                         .then_some((block, instr_val, *asm_block, ret_ty))
                 } else {
                     None
@@ -253,7 +254,7 @@ fn ptr_to_int_demotion(context: &mut Context, function: Function) -> Result<bool
                 // Is the instruction a PtrToInt?
                 if let Instruction::PtrToInt(ptr_val, _int_ty) = instr {
                     ptr_val.get_type(context).and_then(|ptr_ty| {
-                        is_demote_type(context, &ptr_ty)
+                        super::target_fuel::is_demotable_type(context, &ptr_ty)
                             .then_some((block, instr_val, *ptr_val, ptr_ty))
                     })
                 } else {
@@ -299,12 +300,4 @@ fn ptr_to_int_demotion(context: &mut Context, function: Function) -> Result<bool
     }
 
     Ok(true)
-}
-
-fn is_demote_type(context: &Context, ty: &Type) -> bool {
-    match ty.get_content(context) {
-        TypeContent::Unit | TypeContent::Bool | TypeContent::Pointer(_) => false,
-        TypeContent::Uint(bits) => *bits > 64,
-        _ => true,
-    }
 }

@@ -264,7 +264,7 @@ impl Type {
     }
 
     /// Get pointed to type iff self is a Pointer.
-    pub fn get_inner_type(&self, context: &Context) -> Option<Type> {
+    pub fn get_pointee_type(&self, context: &Context) -> Option<Type> {
         if let TypeContent::Pointer(to_ty) = self.get_content(context) {
             Some(*to_ty)
         } else {

@@ -1137,8 +1137,10 @@ mod ir_builder {
                             .add_metadatum(context, opt_metadata)
                     }
                     IrAstOperation::GetElemPtr(base, elem_ty, idcs) => {
-                        let ir_elem_ty =
-                            elem_ty.to_ir_type(context).get_inner_type(context).unwrap();
+                        let ir_elem_ty = elem_ty
+                            .to_ir_type(context)
+                            .get_pointee_type(context)
+                            .unwrap();
                         block
                             .ins(context)
                             .get_elem_ptr(

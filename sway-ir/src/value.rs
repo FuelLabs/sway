@@ -224,6 +224,6 @@ impl Value {
     /// Get the pointer inner type for this value, iff it is a pointer.
     pub fn match_ptr_type(&self, context: &Context) -> Option<Type> {
         self.get_type(context)
-            .and_then(|ty| ty.get_inner_type(context))
+            .and_then(|ty| ty.get_pointee_type(context))
     }
 }

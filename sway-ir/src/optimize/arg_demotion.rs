@@ -2,12 +2,9 @@
 ///!
 ///! This pass demotes 'by-value' function arg types to 'by-reference` pointer types, based on target
 ///! specific parameters.
-///!
-///! It does NOT change the call sites to modified functions.  This is done in subsequent passes
-///! (TODO).
 use crate::{
     AnalysisResults, Block, BlockArgument, Context, Function, Instruction, IrError, Pass,
-    PassMutability, ScopedPass, Type, TypeContent, Value, ValueDatum,
+    PassMutability, ScopedPass, Type, Value, ValueDatum,
 };
 
 use rustc_hash::FxHashMap;
@@ -36,44 +33,46 @@ pub fn fn_arg_demotion(
         .args_iter(context)
         .enumerate()
         .filter_map(|(idx, (_name, arg_val))| {
-            arg_val
-                .get_type(context)
-                .and_then(|ty| is_demotable_type(context, ty).then_some((idx, ty)))
+            arg_val.get_type(context).and_then(|ty| {
+                super::target_fuel::is_demotable_type(context, &ty).then_some((idx, ty))
+            })
         })
         .collect::<Vec<(usize, Type)>>();
 
-    if !candidate_args.is_empty() {
-        // Find all the call sites for this function.
-        let call_sites = context
-            .module_iter()
-            .flat_map(|module| module.function_iter(context))
-            .flat_map(|function| function.block_iter(context))
-            .flat_map(|block| {
-                block
-                    .instruction_iter(context)
-                    .filter_map(|instr_val| {
-                        if let Instruction::Call(call_to_func, _) = instr_val
-                            .get_instruction(context)
-                            .expect("`instruction_iter()` must return instruction values.")
-                        {
-                            (call_to_func == &function).then_some((block, instr_val))
-                        } else {
-                            None
-                        }
-                    })
-                    .collect::<Vec<_>>()
-            })
-            .collect::<Vec<(Block, Value)>>();
+    if candidate_args.is_empty() {
+        return Ok(false);
+    }
 
-        // Demote the function signature and the arg uses.
-        demote_fn_signature(context, &function, &candidate_args);
+    // Find all the call sites for this function.
+    let call_sites = context
+        .module_iter()
+        .flat_map(|module| module.function_iter(context))
+        .flat_map(|function| function.block_iter(context))
+        .flat_map(|block| {
+            block
+                .instruction_iter(context)
+                .filter_map(|instr_val| {
+                    if let Instruction::Call(call_to_func, _) = instr_val
+                        .get_instruction(context)
+                        .expect("`instruction_iter()` must return instruction values.")
+                    {
+                        (call_to_func == &function).then_some((block, instr_val))
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<(Block, Value)>>();
 
-        // We need to convert the caller arg value at *every* call site from a by-value to a
-        // by-reference.  To do this we create local storage for the value, store it to the variable
-        // and pass a pointer to it.
-        for (call_block, call_val) in call_sites {
-            demote_caller(context, &function, call_block, call_val, &candidate_args);
-        }
+    // Demote the function signature and the arg uses.
+    demote_fn_signature(context, &function, &candidate_args);
+
+    // We need to convert the caller arg value at *every* call site from a by-value to a
+    // by-reference.  To do this we create local storage for the value, store it to the variable
+    // and pass a pointer to it.
+    for (call_block, call_val) in call_sites {
+        demote_caller(context, &function, call_block, call_val, &candidate_args);
     }
 
     // We also need to be sure that block args within this function are demoted.
@@ -96,7 +95,7 @@ macro_rules! set_arg_type {
 }
 
 fn demote_fn_signature(context: &mut Context, function: &Function, arg_idcs: &[(usize, Type)]) {
-    // Change the types of the arg values in place to their pointre counterparts.
+    // Change the types of the arg values in place to their pointer counterparts.
     let entry_block = function.get_entry_block(context);
     let old_arg_vals = arg_idcs
         .iter()
@@ -211,9 +210,9 @@ fn demote_block_signature(context: &mut Context, function: &Function, block: Blo
         .arg_iter(context)
         .enumerate()
         .filter_map(|(idx, arg_val)| {
-            arg_val
-                .get_type(context)
-                .and_then(|ty| is_demotable_type(context, ty).then_some((idx, *arg_val, ty)))
+            arg_val.get_type(context).and_then(|ty| {
+                super::target_fuel::is_demotable_type(context, &ty).then_some((idx, *arg_val, ty))
+            })
         })
         .collect::<Vec<_>>();
 
@@ -280,13 +279,5 @@ fn demote_block_signature(context: &mut Context, function: &Function, block: Blo
                 .expect("A predecessor must have a terminator");
             term_val.replace_values(&FxHashMap::from_iter([(arg_val, get_local_val)]));
         }
-    }
-}
-
-fn is_demotable_type(context: &Context, ty: Type) -> bool {
-    match ty.get_content(context) {
-        TypeContent::Unit | TypeContent::Bool | TypeContent::Pointer(_) => false,
-        TypeContent::Uint(bits) => *bits > 64,
-        _ => true,
     }
 }

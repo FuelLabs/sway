@@ -616,7 +616,7 @@ fn inline_instruction(
                 elem_ptr_ty,
                 indices,
             } => {
-                let elem_ty = elem_ptr_ty.get_inner_type(context).unwrap();
+                let elem_ty = elem_ptr_ty.get_pointee_type(context).unwrap();
                 new_block.ins(context).get_elem_ptr(
                     map_value(base),
                     elem_ty,

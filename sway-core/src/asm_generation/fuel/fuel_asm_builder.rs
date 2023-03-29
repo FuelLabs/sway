@@ -681,7 +681,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
         let base_type = base_val
             .get_type(self.context)
-            .and_then(|ty| ty.get_inner_type(self.context))
+            .and_then(|ty| ty.get_pointee_type(self.context))
             .ok_or_else(|| {
                 CompileError::Internal(
                     "Failed to get type of base value for GEP.",
@@ -908,7 +908,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
         if src_val
             .get_type(self.context)
-            .and_then(|src_ty| src_ty.get_inner_type(self.context))
+            .and_then(|src_ty| src_ty.get_pointee_type(self.context))
             .map_or(true, |inner_ty| !self.is_copy_type(&inner_ty))
         {
             Err(CompileError::Internal(
@@ -980,7 +980,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
     ) -> Result<(), CompileError> {
         let dst_ty = dst_val_ptr
             .get_type(self.context)
-            .and_then(|ptr_ty| ptr_ty.get_inner_type(self.context))
+            .and_then(|ptr_ty| ptr_ty.get_pointee_type(self.context))
             .ok_or_else(|| {
                 CompileError::Internal(
                     "mem_copy dst type must be known and a pointer.",
@@ -1018,7 +1018,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
         } else {
             // If the type is a pointer then we use LOGD to log the data. First put the size into
             // the data section, then add a LW to get it, then add a LOGD which uses it.
-            let log_ty = log_ty.get_inner_type(self.context).unwrap();
+            let log_ty = log_ty.get_pointee_type(self.context).unwrap();
             let size_in_bytes = ir_type_size_in_bytes(self.context, &log_ty);
 
             let size_reg = self.reg_seqr.next();
@@ -1103,7 +1103,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                 });
             } else {
                 // Sometimes (all the time?) a slice type will be `ptr slice`.
-                let ret_type = ret_type.get_inner_type(self.context).unwrap_or(*ret_type);
+                let ret_type = ret_type.get_pointee_type(self.context).unwrap_or(*ret_type);
 
                 // If the type is a pointer then we use RETD to return data.
                 let size_reg = self.reg_seqr.next();
@@ -1130,7 +1130,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                 } else {
                     let size_in_bytes = ir_type_size_in_bytes(
                         self.context,
-                        &ret_type.get_inner_type(self.context).unwrap_or(ret_type),
+                        &ret_type.get_pointee_type(self.context).unwrap_or(ret_type),
                     );
                     self.immediate_to_reg(
                         size_in_bytes,

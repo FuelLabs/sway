@@ -236,12 +236,12 @@ impl Instruction {
 
             // Load needs to strip the pointer from the source type.
             Instruction::Load(ptr_val) => match &context.values[ptr_val.0].value {
-                ValueDatum::Argument(arg) => arg.ty.get_inner_type(context),
-                ValueDatum::Configurable(conf) => conf.ty.get_inner_type(context),
-                ValueDatum::Constant(cons) => cons.ty.get_inner_type(context),
+                ValueDatum::Argument(arg) => arg.ty.get_pointee_type(context),
+                ValueDatum::Configurable(conf) => conf.ty.get_pointee_type(context),
+                ValueDatum::Constant(cons) => cons.ty.get_pointee_type(context),
                 ValueDatum::Instruction(ins) => ins
                     .get_type(context)
-                    .and_then(|ty| ty.get_inner_type(context)),
+                    .and_then(|ty| ty.get_pointee_type(context)),
             },
 
             // These return pointer types.
