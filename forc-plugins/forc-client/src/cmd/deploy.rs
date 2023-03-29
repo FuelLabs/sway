@@ -17,6 +17,11 @@ pub struct Command {
     pub gas: Gas,
     #[clap(flatten)]
     pub maturity: Maturity,
+    /// Optional 256-bit hexadecimal literal to redeploy contracts.
+    ///
+    /// For a single contract, use `--salt <SALT>`.
+    /// For a workspace with multiple contracts, use `--salt <CONTRACT_NAME>:<SALT>`
+    /// to specify salts for multiple contracts.
     #[clap(long)]
     pub salt: Option<Vec<String>>,
     /// Generate a random salt for the contract.
