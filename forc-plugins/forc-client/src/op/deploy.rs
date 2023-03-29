@@ -52,7 +52,7 @@ fn validate_and_parse_salts<'a>(
 
     for manifest in manifests {
         for (dep_name, contract_dep) in manifest.contract_deps() {
-            let dep_pkg_name = contract_dep.dependency.package().unwrap_or(&dep_name);
+            let dep_pkg_name = contract_dep.dependency.package().unwrap_or(dep_name);
             if let Some(declared_salt) = contract_salt_map.get(dep_pkg_name) {
                 bail!(
                     "Redeclaration of salt using the option '--salt' while a salt exists for contract '{}' \
