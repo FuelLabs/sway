@@ -131,13 +131,22 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
             .check_program_type(vec![TreeType::Contract])
             .is_ok()
         {
-            let contract_id = deploy_pkg(
-                &command,
-                member_manifest,
-                built.built_package(),
-                contract_salt_map.as_ref(),
-            )
-            .await?;
+            let salt = match (&contract_salt_map, command.random_salt) {
+                (Some(map), false) => {
+                    if let Some(salt) = map.get(member_manifest.project_name()) {
+                        *salt
+                    } else {
+                        Default::default()
+                    }
+                }
+                (None, true) => rand::random(),
+                (None, false) => Default::default(),
+                (Some(_), true) => {
+                    bail!("Both `--salt` and `--random-salt` were specified: must choose one")
+                }
+            };
+            let contract_id =
+                deploy_pkg(&command, member_manifest, built.built_package(), salt).await?;
             contract_ids.push(contract_id);
         }
     }
@@ -149,7 +158,7 @@ pub async fn deploy_pkg(
     command: &cmd::Deploy,
     manifest: &PackageManifestFile,
     compiled: &BuiltPackage,
-    contract_salt_map: Option<&ContractSaltMap>,
+    salt: Salt,
 ) -> Result<DeployedContract> {
     let node_url = command
         .node_url
@@ -159,20 +168,7 @@ pub async fn deploy_pkg(
     let client = FuelClient::new(node_url)?;
 
     let bytecode = &compiled.bytecode.bytes;
-    let salt = match (contract_salt_map, command.random_salt) {
-        (Some(map), false) => {
-            if let Some(salt) = map.get(manifest.project_name()) {
-                *salt
-            } else {
-                Default::default()
-            }
-        }
-        (None, true) => rand::random(),
-        (None, false) => Default::default(),
-        (Some(_), true) => {
-            bail!("Both `--salt` and `--random-salt` were specified: must choose one")
-        }
-    };
+
     let mut storage_slots = compiled.storage_slots.clone();
     storage_slots.sort();
 
