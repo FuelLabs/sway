@@ -19,11 +19,10 @@ pub struct Command {
     pub maturity: Maturity,
     /// Optional 256-bit hexadecimal literal(s) to redeploy contracts.
     ///
-    /// For a single contract, use `--salt <SALT>`.
-    /// For a workspace with multiple contracts, use `--salt <CONTRACT_NAME>:<SALT>`
-    /// to specify salts for multiple contracts.
+    /// For a single contract, use `--salt <SALT>`, eg.: forc deploy --salt 0x0000000000000000000000000000000000000000000000000000000000000001
     ///
-    /// Example:
+    /// For a workspace with multiple contracts, use `--salt <CONTRACT_NAME>:<SALT>`
+    /// to specify a salt for each contract, eg.:
     ///
     /// forc deploy --salt contract_a:0x0000000000000000000000000000000000000000000000000000000000000001
     /// --salt contract_b:0x0000000000000000000000000000000000000000000000000000000000000002
