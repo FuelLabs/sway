@@ -61,28 +61,43 @@ impl<'cfg> ControlFlowGraph<'cfg> {
         };
 
         let is_alive_check = |n: &NodeIndex| {
-            if let ControlFlowGraphNode::ProgramNode {
-                node:
-                    ty::TyAstNode {
-                        content: ty::TyAstNodeContent::Declaration(ty::TyDecl::VariableDecl { .. }),
-                        ..
-                    },
-                ..
-            } = &self.graph[*n]
-            {
-                // Consider variables declarations alive when count is greater than 1
-                connections_count
-                    .get(n)
-                    .cloned()
-                    .map_or(false, |count| count > 1)
-            } else if let ControlFlowGraphNode::StructField { .. } = &self.graph[*n] {
-                // Consider struct field alive when count is greater than 0
-                connections_count
-                    .get(n)
-                    .cloned()
-                    .map_or(false, |count| count > 0)
-            } else {
-                false
+            match &self.graph[*n] {
+                ControlFlowGraphNode::ProgramNode {
+                    node:
+                        ty::TyAstNode {
+                            content:
+                                ty::TyAstNodeContent::Declaration(ty::TyDecl::VariableDecl { .. }),
+                            ..
+                        },
+                    ..
+                } => {
+                    // Consider variables declarations alive when count is greater than 1
+                    connections_count
+                        .get(n)
+                        .cloned()
+                        .map_or(false, |count| count > 1)
+                }
+                ControlFlowGraphNode::ProgramNode {
+                    node:
+                        ty::TyAstNode {
+                            content: ty::TyAstNodeContent::Declaration(ty::TyDecl::ImplTrait { .. }),
+                            ..
+                        },
+                    ..
+                } => {
+                    // Consider impls always alive.
+                    // Consider it alive when it does not have any methods.
+                    // Also consider it alive when it contains unused methods inside.
+                    true
+                }
+                ControlFlowGraphNode::StructField { .. } => {
+                    // Consider struct field alive when count is greater than 0
+                    connections_count
+                        .get(n)
+                        .cloned()
+                        .map_or(false, |count| count > 0)
+                }
+                _ => false,
             }
         };
 
@@ -1892,14 +1907,10 @@ fn construct_dead_code_warning_from_node(
             content: ty::TyAstNodeContent::Declaration(ty::TyDecl::ImplTrait { decl_id, .. }),
             span,
         } => {
-            let ty::TyImplTrait { items: methods, .. } = decl_engine.get_impl_trait(decl_id);
-            if methods.is_empty() {
-                return None;
-            } else {
-                CompileWarning {
-                    span: span.clone(),
-                    warning_content: Warning::DeadDeclaration,
-                }
+            let ty::TyImplTrait { .. } = decl_engine.get_impl_trait(decl_id);
+            CompileWarning {
+                span: span.clone(),
+                warning_content: Warning::DeadDeclaration,
             }
         }
         ty::TyAstNode {
