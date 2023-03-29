@@ -35,10 +35,7 @@ pub fn arg_demotion(
     Ok(result)
 }
 
-fn fn_arg_demotion(
-    context: &mut Context,
-    function: Function,
-) -> Result<bool, IrError> {
+fn fn_arg_demotion(context: &mut Context, function: Function) -> Result<bool, IrError> {
     // The criteria for now for demotion is whether the arg type is larger than 64-bits or is an
     // aggregate.  This info should be instead determined by a target info analysis pass.
 
