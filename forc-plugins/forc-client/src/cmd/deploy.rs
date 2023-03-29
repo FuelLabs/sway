@@ -26,7 +26,6 @@ pub struct Command {
     ///
     /// forc deploy --salt contract_a:0x0000000000000000000000000000000000000000000000000000000000000001
     /// --salt contract_b:0x0000000000000000000000000000000000000000000000000000000000000002
-
     #[clap(long)]
     pub salt: Option<Vec<String>>,
     /// Generate a random salt for the contract.
