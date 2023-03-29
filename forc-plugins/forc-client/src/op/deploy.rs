@@ -263,7 +263,11 @@ mod test {
 
     fn setup_manifest_files() -> BTreeMap<String, PackageManifestFile> {
         let mut contract_to_manifest = BTreeMap::default();
-        let manifests_dir = std::env::current_dir().unwrap().join("test/data/manifests");
+
+        let manifests_dir = PathBuf::from(format!(
+            "{}/test/data/manifests",
+            env!("CARGO_MANIFEST_DIR")
+        ));
         for entry in manifests_dir.read_dir().unwrap() {
             let manifest =
                 PackageManifestFile::from_file(entry.unwrap().path().join("Forc.toml")).unwrap();
