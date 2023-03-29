@@ -11,6 +11,9 @@ use std::fmt::Write;
 use sway_ast::{keywords::Token, token::Delimiter, ItemTrait, ItemTraitItem, Traits};
 use sway_types::Spanned;
 
+#[cfg(test)]
+mod tests;
+
 impl Format for ItemTrait {
     fn format(
         &self,
@@ -67,9 +70,16 @@ impl Format for ItemTrait {
             write_comments(formatted_code, self.trait_items.span().into(), formatter)?;
         } else {
             for (annotated, semicolon_token) in trait_items {
+                for attr in &annotated.attribute_list {
+                    write!(
+                        formatted_code,
+                        "{}",
+                        &formatter.shape.indent.to_string(&formatter.config)?,
+                    )?;
+                    attr.format(formatted_code, formatter)?;
+                }
                 match &annotated.value {
                     sway_ast::ItemTraitItem::Fn(fn_signature) => {
-                        // format `Annotated<FnSignature>`
                         write!(
                             formatted_code,
                             "{}",
@@ -79,7 +89,6 @@ impl Format for ItemTrait {
                         writeln!(formatted_code, "{}", semicolon_token.ident().as_str())?;
                     }
                     sway_ast::ItemTraitItem::Const(const_decl) => {
-                        // format `Annotated<ItemConst>`
                         write!(
                             formatted_code,
                             "{}",
