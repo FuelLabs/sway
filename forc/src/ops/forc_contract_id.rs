@@ -11,14 +11,14 @@ pub fn contract_id(command: ContractIdCommand) -> Result<()> {
     // may be ambiguity in how the salt should be applied, especially if the
     // workspace contains multiple contracts, and especially if one contract
     // member is the dependency of another (in which case salt should be
-    // specified under `[contract- dependencies]`). Considering this, we have a
+    // specified under `[contract-dependencies]`). Considering this, we have a
     // simple check to ensure that we only accept salt when working on a single
     // package. In the future, we can consider relaxing this to allow for
     // specifying a salt for workspacs, as long as there is only one
     // root contract member in the package graph.
     if command.salt.salt.is_some() && build_plan.member_nodes().count() > 1 {
         bail!(
-            "A salt was specified when attempting to contract id detection \
+            "A salt was specified when attempting to detect the contract id \
             for a workspace with more than one member.
               If you wish to find out contract id for a contract member with\
             salt, run this command for the member individually.
