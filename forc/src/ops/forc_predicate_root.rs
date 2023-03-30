@@ -1,4 +1,4 @@
-use crate::cmd::predicate_root::Command as PredicateRootCommand;
+use crate::cli::PredicateRootCommand;
 use anyhow::Result;
 use forc_pkg::{self as pkg, build_with_options};
 use sway_core::BuildTarget;

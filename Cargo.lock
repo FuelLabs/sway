@@ -1754,21 +1754,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "forc-id"
-version = "0.35.5"
-dependencies = [
- "anyhow",
- "clap 3.2.23",
- "forc",
- "forc-pkg",
- "forc-tracing",
- "forc-tx",
- "forc-util",
- "sway-core",
- "tracing",
-]
-
-[[package]]
 name = "forc-lsp"
 version = "0.35.5"
 dependencies = [
@@ -1836,6 +1821,7 @@ dependencies = [
  "anyhow",
  "clap 3.2.23",
  "devault",
+ "forc-util",
  "fuel-tx",
  "serde",
  "serde_json",
@@ -1849,9 +1835,12 @@ dependencies = [
  "annotate-snippets",
  "ansi_term",
  "anyhow",
+ "clap 3.2.23",
  "dirs 3.0.2",
  "forc-tracing",
+ "fuel-tx",
  "hex",
+ "serde",
  "serde_json",
  "sway-core",
  "sway-error",

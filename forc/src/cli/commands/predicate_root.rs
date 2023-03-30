@@ -1,11 +1,12 @@
+use anyhow::Result;
 use clap::Parser;
 
-pub use forc::cli::shared::{BuildOutput, BuildProfile, Minify, Pkg, Print};
+pub use crate::cli::shared::{BuildOutput, BuildProfile, Minify, Pkg, Print};
+use crate::ops::forc_predicate_root;
 
 /// Determine predicate-root for a predicate. For workspaces outputs all predicate roots in the
 /// workspace.
-#[derive(Debug, Default, Parser)]
-#[clap(bin_name = "forc predicate-root", version)]
+#[derive(Debug, Parser)]
 pub struct Command {
     #[clap(flatten)]
     pub pkg: Pkg,
@@ -17,4 +18,8 @@ pub struct Command {
     pub build_output: BuildOutput,
     #[clap(flatten)]
     pub build_profile: BuildProfile,
+}
+
+pub(crate) fn exec(cmd: Command) -> Result<()> {
+    forc_predicate_root::predicate_root(cmd)
 }

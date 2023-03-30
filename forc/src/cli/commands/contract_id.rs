@@ -1,11 +1,13 @@
+use crate::{
+    cli::shared::{BuildOutput, BuildProfile, Minify, Pkg, Print},
+    ops::forc_contract_id,
+};
+use anyhow::Result;
 use clap::Parser;
-
-pub use forc::cli::shared::{BuildOutput, BuildProfile, Minify, Pkg, Print};
-use forc_tx::Salt;
+use forc_util::Salt;
 
 /// Determine contract-id for a contract. For workspaces outputs all contract ids in the workspace.
-#[derive(Debug, Default, Parser)]
-#[clap(bin_name = "forc contract-id", version)]
+#[derive(Debug, Parser)]
 pub struct Command {
     #[clap(flatten)]
     pub pkg: Pkg,
@@ -19,4 +21,8 @@ pub struct Command {
     pub build_profile: BuildProfile,
     #[clap(flatten)]
     pub salt: Salt,
+}
+
+pub(crate) fn exec(cmd: Command) -> Result<()> {
+    forc_contract_id::contract_id(cmd)
 }

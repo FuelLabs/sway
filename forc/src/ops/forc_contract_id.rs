@@ -1,4 +1,4 @@
-use crate::cmd::contract_id::Command as ContractIdCommand;
+use crate::cli::ContractIdCommand;
 use anyhow::{bail, Result};
 use forc_pkg::{self as pkg, build_with_options};
 use sway_core::{fuel_prelude::fuel_tx, BuildTarget};
