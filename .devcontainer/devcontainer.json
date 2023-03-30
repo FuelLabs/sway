@@ -1,0 +1,18 @@
+{
+    "image": "mcr.microsoft.com/devcontainers/universal:2",
+    "features": {
+        "ghcr.io/devcontainers/features/common-utils:1": {},
+        "ghcr.io/FuelLabs/devcontainer-features/fuelup:1.0.1": {},
+        "ghcr.io/devcontainers/features/rust:1": {},
+    },
+    "remoteUser": "codespace",
+    "containerUser": "codespace",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "fuellabs.sway-vscode-plugin",
+                "rust-lang.rust-analyzer"
+            ]
+        }
+    }
+}
