@@ -225,15 +225,9 @@ impl source::DepPath for Pinned {
     }
 }
 
-impl AsRef<gix_url::Url> for Url {
-    fn as_ref(&self) -> &gix_url::Url {
-        &self.url
-    }
-}
-
 impl fmt::Display for Url {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let url_string = self.as_ref().to_bstring().to_string();
+        let url_string = self.url.to_bstring().to_string();
         write!(f, "{url_string}")
     }
 }
