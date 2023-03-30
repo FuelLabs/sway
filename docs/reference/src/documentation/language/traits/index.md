@@ -26,8 +26,7 @@ Traits are implemented for specific types through separate implementations.
 
 ## Associated functions
 
-Trait functions consist of just a function signature, so they have to omit the function body by
-replacing it with a semicolon. This indicates that the implementation must define the function.
+Trait functions consist of just a function signature. This indicates that the implementation must define the function.
 
 ## Associated constants
 

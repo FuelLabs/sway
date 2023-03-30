@@ -79,8 +79,7 @@ Traits can declare different kinds of associated items in their interface surfac
 
 ### Associated functions
 
-Associated functions in traits consist of just a function signature, so they have to omit the function body by
-replacing it with a semicolon. This indicates that the implementation must define the function.
+Associated functions in traits consist of just a function signature. This indicates that the implementation must define the function.
 
 ```sway
 trait Trait {
@@ -96,46 +95,9 @@ Associated constants are constants associated with a type.
 const ID: u32 = 0;
 ```
 
-Associated constants may omit the equals sign and expression to indicate implementations
-must define the constant value.
+Associated constants may omit the initializer to indicate implementations must define the constant value.
 
-The identifier is the name of the constant used in the path. The type is the type that the
-definition has to implement.
-
-You can _define_ an associated const directly in the interface surface of a trait:
-
-```sway
-script;
-
-trait ConstantId {
-    const ID: u32 = 0;
-}
-
-fn main() -> u32 {
-  ConstantId::ID
-}
-```
-
-Alternatively, you can also _declare_ it in the trait, and implement it in the interface of the
-types implementing the trait.
-
-```sway
-script;
-
-trait ConstantId {
-    const ID: u32;
-}
-
-struct Struct {}
-
-impl ConstantId for Struct {
-  const ID: u32 = 1;
-}
-
-fn main() -> u32 {
-  Struct::ID
-}
-```
+Check the `associated consts` section on [constants](../basic/consts.md) page.
 
 ## Use Cases
 
