@@ -1,3 +1,4 @@
+mod auth;
 use crate::{
     manifest::{self, PackageManifestFile},
     source,
@@ -12,7 +13,11 @@ use std::{
     str::FromStr,
 };
 use tracing::info;
-use url::Url;
+
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
+pub struct Url {
+    url: gix_url::Url,
+}
 
 /// A git repo with a `Forc.toml` manifest at its root.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
@@ -220,6 +225,13 @@ impl source::DepPath for Pinned {
     }
 }
 
+impl fmt::Display for Url {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let url_string = self.url.to_bstring().to_string();
+        write!(f, "{url_string}")
+    }
+}
+
 impl fmt::Display for Pinned {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // git+<url/to/repo>?<ref_kind>=<ref_string>#<commit>
@@ -245,6 +257,15 @@ impl fmt::Display for Reference {
     }
 }
 
+impl FromStr for Url {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        let url = gix_url::Url::from_bytes(s.as_bytes().into()).map_err(|e| anyhow!("{}", e))?;
+        Ok(Self { url })
+    }
+}
+
 impl FromStr for Pinned {
     type Err = PinnedParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -260,7 +281,7 @@ impl FromStr for Pinned {
 
         // Parse the `repo` URL.
         let repo_str = s.split('?').next().ok_or(PinnedParseError::Url)?;
-        let repo = Url::parse(repo_str).map_err(|_| PinnedParseError::Url)?;
+        let repo = Url::from_str(repo_str).map_err(|_| PinnedParseError::Url)?;
         let s = &s[repo_str.len() + "?".len()..];
 
         // Parse the git reference and commit hash. This can be any of either:
@@ -403,6 +424,17 @@ where
         let _ = std::fs::remove_dir_all(&repo_dir);
     }
 
+    let config = git2::Config::open_default().unwrap();
+
+    // Init auth manager
+    let mut auth_handler = auth::AuthHandler::default_with_config(config);
+
+    // Setup remote callbacks
+    let mut callback = git2::RemoteCallbacks::new();
+    callback.credentials(move |url, username, allowed| {
+        auth_handler.handle_callback(url, username, allowed)
+    });
+
     // Initialise the repository.
     let repo = git2::Repository::init(&repo_dir)
         .map_err(|e| anyhow!("failed to init repo at \"{}\": {}", repo_dir.display(), e))?;
@@ -412,15 +444,18 @@ where
 
     // Fetch the refspecs.
     let mut fetch_opts = git2::FetchOptions::new();
+    fetch_opts.remote_callbacks(callback);
+
     if tags {
         fetch_opts.download_tags(git2::AutotagOption::All);
     }
-    repo.remote_anonymous(source.repo.as_str())?
+    let repo_url_string = source.repo.to_string();
+    repo.remote_anonymous(&repo_url_string)?
         .fetch(&refspecs, Some(&mut fetch_opts), None)
         .with_context(|| {
             format!(
                 "failed to fetch `{}`. Check your connection or run in `--offline` mode",
-                &source.repo
+                &repo_url_string
             )
         })?;
 
@@ -659,35 +694,35 @@ fn test_source_git_pinned_parsing() {
     let expected = [
         Pinned {
             source: Source {
-                repo: Url::parse("https://github.com/foo/bar").unwrap(),
+                repo: Url::from_str("https://github.com/foo/bar").unwrap(),
                 reference: Reference::Branch("baz".to_string()),
             },
             commit_hash: "64092602dd6158f3e41d775ed889389440a2cd86".to_string(),
         },
         Pinned {
             source: Source {
-                repo: Url::parse("https://github.com/fuellabs/sway-lib-std").unwrap(),
+                repo: Url::from_str("https://github.com/fuellabs/sway-lib-std").unwrap(),
                 reference: Reference::Tag("v0.1.0".to_string()),
             },
             commit_hash: "0000000000000000000000000000000000000000".to_string(),
         },
         Pinned {
             source: Source {
-                repo: Url::parse("https://github.com/fuellabs/sway-lib-core").unwrap(),
+                repo: Url::from_str("https://github.com/fuellabs/sway-lib-core").unwrap(),
                 reference: Reference::Tag("v0.0.1".to_string()),
             },
             commit_hash: "0000000000000000000000000000000000000000".to_string(),
         },
         Pinned {
             source: Source {
-                repo: Url::parse("https://some-git-host.com/owner/repo").unwrap(),
+                repo: Url::from_str("https://some-git-host.com/owner/repo").unwrap(),
                 reference: Reference::Rev("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF".to_string()),
             },
             commit_hash: "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF".to_string(),
         },
         Pinned {
             source: Source {
-                repo: Url::parse("https://some-git-host.com/owner/repo").unwrap(),
+                repo: Url::from_str("https://some-git-host.com/owner/repo").unwrap(),
                 reference: Reference::DefaultBranch,
             },
             commit_hash: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".to_string(),
