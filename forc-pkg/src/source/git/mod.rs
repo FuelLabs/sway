@@ -24,7 +24,7 @@ pub struct Url {
 pub struct Source {
     /// The URL at which the repository is located.
     pub repo: Url,
-    // A git reference, e.g. a branch or tag.
+    /// A git reference, e.g. a branch or tag.
     pub reference: Reference,
 }
 
