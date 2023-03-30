@@ -5,6 +5,7 @@ use crate::{
     language::{parsed, ty::*, Purity},
     semantic_analysis::storage_only_types,
     type_system::*,
+    types::*,
     Engines,
 };
 
@@ -15,8 +16,8 @@ use sway_types::*;
 pub struct TyProgram {
     pub kind: TyProgramKind,
     pub root: TyModule,
-    pub declarations: Vec<TyDeclaration>,
-    pub configurables: Vec<TyConstantDeclaration>,
+    pub declarations: Vec<TyDecl>,
+    pub configurables: Vec<TyConstantDecl>,
     pub storage_slots: Vec<StorageSlot>,
     pub logged_types: Vec<(LogId, TypeId)>,
     pub messages_types: Vec<(MessageId, TypeId)>,
@@ -29,11 +30,7 @@ impl TyProgram {
         root: &TyModule,
         kind: parsed::TreeType,
         package_name: &str,
-    ) -> CompileResult<(
-        TyProgramKind,
-        Vec<TyDeclaration>,
-        Vec<TyConstantDeclaration>,
-    )> {
+    ) -> CompileResult<(TyProgramKind, Vec<TyDecl>, Vec<TyConstantDecl>)> {
         // Extract program-kind-specific properties from the root nodes.
         let mut errors = vec![];
         let mut warnings = vec![];
@@ -42,7 +39,7 @@ impl TyProgram {
         let decl_engine = engines.de();
 
         // Validate all submodules
-        let mut configurables = Vec::<TyConstantDeclaration>::new();
+        let mut configurables = Vec::<TyConstantDecl>::new();
         for (_, submodule) in &root.submodules {
             check!(
                 Self::validate_root(
@@ -58,15 +55,15 @@ impl TyProgram {
         }
 
         let mut mains = Vec::new();
-        let mut declarations = Vec::<TyDeclaration>::new();
+        let mut declarations = Vec::<TyDecl>::new();
         let mut abi_entries = Vec::new();
         let mut fn_declarations = std::collections::HashSet::new();
         for node in &root.all_nodes {
             match &node.content {
-                TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration {
+                TyAstNodeContent::Declaration(TyDecl::FunctionDecl {
                     name,
                     decl_id,
-                    type_subst_list,
+                    subst_list,
                     decl_span,
                 }) => {
                     let func = decl_engine.get_function(decl_id);
@@ -82,17 +79,14 @@ impl TyProgram {
                         });
                     }
 
-                    declarations.push(TyDeclaration::FunctionDeclaration {
+                    declarations.push(TyDecl::FunctionDecl {
                         name: name.clone(),
                         decl_id: *decl_id,
-                        type_subst_list: type_subst_list.clone(),
+                        subst_list: subst_list.clone(),
                         decl_span: decl_span.clone(),
                     });
                 }
-                TyAstNodeContent::Declaration(TyDeclaration::ConstantDeclaration {
-                    decl_id,
-                    ..
-                }) => {
+                TyAstNodeContent::Declaration(TyDecl::ConstantDecl { decl_id, .. }) => {
                     let config_decl = decl_engine.get_constant(decl_id);
                     if config_decl.is_configurable {
                         configurables.push(config_decl);
@@ -101,7 +95,7 @@ impl TyProgram {
                 // ABI entries are all functions declared in impl_traits on the contract type
                 // itself, except for ABI supertraits, which do not expose their methods to
                 // the user
-                TyAstNodeContent::Declaration(TyDeclaration::ImplTrait { decl_id, .. }) => {
+                TyAstNodeContent::Declaration(TyDecl::ImplTrait { decl_id, .. }) => {
                     let TyImplTrait {
                         items,
                         implementing_for,
@@ -118,6 +112,14 @@ impl TyProgram {
                                         TyImplItem::Fn(method_ref) => {
                                             let method = decl_engine.get_function(&method_ref);
                                             abi_entries.push(method);
+                                        }
+                                        TyImplItem::Constant(const_ref) => {
+                                            let const_decl = decl_engine.get_constant(&const_ref);
+                                            declarations.push(TyDecl::ConstantDecl {
+                                                name: const_decl.name().clone(),
+                                                decl_id: *const_ref.id(),
+                                                decl_span: const_decl.span,
+                                            });
                                         }
                                     }
                                 }
@@ -159,9 +161,9 @@ impl TyProgram {
             // `storage` declarations are not allowed in non-contracts
             let storage_decl = declarations
                 .iter()
-                .find(|decl| matches!(decl, TyDeclaration::StorageDeclaration { .. }));
+                .find(|decl| matches!(decl, TyDecl::StorageDecl { .. }));
 
-            if let Some(TyDeclaration::StorageDeclaration { decl_span, .. }) = storage_decl {
+            if let Some(TyDecl::StorageDecl { decl_span, .. }) = storage_decl {
                 errors.push(CompileError::StorageDeclarationInNonContract {
                     program_kind: format!("{kind}"),
                     span: decl_span.clone(),
@@ -174,26 +176,25 @@ impl TyProgram {
             parsed::TreeType::Contract => {
                 // Types containing raw_ptr are not allowed in storage (e.g Vec)
                 for decl in declarations.iter() {
-                    if let TyDeclaration::StorageDeclaration {
+                    if let TyDecl::StorageDecl {
                         decl_id,
                         decl_span: _,
                     } = decl
                     {
                         let storage_decl = decl_engine.get_storage(decl_id);
                         for field in storage_decl.fields.iter() {
-                            let type_info = ty_engine.get(field.type_argument.type_id);
-                            let type_info_str = engines.help_out(&type_info).to_string();
-                            let raw_ptr_type = type_info
-                                .extract_nested_types(engines, &field.span)
-                                .value
-                                .and_then(|value| {
-                                    value
-                                        .into_iter()
-                                        .find(|ty| matches!(ty, TypeInfo::RawUntypedPtr))
-                                });
-                            if raw_ptr_type.is_some() {
+                            if !field
+                                .type_argument
+                                .type_id
+                                .extract_any_including_self(engines, &|type_info| {
+                                    matches!(type_info, TypeInfo::RawUntypedPtr)
+                                })
+                                .is_empty()
+                            {
                                 errors.push(CompileError::TypeNotAllowedInContractStorage {
-                                    ty: type_info_str,
+                                    ty: engines
+                                        .help_out(&ty_engine.get(field.type_argument.type_id))
+                                        .to_string(),
                                     span: field.span.clone(),
                                 });
                             }
@@ -252,27 +253,24 @@ impl TyProgram {
                 // Directly returning a `raw_slice` is allowed, which will be just mapped to a RETD.
                 // TODO: Allow returning nested `raw_slice`s when our spec supports encoding DSTs.
                 let main_func = mains.remove(0);
-                let main_return_type_info = ty_engine.get(main_func.return_type.type_id);
-                let nested_types = check!(
-                    main_return_type_info
-                        .clone()
-                        .extract_nested_types(engines, &main_func.return_type.span),
-                    vec![],
-                    warnings,
-                    errors
-                );
-                if nested_types
-                    .iter()
-                    .any(|ty| matches!(ty, TypeInfo::RawUntypedPtr))
+                if !main_func
+                    .return_type
+                    .type_id
+                    .extract_any_including_self(engines, &|type_info| {
+                        matches!(type_info, TypeInfo::RawUntypedPtr)
+                    })
+                    .is_empty()
                 {
                     errors.push(CompileError::PointerReturnNotAllowedInMain {
                         span: main_func.return_type.span.clone(),
                     });
                 }
-                if !matches!(main_return_type_info, TypeInfo::RawUntypedSlice)
-                    && nested_types
-                        .iter()
-                        .any(|ty| matches!(ty, TypeInfo::RawUntypedSlice))
+                if !ty_engine
+                    .get(main_func.return_type.type_id)
+                    .extract_any(engines, &|type_info| {
+                        matches!(type_info, TypeInfo::RawUntypedSlice)
+                    })
+                    .is_empty()
                 {
                     errors.push(CompileError::NestedSliceReturnNotAllowedInMain {
                         span: main_func.return_type.span.clone(),
@@ -309,7 +307,7 @@ impl TyProgram {
     pub fn test_fns<'a: 'b, 'b>(
         &'b self,
         decl_engine: &'a DeclEngine,
-    ) -> impl '_ + Iterator<Item = (TyFunctionDeclaration, DeclRefFunction)> {
+    ) -> impl '_ + Iterator<Item = (TyFunctionDecl, DeclRefFunction)> {
         self.root
             .submodules_recursive()
             .flat_map(|(_, submod)| submod.module.test_fns(decl_engine))
@@ -418,18 +416,10 @@ impl CollectTypesMetadata for TyProgram {
 
 #[derive(Clone, Debug)]
 pub enum TyProgramKind {
-    Contract {
-        abi_entries: Vec<TyFunctionDeclaration>,
-    },
-    Library {
-        name: String,
-    },
-    Predicate {
-        main_function: TyFunctionDeclaration,
-    },
-    Script {
-        main_function: TyFunctionDeclaration,
-    },
+    Contract { abi_entries: Vec<TyFunctionDecl> },
+    Library { name: String },
+    Predicate { main_function: TyFunctionDecl },
+    Script { main_function: TyFunctionDecl },
 }
 
 impl TyProgramKind {
@@ -455,21 +445,19 @@ impl TyProgramKind {
 
 fn disallow_impure_functions(
     decl_engine: &DeclEngine,
-    declarations: &[TyDeclaration],
-    mains: &[TyFunctionDeclaration],
+    declarations: &[TyDecl],
+    mains: &[TyFunctionDecl],
 ) -> Vec<CompileError> {
     let mut errs: Vec<CompileError> = vec![];
     let fn_decls = declarations
         .iter()
         .filter_map(|decl| match decl {
-            TyDeclaration::FunctionDeclaration { decl_id, .. } => {
-                Some(decl_engine.get_function(decl_id))
-            }
+            TyDecl::FunctionDecl { decl_id, .. } => Some(decl_engine.get_function(decl_id)),
             _ => None,
         })
         .chain(mains.to_owned());
     let mut err_purity = fn_decls
-        .filter_map(|TyFunctionDeclaration { purity, name, .. }| {
+        .filter_map(|TyFunctionDecl { purity, name, .. }| {
             if purity != Purity::Pure {
                 Some(CompileError::ImpureInNonContract { span: name.span() })
             } else {

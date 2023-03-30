@@ -14,9 +14,8 @@ use crate::{
         *,
     },
     metadata::MetadataManager,
-    type_system::{LogId, MessageId, TypeId, TypeInfo},
-    types::DeterministicallyAborts,
-    TypeEngine,
+    type_system::*,
+    types::*,
 };
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::error::{CompileError, Hint};
@@ -136,33 +135,27 @@ impl<'eng> FnCompiler<'eng> {
         let span_md_idx = md_mgr.span_to_md(context, &ast_node.span);
         match &ast_node.content {
             ty::TyAstNodeContent::Declaration(td) => match td {
-                ty::TyDeclaration::VariableDeclaration(tvd) => {
+                ty::TyDecl::VariableDecl(tvd) => {
                     self.compile_var_decl(context, md_mgr, tvd, span_md_idx)
                 }
-                ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
+                ty::TyDecl::ConstantDecl { decl_id, .. } => {
                     let tcd = self.decl_engine.get_constant(decl_id);
                     self.compile_const_decl(context, md_mgr, tcd, span_md_idx)?;
                     Ok(None)
                 }
-                ty::TyDeclaration::FunctionDeclaration { .. } => {
-                    Err(CompileError::UnexpectedDeclaration {
-                        decl_type: "function",
-                        span: ast_node.span.clone(),
-                    })
-                }
-                ty::TyDeclaration::TraitDeclaration { .. } => {
-                    Err(CompileError::UnexpectedDeclaration {
-                        decl_type: "trait",
-                        span: ast_node.span.clone(),
-                    })
-                }
-                ty::TyDeclaration::StructDeclaration { .. } => {
-                    Err(CompileError::UnexpectedDeclaration {
-                        decl_type: "struct",
-                        span: ast_node.span.clone(),
-                    })
-                }
-                ty::TyDeclaration::EnumDeclaration { decl_id, .. } => {
+                ty::TyDecl::FunctionDecl { .. } => Err(CompileError::UnexpectedDeclaration {
+                    decl_type: "function",
+                    span: ast_node.span.clone(),
+                }),
+                ty::TyDecl::TraitDecl { .. } => Err(CompileError::UnexpectedDeclaration {
+                    decl_type: "trait",
+                    span: ast_node.span.clone(),
+                }),
+                ty::TyDecl::StructDecl { .. } => Err(CompileError::UnexpectedDeclaration {
+                    decl_type: "struct",
+                    span: ast_node.span.clone(),
+                }),
+                ty::TyDecl::EnumDecl { decl_id, .. } => {
                     let ted = self.decl_engine.get_enum(decl_id);
                     create_enum_aggregate(
                         self.type_engine,
@@ -173,7 +166,7 @@ impl<'eng> FnCompiler<'eng> {
                     .map(|_| ())?;
                     Ok(None)
                 }
-                ty::TyDeclaration::ImplTrait { .. } => {
+                ty::TyDecl::ImplTrait { .. } => {
                     // XXX What if we ignore the trait implementation???  Potentially since
                     // we currently inline everything and below we 'recreate' the functions
                     // lazily as they are called, nothing needs to be done here.  BUT!
@@ -181,30 +174,28 @@ impl<'eng> FnCompiler<'eng> {
                     // compile and then call these properly.
                     Ok(None)
                 }
-                ty::TyDeclaration::AbiDeclaration { .. } => {
+                ty::TyDecl::AbiDecl { .. } => Err(CompileError::UnexpectedDeclaration {
+                    decl_type: "abi",
+                    span: ast_node.span.clone(),
+                }),
+                ty::TyDecl::GenericTypeForFunctionScope { .. } => {
                     Err(CompileError::UnexpectedDeclaration {
                         decl_type: "abi",
                         span: ast_node.span.clone(),
                     })
                 }
-                ty::TyDeclaration::GenericTypeForFunctionScope { .. } => {
-                    Err(CompileError::UnexpectedDeclaration {
-                        decl_type: "abi",
-                        span: ast_node.span.clone(),
-                    })
-                }
-                ty::TyDeclaration::ErrorRecovery { .. } => {
-                    Err(CompileError::UnexpectedDeclaration {
-                        decl_type: "error recovery",
-                        span: ast_node.span.clone(),
-                    })
-                }
-                ty::TyDeclaration::StorageDeclaration { .. } => {
-                    Err(CompileError::UnexpectedDeclaration {
-                        decl_type: "storage",
-                        span: ast_node.span.clone(),
-                    })
-                }
+                ty::TyDecl::ErrorRecovery { .. } => Err(CompileError::UnexpectedDeclaration {
+                    decl_type: "error recovery",
+                    span: ast_node.span.clone(),
+                }),
+                ty::TyDecl::StorageDecl { .. } => Err(CompileError::UnexpectedDeclaration {
+                    decl_type: "storage",
+                    span: ast_node.span.clone(),
+                }),
+                ty::TyDecl::TypeAliasDecl { .. } => Err(CompileError::UnexpectedDeclaration {
+                    decl_type: "type alias",
+                    span: ast_node.span.clone(),
+                }),
             },
             ty::TyAstNodeContent::Expression(te) => {
                 // An expression with an ignored return value... I assume.
@@ -239,7 +230,7 @@ impl<'eng> FnCompiler<'eng> {
                 call_path: name,
                 contract_call_params,
                 arguments,
-                function_decl_ref,
+                fn_ref,
                 self_state_idx,
                 selector,
                 type_binding: _,
@@ -256,7 +247,7 @@ impl<'eng> FnCompiler<'eng> {
                         span_md_idx,
                     )
                 } else {
-                    let function_decl = self.decl_engine.get_function(function_decl_ref);
+                    let function_decl = self.decl_engine.get_function(fn_ref);
                     self.compile_fn_call(
                         context,
                         md_mgr,
@@ -336,11 +327,14 @@ impl<'eng> FnCompiler<'eng> {
                 )
             }
             ty::TyExpressionVariant::EnumInstantiation {
-                enum_decl,
+                enum_ref,
                 tag,
                 contents,
                 ..
-            } => self.compile_enum_expr(context, md_mgr, enum_decl, *tag, contents.as_deref()),
+            } => {
+                let enum_decl = self.decl_engine.get_enum(enum_ref);
+                self.compile_enum_expr(context, md_mgr, &enum_decl, *tag, contents.as_deref())
+            }
             ty::TyExpressionVariant::Tuple { fields } => {
                 self.compile_tuple_expr(context, md_mgr, fields, span_md_idx)
             }
@@ -1268,7 +1262,7 @@ impl<'eng> FnCompiler<'eng> {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         ast_args: &[(Ident, ty::TyExpression)],
-        callee: &ty::TyFunctionDeclaration,
+        callee: &ty::TyFunctionDecl,
         self_state_idx: Option<StateIndex>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
@@ -1301,7 +1295,7 @@ impl<'eng> FnCompiler<'eng> {
         let new_callee = match self.recreated_fns.get(&fn_key).copied() {
             Some(func) => func,
             None => {
-                let callee_fn_decl = ty::TyFunctionDeclaration {
+                let callee_fn_decl = ty::TyFunctionDecl {
                     type_parameters: Vec::new(),
                     name: Ident::new(Span::from_string(format!(
                         "{}_{}",
@@ -1692,10 +1686,10 @@ impl<'eng> FnCompiler<'eng> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_var_decl: &ty::TyVariableDeclaration,
+        ast_var_decl: &ty::TyVariableDecl,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Option<Value>, CompileError> {
-        let ty::TyVariableDeclaration { name, body, .. } = ast_var_decl;
+        let ty::TyVariableDecl { name, body, .. } = ast_var_decl;
         // Nothing to do for an abi cast declarations. The address specified in them is already
         // provided in each contract call node in the AST.
         if matches!(
@@ -1753,13 +1747,13 @@ impl<'eng> FnCompiler<'eng> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_const_decl: ty::TyConstantDeclaration,
+        ast_const_decl: ty::TyConstantDecl,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<(), CompileError> {
         // This is local to the function, so we add it to the locals, rather than the module
         // globals like other const decls.
         // `is_configurable` should be `false` here.
-        let ty::TyConstantDeclaration {
+        let ty::TyConstantDecl {
             call_path,
             value,
             is_configurable,
@@ -2251,7 +2245,7 @@ impl<'eng> FnCompiler<'eng> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        enum_decl: &ty::TyEnumDeclaration,
+        enum_decl: &ty::TyEnumDecl,
         tag: usize,
         contents: Option<&ty::TyExpression>,
     ) -> Result<Value, CompileError> {

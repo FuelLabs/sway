@@ -14,7 +14,7 @@ fn main() -> u64 {
         x: 3,
         y: 4,
     };
-    let b = match a {
+    let _b = match a {
         Point { x: 3, y } => { y },
         Point { x: 3, y: 4 } => { 24 },
         _ => { 24 },
@@ -25,7 +25,7 @@ fn main() -> u64 {
     };
     let d = match c {
         Data { value: false } => { 0 },
-        Data { value } => { 4 },
+        Data { value: _ } => { 4 },
     };
 
     d

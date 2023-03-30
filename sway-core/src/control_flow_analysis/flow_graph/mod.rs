@@ -17,6 +17,8 @@ use petgraph::{graph::EdgeIndex, prelude::NodeIndex};
 mod namespace;
 use namespace::ControlFlowNamespace;
 pub(crate) use namespace::FunctionNamespaceEntry;
+pub(crate) use namespace::TraitNamespaceEntry;
+pub(crate) use namespace::VariableNamespaceEntry;
 
 pub type EntryPoint = NodeIndex;
 pub type ExitPoint = NodeIndex;
@@ -60,7 +62,7 @@ pub enum ControlFlowGraphNode<'cfg> {
         parent_node: Option<NodeIndex>,
     },
     EnumVariant {
-        enum_decl_id: DeclId<ty::TyEnumDeclaration>,
+        enum_decl_id: DeclId<ty::TyEnumDecl>,
         variant_name: Ident,
         is_public: bool,
     },
@@ -71,7 +73,7 @@ pub enum ControlFlowGraphNode<'cfg> {
         engines: Engines<'cfg>,
     },
     StructField {
-        struct_decl_id: DeclId<ty::TyStructDeclaration>,
+        struct_decl_id: DeclId<ty::TyStructDecl>,
         struct_field_name: Ident,
         attributes: transform::AttributesMap,
         span: Span,
@@ -212,7 +214,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
 
 impl<'cfg> ControlFlowGraphNode<'cfg> {
     pub(crate) fn from_enum_variant(
-        enum_decl_id: DeclId<ty::TyEnumDeclaration>,
+        enum_decl_id: DeclId<ty::TyEnumDecl>,
         other_name: BaseIdent,
         is_public: bool,
     ) -> ControlFlowGraphNode<'cfg> {

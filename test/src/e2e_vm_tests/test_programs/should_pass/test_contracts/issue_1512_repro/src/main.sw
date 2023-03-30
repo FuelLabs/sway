@@ -73,10 +73,10 @@ impl U128 {
         // If necessary, borrow and carry for lower subtraction
         if self.lower < other.lower {
             let max = 18446744073709551615;
-            let lower = max - (other.lower - self.lower - 1);
+            let _lower = max - (other.lower - self.lower - 1);
             upper = upper - 1;
         } else {
-            let lower = self.lower - other.lower;
+            let _lower = self.lower - other.lower;
         };
 
         // If upper component has underflowed, panic

@@ -6,6 +6,8 @@ fn foo(ref mut y: u64) {
 
 fn main() {
     let x = 1;
+
+    
     foo(x);
 
     foo(0);

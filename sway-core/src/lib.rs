@@ -14,6 +14,7 @@ pub mod decl_engine;
 pub mod ir_generation;
 pub mod language;
 mod metadata;
+mod monomorphize;
 pub mod semantic_analysis;
 pub mod source_map;
 pub mod transform;
@@ -39,6 +40,7 @@ use sway_ir::{
 };
 use sway_types::constants::DOC_COMMENT_ATTRIBUTE_NAME;
 use transform::{Attribute, AttributeArg, AttributeKind, AttributesMap};
+use types::*;
 
 pub use semantic_analysis::namespace::{self, Namespace};
 pub mod types;

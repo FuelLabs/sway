@@ -37,18 +37,18 @@ fn main() {
         second: "hi"
     };
 
-    let d = a.get_first();
-    let e = a.get_second();
-    let f = a.add();
+    let _d = a.get_first();
+    let _e = a.get_second();
+    let _f = a.add();
 
-    let g = b.get_first();
-    let h = b.get_second();
+    let _g = b.get_first();
+    let _h = b.get_second();
     // should fail
-    let i = b.add();
+    let _i = b.add();
 
     // should fail
-    let j = c.get_first();
-    let k = c.get_second();
+    let _j = c.get_first();
+    let _k = c.get_second();
     // should fail
-    let l = c.add();
+    let _l = c.add();
 }

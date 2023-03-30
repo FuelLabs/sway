@@ -3,27 +3,28 @@ use sway_types::Span;
 
 use crate::{
     decl_engine::*,
-    language::ty::{self, TyFunctionDeclaration},
+    language::ty::{self, TyFunctionDecl},
 };
 
 #[derive(Debug, Eq, PartialEq, Hash, Clone)]
 pub enum FunctionalDeclId {
     TraitFn(DeclId<ty::TyTraitFn>),
-    Function(DeclId<ty::TyFunctionDeclaration>),
+    Function(DeclId<ty::TyFunctionDecl>),
+    Constant(DeclId<ty::TyConstantDecl>),
 }
 
-impl From<DeclId<ty::TyFunctionDeclaration>> for FunctionalDeclId {
-    fn from(val: DeclId<ty::TyFunctionDeclaration>) -> Self {
+impl From<DeclId<ty::TyFunctionDecl>> for FunctionalDeclId {
+    fn from(val: DeclId<ty::TyFunctionDecl>) -> Self {
         Self::Function(val)
     }
 }
-impl From<&DeclId<ty::TyFunctionDeclaration>> for FunctionalDeclId {
-    fn from(val: &DeclId<ty::TyFunctionDeclaration>) -> Self {
+impl From<&DeclId<ty::TyFunctionDecl>> for FunctionalDeclId {
+    fn from(val: &DeclId<ty::TyFunctionDecl>) -> Self {
         Self::Function(*val)
     }
 }
-impl From<&mut DeclId<ty::TyFunctionDeclaration>> for FunctionalDeclId {
-    fn from(val: &mut DeclId<ty::TyFunctionDeclaration>) -> Self {
+impl From<&mut DeclId<ty::TyFunctionDecl>> for FunctionalDeclId {
+    fn from(val: &mut DeclId<ty::TyFunctionDecl>) -> Self {
         Self::Function(*val)
     }
 }
@@ -44,6 +45,22 @@ impl From<&mut DeclId<ty::TyTraitFn>> for FunctionalDeclId {
     }
 }
 
+impl From<DeclId<ty::TyConstantDecl>> for FunctionalDeclId {
+    fn from(val: DeclId<ty::TyConstantDecl>) -> Self {
+        Self::Constant(val)
+    }
+}
+impl From<&DeclId<ty::TyConstantDecl>> for FunctionalDeclId {
+    fn from(val: &DeclId<ty::TyConstantDecl>) -> Self {
+        Self::Constant(*val)
+    }
+}
+impl From<&mut DeclId<ty::TyConstantDecl>> for FunctionalDeclId {
+    fn from(val: &mut DeclId<ty::TyConstantDecl>) -> Self {
+        Self::Constant(*val)
+    }
+}
+
 impl std::fmt::Display for FunctionalDeclId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -52,6 +69,9 @@ impl std::fmt::Display for FunctionalDeclId {
             }
             Self::Function(_) => {
                 write!(f, "decl(function)",)
+            }
+            Self::Constant(_) => {
+                write!(f, "decl(constant)",)
             }
         }
     }
@@ -70,6 +90,10 @@ impl TryFrom<DeclRefMixedFunctional> for DeclRefFunction {
                 actually: actually.to_string(),
                 span: value.decl_span().clone(),
             }),
+            actually @ FunctionalDeclId::Constant(_) => Err(CompileError::DeclIsNotAFunction {
+                actually: actually.to_string(),
+                span: value.decl_span().clone(),
+            }),
         }
     }
 }
@@ -80,7 +104,7 @@ impl TryFrom<&DeclRefMixedFunctional> for DeclRefFunction {
     }
 }
 
-impl TryFrom<FunctionalDeclId> for DeclId<TyFunctionDeclaration> {
+impl TryFrom<FunctionalDeclId> for DeclId<TyFunctionDecl> {
     type Error = CompileError;
     fn try_from(value: FunctionalDeclId) -> Result<Self, Self::Error> {
         match value {
@@ -89,10 +113,14 @@ impl TryFrom<FunctionalDeclId> for DeclId<TyFunctionDeclaration> {
                 actually: actually.to_string(),
                 span: Span::dummy(), // FIXME
             }),
+            actually @ FunctionalDeclId::Constant(_) => Err(CompileError::DeclIsNotAFunction {
+                actually: actually.to_string(),
+                span: Span::dummy(), // FIXME
+            }),
         }
     }
 }
-impl TryFrom<&FunctionalDeclId> for DeclId<TyFunctionDeclaration> {
+impl TryFrom<&FunctionalDeclId> for DeclId<TyFunctionDecl> {
     type Error = CompileError;
     fn try_from(value: &FunctionalDeclId) -> Result<Self, Self::Error> {
         value.clone().try_into()

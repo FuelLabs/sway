@@ -191,23 +191,6 @@
         ]
       },
       {
-        "message": "This declaration is never used.",
-        "range": {
-          "end": {
-            "character": 18,
-            "line": 35
-          },
-          "start": {
-            "character": 8,
-            "line": 35
-          }
-        },
-        "severity": 2,
-        "tags": [
-          1
-        ]
-      },
-      {
         "message": "This function is never called.",
         "range": {
           "end": {

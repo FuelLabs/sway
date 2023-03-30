@@ -1,6 +1,6 @@
 category = "fail"
 
-# check: let g: u32 = three_generics(true, "foo", 10);
+# check: let _g: u32 = three_generics(true, "foo", 10);
 # nextln: $()Mismatched types.
 # nextln: $()expected: u32
 # nextln: $()found:    str[3].

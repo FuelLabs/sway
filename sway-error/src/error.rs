@@ -71,6 +71,8 @@ pub enum CompileError {
     MultipleDefinitionsOfFunction { name: Ident, span: Span },
     #[error("Name \"{name}\" is defined multiple times.")]
     MultipleDefinitionsOfName { name: Ident, span: Span },
+    #[error("Constant \"{name}\" was already defined in scope.")]
+    MultipleDefinitionsOfConstant { name: Ident, span: Span },
     #[error("Assignment to immutable variable. Variable {name} is not declared as mutable.")]
     AssignmentToNonMutable { name: Ident, span: Span },
     #[error(
@@ -126,6 +128,17 @@ pub enum CompileError {
     FunctionNotAPartOfInterfaceSurface {
         name: Ident,
         interface_name: InterfaceName,
+        span: Span,
+    },
+    #[error("Constant \"{name}\" is not a part of {interface_name}'s interface surface.")]
+    ConstantNotAPartOfInterfaceSurface {
+        name: Ident,
+        interface_name: InterfaceName,
+        span: Span,
+    },
+    #[error("Constants are missing from this trait implementation: {missing_constants}")]
+    MissingInterfaceSurfaceConstants {
+        missing_constants: String,
         span: Span,
     },
     #[error("Functions are missing from this trait implementation: {missing_functions}")]
@@ -214,6 +227,8 @@ pub enum CompileError {
     DeclIsNotStorage { actually: String, span: Span },
     #[error("This is a {actually}, not a constant")]
     DeclIsNotAConstant { actually: String, span: Span },
+    #[error("This is a {actually}, not a type alias")]
+    DeclIsNotATypeAlias { actually: String, span: Span },
     #[error(
         "Field \"{field_name}\" not found on struct \"{struct_name}\". Available fields are:\n \
          {available_fields}"
@@ -567,10 +582,14 @@ pub enum CompileError {
     BreakOutsideLoop { span: Span },
     #[error("\"continue\" used outside of a loop")]
     ContinueOutsideLoop { span: Span },
-    #[error("Configuration-time constant value is not a constant item.")]
-    ConfigTimeConstantNotAConstDecl { span: Span },
-    #[error("Configuration-time constant value is not a literal.")]
-    ConfigTimeConstantNotALiteral { span: Span },
+    /// This will be removed once loading contract IDs in a dependency namespace is refactored and no longer manual:
+    /// https://github.com/FuelLabs/sway/issues/3077
+    #[error("Contract ID is not a constant item.")]
+    ContractIdConstantNotAConstDecl { span: Span },
+    /// This will be removed once loading contract IDs in a dependency namespace is refactored and no longer manual:
+    /// https://github.com/FuelLabs/sway/issues/3077
+    #[error("Contract ID value is not a literal.")]
+    ContractIdValueNotALiteral { span: Span },
     #[error("The type \"{ty}\" is not allowed in storage.")]
     TypeNotAllowedInContractStorage { ty: String, span: Span },
     #[error("ref mut parameter not allowed for main()")]
@@ -639,6 +658,7 @@ impl Spanned for CompileError {
             NoScriptMainFunction(span) => span.clone(),
             MultipleDefinitionsOfFunction { span, .. } => span.clone(),
             MultipleDefinitionsOfName { span, .. } => span.clone(),
+            MultipleDefinitionsOfConstant { span, .. } => span.clone(),
             AssignmentToNonMutable { span, .. } => span.clone(),
             MutableParameterNotSupported { span, .. } => span.clone(),
             ImmutableArgumentToMutableParameter { span } => span.clone(),
@@ -649,6 +669,8 @@ impl Spanned for CompileError {
             MismatchedTypeInInterfaceSurface { span, .. } => span.clone(),
             UnknownTrait { span, .. } => span.clone(),
             FunctionNotAPartOfInterfaceSurface { span, .. } => span.clone(),
+            ConstantNotAPartOfInterfaceSurface { span, .. } => span.clone(),
+            MissingInterfaceSurfaceConstants { span, .. } => span.clone(),
             MissingInterfaceSurfaceMethods { span, .. } => span.clone(),
             IncorrectNumberOfTypeArguments { span, .. } => span.clone(),
             DoesNotTakeTypeArguments { span, .. } => span.clone(),
@@ -736,6 +758,7 @@ impl Spanned for CompileError {
             DeclIsNotATraitFn { span, .. } => span.clone(),
             DeclIsNotStorage { span, .. } => span.clone(),
             DeclIsNotAConstant { span, .. } => span.clone(),
+            DeclIsNotATypeAlias { span, .. } => span.clone(),
             ImpureInNonContract { span, .. } => span.clone(),
             ImpureInPureContext { span, .. } => span.clone(),
             ParameterRefMutabilityMismatch { span, .. } => span.clone(),
@@ -766,8 +789,8 @@ impl Spanned for CompileError {
             IntrinsicIncorrectNumTArgs { span, .. } => span.clone(),
             BreakOutsideLoop { span } => span.clone(),
             ContinueOutsideLoop { span } => span.clone(),
-            ConfigTimeConstantNotAConstDecl { span } => span.clone(),
-            ConfigTimeConstantNotALiteral { span } => span.clone(),
+            ContractIdConstantNotAConstDecl { span } => span.clone(),
+            ContractIdValueNotALiteral { span } => span.clone(),
             TypeNotAllowedInContractStorage { span, .. } => span.clone(),
             RefMutableNotAllowedInMain { span, .. } => span.clone(),
             PointerReturnNotAllowedInMain { span } => span.clone(),

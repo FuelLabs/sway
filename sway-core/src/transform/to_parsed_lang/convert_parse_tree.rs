@@ -13,7 +13,7 @@ use sway_ast::{
     CommaToken, DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor,
     FnArg, FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition, IfExpr, Instruction,
     Intrinsic, Item, ItemAbi, ItemConfigurable, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemKind,
-    ItemStorage, ItemStruct, ItemTrait, ItemTraitItem, ItemUse, LitInt, LitIntType,
+    ItemStorage, ItemStruct, ItemTrait, ItemTraitItem, ItemTypeAlias, ItemUse, LitInt, LitIntType,
     MatchBranchKind, Module, ModuleKind, Parens, PathExpr, PathExprSegment, PathType,
     PathTypeSegment, Pattern, PatternStructField, PubToken, Punctuated, QualifiedPathRoot,
     Statement, StatementLet, Submodule, Traits, Ty, TypeField, UseTree, WhereClause,
@@ -205,6 +205,15 @@ fn item_to_ast_nodes(
         .into_iter()
         .map(|decl| AstNodeContent::Declaration(Declaration::ConstantDeclaration(decl)))
         .collect(),
+        ItemKind::TypeAlias(item_type_alias) => decl(Declaration::TypeAliasDeclaration(
+            item_type_alias_to_type_alias_declaration(
+                context,
+                handler,
+                engines,
+                item_type_alias,
+                attributes,
+            )?,
+        )),
     };
 
     Ok(contents
@@ -550,6 +559,10 @@ fn item_trait_to_trait_declaration(
                     fn_signature_to_trait_fn(context, handler, engines, fn_sig, attributes)
                         .map(TraitItem::TraitFn)
                 }
+                ItemTraitItem::Const(const_decl) => {
+                    item_const_to_const_decl(context, handler, engines, const_decl, attributes)
+                        .map(TraitItem::Constant)
+                }
             }
         })
         .collect::<Result<_, _>>()?;
@@ -605,6 +618,10 @@ fn item_impl_to_declaration(
                 sway_ast::ItemImplItem::Fn(fn_item) => {
                     item_fn_to_function_declaration(context, handler, engines, fn_item, attributes)
                         .map(ImplItem::Fn)
+                }
+                sway_ast::ItemImplItem::Const(const_item) => {
+                    item_const_to_const_decl(context, handler, engines, const_item, attributes)
+                        .map(ImplItem::Constant)
                 }
             }
         })
@@ -709,6 +726,10 @@ fn item_abi_to_abi_declaration(
                             )?;
                             Ok(TraitItem::TraitFn(trait_fn))
                         }
+                        ItemTraitItem::Const(const_decl) => item_const_to_const_decl(
+                            context, handler, engines, const_decl, attributes,
+                        )
+                        .map(TraitItem::Constant),
                     }
                 })
                 .collect::<Result<_, _>>()?
@@ -885,6 +906,23 @@ fn item_configurable_to_constant_declarations(
     context.set_module_has_configurable_block(true);
 
     Ok(declarations)
+}
+
+fn item_type_alias_to_type_alias_declaration(
+    context: &mut Context,
+    handler: &Handler,
+    engines: Engines<'_>,
+    item_type_alias: ItemTypeAlias,
+    attributes: AttributesMap,
+) -> Result<TypeAliasDeclaration, ErrorEmitted> {
+    let span = item_type_alias.span();
+    Ok(TypeAliasDeclaration {
+        name: item_type_alias.name.clone(),
+        attributes,
+        ty: ty_to_type_argument(context, handler, engines, item_type_alias.ty)?,
+        visibility: pub_token_opt_to_visibility(item_type_alias.visibility),
+        span,
+    })
 }
 
 fn type_field_to_struct_field(
@@ -1220,6 +1258,33 @@ fn ty_to_type_argument(
         span,
     };
     Ok(type_argument)
+}
+
+fn item_const_to_const_decl(
+    context: &mut Context,
+    handler: &Handler,
+    engines: Engines<'_>,
+    item: ItemConst,
+    attributes: AttributesMap,
+) -> Result<ConstantDeclaration, ErrorEmitted> {
+    let span = item.name.span();
+    let value = match item.expr_opt {
+        Some(expr) => Some(expr_to_expression(context, handler, engines, expr)?),
+        None => None,
+    };
+    let type_ascription = match item.ty_opt {
+        Some((_, ty)) => ty_to_type_argument(context, handler, engines, ty)?,
+        None => engines.te().insert(engines.de(), TypeInfo::Unknown).into(),
+    };
+    Ok(ConstantDeclaration {
+        name: item.name,
+        type_ascription,
+        value,
+        visibility: Visibility::Public,
+        is_configurable: true,
+        attributes,
+        span,
+    })
 }
 
 fn fn_signature_to_trait_fn(
@@ -3110,11 +3175,71 @@ fn statement_let_to_ast_nodes(
                     span: span.clone(),
                 });
 
+                // Acript a second declaration to a tuple of placeholders to check that the tuple
+                // is properly sized to the pattern
+                let placeholders_type_ascription = {
+                    let type_id = engines.te().insert(
+                        engines.de(),
+                        TypeInfo::Tuple(
+                            pat_tuple
+                                .clone()
+                                .into_inner()
+                                .into_iter()
+                                .map(|_| {
+                                    let initial_type_id =
+                                        engines.te().insert(engines.de(), TypeInfo::Unknown);
+                                    let dummy_type_param = TypeParameter {
+                                        type_id: initial_type_id,
+                                        initial_type_id,
+                                        name_ident: Ident::new_with_override(
+                                            "_".into(),
+                                            span.clone(),
+                                        ),
+                                        trait_constraints: vec![],
+                                        trait_constraints_span: Span::dummy(),
+                                    };
+                                    let initial_type_id = engines.te().insert(
+                                        engines.de(),
+                                        TypeInfo::Placeholder(dummy_type_param),
+                                    );
+                                    TypeArgument {
+                                        type_id: initial_type_id,
+                                        initial_type_id,
+                                        call_path_tree: None,
+                                        span: Span::dummy(),
+                                    }
+                                })
+                                .collect(),
+                        ),
+                    );
+                    TypeArgument {
+                        type_id,
+                        initial_type_id: type_id,
+                        span: tuple_name.span(),
+                        call_path_tree: None,
+                    }
+                };
+
                 // create a variable expression that points to the new tuple name that we just created
                 let new_expr = Expression {
-                    kind: ExpressionKind::Variable(tuple_name),
+                    kind: ExpressionKind::Variable(tuple_name.clone()),
                     span: span.clone(),
                 };
+
+                // Override the previous declaration with a tuple of placeholders to check the
+                // shape of the tuple
+                let check_tuple_shape_second = VariableDeclaration {
+                    name: tuple_name,
+                    type_ascription: placeholders_type_ascription,
+                    body: new_expr.clone(),
+                    is_mutable: false,
+                };
+                ast_nodes.push(AstNode {
+                    content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
+                        check_tuple_shape_second,
+                    )),
+                    span: span.clone(),
+                });
 
                 // from the possible type annotation, if the annotation was a tuple annotation,
                 // extract the internal types of the annotation

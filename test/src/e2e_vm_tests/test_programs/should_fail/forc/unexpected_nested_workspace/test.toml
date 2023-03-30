@@ -1,0 +1,3 @@
+category = "fail"
+
+# check: $()Unexpected nested workspace 'test_workspace'. Workspaces are currently only allowed in the project root.

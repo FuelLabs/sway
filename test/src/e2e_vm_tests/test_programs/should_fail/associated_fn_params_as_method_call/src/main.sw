@@ -8,6 +8,8 @@ impl Bar {
 
 fn main() -> u64 {
   let bar = Bar {};
+
+  
   bar.associated();
   0
 }

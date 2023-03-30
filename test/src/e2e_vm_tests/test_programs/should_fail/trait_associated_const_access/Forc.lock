@@ -1,0 +1,3 @@
+[[package]]
+name = 'trait_associated_const_access'
+source = 'member'

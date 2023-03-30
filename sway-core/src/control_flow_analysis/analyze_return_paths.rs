@@ -175,27 +175,28 @@ fn connect_node<'eng: 'cfg, 'cfg>(
 fn connect_declaration<'eng: 'cfg, 'cfg>(
     engines: Engines<'eng>,
     node: &ty::TyAstNode,
-    decl: &ty::TyDeclaration,
+    decl: &ty::TyDecl,
     graph: &mut ControlFlowGraph<'cfg>,
     leaves: &[NodeIndex],
 ) -> Result<Vec<NodeIndex>, CompileError> {
-    use ty::TyDeclaration::*;
+    use ty::TyDecl::*;
     let decl_engine = engines.de();
     match decl {
-        TraitDeclaration { .. }
-        | AbiDeclaration { .. }
-        | StructDeclaration { .. }
-        | EnumDeclaration { .. }
-        | StorageDeclaration { .. }
+        TraitDecl { .. }
+        | AbiDecl { .. }
+        | StructDecl { .. }
+        | EnumDecl { .. }
+        | StorageDecl { .. }
+        | TypeAliasDecl { .. }
         | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),
-        VariableDeclaration(_) | ConstantDeclaration { .. } => {
+        VariableDecl(_) | ConstantDecl { .. } => {
             let entry_node = graph.add_node(ControlFlowGraphNode::from_node(node));
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
             }
             Ok(vec![entry_node])
         }
-        FunctionDeclaration { decl_id, .. } => {
+        FunctionDecl { decl_id, .. } => {
             let fn_decl = decl_engine.get_function(decl_id);
             let entry_node = graph.add_node(ControlFlowGraphNode::from_node(node));
             for leaf in leaves {
@@ -251,6 +252,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
                 connect_typed_fn_decl(engines, &fn_decl, graph, fn_decl_entry_node)?;
                 methods_and_indexes.push((fn_decl.name.clone(), fn_decl_entry_node));
             }
+            TyImplItem::Constant(_const_decl) => {}
         }
     }
     // Now, insert the methods into the trait method namespace.
@@ -275,7 +277,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
 /// When something eventually calls it, it gets connected to the declaration.
 fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
     engines: Engines<'eng>,
-    fn_decl: &ty::TyFunctionDeclaration,
+    fn_decl: &ty::TyFunctionDecl,
     graph: &mut ControlFlowGraph<'cfg>,
     entry_node: NodeIndex,
 ) -> Result<(), CompileError> {

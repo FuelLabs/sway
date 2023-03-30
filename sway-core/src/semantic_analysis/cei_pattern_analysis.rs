@@ -11,7 +11,7 @@
 use crate::{
     decl_engine::*,
     language::{
-        ty::{self, TyFunctionDeclaration, TyImplTrait},
+        ty::{self, TyFunctionDecl, TyImplTrait},
         AsmOp,
     },
     Engines,
@@ -93,15 +93,15 @@ fn analyze_contract(engines: Engines<'_>, ast_nodes: &[ty::TyAstNode]) -> Vec<Co
 fn contract_entry_points(
     decl_engine: &DeclEngine,
     ast_nodes: &[ty::TyAstNode],
-) -> Vec<ty::TyFunctionDeclaration> {
+) -> Vec<ty::TyFunctionDecl> {
     use crate::ty::TyAstNodeContent::Declaration;
     ast_nodes
         .iter()
         .flat_map(|ast_node| match &ast_node.content {
-            Declaration(ty::TyDeclaration::FunctionDeclaration { decl_id, .. }) => {
+            Declaration(ty::TyDecl::FunctionDecl { decl_id, .. }) => {
                 decl_id_to_fn_decls(decl_engine, decl_id)
             }
-            Declaration(ty::TyDeclaration::ImplTrait { decl_id, .. }) => {
+            Declaration(ty::TyDecl::ImplTrait { decl_id, .. }) => {
                 impl_trait_methods(decl_engine, decl_id)
             }
             _ => vec![],
@@ -111,21 +111,22 @@ fn contract_entry_points(
 
 fn decl_id_to_fn_decls(
     decl_engine: &DeclEngine,
-    decl_id: &DeclId<TyFunctionDeclaration>,
-) -> Vec<TyFunctionDeclaration> {
+    decl_id: &DeclId<TyFunctionDecl>,
+) -> Vec<TyFunctionDecl> {
     vec![decl_engine.get_function(decl_id)]
 }
 
 fn impl_trait_methods(
     decl_engine: &DeclEngine,
     impl_trait_decl_id: &DeclId<TyImplTrait>,
-) -> Vec<ty::TyFunctionDeclaration> {
+) -> Vec<ty::TyFunctionDecl> {
     let impl_trait = decl_engine.get_impl_trait(impl_trait_decl_id);
     impl_trait
         .items
         .iter()
         .flat_map(|item| match item {
             ty::TyImplItem::Fn(fn_decl) => Some(fn_decl),
+            ty::TyImplItem::Constant(_) => None,
         })
         .flat_map(|fn_decl| decl_id_to_fn_decls(decl_engine, &fn_decl.id().clone()))
         .collect()
@@ -186,16 +187,14 @@ fn analyze_code_block_entry(
 
 fn analyze_codeblock_decl(
     engines: Engines<'_>,
-    decl: &ty::TyDeclaration,
+    decl: &ty::TyDecl,
     block_name: &Ident,
     warnings: &mut Vec<CompileWarning>,
 ) -> HashSet<Effect> {
     // Declarations (except variable declarations) are not allowed in a codeblock
-    use crate::ty::TyDeclaration::*;
+    use crate::ty::TyDecl::*;
     match decl {
-        VariableDeclaration(var_decl) => {
-            analyze_expression(engines, &var_decl.body, block_name, warnings)
-        }
+        VariableDecl(var_decl) => analyze_expression(engines, &var_decl.body, block_name, warnings),
         _ => HashSet::new(),
     }
 }
@@ -244,12 +243,12 @@ fn analyze_expression(
         } => analyze_two_expressions(engines, left, right, block_name, warnings),
         FunctionApplication {
             arguments,
-            function_decl_ref,
+            fn_ref,
             selector,
             call_path,
             ..
         } => {
-            let func = decl_engine.get_function(function_decl_ref);
+            let func = decl_engine.get_function(fn_ref);
             // we don't need to run full analysis on the function body as it will be covered
             // as a separate step of the whole contract analysis
             // we just need function's effects at this point
@@ -488,10 +487,10 @@ fn effects_of_codeblock_entry(engines: Engines<'_>, ast_node: &ty::TyAstNode) ->
     }
 }
 
-fn effects_of_codeblock_decl(engines: Engines<'_>, decl: &ty::TyDeclaration) -> HashSet<Effect> {
-    use crate::ty::TyDeclaration::*;
+fn effects_of_codeblock_decl(engines: Engines<'_>, decl: &ty::TyDecl) -> HashSet<Effect> {
+    use crate::ty::TyDecl::*;
     match decl {
-        VariableDeclaration(var_decl) => effects_of_expression(engines, &var_decl.body),
+        VariableDecl(var_decl) => effects_of_expression(engines, &var_decl.body),
         // Declarations (except variable declarations) are not allowed in the body of a function
         _ => HashSet::new(),
     }
@@ -582,12 +581,12 @@ fn effects_of_expression(engines: Engines<'_>, expr: &ty::TyExpression) -> HashS
             .cloned()
             .collect(),
         FunctionApplication {
-            function_decl_ref,
+            fn_ref,
             arguments,
             selector,
             ..
         } => {
-            let fn_body = decl_engine.get_function(function_decl_ref).body;
+            let fn_body = decl_engine.get_function(fn_ref).body;
             let mut effs = effects_of_codeblock(engines, &fn_body);
             let args_effs = map_hashsets_union(arguments, |e| effects_of_expression(engines, &e.1));
             effs.extend(args_effs);

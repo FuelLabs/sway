@@ -6,7 +6,7 @@ use crate::{
     },
 };
 use std::sync::Arc;
-use sway_core::{language::ty::TyDeclaration, type_system::TypeInfo, Engines};
+use sway_core::{language::ty::TyDecl, type_system::TypeInfo, Engines};
 use sway_types::Spanned;
 use tower_lsp::lsp_types::{self, Range, Url};
 
@@ -47,7 +47,7 @@ pub(crate) fn inlay_hints(
         .tokens_for_file(uri)
         .filter_map(|(_, token)| {
             token.typed.as_ref().and_then(|t| match t {
-                TypedAstToken::TypedDeclaration(TyDeclaration::VariableDeclaration(var_decl)) => {
+                TypedAstToken::TypedDeclaration(TyDecl::VariableDecl(var_decl)) => {
                     match var_decl.type_ascription.call_path_tree {
                         Some(_) => None,
                         None => {

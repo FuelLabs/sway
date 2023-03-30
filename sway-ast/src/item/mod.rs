@@ -9,6 +9,7 @@ pub mod item_impl;
 pub mod item_storage;
 pub mod item_struct;
 pub mod item_trait;
+pub mod item_type_alias;
 pub mod item_use;
 
 pub type Item = Annotated<ItemKind>;
@@ -36,6 +37,7 @@ pub enum ItemKind {
     Const(ItemConst),
     Storage(ItemStorage),
     Configurable(ItemConfigurable),
+    TypeAlias(ItemTypeAlias),
 }
 
 impl Spanned for ItemKind {
@@ -52,6 +54,7 @@ impl Spanned for ItemKind {
             ItemKind::Const(item_const) => item_const.span(),
             ItemKind::Storage(item_storage) => item_storage.span(),
             ItemKind::Configurable(item_configurable) => item_configurable.span(),
+            ItemKind::TypeAlias(item_type_alias) => item_type_alias.span(),
         }
     }
 }

@@ -1,13 +1,13 @@
 [package]
 name = "test-macros"
 version = "0.0.0"
-edition = "2021"
-authors = ["Fuel Labs <contact@fuel.sh>"]
-homepage = "https://fuel.network/"
-license = "Apache-2.0"
-repository = "https://github.com/FuelLabs/sway"
 description = "Macros for testing the Sway formatter."
 publish = false
+edition.workspace = true
+authors.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

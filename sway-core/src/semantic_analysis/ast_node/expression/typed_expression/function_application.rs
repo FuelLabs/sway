@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::{DeclEngineIndex, DeclRefFunction, ReplaceDecls},
+    decl_engine::{DeclEngineInsert, DeclRefFunction, ReplaceDecls},
     error::*,
     language::{ty, *},
     semantic_analysis::{ast_node::*, TypeCheckContext},
@@ -97,7 +97,7 @@ pub(crate) fn instantiate_function_application(
             call_path: call_path_binding.inner.clone(),
             contract_call_params: HashMap::new(),
             arguments: typed_arguments_with_names,
-            function_decl_ref: new_decl_ref,
+            fn_ref: new_decl_ref,
             self_state_idx: None,
             selector: None,
             type_binding: Some(call_path_binding.strip_inner()),
@@ -197,7 +197,7 @@ fn unify_arguments_and_parameters(
 
 pub(crate) fn check_function_arguments_arity(
     arguments_len: usize,
-    function_decl: &ty::TyFunctionDeclaration,
+    function_decl: &ty::TyFunctionDecl,
     call_path: &CallPath,
     is_method_call_syntax_used: bool,
 ) -> CompileResult<()> {

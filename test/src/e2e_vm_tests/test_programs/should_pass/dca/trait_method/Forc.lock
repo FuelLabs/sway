@@ -1,0 +1,8 @@
+[[package]]
+name = 'trait_method'
+source = 'member'
+dependencies = ['trait_method_lib']
+
+[[package]]
+name = 'trait_method_lib'
+source = 'path+from-root-BB9C49E98039D004'
