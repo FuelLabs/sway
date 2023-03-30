@@ -1,6 +1,6 @@
 use std::{collections::HashMap, path::Path, sync::Arc};
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use forc_pkg::{self as pkg, manifest::ManifestFile, BuildOpts, BuildPlan};
 use pkg::{build_with_options, BuiltPackage, PackageManifestFile};
 
@@ -50,5 +50,10 @@ pub(crate) fn built_pkgs_with_manifest(
             pkgs_with_manifest.push(BuiltPackageWithManifest(built_pkg, member_manifest));
         }
     }
+
+    if pkgs_with_manifest.is_empty() {
+        bail!("No built packages collected");
+    }
+
     Ok(pkgs_with_manifest)
 }
