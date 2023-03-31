@@ -28,21 +28,21 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::ty::{
-        self, TyAbiDeclaration, TyConstantDeclaration, TyEnumDeclaration, TyFunctionDeclaration,
-        TyImplTrait, TyStorageDeclaration, TyStructDeclaration, TyTraitDeclaration, TyTraitFn,
+        self, TyAbiDecl, TyConstantDecl, TyEnumDecl, TyFunctionDecl, TyImplTrait, TyStorageDecl,
+        TyStructDecl, TyTraitDecl, TyTraitFn,
     },
     type_system::*,
 };
 
-pub type DeclRefFunction = DeclRef<DeclId<TyFunctionDeclaration>>;
-pub type DeclRefTrait = DeclRef<DeclId<TyTraitDeclaration>>;
+pub type DeclRefFunction = DeclRef<DeclId<TyFunctionDecl>>;
+pub type DeclRefTrait = DeclRef<DeclId<TyTraitDecl>>;
 pub type DeclRefTraitFn = DeclRef<DeclId<TyTraitFn>>;
 pub type DeclRefImplTrait = DeclRef<DeclId<TyImplTrait>>;
-pub type DeclRefStruct = DeclRef<DeclId<TyStructDeclaration>>;
-pub type DeclRefStorage = DeclRef<DeclId<TyStorageDeclaration>>;
-pub type DeclRefAbi = DeclRef<DeclId<TyAbiDeclaration>>;
-pub type DeclRefConstant = DeclRef<DeclId<TyConstantDeclaration>>;
-pub type DeclRefEnum = DeclRef<DeclId<TyEnumDeclaration>>;
+pub type DeclRefStruct = DeclRef<DeclId<TyStructDecl>>;
+pub type DeclRefStorage = DeclRef<DeclId<TyStorageDecl>>;
+pub type DeclRefAbi = DeclRef<DeclId<TyAbiDecl>>;
+pub type DeclRefConstant = DeclRef<DeclId<TyConstantDecl>>;
+pub type DeclRefEnum = DeclRef<DeclId<TyEnumDecl>>;
 
 pub type DeclRefMixedFunctional = DeclRef<FunctionalDeclId>;
 pub type DeclRefMixedInterface = DeclRef<InterfaceDeclId>;
@@ -61,7 +61,7 @@ pub struct DeclRef<I> {
 
     /// The type substitution list to apply to the `id` field for type
     /// monomorphization.
-    subst_list: TypeSubstList,
+    subst_list: SubstList,
 
     /// The [Span] of the entire declaration.
     decl_span: Span,
@@ -72,7 +72,7 @@ impl<I> DeclRef<I> {
         DeclRef {
             name,
             id,
-            subst_list: TypeSubstList::new(),
+            subst_list: SubstList::new(),
             decl_span,
         }
     }
@@ -85,7 +85,7 @@ impl<I> DeclRef<I> {
         &self.id
     }
 
-    pub(crate) fn subst_list(&self) -> &TypeSubstList {
+    pub(crate) fn subst_list(&self) -> &SubstList {
         &self.subst_list
     }
 
@@ -111,7 +111,7 @@ where
         engines: Engines<'_>,
     ) -> Self {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self.id);
+        let mut decl = decl_engine.get(&self.id);
         decl.subst(type_mapping, engines);
         decl_engine.insert(decl)
     }
@@ -127,7 +127,7 @@ where
         self_type: TypeId,
     ) -> Self {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self.id);
+        let mut decl = decl_engine.get(&self.id);
         decl.replace_self_type(engines, self_type);
         decl_engine.insert(decl)
     }
@@ -156,7 +156,7 @@ where
         engines: Engines<'_>,
     ) -> Self {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self.id);
+        let mut decl = decl_engine.get(&self.id);
         decl.subst(type_mapping, engines);
         decl_engine
             .insert(decl)
@@ -175,7 +175,7 @@ where
         self_type: TypeId,
     ) -> Self {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self.id);
+        let mut decl = decl_engine.get(&self.id);
         decl.replace_self_type(engines, self_type);
         decl_engine
             .insert(decl)
@@ -194,7 +194,7 @@ where
         engines: Engines<'_>,
     ) -> Self {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self.id);
+        let mut decl = decl_engine.get(&self.id);
         decl.replace_decls(decl_mapping, engines);
         decl_engine
             .insert(decl)
@@ -233,7 +233,7 @@ where
             // temporarily omitted
             subst_list: _,
         } = other;
-        ln == rn && decl_engine.get(*lid).eq(&decl_engine.get(*rid), engines)
+        ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), engines)
     }
 }
 
@@ -254,7 +254,7 @@ where
             subst_list: _,
         } = self;
         name.hash(state);
-        decl_engine.get(*id).hash(state, engines);
+        decl_engine.get(id).hash(state, engines);
     }
 }
 
@@ -264,13 +264,13 @@ impl PartialEqWithEngines for DeclRefMixedInterface {
         let decl_engine = engines.de();
         match (&self.id, &other.id) {
             (InterfaceDeclId::Abi(self_id), InterfaceDeclId::Abi(other_id)) => {
-                let left = decl_engine.get(*self_id);
-                let right = decl_engine.get(*other_id);
+                let left = decl_engine.get(self_id);
+                let right = decl_engine.get(other_id);
                 self.name == other.name && left.eq(&right, engines)
             }
             (InterfaceDeclId::Trait(self_id), InterfaceDeclId::Trait(other_id)) => {
-                let left = decl_engine.get(*self_id);
-                let right = decl_engine.get(*other_id);
+                let left = decl_engine.get(self_id);
+                let right = decl_engine.get(other_id);
                 self.name == other.name && left.eq(&right, engines)
             }
             _ => false,
@@ -284,13 +284,13 @@ impl HashWithEngines for DeclRefMixedInterface {
             InterfaceDeclId::Abi(id) => {
                 state.write_u8(0);
                 let decl_engine = engines.de();
-                let decl = decl_engine.get(id);
+                let decl = decl_engine.get(&id);
                 decl.hash(state, engines);
             }
             InterfaceDeclId::Trait(id) => {
                 state.write_u8(1);
                 let decl_engine = engines.de();
-                let decl = decl_engine.get(id);
+                let decl = decl_engine.get(&id);
                 decl.hash(state, engines);
             }
         }
@@ -310,7 +310,7 @@ where
 {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self.id);
+        let mut decl = decl_engine.get(&self.id);
         decl.subst(type_mapping, engines);
         decl_engine.replace(self.id, decl);
     }
@@ -323,7 +323,7 @@ where
 {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self.id);
+        let mut decl = decl_engine.get(&self.id);
         decl.replace_self_type(engines, self_type);
         decl_engine.replace(self.id, decl);
     }
@@ -351,13 +351,9 @@ impl ReplaceDecls for DeclRefFunction {
 }
 
 impl ReplaceFunctionImplementingType for DeclRefFunction {
-    fn replace_implementing_type(
-        &mut self,
-        engines: Engines<'_>,
-        implementing_type: ty::TyDeclaration,
-    ) {
+    fn replace_implementing_type(&mut self, engines: Engines<'_>, implementing_type: ty::TyDecl) {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self.id);
+        let mut decl = decl_engine.get(&self.id);
         decl.set_implementing_type(implementing_type);
         decl_engine.replace(self.id, decl);
     }

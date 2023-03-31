@@ -159,8 +159,8 @@ impl<'a> Solver<'a> {
     fn helper_fn_call(
         &self,
         _handler: &Handler,
-        decl_id: DeclId<ty::TyFunctionDeclaration>,
-        subst_list: TypeSubstList,
+        decl_id: DeclId<ty::TyFunctionDecl>,
+        subst_list: SubstList,
         _arguments: Vec<TypeId>,
     ) -> Result<InstructionResult, ErrorEmitted> {
         let mut instructions = vec![];

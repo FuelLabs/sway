@@ -6,7 +6,7 @@ use crate::{
     error::*,
     language::{ty, CallPath},
     semantic_analysis::TypeCheckContext,
-    type_system::*,
+    type_system::priv_prelude::*,
     Ident,
 };
 
@@ -209,19 +209,197 @@ impl TypeBinding<CallPath> {
     pub(crate) fn strip_prefixes(&mut self) {
         self.inner.prefixes = vec![];
     }
+}
 
-    pub(crate) fn type_check_with_ident(
+/// Trait that adds a workaround for easy generic returns in Rust:
+/// https://blog.jcoglan.com/2019/04/22/generic-returns-in-rust/
+pub(crate) trait TypeCheckTypeBinding<T> {
+    fn type_check(
+        &mut self,
+        ctx: TypeCheckContext,
+    ) -> CompileResult<(DeclRef<DeclId<T>>, Option<TypeId>)>;
+}
+
+impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
+    fn type_check(
         &mut self,
         mut ctx: TypeCheckContext,
-    ) -> CompileResult<(ty::TyDeclaration, Option<TypeId>)> {
+    ) -> CompileResult<(DeclRef<DeclId<ty::TyFunctionDecl>>, Option<TypeId>)> {
         let mut warnings = vec![];
         let mut errors = vec![];
-
         let type_engine = ctx.type_engine;
         let decl_engine = ctx.decl_engine;
         let engines = ctx.engines();
+        // Grab the declaration.
+        let unknown_decl = check!(
+            ctx.namespace
+                .resolve_call_path_with_visibility_check(engines, &self.inner)
+                .cloned(),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        // Check to see if this is a fn declaration.
+        let fn_ref = check!(
+            unknown_decl.to_fn_ref(),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        // Get a new copy from the declaration engine.
+        let mut new_copy = decl_engine.get_function(fn_ref.id());
+        match self.type_arguments {
+            // Monomorphize the copy, in place.
+            TypeArgs::Regular(_) => {
+                check!(
+                    ctx.monomorphize(
+                        &mut new_copy,
+                        self.type_arguments.to_vec_mut(),
+                        EnforceTypeArguments::No,
+                        &self.span
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+            }
+            TypeArgs::Prefix(_) => {
+                // Resolve the type arguments without monomorphizing.
+                for type_argument in self.type_arguments.to_vec_mut().iter_mut() {
+                    check!(
+                        ctx.resolve_type_with_self(
+                            type_argument.type_id,
+                            &type_argument.span,
+                            EnforceTypeArguments::Yes,
+                            None
+                        ),
+                        type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+                        warnings,
+                        errors,
+                    );
+                }
+            }
+        }
+        // Insert the new copy into the declaration engine.
+        let new_fn_ref = ctx
+            .decl_engine
+            .insert(new_copy)
+            .with_parent(ctx.decl_engine, fn_ref.id().into());
+        ok((new_fn_ref, None), warnings, errors)
+    }
+}
 
-        // grab the declaration
+impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
+    fn type_check(
+        &mut self,
+        mut ctx: TypeCheckContext,
+    ) -> CompileResult<(DeclRef<DeclId<ty::TyStructDecl>>, Option<TypeId>)> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let type_engine = ctx.type_engine;
+        let decl_engine = ctx.decl_engine;
+        let engines = ctx.engines();
+        // Grab the declaration.
+        let unknown_decl = check!(
+            ctx.namespace
+                .resolve_call_path_with_visibility_check(engines, &self.inner)
+                .cloned(),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        // Check to see if this is a struct declaration.
+        let struct_ref = check!(
+            unknown_decl.to_struct_ref(engines),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        // Get a new copy from the declaration engine.
+        let mut new_copy = decl_engine.get_struct(struct_ref.id());
+        // Monomorphize the copy, in place.
+        check!(
+            ctx.monomorphize(
+                &mut new_copy,
+                self.type_arguments.to_vec_mut(),
+                EnforceTypeArguments::No,
+                &self.span
+            ),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        // Insert the new copy into the declaration engine.
+        let new_struct_ref = ctx.decl_engine.insert(new_copy);
+        // Take any trait items that apply to the old type and copy them to the new type.
+        let type_id = type_engine.insert(decl_engine, TypeInfo::Struct(new_struct_ref.clone()));
+        ctx.namespace
+            .insert_trait_implementation_for_type(engines, type_id);
+        ok((new_struct_ref, Some(type_id)), warnings, errors)
+    }
+}
+
+impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
+    fn type_check(
+        &mut self,
+        mut ctx: TypeCheckContext,
+    ) -> CompileResult<(DeclRef<DeclId<ty::TyEnumDecl>>, Option<TypeId>)> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let type_engine = ctx.type_engine;
+        let decl_engine = ctx.decl_engine;
+        let engines = ctx.engines();
+        // Grab the declaration.
+        let unknown_decl = check!(
+            ctx.namespace
+                .resolve_call_path_with_visibility_check(engines, &self.inner)
+                .cloned(),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        // Check to see if this is a enum declaration.
+        let enum_ref = check!(
+            unknown_decl.to_enum_ref(engines),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        // Get a new copy from the declaration engine.
+        let mut new_copy = decl_engine.get_enum(enum_ref.id());
+        // Monomorphize the copy, in place.
+        check!(
+            ctx.monomorphize(
+                &mut new_copy,
+                self.type_arguments.to_vec_mut(),
+                EnforceTypeArguments::No,
+                &self.span
+            ),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        // Insert the new copy into the declaration engine.
+        let new_enum_ref = ctx.decl_engine.insert(new_copy);
+        // Take any trait items that apply to the old type and copy them to the new type.
+        let type_id = type_engine.insert(decl_engine, TypeInfo::Enum(new_enum_ref.clone()));
+        ctx.namespace
+            .insert_trait_implementation_for_type(engines, type_id);
+        ok((new_enum_ref, Some(type_id)), warnings, errors)
+    }
+}
+
+impl TypeCheckTypeBinding<ty::TyConstantDecl> for TypeBinding<CallPath> {
+    fn type_check(
+        &mut self,
+        ctx: TypeCheckContext,
+    ) -> CompileResult<(DeclRef<DeclId<ty::TyConstantDecl>>, Option<TypeId>)> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        let engines = ctx.engines();
+
+        // Grab the declaration.
         let unknown_decl = check!(
             ctx.namespace
                 .resolve_call_path_with_visibility_check(engines, &self.inner)
@@ -231,123 +409,14 @@ impl TypeBinding<CallPath> {
             errors
         );
 
-        // replace the self types inside of the type arguments
-        for type_argument in self.type_arguments.to_vec_mut().iter_mut() {
-            check!(
-                ctx.resolve_type_with_self(
-                    type_argument.type_id,
-                    &type_argument.span,
-                    EnforceTypeArguments::Yes,
-                    None
-                ),
-                type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
-                warnings,
-                errors,
-            );
-        }
+        // Check to see if this is a const declaration.
+        let const_ref = check!(
+            unknown_decl.to_const_ref(),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
-        if !errors.is_empty() {
-            // Returns ok with error, this allows functions which call this to
-            // also access the returned TyDeclaration and throw more suitable errors.
-            return ok((unknown_decl, None), warnings, errors);
-        }
-
-        // monomorphize the declaration, if needed
-        let (new_decl, new_type_id) = match unknown_decl {
-            ty::TyDeclaration::FunctionDeclaration {
-                decl_id: original_id,
-                ..
-            } => {
-                // get the copy from the declaration engine
-                let mut new_copy = decl_engine.get_function(&original_id);
-
-                // monomorphize the copy, in place
-                if let TypeArgs::Regular(_) = self.type_arguments {
-                    check!(
-                        ctx.monomorphize(
-                            &mut new_copy,
-                            self.type_arguments.to_vec_mut(),
-                            EnforceTypeArguments::No,
-                            &self.span
-                        ),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                }
-
-                // insert the new copy into the declaration engine
-                let new_decl_ref = ctx
-                    .decl_engine
-                    .insert(new_copy)
-                    .with_parent(ctx.decl_engine, original_id.into());
-
-                (new_decl_ref.into(), None)
-            }
-            ty::TyDeclaration::EnumDeclaration {
-                decl_id: original_id,
-                ..
-            } => {
-                // get the copy from the declaration engine
-                let mut new_copy = decl_engine.get_enum(&original_id);
-
-                // monomorphize the copy, in place
-                check!(
-                    ctx.monomorphize(
-                        &mut new_copy,
-                        self.type_arguments.to_vec_mut(),
-                        EnforceTypeArguments::No,
-                        &self.span
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-
-                // insert the new copy into the declaration engine
-                let new_decl_ref = ctx.decl_engine.insert(new_copy);
-
-                let type_id = type_engine.insert(decl_engine, TypeInfo::Enum(new_decl_ref.clone()));
-                // take any trait methods that apply to this type and copy them to the new type
-                ctx.namespace
-                    .insert_trait_implementation_for_type(engines, type_id);
-
-                (new_decl_ref.into(), Some(type_id))
-            }
-            ty::TyDeclaration::StructDeclaration {
-                decl_id: original_id,
-                ..
-            } => {
-                // get the copy from the declaration engine
-                let mut new_copy = decl_engine.get_struct(&original_id);
-
-                // monomorphize the copy, in place
-                check!(
-                    ctx.monomorphize(
-                        &mut new_copy,
-                        self.type_arguments.to_vec_mut(),
-                        EnforceTypeArguments::No,
-                        &self.span
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-
-                // insert the new copy into the declaration engine
-                let new_decl_ref = ctx.decl_engine.insert(new_copy);
-
-                // take any trait items that apply to this type and copy them to the new type
-                let type_id =
-                    type_engine.insert(decl_engine, TypeInfo::Struct(new_decl_ref.clone()));
-                ctx.namespace
-                    .insert_trait_implementation_for_type(engines, type_id);
-
-                (new_decl_ref.into(), Some(type_id))
-            }
-            _ => (unknown_decl, None),
-        };
-
-        ok((new_decl, new_type_id), warnings, errors)
+        ok((const_ref, None), warnings, errors)
     }
 }

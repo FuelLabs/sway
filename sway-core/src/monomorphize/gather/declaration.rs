@@ -1,33 +1,33 @@
 use sway_error::handler::{ErrorEmitted, Handler};
 
-use crate::{decl_engine::DeclId, language::ty, monomorphize::priv_prelude::*, TypeSubstList};
+use crate::{decl_engine::DeclId, language::ty, monomorphize::priv_prelude::*, SubstList};
 
 pub(crate) fn gather_from_decl(
     ctx: GatherContext,
     handler: &Handler,
-    decl: &ty::TyDeclaration,
+    decl: &ty::TyDecl,
 ) -> Result<(), ErrorEmitted> {
     match decl {
-        ty::TyDeclaration::VariableDeclaration(decl) => {
+        ty::TyDecl::VariableDecl(decl) => {
             gather_from_exp(ctx, handler, &decl.body)?;
         }
-        ty::TyDeclaration::ConstantDeclaration { .. } => todo!(),
-        ty::TyDeclaration::FunctionDeclaration {
+        ty::TyDecl::ConstantDecl { .. } => todo!(),
+        ty::TyDecl::FunctionDecl {
             decl_id,
-            type_subst_list,
+            subst_list,
             ..
         } => {
-            gather_from_fn_decl(ctx, handler, decl_id, type_subst_list.inner())?;
+            gather_from_fn_decl(ctx, handler, decl_id, subst_list.inner())?;
         }
-        ty::TyDeclaration::TraitDeclaration { .. } => todo!(),
-        ty::TyDeclaration::StructDeclaration { .. } => todo!(),
-        ty::TyDeclaration::EnumDeclaration { .. } => todo!(),
-        ty::TyDeclaration::ImplTrait { .. } => todo!(),
-        ty::TyDeclaration::AbiDeclaration { .. } => todo!(),
-        ty::TyDeclaration::GenericTypeForFunctionScope { .. } => todo!(),
-        ty::TyDeclaration::StorageDeclaration { .. } => todo!(),
-        ty::TyDeclaration::ErrorRecovery(_) => {}
-        ty::TyDeclaration::TypeAliasDeclaration { .. } => todo!(),
+        ty::TyDecl::TraitDecl { .. } => todo!(),
+        ty::TyDecl::StructDecl { .. } => todo!(),
+        ty::TyDecl::EnumDecl { .. } => todo!(),
+        ty::TyDecl::ImplTrait { .. } => todo!(),
+        ty::TyDecl::AbiDecl { .. } => todo!(),
+        ty::TyDecl::GenericTypeForFunctionScope { .. } => todo!(),
+        ty::TyDecl::StorageDecl { .. } => todo!(),
+        ty::TyDecl::ErrorRecovery(_) => {}
+        ty::TyDecl::TypeAliasDecl { .. } => todo!(),
     }
 
     Ok(())
@@ -36,16 +36,16 @@ pub(crate) fn gather_from_decl(
 fn gather_from_fn_decl(
     mut ctx: GatherContext,
     handler: &Handler,
-    decl_id: &DeclId<ty::TyFunctionDeclaration>,
-    type_subst_list: &TypeSubstList,
+    decl_id: &DeclId<ty::TyFunctionDecl>,
+    subst_list: &SubstList,
 ) -> Result<(), ErrorEmitted> {
     let decl = ctx.decl_engine.get_function(decl_id);
 
-    if !type_subst_list.is_empty() {
+    if !subst_list.is_empty() {
         unimplemented!("{}", decl.name);
     }
 
-    let ty::TyFunctionDeclaration {
+    let ty::TyFunctionDecl {
         body,
         parameters,
         return_type,

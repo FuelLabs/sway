@@ -4,12 +4,12 @@ use crate::{decl_engine::DeclId, engine_threading::*, language::ty, type_system:
 
 #[derive(Debug)]
 pub(crate) enum Instruction {
-    Type(TypeId, TypeSubstList),
-    FnDecl(DeclId<ty::TyFunctionDeclaration>, TypeSubstList),
-    TraitDecl(DeclId<ty::TyTraitDeclaration>, TypeSubstList),
-    ImplTrait(DeclId<ty::TyImplTrait>, TypeSubstList),
-    StructDecl(DeclId<ty::TyStructDeclaration>, TypeSubstList),
-    EnumDecl(DeclId<ty::TyEnumDeclaration>, TypeSubstList),
+    Type(TypeId, SubstList),
+    FnDecl(DeclId<ty::TyFunctionDecl>, SubstList),
+    TraitDecl(DeclId<ty::TyTraitDecl>, SubstList),
+    ImplTrait(DeclId<ty::TyImplTrait>, SubstList),
+    StructDecl(DeclId<ty::TyStructDecl>, SubstList),
+    EnumDecl(DeclId<ty::TyEnumDecl>, SubstList),
 }
 
 impl Instruction {

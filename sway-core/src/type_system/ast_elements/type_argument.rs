@@ -1,4 +1,4 @@
-use crate::{engine_threading::*, language::CallPathTree, type_system::*};
+use crate::{engine_threading::*, language::CallPathTree, type_system::priv_prelude::*};
 use std::{cmp::Ordering, fmt, hash::Hasher};
 use sway_types::{Span, Spanned};
 

@@ -2,6 +2,7 @@ use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
+    decl_engine::DeclRefStruct,
     error::*,
     language::{parsed::*, ty, CallPath},
     semantic_analysis::TypeCheckContext,
@@ -24,7 +25,8 @@ pub(crate) fn struct_instantiation(
     // We need the call_path_binding to have types that point to proper definitions so the LSP can
     // look for them, but its types haven't been resolved yet.
     // To that end we do a dummy type check which has the side effect of resolving the types.
-    let _ = TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref());
+    let _: CompileResult<(DeclRefStruct, _)> =
+        TypeBinding::type_check(&mut call_path_binding, ctx.by_ref());
 
     let TypeBinding {
         inner: CallPath {
@@ -214,7 +216,7 @@ fn unify_field_arguments_and_struct_fields(
     for struct_field in struct_fields.iter() {
         if let Some(typed_field) = typed_fields.iter().find(|x| x.name == struct_field.name) {
             check!(
-                CompileResult::from(type_engine.unify_adt(
+                CompileResult::from(type_engine.unify(
                     decl_engine,
                     typed_field.value.return_type,
                     struct_field.type_argument.type_id,

@@ -1,12 +1,12 @@
 [package]
 name = "forc-util"
 version = "0.35.5"
-authors = ["Fuel Labs <contact@fuel.sh>"]
-edition = "2021"
-homepage = "https://fuel.network/"
-license = "Apache-2.0"
-repository = "https://github.com/FuelLabs/sway"
 description = "Utility items shared between forc crates."
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
 annotate-snippets = { version = "0.9", features = ["color"] }

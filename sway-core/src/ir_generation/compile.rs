@@ -3,8 +3,9 @@ use crate::{
     language::{ty, Visibility},
     metadata::MetadataManager,
     semantic_analysis::namespace,
-    type_system::{LogId, MessageId, TypeId},
-    Engines, TypeEngine,
+    type_system::*,
+    types::*,
+    Engines,
 };
 
 use super::{
@@ -23,12 +24,12 @@ use std::collections::HashMap;
 pub(super) fn compile_script(
     engines: Engines<'_>,
     context: &mut Context,
-    main_function: &ty::TyFunctionDeclaration,
+    main_function: &ty::TyFunctionDecl,
     namespace: &namespace::Module,
-    declarations: &[ty::TyDeclaration],
+    declarations: &[ty::TyDecl],
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    test_fns: &[(ty::TyFunctionDeclaration, DeclRefFunction)],
+    test_fns: &[(ty::TyFunctionDecl, DeclRefFunction)],
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Script);
     let mut md_mgr = MetadataManager::default();
@@ -69,12 +70,12 @@ pub(super) fn compile_script(
 pub(super) fn compile_predicate(
     engines: Engines<'_>,
     context: &mut Context,
-    main_function: &ty::TyFunctionDeclaration,
+    main_function: &ty::TyFunctionDecl,
     namespace: &namespace::Module,
-    declarations: &[ty::TyDeclaration],
+    declarations: &[ty::TyDecl],
     logged_types: &HashMap<TypeId, LogId>,
     messages_types: &HashMap<TypeId, MessageId>,
-    test_fns: &[(ty::TyFunctionDeclaration, DeclRefFunction)],
+    test_fns: &[(ty::TyFunctionDecl, DeclRefFunction)],
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Predicate);
     let mut md_mgr = MetadataManager::default();
@@ -114,12 +115,12 @@ pub(super) fn compile_predicate(
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_contract(
     context: &mut Context,
-    abi_entries: &[ty::TyFunctionDeclaration],
+    abi_entries: &[ty::TyFunctionDecl],
     namespace: &namespace::Module,
-    declarations: &[ty::TyDeclaration],
+    declarations: &[ty::TyDecl],
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    test_fns: &[(ty::TyFunctionDeclaration, DeclRefFunction)],
+    test_fns: &[(ty::TyFunctionDecl, DeclRefFunction)],
     engines: Engines<'_>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Contract);
@@ -162,10 +163,10 @@ pub(super) fn compile_library(
     engines: Engines<'_>,
     context: &mut Context,
     namespace: &namespace::Module,
-    declarations: &[ty::TyDeclaration],
+    declarations: &[ty::TyDecl],
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    test_fns: &[(ty::TyFunctionDeclaration, DeclRefFunction)],
+    test_fns: &[(ty::TyFunctionDecl, DeclRefFunction)],
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Library);
     let mut md_mgr = MetadataManager::default();
@@ -201,10 +202,8 @@ pub(crate) fn compile_constants(
 ) -> Result<(), CompileError> {
     let (type_engine, decl_engine) = engines.unwrap();
     for decl_name in module_ns.get_all_declared_symbols() {
-        if let Some(ty::TyDeclaration::ConstantDeclaration { decl_id, .. }) =
-            module_ns.symbols.get(decl_name)
-        {
-            let ty::TyConstantDeclaration { call_path, .. } = engines.de().get_constant(decl_id);
+        if let Some(ty::TyDecl::ConstantDecl { decl_id, .. }) = module_ns.symbols.get(decl_name) {
+            let ty::TyConstantDecl { call_path, .. } = engines.de().get_constant(decl_id);
             compile_const_decl(
                 &mut LookupEnv {
                     type_engine,
@@ -243,12 +242,12 @@ fn compile_declarations(
     md_mgr: &mut MetadataManager,
     module: Module,
     namespace: &namespace::Module,
-    declarations: &[ty::TyDeclaration],
+    declarations: &[ty::TyDecl],
 ) -> Result<(), CompileError> {
     let (type_engine, decl_engine) = engines.unwrap();
     for declaration in declarations {
         match declaration {
-            ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
+            ty::TyDecl::ConstantDecl { decl_id, .. } => {
                 let decl = decl_engine.get_constant(decl_id);
                 compile_const_decl(
                     &mut LookupEnv {
@@ -265,14 +264,14 @@ fn compile_declarations(
                 )?;
             }
 
-            ty::TyDeclaration::FunctionDeclaration { .. } => {
+            ty::TyDecl::FunctionDecl { .. } => {
                 // We no longer compile functions other than `main()` until we can improve the name
                 // resolution.  Currently there isn't enough information in the AST to fully
                 // distinguish similarly named functions and especially trait methods.
                 //
                 //compile_function(context, module, decl).map(|_| ())?
             }
-            ty::TyDeclaration::ImplTrait { .. } => {
+            ty::TyDecl::ImplTrait { .. } => {
                 // And for the same reason we don't need to compile impls at all.
                 //
                 // compile_impl(
@@ -283,15 +282,15 @@ fn compile_declarations(
                 //)?,
             }
 
-            ty::TyDeclaration::StructDeclaration { .. }
-            | ty::TyDeclaration::EnumDeclaration { .. }
-            | ty::TyDeclaration::TraitDeclaration { .. }
-            | ty::TyDeclaration::VariableDeclaration(_)
-            | ty::TyDeclaration::AbiDeclaration { .. }
-            | ty::TyDeclaration::GenericTypeForFunctionScope { .. }
-            | ty::TyDeclaration::StorageDeclaration { .. }
-            | ty::TyDeclaration::TypeAliasDeclaration { .. }
-            | ty::TyDeclaration::ErrorRecovery(_) => (),
+            ty::TyDecl::StructDecl { .. }
+            | ty::TyDecl::EnumDecl { .. }
+            | ty::TyDecl::TraitDecl { .. }
+            | ty::TyDecl::VariableDecl(_)
+            | ty::TyDecl::AbiDecl { .. }
+            | ty::TyDecl::GenericTypeForFunctionScope { .. }
+            | ty::TyDecl::StorageDecl { .. }
+            | ty::TyDecl::TypeAliasDecl { .. }
+            | ty::TyDecl::ErrorRecovery(_) => (),
         }
     }
     Ok(())
@@ -303,7 +302,7 @@ pub(super) fn compile_function(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
-    ast_fn_decl: &ty::TyFunctionDeclaration,
+    ast_fn_decl: &ty::TyFunctionDecl,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     is_entry: bool,
@@ -345,7 +344,7 @@ pub(super) fn compile_entry_function(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
-    ast_fn_decl: &ty::TyFunctionDeclaration,
+    ast_fn_decl: &ty::TyFunctionDecl,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     test_decl_ref: Option<DeclRefFunction>,
@@ -372,7 +371,7 @@ pub(super) fn compile_tests(
     module: Module,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    test_fns: &[(ty::TyFunctionDeclaration, DeclRefFunction)],
+    test_fns: &[(ty::TyFunctionDecl, DeclRefFunction)],
 ) -> Result<Vec<Function>, CompileError> {
     test_fns
         .iter()
@@ -417,7 +416,7 @@ fn compile_fn_with_args(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
-    ast_fn_decl: &ty::TyFunctionDeclaration,
+    ast_fn_decl: &ty::TyFunctionDecl,
     is_entry: bool,
     args: Vec<(String, Type, bool, Span)>,
     selector: Option<[u8; 4]>,
@@ -429,7 +428,7 @@ fn compile_fn_with_args(
     let decl_engine = engines.de();
 
     let inline_opt = ast_fn_decl.inline();
-    let ty::TyFunctionDeclaration {
+    let ty::TyFunctionDecl {
         name,
         body,
         return_type,
@@ -571,7 +570,7 @@ fn compile_abi_method(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
-    ast_fn_decl: &ty::TyFunctionDeclaration,
+    ast_fn_decl: &ty::TyFunctionDecl,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     engines: Engines<'_>,

@@ -41,3 +41,10 @@ fuel-vm = "0.26"
 fuels-core = "0.36.0"
 fuels-signers = "0.36.0"
 fuels-types = "0.36.0"
+
+[workspace.package]
+edition = "2021"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+homepage = "https://fuel.network/"
+license = "Apache-2.0"
+repository = "https://github.com/FuelLabs/sway"
