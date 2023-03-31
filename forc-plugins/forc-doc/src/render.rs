@@ -8,8 +8,7 @@ use horrorshow::{box_html, helper::doctype, html, prelude::*, Raw};
 use std::{collections::BTreeMap, fmt::Write};
 use sway_core::{
     language::ty::{
-        TyDecl::{self, *},
-        TyEnumVariant, TyProgramKind, TyStorageField, TyStructField, TyTraitFn,
+        TyDecl, TyEnumVariant, TyProgramKind, TyStorageField, TyStructField, TyTraitFn,
     },
     transform::{AttributeKind, AttributesMap},
     AbiName, TypeInfo,
@@ -65,7 +64,7 @@ impl RenderedDocumentation {
                 file_contents: HTMLString::from(doc.clone().render(render_plan.clone())?),
             });
             // Here we gather all of the `doc_links` based on which module they belong to.
-            populate_doc_links(&doc, &mut module_map);
+            populate_decls(&doc, &mut module_map);
             // Create links to child modules.
             populate_modules(&doc, &mut module_map);
             // Above we check for the module a link belongs to, here we want _all_ links so the check is much more shallow.
@@ -156,85 +155,25 @@ impl RenderedDocumentation {
         Ok(rendered_docs)
     }
 }
-fn populate_doc_links(
+fn populate_doc_links(doc: &Document, doc_links: &mut BTreeMap<BlockTitle, Vec<DocLink>>) {
+    let key = doc.item_body.ty_decl.as_block_title();
+    match doc_links.get_mut(&key) {
+        Some(links) => links.push(doc.link()),
+        None => {
+            doc_links.insert(key, vec![doc.link()]);
+        }
+    }
+}
+fn populate_decls(
     doc: &Document,
     module_map: &mut BTreeMap<ModulePrefixes, BTreeMap<BlockTitle, Vec<DocLink>>>,
 ) {
     let module_prefixes = &doc.module_info.module_prefixes;
     match module_map.get_mut(module_prefixes) {
-        Some(doc_links) => {
-            match doc.item_body.ty_decl {
-                StructDecl { .. } => match doc_links.get_mut(&BlockTitle::Structs) {
-                    Some(links) => links.push(doc.link()),
-                    None => {
-                        doc_links.insert(BlockTitle::Structs, vec![doc.link()]);
-                    }
-                },
-                EnumDecl { .. } => match doc_links.get_mut(&BlockTitle::Enums) {
-                    Some(links) => links.push(doc.link()),
-                    None => {
-                        doc_links.insert(BlockTitle::Enums, vec![doc.link()]);
-                    }
-                },
-                TraitDecl { .. } => match doc_links.get_mut(&BlockTitle::Traits) {
-                    Some(links) => links.push(doc.link()),
-                    None => {
-                        doc_links.insert(BlockTitle::Traits, vec![doc.link()]);
-                    }
-                },
-                AbiDecl { .. } => match doc_links.get_mut(&BlockTitle::Abi) {
-                    Some(links) => links.push(doc.link()),
-                    None => {
-                        doc_links.insert(BlockTitle::Abi, vec![doc.link()]);
-                    }
-                },
-                StorageDecl { .. } => match doc_links.get_mut(&BlockTitle::ContractStorage) {
-                    Some(links) => links.push(doc.link()),
-                    None => {
-                        doc_links.insert(BlockTitle::ContractStorage, vec![doc.link()]);
-                    }
-                },
-                FunctionDecl { .. } => match doc_links.get_mut(&BlockTitle::Functions) {
-                    Some(links) => links.push(doc.link()),
-                    None => {
-                        doc_links.insert(BlockTitle::Functions, vec![doc.link()]);
-                    }
-                },
-                ConstantDecl { .. } => match doc_links.get_mut(&BlockTitle::Constants) {
-                    Some(links) => links.push(doc.link()),
-                    None => {
-                        doc_links.insert(BlockTitle::Constants, vec![doc.link()]);
-                    }
-                },
-                _ => {} // TODO: ImplTraitDeclaration
-            }
-        }
+        Some(doc_links) => populate_doc_links(doc, doc_links),
         None => {
-            let mut doc_links: BTreeMap<BlockTitle, Vec<DocLink>> = BTreeMap::new();
-            match doc.item_body.ty_decl {
-                StructDecl { .. } => {
-                    doc_links.insert(BlockTitle::Structs, vec![doc.link()]);
-                }
-                EnumDecl { .. } => {
-                    doc_links.insert(BlockTitle::Enums, vec![doc.link()]);
-                }
-                TraitDecl { .. } => {
-                    doc_links.insert(BlockTitle::Traits, vec![doc.link()]);
-                }
-                AbiDecl { .. } => {
-                    doc_links.insert(BlockTitle::Abi, vec![doc.link()]);
-                }
-                StorageDecl { .. } => {
-                    doc_links.insert(BlockTitle::ContractStorage, vec![doc.link()]);
-                }
-                FunctionDecl { .. } => {
-                    doc_links.insert(BlockTitle::Functions, vec![doc.link()]);
-                }
-                ConstantDecl { .. } => {
-                    doc_links.insert(BlockTitle::Constants, vec![doc.link()]);
-                }
-                _ => {} // TODO: ImplTraitDeclaration
-            }
+            let mut doc_links = BTreeMap::<BlockTitle, Vec<DocLink>>::new();
+            populate_doc_links(doc, &mut doc_links);
             module_map.insert(module_prefixes.clone(), doc_links);
         }
     }
@@ -284,57 +223,7 @@ fn populate_modules(
     }
 }
 fn populate_all_doc(doc: &Document, all_docs: &mut DocLinks) {
-    match doc.item_body.ty_decl {
-        StructDecl { .. } => match all_docs.links.get_mut(&BlockTitle::Structs) {
-            Some(links) => links.push(doc.link()),
-            None => {
-                all_docs.links.insert(BlockTitle::Structs, vec![doc.link()]);
-            }
-        },
-        EnumDecl { .. } => match all_docs.links.get_mut(&BlockTitle::Enums) {
-            Some(links) => links.push(doc.link()),
-            None => {
-                all_docs.links.insert(BlockTitle::Enums, vec![doc.link()]);
-            }
-        },
-        TraitDecl { .. } => match all_docs.links.get_mut(&BlockTitle::Traits) {
-            Some(links) => links.push(doc.link()),
-            None => {
-                all_docs.links.insert(BlockTitle::Traits, vec![doc.link()]);
-            }
-        },
-        AbiDecl { .. } => match all_docs.links.get_mut(&BlockTitle::Abi) {
-            Some(links) => links.push(doc.link()),
-            None => {
-                all_docs.links.insert(BlockTitle::Abi, vec![doc.link()]);
-            }
-        },
-        StorageDecl { .. } => match all_docs.links.get_mut(&BlockTitle::ContractStorage) {
-            Some(links) => links.push(doc.link()),
-            None => {
-                all_docs
-                    .links
-                    .insert(BlockTitle::ContractStorage, vec![doc.link()]);
-            }
-        },
-        FunctionDecl { .. } => match all_docs.links.get_mut(&BlockTitle::Functions) {
-            Some(links) => links.push(doc.link()),
-            None => {
-                all_docs
-                    .links
-                    .insert(BlockTitle::Functions, vec![doc.link()]);
-            }
-        },
-        ConstantDecl { .. } => match all_docs.links.get_mut(&BlockTitle::Constants) {
-            Some(links) => links.push(doc.link()),
-            None => {
-                all_docs
-                    .links
-                    .insert(BlockTitle::Constants, vec![doc.link()]);
-            }
-        },
-        _ => {} // TODO: ImplTraitDeclaration
-    }
+    populate_doc_links(doc, &mut all_docs.links);
 }
 /// The finalized HTML file contents.
 #[derive(Debug)]
