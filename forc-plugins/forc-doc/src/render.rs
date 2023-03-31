@@ -51,7 +51,7 @@ impl RenderedDocumentation {
             ),
             None => panic!("Project does not contain a root module"),
         };
-        println!("{root_module:#?}");
+
         let mut all_docs = DocLinks {
             style: DocStyle::AllDoc(program_kind.as_title_str().to_string()),
             links: Default::default(),
