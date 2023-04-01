@@ -1,8 +1,8 @@
 use crate::{
     descriptor::Descriptor,
     render::{
-        split_at_markdown_header, DocLink, DocStrings, ItemBody, ItemHeader, Renderable,
-        INDEX_FILENAME,
+        constant::INDEX_FILENAME, item::components::*, link::DocLink, util::format::docstring::*,
+        Renderable,
     },
     RenderPlan,
 };
