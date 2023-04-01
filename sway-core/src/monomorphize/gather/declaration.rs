@@ -22,6 +22,7 @@ pub(crate) fn gather_from_decl(
         ty::TyDecl::TraitDecl { .. } => todo!(),
         ty::TyDecl::StructDecl { .. } => todo!(),
         ty::TyDecl::EnumDecl { .. } => todo!(),
+        ty::TyDecl::EnumVariantDecl { .. } => todo!(),
         ty::TyDecl::ImplTrait { .. } => todo!(),
         ty::TyDecl::AbiDecl { .. } => todo!(),
         ty::TyDecl::GenericTypeForFunctionScope { .. } => todo!(),

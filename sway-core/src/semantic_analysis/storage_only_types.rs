@@ -259,6 +259,30 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDecl) -> CompileResult<()> {
                 );
             }
         }
+        ty::TyDecl::EnumVariantDecl {
+            decl_id,
+            variant_name,
+            ..
+        } => {
+            let enum_decl = decl_engine.get_enum(decl_id);
+            let variant = check!(
+                enum_decl.expect_variant_from_name(variant_name),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            check!(
+                check_type(
+                    engines,
+                    variant.type_argument.type_id,
+                    variant.span.clone(),
+                    false
+                ),
+                (),
+                warnings,
+                errors
+            );
+        }
         ty::TyDecl::StorageDecl {
             decl_id,
             decl_span: _,

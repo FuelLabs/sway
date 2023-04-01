@@ -97,6 +97,7 @@ impl Root {
                 .get(symbol.as_str())
                 .unwrap_or(symbol);
             match module.use_synonyms.get(symbol) {
+                Some((_, _, decl @ ty::TyDecl::EnumVariantDecl { .. })) => ok(decl, vec![], vec![]),
                 Some((src_path, _, _)) if mod_path != src_path => {
                     self.resolve_symbol(src_path, true_symbol)
                 }

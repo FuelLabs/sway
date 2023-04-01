@@ -1,5 +1,4 @@
 #![allow(dead_code)]
-use std::iter;
 
 use crate::{
     core::{
@@ -415,12 +414,14 @@ impl Parse for AmbiguousPathExpression {
             call_path_binding,
             args,
         } = self;
-        for ident in call_path_binding
-            .inner
-            .prefixes
-            .iter()
-            .chain(iter::once(&call_path_binding.inner.suffix.before.inner))
-        {
+        for ident in call_path_binding.inner.prefixes.iter().chain(
+            call_path_binding
+                .inner
+                .suffix
+                .before
+                .iter()
+                .map(|before| &before.inner),
+        ) {
             ctx.tokens.insert(
                 to_ident_key(ident),
                 Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Enum),

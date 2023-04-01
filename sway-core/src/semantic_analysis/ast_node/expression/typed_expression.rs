@@ -968,6 +968,37 @@ impl ty::TyExpression {
     ) -> CompileResult<ty::TyExpression> {
         let decl_engine = ctx.decl_engine;
 
+        // is it a singleton?
+        let before = if let Some(b) = before {
+            b
+        } else {
+            // if it's a singleton it's either an enum variant or a function
+            let call_path_binding = TypeBinding {
+                inner: CallPath {
+                    prefixes,
+                    suffix,
+                    is_absolute,
+                },
+                type_arguments,
+                span: path_span,
+            };
+            if matches!(
+                ctx.namespace
+                    .resolve_call_path(&call_path_binding.inner)
+                    .value,
+                Some(ty::TyDecl::EnumVariantDecl { .. })
+            ) {
+                return Self::type_check_delineated_path(ctx, call_path_binding, span, Some(args));
+            } else {
+                return Self::type_check_function_application(
+                    ctx.by_ref(),
+                    call_path_binding,
+                    args,
+                    span,
+                );
+            }
+        };
+
         // Is `path = prefix ++ before` a module?
         let mut path = Vec::with_capacity(prefixes.len() + 1);
         path.extend(prefixes.iter().cloned());

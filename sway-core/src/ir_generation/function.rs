@@ -196,6 +196,10 @@ impl<'eng> FnCompiler<'eng> {
                     decl_type: "type alias",
                     span: ast_node.span.clone(),
                 }),
+                ty::TyDecl::EnumVariantDecl { .. } => Err(CompileError::UnexpectedDeclaration {
+                    decl_type: "enum variant",
+                    span: ast_node.span.clone(),
+                }),
             },
             ty::TyAstNodeContent::Expression(te) => {
                 // An expression with an ignored return value... I assume.

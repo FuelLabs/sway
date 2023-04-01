@@ -473,7 +473,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             connect_struct_declaration(&struct_decl, *decl_id, graph, entry_node, tree_type);
             Ok(leaves.to_vec())
         }
-        EnumDecl { decl_id, .. } => {
+        EnumDecl { decl_id, .. } | EnumVariantDecl { decl_id, .. } => {
             let enum_decl = decl_engine.get_enum(decl_id);
             connect_enum_declaration(&enum_decl, *decl_id, graph, entry_node);
             Ok(leaves.to_vec())
@@ -2003,6 +2003,17 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
             ty::TyDecl::EnumDecl { decl_id, .. } => {
                 allow_dead_code(decl_engine.get_enum(decl_id).attributes)
             }
+            ty::TyDecl::EnumVariantDecl {
+                decl_id,
+                variant_name,
+                ..
+            } => decl_engine
+                .get_enum(decl_id)
+                .variants
+                .into_iter()
+                .find(|v| v.name == *variant_name)
+                .map(|enum_variant| allow_dead_code(enum_variant.attributes))
+                .unwrap_or(false),
             ty::TyDecl::TypeAliasDecl { .. } => {
                 // TODO - handle type aliases properly. For now, always skip DCA for them.
                 true

@@ -284,6 +284,7 @@ fn compile_declarations(
 
             ty::TyDecl::StructDecl { .. }
             | ty::TyDecl::EnumDecl { .. }
+            | ty::TyDecl::EnumVariantDecl { .. }
             | ty::TyDecl::TraitDecl { .. }
             | ty::TyDecl::VariableDecl(_)
             | ty::TyDecl::AbiDecl { .. }
