@@ -1,3 +1,4 @@
+use crate::render::util::format::constant::*;
 use comrak::{markdown_to_html, ComrakOptions};
 use std::fmt::Write;
 use sway_core::transform::{AttributeKind, AttributesMap};
@@ -20,7 +21,7 @@ impl DocStrings for AttributesMap {
         options.extension.superscript = true;
         options.extension.footnotes = true;
         options.parse.smart = true;
-        options.parse.default_info_string = Some("sway".into());
+        options.parse.default_info_string = Some(SWAY_FILEINE.into());
         markdown_to_html(&format_docs(&docs), &options)
     }
     fn to_raw_string(&self) -> String {
@@ -42,9 +43,6 @@ impl DocStrings for AttributesMap {
 ///
 /// Returns `None` if there are no attributes.
 pub(crate) fn create_preview(raw_attributes: Option<String>) -> Option<String> {
-    const MAX_PREVIEW_CHARS: usize = 100;
-    const CLOSING_PARAGRAPH_TAG: &str = "</p>";
-
     raw_attributes.as_ref().map(|description| {
         let preview = split_at_markdown_header(description);
         if preview.chars().count() > MAX_PREVIEW_CHARS && preview.contains(CLOSING_PARAGRAPH_TAG) {
@@ -55,8 +53,10 @@ pub(crate) fn create_preview(raw_attributes: Option<String>) -> Option<String> {
             // This ensures we retain the closing tag and don't break the html.
             let (preview, _) =
                 preview.split_at(closing_tag_index + CLOSING_PARAGRAPH_TAG.len() + 1);
-            if preview.chars().count() > MAX_PREVIEW_CHARS && preview.contains('\n') {
-                let newline_index = preview.find('\n').expect("new line char out of range");
+            if preview.chars().count() > MAX_PREVIEW_CHARS && preview.contains(NEWLINE_CHAR) {
+                let newline_index = preview
+                    .find(NEWLINE_CHAR)
+                    .expect("new line char out of range");
                 preview.split_at(newline_index).0.to_string()
             } else {
                 preview.to_string()
@@ -70,11 +70,6 @@ pub(crate) fn create_preview(raw_attributes: Option<String>) -> Option<String> {
 /// Checks if some raw html (rendered from markdown) contains a header.
 /// If it does, it splits at the header and returns the slice that preceeded it.
 pub(crate) fn split_at_markdown_header(raw_html: &str) -> &str {
-    const H1: &str = "<h1>";
-    const H2: &str = "<h2>";
-    const H3: &str = "<h3>";
-    const H4: &str = "<h4>";
-    const H5: &str = "<h5>";
     if raw_html.contains(H1) {
         let v: Vec<_> = raw_html.split(H1).collect();
         v.first().expect("expected a non-empty str")
