@@ -15,13 +15,13 @@ use std::collections::BTreeMap;
 use sway_core::{language::ty::TyProgramKind, transform::AttributesMap};
 use sway_types::BaseIdent;
 
-mod constant;
+pub mod constant;
 mod index;
-mod item;
-mod link;
+pub mod item;
+pub mod link;
 mod sidebar;
 mod title;
-mod util;
+pub mod util;
 
 pub(crate) trait Renderable {
     fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>>;
@@ -82,14 +82,14 @@ impl RenderedDocumentation {
                 module_info: root_module.clone(),
                 html_filename: INDEX_FILENAME.to_string(),
                 file_contents: HTMLString::from(
-                    ModuleIndex {
-                        version_opt: forc_version,
-                        module_info: root_module.clone(),
-                        module_docs: DocLinks {
+                    ModuleIndex::new(
+                        forc_version,
+                        root_module.clone(),
+                        DocLinks {
                             style: DocStyle::ProjectIndex(program_kind.as_title_str().to_string()),
                             links: doc_links.to_owned(),
                         },
-                    }
+                    )
                     .render(render_plan.clone())?,
                 ),
             }),
@@ -112,14 +112,14 @@ impl RenderedDocumentation {
                         module_info: module_info.clone(),
                         html_filename: INDEX_FILENAME.to_string(),
                         file_contents: HTMLString::from(
-                            ModuleIndex {
-                                version_opt: None,
-                                module_info: module_info.clone(),
-                                module_docs: DocLinks {
+                            ModuleIndex::new(
+                                None,
+                                module_info.clone(),
+                                DocLinks {
                                     style: DocStyle::ModuleIndex,
                                     links: doc_links.to_owned(),
                                 },
-                            }
+                            )
                             .render(render_plan.clone())?,
                         ),
                     });
@@ -129,14 +129,14 @@ impl RenderedDocumentation {
                             module_info: module_info.clone(),
                             html_filename: INDEX_FILENAME.to_string(),
                             file_contents: HTMLString::from(
-                                ModuleIndex {
-                                    version_opt: None,
+                                ModuleIndex::new(
+                                    None,
                                     module_info,
-                                    module_docs: DocLinks {
+                                    DocLinks {
                                         style: DocStyle::ModuleIndex,
                                         links: doc_links.to_owned(),
                                     },
-                                }
+                                )
                                 .render(render_plan.clone())?,
                             ),
                         })
@@ -149,11 +149,7 @@ impl RenderedDocumentation {
             module_info: root_module.clone(),
             html_filename: ALL_DOC_FILENAME.to_string(),
             file_contents: HTMLString::from(
-                AllDocIndex {
-                    project_name: root_module,
-                    all_docs,
-                }
-                .render(render_plan)?,
+                AllDocIndex::new(root_module, all_docs).render(render_plan)?,
             ),
         });
 

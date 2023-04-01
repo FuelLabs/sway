@@ -1,2 +1,2 @@
-mod code_block;
-mod docstring;
+pub mod code_block;
+pub mod docstring;

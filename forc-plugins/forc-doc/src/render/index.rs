@@ -15,7 +15,7 @@ pub(crate) struct AllDocIndex {
     all_docs: DocLinks,
 }
 impl AllDocIndex {
-    fn new(project_name: ModuleInfo, all_docs: DocLinks) -> Self {
+    pub(crate) fn new(project_name: ModuleInfo, all_docs: DocLinks) -> Self {
         Self {
             project_name,
             all_docs,
@@ -101,6 +101,19 @@ pub(crate) struct ModuleIndex {
     version_opt: Option<String>,
     module_info: ModuleInfo,
     module_docs: DocLinks,
+}
+impl ModuleIndex {
+    pub(crate) fn new(
+        version_opt: Option<String>,
+        module_info: ModuleInfo,
+        module_docs: DocLinks,
+    ) -> Self {
+        ModuleIndex {
+            version_opt,
+            module_info,
+            module_docs,
+        }
+    }
 }
 impl SidebarNav for ModuleIndex {
     fn sidebar(&self) -> Sidebar {

@@ -5,7 +5,7 @@ mod render;
 
 use crate::{
     doc::{Document, Documentation},
-    render::{RenderedDocumentation, INDEX_FILENAME},
+    render::{constant::INDEX_FILENAME, RenderedDocumentation},
 };
 use anyhow::{bail, Result};
 use clap::Parser;
