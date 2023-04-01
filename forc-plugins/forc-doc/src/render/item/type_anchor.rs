@@ -1,4 +1,4 @@
-use crate::{doc::ModuleInfo, RenderPlan};
+use crate::{doc::module::ModuleInfo, RenderPlan};
 use anyhow::{anyhow, Result};
 use horrorshow::{box_html, RenderBox};
 use sway_core::{AbiName, TypeInfo};

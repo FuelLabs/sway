@@ -38,6 +38,35 @@ impl DocStrings for AttributesMap {
     }
 }
 
+/// Create a docstring preview from raw html attributes.
+///
+/// Returns `None` if there are no attributes.
+pub(crate) fn create_preview(raw_attributes: Option<String>) -> Option<String> {
+    const MAX_PREVIEW_CHARS: usize = 100;
+    const CLOSING_PARAGRAPH_TAG: &str = "</p>";
+
+    raw_attributes.as_ref().map(|description| {
+        let preview = split_at_markdown_header(description);
+        if preview.chars().count() > MAX_PREVIEW_CHARS && preview.contains(CLOSING_PARAGRAPH_TAG) {
+            let closing_tag_index = preview
+                .find(CLOSING_PARAGRAPH_TAG)
+                .expect("closing tag out of range");
+            // We add 1 here to get the index of the char after the closing tag.
+            // This ensures we retain the closing tag and don't break the html.
+            let (preview, _) =
+                preview.split_at(closing_tag_index + CLOSING_PARAGRAPH_TAG.len() + 1);
+            if preview.chars().count() > MAX_PREVIEW_CHARS && preview.contains('\n') {
+                let newline_index = preview.find('\n').expect("new line char out of range");
+                preview.split_at(newline_index).0.to_string()
+            } else {
+                preview.to_string()
+            }
+        } else {
+            preview.to_string()
+        }
+    })
+}
+
 /// Checks if some raw html (rendered from markdown) contains a header.
 /// If it does, it splits at the header and returns the slice that preceeded it.
 pub(crate) fn split_at_markdown_header(raw_html: &str) -> &str {

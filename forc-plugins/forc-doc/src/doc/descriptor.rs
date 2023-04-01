@@ -1,6 +1,6 @@
 //! Determine whether a [Declaration] is documentable.
 use crate::{
-    doc::{Document, ModuleInfo},
+    doc::{module::ModuleInfo, Document},
     render::{
         item::{components::*, context::*},
         util::format::{code_block::trim_fn_body, docstring::DocStrings},

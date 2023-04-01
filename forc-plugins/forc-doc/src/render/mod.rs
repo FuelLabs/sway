@@ -1,5 +1,8 @@
 use crate::{
-    doc::{Document, Documentation, ModuleInfo, ModulePrefixes},
+    doc::{
+        module::{ModuleInfo, ModulePrefixes},
+        Document, Documentation,
+    },
     render::{
         constant::{ALL_DOC_FILENAME, INDEX_FILENAME},
         index::{AllDocIndex, ModuleIndex},
@@ -10,7 +13,7 @@ use crate::{
     RenderPlan,
 };
 use anyhow::Result;
-use horrorshow::{helper::doctype, html, prelude::*};
+use horrorshow::{box_html, helper::doctype, html, prelude::*};
 use std::collections::BTreeMap;
 use sway_core::{language::ty::TyProgramKind, transform::AttributesMap};
 use sway_types::BaseIdent;
@@ -26,6 +29,16 @@ pub mod util;
 pub(crate) trait Renderable {
     fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>>;
 }
+impl Renderable for Document {
+    fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
+        let header = self.item_header.render(render_plan.clone())?;
+        let body = self.item_body.render(render_plan)?;
+        Ok(box_html! {
+            : header;
+            : body;
+        })
+    }
+}
 
 /// A [Document] rendered to HTML.
 #[derive(Debug)]
@@ -34,21 +47,30 @@ pub(crate) struct RenderedDocument {
     pub(crate) html_filename: String,
     pub(crate) file_contents: HTMLString,
 }
+impl RenderedDocument {
+    fn from_doc(doc: &Document, render_plan: RenderPlan) -> Result<Self> {
+        Ok(Self {
+            module_info: doc.module_info.clone(),
+            html_filename: doc.html_filename(),
+            file_contents: HTMLString::from_rendered_content(doc.clone().render(render_plan)?),
+        })
+    }
+}
 
 #[derive(Default)]
 pub(crate) struct RenderedDocumentation(pub(crate) Vec<RenderedDocument>);
 
 impl RenderedDocumentation {
     /// Top level HTML rendering for all [Documentation] of a program.
-    pub fn from(
-        raw: Documentation,
+    pub fn from_raw_docs(
+        raw_docs: Documentation,
         render_plan: RenderPlan,
         root_attributes: Option<AttributesMap>,
         program_kind: TyProgramKind,
         forc_version: Option<String>,
     ) -> Result<RenderedDocumentation> {
         let mut rendered_docs: RenderedDocumentation = Default::default();
-        let root_module = match raw.first() {
+        let root_module = match raw_docs.first() {
             Some(doc) => ModuleInfo::from_ty_module(
                 vec![doc.module_info.project_name().to_owned()],
                 root_attributes.map(|attrs_map| attrs_map.to_html_string()),
@@ -62,12 +84,11 @@ impl RenderedDocumentation {
         };
         let mut module_map: BTreeMap<ModulePrefixes, BTreeMap<BlockTitle, Vec<DocLink>>> =
             BTreeMap::new();
-        for doc in raw {
-            rendered_docs.0.push(RenderedDocument {
-                module_info: doc.module_info.clone(),
-                html_filename: doc.html_filename(),
-                file_contents: HTMLString::from(doc.clone().render(render_plan.clone())?),
-            });
+        for doc in raw_docs {
+            rendered_docs
+                .0
+                .push(RenderedDocument::from_doc(&doc, render_plan.clone())?);
+
             // Here we gather all of the `doc_links` based on which module they belong to.
             populate_decls(&doc, &mut module_map);
             // Create links to child modules.
@@ -81,7 +102,7 @@ impl RenderedDocumentation {
             Some(doc_links) => rendered_docs.0.push(RenderedDocument {
                 module_info: root_module.clone(),
                 html_filename: INDEX_FILENAME.to_string(),
-                file_contents: HTMLString::from(
+                file_contents: HTMLString::from_rendered_content(
                     ModuleIndex::new(
                         forc_version,
                         root_module.clone(),
@@ -111,7 +132,7 @@ impl RenderedDocumentation {
                     rendered_docs.0.push(RenderedDocument {
                         module_info: module_info.clone(),
                         html_filename: INDEX_FILENAME.to_string(),
-                        file_contents: HTMLString::from(
+                        file_contents: HTMLString::from_rendered_content(
                             ModuleIndex::new(
                                 None,
                                 module_info.clone(),
@@ -128,7 +149,7 @@ impl RenderedDocumentation {
                         rendered_docs.0.push(RenderedDocument {
                             module_info: module_info.clone(),
                             html_filename: INDEX_FILENAME.to_string(),
-                            file_contents: HTMLString::from(
+                            file_contents: HTMLString::from_rendered_content(
                                 ModuleIndex::new(
                                     None,
                                     module_info,
@@ -148,7 +169,7 @@ impl RenderedDocumentation {
         rendered_docs.0.push(RenderedDocument {
             module_info: root_module.clone(),
             html_filename: ALL_DOC_FILENAME.to_string(),
-            file_contents: HTMLString::from(
+            file_contents: HTMLString::from_rendered_content(
                 AllDocIndex::new(root_module, all_docs).render(render_plan)?,
             ),
         });
@@ -232,7 +253,7 @@ fn populate_all_doc(doc: &Document, all_docs: &mut DocLinks) {
 pub(crate) struct HTMLString(pub(crate) String);
 impl HTMLString {
     /// Final rendering of a [Document] HTML page to String.
-    fn from(rendered_content: Box<dyn RenderBox>) -> Self {
+    fn from_rendered_content(rendered_content: Box<dyn RenderBox>) -> Self {
         let markup = html! {
             : doctype::HTML;
             html {
@@ -244,6 +265,8 @@ impl HTMLString {
     }
 }
 
+/// The type of document. Helpful in detemining what to represent in
+/// the sidebar & page content.
 #[derive(Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) enum DocStyle {
     AllDoc(String),

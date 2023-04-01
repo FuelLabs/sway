@@ -1,6 +1,10 @@
-use crate::render::{
-    constant::{ALL_DOC_FILENAME, IDENTITY, INDEX_FILENAME},
-    BlockTitle, DocLinks, DocStyle, ModuleInfo, RenderPlan, Renderable,
+use crate::{
+    doc::module::ModuleInfo,
+    render::{
+        constant::{ALL_DOC_FILENAME, IDENTITY, INDEX_FILENAME},
+        BlockTitle, DocLinks, DocStyle, Renderable,
+    },
+    RenderPlan,
 };
 use anyhow::Result;
 use horrorshow::{box_html, Raw, RenderBox, Template};

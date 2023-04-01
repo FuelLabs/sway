@@ -1,5 +1,5 @@
 use crate::{
-    doc::ModuleInfo,
+    doc::module::ModuleInfo,
     render::{
         constant::IDENTITY, item::type_anchor::render_type_anchor, link::*, title::DocBlockTitle,
         title::*, util::format::docstring::DocStrings, DocStyle, Renderable,
