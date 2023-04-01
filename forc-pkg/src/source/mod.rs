@@ -12,6 +12,7 @@ mod member;
 pub mod path;
 mod reg;
 
+use self::git::Url;
 use crate::{
     manifest::{self, MemberManifestFiles, PackageManifestFile},
     pkg::{ManifestMap, PinnedId},
@@ -25,7 +26,6 @@ use std::{
     path::{Path, PathBuf},
     str::FromStr,
 };
-use url::Url;
 
 /// Pin this source at a specific "version", return the local directory to fetch into.
 trait Pin {
@@ -152,7 +152,7 @@ impl Source {
                                 either `branch`, `tag` or `rev`"
                         ),
                     };
-                    let repo = Url::parse(repo)?;
+                    let repo = Url::from_str(repo)?;
                     let source = git::Source { repo, reference };
                     Source::Git(source)
                 }
@@ -185,7 +185,7 @@ impl Source {
         manifest: &'manifest PackageManifestFile,
     ) -> Option<&'manifest manifest::Dependency> {
         if let Source::Git(git) = self {
-            if let Some(patches) = manifest.patch(git.repo.as_str()) {
+            if let Some(patches) = manifest.patch(&git.repo.to_string()) {
                 if let Some(patch) = patches.get(dep_name) {
                     return Some(patch);
                 }
