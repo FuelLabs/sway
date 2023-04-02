@@ -831,10 +831,20 @@ impl TypeInfo {
     }
 
     pub fn is_copy_type(&self) -> bool {
+        // XXX This is FuelVM specific.  We need to find the users of this method and determine
+        // whether they're actually asking 'is_aggregate()` or something else.
         matches!(
             self,
             TypeInfo::Boolean | TypeInfo::UnsignedInteger(_) | TypeInfo::RawUntypedPtr
         ) || self.is_unit()
+    }
+
+    pub fn is_aggregate_type(&self) -> bool {
+        match self {
+            TypeInfo::Struct { .. } | TypeInfo::Enum { .. } | TypeInfo::Array { .. } => true,
+            TypeInfo::Tuple { .. } => !self.is_unit(),
+            _ => false,
+        }
     }
 
     pub(crate) fn apply_type_arguments(

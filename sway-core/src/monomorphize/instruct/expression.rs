@@ -43,7 +43,10 @@ pub(crate) fn instruct_exp_inner(
                 .iter()
                 .try_for_each(|field| instruct_exp(ctx.by_ref(), handler, field))?;
         }
-        ty::TyExpressionVariant::Array { contents: _ } => {
+        ty::TyExpressionVariant::Array {
+            contents: _,
+            elem_type: _,
+        } => {
             todo!();
             // contents
             //     .iter()
