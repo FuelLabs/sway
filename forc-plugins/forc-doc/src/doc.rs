@@ -20,7 +20,7 @@ use sway_core::{
 pub(crate) type Documentation = Vec<Document>;
 /// A finalized Document ready to be rendered. We want to retain all
 /// information including spans, fields on structs, variants on enums etc.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct Document {
     pub(crate) module_info: ModuleInfo,
     pub(crate) item_header: ItemHeader,
@@ -127,8 +127,7 @@ impl Document {
                 }
             }
         }
-        // if there is another submodule we need to go a level deeper
-        if let Some((_, submodule)) = typed_submodule.module.submodules.first() {
+        for (_, submodule) in &typed_submodule.module.submodules {
             Document::from_ty_submodule(
                 decl_engine,
                 submodule,
@@ -152,10 +151,10 @@ impl Renderable for Document {
     }
 }
 
-pub(crate) type ModulePrefix = String;
+pub(crate) type ModulePrefixes = Vec<String>;
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) struct ModuleInfo {
-    pub(crate) module_prefixes: Vec<ModulePrefix>,
+    pub(crate) module_prefixes: ModulePrefixes,
     pub(crate) attributes: Option<String>,
 }
 impl ModuleInfo {
