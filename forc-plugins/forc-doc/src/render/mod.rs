@@ -52,7 +52,7 @@ impl RenderedDocument {
         Ok(Self {
             module_info: doc.module_info.clone(),
             html_filename: doc.html_filename(),
-            file_contents: HTMLString::from_rendered_content(doc.clone().render(render_plan)?),
+            file_contents: HTMLString::from_rendered_content(doc.clone().render(render_plan)?)?,
         })
     }
 }
@@ -112,7 +112,7 @@ impl RenderedDocumentation {
                         },
                     )
                     .render(render_plan.clone())?,
-                ),
+                )?,
             }),
             None => panic!("Project does not contain a root module."),
         }
@@ -142,7 +142,7 @@ impl RenderedDocumentation {
                                 },
                             )
                             .render(render_plan.clone())?,
-                        ),
+                        )?,
                     });
                     if module_info.module_prefixes != module_prefixes {
                         let module_info = ModuleInfo::from_ty_module(module_prefixes, None);
@@ -159,7 +159,7 @@ impl RenderedDocumentation {
                                     },
                                 )
                                 .render(render_plan.clone())?,
-                            ),
+                            )?,
                         })
                     }
                 }
@@ -171,7 +171,7 @@ impl RenderedDocumentation {
             html_filename: ALL_DOC_FILENAME.to_string(),
             file_contents: HTMLString::from_rendered_content(
                 AllDocIndex::new(root_module, all_docs).render(render_plan)?,
-            ),
+            )?,
         });
 
         Ok(rendered_docs)
@@ -253,15 +253,16 @@ fn populate_all_doc(doc: &Document, all_docs: &mut DocLinks) {
 pub(crate) struct HTMLString(pub(crate) String);
 impl HTMLString {
     /// Final rendering of a [Document] HTML page to String.
-    fn from_rendered_content(rendered_content: Box<dyn RenderBox>) -> Self {
-        let markup = html! {
-            : doctype::HTML;
-            html {
-                : rendered_content
+    fn from_rendered_content(rendered_content: Box<dyn RenderBox>) -> Result<Self> {
+        Ok(Self(
+            html! {
+                : doctype::HTML;
+                html {
+                    : rendered_content
+                }
             }
-        };
-
-        Self(markup.into_string().unwrap())
+            .into_string()?,
+        ))
     }
 }
 
