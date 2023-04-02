@@ -108,7 +108,7 @@ impl ModuleIndex {
         module_info: ModuleInfo,
         module_docs: DocLinks,
     ) -> Self {
-        ModuleIndex {
+        Self {
             version_opt,
             module_info,
             module_docs,
