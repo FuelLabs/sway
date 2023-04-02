@@ -331,15 +331,16 @@ impl Renderable for ItemContext {
 }
 
 #[derive(Clone, Debug)]
+/// Represents the type of [Context] for item declarations that have
+/// fields, variants or methods, and acts as a wrapper for those values for rendering.
 pub(crate) enum ContextType {
-    /// structs
+    /// Stores the fields on a struct to be rendered.
     StructFields(Vec<TyStructField>),
-    /// storage
+    /// Stores the fields in storage to be rendered.
     StorageFields(Vec<TyStorageField>),
-    /// enums
+    /// Stores the variants of an enum to be rendered.
     EnumVariants(Vec<TyEnumVariant>),
-    /// traits and abi, this can be split
-    /// at a later date if need be
+    /// Stores the methods of a trait or abi to be rendered.
     RequiredMethods(Vec<TyTraitFn>),
 }
 impl DocBlockTitle for ContextType {
