@@ -70,22 +70,12 @@ pub(crate) fn create_preview(raw_attributes: Option<String>) -> Option<String> {
 /// Checks if some raw html (rendered from markdown) contains a header.
 /// If it does, it splits at the header and returns the slice that preceeded it.
 pub(crate) fn split_at_markdown_header(raw_html: &str) -> &str {
-    if raw_html.contains(H1) {
-        let v: Vec<_> = raw_html.split(H1).collect();
-        v.first().expect("expected a non-empty str")
-    } else if raw_html.contains(H2) {
-        let v: Vec<_> = raw_html.split(H2).collect();
-        v.first().expect("expected a non-empty str")
-    } else if raw_html.contains(H3) {
-        let v: Vec<_> = raw_html.split(H3).collect();
-        v.first().expect("expected a non-empty str")
-    } else if raw_html.contains(H4) {
-        let v: Vec<_> = raw_html.split(H4).collect();
-        v.first().expect("expected a non-empty str")
-    } else if raw_html.contains(H5) {
-        let v: Vec<_> = raw_html.split(H5).collect();
-        v.first().expect("expected a non-empty str")
-    } else {
-        raw_html
+    for header in HTML_HEADERS {
+        if raw_html.contains(header) {
+            let v: Vec<_> = raw_html.split(header).collect();
+            return v.first().expect("expected non-empty &str");
+        }
+        continue;
     }
+    raw_html
 }
