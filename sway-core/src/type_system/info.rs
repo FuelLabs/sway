@@ -415,6 +415,65 @@ impl DisplayWithEngines for TypeInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         use TypeInfo::*;
         let s = match self {
+            Unknown => "{unknown}".into(),
+            UnknownGeneric { name, .. } => name.to_string(),
+            Placeholder(type_param) => type_param.name_ident.to_string(),
+            TypeParam(n) => format!("{n}"),
+            Str(x) => format!("str[{}]", x.val()),
+            UnsignedInteger(x) => match x {
+                IntegerBits::Eight => "u8",
+                IntegerBits::Sixteen => "u16",
+                IntegerBits::ThirtyTwo => "u32",
+                IntegerBits::SixtyFour => "u64",
+            }
+            .into(),
+            Boolean => "bool".into(),
+            Custom { call_path, .. } => call_path.suffix.to_string(),
+            Tuple(fields) => {
+                let field_strs = fields
+                    .iter()
+                    .map(|field| engines.help_out(field).to_string())
+                    .collect::<Vec<String>>();
+                format!("({})", field_strs.join(", "))
+            }
+            SelfType => "Self".into(),
+            B256 => "b256".into(),
+            Numeric => "numeric".into(),
+            Contract => "contract".into(),
+            ErrorRecovery => "unknown".into(),
+            Enum(decl_ref) => {
+                let decl = engines.de().get_enum(decl_ref);
+                print_inner_types(
+                    engines,
+                    decl.call_path.suffix.as_str().to_string(),
+                    decl.type_parameters.iter().map(|x| x.type_id),
+                )
+            }
+            Struct(decl_ref) => {
+                let decl = engines.de().get_struct(decl_ref);
+                print_inner_types(
+                    engines,
+                    decl.call_path.suffix.as_str().to_string(),
+                    decl.type_parameters.iter().map(|x| x.type_id),
+                )
+            }
+            ContractCaller { abi_name, .. } => format!("ContractCaller<{abi_name}>"),
+            Array(elem_ty, count) => {
+                format!("[{}; {}]", engines.help_out(elem_ty), count.val())
+            }
+            Storage { .. } => "storage".into(),
+            RawUntypedPtr => "pointer".into(),
+            RawUntypedSlice => "slice".into(),
+            Alias { name, .. } => name.to_string(),
+        };
+        write!(f, "{s}")
+    }
+}
+
+impl DebugWithEngines for TypeInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+        use TypeInfo::*;
+        let s = match self {
             Unknown => "unknown".into(),
             UnknownGeneric { name, .. } => name.to_string(),
             Placeholder(_) => "_".to_string(),
@@ -434,7 +493,7 @@ impl DisplayWithEngines for TypeInfo {
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()
-                    .map(|field| engines.help_out(field).to_string())
+                    .map(|field| format!("{:?}", engines.help_out(field)))
                     .collect::<Vec<String>>();
                 format!("({})", field_strs.join(", "))
             }
@@ -445,7 +504,7 @@ impl DisplayWithEngines for TypeInfo {
             ErrorRecovery => "unknown due to error".into(),
             Enum(decl_ref) => {
                 let decl = engines.de().get_enum(decl_ref);
-                print_inner_types(
+                print_inner_types_debug(
                     engines,
                     decl.call_path.suffix.as_str().to_string(),
                     decl.type_parameters.iter().map(|x| x.type_id),
@@ -453,7 +512,7 @@ impl DisplayWithEngines for TypeInfo {
             }
             Struct(decl_ref) => {
                 let decl = engines.de().get_struct(decl_ref);
-                print_inner_types(
+                print_inner_types_debug(
                     engines,
                     decl.call_path.suffix.as_str().to_string(),
                     decl.type_parameters.iter().map(|x| x.type_id),
@@ -470,31 +529,16 @@ impl DisplayWithEngines for TypeInfo {
                 )
             }
             Array(elem_ty, count) => {
-                format!("[{}; {}]", engines.help_out(elem_ty), count.val())
+                format!("[{:?}; {}]", engines.help_out(elem_ty), count.val())
             }
             Storage { .. } => "contract storage".into(),
             RawUntypedPtr => "raw untyped ptr".into(),
             RawUntypedSlice => "raw untyped slice".into(),
             Alias { name, ty } => {
-                format!("type {} = {}", name, engines.help_out(ty))
+                format!("type {} = {:?}", name, engines.help_out(ty))
             }
         };
         write!(f, "{s}")
-    }
-}
-
-impl TypeInfo {
-    pub fn display_name(&self) -> String {
-        match self {
-            TypeInfo::UnknownGeneric { name, .. } => name.to_string(),
-            TypeInfo::Placeholder(type_param) => type_param.name_ident.to_string(),
-            TypeInfo::Enum(decl_ref) => decl_ref.name().clone().to_string(),
-            TypeInfo::Struct(decl_ref) => decl_ref.name().clone().to_string(),
-            TypeInfo::ContractCaller { abi_name, .. } => abi_name.to_string(),
-            TypeInfo::Custom { call_path, .. } => call_path.to_string(),
-            TypeInfo::Storage { .. } => "storage".into(),
-            _ => format!("{self:?}"),
-        }
     }
 }
 
@@ -1437,7 +1481,7 @@ impl TypeInfo {
             }
             (type_info, _) => {
                 errors.push(CompileError::FieldAccessOnNonStruct {
-                    actually: engines.help_out(type_info).to_string(),
+                    actually: format!("{:?}", engines.help_out(type_info)),
                     span: span.clone(),
                 });
                 err(warnings, errors)
@@ -1742,6 +1786,25 @@ fn print_inner_types(
 ) -> String {
     let inner_types = inner_types
         .map(|x| engines.help_out(x).to_string())
+        .collect::<Vec<_>>();
+    format!(
+        "{}{}",
+        name,
+        if inner_types.is_empty() {
+            "".into()
+        } else {
+            format!("<{}>", inner_types.join(", "))
+        }
+    )
+}
+
+fn print_inner_types_debug(
+    engines: Engines<'_>,
+    name: String,
+    inner_types: impl Iterator<Item = TypeId>,
+) -> String {
+    let inner_types = inner_types
+        .map(|x| format!("{:?}", engines.help_out(x)))
         .collect::<Vec<_>>();
     format!(
         "{}{}",

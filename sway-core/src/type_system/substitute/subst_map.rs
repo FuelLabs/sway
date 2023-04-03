@@ -15,7 +15,7 @@ pub struct TypeSubstMap {
     mapping: BTreeMap<SourceType, DestinationType>,
 }
 
-impl DisplayWithEngines for TypeSubstMap {
+impl DebugWithEngines for TypeSubstMap {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         write!(
             f,
@@ -24,7 +24,7 @@ impl DisplayWithEngines for TypeSubstMap {
                 .iter()
                 .map(|(source_type, dest_type)| {
                     format!(
-                        "{} -> {}",
+                        "{:?} -> {:?}",
                         engines.help_out(source_type),
                         engines.help_out(dest_type)
                     )

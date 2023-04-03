@@ -486,7 +486,9 @@ impl TypeEngine {
         let engines = Engines::new(self, decl_engine);
         let mut builder = String::new();
         self.slab.with_slice(|elems| {
-            let list = elems.iter().map(|type_info| engines.help_out(type_info));
+            let list = elems
+                .iter()
+                .map(|type_info| format!("{:?}", engines.help_out(type_info)));
             let list = ListDisplay { list };
             write!(builder, "TypeEngine {{\n{list}\n}}").unwrap();
         });
