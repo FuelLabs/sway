@@ -273,7 +273,6 @@ impl<'ir> MidenVMAsmBuilder<'ir> {
     pub(super) fn compile_instruction(&mut self, instr_val: &Value) {
         if let Some(instruction) = instr_val.get_instruction(self.context) {
             match instruction {
-                Instruction::AddrOf(arg) => todo!(),
                 Instruction::AsmBlock(asm, args) => todo!(),
                 Instruction::BitCast(val, ty) => todo!(),
                 Instruction::BinaryOp { op, arg1, arg2 } => {
@@ -281,7 +280,7 @@ impl<'ir> MidenVMAsmBuilder<'ir> {
                 }
                 Instruction::Branch(to_block) => todo!(),
                 Instruction::Call(func, args) => self.compile_call(instr_val, func, args),
-                Instruction::CastPtr(val, ty, offs) => {
+                Instruction::CastPtr(val, ty) => {
                     todo!()
                 }
                 Instruction::Cmp(pred, lhs_value, rhs_value) => {
@@ -299,39 +298,29 @@ impl<'ir> MidenVMAsmBuilder<'ir> {
                     gas,
                     ..
                 } => todo!(),
-                Instruction::ExtractElement {
-                    array,
-                    ty,
-                    index_val,
-                } => todo!(),
-                Instruction::ExtractValue {
-                    aggregate, indices, ..
-                } => todo!(),
                 Instruction::FuelVm(fuel_vm_instr) => todo!(),
-                Instruction::GetLocal(local_var) => todo!(),
-                Instruction::InsertElement {
-                    array,
-                    ty,
-                    value,
-                    index_val,
-                } => todo!(),
-                Instruction::InsertValue {
-                    aggregate,
-                    value,
+                Instruction::GetElemPtr {
+                    base,
+                    elem_ptr_ty,
                     indices,
-                    ..
                 } => todo!(),
+                Instruction::GetLocal(local_var) => todo!(),
                 Instruction::IntToPtr(val, _) => todo!(),
                 Instruction::Load(src_val) => todo!(),
-                Instruction::MemCopy {
-                    dst_val,
-                    src_val,
+                Instruction::MemCopyBytes {
+                    dst_val_ptr,
+                    src_val_ptr,
                     byte_len,
                 } => todo!(),
+                Instruction::MemCopyVal {
+                    dst_val_ptr,
+                    src_val_ptr,
+                } => todo!(),
                 Instruction::Nop => (),
+                Instruction::PtrToInt(ptr_val, int_ty) => todo!(),
                 Instruction::Ret(ret_val, ty) => self.compile_return(ret_val, ty),
                 Instruction::Store {
-                    dst_val,
+                    dst_val_ptr,
                     stored_val,
                 } => todo!(),
             }

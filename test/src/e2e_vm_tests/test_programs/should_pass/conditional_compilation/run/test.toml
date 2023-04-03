@@ -1,0 +1,3 @@
+category = "run"
+supported_targets = ["fuel"]
+expected_result = { action = "return", value = 40 }

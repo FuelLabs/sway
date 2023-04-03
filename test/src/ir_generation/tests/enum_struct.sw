@@ -22,11 +22,32 @@ fn main() {
 
 // ::check-ir::
 
-// check: $(enum_undef=$VAL) = get_local { u64, ( () | { b256, bool, u64 } | () ) } $ID
-// check: $(enum_tag=$VAL) = const u64 1
-// check: $(enum_tagged=$VAL) = insert_value $enum_undef, { u64, ( () | { b256, bool, u64 } | () ) }, $enum_tag, 0
-// check: $(struct_undef=$VAL) = get_local { b256, bool, u64 } $ID
-// check: $(struct_0=$VAL) = insert_value $struct_undef, { b256, bool, u64 }, $VAL, 0
-// check: $(struct_01=$VAL) = insert_value $struct_0, { b256, bool, u64 }, $VAL, 1,
-// check: $(struct_012=$VAL) = insert_value $struct_01, { b256, bool, u64 }, $VAL, 2
-// check: insert_value $enum_tagged, { u64, ( () | { b256, bool, u64 } | () ) }, $struct_012, 1
+// check: $(temp_ptr_0=$VAL) = get_local ptr { u64, ( () | { b256, bool, u64 } | () ) }, $(=__anon_\d+)
+// check: $(idx_0=$VAL) = const u64 0
+// check: $(tag_ptr=$VAL) = get_elem_ptr $temp_ptr_0, ptr u64, $idx_0
+// check: $(tag_1=$VAL) = const u64 1
+// check: store v3 to $tag_ptr
+
+// check: $(temp_ptr_1=$VAL) = get_local ptr { b256, bool, u64 }, $(=__anon_\d+)
+// check: $(idx_0=$VAL) = const u64 0
+// check: $(x_ptr=$VAL) = get_elem_ptr $temp_ptr_1, ptr b256, $idx_0
+// check: $(x_val=$VAL) = const b256 0x0001010101010101000101010101010100010101010101010001010101010101
+// check: store $x_val to $x_ptr
+
+// check: $(idx_1=$VAL) = const u64 1
+// check: $(y_ptr=$VAL) = get_elem_ptr $temp_ptr_1, ptr bool, $idx_1
+// check: $(t=$VAL) = const bool true
+// check: store $t to $y_ptr
+
+// check: $(idx_2=$VAL) = const u64 2
+// check: $(z_ptr=$VAL) = get_elem_ptr $temp_ptr_1, ptr u64, $idx_2
+// check: $(fif3=$VAL) = const u64 53
+// check: store $fif3 to $z_ptr
+
+// check: $(xyz_val=$VAL) = load $temp_ptr_1
+
+// check: $(idx_1=$VAL) = const u64 1
+// check: $(variant_val_ptr=$VAL) = get_elem_ptr $temp_ptr_0, ptr { b256, bool, u64 }, $idx_1
+// check: store $xyz_val to $variant_val_ptr
+
+// check: load $temp_ptr_0

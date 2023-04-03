@@ -106,9 +106,14 @@ impl Spanned for TypeParameter {
     }
 }
 
-impl DisplayWithEngines for TypeParameter {
+impl DebugWithEngines for TypeParameter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
-        write!(f, "{}: {}", self.name_ident, engines.help_out(self.type_id))
+        write!(
+            f,
+            "{}: {:?}",
+            self.name_ident,
+            engines.help_out(self.type_id)
+        )
     }
 }
 

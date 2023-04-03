@@ -1,3 +1,5 @@
+// target-fuelvm
+
 script;
 
 fn a(x: u64) -> (u64, u64, u64) {
@@ -10,20 +12,44 @@ fn main() -> u64 {
 
 // ::check-ir::
 
-// check: fn main() -> u64
-// check: local { u64, u64, u64 } $(ret_for_call_0=$ID)
-// check: local { u64, u64, u64 } $(ret_for_call_1=$ID)
+// check: entry fn main() -> u64
+// check: local { u64, u64, u64 } $(=__ret_val.*)
+// check: local { u64, u64, u64 } $(=__ret_val.*)
 
-// check: $(ret_arg_0=$ID) = get_local { u64, u64, u64 } $ret_for_call_0
-// check: $(ret_val_0=$ID) = call $(a_func=$ID)($ID, $ret_arg_0)
-// check: extract_value $ret_val_0, { u64, u64, u64 }, 1
+// check: $(ret_val_ptr=$VAL) = get_local ptr { u64, u64, u64 }, $(=__ret_val.*)
+// check: $(arg_11=$VAL) = const u64 11
+// check: $(call_a_ret_ptr=$VAL) = call $(a_fn=$ID)($arg_11, $ret_val_ptr)
+// check: $(temp_0=$VAL) = get_local ptr { u64, u64, u64 }, $(=__anon_\d+)
+// check: mem_copy_val $temp_0, $call_a_ret_ptr
 
-// check: $(ret_arg_1=$ID) = get_local { u64, u64, u64 } $ret_for_call_1
-// check: $(ret_val_1=$ID) = call $a_func($ID, $ret_arg_1)
-// check extract_value $ret_val_1, { u64, u64, u64 }, 2
+// check: $(idx_1=$VAL) = const u64 1
+// check: $(field_1_ptr=$VAL) = get_elem_ptr $temp_0, ptr u64, $idx_1
+// check: $(field_1_val=$VAL) = load $field_1_ptr
+// check: $(ret_val_ptr=$VAL) = get_local ptr { u64, u64, u64 }, $(=__ret_val.*)
+// check: $(call_a_ret_ptr=$VAL) = call $a_fn($field_1_val, $ret_val_ptr)
+// check: $(temp_1=$VAL) = get_local ptr { u64, u64, u64 }, $(=__anon_\d+)
+// check: mem_copy_val $temp_1, $call_a_ret_ptr
 
-// check: fn $a_func($ID $MD: u64, inout __ret_value $MD: { u64, u64, u64 }) -> { u64, u64, u64 }
-// check: mem_copy __ret_value
-// There should be only a single mem_copy
-// not: mem_copy __ret_value
-// check: ret { u64, u64, u64 }
+// check: $(idx_2=$VAL) = const u64 2
+// check: $(field_2_ptr=$VAL) = get_elem_ptr $temp_1, ptr u64, $idx_2
+// check: $(field_2_val=$VAL) = load $field_2_ptr
+// check: ret u64 $field_2_val
+
+// check: fn $a_fn($(x_arg=$ID) $MD: u64, $(ret_val_arg_ptr=$ID): ptr { u64, u64, u64 }) -> ptr { u64, u64, u64 }
+
+// check: $(temp_ptr=$VAL) = get_local ptr { u64, u64, u64 }, $(=__anon_\d+)
+
+// check: $(idx_0=$VAL) = const u64 0
+// check: $(field_0_ptr=$VAL) = get_elem_ptr $temp_ptr, ptr u64, $idx_0
+// check: store $x_arg to $field_0_ptr
+
+// check: $(idx_1=$VAL) = const u64 1
+// check: $(field_1_ptr=$VAL) = get_elem_ptr $temp_ptr, ptr u64, $idx_1
+// check: store $x_arg to $field_1_ptr
+
+// check: $(idx_2=$VAL) = const u64 2
+// check: $(field_2_ptr=$VAL) = get_elem_ptr $temp_ptr, ptr u64, $idx_2
+// check: store $x_arg to $field_2_ptr
+
+// check: mem_copy_val $ret_val_arg_ptr, $temp_ptr
+// check: ret ptr { u64, u64, u64 } $ret_val_arg_ptr

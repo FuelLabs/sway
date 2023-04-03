@@ -36,13 +36,56 @@ impl ty::TyAstNode {
                         ctx.namespace.find_module_path(&a.call_path)
                     };
                     let mut res = match a.import_type {
-                        ImportType::Star => ctx.namespace.star_import(&path, engines),
+                        ImportType::Star => {
+                            // try a standard starimport first
+                            let import = ctx.namespace.star_import(&path, engines);
+                            if import.is_ok() {
+                                import
+                            } else {
+                                // if it doesn't work it could be an enum star import
+                                if let Some((enum_name, path)) = path.split_last() {
+                                    let variant_import =
+                                        ctx.namespace.variant_star_import(path, engines, enum_name);
+                                    if variant_import.is_ok() {
+                                        variant_import
+                                    } else {
+                                        import
+                                    }
+                                } else {
+                                    import
+                                }
+                            }
+                        }
                         ImportType::SelfImport(_) => {
                             ctx.namespace.self_import(engines, &path, a.alias.clone())
                         }
                         ImportType::Item(ref s) => {
-                            ctx.namespace
-                                .item_import(engines, &path, s, a.alias.clone())
+                            // try a standard item import first
+                            let import =
+                                ctx.namespace
+                                    .item_import(engines, &path, s, a.alias.clone());
+
+                            if import.is_ok() {
+                                import
+                            } else {
+                                // if it doesn't work it could be an enum variant import
+                                if let Some((enum_name, path)) = path.split_last() {
+                                    let variant_import = ctx.namespace.variant_import(
+                                        engines,
+                                        path,
+                                        enum_name,
+                                        s,
+                                        a.alias.clone(),
+                                    );
+                                    if variant_import.is_ok() {
+                                        variant_import
+                                    } else {
+                                        import
+                                    }
+                                } else {
+                                    import
+                                }
+                            }
                         }
                     };
                     warnings.append(&mut res.warnings);

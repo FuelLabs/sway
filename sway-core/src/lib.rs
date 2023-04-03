@@ -36,7 +36,8 @@ use sway_ast::AttributeDecl;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{
     create_o1_pass_group, register_known_passes, Context, Kind, Module, PassManager,
-    MODULEPRINTER_NAME,
+    ARGDEMOTION_NAME, CONSTDEMOTION_NAME, DCE_NAME, MEMCPYOPT_NAME, MISCDEMOTION_NAME,
+    MODULEPRINTER_NAME, RETDEMOTION_NAME,
 };
 use sway_types::constants::DOC_COMMENT_ATTRIBUTE_NAME;
 use transform::{Attribute, AttributeArg, AttributeKind, AttributesMap};
@@ -82,15 +83,22 @@ pub fn parse(
         None => parse_in_memory(h, engines, input),
         // When a `BuildConfig` is given,
         // the module source may declare `dep`s that must be parsed from other files.
-        Some(config) => parse_module_tree(h, engines, input, config.canonical_root_module(), None)
-            .map(|(kind, lexed, parsed)| {
-                let lexed = lexed::LexedProgram {
-                    kind: kind.clone(),
-                    root: lexed,
-                };
-                let parsed = parsed::ParseProgram { kind, root: parsed };
-                (lexed, parsed)
-            }),
+        Some(config) => parse_module_tree(
+            h,
+            engines,
+            input,
+            config.canonical_root_module(),
+            None,
+            config.build_target,
+        )
+        .map(|(kind, lexed, parsed)| {
+            let lexed = lexed::LexedProgram {
+                kind: kind.clone(),
+                root: lexed,
+            };
+            let parsed = parsed::ParseProgram { kind, root: parsed };
+            (lexed, parsed)
+        }),
     })
 }
 
@@ -198,6 +206,7 @@ fn parse_submodules(
     module_name: Option<&str>,
     module: &sway_ast::Module,
     module_dir: &Path,
+    build_target: BuildTarget,
 ) -> Submodules {
     // Assume the happy path, so there'll be as many submodules as dependencies, but no more.
     let mut lexed_submods = Vec::with_capacity(module.submodules().count());
@@ -225,6 +234,7 @@ fn parse_submodules(
             submod_str.clone(),
             submod_path.clone(),
             Some(submod.name.as_str()),
+            build_target,
         ) {
             if !matches!(kind, parsed::TreeType::Library) {
                 let span = span::Span::new(submod_str, 0, 0, Some(submod_path)).unwrap();
@@ -258,6 +268,7 @@ fn parse_module_tree(
     src: Arc<str>,
     path: Arc<PathBuf>,
     module_name: Option<&str>,
+    build_target: BuildTarget,
 ) -> Result<(parsed::TreeType, lexed::LexedModule, parsed::ParseModule), ErrorEmitted> {
     // Parse this module first.
     let module_dir = path.parent().expect("module file has no parent directory");
@@ -265,11 +276,18 @@ fn parse_module_tree(
 
     // Parse all submodules before converting to the `ParseTree`.
     // This always recovers on parse errors for the file itself by skipping that file.
-    let submodules = parse_submodules(handler, engines, module_name, &module.value, module_dir);
+    let submodules = parse_submodules(
+        handler,
+        engines,
+        module_name,
+        &module.value,
+        module_dir,
+        build_target,
+    );
 
     // Convert from the raw parsed module to the `ParseTree` ready for type-check.
     let (kind, tree) = to_parsed_lang::convert_parse_tree(
-        &mut to_parsed_lang::Context::default(),
+        &mut to_parsed_lang::Context::new(build_target),
         handler,
         engines,
         module.value.clone(),
@@ -366,8 +384,7 @@ pub fn parsed_to_ast(
     errors.extend(cfa_res.errors);
     warnings.extend(cfa_res.warnings);
 
-    // Evaluate const declarations,
-    // to allow storage slots initializion with consts.
+    // Evaluate const declarations, to allow storage slots initializion with consts.
     let mut ctx = Context::default();
     let mut md_mgr = MetadataManager::default();
     let module = Module::new(&mut ctx, Kind::Contract);
@@ -562,6 +579,29 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     let mut pass_mgr = PassManager::default();
     register_known_passes(&mut pass_mgr);
     let mut pass_group = create_o1_pass_group(matches!(tree_type, TreeType::Predicate));
+
+    // Target specific transforms should be moved into something more configured.
+    if build_config.build_target == BuildTarget::Fuel {
+        // FuelVM target specific transforms.
+        //
+        // Demote large by-value constants, arguments and return values to by-reference values
+        // using temporaries.
+        pass_group.append_pass(CONSTDEMOTION_NAME);
+        pass_group.append_pass(ARGDEMOTION_NAME);
+        pass_group.append_pass(RETDEMOTION_NAME);
+        pass_group.append_pass(MISCDEMOTION_NAME);
+
+        // Convert loads and stores to mem_copys where possible.
+        pass_group.append_pass(MEMCPYOPT_NAME);
+
+        // Run a DCE and simplify-cfg to clean up any obsolete instructions.
+        pass_group.append_pass(DCE_NAME);
+        // XXX Oh no, if we add simplifycfg here it unearths a bug in the register allocator which
+        // manifests in the `should_pass/language/while_loops` test.  Fixing the register allocator
+        // is a very high priority but isn't a part of this change.
+        //pass_group.append_pass(SIMPLIFYCFG_NAME);
+    }
+
     if build_config.print_ir {
         pass_group.append_pass(MODULEPRINTER_NAME);
     }

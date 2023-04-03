@@ -48,9 +48,6 @@ pub struct BlockArgument {
     /// idx'th argument of the block.
     pub idx: usize,
     pub ty: Type,
-
-    /// Temporary flag to mark an arg as passed by reference until we reintroduce pointers.
-    pub by_ref: bool,
 }
 
 impl BlockArgument {
@@ -92,7 +89,7 @@ impl Block {
         context.blocks[self.0].function
     }
 
-    /// Create a new [`InstructionIterator`] to more easily append instructions to this block.
+    /// Create a new [`InstructionInserter`] to more easily append instructions to this block.
     pub fn ins<'a>(&self, context: &'a mut Context) -> InstructionInserter<'a> {
         InstructionInserter::new(context, *self)
     }
@@ -101,6 +98,14 @@ impl Block {
     /// label.
     pub fn get_label(&self, context: &Context) -> String {
         context.blocks[self.0].label.clone()
+    }
+
+    /// Set the label of this block.  If the label isn't unique it will be made so.
+    pub fn set_label(&self, context: &mut Context, new_label: Option<Label>) {
+        let unique_label = self
+            .get_function(context)
+            .get_unique_label(context, new_label);
+        context.blocks[self.0].label = unique_label;
     }
 
     /// Get the number of instructions in this block
@@ -119,7 +124,7 @@ impl Block {
     }
 
     /// Add a new block argument of type `ty`. Returns its index.
-    pub fn new_arg(&self, context: &mut Context, ty: Type, by_ref: bool) -> usize {
+    pub fn new_arg(&self, context: &mut Context, ty: Type) -> usize {
         let idx = context.blocks[self.0].args.len();
         let arg_val = Value::new_argument(
             context,
@@ -127,7 +132,6 @@ impl Block {
                 block: *self,
                 idx,
                 ty,
-                by_ref,
             },
         );
         context.blocks[self.0].args.push(arg_val);
@@ -137,12 +141,9 @@ impl Block {
     /// Add a block argument, asserts that `arg` is suitable here.
     pub fn add_arg(&self, context: &mut Context, arg: Value) {
         match context.values[arg.0].value {
-            ValueDatum::Argument(BlockArgument {
-                block,
-                idx,
-                ty: _,
-                by_ref: _,
-            }) if block == *self && idx == context.blocks[self.0].args.len() => {
+            ValueDatum::Argument(BlockArgument { block, idx, ty: _ })
+                if block == *self && idx == context.blocks[self.0].args.len() =>
+            {
                 context.blocks[self.0].args.push(arg);
             }
             _ => panic!("Inconsistent block argument being added"),
@@ -350,6 +351,12 @@ impl Block {
         }
     }
 
+    /// Remove instructions from block that satisfy a given predicate.
+    pub fn remove_instructions<T: Fn(Value) -> bool>(&self, context: &mut Context, pred: T) {
+        let ins = &mut context.blocks[self.0].instructions;
+        ins.retain(|value| !pred(*value));
+    }
+
     /// Replace an instruction in this block with another.  Will return a ValueNotFound on error.
     /// Any use of the old instruction value will also be replaced by the new value throughout the
     /// owning function.
@@ -389,7 +396,18 @@ impl Block {
         if split_idx == 0 {
             // We can just create a new empty block and put it before this one.  We know that it
             // will succeed because self is definitely in the function, so we can unwrap().
-            let new_block = function.create_block_before(context, self, None).unwrap();
+            //
+            // If self is the entry block then for now we need to rename it from 'entry' and call
+            // our new block 'entry'.
+            let new_block_name = (*self == self.get_function(context).get_entry_block(context))
+                .then(|| {
+                    self.set_label(context, None);
+                    "entry".to_owned()
+                });
+            let new_block = function
+                .create_block_before(context, self, new_block_name)
+                .unwrap();
+
             // Move the block arguments to the new block. We collect because we want to mutate next.
             #[allow(clippy::needless_collect)]
             let args: Vec<_> = self.arg_iter(context).copied().collect();
@@ -399,7 +417,6 @@ impl Block {
                         block,
                         idx: _,
                         ty: _,
-                        by_ref: _,
                     }) => {
                         // We modify the Value in place to be a BlockArgument for the new block.
                         *block = new_block;
@@ -409,6 +426,7 @@ impl Block {
                 new_block.add_arg(context, arg);
             }
             context.blocks[self.0].args.clear();
+
             (new_block, *self)
         } else {
             // Again, we know that it will succeed because self is definitely in the function, and

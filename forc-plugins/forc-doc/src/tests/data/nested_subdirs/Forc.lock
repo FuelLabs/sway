@@ -1,0 +1,8 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-2E974E96B45CBA16'
+
+[[package]]
+name = 'nested_subdirs'
+source = 'member'
+dependencies = ['core']

@@ -24,33 +24,34 @@ impl StorageAccess for Contract {
 // check: local b256 $(key=$ID)
 // check: local [b256; 2] $(val_ary=$ID)
 
-// check: $(key_var=$VAL) = get_local b256 $key
+// check: $(key_var=$VAL) = get_local ptr b256, $key
 // check: $(key_val=$VAL) = const b256 0xf383b0ce51358be57daa3b725fe44acdb2d880604e367199080b4379c41bb6ed
 // check: store $key_val to $key_var
 
-// check: $(val_ary_var=$VAL) = get_local [b256; 2] $val_ary
-// check: $(val_ary_as_string=$VAL) = cast_ptr $val_ary_var, string<40>, 0
+// check: $(val_ary_var=$VAL) = get_local ptr [b256; 2], $val_ary
+// check: $(val_ary_as_string_ptr=$VAL) = cast_ptr $val_ary_var to ptr string<40>
 
-// check: $(val_ary_0_var=$VAL) = get_local [b256; 2] $val_ary
-// check: $(val_ary_0_as_b256=$VAL) = cast_ptr $val_ary_0_var, b256, 0
+// check: $(val_ary_0_var=$VAL) = get_local ptr [b256; 2], $val_ary
+// check: $(val_ary_0_as_b256=$VAL) = cast_ptr $val_ary_0_var to ptr b256
 // check: $(slot_count=$VAL) = const u64 2
 // check: state_load_quad_word $val_ary_0_as_b256, key $key_var, $slot_count
 
+// check: $(val_ary_as_string=$VAL) = load $val_ary_as_string_ptr
 // check: ret string<40> $val_ary_as_string
 
 // check: fn set_s
 // check: local b256 $(key=$ID)
 // check: local [b256; 2] $(val_ary=$ID)
 
-// check: $(key_var=$VAL) = get_local b256 $key
+// check: $(key_var=$VAL) = get_local ptr b256, $key
 // check: $(key_val=$VAL) = const b256 0xf383b0ce51358be57daa3b725fe44acdb2d880604e367199080b4379c41bb6ed
 // check: store $key_val to $key_var
 
-// check: $(val_ary_var=$VAL) = get_local [b256; 2] $val_ary
-// check: $(val_ary_var_as_str=$VAL) = cast_ptr $val_ary_var, string<40>, 0
+// check: $(val_ary_var=$VAL) = get_local ptr [b256; 2], $val_ary
+// check: $(val_ary_var_as_str=$VAL) = cast_ptr $val_ary_var to ptr string<40>
 // check: store s to $val_ary_var_as_str
 
-// check: $(val_ary_0_var=$VAL) = get_local [b256; 2] $val_ary
-// check: $(val_ary_0_as_b256=$VAL) = cast_ptr $val_ary_0_var, b256, 0
+// check: $(val_ary_0_var=$VAL) = get_local ptr [b256; 2], $val_ary
+// check: $(val_ary_0_as_b256=$VAL) = cast_ptr $val_ary_0_var to ptr b256
 // check: $(slot_count=$VAL) = const u64 2
 // check: state_store_quad_word $val_ary_0_as_b256, key $key_var, $slot_count

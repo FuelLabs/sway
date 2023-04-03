@@ -15,7 +15,7 @@ fn main() -> u64 {
 
 // check:        local { u64 } X
 
-// check: $(x_var=$VAL) = get_local { u64 } X
+// check: $(x_var=$VAL) = get_local ptr { u64 }, X
 // check: $(one=$VAL) = const { u64 } { u64 1 }
 // not: call
 // check: store $one to $x_var

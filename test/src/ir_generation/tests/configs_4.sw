@@ -1,11 +1,13 @@
+// target-fuelvm
+
 script;
 
 const A: u64 = 42;
 const B: u64 = 42;
 
 configurable {
-    X: u64 = 42,
-    Y: u64 = 42,
+    X: u64 = 11,
+    Y: u64 = 11,
 }
 
 fn main() -> (u64, u64, u64, u64) {
@@ -24,6 +26,6 @@ fn main() -> (u64, u64, u64, u64) {
 // There should only be 3 data entries here. One shared by `A` and `B` and the
 // other two are for `X` and `Y` respectively
 
-// check: $(d1=$DATA) .word 42
-// check: $(d2=$DATA) .word 42
-// check: $(d3=$DATA) .word 42
+// unordered: $DATA .word 42
+// unordered: $DATA .word 11
+// unordered: $DATA .word 11

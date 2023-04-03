@@ -1,0 +1,27 @@
+script {
+    entry fn main() -> u64 {
+        entry():
+        v0 = const u64 42
+        ret u64 v0
+    }
+
+    fn foo(e: b256) -> bool {
+        entry(e: b256):
+        v0 = const bool false
+        ret bool v0
+    }
+
+    fn bar(i: b256, j: u64) -> bool {
+        entry(i: b256, j: u64):
+        v0 = const bool false
+        ret bool v0
+    }
+}
+
+// regex: ID=[[:alpha:]_0-9]+
+
+// check: fn foo($ID: ptr b256) -> bool
+// check: entry($ID: ptr b256):
+
+// check: fn bar($ID: ptr b256, $ID: u64) -> bool
+// check: entry($ID: ptr b256, $ID: u64):

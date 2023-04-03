@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use crate::{
     decl_engine::*,
-    engine_threading::DisplayWithEngines,
+    engine_threading::DebugWithEngines,
     language::ty::{self, GetDeclIdent},
     transform, Engines, Ident,
 };
@@ -120,11 +120,13 @@ impl<'cfg> std::convert::From<&str> for ControlFlowGraphNode<'cfg> {
     }
 }
 
-impl<'cfg> DisplayWithEngines for ControlFlowGraphNode<'cfg> {
+impl<'cfg> DebugWithEngines for ControlFlowGraphNode<'cfg> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>, engines: Engines<'_>) -> std::fmt::Result {
         let text = match self {
             ControlFlowGraphNode::OrganizationalDominator(s) => s.to_string(),
-            ControlFlowGraphNode::ProgramNode { node, .. } => engines.help_out(node).to_string(),
+            ControlFlowGraphNode::ProgramNode { node, .. } => {
+                format!("{:?}", engines.help_out(node))
+            }
             ControlFlowGraphNode::EnumVariant { variant_name, .. } => {
                 format!("Enum variant {variant_name}")
             }
@@ -201,7 +203,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
     pub(crate) fn visualize(&self, engines: Engines<'_>) {
         use petgraph::dot::{Config, Dot};
         let string_graph = self.graph.filter_map(
-            |_idx, node| Some(engines.help_out(node).to_string()),
+            |_idx, node| Some(format!("{:?}", engines.help_out(node))),
             |_idx, edge| Some(edge.0.clone()),
         );
 

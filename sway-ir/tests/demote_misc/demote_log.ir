@@ -1,0 +1,19 @@
+script {
+    entry fn main() -> () {
+        entry():
+        v0 = const b256 0x2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b
+        v1 = const u64 0
+        log b256 v0, v1
+        v2 = const unit ()
+        ret () v2
+    }
+}
+
+// regex: VAL=v\d+
+// regex: ID=[[:alpha:]0-9_]+
+
+// check: local b256 $(loc_name=$ID)
+
+// check: $(arg_ptr=$VAL) = get_local ptr b256, $loc_name
+// check: store $VAL to $arg_ptr
+// check: log ptr b256 $arg_ptr, $VAL
