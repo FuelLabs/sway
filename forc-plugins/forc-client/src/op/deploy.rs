@@ -163,6 +163,7 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::BuildOpts {
             finalized_asm: cmd.print.finalized_asm,
             intermediate_asm: cmd.print.intermediate_asm,
             ir: cmd.print.ir,
+            reverse_order: cmd.print.ast,
         },
         time_phases: cmd.print.time_phases,
         minify: pkg::MinifyOpts {
