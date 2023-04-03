@@ -407,6 +407,51 @@ impl DisplayWithEngines for TyDecl {
     }
 }
 
+impl DebugWithEngines for TyDecl {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> std::fmt::Result {
+        let type_engine = engines.te();
+        write!(
+            f,
+            "{} declaration ({})",
+            self.friendly_type_name(),
+            match self {
+                TyDecl::VariableDecl(decl) => {
+                    let TyVariableDecl {
+                        mutability,
+                        name,
+                        type_ascription,
+                        body,
+                        ..
+                    } = &**decl;
+                    let mut builder = String::new();
+                    match mutability {
+                        VariableMutability::Mutable => builder.push_str("mut"),
+                        VariableMutability::RefMutable => builder.push_str("ref mut"),
+                        VariableMutability::Immutable => {}
+                    }
+                    builder.push_str(name.as_str());
+                    builder.push_str(": ");
+                    builder.push_str(
+                        format!(
+                            "{:?}",
+                            engines.help_out(type_engine.get(type_ascription.type_id))
+                        )
+                        .as_str(),
+                    );
+                    builder.push_str(" = ");
+                    builder.push_str(format!("{:?}", engines.help_out(body)).as_str());
+                    builder
+                }
+                TyDecl::FunctionDecl { name, .. }
+                | TyDecl::TraitDecl { name, .. }
+                | TyDecl::StructDecl { name, .. }
+                | TyDecl::EnumDecl { name, .. } => name.as_str().into(),
+                _ => String::new(),
+            }
+        )
+    }
+}
+
 impl CollectTypesMetadata for TyDecl {
     // this is only run on entry nodes, which must have all well-formed types
     fn collect_types_metadata(
@@ -661,7 +706,7 @@ impl TyDecl {
                 let decl = decl_engine.get_impl_trait(decl_id);
                 let implementing_for_type_id = type_engine.get(decl.implementing_for.type_id);
                 format!(
-                    "{} for {}",
+                    "{} for {:?}",
                     self.get_decl_ident()
                         .map_or(String::from(""), |f| f.as_str().to_string()),
                     engines.help_out(implementing_for_type_id)

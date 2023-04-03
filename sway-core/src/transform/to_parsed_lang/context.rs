@@ -1,3 +1,5 @@
+use crate::BuildTarget;
+
 #[derive(Default)]
 pub struct Context {
     /// Indicates whether the module being parsed has a `configurable` block
@@ -11,9 +13,20 @@ pub struct Context {
 
     /// Unique suffix used to generate unique names for vars returned from `match` expressions
     match_expression_return_var_unique_suffix: usize,
+
+    /// The build target
+    build_target: BuildTarget,
 }
 
 impl Context {
+    /// Create a new context
+    pub fn new(build_target: BuildTarget) -> Self {
+        Self {
+            build_target,
+            ..Default::default()
+        }
+    }
+
     /// Update the value of `module_has_configurable_block`
     pub fn set_module_has_configurable_block(&mut self, val: bool) {
         self.module_has_configurable_block = val;
@@ -41,5 +54,10 @@ impl Context {
     pub fn next_match_expression_return_var_unique_suffix(&mut self) -> usize {
         self.match_expression_return_var_unique_suffix += 1;
         self.match_expression_return_var_unique_suffix
+    }
+
+    /// Returns the build target
+    pub fn build_target(&self) -> BuildTarget {
+        self.build_target
     }
 }

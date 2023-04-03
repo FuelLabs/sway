@@ -61,12 +61,14 @@ impl<'a, T> WithEngines<'a, T> {
     }
 }
 
+/// Displays the user-friendly formatted view of `thing` using `engines` as context.
 impl<T: DisplayWithEngines> fmt::Display for WithEngines<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.thing.fmt(f, self.engines)
     }
 }
 
+/// Displays the internals of `thing` using `engines` as context. Useful for debugging.
 impl<T: DebugWithEngines> fmt::Debug for WithEngines<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.thing.fmt(f, self.engines)

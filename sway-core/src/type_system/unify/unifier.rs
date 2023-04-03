@@ -438,10 +438,10 @@ impl<'a> Unifier<'a> {
 
     fn assign_args<T>(&self, r: T, e: T) -> (String, String)
     where
-        WithEngines<'a, T>: fmt::Display,
+        WithEngines<'a, T>: fmt::Debug,
     {
-        let r = self.engines.with_thing(r).to_string();
-        let e = self.engines.with_thing(e).to_string();
+        let r = format!("{:?}", self.engines.with_thing(r));
+        let e = format!("{:?}", self.engines.with_thing(e));
         (r, e)
     }
 }
