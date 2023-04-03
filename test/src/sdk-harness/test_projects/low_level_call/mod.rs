@@ -1,7 +1,7 @@
 use fuels::{
     prelude::*,
-    tx::{Bytes32, ContractId, Input, Output, TxPointer, UtxoId},
-    types::{Bits256, SizedAsciiString},
+    tx::{Bytes32, ContractId, Output, TxPointer, UtxoId},
+    types::{input::Input, Bits256, SizedAsciiString},
 };
 
 macro_rules! fn_selector {
@@ -60,12 +60,12 @@ async fn low_level_call(
         .main(id, function_selector, calldata, single_value_type_arg)
         .with_inputs(vec![contract_input])
         .with_outputs(vec![contract_output])
-        .tx_params(TxParameters::new(None, Some(10_000_000), None));
+        .tx_params(TxParameters::default().set_gas_limit(10_000_000));
 
     tx.call().await.unwrap();
 }
 
-async fn get_contract_instance() -> (TestContract, ContractId, WalletUnlocked) {
+async fn get_contract_instance() -> (TestContract<WalletUnlocked>, ContractId, WalletUnlocked) {
     // Launch a local network and deploy the contract
     let mut wallets = launch_custom_provider_and_get_wallets(
         WalletsConfig::new(
@@ -82,11 +82,7 @@ async fn get_contract_instance() -> (TestContract, ContractId, WalletUnlocked) {
     let id = Contract::deploy(
         "test_artifacts/low_level_callee_contract/out/debug/test_contract.bin",
         &wallet,
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "test_artifacts/low_level_callee_contract/out/debug/test_contract-storage_slots.json"
-                .to_string(),
-        )),
+        DeployConfiguration::default(),
     )
     .await
     .unwrap();

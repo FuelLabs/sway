@@ -29,15 +29,11 @@ async fn can_get_bytecode_root() {
 
 async fn get_test_contract_instance(
     wallet: WalletUnlocked,
-) -> (ContractBytecodeTest, Bech32ContractId) {
+) -> (ContractBytecodeTest<WalletUnlocked>, Bech32ContractId) {
     let id = Contract::deploy(
         "test_projects/contract_bytecode/out/debug/contract_bytecode.bin",
         &wallet,
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "test_projects/contract_bytecode/out/debug/contract_bytecode-storage_slots.json"
-                .to_string(),
-        )),
+        DeployConfiguration::default(),
     )
     .await
     .unwrap();
