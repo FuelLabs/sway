@@ -186,6 +186,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
         | AbiDecl { .. }
         | StructDecl { .. }
         | EnumDecl { .. }
+        | EnumVariantDecl { .. }
         | StorageDecl { .. }
         | TypeAliasDecl { .. }
         | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),

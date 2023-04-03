@@ -47,6 +47,12 @@ pub enum TyDecl {
         subst_list: Template<SubstList>,
         decl_span: Span,
     },
+    EnumVariantDecl {
+        decl_id: DeclId<TyEnumDecl>,
+        subst_list: Template<SubstList>,
+        variant_name: Ident,
+        variant_decl_span: Span,
+    },
     ImplTrait {
         name: Ident,
         decl_id: DeclId<TyImplTrait>,
@@ -218,6 +224,14 @@ impl HashWithEngines for TyDecl {
             EnumDecl { decl_id, .. } => {
                 decl_engine.get(decl_id).hash(state, engines);
             }
+            EnumVariantDecl {
+                decl_id,
+                variant_name,
+                ..
+            } => {
+                decl_engine.get(decl_id).hash(state, engines);
+                variant_name.hash(state);
+            }
             ImplTrait { decl_id, .. } => {
                 decl_engine.get(decl_id).hash(state, engines);
             }
@@ -255,6 +269,9 @@ impl SubstTypes for TyDecl {
             } => decl_id.subst(type_mapping, engines),
             EnumDecl {
                 ref mut decl_id, ..
+            }
+            | EnumVariantDecl {
+                ref mut decl_id, ..
             } => decl_id.subst(type_mapping, engines),
             ImplTrait {
                 ref mut decl_id, ..
@@ -287,6 +304,9 @@ impl ReplaceSelfType for TyDecl {
                 ref mut decl_id, ..
             } => decl_id.replace_self_type(engines, self_type),
             EnumDecl {
+                ref mut decl_id, ..
+            }
+            | EnumVariantDecl {
                 ref mut decl_id, ..
             } => decl_id.replace_self_type(engines, self_type),
             ImplTrait {
@@ -335,6 +355,9 @@ impl Spanned for TyDecl {
             | AbiDecl { decl_span, .. }
             | StructDecl { decl_span, .. }
             | EnumDecl { decl_span, .. } => decl_span.clone(),
+            EnumVariantDecl {
+                variant_decl_span, ..
+            } => variant_decl_span.clone(),
             GenericTypeForFunctionScope { name, .. } => name.span(),
             ErrorRecovery(span) => span.clone(),
         }
@@ -482,6 +505,7 @@ impl CollectTypesMetadata for TyDecl {
             | TraitDecl { .. }
             | StructDecl { .. }
             | EnumDecl { .. }
+            | EnumVariantDecl { .. }
             | ImplTrait { .. }
             | AbiDecl { .. }
             | TypeAliasDecl { .. }
@@ -508,6 +532,7 @@ impl GetDeclIdent for TyDecl {
             | TyDecl::GenericTypeForFunctionScope { name, .. }
             | TyDecl::StructDecl { name, .. }
             | TyDecl::EnumDecl { name, .. } => Some(name.clone()),
+            TyDecl::EnumVariantDecl { variant_name, .. } => Some(variant_name.clone()),
             TyDecl::ErrorRecovery(_) => None,
             TyDecl::StorageDecl { .. } => None,
         }
@@ -704,6 +729,7 @@ impl TyDecl {
             TraitDecl { .. } => "trait",
             StructDecl { .. } => "struct",
             EnumDecl { .. } => "enum",
+            EnumVariantDecl { .. } => "enum variant",
             ImplTrait { .. } => "impl trait",
             AbiDecl { .. } => "abi",
             GenericTypeForFunctionScope { .. } => "generic type parameter",
@@ -801,6 +827,10 @@ impl TyDecl {
                 visibility
             }
             EnumDecl { decl_id, .. } => {
+                let TyEnumDecl { visibility, .. } = decl_engine.get_enum(decl_id);
+                visibility
+            }
+            EnumVariantDecl { decl_id, .. } => {
                 let TyEnumDecl { visibility, .. } = decl_engine.get_enum(decl_id);
                 visibility
             }

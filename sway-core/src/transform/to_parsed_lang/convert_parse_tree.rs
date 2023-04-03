@@ -2,9 +2,10 @@ use crate::{
     language::{parsed::*, *},
     transform::{attribute::*, to_parsed_lang::context::Context},
     type_system::*,
-    Engines,
+    BuildTarget, Engines,
 };
 
+use itertools::Itertools;
 use sway_ast::{
     attribute::Annotated,
     expr::{LoopControlFlow, ReassignmentOp, ReassignmentOpVariant},
@@ -23,10 +24,10 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::warning::{CompileWarning, Warning};
 use sway_types::{
     constants::{
-        ALLOW_ATTRIBUTE_NAME, DESTRUCTURE_PREFIX, DOC_ATTRIBUTE_NAME, DOC_COMMENT_ATTRIBUTE_NAME,
-        INLINE_ATTRIBUTE_NAME, MATCH_RETURN_VAR_NAME_PREFIX, PAYABLE_ATTRIBUTE_NAME,
-        STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
-        TEST_ATTRIBUTE_NAME, TUPLE_NAME_PREFIX, VALID_ATTRIBUTE_NAMES,
+        ALLOW_ATTRIBUTE_NAME, CFG_ATTRIBUTE_NAME, DESTRUCTURE_PREFIX, DOC_ATTRIBUTE_NAME,
+        DOC_COMMENT_ATTRIBUTE_NAME, INLINE_ATTRIBUTE_NAME, MATCH_RETURN_VAR_NAME_PREFIX,
+        PAYABLE_ATTRIBUTE_NAME, STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME,
+        STORAGE_PURITY_WRITE_NAME, TEST_ATTRIBUTE_NAME, TUPLE_NAME_PREFIX, VALID_ATTRIBUTE_NAMES,
     },
     integer_bits::IntegerBits,
 };
@@ -37,6 +38,7 @@ use std::{
     convert::TryFrom,
     iter,
     mem::MaybeUninit,
+    str::FromStr,
     sync::Arc,
 };
 
@@ -100,6 +102,9 @@ fn item_to_ast_nodes(
     prev_item: Option<Annotated<ItemKind>>,
 ) -> Result<Vec<AstNode>, ErrorEmitted> {
     let attributes = item_attrs_to_map(context, handler, &item.attribute_list)?;
+    if !cfg_eval(context, handler, &attributes)? {
+        return Ok(vec![]);
+    }
 
     let decl = |d| vec![AstNodeContent::Declaration(d)];
 
@@ -327,8 +332,18 @@ fn item_struct_to_struct_declaration(
         .into_iter()
         .map(|type_field| {
             let attributes = item_attrs_to_map(context, handler, &type_field.attribute_list)?;
-            type_field_to_struct_field(context, handler, engines, type_field.value, attributes)
+            if !cfg_eval(context, handler, &attributes)? {
+                return Ok(None);
+            }
+            Ok(Some(type_field_to_struct_field(
+                context,
+                handler,
+                engines,
+                type_field.value,
+                attributes,
+            )?))
         })
+        .filter_map_ok(|field| field)
         .collect::<Result<Vec<_>, _>>()?;
 
     if fields.iter().any(
@@ -385,8 +400,19 @@ fn item_enum_to_enum_declaration(
         .enumerate()
         .map(|(tag, type_field)| {
             let attributes = item_attrs_to_map(context, handler, &type_field.attribute_list)?;
-            type_field_to_enum_variant(context, handler, engines, type_field.value, attributes, tag)
+            if !cfg_eval(context, handler, &attributes)? {
+                return Ok(None);
+            }
+            Ok(Some(type_field_to_enum_variant(
+                context,
+                handler,
+                engines,
+                type_field.value,
+                attributes,
+                tag,
+            )?))
         })
+        .filter_map_ok(|field| field)
         .collect::<Result<Vec<_>, _>>()?;
 
     if variants.iter().any(|variant| {
@@ -554,7 +580,10 @@ fn item_trait_to_trait_declaration(
         .into_iter()
         .map(|(annotated, _)| {
             let attributes = item_attrs_to_map(context, handler, &annotated.attribute_list)?;
-            match annotated.value {
+            if !cfg_eval(context, handler, &attributes)? {
+                return Ok(None);
+            }
+            Ok(Some(match annotated.value {
                 ItemTraitItem::Fn(fn_sig) => {
                     fn_signature_to_trait_fn(context, handler, engines, fn_sig, attributes)
                         .map(TraitItem::TraitFn)
@@ -563,8 +592,9 @@ fn item_trait_to_trait_declaration(
                     item_const_to_const_decl(context, handler, engines, const_decl, attributes)
                         .map(TraitItem::Constant)
                 }
-            }
+            }?))
         })
+        .filter_map_ok(|item| item)
         .collect::<Result<_, _>>()?;
     let methods = match item_trait.trait_defs_opt {
         None => Vec::new(),
@@ -573,14 +603,18 @@ fn item_trait_to_trait_declaration(
             .into_iter()
             .map(|item_fn| {
                 let attributes = item_attrs_to_map(context, handler, &item_fn.attribute_list)?;
-                item_fn_to_function_declaration(
+                if !cfg_eval(context, handler, &attributes)? {
+                    return Ok(None);
+                }
+                Ok(Some(item_fn_to_function_declaration(
                     context,
                     handler,
                     engines,
                     item_fn.value,
                     attributes,
-                )
+                )?))
             })
+            .filter_map_ok(|fn_decl| fn_decl)
             .collect::<Result<_, _>>()?,
     };
     let supertraits = match item_trait.super_traits {
@@ -614,7 +648,10 @@ fn item_impl_to_declaration(
         .into_iter()
         .map(|item| {
             let attributes = item_attrs_to_map(context, handler, &item.attribute_list)?;
-            match item.value {
+            if !cfg_eval(context, handler, &attributes)? {
+                return Ok(None);
+            }
+            Ok(Some(match item.value {
                 sway_ast::ItemImplItem::Fn(fn_item) => {
                     item_fn_to_function_declaration(context, handler, engines, fn_item, attributes)
                         .map(ImplItem::Fn)
@@ -623,8 +660,9 @@ fn item_impl_to_declaration(
                     item_const_to_const_decl(context, handler, engines, const_item, attributes)
                         .map(ImplItem::Constant)
                 }
-            }
+            }?))
         })
+        .filter_map_ok(|item| item)
         .collect::<Result<_, _>>()?;
 
     let impl_type_parameters = generic_params_opt_to_type_parameters(
@@ -708,7 +746,10 @@ fn item_abi_to_abi_declaration(
                 .map(|(annotated, _)| {
                     let attributes =
                         item_attrs_to_map(context, handler, &annotated.attribute_list)?;
-                    match annotated.value {
+                    if !cfg_eval(context, handler, &attributes)? {
+                        return Ok(None);
+                    }
+                    Ok(Some(match annotated.value {
                         ItemTraitItem::Fn(fn_signature) => {
                             let trait_fn = fn_signature_to_trait_fn(
                                 context,
@@ -730,8 +771,9 @@ fn item_abi_to_abi_declaration(
                             context, handler, engines, const_decl, attributes,
                         )
                         .map(TraitItem::Constant),
-                    }
+                    }?))
                 })
+                .filter_map_ok(|item| item)
                 .collect::<Result<_, _>>()?
         },
         supertraits: match item_abi.super_traits {
@@ -745,6 +787,9 @@ fn item_abi_to_abi_declaration(
                 .into_iter()
                 .map(|item_fn| {
                     let attributes = item_attrs_to_map(context, handler, &item_fn.attribute_list)?;
+                    if !cfg_eval(context, handler, &attributes)? {
+                        return Ok(None);
+                    }
                     let function_declaration = item_fn_to_function_declaration(
                         context,
                         handler,
@@ -759,8 +804,9 @@ fn item_abi_to_abi_declaration(
                         &function_declaration.parameters,
                         "a method provided by ABI",
                     )?;
-                    Ok(function_declaration)
+                    Ok(Some(function_declaration))
                 })
+                .filter_map_ok(|fn_decl| fn_decl)
                 .collect::<Result<_, _>>()?,
         },
         span,
@@ -822,14 +868,18 @@ fn item_storage_to_storage_declaration(
         .into_iter()
         .map(|storage_field| {
             let attributes = item_attrs_to_map(context, handler, &storage_field.attribute_list)?;
-            storage_field_to_storage_field(
+            if !cfg_eval(context, handler, &attributes)? {
+                return Ok(None);
+            }
+            Ok(Some(storage_field_to_storage_field(
                 context,
                 handler,
                 engines,
                 storage_field.value,
                 attributes,
-            )
+            )?))
         })
+        .filter_map_ok(|field| field)
         .collect::<Result<_, _>>()?;
 
     // Make sure each storage field is declared once
@@ -878,14 +928,18 @@ fn item_configurable_to_constant_declarations(
         .map(|configurable_field| {
             let attributes =
                 item_attrs_to_map(context, handler, &configurable_field.attribute_list)?;
-            configurable_field_to_constant_declaration(
+            if !cfg_eval(context, handler, &attributes)? {
+                return Ok(None);
+            }
+            Ok(Some(configurable_field_to_constant_declaration(
                 context,
                 handler,
                 engines,
                 configurable_field.value,
                 attributes,
-            )
+            )?))
         })
+        .filter_map_ok(|decl| decl)
         .collect::<Result<_, _>>()?;
 
     // Make sure each configurable is declared once
@@ -1589,13 +1643,17 @@ fn expr_func_app_to_expression_kind(
         _ => {}
     }
 
-    // Only `foo(args)`? It's a simple function call and not delineated / ambiguous.
+    // Only `foo(args)`? It could either be a function application or an enum variant.
     let last = match last {
         Some(last) => last,
         None => {
+            let suffix = AmbiguousSuffix {
+                before: None,
+                suffix: call_seg.name,
+            };
             let call_path = CallPath {
                 prefixes,
-                suffix: call_seg.name,
+                suffix,
                 is_absolute,
             };
             let span = match type_arguments_span {
@@ -1607,10 +1665,10 @@ fn expr_func_app_to_expression_kind(
                 type_arguments: TypeArgs::Regular(type_arguments),
                 span,
             };
-            return Ok(ExpressionKind::FunctionApplication(Box::new(
-                FunctionApplicationExpression {
+            return Ok(ExpressionKind::AmbiguousPathExpression(Box::new(
+                AmbiguousPathExpression {
+                    args: arguments,
                     call_path_binding,
-                    arguments,
                 },
             )));
         }
@@ -1619,11 +1677,11 @@ fn expr_func_app_to_expression_kind(
     // Ambiguous call. Could be a method call or a normal function call.
     // We don't know until type checking what `last` refers to, so let's defer.
     let (last_ty_args, last_ty_args_span) = convert_ty_args(context, last.generics_opt)?;
-    let before = TypeBinding {
+    let before = Some(TypeBinding {
         span: name_args_span(last.name.span(), last_ty_args_span),
         inner: last.name,
         type_arguments: TypeArgs::Regular(last_ty_args),
-    };
+    });
     let suffix = AmbiguousSuffix {
         before,
         suffix: call_seg.name,
@@ -3857,6 +3915,7 @@ fn item_attrs_to_map(
                 TEST_ATTRIBUTE_NAME => Some(AttributeKind::Test),
                 PAYABLE_ATTRIBUTE_NAME => Some(AttributeKind::Payable),
                 ALLOW_ATTRIBUTE_NAME => Some(AttributeKind::Allow),
+                CFG_ATTRIBUTE_NAME => Some(AttributeKind::Cfg),
                 _ => None,
             } {
                 match attrs_map.get_mut(&attr_kind) {
@@ -3932,4 +3991,55 @@ fn error_if_self_param_is_not_allowed(
         }
     }
     Ok(())
+}
+
+/// Walks all the cfg attributes in a map, evaluating them
+/// and returning false if any evaluated to false.
+pub fn cfg_eval(
+    context: &mut Context,
+    handler: &Handler,
+    attrs_map: &AttributesMap,
+) -> Result<bool, ErrorEmitted> {
+    if let Some(cfg_attrs) = attrs_map.get(&AttributeKind::Cfg) {
+        for cfg_attr in cfg_attrs {
+            for arg in &cfg_attr.args {
+                match arg.name.as_str() {
+                    "target" => {
+                        if let Some(value) = &arg.value {
+                            if let sway_ast::Literal::String(value_str) = value {
+                                if let Ok(target) = BuildTarget::from_str(value_str.parsed.as_str())
+                                {
+                                    if target != context.build_target() {
+                                        return Ok(false);
+                                    }
+                                } else {
+                                    let error = ConvertParseTreeError::InvalidCfgTargetArgValue {
+                                        span: value.span(),
+                                        value: value.span().str(),
+                                    };
+                                    return Err(handler.emit_err(error.into()));
+                                }
+                            } else {
+                                let error = ConvertParseTreeError::InvalidCfgTargetArgValue {
+                                    span: value.span(),
+                                    value: value.span().str(),
+                                };
+                                return Err(handler.emit_err(error.into()));
+                            }
+                        } else {
+                            let error = ConvertParseTreeError::ExpectedCfgTargetArgValue {
+                                span: arg.span(),
+                            };
+                            return Err(handler.emit_err(error.into()));
+                        }
+                    }
+                    _ => {
+                        // Already checked with `AttributeKind::expected_args_*`
+                        unreachable!("cfg attribute should only have the target argument");
+                    }
+                }
+            }
+        }
+    }
+    Ok(true)
 }

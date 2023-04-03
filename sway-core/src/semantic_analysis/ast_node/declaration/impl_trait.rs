@@ -376,6 +376,7 @@ impl ty::TyImplTrait {
                 | ty::TyDecl::TraitDecl { .. }
                 | ty::TyDecl::StructDecl { .. }
                 | ty::TyDecl::EnumDecl { .. }
+                | ty::TyDecl::EnumVariantDecl { .. }
                 | ty::TyDecl::ImplTrait { .. }
                 | ty::TyDecl::AbiDecl { .. }
                 | ty::TyDecl::GenericTypeForFunctionScope { .. }
