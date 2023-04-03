@@ -9,7 +9,9 @@ use crate::{
 use anyhow::{anyhow, Result};
 use horrorshow::{box_html, Raw, RenderBox, Template};
 use std::{collections::BTreeMap, fmt::Write};
-use sway_core::language::ty::{TyEnumVariant, TyStorageField, TyStructField, TyTraitFn};
+use sway_core::language::ty::{
+    TyEnumVariant, TyImplTrait, TyStorageField, TyStructField, TyTraitFn,
+};
 
 /// The actual context of the item displayed by [ItemContext].
 /// This uses [ContextType] to determine how to represent the context of an item.
@@ -227,7 +229,10 @@ impl Renderable for Context {
 #[derive(Clone, Debug)]
 /// The context section of an item that appears in the page [ItemBody].
 pub(crate) struct ItemContext {
+    /// [Context] can be fields on a struct, variants of an enum, etc.
     pub(crate) context_opt: Option<Context>,
+    /// The traits implemented for this type.
+    pub(crate) impl_traits: Option<Vec<TyImplTrait>>,
     // TODO: All other Implementation types, eg
     // implementations on foreign types, method implementations, etc.
 }
@@ -312,13 +317,19 @@ impl Renderable for ItemContext {
         let (title, rendered_list) = match self.context_opt {
             Some(context) => {
                 let title = context.context_type.as_block_title();
-                let rendered_list = context.render(render_plan)?;
+                let rendered_list = context.render(render_plan.clone())?;
                 Ok((title, rendered_list))
             }
             None => Err(anyhow!(
                 "Safeguard against render call on empty context failed."
             )),
         }?;
+        let mut impl_vec: Vec<_> = Vec::new();
+        if let Some(impl_traits) = self.impl_traits {
+            for impl_trait in impl_traits {
+                impl_vec.push(impl_trait.render(render_plan.clone()))
+            }
+        };
         let lct = title.html_title_string();
         Ok(box_html! {
             h2(id=&lct, class=format!("{} small-section-header", &lct)) {
@@ -326,6 +337,43 @@ impl Renderable for ItemContext {
                 a(class="anchor", href=format!("{IDENTITY}{lct}"));
             }
             : rendered_list;
+            @ if !impl_vec.is_empty() {
+                h2(id="trait-implementations", class="small-section-header") {
+                    : "Trait Implementations";
+                    a(href="#trait-implementations", class="anchor");
+                }
+                div(id="trait-implementations-list") {
+                    @ for impl_trait in impl_vec {
+                        : impl_trait;
+                    }
+                }
+            }
+        })
+    }
+}
+impl Renderable for TyImplTrait {
+    fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
+        let TyImplTrait {
+            impl_type_parameters,
+            trait_name,
+            trait_type_arguments,
+            items,
+            trait_decl_ref,
+            implementing_for,
+            span,
+        } = self;
+        Ok(box_html! {
+            details(class="swaydoc-toggle implementors-toggle") {
+                summary {
+                    div(id=format!("impl-{}", trait_name.suffix)) {
+                        a(href=format!("{IDENTITY}impl-{}", trait_name.suffix), class="anchor");
+                        h3(class="code-header in-band") {
+                            : "impl";
+
+                        }
+                    }
+                }
+            }
         })
     }
 }

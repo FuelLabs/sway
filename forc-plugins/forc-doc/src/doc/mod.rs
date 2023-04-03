@@ -6,8 +6,9 @@ use anyhow::Result;
 use std::option::Option;
 use sway_core::{
     decl_engine::DeclEngine,
-    language::ty::{TyAstNodeContent, TyProgram, TySubmodule},
+    language::ty::{TyAstNodeContent, TyDecl, TyImplTrait, TyProgram, TySubmodule},
 };
+use sway_types::Spanned;
 
 mod descriptor;
 pub mod module;
@@ -63,17 +64,38 @@ impl Document {
     ) -> Result<Documentation> {
         // the first module prefix will always be the project name
         let mut docs: Documentation = Default::default();
+        let mut impl_traits: Vec<TyImplTrait> = Vec::new();
         for ast_node in &typed_program.root.all_nodes {
             if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
-                let desc = Descriptor::from_typed_decl(
-                    decl_engine,
-                    decl,
-                    ModuleInfo::from_ty_module(vec![project_name.to_owned()], None),
-                    document_private_items,
-                )?;
+                if let TyDecl::ImplTrait { decl_id, .. } = decl {
+                    impl_traits.push(decl_engine.get_impl_trait(decl_id))
+                } else {
+                    let desc = Descriptor::from_typed_decl(
+                        decl_engine,
+                        decl,
+                        ModuleInfo::from_ty_module(vec![project_name.to_owned()], None),
+                        document_private_items,
+                    )?;
 
-                if let Descriptor::Documentable(doc) = desc {
-                    docs.push(doc)
+                    if let Descriptor::Documentable(doc) = desc {
+                        docs.push(doc)
+                    }
+                }
+            }
+        }
+        // match for the name & type for decls the impl_traits are implemented for
+        if !impl_traits.is_empty() {
+            for doc in &mut docs {
+                let impl_traits = impl_traits
+                    .iter()
+                    .map(|impl_trait| {
+                        (impl_trait.implementing_for.span == doc.item_body.ty_decl.span())
+                            .then_some(impl_trait.clone())
+                            .expect("expected TyImplTrait")
+                    })
+                    .collect::<Vec<TyImplTrait>>();
+                if !impl_traits.is_empty() {
+                    doc.item_body.item_context.impl_traits = Some(impl_traits);
                 }
             }
         }
