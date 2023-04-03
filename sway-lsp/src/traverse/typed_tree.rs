@@ -149,7 +149,7 @@ impl<'a> TypedTree<'a> {
                     }
                 }
             }
-            ty::TyDecl::EnumDecl { decl_id, .. } => {
+            ty::TyDecl::EnumDecl { decl_id, .. } | ty::TyDecl::EnumVariantDecl { decl_id, .. } => {
                 let enum_decl = decl_engine.get_enum(decl_id);
                 if let Some(mut token) = self
                     .ctx
@@ -550,7 +550,10 @@ impl<'a> TypedTree<'a> {
                     self.handle_expression(exp);
                 }
             }
-            ty::TyExpressionVariant::Array { contents } => {
+            ty::TyExpressionVariant::Array {
+                elem_type: _,
+                contents,
+            } => {
                 for exp in contents {
                     self.handle_expression(exp);
                 }

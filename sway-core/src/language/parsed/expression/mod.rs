@@ -81,13 +81,13 @@ pub struct SubfieldExpression {
 
 #[derive(Debug, Clone)]
 pub struct AmbiguousSuffix {
-    /// The ambiguous part of the suffix.
+    /// If the suffix is a pair, the ambiguous part of the suffix.
     ///
     /// For example, if we have `Foo::bar()`,
     /// we don't know whether `Foo` is a module or a type,
     /// so `before` would be `Foo` here with any type arguments.
-    pub before: TypeBinding<Ident>,
-    /// The final suffix, i.e., the function name.
+    pub before: Option<TypeBinding<Ident>>,
+    /// The final suffix, i.e., the function or variant name.
     ///
     /// In the example above, this would be `bar`.
     pub suffix: Ident,
@@ -95,7 +95,11 @@ pub struct AmbiguousSuffix {
 
 impl Spanned for AmbiguousSuffix {
     fn span(&self) -> Span {
-        Span::join(self.before.span(), self.suffix.span())
+        if let Some(before) = &self.before {
+            Span::join(before.span(), self.suffix.span())
+        } else {
+            self.suffix.span()
+        }
     }
 }
 

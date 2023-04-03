@@ -1589,13 +1589,17 @@ fn expr_func_app_to_expression_kind(
         _ => {}
     }
 
-    // Only `foo(args)`? It's a simple function call and not delineated / ambiguous.
+    // Only `foo(args)`? It could either be a function application or an enum variant.
     let last = match last {
         Some(last) => last,
         None => {
+            let suffix = AmbiguousSuffix {
+                before: None,
+                suffix: call_seg.name,
+            };
             let call_path = CallPath {
                 prefixes,
-                suffix: call_seg.name,
+                suffix,
                 is_absolute,
             };
             let span = match type_arguments_span {
@@ -1607,10 +1611,10 @@ fn expr_func_app_to_expression_kind(
                 type_arguments: TypeArgs::Regular(type_arguments),
                 span,
             };
-            return Ok(ExpressionKind::FunctionApplication(Box::new(
-                FunctionApplicationExpression {
+            return Ok(ExpressionKind::AmbiguousPathExpression(Box::new(
+                AmbiguousPathExpression {
+                    args: arguments,
                     call_path_binding,
-                    arguments,
                 },
             )));
         }
@@ -1619,11 +1623,11 @@ fn expr_func_app_to_expression_kind(
     // Ambiguous call. Could be a method call or a normal function call.
     // We don't know until type checking what `last` refers to, so let's defer.
     let (last_ty_args, last_ty_args_span) = convert_ty_args(context, last.generics_opt)?;
-    let before = TypeBinding {
+    let before = Some(TypeBinding {
         span: name_args_span(last.name.span(), last_ty_args_span),
         inner: last.name,
         type_arguments: TypeArgs::Regular(last_ty_args),
-    };
+    });
     let suffix = AmbiguousSuffix {
         before,
         suffix: call_seg.name,

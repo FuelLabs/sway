@@ -72,9 +72,12 @@ impl AbstractProgram {
         // Allocate the registers for each function.
         let functions = abstract_functions
             .into_iter()
-            .map(|fn_ops| fn_ops.allocate_registers())
-            .map(AllocatedAbstractInstructionSet::emit_pusha_popa)
-            .collect::<Vec<_>>();
+            .map(|fn_ops| {
+                fn_ops
+                    .allocate_registers()
+                    .map(AllocatedAbstractInstructionSet::emit_pusha_popa)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
 
         // XXX need to verify that the stack use for each function is balanced.
 

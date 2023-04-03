@@ -374,6 +374,17 @@ impl Namespace {
         self.root.star_import(src, &self.mod_path, engines)
     }
 
+    /// Short-hand for performing a [Module::variant_star_import] with `mod_path` as the destination.
+    pub(crate) fn variant_star_import(
+        &mut self,
+        src: &Path,
+        engines: Engines<'_>,
+        enum_name: &Ident,
+    ) -> CompileResult<()> {
+        self.root
+            .variant_star_import(src, &self.mod_path, engines, enum_name)
+    }
+
     /// Short-hand for performing a [Module::self_import] with `mod_path` as the destination.
     pub(crate) fn self_import(
         &mut self,
@@ -394,6 +405,19 @@ impl Namespace {
     ) -> CompileResult<()> {
         self.root
             .item_import(engines, src, item, &self.mod_path, alias)
+    }
+
+    /// Short-hand for performing a [Module::variant_import] with `mod_path` as the destination.
+    pub(crate) fn variant_import(
+        &mut self,
+        engines: Engines<'_>,
+        src: &Path,
+        enum_name: &Ident,
+        variant_name: &Ident,
+        alias: Option<Ident>,
+    ) -> CompileResult<()> {
+        self.root
+            .variant_import(engines, src, enum_name, variant_name, &self.mod_path, alias)
     }
 
     /// "Enter" the submodule at the given path by returning a new [SubmoduleNamespace].
