@@ -483,10 +483,19 @@ impl core::ops::Multiply for U256 {
                 let result_d_c = self.d.overflowing_mul(other.c);
                 let result_d_d = self.d.overflowing_mul(other.d);
 
+                let to_c_1 = result_d_d.upper.overflowing_add(result_c_d.lower);
+                let to_c_2 = to_c_1.lower.overflowing_add(result_d_c.lower);
+
+                let to_b_0 = to_c_1.upper.overflowing_add(to_c_2.upper);
+
+                let to_b_1 = result_c_c.lower.overflowing_add(result_c_d.upper);
+                let to_b_2 = to_b_1.lower.overflowing_add(result_d_c.upper);
+                let to_b_3 = to_b_2.lower.overflowing_add(to_b_0.lower);
+
                 U256::from((
-                    result_c_c.upper,
-                    result_c_c.lower + result_c_d.upper + result_d_c.upper,
-                    result_d_d.upper + result_c_d.lower + result_d_c.lower,
+                    result_c_c.upper + to_b_3.upper + to_b_2.upper + to_b_1.upper + to_b_0.upper,
+                    to_b_3.lower,
+                    to_c_2.lower,
                     result_d_d.lower,
                 ))
             }
