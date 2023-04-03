@@ -187,6 +187,7 @@ impl<'eng> FnCompiler<'eng> {
                 ty::TyDecl::GenericTypeForFunctionScope { .. } => unexpected_decl("generic type"),
                 ty::TyDecl::ErrorRecovery { .. } => unexpected_decl("error recovery"),
                 ty::TyDecl::StorageDecl { .. } => unexpected_decl("storage"),
+                ty::TyDecl::EnumVariantDecl { .. } => unexpected_decl("enum variant"),
             },
             ty::TyAstNodeContent::Expression(te) => {
                 // An expression with an ignored return value... I assume.
