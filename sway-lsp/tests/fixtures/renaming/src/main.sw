@@ -1,7 +1,7 @@
-script;
+contract;
 
 mod test_mod;
-use test_mod::{DeepEnum, DeepStruct};
+use test_mod::{DeepEnum, DeepStruct, Empty};
 
 enum Color {
     Red: (),
@@ -18,7 +18,7 @@ fn add(x: u32, y: u32) -> u32 {
     x + y
 }
 
-fn main() {
+fn test() {
     let c = Color::Red;
     let point = Point { x: 10, y: 20 };
     let n = add(point.x, point.y);
@@ -36,4 +36,14 @@ fn main() {
     // external modules can't be renamed
     let _ = std::constants::ZERO_B256;
     let _ = core::primitives::b256::min();
+}
+
+abi MyContract {
+    fn test_function() -> Empty;
+}
+
+impl MyContract for Contract {
+    fn test_function() -> Empty {
+        Empty{}
+    }
 }

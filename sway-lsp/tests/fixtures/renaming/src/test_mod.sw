@@ -19,3 +19,4 @@ pub enum DeepEnum {
     Number: u32,
 }
 
+struct Empty{}

@@ -1669,6 +1669,16 @@ async fn rename() {
     let _ = lsp::prepare_rename_request(&mut service, &rename, &mut i).await;
     let _ = lsp::rename_request(&mut service, &rename, &mut i).await;
 
+    // Function method in ABI declaration
+    let rename = Rename {
+        req_uri: &uri,
+        req_line: 41,
+        req_char: 16,
+        new_name: "name_func_name", // from test_function
+    };
+    let _ = lsp::prepare_rename_request(&mut service, &rename, &mut i).await;
+    let _ = lsp::rename_request(&mut service, &rename, &mut i).await;
+
     // Fail to rename keyword
     let rename = Rename {
         req_uri: &uri,
