@@ -74,6 +74,21 @@ impl TokenMap {
             .collect()
     }
 
+    /// Returns the first parent declaration found at the given cursor position.
+    ///
+    /// For example, if the cursor is inside a function body, this function returns the function declaration.
+    pub fn parent_decl_at_position(&self, uri: &Url, position: Position) -> Option<(Ident, Token)> {
+        self.tokens_at_position(uri, position, None)
+            .iter()
+            .find_map(|(ident, token)| {
+                if let Some(TypedAstToken::TypedDeclaration(_)) = token.typed {
+                    Some((ident.clone(), token.clone()))
+                } else {
+                    None
+                }
+            })
+    }
+
     /// Returns the first collected tokens that is at the cursor position.
     pub fn token_at_position(&self, uri: &Url, position: Position) -> Option<(Ident, Token)> {
         let tokens = self.tokens_for_file(uri);
@@ -106,7 +121,7 @@ impl TokenMap {
         tokens
             .filter_map(|(ident, token)| {
                 let span = match token.typed {
-                    Some(TypedAstToken::TypedFunctionDeclaration(decl)) => decl.span(),
+                    Some(TypedAstToken::TypedDeclaration(decl)) => decl.span(),
                     _ => ident.span(),
                 };
                 let range = token::get_range_from_span(&span);

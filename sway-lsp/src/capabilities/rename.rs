@@ -1,12 +1,15 @@
 use crate::{
     core::{
         session::Session,
-        token::{get_range_from_span, SymbolKind, Token},
+        token::{get_range_from_span, SymbolKind, Token, TypedAstToken},
     },
     error::{LanguageServerError, RenameError},
 };
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
+use sway_core::{
+    language::ty::{TyDecl, TyTraitInterfaceItem, TyTraitItem},
+    Engines,
+};
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{Position, PrepareRenameResponse, TextEdit, Url, WorkspaceEdit};
 
@@ -30,6 +33,55 @@ pub fn rename(
             RenameError::InvalidDoubleUnderscore,
         ));
     }
+
+    //------------------------------------------------------
+    eprintln!("INITIAL POSITION: {:#?} \n", position);
+    let te = &session.type_engine.read();
+    let de = &session.decl_engine.read();
+    let engines = Engines::new(te, de);
+
+    // Find the parent declaration
+    let (decl_ident, decl_token) = session
+        .token_map()
+        .parent_decl_at_position(&url, position)
+        .ok_or(RenameError::TokenNotFound)?;
+
+    session
+        .token_map()
+        .all_references_of_token(
+            &decl_token,
+            &session.type_engine.read(),
+            &session.decl_engine.read(),
+        )
+        .for_each(|(_, token)| {
+            if let Some(TypedAstToken::TypedDeclaration(decl)) = &token.typed {
+                let method_idents: Vec<_> = match decl {
+                    TyDecl::AbiDecl { decl_id, .. } => {
+                        let abi_decl = engines.de().get_abi(decl_id);
+                        trait_interface_idents(&abi_decl.interface_surface)
+                    }
+                    TyDecl::TraitDecl { decl_id, .. } => {
+                        let trait_decl = engines.de().get_trait(decl_id);
+                        trait_interface_idents(&trait_decl.interface_surface)
+                    }
+                    TyDecl::ImplTrait { decl_id, .. } => {
+                        let impl_trait = engines.de().get_impl_trait(decl_id);
+                        impl_trait
+                            .items
+                            .iter()
+                            .flat_map(|item| match item {
+                                TyTraitItem::Fn(fn_decl) => Some(fn_decl.name().clone()),
+                                _ => None,
+                            })
+                            .collect()
+                    }
+                    _ => vec![],
+                };
+
+                eprintln!("method_idents = {:#?}", method_idents);
+            }
+        });
+    //------------------------------------------------------
 
     let (_, token) = session
         .token_map()
@@ -138,4 +190,15 @@ fn is_token_in_workspace(
         }
     }
     Ok(true)
+}
+
+/// Returns a `Vec<Ident>` containing the identifiers of all trait functions found.
+fn trait_interface_idents(interface_surface: &[TyTraitInterfaceItem]) -> Vec<Ident> {
+    interface_surface
+        .iter()
+        .flat_map(|item| match item {
+            TyTraitInterfaceItem::TraitFn(fn_decl) => Some(fn_decl.name().clone()),
+            _ => None,
+        })
+        .collect()
 }

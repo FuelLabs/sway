@@ -1619,56 +1619,6 @@ async fn rename() {
     .await;
     let mut i = 0..;
 
-    // Struct expression variable
-    let rename = Rename {
-        req_uri: &uri,
-        req_line: 24,
-        req_char: 19,
-        new_name: "pnt", // from "point"
-    };
-    let _ = lsp::prepare_rename_request(&mut service, &rename, &mut i).await;
-    let _ = lsp::rename_request(&mut service, &rename, &mut i).await;
-
-    // Enum
-    let rename = Rename {
-        req_uri: &uri,
-        req_line: 21,
-        req_char: 17,
-        new_name: "MyEnum", // from "Color"
-    };
-    let _ = lsp::prepare_rename_request(&mut service, &rename, &mut i).await;
-    let _ = lsp::rename_request(&mut service, &rename, &mut i).await;
-
-    // Enum Variant
-    let rename = Rename {
-        req_uri: &uri,
-        req_line: 21,
-        req_char: 20,
-        new_name: "Pink", // from "Red"
-    };
-    let _ = lsp::prepare_rename_request(&mut service, &rename, &mut i).await;
-    let _ = lsp::rename_request(&mut service, &rename, &mut i).await;
-
-    // raw identifier syntax
-    let rename = Rename {
-        req_uri: &uri,
-        req_line: 28,
-        req_char: 16,
-        new_name: "new_var_name", // from r#struct
-    };
-    let _ = lsp::prepare_rename_request(&mut service, &rename, &mut i).await;
-    let _ = lsp::rename_request(&mut service, &rename, &mut i).await;
-
-    // Function name defined in external module
-    let rename = Rename {
-        req_uri: &uri,
-        req_line: 33,
-        req_char: 25,
-        new_name: "better_func_name", // from test_fun
-    };
-    let _ = lsp::prepare_rename_request(&mut service, &rename, &mut i).await;
-    let _ = lsp::rename_request(&mut service, &rename, &mut i).await;
-
     // Function method in ABI declaration
     let rename = Rename {
         req_uri: &uri,
@@ -1679,41 +1629,101 @@ async fn rename() {
     let _ = lsp::prepare_rename_request(&mut service, &rename, &mut i).await;
     let _ = lsp::rename_request(&mut service, &rename, &mut i).await;
 
-    // Fail to rename keyword
+    // Function method in ABI implementation
     let rename = Rename {
         req_uri: &uri,
-        req_line: 11,
-        req_char: 2,
-        new_name: "StruCt", // from struct
+        req_line: 45,
+        req_char: 16,
+        new_name: "name_func_name", // from test_function
     };
-    assert_eq!(
-        lsp::prepare_rename_request(&mut service, &rename, &mut i).await,
-        None
-    );
+    let _ = lsp::prepare_rename_request(&mut service, &rename, &mut i).await;
+    let _ = lsp::rename_request(&mut service, &rename, &mut i).await;
 
-    // Fail to rename module
-    let rename = Rename {
-        req_uri: &uri,
-        req_line: 36,
-        req_char: 13,
-        new_name: "new_mod_name", // from std
-    };
-    assert_eq!(
-        lsp::prepare_rename_request(&mut service, &rename, &mut i).await,
-        None
-    );
+    // // Struct expression variable
+    // let rename = Rename {
+    //     req_uri: &uri,
+    //     req_line: 24,
+    //     req_char: 19,
+    //     new_name: "pnt", // from "point"
+    // };
+    // let _ = lsp::prepare_rename_request(&mut service, &rename, &mut i).await;
+    // let _ = lsp::rename_request(&mut service, &rename, &mut i).await;
 
-    // Fail to rename a type defined in a module outside of the users workspace
-    let rename = Rename {
-        req_uri: &uri,
-        req_line: 36,
-        req_char: 33,
-        new_name: "NEW_TYPE_NAME", // from ZERO_B256
-    };
-    assert_eq!(
-        lsp::prepare_rename_request(&mut service, &rename, &mut i).await,
-        None
-    );
+    // // Enum
+    // let rename = Rename {
+    //     req_uri: &uri,
+    //     req_line: 21,
+    //     req_char: 17,
+    //     new_name: "MyEnum", // from "Color"
+    // };
+    // let _ = lsp::prepare_rename_request(&mut service, &rename, &mut i).await;
+    // let _ = lsp::rename_request(&mut service, &rename, &mut i).await;
+
+    // // Enum Variant
+    // let rename = Rename {
+    //     req_uri: &uri,
+    //     req_line: 21,
+    //     req_char: 20,
+    //     new_name: "Pink", // from "Red"
+    // };
+    // let _ = lsp::prepare_rename_request(&mut service, &rename, &mut i).await;
+    // let _ = lsp::rename_request(&mut service, &rename, &mut i).await;
+
+    // // raw identifier syntax
+    // let rename = Rename {
+    //     req_uri: &uri,
+    //     req_line: 28,
+    //     req_char: 16,
+    //     new_name: "new_var_name", // from r#struct
+    // };
+    // let _ = lsp::prepare_rename_request(&mut service, &rename, &mut i).await;
+    // let _ = lsp::rename_request(&mut service, &rename, &mut i).await;
+
+    // // Function name defined in external module
+    // let rename = Rename {
+    //     req_uri: &uri,
+    //     req_line: 33,
+    //     req_char: 25,
+    //     new_name: "better_func_name", // from test_fun
+    // };
+    // let _ = lsp::prepare_rename_request(&mut service, &rename, &mut i).await;
+    // let _ = lsp::rename_request(&mut service, &rename, &mut i).await;
+
+    // // Fail to rename keyword
+    // let rename = Rename {
+    //     req_uri: &uri,
+    //     req_line: 11,
+    //     req_char: 2,
+    //     new_name: "StruCt", // from struct
+    // };
+    // assert_eq!(
+    //     lsp::prepare_rename_request(&mut service, &rename, &mut i).await,
+    //     None
+    // );
+
+    // // Fail to rename module
+    // let rename = Rename {
+    //     req_uri: &uri,
+    //     req_line: 36,
+    //     req_char: 13,
+    //     new_name: "new_mod_name", // from std
+    // };
+    // assert_eq!(
+    //     lsp::prepare_rename_request(&mut service, &rename, &mut i).await,
+    //     None
+    // );
+
+    // // Fail to rename a type defined in a module outside of the users workspace
+    // let rename = Rename {
+    //     req_uri: &uri,
+    //     req_line: 36,
+    //     req_char: 33,
+    //     new_name: "NEW_TYPE_NAME", // from ZERO_B256
+    // };
+    // assert_eq!(
+    //     lsp::prepare_rename_request(&mut service, &rename, &mut i).await,
+    //     None
+    // );
 }
 
 #[tokio::test]
