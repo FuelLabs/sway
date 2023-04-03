@@ -46,7 +46,7 @@ fn filter_usable_locals(context: &mut Context, function: &Function) -> HashSet<S
     let mut locals: HashSet<String> = function
         .locals_iter(context)
         .filter(|(_, var)| {
-            let ty = var.get_type(context);
+            let ty = var.get_inner_type(context);
             ty.is_unit(context)
                 || ty.is_bool(context)
                 || (ty.is_uint(context) && ty.get_uint_width(context).unwrap() <= 64)
@@ -110,8 +110,8 @@ pub fn compute_livein(
                             _ => {}
                         }
                     }
-                    ValueDatum::Instruction(Instruction::Store { dst_val, .. }) => {
-                        let local_var = get_validate_local_var(context, function, &dst_val);
+                    ValueDatum::Instruction(Instruction::Store { dst_val_ptr, .. }) => {
+                        let local_var = get_validate_local_var(context, function, &dst_val_ptr);
                         match local_var {
                             Some((local, _)) if locals.contains(&local) => {
                                 cur_live.remove(&local);
@@ -164,12 +164,12 @@ pub fn promote_to_registers(
         .rev()
         .flat_map(|b| b.instruction_iter(context).map(|i| (*b, i)))
     {
-        if let ValueDatum::Instruction(Instruction::Store { dst_val, .. }) =
+        if let ValueDatum::Instruction(Instruction::Store { dst_val_ptr, .. }) =
             context.values[inst.0].value
         {
-            match get_validate_local_var(context, &function, &dst_val) {
+            match get_validate_local_var(context, &function, &dst_val_ptr) {
                 Some((local, var)) if safe_locals.contains(&local) => {
-                    worklist.push((local, var.get_type(context), block));
+                    worklist.push((local, var.get_inner_type(context), block));
                 }
                 _ => (),
             }
@@ -181,7 +181,7 @@ pub fn promote_to_registers(
         for df in dom_fronts[&known_def].iter() {
             if !new_phi_tracker.contains(&(local.clone(), *df)) && liveins[df].contains(&local) {
                 // Insert PHI for this local at block df.
-                let index = df.new_arg(context, ty, false);
+                let index = df.new_arg(context, ty);
                 phi_to_local.insert(df.get_arg(context, index).unwrap(), local.clone());
                 new_phi_tracker.insert((local.clone(), *df));
                 // Add df to the worklist.
@@ -246,10 +246,10 @@ pub fn promote_to_registers(
                     }
                 }
                 ValueDatum::Instruction(Instruction::Store {
-                    dst_val,
+                    dst_val_ptr,
                     stored_val,
                 }) => {
-                    let local_var = get_validate_local_var(context, function, &dst_val);
+                    let local_var = get_validate_local_var(context, function, &dst_val_ptr);
                     match local_var {
                         Some((local, _)) if safe_locals.contains(&local) => {
                             // Henceforth, everything that's dominated by this inst must use stored_val

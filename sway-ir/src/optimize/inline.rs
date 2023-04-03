@@ -178,12 +178,9 @@ pub fn inline_in_non_predicate_module(
         // argument is used as a pointer (probably because it has a ref type) although it actually
         // isn't one.  Ref type args which aren't pointers need to be inlined.
         if func.args_iter(ctx).any(|(_name, arg_val)| {
-            arg_val
-                .get_argument_type_and_byref(ctx)
-                .map(|(ty, by_ref)| {
-                    by_ref || !(ty.is_unit(ctx) | ty.is_bool(ctx) | ty.is_uint(ctx))
-                })
-                .unwrap_or(false)
+            arg_val.get_type(ctx).map_or(false, |ty| {
+                ty.is_ptr(ctx) || !(ty.is_unit(ctx) | ty.is_bool(ctx) | ty.is_uint(ctx))
+            })
         }) {
             return true;
         }
@@ -305,21 +302,17 @@ pub fn is_small_fn(
     }
 
     move |context: &Context, function: &Function, _call_site: &Value| -> bool {
-        max_blocks
-            .map(|max_block_count| function.num_blocks(context) <= max_block_count)
-            .unwrap_or(true)
-            && max_instrs
-                .map(|max_instrs_count| function.num_instructions(context) <= max_instrs_count)
-                .unwrap_or(true)
-            && max_stack_size
-                .map(|max_stack_size_count| {
-                    function
-                        .locals_iter(context)
-                        .map(|(_name, ptr)| count_type_elements(context, &ptr.get_type(context)))
-                        .sum::<usize>()
-                        <= max_stack_size_count
-                })
-                .unwrap_or(true)
+        max_blocks.map_or(true, |max_block_count| {
+            function.num_blocks(context) <= max_block_count
+        }) && max_instrs.map_or(true, |max_instrs_count| {
+            function.num_instructions(context) <= max_instrs_count
+        }) && max_stack_size.map_or(true, |max_stack_size_count| {
+            function
+                .locals_iter(context)
+                .map(|(_name, ptr)| count_type_elements(context, &ptr.get_inner_type(context)))
+                .sum::<usize>()
+                <= max_stack_size_count
+        })
     }
 }
 
@@ -362,7 +355,7 @@ pub fn inline_function_call(
 
     // Returned values, if any, go to `post_block`, so a block arg there.
     // We don't expect `post_block` to already have any block args.
-    if post_block.new_arg(context, call_site.get_type(context).unwrap(), false) != 0 {
+    if post_block.new_arg(context, call_site.get_type(context).unwrap()) != 0 {
         panic!("Expected newly created post_block to not have block args")
     }
     function.replace_value(
@@ -428,10 +421,9 @@ pub fn inline_function_call(
                 block: _,
                 idx: _,
                 ty,
-                by_ref,
             }) = &context.values[inlined_arg.0].value
             {
-                let index = new_block.new_arg(context, *ty, *by_ref);
+                let index = new_block.new_arg(context, *ty);
                 value_map.insert(inlined_arg, new_block.get_arg(context, index).unwrap());
             } else {
                 unreachable!("Expected a block argument")
@@ -512,7 +504,6 @@ fn inline_instruction(
                 // We can re-use the old asm block with the updated args.
                 new_block.ins(context).asm_block_from_asm(asm, new_args)
             }
-            Instruction::AddrOf(arg) => new_block.ins(context).addr_of(map_value(arg)),
             Instruction::BitCast(value, ty) => new_block.ins(context).bitcast(map_value(value), ty),
             Instruction::BinaryOp { op, arg1, arg2 } => {
                 new_block
@@ -532,9 +523,7 @@ fn inline_instruction(
                     .collect::<Vec<Value>>()
                     .as_slice(),
             ),
-            Instruction::CastPtr(val, ty, offs) => {
-                new_block.ins(context).cast_ptr(map_value(val), ty, offs)
-            }
+            Instruction::CastPtr(val, ty) => new_block.ins(context).cast_ptr(map_value(val), ty),
             Instruction::Cmp(pred, lhs_value, rhs_value) => {
                 new_block
                     .ins(context)
@@ -566,22 +555,8 @@ fn inline_instruction(
                 map_value(asset_id),
                 map_value(gas),
             ),
-            Instruction::ExtractElement {
-                array,
-                ty,
-                index_val,
-            } => new_block
-                .ins(context)
-                .extract_element(map_value(array), ty, map_value(index_val)),
-            Instruction::ExtractValue {
-                aggregate,
-                ty,
-                indices,
-            } => new_block
-                .ins(context)
-                .extract_value(map_value(aggregate), ty, indices),
             Instruction::FuelVm(fuel_vm_instr) => match fuel_vm_instr {
-                FuelVmInstruction::GetStorageKey => new_block.ins(context).get_storage_key(),
+                FuelVmInstruction::GetStorageKey(_ty) => new_block.ins(context).get_storage_key(),
                 FuelVmInstruction::Gtf { index, tx_field_id } => {
                     new_block.ins(context).gtf(map_value(index), tx_field_id)
                 }
@@ -636,53 +611,54 @@ fn inline_instruction(
                     .ins(context)
                     .state_store_word(map_value(stored_val), map_value(key)),
             },
+            Instruction::GetElemPtr {
+                base,
+                elem_ptr_ty,
+                indices,
+            } => {
+                let elem_ty = elem_ptr_ty.get_pointee_type(context).unwrap();
+                new_block.ins(context).get_elem_ptr(
+                    map_value(base),
+                    elem_ty,
+                    indices.iter().map(|idx| map_value(*idx)).collect(),
+                )
+            }
             Instruction::GetLocal(local_var) => {
                 new_block.ins(context).get_local(map_local(local_var))
             }
-            Instruction::InsertElement {
-                array,
-                ty,
-                value,
-                index_val,
-            } => new_block.ins(context).insert_element(
-                map_value(array),
-                ty,
-                map_value(value),
-                map_value(index_val),
-            ),
-            Instruction::InsertValue {
-                aggregate,
-                ty,
-                value,
-                indices,
-            } => new_block.ins(context).insert_value(
-                map_value(aggregate),
-                ty,
-                map_value(value),
-                indices,
-            ),
             Instruction::IntToPtr(value, ty) => {
                 new_block.ins(context).int_to_ptr(map_value(value), ty)
             }
             Instruction::Load(src_val) => new_block.ins(context).load(map_value(src_val)),
-            Instruction::MemCopy {
-                dst_val,
-                src_val,
+            Instruction::MemCopyBytes {
+                dst_val_ptr,
+                src_val_ptr,
                 byte_len,
+            } => new_block.ins(context).mem_copy_bytes(
+                map_value(dst_val_ptr),
+                map_value(src_val_ptr),
+                byte_len,
+            ),
+            Instruction::MemCopyVal {
+                dst_val_ptr,
+                src_val_ptr,
             } => new_block
                 .ins(context)
-                .mem_copy(map_value(dst_val), map_value(src_val), byte_len),
+                .mem_copy_val(map_value(dst_val_ptr), map_value(src_val_ptr)),
             Instruction::Nop => new_block.ins(context).nop(),
+            Instruction::PtrToInt(value, ty) => {
+                new_block.ins(context).ptr_to_int(map_value(value), ty)
+            }
             // We convert `ret` to `br post_block` and add the returned value as a phi value.
             Instruction::Ret(val, _) => new_block
                 .ins(context)
                 .branch(*post_block, vec![map_value(val)]),
             Instruction::Store {
-                dst_val,
+                dst_val_ptr,
                 stored_val,
             } => new_block
                 .ins(context)
-                .store(map_value(dst_val), map_value(stored_val)),
+                .store(map_value(dst_val_ptr), map_value(stored_val)),
         }
         .add_metadatum(context, metadata);
 

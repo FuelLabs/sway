@@ -4,7 +4,11 @@ use sway_types::{BaseIdent, Ident, Span, Spanned};
 use crate::{
     decl_engine::DeclEngineInsert,
     error::*,
-    language::{parsed::*, ty, CallPath},
+    language::{
+        parsed::*,
+        ty::{self, TyDecl},
+        CallPath,
+    },
     semantic_analysis::TypeCheckContext,
     type_system::*,
 };
@@ -236,36 +240,48 @@ fn type_check_enum(
     let decl_engine = ctx.decl_engine;
 
     let mut prefixes = call_path.prefixes.clone();
-    let enum_callpath = match prefixes.pop() {
-        Some(enum_name) => CallPath {
-            suffix: enum_name,
-            prefixes,
-            is_absolute: call_path.is_absolute,
-        },
+    let (callsite_span, mut enum_decl) = match prefixes.pop() {
+        Some(enum_name) => {
+            let enum_callpath = CallPath {
+                suffix: enum_name,
+                prefixes,
+                is_absolute: call_path.is_absolute,
+            };
+            // find the enum definition from the name
+            let unknown_decl = check!(
+                ctx.namespace.resolve_call_path(&enum_callpath).cloned(),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            let enum_ref = check!(
+                unknown_decl.to_enum_ref(ctx.engines()),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            (enum_callpath.span(), decl_engine.get_enum(&enum_ref))
+        }
         None => {
-            errors.push(CompileError::EnumNotFound {
-                name: call_path.suffix.clone(),
-                span: call_path.suffix.span(),
-            });
-            return err(warnings, errors);
+            // we may have an imported variant
+            let decl = check!(
+                ctx.namespace.resolve_call_path(&call_path).cloned(),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            if let TyDecl::EnumVariantDecl { decl_id, .. } = decl {
+                (call_path.suffix.span(), decl_engine.get_enum(&decl_id))
+            } else {
+                errors.push(CompileError::EnumNotFound {
+                    name: call_path.suffix.clone(),
+                    span: call_path.suffix.span(),
+                });
+                return err(warnings, errors);
+            }
         }
     };
     let variant_name = call_path.suffix.clone();
-
-    // find the enum definition from the name
-    let unknown_decl = check!(
-        ctx.namespace.resolve_call_path(&enum_callpath).cloned(),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-    let enum_ref = check!(
-        unknown_decl.to_enum_ref(ctx.engines()),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-    let mut enum_decl = decl_engine.get_enum(&enum_ref);
 
     // monomorphize the enum definition
     check!(
@@ -273,7 +289,7 @@ fn type_check_enum(
             &mut enum_decl,
             &mut [],
             EnforceTypeArguments::No,
-            &enum_callpath.span()
+            &callsite_span,
         ),
         return err(warnings, errors),
         warnings,

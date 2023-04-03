@@ -1,3 +1,5 @@
+// target-fuelvm
+
 script;
 
 fn a(p: bool, x: u64, y: u64) -> (u64, u64, u64) {
@@ -14,31 +16,43 @@ fn main() -> u64 {
 
 // ::check-ir::
 
+// There are return value '__ret_val' temporaries and there are other '__anon_' temporaries and in
+// this test we want to match the return values specifically.  If we ever rename them from
+// '__ret_val_' to something else then this test will fail.
+
+// regex: RET_VAL_ID=__ret_val\d*
+
 // check: fn main() -> u64
-// check: local { u64, u64, u64 } $(ret_for_call_0=$ID)
-// check: local { u64, u64, u64 } $(ret_for_call_1=$ID)
+// check: local { u64, u64, u64 } $(ret_for_call_0=$RET_VAL_ID)
+// check: local { u64, u64, u64 } $(ret_for_call_1=$RET_VAL_ID)
 
-// check: $(ret_arg_0=$ID) = get_local { u64, u64, u64 } $ret_for_call_0
-// check: $(ret_val_0=$ID) = call $(a_func=$ID)($ID, $ID, $ID, $ret_arg_0)
-// check: extract_value $ret_val_0, { u64, u64, u64 }, 1
+// check: $(ret_arg_0=$VAL) = get_local ptr { u64, u64, u64 }, $ret_for_call_0
+// check: $(ret_val_0=$VAL) = call $(a_func=$ID)($ID, $ID, $ID, $ret_arg_0)
+// check: $(tmp_ptr=$VAL) = get_local ptr { u64, u64, u64 }, $ID
+// check: mem_copy_val $tmp_ptr, $ret_val_0
 
-// check: $(ret_arg_1=$ID) = get_local { u64, u64, u64 } $ret_for_call_1
-// check: $(ret_val_1=$ID) = call $a_func($ID, $ID, $ID, $ret_arg_1)
-// check extract_value $ret_val_1, { u64, u64, u64 }, 2
+// check: $(idx_val=$VAL) = const u64 1
+// check: $(field_val=$VAL) = get_elem_ptr $tmp_ptr, ptr u64, $idx_val
+// check: load $field_val
+
+// check: $(ret_arg_1=$VAL) = get_local ptr { u64, u64, u64 }, $ret_for_call_1
+// check: $(ret_val_1=$VAL) = call $a_func($ID, $ID, $ID, $ret_arg_1)
+// check: $(tmp_ptr=$VAL) = get_local ptr { u64, u64, u64 }, $ID
+// check: mem_copy_val $tmp_ptr, $ret_val_1
+
+// check: $(idx_val=$VAL) = const u64 2
+// check: $(field_val=$VAL) = get_elem_ptr $tmp_ptr, ptr u64, $idx_val
+// check: load $field_val
 
 // fn a()...
 //
-// check: fn $a_func($ID $MD: bool, $ID $MD: u64, $ID $MD: u64, inout __ret_value $MD: { u64, u64, u64 }) -> { u64, u64, u64 }
+// check: fn $a_func($ID $MD: bool, $ID $MD: u64, $ID $MD: u64, $(ret_val_arg=$ID): ptr { u64, u64, u64 }) -> ptr { u64, u64, u64 }
 // check: cbr $ID, $(block_0=$ID)(), $(block_1=$ID)()
 
-// A single mem_copy for each explicit return:
-//
 // check: $block_0():
-// check: mem_copy __ret_value
-// not: mem_copy __ret_value
-// check: ret { u64, u64, u64 } $ID
+// check: mem_copy_val $ret_val_arg, $VAL
+// check: ret ptr { u64, u64, u64 } $ret_val_arg
 
 // check: $block_1():
-// check: mem_copy __ret_value
-// not: mem_copy __ret_value
-// check: ret { u64, u64, u64 } $ID
+// check: mem_copy_val $ret_val_arg, $VAL
+// check: ret ptr { u64, u64, u64 } $ret_val_arg

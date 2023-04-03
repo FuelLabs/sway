@@ -48,6 +48,9 @@ fn main() -> u64 {
 //
 // Matching fn b() here, which has a local bool var, initialised to false/$zero:
 //
+// check: move $REG $$$$arg0
+// check: move $REG $$$$arg1
+//
 // check: move $(stack_ptr=$REG) $$sp
 // check: cfei i8
 // check: sw   $stack_ptr $$zero i0

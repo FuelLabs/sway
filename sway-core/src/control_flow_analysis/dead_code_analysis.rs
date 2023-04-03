@@ -61,28 +61,43 @@ impl<'cfg> ControlFlowGraph<'cfg> {
         };
 
         let is_alive_check = |n: &NodeIndex| {
-            if let ControlFlowGraphNode::ProgramNode {
-                node:
-                    ty::TyAstNode {
-                        content: ty::TyAstNodeContent::Declaration(ty::TyDecl::VariableDecl { .. }),
-                        ..
-                    },
-                ..
-            } = &self.graph[*n]
-            {
-                // Consider variables declarations alive when count is greater than 1
-                connections_count
-                    .get(n)
-                    .cloned()
-                    .map_or(false, |count| count > 1)
-            } else if let ControlFlowGraphNode::StructField { .. } = &self.graph[*n] {
-                // Consider struct field alive when count is greater than 0
-                connections_count
-                    .get(n)
-                    .cloned()
-                    .map_or(false, |count| count > 0)
-            } else {
-                false
+            match &self.graph[*n] {
+                ControlFlowGraphNode::ProgramNode {
+                    node:
+                        ty::TyAstNode {
+                            content:
+                                ty::TyAstNodeContent::Declaration(ty::TyDecl::VariableDecl { .. }),
+                            ..
+                        },
+                    ..
+                } => {
+                    // Consider variables declarations alive when count is greater than 1
+                    connections_count
+                        .get(n)
+                        .cloned()
+                        .map_or(false, |count| count > 1)
+                }
+                ControlFlowGraphNode::ProgramNode {
+                    node:
+                        ty::TyAstNode {
+                            content: ty::TyAstNodeContent::Declaration(ty::TyDecl::ImplTrait { .. }),
+                            ..
+                        },
+                    ..
+                } => {
+                    // Consider impls always alive.
+                    // Consider it alive when it does not have any methods.
+                    // Also consider it alive when it contains unused methods inside.
+                    true
+                }
+                ControlFlowGraphNode::StructField { .. } => {
+                    // Consider struct field alive when count is greater than 0
+                    connections_count
+                        .get(n)
+                        .cloned()
+                        .map_or(false, |count| count > 0)
+                }
+                _ => false,
             }
         };
 
@@ -458,7 +473,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             connect_struct_declaration(&struct_decl, *decl_id, graph, entry_node, tree_type);
             Ok(leaves.to_vec())
         }
-        EnumDecl { decl_id, .. } => {
+        EnumDecl { decl_id, .. } | EnumVariantDecl { decl_id, .. } => {
             let enum_decl = decl_engine.get_enum(decl_id);
             connect_enum_declaration(&enum_decl, *decl_id, graph, entry_node);
             Ok(leaves.to_vec())
@@ -1463,7 +1478,10 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             address.span.clone(),
             options,
         ),
-        Array { contents } => {
+        Array {
+            elem_type: _,
+            contents,
+        } => {
             let nodes = contents
                 .iter()
                 .map(|elem| {
@@ -1892,14 +1910,10 @@ fn construct_dead_code_warning_from_node(
             content: ty::TyAstNodeContent::Declaration(ty::TyDecl::ImplTrait { decl_id, .. }),
             span,
         } => {
-            let ty::TyImplTrait { items: methods, .. } = decl_engine.get_impl_trait(decl_id);
-            if methods.is_empty() {
-                return None;
-            } else {
-                CompileWarning {
-                    span: span.clone(),
-                    warning_content: Warning::DeadDeclaration,
-                }
+            let ty::TyImplTrait { .. } = decl_engine.get_impl_trait(decl_id);
+            CompileWarning {
+                span: span.clone(),
+                warning_content: Warning::DeadDeclaration,
             }
         }
         ty::TyAstNode {
@@ -1992,6 +2006,17 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
             ty::TyDecl::EnumDecl { decl_id, .. } => {
                 allow_dead_code(decl_engine.get_enum(decl_id).attributes)
             }
+            ty::TyDecl::EnumVariantDecl {
+                decl_id,
+                variant_name,
+                ..
+            } => decl_engine
+                .get_enum(decl_id)
+                .variants
+                .into_iter()
+                .find(|v| v.name == *variant_name)
+                .map(|enum_variant| allow_dead_code(enum_variant.attributes))
+                .unwrap_or(false),
             ty::TyDecl::TypeAliasDecl { .. } => {
                 // TODO - handle type aliases properly. For now, always skip DCA for them.
                 true
