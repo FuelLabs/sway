@@ -998,7 +998,10 @@ impl UpdateConstantExpression for TyExpressionVariant {
             Tuple { fields } => fields
                 .iter_mut()
                 .for_each(|x| x.update_constant_expression(engines, implementing_type)),
-            Array { contents } => contents
+            Array {
+                contents,
+                elem_type: _,
+            } => contents
                 .iter_mut()
                 .for_each(|x| x.update_constant_expression(engines, implementing_type)),
             ArrayIndex { prefix, index } => {
