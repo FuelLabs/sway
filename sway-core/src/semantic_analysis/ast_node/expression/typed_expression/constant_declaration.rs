@@ -3,12 +3,15 @@ use sway_types::Spanned;
 use crate::{
     decl_engine::DeclRefConstant,
     error::*,
-    language::{ty, CallPath},
+    language::{
+        ty::{self},
+        CallPath,
+    },
     semantic_analysis::TypeCheckContext,
     CompileResult, TypeBinding,
 };
 
-pub(crate) fn instantiate_constant_decl(
+pub(crate) fn instantiate_constant_expression(
     ctx: TypeCheckContext,
     const_ref: DeclRefConstant,
     call_path_binding: TypeBinding<CallPath>,
@@ -18,10 +21,9 @@ pub(crate) fn instantiate_constant_decl(
         ty::TyExpression {
             return_type: const_decl.return_type,
             span: call_path_binding.span(),
-            expression: ty::TyExpressionVariant::VariableExpression {
-                name: const_decl.call_path.suffix,
+            expression: ty::TyExpressionVariant::ConstantExpression {
+                const_decl: Box::new(const_decl),
                 span: call_path_binding.inner.suffix.span(),
-                mutability: ty::VariableMutability::Immutable,
                 call_path: Some(call_path_binding.inner.to_fullpath(ctx.namespace)),
             },
         },

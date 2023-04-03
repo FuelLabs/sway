@@ -14,6 +14,10 @@ pub fn possibly_nonzero_u64_expression(
         Literal(crate::language::Literal::U64(value)) => *value != 0,
         // not a u64 literal, hence we return true to be on the safe side
         Literal(_) => true,
+        ConstantExpression { const_decl, .. } => match &const_decl.value {
+            Some(expr) => possibly_nonzero_u64_expression(namespace, decl_engine, expr),
+            None => false,
+        },
         VariableExpression { name, .. } => {
             match namespace.resolve_symbol(name).value {
                 Some(ty_decl) => {

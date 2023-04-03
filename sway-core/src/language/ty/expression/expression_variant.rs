@@ -4,7 +4,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use sway_types::{state::StateIndex, Ident, Span};
+use sway_types::{state::StateIndex, Ident, Named, Span};
 
 use crate::{
     decl_engine::*,
@@ -32,6 +32,11 @@ pub enum TyExpressionVariant {
         op: LazyOp,
         lhs: Box<TyExpression>,
         rhs: Box<TyExpression>,
+    },
+    ConstantExpression {
+        span: Span,
+        const_decl: Box<TyConstantDecl>,
+        call_path: Option<CallPath>,
     },
     VariableExpression {
         name: Ident,
@@ -175,6 +180,18 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     && (**l_lhs).eq(&(**r_lhs), engines)
                     && (**l_rhs).eq(&(**r_rhs), engines)
             }
+            (
+                Self::ConstantExpression {
+                    call_path: l_call_path,
+                    span: l_span,
+                    const_decl: _,
+                },
+                Self::ConstantExpression {
+                    call_path: r_call_path,
+                    span: r_span,
+                    const_decl: _,
+                },
+            ) => l_call_path == r_call_path && l_span == r_span,
             (
                 Self::VariableExpression {
                     name: l_name,
@@ -409,6 +426,13 @@ impl HashWithEngines for TyExpressionVariant {
                 lhs.hash(state, engines);
                 rhs.hash(state, engines);
             }
+            Self::ConstantExpression {
+                const_decl,
+                span: _,
+                call_path: _,
+            } => {
+                const_decl.hash(state, engines);
+            }
             Self::VariableExpression {
                 name,
                 mutability,
@@ -589,6 +613,9 @@ impl SubstTypes for TyExpressionVariant {
                 (*lhs).subst(type_mapping, engines);
                 (*rhs).subst(type_mapping, engines);
             }
+            ConstantExpression { const_decl, .. } => {
+                const_decl.subst(type_mapping, engines);
+            }
             VariableExpression { .. } => (),
             Tuple { fields } => fields
                 .iter_mut()
@@ -727,6 +754,9 @@ impl ReplaceSelfType for TyExpressionVariant {
                 (*lhs).replace_self_type(engines, self_type);
                 (*rhs).replace_self_type(engines, self_type);
             }
+            ConstantExpression { const_decl, .. } => {
+                const_decl.replace_self_type(engines, self_type)
+            }
             VariableExpression { .. } => (),
             Tuple { fields } => fields
                 .iter_mut()
@@ -859,6 +889,9 @@ impl ReplaceDecls for TyExpressionVariant {
             LazyOperator { lhs, rhs, .. } => {
                 (*lhs).replace_decls(decl_mapping, engines);
                 (*rhs).replace_decls(decl_mapping, engines);
+            }
+            ConstantExpression { const_decl, .. } => {
+                const_decl.replace_decls(decl_mapping, engines)
             }
             VariableExpression { .. } => (),
             Tuple { fields } => fields
@@ -1005,6 +1038,9 @@ impl DebugWithEngines for TyExpressionVariant {
                     engines.help_out(*resolved_type_of_parent),
                     elem_to_access_num
                 )
+            }
+            TyExpressionVariant::ConstantExpression { const_decl, .. } => {
+                format!("\"{}\" constant exp", const_decl.name().as_str())
             }
             TyExpressionVariant::VariableExpression { name, .. } => {
                 format!("\"{}\" variable exp", name.as_str())
@@ -1193,6 +1229,7 @@ impl TyExpressionVariant {
             TyExpressionVariant::Literal(_)
             | TyExpressionVariant::FunctionParameter { .. }
             | TyExpressionVariant::AsmExpression { .. }
+            | TyExpressionVariant::ConstantExpression { .. }
             | TyExpressionVariant::VariableExpression { .. }
             | TyExpressionVariant::AbiName(_)
             | TyExpressionVariant::StorageAccess { .. }
