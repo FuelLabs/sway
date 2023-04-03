@@ -41,12 +41,14 @@ impl CollectTypesMetadata for TypeId {
         for type_id in possible.into_iter() {
             match ctx.type_engine.get(type_id) {
                 TypeInfo::UnknownGeneric { name, .. } => {
+                    panic!();
                     res.push(TypeMetadata::UnresolvedType(
                         name,
                         ctx.call_site_get(&type_id),
                     ));
                 }
                 TypeInfo::Placeholder(type_param) => {
+                    panic!();
                     res.push(TypeMetadata::UnresolvedType(
                         type_param.name_ident,
                         ctx.call_site_get(self),

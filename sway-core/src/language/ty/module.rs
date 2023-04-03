@@ -5,7 +5,7 @@ use crate::{
     language::ty::*,
     language::ModName,
     semantic_analysis::namespace,
-    transform,
+    transform, CreateCopy,
 };
 
 #[derive(Clone, Debug)]
@@ -63,7 +63,7 @@ impl TyModule {
                         DeclRef::new(
                             name.clone(),
                             *decl_id,
-                            subst_list.fresh_copy(),
+                            subst_list.unscoped_copy(),
                             decl_span.clone(),
                         ),
                     ));

@@ -39,6 +39,7 @@ impl ty::TyFunctionDecl {
 
         let type_engine = ctx.type_engine;
         let decl_engine = ctx.decl_engine;
+        let engines = ctx.engines();
 
         // If functions aren't allowed in this location, return an error.
         if ctx.functions_disallowed() {
@@ -67,15 +68,15 @@ impl ty::TyFunctionDecl {
 
         // Type check the type parameters. This will also insert them into the
         // current namespace.
-        let (new_type_parameters, type_subst_list) = check!(
+        let (new_type_parameters, subst_list) = check!(
             TypeParameter::type_check_type_params(ctx.by_ref(), type_parameters, false),
             return err(warnings, errors),
             warnings,
             errors
         );
         ctx.namespace
-            .type_subst_stack_mut()
-            .push(type_subst_list.clone());
+            .subst_list_stack_mut()
+            .push(subst_list.clone());
 
         // type check the function parameters, which will also insert them into the namespace
         let mut new_parameters = vec![];
@@ -133,7 +134,11 @@ impl ty::TyFunctionDecl {
             .collect();
 
         check!(
-            unify_return_statements(ctx.by_ref(), &return_statements, return_type.type_id),
+            unify_return_statements(
+                ctx.by_ref(),
+                &return_statements,
+                return_type.type_id.subst(engines, &subst_list)
+            ),
             return err(warnings, errors),
             warnings,
             errors
@@ -164,7 +169,7 @@ impl ty::TyFunctionDecl {
             where_clause,
         };
 
-        ok((function_decl, type_subst_list), warnings, errors)
+        ok((function_decl, subst_list), warnings, errors)
     }
 }
 
@@ -173,7 +178,7 @@ impl ty::TyFunctionDecl {
 fn unify_return_statements(
     ctx: TypeCheckContext,
     return_statements: &[&ty::TyExpression],
-    return_type: TypeId,
+    return_type: Substituted<TypeId>,
 ) -> CompileResult<()> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -185,9 +190,8 @@ fn unify_return_statements(
         check!(
             CompileResult::from(type_engine.unify(
                 decl_engine,
-                stmt.return_type,
+                stmt.return_type.apply_subst(&ctx),
                 return_type,
-                &ctx.namespace.type_subst_stack_top(),
                 &stmt.span,
                 "Return statement must return the declared function return type.",
                 None,

@@ -1,63 +1,97 @@
-use sway_error::handler::{ErrorEmitted, Handler};
+use crate::{decl_engine::DeclId, language::ty::*, monomorphize::priv_prelude::*, type_system::*};
 
-use crate::{decl_engine::DeclId, language::ty, monomorphize::priv_prelude::*, SubstList};
-
-pub(crate) fn gather_from_decl(
-    ctx: GatherContext,
-    handler: &Handler,
-    decl: &ty::TyDecl,
-) -> Result<(), ErrorEmitted> {
+pub(crate) fn gather_from_decl(ctx: GatherContext, decl: &TyDecl) {
+    use TyDecl::*;
     match decl {
-        ty::TyDecl::VariableDecl(decl) => {
-            gather_from_exp(ctx, handler, &decl.body)?;
+        VariableDecl(decl) => {
+            gather_from_exp(ctx, &decl.body);
         }
-        ty::TyDecl::ConstantDecl { .. } => todo!(),
-        ty::TyDecl::FunctionDecl {
+        ConstantDecl { .. } => todo!(),
+        FunctionDecl {
             decl_id,
             subst_list,
             ..
         } => {
-            gather_from_fn_decl(ctx, handler, decl_id, subst_list.inner())?;
+            gather_from_fn_decl(ctx, decl_id, subst_list.inner());
         }
-        ty::TyDecl::TraitDecl { .. } => todo!(),
-        ty::TyDecl::StructDecl { .. } => todo!(),
-        ty::TyDecl::EnumDecl { .. } => todo!(),
-        ty::TyDecl::EnumVariantDecl { .. } => todo!(),
-        ty::TyDecl::ImplTrait { .. } => todo!(),
-        ty::TyDecl::AbiDecl { .. } => todo!(),
-        ty::TyDecl::GenericTypeForFunctionScope { .. } => todo!(),
-        ty::TyDecl::StorageDecl { .. } => todo!(),
-        ty::TyDecl::ErrorRecovery(_) => {}
-        ty::TyDecl::TypeAliasDecl { .. } => todo!(),
+        TraitDecl {
+            name: _,
+            decl_id,
+            subst_list,
+            decl_span: _,
+        } => {
+            gather_from_trait_decl(ctx, decl_id, subst_list.inner());
+        }
+        StructDecl {
+            name: _,
+            decl_id,
+            subst_list,
+            decl_span: _,
+        } => {
+            gather_from_struct_decl(ctx, decl_id, subst_list.inner());
+        }
+        EnumDecl {
+            name: _,
+            decl_id,
+            subst_list,
+            decl_span: _,
+        } => {
+            gather_from_enum_decl(ctx, decl_id, subst_list.inner());
+        }
+        EnumVariantDecl { .. } => todo!(),
+        ImplTrait { .. } => todo!(),
+        AbiDecl { .. } => todo!(),
+        GenericTypeForFunctionScope { .. } => todo!(),
+        StorageDecl { .. } => todo!(),
+        ErrorRecovery(_) => {}
+        TypeAliasDecl { .. } => todo!(),
     }
-
-    Ok(())
 }
 
 fn gather_from_fn_decl(
     mut ctx: GatherContext,
-    handler: &Handler,
-    decl_id: &DeclId<ty::TyFunctionDecl>,
+    decl_id: &DeclId<TyFunctionDecl>,
     subst_list: &SubstList,
-) -> Result<(), ErrorEmitted> {
-    let decl = ctx.decl_engine.get_function(decl_id);
-
-    if !subst_list.is_empty() {
-        unimplemented!("{}", decl.name);
+) {
+    ctx.add_constraint(Constraint::mk_fn_decl(decl_id, subst_list));
+    let fn_decl = ctx.decl_engine.get_function(decl_id);
+    for param in fn_decl.parameters {
+        gather_from_ty(ctx.by_ref(), param.type_argument.type_id);
     }
+    gather_from_ty(ctx.by_ref(), fn_decl.return_type.type_id);
+    gather_from_code_block(ctx.by_ref(), &fn_decl.body);
+}
 
-    let ty::TyFunctionDecl {
-        body,
-        parameters,
-        return_type,
-        ..
-    } = decl;
+fn gather_from_trait_decl(
+    mut ctx: GatherContext,
+    decl_id: &DeclId<TyTraitDecl>,
+    subst_list: &SubstList,
+) {
+    ctx.add_constraint(Constraint::mk_trait_decl(decl_id, subst_list));
+    let trait_decl = ctx.decl_engine.get_trait(decl_id);
+    todo!();
+}
 
-    parameters.iter().for_each(|param| {
-        ctx.add_constraint(param.type_argument.type_id.into());
-    });
-    ctx.add_constraint(return_type.type_id.into());
-    gather_from_code_block(ctx.by_ref(), handler, &body)?;
+fn gather_from_struct_decl(
+    mut ctx: GatherContext,
+    decl_id: &DeclId<TyStructDecl>,
+    subst_list: &SubstList,
+) {
+    ctx.add_constraint(Constraint::mk_struct_decl(decl_id, subst_list));
+    let struct_decl = ctx.decl_engine.get_struct(decl_id);
+    for field in struct_decl.fields {
+        gather_from_ty(ctx.by_ref(), field.type_argument.type_id);
+    }
+}
 
-    Ok(())
+fn gather_from_enum_decl(
+    mut ctx: GatherContext,
+    decl_id: &DeclId<TyEnumDecl>,
+    subst_list: &SubstList,
+) {
+    ctx.add_constraint(Constraint::mk_enum_decl(decl_id, subst_list));
+    let enum_decl = ctx.decl_engine.get_enum(decl_id);
+    for variant in enum_decl.variants {
+        gather_from_ty(ctx.by_ref(), variant.type_argument.type_id);
+    }
 }

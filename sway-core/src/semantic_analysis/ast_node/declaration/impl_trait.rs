@@ -51,7 +51,7 @@ impl ty::TyImplTrait {
             errors
         );
         ctx.namespace
-            .type_subst_stack_mut()
+            .subst_list_stack_mut()
             .push(impl_subst_list.clone());
 
         // resolve the types of the trait type arguments
@@ -488,7 +488,7 @@ impl ty::TyImplTrait {
             errors
         );
         ctx.namespace
-            .type_subst_stack_mut()
+            .subst_list_stack_mut()
             .push(impl_subst_list.clone());
 
         // type check the type that we are implementing for

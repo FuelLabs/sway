@@ -1,17 +1,37 @@
 use crate::monomorphize::priv_prelude::*;
 
+#[derive(Clone)]
 pub(crate) enum InstructionResult {
     NewInstructions(Vec<Instruction>),
-    NoInstruction,
+
+    /// Redo the most recent constraint.
     RedoConstraint,
 }
 
 impl InstructionResult {
-    pub(crate) fn from_instructions(instructions: Vec<Instruction>) -> InstructionResult {
-        if instructions.is_empty() {
-            InstructionResult::NoInstruction
-        } else {
-            InstructionResult::NewInstructions(instructions)
+    pub(super) fn empty() -> InstructionResult {
+        InstructionResult::NewInstructions(vec![])
+    }
+
+    pub(super) fn new(instructions: Vec<Instruction>) -> InstructionResult {
+        InstructionResult::NewInstructions(instructions)
+    }
+
+    pub(super) fn redo() -> InstructionResult {
+        InstructionResult::RedoConstraint
+    }
+
+    pub(super) fn and<F>(self, f: F) -> InstructionResult
+    where
+        F: Fn() -> InstructionResult,
+    {
+        use InstructionResult::*;
+        match self {
+            NewInstructions(left) => match f() {
+                NewInstructions(right) => NewInstructions([left, right].concat()),
+                RedoConstraint => RedoConstraint,
+            },
+            RedoConstraint => RedoConstraint,
         }
     }
 }
@@ -25,13 +45,12 @@ impl FromIterator<InstructionResult> for InstructionResult {
                 InstructionResult::NewInstructions(new_instructions) => {
                     instructions.extend(new_instructions);
                 }
-                InstructionResult::NoInstruction => {}
-                InstructionResult::RedoConstraint => {
-                    return InstructionResult::RedoConstraint;
+                e @ InstructionResult::RedoConstraint => {
+                    return e;
                 }
             }
         }
 
-        InstructionResult::from_instructions(instructions)
+        InstructionResult::new(instructions)
     }
 }

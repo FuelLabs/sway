@@ -4,6 +4,14 @@ pub(super) type PathBuf = Vec<Ident>;
 
 pub(super) use super::{
     constraint::*,
+    // flatten::{
+    //     code_block::flatten_code_block,
+    //     declaration::flatten_decl,
+    //     expression::flatten_exp,
+    //     flatten_ast,
+    //     module::{flatten_module, flatten_root},
+    //     node::flatten_node,
+    // },
     gather::{
         code_block::gather_from_code_block,
         context::{GatherContext, GatherNamespace},
@@ -12,6 +20,7 @@ pub(super) use super::{
         gather_constraints,
         module::gather_from_root,
         node::gather_from_node,
+        type_system::{gather_from_trait_constraints, gather_from_ty},
     },
     instruct::{
         apply_instructions,
@@ -25,6 +34,6 @@ pub(super) use super::{
     instructions::Instruction,
     solve::{
         instruction_result::InstructionResult, iteration_report::IterationReport, solver::Solver,
-        ConstraintPQ, ConstraintWrapper,
+        ConstraintPQ, ConstraintTick, ConstraintWrapper,
     },
 };

@@ -47,6 +47,21 @@ where
 {
 }
 
+// impl DeclEngineGet<DeclId<ty::TyFunctionDeclaration>, ty::TyFunctionDeclaration> for DeclEngine {
+//     fn get(&self, index: &DeclId<ty::TyFunctionDeclaration>) -> ty::TyFunctionDeclaration {
+//         self.function_slab.get(index.inner())
+//     }
+// }
+
+// impl DeclEngineGet<DeclRef<DeclId<ty::TyFunctionDeclaration>>, ty::TyFunctionDeclaration>
+//     for DeclEngine
+// {
+//     fn get(&self, index: &DeclRef<DeclId<ty::TyFunctionDeclaration>>) -> ty::TyFunctionDeclaration {
+//         let decl = self.function_slab.get(index.id().inner());
+//         todo!()
+//     }
+// }
+
 macro_rules! decl_engine_get {
     ($slab:ident, $decl:ty) => {
         impl DeclEngineGet<DeclId<$decl>, $decl> for DeclEngine {

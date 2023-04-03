@@ -2,7 +2,7 @@ use std::{cmp::Ordering, hash::Hasher};
 
 use crate::{decl_engine::DeclId, engine_threading::*, language::ty, type_system::*};
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub(crate) enum Instruction {
     Type(TypeId, SubstList),
     FnDecl(DeclId<ty::TyFunctionDecl>, SubstList),

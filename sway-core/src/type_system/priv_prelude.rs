@@ -1,4 +1,7 @@
-pub(super) use super::unify::{unifier::Unifier, unify_check::UnifyCheck};
+pub(super) use super::{
+    substitute::SubstitutionKind,
+    unify::{unifier::Unifier, unify_check::UnifyCheck},
+};
 
 pub(crate) use super::{
     ast_elements::{
@@ -7,7 +10,12 @@ pub(crate) use super::{
     },
     engine::EnforceTypeArguments,
     info::VecSet,
-    substitute::{create_copy::CreateCopy, subst_list::SubstList},
+    substitute::{
+        create_copy::CreateCopy,
+        subst_list::SubstList,
+        subst_types::SubstTypes,
+        substituted::{Substituted, SubstitutedAndMap},
+    },
 };
 
 pub use super::{

@@ -167,6 +167,29 @@ impl<T> CompileResult<T> {
         }
     }
 
+    /// Applies `F` if and only if no errors are present.
+    pub fn ok_map<F: FnOnce(T) -> CompileResult<T>>(self, f: F) -> CompileResult<T> {
+        match self.value {
+            None => err(self.warnings, self.errors),
+            Some(value) => {
+                if self.errors.is_empty() {
+                    let res = f(value);
+                    CompileResult {
+                        value: res.value,
+                        warnings: [self.warnings, res.warnings].concat(),
+                        errors: [self.errors, res.errors].concat(),
+                    }
+                } else {
+                    CompileResult {
+                        value: Some(value),
+                        warnings: self.warnings,
+                        errors: self.errors,
+                    }
+                }
+            }
+        }
+    }
+
     pub fn flat_map<U, F: FnOnce(T) -> CompileResult<U>>(self, f: F) -> CompileResult<U> {
         match self.value {
             None => err(self.warnings, self.errors),

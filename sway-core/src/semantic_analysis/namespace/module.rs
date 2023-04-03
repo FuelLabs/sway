@@ -40,7 +40,7 @@ pub struct Module {
     /// some library dependency that we include as a submodule.
     ///
     /// Note that we *require* this map to be ordered to produce deterministic codegen results.
-    pub(crate) submodules: im::OrdMap<ModuleName, Module>,
+    pub(super) submodules: im::OrdMap<ModuleName, Module>,
     /// The set of symbols, implementations, synonyms and aliases present within this module.
     items: Items,
     /// Name of the module, package name for root module, module name for other modules.

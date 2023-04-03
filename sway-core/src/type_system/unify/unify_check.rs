@@ -3,16 +3,12 @@ use crate::{decl_engine::*, engine_threading::*, type_system::priv_prelude::*};
 /// Helper struct to aid in type coercion.
 pub(crate) struct UnifyCheck<'a> {
     engines: Engines<'a>,
-    type_subst_stack_top: &'a SubstList,
 }
 
 impl<'a> UnifyCheck<'a> {
     /// Creates a new [UnifyCheck].
-    pub(crate) fn new(engines: Engines<'a>, type_subst_stack_top: &'a SubstList) -> UnifyCheck<'a> {
-        UnifyCheck {
-            engines,
-            type_subst_stack_top,
-        }
+    pub(crate) fn new(engines: Engines<'a>) -> UnifyCheck<'a> {
+        UnifyCheck { engines }
     }
 
     /// Given two [TypeId]'s `left` and `right`, check to see if `left` can be
@@ -103,14 +99,14 @@ impl<'a> UnifyCheck<'a> {
         let left_info = self.engines.te().get(left);
         let right_info = self.engines.te().get(right);
         match (left_info, right_info) {
-            (TypeParam { index, .. }, _) => self.check(
-                self.type_subst_stack_top.index(index).unwrap().type_id,
-                right,
-            ),
-            (_, TypeParam { index, .. }) => self.check(
-                left,
-                self.type_subst_stack_top.index(index).unwrap().type_id,
-            ),
+            (TypeParam { .. }, _) => {
+                panic!();
+                // false
+            }
+            (_, TypeParam { .. }) => {
+                panic!();
+                // false
+            }
 
             // the placeholder type can be coerced into any type
             (Placeholder(_), _) => true,
@@ -223,10 +219,10 @@ impl<'a> UnifyCheck<'a> {
     }
 
     fn check_decl_ref<T>(&self, left: DeclRef<DeclId<T>>, right: DeclRef<DeclId<T>>) -> bool {
-        left.id() == right.id() && self.check_type_subst_list(left.subst_list(), right.subst_list())
+        left.id() == right.id() && self.check_subst_list(left.subst_list(), right.subst_list())
     }
 
-    fn check_type_subst_list(&self, left: &SubstList, right: &SubstList) -> bool {
+    fn check_subst_list(&self, left: &SubstList, right: &SubstList) -> bool {
         let preprocess = |subst_list: &SubstList| -> Vec<TypeId> {
             subst_list
                 .elems()

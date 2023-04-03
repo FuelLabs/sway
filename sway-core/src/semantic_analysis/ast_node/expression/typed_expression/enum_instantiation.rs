@@ -27,7 +27,7 @@ pub(crate) fn instantiate_enum(
     let decl_engine = ctx.decl_engine;
     let engines = ctx.engines();
 
-    let enum_decl = decl_engine.get_enum(&enum_ref);
+    let enum_decl: ty::TyEnumDecl = todo!(); //enum_ref.relative_copy(engines);
     let enum_variant = check!(
         enum_decl
             .expect_variant_from_name(&enum_variant_name)
@@ -90,9 +90,8 @@ pub(crate) fn instantiate_enum(
             check!(
                 CompileResult::from(type_engine.unify(
                     decl_engine,
-                    typed_expr.return_type,
-                    enum_variant.type_argument.type_id,
-                    &ctx.namespace.type_subst_stack_top(),
+                    typed_expr.return_type.apply_subst(&ctx),
+                    Substituted::bypass(enum_variant.type_argument.type_id),
                     span,
                     "Enum instantiator must match its declared variant type.",
                     None

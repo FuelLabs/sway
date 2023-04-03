@@ -85,19 +85,19 @@ impl TypeEngine {
     /// `expected`, except in cases where `received` has more type information
     /// than `expected` (e.g. when `expected` is a generic type and `received`
     /// is not).
-    #[allow(clippy::too_many_arguments)]
     pub(crate) fn unify(
         &self,
         decl_engine: &DeclEngine,
-        received: TypeId,
-        expected: TypeId,
-        type_subst_stack_top: &SubstList,
+        received: Substituted<TypeId>,
+        expected: Substituted<TypeId>,
         span: &Span,
         help_text: &str,
         err_override: Option<CompileError>,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
+        let received = *received.inner();
+        let expected = *expected.inner();
         let engines = Engines::new(self, decl_engine);
-        if !UnifyCheck::new(engines, type_subst_stack_top).check(received, expected) {
+        if !UnifyCheck::new(engines).check(received, expected) {
             // create a "mismatched type" error unless the `err_override`
             // argument has been provided
             let mut errors = vec![];
@@ -116,9 +116,8 @@ impl TypeEngine {
             }
             return (vec![], errors);
         }
-        let (warnings, errors) = normalize_err(
-            Unifier::new(engines, type_subst_stack_top, help_text).unify(received, expected, span),
-        );
+        let (warnings, errors) =
+            normalize_err(Unifier::new(engines, help_text).unify(received, expected, span));
         if errors.is_empty() {
             (warnings, errors)
         } else if err_override.is_some() {
@@ -171,7 +170,7 @@ impl TypeEngine {
                 });
                 return err(warnings, errors);
             }
-            (n, m) if n != m => {
+            (n, m) if m > 0 && n != m => {
                 errors.push(CompileError::IncorrectNumberOfTypeArguments {
                     given: type_args.len(),
                     expected: subst_list.len(),
@@ -233,6 +232,7 @@ impl TypeEngine {
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
+        let engines = Engines::new(self, decl_engine);
         check!(
             self.resolve_type_args(
                 namespace,
@@ -257,6 +257,12 @@ impl TypeEngine {
             warnings,
             errors
         );
+        // First replace the elements in the [TypeSubstList] with placeholder
+        // types, then replace them with the given [TypeArgument]s. This covers
+        // all cases in which there may or may not be [TypeArgument]s provided,
+        // in which case replacing the elements with placeholder types is the
+        // desired outcome.
+        decl_ref.subst_list_mut().apply_placeholder_types(engines);
         decl_ref.subst_list_mut().apply_type_args(type_args);
         ok((), warnings, errors)
     }

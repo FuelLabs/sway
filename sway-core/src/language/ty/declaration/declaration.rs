@@ -498,7 +498,7 @@ impl TyDecl {
             Some(DeclRef::new(
                 name.clone(),
                 *decl_id,
-                subst_list.fresh_copy(),
+                subst_list.unscoped_copy(),
                 decl_span.clone(),
             ))
         } else {
@@ -520,7 +520,7 @@ impl TyDecl {
                 DeclRef::new(
                     name.clone(),
                     *decl_id,
-                    subst_list.fresh_copy(),
+                    subst_list.unscoped_copy(),
                     decl_span.clone(),
                 ),
                 vec![],
@@ -555,7 +555,7 @@ impl TyDecl {
                 DeclRef::new(
                     name.clone(),
                     *decl_id,
-                    subst_list.fresh_copy(),
+                    subst_list.unscoped_copy(),
                     decl_span.clone(),
                 ),
                 vec![],
@@ -590,7 +590,7 @@ impl TyDecl {
                 DeclRef::new(
                     name.clone(),
                     *decl_id,
-                    subst_list.fresh_copy(),
+                    subst_list.unscoped_copy(),
                     decl_span.clone(),
                 ),
                 vec![],
@@ -758,7 +758,7 @@ impl TyDecl {
                 TypeInfo::Struct(DeclRef::new(
                     name.clone(),
                     *decl_id,
-                    subst_list.fresh_copy(),
+                    subst_list.unscoped_copy(),
                     decl_span.clone(),
                 )),
             ),
@@ -772,7 +772,7 @@ impl TyDecl {
                 TypeInfo::Enum(DeclRef::new(
                     name.clone(),
                     *decl_id,
-                    subst_list.fresh_copy(),
+                    subst_list.unscoped_copy(),
                     decl_span.clone(),
                 )),
             ),

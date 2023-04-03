@@ -19,10 +19,10 @@ pub(crate) fn instantiate_function_application(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let decl_engine = ctx.decl_engine;
     let engines = ctx.engines();
 
-    let function_decl = decl_engine.get_function(&function_decl_ref);
+    let fn_decl = function_decl_ref.relative_copy(engines);
+    let fn_params = fn_decl.as_ref().map(|s| &s.parameters);
 
     if arguments.is_none() {
         errors.push(CompileError::MissingParenthesesForFunction {
@@ -34,21 +34,16 @@ pub(crate) fn instantiate_function_application(
     let arguments = arguments.unwrap_or_default();
 
     // 'purity' is that of the callee, 'opts.purity' of the caller.
-    if !ctx.purity().can_call(function_decl.purity) {
+    if !ctx.purity().can_call(fn_decl.inner().purity) {
         errors.push(CompileError::StorageAccessMismatch {
-            attrs: promote_purity(ctx.purity(), function_decl.purity).to_attribute_syntax(),
+            attrs: promote_purity(ctx.purity(), fn_decl.inner().purity).to_attribute_syntax(),
             span: call_path_binding.span(),
         });
     }
 
     // check that the number of parameters and the number of the arguments is the same
     check!(
-        check_function_arguments_arity(
-            arguments.len(),
-            &function_decl,
-            &call_path_binding.inner,
-            false
-        ),
+        check_function_arguments_arity(arguments.len(), &fn_decl, &call_path_binding.inner, false),
         return err(warnings, errors),
         warnings,
         errors
@@ -62,7 +57,7 @@ pub(crate) fn instantiate_function_application(
     );
 
     let typed_arguments_with_names = check!(
-        unify_arguments_and_parameters(ctx.by_ref(), typed_arguments, &function_decl.parameters),
+        unify_arguments_and_parameters(ctx.by_ref(), typed_arguments, fn_params),
         return err(warnings, errors),
         warnings,
         errors
@@ -71,7 +66,7 @@ pub(crate) fn instantiate_function_application(
     // Retrieve the implemented traits for the type of the return type and
     // insert them in the broader namespace.
     ctx.namespace
-        .insert_trait_implementation_for_type(engines, function_decl.return_type.type_id);
+        .insert_trait_implementation_for_type(engines, fn_decl.inner().return_type.type_id);
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {
@@ -83,7 +78,7 @@ pub(crate) fn instantiate_function_application(
             selector: None,
             type_binding: Some(call_path_binding.strip_inner()),
         },
-        return_type: function_decl.return_type.type_id,
+        return_type: fn_decl.inner().return_type.type_id,
         span,
     };
 
@@ -130,7 +125,7 @@ fn type_check_arguments(
 fn unify_arguments_and_parameters(
     ctx: TypeCheckContext,
     typed_arguments: Vec<ty::TyExpression>,
-    parameters: &[ty::TyFunctionParameter],
+    parameters: Substituted<&Vec<ty::TyFunctionParameter>>,
 ) -> CompileResult<Vec<(Ident, ty::TyExpression)>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -144,9 +139,8 @@ fn unify_arguments_and_parameters(
         check!(
             CompileResult::from(type_engine.unify(
                 decl_engine,
-                arg.return_type,
-                param.type_argument.type_id,
-                &ctx.namespace.type_subst_stack_top(),
+                arg.return_type.apply_subst(&ctx),
+                param.map(|p| p.type_argument.type_id),
                 &arg.span,
                 "The argument that has been provided to this function's type does \
             not match the declared type of the parameter in the function \
@@ -159,15 +153,17 @@ fn unify_arguments_and_parameters(
         );
 
         // check for matching mutability
-        let param_mutability =
-            ty::VariableMutability::new_from_ref_mut(param.is_reference, param.is_mutable);
+        let param_mutability = ty::VariableMutability::new_from_ref_mut(
+            param.inner().is_reference,
+            param.inner().is_mutable,
+        );
         if arg.gather_mutability().is_immutable() && param_mutability.is_mutable() {
             errors.push(CompileError::ImmutableArgumentToMutableParameter {
                 span: arg.span.clone(),
             });
         }
 
-        typed_arguments_and_names.push((param.name.clone(), arg));
+        typed_arguments_and_names.push((param.inner().name.clone(), arg));
     }
 
     if errors.is_empty() {
@@ -179,25 +175,26 @@ fn unify_arguments_and_parameters(
 
 pub(crate) fn check_function_arguments_arity(
     arguments_len: usize,
-    function_decl: &ty::TyFunctionDecl,
+    fn_decl: &Substituted<ty::TyFunctionDecl>,
     call_path: &CallPath,
     is_method_call_syntax_used: bool,
 ) -> CompileResult<()> {
     let warnings = vec![];
     let mut errors = vec![];
+
     // if is_method_call_syntax_used then we have the guarantee
     // that at least the self argument is passed
     let (expected, received) = if is_method_call_syntax_used {
-        (function_decl.parameters.len() - 1, arguments_len - 1)
+        (fn_decl.inner().parameters.len() - 1, arguments_len - 1)
     } else {
-        (function_decl.parameters.len(), arguments_len)
+        (fn_decl.inner().parameters.len(), arguments_len)
     };
     match expected.cmp(&received) {
         std::cmp::Ordering::Equal => ok((), warnings, errors),
         std::cmp::Ordering::Less => {
             errors.push(CompileError::TooFewArgumentsForFunction {
                 span: call_path.span(),
-                method_name: function_decl.name.clone(),
+                method_name: fn_decl.inner().name.clone(),
                 dot_syntax_used: is_method_call_syntax_used,
                 expected,
                 received,
@@ -207,7 +204,7 @@ pub(crate) fn check_function_arguments_arity(
         std::cmp::Ordering::Greater => {
             errors.push(CompileError::TooManyArgumentsForFunction {
                 span: call_path.span(),
-                method_name: function_decl.name.clone(),
+                method_name: fn_decl.inner().name.clone(),
                 dot_syntax_used: is_method_call_syntax_used,
                 expected,
                 received,

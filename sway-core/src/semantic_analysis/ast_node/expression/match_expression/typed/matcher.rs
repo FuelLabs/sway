@@ -1,5 +1,5 @@
 use crate::{
-    error::{err, ok},
+    error::*,
     language::{ty, CallPath, Literal},
     semantic_analysis::{
         ast_node::expression::typed_expression::{
@@ -8,7 +8,8 @@ use crate::{
         },
         TypeCheckContext,
     },
-    CompileResult, Ident, TypeId,
+    type_system::*,
+    Ident,
 };
 
 use sway_types::span::Span;
@@ -77,20 +78,42 @@ pub(crate) fn matcher(
     let decl_engine = ctx.decl_engine;
 
     // unify the type of the scrutinee with the type of the expression
-    check!(
-        CompileResult::from(type_engine.unify(
-            decl_engine,
-            type_id,
-            exp.return_type,
-            &ctx.namespace.type_subst_stack_top(),
-            &span,
-            "",
-            None
-        )),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    match variant {
+        ty::TyScrutineeVariant::StructScrutinee {
+            struct_ref: _,
+            fields,
+            ..
+        } => {
+            todo!()
+        }
+        ty::TyScrutineeVariant::EnumScrutinee {
+            enum_ref: _,
+            variant,
+            value,
+            ..
+        } => {
+            todo!()
+        }
+        ty::TyScrutineeVariant::CatchAll
+        | ty::TyScrutineeVariant::Literal(_)
+        | ty::TyScrutineeVariant::Variable(_)
+        | ty::TyScrutineeVariant::Constant(_, _, _)
+        | ty::TyScrutineeVariant::Tuple(_) => {
+            check!(
+                CompileResult::from(type_engine.unify(
+                    decl_engine,
+                    type_id.apply_subst(&ctx),
+                    Substituted::bypass(exp.return_type),
+                    &span,
+                    "",
+                    None
+                )),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+        }
+    }
 
     match variant {
         ty::TyScrutineeVariant::CatchAll => ok((vec![], vec![]), vec![], vec![]),

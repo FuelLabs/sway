@@ -249,6 +249,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
         .scoped_copy(engines);
         match self.type_arguments {
             TypeArgs::Regular(_) => {
+                println!("A");
                 // Monomorphize the copy, in place.
                 check!(
                     ctx.combine_subst_list_and_args(
@@ -263,9 +264,10 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
                 );
             }
             TypeArgs::Prefix(_) => {
+                println!("B");
                 // Resolve the type arguments without using the fn.
                 for type_argument in self.type_arguments.to_vec_mut().iter_mut() {
-                    check!(
+                    type_argument.type_id = check!(
                         ctx.resolve_type(
                             type_argument.type_id,
                             &type_argument.span,

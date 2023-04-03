@@ -218,9 +218,8 @@ fn unify_field_arguments_and_struct_fields(
             check!(
                 CompileResult::from(type_engine.unify(
                     decl_engine,
-                    typed_field.value.return_type,
-                    struct_field.type_argument.type_id,
-                    &ctx.namespace.type_subst_stack_top(),
+                    Substituted::bypass(typed_field.value.return_type),
+                    Substituted::bypass(struct_field.type_argument.type_id),
                     &typed_field.value.span,
                     "Struct field's type must match the type specified in its declaration.",
                     None,

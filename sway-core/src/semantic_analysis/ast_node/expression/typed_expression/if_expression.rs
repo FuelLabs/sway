@@ -32,9 +32,8 @@ pub(crate) fn instantiate_if_expression(
         append!(
             type_engine.unify(
                 ctx.decl_engine,
-                then.return_type,
-                ty_to_check,
-                &ctx.namespace.type_subst_stack_top(),
+                then.return_type.apply_subst(&ctx),
+                Substituted::bypass(ty_to_check),
                 &then.span,
                 "`then` branch must return expected type.",
                 None
@@ -56,9 +55,8 @@ pub(crate) fn instantiate_if_expression(
             append!(
                 type_engine.unify(
                     ctx.decl_engine,
-                    r#else.return_type,
-                    ty_to_check,
-                    &ctx.namespace.type_subst_stack_top(),
+                    r#else.return_type.apply_subst(&ctx),
+                    Substituted::bypass(ty_to_check),
                     &r#else.span,
                     "`else` branch must return expected type.",
                     None
@@ -78,9 +76,8 @@ pub(crate) fn instantiate_if_expression(
     if !else_deterministically_aborts && !then_deterministically_aborts {
         let (mut new_warnings, mut new_errors) = type_engine.unify(
             ctx.decl_engine,
-            then.return_type,
-            r#else_ret_ty,
-            &ctx.namespace.type_subst_stack_top(),
+            then.return_type.apply_subst(&ctx),
+            Substituted::bypass(r#else_ret_ty),
             &span,
             "The two branches of an if expression must return the same type.",
             None,

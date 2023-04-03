@@ -43,29 +43,29 @@ pub(crate) fn type_check_method_application(
     }
 
     // resolve the method name to a typed function declaration and type_check
-    let decl_ref = check!(
+    let fn_ref = check!(
         resolve_method_name(ctx.by_ref(), &mut method_name_binding, args_buf.clone()),
         return err(warnings, errors),
         warnings,
         errors
     );
-    let method = decl_engine.get_function(&decl_ref);
+    let fn_decl = fn_ref.relative_copy(engines);
 
     // check the method visibility
-    if span.path() != method.span.path() && method.visibility.is_private() {
+    if span.path() != fn_decl.inner().span.path() && fn_decl.inner().visibility.is_private() {
         errors.push(CompileError::CallingPrivateLibraryMethod {
-            name: method.name.as_str().to_string(),
+            name: fn_decl.inner().name.as_str().to_string(),
             span,
         });
         return err(warnings, errors);
     }
 
     // check the function storage purity
-    if !method.is_contract_call {
+    if !fn_decl.inner().is_contract_call {
         // 'method.purity' is that of the callee, 'opts.purity' of the caller.
-        if !ctx.purity().can_call(method.purity) {
+        if !ctx.purity().can_call(fn_decl.inner().purity) {
             errors.push(CompileError::StorageAccessMismatch {
-                attrs: promote_purity(ctx.purity(), method.purity).to_attribute_syntax(),
+                attrs: promote_purity(ctx.purity(), fn_decl.inner().purity).to_attribute_syntax(),
                 span: method_name_binding.inner.easy_name().span(),
             });
         }
@@ -78,7 +78,7 @@ pub(crate) fn type_check_method_application(
 
     // generate the map of the contract call params
     let mut contract_call_params_map = HashMap::new();
-    if method.is_contract_call {
+    if fn_decl.inner().is_contract_call {
         for param_name in &[
             constants::CONTRACT_CALL_GAS_PARAMETER_NAME,
             constants::CONTRACT_CALL_COINS_PARAMETER_NAME,
@@ -144,12 +144,13 @@ pub(crate) fn type_check_method_application(
                 ctx.namespace,
                 decl_engine,
                 coins_expr,
-            ) && !method
+            ) && !fn_decl
+                .inner()
                 .attributes
                 .contains_key(&crate::transform::AttributeKind::Payable)
             {
                 errors.push(CompileError::CoinsPassedToNonPayableMethod {
-                    fn_name: method.name,
+                    fn_name: fn_decl.into_inner().name,
                     span,
                 });
                 return err(warnings, errors);
@@ -194,10 +195,11 @@ pub(crate) fn type_check_method_application(
     // If this function is being called with method call syntax, a.b(c),
     // then make sure the first parameter is self, else issue an error.
     let mut is_method_call_syntax_used = false;
-    if !method.is_contract_call {
+    if !fn_decl.inner().is_contract_call {
         if let MethodName::FromModule { ref method_name } = method_name_binding.inner {
             is_method_call_syntax_used = true;
-            let is_first_param_self = method
+            let is_first_param_self = fn_decl
+                .inner()
                 .parameters
                 .get(0)
                 .map(|f| f.is_self())
@@ -220,7 +222,7 @@ pub(crate) fn type_check_method_application(
             ..
         }),
         Some(ty::TyFunctionParameter { is_mutable, .. }),
-    ) = (args_buf.get(0), method.parameters.get(0))
+    ) = (args_buf.get(0), fn_decl.inner().parameters.get(0))
     {
         if *is_mutable {
             let unknown_decl = check!(
@@ -281,7 +283,7 @@ pub(crate) fn type_check_method_application(
     };
 
     // build the function selector
-    let selector = if method.is_contract_call {
+    let selector = if fn_decl.inner().is_contract_call {
         let contract_caller = args_buf.pop_front();
         let contract_address = match contract_caller
             .clone()
@@ -305,7 +307,9 @@ pub(crate) fn type_check_method_application(
             return err(warnings, errors);
         };
         let func_selector = check!(
-            method.to_fn_selector_value(type_engine, decl_engine),
+            fn_decl
+                .inner()
+                .to_fn_selector_value(type_engine, decl_engine),
             [0; 4],
             warnings,
             errors
@@ -324,7 +328,7 @@ pub(crate) fn type_check_method_application(
     check!(
         check_function_arguments_arity(
             args_buf.len(),
-            &method,
+            &fn_decl,
             &call_path,
             is_method_call_syntax_used
         ),
@@ -335,7 +339,7 @@ pub(crate) fn type_check_method_application(
 
     // unify the types of the arguments with the types of the parameters from the function declaration
     let typed_arguments_with_names = check!(
-        unify_arguments_and_parameters(ctx.by_ref(), args_buf, &method.parameters),
+        unify_arguments_and_parameters(ctx.by_ref(), args_buf, &fn_decl.inner().parameters),
         return err(warnings, errors),
         warnings,
         errors
@@ -344,19 +348,19 @@ pub(crate) fn type_check_method_application(
     // Retrieve the implemented traits for the type of the return type and
     // insert them in the broader namespace.
     ctx.namespace
-        .insert_trait_implementation_for_type(engines, method.return_type.type_id);
+        .insert_trait_implementation_for_type(engines, fn_decl.inner().return_type.type_id);
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {
             call_path,
             contract_call_params: contract_call_params_map,
             arguments: typed_arguments_with_names,
-            fn_ref: decl_ref,
+            fn_ref,
             self_state_idx,
             selector,
             type_binding: Some(method_name_binding.strip_inner()),
         },
-        return_type: method.return_type.type_id,
+        return_type: fn_decl.inner().return_type.type_id,
         span,
     };
 
@@ -383,9 +387,8 @@ fn unify_arguments_and_parameters(
         check!(
             CompileResult::from(type_engine.unify(
                 decl_engine,
-                arg.return_type,
-                param.type_argument.type_id,
-                &ctx.namespace.type_subst_stack_top(),
+                arg.return_type.apply_subst(&ctx),
+                Substituted::bypass(param.type_argument.type_id),
                 &arg.span,
                 "This argument's type is not castable to the declared parameter type.",
                 Some(CompileError::ArgumentParameterTypeMismatch {
