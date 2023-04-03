@@ -383,25 +383,30 @@ pub(crate) async fn definition_check<'a>(
         ids.next().unwrap(),
     );
 
-    fn display_sources(error: &dyn Error) -> String {
-        if let Some(source) = error.source() {
-            format!("{}: {}", error, display_sources(source))
-        } else {
-            error.to_string()
-        }
-    }
+    // fn display_sources(error: &dyn Error) -> String {
+    //     if let Some(source) = error.source() {
+    //         format!("{}: {}", error, display_sources(source))
+    //     } else {
+    //         error.to_string()
+    //     }
+    // }
     
-    if let Err(err) = future::poll_fn(|cx| service.poll_ready(cx)).await {
-        error!("{}", display_sources(err.into().as_ref()));
-        return;
-    }
+    // if let Err(err) = future::poll_fn(|cx| service.poll_ready(cx)).await {
+    //     error!("{}", display_sources(err.into().as_ref()));
+    //     return;
+    // }
 
-    eprintln!("Is service ready? : {:#?}", service.poll_ready());
+    //eprintln!("Is service ready? : {:#?}", service.poll_ready());
     let mut ready = service.ready().await;
-    let call_req = ready.as_mut().unwrap().call(definition.clone()).await;
+    let service = ready.as_mut().unwrap_or_else(|error| {
+        panic!("service error: {:#?}", error);
+    });
+    let call_req = service.call(definition.clone()).await;
 
     //let call_req = call_request(service, definition.clone()).await;
-    let call_req_unwrap = call_req.clone().unwrap();
+    let call_req_unwrap = call_req.clone().unwrap_or_else(|error| {
+        panic!("call_req_unwrap error: {:#?}", error);
+    });
     let response = call_req_unwrap.clone().unwrap();
     let response_result = response.result().clone();
     let value = response_result.clone().unwrap();
@@ -413,7 +418,7 @@ pub(crate) async fn definition_check<'a>(
     //     .unwrap();
     // let value = response.result().unwrap();
     let unwrapped_response = serde_json::from_value(value.clone()).unwrap_or_else(|error| {
-        eprintln!("ready: {:#?}", &ready);
+        eprintln!("ready: {:#?}", &ready.err());
         eprintln!("definition: {:#?}", definition);
         eprintln!("call_req: {:#?}", call_req);
         eprintln!("call_req_unwrap: {:#?}", call_req_unwrap);
