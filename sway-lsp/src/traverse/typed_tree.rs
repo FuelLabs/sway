@@ -550,7 +550,10 @@ impl<'a> TypedTree<'a> {
                     self.handle_expression(exp);
                 }
             }
-            ty::TyExpressionVariant::Array { contents } => {
+            ty::TyExpressionVariant::Array {
+                elem_type: _,
+                contents,
+            } => {
                 for exp in contents {
                     self.handle_expression(exp);
                 }

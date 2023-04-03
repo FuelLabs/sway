@@ -10,7 +10,7 @@ use crate::{
     error::IrError,
     function::Function,
     instruction::Instruction,
-    value::{Value, ValueContent, ValueDatum},
+    value::ValueDatum,
     AnalysisResults, BranchToWithArgs, Pass, PassMutability, Predicate, ScopedPass,
 };
 
@@ -33,11 +33,6 @@ pub fn combine_constants(
 ) -> Result<bool, IrError> {
     let mut modified = false;
     loop {
-        if combine_const_insert_values(context, &function) {
-            modified = true;
-            continue;
-        }
-
         if combine_cmp(context, &function) {
             modified = true;
             continue;
@@ -147,106 +142,4 @@ fn combine_cmp(context: &mut Context, function: &Function) -> bool {
         block.remove_instruction(context, inst_val);
         true
     })
-}
-
-fn combine_const_insert_values(context: &mut Context, function: &Function) -> bool {
-    // Find a candidate `insert_value` instruction.
-    let candidate = function
-        .instruction_iter(context)
-        .find_map(|(block, ins_val)| {
-            match &context.values[ins_val.0].value {
-                // We only want inject this constant value into a constant aggregate declaration,
-                // not another `insert_value` instruction.
-                //
-                // We *could* trace back to the original aggregate through other `insert_value`s
-                // but we'd have to be careful that this constant value isn't clobbered by the
-                // chain.  It's simpler to just combine the instruction which modifies the
-                // aggregate directly and then to iterate.
-                ValueDatum::Instruction(Instruction::InsertValue {
-                    aggregate,
-                    ty: _,
-                    value,
-                    indices,
-                }) if value.is_constant(context)
-                    && matches!(
-                        &context.values[aggregate.0].value,
-                        ValueDatum::Constant(Constant {
-                            value: ConstantValue::Struct(_),
-                            ..
-                        }),
-                    ) =>
-                {
-                    Some((block, ins_val, *aggregate, *value, indices.clone()))
-                }
-                _otherwise => None,
-            }
-        });
-
-    if let Some((block, ins_val, aggregate, const_val, indices)) = candidate {
-        // OK, here we have an `insert_value` of a constant directly into a constant aggregate.  We
-        // want to replace the constant aggregate with an updated one.
-        let new_aggregate = combine_const_aggregate_field(context, aggregate, const_val, &indices);
-
-        // Replace uses of the `insert_value` instruction with the new aggregate.
-        function.replace_value(context, ins_val, new_aggregate, None);
-
-        // Remove the `insert_value` instruction.
-        block.remove_instruction(context, ins_val);
-
-        // Let's return now, since our iterator may get confused and let the pass iterate further
-        // itself.
-        return true;
-    }
-
-    false
-}
-
-fn combine_const_aggregate_field(
-    context: &mut Context,
-    aggregate: Value,
-    const_value: Value,
-    indices: &[u64],
-) -> Value {
-    // Create a copy of the aggregate constant and inserted value.
-    let (mut new_aggregate, metadata) = match &context.values[aggregate.0] {
-        ValueContent {
-            value: ValueDatum::Constant(c),
-            metadata,
-        } => (c.clone(), *metadata),
-        _otherwise => {
-            unreachable!("BUG! Invalid aggregate parameter to combine_const_insert_value()")
-        }
-    };
-    let const_value = match &context.values[const_value.0].value {
-        ValueDatum::Constant(c) => c.clone(),
-        _otherwise => {
-            unreachable!("BUG! Invalid const_value parameter to combine_const_insert_value()")
-        }
-    };
-
-    // Update the new aggregate with the constant field, based in the indices.
-    inject_constant_into_aggregate(&mut new_aggregate, const_value, indices);
-
-    // NOTE: Previous versions of this pass were trying to clean up after themselves, by replacing
-    // the old aggregate with this new one, and/or removing the old aggregate altogether.  This is
-    // too dangerous without proper checking for remaining uses, and is best left to DCE anyway.
-
-    Value::new_constant(context, new_aggregate).add_metadatum(context, metadata)
-}
-
-fn inject_constant_into_aggregate(aggregate: &mut Constant, value: Constant, indices: &[u64]) {
-    if indices.is_empty() {
-        *aggregate = value;
-    } else {
-        match &mut aggregate.value {
-            ConstantValue::Struct(fields) => inject_constant_into_aggregate(
-                &mut fields[indices[0] as usize],
-                value,
-                &indices[1..],
-            ),
-            _otherwise => {
-                unreachable!("Bug! Invalid aggregate parameter to inject_constant_into_aggregate()")
-            }
-        }
-    }
 }

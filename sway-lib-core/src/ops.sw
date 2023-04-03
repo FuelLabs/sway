@@ -632,12 +632,12 @@ fn rsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
 
 /// Build a single b256 value from a tuple of 4 u64 values.
 fn compose(words: (u64, u64, u64, u64)) -> b256 {
-    asm(r1: __addr_of(words)) { r1: b256 }
+    asm(r1: words) { r1: b256 }
 }
 
 /// Get a tuple of 4 u64 values from a single b256 value.
 fn decompose(val: b256) -> (u64, u64, u64, u64) {
-    asm(r1: __addr_of(val)) { r1: (u64, u64, u64, u64) }
+    asm(r1: val) { r1: (u64, u64, u64, u64) }
 }
 
 #[test]

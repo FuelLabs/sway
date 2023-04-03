@@ -1435,6 +1435,7 @@ impl ty::TyExpression {
             return ok(
                 ty::TyExpression {
                     expression: ty::TyExpressionVariant::Array {
+                        elem_type: unknown_type,
                         contents: Vec::new(),
                     },
                     return_type: type_engine.insert(
@@ -1496,6 +1497,7 @@ impl ty::TyExpression {
         ok(
             ty::TyExpression {
                 expression: ty::TyExpressionVariant::Array {
+                    elem_type,
                     contents: typed_contents,
                 },
                 return_type: type_engine.insert(

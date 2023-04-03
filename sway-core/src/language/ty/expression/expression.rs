@@ -194,7 +194,10 @@ impl CollectTypesMetadata for TyExpression {
                     errors
                 ));
             }
-            Array { contents } => {
+            Array {
+                elem_type: _,
+                contents,
+            } => {
                 for content in contents.iter() {
                     res.append(&mut check!(
                         content.collect_types_metadata(ctx),
