@@ -2,17 +2,16 @@ use crate::cli::TemplateCommand;
 use anyhow::{anyhow, Context, Result};
 use forc_pkg::{
     manifest::{self, PackageManifest},
-    source,
+    source::{self, git::Url},
 };
 use forc_util::validate_name;
 use fs_extra::dir::{copy, CopyOptions};
-use std::env;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+use std::{env, str::FromStr};
 use sway_utils::constants;
 use tracing::info;
-use url::Url;
 
 pub fn init(command: TemplateCommand) -> Result<()> {
     validate_name(&command.project_name, "project name")?;
@@ -23,7 +22,7 @@ pub fn init(command: TemplateCommand) -> Result<()> {
         .unwrap_or_else(|| format!("{}-template-source", command.project_name));
 
     let source = source::git::Source {
-        repo: Url::parse(&command.url)?,
+        repo: Url::from_str(&command.url)?,
         reference: source::git::Reference::DefaultBranch,
     };
 

@@ -516,12 +516,21 @@ impl Dependencies {
                 } = &**e;
                 let mut this = self;
                 if call_path_binding.inner.prefixes.is_empty() {
-                    // We have just `Foo::Bar`, and nothing before `Foo`,
-                    // so this could be referring to `Enum::Variant`,
-                    // so we want to depend on `Enum` but not `Variant`.
-                    this.deps.insert(DependentSymbol::Symbol(
-                        call_path_binding.inner.suffix.before.inner.clone(),
-                    ));
+                    if let Some(before) = &call_path_binding.inner.suffix.before {
+                        // We have just `Foo::Bar`, and nothing before `Foo`,
+                        // so this could be referring to `Enum::Variant`,
+                        // so we want to depend on `Enum` but not `Variant`.
+                        this.deps
+                            .insert(DependentSymbol::Symbol(before.inner.clone()));
+                    } else {
+                        // We have just `Foo`, and nothing before `Foo`,
+                        // so this is could either an enum variant or a function application
+                        // so we want to depend on it as a function
+                        this.deps.insert(DependentSymbol::Fn(
+                            call_path_binding.inner.suffix.suffix.clone(),
+                            None,
+                        ));
+                    }
                 }
                 this.gather_from_type_arguments(engines, &call_path_binding.type_arguments.to_vec())
                     .gather_from_iter(args.iter(), |deps, arg| deps.gather_from_expr(engines, arg))

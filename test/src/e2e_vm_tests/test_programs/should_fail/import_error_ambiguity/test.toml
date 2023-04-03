@@ -1,0 +1,3 @@
+category = "fail"
+
+# check: $()ould not find symbol "Test" in this scope.

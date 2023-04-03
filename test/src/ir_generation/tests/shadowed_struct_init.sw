@@ -18,15 +18,15 @@ fn main() {
     new(true, false);
 }
 
-// check: fn $ID(a $MD: bool, b $MD: bool, inout __ret_value $MD: { bool, bool }) -> { bool, bool }
+// check: fn $ID(a $MD: bool, b $MD: bool) -> { bool, bool }
 
 // check: local bool a_
 // check: local bool b_
 
-// check: $(loc_a_var0=$VAL) = get_local bool a_
+// check: $(loc_a_var0=$VAL) = get_local ptr bool, a_
 // check: store $VAL to $loc_a_var0
 
-// check: $(loc_a_var1=$VAL) = get_local bool a_
-// not: $VAL = get_local bool a
+// check: $(loc_a_var1=$VAL) = get_local ptr bool, a_
+// not: $VAL = get_local ptr bool, a
 
 // check: $VAL = load $loc_a_var1

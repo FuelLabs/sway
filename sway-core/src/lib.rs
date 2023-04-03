@@ -36,7 +36,8 @@ use sway_ast::AttributeDecl;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{
     create_o1_pass_group, register_known_passes, Context, Kind, Module, PassManager,
-    MODULEPRINTER_NAME,
+    ARGDEMOTION_NAME, CONSTDEMOTION_NAME, DCE_NAME, MEMCPYOPT_NAME, MISCDEMOTION_NAME,
+    MODULEPRINTER_NAME, RETDEMOTION_NAME,
 };
 use sway_types::constants::DOC_COMMENT_ATTRIBUTE_NAME;
 use transform::{Attribute, AttributeArg, AttributeKind, AttributesMap};
@@ -383,8 +384,7 @@ pub fn parsed_to_ast(
     errors.extend(cfa_res.errors);
     warnings.extend(cfa_res.warnings);
 
-    // Evaluate const declarations,
-    // to allow storage slots initializion with consts.
+    // Evaluate const declarations, to allow storage slots initializion with consts.
     let mut ctx = Context::default();
     let mut md_mgr = MetadataManager::default();
     let module = Module::new(&mut ctx, Kind::Contract);
@@ -579,6 +579,29 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     let mut pass_mgr = PassManager::default();
     register_known_passes(&mut pass_mgr);
     let mut pass_group = create_o1_pass_group(matches!(tree_type, TreeType::Predicate));
+
+    // Target specific transforms should be moved into something more configured.
+    if build_config.build_target == BuildTarget::Fuel {
+        // FuelVM target specific transforms.
+        //
+        // Demote large by-value constants, arguments and return values to by-reference values
+        // using temporaries.
+        pass_group.append_pass(CONSTDEMOTION_NAME);
+        pass_group.append_pass(ARGDEMOTION_NAME);
+        pass_group.append_pass(RETDEMOTION_NAME);
+        pass_group.append_pass(MISCDEMOTION_NAME);
+
+        // Convert loads and stores to mem_copys where possible.
+        pass_group.append_pass(MEMCPYOPT_NAME);
+
+        // Run a DCE and simplify-cfg to clean up any obsolete instructions.
+        pass_group.append_pass(DCE_NAME);
+        // XXX Oh no, if we add simplifycfg here it unearths a bug in the register allocator which
+        // manifests in the `should_pass/language/while_loops` test.  Fixing the register allocator
+        // is a very high priority but isn't a part of this change.
+        //pass_group.append_pass(SIMPLIFYCFG_NAME);
+    }
+
     if build_config.print_ir {
         pass_group.append_pass(MODULEPRINTER_NAME);
     }
