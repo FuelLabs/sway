@@ -16,22 +16,30 @@ fn eat(meal: Fruit) -> bool {
     false
 }
 
-// check: local { u64, ( () | () | u64 ) } lunch
+// check: $(temp_ptr=$VAL) = get_local ptr { u64, ( () | () | u64 ) }, $(=__anon_\d+)
+// check: $(idx_0=$VAL) = const u64 0
+// check: $(tag_ptr=$VAL) = get_elem_ptr $temp_ptr, ptr u64, $idx_0
+// check: $(tag_val=$VAL) = const u64 1
+// check: store $tag_val to $tag_ptr
 
-// check: $(enum_undef=$VAL) = get_local { u64, ( () | () | u64 ) } $ID
-// check: $(one_val=$VAL) = const u64 1
-// check: $(enum_tagged=$VAL) = insert_value $enum_undef, { u64, ( () | () | u64 ) }, $one_val, 0
-// check: $(lunch_var=$VAL) = get_local { u64, ( () | () | u64 ) } lunch
-// check: store $enum_tagged to $lunch_var
+// check: $(temp_val=$VAL) = load $temp_ptr
+// check: $(lunch_ptr=$VAL) = get_local ptr { u64, ( () | () | u64 ) }, lunch
+// check: store $temp_val to $lunch_ptr
 
-// check: $(lunch_var=$VAL) = get_local { u64, ( () | () | u64 ) } lunch
-// check: call $(eat_fn=$ID)($lunch_var)
+// check: $(lunch_ptr=$VAL) = get_local ptr { u64, ( () | () | u64 ) }, lunch
+// check: $(lunch_val=$VAL) = load $lunch_ptr
+// check: call eat_0($lunch_val)
 
-// check: $(enum_undef=$VAL) = get_local { u64, ( () | () | u64 ) } $ID
-// check: $(two_val=$VAL) = const u64 2
-// check: $(enum_tagged=$VAL) = insert_value $enum_undef, { u64, ( () | () | u64 ) }, $two_val, 0
-// check: $(three_val=$VAL) = const u64 3
-// check: $(enum_init=$VAL) = insert_value $enum_tagged, { u64, ( () | () | u64 ) }, $three_val, 1
-// check: call $ID($enum_init)
+// check: $(temp_ptr=$VAL) = get_local ptr { u64, ( () | () | u64 ) }, $(=__anon_\d+)
+// check: $(idx_0=$VAL) = const u64 0
+// check: $(tag_ptr=$VAL) = get_elem_ptr $temp_ptr, ptr u64, $idx_0
+// check: $(tag_val=$VAL) = const u64 2
+// check: store $tag_val to $tag_ptr
 
-// check: fn $eat_fn(meal $MD: { u64, ( () | () | u64 ) }) -> bool
+// check: $(idx_1=$VAL) = const u64 1
+// check: $(variant_val_ptr=$VAL) = get_elem_ptr $temp_ptr, ptr u64, $idx_1
+// check: $(num_grapes=$VAL) = const u64 3
+// check: store $num_grapes to $variant_val_ptr
+
+// check: $(temp_val=$VAL) = load $temp_ptr
+// check: call eat_0($temp_val)

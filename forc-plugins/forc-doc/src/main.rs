@@ -1,11 +1,6 @@
-mod cli;
-mod descriptor;
-mod doc;
-mod render;
-
 use crate::{
     doc::{Document, Documentation},
-    render::{RenderedDocumentation, INDEX_FILENAME},
+    render::{constant::INDEX_FILENAME, RenderedDocumentation},
 };
 use anyhow::{bail, Result};
 use clap::Parser;
@@ -20,6 +15,10 @@ use std::{
     {fs, path::PathBuf},
 };
 use sway_core::{decl_engine::DeclEngine, BuildTarget, Engines, TypeEngine};
+
+mod cli;
+mod doc;
+mod render;
 
 /// Information passed to the render phase to get TypeInfo, CallPath or visibility for type anchors.
 #[derive(Clone)]
@@ -113,7 +112,7 @@ pub fn main() -> Result<()> {
         .forc_version
         .as_ref()
         .map(|ver| format!("Forc v{}.{}.{}", ver.major, ver.minor, ver.patch));
-    let rendered_docs = RenderedDocumentation::from(
+    let rendered_docs = RenderedDocumentation::from_raw_docs(
         raw_docs,
         RenderPlan::new(
             document_private_items,

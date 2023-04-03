@@ -1,0 +1,16 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-EAB7045877462196'
+
+[[package]]
+name = 'enum_variant_imports'
+source = 'member'
+dependencies = [
+    'core',
+    'std',
+]
+
+[[package]]
+name = 'std'
+source = 'path+from-root-EAB7045877462196'
+dependencies = ['core']
