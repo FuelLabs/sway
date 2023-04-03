@@ -104,7 +104,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
                 bail!("More than 1 salt was specified when deploying a single contract");
             }
 
-            // OK to index into salt_input ahd built_pkgs_with_manifest here,
+            // OK to index into salt_input and built_pkgs_with_manifest here,
             // since both are known to be len 1.
 
             let salt = salt_input[0]
