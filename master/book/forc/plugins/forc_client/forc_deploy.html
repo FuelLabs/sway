@@ -218,9 +218,14 @@ added to the manifest file.</p>
 <p>If --build-profile is also provided, forc omits this flag and uses provided
 build-profile.</p>
 <p><code>--salt</code> &lt;<em>SALT</em>&gt;</p>
-<p>Added salt used to derive the contract ID.</p>
-<p>By default, this is
-<code>0x0000000000000000000000000000000000000000000000000000000000000000</code>.</p>
+<p>Optional 256-bit hexadecimal literal(s) to redeploy contracts.</p>
+<p>For a single contract, use <code>--salt &lt;SALT&gt;</code>, eg.: forc deploy --salt
+0x0000000000000000000000000000000000000000000000000000000000000001</p>
+<p>For a workspace with multiple contracts, use <code>--salt &lt;CONTRACT_NAME&gt;:&lt;SALT&gt;</code> to specify
+a salt for each contract, eg.:</p>
+<p>forc deploy --salt
+contract_a:0x0000000000000000000000000000000000000000000000000000000000000001 --salt
+contract_b:0x0000000000000000000000000000000000000000000000000000000000000002</p>
 <p><code>-t</code>, <code>--terse</code> </p>
 <p>Terse mode. Limited warning and error output</p>
 <p><code>--time-phases</code> </p>
