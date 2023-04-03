@@ -21,7 +21,10 @@
 //!   #[foo(bar, bar)]
 
 use sway_ast::Literal;
-use sway_types::{constants::ALLOW_DEAD_CODE_NAME, Ident, Span, Spanned};
+use sway_types::{
+    constants::{ALLOW_DEAD_CODE_NAME, CFG_TARGET_ARG_NAME},
+    Ident, Span, Spanned,
+};
 
 use std::{collections::HashMap, hash::Hash, sync::Arc};
 
@@ -58,6 +61,7 @@ pub enum AttributeKind {
     Test,
     Payable,
     Allow,
+    Cfg,
 }
 
 impl AttributeKind {
@@ -72,6 +76,7 @@ impl AttributeKind {
             AttributeKind::Test => (0, None),
             AttributeKind::Payable => (0, None),
             AttributeKind::Allow => (1, Some(1)),
+            AttributeKind::Cfg => (1, Some(1)),
         }
     }
 
@@ -85,6 +90,7 @@ impl AttributeKind {
             AttributeKind::Test => None,
             AttributeKind::Payable => None,
             AttributeKind::Allow => Some(vec![ALLOW_DEAD_CODE_NAME.to_string()]),
+            AttributeKind::Cfg => Some(vec![CFG_TARGET_ARG_NAME.to_string()]),
         }
     }
 }
