@@ -1,3 +1,5 @@
+// target-fuelvm
+
 script;
 
 struct S {
@@ -36,72 +38,110 @@ fn main() -> u64 {
     0
 }
 
+// check: local b256 $(contract_id_0_const=$ID) = const b256 0x0c1c50c2bf5ba4bb351b4249a2f5e7d86556fcb4a6ae90465ff6c86126eeb3c0
+// check: local b256 $(asset_id_0_const=$ID) = const b256 0x0000000000000000000000000000000000000000000000000000000000000000
+// check: local b256 $(threes_const=$ID) = const b256 0x3333333333333333333333333333333333333333333333333333333333333333
+// check: local b256 $(contract_id_1_const=$ID) = const b256 0x0c1c50c2bf5ba4bb351b4249a2f5e7d86556fcb4a6ae90465ff6c86126eeb3c0
+// check: local b256 $(asset_id_1_const=$ID) = const b256 0x0000000000000000000000000000000000000000000000000000000000000000
+// check: local b256 $(big_fives_const=$ID) = const b256 0x5555555555555555555555555555555555555555555555555555555555555555
+// check: local b256 $(contract_id_2_const=$ID) = const b256 0x0c1c50c2bf5ba4bb351b4249a2f5e7d86556fcb4a6ae90465ff6c86126eeb3c0
+// check: local b256 $(asset_id_2_const=$ID) = const b256 0x0000000000000000000000000000000000000000000000000000000000000000
+
 // check: local u64 a
 // check: local b256 arg_for_get_b256
 // check: local { u64, b256 } args_struct_for_get_s
 // check: local b256 b
 // check: local { u64, b256 } s
 
-// BUILD THE PARAMS: contract id, selector and immediate argument.
-// check: $(get_u64_arg=$VAL) = const u64 1111
-// check: $(get_u64_arg_bitcast=$VAL) = bitcast $get_u64_arg to u64
-// check: $(get_u64_params_undef=$VAL) = get_local { b256, u64, u64 } $ID
-// check: $(contract_id=$VAL) = const b256 0x0c1c50c2bf5ba4bb351b4249a2f5e7d86556fcb4a6ae90465ff6c86126eeb3c0
-// check: $(get_u64_params_0=$VAL) = insert_value $get_u64_params_undef, { b256, u64, u64 }, $contract_id, 0
-// check: $(get_u64_selector=$VAL) = const u64 2559618804
-// check: $(get_u64_params_1=$VAL) = insert_value $get_u64_params_0, { b256, u64, u64 }, $get_u64_selector, 1
-// check: $(get_u64_params=$VAL) = insert_value $get_u64_params_1, { b256, u64, u64 }, $get_u64_arg_bitcast, 2
+// check: $(contract_id_0_ptr=$VAL) = get_local ptr b256, $contract_id_0_const
+// check: $(contract_id_1_ptr=$VAL) = get_local ptr b256, $contract_id_1_const
+// check: $(big_fives_ptr=$VAL) = get_local ptr b256, $big_fives_const
+// check: $(contract_id_2_ptr=$VAL) = get_local ptr b256, $contract_id_2_const
 
-// MAKE THE CONTRACT CALL: params, coins, asset and gas.
-// check: $(get_u64_coins=$VAL) = const u64 0
-// check: $(get_u64_asset=$VAL) = const b256 0x0000000000000000000000000000000000000000000000000000000000000000
-// check: $(get_u64_gas=$VAL) = const u64 10000
-// check: $(get_u64_res=$VAL) = contract_call u64 get_u64 $get_u64_params, $get_u64_coins, $get_u64_asset, $get_u64_gas
+// --- call get_u64() ---
+// check: $(oneone=$VAL) = const u64 1111
+// check: $(user_arg=$VAL) = bitcast $oneone to u64
 
-// check: $(a_var=$VAL) = get_local u64 a
-// check: store $get_u64_res to $a_var
+// check: $(args_ptr=$VAL) = get_local ptr { b256, u64, u64 }, $ID
 
-// BUILD THE PARAMS: contract id, selector and ptr to argument.
-// check: $(get_b256_arg=$VAL) = get_local b256 arg_for_get_b256
-// check: $(get_b256_arg_lit=$VAL) = const b256 0x3333333333333333333333333333333333333333333333333333333333333333
-// check: store $get_b256_arg_lit to $get_b256_arg
-// check: $(get_b256_arg_addr=$VAL) = addr_of $get_b256_arg
-// check: $(get_b256_params_undef=$VAL) = get_local { b256, u64, u64 } $ID
-// check: $(contract_id=$VAL) = const b256 0x0c1c50c2bf5ba4bb351b4249a2f5e7d86556fcb4a6ae90465ff6c86126eeb3c0
-// check: $(get_b256_params_0=$VAL) = insert_value $get_b256_params_undef, { b256, u64, u64 }, $contract_id, 0
-// check: $(get_b256_selector=$VAL) = const u64 1108491158
-// check: $(get_b256_params_1=$VAL) = insert_value $get_b256_params_0, { b256, u64, u64 }, $get_b256_selector, 1
-// check: $(get_b256_params=$VAL) = insert_value $get_b256_params_1, { b256, u64, u64 }, $get_b256_arg_addr, 2
+// check: $(idx_0=$VAL) = const u64 0
+// check: $(arg_contract_id=$VAL) = get_elem_ptr $args_ptr, ptr b256, $idx_0
+// check: mem_copy_val $arg_contract_id, $contract_id_0_ptr
 
-// MAKE THE CONTRACT CALL: params, coins, asset and gas.
-// check: $(get_b256_coins=$VAL) = const u64 0
-// check: $(get_b256_asset=$VAL) = const b256 0x0000000000000000000000000000000000000000000000000000000000000000
-// check: $(get_b256_gas=$VAL) = const u64 20000
-// check: $(get_b256_res=$VAL) = contract_call b256 get_b256 $get_b256_params, $get_b256_coins, $get_b256_asset, $get_b256_gas
+// check: $(idx_1=$VAL) = const u64 1
+// check: $(arg_sel_ptr=$VAL) = get_elem_ptr $args_ptr, ptr u64, $idx_1
+// check: $(get_u64_sel=$VAL) = const u64 2559618804
+// check: store $get_u64_sel to $arg_sel_ptr
 
-// check: $(b_var=$VAL) = get_local b256 b
-// check: store $get_b256_res to $b_var
+// check: $(idx_2=$VAL) = const u64 2
+// check: $(arg_user_ptr=$VAL) = get_elem_ptr $args_ptr, ptr u64, $idx_2
+// check: store $user_arg to $arg_user_ptr
 
+// check: $(asset_id_ptr=$VAL) = get_local ptr b256, $ID
+// check: $(coins=$VAL) = const u64 0
+// check: $(gas=$VAL) = const u64 10000
+// check: $(call_res=$VAL) = contract_call u64 get_u64 $args_ptr, $coins, $asset_id_ptr, $gas
+// check: $(a_ptr=$VAL) = get_local ptr u64, a
+// check: store $call_res to $a_ptr
 
-// BUILD THE PARAMS: contract id, selector and ptr to struct argument.
-// check: $(get_s_arg_undef=$VAL) = get_local { u64, b256 } args_struct_for_get_s
-// check: $(get_s_arg_x=$VAL) = const u64 5555
-// check: $(get_s_arg_0=$VAL) = insert_value $get_s_arg_undef, { u64, b256 }, $get_s_arg_x, 0
-// check: $(get_s_arg_y=$VAL) = const b256 0x5555555555555555555555555555555555555555555555555555555555555555
-// check: $VAL = insert_value $get_s_arg_0, { u64, b256 }, $get_s_arg_y, 1
-// check: $(get_s_arg_addr=$VAL) = addr_of $get_s_arg_undef
-// check: $(get_s_params_undef=$VAL) = get_local { b256, u64, u64 } $ID
-// check: $(contract_id=$VAL) = const b256 0x0c1c50c2bf5ba4bb351b4249a2f5e7d86556fcb4a6ae90465ff6c86126eeb3c0
-// check: $(get_s_params_0=$VAL) = insert_value $get_s_params_undef, { b256, u64, u64 }, $contract_id, 0
-// check: $(get_s_selector=$VAL) = const u64 4234334249
-// check: $(get_s_params_1=$VAL) = insert_value $get_s_params_0, { b256, u64, u64 }, $get_s_selector, 1
-// check: $(get_s_params=$VAL) = insert_value $get_s_params_1, { b256, u64, u64 }, $get_s_arg_addr, 2
+// --- call get_b256() ---
+// check: $(user_arg_ptr=$VAL) = get_local ptr b256, $threes_const
+// check: $(user_arg=$VAL) = ptr_to_int $user_arg_ptr to u64
 
-// MAKE THE CONTRACT CALL: params, coins, asset and gas.
-// check: $(get_s_gas=$VAL) = read_register cgas
-// check: $(get_s_coins=$VAL) = const u64 0
-// check: $(get_s_asset=$VAL) = const b256 0x0000000000000000000000000000000000000000000000000000000000000000
-// check: $(get_s_res=$VAL) = contract_call { u64, b256 } get_s $get_s_params, $get_s_coins, $get_s_asset, $get_s_gas
+// check: $(args_ptr=$VAL) = get_local ptr { b256, u64, u64 }, $ID
 
-// check: $(s_var=$VAL) = get_local { u64, b256 } s
-// check: store $get_s_res to $s_var
+// check: $(idx_0=$VAL) = const u64 0
+// check: $(arg_contract_id=$VAL) = get_elem_ptr $args_ptr, ptr b256, $idx_0
+// check: mem_copy_val $arg_contract_id, $contract_id_1_ptr
+
+// check: $(idx_1=$VAL) = const u64 1
+// check: $(arg_sel_ptr=$VAL) = get_elem_ptr $args_ptr, ptr u64, $idx_1
+// check: $(get_b256_sel=$VAL) = const u64 1108491158
+// check: store $get_b256_sel to $arg_sel_ptr
+
+// check: $(idx_2=$VAL) = const u64 2
+// check: $(args_user_ptr=$VAL) = get_elem_ptr $args_ptr, ptr u64, $idx_2
+// check: store $user_arg to $args_user_ptr
+
+// check: $(asset_id_ptr=$VAL) = get_local ptr b256, $asset_id_1_const
+// check: $(coins=$VAL) = const u64 0
+// check: $(gas=$VAL) = const u64 20000
+// check: $(call_res=$VAL) = contract_call ptr b256 get_b256 $args_ptr, $coins, $asset_id_ptr, $gas
+// check: $(b_ptr=$VAL) = get_local ptr b256, b
+// check: mem_copy_val $b_ptr, $call_res
+
+// --- call get_s() --
+// check: $(user_arg_ptr=$VAL) = get_local ptr { u64, b256 }, args_struct_for_get_s
+
+// check: $(idx_0=$VAL) = const u64 0
+// check: $(user_arg_field0=$VAL) = get_elem_ptr $user_arg_ptr, ptr u64, $idx_0
+// check: $(small_fives=$VAL) = const u64 5555
+// check: store $small_fives to $user_arg_field0
+
+// check: $(idx_1=$VAL) = const u64 1
+// check: $(user_arg_field1=$VAL) = get_elem_ptr $user_arg_ptr, ptr b256, $idx_1
+// check: mem_copy_val $user_arg_field1, $big_fives_ptr
+
+// check: $(user_arg=$VAL) = ptr_to_int $user_arg_ptr to u64
+
+// check: $(args_ptr=$VAL) = get_local ptr { b256, u64, u64 }, $ID
+
+// check: $(idx_0=$VAL) = const u64 0
+// check: $(arg_contract_id=$VAL) = get_elem_ptr $args_ptr, ptr b256, $idx_0
+// check: mem_copy_val $arg_contract_id, $contract_id_2_ptr
+
+// check: $(idx_1=$VAL) = const u64 1
+// check: $(arg_sel_ptr=$VAL) = get_elem_ptr $args_ptr, ptr u64, $idx_1
+// check: $(get_s_sel=$VAL) = const u64 4234334249
+// check: store $get_s_sel to $arg_sel_ptr
+
+// check: $(idx_2=$VAL) = const u64 2
+// check: $(args_user_ptr=$VAL) = get_elem_ptr $args_ptr, ptr u64, $idx_2
+// check: store $user_arg to $args_user_ptr
+
+// check: $(asset_id_ptr=$VAL) = get_local ptr b256, $asset_id_2_const
+// check: $(gas=$VAL) = read_register cgas
+// check: $(coins=$VAL) = const u64 0
+// check: $(call_res=$VAL) = contract_call ptr { u64, b256 } get_s $args_ptr, $coins, $asset_id_ptr, $gas
+// check: $(s_ptr=$VAL) = get_local ptr { u64, b256 }, s
+// check: mem_copy_val $s_ptr, $call_res
