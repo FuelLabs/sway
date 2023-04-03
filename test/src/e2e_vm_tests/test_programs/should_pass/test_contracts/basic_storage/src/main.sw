@@ -191,15 +191,23 @@ fn test_storage() {
         _ => assert(false),
     }
 
-    assert(sha256(storage.str0) == sha256(""));
-    assert(sha256(storage.str1) == sha256("a"));
-    assert(sha256(storage.str2) == sha256("aa"));
-    assert(sha256(storage.str3) == sha256("aaa"));
-    assert(sha256(storage.str4) == sha256("aaaa"));
-    assert(sha256(storage.str5) == sha256("aaaaa"));
-    assert(sha256(storage.str6) == sha256("aaaaaa"));
-    assert(sha256(storage.str7) == sha256("aaaaaaa"));
-    assert(sha256(storage.str8) == sha256("aaaaaaaa"));
-    assert(sha256(storage.str9) == sha256("aaaaaaaaa"));
-    assert(sha256(storage.str10) == sha256("aaaaaaaaaa"));
+    assert_streq(storage.str0, "");
+
+    assert_streq(storage.str1, "a");
+    assert_streq(storage.str2, "aa");
+    assert_streq(storage.str3, "aaa");
+    assert_streq(storage.str4, "aaaa");
+    assert_streq(storage.str5, "aaaaa");
+    assert_streq(storage.str6, "aaaaaa");
+    assert_streq(storage.str7, "aaaaaaa");
+    assert_streq(storage.str8, "aaaaaaaa");
+    assert_streq(storage.str9, "aaaaaaaaa");
+    assert_streq(storage.str10, "aaaaaaaaaa");
+}
+
+// If these comparisons are done inline just above then it blows out the register allocator due to
+// all the ASM blocks.
+#[inline(never)]
+fn assert_streq<S1, S2>(lhs: S1, rhs: S2) {
+    assert(sha256(lhs) == sha256(rhs));
 }

@@ -1,3 +1,5 @@
+// target-fuelvm
+
 script;
 
 fn main() {
@@ -10,16 +12,35 @@ fn main() {
 
 // ::check-ir::
 
-// check: $(v10=$VAL) = get_local { b256, u64, u64 }
-// check: $(v13=$VAL) = insert_value $v10, { b256, u64, u64 }, $VAL, 0
-// check: $(v15=$VAL) = insert_value $v13, { b256, u64, u64 }, $VAL, 1
-// check: $(v16=$VAL) = insert_value $v15, { b256, u64, u64 }, $VAL, 2
-// check: $(v17=$VAL) = get_local u64
-// check: $(v18=$VAL) = load $v17
-// check: $(v19=$VAL) = get_local u64
-// check: $(v20=$VAL) = load $v19
-// check: $(v21=$VAL) = const u64 16
-// check: smo $v16, $v21, $v18, $v20
+// Match the first one where data is initialised.
+// check: get_local ptr u64, data
+
+// Match the second one where we read it back.
+// check: $(data_ptr=$VAL) = get_local ptr u64, data
+// check: $(data_val=$VAL) = load $data_ptr
+
+// check: $(temp_ptr=$VAL) = get_local ptr { b256, u64, u64 }, $(=__anon_\d+)
+
+// check: $(recip_ptr=$VAL) = get_local ptr b256, $ID
+// check: $(idx_0=$VAL) = const u64 0
+// check: $(field_0_ptr=$VAL) = get_elem_ptr $temp_ptr, ptr b256, $idx_0
+// check: mem_copy_val $field_0_ptr, $recip_ptr
+
+// check: $(idx_1=$VAL) = const u64 1
+// check: $(field_1_ptr=$VAL) = get_elem_ptr $temp_ptr, ptr u64, $idx_1
+// check: $(zero=$VAL) = const u64 0
+// check: store $zero to $field_1_ptr
+
+// check: $(idx_2=$VAL) = const u64 2
+// check: $(field_2_ptr=$VAL) = get_elem_ptr $temp_ptr, ptr u64, $idx_2
+// check: store $data_val to $field_2_ptr
+
+// check: $(oi_ptr=$VAL) = get_local ptr u64, output_index
+// check: $(oi=$VAL) = load $oi_ptr
+// check: $(coins_ptr=$VAL) = get_local ptr u64, coins
+// check: $(coins=$VAL) = load $coins_ptr
+// check: $(sixtn=$VAL) = const u64 16
+// check: smo $temp_ptr, $sixtn, $oi, $coins
 
 // ::check-asm::
 

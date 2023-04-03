@@ -51,6 +51,17 @@ impl TypeEngine {
         self.slab.get(id.index())
     }
 
+    /// Performs a lookup of `id` into the [TypeEngine] recursing when finding a
+    /// [TypeInfo::Alias].
+    pub fn get_unaliased(&self, id: TypeId) -> TypeInfo {
+        // A slight infinite loop concern if we somehow have self-referential aliases, but that
+        // shouldn't be possible.
+        match self.slab.get(id.index()) {
+            TypeInfo::Alias { ty, .. } => self.get_unaliased(ty.type_id),
+            ty_info => ty_info,
+        }
+    }
+
     /// Denotes the given [TypeId] as being used with storage.
     pub(crate) fn set_type_as_storage_only(&self, id: TypeId) {
         self.storage_only_types.insert(self.get(id));

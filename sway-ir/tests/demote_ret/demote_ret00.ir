@@ -1,0 +1,32 @@
+// regex: ID=[[:alpha:]0-9_]+
+
+script {
+    entry fn main() -> () {
+// check: local b256 $(ret_var=$ID)
+
+        entry():
+        v0 = call a()
+
+// check: $(local_val=$ID) = get_local ptr b256, $ret_var
+// check: $(returned_ptr=$ID) = call a($local_val)
+// check: $ID = load $returned_ptr
+
+        v1 = const unit ()
+        ret () v1
+    }
+
+    fn a() -> b256 {
+// check: fn a($(ret_arg_val=$ID): ptr b256) -> ptr b256 {
+        local b256 __const = const b256 0x2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b
+
+        entry():
+        v0 = get_local ptr b256, __const
+        v1 = load v0
+        ret b256 v1
+
+// check: $(twobee=$ID) = get_local ptr b256, __const
+// check: $(load_val=$ID) = load $twobee
+// check: store $load_val to $ret_arg_val
+// check: ret ptr b256 $ret_arg_val
+    }
+}

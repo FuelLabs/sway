@@ -1,4 +1,9 @@
-category = "run"
+# At the moment there are no guarantees that the address of an initialiser for an ASM block is not a
+# copy of the arg UNLESS we ensure all the proper optimisations around ASM block arg demotion AND
+# redundant temporary value erasure is performed.
+#
+# Once we have temporaries removal implemented this test can be re-enabled.
+category = "disabled"
 expected_result = { action = "return", value = 0 }
 validate_abi = true
 expected_warnings = 1

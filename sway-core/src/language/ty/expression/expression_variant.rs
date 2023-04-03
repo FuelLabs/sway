@@ -43,6 +43,7 @@ pub enum TyExpressionVariant {
         fields: Vec<TyExpression>,
     },
     Array {
+        elem_type: TypeId,
         contents: Vec<TyExpression>,
     },
     ArrayIndex {
@@ -194,9 +195,11 @@ impl PartialEqWithEngines for TyExpressionVariant {
             (
                 Self::Array {
                     contents: l_contents,
+                    ..
                 },
                 Self::Array {
                     contents: r_contents,
+                    ..
                 },
             ) => l_contents.eq(r_contents, engines),
             (
@@ -420,7 +423,10 @@ impl HashWithEngines for TyExpressionVariant {
             Self::Tuple { fields } => {
                 fields.hash(state, engines);
             }
-            Self::Array { contents } => {
+            Self::Array {
+                contents,
+                elem_type: _,
+            } => {
                 contents.hash(state, engines);
             }
             Self::ArrayIndex { prefix, index } => {
@@ -587,9 +593,15 @@ impl SubstTypes for TyExpressionVariant {
             Tuple { fields } => fields
                 .iter_mut()
                 .for_each(|x| x.subst(type_mapping, engines)),
-            Array { contents } => contents
-                .iter_mut()
-                .for_each(|x| x.subst(type_mapping, engines)),
+            Array {
+                ref mut elem_type,
+                contents,
+            } => {
+                elem_type.subst(type_mapping, engines);
+                contents
+                    .iter_mut()
+                    .for_each(|x| x.subst(type_mapping, engines))
+            }
             ArrayIndex { prefix, index } => {
                 (*prefix).subst(type_mapping, engines);
                 (*index).subst(type_mapping, engines);
@@ -719,9 +731,15 @@ impl ReplaceSelfType for TyExpressionVariant {
             Tuple { fields } => fields
                 .iter_mut()
                 .for_each(|x| x.replace_self_type(engines, self_type)),
-            Array { contents } => contents
-                .iter_mut()
-                .for_each(|x| x.replace_self_type(engines, self_type)),
+            Array {
+                ref mut elem_type,
+                contents,
+            } => {
+                elem_type.replace_self_type(engines, self_type);
+                contents
+                    .iter_mut()
+                    .for_each(|x| x.replace_self_type(engines, self_type))
+            }
             ArrayIndex { prefix, index } => {
                 (*prefix).replace_self_type(engines, self_type);
                 (*index).replace_self_type(engines, self_type);
@@ -846,7 +864,10 @@ impl ReplaceDecls for TyExpressionVariant {
             Tuple { fields } => fields
                 .iter_mut()
                 .for_each(|x| x.replace_decls(decl_mapping, engines)),
-            Array { contents } => contents
+            Array {
+                elem_type: _,
+                contents,
+            } => contents
                 .iter_mut()
                 .for_each(|x| x.replace_decls(decl_mapping, engines)),
             ArrayIndex { prefix, index } => {
@@ -1106,7 +1127,10 @@ impl TyExpressionVariant {
                 .iter()
                 .flat_map(|expr| expr.gather_return_statements())
                 .collect(),
-            TyExpressionVariant::Array { contents } => contents
+            TyExpressionVariant::Array {
+                elem_type: _,
+                contents,
+            } => contents
                 .iter()
                 .flat_map(|expr| expr.gather_return_statements())
                 .collect(),
