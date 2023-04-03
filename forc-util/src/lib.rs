@@ -231,13 +231,13 @@ pub fn print_on_failure(
     terse_mode: bool,
     warnings: &[CompileWarning],
     errors: &[CompileError],
-    reverse_errors: bool,
+    reverse_results: bool,
 ) {
     let e_len = errors.len();
     let w_len = warnings.len();
 
     if !terse_mode {
-        if reverse_errors {
+        if reverse_results {
             warnings.iter().rev().for_each(format_warning);
             errors.iter().rev().for_each(format_err);
         } else {

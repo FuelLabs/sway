@@ -255,6 +255,8 @@ pub struct PrintOpts {
     pub intermediate_asm: bool,
     /// Print the generated Sway IR (Intermediate Representation).
     pub ir: bool,
+    /// Output build errors and warnings in reverse order.
+    pub reverse_order: bool,
 }
 
 #[derive(Default, Clone)]
@@ -1738,9 +1740,9 @@ pub fn compile(
         sway_build_config(pkg.manifest_file.dir(), &entry_path, pkg.target, profile)?
     );
     let terse_mode = profile.terse;
-    let reverse_errors = profile.reverse_errors;
+    let reverse_results = profile.reverse_results;
     let fail = |warnings, errors| {
-        print_on_failure(terse_mode, warnings, errors, reverse_errors);
+        print_on_failure(terse_mode, warnings, errors, reverse_results);
         bail!("Failed to compile {}", pkg.name);
     };
 
@@ -2199,7 +2201,7 @@ pub fn build(
         };
 
         let fail = |warnings, errors| {
-            print_on_failure(profile.terse, warnings, errors, profile.reverse_errors);
+            print_on_failure(profile.terse, warnings, errors, profile.reverse_results);
             bail!("Failed to compile {}", pkg.name);
         };
 
@@ -2288,7 +2290,7 @@ pub fn build(
         ) {
             Ok(o) => o,
             Err(errs) => {
-                print_on_failure(profile.terse, &[], &errs, profile.reverse_errors);
+                print_on_failure(profile.terse, &[], &errs, profile.reverse_results);
                 bail!("Failed to compile {}", pkg.name);
             }
         };
