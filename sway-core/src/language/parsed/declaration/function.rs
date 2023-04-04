@@ -40,12 +40,6 @@ impl PartialEqWithEngines for FunctionParameter {
     }
 }
 
-impl FunctionParameter {
-    pub fn is_self(&self) -> bool {
-        self.name.as_str() == "self"
-    }
-}
-
 impl FunctionDeclaration {
     /// Checks if this `FunctionDeclaration` is a test.
     pub(crate) fn is_test(&self) -> bool {

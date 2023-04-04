@@ -178,7 +178,7 @@ impl ExperimentalStorageTest for Contract {
             d: storage.s.d.read(),
         } == s);
 
-        storage.s.read().unwrap()
+        storage.s.read()
     }
 
     #[storage(read, write)]
@@ -216,7 +216,10 @@ impl ExperimentalStorageTest for Contract {
 
     #[storage(read)]
     fn map_in_struct_read(key: (u64, u64)) -> (Option<u64>, Option<u64>) {
-        (storage.s2.map0.get(key.0).try_read(), storage.s2.map1.get(key.1).try_read())
+        (
+            storage.s2.map0.get(key.0).try_read(),
+            storage.s2.map1.get(key.1).try_read(),
+        )
     }
 
     #[storage(read, write)]

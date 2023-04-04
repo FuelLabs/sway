@@ -1,6 +1,6 @@
 // Add test modules here:
 
-/*mod auth;
+mod auth;
 mod block;
 mod call_frames;
 mod configurables_in_contract;
@@ -10,9 +10,9 @@ mod contract_bytecode;
 mod ec_recover;
 mod ec_recover_and_match_predicate;
 mod evm;
-mod evm_ec_recover;*/
+mod evm_ec_recover;
 mod experimental_storage;
-/*mod experimental_storage_init;
+mod experimental_storage_init;
 mod experimental_storage_map;
 mod exponentiation;
 mod generics_in_abi;
@@ -36,4 +36,4 @@ mod storage_vec;
 mod token_ops;
 mod tx_fields;
 mod type_aliases;
-mod vec_in_abi;*/
+mod vec_in_abi;

@@ -911,36 +911,34 @@ impl ty::TyExpression {
         );
 
         if ctx.experimental_storage_enabled() {
-            // The type of a storage access is `core::experimental::StorageHandle`. This is the
-            // path to it.
-            let storage_handle_mod_path = vec![
+            // The type of a storage access is `core::experimental::storage::StorageKey`. This is
+            // the path to it.
+            let storage_key_mod_path = vec![
                 Ident::new_with_override("core".into(), span.clone()),
                 Ident::new_with_override("experimental".into(), span.clone()),
                 Ident::new_with_override("storage".into(), span.clone()),
             ];
-            let storage_handle_ident =
-                Ident::new_with_override("StorageHandle".into(), span.clone());
+            let storage_key_ident = Ident::new_with_override("StorageKey".into(), span.clone());
 
             // Search for the struct declaration with the call path above.
-            let storage_handle_decl_opt = check!(
+            let storage_key_decl_opt = check!(
                 ctx.namespace
                     .root()
-                    .resolve_symbol(&storage_handle_mod_path, &storage_handle_ident),
+                    .resolve_symbol(&storage_key_mod_path, &storage_key_ident),
                 return err(warnings, errors),
                 warnings,
                 errors
             );
-            let storage_handle_struct_decl_ref = check!(
-                storage_handle_decl_opt.to_struct_ref(engines),
+            let storage_key_struct_decl_ref = check!(
+                storage_key_decl_opt.to_struct_ref(engines),
                 return err(warnings, errors),
                 warnings,
                 errors
             );
-            let mut storage_handle_struct_decl =
-                decl_engine.get_struct(&storage_handle_struct_decl_ref);
+            let mut storage_key_struct_decl = decl_engine.get_struct(&storage_key_struct_decl_ref);
 
-            // Set the type arguments to `StorageHandle` to the `access_type`, which is represents
-            // the type of the data that the `StorageHandle` "points" to.
+            // Set the type arguments to `StorageKey` to the `access_type`, which is represents the
+            // type of the data that the `StorageKey` "points" to.
             let mut type_arguments = vec![TypeArgument {
                 initial_type_id: access_type,
                 type_id: access_type,
@@ -948,11 +946,11 @@ impl ty::TyExpression {
                 call_path_tree: None,
             }];
 
-            // Monomorphize the generic `StorageHandle` type given the type argument specified above
+            // Monomorphize the generic `StorageKey` type given the type argument specified above
             let mut ctx = ctx;
             check!(
                 ctx.monomorphize(
-                    &mut storage_handle_struct_decl,
+                    &mut storage_key_struct_decl,
                     &mut type_arguments,
                     EnforceTypeArguments::Yes,
                     span
@@ -964,14 +962,11 @@ impl ty::TyExpression {
 
             // Update `access_type` to be the type of the monomorphized struct after inserting it
             // into the type engine
-            let storage_handle_struct_decl_ref =
-                ctx.engines().de().insert(storage_handle_struct_decl);
-            access_type = type_engine.insert(
-                decl_engine,
-                TypeInfo::Struct(storage_handle_struct_decl_ref),
-            );
+            let storage_key_struct_decl_ref = ctx.engines().de().insert(storage_key_struct_decl);
+            access_type =
+                type_engine.insert(decl_engine, TypeInfo::Struct(storage_key_struct_decl_ref));
 
-            // take any trait items that apply to `StorageHandle<T>` and copy them to the
+            // take any trait items that apply to `StorageKey<T>` and copy them to the
             // monomorphized type
             ctx.namespace
                 .insert_trait_implementation_for_type(engines, access_type);

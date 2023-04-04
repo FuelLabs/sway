@@ -3,7 +3,7 @@ library;
 use ::alloc::{alloc, realloc_bytes};
 use ::hash::sha256;
 use ::option::Option;
-use core::experimental::storage::StorageHandle;
+use core::experimental::storage::StorageKey;
 
 /// Store a stack value in storage. Will not work for heap values.
 ///
@@ -49,8 +49,8 @@ pub fn write<T>(key: b256, offset: u64, value: T) {
 /// Reads a value of type `T` starting at the location specified by `key` and `offset`. If the
 /// value crosses the boundary of a storage slot, reading continues at the following slot.
 ///
-/// Returns `Option(value)` if a the storage slots read were valid and contain `value`.
-/// Otherwise, return `None`.
+/// Returns `Option(value)` if the storage slots read were valid and contain `value`. Otherwise, 
+/// return `None`.
 ///
 /// ### Arguments
 ///
@@ -112,7 +112,7 @@ pub fn clear<T>(key: b256) -> bool {
     __state_clear(key, number_of_slots)
 }
 
-impl<T> StorageHandle<T> {
+impl<T> StorageKey<T> {
     /// Reads a value of type `T` starting at the location specified by `self`. If the value
     /// crosses the boundary of a storage slot, reading continues at the following slot.
     ///
@@ -127,13 +127,13 @@ impl<T> StorageHandle<T> {
     ///
     /// ```sway
     /// fn foo() {
-    ///     let r: StorageHandle<u64> = StorageHandle {
+    ///     let r: StorageKey<u64> = StorageKey {
     ///         key: 0x0000000000000000000000000000000000000000000000000000000000000000,
     ///         offset: 2,
     ///     };
     ///
     ///     // Reads the third word from storage slot with key 0x000...0
-    ///     let x:u64 = r.read();
+    ///     let x: u64 = r.read();
     /// }
     /// ```
     #[storage(read)]
@@ -144,7 +144,7 @@ impl<T> StorageHandle<T> {
     /// Reads a value of type `T` starting at the location specified by `self`. If the value
     /// crosses the boundary of a storage slot, reading continues at the following slot.
     ///
-    /// Returns `Option(value)` if a the storage slots read were valid and contain `value`.
+    /// Returns `Some(value)` if a the storage slots read were valid and contain `value`.
     /// Otherwise, return `None`.
     ///
     /// ### Arguments
@@ -155,13 +155,13 @@ impl<T> StorageHandle<T> {
     ///
     /// ```sway
     /// fn foo() {
-    ///     let r: StorageHandle<u64> = StorageHandle {
+    ///     let r: StorageKey<u64> = StorageKey {
     ///         key: 0x0000000000000000000000000000000000000000000000000000000000000000,
     ///         offset: 2,
     ///     };
     ///
     ///     // Reads the third word from storage slot with key 0x000...0
-    ///     let x:Option<u64> = r.try_read();
+    ///     let x: Option<u64> = r.try_read();
     /// }
     /// ```
     #[storage(read)]
@@ -180,7 +180,7 @@ impl<T> StorageHandle<T> {
     ///
     /// ```sway
     /// fn foo() {
-    ///     let r: StorageHandle<u64> = StorageHandle {
+    ///     let r: StorageKey<u64> = StorageKey {
     ///         key: 0x0000000000000000000000000000000000000000000000000000000000000000,
     ///         offset: 2,
     ///     };
@@ -196,7 +196,7 @@ impl<T> StorageHandle<T> {
 /// A persistent key-value pair mapping struct.
 pub struct StorageMap<K, V> {}
 
-impl<K, V> StorageMap<K, V> {
+impl<K, V> StorageKey<StorageMap<K, V>> {
     /// Inserts a key-value pair into the map.
     ///
     /// ### Arguments
@@ -215,17 +215,17 @@ impl<K, V> StorageMap<K, V> {
     ///     let key = 5_u64;
     ///     let value = true;
     ///     storage.map.insert(key, value);
-    ///     let retrieved_value = storage.map.get(key);
+    ///     let retrieved_value = storage.map.get(key).read();
     ///     assert(value == retrieved_value);
     /// }
     /// ```
     #[storage(read, write)]
-    pub fn insert(self: StorageHandle<Self>, key: K, value: V) {
+    pub fn insert(self, key: K, value: V) {
         let key = sha256((key, self.key));
         write::<V>(key, 0, value);
     }
 
-    /// Retrieves the `StorageHandle` that describes the raw location in storage of the value
+    /// Retrieves the `StorageKey` that describes the raw location in storage of the value
     /// stored at `key`, regardless of whether a value is actually stored at that location or not.
     ///
     /// ### Arguments
@@ -248,8 +248,8 @@ impl<K, V> StorageMap<K, V> {
     /// }
     /// ```
     #[storage(read)]
-    pub fn get(self: StorageHandle<Self>, key: K) -> StorageHandle<V> {
-        StorageHandle {
+    pub fn get(self, key: K) -> StorageKey<V> {
+        StorageKey {
             key: sha256((key, self.key)),
             offset: 0,
         }
@@ -280,7 +280,7 @@ impl<K, V> StorageMap<K, V> {
     /// }
     /// ```
     #[storage(write)]
-    pub fn remove(self: StorageHandle<Self>, key: K) -> bool {
+    pub fn remove(self, key: K) -> bool {
         let key = sha256((key, self.key));
         clear::<V>(key)
     }

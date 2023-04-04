@@ -12,9 +12,8 @@ use crate::{
 };
 use std::fmt::Write;
 use sway_ast::{
-    keywords::{ColonToken, MutToken, RefToken, SelfToken, Token},
+    keywords::{MutToken, RefToken, SelfToken, Token},
     token::Delimiter,
-    ty::Ty,
     FnArg, FnArgs, FnSignature, ItemFn,
 };
 use sway_types::Spanned;
@@ -222,8 +221,6 @@ fn format_fn_args(
             ref_self,
             mutable_self,
             args_opt,
-            ty,
-            ..
         } => {
             match formatter.shape.code_line.line_style {
                 LineStyle::Multiline => {
@@ -233,14 +230,7 @@ fn format_fn_args(
                         "\n{}",
                         formatter.shape.indent.to_string(&formatter.config)?
                     )?;
-                    format_self(
-                        self_token,
-                        ref_self,
-                        mutable_self,
-                        ty,
-                        formatted_code,
-                        formatter,
-                    )?;
+                    format_self(self_token, ref_self, mutable_self, formatted_code)?;
                     // `args_opt`
                     if let Some((comma, args)) = args_opt {
                         // `, `
@@ -250,14 +240,7 @@ fn format_fn_args(
                     }
                 }
                 _ => {
-                    format_self(
-                        self_token,
-                        ref_self,
-                        mutable_self,
-                        ty,
-                        formatted_code,
-                        formatter,
-                    )?;
+                    format_self(self_token, ref_self, mutable_self, formatted_code)?;
                     // `args_opt`
                     if let Some((comma, args)) = args_opt {
                         // `, `
@@ -277,9 +260,7 @@ fn format_self(
     self_token: &SelfToken,
     ref_self: &Option<RefToken>,
     mutable_self: &Option<MutToken>,
-    ty: &Option<(ColonToken, Ty)>,
     formatted_code: &mut FormattedCode,
-    formatter: &mut Formatter,
 ) -> Result<(), FormatterError> {
     // `ref `
     if let Some(ref_token) = ref_self {
@@ -291,15 +272,6 @@ fn format_self(
     }
     // `self`
     write!(formatted_code, "{}", self_token.span().as_str())?;
-
-    // Type ascription
-    if let Some((colon_token, ty)) = ty {
-        // `: `
-        write!(formatted_code, "{} ", colon_token.span().as_str())?;
-
-        // `Ty`
-        ty.format(formatted_code, formatter)?
-    }
 
     Ok(())
 }
@@ -388,7 +360,6 @@ impl LeafSpans for FnArgs {
                 ref_self,
                 mutable_self,
                 args_opt,
-                ..
             } => {
                 collected_spans.push(ByteSpan::from(self_token.span()));
                 if let Some(reference) = ref_self {

@@ -1,9 +1,9 @@
 use crate::{Parse, ParseResult, ParseToEnd, Parser, ParserConsumed};
 
 use sway_ast::keywords::{
-    AbiToken, ClassToken, ColonToken, CommaToken, ConfigurableToken, ConstToken, EnumToken,
-    FnToken, ImplToken, ModToken, MutToken, OpenAngleBracketToken, RefToken, SelfToken,
-    SemicolonToken, StorageToken, StructToken, TraitToken, TypeToken, UseToken, WhereToken,
+    AbiToken, ClassToken, ConfigurableToken, ConstToken, EnumToken, FnToken, ImplToken, ModToken,
+    MutToken, OpenAngleBracketToken, RefToken, SelfToken, SemicolonToken, StorageToken,
+    StructToken, TraitToken, TypeToken, UseToken, WhereToken,
 };
 use sway_ast::{
     FnArg, FnArgs, FnSignature, ItemConst, ItemEnum, ItemFn, ItemKind, ItemStruct, ItemTrait,
@@ -101,59 +101,22 @@ impl ParseToEnd for FnArgs {
         }
         match parser.take() {
             Some(self_token) => {
-                match (parser.peek::<ColonToken>(), parser.peek::<CommaToken>()) {
-                    (Some(_), None) => {
-                        // Found `:`, now expect a type
-                        let colon_token = parser.parse()?;
-                        let ty = parser.parse()?;
-                        match parser.take() {
-                            Some(comma_token) => {
-                                let (args, consumed) = parser.parse_to_end()?;
-                                let fn_args = FnArgs::NonStatic {
-                                    self_token,
-                                    ref_self,
-                                    mutable_self,
-                                    ty: Some((colon_token, ty)),
-                                    args_opt: Some((comma_token, args)),
-                                };
-                                Ok((fn_args, consumed))
-                            }
-                            None => {
-                                let fn_args = FnArgs::NonStatic {
-                                    self_token,
-                                    ref_self,
-                                    mutable_self,
-                                    ty: Some((colon_token, ty)),
-                                    args_opt: None,
-                                };
-                                match parser.check_empty() {
-                                    Some(consumed) => Ok((fn_args, consumed)),
-                                    None => Err(parser.emit_error(
-                                        ParseErrorKind::ExpectedCommaOrCloseParenInFnArgs,
-                                    )),
-                                }
-                            }
-                        }
-                    }
-                    (None, Some(_)) => {
-                        // Found `,`, expect the other arguments
-                        let comma_token = parser.parse::<CommaToken>()?;
+                match parser.take() {
+                    Some(comma_token) => {
                         let (args, consumed) = parser.parse_to_end()?;
                         let fn_args = FnArgs::NonStatic {
                             self_token,
                             ref_self,
                             mutable_self,
-                            ty: None,
                             args_opt: Some((comma_token, args)),
                         };
                         Ok((fn_args, consumed))
                     }
-                    (None, None) => {
+                    None => {
                         let fn_args = FnArgs::NonStatic {
                             self_token,
                             ref_self,
                             mutable_self,
-                            ty: None,
                             args_opt: None,
                         };
                         match parser.check_empty() {
@@ -161,9 +124,6 @@ impl ParseToEnd for FnArgs {
                             None => Err(parser
                                 .emit_error(ParseErrorKind::ExpectedCommaOrCloseParenInFnArgs)),
                         }
-                    }
-                    (Some(_), Some(_)) => {
-                        unreachable!("Impossible to peek into a comma and a colon simultaneously!")
                     }
                 }
             }
