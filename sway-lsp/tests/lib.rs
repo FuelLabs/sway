@@ -1568,6 +1568,25 @@ async fn hover_docs_for_abis() {
 }
 
 #[tokio::test]
+async fn hover_docs_for_variables() {
+    let (mut service, _) = LspService::new(Backend::new);
+    let uri = init_and_open(
+        &mut service,
+        test_fixtures_dir().join("tokens/variables/src/main.sw"),
+    )
+    .await;
+
+    let mut i = 0..;
+    let hover = HoverDocumentation {
+        req_uri: &uri,
+        req_line: 60,
+        req_char: 14,
+        documentation: "```sway\nlet variable8: ContractCaller<TestAbi>\n```\n---",
+    };
+    let _ = lsp::hover_request(&mut service, &hover, &mut i).await;
+}
+
+#[tokio::test]
 async fn hover_docs_with_code_examples() {
     let (mut service, _) = LspService::new(Backend::new);
     let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;

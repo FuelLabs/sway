@@ -75,6 +75,17 @@ impl DisplayWithEngines for TyExpression {
     }
 }
 
+impl DebugWithEngines for TyExpression {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{:?} ({:?})",
+            engines.help_out(&self.expression),
+            engines.help_out(self.return_type)
+        )
+    }
+}
+
 impl CollectTypesMetadata for TyExpression {
     fn collect_types_metadata(
         &self,

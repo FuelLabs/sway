@@ -44,7 +44,7 @@ pub type DeclRefAbi = DeclRef<DeclId<TyAbiDecl>>;
 pub type DeclRefConstant = DeclRef<DeclId<TyConstantDecl>>;
 pub type DeclRefEnum = DeclRef<DeclId<TyEnumDecl>>;
 
-pub type DeclRefMixedFunctional = DeclRef<FunctionalDeclId>;
+pub type DeclRefMixedFunctional = DeclRef<AssociatedItemDeclId>;
 pub type DeclRefMixedInterface = DeclRef<InterfaceDeclId>;
 
 /// Represents the use of / syntactic reference to a declaration. A
@@ -135,9 +135,13 @@ where
 
 impl<T> DeclRef<DeclId<T>>
 where
-    FunctionalDeclId: From<DeclId<T>>,
+    AssociatedItemDeclId: From<DeclId<T>>,
 {
-    pub(crate) fn with_parent(self, decl_engine: &DeclEngine, parent: FunctionalDeclId) -> Self {
+    pub(crate) fn with_parent(
+        self,
+        decl_engine: &DeclEngine,
+        parent: AssociatedItemDeclId,
+    ) -> Self {
         let id: DeclId<T> = self.id;
         decl_engine.register_parent(id.into(), parent);
         self
@@ -146,7 +150,7 @@ where
 
 impl<T> DeclRef<DeclId<T>>
 where
-    FunctionalDeclId: From<DeclId<T>>,
+    AssociatedItemDeclId: From<DeclId<T>>,
     DeclEngine: DeclEngineIndex<T>,
     T: Named + Spanned + SubstTypes,
 {
@@ -165,7 +169,7 @@ where
 }
 impl<T> DeclRef<DeclId<T>>
 where
-    FunctionalDeclId: From<DeclId<T>>,
+    AssociatedItemDeclId: From<DeclId<T>>,
     DeclEngine: DeclEngineIndex<T>,
     T: Named + Spanned + ReplaceSelfType,
 {
@@ -184,7 +188,7 @@ where
 }
 impl<T> DeclRef<DeclId<T>>
 where
-    FunctionalDeclId: From<DeclId<T>>,
+    AssociatedItemDeclId: From<DeclId<T>>,
     DeclEngine: DeclEngineIndex<T>,
     T: Named + Spanned + ReplaceDecls,
 {
@@ -333,7 +337,7 @@ impl ReplaceDecls for DeclRefFunction {
     fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
         let decl_engine = engines.de();
         if let Some(new_decl_ref) = decl_mapping.find_match(self.id.into()) {
-            if let FunctionalDeclId::Function(new_decl_ref) = new_decl_ref {
+            if let AssociatedItemDeclId::Function(new_decl_ref) = new_decl_ref {
                 self.id = new_decl_ref;
             }
             return;
@@ -341,7 +345,7 @@ impl ReplaceDecls for DeclRefFunction {
         let all_parents = decl_engine.find_all_parents(engines, &self.id);
         for parent in all_parents.iter() {
             if let Some(new_decl_ref) = decl_mapping.find_match(parent.clone()) {
-                if let FunctionalDeclId::Function(new_decl_ref) = new_decl_ref {
+                if let AssociatedItemDeclId::Function(new_decl_ref) = new_decl_ref {
                     self.id = new_decl_ref;
                 }
                 return;

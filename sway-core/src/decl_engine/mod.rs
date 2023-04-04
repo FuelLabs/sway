@@ -8,9 +8,9 @@
 //! [DeclEngine](engine::DeclEngine), a [DeclId](id::DeclId) is generated, which
 //! is then used to refer to the declaration.
 
+pub mod associated_item_decl_id;
 #[allow(clippy::module_inception)]
 pub(crate) mod engine;
-pub mod functional_decl_id;
 pub mod id;
 pub(crate) mod interface_decl_id;
 pub(crate) mod mapping;
@@ -20,8 +20,8 @@ pub(crate) mod template;
 
 use std::collections::BTreeMap;
 
+pub(crate) use associated_item_decl_id::*;
 pub use engine::*;
-pub(crate) use functional_decl_id::*;
 pub(crate) use id::*;
 pub use interface_decl_id::*;
 pub(crate) use mapping::*;

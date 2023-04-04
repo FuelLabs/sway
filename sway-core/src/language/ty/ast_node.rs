@@ -44,13 +44,13 @@ impl HashWithEngines for TyAstNode {
     }
 }
 
-impl DisplayWithEngines for TyAstNode {
+impl DebugWithEngines for TyAstNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         use TyAstNodeContent::*;
         match &self.content {
-            Declaration(typed_decl) => DisplayWithEngines::fmt(typed_decl, f, engines),
-            Expression(exp) => DisplayWithEngines::fmt(exp, f, engines),
-            ImplicitReturnExpression(exp) => write!(f, "return {}", engines.help_out(exp)),
+            Declaration(typed_decl) => DebugWithEngines::fmt(typed_decl, f, engines),
+            Expression(exp) => DebugWithEngines::fmt(exp, f, engines),
+            ImplicitReturnExpression(exp) => write!(f, "return {:?}", engines.help_out(exp)),
             SideEffect(_) => f.write_str(""),
         }
     }

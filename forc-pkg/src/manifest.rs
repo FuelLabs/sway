@@ -389,6 +389,11 @@ impl PackageManifestFile {
             Ok(self.dir().to_path_buf().join(constants::LOCK_FILE_NAME))
         }
     }
+
+    /// Returns an immutable reference to the project name that this manifest file describes.
+    pub fn project_name(&self) -> &str {
+        &self.project.name
+    }
 }
 
 impl PackageManifest {
