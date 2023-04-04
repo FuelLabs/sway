@@ -34,58 +34,7 @@ pub fn rename(
         ));
     }
 
-    //------------------------------------------------------
-    eprintln!("INITIAL POSITION: {:#?} \n", position);
-
-    let te = session.type_engine.read();
-    let de = session.decl_engine.read();
-    let engines = Engines::new(&te, &de);
-
-    // Find the parent declaration
-    let (decl_ident, decl_token) = session
-        .token_map()
-        .parent_decl_at_position(&url, position)
-        .ok_or(RenameError::TokenNotFound)?;
-
-    eprintln!("DECL IDENT: {:#?} \n", decl_ident);
-
-    session
-        .token_map()
-        .all_references_of_token(
-            &decl_token,
-            &session.type_engine.read(),
-            &session.decl_engine.read(),
-        )
-        .for_each(|(_, token)| {
-            if let Some(TypedAstToken::TypedDeclaration(decl)) = &token.typed {
-                let method_idents: Vec<_> = match decl {
-                    TyDecl::AbiDecl { decl_id, .. } => {
-                        let abi_decl = engines.de().get_abi(decl_id);
-                        trait_interface_idents(&abi_decl.interface_surface)
-                    }
-                    TyDecl::TraitDecl { decl_id, .. } => {
-                        let trait_decl = engines.de().get_trait(decl_id);
-                        trait_interface_idents(&trait_decl.interface_surface)
-                    }
-                    TyDecl::ImplTrait { decl_id, .. } => {
-                        let impl_trait = engines.de().get_impl_trait(decl_id);
-                        impl_trait
-                            .items
-                            .iter()
-                            .flat_map(|item| match item {
-                                TyTraitItem::Fn(fn_decl) => Some(fn_decl.name().clone()),
-                                _ => None,
-                            })
-                            .collect()
-                    }
-                    _ => vec![],
-                };
-
-                eprintln!("method_idents = {:#?}", method_idents);
-            }
-        });
-    //------------------------------------------------------
-
+    // Get the token at the current cursor position
     let (_, token) = session
         .token_map()
         .token_at_position(&url, position)
@@ -98,40 +47,50 @@ pub fn rename(
         ));
     }
 
-    let map_of_changes: HashMap<Url, Vec<TextEdit>> = session
-        .token_map()
-        .all_references_of_token(
-            &token,
-            &session.type_engine.read(),
-            &session.decl_engine.read(),
-        )
-        .filter_map(|(ident, _)| {
-            let mut range = get_range_from_span(&ident.span());
-            if ident.is_raw_ident() {
-                // Make sure the start char starts at the begining,
-                // taking the r# tokens into account.
-                range.start.character -= RAW_IDENTIFIER.len() as u32;
-            }
-            if let Some(path) = ident.span().path() {
-                let url = session.sync.url_from_path(path).ok()?;
-                if let Some(url) = session.sync.to_workspace_url(url) {
-                    let edit = TextEdit::new(range, new_name.clone());
-                    return Some((url, vec![edit]));
-                };
-            }
-            None
-        })
-        .fold(HashMap::new(), |mut map, (k, mut v)| {
-            map.entry(k)
-                .and_modify(|existing| {
-                    existing.append(&mut v);
-                    // Sort the TextEdits by their range in reverse order so the client applies edits
-                    // from the end of the document to the beginning, preventing issues with offset changes.
-                    existing.sort_unstable_by(|a, b| b.range.start.cmp(&a.range.start))
-                })
-                .or_insert(v);
-            map
-        });
+    // If the token is a function, find the parent declaration
+    // and collect idents for all methods of ABI Decl, Trait Decl, and Impl Trait
+    let map_of_changes: HashMap<Url, Vec<TextEdit>> = (if token.kind == SymbolKind::Function {
+        find_all_methods_for_decl(&session, &url, position)?
+    } else {
+        // otherwise, just find all references of the token in the token map
+        session
+            .token_map()
+            .all_references_of_token(
+                &token,
+                &session.type_engine.read(),
+                &session.decl_engine.read(),
+            )
+            .map(|(ident, _)| ident)
+            .collect::<Vec<Ident>>()
+    })
+    .into_iter()
+    .filter_map(|ident| {
+        let mut range = get_range_from_span(&ident.span());
+        if ident.is_raw_ident() {
+            // Make sure the start char starts at the begining,
+            // taking the r# tokens into account.
+            range.start.character -= RAW_IDENTIFIER.len() as u32;
+        }
+        if let Some(path) = ident.span().path() {
+            let url = session.sync.url_from_path(path).ok()?;
+            if let Some(url) = session.sync.to_workspace_url(url) {
+                let edit = TextEdit::new(range, new_name.clone());
+                return Some((url, vec![edit]));
+            };
+        }
+        None
+    })
+    .fold(HashMap::new(), |mut map, (k, mut v)| {
+        map.entry(k)
+            .and_modify(|existing| {
+                existing.append(&mut v);
+                // Sort the TextEdits by their range in reverse order so the client applies edits
+                // from the end of the document to the beginning, preventing issues with offset changes.
+                existing.sort_unstable_by(|a, b| b.range.start.cmp(&a.range.start))
+            })
+            .or_insert(v);
+        map
+    });
 
     Ok(WorkspaceEdit::new(map_of_changes))
 }
@@ -204,4 +163,56 @@ fn trait_interface_idents(interface_surface: &[TyTraitInterfaceItem]) -> Vec<Ide
             _ => None,
         })
         .collect()
+}
+
+fn find_all_methods_for_decl(
+    session: &Session,
+    url: &Url,
+    position: Position,
+) -> Result<Vec<Ident>, LanguageServerError> {
+    let te = session.type_engine.read();
+    let de = session.decl_engine.read();
+    let engines = Engines::new(&te, &de);
+
+    // Find the parent declaration
+    let (_, decl_token) = session
+        .token_map()
+        .parent_decl_at_position(&url, position)
+        .ok_or(RenameError::TokenNotFound)?;
+
+    let idents = session
+        .token_map()
+        .all_references_of_token(&decl_token, &te, &de)
+        .filter_map(|(_, token)| {
+            token.typed.as_ref().and_then(|typed| match typed {
+                TypedAstToken::TypedDeclaration(decl) => match decl {
+                    TyDecl::AbiDecl { decl_id, .. } => {
+                        let abi_decl = engines.de().get_abi(decl_id);
+                        Some(trait_interface_idents(&abi_decl.interface_surface))
+                    }
+                    TyDecl::TraitDecl { decl_id, .. } => {
+                        let trait_decl = engines.de().get_trait(decl_id);
+                        Some(trait_interface_idents(&trait_decl.interface_surface))
+                    }
+                    TyDecl::ImplTrait { decl_id, .. } => {
+                        let impl_trait = engines.de().get_impl_trait(decl_id);
+                        Some(
+                            impl_trait
+                                .items
+                                .iter()
+                                .filter_map(|item| match item {
+                                    TyTraitItem::Fn(fn_decl) => Some(fn_decl.name().clone()),
+                                    _ => None,
+                                })
+                                .collect::<Vec<Ident>>(),
+                        )
+                    }
+                    _ => None,
+                },
+                _ => None,
+            })
+        })
+        .flat_map(|x| x)
+        .collect();
+    Ok(idents)
 }

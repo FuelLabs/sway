@@ -18,7 +18,6 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
-use sway_core::Engines;
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::*;
 use tower_lsp::{jsonrpc, Client, LanguageServer};
