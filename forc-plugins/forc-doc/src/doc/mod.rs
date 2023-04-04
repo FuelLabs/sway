@@ -82,7 +82,7 @@ impl Document {
                 }
             }
         }
-        // match for the name & type for decls the impl_traits are implemented for
+        // match for the spans to add the impl_traits to their corresponding doc
         if dbg!(!impl_traits.is_empty()) {
             for doc in &mut docs {
                 let mut impl_vec: Vec<TyImplTrait> = Vec::new();
