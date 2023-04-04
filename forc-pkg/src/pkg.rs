@@ -326,7 +326,7 @@ impl Default for MemberFilter {
 }
 
 impl MemberFilter {
-    /// Returns a new `BuildFilter` that only builds scripts.
+    /// Returns a new `MemberFilter` that only builds scripts.
     pub fn only_scripts() -> Self {
         Self {
             build_contracts: false,
@@ -336,7 +336,7 @@ impl MemberFilter {
         }
     }
 
-    /// Returns a new `BuildFilter` that only builds contracts.
+    /// Returns a new `MemberFilter` that only builds contracts.
     pub fn only_contracts() -> Self {
         Self {
             build_contracts: true,
@@ -346,7 +346,17 @@ impl MemberFilter {
         }
     }
 
-    /// Filter given target of output nodes according to the this `BuildFilter`.
+    /// Returns a new `MemberFilter`, that only builds predicates.
+    pub fn only_predicates() -> Self {
+        Self {
+            build_contracts: false,
+            build_scripts: false,
+            build_predicates: true,
+            build_libraries: false,
+        }
+    }
+
+    /// Filter given target of output nodes according to the this `MemberFilter`.
     pub fn filter_outputs(
         &self,
         build_plan: &BuildPlan,
@@ -754,6 +764,24 @@ impl BuildPlan {
             manifest_map[&graph[member_node].id()]
                 .build_profiles()
                 .map(|(n, p)| (n.clone(), p.clone()))
+        })
+    }
+
+    /// Returns a salt for the given pinned package if it is a contract and `None` for libraries.
+    pub fn salt(&self, pinned: &Pinned) -> Option<fuel_tx::Salt> {
+        let graph = self.graph();
+        let node_ix = graph
+            .node_indices()
+            .find(|node_ix| graph[*node_ix] == *pinned);
+        node_ix.and_then(|node| {
+            graph
+                .edges_directed(node, Direction::Incoming)
+                .map(|e| match e.weight().kind {
+                    DepKind::Library => None,
+                    DepKind::Contract { salt } => Some(salt),
+                })
+                .next()
+                .flatten()
         })
     }
 }
