@@ -109,8 +109,8 @@ Example `Forc.toml` for contract above:
 
 When you run multiple tests, by default they run in parallel using threads, meaning they finish running faster and you get feedback quicker. It is important to note that each test is assigned their own storage so different tests does not invalidate a shared state by running in parallel.
 
-By default `forc` will use necessary number of threads available in your system but it is possible to specify number of threads to utilize by passing `--test-threads`.
+By default `forc` will use necessary number of threads available in your system but it is possible to specify number of threads to utilize by using `--test-threads` flag.
 
 ```console
-forc test -- --test-threads=1
+forc test --test-threads 1
 ```
