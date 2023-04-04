@@ -8,7 +8,6 @@ use sway_core::{
     decl_engine::DeclEngine,
     language::ty::{TyAstNodeContent, TyDecl, TyImplTrait, TyProgram, TySubmodule},
 };
-use sway_types::Spanned;
 
 mod descriptor;
 pub mod module;
@@ -84,18 +83,26 @@ impl Document {
             }
         }
         // match for the name & type for decls the impl_traits are implemented for
-        if !impl_traits.is_empty() {
+        if dbg!(!impl_traits.is_empty()) {
             for doc in &mut docs {
-                let impl_traits = impl_traits
-                    .iter()
-                    .map(|impl_trait| {
-                        (impl_trait.implementing_for.span == doc.item_body.ty_decl.span())
-                            .then_some(impl_trait.clone())
-                            .expect("expected TyImplTrait")
-                    })
-                    .collect::<Vec<TyImplTrait>>();
+                let mut impl_vec: Vec<TyImplTrait> = Vec::new();
+
+                match doc.item_body.ty_decl {
+                    TyDecl::StructDecl { decl_id, .. } => {
+                        for impl_trait in &impl_traits {
+                            if decl_engine.get_struct(&decl_id).span
+                                == impl_trait.implementing_for.span
+                            {
+                                impl_vec.push(impl_trait.clone());
+                            }
+                        }
+                    }
+                    _ => continue,
+                }
+
+                println!("impl_vec: {impl_vec:?}");
                 if !impl_traits.is_empty() {
-                    doc.item_body.item_context.impl_traits = Some(impl_traits);
+                    doc.item_body.item_context.impl_traits = Some(impl_vec);
                 }
             }
         }

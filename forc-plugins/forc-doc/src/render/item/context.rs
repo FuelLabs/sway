@@ -352,16 +352,8 @@ impl Renderable for ItemContext {
     }
 }
 impl Renderable for TyImplTrait {
-    fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
-        let TyImplTrait {
-            impl_type_parameters,
-            trait_name,
-            trait_type_arguments,
-            items,
-            trait_decl_ref,
-            implementing_for,
-            span,
-        } = self;
+    fn render(self, _render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
+        let TyImplTrait { trait_name, .. } = self;
         Ok(box_html! {
             details(class="swaydoc-toggle implementors-toggle") {
                 summary {
@@ -369,7 +361,6 @@ impl Renderable for TyImplTrait {
                         a(href=format!("{IDENTITY}impl-{}", trait_name.suffix), class="anchor");
                         h3(class="code-header in-band") {
                             : "impl";
-
                         }
                     }
                 }
