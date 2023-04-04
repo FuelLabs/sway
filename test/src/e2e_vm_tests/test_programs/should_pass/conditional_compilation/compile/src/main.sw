@@ -21,10 +21,13 @@ configurable {
   CFG_VALUE: () = (),
 }
 
+#[cfg(program_type = "script")]
 #[cfg(target = "fuel")]
 const VALUE: u64 = 40;
+#[cfg(program_type = "script")]
 #[cfg(target = "evm")]
 const VALUE: () = ();
+#[cfg(program_type = "script")]
 #[cfg(target = "fuel")]
 #[cfg(target = "evm")]
 const VALUE: () = ();
