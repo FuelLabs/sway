@@ -7,6 +7,7 @@ use fuel_vm::{self as vm, fuel_asm, prelude::Instruction};
 use pkg::TestPassCondition;
 use pkg::{Built, BuiltPackage};
 use rand::{Rng, SeedableRng};
+use rayon::prelude::*;
 use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 use sway_core::BuildTarget;
 use sway_types::Span;
@@ -278,7 +279,7 @@ impl<'a> PackageTests {
         let tests = pkg_with_tests
             .bytecode
             .entries
-            .iter()
+            .par_iter()
             .filter_map(|entry| entry.kind.test().map(|test| (entry, test)))
             .map(|(entry, test_entry)| {
                 let offset = u32::try_from(entry.finalized.imm)
