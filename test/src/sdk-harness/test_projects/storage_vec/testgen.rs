@@ -29,7 +29,7 @@ macro_rules! testgen {
             pub mod setup {
                 use super::*;
 
-                pub async fn get_contract_instance() -> MyContract {
+                pub async fn get_contract_instance() -> MyContract<WalletUnlocked> {
                     let wallet = launch_provider_and_get_wallet().await;
 
                     let id = Contract::deploy(
@@ -39,13 +39,14 @@ macro_rules! testgen {
                             $type_label,
                         ),
                         &wallet,
-                        TxParameters::new(None, Some(100_000_000), None),
-                        StorageConfiguration::with_storage_path(Some(
+                        DeployConfiguration::default()
+                        .set_tx_parameters(TxParameters::default().set_gas_limit(100_000_000))
+                        .set_storage_configuration(StorageConfiguration::default().set_storage_path(
                             format!(
                                 "test_artifacts/storage_vec/svec_{}/out/debug/svec_{}-storage_slots.json",
                                 $type_label,
                                 $type_label,
-                            ),
+                            ).to_string()
                         )),
                     ).await.unwrap();
 
@@ -58,153 +59,153 @@ macro_rules! testgen {
             pub mod wrappers {
                 use super::*;
 
-                pub async fn push(instance: &MyContract, value: $type_declaration) {
+                pub async fn push(instance: &MyContract<WalletUnlocked>, value: $type_declaration) {
                     instance.methods()
                         .push(value)
-                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .tx_params(TxParameters::default().set_gas_limit(100_000_000))
                         .call()
                         .await
                         .unwrap();
                 }
 
-                pub async fn pop(instance: &MyContract) -> $type_declaration {
+                pub async fn pop(instance: &MyContract<WalletUnlocked>) -> $type_declaration {
                     instance.methods()
                         .pop()
-                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .tx_params(TxParameters::default().set_gas_limit(100_000_000))
                         .call()
                         .await
                         .unwrap()
                         .value
                 }
 
-                pub async fn get(instance: &MyContract, index: u64) -> $type_declaration {
+                pub async fn get(instance: &MyContract<WalletUnlocked>, index: u64) -> $type_declaration {
                     instance.methods()
                         .get(index)
-                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .tx_params(TxParameters::default().set_gas_limit(100_000_000))
                         .call()
                         .await
                         .unwrap()
                         .value
                 }
 
-                pub async fn remove(instance: &MyContract, index: u64) -> $type_declaration {
+                pub async fn remove(instance: &MyContract<WalletUnlocked>, index: u64) -> $type_declaration {
                     instance.methods()
                         .remove(index)
-                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .tx_params(TxParameters::default().set_gas_limit(100_000_000))
                         .call()
                         .await
                         .unwrap()
                         .value
                 }
 
-                pub async fn swap_remove(instance: &MyContract, index: u64) -> $type_declaration {
+                pub async fn swap_remove(instance: &MyContract<WalletUnlocked>, index: u64) -> $type_declaration {
                     instance.methods()
                         .swap_remove(index)
-                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .tx_params(TxParameters::default().set_gas_limit(100_000_000))
                         .call()
                         .await
                         .unwrap()
                         .value
                 }
 
-                pub async fn set(instance: &MyContract, index: u64, value: $type_declaration) {
+                pub async fn set(instance: &MyContract<WalletUnlocked>, index: u64, value: $type_declaration) {
                     instance.methods()
                         .set(index, value)
-                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .tx_params(TxParameters::default().set_gas_limit(100_000_000))
                         .call()
                         .await
                         .unwrap();
                 }
 
-                pub async fn insert(instance: &MyContract, index: u64, value: $type_declaration) {
+                pub async fn insert(instance: &MyContract<WalletUnlocked>, index: u64, value: $type_declaration) {
                     instance.methods()
                         .insert(index, value)
-                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .tx_params(TxParameters::default().set_gas_limit(100_000_000))
                         .call()
                         .await
                         .unwrap();
                 }
 
-                pub async fn len(instance: &MyContract) -> u64 {
+                pub async fn len(instance: &MyContract<WalletUnlocked>) -> u64 {
                     instance.methods()
                         .len()
-                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .tx_params(TxParameters::default().set_gas_limit(100_000_000))
                         .call()
                         .await
                         .unwrap()
                         .value
                 }
 
-                pub async fn is_empty(instance: &MyContract) -> bool {
+                pub async fn is_empty(instance: &MyContract<WalletUnlocked>) -> bool {
                     instance.methods()
                         .is_empty()
-                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .tx_params(TxParameters::default().set_gas_limit(100_000_000))
                         .call()
                         .await
                         .unwrap()
                         .value
                 }
 
-                pub async fn clear(instance: &MyContract) {
+                pub async fn clear(instance: &MyContract<WalletUnlocked>) {
                     instance.methods()
                         .clear()
-                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .tx_params(TxParameters::default().set_gas_limit(100_000_000))
                         .call()
                         .await
                         .unwrap();
                 }
 
-                pub async fn swap(instance: &MyContract, index_0: u64, index_1: u64) {
+                pub async fn swap(instance: &MyContract<WalletUnlocked>, index_0: u64, index_1: u64) {
                     instance.methods()
                         .swap(index_0, index_1)
-                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .tx_params(TxParameters::default().set_gas_limit(100_000_000))
                         .call()
                         .await
                         .unwrap();
                 }
 
-                pub async fn first(instance: &MyContract) -> $type_declaration {
+                pub async fn first(instance: &MyContract<WalletUnlocked>) -> $type_declaration {
                     instance.methods()
                         .first()
-                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .tx_params(TxParameters::default().set_gas_limit(100_000_000))
                         .call()
                         .await
                         .unwrap()
                         .value
                 }
 
-                pub async fn last(instance: &MyContract) -> $type_declaration {
+                pub async fn last(instance: &MyContract<WalletUnlocked>) -> $type_declaration {
                     instance.methods()
                         .last()
-                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .tx_params(TxParameters::default().set_gas_limit(100_000_000))
                         .call()
                         .await
                         .unwrap()
                         .value
                 }
 
-                pub async fn reverse(instance: &MyContract) {
+                pub async fn reverse(instance: &MyContract<WalletUnlocked>) {
                     instance.methods()
                         .reverse()
-                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .tx_params(TxParameters::default().set_gas_limit(100_000_000))
                         .call()
                         .await
                         .unwrap();
                 }
 
-                pub async fn fill(instance: &MyContract, value: $type_declaration) {
+                pub async fn fill(instance: &MyContract<WalletUnlocked>, value: $type_declaration) {
                     instance.methods()
                         .fill(value)
-                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .tx_params(TxParameters::default().set_gas_limit(100_000_000))
                         .call()
                         .await
                         .unwrap();
                 }
 
-                pub async fn resize(instance: &MyContract, new_len: u64, value: $type_declaration) {
+                pub async fn resize(instance: &MyContract<WalletUnlocked>, new_len: u64, value: $type_declaration) {
                     instance.methods()
                         .resize(new_len, value)
-                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .tx_params(TxParameters::default().set_gas_limit(100_000_000))
                         .call()
                         .await
                         .unwrap();
