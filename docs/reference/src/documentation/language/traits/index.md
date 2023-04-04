@@ -15,8 +15,8 @@ trait Trait {
 
 Associated items come in two varieties:
 
-- [functions](#associated-functions)
-- [constants](#associated-constants)
+- [Functions](#associated-functions)
+- [Constants](#associated-constants)
 
 All traits define an implicit type parameter `Self` that refers to "the type that is implementing this interface".
 Traits may also contain additional type parameters. These type parameters, including `Self`, may be constrained by

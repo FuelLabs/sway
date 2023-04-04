@@ -12,9 +12,9 @@ const ID: u32 = 0;
 
 ## Associated Constants
 
-Associated constants are constants associated with a type.
+Associated constants are constants associated with a type and can be declared in an `impl` block or in a `trait` definition.
 
-Associated constants may omit the initializer to indicate implementations must define the constant value.
+Associated constants declared inside a `trait` definition may omit their initializers to indicate that each implementation of the trait must specify those initializers.
 
 The identifier is the name of the constant used in the path. The type is the type that the
 definition has to implement.
@@ -26,10 +26,6 @@ script;
 
 trait ConstantId {
     const ID: u32 = 0;
-}
-
-fn main() -> u32 {
-  ConstantId::ID
 }
 ```
 
@@ -46,19 +42,21 @@ trait ConstantId {
 struct Struct {}
 
 impl ConstantId for Struct {
-  const ID: u32 = 1;
+    const ID: u32 = 1;
 }
 
 fn main() -> u32 {
-  Struct::ID
+    Struct::ID
 }
 ```
 
-## `impl self` consts
+### `impl self` consts
 
-Constants can also be declared inside non-trait `impl` blocks. In this case, the constant is referred to as an associated const.
+Constants can also be declared inside non-trait `impl` blocks.
 
 ```sway
+script;
+
 struct Point {
     x: u64,
     y: u64,

@@ -74,12 +74,12 @@ ABI supertraits are intended to make contract implementations compositional, all
 
 Traits can declare different kinds of associated items in their interface surface:
 
-- [functions](#associated-functions)
-- [constants](#associated-constants)
+- [Functions](#associated-functions)
+- [Constants](#associated-constants)
 
 ### Associated functions
 
-Associated functions in traits consist of just a function signature. This indicates that the implementation must define the function.
+Associated functions in traits consist of just function signatures. This indicates that each implementation of the trait for a given type must define all the trait functions.
 
 ```sway
 trait Trait {
@@ -92,10 +92,18 @@ trait Trait {
 Associated constants are constants associated with a type.
 
 ```sway
-const ID: u32 = 0;
+trait Trait {
+    const ID: u32 = 0;
+}
 ```
 
-Associated constants may omit the initializer to indicate implementations must define the constant value.
+The initializer expression of an [associated constants](../basic/consts.md#associated-constants) in a trait definition may be omitted to indicate that each implementation of the `trait` for a given type must specify an initializer:
+
+```sway
+trait Trait {
+    const ID: u32;
+}
+```
 
 Check the `associated consts` section on [constants](../basic/consts.md) page.
 

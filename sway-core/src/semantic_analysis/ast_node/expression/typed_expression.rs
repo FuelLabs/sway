@@ -1,4 +1,4 @@
-mod constant_declaration;
+mod constant_expression;
 mod enum_instantiation;
 mod function_application;
 mod if_expression;
@@ -9,7 +9,7 @@ mod struct_instantiation;
 mod tuple_index_access;
 mod unsafe_downcast;
 
-use self::constant_declaration::instantiate_constant_expression;
+use self::constant_expression::instantiate_constant_expression;
 pub(crate) use self::{
     enum_instantiation::*, function_application::*, if_expression::*, lazy_operator::*,
     method_application::*, struct_field_access::*, struct_instantiation::*, tuple_index_access::*,
