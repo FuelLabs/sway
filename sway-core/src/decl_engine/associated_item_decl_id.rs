@@ -7,61 +7,61 @@ use crate::{
 };
 
 #[derive(Debug, Eq, PartialEq, Hash, Clone)]
-pub enum FunctionalDeclId {
+pub enum AssociatedItemDeclId {
     TraitFn(DeclId<ty::TyTraitFn>),
     Function(DeclId<ty::TyFunctionDecl>),
     Constant(DeclId<ty::TyConstantDecl>),
 }
 
-impl From<DeclId<ty::TyFunctionDecl>> for FunctionalDeclId {
+impl From<DeclId<ty::TyFunctionDecl>> for AssociatedItemDeclId {
     fn from(val: DeclId<ty::TyFunctionDecl>) -> Self {
         Self::Function(val)
     }
 }
-impl From<&DeclId<ty::TyFunctionDecl>> for FunctionalDeclId {
+impl From<&DeclId<ty::TyFunctionDecl>> for AssociatedItemDeclId {
     fn from(val: &DeclId<ty::TyFunctionDecl>) -> Self {
         Self::Function(*val)
     }
 }
-impl From<&mut DeclId<ty::TyFunctionDecl>> for FunctionalDeclId {
+impl From<&mut DeclId<ty::TyFunctionDecl>> for AssociatedItemDeclId {
     fn from(val: &mut DeclId<ty::TyFunctionDecl>) -> Self {
         Self::Function(*val)
     }
 }
 
-impl From<DeclId<ty::TyTraitFn>> for FunctionalDeclId {
+impl From<DeclId<ty::TyTraitFn>> for AssociatedItemDeclId {
     fn from(val: DeclId<ty::TyTraitFn>) -> Self {
         Self::TraitFn(val)
     }
 }
-impl From<&DeclId<ty::TyTraitFn>> for FunctionalDeclId {
+impl From<&DeclId<ty::TyTraitFn>> for AssociatedItemDeclId {
     fn from(val: &DeclId<ty::TyTraitFn>) -> Self {
         Self::TraitFn(*val)
     }
 }
-impl From<&mut DeclId<ty::TyTraitFn>> for FunctionalDeclId {
+impl From<&mut DeclId<ty::TyTraitFn>> for AssociatedItemDeclId {
     fn from(val: &mut DeclId<ty::TyTraitFn>) -> Self {
         Self::TraitFn(*val)
     }
 }
 
-impl From<DeclId<ty::TyConstantDecl>> for FunctionalDeclId {
+impl From<DeclId<ty::TyConstantDecl>> for AssociatedItemDeclId {
     fn from(val: DeclId<ty::TyConstantDecl>) -> Self {
         Self::Constant(val)
     }
 }
-impl From<&DeclId<ty::TyConstantDecl>> for FunctionalDeclId {
+impl From<&DeclId<ty::TyConstantDecl>> for AssociatedItemDeclId {
     fn from(val: &DeclId<ty::TyConstantDecl>) -> Self {
         Self::Constant(*val)
     }
 }
-impl From<&mut DeclId<ty::TyConstantDecl>> for FunctionalDeclId {
+impl From<&mut DeclId<ty::TyConstantDecl>> for AssociatedItemDeclId {
     fn from(val: &mut DeclId<ty::TyConstantDecl>) -> Self {
         Self::Constant(*val)
     }
 }
 
-impl std::fmt::Display for FunctionalDeclId {
+impl std::fmt::Display for AssociatedItemDeclId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::TraitFn(_) => {
@@ -81,16 +81,16 @@ impl TryFrom<DeclRefMixedFunctional> for DeclRefFunction {
     type Error = CompileError;
     fn try_from(value: DeclRefMixedFunctional) -> Result<Self, Self::Error> {
         match value.id().clone() {
-            FunctionalDeclId::Function(id) => Ok(DeclRef::new(
+            AssociatedItemDeclId::Function(id) => Ok(DeclRef::new(
                 value.name().clone(),
                 id,
                 value.decl_span().clone(),
             )),
-            actually @ FunctionalDeclId::TraitFn(_) => Err(CompileError::DeclIsNotAFunction {
+            actually @ AssociatedItemDeclId::TraitFn(_) => Err(CompileError::DeclIsNotAFunction {
                 actually: actually.to_string(),
                 span: value.decl_span().clone(),
             }),
-            actually @ FunctionalDeclId::Constant(_) => Err(CompileError::DeclIsNotAFunction {
+            actually @ AssociatedItemDeclId::Constant(_) => Err(CompileError::DeclIsNotAFunction {
                 actually: actually.to_string(),
                 span: value.decl_span().clone(),
             }),
@@ -104,25 +104,25 @@ impl TryFrom<&DeclRefMixedFunctional> for DeclRefFunction {
     }
 }
 
-impl TryFrom<FunctionalDeclId> for DeclId<TyFunctionDecl> {
+impl TryFrom<AssociatedItemDeclId> for DeclId<TyFunctionDecl> {
     type Error = CompileError;
-    fn try_from(value: FunctionalDeclId) -> Result<Self, Self::Error> {
+    fn try_from(value: AssociatedItemDeclId) -> Result<Self, Self::Error> {
         match value {
-            FunctionalDeclId::Function(id) => Ok(id),
-            actually @ FunctionalDeclId::TraitFn(_) => Err(CompileError::DeclIsNotAFunction {
+            AssociatedItemDeclId::Function(id) => Ok(id),
+            actually @ AssociatedItemDeclId::TraitFn(_) => Err(CompileError::DeclIsNotAFunction {
                 actually: actually.to_string(),
                 span: Span::dummy(), // FIXME
             }),
-            actually @ FunctionalDeclId::Constant(_) => Err(CompileError::DeclIsNotAFunction {
+            actually @ AssociatedItemDeclId::Constant(_) => Err(CompileError::DeclIsNotAFunction {
                 actually: actually.to_string(),
                 span: Span::dummy(), // FIXME
             }),
         }
     }
 }
-impl TryFrom<&FunctionalDeclId> for DeclId<TyFunctionDecl> {
+impl TryFrom<&AssociatedItemDeclId> for DeclId<TyFunctionDecl> {
     type Error = CompileError;
-    fn try_from(value: &FunctionalDeclId) -> Result<Self, Self::Error> {
+    fn try_from(value: &AssociatedItemDeclId) -> Result<Self, Self::Error> {
         value.clone().try_into()
     }
 }
