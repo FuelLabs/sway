@@ -824,11 +824,6 @@ pub(crate) fn item_const_to_constant_declaration(
 ) -> Result<ConstantDeclaration, ErrorEmitted> {
     let span = item_const.span();
 
-    let type_ascription = match item_const.ty_opt {
-        Some((_colon_token, ty)) => ty_to_type_argument(context, handler, engines, ty)?,
-        None => engines.te().insert(engines.de(), TypeInfo::Unknown).into(),
-    };
-
     let expr = match item_const.expr_opt {
         Some(expr) => Some(expr_to_expression(context, handler, engines, expr)?),
         None => {
@@ -839,6 +834,20 @@ pub(crate) fn item_const_to_constant_declaration(
                 }
             }
             None
+        }
+    };
+
+    let type_ascription = match item_const.ty_opt {
+        Some((_colon_token, ty)) => ty_to_type_argument(context, handler, engines, ty)?,
+        None => {
+            if expr.is_none() {
+                let err =
+                    ConvertParseTreeError::ConstantRequiresTypeAscription { span: span.clone() };
+                if let Some(errors) = emit_all(handler, vec![err]) {
+                    return Err(errors);
+                }
+            }
+            engines.te().insert(engines.de(), TypeInfo::Unknown).into()
         }
     };
 

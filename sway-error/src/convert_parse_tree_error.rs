@@ -109,6 +109,8 @@ pub enum ConvertParseTreeError {
     DerefExprNotYetSupported { span: Span },
     #[error("Constant requires expression.")]
     ConstantRequiresExpression { span: Span },
+    #[error("Constant requires type ascription.")]
+    ConstantRequiresTypeAscription { span: Span },
     #[error("Invalid value \"{value}\"")]
     InvalidCfgTargetArgValue { span: Span, value: String },
     #[error("Expected a value for the target argument")]
@@ -171,6 +173,7 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::RefExprNotYetSupported { span } => span.clone(),
             ConvertParseTreeError::DerefExprNotYetSupported { span } => span.clone(),
             ConvertParseTreeError::ConstantRequiresExpression { span } => span.clone(),
+            ConvertParseTreeError::ConstantRequiresTypeAscription { span } => span.clone(),
             ConvertParseTreeError::InvalidCfgTargetArgValue { span, .. } => span.clone(),
             ConvertParseTreeError::ExpectedCfgTargetArgValue { span } => span.clone(),
         }
