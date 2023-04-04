@@ -104,3 +104,13 @@ Example `Forc.toml` for contract above:
 ```toml
 {{#include ../../../../examples/multi_contract_calls/caller/Forc.toml:multi_contract_call_toml}}
 ```
+
+## Running Tests in Parallel or Consecutively
+
+When you run multiple tests, by default they run in parallel using threads, meaning they finish running faster and you get feedback quicker. It is important to note that each test is assigned their own storage so different tests does not invalidate a shared state by running in parallel.
+
+By default `forc` will use necessary number of threads available in your system but it is possible to specify number of threads to utilize by passing `--test-threads`.
+
+```console
+forc test -- --test-threads=1
+```
