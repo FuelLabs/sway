@@ -1,0 +1,4 @@
+# These directories are being phased out
+# See: /test/src/e2e_vm_tests/test_programs/NOTICE!.md
+/test/src/e2e_vm_tests/test_programs/should_fail @mohammadfawaz @otrho
+/test/src/e2e_vm_tests/test_programs/should_pass @mohammadfawaz @otrho
