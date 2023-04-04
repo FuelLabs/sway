@@ -1,7 +1,9 @@
-use fuel_vm::fuel_types::Bytes64;
+use fuel_vm::{
+    fuel_crypto::{Message, PublicKey, SecretKey, Signature},
+    fuel_types::Bytes64,
+};
 use fuels::{
     prelude::*,
-    signers::fuel_crypto::{Message, PublicKey, SecretKey, Signature},
     tx::Bytes32,
     types::{Bits256, EvmAddress},
 };
@@ -29,7 +31,13 @@ fn clear_12_bytes(bytes: [u8; 32]) -> [u8; 32] {
     bytes
 }
 
-async fn setup_env() -> Result<(EvmEcRecoverContract, PublicKey, Message, Bytes64, [u8; 32])> {
+async fn setup_env() -> Result<(
+    EvmEcRecoverContract<WalletUnlocked>,
+    PublicKey,
+    Message,
+    Bytes64,
+    [u8; 32],
+)> {
     let mut rng = StdRng::seed_from_u64(1000);
     let msg_bytes: Bytes32 = rng.gen();
     let private_key = SecretKey::random(&mut rng);
@@ -59,8 +67,7 @@ async fn setup_env() -> Result<(EvmEcRecoverContract, PublicKey, Message, Bytes6
     let contract_id = Contract::deploy(
         "test_projects/evm_ec_recover/out/debug/evm_ec_recover.bin",
         &wallet,
-        TxParameters::default(),
-        StorageConfiguration::default(),
+        DeployConfiguration::default(),
     )
     .await?;
 
