@@ -53,9 +53,9 @@ async fn msg_sender_from_contract() {
 }
 
 async fn get_contracts() -> (
-    AuthContract,
+    AuthContract<WalletUnlocked>,
     ContractId,
-    AuthCallerContract,
+    AuthCallerContract<WalletUnlocked>,
     ContractId,
     Wallet,
 ) {
@@ -64,12 +64,7 @@ async fn get_contracts() -> (
     let id_1 = Contract::deploy(
         "test_artifacts/auth_testing_contract/out/debug/auth_testing_contract.bin",
         &wallet,
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(
-            Some(
-                "test_artifacts/auth_testing_contract/out/debug/auth_testing_contract-storage_slots.json".to_string(),
-                )
-        )
+        DeployConfiguration::default(),
     )
     .await
     .unwrap();
@@ -77,11 +72,7 @@ async fn get_contracts() -> (
     let id_2 = Contract::deploy(
         "test_artifacts/auth_caller_contract/out/debug/auth_caller_contract.bin",
         &wallet,
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "test_artifacts/auth_caller_contract/out/debug/auth_caller_contract-storage_slots.json"
-                .to_string(),
-        )),
+        DeployConfiguration::default(),
     )
     .await
     .unwrap();
