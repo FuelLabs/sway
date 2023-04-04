@@ -177,7 +177,7 @@ fn find_all_methods_for_decl(
     // Find the parent declaration
     let (_, decl_token) = session
         .token_map()
-        .parent_decl_at_position(&url, position)
+        .parent_decl_at_position(url, position)
         .ok_or(RenameError::TokenNotFound)?;
 
     let idents = session
@@ -212,7 +212,7 @@ fn find_all_methods_for_decl(
                 _ => None,
             })
         })
-        .flat_map(|x| x)
+        .flatten()
         .collect();
     Ok(idents)
 }
