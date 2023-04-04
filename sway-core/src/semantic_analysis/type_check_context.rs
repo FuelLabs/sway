@@ -282,9 +282,8 @@ impl<'a> TypeCheckContext<'a> {
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
         self.type_engine.unify(
             self.decl_engine,
-            ty,
-            self.type_annotation(),
-            &self.namespace.type_subst_stack_top(),
+            ty.apply_subst(self),
+            self.type_annotation().apply_subst(self),
             span,
             self.help_text(),
             None,

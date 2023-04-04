@@ -22,7 +22,7 @@
 
 use std::hash::{Hash, Hasher};
 
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     decl_engine::*,
@@ -77,6 +77,16 @@ impl<I> DeclRef<I> {
         }
     }
 
+    pub(crate) fn into_parts(self) -> (Ident, I, SubstList, Span) {
+        let DeclRef {
+            name,
+            id,
+            subst_list,
+            decl_span,
+        } = self;
+        (name, id, subst_list, decl_span)
+    }
+
     pub fn name(&self) -> &Ident {
         &self.name
     }
@@ -95,6 +105,27 @@ impl<I> DeclRef<I> {
 
     pub fn decl_span(&self) -> &Span {
         &self.decl_span
+    }
+
+    pub(crate) fn fold<F, U>(self, f: F) -> U
+    where
+        F: Fn(I, SubstList) -> U,
+    {
+        f(self.id, self.subst_list)
+    }
+}
+
+impl<T> DeclRef<DeclId<T>>
+where
+    T: SubstTypes + Named + Spanned,
+    DeclEngine: DeclEngineGet<DeclId<T>, T>,
+    DeclEngine: DeclEngineInsert<T>,
+{
+    pub(crate) fn relative_copy(&self, engines: Engines<'_>) -> Substituted<T> {
+        let decl_engine = engines.de();
+        self.clone()
+            .fold_subst(engines)
+            .map(|decl_ref| decl_engine.get(decl_ref.id()))
     }
 }
 

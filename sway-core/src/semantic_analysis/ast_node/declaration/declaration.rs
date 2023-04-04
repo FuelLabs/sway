@@ -155,7 +155,7 @@ impl ty::TyDecl {
                                 supertrait.decl_ref = Some(DeclRef::new(
                                     supertrait_name,
                                     supertrait_decl_id,
-                                    supertrait_subst_list.fresh_copy(),
+                                    supertrait_subst_list.unscoped_copy(),
                                     supertrait_decl_span,
                                 ));
                             }
@@ -279,7 +279,7 @@ impl ty::TyDecl {
                                 supertrait.decl_ref = Some(DeclRef::new(
                                     supertrait_name,
                                     supertrait_decl_id,
-                                    supertrait_subst_list.fresh_copy(),
+                                    supertrait_subst_list.unscoped_copy(),
                                     supertrait_decl_span,
                                 ));
                             }

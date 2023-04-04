@@ -12,6 +12,7 @@ impl ty::TyCodeBlock {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
+        let type_engine = ctx.type_engine;
         let decl_engine = ctx.decl_engine;
 
         // Create a temp namespace for checking within the code block scope.
@@ -78,12 +79,12 @@ impl ty::TyCodeBlock {
                         decl_span,
                     }) = never_decl_opt
                     {
-                        return ctx.engines().te().insert(
+                        return type_engine.insert(
                             decl_engine,
                             TypeInfo::Enum(DeclRef::new(
                                 name.clone(),
                                 *decl_id,
-                                subst_list.fresh_copy(),
+                                subst_list.unscoped_copy(),
                                 decl_span.clone(),
                             )),
                         );

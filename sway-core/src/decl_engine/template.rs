@@ -25,10 +25,6 @@ where
     pub(crate) fn inner(&self) -> &T {
         &self.0
     }
-
-    pub(crate) fn fresh_copy(&self) -> T {
-        todo!()
-    }
 }
 
 impl<T> CreateCopy<T> for Template<T>

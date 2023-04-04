@@ -43,6 +43,15 @@ impl SubstList {
         self.list.get(index)
     }
 
+    pub(crate) fn apply_placeholder_types(&mut self, engines: Engines<'_>) {
+        let type_engine = engines.te();
+        let decl_engine = engines.de();
+        self.list.iter_mut().for_each(|type_param| {
+            type_param.type_id =
+                type_engine.insert(decl_engine, TypeInfo::Placeholder(type_param.clone()));
+        });
+    }
+
     pub(crate) fn apply_type_args(&mut self, type_args: &[TypeArgument]) {
         self.list
             .iter_mut()
@@ -96,5 +105,16 @@ impl CreateCopy<SubstList> for SubstList {
 
     fn unscoped_copy(&self) -> Self {
         self.clone()
+    }
+}
+
+impl<T> From<T> for SubstList
+where
+    T: IntoIterator<Item = TypeParameter>,
+{
+    fn from(value: T) -> Self {
+        SubstList {
+            list: value.into_iter().collect(),
+        }
     }
 }

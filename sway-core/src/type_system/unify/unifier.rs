@@ -13,20 +13,14 @@ use super::occurs_check::OccursCheck;
 /// Helper struct to aid in type unification.
 pub(crate) struct Unifier<'a> {
     engines: Engines<'a>,
-    type_subst_stack_top: &'a SubstList,
     help_text: String,
 }
 
 impl<'a> Unifier<'a> {
     /// Creates a new [Unifier].
-    pub(crate) fn new(
-        engines: Engines<'a>,
-        type_subst_stack_top: &'a SubstList,
-        help_text: &str,
-    ) -> Unifier<'a> {
+    pub(crate) fn new(engines: Engines<'a>, help_text: &str) -> Unifier<'a> {
         Unifier {
             engines,
-            type_subst_stack_top,
             help_text: help_text.to_string(),
         }
     }
@@ -88,16 +82,14 @@ impl<'a> Unifier<'a> {
             self.engines.te().slab.get(received.index()),
             self.engines.te().slab.get(expected.index()),
         ) {
-            (TypeParam { index, .. }, _) => self.unify(
-                self.type_subst_stack_top.index(index).unwrap().type_id,
-                expected,
-                span,
-            ),
-            (_, TypeParam { index, .. }) => self.unify(
-                received,
-                self.type_subst_stack_top.index(index).unwrap().type_id,
-                span,
-            ),
+            (TypeParam { .. }, _) => {
+                panic!();
+                // (vec![], vec![])
+            }
+            (_, TypeParam { .. }) => {
+                panic!();
+                // (vec![], vec![])
+            }
 
             // If they have the same `TypeInfo`, then we either compare them for
             // correctness or perform further unification.

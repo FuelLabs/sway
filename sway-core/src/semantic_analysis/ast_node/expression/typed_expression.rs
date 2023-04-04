@@ -53,7 +53,7 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let decl_engine = ctx.decl_engine;
+        let engines = ctx.engines();
 
         let call_path = CallPath {
             prefixes: vec![
@@ -81,7 +81,7 @@ impl ty::TyExpression {
             warnings,
             errors
         );
-        let method = decl_engine.get_function(&decl_ref);
+        let method = decl_ref.relative_copy(engines);
         // check that the number of parameters and the number of the arguments is the same
         check!(
             check_function_arguments_arity(arguments.len(), &method, &call_path, false),
@@ -89,12 +89,13 @@ impl ty::TyExpression {
             warnings,
             errors
         );
-        let return_type = method.return_type;
+        let return_type = &method.inner().return_type;
         let args_and_names = method
+            .inner()
             .parameters
-            .into_iter()
+            .iter()
             .zip(arguments.into_iter())
-            .map(|(param, arg)| (param.name, arg))
+            .map(|(param, arg)| (param.name.clone(), arg))
             .collect::<Vec<(_, _)>>();
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::FunctionApplication {

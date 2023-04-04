@@ -6,25 +6,23 @@ pub(crate) mod declaration;
 pub(crate) mod expression;
 pub(crate) mod module;
 pub(crate) mod node;
+pub(crate) mod type_system;
 
 use std::sync::RwLock;
 
 use hashbrown::HashMap;
-use sway_error::handler::{ErrorEmitted, Handler};
 
-use crate::{language::ty, monomorphize::priv_prelude::*, Engines};
+use crate::{language::ty::*, monomorphize::priv_prelude::*, Engines};
 
 /// Gathers [Constraint]s from a typed AST.
 pub(super) fn gather_constraints(
     engines: Engines<'_>,
-    handler: &Handler,
-    module: &ty::TyModule,
-) -> Result<impl IntoIterator<Item = Constraint>, ErrorEmitted> {
-    let root_namespace = GatherNamespace::init_root(&module.namespace);
+    module: &TyModule,
+) -> impl IntoIterator<Item = Constraint> {
     let constraints = RwLock::new(HashMap::new());
-    let ctx = GatherContext::from_root(&root_namespace, engines, &constraints);
+    let ctx = GatherContext::new(engines, &constraints);
 
-    gather_from_root(ctx, handler, module)?;
+    gather_from_root(ctx, module);
 
-    Ok(constraints.into_inner().unwrap().into_keys())
+    constraints.into_inner().unwrap().into_keys()
 }

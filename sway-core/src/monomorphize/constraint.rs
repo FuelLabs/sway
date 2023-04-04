@@ -6,20 +6,38 @@ use std::{
 use sway_types::Ident;
 
 use crate::{
-    decl_engine::DeclId,
+    decl_engine::{DeclId, DeclRef},
     engine_threading::*,
-    language::{ty, CallPath},
+    language::{ty::*, CallPath},
     type_system::*,
 };
 
 #[derive(Debug, Clone)]
 pub(crate) enum Constraint {
-    /// Type use.
-    Ty(TypeId),
+    /// Function declaration/use.
+    FnDecl {
+        decl_id: DeclId<TyFunctionDecl>,
+        subst_list: SubstList,
+    },
+    /// Struct declaration/use.
+    StructDecl {
+        decl_id: DeclId<TyStructDecl>,
+        subst_list: SubstList,
+    },
+    /// Enum declaration/use.
+    EnumDecl {
+        decl_id: DeclId<TyEnumDecl>,
+        subst_list: SubstList,
+    },
+    /// Trait declaration/use.
+    TraitDecl {
+        decl_id: DeclId<TyTraitDecl>,
+        subst_list: SubstList,
+    },
     /// Function call.
     FnCall {
         call_path: CallPath,
-        decl_id: DeclId<ty::TyFunctionDecl>,
+        decl_id: DeclId<TyFunctionDecl>,
         subst_list: SubstList,
         arguments: Vec<TypeId>,
     },
@@ -27,64 +45,125 @@ pub(crate) enum Constraint {
 
 impl Constraint {
     fn discriminant_value(&self) -> u8 {
+        use Constraint::*;
         match self {
-            Constraint::Ty(_) => 0,
-            Constraint::FnCall { .. } => 1,
+            FnDecl { .. } => 0,
+            StructDecl { .. } => 1,
+            EnumDecl { .. } => 2,
+            TraitDecl { .. } => 3,
+            FnCall { .. } => 4,
+        }
+    }
+
+    pub(super) fn mk_fn_decl(
+        decl_id: &DeclId<TyFunctionDecl>,
+        subst_list: &SubstList,
+    ) -> Constraint {
+        Constraint::FnDecl {
+            decl_id: *decl_id,
+            subst_list: subst_list.clone(),
+        }
+    }
+
+    pub(super) fn mk_struct_decl(
+        decl_id: &DeclId<TyStructDecl>,
+        subst_list: &SubstList,
+    ) -> Constraint {
+        Constraint::StructDecl {
+            decl_id: *decl_id,
+            subst_list: subst_list.clone(),
+        }
+    }
+
+    pub(super) fn mk_enum_decl(decl_id: &DeclId<TyEnumDecl>, subst_list: &SubstList) -> Constraint {
+        Constraint::EnumDecl {
+            decl_id: *decl_id,
+            subst_list: subst_list.clone(),
+        }
+    }
+
+    pub(super) fn mk_trait_decl(
+        decl_id: &DeclId<TyTraitDecl>,
+        subst_list: &SubstList,
+    ) -> Constraint {
+        Constraint::TraitDecl {
+            decl_id: *decl_id,
+            subst_list: subst_list.clone(),
+        }
+    }
+
+    pub(super) fn mk_fn_call(
+        call_path: &CallPath,
+        arguments: &[(Ident, TyExpression)],
+        fn_ref: &DeclRef<DeclId<TyFunctionDecl>>,
+    ) -> Constraint {
+        Constraint::FnCall {
+            call_path: call_path.clone(),
+            decl_id: *fn_ref.id(),
+            subst_list: fn_ref.subst_list().clone(),
+            arguments: args_helper(arguments),
         }
     }
 }
 
-impl From<&TypeId> for Constraint {
-    fn from(value: &TypeId) -> Self {
-        Constraint::Ty(*value)
-    }
-}
-
-impl From<TypeId> for Constraint {
-    fn from(value: TypeId) -> Self {
-        Constraint::Ty(value)
-    }
-}
-
-impl From<&ty::TyExpressionVariant> for Constraint {
-    fn from(value: &ty::TyExpressionVariant) -> Self {
-        match value {
-            ty::TyExpressionVariant::FunctionApplication {
-                call_path,
-                arguments,
-                fn_ref,
-                ..
-            } => Constraint::FnCall {
-                call_path: call_path.clone(),
-                decl_id: *fn_ref.id(),
-                subst_list: fn_ref.subst_list().clone(),
-                arguments: args_helper(arguments),
-            },
-            _ => unimplemented!(),
-        }
-    }
-}
-
-fn args_helper(args: &[(Ident, ty::TyExpression)]) -> Vec<TypeId> {
+fn args_helper(args: &[(Ident, TyExpression)]) -> Vec<TypeId> {
     args.iter().map(|(_, exp)| exp.return_type).collect()
 }
 
 impl EqWithEngines for Constraint {}
 impl PartialEqWithEngines for Constraint {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        use Constraint::*;
         let type_engine = engines.te();
         match (self, other) {
-            (Constraint::Ty(l), Constraint::Ty(r)) => {
-                type_engine.get(*l).eq(&type_engine.get(*r), engines)
-            }
             (
-                Constraint::FnCall {
+                FnDecl {
+                    decl_id: ldi,
+                    subst_list: lsl,
+                },
+                FnDecl {
+                    decl_id: rdi,
+                    subst_list: rsl,
+                },
+            ) => ldi == rdi && lsl.eq(rsl, engines),
+            (
+                StructDecl {
+                    decl_id: ldi,
+                    subst_list: lsl,
+                },
+                StructDecl {
+                    decl_id: rdi,
+                    subst_list: rsl,
+                },
+            ) => ldi == rdi && lsl.eq(rsl, engines),
+            (
+                EnumDecl {
+                    decl_id: ldi,
+                    subst_list: lsl,
+                },
+                EnumDecl {
+                    decl_id: rdi,
+                    subst_list: rsl,
+                },
+            ) => ldi == rdi && lsl.eq(rsl, engines),
+            (
+                TraitDecl {
+                    decl_id: ldi,
+                    subst_list: lsl,
+                },
+                TraitDecl {
+                    decl_id: rdi,
+                    subst_list: rsl,
+                },
+            ) => ldi == rdi && lsl.eq(rsl, engines),
+            (
+                FnCall {
                     call_path: lcp,
                     decl_id: ldi,
                     subst_list: lsl,
                     arguments: la,
                 },
-                Constraint::FnCall {
+                FnCall {
                     call_path: rcp,
                     decl_id: rdi,
                     subst_list: rsl,
@@ -108,13 +187,38 @@ impl PartialEqWithEngines for Constraint {
 
 impl HashWithEngines for Constraint {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        use Constraint::*;
         let type_engine = engines.te();
         match self {
-            Constraint::Ty(type_id) => {
-                state.write_u8(self.discriminant_value());
-                type_engine.get(*type_id).hash(state, engines);
+            FnDecl {
+                decl_id,
+                subst_list,
+            } => {
+                decl_id.hash(state);
+                subst_list.hash(state, engines);
             }
-            Constraint::FnCall {
+            StructDecl {
+                decl_id,
+                subst_list,
+            } => {
+                decl_id.hash(state);
+                subst_list.hash(state, engines);
+            }
+            EnumDecl {
+                decl_id,
+                subst_list,
+            } => {
+                decl_id.hash(state);
+                subst_list.hash(state, engines);
+            }
+            TraitDecl {
+                decl_id,
+                subst_list,
+            } => {
+                decl_id.hash(state);
+                subst_list.hash(state, engines);
+            }
+            FnCall {
                 call_path,
                 decl_id,
                 subst_list,
@@ -134,19 +238,57 @@ impl HashWithEngines for Constraint {
 
 impl OrdWithEngines for Constraint {
     fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
+        use Constraint::*;
         let type_engine = engines.te();
         match (self, other) {
-            (Constraint::Ty(l), Constraint::Ty(r)) => {
-                type_engine.get(*l).cmp(&type_engine.get(*r), engines)
-            }
             (
-                Constraint::FnCall {
+                FnDecl {
+                    decl_id: ldi,
+                    subst_list: lsl,
+                },
+                FnDecl {
+                    decl_id: rdi,
+                    subst_list: rsl,
+                },
+            ) => ldi.cmp(rdi).then_with(|| lsl.cmp(rsl, engines)),
+            (
+                StructDecl {
+                    decl_id: ldi,
+                    subst_list: lsl,
+                },
+                StructDecl {
+                    decl_id: rdi,
+                    subst_list: rsl,
+                },
+            ) => ldi.cmp(rdi).then_with(|| lsl.cmp(rsl, engines)),
+            (
+                EnumDecl {
+                    decl_id: ldi,
+                    subst_list: lsl,
+                },
+                EnumDecl {
+                    decl_id: rdi,
+                    subst_list: rsl,
+                },
+            ) => ldi.cmp(rdi).then_with(|| lsl.cmp(rsl, engines)),
+            (
+                TraitDecl {
+                    decl_id: ldi,
+                    subst_list: lsl,
+                },
+                TraitDecl {
+                    decl_id: rdi,
+                    subst_list: rsl,
+                },
+            ) => ldi.cmp(rdi).then_with(|| lsl.cmp(rsl, engines)),
+            (
+                FnCall {
                     call_path: lcp,
                     decl_id: ldi,
                     subst_list: lsl,
                     arguments: la,
                 },
-                Constraint::FnCall {
+                FnCall {
                     call_path: rcp,
                     decl_id: rdi,
                     subst_list: rsl,

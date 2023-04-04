@@ -111,13 +111,51 @@ impl TypeParameter {
         let mut warnings = vec![];
         let mut errors = vec![];
 
+        let type_engine = ctx.type_engine;
+        let decl_engine = ctx.decl_engine;
+
         let mut new_type_params: Vec<TypeParameter> = vec![];
-        let mut type_subst_list = ctx
+        let mut subst_list = ctx
             .namespace
-            .type_subst_stack_mut()
+            .subst_list_stack_mut()
             .last()
             .cloned()
             .unwrap_or_default();
+
+        // Have these type params point to their counterparts in the parent.
+        for (i, type_param) in subst_list.elems_mut().iter_mut().enumerate() {
+            type_param.type_id = type_engine.insert(
+                decl_engine,
+                TypeInfo::TypeParam {
+                    index: i,
+                    debug_name: type_param.name_ident.clone(),
+                },
+            );
+            // Insert the trait constraints into the namespace.
+            for trait_constraint in type_param.trait_constraints.iter() {
+                check!(
+                    TraitConstraint::insert_into_namespace(
+                        ctx.by_ref(),
+                        type_param.type_id,
+                        trait_constraint
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+            }
+            // Insert the type parameter into the namespace as a dummy type
+            // declaration.
+            ctx.namespace
+                .insert_symbol(
+                    type_param.name_ident.clone(),
+                    ty::TyDecl::GenericTypeForFunctionScope {
+                        name: type_param.name_ident.clone(),
+                        type_id: type_param.type_id,
+                    },
+                )
+                .ok(&mut warnings, &mut errors);
+        }
 
         for type_param in type_params.into_iter() {
             if disallow_trait_constraints && !type_param.trait_constraints.is_empty() {
@@ -127,17 +165,17 @@ impl TypeParameter {
                 return err(vec![], errors);
             }
             let (subst_list_param, body_type_param) = check!(
-                TypeParameter::type_check(ctx.by_ref(), type_param, type_subst_list.len()),
+                TypeParameter::type_check(ctx.by_ref(), type_param, subst_list.len()),
                 continue,
                 warnings,
                 errors
             );
-            type_subst_list.push(subst_list_param);
+            subst_list.push(subst_list_param);
             new_type_params.push(body_type_param);
         }
 
         if errors.is_empty() {
-            ok((new_type_params, type_subst_list), warnings, errors)
+            ok((new_type_params, subst_list), warnings, errors)
         } else {
             err(warnings, errors)
         }

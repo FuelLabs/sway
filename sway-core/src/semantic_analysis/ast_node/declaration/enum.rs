@@ -29,15 +29,15 @@ impl ty::TyEnumDecl {
 
         // Type check the type parameters. This will also insert them into the
         // current namespace.
-        let (new_type_parameters, type_subst_list) = check!(
+        let (new_type_parameters, subst_list) = check!(
             TypeParameter::type_check_type_params(ctx.by_ref(), type_parameters, true),
             return err(warnings, errors),
             warnings,
             errors
         );
         ctx.namespace
-            .type_subst_stack_mut()
-            .push(type_subst_list.clone());
+            .subst_list_stack_mut()
+            .push(subst_list.clone());
 
         // type check the variants
         let mut variants_buf = vec![];
@@ -62,7 +62,7 @@ impl ty::TyEnumDecl {
             attributes,
             visibility,
         };
-        ok((decl, type_subst_list), warnings, errors)
+        ok((decl, subst_list), warnings, errors)
     }
 }
 
