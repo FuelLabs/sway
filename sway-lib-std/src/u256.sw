@@ -478,24 +478,26 @@ impl core::ops::Multiply for U256 {
                     result_d_d.lower,
                 ))
             } else {
+                // note, that `self.a`, `self.b`, `other.a`, `other.b` are all equal to 0
                 let result_c_c = other.c.overflowing_mul(self.c);
                 let result_c_d = self.c.overflowing_mul(other.d);
                 let result_d_c = self.d.overflowing_mul(other.c);
                 let result_d_d = self.d.overflowing_mul(other.d);
 
-                let to_c_1 = result_d_d.upper.overflowing_add(result_c_d.lower);
-                let to_c_2 = to_c_1.lower.overflowing_add(result_d_c.lower);
+                let (mut overflow_of_c_to_b_1, mut c) = result_d_d.upper.overflowing_add(result_c_d.lower).into();
 
-                let to_b_0 = to_c_1.upper.overflowing_add(to_c_2.upper);
+                let (mut overflow_of_c_to_b_2, c) = c.overflowing_add(result_d_c.lower).into();
 
-                let to_b_1 = result_c_c.lower.overflowing_add(result_c_d.upper);
-                let to_b_2 = to_b_1.lower.overflowing_add(result_d_c.upper);
-                let to_b_3 = to_b_2.lower.overflowing_add(to_b_0.lower);
+                let (mut to_b_0_upper, mut to_b_0_lower) = overflow_of_c_to_b_1.overflowing_add(overflow_of_c_to_b_2).into();
+
+                let (mut to_b_1_upper, mut b) = result_c_c.lower.overflowing_add(result_c_d.upper).into();
+                let (mut to_b_2_upper, b) = b.overflowing_add(result_d_c.upper).into();
+                let (mut to_b_3_upper, b) = b.overflowing_add(to_b_0_lower).into();
 
                 U256::from((
-                    result_c_c.upper + to_b_3.upper + to_b_2.upper + to_b_1.upper + to_b_0.upper,
-                    to_b_3.lower,
-                    to_c_2.lower,
+                    result_c_c.upper + to_b_3_upper + to_b_2_upper + to_b_1_upper + to_b_0_upper,
+                    b,
+                    c,
                     result_d_d.lower,
                 ))
             }
