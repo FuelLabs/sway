@@ -2,4 +2,4 @@ category = "fail"
 
 #check: $()impl Alias2 {
 #nextln: $()fn foo() {}
-#nextln: $()Duplicate definitions for the method "foo" for type "type Alias2 = MyStruct1".
+#nextln: $()Duplicate definitions for the method "foo" for type "Alias2".

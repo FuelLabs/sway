@@ -83,15 +83,22 @@ pub fn parse(
         None => parse_in_memory(h, engines, input),
         // When a `BuildConfig` is given,
         // the module source may declare `dep`s that must be parsed from other files.
-        Some(config) => parse_module_tree(h, engines, input, config.canonical_root_module(), None)
-            .map(|(kind, lexed, parsed)| {
-                let lexed = lexed::LexedProgram {
-                    kind: kind.clone(),
-                    root: lexed,
-                };
-                let parsed = parsed::ParseProgram { kind, root: parsed };
-                (lexed, parsed)
-            }),
+        Some(config) => parse_module_tree(
+            h,
+            engines,
+            input,
+            config.canonical_root_module(),
+            None,
+            config.build_target,
+        )
+        .map(|(kind, lexed, parsed)| {
+            let lexed = lexed::LexedProgram {
+                kind: kind.clone(),
+                root: lexed,
+            };
+            let parsed = parsed::ParseProgram { kind, root: parsed };
+            (lexed, parsed)
+        }),
     })
 }
 
@@ -199,6 +206,7 @@ fn parse_submodules(
     module_name: Option<&str>,
     module: &sway_ast::Module,
     module_dir: &Path,
+    build_target: BuildTarget,
 ) -> Submodules {
     // Assume the happy path, so there'll be as many submodules as dependencies, but no more.
     let mut lexed_submods = Vec::with_capacity(module.submodules().count());
@@ -226,6 +234,7 @@ fn parse_submodules(
             submod_str.clone(),
             submod_path.clone(),
             Some(submod.name.as_str()),
+            build_target,
         ) {
             if !matches!(kind, parsed::TreeType::Library) {
                 let span = span::Span::new(submod_str, 0, 0, Some(submod_path)).unwrap();
@@ -259,6 +268,7 @@ fn parse_module_tree(
     src: Arc<str>,
     path: Arc<PathBuf>,
     module_name: Option<&str>,
+    build_target: BuildTarget,
 ) -> Result<(parsed::TreeType, lexed::LexedModule, parsed::ParseModule), ErrorEmitted> {
     // Parse this module first.
     let module_dir = path.parent().expect("module file has no parent directory");
@@ -266,11 +276,18 @@ fn parse_module_tree(
 
     // Parse all submodules before converting to the `ParseTree`.
     // This always recovers on parse errors for the file itself by skipping that file.
-    let submodules = parse_submodules(handler, engines, module_name, &module.value, module_dir);
+    let submodules = parse_submodules(
+        handler,
+        engines,
+        module_name,
+        &module.value,
+        module_dir,
+        build_target,
+    );
 
     // Convert from the raw parsed module to the `ParseTree` ready for type-check.
     let (kind, tree) = to_parsed_lang::convert_parse_tree(
-        &mut to_parsed_lang::Context::default(),
+        &mut to_parsed_lang::Context::new(build_target),
         handler,
         engines,
         module.value.clone(),
