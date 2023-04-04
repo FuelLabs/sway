@@ -36,15 +36,18 @@ pub fn rename(
 
     //------------------------------------------------------
     eprintln!("INITIAL POSITION: {:#?} \n", position);
-    let te = &session.type_engine.read();
-    let de = &session.decl_engine.read();
-    let engines = Engines::new(te, de);
+
+    let te = session.type_engine.read();
+    let de = session.decl_engine.read();
+    let engines = Engines::new(&te, &de);
 
     // Find the parent declaration
     let (decl_ident, decl_token) = session
         .token_map()
         .parent_decl_at_position(&url, position)
         .ok_or(RenameError::TokenNotFound)?;
+
+    eprintln!("DECL IDENT: {:#?} \n", decl_ident);
 
     session
         .token_map()

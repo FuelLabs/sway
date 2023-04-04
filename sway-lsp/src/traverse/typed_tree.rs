@@ -233,7 +233,7 @@ impl<'a> TypedTree<'a> {
                 // impl is registered
                 self.collect_type_id(
                     implementing_for.type_id,
-                    &TypedAstToken::TypedDeclaration(declaration.clone()),
+                    &TypedAstToken::TypedArgument(implementing_for.clone()),
                     implementing_for
                         .call_path_tree
                         .as_ref()
