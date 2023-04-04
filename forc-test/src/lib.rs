@@ -279,56 +279,56 @@ impl<'a> PackageTests {
     ) -> anyhow::Result<TestedPackage> {
         let pkg_with_tests = self.built_pkg_with_tests();
         let tests = test_runners.install(|| {
-        pkg_with_tests
-            .bytecode
-            .entries
-            .par_iter()
-            .filter_map(|entry| entry.kind.test().map(|test| (entry, test)))
-            .map(|(entry, test_entry)| {
-                let offset = u32::try_from(entry.finalized.imm)
-                    .expect("test instruction offset out of range");
-                let name = entry.finalized.fn_name.clone();
-                let test_setup = self.setup()?;
-                let (state, duration, receipts) =
-                    exec_test(&pkg_with_tests.bytecode.bytes, offset, test_setup);
+            pkg_with_tests
+                .bytecode
+                .entries
+                .par_iter()
+                .filter_map(|entry| entry.kind.test().map(|test| (entry, test)))
+                .map(|(entry, test_entry)| {
+                    let offset = u32::try_from(entry.finalized.imm)
+                        .expect("test instruction offset out of range");
+                    let name = entry.finalized.fn_name.clone();
+                    let test_setup = self.setup()?;
+                    let (state, duration, receipts) =
+                        exec_test(&pkg_with_tests.bytecode.bytes, offset, test_setup);
 
-                let gas_used = *receipts
-                    .iter()
-                    .find_map(|receipt| match receipt {
-                        tx::Receipt::ScriptResult { gas_used, .. } => Some(gas_used),
-                        _ => None,
+                    let gas_used = *receipts
+                        .iter()
+                        .find_map(|receipt| match receipt {
+                            tx::Receipt::ScriptResult { gas_used, .. } => Some(gas_used),
+                            _ => None,
+                        })
+                        .ok_or_else(|| {
+                            anyhow::anyhow!("missing used gas information from test execution")
+                        })?;
+
+                    // Only retain `Log` and `LogData` receipts.
+                    let logs = receipts
+                        .into_iter()
+                        .filter(|receipt| {
+                            matches!(receipt, fuel_tx::Receipt::Log { .. })
+                                || matches!(receipt, fuel_tx::Receipt::LogData { .. })
+                        })
+                        .collect();
+
+                    let span = test_entry.span.clone();
+                    let condition = test_entry.pass_condition.clone();
+                    Ok(TestResult {
+                        name,
+                        duration,
+                        span,
+                        state,
+                        condition,
+                        logs,
+                        gas_used,
                     })
-                    .ok_or_else(|| {
-                        anyhow::anyhow!("missing used gas information from test execution")
-                    })?;
-
-                // Only retain `Log` and `LogData` receipts.
-                let logs = receipts
-                    .into_iter()
-                    .filter(|receipt| {
-                        matches!(receipt, fuel_tx::Receipt::Log { .. })
-                            || matches!(receipt, fuel_tx::Receipt::LogData { .. })
-                    })
-                    .collect();
-
-                let span = test_entry.span.clone();
-                let condition = test_entry.pass_condition.clone();
-                Ok(TestResult {
-                    name,
-                    duration,
-                    span,
-                    state,
-                    condition,
-                    logs,
-                    gas_used,
                 })
-            })
-            .collect::<anyhow::Result<_>>()
+                .collect::<anyhow::Result<_>>()
         })?;
 
         let tested_pkg = TestedPackage {
             built: Box::new(pkg_with_tests.clone()),
-            tests 
+            tests,
         };
         Ok(tested_pkg)
     }
