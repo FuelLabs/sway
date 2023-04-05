@@ -252,6 +252,11 @@ std = { path = &quot;../../../sway-lib-std/&quot; }
 [contract-dependencies]
 callee = { path = &quot;../callee&quot; }
 </code></pre>
+<h2 id="running-tests-in-parallel-or-serially"><a class="header" href="#running-tests-in-parallel-or-serially">Running Tests in Parallel or Serially</a></h2>
+<p>By default, all unit tests in your project are run in parallel. Note that this does not lead to any data races in storage because each unit test has its own storage space that is not shared by any other unit test.</p>
+<p>By default, <code>forc test</code> will use all the available threads in your system. To request that a specific number of threads be used, the flag <code>--test-threads &lt;val&gt;</code> can be provided to <code>forc test</code>.</p>
+<pre><code class="language-console">forc test --test-threads 1
+</code></pre>
 
                     </main>
 
