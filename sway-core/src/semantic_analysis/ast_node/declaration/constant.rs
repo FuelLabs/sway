@@ -82,7 +82,10 @@ impl ty::TyConstantDecl {
         // conflict with the type of `expression` (i.e. passes the type checking above).
         let return_type = match type_engine.get(type_ascription.type_id) {
             TypeInfo::UnsignedInteger(_) => type_ascription.type_id,
-            _ => value.as_ref().unwrap().return_type,
+            _ => match &value {
+                Some(value) => value.return_type,
+                None => type_ascription.type_id,
+            },
         };
 
         let mut call_path: CallPath = name.into();

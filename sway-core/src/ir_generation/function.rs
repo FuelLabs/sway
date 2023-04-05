@@ -10,7 +10,7 @@ use crate::{
         compile_constant_expression, compile_constant_expression_to_constant,
     },
     language::{
-        ty::{self, ProjectionKind},
+        ty::{self, ProjectionKind, TyConstantDecl},
         *,
     },
     metadata::MetadataManager,
@@ -25,6 +25,7 @@ use sway_types::{
     ident::Ident,
     span::{Span, Spanned},
     state::StateIndex,
+    Named,
 };
 
 use std::collections::HashMap;
@@ -154,7 +155,7 @@ impl<'eng> FnCompiler<'eng> {
                 }
                 ty::TyDecl::ConstantDecl { decl_id, .. } => {
                     let tcd = self.decl_engine.get_constant(decl_id);
-                    self.compile_const_decl(context, md_mgr, tcd, span_md_idx)?;
+                    self.compile_const_decl(context, md_mgr, &tcd, span_md_idx, false)?;
                     Ok(None)
                 }
                 ty::TyDecl::EnumDecl { decl_id, .. } => {
@@ -296,6 +297,9 @@ impl<'eng> FnCompiler<'eng> {
             }
             ty::TyExpressionVariant::LazyOperator { op, lhs, rhs } => {
                 self.compile_lazy_op(context, md_mgr, op, lhs, rhs, span_md_idx)
+            }
+            ty::TyExpressionVariant::ConstantExpression { const_decl, .. } => {
+                self.compile_const_expr(context, md_mgr, const_decl, span_md_idx)
             }
             ty::TyExpressionVariant::VariableExpression {
                 name, call_path, ..
@@ -1653,6 +1657,27 @@ impl<'eng> FnCompiler<'eng> {
         self.function.get_arg(context, name)
     }
 
+    fn compile_const_expr(
+        &mut self,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        const_decl: &TyConstantDecl,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Result<Value, CompileError> {
+        let result = self.compile_var_expr(
+            context,
+            &Some(const_decl.call_path.clone()),
+            const_decl.name(),
+            span_md_idx,
+        );
+
+        if result.is_ok() {
+            result
+        } else {
+            self.compile_const_decl(context, md_mgr, const_decl, span_md_idx, true)
+        }
+    }
+
     fn compile_var_expr(
         &mut self,
         context: &mut Context,
@@ -1752,9 +1777,10 @@ impl<'eng> FnCompiler<'eng> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_const_decl: ty::TyConstantDecl,
+        ast_const_decl: &ty::TyConstantDecl,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<(), CompileError> {
+        is_const_expression: bool,
+    ) -> Result<Value, CompileError> {
         // This is local to the function, so we add it to the locals, rather than the module
         // globals like other const decls.
         // `is_configurable` should be `false` here.
@@ -1772,49 +1798,58 @@ impl<'eng> FnCompiler<'eng> {
                 self.module,
                 None,
                 Some(self),
-                &call_path,
-                &value,
-                is_configurable,
-            )?;
-            let local_name = self
-                .lexical_map
-                .insert(call_path.suffix.as_str().to_owned());
-            let return_type = convert_resolved_typeid(
-                self.type_engine,
-                self.decl_engine,
-                context,
-                &value.return_type,
-                &value.span,
+                call_path,
+                value,
+                *is_configurable,
             )?;
 
-            // We compile consts the same as vars are compiled. This is because ASM generation
-            // cannot handle
-            //    1. initializing aggregates
-            //    2. get_ptr()
-            // into the data section.
-            let local_var = self
-                .function
-                .new_local_var(context, local_name, return_type, None)
-                .map_err(|ir_error| {
-                    CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
-                })?;
+            if is_const_expression {
+                Ok(const_expr_val)
+            } else {
+                let local_name = self
+                    .lexical_map
+                    .insert(call_path.suffix.as_str().to_owned());
 
-            // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
-            // otherwise use a store.
-            let var_ty = local_var.get_type(context);
-            if ir_type_size_in_bytes(context, &var_ty) > 0 {
-                let local_val = self
-                    .current_block
-                    .ins(context)
-                    .get_local(local_var)
-                    .add_metadatum(context, span_md_idx);
-                self.current_block
-                    .ins(context)
-                    .store(local_val, const_expr_val)
-                    .add_metadatum(context, span_md_idx);
+                let return_type = convert_resolved_typeid(
+                    self.type_engine,
+                    self.decl_engine,
+                    context,
+                    &value.return_type,
+                    &value.span,
+                )?;
+
+                // We compile consts the same as vars are compiled. This is because ASM generation
+                // cannot handle
+                //    1. initializing aggregates
+                //    2. get_ptr()
+                // into the data section.
+                let local_var = self
+                    .function
+                    .new_local_var(context, local_name, return_type, None)
+                    .map_err(|ir_error| {
+                        CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+                    })?;
+
+                // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
+                // otherwise use a store.
+                let var_ty = local_var.get_type(context);
+                Ok(if ir_type_size_in_bytes(context, &var_ty) > 0 {
+                    let local_val = self
+                        .current_block
+                        .ins(context)
+                        .get_local(local_var)
+                        .add_metadatum(context, span_md_idx);
+                    self.current_block
+                        .ins(context)
+                        .store(local_val, const_expr_val)
+                        .add_metadatum(context, span_md_idx)
+                } else {
+                    const_expr_val
+                })
             }
+        } else {
+            unreachable!("cannot compile const declaration without an expression")
         }
-        Ok(())
     }
 
     fn compile_reassignment(
