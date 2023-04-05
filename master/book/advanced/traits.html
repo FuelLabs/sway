@@ -216,6 +216,30 @@ impl MyAbi for Contract {
 </code></pre>
 <p>The implementation of <code>MyAbi</code> for <code>Contract</code> must also implement the <code>ABIsupertrait</code> trait. Methods in <code>ABIsupertrait</code> are not available externally, i.e. they're not actually contract methods, but they can be used in the actual contract methods, as shown in the example above.</p>
 <p>ABI supertraits are intended to make contract implementations compositional, allowing combining orthogonal contract features using, for instance, libraries.</p>
+<h2 id="associated-items"><a class="header" href="#associated-items">Associated Items</a></h2>
+<p>Traits can declare different kinds of associated items in their interface surface:</p>
+<ul>
+<li><a href="#associated-functions">Functions</a></li>
+<li><a href="#associated-constants">Constants</a></li>
+</ul>
+<h3 id="associated-functions"><a class="header" href="#associated-functions">Associated functions</a></h3>
+<p>Associated functions in traits consist of just function signatures. This indicates that each implementation of the trait for a given type must define all the trait functions.</p>
+<pre><code class="language-sway">trait Trait {
+    fn associated_fn(self, b: Self) -&gt; bool;
+}
+</code></pre>
+<h3 id="associated-constants"><a class="header" href="#associated-constants">Associated constants</a></h3>
+<p>Associated constants are constants associated with a type.</p>
+<pre><code class="language-sway">trait Trait {
+    const ID: u32 = 0;
+}
+</code></pre>
+<p>The initializer expression of an <a href="../basic/consts.html#associated-constants">associated constants</a> in a trait definition may be omitted to indicate that each implementation of the <code>trait</code> for a given type must specify an initializer:</p>
+<pre><code class="language-sway">trait Trait {
+    const ID: u32;
+}
+</code></pre>
+<p>Check the <code>associated consts</code> section on <a href="../basic/consts.html">constants</a> page.</p>
 <h2 id="use-cases"><a class="header" href="#use-cases">Use Cases</a></h2>
 <h3 id="custom-types-structs-enums"><a class="header" href="#custom-types-structs-enums">Custom Types (structs, enums)</a></h3>
 <p>Often, libraries and APIs have interfaces that are abstracted over a type that implements a certain trait. It is up to the consumer of the interface to implement that trait for the type they wish to use with the interface. For example, let's take a look at a trait and an interface built off of it.</p>
