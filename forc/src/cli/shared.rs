@@ -58,8 +58,16 @@ pub struct Print {
     #[clap(long)]
     pub ast: bool,
     /// Print the computed Sway DCA graph.
+    /// DCA graph is printed to the specified path.
+    /// If specified '' graph is printed to stdout.
     #[clap(long)]
-    pub dca_graph: bool,
+    pub dca_graph: Option<String>,
+    /// Specifies the url format to be used in the generated dot file.
+    /// Variables {path}, {line} {col} can be used in the provided format.
+    /// An example for vscode would be:
+    ///   "vscode://file/{path}:{line}:{col}"
+    #[clap(long, verbatim_doc_comment)]
+    pub dca_graph_url_format: Option<String>,
     /// Print the finalized ASM.
     ///
     /// This is the state of the ASM with registers allocated and optimisations applied.

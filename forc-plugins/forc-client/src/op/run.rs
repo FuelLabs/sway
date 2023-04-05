@@ -156,7 +156,8 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
         },
         print: pkg::PrintOpts {
             ast: cmd.print.ast,
-            dca_graph: cmd.print.dca_graph,
+            dca_graph: cmd.print.dca_graph.clone(),
+            dca_graph_url_format: cmd.print.dca_graph_url_format.clone(),
             finalized_asm: cmd.print.finalized_asm,
             intermediate_asm: cmd.print.intermediate_asm,
             ir: cmd.print.ir,
