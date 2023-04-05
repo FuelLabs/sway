@@ -107,9 +107,9 @@ Example `Forc.toml` for contract above:
 
 ## Running Tests in Parallel or Serially
 
-By default, tests are run in parallel using threads. Note that each test is assigned their own storage so different tests does not invalidate a shared state by running in parallel.
+By default, all unit tests in your project are run in parallel. Note that this does not lead to any data races in storage because each unit test has its own storage space that is not shared by any other unit test.
 
-`forc` will use necessary number of threads available in your system by default, but it is possible to specify number of threads to utilize by using `--test-threads` flag.
+By default, `forc test` will use all the available threads in your system. To request that a specific number of threads be used, the flag `--test-threads <val>` can be provided to `forc test`.
 
 ```console
 forc test --test-threads 1
