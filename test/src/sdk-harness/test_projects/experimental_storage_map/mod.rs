@@ -8,15 +8,13 @@ abigen!(Contract(
     abi = "test_projects/experimental_storage_map/out/debug/experimental_storage_map-abi.json",
 ));
 
-async fn test_experimental_storage_map_instance() -> TestExperimentalStorageMapContract {
+async fn test_experimental_storage_map_instance(
+) -> TestExperimentalStorageMapContract<WalletUnlocked> {
     let wallet = launch_provider_and_get_wallet().await;
     let id = Contract::deploy(
         "test_projects/experimental_storage_map/out/debug/experimental_storage_map.bin",
         &wallet,
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "test_projects/experimental_storage_map/out/debug/experimental_storage_map-storage_slots.json".to_string(),
-        )),
+        DeployConfiguration::default(),
     )
     .await
     .unwrap();

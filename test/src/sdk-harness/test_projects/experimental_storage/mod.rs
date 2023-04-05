@@ -5,16 +5,12 @@ abigen!(Contract(
     abi = "test_projects/experimental_storage/out/debug/experimental_storage-abi.json",
 ));
 
-async fn test_experimental_storage_instance() -> TestExperimentalStorageContract {
+async fn test_experimental_storage_instance() -> TestExperimentalStorageContract<WalletUnlocked> {
     let wallet = launch_provider_and_get_wallet().await;
     let id = Contract::deploy(
         "test_projects/experimental_storage/out/debug/experimental_storage.bin",
         &wallet,
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "test_projects/experimental_storage/out/debug/experimental_storage-storage_slots.json"
-                .to_string(),
-        )),
+        DeployConfiguration::default(),
     )
     .await
     .unwrap();
