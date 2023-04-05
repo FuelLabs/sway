@@ -48,8 +48,7 @@ pub enum TyDecl {
         decl_span: Span,
     },
     EnumVariantDecl {
-        decl_id: DeclId<TyEnumDecl>,
-        subst_list: Template<SubstList>,
+        enum_ref: DeclRefEnum,
         variant_name: Ident,
         variant_decl_span: Span,
     },
@@ -225,11 +224,11 @@ impl HashWithEngines for TyDecl {
                 decl_engine.get(decl_id).hash(state, engines);
             }
             EnumVariantDecl {
-                decl_id,
+                enum_ref,
                 variant_name,
                 ..
             } => {
-                decl_engine.get(decl_id).hash(state, engines);
+                enum_ref.hash(state, engines);
                 variant_name.hash(state);
             }
             ImplTrait { decl_id, .. } => {
@@ -269,10 +268,10 @@ impl SubstTypes for TyDecl {
             } => decl_id.subst(type_mapping, engines),
             EnumDecl {
                 ref mut decl_id, ..
-            }
-            | EnumVariantDecl {
-                ref mut decl_id, ..
             } => decl_id.subst(type_mapping, engines),
+            EnumVariantDecl {
+                ref mut enum_ref, ..
+            } => enum_ref.subst(type_mapping, engines),
             ImplTrait {
                 ref mut decl_id, ..
             } => decl_id.subst(type_mapping, engines),
@@ -305,10 +304,10 @@ impl ReplaceSelfType for TyDecl {
             } => decl_id.replace_self_type(engines, self_type),
             EnumDecl {
                 ref mut decl_id, ..
-            }
-            | EnumVariantDecl {
-                ref mut decl_id, ..
             } => decl_id.replace_self_type(engines, self_type),
+            EnumVariantDecl {
+                ref mut enum_ref, ..
+            } => enum_ref.replace_self_type(engines, self_type),
             ImplTrait {
                 ref mut decl_id, ..
             } => decl_id.replace_self_type(engines, self_type),
@@ -830,8 +829,8 @@ impl TyDecl {
                 let TyEnumDecl { visibility, .. } = decl_engine.get_enum(decl_id);
                 visibility
             }
-            EnumVariantDecl { decl_id, .. } => {
-                let TyEnumDecl { visibility, .. } = decl_engine.get_enum(decl_id);
+            EnumVariantDecl { enum_ref, .. } => {
+                let TyEnumDecl { visibility, .. } = decl_engine.get_enum(enum_ref.id());
                 visibility
             }
             FunctionDecl { decl_id, .. } => {
