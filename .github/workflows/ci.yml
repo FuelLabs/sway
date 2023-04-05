@@ -406,7 +406,7 @@ jobs:
         cargo-unused-deps-check,
       ]
     if: github.event_name == 'release' && github.event.action == 'published'
-    runs-on: ubuntu-latest
+    runs-on: buildjet-4vcpu-ubuntu-2204
 
     steps:
       - name: Checkout repository
