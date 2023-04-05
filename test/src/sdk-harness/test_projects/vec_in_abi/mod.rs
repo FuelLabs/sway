@@ -6,15 +6,12 @@ abigen!(Contract(
     abi = "test_projects/vec_in_abi/out/debug/vec_in_abi-abi.json"
 ));
 
-async fn get_vec_in_abi_instance() -> (VecInAbiTestContract, ContractId) {
+async fn get_vec_in_abi_instance() -> (VecInAbiTestContract<WalletUnlocked>, ContractId) {
     let wallet = launch_provider_and_get_wallet().await;
     let id = Contract::deploy(
         "test_projects/vec_in_abi/out/debug/vec_in_abi.bin",
         &wallet,
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "test_projects/vec_in_abi/out/debug/vec_in_abi-storage_slots.json".to_string(),
-        )),
+        DeployConfiguration::default(),
     )
     .await
     .unwrap();

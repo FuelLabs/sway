@@ -1,5 +1,6 @@
 use fuel_vm::fuel_crypto::Hasher;
 use fuels::{
+    accounts::{predicate::Predicate, Account},
     prelude::*,
     tx::{field::*, Bytes32, ConsensusParameters, ContractId, Input as TxInput, TxPointer, UtxoId},
 };
@@ -18,7 +19,12 @@ abigen!(
     )
 );
 
-async fn get_contracts() -> (TxContractTest, ContractId, WalletUnlocked, WalletUnlocked) {
+async fn get_contracts() -> (
+    TxContractTest<WalletUnlocked>,
+    ContractId,
+    WalletUnlocked,
+    WalletUnlocked,
+) {
     let mut wallet = WalletUnlocked::new_random(None);
     let mut deployment_wallet = WalletUnlocked::new_random(None);
 
@@ -44,8 +50,7 @@ async fn get_contracts() -> (TxContractTest, ContractId, WalletUnlocked, WalletU
         MESSAGE_DATA.to_vec(),
     );
 
-    let (provider, _address) =
-        setup_test_provider(coins.clone(), messages.clone(), None, None).await;
+    let (provider, _address) = setup_test_provider(coins.clone(), vec![messages], None, None).await;
 
     wallet.set_provider(provider.clone());
     deployment_wallet.set_provider(provider);
@@ -53,8 +58,7 @@ async fn get_contracts() -> (TxContractTest, ContractId, WalletUnlocked, WalletU
     let contract_id = Contract::deploy(
         "test_artifacts/tx_contract/out/debug/tx_contract.bin",
         &deployment_wallet,
-        TxParameters::default(),
-        StorageConfiguration::default(),
+        DeployConfiguration::default(),
     )
     .await
     .unwrap();
@@ -70,11 +74,14 @@ async fn generate_predicate_inputs(
     wallet: &WalletUnlocked,
 ) -> (Vec<u8>, TxInput, TxInput) {
     let predicate =
-        TestPredicate::load_from("test_projects/tx_fields/out/debug/tx_predicate.bin").unwrap();
+        Predicate::load_from("test_projects/tx_fields/out/debug/tx_predicate.bin").unwrap();
+
+    let predicate_code =
+        std::fs::read("test_projects/tx_fields/out/debug/tx_predicate.bin").unwrap();
 
     let predicate_root = predicate.address();
 
-    let provider = wallet.get_provider().unwrap();
+    let provider = wallet.provider().unwrap();
     let balance: u64 = wallet.get_asset_balance(&AssetId::default()).await.unwrap();
 
     assert!(balance >= amount);
@@ -100,7 +107,7 @@ async fn generate_predicate_inputs(
         asset_id: AssetId::from(predicate_coin.asset_id.clone()),
         tx_pointer: TxPointer::default(),
         maturity: 0,
-        predicate: predicate.code().clone(),
+        predicate: predicate_code.clone(),
         predicate_data: vec![],
     };
     let predicate_address: Address = predicate.address().into();
@@ -120,11 +127,11 @@ async fn generate_predicate_inputs(
         amount: message.amount,
         nonce: message.nonce.clone(),
         data: data.clone(),
-        predicate: predicate.code().clone(),
+        predicate: predicate_code.clone(),
         predicate_data: vec![],
     };
 
-    (predicate.code(), predicate_coin, predicate_message)
+    (predicate_code, predicate_coin, predicate_message)
 }
 
 async fn add_message_input(tx: &mut ScriptTransaction, wallet: WalletUnlocked) {
@@ -176,7 +183,7 @@ mod tx {
         let result = contract_instance
             .methods()
             .get_tx_gas_price()
-            .tx_params(TxParameters::new(Some(gas_price), None, None))
+            .tx_params(TxParameters::default().set_gas_price(gas_price))
             .call()
             .await
             .unwrap();
@@ -192,7 +199,7 @@ mod tx {
         let result = contract_instance
             .methods()
             .get_tx_gas_limit()
-            .tx_params(TxParameters::new(None, Some(gas_limit), None))
+            .tx_params(TxParameters::default().set_gas_limit(gas_limit))
             .call()
             .await
             .unwrap();
@@ -257,7 +264,7 @@ mod tx {
         let inputs = tx.inputs();
 
         let receipts = wallet
-            .get_provider()
+            .provider()
             .unwrap()
             .send_transaction(&tx)
             .await
@@ -333,7 +340,7 @@ mod tx {
         let witnesses = tx.witnesses();
 
         let receipts = wallet
-            .get_provider()
+            .provider()
             .unwrap()
             .send_transaction(&tx)
             .await
@@ -410,7 +417,7 @@ mod tx {
         let tx_id = tx.id();
 
         let receipts = wallet
-            .get_provider()
+            .provider()
             .unwrap()
             .send_transaction(&tx)
             .await
@@ -527,7 +534,7 @@ mod inputs {
             tx.tx.inputs_mut().push(predicate_coin);
 
             let receipts = wallet
-                .get_provider()
+                .provider()
                 .unwrap()
                 .send_transaction(&tx)
                 .await
@@ -551,7 +558,7 @@ mod inputs {
                 let message_id: [u8; 32] = *messages[0].message_id();
 
                 let receipts = wallet
-                    .get_provider()
+                    .provider()
                     .unwrap()
                     .send_transaction(&tx)
                     .await
@@ -570,7 +577,7 @@ mod inputs {
 
                 let messages = wallet.get_messages().await?;
                 let receipts = wallet
-                    .get_provider()
+                    .provider()
                     .unwrap()
                     .send_transaction(&tx)
                     .await
@@ -589,7 +596,7 @@ mod inputs {
 
                 let messages = wallet.get_messages().await?;
                 let receipts = wallet
-                    .get_provider()
+                    .provider()
                     .unwrap()
                     .send_transaction(&tx)
                     .await
@@ -607,7 +614,7 @@ mod inputs {
 
                 let messages = wallet.get_messages().await?;
                 let receipts = wallet
-                    .get_provider()
+                    .provider()
                     .unwrap()
                     .send_transaction(&tx)
                     .await
@@ -638,7 +645,7 @@ mod inputs {
                 add_message_input(&mut tx, wallet.clone()).await;
 
                 let receipts = wallet
-                    .get_provider()
+                    .provider()
                     .unwrap()
                     .send_transaction(&tx)
                     .await
@@ -657,7 +664,7 @@ mod inputs {
                 tx.tx.inputs_mut().push(predicate_message);
 
                 let receipts = wallet
-                    .get_provider()
+                    .provider()
                     .unwrap()
                     .send_transaction(&tx)
                     .await
@@ -679,7 +686,7 @@ mod inputs {
                 tx.tx.inputs_mut().push(predicate_message);
 
                 let receipts = wallet
-                    .get_provider()
+                    .provider()
                     .unwrap()
                     .send_transaction(&tx)
                     .await
@@ -699,7 +706,7 @@ mod inputs {
                 add_message_input(&mut tx, wallet.clone()).await;
 
                 let receipts = wallet
-                    .get_provider()
+                    .provider()
                     .unwrap()
                     .send_transaction(&tx)
                     .await
@@ -722,7 +729,7 @@ mod inputs {
                 tx.tx.inputs_mut().push(predicate_message);
 
                 let receipts = wallet
-                    .get_provider()
+                    .provider()
                     .unwrap()
                     .send_transaction(&tx)
                     .await
