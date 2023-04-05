@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()const X;
+# nextln: $()Constant requires expression.
