@@ -1,0 +1,64 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="swaydoc"><meta name="description" content="API documentation for the Sway `option` module in `std`."><meta name="keywords" content="sway, swaylang, sway-lang, option"><link rel="icon" href="../assets/sway-logo.svg"><title>option in std - Sway</title><link rel="stylesheet" type="text/css" href="../assets/normalize.css"><link rel="stylesheet" type="text/css" href="../assets/swaydoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../assets/ayu.css"><link rel="stylesheet" href="../assets/ayu.min.css"></head><body class="swaydoc mod"><nav class="sidebar"><a class="sidebar-logo" href="../index.html"><div class="logo-container"><img class="sway-logo" src="../assets/sway-logo.svg" alt="logo"></div></a><h2 class="location">Module option</h2><div class="sidebar-elems"><section><div class="block"><ul><li><a href="#enums">Enums</a></li></ul></div></section></div></nav><main><div class="width-limiter"><section id="main-content" class="content"><div class="main-heading"><h1 class="fqn"><span class="in-band">Module <a class="mod" href="../index.html">std</a><span>::</span><a class="mod" href="#">option</a></span></h1></div><details class="swaydoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Optional values.</p>
+<p>Type <code>Option</code> represents an optional value: every <code>Option</code><br />
+is either <code>Some</code> and contains a value, or <code>None</code>, and<br />
+does not. <code>Option</code> types are very common in Sway code, as<br />
+they have a number of uses:</p>
+<ul>
+<li>Initial values where <code>None</code> can be used as an initializer.</li>
+<li>Return value for otherwise reporting simple errors, where <code>None</code> is<br />
+returned on error.</li>
+<li>Optional struct fields.</li>
+<li>Optional function arguments.</li>
+</ul>
+<p><code>Option</code>s are commonly paired with pattern matching to query the presence<br />
+of a value and take action, always accounting for the <code>None</code> case.</p>
+<pre><code class="language-sway">fn divide(numerator: u64, denominator: u64) -&gt; Option&lt;u64&gt; {
+    if denominator == 0 {
+        Option::None
+    } else {
+        Option::Some(numerator / denominator)
+    }
+}
+
+fn call_divide() {
+    // The return value of the function is an option
+    let result = divide(6, 2);
+
+    // Pattern match to retrieve the value
+    match result {
+        // The division was valid
+        Option::Some(x) =&gt; std::logging::log(x),
+        // The division was invalid
+        Option::None    =&gt; std::logging::log(&quot;Cannot divide by 0&quot;),
+    }
+}
+</code></pre>
+<h3>Method overview</h3>
+<p>In addition to working with pattern matching, <code>Option</code> provides a wide<br />
+variety of different methods.</p>
+<h3>Querying the variant</h3>
+<p>The <code>is_some</code> and <code>is_none</code> methods return <code>true</code> if the <code>Option</code><br />
+is <code>Some</code> or <code>None</code>, respectively.</p>
+<p><code>is_none</code>: <code>Option::is_none</code><br />
+<code>is_some</code>: <code>Option::is_some</code></p>
+<h3>Extracting the contained value</h3>
+<p>These methods extract the contained value in an <code>Option&lt;T&gt;</code> when it<br />
+is the <code>Some</code> variant. If the <code>Option</code> is <code>None</code>:</p>
+<ul>
+<li><code>unwrap</code> reverts.</li>
+<li><code>unwrap_or</code> returns the provided default value.</li>
+</ul>
+<p><code>unwrap</code>   : <code>Option::unwrap</code><br />
+<code>unwrap_or</code>: <code>Option::unwrap_or</code></p>
+<h3>Transforming contained values</h3>
+<p>These methods transform <code>Option</code> to <code>Result</code>:</p>
+<ul>
+<li><code>ok_or</code> transforms <code>Some(v)</code> to <code>Ok(v)</code>, and <code>None</code> to<br />
+<code>Err(e)</code> using the provided default error value.</li>
+</ul>
+<p><code>Err(e)</code> : <code>Result::Err</code><br />
+<code>Ok(v)</code>  : <code>Result::Ok</code><br />
+<code>Some(v)</code>: <code>Option::Some</code><br />
+<code>ok_or</code>  : <code>Option::ok_or</code></p>
+</div></details><h2 id="enums">Enums</h2><div class="item-table"><div class="item-row"><div class="item-left Enum-item"><a class="enum" href="enum.Option.html">Option</a></div><div class="item-right docblock-short"><p><code>Option</code> is a type that represents an optional value.</p>
+</div></div></div></section></div></main><script src="../assets/highlight.js"></script><script>hljs.highlightAll();</script></body></html>

@@ -1,0 +1,17 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="swaydoc"><meta name="description" content="API documentation for the Sway `assert` function in `assert`."><meta name="keywords" content="sway, swaylang, sway-lang, assert"><link rel="icon" href="../assets/sway-logo.svg"><title>assert in assert - Sway</title><link rel="stylesheet" type="text/css" href="../assets/normalize.css"><link rel="stylesheet" type="text/css" href="../assets/swaydoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../assets/ayu.css"><link rel="stylesheet" href="../assets/ayu.min.css"></head><body class="swaydoc fn"><nav class="sidebar"><a class="sidebar-logo" href="../index.html"><div class="logo-container"><img class="sway-logo" src="../assets/sway-logo.svg" alt="logo"></div></a><h2 class="location">Function assert</h2><div class="sidebar-elems"><section><div class="block"><ul></ul></div></section></div></nav><main><div class="width-limiter"><section id="main-content" class="content"><div class="main-heading"><h1 class="fqn"><span class="in-band">Function <a class="mod" href="../index.html">std</a><span>::</span><a class="mod" href="index.html">assert</a><span>::</span><a class="fn" href="#">assert</a></span></h1></div><div class="docblock item-decl"><pre class="sway fn"><code>pub fn assert(condition: bool) </code></pre></div><details class="swaydoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Asserts that the given <code>condition</code> will always be <code>true</code> during runtime.<br />
+To check for conditions that may not be <code>true</code>, use <code>std::revert::require</code> instead.<br />
+For more information, see the Wiki article on <a href="https://en.wikipedia.org/wiki/Assertion_(software_development)#Comparison_with_error_handling">Assertion</a>.</p>
+<h3>Arguments</h3>
+<ul>
+<li><code>condition</code> - The condition which will be asserted to be <code>true</code>.</li>
+</ul>
+<h3>Reverts</h3>
+<p>Reverts when <code>condition</code> is <code>false</code>.</p>
+<h3>Examples</h3>
+<pre><code class="language-sway">fn foo(a: u64, b: u64) {
+    assert(a == b);
+    // if code execution continues, that means a was equal to b
+    log(&quot;a is equal to b&quot;);
+}
+</code></pre>
+</div></details></section></div></main><script src="../assets/highlight.js"></script><script>hljs.highlightAll();</script></body></html>
