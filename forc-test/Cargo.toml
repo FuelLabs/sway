@@ -15,5 +15,6 @@ fuel-abi-types = "0.2"
 fuel-tx = { workspace = true, features = ["builder"] }
 fuel-vm = { workspace = true, features = ["random"] }
 rand = "0.8"
+rayon = "1.7.0"
 sway-core = { version = "0.36.1", path = "../sway-core" }
 sway-types = { version = "0.36.1", path = "../sway-types" }
