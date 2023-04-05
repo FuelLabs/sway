@@ -33,7 +33,7 @@ pub struct Command {
     /// When specified, only tests containing the given string will be executed.
     pub filter: Option<String>,
     #[clap(long)]
-    /// Number of threads to utilize while running the tests.
+    /// Number of threads to utilize while running the tests. By default, this is the number of logical CPUs on your system.
     pub test_threads: Option<usize>,
 }
 
