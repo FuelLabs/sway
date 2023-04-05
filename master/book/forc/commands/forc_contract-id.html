@@ -154,8 +154,14 @@
 <p><code>--build-profile</code> &lt;<em>BUILD_PROFILE</em>&gt;</p>
 <p>Name of the build profile to use.</p>
 <p>If unspecified, forc will use debug build profile.</p>
-<p><code>--dca-graph</code> </p>
-<p>Print the computed Sway DCA graph</p>
+<p><code>--dca-graph</code> &lt;<em>DCA_GRAPH</em>&gt;</p>
+<p>Print the computed Sway DCA graph. DCA graph is printed to the specified path. If
+specified '' graph is printed to stdout</p>
+<p><code>--dca-graph-url-format</code> &lt;<em>DCA_GRAPH_URL_FORMAT</em>&gt;</p>
+<p>Specifies the url format to be used in the generated dot file.
+Variables {path}, {line} {col} can be used in the provided format.
+An example for vscode would be:
+&quot;vscode://file/{path}:{line}:{col}&quot;</p>
 <p><code>--error-on-warnings</code> </p>
 <p>Treat warnings as errors</p>
 <p><code>--finalized-asm</code> </p>
