@@ -264,11 +264,11 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDecl) -> CompileResult<()> {
             }
         }
         ty::TyDecl::EnumVariantDecl {
-            decl_id,
+            enum_ref,
             variant_name,
             ..
         } => {
-            let enum_decl = decl_engine.get_enum(decl_id);
+            let enum_decl = decl_engine.get_enum(enum_ref.id());
             let variant = check!(
                 enum_decl.expect_variant_from_name(variant_name),
                 return err(warnings, errors),
