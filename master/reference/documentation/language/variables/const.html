@@ -148,7 +148,7 @@
 <p>Constants are similar to <a href="./let.html#immutable">immutable let</a> variables; however, there are a few differences:</p>
 <ul>
 <li>Constants are always evaluated at compile-time</li>
-<li>Constants can be declared both inside of a <a href="../functions/index.html">function</a> and at global scope.</li>
+<li>Constants can be declared both inside of a <a href="../functions/index.html">function</a> and at global/<code>impl</code> scope.</li>
 <li>The <code>mut</code> keyword cannot be used with constants.</li>
 </ul>
 <h2 id="declaration"><a class="header" href="#declaration">Declaration</a></h2>
@@ -156,6 +156,21 @@
 <pre><code class="language-sway">    const FOO = 5;
 </code></pre>
 <p>The example above hardcodes the value of <code>5</code> however function calls may also be used alongside <a href="../built-ins/index.html">built-in types</a>.</p>
+<h2 id="impl-consts"><a class="header" href="#impl-consts"><code>impl</code> consts</a></h2>
+<p>Constants can also be declared inside <code>impl</code> blocks. In this case, the constant is referred to as an associated const.</p>
+<pre><code class="language-sway">struct Point {
+    x: u64,
+    y: u64,
+}
+
+impl Point {
+    const ZERO: Point = Point { x: 0, y: 0 };
+}
+
+fn main() -&gt; u64  {
+    Point::ZERO.x
+}
+</code></pre>
 
                     </main>
 
