@@ -14,7 +14,7 @@ use petgraph::{prelude::NodeIndex, visit::Dfs};
 use std::collections::{BTreeSet, HashMap};
 use sway_error::warning::{CompileWarning, Warning};
 use sway_error::{error::CompileError, type_error::TypeError};
-use sway_types::{constants::ALLOW_DEAD_CODE_NAME, span::Span, Ident, Spanned};
+use sway_types::{constants::ALLOW_DEAD_CODE_NAME, span::Span, Ident, Named, Spanned};
 
 impl<'cfg> ControlFlowGraph<'cfg> {
     pub(crate) fn find_dead_code(&self, decl_engine: &DeclEngine) -> Vec<CompileWarning> {
@@ -434,7 +434,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             } = decl_engine.get_constant(decl_id);
             graph
                 .namespace
-                .insert_constant(call_path.suffix, entry_node);
+                .insert_global_constant(call_path.suffix, entry_node);
             if let Some(value) = &value {
                 connect_expression(
                     engines,
@@ -1204,7 +1204,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 // Variables may refer to global const declarations.
                 Ok(graph
                     .namespace
-                    .get_constant(name)
+                    .get_global_constant(name)
                     .cloned()
                     .map(|node| {
                         for leaf in leaves {
@@ -1214,6 +1214,20 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                     })
                     .unwrap_or_else(|| leaves.to_vec()))
             }
+        }
+        ConstantExpression { const_decl, .. } => {
+            let node = if let Some(node) = graph.namespace.get_global_constant(const_decl.name()) {
+                *node
+            } else if let Some(node) = graph.namespace.get_constant(const_decl) {
+                *node
+            } else {
+                return Ok(leaves.to_vec());
+            };
+
+            for leaf in leaves {
+                graph.add_edge(*leaf, node, "".into());
+            }
+            Ok(vec![node])
         }
         EnumInstantiation {
             enum_ref,

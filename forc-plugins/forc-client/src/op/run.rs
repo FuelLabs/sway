@@ -38,12 +38,13 @@ pub async fn run(command: cmd::Run) -> Result<Vec<RanScript>> {
     };
     let build_opts = build_opts_from_cmd(&command);
     let built_pkgs_with_manifest = built_pkgs_with_manifest(&curr_dir, build_opts)?;
-    for (member_manifest, built_pkg) in built_pkgs_with_manifest {
+    for built in built_pkgs_with_manifest {
+        let member_manifest = built.package_manifest_file();
         if member_manifest
             .check_program_type(vec![TreeType::Script])
             .is_ok()
         {
-            let pkg_receipts = run_pkg(&command, &member_manifest, &built_pkg).await?;
+            let pkg_receipts = run_pkg(&command, member_manifest, built.built_package()).await?;
             receipts.push(pkg_receipts);
         }
     }
@@ -155,7 +156,8 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
         },
         print: pkg::PrintOpts {
             ast: cmd.print.ast,
-            dca_graph: cmd.print.dca_graph,
+            dca_graph: cmd.print.dca_graph.clone(),
+            dca_graph_url_format: cmd.print.dca_graph_url_format.clone(),
             finalized_asm: cmd.print.finalized_asm,
             intermediate_asm: cmd.print.intermediate_asm,
             ir: cmd.print.ir,

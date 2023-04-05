@@ -268,6 +268,22 @@ fn const_eval_typed_expr(
             }
             res
         }
+        ty::TyExpressionVariant::ConstantExpression { const_decl, .. } => {
+            let call_path = &const_decl.call_path;
+            let name = &call_path.suffix;
+
+            match known_consts.get(name) {
+                // 1. Check if name/call_path is in known_consts.
+                Some(cvs) => Some(cvs.clone()),
+                None => {
+                    // 2. Check if name is a global constant.
+                    (lookup.lookup)(lookup, call_path)
+                        .ok()
+                        .flatten()
+                        .and_then(|v| v.get_constant(lookup.context).cloned())
+                }
+            }
+        }
         ty::TyExpressionVariant::VariableExpression {
             name, call_path, ..
         } => match known_consts.get(name) {

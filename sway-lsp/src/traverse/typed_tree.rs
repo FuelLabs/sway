@@ -85,9 +85,11 @@ impl<'a> TypedTree<'a> {
                 }
                 self.handle_expression(&variable.body);
             }
-            ty::TyDecl::ConstantDecl { decl_id, .. } => {
+            ty::TyDecl::ConstantDecl {
+                decl_id, decl_span, ..
+            } => {
                 let const_decl = decl_engine.get_constant(decl_id);
-                self.collect_const_decl(&const_decl);
+                self.collect_const_decl(&const_decl, decl_span);
             }
             ty::TyDecl::FunctionDecl { decl_id, .. } => {
                 let func_decl = decl_engine.get_function(decl_id);
@@ -113,7 +115,7 @@ impl<'a> TypedTree<'a> {
                         }
                         ty::TyTraitInterfaceItem::Constant(decl_ref) => {
                             let constant = decl_engine.get_constant(decl_ref);
-                            self.collect_const_decl(&constant);
+                            self.collect_const_decl(&constant, &decl_ref.span());
                         }
                     }
                 }
@@ -243,7 +245,7 @@ impl<'a> TypedTree<'a> {
                         }
                         ty::TyTraitItem::Constant(const_ref) => {
                             let constant = decl_engine.get_constant(&const_ref);
-                            self.collect_const_decl(&constant);
+                            self.collect_const_decl(&constant, &const_ref.span());
                         }
                     }
                 }
@@ -282,7 +284,7 @@ impl<'a> TypedTree<'a> {
                         }
                         ty::TyTraitInterfaceItem::Constant(const_ref) => {
                             let constant = decl_engine.get_constant(const_ref);
-                            self.collect_const_decl(&constant);
+                            self.collect_const_decl(&constant, &const_ref.span());
                         }
                     }
                 }
@@ -524,6 +526,17 @@ impl<'a> TypedTree<'a> {
             ty::TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {
                 self.handle_expression(lhs);
                 self.handle_expression(rhs);
+            }
+            ty::TyExpressionVariant::ConstantExpression {
+                ref const_decl,
+                span,
+                call_path,
+            } => {
+                self.collect_const_decl(const_decl, span);
+
+                if let Some(call_path) = call_path {
+                    self.collect_call_path_prefixes(&call_path.prefixes);
+                }
             }
             ty::TyExpressionVariant::VariableExpression {
                 ref name,
@@ -1328,11 +1341,11 @@ impl<'a> TypedTree<'a> {
         }
     }
 
-    fn collect_const_decl(&self, const_decl: &ty::TyConstantDecl) {
+    fn collect_const_decl(&self, const_decl: &ty::TyConstantDecl, span: &Span) {
         if let Some(mut token) = self
             .ctx
             .tokens
-            .try_get_mut(&to_ident_key(&const_decl.call_path.suffix))
+            .try_get_mut(&to_ident_key(&Ident::new(span.clone())))
             .try_unwrap()
         {
             token.typed = Some(TypedAstToken::TypedConstantDeclaration(const_decl.clone()));

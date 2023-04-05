@@ -26,6 +26,7 @@ fn expr_validate(engines: Engines<'_>, expr: &ty::TyExpression) -> CompileResult
     let mut warnings: Vec<CompileWarning> = vec![];
     match &expr.expression {
         ty::TyExpressionVariant::Literal(_)
+        | ty::TyExpressionVariant::ConstantExpression { .. }
         | ty::TyExpressionVariant::VariableExpression { .. }
         | ty::TyExpressionVariant::FunctionParameter
         | ty::TyExpressionVariant::AsmExpression { .. }

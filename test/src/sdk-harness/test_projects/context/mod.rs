@@ -17,29 +17,23 @@ abigen!(
 );
 
 async fn get_contracts() -> (
-    TestContextContract,
+    TestContextContract<WalletUnlocked>,
     ContractId,
-    TestContextCallerContract,
+    TestContextCallerContract<WalletUnlocked>,
     ContractId,
 ) {
     let wallet = launch_provider_and_get_wallet().await;
     let id_1 = Contract::deploy(
         "test_projects/context/out/debug/context.bin",
         &wallet,
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "test_projects/context/out/debug/context-storage_slots.json".to_string(),
-        )),
+        DeployConfiguration::default(),
     )
     .await
     .unwrap();
     let id_2 = Contract::deploy(
         "test_artifacts/context_caller_contract/out/debug/context_caller_contract.bin",
         &wallet,
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "test_artifacts/context_caller_contract/out/debug/context_caller_contract-storage_slots.json".to_string(),
-        )),
+        DeployConfiguration::default(),
     )
     .await
     .unwrap();
@@ -66,7 +60,7 @@ async fn can_get_this_balance() {
         .methods()
         .call_receive_coins(send_amount, context_id)
         .set_contracts(&[&context_instance])
-        .tx_params(TxParameters::new(None, Some(1_000_000), None))
+        .tx_params(TxParameters::default().set_gas_limit(1_000_000))
         .call()
         .await
         .unwrap();
@@ -143,7 +137,7 @@ async fn can_get_msg_id() {
         .methods()
         .call_get_asset_id_with_coins(send_amount, context_id)
         .set_contracts(&[&context_instance])
-        .tx_params(TxParameters::new(None, Some(1_000_000), None))
+        .tx_params(TxParameters::default().set_gas_limit(1_000_000))
         .call()
         .await
         .unwrap();
@@ -167,7 +161,7 @@ async fn can_get_msg_gas() {
         .methods()
         .call_get_gas_with_coins(send_amount, context_id)
         .set_contracts(&[&context_instance])
-        .tx_params(TxParameters::new(Some(0), Some(1_000_000), None))
+        .tx_params(TxParameters::default().set_gas_limit(1_000_000))
         .call()
         .await
         .unwrap();
@@ -183,7 +177,7 @@ async fn can_get_global_gas() {
     caller_instance
         .methods()
         .mint_coins(send_amount)
-        .tx_params(TxParameters::new(None, Some(1_000_000), None))
+        .tx_params(TxParameters::default().set_gas_limit(1_000_000))
         .call()
         .await
         .unwrap();
@@ -192,7 +186,7 @@ async fn can_get_global_gas() {
         .methods()
         .call_get_global_gas_with_coins(send_amount, context_id)
         .set_contracts(&[&context_instance])
-        .tx_params(TxParameters::new(None, Some(1_000_000), None))
+        .tx_params(TxParameters::default().set_gas_limit(1_000_000))
         .call()
         .await
         .unwrap();
