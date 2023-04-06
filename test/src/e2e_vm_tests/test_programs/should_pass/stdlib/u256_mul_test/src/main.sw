@@ -28,5 +28,10 @@ fn main() -> bool {
     assert(a_2_61_mul_5.a == (1 << 61) * 5);
     assert(a_2_61_mul_5.b == 0);
 
+    let x = U256::from((0, 0, 6, 10319535557742690304));
+    let sq = x * x;
+    let expected = U256::from((0, 43, 480205198502801427, 2874424729911951360));
+    assert(sq == expected);
+
     true
 }

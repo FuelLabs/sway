@@ -190,7 +190,7 @@ fn item_to_ast_nodes(
         )?)),
         ItemKind::Const(item_const) => decl(Declaration::ConstantDeclaration(
             item_const_to_constant_declaration(
-                context, handler, engines, item_const, attributes, is_root,
+                context, handler, engines, item_const, attributes, true,
             )?,
         )),
         ItemKind::Storage(item_storage) => decl(Declaration::StorageDeclaration(
@@ -590,10 +590,10 @@ fn item_trait_to_trait_declaration(
                     fn_signature_to_trait_fn(context, handler, engines, fn_sig, attributes)
                         .map(TraitItem::TraitFn)
                 }
-                ItemTraitItem::Const(const_decl) => {
-                    item_const_to_const_decl(context, handler, engines, const_decl, attributes)
-                        .map(TraitItem::Constant)
-                }
+                ItemTraitItem::Const(const_decl) => item_const_to_constant_declaration(
+                    context, handler, engines, const_decl, attributes, false,
+                )
+                .map(TraitItem::Constant),
             }?))
         })
         .filter_map_ok(|item| item)
@@ -658,10 +658,10 @@ fn item_impl_to_declaration(
                     item_fn_to_function_declaration(context, handler, engines, fn_item, attributes)
                         .map(ImplItem::Fn)
                 }
-                sway_ast::ItemImplItem::Const(const_item) => {
-                    item_const_to_const_decl(context, handler, engines, const_item, attributes)
-                        .map(ImplItem::Constant)
-                }
+                sway_ast::ItemImplItem::Const(const_item) => item_const_to_constant_declaration(
+                    context, handler, engines, const_item, attributes, true,
+                )
+                .map(ImplItem::Constant),
             }?))
         })
         .filter_map_ok(|item| item)
@@ -769,8 +769,8 @@ fn item_abi_to_abi_declaration(
                             )?;
                             Ok(TraitItem::TraitFn(trait_fn))
                         }
-                        ItemTraitItem::Const(const_decl) => item_const_to_const_decl(
-                            context, handler, engines, const_decl, attributes,
+                        ItemTraitItem::Const(const_decl) => item_const_to_constant_declaration(
+                            context, handler, engines, const_decl, attributes, false,
                         )
                         .map(TraitItem::Constant),
                     }?))
@@ -822,25 +822,34 @@ pub(crate) fn item_const_to_constant_declaration(
     engines: Engines<'_>,
     item_const: ItemConst,
     attributes: AttributesMap,
-    is_root: bool,
+    require_expression: bool,
 ) -> Result<ConstantDeclaration, ErrorEmitted> {
     let span = item_const.span();
-
-    let type_ascription = match item_const.ty_opt {
-        Some((_colon_token, ty)) => ty_to_type_argument(context, handler, engines, ty)?,
-        None => engines.te().insert(engines.de(), TypeInfo::Unknown).into(),
-    };
 
     let expr = match item_const.expr_opt {
         Some(expr) => Some(expr_to_expression(context, handler, engines, expr)?),
         None => {
-            if is_root {
+            if require_expression {
                 let err = ConvertParseTreeError::ConstantRequiresExpression { span: span.clone() };
                 if let Some(errors) = emit_all(handler, vec![err]) {
                     return Err(errors);
                 }
             }
             None
+        }
+    };
+
+    let type_ascription = match item_const.ty_opt {
+        Some((_colon_token, ty)) => ty_to_type_argument(context, handler, engines, ty)?,
+        None => {
+            if expr.is_none() {
+                let err =
+                    ConvertParseTreeError::ConstantRequiresTypeAscription { span: span.clone() };
+                if let Some(errors) = emit_all(handler, vec![err]) {
+                    return Err(errors);
+                }
+            }
+            engines.te().insert(engines.de(), TypeInfo::Unknown).into()
         }
     };
 
@@ -1314,33 +1323,6 @@ fn ty_to_type_argument(
         span,
     };
     Ok(type_argument)
-}
-
-fn item_const_to_const_decl(
-    context: &mut Context,
-    handler: &Handler,
-    engines: Engines<'_>,
-    item: ItemConst,
-    attributes: AttributesMap,
-) -> Result<ConstantDeclaration, ErrorEmitted> {
-    let span = item.name.span();
-    let value = match item.expr_opt {
-        Some(expr) => Some(expr_to_expression(context, handler, engines, expr)?),
-        None => None,
-    };
-    let type_ascription = match item.ty_opt {
-        Some((_, ty)) => ty_to_type_argument(context, handler, engines, ty)?,
-        None => engines.te().insert(engines.de(), TypeInfo::Unknown).into(),
-    };
-    Ok(ConstantDeclaration {
-        name: item.name,
-        type_ascription,
-        value,
-        visibility: Visibility::Public,
-        is_configurable: true,
-        attributes,
-        span,
-    })
 }
 
 fn fn_signature_to_trait_fn(

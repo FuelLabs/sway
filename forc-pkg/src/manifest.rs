@@ -204,7 +204,8 @@ pub struct DependencyDetails {
 #[serde(rename_all = "kebab-case")]
 pub struct BuildProfile {
     pub print_ast: bool,
-    pub print_dca_graph: bool,
+    pub print_dca_graph: Option<String>,
+    pub print_dca_graph_url_format: Option<String>,
     pub print_ir: bool,
     pub print_finalized_asm: bool,
     pub print_intermediate_asm: bool,
@@ -598,7 +599,8 @@ impl BuildProfile {
     pub fn debug() -> Self {
         Self {
             print_ast: false,
-            print_dca_graph: false,
+            print_dca_graph: None,
+            print_dca_graph_url_format: None,
             print_ir: false,
             print_finalized_asm: false,
             print_intermediate_asm: false,
@@ -613,7 +615,8 @@ impl BuildProfile {
     pub fn release() -> Self {
         Self {
             print_ast: false,
-            print_dca_graph: false,
+            print_dca_graph: None,
+            print_dca_graph_url_format: None,
             print_ir: false,
             print_finalized_asm: false,
             print_intermediate_asm: false,

@@ -1,10 +1,8 @@
-use fuel_vm::fuel_types::Bytes64;
-use fuels::{
-    prelude::*,
-    signers::fuel_crypto::{Message, PublicKey, SecretKey, Signature},
-    tx::Bytes32,
-    types::Bits256,
+use fuel_vm::{
+    fuel_crypto::{Message, PublicKey, SecretKey, Signature},
+    fuel_types::Bytes64,
 };
+use fuels::{prelude::*, tx::Bytes32, types::Bits256};
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
 abigen!(Contract(
@@ -13,7 +11,7 @@ abigen!(Contract(
 ));
 
 async fn setup_env() -> Result<(
-    EcRecoverContract,
+    EcRecoverContract<WalletUnlocked>,
     SecretKey,
     PublicKey,
     WalletUnlocked,
@@ -44,8 +42,7 @@ async fn setup_env() -> Result<(
     let contract_id = Contract::deploy(
         "test_projects/ec_recover/out/debug/ec_recover.bin",
         &wallet,
-        TxParameters::default(),
-        StorageConfiguration::default(),
+        DeployConfiguration::default(),
     )
     .await?;
 
