@@ -4,18 +4,18 @@ fn identity<T>(x: T) -> T {
   x
 }
 
-fn two_generics<A, B>(a: A, b: B) -> B {
+fn two_generics<A, B>(_a: A, b: B) -> B {
   b
 }
 
-fn three_generics<A, B, C>(a: A, b: B, c: C) -> B {
+fn three_generics<A, B, C>(a: A, b: B, _c: C) -> B {
   let _a: A = a;
   b
 }
 
 fn main() -> bool {
   let a: bool   = identity(true);
-  let b: u32    = identity(10);
+  let _b: u32    = identity(10);
   let _c: u64    = identity(42);
   let _e: str[3] = identity("foo");
 

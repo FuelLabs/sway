@@ -22,10 +22,17 @@ impl A {
 fn i(_p: u64) {
 }
 
+fn j(ref mut foo: u64) {
+    foo = 42;
+}
+
 fn main() {
     f(42);
     A::g(42);
     let a = A{};
     a.h(42);
-    i(42)
+    i(42);
+
+    let mut foo = 42;
+    j(foo);
 }

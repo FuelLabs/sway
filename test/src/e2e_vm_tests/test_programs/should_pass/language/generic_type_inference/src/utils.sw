@@ -23,7 +23,7 @@ pub trait TryFrom<T> {
 }
 
 impl TryFrom<u64> for u64 {
-    fn try_from(b: u64) -> Option<Self> {
+    fn try_from(_b: u64) -> Option<Self> {
         Option::Some(42)
     }
 }
