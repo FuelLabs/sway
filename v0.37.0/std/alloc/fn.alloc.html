@@ -1,0 +1,27 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="swaydoc"><meta name="description" content="API documentation for the Sway `alloc` function in `alloc`."><meta name="keywords" content="sway, swaylang, sway-lang, alloc"><link rel="icon" href="../assets/sway-logo.svg"><title>alloc in alloc - Sway</title><link rel="stylesheet" type="text/css" href="../assets/normalize.css"><link rel="stylesheet" type="text/css" href="../assets/swaydoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../assets/ayu.css"><link rel="stylesheet" href="../assets/ayu.min.css"></head><body class="swaydoc fn"><nav class="sidebar"><a class="sidebar-logo" href="../index.html"><div class="logo-container"><img class="sway-logo" src="../assets/sway-logo.svg" alt="logo"></div></a><h2 class="location">Function alloc</h2><div class="sidebar-elems"><section><div class="block"><ul></ul></div></section></div></nav><main><div class="width-limiter"><section id="main-content" class="content"><div class="main-heading"><h1 class="fqn"><span class="in-band">Function <a class="mod" href="../index.html">std</a><span>::</span><a class="mod" href="index.html">alloc</a><span>::</span><a class="fn" href="#">alloc</a></span></h1></div><div class="docblock item-decl"><pre class="sway fn"><code>pub fn alloc&lt;T&gt;(count: u64) -&gt; raw_ptr </code></pre></div><details class="swaydoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Allocates zeroed memory on the heap.</p>
+<p>In the FuelVM, the heap begins at <code>VM_MAX_RAM - 1</code> and grows downward.<br />
+The heap pointer, <code>$hp</code>, will always point to unallocated space.</p>
+<p>Initially the heap will look like this:</p>
+<pre><code class="language-sway">... 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
+                                              $hp^  ^VM_MAX_RAM
+</code></pre>
+<p>After allocating with <code>let ptr = alloc::&lt;u64&gt;(1)</code>:</p>
+<pre><code class="language-sway">... 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
+                      $hp^  ^ptr                    ^VM_MAX_RAM
+</code></pre>
+<p>After writing with <code>sw(ptr, u64::max())</code>:</p>
+<pre><code class="language-sway">... 00 00 00 00 00 00 00 00 FF FF FF FF FF FF FF FF |
+                      $hp^  ^ptr                    ^VM_MAX_RAM
+</code></pre>
+<p>For more information, see the Fuel Spec for <a href="https://fuellabs.github.io/fuel-specs/master/vm#vm-initialization">VM Initialization</a><br />
+and the VM Instruction Set for <a href="https://fuellabs.github.io/fuel-specs/master/vm/instruction_set.html#aloc-allocate-memory">Memory Allocation</a>.</p>
+<p>NOTE: See <a href="https://github.com/FuelLabs/fuel-specs/pull/464">https://github.com/FuelLabs/fuel-specs/pull/464</a> and related PRs.  There is an upcoming<br />
+breaking change to the VM which ‘corrects’ the above behaviour to be more intuitive.  Instead of<br />
+<code>$hp</code> pointing to the last byte of free memory it will instead point to the bottom of allocated<br />
+memory.  So it will be initialized to <code>VM_MAX_RAM</code> and after an <code>ALOC</code> it will point directly to<br />
+the new buffer.</p>
+<p>To avoid the need to synchronize the behaviours between this library and the two allocation<br />
+modes, i.e., before and after the breaking change, we allocate 1 extra byte here and still<br />
+return <code>$hp + 1</code>.  So prior to the VM change every allocation will have an unused byte <em>after</em><br />
+the buffer and after the change every allocation will have an unused byte <em>before</em> the buffer.</p>
+</div></details></section></div></main><script src="../assets/highlight.js"></script><script>hljs.highlightAll();</script></body></html>

@@ -1,0 +1,21 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="swaydoc"><meta name="description" content="API documentation for the Sway `mint_to_contract` function in `token`."><meta name="keywords" content="sway, swaylang, sway-lang, mint_to_contract"><link rel="icon" href="../assets/sway-logo.svg"><title>mint_to_contract in token - Sway</title><link rel="stylesheet" type="text/css" href="../assets/normalize.css"><link rel="stylesheet" type="text/css" href="../assets/swaydoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../assets/ayu.css"><link rel="stylesheet" href="../assets/ayu.min.css"></head><body class="swaydoc fn"><nav class="sidebar"><a class="sidebar-logo" href="../index.html"><div class="logo-container"><img class="sway-logo" src="../assets/sway-logo.svg" alt="logo"></div></a><h2 class="location">Function mint_to_contract</h2><div class="sidebar-elems"><section><div class="block"><ul></ul></div></section></div></nav><main><div class="width-limiter"><section id="main-content" class="content"><div class="main-heading"><h1 class="fqn"><span class="in-band">Function <a class="mod" href="../index.html">std</a><span>::</span><a class="mod" href="index.html">token</a><span>::</span><a class="fn" href="#">mint_to_contract</a></span></h1></div><div class="docblock item-decl"><pre class="sway fn"><code>pub fn mint_to_contract(amount: u64, to: ContractId) </code></pre></div><details class="swaydoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Mint <code>amount</code> coins of the current contract’s <code>asset_id</code> and send them<br />
+UNCONDITIONALLY to the contract at <code>to</code>.</p>
+<blockquote>
+<p><strong><em>WARNING:</em></strong></p>
+<p>This will transfer coins to a contract even with no way to retrieve them<br />
+(i.e: no withdrawal functionality on the receiving contract), possibly leading to<br />
+the <strong><em>PERMANENT LOSS OF COINS</em></strong> if not used with care.</p>
+</blockquote>
+<h3>Arguments</h3>
+<ul>
+<li><code>amount</code> - The amount of tokens to mint.</li>
+<li><code>to</code> - The <code>ContractId</code> to which to send the tokens.</li>
+</ul>
+<h3>Examples</h3>
+<pre><code class="language-sway">use std::{constants::ZERO_B256, token::mint_to_contract};
+
+// replace the zero ContractId with your desired ContractId
+let to = ContractId::from(ZERO_B256);
+mint_to_contract(500, to);
+</code></pre>
+</div></details></section></div></main><script src="../assets/highlight.js"></script><script>hljs.highlightAll();</script></body></html>
