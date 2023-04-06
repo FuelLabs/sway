@@ -270,8 +270,8 @@ fn type_check_enum(
                 warnings,
                 errors
             );
-            if let TyDecl::EnumVariantDecl { decl_id, .. } = decl {
-                (call_path.suffix.span(), decl_engine.get_enum(&decl_id))
+            if let TyDecl::EnumVariantDecl { enum_ref, .. } = decl {
+                (call_path.suffix.span(), decl_engine.get_enum(enum_ref.id()))
             } else {
                 errors.push(CompileError::EnumNotFound {
                     name: call_path.suffix.clone(),

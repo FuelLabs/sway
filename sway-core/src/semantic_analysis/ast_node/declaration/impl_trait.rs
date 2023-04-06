@@ -245,6 +245,7 @@ impl ty::TyImplTrait {
         ) -> Result<bool, CompileError> {
             let res = match &expr.expression {
                 ty::TyExpressionVariant::Literal(_)
+                | ty::TyExpressionVariant::ConstantExpression { .. }
                 | ty::TyExpressionVariant::VariableExpression { .. }
                 | ty::TyExpressionVariant::FunctionParameter
                 | ty::TyExpressionVariant::AsmExpression { .. }

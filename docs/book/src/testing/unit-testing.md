@@ -104,3 +104,13 @@ Example `Forc.toml` for contract above:
 ```toml
 {{#include ../../../../examples/multi_contract_calls/caller/Forc.toml:multi_contract_call_toml}}
 ```
+
+## Running Tests in Parallel or Serially
+
+By default, all unit tests in your project are run in parallel. Note that this does not lead to any data races in storage because each unit test has its own storage space that is not shared by any other unit test.
+
+By default, `forc test` will use all the available threads in your system. To request that a specific number of threads be used, the flag `--test-threads <val>` can be provided to `forc test`.
+
+```console
+forc test --test-threads 1
+```
