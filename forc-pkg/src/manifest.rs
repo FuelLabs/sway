@@ -244,32 +244,30 @@ impl PackageManifestFile {
     /// member) to this package manifest.
     ///
     /// If there are conflicting patch declarations from `PackageManifestFile` and
-    /// `WorkspaceManifestFile`, the priority is given to workspace level declarations.
+    /// `WorkspaceManifestFile`, returns an error.
     ///
     /// This checks whether there is such workspace present before attempting to apply patches so
     /// it is safe to use with standalone package manifests as well.
-    pub fn with_workspace_patches(&self) -> Self {
-        let mut workspace_patches = self
+    pub fn with_workspace_patches(&self) -> Result<Self> {
+        let workspace_patches = self
             .workspace()
             .ok()
             .flatten()
             .and_then(|workspace| workspace.patch.clone());
-        let mut package_patches = self.patch.clone().unwrap_or_default();
-        if let Some(workspace_patches) = &mut workspace_patches {
-            package_patches.append(workspace_patches);
-        }
-        let updated_patches = if package_patches.is_empty() {
-            None
-        } else {
-            Some(package_patches)
-        };
-        Self {
+        let package_patches = self.patch.clone();
+        let patch = match (workspace_patches, package_patches) {
+            (Some(_), Some(_)) => bail!("Found [patch] table both in workspace and member package's manifest file. Consider removing [patch] table from package's manifest file."),
+            (Some(workspace_patches), None) => anyhow::Ok(Some(workspace_patches)),
+            (None, Some(pkg_patches)) => anyhow::Ok(Some(pkg_patches)),
+            (None, None) => Ok(None),
+        }?;
+        Ok(Self {
             manifest: PackageManifest {
-                patch: updated_patches,
+                patch,
                 ..self.manifest.clone()
             },
             ..self.clone()
-        }
+        })
     }
 
     /// Read the manifest from the `Forc.toml` in the directory specified by the given `path` or

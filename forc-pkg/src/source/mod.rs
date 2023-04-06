@@ -204,7 +204,7 @@ impl Source {
         manifest: &PackageManifestFile,
         members: &MemberManifestFiles,
     ) -> Result<Self> {
-        let manifest = PackageManifestFile::with_workspace_patches(manifest);
+        let manifest = PackageManifestFile::with_workspace_patches(manifest)?;
         match self.dep_patch(dep_name, &manifest) {
             Some(patch) => Self::from_manifest_dep(manifest.dir(), patch, members),
             None => Ok(self.clone()),
