@@ -887,12 +887,13 @@ fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
     let type_engine = engines.te();
 
     graph.namespace.push_code_block();
-    for (index, fn_param) in fn_decl.parameters.iter().enumerate() {
+    for fn_param in fn_decl.parameters.iter() {
         let fn_param_node = graph.add_node(ControlFlowGraphNode::FunctionParameter {
             param_name: fn_param.name.clone(),
-            is_self: fn_decl.implementing_type.is_some()
-                && index == 0
-                && fn_param.name.as_str() == "self",
+            is_self: matches!(
+                type_engine.get(fn_param.type_argument.initial_type_id),
+                TypeInfo::SelfType
+            ),
         });
         graph.add_edge(entry_node, fn_param_node, "".into());
 
