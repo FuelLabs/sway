@@ -64,6 +64,17 @@ pub fn format_log_receipts(receipts: &[fuel_tx::Receipt], pretty_print: bool) ->
     }
 }
 
+/// Continually go down in the file tree until a specified file is found.
+pub fn find_child_dir_with_file(starter_path: &Path, file_name: &str) -> Option<PathBuf> {
+    use walkdir::WalkDir;
+    WalkDir::new(starter_path)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|entry| entry.file_name().to_string_lossy() == file_name)
+        .map(|entry| PathBuf::from(entry.path()))
+        .next()
+}
+
 /// Continually go up in the file tree until a specified file is found.
 #[allow(clippy::branches_sharing_code)]
 pub fn find_parent_dir_with_file(starter_path: &Path, file_name: &str) -> Option<PathBuf> {

@@ -10,7 +10,7 @@ use std::{
 };
 
 use sway_core::{fuel_prelude::fuel_tx, language::parsed::TreeType, parse_tree_type, BuildTarget};
-use sway_utils::constants;
+use sway_utils::{constants, MANIFEST_FILE_NAME};
 
 /// The name of a workspace member package.
 pub type MemberName = String;
@@ -272,6 +272,11 @@ impl PackageManifestFile {
                 "failed to validate path from entry field {:?} in Forc manifest file.",
                 self.project.entry
             )
+        }
+        // Check for nested packages
+        if let Some(nested_package) = forc_util::find_child_dir_with_file(path, MANIFEST_FILE_NAME)
+        {
+            bail!("Nested packages are not supported, please consider seperating the nested package at {} from the current one, or if it makes sense consider creating a workspace.", nested_package.display())
         }
         Ok(())
     }
