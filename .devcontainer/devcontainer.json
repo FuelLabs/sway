@@ -5,8 +5,6 @@
         "ghcr.io/FuelLabs/devcontainer-features/fuelup:1.0.1": {},
         "ghcr.io/devcontainers/features/rust:1": {},
     },
-    "remoteUser": "codespace",
-    "containerUser": "codespace",
     "customizations": {
         "vscode": {
             "extensions": [
