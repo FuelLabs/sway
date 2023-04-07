@@ -132,9 +132,6 @@ impl Session {
         // It will be unlocked when the mutex goes out of scope.
         let _ = self.parse_mutex.lock();
 
-        self.token_map.clear();
-        self.runnables.clear();
-
         let manifest_dir = PathBuf::from(uri.path());
         let locked = false;
         let offline = false;
@@ -168,14 +165,31 @@ impl Session {
             errors: vec![],
         };
 
-        *self.type_engine.write() = <_>::default();
-        *self.decl_engine.write() = <_>::default();
-        let type_engine = &*self.type_engine.read();
-        let decl_engine = &*self.decl_engine.read();
-        let engines = Engines::new(type_engine, decl_engine);
+        let new_type_engine = TypeEngine::default();
+        let new_decl_engine = DeclEngine::default();
         let tests_enabled = true;
-        let results = pkg::check(&plan, BuildTarget::default(), true, tests_enabled, engines)
-            .map_err(LanguageServerError::FailedToCompile)?;
+
+        let results = pkg::check(
+            &plan,
+            BuildTarget::default(),
+            true,
+            tests_enabled,
+            Engines::new(&new_type_engine, &new_decl_engine),
+        )
+        .map_err(LanguageServerError::FailedToCompile)?;
+
+        // Acquire locks for the engines before clearing anything.
+        let mut type_engine = self.type_engine.write();
+        let mut decl_engine = self.decl_engine.write();
+
+        // Update the engines with the new data.
+        *type_engine = new_type_engine;
+        *decl_engine = new_decl_engine;
+
+        // Clear other data stores.
+        self.token_map.clear();
+        self.runnables.clear();
+
         let results_len = results.len();
         for (i, res) in results.into_iter().enumerate() {
             // We can convert these destructured elements to a Vec<Diagnostic> later on.
@@ -196,7 +210,7 @@ impl Session {
 
             let ast_res = CompileResult::new(typed, warnings, errors);
             let typed_program = self.compile_res_to_typed_program(&ast_res)?;
-            let ctx = ParseContext::new(&self.token_map, engines);
+            let ctx = ParseContext::new(&self.token_map, Engines::new(&type_engine, &decl_engine));
 
             // The final element in the results is the main program.
             if i == results_len - 1 {
@@ -209,7 +223,7 @@ impl Session {
                 self.parse_ast_to_tokens(&parsed, &ctx, |an, _ctx| parsed_tree.traverse_node(an));
 
                 // Finally, create runnables and populate our token_map with typed ast nodes.
-                self.create_runnables(typed_program);
+                self.create_runnables(typed_program, &decl_engine);
 
                 let typed_tree = TypedTree::new(&ctx, &typed_program.root.namespace);
                 typed_tree.collect_module_spans(typed_program);
@@ -451,9 +465,8 @@ impl Session {
     }
 
     /// Create runnables if the `TyProgramKind` of the `TyProgram` is a script.
-    fn create_runnables(&self, typed_program: &ty::TyProgram) {
+    fn create_runnables(&self, typed_program: &ty::TyProgram, decl_engine: &DeclEngine) {
         // Insert runnable test functions.
-        let decl_engine = &self.decl_engine.read();
         for (decl, _) in typed_program.test_fns(decl_engine) {
             // Get the span of the first attribute if it exists, otherwise use the span of the function name.
             let span = decl
