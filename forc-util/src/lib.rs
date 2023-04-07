@@ -64,15 +64,19 @@ pub fn format_log_receipts(receipts: &[fuel_tx::Receipt], pretty_print: bool) ->
     }
 }
 
-/// Continually go down in the file tree until a specified file is found.
-pub fn find_child_dir_with_file(starter_path: &Path, file_name: &str) -> Option<PathBuf> {
+/// Continually go down in the file tree until a Forc manifest file is found.
+pub fn find_manifest_dir_in_child(starter_path: &Path) -> Option<PathBuf> {
     use walkdir::WalkDir;
     WalkDir::new(starter_path)
         .into_iter()
         .filter_map(|e| e.ok())
-        .filter(|entry| entry.file_name().to_string_lossy() == file_name)
-        .map(|entry| PathBuf::from(entry.path()))
-        .next()
+        .filter(|entry| entry.file_name().to_string_lossy() == constants::MANIFEST_FILE_NAME)
+        .map(|entry| {
+            let mut entry = entry.path().to_path_buf();
+            entry.pop();
+            entry
+        })
+        .nth(1)
 }
 
 /// Continually go up in the file tree until a specified file is found.
@@ -93,22 +97,22 @@ pub fn find_parent_dir_with_file(starter_path: &Path, file_name: &str) -> Option
     None
 }
 /// Continually go up in the file tree until a Forc manifest file is found.
-pub fn find_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
+pub fn find_manifest_dir_in_parent(starter_path: &Path) -> Option<PathBuf> {
     find_parent_dir_with_file(starter_path, constants::MANIFEST_FILE_NAME)
 }
 
 /// Continually go up in the file tree until a Forc manifest file is found and given predicate
 /// returns true.
-pub fn find_manifest_dir_with_check<F>(starter_path: &Path, f: F) -> Option<PathBuf>
+pub fn find_manifest_dir_in_parent_with_check<F>(starter_path: &Path, f: F) -> Option<PathBuf>
 where
     F: Fn(&Path) -> bool,
 {
-    find_manifest_dir(starter_path).and_then(|manifest_dir| {
+    find_manifest_dir_in_parent(starter_path).and_then(|manifest_dir| {
         // If given check satisifies return current dir otherwise start searching from the parent.
         if f(&manifest_dir) {
             Some(manifest_dir)
         } else if let Some(parent_dir) = manifest_dir.parent() {
-            find_manifest_dir_with_check(parent_dir, f)
+            find_manifest_dir_in_parent_with_check(parent_dir, f)
         } else {
             None
         }

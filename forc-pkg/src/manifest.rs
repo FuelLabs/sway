@@ -1,7 +1,7 @@
 use crate::pkg::{manifest_file_missing, parsing_failed, wrong_program_type};
 use anyhow::{anyhow, bail, Context, Result};
 use forc_tracing::println_yellow_err;
-use forc_util::{find_manifest_dir, validate_name};
+use forc_util::{find_manifest_dir_in_child, find_manifest_dir_in_parent, validate_name};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, HashMap},
@@ -10,7 +10,7 @@ use std::{
 };
 
 use sway_core::{fuel_prelude::fuel_tx, language::parsed::TreeType, parse_tree_type, BuildTarget};
-use sway_utils::{constants, MANIFEST_FILE_NAME};
+use sway_utils::constants;
 
 /// The name of a workspace member package.
 pub type MemberName = String;
@@ -249,7 +249,7 @@ impl PackageManifestFile {
     /// This is short for `PackageManifest::from_file`, but takes care of constructing the path to the
     /// file.
     pub fn from_dir(manifest_dir: &Path) -> Result<Self> {
-        let dir = forc_util::find_manifest_dir(manifest_dir)
+        let dir = forc_util::find_manifest_dir_in_parent(manifest_dir)
             .ok_or_else(|| manifest_file_missing(manifest_dir))?;
         let path = dir.join(constants::MANIFEST_FILE_NAME);
         Self::from_file(path)
@@ -273,10 +273,17 @@ impl PackageManifestFile {
                 self.project.entry
             )
         }
-        // Check for nested packages
-        if let Some(nested_package) = forc_util::find_child_dir_with_file(path, MANIFEST_FILE_NAME)
-        {
-            bail!("Nested packages are not supported, please consider seperating the nested package at {} from the current one, or if it makes sense consider creating a workspace.", nested_package.display())
+
+        // Check for nested packages.
+        //
+        // `path` is the path to manifest file. To start nested package search we need to start
+        // from manifest's directory. So, last part of the path (the filename, "/forc.toml") needs
+        // to be removed.
+        let mut pkg_dir = path.to_path_buf();
+        pkg_dir.pop();
+        if let Some(nested_package) = find_manifest_dir_in_child(&pkg_dir) {
+            // remove file name from nested_package_manifest
+            bail!("Nested packages are not supported, please consider seperating the nested package at {} from the package at {}, or if it makes sense consider creating a workspace.", nested_package.display(), pkg_dir.display())
         }
         Ok(())
     }
@@ -455,7 +462,8 @@ impl PackageManifest {
     /// This is short for `PackageManifest::from_file`, but takes care of constructing the path to the
     /// file.
     pub fn from_dir(dir: &Path) -> Result<Self> {
-        let manifest_dir = find_manifest_dir(dir).ok_or_else(|| manifest_file_missing(dir))?;
+        let manifest_dir =
+            find_manifest_dir_in_parent(dir).ok_or_else(|| manifest_file_missing(dir))?;
         let file_path = manifest_dir.join(constants::MANIFEST_FILE_NAME);
         Self::from_file(&file_path)
     }
@@ -739,23 +747,26 @@ impl WorkspaceManifestFile {
     /// This is short for `PackageManifest::from_file`, but takes care of constructing the path to the
     /// file.
     pub fn from_dir(manifest_dir: &Path) -> Result<Self> {
-        let dir = forc_util::find_manifest_dir_with_check(manifest_dir, |possible_manifest_dir| {
-            // Check if the found manifest file is a workspace manifest file or a standalone
-            // package manifest file.
-            let possible_path = possible_manifest_dir.join(constants::MANIFEST_FILE_NAME);
-            // We should not continue to search if the given manifest is a workspace manifest with
-            // some issues.
-            //
-            // If the error is missing field `workspace` (which happens when trying to read a
-            // package manifest as a workspace manifest), look into the parent directories for a
-            // legitimate workspace manifest. If the error returned is something else this is a
-            // workspace manifest with errors, classify this as a workspace manifest but with
-            // errors so that the erros will be displayed to the user.
-            Self::from_file(possible_path)
-                .err()
-                .map(|e| !e.to_string().contains("missing field `workspace`"))
-                .unwrap_or_else(|| true)
-        })
+        let dir = forc_util::find_manifest_dir_in_parent_with_check(
+            manifest_dir,
+            |possible_manifest_dir| {
+                // Check if the found manifest file is a workspace manifest file or a standalone
+                // package manifest file.
+                let possible_path = possible_manifest_dir.join(constants::MANIFEST_FILE_NAME);
+                // We should not continue to search if the given manifest is a workspace manifest with
+                // some issues.
+                //
+                // If the error is missing field `workspace` (which happens when trying to read a
+                // package manifest as a workspace manifest), look into the parent directories for a
+                // legitimate workspace manifest. If the error returned is something else this is a
+                // workspace manifest with errors, classify this as a workspace manifest but with
+                // errors so that the erros will be displayed to the user.
+                Self::from_file(possible_path)
+                    .err()
+                    .map(|e| !e.to_string().contains("missing field `workspace`"))
+                    .unwrap_or_else(|| true)
+            },
+        )
         .ok_or_else(|| manifest_file_missing(manifest_dir))?;
         let path = dir.join(constants::MANIFEST_FILE_NAME);
         Self::from_file(path)
