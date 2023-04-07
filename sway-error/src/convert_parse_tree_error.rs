@@ -115,6 +115,10 @@ pub enum ConvertParseTreeError {
     InvalidCfgTargetArgValue { span: Span, value: String },
     #[error("Expected a value for the target argument")]
     ExpectedCfgTargetArgValue { span: Span },
+    #[error("Invalid value \"{value}\"")]
+    InvalidCfgProgramTypeArgValue { span: Span, value: String },
+    #[error("Expected a value for the program_type argument")]
+    ExpectedCfgProgramTypeArgValue { span: Span },
 }
 
 impl Spanned for ConvertParseTreeError {
@@ -176,6 +180,8 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::ConstantRequiresTypeAscription { span } => span.clone(),
             ConvertParseTreeError::InvalidCfgTargetArgValue { span, .. } => span.clone(),
             ConvertParseTreeError::ExpectedCfgTargetArgValue { span } => span.clone(),
+            ConvertParseTreeError::InvalidCfgProgramTypeArgValue { span, .. } => span.clone(),
+            ConvertParseTreeError::ExpectedCfgProgramTypeArgValue { span } => span.clone(),
         }
     }
 }

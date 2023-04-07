@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()#[cfg(program_type = "scriptz")]
+# nextln: $()Invalid value ""scriptz""
