@@ -259,7 +259,7 @@ impl PackageManifestFile {
     ///
     /// This checks:
     /// 1. Validity of the underlying `PackageManifet`.
-    /// 2. If given entry point exists.
+    /// 2. Existence of the entry file. 
     pub fn validate(&self) -> Result<()> {
         self.manifest.validate()?;
         let mut entry_path = self.path.clone();
