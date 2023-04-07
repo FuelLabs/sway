@@ -19,6 +19,7 @@ use std::{
     sync::Arc,
 };
 use sway_types::{Ident, Spanned};
+use tokio::task;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{jsonrpc, Client, LanguageServer};
 use tracing::metadata::LevelFilter;
@@ -62,23 +63,30 @@ impl Backend {
     }
 
     async fn parse_project(&self, uri: Url, workspace_uri: Url, session: Arc<Session>) {
-        // pass in the temp Url into parse_project, we can now get the updated AST's back.
-        let diagnostics = match session.parse_project(&uri) {
-            Ok(diagnostics) => diagnostics,
-            Err(err) => {
-                tracing::error!("{}", err.to_string().as_str());
-                if let LanguageServerError::FailedToParse { diagnostics } = err {
-                    diagnostics
-                } else {
-                    Diagnostics {
-                        warnings: vec![],
-                        errors: vec![],
+        let uri_clone = uri.clone();
+        let session_clone = session.clone();
+        // Run parse_project in a blocking thread, because parsing is not async.
+        let diagnostics = task::spawn_blocking(move || {
+            // Pass in the temp Url into parse_project, we can now get the updated AST's back.
+            match session_clone.parse_project(&uri_clone) {
+                Ok(diagnostics) => Some(diagnostics),
+                Err(err) => {
+                    tracing::error!("{}", err.to_string().as_str());
+                    if let LanguageServerError::FailedToParse { diagnostics } = err {
+                        Some(diagnostics)
+                    } else {
+                        None
                     }
                 }
             }
-        };
-        self.publish_diagnostics(&uri, &workspace_uri, session, diagnostics)
-            .await;
+        })
+        .await
+        .unwrap_or_default();
+
+        if let Some(diagnostics) = diagnostics {
+            self.publish_diagnostics(&uri, &workspace_uri, session, diagnostics)
+                .await;
+        }
     }
 }
 

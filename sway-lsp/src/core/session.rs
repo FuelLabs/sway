@@ -20,7 +20,13 @@ use dashmap::DashMap;
 use forc_pkg as pkg;
 use parking_lot::RwLock;
 use pkg::{manifest::ManifestFile, Programs};
-use std::{fs::File, io::Write, path::PathBuf, sync::Arc, vec};
+use std::{
+    fs::File,
+    io::Write,
+    path::PathBuf,
+    sync::{Arc, Mutex},
+    vec,
+};
 use sway_core::{
     decl_engine::DeclEngine,
     language::{
@@ -32,6 +38,7 @@ use sway_core::{
 };
 use sway_types::{Span, Spanned};
 use sway_utils::helpers::get_sway_files;
+use tokio::sync::Semaphore;
 use tower_lsp::lsp_types::{
     CompletionItem, GotoDefinitionResponse, Location, Position, Range, SymbolInformation,
     TextDocumentContentChangeEvent, TextEdit, Url,
@@ -60,6 +67,10 @@ pub struct Session {
     pub type_engine: RwLock<TypeEngine>,
     pub decl_engine: RwLock<DeclEngine>,
     pub sync: SyncWorkspace,
+    // Mutex to prevent multiple threads from parsing the project at the same time.
+    parse_mutex: Arc<Mutex<()>>,
+    // Limit the number of threads that can wait to parse at the same time.
+    parse_permits: Arc<Semaphore>,
 }
 
 impl Session {
@@ -72,6 +83,8 @@ impl Session {
             type_engine: <_>::default(),
             decl_engine: <_>::default(),
             sync: SyncWorkspace::new(),
+            parse_mutex: Arc::new(Mutex::new(())),
+            parse_permits: Arc::new(Semaphore::new(2)),
         }
     }
 
@@ -109,6 +122,16 @@ impl Session {
     }
 
     pub fn parse_project(&self, uri: &Url) -> Result<Diagnostics, LanguageServerError> {
+        // Acquire a permit to parse the project. If there are none available, exit early.
+        let _permit = self
+            .parse_permits
+            .try_acquire()
+            .map_err(|_| LanguageServerError::AlreadyParsing)?;
+
+        // Lock the mutex to prevent multiple threads from parsing the project at the same time.
+        // It will be unlocked when the mutex goes out of scope.
+        let _ = self.parse_mutex.lock();
+
         self.token_map.clear();
         self.runnables.clear();
 
