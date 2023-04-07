@@ -114,8 +114,8 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
             // noisy logs from dependencies. To get all logs, use `RUST_LOG=trace`.
             let env_log_level = env::var("RUST_LOG").unwrap_or(LevelFilter::INFO.to_string());
             EnvFilter::builder().parse_lossy(format!(
-                "{},forc={},sway={}",
-                env_log_level, level_filter, level_filter
+                "{},forc={},sway={},test={}",
+                env_log_level, level_filter, level_filter, level_filter
             ))
         })
         .unwrap_or_else(|| EnvFilter::builder().from_env_lossy());
