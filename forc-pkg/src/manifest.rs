@@ -238,7 +238,9 @@ impl PackageManifestFile {
     pub fn from_file(path: PathBuf) -> Result<Self> {
         let path = path.canonicalize()?;
         let manifest = PackageManifest::from_file(&path)?;
-        Ok(Self { manifest, path })
+        let manifest_file = Self { manifest, path };
+        manifest_file.validate()?;
+        Ok(manifest_file)
     }
 
     /// Read the manifest from the `Forc.toml` in the directory specified by the given `path` or
@@ -253,13 +255,14 @@ impl PackageManifestFile {
         Self::from_file(path)
     }
 
-    /// Validate the `PackageManifest`.
+    /// Validate the `PackageManifestFile`.
     ///
-    /// This checks the project and organization names against a set of reserved/restricted
-    /// keywords and patterns, and if a given entry point exists.
-    pub fn validate(&self, path: &Path) -> Result<()> {
+    /// This checks:
+    /// 1. Validity of the underlying `PackageManifet`.
+    /// 2. If given entry point exists.
+    pub fn validate(&self) -> Result<()> {
         self.manifest.validate()?;
-        let mut entry_path = path.to_path_buf();
+        let mut entry_path = self.path.clone();
         entry_path.pop();
         let entry_path = entry_path
             .join(constants::SRC_DIR)
