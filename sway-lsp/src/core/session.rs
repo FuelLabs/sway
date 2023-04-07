@@ -190,6 +190,10 @@ impl Session {
         self.token_map.clear();
         self.runnables.clear();
 
+        // Create context with write guards to make readers wait until the update to token_map is complete.
+        // This operation is fast because we already have the compile results.
+        let ctx = ParseContext::new(&self.token_map, Engines::new(&type_engine, &decl_engine));
+
         let results_len = results.len();
         for (i, res) in results.into_iter().enumerate() {
             // We can convert these destructured elements to a Vec<Diagnostic> later on.
@@ -210,7 +214,6 @@ impl Session {
 
             let ast_res = CompileResult::new(typed, warnings, errors);
             let typed_program = self.compile_res_to_typed_program(&ast_res)?;
-            let ctx = ParseContext::new(&self.token_map, Engines::new(&type_engine, &decl_engine));
 
             // The final element in the results is the main program.
             if i == results_len - 1 {
