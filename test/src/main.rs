@@ -3,7 +3,7 @@ mod ir_generation;
 
 use anyhow::Result;
 use clap::Parser;
-use forc_tracing::init_tracing_subscriber;
+use forc_tracing::{init_tracing_subscriber, TracingSubscriberOptions};
 use std::str::FromStr;
 use sway_core::BuildTarget;
 use tracing::Instrument;
@@ -66,7 +66,10 @@ pub struct RunConfig {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    init_tracing_subscriber(Default::default());
+    init_tracing_subscriber(TracingSubscriberOptions {
+        ansi: Some(true),
+        ..Default::default()
+    });
 
     // Parse args
     let cli = Cli::parse();

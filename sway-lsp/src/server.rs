@@ -206,6 +206,7 @@ impl LanguageServer for Backend {
             let tracing_options = TracingSubscriberOptions {
                 log_level: Some(config.logging.level),
                 writer_mode: Some(TracingWriterMode::Stderr),
+                display_time: Some(true),
                 ..Default::default()
             };
             init_tracing_subscriber(tracing_options);

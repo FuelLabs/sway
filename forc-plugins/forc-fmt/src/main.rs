@@ -13,7 +13,7 @@ use std::{
 use taplo::formatter as taplo_fmt;
 use tracing::{error, info};
 
-use forc_tracing::{init_tracing_subscriber, println_green, println_red};
+use forc_tracing::{init_tracing_subscriber, println_green, println_red, TracingSubscriberOptions};
 use forc_util::{find_manifest_dir, is_sway_file};
 use sway_core::{BuildConfig, BuildTarget};
 use sway_utils::{constants, get_sway_files};
@@ -41,7 +41,10 @@ pub struct App {
 }
 
 fn main() {
-    init_tracing_subscriber(Default::default());
+    init_tracing_subscriber(TracingSubscriberOptions {
+        ansi: Some(true),
+        ..Default::default()
+    });
     if let Err(err) = run() {
         error!("Error: {:?}", err);
         std::process::exit(1);
