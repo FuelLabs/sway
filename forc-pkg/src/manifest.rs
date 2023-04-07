@@ -1,7 +1,7 @@
 use crate::pkg::{manifest_file_missing, parsing_failed, wrong_program_type};
 use anyhow::{anyhow, bail, Context, Result};
 use forc_tracing::println_yellow_err;
-use forc_util::{find_manifest_dir_in_child, find_manifest_dir_in_parent, validate_name};
+use forc_util::{find_manifest_dir_in_parent, find_nested_manifest_dir, validate_name};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, HashMap},
@@ -281,7 +281,7 @@ impl PackageManifestFile {
         // to be removed.
         let mut pkg_dir = path.to_path_buf();
         pkg_dir.pop();
-        if let Some(nested_package) = find_manifest_dir_in_child(&pkg_dir) {
+        if let Some(nested_package) = find_nested_manifest_dir(&pkg_dir) {
             // remove file name from nested_package_manifest
             bail!("Nested packages are not supported, please consider seperating the nested package at {} from the package at {}, or if it makes sense consider creating a workspace.", nested_package.display(), pkg_dir.display())
         }

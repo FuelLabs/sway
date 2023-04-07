@@ -65,7 +65,12 @@ pub fn format_log_receipts(receipts: &[fuel_tx::Receipt], pretty_print: bool) ->
 }
 
 /// Continually go down in the file tree until a Forc manifest file is found.
-pub fn find_manifest_dir_in_child(starter_path: &Path) -> Option<PathBuf> {
+///
+/// Given a pacakge's directory (which contains a manifest file) goes down in the file tree until
+/// another manifest file is found.
+///
+/// Returns the directory that contains the nested manifest file.
+pub fn find_nested_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
     use walkdir::WalkDir;
     WalkDir::new(starter_path)
         .into_iter()
