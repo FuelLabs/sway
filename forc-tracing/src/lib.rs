@@ -110,12 +110,12 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
                 return EnvFilter::new(LevelFilter::OFF.to_string());
             }
 
-            // The options level filter only applies to packages prefixed with `forc`, `sway`, or `test`. This is to filter out
-            // noisy logs from dependencies. To get all logs, use `RUST_LOG=trace`.
+            // The options level filter only applies to packages prefixed with `forc`, `sway`, `test`, or `mdbook-forc-documenter`.
+            // This is to filter out noisy logs from dependencies. To get all logs, use `RUST_LOG=trace`.
             let env_log_level = env::var("RUST_LOG").unwrap_or(LevelFilter::INFO.to_string());
             EnvFilter::builder().parse_lossy(format!(
-                "{},forc={},sway={},test={}",
-                env_log_level, level_filter, level_filter, level_filter
+                "{},forc={},sway={},test={},mdbook-forc-documenter={}",
+                env_log_level, level_filter, level_filter, level_filter, level_filter
             ))
         })
         .unwrap_or_else(|| EnvFilter::builder().from_env_lossy());
