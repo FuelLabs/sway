@@ -21,8 +21,10 @@ pub fn rename(
     url: Url,
     position: Position,
 ) -> Result<WorkspaceEdit, LanguageServerError> {
-    // Make sure the new name is not a keyword
-    if sway_parse::RESERVED_KEYWORDS.contains(&new_name) {
+    // Make sure the new name is not a keyword or a literal int type
+    if sway_parse::RESERVED_KEYWORDS.contains(&new_name)
+        || sway_parse::parse_int_suffix(&new_name).is_some()
+    {
         return Err(LanguageServerError::RenameError(RenameError::InvalidName {
             name: new_name,
         }));
