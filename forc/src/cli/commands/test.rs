@@ -76,17 +76,19 @@ pub(crate) fn exec(cmd: Command) -> Result<()> {
                 print_tested_pkg(&pkg, &test_print_opts)?;
             }
             info!("\n   Finished in {:?}", duration);
-            pkgs.iter().map(|pkg| pkg.tests_passed()).fold(true, |acc, pkg| acc && pkg)
+            pkgs.iter()
+                .map(|pkg| pkg.tests_passed())
+                .fold(true, |acc, pkg| acc && pkg)
         }
-        forc_test::Tested::Package(pkg) => { 
-            print_tested_pkg(&pkg, &test_print_opts)?; 
+        forc_test::Tested::Package(pkg) => {
+            print_tested_pkg(&pkg, &test_print_opts)?;
             pkg.tests_passed()
-        },
+        }
     };
 
     if all_tests_passed {
         Ok(())
-    }else {
+    } else {
         bail!("Some tests failed")
     }
 }
