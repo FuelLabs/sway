@@ -172,16 +172,13 @@ fn trait_interface_idents(interface_surface: &[TyTraitInterfaceItem]) -> Vec<Ide
         .collect()
 }
 
+/// Returns the `Ident`s of all methods found for an `AbiDecl`, `TraitDecl`, or `ImplTrait`.
 fn find_all_methods_for_decl(
     session: &Session,
     engines: Engines<'_>,
     url: &Url,
     position: Position,
 ) -> Result<Vec<Ident>, LanguageServerError> {
-    // let te = session.type_engine.read();
-    // let de = session.decl_engine.read();
-    // let engines = Engines::new(&te, &de);
-
     // Find the parent declaration
     let (_, decl_token) = session
         .token_map()
