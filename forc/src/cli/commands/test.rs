@@ -68,19 +68,27 @@ pub(crate) fn exec(cmd: Command) -> Result<()> {
     let duration = start.elapsed();
 
     // Eventually we'll print this in a fancy manner, but this will do for testing.
-    match tested {
+    let all_tests_passed = match tested {
         forc_test::Tested::Workspace(pkgs) => {
-            for pkg in pkgs {
+            for pkg in &pkgs {
                 let built = &pkg.built.descriptor.name;
                 info!("\n   tested -- {built}\n");
                 print_tested_pkg(&pkg, &test_print_opts)?;
             }
             info!("\n   Finished in {:?}", duration);
+            pkgs.iter().map(|pkg| pkg.tests_passed()).fold(true, |acc, pkg| acc && pkg)
         }
-        forc_test::Tested::Package(pkg) => print_tested_pkg(&pkg, &test_print_opts)?,
+        forc_test::Tested::Package(pkg) => { 
+            print_tested_pkg(&pkg, &test_print_opts)?; 
+            pkg.tests_passed()
+        },
     };
 
-    Ok(())
+    if all_tests_passed {
+        Ok(())
+    }else {
+        bail!("Some tests failed")
+    }
 }
 
 fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> Result<()> {
