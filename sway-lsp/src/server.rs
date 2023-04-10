@@ -23,6 +23,9 @@ use tower_lsp::lsp_types::*;
 use tower_lsp::{jsonrpc, Client, LanguageServer};
 use tracing::metadata::LevelFilter;
 
+use std::sync::atomic::{AtomicUsize, Ordering};
+static COUNTER: AtomicUsize = AtomicUsize::new(0);
+
 #[derive(Debug)]
 pub struct Backend {
     pub client: Client,
@@ -249,6 +252,9 @@ impl LanguageServer for Backend {
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
+        eprintln!("did_change: {:?}", COUNTER);
+        COUNTER.fetch_add(1, Ordering::SeqCst);
+
         let config = self.config.read().on_enter.clone();
         match self.get_uri_and_session(&params.text_document.uri) {
             Ok((uri, session)) => {
