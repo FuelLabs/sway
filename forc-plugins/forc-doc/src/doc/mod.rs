@@ -93,6 +93,7 @@ impl Document {
                             if decl_engine.get_struct(&decl_id).span
                                 == impl_trait.implementing_for.span
                             {
+                                println!("{impl_trait:?}");
                                 impl_vec.push(impl_trait.clone());
                             }
                         }
@@ -100,7 +101,6 @@ impl Document {
                     _ => continue,
                 }
 
-                println!("impl_vec: {impl_vec:?}");
                 if !impl_traits.is_empty() {
                     doc.item_body.item_context.impl_traits = Some(impl_vec);
                 }
