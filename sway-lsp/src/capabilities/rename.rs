@@ -47,19 +47,19 @@ pub fn rename(
         ));
     }
 
+    let te = session.type_engine.read();
+    let de = session.decl_engine.read();
+    let engines = Engines::new(&te, &de);
+
     // If the token is a function, find the parent declaration
     // and collect idents for all methods of ABI Decl, Trait Decl, and Impl Trait
     let map_of_changes: HashMap<Url, Vec<TextEdit>> = (if token.kind == SymbolKind::Function {
-        find_all_methods_for_decl(&session, &url, position)?
+        find_all_methods_for_decl(&session, engines, &url, position)?
     } else {
         // otherwise, just find all references of the token in the token map
         session
             .token_map()
-            .all_references_of_token(
-                &token,
-                &session.type_engine.read(),
-                &session.decl_engine.read(),
-            )
+            .all_references_of_token(&token, engines)
             .map(|(ident, _)| ident)
             .collect::<Vec<Ident>>()
     })
@@ -105,9 +105,13 @@ pub fn prepare_rename(
         .token_at_position(&url, position)
         .ok_or(RenameError::TokenNotFound)?;
 
+    let te = session.type_engine.read();
+    let de = session.decl_engine.read();
+    let engines = Engines::new(&te, &de);
+
     // Only let through tokens that are in the users workspace.
     // tokens that are external to the users workspace cannot be renamed.
-    let _ = is_token_in_workspace(&session, &token)?;
+    let _ = is_token_in_workspace(&session, engines, &token)?;
 
     // Make sure we don't allow renaming of tokens that
     // are keywords or intrinsics.
@@ -136,10 +140,11 @@ fn formatted_name(ident: &Ident) -> String {
 /// Checks if the token is in the users workspace.
 fn is_token_in_workspace(
     session: &Arc<Session>,
+    engines: Engines<'_>,
     token: &Token,
 ) -> Result<bool, LanguageServerError> {
     let decl_span = token
-        .declared_token_span(&session.type_engine.read(), &session.decl_engine.read())
+        .declared_token_span(engines)
         .ok_or(RenameError::TokenNotFound)?;
 
     // Check the span of the tokens defintions to determine if it's in the users workspace.
@@ -167,12 +172,13 @@ fn trait_interface_idents(interface_surface: &[TyTraitInterfaceItem]) -> Vec<Ide
 
 fn find_all_methods_for_decl(
     session: &Session,
+    engines: Engines<'_>,
     url: &Url,
     position: Position,
 ) -> Result<Vec<Ident>, LanguageServerError> {
-    let te = session.type_engine.read();
-    let de = session.decl_engine.read();
-    let engines = Engines::new(&te, &de);
+    // let te = session.type_engine.read();
+    // let de = session.decl_engine.read();
+    // let engines = Engines::new(&te, &de);
 
     // Find the parent declaration
     let (_, decl_token) = session
@@ -182,7 +188,7 @@ fn find_all_methods_for_decl(
 
     let idents = session
         .token_map()
-        .all_references_of_token(&decl_token, &te, &de)
+        .all_references_of_token(&decl_token, engines)
         .filter_map(|(_, token)| {
             token.typed.as_ref().and_then(|typed| match typed {
                 TypedAstToken::TypedDeclaration(decl) => match decl {

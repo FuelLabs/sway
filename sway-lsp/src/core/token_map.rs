@@ -40,14 +40,12 @@ impl TokenMap {
     pub fn all_references_of_token<'s>(
         &'s self,
         token_to_match: &Token,
-        type_engine: &'s TypeEngine,
-        decl_engine: &'s DeclEngine,
+        engines: Engines<'s>,
     ) -> impl 's + Iterator<Item = (Ident, Token)> {
-        let decl_span_to_match = token_to_match.declared_token_span(type_engine, decl_engine);
+        let decl_span_to_match = token_to_match.declared_token_span(engines);
         self.iter().filter_map(move |item| {
             let ((ident, span), token) = item.pair();
-            let is_same_type =
-                decl_span_to_match == token.declared_token_span(type_engine, decl_engine);
+            let is_same_type = decl_span_to_match == token.declared_token_span(engines);
             let is_decl_of_token = Some(span) == decl_span_to_match.as_ref();
 
             if is_same_type || is_decl_of_token {
