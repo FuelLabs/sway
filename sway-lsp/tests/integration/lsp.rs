@@ -220,24 +220,24 @@ pub(crate) async fn highlight_request(service: &mut LspService<Backend>, uri: &U
             {
                 "range": {
                     "end": {
-                        "character": 41,
-                        "line": 45
-                    },
-                    "start": {
-                        "character": 35,
-                        "line": 45
-                    }
-                }
-            },
-            {
-                "range": {
-                    "end": {
                         "character": 10,
                         "line": 10
                     },
                     "start": {
                         "character": 4,
                         "line": 10
+                    }
+                }
+            },
+            {
+                "range": {
+                    "end": {
+                        "character": 41,
+                        "line": 45
+                    },
+                    "start": {
+                        "character": 35,
+                        "line": 45
                     }
                 }
             },
