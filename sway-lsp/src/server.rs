@@ -1,6 +1,6 @@
 pub use crate::error::DocumentError;
 use crate::{
-    capabilities::{self, diagnostic::Diagnostics},
+    capabilities,
     config::{Config, Warnings},
     core::{session::Session, sync},
     error::{DirectoryError, LanguageServerError},
@@ -66,25 +66,21 @@ impl Backend {
         let uri_clone = uri.clone();
         let session_clone = session.clone();
         // Run parse_project in a blocking thread, because parsing is not async.
-        let diagnostics = task::spawn_blocking(move || {
+        let should_publish = task::spawn_blocking(move || {
             // Pass in the temp Url into parse_project, we can now get the updated AST's back.
             match session_clone.parse_project(&uri_clone) {
-                Ok(diagnostics) => Some(diagnostics),
+                Ok(should_publish) => should_publish,
                 Err(err) => {
                     tracing::error!("{}", err.to_string().as_str());
-                    if let LanguageServerError::FailedToParse { diagnostics } = err {
-                        Some(diagnostics)
-                    } else {
-                        None
-                    }
+                    matches!(err, LanguageServerError::FailedToParse)
                 }
             }
         })
         .await
         .unwrap_or_default();
 
-        if let Some(diagnostics) = diagnostics {
-            self.publish_diagnostics(&uri, &workspace_uri, session, diagnostics)
+        if should_publish {
+            self.publish_diagnostics(&uri, &workspace_uri, session)
                 .await;
         }
     }
@@ -158,13 +154,7 @@ impl Backend {
         Ok(session)
     }
 
-    async fn publish_diagnostics(
-        &self,
-        uri: &Url,
-        workspace_uri: &Url,
-        session: Arc<Session>,
-        diagnostics: Diagnostics,
-    ) {
+    async fn publish_diagnostics(&self, uri: &Url, workspace_uri: &Url, session: Arc<Session>) {
         let diagnostics_res = {
             let mut diagnostics_to_publish = vec![];
             let config = &self.config.read();
@@ -181,6 +171,7 @@ impl Backend {
                 }
                 Warnings::Default => {}
             }
+            let diagnostics = session.wait_for_parsing();
             if config.diagnostic.show_warnings {
                 diagnostics_to_publish.extend(diagnostics.warnings);
             }

@@ -65,7 +65,7 @@ pub struct Session {
     // and one thread can be waiting to start parsing. All others will return the cached diagnostics.
     parse_permits: Arc<Semaphore>,
     // Cached diagnostic results that require a lock to access. Readers will wait for writers to complete.
-    diagnostics: RwLock<Diagnostics>,
+    diagnostics: Arc<RwLock<Diagnostics>>,
 }
 
 impl Session {
@@ -79,7 +79,7 @@ impl Session {
             decl_engine: <_>::default(),
             sync: SyncWorkspace::new(),
             parse_permits: Arc::new(Semaphore::new(2)),
-            diagnostics: RwLock::new(Diagnostics::default()),
+            diagnostics: Arc::new(RwLock::new(Diagnostics::default())),
         }
     }
 
@@ -121,11 +121,14 @@ impl Session {
         self.diagnostics.read().clone()
     }
 
-    pub fn parse_project(&self, uri: &Url) -> Result<Diagnostics, LanguageServerError> {
-        // Acquire a permit to parse the project. If there are none available, return the cached results.
+    /// Parses the project and returns true if the compiler diagnostics are new and should be published.
+    pub fn parse_project(&self, uri: &Url) -> Result<bool, LanguageServerError> {
+        // Acquire a permit to parse the project. If there are none available, wait until the running thread
+        // is done and return false. This way, we avoid publishing the same diagnostics multiple times.
         let permit = self.parse_permits.try_acquire();
         if permit.is_err() {
-            return Ok(self.wait_for_parsing());
+            let _ = self.wait_for_parsing();
+            return Ok(false);
         }
 
         // Lock the diagnostics result to prevent multiple threads from parsing the project at the same time.
@@ -211,9 +214,7 @@ impl Session {
             // Get a reference to the typed program AST.
             let typed_program = ast_res.value.as_ref().ok_or_else(|| {
                 *diagnostics = get_diagnostics(&ast_res.warnings, &ast_res.errors);
-                LanguageServerError::FailedToParse {
-                    diagnostics: diagnostics.clone(),
-                }
+                LanguageServerError::FailedToParse
             })?;
 
             // The final element in the results is the main program.
@@ -251,7 +252,7 @@ impl Session {
                 });
             }
         }
-        Ok(diagnostics.clone())
+        Ok(true)
     }
 
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
