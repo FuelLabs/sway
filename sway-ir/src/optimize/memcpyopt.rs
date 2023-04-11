@@ -31,6 +31,14 @@ pub fn mem_copy_opt(
     Ok(modified)
 }
 
+fn get_local(context: &Context, val: Value) -> Option<LocalVar> {
+    match val.get_instruction(context) {
+        Some(Instruction::GetLocal(local)) => Some(*local),
+        Some(Instruction::GetElemPtr { base, .. }) => get_local(context, *base),
+        _ => None,
+    }
+}
+
 struct InstInfo {
     // The block in which an instruction is
     block: Block,
@@ -46,14 +54,6 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
     let mut stores_map = FxHashMap::<LocalVar, Vec<Value>>::default();
     let mut instr_info_map = FxHashMap::<Value, InstInfo>::default();
     let mut asm_uses = FxHashSet::<LocalVar>::default();
-
-    fn get_local(context: &Context, val: Value) -> Option<LocalVar> {
-        match val.get_instruction(context) {
-            Some(Instruction::GetLocal(local)) => Some(*local),
-            Some(Instruction::GetElemPtr { base, .. }) => get_local(context, *base),
-            _ => None,
-        }
-    }
 
     for (pos, (block, inst)) in function.instruction_iter(context).enumerate() {
         let info = || InstInfo { block, pos };
@@ -190,13 +190,76 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
     Ok(true)
 }
 
+// Is (an alias of) src_ptr clobbered on any path from load_val to store_val?
+fn is_clobbered(
+    context: &Context,
+    function: Function,
+    store_block: Block,
+    store_val: Value,
+    load_val: Value,
+    src_ptr: Value,
+) -> bool {
+    let mut iter = store_block
+        .instruction_iter(context)
+        .rev()
+        .skip_while(|i| i != &store_val);
+    assert!(iter.next().unwrap() == store_val);
+
+    // Scan backwards till we encounter load_val, checking if
+    // any store aliases with src_ptr.
+    let mut worklist: Vec<(Block, Box<dyn Iterator<Item = Value>>)> =
+        vec![(store_block, Box::new(iter))];
+    let mut visited = FxHashSet::default();
+    'next_job: while !worklist.is_empty() {
+        let (block, iter) = worklist.pop().unwrap();
+        visited.insert(block);
+        for inst in iter {
+            if inst == load_val || inst == store_val {
+                // We don't need to go beyond either the source load or the candidate store.
+                continue 'next_job;
+            }
+            if let Some(Instruction::Store {
+                dst_val_ptr,
+                stored_val: _,
+            }) = inst.get_instruction(context)
+            {
+                if get_local(context, *dst_val_ptr) == get_local(context, src_ptr) {
+                    let Some(Instruction::Store { dst_val_ptr: to_dst, stored_val: _ }) = store_val.get_instruction(context) else {
+                        panic!();
+                    };
+                    println!(
+                        "{} -> {}",
+                        function
+                            .lookup_local_name(context, &get_local(context, *dst_val_ptr).unwrap())
+                            .unwrap(),
+                        function
+                            .lookup_local_name(context, &get_local(context, *to_dst).unwrap())
+                            .unwrap()
+                    );
+                    return true;
+                }
+            }
+        }
+        for pred in block.pred_iter(context) {
+            if !visited.contains(pred) {
+                worklist.push((
+                    *pred,
+                    Box::new(pred.instruction_iter(context).rev().skip_while(|_| false)),
+                ));
+            }
+        }
+    }
+
+    false
+}
+
 fn load_store_to_memcopy(context: &mut Context, function: Function) -> Result<bool, IrError> {
     // Find any `store`s of `load`s.  These can be replaced with `mem_copy` and are especially
     // important for non-copy types on architectures which don't support loading them.
     let candidates = function
         .instruction_iter(context)
-        .filter_map(|(block, instr_val)| {
-            instr_val
+        .filter_map(|(block, store_instr_val)| {
+            store_instr_val
                 .get_instruction(context)
                 .and_then(|instr| {
                     // Is the instruction a Store?
@@ -207,45 +270,32 @@ fn load_store_to_memcopy(context: &mut Context, function: Function) -> Result<bo
                     {
                         stored_val
                             .get_instruction(context)
-                            .map(|src_instr| (src_instr, dst_val_ptr))
+                            .map(|src_instr| (*stored_val, src_instr, dst_val_ptr))
                     } else {
                         None
                     }
                 })
-                .and_then(|(src_instr, dst_val_ptr)| {
+                .and_then(|(src_instr_val, src_instr, dst_val_ptr)| {
                     // Is the Store source a Load?
                     if let Instruction::Load(src_val_ptr) = src_instr {
-                        Some((block, instr_val, *dst_val_ptr, *src_val_ptr))
+                        Some((
+                            block,
+                            src_instr_val,
+                            store_instr_val,
+                            *dst_val_ptr,
+                            *src_val_ptr,
+                        ))
                     } else {
                         None
                     }
                 })
-                .and_then(|candidate @ (_block, _store_val, dst_ptr, _src_ptr)| {
-                    // XXX TEMPORARY 'FIX':
-                    //
-                    // We need to do proper aliasing analysis for this pass.  It's possible to have
-                    // the following:
-                    //
-                    // X = load ptr A       -- dereference A
-                    // store Y to ptr A     -- mutate A
-                    // store X to ptr B     -- store original A to B
-                    //
-                    // Which this pass would convert to:
-                    //
-                    //                      -- DCE the load
-                    // store Y to ptr A     -- mutate A
-                    // memcpy ptr B, ptr A  -- copy _mutated_ A to B
-                    //
-                    // To temporarily avoid this problem we're not going to mem_copy copy types and
-                    // assume (oh, no) that larger types subject to this pass aren't mutated.  This
-                    // only works for now because it has always worked in the past, but there are
-                    // no guarantees this couldn't flare up somewhere.
-                    dst_ptr
-                        .get_type(context)
-                        .and_then(|ptr_ty| ptr_ty.get_pointee_type(context))
-                        .map(|ty| super::target_fuel::is_demotable_type(context, &ty))?
-                        .then_some(candidate)
-                })
+                .and_then(
+                    |candidate @ (block, load_val, store_val, _dst_ptr, src_ptr)| {
+                        // Ensure that there's no path from load_val to store_val that might overright src_ptr.
+                        (!is_clobbered(context, function, block, store_val, load_val, src_ptr))
+                            .then_some(candidate)
+                    },
+                )
         })
         .collect::<Vec<_>>();
 
@@ -253,7 +303,7 @@ fn load_store_to_memcopy(context: &mut Context, function: Function) -> Result<bo
         return Ok(false);
     }
 
-    for (block, store_val, dst_val_ptr, src_val_ptr) in candidates {
+    for (block, _src_instr_val, store_val, dst_val_ptr, src_val_ptr) in candidates {
         let mem_copy_val = Value::new_instruction(
             context,
             Instruction::MemCopyVal {
