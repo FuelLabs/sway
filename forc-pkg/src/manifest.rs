@@ -258,7 +258,7 @@ impl PackageManifestFile {
     /// Validate the `PackageManifestFile`.
     ///
     /// This checks:
-    /// 1. Validity of the underlying `PackageManifet`.
+    /// 1. Validity of the underlying `PackageManifest`.
     /// 2. Existence of the entry file.
     pub fn validate(&self) -> Result<()> {
         self.manifest.validate()?;
