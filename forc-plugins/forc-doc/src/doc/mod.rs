@@ -8,6 +8,7 @@ use sway_core::{
     decl_engine::DeclEngine,
     language::ty::{TyAstNodeContent, TyDecl, TyImplTrait, TyProgram, TySubmodule},
 };
+use sway_types::Spanned;
 
 mod descriptor;
 pub mod module;
@@ -101,7 +102,9 @@ impl Document {
             }
         }
 
-        // match for the spans to add the impl_traits to their corresponding doc
+        // match for the spans to add the impl_traits to their corresponding doc:
+        // currently this compares the spans as str, but this needs to change
+        // to compare the actual types
         if !impl_traits.is_empty() {
             for doc in &mut docs {
                 let mut impl_vec: Vec<TyImplTrait> = Vec::new();
@@ -109,12 +112,14 @@ impl Document {
                 match doc.item_body.ty_decl {
                     TyDecl::StructDecl { ref name, .. } => {
                         for impl_trait in &impl_traits {
-                            if name.as_str() == impl_trait.implementing_for.span.as_str() {
+                            if name.as_str() == impl_trait.implementing_for.span.as_str()
+                                && name.as_str() != impl_trait.trait_name.suffix.span().as_str()
+                            {
                                 impl_vec.push(impl_trait.clone());
                             }
                         }
                     }
-                    _ => {}
+                    _ => continue,
                 }
 
                 if !impl_vec.is_empty() {
@@ -122,7 +127,6 @@ impl Document {
                 }
             }
         }
-        // println!("{docs:#?}");
 
         Ok(docs)
     }

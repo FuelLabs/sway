@@ -333,26 +333,28 @@ impl Renderable for ItemContext {
             None => None,
         };
 
-        let impl_vec = if let Some(impl_traits) = self.impl_traits {
-            let mut impl_vec: Vec<_> = Vec::new();
-            for impl_trait in impl_traits {
-                impl_vec.push(impl_trait.render(render_plan.clone())?)
+        let impl_traits = match self.impl_traits {
+            Some(impl_traits) => {
+                let mut impl_vec: Vec<_> = Vec::new();
+                for impl_trait in impl_traits {
+                    impl_vec.push(impl_trait.render(render_plan.clone())?)
+                }
+                Some(impl_vec)
             }
-            Some(impl_vec)
-        } else {
-            None
+            None => None,
         };
+
         Ok(box_html! {
             @ if let Some(context) = context_opt {
                 : Raw(context);
             }
-            @ if impl_vec.is_some() {
+            @ if impl_traits.is_some() {
                 h2(id="trait-implementations", class="small-section-header") {
                     : "Trait Implementations";
                     a(href="#trait-implementations", class="anchor");
                 }
                 div(id="trait-implementations-list") {
-                    @ for impl_trait in impl_vec.unwrap() {
+                    @ for impl_trait in impl_traits.unwrap() {
                         : impl_trait;
                     }
                 }
