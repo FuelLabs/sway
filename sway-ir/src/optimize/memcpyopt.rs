@@ -193,7 +193,6 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
 // Is (an alias of) src_ptr clobbered on any path from load_val to store_val?
 fn is_clobbered(
     context: &Context,
-    function: Function,
     store_block: Block,
     store_val: Value,
     load_val: Value,
@@ -224,18 +223,6 @@ fn is_clobbered(
             }) = inst.get_instruction(context)
             {
                 if get_local(context, *dst_val_ptr) == get_local(context, src_ptr) {
-                    let Some(Instruction::Store { dst_val_ptr: to_dst, stored_val: _ }) = store_val.get_instruction(context) else {
-                        panic!();
-                    };
-                    println!(
-                        "{} -> {}",
-                        function
-                            .lookup_local_name(context, &get_local(context, *dst_val_ptr).unwrap())
-                            .unwrap(),
-                        function
-                            .lookup_local_name(context, &get_local(context, *to_dst).unwrap())
-                            .unwrap()
-                    );
                     return true;
                 }
             }
