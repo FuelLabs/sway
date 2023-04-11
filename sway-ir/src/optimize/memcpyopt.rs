@@ -279,7 +279,7 @@ fn load_store_to_memcopy(context: &mut Context, function: Function) -> Result<bo
                 .and_then(
                     |candidate @ (block, load_val, store_val, _dst_ptr, src_ptr)| {
                         // Ensure that there's no path from load_val to store_val that might overright src_ptr.
-                        (!is_clobbered(context, function, block, store_val, load_val, src_ptr))
+                        (!is_clobbered(context, block, store_val, load_val, src_ptr))
                             .then_some(candidate)
                     },
                 )
