@@ -8,15 +8,12 @@ abigen!(Contract(
     abi = "test_projects/type_aliases/out/debug/type_aliases-abi.json"
 ));
 
-async fn get_type_aliases_instance() -> (TypeAliasesTestContract, ContractId) {
+async fn get_type_aliases_instance() -> (TypeAliasesTestContract<WalletUnlocked>, ContractId) {
     let wallet = launch_provider_and_get_wallet().await;
     let id = Contract::deploy(
         "test_projects/type_aliases/out/debug/type_aliases.bin",
         &wallet,
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "test_projects/type_aliases/out/debug/type_aliases-storage_slots.json".to_string(),
-        )),
+        DeployConfiguration::default(),
     )
     .await
     .unwrap();

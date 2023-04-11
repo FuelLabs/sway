@@ -1,6 +1,7 @@
 use crate::core::{session::Session, token::get_range_from_span};
 use std::collections::HashMap;
 use std::sync::Arc;
+use sway_core::Engines;
 use sway_types::Spanned;
 use tower_lsp::lsp_types::{Position, PrepareRenameResponse, TextEdit, Url, WorkspaceEdit};
 
@@ -14,11 +15,10 @@ pub fn rename(
     let mut edits = Vec::new();
 
     // todo: currently only supports single file rename
-    for (ident, _) in session.token_map().all_references_of_token(
-        &token,
-        &session.type_engine.read(),
-        &session.decl_engine.read(),
-    ) {
+    let te = session.type_engine.read();
+    let de = session.decl_engine.read();
+    let engines = Engines::new(&te, &de);
+    for (ident, _) in session.token_map().all_references_of_token(&token, engines) {
         let range = get_range_from_span(&ident.span());
         edits.push(TextEdit::new(range, new_name.clone()));
     }

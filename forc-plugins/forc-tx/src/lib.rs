@@ -2,6 +2,7 @@
 
 use clap::{Args, Parser};
 use devault::Devault;
+use forc_util::Salt;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use thiserror::Error;
@@ -115,16 +116,6 @@ pub struct Maturity {
     /// Block height until which tx cannot be included.
     #[clap(long = "maturity", default_value_t = 0)]
     pub maturity: u32,
-}
-
-/// Added salt used to derive the contract ID.
-#[derive(Debug, Args, Default, Deserialize, Serialize)]
-pub struct Salt {
-    /// Added salt used to derive the contract ID.
-    ///
-    /// By default, this is `0x0000000000000000000000000000000000000000000000000000000000000000`.
-    #[clap(long = "salt")]
-    pub salt: Option<fuel_tx::Salt>,
 }
 
 /// Transaction input.

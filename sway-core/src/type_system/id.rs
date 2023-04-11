@@ -18,6 +18,12 @@ impl DisplayWithEngines for TypeId {
     }
 }
 
+impl DebugWithEngines for TypeId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+        write!(f, "{:?}", engines.help_out(engines.te().get(*self)))
+    }
+}
+
 impl From<usize> for TypeId {
     fn from(o: usize) -> Self {
         TypeId(o)
