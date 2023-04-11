@@ -182,7 +182,7 @@ impl ContractToTest {
         let contract_dependency_setups = self
             .contract_dependencies
             .iter()
-            .map(|built_pkg| deployment_transaction(built_pkg, &built_pkg.bytecode, params));
+            .map(|built_pkg| deployment_transaction(built_pkg, &built_pkg.bytecode));
 
         // Deploy contract dependencies of the root contract and collect their ids.
         let contract_dependency_ids = contract_dependency_setups
@@ -196,7 +196,7 @@ impl ContractToTest {
         // Root contract is the contract that we are going to be running the tests of, after this
         // deployment.
         let (root_contract_id, root_contract_tx) =
-            deployment_transaction(&self.pkg, &self.without_tests_bytecode, params);
+            deployment_transaction(&self.pkg, &self.without_tests_bytecode);
 
         // Deploy the root contract.
         interpreter.transact(root_contract_tx)?;
@@ -492,7 +492,6 @@ type ContractDeploymentSetup = (tx::ContractId, vm::checked_transaction::Checked
 fn deployment_transaction(
     built_pkg: &pkg::BuiltPackage,
     without_tests_bytecode: &pkg::BuiltPackageBytecode,
-    params: tx::ConsensusParameters,
 ) -> ContractDeploymentSetup {
     // Obtain the contract id for deployment.
     let mut storage_slots = built_pkg.storage_slots.clone();
@@ -514,13 +513,20 @@ fn deployment_transaction(
     let maturity = 1;
     let asset_id = rng.gen();
     let tx_pointer = rng.gen();
-    let block_height = (u32::MAX >> 1) as u64;
+    let block_height = vm::fuel_types::BlockHeight::new(u32::MAX >> 1);
 
     let tx = tx::TransactionBuilder::create(bytecode.as_slice().into(), salt, storage_slots)
-        .add_unsigned_coin_input(secret_key, utxo_id, amount, asset_id, tx_pointer, maturity)
+        .add_unsigned_coin_input(
+            secret_key,
+            utxo_id,
+            amount,
+            asset_id,
+            tx_pointer,
+            maturity.into(),
+        )
         .add_output(tx::Output::contract_created(contract_id, state_root))
-        .maturity(maturity)
-        .finalize_checked(block_height, &params, &GasCosts::default());
+        .maturity(maturity.into())
+        .finalize_checked(block_height, &GasCosts::default());
     (contract_id, tx)
 }
 
@@ -604,24 +610,24 @@ fn exec_test(
     let maturity = 1;
     let asset_id = rng.gen();
     let tx_pointer = rng.gen();
-    let block_height = (u32::MAX >> 1) as u64;
+    let block_height = vm::fuel_types::BlockHeight::new(u32::MAX >> 1);
 
     let params = tx::ConsensusParameters::default();
     let mut tx = tx::TransactionBuilder::script(bytecode, script_input_data)
-        .add_unsigned_coin_input(secret_key, utxo_id, amount, asset_id, tx_pointer, 0)
+        .add_unsigned_coin_input(secret_key, utxo_id, amount, asset_id, tx_pointer, 0.into())
         .gas_limit(tx::ConsensusParameters::DEFAULT.max_gas_per_tx)
-        .maturity(maturity)
+        .maturity(maturity.into())
         .clone();
     let mut output_index = 1;
     // Insert contract ids into tx input
     for contract_id in test_setup.contract_ids() {
-        tx.add_input(tx::Input::Contract {
+        tx.add_input(tx::Input::Contract(tx::input::contract::Contract {
             utxo_id: tx::UtxoId::new(tx::Bytes32::zeroed(), 0),
             balance_root: tx::Bytes32::zeroed(),
             state_root: tx::Bytes32::zeroed(),
-            tx_pointer: tx::TxPointer::new(0, 0),
+            tx_pointer: tx::TxPointer::new(0.into(), 0),
             contract_id,
-        })
+        }))
         .add_output(tx::Output::Contract {
             input_index: output_index,
             balance_root: fuel_tx::Bytes32::zeroed(),
@@ -629,7 +635,7 @@ fn exec_test(
         });
         output_index += 1;
     }
-    let tx = tx.finalize_checked(block_height, &params, &GasCosts::default());
+    let tx = tx.finalize_checked(block_height, &GasCosts::default());
 
     let mut interpreter =
         vm::interpreter::Interpreter::with_storage(storage, params, GasCosts::default());

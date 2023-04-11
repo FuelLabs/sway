@@ -234,7 +234,6 @@ pub struct TxPointer {
 pub enum Output {
     Coin(OutputCoin),
     Contract(OutputContract),
-    Message(OutputMessage),
     Change(OutputChange),
     Variable(OutputVariable),
     ContractCreated(OutputContractCreated),
@@ -635,11 +634,11 @@ impl TryFrom<Create> for fuel_tx::Create {
             .into_iter()
             .map(|s| fuel_tx::Witness::from(s.as_bytes()))
             .collect();
+        let maturity = fuel_types::BlockHeight::new(create.maturity.maturity);
         let create = fuel_tx::Transaction::create(
             create.gas.price,
             create.gas.limit,
-            // TODO: `fuel_tx` create shouldn't accept `Word`: spec says `u32`.
-            fuel_tx::Word::from(create.maturity.maturity),
+            maturity,
             create.bytecode_witness_index,
             create.salt.salt.unwrap_or_default(),
             storage_slots,
@@ -680,11 +679,11 @@ impl TryFrom<Script> for fuel_tx::Script {
             .into_iter()
             .map(|s| fuel_tx::Witness::from(s.as_bytes()))
             .collect();
+        let maturity = fuel_types::BlockHeight::new(script.maturity.maturity);
         let script = fuel_tx::Transaction::script(
             script.gas.price,
             script.gas.limit,
-            // TODO: `fuel_tx` create shouldn't accept `Word`: spec says `u32`.
-            fuel_tx::Word::from(script.maturity.maturity),
+            maturity,
             script_bytecode,
             script_data,
             inputs,
@@ -724,23 +723,27 @@ impl TryFrom<Input> for fuel_tx::Input {
                     witness_ix,
                 } = coin;
                 match (witness_ix, predicate.bytecode, predicate.data) {
-                    (Some(witness_index), None, None) => fuel_tx::Input::CoinSigned {
-                        utxo_id,
-                        owner,
-                        amount,
-                        asset_id,
-                        tx_pointer,
-                        maturity: maturity as fuel_tx::Word,
-                        witness_index,
-                    },
-                    (None, Some(predicate), Some(predicate_data)) => {
-                        fuel_tx::Input::CoinPredicate {
+                    (Some(witness_index), None, None) => {
+                        fuel_tx::Input::CoinSigned(fuel_tx::input::coin::CoinSigned {
                             utxo_id,
                             owner,
                             amount,
                             asset_id,
                             tx_pointer,
-                            maturity: maturity as fuel_tx::Word,
+                            witness_index,
+                            maturity: maturity.into(),
+                            predicate: (),
+                            predicate_data: (),
+                        })
+                    }
+                    (None, Some(predicate), Some(predicate_data)) => {
+                        fuel_tx::Input::CoinPredicate(fuel_tx::input::coin::CoinPredicate {
+                            utxo_id,
+                            owner,
+                            amount,
+                            asset_id,
+                            tx_pointer,
+                            maturity: maturity.into(),
                             predicate: std::fs::read(&predicate).map_err(|err| {
                                 ConvertInputError::PredicateRead {
                                     path: predicate,
@@ -753,19 +756,22 @@ impl TryFrom<Input> for fuel_tx::Input {
                                     err,
                                 }
                             })?,
-                        }
+                            witness_index: (),
+                        })
                     }
                     _ => return Err(ConvertInputError::WitnessPredicateMismatch),
                 }
             }
 
-            Input::Contract(contract) => fuel_tx::Input::Contract {
-                utxo_id: contract.utxo_id,
-                balance_root: contract.balance_root,
-                state_root: contract.state_root,
-                tx_pointer: contract.tx_ptr,
-                contract_id: contract.contract_id,
-            },
+            Input::Contract(contract) => {
+                fuel_tx::Input::Contract(fuel_tx::input::contract::Contract {
+                    utxo_id: contract.utxo_id,
+                    balance_root: contract.balance_root,
+                    state_root: contract.state_root,
+                    tx_pointer: contract.tx_ptr,
+                    contract_id: contract.contract_id,
+                })
+            }
 
             Input::Message(msg) => {
                 let InputMessage {
@@ -784,36 +790,41 @@ impl TryFrom<Input> for fuel_tx::Input {
                         err,
                     })?;
                 match (witness_ix, predicate.bytecode, predicate.data) {
-                    (Some(witness_index), None, None) => fuel_tx::Input::MessageSigned {
-                        message_id,
-                        sender,
-                        recipient,
-                        amount,
-                        nonce,
-                        data,
-                        witness_index,
-                    },
-                    (None, Some(predicate), Some(predicate_data)) => {
-                        fuel_tx::Input::MessagePredicate {
-                            message_id,
+                    (Some(witness_index), None, None) => fuel_tx::Input::MessageDataSigned(
+                        fuel_tx::input::message::MessageDataSigned {
                             sender,
                             recipient,
                             amount,
-                            nonce,
+                            nonce: nonce.into(),
                             data,
-                            predicate: std::fs::read(&predicate).map_err(|err| {
-                                ConvertInputError::PredicateRead {
-                                    path: predicate,
-                                    err,
-                                }
-                            })?,
-                            predicate_data: std::fs::read(&predicate_data).map_err(|err| {
-                                ConvertInputError::PredicateDataRead {
-                                    path: predicate_data,
-                                    err,
-                                }
-                            })?,
-                        }
+                            witness_index,
+                            predicate: (),
+                            predicate_data: (),
+                        },
+                    ),
+                    (None, Some(predicate), Some(predicate_data)) => {
+                        fuel_tx::Input::MessageDataPredicate(
+                            fuel_tx::input::message::MessageDataPredicate {
+                                sender,
+                                recipient,
+                                amount,
+                                nonce: nonce.into(),
+                                data,
+                                predicate: std::fs::read(&predicate).map_err(|err| {
+                                    ConvertInputError::PredicateRead {
+                                        path: predicate,
+                                        err,
+                                    }
+                                })?,
+                                predicate_data: std::fs::read(&predicate_data).map_err(|err| {
+                                    ConvertInputError::PredicateDataRead {
+                                        path: predicate_data,
+                                        err,
+                                    }
+                                })?,
+                                witness_index: (),
+                            },
+                        )
                     }
                     _ => return Err(ConvertInputError::WitnessPredicateMismatch),
                 }
@@ -835,10 +846,6 @@ impl From<Output> for fuel_tx::Output {
                 input_index: contract.input_ix,
                 balance_root: contract.balance_root,
                 state_root: contract.state_root,
-            },
-            Output::Message(msg) => fuel_tx::Output::Message {
-                recipient: msg.recipient,
-                amount: msg.amount,
             },
             Output::Change(change) => fuel_tx::Output::Change {
                 to: change.to,
