@@ -279,7 +279,7 @@ impl PackageManifestFile {
         // `path` is the path to manifest file. To start nested package search we need to start
         // from manifest's directory. So, last part of the path (the filename, "/forc.toml") needs
         // to be removed.
-        let mut pkg_dir = path.to_path_buf();
+        let mut pkg_dir = self.path.to_path_buf();
         pkg_dir.pop();
         if let Some(nested_package) = find_nested_manifest_dir(&pkg_dir) {
             // remove file name from nested_package_manifest
