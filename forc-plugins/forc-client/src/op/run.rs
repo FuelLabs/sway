@@ -9,7 +9,7 @@ use anyhow::{anyhow, bail, Context, Result};
 use forc_pkg::{self as pkg, fuel_core_not_running, PackageManifestFile};
 use forc_util::format_log_receipts;
 use fuel_core_client::client::FuelClient;
-use fuel_tx::{ContractId, Transaction, TransactionBuilder, UniqueIdentifier};
+use fuel_vm::prelude::*;
 use futures::TryFutureExt;
 use pkg::BuiltPackage;
 use std::time::Duration;
@@ -20,7 +20,7 @@ use tokio::time::timeout;
 use tracing::info;
 
 pub struct RanScript {
-    pub receipts: Vec<fuel_tx::Receipt>,
+    pub receipts: Vec<Receipt>,
 }
 
 /// Builds and runs script(s). If given path corresponds to a workspace, all runnable members will
@@ -100,7 +100,7 @@ async fn try_send_tx(
     tx: &Transaction,
     pretty_print: bool,
     simulate: bool,
-) -> Result<Vec<fuel_tx::Receipt>> {
+) -> Result<Vec<Receipt>> {
     let client = FuelClient::new(node_url)?;
 
     match client.health().await {
@@ -109,7 +109,7 @@ async fn try_send_tx(
             send_tx(&client, tx, pretty_print, simulate),
         )
         .await
-        .with_context(|| format!("timeout waiting for {} to be included in a block", tx.id()))?,
+        .with_context(|| format!("timeout waiting for {} to be included in a block", tx.id(&ConsensusParameters::default())))?,
         Err(_) => Err(fuel_core_not_running(node_url)),
     }
 }
@@ -119,8 +119,8 @@ async fn send_tx(
     tx: &Transaction,
     pretty_print: bool,
     simulate: bool,
-) -> Result<Vec<fuel_tx::Receipt>> {
-    let id = format!("{:#x}", tx.id());
+) -> Result<Vec<Receipt>> {
+    let id = format!("{:#x}", tx.id(&ConsensusParameters::default()));
     let outputs = {
         if !simulate {
             client

@@ -21,7 +21,6 @@ forc-tx = { version = "0.37.0", path = "../forc-tx" }
 forc-util = { version = "0.37.0", path = "../../forc-util" }
 fuel-core-client = { workspace = true, default-features = false }
 fuel-crypto = { workspace = true }
-fuel-tx = { workspace = true, features = ["builder"] }
 fuel-vm = { workspace = true }
 fuels-core = { workspace = true }
 fuels-signers = { workspace = true }

@@ -4,11 +4,9 @@ use anyhow::{Error, Result};
 use async_trait::async_trait;
 use fuel_core_client::client::FuelClient;
 use fuel_crypto::{Message, SecretKey, Signature};
-use fuel_tx::{field, Address, Buildable, ContractId, Input, Output, TransactionBuilder, Witness};
-use fuel_vm::prelude::SerializableVec;
-use fuels_core::constants::BASE_ASSET_ID;
+use fuel_vm::prelude::*;
 use fuels_signers::{provider::Provider, Wallet};
-use fuels_types::bech32::Bech32Address;
+use fuels_types::{bech32::Bech32Address, constants::BASE_ASSET_ID};
 
 /// The maximum time to wait for a transaction to be included in a block by the node
 pub const TX_SUBMIT_TIMEOUT_MS: u64 = 30_000u64;
@@ -21,7 +19,7 @@ fn prompt_address() -> Result<Bech32Address> {
     Bech32Address::from_str(buf.trim()).map_err(Error::msg)
 }
 
-fn prompt_signature(tx_id: fuel_tx::Bytes32) -> Result<Signature> {
+fn prompt_signature(tx_id: Bytes32) -> Result<Signature> {
     println!("Transaction id to sign: {tx_id}");
     print!("Please provide the signature:");
     std::io::stdout().flush()?;
@@ -59,17 +57,18 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
             .len()
             .try_into()
             .expect("limit of 256 inputs exceeded");
-        self.add_input(fuel_tx::Input::Contract {
+        self.add_input(Input::Contract ( input::contract::Contract { 
             contract_id,
-            utxo_id: fuel_tx::UtxoId::new(fuel_tx::Bytes32::zeroed(), 0),
-            balance_root: fuel_tx::Bytes32::zeroed(),
-            state_root: fuel_tx::Bytes32::zeroed(),
-            tx_pointer: fuel_tx::TxPointer::new(0, 0),
-        })
-        .add_output(fuel_tx::Output::Contract {
+            utxo_id: UtxoId::new(Bytes32::zeroed(), 0),
+            balance_root: Bytes32::zeroed(),
+            state_root: Bytes32::zeroed(),
+            tx_pointer: TxPointer::new(0.into(), 0),
+        }
+        ))
+        .add_output(Output::Contract {
             input_index,
-            balance_root: fuel_tx::Bytes32::zeroed(),
-            state_root: fuel_tx::Bytes32::zeroed(),
+            balance_root: Bytes32::zeroed(),
+            state_root: Bytes32::zeroed(),
         })
     }
     fn add_contracts(&mut self, contract_ids: Vec<ContractId>) -> &mut Self {
@@ -90,6 +89,7 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
         provider: Provider,
         signature_witness_index: u8,
     ) -> Result<&mut Self> {
+        let bech32_addr = Bech32Address::;
         let wallet = Wallet::from_address(Bech32Address::from(address), Some(provider));
 
         let amount = 1_000_000;
@@ -128,6 +128,7 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
         }
 
         let mut tx = self._finalize_without_signature();
+        let consensus_params = ConsensusParameters::default();
 
         if !unsigned {
             let signature = if let Some(signing_key) = signing_key {
@@ -136,16 +137,16 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
                 // of a cryptographically secure hash. However, the bytes are
                 // coming from `tx.id()`, which already uses `Hasher::hash()`
                 // to hash it using a secure hash mechanism.
-                let message = unsafe { Message::from_bytes_unchecked(*tx.id()) };
+                let message = Message::from_bytes(*tx.id(&consensus_params));
                 Signature::sign(&signing_key, &message)
             } else {
-                prompt_signature(tx.id())?
+                prompt_signature(tx.id(&consensus_params))?
             };
 
             let witness = Witness::from(signature.as_ref());
             tx.replace_witness(signature_witness_index, witness);
         }
-        tx.precompute();
+        tx.precompute(&consensus_params);
 
         Ok(tx)
     }

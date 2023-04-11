@@ -1766,7 +1766,6 @@ dependencies = [
  "forc-util",
  "fuel-core-client",
  "fuel-crypto 0.30.0",
- "fuel-tx 0.30.0",
  "fuel-vm 0.30.0",
  "fuels-core 0.39.0",
  "fuels-signers",

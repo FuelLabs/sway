@@ -9,7 +9,6 @@ use anyhow::{bail, Context, Result};
 use forc_pkg::{self as pkg, PackageManifestFile};
 use fuel_core_client::client::types::TransactionStatus;
 use fuel_core_client::client::FuelClient;
-use fuel_tx::{Output, Salt, TransactionBuilder};
 use fuel_vm::prelude::*;
 use futures::FutureExt;
 use pkg::BuiltPackage;
@@ -21,7 +20,7 @@ use tracing::info;
 
 #[derive(Debug)]
 pub struct DeployedContract {
-    pub id: fuel_tx::ContractId,
+    pub id: ContractId,
 }
 
 type ContractSaltMap = BTreeMap<String, Salt>;
@@ -181,13 +180,12 @@ pub async fn deploy_pkg(
     let tx = TransactionBuilder::create(bytecode.as_slice().into(), salt, storage_slots.clone())
         .gas_limit(command.gas.limit)
         .gas_price(command.gas.price)
-        // TODO: Spec says maturity should be u32, but fuel-tx wants u64.
-        .maturity(u64::from(command.maturity.maturity))
+        .maturity(command.maturity.maturity.into())
         .add_output(Output::contract_created(contract_id, state_root))
         .finalize_signed(client.clone(), command.unsigned, command.signing_key)
         .await?;
 
-    let tx = Transaction::from(tx);
+    let tx = fuel_vm::fuel_tx::Transaction::from(tx);
 
     let deployment_request = client.submit_and_await_commit(&tx).map(|res| match res {
         Ok(logs) => match logs {

@@ -1,6 +1,7 @@
 use crate::cmd;
 use anyhow::Context;
 use fuel_core_client::client::{types::TransactionStatus, FuelClient};
+use fuel_vm::prelude::*;
 
 /// A command for submitting transactions to a Fuel network.
 pub async fn submit(cmd: cmd::Submit) -> anyhow::Result<()> {
@@ -24,7 +25,7 @@ pub async fn submit(cmd: cmd::Submit) -> anyhow::Result<()> {
 }
 
 /// Deserialize a `Transaction` from the given file into memory.
-pub fn read_tx(path: &std::path::Path) -> anyhow::Result<fuel_tx::Transaction> {
+pub fn read_tx(path: &std::path::Path) -> anyhow::Result<Transaction> {
     let file = std::fs::File::open(path)?;
     let reader = std::io::BufReader::new(file);
     fn has_extension(path: &std::path::Path, ext: &str) -> bool {
