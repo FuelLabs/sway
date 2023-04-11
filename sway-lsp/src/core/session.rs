@@ -20,13 +20,7 @@ use dashmap::DashMap;
 use forc_pkg as pkg;
 use parking_lot::RwLock;
 use pkg::{manifest::ManifestFile, Programs};
-use std::{
-    fs::File,
-    io::Write,
-    path::PathBuf,
-    sync::{Arc},
-    vec,
-};
+use std::{fs::File, io::Write, path::PathBuf, sync::Arc, vec};
 use sway_core::{
     decl_engine::DeclEngine,
     language::{

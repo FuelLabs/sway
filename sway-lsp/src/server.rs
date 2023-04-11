@@ -417,8 +417,9 @@ impl LanguageServer for Backend {
             Ok((uri, session)) => {
                 let _ = session.wait_for_parsing();
                 Ok(capabilities::semantic_tokens::semantic_tokens_full(
-                session, &uri,
-            ))},
+                    session, &uri,
+                ))
+            }
             Err(err) => {
                 tracing::error!("{}", err.to_string());
                 Ok(None)
