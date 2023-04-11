@@ -257,10 +257,10 @@ impl PackageManifestFile {
         let package_patches = self.patch.clone();
         let patch = match (workspace_patches, package_patches) {
             (Some(_), Some(_)) => bail!("Found [patch] table both in workspace and member package's manifest file. Consider removing [patch] table from package's manifest file."),
-            (Some(workspace_patches), None) => anyhow::Ok(Some(workspace_patches)),
-            (None, Some(pkg_patches)) => anyhow::Ok(Some(pkg_patches)),
-            (None, None) => Ok(None),
-        }?;
+            (Some(workspace_patches), None) => Some(workspace_patches),
+            (None, Some(pkg_patches)) => Some(pkg_patches),
+            (None, None) => None,
+        };
         Ok(Self {
             manifest: PackageManifest {
                 patch,
