@@ -123,11 +123,10 @@ impl Session {
 
     /// Parses the project and returns true if the compiler diagnostics are new and should be published.
     pub fn parse_project(&self, uri: &Url) -> Result<bool, LanguageServerError> {
-        // Acquire a permit to parse the project. If there are none available, wait until the running thread
-        // is done and return false. This way, we avoid publishing the same diagnostics multiple times.
+        // Acquire a permit to parse the project. If there are none available, return false. This way,
+        // we avoid publishing the same diagnostics multiple times.
         let permit = self.parse_permits.try_acquire();
         if permit.is_err() {
-            let _ = self.wait_for_parsing();
             return Ok(false);
         }
 
