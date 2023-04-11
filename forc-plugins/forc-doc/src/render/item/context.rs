@@ -6,7 +6,7 @@ use crate::{
     },
     RenderPlan,
 };
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use horrorshow::{box_html, Raw, RenderBox, Template};
 use std::{collections::BTreeMap, fmt::Write};
 use sway_core::language::ty::{
@@ -314,36 +314,45 @@ impl ItemContext {
 }
 impl Renderable for ItemContext {
     fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
-        let (title, rendered_list) = match self.context_opt {
+        let context_opt = match self.context_opt {
             Some(context) => {
                 let title = context.context_type.as_block_title();
                 let rendered_list = context.render(render_plan.clone())?;
-                Ok((title, rendered_list))
+                let lct = title.html_title_string();
+                Some(
+                    box_html! {
+                        h2(id=&lct, class=format!("{} small-section-header", &lct)) {
+                            : title.as_str();
+                            a(class="anchor", href=format!("{IDENTITY}{lct}"));
+                        }
+                        : rendered_list;
+                    }
+                    .into_string()?,
+                )
             }
-            None => Err(anyhow!(
-                "Safeguard against render call on empty context failed."
-            )),
-        }?;
-        let mut impl_vec: Vec<_> = Vec::new();
-        if let Some(impl_traits) = self.impl_traits {
-            for impl_trait in impl_traits {
-                impl_vec.push(impl_trait.render(render_plan.clone()))
-            }
+            None => None,
         };
-        let lct = title.html_title_string();
-        Ok(box_html! {
-            h2(id=&lct, class=format!("{} small-section-header", &lct)) {
-                : title.as_str();
-                a(class="anchor", href=format!("{IDENTITY}{lct}"));
+
+        let impl_vec = if let Some(impl_traits) = self.impl_traits {
+            let mut impl_vec: Vec<_> = Vec::new();
+            for impl_trait in impl_traits {
+                impl_vec.push(impl_trait.render(render_plan.clone())?)
             }
-            : rendered_list;
-            @ if !impl_vec.is_empty() {
+            Some(impl_vec)
+        } else {
+            None
+        };
+        Ok(box_html! {
+            @ if let Some(context) = context_opt {
+                : Raw(context);
+            }
+            @ if impl_vec.is_some() {
                 h2(id="trait-implementations", class="small-section-header") {
                     : "Trait Implementations";
                     a(href="#trait-implementations", class="anchor");
                 }
                 div(id="trait-implementations-list") {
-                    @ for impl_trait in impl_vec {
+                    @ for impl_trait in impl_vec.unwrap() {
                         : impl_trait;
                     }
                 }
@@ -357,8 +366,8 @@ impl Renderable for TyImplTrait {
         Ok(box_html! {
             details(class="swaydoc-toggle implementors-toggle") {
                 summary {
-                    div(id=format!("impl-{}", trait_name.suffix)) {
-                        a(href=format!("{IDENTITY}impl-{}", trait_name.suffix), class="anchor");
+                    div(id=format!("impl-{}", trait_name.suffix.as_str())) {
+                        a(href=format!("{IDENTITY}impl-{}", trait_name.suffix.as_str()), class="anchor");
                         h3(class="code-header in-band") {
                             : "impl";
                         }

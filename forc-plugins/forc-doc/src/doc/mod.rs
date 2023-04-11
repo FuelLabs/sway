@@ -82,30 +82,6 @@ impl Document {
                 }
             }
         }
-        // match for the spans to add the impl_traits to their corresponding doc
-        if dbg!(!impl_traits.is_empty()) {
-            for doc in &mut docs {
-                let mut impl_vec: Vec<TyImplTrait> = Vec::new();
-
-                match doc.item_body.ty_decl {
-                    TyDecl::StructDecl { decl_id, .. } => {
-                        for impl_trait in &impl_traits {
-                            if decl_engine.get_struct(&decl_id).span
-                                == impl_trait.implementing_for.span
-                            {
-                                println!("{impl_trait:?}");
-                                impl_vec.push(impl_trait.clone());
-                            }
-                        }
-                    }
-                    _ => continue,
-                }
-
-                if !impl_traits.is_empty() {
-                    doc.item_body.item_context.impl_traits = Some(impl_vec);
-                }
-            }
-        }
 
         if !no_deps && !typed_program.root.submodules.is_empty() {
             // this is the same process as before but for dependencies
@@ -118,11 +94,35 @@ impl Document {
                     decl_engine,
                     typed_submodule,
                     &mut docs,
+                    &mut impl_traits,
                     &module_prefix,
                     document_private_items,
                 )?;
             }
         }
+
+        // match for the spans to add the impl_traits to their corresponding doc
+        if !impl_traits.is_empty() {
+            for doc in &mut docs {
+                let mut impl_vec: Vec<TyImplTrait> = Vec::new();
+
+                match doc.item_body.ty_decl {
+                    TyDecl::StructDecl { ref name, .. } => {
+                        for impl_trait in &impl_traits {
+                            if name.as_str() == impl_trait.implementing_for.span.as_str() {
+                                impl_vec.push(impl_trait.clone());
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+
+                if !impl_vec.is_empty() {
+                    doc.item_body.item_context.impl_traits = Some(impl_vec);
+                }
+            }
+        }
+        // println!("{docs:#?}");
 
         Ok(docs)
     }
@@ -130,6 +130,7 @@ impl Document {
         decl_engine: &DeclEngine,
         typed_submodule: &TySubmodule,
         docs: &mut Documentation,
+        impl_traits: &mut Vec<TyImplTrait>,
         module_prefix: &ModuleInfo,
         document_private_items: bool,
     ) -> Result<()> {
@@ -139,23 +140,29 @@ impl Document {
             .push(typed_submodule.mod_name_span.as_str().to_owned());
         for ast_node in &typed_submodule.module.all_nodes {
             if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
-                let desc = Descriptor::from_typed_decl(
-                    decl_engine,
-                    decl,
-                    new_submodule_prefix.clone(),
-                    document_private_items,
-                )?;
+                if let TyDecl::ImplTrait { decl_id, .. } = decl {
+                    impl_traits.push(decl_engine.get_impl_trait(decl_id))
+                } else {
+                    let desc = Descriptor::from_typed_decl(
+                        decl_engine,
+                        decl,
+                        new_submodule_prefix.clone(),
+                        document_private_items,
+                    )?;
 
-                if let Descriptor::Documentable(doc) = desc {
-                    docs.push(doc)
+                    if let Descriptor::Documentable(doc) = desc {
+                        docs.push(doc)
+                    }
                 }
             }
         }
+
         for (_, submodule) in &typed_submodule.module.submodules {
             Document::from_ty_submodule(
                 decl_engine,
                 submodule,
                 docs,
+                impl_traits,
                 &new_submodule_prefix,
                 document_private_items,
             )?;
