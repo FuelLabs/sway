@@ -24,7 +24,7 @@ use std::{
     fs::File,
     io::Write,
     path::PathBuf,
-    sync::{Arc, Mutex},
+    sync::{Arc},
     vec,
 };
 use sway_core::{
@@ -67,10 +67,11 @@ pub struct Session {
     pub type_engine: RwLock<TypeEngine>,
     pub decl_engine: RwLock<DeclEngine>,
     pub sync: SyncWorkspace,
-    // Mutex to prevent multiple threads from parsing the project at the same time.
-    parse_mutex: Arc<Mutex<()>>,
-    // Limit the number of threads that can wait to parse at the same time.
+    // Limit the number of threads that can wait to parse at the same time. One thread can be parsing
+    // and one thread can be waiting to start parsing. All others will return the cached diagnostics.
     parse_permits: Arc<Semaphore>,
+    // Cached diagnostic results that require a lock to access. Readers will wait for writers to complete.
+    diagnostics: RwLock<Diagnostics>,
 }
 
 impl Session {
@@ -83,8 +84,8 @@ impl Session {
             type_engine: <_>::default(),
             decl_engine: <_>::default(),
             sync: SyncWorkspace::new(),
-            parse_mutex: Arc::new(Mutex::new(())),
             parse_permits: Arc::new(Semaphore::new(2)),
+            diagnostics: RwLock::new(Diagnostics::default()),
         }
     }
 
@@ -121,16 +122,20 @@ impl Session {
         &self.token_map
     }
 
-    pub fn parse_project(&self, uri: &Url) -> Result<Diagnostics, LanguageServerError> {
-        // Acquire a permit to parse the project. If there are none available, exit early.
-        let _permit = self
-            .parse_permits
-            .try_acquire()
-            .map_err(|_| LanguageServerError::AlreadyParsing)?;
+    /// Wait for the cached [Diagnostics] to be unlocked after parsing and return a copy.
+    pub fn wait_for_parsing(&self) -> Diagnostics {
+        self.diagnostics.read().clone()
+    }
 
-        // Lock the mutex to prevent multiple threads from parsing the project at the same time.
-        // It will be unlocked when the mutex goes out of scope.
-        let _ = self.parse_mutex.lock();
+    pub fn parse_project(&self, uri: &Url) -> Result<Diagnostics, LanguageServerError> {
+        // Acquire a permit to parse the project. If there are none available, return the cached results.
+        let permit = self.parse_permits.try_acquire();
+        if permit.is_err() {
+            return Ok(self.wait_for_parsing());
+        }
+
+        // Lock the diagnostics result to prevent multiple threads from parsing the project at the same time.
+        let mut diagnostics = self.diagnostics.write();
 
         let manifest_dir = PathBuf::from(uri.path());
         let locked = false;
@@ -159,11 +164,6 @@ impl Session {
         let plan =
             pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)
                 .map_err(LanguageServerError::BuildPlanFailed)?;
-
-        let mut diagnostics = Diagnostics {
-            warnings: vec![],
-            errors: vec![],
-        };
 
         let new_type_engine = TypeEngine::default();
         let new_decl_engine = DeclEngine::default();
@@ -213,7 +213,14 @@ impl Session {
             } = value.unwrap();
 
             let ast_res = CompileResult::new(typed, warnings, errors);
-            let typed_program = self.compile_res_to_typed_program(&ast_res)?;
+
+            // Get a reference to the typed program AST.
+            let typed_program = ast_res.value.as_ref().ok_or_else(|| {
+                *diagnostics = get_diagnostics(&ast_res.warnings, &ast_res.errors);
+                LanguageServerError::FailedToParse {
+                    diagnostics: diagnostics.clone(),
+                }
+            })?;
 
             // The final element in the results is the main program.
             if i == results_len - 1 {
@@ -238,7 +245,7 @@ impl Session {
                 self.save_parsed_program(parsed.to_owned().clone());
                 self.save_typed_program(typed_program.to_owned().clone());
 
-                diagnostics = get_diagnostics(&ast_res.warnings, &ast_res.errors);
+                *diagnostics = get_diagnostics(&ast_res.warnings, &ast_res.errors);
             } else {
                 // Collect tokens from dependencies and the standard library prelude.
                 self.parse_ast_to_tokens(&parsed, &ctx, |an, ctx| {
@@ -250,7 +257,7 @@ impl Session {
                 });
             }
         }
-        Ok(diagnostics)
+        Ok(diagnostics.clone())
     }
 
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
@@ -452,19 +459,6 @@ impl Session {
             .flat_map(|(_, submodule)| submodule.module.all_nodes.iter());
 
         root_nodes.chain(sub_nodes).for_each(|n| f(n, ctx));
-    }
-
-    /// Get a reference to the [ty::TyProgram] AST.
-    fn compile_res_to_typed_program<'a>(
-        &'a self,
-        ast_res: &'a CompileResult<ty::TyProgram>,
-    ) -> Result<&'a ty::TyProgram, LanguageServerError> {
-        ast_res
-            .value
-            .as_ref()
-            .ok_or(LanguageServerError::FailedToParse {
-                diagnostics: get_diagnostics(&ast_res.warnings, &ast_res.errors),
-            })
     }
 
     /// Create runnables if the `TyProgramKind` of the `TyProgram` is a script.

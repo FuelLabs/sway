@@ -267,7 +267,7 @@ impl LanguageServer for Backend {
                 // update this file with the new changes and write to disk
                 match session.write_changes_to_file(&uri, params.content_changes) {
                     Ok(_) => {
-                        self.parse_project(uri, params.text_document.uri.clone(), session.clone())
+                        self.parse_project(uri, params.text_document.uri.clone(), session)
                             .await;
                     }
                     Err(err) => tracing::error!("{}", err.to_string()),
@@ -414,9 +414,11 @@ impl LanguageServer for Backend {
         params: SemanticTokensParams,
     ) -> jsonrpc::Result<Option<SemanticTokensResult>> {
         match self.get_uri_and_session(&params.text_document.uri) {
-            Ok((uri, session)) => Ok(capabilities::semantic_tokens::semantic_tokens_full(
+            Ok((uri, session)) => {
+                let _ = session.wait_for_parsing();
+                Ok(capabilities::semantic_tokens::semantic_tokens_full(
                 session, &uri,
-            )),
+            ))},
             Err(err) => {
                 tracing::error!("{}", err.to_string());
                 Ok(None)
