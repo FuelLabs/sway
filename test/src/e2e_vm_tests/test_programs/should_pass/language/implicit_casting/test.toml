@@ -1,0 +1,11 @@
+category = "run"
+expected_result = { action = "return", value = 42 }
+validate_abi = true
+
+# check: let _a: Result<u32, u8> = Result::Ok(5);
+# nextln: $()This cast, from integer type of width sixty four to integer type of width thirty two, will lose precision.
+
+# check: let _b: MyStruct<u32> = MyStruct{ a:5 };
+# nextln: $()This cast, from integer type of width sixty four to integer type of width thirty two, will lose precision.
+
+expected_warnings = 2
