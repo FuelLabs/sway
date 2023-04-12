@@ -169,17 +169,21 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
     let replaces: Vec<_> = function
         .instruction_iter(context)
         .filter_map(|(_block, value)| match value.get_instruction(context) {
-            Some(Instruction::GetLocal(local)) => closure(&candidates, local).map(|replace_with| {
-                (
-                    value,
-                    ValueDatum::Instruction(Instruction::GetLocal(replace_with)),
-                )
-            }),
+            Some(Instruction::GetLocal(local)) => {
+                closure(&candidates, local).map(|replace_with| (value, *local, replace_with))
+            }
             _ => None,
         })
         .collect();
-    for (value, replace_with) in replaces.into_iter() {
-        value.replace(context, replace_with);
+    for (value, redundant_var, replacement_var) in replaces.into_iter() {
+        // Be sure to propagate the mutability of the original local variable to the copy.
+        if redundant_var.is_mutable(context) {
+            replacement_var.set_mutable(context, true);
+        }
+        value.replace(
+            context,
+            ValueDatum::Instruction(Instruction::GetLocal(replacement_var)),
+        );
     }
 
     // Delete stores to the replaced local.

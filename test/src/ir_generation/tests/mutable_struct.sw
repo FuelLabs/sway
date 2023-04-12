@@ -14,7 +14,7 @@ struct Record {
     b: u64,
 }
 
-// check: local { u64, u64 } record
+// check: local mut { u64, u64 } record
 
 // The first get_local when initialising record:
 // check: get_local ptr { u64, u64 }, record

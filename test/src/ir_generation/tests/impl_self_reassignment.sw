@@ -15,7 +15,7 @@ fn main() {
     a.f();
 }
 
-// check: local { u64 } a
+// check: local mut { u64 } a
 
 // check: get_local ptr { u64 }, a
 
