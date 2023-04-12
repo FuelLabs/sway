@@ -1,7 +1,7 @@
 use crate::pkg::{manifest_file_missing, parsing_failed, wrong_program_type};
 use anyhow::{anyhow, bail, Context, Result};
 use forc_tracing::println_yellow_err;
-use forc_util::{find_manifest_dir_in_parent, find_nested_manifest_dir, validate_name};
+use forc_util::{find_nested_manifest_dir, find_parent_manifest_dir, validate_name};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, HashMap},
@@ -249,7 +249,7 @@ impl PackageManifestFile {
     /// This is short for `PackageManifest::from_file`, but takes care of constructing the path to the
     /// file.
     pub fn from_dir(manifest_dir: &Path) -> Result<Self> {
-        let dir = forc_util::find_manifest_dir_in_parent(manifest_dir)
+        let dir = forc_util::find_parent_manifest_dir(manifest_dir)
             .ok_or_else(|| manifest_file_missing(manifest_dir))?;
         let path = dir.join(constants::MANIFEST_FILE_NAME);
         Self::from_file(path)
@@ -463,7 +463,7 @@ impl PackageManifest {
     /// file.
     pub fn from_dir(dir: &Path) -> Result<Self> {
         let manifest_dir =
-            find_manifest_dir_in_parent(dir).ok_or_else(|| manifest_file_missing(dir))?;
+            find_parent_manifest_dir(dir).ok_or_else(|| manifest_file_missing(dir))?;
         let file_path = manifest_dir.join(constants::MANIFEST_FILE_NAME);
         Self::from_file(&file_path)
     }
@@ -747,9 +747,8 @@ impl WorkspaceManifestFile {
     /// This is short for `PackageManifest::from_file`, but takes care of constructing the path to the
     /// file.
     pub fn from_dir(manifest_dir: &Path) -> Result<Self> {
-        let dir = forc_util::find_manifest_dir_in_parent_with_check(
-            manifest_dir,
-            |possible_manifest_dir| {
+        let dir =
+            forc_util::find_parent_manifest_dir_with_check(manifest_dir, |possible_manifest_dir| {
                 // Check if the found manifest file is a workspace manifest file or a standalone
                 // package manifest file.
                 let possible_path = possible_manifest_dir.join(constants::MANIFEST_FILE_NAME);
@@ -765,9 +764,8 @@ impl WorkspaceManifestFile {
                     .err()
                     .map(|e| !e.to_string().contains("missing field `workspace`"))
                     .unwrap_or_else(|| true)
-            },
-        )
-        .ok_or_else(|| manifest_file_missing(manifest_dir))?;
+            })
+            .ok_or_else(|| manifest_file_missing(manifest_dir))?;
         let path = dir.join(constants::MANIFEST_FILE_NAME);
         Self::from_file(path)
     }
