@@ -369,10 +369,10 @@ impl Renderable for TyImplTrait {
     fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
         let TyImplTrait {
             trait_name,
-            impl_type_parameters,
-            trait_type_arguments,
+            impl_type_parameters: _,
+            trait_type_arguments: _,
             items,
-            trait_decl_ref,
+            trait_decl_ref: _,
             implementing_for,
             ..
         } = self;
@@ -389,7 +389,7 @@ impl Renderable for TyImplTrait {
                         a(href=format!("{IDENTITY}impl-{}", trait_name.suffix.as_str()), class="anchor");
                         h3(class="code-header in-band") {
                             : "impl ";
-                            : trait_name.suffix.as_str();
+                            : trait_name.suffix.as_str(); // TODO: add links
                             : " for ";
                             : implementing_for.span.as_str();
                         }
