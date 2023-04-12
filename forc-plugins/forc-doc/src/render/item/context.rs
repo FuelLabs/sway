@@ -10,7 +10,7 @@ use anyhow::Result;
 use horrorshow::{box_html, Raw, RenderBox, Template};
 use std::{collections::BTreeMap, fmt::Write};
 use sway_core::language::ty::{
-    TyEnumVariant, TyImplTrait, TyStorageField, TyStructField, TyTraitFn,
+    TyEnumVariant, TyImplTrait, TyStorageField, TyStructField, TyTraitFn, TyTraitItem,
 };
 
 /// The actual context of the item displayed by [ItemContext].
@@ -155,7 +155,7 @@ impl Renderable for Context {
                     }
                     write!(fn_sig, ") -> {}", method.return_type_span.as_str())?;
                     let multiline = fn_sig.chars().count() >= 60;
-
+                    let fn_sig = format!("fn {}(", method.name);
                     let method_id = format!("tymethod.{}", method.name.as_str());
                     rendered_list.push(box_html! {
                         div(class="methods") {
@@ -209,9 +209,12 @@ impl Renderable for Context {
                                                 : ", ";
                                             }
                                         }
-                                        : ") -> ";
+                                        : ")";
                                     }
-                                    : method.return_type_span.as_str();
+                                    @ if !method.return_type_span.as_str().contains(&fn_sig) {
+                                        : " -> ";
+                                        : method.return_type_span.as_str();
+                                    }
                                 }
                             }
                         }
@@ -351,7 +354,7 @@ impl Renderable for ItemContext {
             @ if impl_traits.is_some() {
                 h2(id="trait-implementations", class="small-section-header") {
                     : "Trait Implementations";
-                    a(href="#trait-implementations", class="anchor");
+                    a(href=format!("{IDENTITY}trait-implementations"), class="anchor");
                 }
                 div(id="trait-implementations-list") {
                     @ for impl_trait in impl_traits.unwrap() {
@@ -363,15 +366,137 @@ impl Renderable for ItemContext {
     }
 }
 impl Renderable for TyImplTrait {
-    fn render(self, _render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
-        let TyImplTrait { trait_name, .. } = self;
+    fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
+        let TyImplTrait {
+            trait_name,
+            impl_type_parameters,
+            trait_type_arguments,
+            items,
+            trait_decl_ref,
+            implementing_for,
+            ..
+        } = self;
+
+        let mut rendered_items = Vec::new();
+        for item in items {
+            rendered_items.push(item.render(render_plan.clone())?)
+        }
+
         Ok(box_html! {
             details(class="swaydoc-toggle implementors-toggle") {
                 summary {
-                    div(id=format!("impl-{}", trait_name.suffix.as_str())) {
+                    div(id=format!("impl-{}", trait_name.suffix.as_str()), class="impl") {
                         a(href=format!("{IDENTITY}impl-{}", trait_name.suffix.as_str()), class="anchor");
                         h3(class="code-header in-band") {
-                            : "impl";
+                            : "impl ";
+                            : trait_name.suffix.as_str();
+                            : " for ";
+                            : implementing_for.span.as_str();
+                        }
+                    }
+                }
+                div(class="impl-items") {
+                    @ for item in rendered_items {
+                        : item;
+                    }
+                }
+            }
+        })
+    }
+}
+impl Renderable for TyTraitItem {
+    fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
+        let item = match self {
+            TyTraitItem::Fn(item_fn) => item_fn,
+            TyTraitItem::Constant(_) => unimplemented!("Constant Trait items not yet implemented"),
+        };
+        let method = render_plan.decl_engine.get_function(item.id());
+
+        let mut fn_sig = format!("fn {}(", method.name.as_str());
+        for param in &method.parameters {
+            let mut param_str = String::new();
+            if param.is_reference {
+                write!(param_str, "ref ")?;
+            }
+            if param.is_mutable {
+                write!(param_str, "mut ")?;
+            }
+            if param.is_self() {
+                write!(param_str, "self,")?;
+            } else {
+                write!(
+                    fn_sig,
+                    "{} {},",
+                    param.name.as_str(),
+                    param.type_argument.span.as_str()
+                )?;
+            }
+        }
+        write!(fn_sig, ") -> {}", method.return_type.span.as_str())?;
+        let multiline = fn_sig.chars().count() >= 60;
+
+        let method_id = format!("method.{}", method.name.as_str());
+
+        Ok(box_html! {
+            details(class="swaydoc-toggle method-toggle", open) {
+                summary {
+                    div(id=format!("method.{}", item.name().as_str()), class="method trait-impl") {
+                        a(href=format!("{IDENTITY}method.{}", item.name().as_str()), class="anchor");
+                        h4(class="code-header") {
+                            : "fn ";
+                            a(class="fnname", href=format!("{IDENTITY}{method_id}")) {
+                                : method.name.as_str();
+                            }
+                            : "(";
+                            @ if multiline {
+                                @ for param in &method.parameters {
+                                    br;
+                                    : "    ";
+                                    @ if param.is_reference {
+                                        : "ref";
+                                    }
+                                    @ if param.is_mutable {
+                                        : "mut ";
+                                    }
+                                    @ if param.is_self() {
+                                        : "self,"
+                                    } else {
+                                        : param.name.as_str();
+                                        : ": ";
+                                        : param.type_argument.span.as_str();
+                                        : ","
+                                    }
+                                }
+                                br;
+                                : ")";
+                            } else {
+                                @ for param in &method.parameters {
+                                    @ if param.is_reference {
+                                        : "ref";
+                                    }
+                                    @ if param.is_mutable {
+                                        : "mut ";
+                                    }
+                                    @ if param.is_self() {
+                                        : "self"
+                                    } else {
+                                        : param.name.as_str();
+                                        : ": ";
+                                        : param.type_argument.span.as_str();
+                                    }
+                                    @ if param.name.as_str()
+                                        != method.parameters.last()
+                                        .expect("no last element in trait method parameters list")
+                                        .name.as_str() {
+                                        : ", ";
+                                    }
+                                }
+                                : ")";
+                            }
+                            @ if method.span.as_str().contains("->") {
+                                : " -> ";
+                                : method.return_type.span.as_str();
+                            }
                         }
                     }
                 }
