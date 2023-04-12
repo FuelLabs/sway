@@ -66,6 +66,10 @@ pub fn rename(
             .collect::<Vec<Ident>>()
     })
     .into_iter()
+    .filter(|ident| {
+        // we want to rename the type that self refers to, not the self ident itself
+        ident.as_str() != "self"
+    })
     .filter_map(|ident| {
         let mut range = get_range_from_span(&ident.span());
         if ident.is_raw_ident() {
