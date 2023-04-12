@@ -63,27 +63,25 @@ impl Backend {
     }
 
     async fn parse_project(&self, uri: Url, workspace_uri: Url, session: Arc<Session>) {
-        let uri_clone = uri.clone();
-        let session_clone = session.clone();
-        // Run parse_project in a blocking thread, because parsing is not async.
-        let should_publish = task::spawn_blocking(move || {
-            // Pass in the temp Url into parse_project, we can now get the updated AST's back.
-            match session_clone.parse_project(&uri_clone) {
-                Ok(should_publish) => should_publish,
-                Err(err) => {
-                    tracing::error!("{}", err.to_string().as_str());
-                    matches!(err, LanguageServerError::FailedToParse)
-                }
-            }
-        })
-        .await
-        .unwrap_or_default();
-
+        let should_publish = run_blocking_parse_project(uri.clone(), session.clone()).await;
         if should_publish {
             self.publish_diagnostics(&uri, &workspace_uri, session)
                 .await;
         }
     }
+}
+
+/// Runs parse_project in a blocking thread, because parsing is not async.
+async fn run_blocking_parse_project(uri: Url, session: Arc<Session>) -> bool {
+    task::spawn_blocking(move || match session.parse_project(&uri) {
+        Ok(should_publish) => should_publish,
+        Err(err) => {
+            tracing::error!("{}", err);
+            matches!(err, LanguageServerError::FailedToParse)
+        }
+    })
+    .await
+    .unwrap_or_default()
 }
 
 /// Returns the capabilities of the server to the client,
@@ -513,6 +511,7 @@ impl Backend {
     ) -> jsonrpc::Result<Option<Vec<InlayHint>>> {
         match self.get_uri_and_session(&params.text_document.uri) {
             Ok((uri, session)) => {
+                let _ = session.wait_for_parsing();
                 let config = &self.config.read().inlay_hints;
                 Ok(capabilities::inlay_hints::inlay_hints(
                     session,

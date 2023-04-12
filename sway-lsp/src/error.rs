@@ -16,8 +16,6 @@ pub enum LanguageServerError {
     FailedToCompile(anyhow::Error),
     #[error("Failed to parse document")]
     FailedToParse,
-    #[error("Already parsing project")]
-    AlreadyParsing,
     #[error("Error formatting document: {0}")]
     FormatError(FormatterError),
 }
