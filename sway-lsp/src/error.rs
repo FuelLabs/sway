@@ -1,8 +1,6 @@
 use swayfmt::FormatterError;
 use thiserror::Error;
 
-use crate::capabilities::diagnostic::Diagnostics;
-
 #[derive(Debug, Error)]
 pub enum LanguageServerError {
     // Inherited errors
@@ -19,7 +17,7 @@ pub enum LanguageServerError {
     #[error("Failed to compile. {0}")]
     FailedToCompile(anyhow::Error),
     #[error("Failed to parse document")]
-    FailedToParse { diagnostics: Diagnostics },
+    FailedToParse,
     #[error("Error formatting document: {0}")]
     FormatError(FormatterError),
 }
