@@ -177,7 +177,9 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
         .collect();
     for (value, redundant_var, replacement_var) in replaces.into_iter() {
         // Be sure to propagate the mutability of the original local variable to the copy.
-        replacement_var.set_mutable(context, redundant_var.is_mutable(context));
+        if redundant_var.is_mutable(context) {
+            replacement_var.set_mutable(context, true);
+        }
         value.replace(
             context,
             ValueDatum::Instruction(Instruction::GetLocal(replacement_var)),
