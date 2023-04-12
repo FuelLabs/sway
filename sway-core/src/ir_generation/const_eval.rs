@@ -280,7 +280,7 @@ fn const_eval_typed_expr(
                     (lookup.lookup)(lookup, call_path)
                         .ok()
                         .flatten()
-                        .and_then(|v| v.get_constant(lookup.context).cloned())
+                        .and_then(|v| v.get_constant_or_configurable(lookup.context).cloned())
                 }
             }
         }
