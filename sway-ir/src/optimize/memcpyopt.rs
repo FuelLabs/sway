@@ -184,7 +184,7 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
     // If the source is an Arg, we introduce new `get_local`,
     // otherwise (`get_local`), we replace the local symbol in-place.
     enum ReplaceWith {
-        InPlaceLocal(ValueDatum),
+        InPlaceLocal(LocalVar),
         Value(Value),
     }
 
@@ -197,9 +197,7 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
                     (
                         value,
                         match replace_with {
-                            Symbol::Local(local) => ReplaceWith::InPlaceLocal(
-                                ValueDatum::Instruction(Instruction::GetLocal(local)),
-                            ),
+                            Symbol::Local(local) => ReplaceWith::InPlaceLocal(local),
                             Symbol::Arg(ba) => {
                                 ReplaceWith::Value(ba.block.get_arg(context, ba.idx).unwrap())
                             }
@@ -214,7 +212,18 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
     let mut value_replace = FxHashMap::<Value, Value>::default();
     for (value, replace_with) in replaces.into_iter() {
         match replace_with {
-            ReplaceWith::InPlaceLocal(replace_with) => value.replace(context, replace_with),
+            ReplaceWith::InPlaceLocal(replacement_var) => {
+                let Some(Instruction::GetLocal(redundant_var)) = value.get_instruction(context) else {
+                    panic!("earlier match now fails");
+                };
+                if redundant_var.is_mutable(context) {
+                    replacement_var.set_mutable(context, true);
+                }
+                value.replace(
+                    context,
+                    ValueDatum::Instruction(Instruction::GetLocal(replacement_var)),
+                )
+            }
             ReplaceWith::Value(replace_with) => {
                 value_replace.insert(value, replace_with);
             }
