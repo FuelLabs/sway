@@ -70,7 +70,7 @@ fn log_demotion(context: &mut Context, function: Function) -> Result<bool, IrErr
     for (block, log_instr_val, logged_val, logged_ty, log_id_val) in candidates {
         // Create a variable for the arg, a get_local for it and a store.
         let loc_var =
-            function.new_unique_local_var(context, "__log_arg".to_owned(), logged_ty, None);
+            function.new_unique_local_var(context, "__log_arg".to_owned(), logged_ty, None, false);
         let get_loc_val = Value::new_instruction(context, Instruction::GetLocal(loc_var));
         let store_val = Value::new_instruction(
             context,
@@ -158,6 +158,7 @@ fn asm_block_arg_demotion(context: &mut Context, function: Function) -> Result<b
                     "__asm_arg".to_owned(),
                     *ref_arg_ty,
                     None,
+                    false,
                 );
 
                 // Create `get_local`s and `store`s for each one.
@@ -272,8 +273,13 @@ fn ptr_to_int_demotion(context: &mut Context, function: Function) -> Result<bool
     // the ptr_to_int instruction.
     for (block, ptr_to_int_instr_val, ptr_val, ptr_ty) in candidates {
         // Create a variable for the arg, a get_local for it and a store.
-        let loc_var =
-            function.new_unique_local_var(context, "__ptr_to_int_arg".to_owned(), ptr_ty, None);
+        let loc_var = function.new_unique_local_var(
+            context,
+            "__ptr_to_int_arg".to_owned(),
+            ptr_ty,
+            None,
+            false,
+        );
         let get_loc_val = Value::new_instruction(context, Instruction::GetLocal(loc_var));
         let store_val = Value::new_instruction(
             context,
