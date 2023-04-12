@@ -4,6 +4,6 @@ library;
 /// offset, in words, from the start of the storage slot at `key`. The parameter `T` is the type of 
 /// the data to be read from or written to at `offset`.
 pub struct StorageKey<T> {
-    key: b256,
+    slot: b256,
     offset: u64,
 }

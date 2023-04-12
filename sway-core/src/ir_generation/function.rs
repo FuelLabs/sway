@@ -2712,7 +2712,13 @@ impl<'eng> FnCompiler<'eng> {
                 let storage_key_local_name = self.lexical_map.insert_anon();
                 let storage_key_ptr = self
                     .function
-                    .new_local_var(context, storage_key_local_name, storage_key_aggregate, None)
+                    .new_local_var(
+                        context,
+                        storage_key_local_name,
+                        storage_key_aggregate,
+                        None,
+                        false,
+                    )
                     .map_err(|ir_error| {
                         CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
                     })?;
