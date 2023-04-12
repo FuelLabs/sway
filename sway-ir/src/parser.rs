@@ -110,9 +110,9 @@ mod ir_builder {
                     (ty, name, mdi)
                 }
 
-            rule fn_local() -> (IrAstTy, String, Option<IrAstOperation>)
-                = "local" _ ty:ast_ty() name:id() init:fn_local_init()? {
-                    (ty, name, init)
+            rule fn_local() -> (IrAstTy, String, Option<IrAstOperation>, bool)
+                = "local" _ m:("mut" _)? ty:ast_ty() name:id() init:fn_local_init()? {
+                    (ty, name, init, m.is_some())
                 }
 
             rule fn_local_init() -> IrAstOperation
@@ -632,7 +632,7 @@ mod ir_builder {
         ret_type: IrAstTy,
         is_public: bool,
         metadata: Option<MdIdxRef>,
-        locals: Vec<(IrAstTy, String, Option<IrAstOperation>)>,
+        locals: Vec<(IrAstTy, String, Option<IrAstOperation>, bool)>,
         blocks: Vec<IrAstBlock>,
         selector: Option<[u8; 4]>,
         is_entry: bool,
@@ -909,7 +909,7 @@ mod ir_builder {
             // config variables as they are globally available
             let mut arg_map = self.configs_map.clone();
             let mut local_map = HashMap::<String, LocalVar>::new();
-            for (ty, name, initializer) in fn_decl.locals {
+            for (ty, name, initializer, mutable) in fn_decl.locals {
                 let initializer = initializer.map(|const_init| {
                     if let IrAstOperation::Const(val_ty, val) = const_init {
                         val.value.as_constant(context, val_ty)
@@ -920,7 +920,7 @@ mod ir_builder {
                 let ty = ty.to_ir_type(context);
                 local_map.insert(
                     name.clone(),
-                    func.new_local_var(context, name, ty, initializer)?,
+                    func.new_local_var(context, name, ty, initializer, mutable)?,
                 );
             }
 

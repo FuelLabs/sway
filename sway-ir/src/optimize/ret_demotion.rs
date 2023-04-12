@@ -42,7 +42,7 @@ pub fn ret_val_demotion(
     let entry_block = function.get_entry_block(context);
     let ptr_arg_val = if function.is_entry(context) {
         let ret_var =
-            function.new_unique_local_var(context, "__ret_value".to_owned(), ret_type, None);
+            function.new_unique_local_var(context, "__ret_value".to_owned(), ret_type, None, false);
 
         // Insert the return value pointer at the start of the entry block.
         let get_ret_var = Value::new_instruction(context, Instruction::GetLocal(ret_var));
@@ -142,8 +142,13 @@ fn update_callers(context: &mut Context, function: Function, ret_type: Type) {
     // instruction with a `get_local`, an updated `call` and a `load`.
     for (calling_func, calling_block, call_val) in call_sites {
         // First make a new local variable.
-        let loc_var =
-            calling_func.new_unique_local_var(context, "__ret_val".to_owned(), ret_type, None);
+        let loc_var = calling_func.new_unique_local_var(
+            context,
+            "__ret_val".to_owned(),
+            ret_type,
+            None,
+            false,
+        );
         let get_loc_val = Value::new_instruction(context, Instruction::GetLocal(loc_var));
 
         // Next we need to copy the original `call` but add the extra arg.
