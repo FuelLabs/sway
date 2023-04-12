@@ -16,12 +16,8 @@ struct GasCounts {
 
 fn get_gas() -> GasCounts {
     GasCounts {
-        global_gas: asm() {
-            ggas
-        },
-        context_gas: asm() {
-            cgas
-        }
+        global_gas: asm() { ggas },
+        context_gas: asm() { cgas },
     }
 }
 
@@ -65,6 +61,11 @@ fn main() -> u32 {
     let _retl = asm() { retl };
 
     let _flag = asm() { flag };
+
+    let _x = asm(r1, r2: 2, r3: 1) {
+        mod  r1 r2 r3;
+        r1: u64
+    };
 
     return 6u32;
 }

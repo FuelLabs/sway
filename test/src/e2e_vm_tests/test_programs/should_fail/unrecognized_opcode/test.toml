@@ -1,0 +1,4 @@
+category = "fail"
+
+ # check: $()modd r1 r2 r3;
+ # check: $()Unrecognized op code.
