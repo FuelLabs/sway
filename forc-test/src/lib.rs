@@ -168,6 +168,12 @@ struct ContractTestSetup {
     root_contract_id: tx::ContractId,
 }
 
+impl TestedPackage {
+    pub fn tests_passed(&self) -> bool {
+        self.tests.iter().all(|test| test.passed())
+    }
+}
+
 impl ContractToTest {
     /// Deploy the contract dependencies and tests excluded version for this package.
     fn deploy(&self) -> anyhow::Result<TestSetup> {
