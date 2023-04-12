@@ -119,6 +119,11 @@ impl TokenMap {
         tokens
             .filter_map(|(ident, token)| {
                 let span = match token.typed {
+                    Some(TypedAstToken::TypedFunctionDeclaration(decl))
+                        if functions_only == Some(true) =>
+                    {
+                        decl.span()
+                    }
                     Some(TypedAstToken::TypedDeclaration(decl)) => decl.span(),
                     _ => ident.span(),
                 };
