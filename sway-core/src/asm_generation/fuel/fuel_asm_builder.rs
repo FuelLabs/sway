@@ -853,7 +853,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
 
                     // If the byte offset requires a data section entry, then convert the word
                     // offset to a register first (without any base). Then, multiply the result by
-                    // 8 to get the byte offse. The result can then be manually added to
+                    // 8 to get the byte offset. The result can then be manually added to
                     // `base_reg`.
                     //
                     // Otherwise, just convert the byte offset directly to a register.
