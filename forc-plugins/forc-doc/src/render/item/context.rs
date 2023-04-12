@@ -218,6 +218,11 @@ impl Renderable for Context {
                                 }
                             }
                         }
+                        @ if !method.attributes.is_empty() {
+                            div(class="docblock") {
+                                : Raw(method.attributes.to_html_string());
+                            }
+                        }
                     }.into_string()?);
                 }
             }
@@ -411,6 +416,7 @@ impl Renderable for TyTraitItem {
             TyTraitItem::Constant(_) => unimplemented!("Constant Trait items not yet implemented"),
         };
         let method = render_plan.decl_engine.get_function(item.id());
+        let attributes = method.attributes.to_html_string();
 
         let mut fn_sig = format!("fn {}(", method.name.as_str());
         for param in &method.parameters {
@@ -499,6 +505,9 @@ impl Renderable for TyTraitItem {
                             }
                         }
                     }
+                }
+                div(class="doc-block") {
+                    : Raw(attributes);
                 }
             }
         })
