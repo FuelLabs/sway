@@ -17,6 +17,7 @@ use crate::{
 use sway_ir::*;
 
 use either::Either;
+use sway_error::error::CompileError;
 use sway_types::Ident;
 
 /// A summary of the adopted calling convention:
@@ -53,11 +54,16 @@ use sway_types::Ident;
 ///   - Jump to the return address.
 
 impl<'ir> FuelAsmBuilder<'ir> {
-    pub(super) fn compile_call(&mut self, instr_val: &Value, function: &Function, args: &[Value]) {
+    pub(super) fn compile_call(
+        &mut self,
+        instr_val: &Value,
+        function: &Function,
+        args: &[Value],
+    ) -> Result<(), CompileError> {
         // Put the args into the args registers.
         for (idx, arg_val) in args.iter().enumerate() {
             if idx < compiler_constants::NUM_ARG_REGISTERS as usize {
-                let arg_reg = self.value_to_register(arg_val);
+                let arg_reg = self.value_to_register(arg_val)?;
                 self.cur_bytecode.push(Op::register_move(
                     VirtualRegister::Constant(ConstantRegister::ARG_REGS[idx]),
                     arg_reg,
@@ -101,12 +107,18 @@ impl<'ir> FuelAsmBuilder<'ir> {
             owning_span: None,
         });
         self.reg_map.insert(*instr_val, ret_reg);
+
+        Ok(())
     }
 
-    pub(super) fn compile_ret_from_call(&mut self, instr_val: &Value, ret_val: &Value) {
+    pub(super) fn compile_ret_from_call(
+        &mut self,
+        instr_val: &Value,
+        ret_val: &Value,
+    ) -> Result<(), CompileError> {
         // Move the result into the return value register.
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
-        let ret_reg = self.value_to_register(ret_val);
+        let ret_reg = self.value_to_register(ret_val)?;
         self.cur_bytecode.push(Op::register_move(
             VirtualRegister::Constant(ConstantRegister::CallReturnValue),
             ret_reg,
@@ -121,6 +133,8 @@ impl<'ir> FuelAsmBuilder<'ir> {
             .expect("Calls guaranteed to save return context.")
             .0;
         self.cur_bytecode.push(Op::jump_to_label(end_label));
+
+        Ok(())
     }
 
     pub fn compile_function(&mut self, function: Function) -> CompileResult<()> {
@@ -177,8 +191,12 @@ impl<'ir> FuelAsmBuilder<'ir> {
             });
         }
 
+        let mut warnings = Vec::new();
+        let mut errors = Vec::new();
+
         if func_is_entry {
-            self.compile_external_args(function)
+            let result = Into::<CompileResult<()>>::into(self.compile_external_args(function));
+            check!(result, return err(warnings, errors), warnings, errors);
         } else {
             // Make copies of the arg registers.
             self.compile_fn_call_args(function)
@@ -207,15 +225,13 @@ impl<'ir> FuelAsmBuilder<'ir> {
 
         self.init_locals(function);
 
-        // Compile instructions.
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
-
-        // Traverse the IR blocks in reverse post order. This guarantees that each block is
-        // processed after all its CFG predecessors have been processed.
+        // Compile instructions. Traverse the IR blocks in reverse post order. This guarantees that
+        // each block is processed after all its CFG predecessors have been processed.
         let po = sway_ir::dominator::compute_post_order(self.context, &function);
         for block in po.po_to_block.iter().rev() {
-            self.insert_block_label(*block);
+            let label = self.block_to_label(block);
+            self.cur_bytecode.push(Op::unowned_jump_label(label));
+
             for instr_val in block.instruction_iter(self.context) {
                 check!(
                     self.compile_instruction(&instr_val, func_is_entry),
@@ -298,19 +314,21 @@ impl<'ir> FuelAsmBuilder<'ir> {
     }
 
     // Handle loading the arguments of a contract call
-    fn compile_external_args(&mut self, function: Function) {
+    fn compile_external_args(&mut self, function: Function) -> Result<(), CompileError> {
         match function.args_iter(self.context).count() {
             // Nothing to do if there are no arguments
-            0 => (),
+            0 => Ok(()),
 
             // A special case for when there's only a single arg, its value (or address) is placed
             // directly in the base register.
             1 => {
                 let (_, val) = function.args_iter(self.context).next().unwrap();
-                let single_arg_reg = self.value_to_register(val);
+                let single_arg_reg = self.reg_seqr.next();
                 match self.program_kind {
-                    ProgramKind::Contract => self.read_args_base_from_frame(&single_arg_reg),
-                    ProgramKind::Library => (), // Nothing to do here
+                    ProgramKind::Contract => {
+                        self.read_args_base_from_frame(&single_arg_reg);
+                    }
+                    ProgramKind::Library => {} // Nothing to do here
                     ProgramKind::Script | ProgramKind::Predicate => {
                         if let ProgramKind::Predicate = self.program_kind {
                             self.read_args_base_from_predicate_data(&single_arg_reg);
@@ -319,6 +337,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                         }
 
                         // The base is an offset.  Dereference it.
+                        // XXX val.get_type() should be a pointer if it's not meant to be loaded.
                         if val
                             .get_type(self.context)
                             .map_or(false, |t| self.is_copy_type(&t))
@@ -335,6 +354,8 @@ impl<'ir> FuelAsmBuilder<'ir> {
                         }
                     }
                 }
+                self.reg_map.insert(*val, single_arg_reg);
+                Ok(())
             }
 
             // Otherwise, the args are bundled together and pointed to by the base register.
@@ -342,7 +363,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                 let args_base_reg = self.reg_seqr.next();
                 match self.program_kind {
                     ProgramKind::Contract => self.read_args_base_from_frame(&args_base_reg),
-                    ProgramKind::Library => return, // Nothing to do here
+                    ProgramKind::Library => return Ok(()), // Nothing to do here
                     ProgramKind::Predicate => {
                         self.read_args_base_from_predicate_data(&args_base_reg)
                     }
@@ -353,8 +374,14 @@ impl<'ir> FuelAsmBuilder<'ir> {
                 // and whether the offset fits in a 12-bit immediate.
                 let mut arg_word_offset = 0;
                 for (name, val) in function.args_iter(self.context) {
-                    let current_arg_reg = self.value_to_register(val);
-                    let arg_type = val.get_type(self.context).unwrap();
+                    let current_arg_reg = self.reg_seqr.next();
+
+                    // The function arg type might be a pointer, but the value in the struct will
+                    // be of the pointed to type.  So strip the pointer if necessary.
+                    let arg_type = val
+                        .get_type(self.context)
+                        .map(|ty| ty.get_pointee_type(self.context).unwrap_or(ty))
+                        .unwrap();
                     let arg_type_size_bytes = ir_type_size_in_bytes(self.context, &arg_type);
                     if self.is_copy_type(&arg_type) {
                         if arg_word_offset > compiler_constants::TWELVE_BITS {
@@ -390,34 +417,21 @@ impl<'ir> FuelAsmBuilder<'ir> {
                                 owning_span: None,
                             });
                         }
-                    } else if arg_word_offset * 8 > compiler_constants::TWELVE_BITS {
-                        let offs_reg = self.reg_seqr.next();
-                        self.number_to_reg(arg_word_offset * 8, &offs_reg, None);
-                        self.cur_bytecode.push(Op {
-                            opcode: either::Either::Left(VirtualOp::ADD(
-                                current_arg_reg.clone(),
-                                args_base_reg.clone(),
-                                offs_reg,
-                            )),
-                            comment: format!("get offset or arg {name}"),
-                            owning_span: None,
-                        });
                     } else {
-                        self.cur_bytecode.push(Op {
-                            opcode: either::Either::Left(VirtualOp::ADDI(
-                                current_arg_reg.clone(),
-                                args_base_reg.clone(),
-                                VirtualImmediate12 {
-                                    value: (arg_word_offset * 8) as u16,
-                                },
-                            )),
-                            comment: format!("get address for arg {name}"),
-                            owning_span: None,
-                        });
+                        self.immediate_to_reg(
+                            arg_word_offset * 8,
+                            current_arg_reg.clone(),
+                            Some(&args_base_reg),
+                            format!("get offset or arg {name}"),
+                            None,
+                        );
                     }
 
                     arg_word_offset += size_bytes_in_words!(arg_type_size_bytes);
+                    self.reg_map.insert(*val, current_arg_reg);
                 }
+
+                Ok(())
             }
         }
     }
@@ -596,51 +610,55 @@ impl<'ir> FuelAsmBuilder<'ir> {
 
     fn init_locals(&mut self, function: Function) {
         // If they're immutable and have a constant initialiser then they go in the data section.
+        //
         // Otherwise they go in runtime allocated space, either a register or on the stack.
         //
         // Stack offsets are in words to both enforce alignment and simplify use with LW/SW.
-        let mut stack_base = 0_u64;
-        for (_name, ptr) in function.locals_iter(self.context) {
-            if let Some(constant) = ptr.get_initializer(self.context) {
-                let data_id = self.data_section.insert_data_value(Entry::from_constant(
-                    self.context,
-                    constant,
-                    None,
-                ));
-                self.ptr_map.insert(*ptr, Storage::Data(data_id));
-            } else {
-                let ptr_ty = ptr.get_type(self.context);
-                match ptr_ty.get_content(self.context) {
-                    TypeContent::Unit | TypeContent::Bool | TypeContent::Uint(_) => {
-                        self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
-                        stack_base += 1;
-                    }
-                    TypeContent::Slice => {
-                        self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
-                        stack_base += 2;
-                    }
-                    TypeContent::B256 => {
-                        // XXX Like strings, should we just reserve space for a pointer?
-                        self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
-                        stack_base += 4;
-                    }
-                    TypeContent::String(n) => {
-                        // Strings are always constant and used by reference, so we only store the
-                        // pointer on the stack.
-                        self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
-                        stack_base += size_bytes_round_up_to_word_alignment!(n)
-                    }
-                    TypeContent::Array(..) | TypeContent::Struct(_) | TypeContent::Union(_) => {
-                        // Store this aggregate at the current stack base.
-                        self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
+        let (stack_base, init_mut_vars) = function.locals_iter(self.context).fold(
+            (0, Vec::new()),
+            |(stack_base, mut init_mut_vars), (_name, ptr)| {
+                if let (false, Some(constant)) = (
+                    ptr.is_mutable(self.context),
+                    ptr.get_initializer(self.context),
+                ) {
+                    let data_id = self.data_section.insert_data_value(Entry::from_constant(
+                        self.context,
+                        constant,
+                        None,
+                    ));
+                    self.ptr_map.insert(*ptr, Storage::Data(data_id));
+                    (stack_base, init_mut_vars)
+                } else {
+                    self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
 
-                        // Reserve space by incrementing the base.
-                        stack_base +=
-                            size_bytes_in_words!(ir_type_size_in_bytes(self.context, &ptr_ty));
+                    let ptr_ty = ptr.get_inner_type(self.context);
+                    let var_size = match ptr_ty.get_content(self.context) {
+                        TypeContent::Unit
+                        | TypeContent::Bool
+                        | TypeContent::Uint(_)
+                        | TypeContent::Pointer(_) => 1,
+                        TypeContent::Slice => 2,
+                        TypeContent::B256 => 4,
+                        TypeContent::String(n) => size_bytes_round_up_to_word_alignment!(n),
+                        TypeContent::Array(..) | TypeContent::Struct(_) | TypeContent::Union(_) => {
+                            size_bytes_in_words!(ir_type_size_in_bytes(self.context, &ptr_ty))
+                        }
+                    };
+
+                    if let Some(constant) = ptr.get_initializer(self.context) {
+                        let data_id = self.data_section.insert_data_value(Entry::from_constant(
+                            self.context,
+                            constant,
+                            None,
+                        ));
+
+                        init_mut_vars.push((stack_base, var_size, data_id));
                     }
-                };
-            }
-        }
+
+                    (stack_base + var_size, init_mut_vars)
+                }
+            },
+        );
 
         // Reserve space on the stack (in bytes) for all our locals which require it.  Firstly save
         // the current $sp.
@@ -665,6 +683,65 @@ impl<'ir> FuelAsmBuilder<'ir> {
                 owning_span: None,
             });
         }
+
+        // Initialise that stack variables which require it.
+        for (var_stack_offs, var_word_size, var_data_id) in init_mut_vars {
+            // Load our initialiser from the data section.
+            self.cur_bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::LWDataId(
+                    VirtualRegister::Constant(ConstantRegister::Scratch),
+                    var_data_id,
+                )),
+                comment: "load initializer from data section".to_owned(),
+                owning_span: None,
+            });
+
+            let var_stack_offs = var_stack_offs * 8;
+            assert!(var_stack_offs <= compiler_constants::TWELVE_BITS);
+
+            // Get the destination on the stack.
+            let dst_reg = self.reg_seqr.next();
+            self.cur_bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::ADDI(
+                    dst_reg.clone(),
+                    locals_base_reg.clone(),
+                    VirtualImmediate12 {
+                        value: var_stack_offs as u16,
+                    },
+                )),
+                comment: "calc local variable address".to_owned(),
+                owning_span: None,
+            });
+
+            if var_word_size == 1 {
+                // Initialise by value.
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::SW(
+                        dst_reg,
+                        VirtualRegister::Constant(ConstantRegister::Scratch),
+                        VirtualImmediate12 { value: 0 },
+                    )),
+                    comment: "store initializer to local variable".to_owned(),
+                    owning_span: None,
+                });
+            } else {
+                // Initialise by reference.
+                let var_byte_size = var_word_size * 8;
+                assert!(var_byte_size <= compiler_constants::TWELVE_BITS);
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::MCPI(
+                        dst_reg,
+                        VirtualRegister::Constant(ConstantRegister::Scratch),
+                        VirtualImmediate12 {
+                            value: var_byte_size as u16,
+                        },
+                    )),
+                    comment: "copy initializer from data section to local variable".to_owned(),
+                    owning_span: None,
+                });
+            }
+        }
+
         self.locals_ctxs.push((locals_size, locals_base_reg));
     }
 

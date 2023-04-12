@@ -6,7 +6,9 @@ use annotate_snippets::{
 };
 use ansi_term::Colour;
 use anyhow::{bail, Result};
+use clap::Args;
 use forc_tracing::{println_red_err, println_yellow_err};
+use serde::{Deserialize, Serialize};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::str;
@@ -20,6 +22,16 @@ use sway_utils::constants;
 pub mod restricted;
 
 pub const DEFAULT_OUTPUT_DIRECTORY: &str = "out";
+
+/// Added salt used to derive the contract ID.
+#[derive(Debug, Args, Default, Deserialize, Serialize)]
+pub struct Salt {
+    /// Added salt used to derive the contract ID.
+    ///
+    /// By default, this is `0x0000000000000000000000000000000000000000000000000000000000000000`.
+    #[clap(long = "salt")]
+    pub salt: Option<fuel_tx::Salt>,
+}
 
 /// Format `Log` and `LogData` receipts.
 pub fn format_log_receipts(receipts: &[fuel_tx::Receipt], pretty_print: bool) -> Result<String> {

@@ -293,7 +293,6 @@ impl<'ir> EvmAsmBuilder<'ir> {
         let mut errors = Vec::new();
         if let Some(instruction) = instr_val.get_instruction(self.context) {
             match instruction {
-                Instruction::AddrOf(arg) => self.compile_addr_of(instr_val, arg),
                 Instruction::AsmBlock(asm, args) => {
                     check!(
                         self.compile_asm_block(instr_val, asm, args),
@@ -308,9 +307,7 @@ impl<'ir> EvmAsmBuilder<'ir> {
                 }
                 Instruction::Branch(to_block) => self.compile_branch(to_block),
                 Instruction::Call(func, args) => self.compile_call(instr_val, func, args),
-                Instruction::CastPtr(val, ty, offs) => {
-                    self.compile_cast_ptr(instr_val, val, ty, *offs)
-                }
+                Instruction::CastPtr(val, ty) => self.compile_cast_ptr(instr_val, val, ty),
                 Instruction::Cmp(pred, lhs_value, rhs_value) => {
                     self.compile_cmp(instr_val, pred, lhs_value, rhs_value)
                 }
@@ -331,14 +328,6 @@ impl<'ir> EvmAsmBuilder<'ir> {
                     gas,
                     ..
                 } => self.compile_contract_call(instr_val, params, coins, asset_id, gas),
-                Instruction::ExtractElement {
-                    array,
-                    ty,
-                    index_val,
-                } => self.compile_extract_element(instr_val, array, ty, index_val),
-                Instruction::ExtractValue {
-                    aggregate, indices, ..
-                } => self.compile_extract_value(instr_val, aggregate, indices),
                 Instruction::FuelVm(fuel_vm_instr) => {
                     errors.push(CompileError::Internal(
                         "Invalid FuelVM IR instruction provided to the EVM code gen.",
@@ -347,19 +336,12 @@ impl<'ir> EvmAsmBuilder<'ir> {
                             .unwrap_or_else(Self::empty_span),
                     ));
                 }
-                Instruction::GetLocal(local_var) => self.compile_get_local(instr_val, local_var),
-                Instruction::InsertElement {
-                    array,
-                    ty,
-                    value,
-                    index_val,
-                } => self.compile_insert_element(instr_val, array, ty, value, index_val),
-                Instruction::InsertValue {
-                    aggregate,
-                    value,
+                Instruction::GetElemPtr {
+                    base,
+                    elem_ptr_ty,
                     indices,
-                    ..
-                } => self.compile_insert_value(instr_val, aggregate, value, indices),
+                } => self.compile_get_elem_ptr(instr_val, base, elem_ptr_ty, indices),
+                Instruction::GetLocal(local_var) => self.compile_get_local(instr_val, local_var),
                 Instruction::IntToPtr(val, _) => self.compile_int_to_ptr(instr_val, val),
                 Instruction::Load(src_val) => check!(
                     self.compile_load(instr_val, src_val),
@@ -367,12 +349,19 @@ impl<'ir> EvmAsmBuilder<'ir> {
                     warnings,
                     errors
                 ),
-                Instruction::MemCopy {
-                    dst_val,
-                    src_val,
+                Instruction::MemCopyBytes {
+                    dst_val_ptr,
+                    src_val_ptr,
                     byte_len,
-                } => self.compile_mem_copy(instr_val, dst_val, src_val, *byte_len),
+                } => self.compile_mem_copy_bytes(instr_val, dst_val_ptr, src_val_ptr, *byte_len),
+                Instruction::MemCopyVal {
+                    dst_val_ptr,
+                    src_val_ptr,
+                } => self.compile_mem_copy_val(instr_val, dst_val_ptr, src_val_ptr),
                 Instruction::Nop => (),
+                Instruction::PtrToInt(ptr_val, int_ty) => {
+                    self.compile_ptr_to_int(instr_val, ptr_val, int_ty)
+                }
                 Instruction::Ret(ret_val, ty) => {
                     if func_is_entry {
                         self.compile_ret_from_entry(instr_val, ret_val, ty)
@@ -381,7 +370,7 @@ impl<'ir> EvmAsmBuilder<'ir> {
                     }
                 }
                 Instruction::Store {
-                    dst_val,
+                    dst_val_ptr: dst_val,
                     stored_val,
                 } => check!(
                     self.compile_store(instr_val, dst_val, stored_val),
@@ -410,10 +399,6 @@ impl<'ir> EvmAsmBuilder<'ir> {
         todo!();
     }
 
-    fn compile_addr_of(&mut self, instr_val: &Value, arg: &Value) {
-        todo!();
-    }
-
     fn compile_bitcast(&mut self, instr_val: &Value, bitcast_val: &Value, to_type: &Type) {
         todo!();
     }
@@ -432,7 +417,7 @@ impl<'ir> EvmAsmBuilder<'ir> {
         todo!();
     }
 
-    fn compile_cast_ptr(&mut self, instr_val: &Value, val: &Value, ty: &Type, offs: u64) {
+    fn compile_cast_ptr(&mut self, instr_val: &Value, val: &Value, ty: &Type) {
         todo!();
     }
 
@@ -471,21 +456,17 @@ impl<'ir> EvmAsmBuilder<'ir> {
         todo!();
     }
 
-    fn compile_extract_element(
+    fn compile_get_storage_key(&mut self, instr_val: &Value) -> CompileResult<()> {
+        todo!();
+    }
+
+    fn compile_get_elem_ptr(
         &mut self,
         instr_val: &Value,
-        array: &Value,
-        ty: &Type,
-        index_val: &Value,
+        base: &Value,
+        elem_ptr_ty: &Type,
+        indices: &[Value],
     ) {
-        todo!();
-    }
-
-    fn compile_extract_value(&mut self, instr_val: &Value, aggregate_val: &Value, indices: &[u64]) {
-        todo!();
-    }
-
-    fn compile_get_storage_key(&mut self, instr_val: &Value) -> CompileResult<()> {
         todo!();
     }
 
@@ -497,27 +478,6 @@ impl<'ir> EvmAsmBuilder<'ir> {
         todo!();
     }
 
-    fn compile_insert_element(
-        &mut self,
-        instr_val: &Value,
-        array: &Value,
-        ty: &Type,
-        value: &Value,
-        index_val: &Value,
-    ) {
-        todo!();
-    }
-
-    fn compile_insert_value(
-        &mut self,
-        instr_val: &Value,
-        aggregate_val: &Value,
-        value: &Value,
-        indices: &[u64],
-    ) {
-        todo!();
-    }
-
     fn compile_int_to_ptr(&mut self, instr_val: &Value, int_to_ptr_val: &Value) {
         todo!();
     }
@@ -526,17 +486,30 @@ impl<'ir> EvmAsmBuilder<'ir> {
         todo!();
     }
 
-    fn compile_mem_copy(
+    fn compile_log(&mut self, instr_val: &Value, log_val: &Value, log_ty: &Type, log_id: &Value) {
+        todo!();
+    }
+
+    fn compile_mem_copy_bytes(
         &mut self,
         instr_val: &Value,
-        dst_val: &Value,
-        src_val: &Value,
+        dst_val_ptr: &Value,
+        src_val_ptr: &Value,
         byte_len: u64,
     ) {
         todo!();
     }
 
-    fn compile_log(&mut self, instr_val: &Value, log_val: &Value, log_ty: &Type, log_id: &Value) {
+    fn compile_mem_copy_val(
+        &mut self,
+        instr_val: &Value,
+        dst_val_ptr: &Value,
+        src_val_ptr: &Value,
+    ) {
+        todo!();
+    }
+
+    fn compile_ptr_to_int(&mut self, instr_val: &Value, ptr_val: &Value, int_ty: &Type) {
         todo!();
     }
 

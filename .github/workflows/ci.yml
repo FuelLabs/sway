@@ -15,7 +15,7 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   REGISTRY: ghcr.io
-  RUST_VERSION: 1.67.0
+  RUST_VERSION: 1.68.2
   NIGHTLY_RUST_VERSION: nightly-2023-02-08
 
 jobs:
@@ -228,7 +228,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.17.4
+        image: ghcr.io/fuellabs/fuel-core:v0.17.8
         ports:
           - 4000:4000
     steps:
@@ -267,7 +267,7 @@ jobs:
 
   # TODO: Remove this upon merging std tests with the rest of the E2E tests.
   cargo-test-lib-std:
-    runs-on: ubuntu-latest
+    runs-on: buildjet-4vcpu-ubuntu-2204
     steps:
       - uses: actions/checkout@v3
       - name: Install toolchain
@@ -406,7 +406,7 @@ jobs:
         cargo-unused-deps-check,
       ]
     if: github.event_name == 'release' && github.event.action == 'published'
-    runs-on: ubuntu-latest
+    runs-on: buildjet-4vcpu-ubuntu-2204
 
     steps:
       - name: Checkout repository

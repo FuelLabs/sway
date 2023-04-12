@@ -7,6 +7,7 @@ use fuel_vm::{self as vm, fuel_asm, prelude::Instruction};
 use pkg::TestPassCondition;
 use pkg::{Built, BuiltPackage};
 use rand::{Rng, SeedableRng};
+use rayon::prelude::*;
 use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 use sway_core::BuildTarget;
 use sway_types::Span;
@@ -167,6 +168,12 @@ struct ContractTestSetup {
     root_contract_id: tx::ContractId,
 }
 
+impl TestedPackage {
+    pub fn tests_passed(&self) -> bool {
+        self.tests.iter().all(|test| test.passed())
+    }
+}
+
 impl ContractToTest {
     /// Deploy the contract dependencies and tests excluded version for this package.
     fn deploy(&self) -> anyhow::Result<TestSetup> {
@@ -272,54 +279,59 @@ impl<'a> PackageTests {
     }
 
     /// Run all tests for this package and collect their results.
-    pub(crate) fn run_tests(&self) -> anyhow::Result<TestedPackage> {
+    pub(crate) fn run_tests(
+        &self,
+        test_runners: &rayon::ThreadPool,
+    ) -> anyhow::Result<TestedPackage> {
         let pkg_with_tests = self.built_pkg_with_tests();
-        // TODO: We can easily parallelise this, but let's wait until testing is stable first.
-        let tests = pkg_with_tests
-            .bytecode
-            .entries
-            .iter()
-            .filter_map(|entry| entry.kind.test().map(|test| (entry, test)))
-            .map(|(entry, test_entry)| {
-                let offset = u32::try_from(entry.finalized.imm)
-                    .expect("test instruction offset out of range");
-                let name = entry.finalized.fn_name.clone();
-                let test_setup = self.setup()?;
-                let (state, duration, receipts) =
-                    exec_test(&pkg_with_tests.bytecode.bytes, offset, test_setup);
+        let tests = test_runners.install(|| {
+            pkg_with_tests
+                .bytecode
+                .entries
+                .par_iter()
+                .filter_map(|entry| entry.kind.test().map(|test| (entry, test)))
+                .map(|(entry, test_entry)| {
+                    let offset = u32::try_from(entry.finalized.imm)
+                        .expect("test instruction offset out of range");
+                    let name = entry.finalized.fn_name.clone();
+                    let test_setup = self.setup()?;
+                    let (state, duration, receipts) =
+                        exec_test(&pkg_with_tests.bytecode.bytes, offset, test_setup);
 
-                let gas_used = *receipts
-                    .iter()
-                    .find_map(|receipt| match receipt {
-                        tx::Receipt::ScriptResult { gas_used, .. } => Some(gas_used),
-                        _ => None,
+                    let gas_used = *receipts
+                        .iter()
+                        .find_map(|receipt| match receipt {
+                            tx::Receipt::ScriptResult { gas_used, .. } => Some(gas_used),
+                            _ => None,
+                        })
+                        .ok_or_else(|| {
+                            anyhow::anyhow!("missing used gas information from test execution")
+                        })?;
+
+                    // Only retain `Log` and `LogData` receipts.
+                    let logs = receipts
+                        .into_iter()
+                        .filter(|receipt| {
+                            matches!(receipt, fuel_tx::Receipt::Log { .. })
+                                || matches!(receipt, fuel_tx::Receipt::LogData { .. })
+                        })
+                        .collect();
+
+                    let span = test_entry.span.clone();
+                    let condition = test_entry.pass_condition.clone();
+                    Ok(TestResult {
+                        name,
+                        duration,
+                        span,
+                        state,
+                        condition,
+                        logs,
+                        gas_used,
                     })
-                    .ok_or_else(|| {
-                        anyhow::anyhow!("missing used gas information from test execution")
-                    })?;
-
-                // Only retain `Log` and `LogData` receipts.
-                let logs = receipts
-                    .into_iter()
-                    .filter(|receipt| {
-                        matches!(receipt, fuel_tx::Receipt::Log { .. })
-                            || matches!(receipt, fuel_tx::Receipt::LogData { .. })
-                    })
-                    .collect();
-
-                let span = test_entry.span.clone();
-                let condition = test_entry.pass_condition.clone();
-                Ok(TestResult {
-                    name,
-                    duration,
-                    span,
-                    state,
-                    condition,
-                    logs,
-                    gas_used,
                 })
-            })
-            .collect::<anyhow::Result<_>>()?;
+                .collect::<anyhow::Result<_>>()
+        })?;
+
         let tested_pkg = TestedPackage {
             built: Box::new(pkg_with_tests.clone()),
             tests,
@@ -413,6 +425,13 @@ impl TestResult {
     }
 }
 
+/// Used to control test runner count for forc-test. Number of runners to use can be specified using
+/// `Manual` or can be left forc-test to decide by using `Auto`.
+pub enum TestRunnerCount {
+    Manual(usize),
+    Auto,
+}
+
 impl BuiltTests {
     /// The total number of tests.
     pub fn test_count(&self) -> usize {
@@ -433,8 +452,14 @@ impl BuiltTests {
     }
 
     /// Run all built tests, return the result.
-    pub fn run(self) -> anyhow::Result<Tested> {
-        run_tests(self)
+    pub fn run(self, test_runner_count: TestRunnerCount) -> anyhow::Result<Tested> {
+        let test_runners = match test_runner_count {
+            TestRunnerCount::Manual(runner_count) => rayon::ThreadPoolBuilder::new()
+                .num_threads(runner_count)
+                .build(),
+            TestRunnerCount::Auto => rayon::ThreadPoolBuilder::new().build(),
+        }?;
+        run_tests(self, &test_runners)
     }
 }
 
@@ -506,16 +531,16 @@ fn deployment_transaction(
 }
 
 /// Build the given package and run its tests, returning the results.
-fn run_tests(built: BuiltTests) -> anyhow::Result<Tested> {
+fn run_tests(built: BuiltTests, test_runners: &rayon::ThreadPool) -> anyhow::Result<Tested> {
     match built {
         BuiltTests::Package(pkg) => {
-            let tested_pkg = pkg.run_tests()?;
+            let tested_pkg = pkg.run_tests(test_runners)?;
             Ok(Tested::Package(Box::new(tested_pkg)))
         }
         BuiltTests::Workspace(workspace) => {
             let tested_pkgs = workspace
                 .into_iter()
-                .map(|pkg| pkg.run_tests())
+                .map(|pkg| pkg.run_tests(test_runners))
                 .collect::<anyhow::Result<Vec<TestedPackage>>>()?;
             Ok(Tested::Workspace(tested_pkgs))
         }

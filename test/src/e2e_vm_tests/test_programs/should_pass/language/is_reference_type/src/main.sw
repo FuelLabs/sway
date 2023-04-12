@@ -8,7 +8,7 @@ enum E {
     Variant: (),
 }
 
-fn arg_is_reference<T>(a: T) -> bool {
+fn arg_is_reference<T>(_a: T) -> bool {
     __is_reference_type::<T>()
 }
 

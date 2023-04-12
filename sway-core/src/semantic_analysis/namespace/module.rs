@@ -1,7 +1,11 @@
 use crate::{
+    decl_engine::DeclRef,
     engine_threading::Engines,
     error::*,
-    language::{parsed::*, ty},
+    language::{
+        parsed::*,
+        ty::{self, TyDecl},
+    },
     semantic_analysis::*,
     transform::to_parsed_lang,
     Ident, Namespace,
@@ -397,6 +401,191 @@ impl Module {
 
         let dst_ns = &mut self[dst];
         dst_ns.implemented_traits.extend(impls_to_insert, engines);
+
+        ok((), warnings, errors)
+    }
+
+    /// Pull a single variant `variant` from the enum `enum_name` from the given `src` module and import it into the `dst` module.
+    ///
+    /// Paths are assumed to be relative to `self`.
+    pub(crate) fn variant_import(
+        &mut self,
+        engines: Engines<'_>,
+        src: &Path,
+        enum_name: &Ident,
+        variant_name: &Ident,
+        dst: &Path,
+        alias: Option<Ident>,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        let decl_engine = engines.de();
+
+        let src_ns = check!(
+            self.check_submodule(src),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        match src_ns.symbols.get(enum_name).cloned() {
+            Some(decl) => {
+                if !decl.visibility(decl_engine).is_public() {
+                    errors.push(CompileError::ImportPrivateSymbol {
+                        name: enum_name.clone(),
+                        span: enum_name.span(),
+                    });
+                }
+
+                if let TyDecl::EnumDecl {
+                    decl_id,
+                    subst_list: _,
+                    ..
+                } = decl
+                {
+                    let enum_decl = decl_engine.get_enum(&decl_id);
+                    let enum_ref = DeclRef::new(
+                        enum_decl.call_path.suffix.clone(),
+                        decl_id,
+                        enum_decl.span(),
+                    );
+
+                    if let Some(variant_decl) =
+                        enum_decl.variants.iter().find(|v| v.name == *variant_name)
+                    {
+                        // import it this way.
+                        let dst_ns = &mut self[dst];
+                        let mut add_synonym = |name| {
+                            if let Some((_, GlobImport::No, _)) = dst_ns.use_synonyms.get(name) {
+                                errors
+                                    .push(CompileError::ShadowsOtherSymbol { name: name.clone() });
+                            }
+                            dst_ns.use_synonyms.insert(
+                                name.clone(),
+                                (
+                                    src.to_vec(),
+                                    GlobImport::No,
+                                    TyDecl::EnumVariantDecl {
+                                        enum_ref: enum_ref.clone(),
+                                        variant_name: variant_name.clone(),
+                                        variant_decl_span: variant_decl.span.clone(),
+                                    },
+                                ),
+                            );
+                        };
+                        match alias {
+                            Some(alias) => {
+                                add_synonym(&alias);
+                                dst_ns
+                                    .use_aliases
+                                    .insert(alias.as_str().to_string(), variant_name.clone());
+                            }
+                            None => add_synonym(variant_name),
+                        };
+                    } else {
+                        errors.push(CompileError::SymbolNotFound {
+                            name: variant_name.clone(),
+                            span: variant_name.span(),
+                        });
+                        return err(warnings, errors);
+                    }
+                } else {
+                    errors.push(CompileError::Internal(
+                        "Attempting to import variants of something that isn't an enum",
+                        enum_name.span(),
+                    ));
+                    return err(warnings, errors);
+                }
+            }
+            None => {
+                errors.push(CompileError::SymbolNotFound {
+                    name: enum_name.clone(),
+                    span: enum_name.span(),
+                });
+                return err(warnings, errors);
+            }
+        };
+
+        ok((), warnings, errors)
+    }
+
+    /// Pull all variants from the enum `enum_name` from the given `src` module and import them all into the `dst` module.
+    ///
+    /// Paths are assumed to be relative to `self`.
+    pub(crate) fn variant_star_import(
+        &mut self,
+        src: &Path,
+        dst: &Path,
+        engines: Engines<'_>,
+        enum_name: &Ident,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        let decl_engine = engines.de();
+
+        let src_ns = check!(
+            self.check_submodule(src),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        match src_ns.symbols.get(enum_name).cloned() {
+            Some(decl) => {
+                if !decl.visibility(decl_engine).is_public() {
+                    errors.push(CompileError::ImportPrivateSymbol {
+                        name: enum_name.clone(),
+                        span: enum_name.span(),
+                    });
+                }
+
+                if let TyDecl::EnumDecl {
+                    decl_id,
+                    subst_list: _,
+                    ..
+                } = decl
+                {
+                    let enum_decl = decl_engine.get_enum(&decl_id);
+                    let enum_ref = DeclRef::new(
+                        enum_decl.call_path.suffix.clone(),
+                        decl_id,
+                        enum_decl.span(),
+                    );
+
+                    for variant_decl in enum_decl.variants {
+                        let variant_name = variant_decl.name;
+
+                        // import it this way.
+                        let dst_ns = &mut self[dst];
+                        dst_ns.use_synonyms.insert(
+                            variant_name.clone(),
+                            (
+                                src.to_vec(),
+                                GlobImport::Yes,
+                                TyDecl::EnumVariantDecl {
+                                    enum_ref: enum_ref.clone(),
+                                    variant_name,
+                                    variant_decl_span: variant_decl.span.clone(),
+                                },
+                            ),
+                        );
+                    }
+                } else {
+                    errors.push(CompileError::Internal(
+                        "Attempting to import variants of something that isn't an enum",
+                        enum_name.span(),
+                    ));
+                    return err(warnings, errors);
+                }
+            }
+            None => {
+                errors.push(CompileError::SymbolNotFound {
+                    name: enum_name.clone(),
+                    span: enum_name.span(),
+                });
+                return err(warnings, errors);
+            }
+        };
 
         ok((), warnings, errors)
     }

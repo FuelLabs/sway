@@ -358,15 +358,21 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
             warnings,
             errors
         );
-        // Check to see if this is a enum declaration.
-        let enum_ref = check!(
-            unknown_decl.to_enum_ref(engines),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+
         // Get a new copy from the declaration engine.
-        let mut new_copy = decl_engine.get_enum(enum_ref.id());
+        let mut new_copy = if let ty::TyDecl::EnumVariantDecl { enum_ref, .. } = &unknown_decl {
+            decl_engine.get_enum(enum_ref.id())
+        } else {
+            // Check to see if this is a enum declaration.
+            let enum_ref = check!(
+                unknown_decl.to_enum_ref(engines),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            decl_engine.get_enum(enum_ref.id())
+        };
+
         // Monomorphize the copy, in place.
         check!(
             ctx.monomorphize(

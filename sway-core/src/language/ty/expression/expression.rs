@@ -64,11 +64,29 @@ impl ReplaceDecls for TyExpression {
     }
 }
 
+impl UpdateConstantExpression for TyExpression {
+    fn update_constant_expression(&mut self, engines: Engines<'_>, implementing_type: &TyDecl) {
+        self.expression
+            .update_constant_expression(engines, implementing_type)
+    }
+}
+
 impl DisplayWithEngines for TyExpression {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         write!(
             f,
             "{} ({})",
+            engines.help_out(&self.expression),
+            engines.help_out(self.return_type)
+        )
+    }
+}
+
+impl DebugWithEngines for TyExpression {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{:?} ({:?})",
             engines.help_out(&self.expression),
             engines.help_out(self.return_type)
         )
@@ -183,7 +201,10 @@ impl CollectTypesMetadata for TyExpression {
                     errors
                 ));
             }
-            Array { contents } => {
+            Array {
+                elem_type: _,
+                contents,
+            } => {
                 for content in contents.iter() {
                     res.append(&mut check!(
                         content.collect_types_metadata(ctx),
@@ -384,6 +405,7 @@ impl CollectTypesMetadata for TyExpression {
             // variable expressions don't ever have return types themselves, they're stored in
             // `TyExpression::return_type`. Variable expressions are just names of variables.
             VariableExpression { .. }
+            | ConstantExpression { .. }
             | StorageAccess { .. }
             | Literal(_)
             | AbiName(_)
@@ -460,6 +482,7 @@ impl DeterministicallyAborts for TyExpression {
             | Literal(_)
             | StorageAccess { .. }
             | VariableExpression { .. }
+            | ConstantExpression { .. }
             | FunctionParameter
             | TupleElemAccess { .. } => false,
             IntrinsicFunction(kind) => kind.deterministically_aborts(decl_engine, check_call_body),

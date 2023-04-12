@@ -204,7 +204,8 @@ pub struct DependencyDetails {
 #[serde(rename_all = "kebab-case")]
 pub struct BuildProfile {
     pub print_ast: bool,
-    pub print_dca_graph: bool,
+    pub print_dca_graph: Option<String>,
+    pub print_dca_graph_url_format: Option<String>,
     pub print_ir: bool,
     pub print_finalized_asm: bool,
     pub print_intermediate_asm: bool,
@@ -237,7 +238,9 @@ impl PackageManifestFile {
     pub fn from_file(path: PathBuf) -> Result<Self> {
         let path = path.canonicalize()?;
         let manifest = PackageManifest::from_file(&path)?;
-        Ok(Self { manifest, path })
+        let manifest_file = Self { manifest, path };
+        manifest_file.validate()?;
+        Ok(manifest_file)
     }
 
     /// Read the manifest from the `Forc.toml` in the directory specified by the given `path` or
@@ -252,13 +255,14 @@ impl PackageManifestFile {
         Self::from_file(path)
     }
 
-    /// Validate the `PackageManifest`.
+    /// Validate the `PackageManifestFile`.
     ///
-    /// This checks the project and organization names against a set of reserved/restricted
-    /// keywords and patterns, and if a given entry point exists.
-    pub fn validate(&self, path: &Path) -> Result<()> {
+    /// This checks:
+    /// 1. Validity of the underlying `PackageManifest`.
+    /// 2. Existence of the entry file.
+    pub fn validate(&self) -> Result<()> {
         self.manifest.validate()?;
-        let mut entry_path = path.to_path_buf();
+        let mut entry_path = self.path.clone();
         entry_path.pop();
         let entry_path = entry_path
             .join(constants::SRC_DIR)
@@ -388,6 +392,11 @@ impl PackageManifestFile {
         } else {
             Ok(self.dir().to_path_buf().join(constants::LOCK_FILE_NAME))
         }
+    }
+
+    /// Returns an immutable reference to the project name that this manifest file describes.
+    pub fn project_name(&self) -> &str {
+        &self.project.name
     }
 }
 
@@ -593,7 +602,8 @@ impl BuildProfile {
     pub fn debug() -> Self {
         Self {
             print_ast: false,
-            print_dca_graph: false,
+            print_dca_graph: None,
+            print_dca_graph_url_format: None,
             print_ir: false,
             print_finalized_asm: false,
             print_intermediate_asm: false,
@@ -608,7 +618,8 @@ impl BuildProfile {
     pub fn release() -> Self {
         Self {
             print_ast: false,
-            print_dca_graph: false,
+            print_dca_graph: None,
+            print_dca_graph_url_format: None,
             print_ir: false,
             print_finalized_asm: false,
             print_intermediate_asm: false,

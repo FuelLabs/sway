@@ -20,7 +20,7 @@ use crate::{
     local_var::{LocalVar, LocalVarContent},
     metadata::MetadataIndex,
     module::Module,
-    value::Value,
+    value::{Value, ValueDatum},
     BlockArgument, BranchToWithArgs,
 };
 
@@ -58,7 +58,7 @@ impl Function {
         context: &mut Context,
         module: Module,
         name: String,
-        args: Vec<(String, Type, bool, Option<MetadataIndex>)>,
+        args: Vec<(String, Type, Option<MetadataIndex>)>,
         return_type: Type,
         selector: Option<[u8; 4]>,
         is_public: bool,
@@ -95,7 +95,7 @@ impl Function {
         let arguments: Vec<_> = args
             .into_iter()
             .enumerate()
-            .map(|(idx, (name, ty, by_ref, arg_metadata))| {
+            .map(|(idx, (name, ty, arg_metadata))| {
                 (
                     name,
                     Value::new_argument(
@@ -104,7 +104,6 @@ impl Function {
                             block: entry_block,
                             idx,
                             ty,
-                            by_ref,
                         },
                     )
                     .add_metadatum(context, arg_metadata),
@@ -135,21 +134,20 @@ impl Function {
         other: &Block,
         label: Option<Label>,
     ) -> Result<Block, IrError> {
-        // We need to create the new block first (even though we may not use it on Err below) since
-        // we can't borrow context mutably twice.
-        let new_block = Block::new(context, *self, label);
-        let func = context.functions.get_mut(self.0).unwrap();
-        func.blocks
+        let block_idx = context.functions[self.0]
+            .blocks
             .iter()
             .position(|block| block == other)
-            .map(|idx| {
-                func.blocks.insert(idx, new_block);
-                new_block
-            })
             .ok_or_else(|| {
                 let label = &context.blocks[other.0].label;
                 IrError::MissingBlock(label.clone())
-            })
+            })?;
+
+        let new_block = Block::new(context, *self, label);
+        context.functions[self.0]
+            .blocks
+            .insert(block_idx, new_block);
+        Ok(new_block)
     }
 
     /// Create and insert a new [`Block`] into this function.
@@ -277,6 +275,11 @@ impl Function {
         context.functions[self.0].return_type
     }
 
+    // Set a new function return type.
+    pub fn set_return_type(&self, context: &mut Context, new_ret_type: Type) {
+        context.functions.get_mut(self.0).unwrap().return_type = new_ret_type
+    }
+
     /// Get the number of args.
     pub fn num_args(&self, context: &Context) -> usize {
         context.functions[self.0].arguments.len()
@@ -287,8 +290,23 @@ impl Function {
         context.functions[self.0]
             .arguments
             .iter()
-            .find_map(|(arg_name, val)| if arg_name == name { Some(val) } else { None })
+            .find_map(|(arg_name, val)| (arg_name == name).then_some(val))
             .copied()
+    }
+
+    /// Append an extra argument to the function signature.
+    ///
+    /// NOTE: `arg` must be a `BlockArgument` value with the correct index otherwise `add_arg` will
+    /// panic.
+    pub fn add_arg<S: Into<String>>(&self, context: &mut Context, name: S, arg: Value) {
+        match context.values[arg.0].value {
+            ValueDatum::Argument(BlockArgument { idx, .. })
+                if idx == context.functions[self.0].arguments.len() =>
+            {
+                context.functions[self.0].arguments.push((name.into(), arg));
+            }
+            _ => panic!("Inconsistent function argument being added"),
+        }
     }
 
     /// Find the name of an arg by value.
@@ -296,7 +314,7 @@ impl Function {
         context.functions[self.0]
             .arguments
             .iter()
-            .find_map(|(name, arg_val)| if arg_val == value { Some(name) } else { None })
+            .find_map(|(name, arg_val)| (arg_val == value).then_some(name))
     }
 
     /// Return an iterator for each of the function arguments.
@@ -330,8 +348,9 @@ impl Function {
         name: String,
         local_type: Type,
         initializer: Option<Constant>,
+        mutable: bool,
     ) -> Result<LocalVar, IrError> {
-        let var = LocalVar::new(context, local_type, initializer);
+        let var = LocalVar::new(context, local_type, initializer, mutable);
         let func = context.functions.get_mut(self.0).unwrap();
         func.local_storage
             .insert(name.clone(), var)
@@ -348,6 +367,7 @@ impl Function {
         name: String,
         local_type: Type,
         initializer: Option<Constant>,
+        mutable: bool,
     ) -> LocalVar {
         let func = &context.functions[self.0];
         let new_name = if func.local_storage.contains_key(&name) {
@@ -366,7 +386,7 @@ impl Function {
         } else {
             name
         };
-        self.new_local_var(context, new_name, local_type, initializer)
+        self.new_local_var(context, new_name, local_type, initializer, mutable)
             .unwrap()
     }
 
@@ -384,8 +404,6 @@ impl Function {
     /// [`Function::new_unique_local_var`].
     ///
     /// Returns a map from the original pointers to the newly merged pointers.
-    ///
-    /// XXX This function returns a Result but can't actually fail?
     pub fn merge_locals_from(
         &self,
         context: &mut Context,
@@ -398,11 +416,16 @@ impl Function {
             .map(|(name, var)| (name.clone(), *var, context.local_vars[var.0].clone()))
             .collect();
         for (name, old_var, old_var_content) in old_vars {
+            let old_ty = old_var_content
+                .ptr_ty
+                .get_pointee_type(context)
+                .expect("LocalVar types are always pointers.");
             let new_var = self.new_unique_local_var(
                 context,
                 name.clone(),
-                old_var_content.ty,
+                old_ty,
                 old_var_content.initializer,
+                old_var_content.mutable,
             );
             var_map.insert(old_var, new_var);
         }

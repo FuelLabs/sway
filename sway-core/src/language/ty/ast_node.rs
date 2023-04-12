@@ -44,13 +44,13 @@ impl HashWithEngines for TyAstNode {
     }
 }
 
-impl DisplayWithEngines for TyAstNode {
+impl DebugWithEngines for TyAstNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         use TyAstNodeContent::*;
         match &self.content {
-            Declaration(typed_decl) => DisplayWithEngines::fmt(typed_decl, f, engines),
-            Expression(exp) => DisplayWithEngines::fmt(exp, f, engines),
-            ImplicitReturnExpression(exp) => write!(f, "return {}", engines.help_out(exp)),
+            Declaration(typed_decl) => DebugWithEngines::fmt(typed_decl, f, engines),
+            Expression(exp) => DebugWithEngines::fmt(exp, f, engines),
+            ImplicitReturnExpression(exp) => write!(f, "return {:?}", engines.help_out(exp)),
             SideEffect(_) => f.write_str(""),
         }
     }
@@ -94,6 +94,21 @@ impl ReplaceDecls for TyAstNode {
             }
             TyAstNodeContent::Declaration(_) => {}
             TyAstNodeContent::Expression(ref mut expr) => expr.replace_decls(decl_mapping, engines),
+            TyAstNodeContent::SideEffect(_) => (),
+        }
+    }
+}
+
+impl UpdateConstantExpression for TyAstNode {
+    fn update_constant_expression(&mut self, engines: Engines<'_>, implementing_type: &TyDecl) {
+        match self.content {
+            TyAstNodeContent::ImplicitReturnExpression(ref mut expr) => {
+                expr.update_constant_expression(engines, implementing_type)
+            }
+            TyAstNodeContent::Declaration(_) => {}
+            TyAstNodeContent::Expression(ref mut expr) => {
+                expr.update_constant_expression(engines, implementing_type)
+            }
             TyAstNodeContent::SideEffect(_) => (),
         }
     }

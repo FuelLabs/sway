@@ -1,6 +1,6 @@
 use crate::core::token::{self, Token, TypedAstToken};
 use dashmap::DashMap;
-use sway_core::{decl_engine::DeclEngine, language::ty, type_system::TypeId, Engines, TypeEngine};
+use sway_core::{language::ty, type_system::TypeId, Engines};
 use sway_types::{Ident, Span, Spanned};
 use tower_lsp::lsp_types::{Position, Url};
 
@@ -40,15 +40,14 @@ impl TokenMap {
     pub fn all_references_of_token<'s>(
         &'s self,
         token: &Token,
-        type_engine: &'s TypeEngine,
-        decl_engine: &'s DeclEngine,
+        engines: Engines<'s>,
     ) -> impl 's + Iterator<Item = (Ident, Token)> {
-        let current_type_id = token.declared_token_span(type_engine, decl_engine);
+        let current_type_id = token.declared_token_span(engines);
 
         self.iter()
             .filter(move |item| {
                 let ((_, _), token) = item.pair();
-                current_type_id == token.declared_token_span(type_engine, decl_engine)
+                current_type_id == token.declared_token_span(engines)
             })
             .map(|item| {
                 let ((ident, _), token) = item.pair();
@@ -138,11 +137,10 @@ impl TokenMap {
     /// For example, we can then use the `return_type` field which is a [TypeId] to retrieve the declaration Token.
     pub fn declaration_of_type_id(
         &self,
-        type_engine: &TypeEngine,
-        decl_engine: &DeclEngine,
+        engines: Engines<'_>,
         type_id: &TypeId,
     ) -> Option<ty::TyDecl> {
-        token::ident_of_type_id(type_engine, decl_engine, type_id)
+        token::ident_of_type_id(engines, type_id)
             .and_then(|decl_ident| self.try_get(&token::to_ident_key(&decl_ident)).try_unwrap())
             .map(|item| item.value().clone())
             .and_then(|token| token.typed)
@@ -159,11 +157,9 @@ impl TokenMap {
         engines: Engines<'_>,
         type_id: &TypeId,
     ) -> Option<ty::TyStructDecl> {
-        let type_engine = engines.te();
-        let decl_engine = engines.de();
-        self.declaration_of_type_id(type_engine, decl_engine, type_id)
+        self.declaration_of_type_id(engines, type_id)
             .and_then(|decl| match decl {
-                ty::TyDecl::StructDecl { decl_id, .. } => Some(decl_engine.get_struct(&decl_id)),
+                ty::TyDecl::StructDecl { decl_id, .. } => Some(engines.de().get_struct(&decl_id)),
                 _ => None,
             })
     }

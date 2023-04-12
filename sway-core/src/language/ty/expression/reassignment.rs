@@ -66,6 +66,13 @@ impl ReplaceDecls for TyReassignment {
     }
 }
 
+impl UpdateConstantExpression for TyReassignment {
+    fn update_constant_expression(&mut self, engines: Engines<'_>, implementing_type: &TyDecl) {
+        self.rhs
+            .update_constant_expression(engines, implementing_type)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum ProjectionKind {
     StructField {

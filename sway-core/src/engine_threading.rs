@@ -6,7 +6,7 @@ use std::{
 
 use crate::{decl_engine::DeclEngine, type_system::TypeEngine};
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct Engines<'a> {
     type_engine: &'a TypeEngine,
     decl_engine: &'a DeclEngine,
@@ -61,12 +61,14 @@ impl<'a, T> WithEngines<'a, T> {
     }
 }
 
+/// Displays the user-friendly formatted view of `thing` using `engines` as context.
 impl<T: DisplayWithEngines> fmt::Display for WithEngines<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.thing.fmt(f, self.engines)
     }
 }
 
+/// Displays the internals of `thing` using `engines` as context. Useful for debugging.
 impl<T: DebugWithEngines> fmt::Debug for WithEngines<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.thing.fmt(f, self.engines)

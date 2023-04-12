@@ -72,6 +72,11 @@ impl AsmBlock {
         context.asm_blocks[self.0].return_type
     }
 
+    /// Change the [`AsmBlock`] return type.
+    pub fn set_type(&self, context: &mut Context, new_ret_type: Type) {
+        context.asm_blocks[self.0].return_type = new_ret_type
+    }
+
     /// Get a reference to the [`AsmBlockContent`] for this ASM block.
     pub fn get_content<'a>(&self, context: &'a Context) -> &'a AsmBlockContent {
         &context.asm_blocks[self.0]

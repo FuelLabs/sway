@@ -1,4 +1,4 @@
-mod constant_declaration;
+mod constant_expression;
 mod enum_instantiation;
 mod function_application;
 mod if_expression;
@@ -9,7 +9,7 @@ mod struct_instantiation;
 mod tuple_index_access;
 mod unsafe_downcast;
 
-use self::constant_declaration::instantiate_constant_decl;
+use self::constant_expression::instantiate_constant_expression;
 pub(crate) use self::{
     enum_instantiation::*, function_application::*, if_expression::*, lazy_operator::*,
     method_application::*, struct_field_access::*, struct_instantiation::*, tuple_index_access::*,
@@ -37,7 +37,7 @@ use sway_error::{
     error::CompileError,
     warning::{CompileWarning, Warning},
 };
-use sway_types::{integer_bits::IntegerBits, Ident, Span, Spanned};
+use sway_types::{integer_bits::IntegerBits, Ident, Named, Span, Spanned};
 
 use rustc_hash::FxHashSet;
 
@@ -409,20 +409,14 @@ impl ty::TyExpression {
                 }
             }
             Some(ty::TyDecl::ConstantDecl { decl_id, .. }) => {
-                let ty::TyConstantDecl {
-                    call_path: decl_name,
-                    return_type,
-                    ..
-                } = decl_engine.get_constant(decl_id);
+                let const_decl = decl_engine.get_constant(decl_id);
+                let decl_name = const_decl.name().clone();
                 ty::TyExpression {
-                    return_type,
-                    // Although this isn't strictly a 'variable' expression we can treat it as one for
-                    // this context.
-                    expression: ty::TyExpressionVariant::VariableExpression {
-                        name: decl_name.suffix.clone(),
+                    return_type: const_decl.return_type,
+                    expression: ty::TyExpressionVariant::ConstantExpression {
+                        const_decl: Box::new(const_decl),
                         span: name.span(),
-                        mutability: ty::VariableMutability::Immutable,
-                        call_path: Some(decl_name.to_fullpath(ctx.namespace)),
+                        call_path: Some(CallPath::from(decl_name).to_fullpath(ctx.namespace)),
                     },
                     span,
                 }
@@ -968,6 +962,37 @@ impl ty::TyExpression {
     ) -> CompileResult<ty::TyExpression> {
         let decl_engine = ctx.decl_engine;
 
+        // is it a singleton?
+        let before = if let Some(b) = before {
+            b
+        } else {
+            // if it's a singleton it's either an enum variant or a function
+            let call_path_binding = TypeBinding {
+                inner: CallPath {
+                    prefixes,
+                    suffix,
+                    is_absolute,
+                },
+                type_arguments,
+                span: path_span,
+            };
+            if matches!(
+                ctx.namespace
+                    .resolve_call_path(&call_path_binding.inner)
+                    .value,
+                Some(ty::TyDecl::EnumVariantDecl { .. })
+            ) {
+                return Self::type_check_delineated_path(ctx, call_path_binding, span, Some(args));
+            } else {
+                return Self::type_check_function_application(
+                    ctx.by_ref(),
+                    call_path_binding,
+                    args,
+                    span,
+                );
+            }
+        };
+
         // Is `path = prefix ++ before` a module?
         let mut path = Vec::with_capacity(prefixes.len() + 1);
         path.extend(prefixes.iter().cloned());
@@ -1168,7 +1193,7 @@ impl ty::TyExpression {
                     );
                 }
                 check!(
-                    instantiate_constant_decl(ctx, const_ref, call_path_binding),
+                    instantiate_constant_expression(ctx, const_ref, call_path_binding),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1435,6 +1460,7 @@ impl ty::TyExpression {
             return ok(
                 ty::TyExpression {
                     expression: ty::TyExpressionVariant::Array {
+                        elem_type: unknown_type,
                         contents: Vec::new(),
                     },
                     return_type: type_engine.insert(
@@ -1496,6 +1522,7 @@ impl ty::TyExpression {
         ok(
             ty::TyExpression {
                 expression: ty::TyExpressionVariant::Array {
+                    elem_type,
                     contents: typed_contents,
                 },
                 return_type: type_engine.insert(

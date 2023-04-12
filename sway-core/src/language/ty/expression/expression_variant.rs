@@ -4,7 +4,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use sway_types::{state::StateIndex, Ident, Span};
+use sway_types::{state::StateIndex, Ident, Named, Span};
 
 use crate::{
     decl_engine::*,
@@ -33,6 +33,11 @@ pub enum TyExpressionVariant {
         lhs: Box<TyExpression>,
         rhs: Box<TyExpression>,
     },
+    ConstantExpression {
+        span: Span,
+        const_decl: Box<TyConstantDecl>,
+        call_path: Option<CallPath>,
+    },
     VariableExpression {
         name: Ident,
         span: Span,
@@ -43,6 +48,7 @@ pub enum TyExpressionVariant {
         fields: Vec<TyExpression>,
     },
     Array {
+        elem_type: TypeId,
         contents: Vec<TyExpression>,
     },
     ArrayIndex {
@@ -175,6 +181,18 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     && (**l_rhs).eq(&(**r_rhs), engines)
             }
             (
+                Self::ConstantExpression {
+                    call_path: l_call_path,
+                    span: l_span,
+                    const_decl: _,
+                },
+                Self::ConstantExpression {
+                    call_path: r_call_path,
+                    span: r_span,
+                    const_decl: _,
+                },
+            ) => l_call_path == r_call_path && l_span == r_span,
+            (
                 Self::VariableExpression {
                     name: l_name,
                     span: l_span,
@@ -194,9 +212,11 @@ impl PartialEqWithEngines for TyExpressionVariant {
             (
                 Self::Array {
                     contents: l_contents,
+                    ..
                 },
                 Self::Array {
                     contents: r_contents,
+                    ..
                 },
             ) => l_contents.eq(r_contents, engines),
             (
@@ -406,6 +426,13 @@ impl HashWithEngines for TyExpressionVariant {
                 lhs.hash(state, engines);
                 rhs.hash(state, engines);
             }
+            Self::ConstantExpression {
+                const_decl,
+                span: _,
+                call_path: _,
+            } => {
+                const_decl.hash(state, engines);
+            }
             Self::VariableExpression {
                 name,
                 mutability,
@@ -420,7 +447,10 @@ impl HashWithEngines for TyExpressionVariant {
             Self::Tuple { fields } => {
                 fields.hash(state, engines);
             }
-            Self::Array { contents } => {
+            Self::Array {
+                contents,
+                elem_type: _,
+            } => {
                 contents.hash(state, engines);
             }
             Self::ArrayIndex { prefix, index } => {
@@ -583,13 +613,22 @@ impl SubstTypes for TyExpressionVariant {
                 (*lhs).subst(type_mapping, engines);
                 (*rhs).subst(type_mapping, engines);
             }
+            ConstantExpression { const_decl, .. } => {
+                const_decl.subst(type_mapping, engines);
+            }
             VariableExpression { .. } => (),
             Tuple { fields } => fields
                 .iter_mut()
                 .for_each(|x| x.subst(type_mapping, engines)),
-            Array { contents } => contents
-                .iter_mut()
-                .for_each(|x| x.subst(type_mapping, engines)),
+            Array {
+                ref mut elem_type,
+                contents,
+            } => {
+                elem_type.subst(type_mapping, engines);
+                contents
+                    .iter_mut()
+                    .for_each(|x| x.subst(type_mapping, engines))
+            }
             ArrayIndex { prefix, index } => {
                 (*prefix).subst(type_mapping, engines);
                 (*index).subst(type_mapping, engines);
@@ -715,13 +754,22 @@ impl ReplaceSelfType for TyExpressionVariant {
                 (*lhs).replace_self_type(engines, self_type);
                 (*rhs).replace_self_type(engines, self_type);
             }
+            ConstantExpression { const_decl, .. } => {
+                const_decl.replace_self_type(engines, self_type)
+            }
             VariableExpression { .. } => (),
             Tuple { fields } => fields
                 .iter_mut()
                 .for_each(|x| x.replace_self_type(engines, self_type)),
-            Array { contents } => contents
-                .iter_mut()
-                .for_each(|x| x.replace_self_type(engines, self_type)),
+            Array {
+                ref mut elem_type,
+                contents,
+            } => {
+                elem_type.replace_self_type(engines, self_type);
+                contents
+                    .iter_mut()
+                    .for_each(|x| x.replace_self_type(engines, self_type))
+            }
             ArrayIndex { prefix, index } => {
                 (*prefix).replace_self_type(engines, self_type);
                 (*index).replace_self_type(engines, self_type);
@@ -842,11 +890,17 @@ impl ReplaceDecls for TyExpressionVariant {
                 (*lhs).replace_decls(decl_mapping, engines);
                 (*rhs).replace_decls(decl_mapping, engines);
             }
+            ConstantExpression { const_decl, .. } => {
+                const_decl.replace_decls(decl_mapping, engines)
+            }
             VariableExpression { .. } => (),
             Tuple { fields } => fields
                 .iter_mut()
                 .for_each(|x| x.replace_decls(decl_mapping, engines)),
-            Array { contents } => contents
+            Array {
+                elem_type: _,
+                contents,
+            } => contents
                 .iter_mut()
                 .for_each(|x| x.replace_decls(decl_mapping, engines)),
             ArrayIndex { prefix, index } => {
@@ -921,7 +975,145 @@ impl ReplaceDecls for TyExpressionVariant {
     }
 }
 
+impl UpdateConstantExpression for TyExpressionVariant {
+    fn update_constant_expression(&mut self, engines: Engines<'_>, implementing_type: &TyDecl) {
+        use TyExpressionVariant::*;
+        match self {
+            Literal(..) => (),
+            FunctionApplication { .. } => (),
+            LazyOperator { lhs, rhs, .. } => {
+                (*lhs).update_constant_expression(engines, implementing_type);
+                (*rhs).update_constant_expression(engines, implementing_type);
+            }
+            ConstantExpression {
+                ref mut const_decl, ..
+            } => {
+                if let Some(impl_const) =
+                    find_const_decl_from_impl(implementing_type, engines.de(), const_decl)
+                {
+                    *const_decl = Box::new(impl_const);
+                }
+            }
+            VariableExpression { .. } => (),
+            Tuple { fields } => fields
+                .iter_mut()
+                .for_each(|x| x.update_constant_expression(engines, implementing_type)),
+            Array {
+                contents,
+                elem_type: _,
+            } => contents
+                .iter_mut()
+                .for_each(|x| x.update_constant_expression(engines, implementing_type)),
+            ArrayIndex { prefix, index } => {
+                (*prefix).update_constant_expression(engines, implementing_type);
+                (*index).update_constant_expression(engines, implementing_type);
+            }
+            StructExpression { fields, .. } => fields.iter_mut().for_each(|x| {
+                x.value
+                    .update_constant_expression(engines, implementing_type)
+            }),
+            CodeBlock(block) => {
+                block.update_constant_expression(engines, implementing_type);
+            }
+            FunctionParameter => (),
+            MatchExp { desugared, .. } => {
+                desugared.update_constant_expression(engines, implementing_type)
+            }
+            IfExp {
+                condition,
+                then,
+                r#else,
+            } => {
+                condition.update_constant_expression(engines, implementing_type);
+                then.update_constant_expression(engines, implementing_type);
+                if let Some(ref mut r#else) = r#else {
+                    r#else.update_constant_expression(engines, implementing_type);
+                }
+            }
+            AsmExpression { .. } => {}
+            StructFieldAccess { prefix, .. } => {
+                prefix.update_constant_expression(engines, implementing_type);
+            }
+            TupleElemAccess { prefix, .. } => {
+                prefix.update_constant_expression(engines, implementing_type);
+            }
+            EnumInstantiation {
+                enum_ref: _,
+                contents,
+                ..
+            } => {
+                if let Some(ref mut contents) = contents {
+                    contents.update_constant_expression(engines, implementing_type);
+                };
+            }
+            AbiCast { address, .. } => {
+                address.update_constant_expression(engines, implementing_type)
+            }
+            StorageAccess { .. } => (),
+            IntrinsicFunction(_) => {}
+            EnumTag { exp } => {
+                exp.update_constant_expression(engines, implementing_type);
+            }
+            UnsafeDowncast { exp, .. } => {
+                exp.update_constant_expression(engines, implementing_type);
+            }
+            AbiName(_) => (),
+            WhileLoop {
+                ref mut condition,
+                ref mut body,
+            } => {
+                condition.update_constant_expression(engines, implementing_type);
+                body.update_constant_expression(engines, implementing_type);
+            }
+            Break => (),
+            Continue => (),
+            Reassignment(reassignment) => {
+                reassignment.update_constant_expression(engines, implementing_type)
+            }
+            StorageReassignment(..) => (),
+            Return(stmt) => stmt.update_constant_expression(engines, implementing_type),
+        }
+    }
+}
+
+fn find_const_decl_from_impl(
+    implementing_type: &TyDecl,
+    decl_engine: &DeclEngine,
+    const_decl: &mut Box<TyConstantDecl>,
+) -> Option<TyConstantDecl> {
+    match implementing_type {
+        TyDecl::ImplTrait { decl_id, .. } => {
+            let impl_trait = decl_engine.get_impl_trait(&decl_id.clone());
+            impl_trait
+                .items
+                .into_iter()
+                .find(|item| match item {
+                    TyTraitItem::Constant(decl_id) => {
+                        let trait_const_decl = decl_engine.get_constant(&decl_id.clone());
+                        const_decl.name().eq(trait_const_decl.name())
+                    }
+                    _ => false,
+                })
+                .map(|item| match item {
+                    TyTraitItem::Constant(decl_id) => decl_engine.get_constant(&decl_id),
+                    _ => unreachable!(),
+                })
+        }
+        TyDecl::AbiDecl {
+            decl_id: _decl_id, ..
+        } => todo!(),
+        _ => unreachable!(),
+    }
+}
+
 impl DisplayWithEngines for TyExpressionVariant {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+        // TODO: Implement user-friendly display strings if needed.
+        DebugWithEngines::fmt(self, f, engines)
+    }
+}
+
+impl DebugWithEngines for TyExpressionVariant {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         let s = match self {
             TyExpressionVariant::Literal(lit) => format!("literal {lit}"),
@@ -937,7 +1129,7 @@ impl DisplayWithEngines for TyExpressionVariant {
             TyExpressionVariant::Tuple { fields } => {
                 let fields = fields
                     .iter()
-                    .map(|field| engines.help_out(field).to_string())
+                    .map(|field| format!("{:?}", engines.help_out(field)))
                     .collect::<Vec<_>>()
                     .join(", ");
                 format!("tuple({fields})")
@@ -962,7 +1154,7 @@ impl DisplayWithEngines for TyExpressionVariant {
                 ..
             } => {
                 format!(
-                    "\"{}.{}\" struct field access",
+                    "\"{:?}.{}\" struct field access",
                     engines.help_out(*resolved_type_of_parent),
                     field_to_access.name
                 )
@@ -973,10 +1165,13 @@ impl DisplayWithEngines for TyExpressionVariant {
                 ..
             } => {
                 format!(
-                    "\"{}.{}\" tuple index",
+                    "\"{:?}.{}\" tuple index",
                     engines.help_out(*resolved_type_of_parent),
                     elem_to_access_num
                 )
+            }
+            TyExpressionVariant::ConstantExpression { const_decl, .. } => {
+                format!("\"{}\" constant exp", const_decl.name().as_str())
             }
             TyExpressionVariant::VariableExpression { name, .. } => {
                 format!("\"{}\" variable exp", name.as_str())
@@ -997,20 +1192,20 @@ impl DisplayWithEngines for TyExpressionVariant {
             TyExpressionVariant::StorageAccess(access) => {
                 format!("storage field {} access", access.storage_field_name())
             }
-            TyExpressionVariant::IntrinsicFunction(kind) => engines.help_out(kind).to_string(),
+            TyExpressionVariant::IntrinsicFunction(kind) => format!("{:?}", engines.help_out(kind)),
             TyExpressionVariant::AbiName(n) => format!("ABI name {n}"),
             TyExpressionVariant::EnumTag { exp } => {
-                format!("({} as tag)", engines.help_out(exp.return_type))
+                format!("({:?} as tag)", engines.help_out(exp.return_type))
             }
             TyExpressionVariant::UnsafeDowncast { exp, variant } => {
                 format!(
-                    "({} as {})",
+                    "({:?} as {})",
                     engines.help_out(exp.return_type),
                     variant.name
                 )
             }
             TyExpressionVariant::WhileLoop { condition, .. } => {
-                format!("while loop on {}", engines.help_out(&**condition))
+                format!("while loop on {:?}", engines.help_out(&**condition))
             }
             TyExpressionVariant::Break => "break".to_string(),
             TyExpressionVariant::Continue => "continue".to_string(),
@@ -1041,7 +1236,7 @@ impl DisplayWithEngines for TyExpressionVariant {
                 format!("storage reassignment to {place}")
             }
             TyExpressionVariant::Return(exp) => {
-                format!("return {}", engines.help_out(&**exp))
+                format!("return {:?}", engines.help_out(&**exp))
             }
         };
         write!(f, "{s}")
@@ -1106,7 +1301,10 @@ impl TyExpressionVariant {
                 .iter()
                 .flat_map(|expr| expr.gather_return_statements())
                 .collect(),
-            TyExpressionVariant::Array { contents } => contents
+            TyExpressionVariant::Array {
+                elem_type: _,
+                contents,
+            } => contents
                 .iter()
                 .flat_map(|expr| expr.gather_return_statements())
                 .collect(),
@@ -1162,6 +1360,7 @@ impl TyExpressionVariant {
             TyExpressionVariant::Literal(_)
             | TyExpressionVariant::FunctionParameter { .. }
             | TyExpressionVariant::AsmExpression { .. }
+            | TyExpressionVariant::ConstantExpression { .. }
             | TyExpressionVariant::VariableExpression { .. }
             | TyExpressionVariant::AbiName(_)
             | TyExpressionVariant::StorageAccess { .. }

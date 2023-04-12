@@ -47,6 +47,11 @@ pub enum TyDecl {
         subst_list: Template<SubstList>,
         decl_span: Span,
     },
+    EnumVariantDecl {
+        enum_ref: DeclRefEnum,
+        variant_name: Ident,
+        variant_decl_span: Span,
+    },
     ImplTrait {
         name: Ident,
         decl_id: DeclId<TyImplTrait>,
@@ -218,6 +223,14 @@ impl HashWithEngines for TyDecl {
             EnumDecl { decl_id, .. } => {
                 decl_engine.get(decl_id).hash(state, engines);
             }
+            EnumVariantDecl {
+                enum_ref,
+                variant_name,
+                ..
+            } => {
+                enum_ref.hash(state, engines);
+                variant_name.hash(state);
+            }
             ImplTrait { decl_id, .. } => {
                 decl_engine.get(decl_id).hash(state, engines);
             }
@@ -256,6 +269,9 @@ impl SubstTypes for TyDecl {
             EnumDecl {
                 ref mut decl_id, ..
             } => decl_id.subst(type_mapping, engines),
+            EnumVariantDecl {
+                ref mut enum_ref, ..
+            } => enum_ref.subst(type_mapping, engines),
             ImplTrait {
                 ref mut decl_id, ..
             } => decl_id.subst(type_mapping, engines),
@@ -289,6 +305,9 @@ impl ReplaceSelfType for TyDecl {
             EnumDecl {
                 ref mut decl_id, ..
             } => decl_id.replace_self_type(engines, self_type),
+            EnumVariantDecl {
+                ref mut enum_ref, ..
+            } => enum_ref.replace_self_type(engines, self_type),
             ImplTrait {
                 ref mut decl_id, ..
             } => decl_id.replace_self_type(engines, self_type),
@@ -335,6 +354,9 @@ impl Spanned for TyDecl {
             | AbiDecl { decl_span, .. }
             | StructDecl { decl_span, .. }
             | EnumDecl { decl_span, .. } => decl_span.clone(),
+            EnumVariantDecl {
+                variant_decl_span, ..
+            } => variant_decl_span.clone(),
             GenericTypeForFunctionScope { name, .. } => name.span(),
             ErrorRecovery(span) => span.clone(),
         }
@@ -372,6 +394,51 @@ impl DisplayWithEngines for TyDecl {
                     );
                     builder.push_str(" = ");
                     builder.push_str(&engines.help_out(body).to_string());
+                    builder
+                }
+                TyDecl::FunctionDecl { name, .. }
+                | TyDecl::TraitDecl { name, .. }
+                | TyDecl::StructDecl { name, .. }
+                | TyDecl::EnumDecl { name, .. } => name.as_str().into(),
+                _ => String::new(),
+            }
+        )
+    }
+}
+
+impl DebugWithEngines for TyDecl {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> std::fmt::Result {
+        let type_engine = engines.te();
+        write!(
+            f,
+            "{} declaration ({})",
+            self.friendly_type_name(),
+            match self {
+                TyDecl::VariableDecl(decl) => {
+                    let TyVariableDecl {
+                        mutability,
+                        name,
+                        type_ascription,
+                        body,
+                        ..
+                    } = &**decl;
+                    let mut builder = String::new();
+                    match mutability {
+                        VariableMutability::Mutable => builder.push_str("mut"),
+                        VariableMutability::RefMutable => builder.push_str("ref mut"),
+                        VariableMutability::Immutable => {}
+                    }
+                    builder.push_str(name.as_str());
+                    builder.push_str(": ");
+                    builder.push_str(
+                        format!(
+                            "{:?}",
+                            engines.help_out(type_engine.get(type_ascription.type_id))
+                        )
+                        .as_str(),
+                    );
+                    builder.push_str(" = ");
+                    builder.push_str(format!("{:?}", engines.help_out(body)).as_str());
                     builder
                 }
                 TyDecl::FunctionDecl { name, .. }
@@ -437,6 +504,7 @@ impl CollectTypesMetadata for TyDecl {
             | TraitDecl { .. }
             | StructDecl { .. }
             | EnumDecl { .. }
+            | EnumVariantDecl { .. }
             | ImplTrait { .. }
             | AbiDecl { .. }
             | TypeAliasDecl { .. }
@@ -463,6 +531,7 @@ impl GetDeclIdent for TyDecl {
             | TyDecl::GenericTypeForFunctionScope { name, .. }
             | TyDecl::StructDecl { name, .. }
             | TyDecl::EnumDecl { name, .. } => Some(name.clone()),
+            TyDecl::EnumVariantDecl { variant_name, .. } => Some(variant_name.clone()),
             TyDecl::ErrorRecovery(_) => None,
             TyDecl::StorageDecl { .. } => None,
         }
@@ -636,7 +705,7 @@ impl TyDecl {
                 let decl = decl_engine.get_impl_trait(decl_id);
                 let implementing_for_type_id = type_engine.get(decl.implementing_for.type_id);
                 format!(
-                    "{} for {}",
+                    "{} for {:?}",
                     self.get_decl_ident()
                         .map_or(String::from(""), |f| f.as_str().to_string()),
                     engines.help_out(implementing_for_type_id)
@@ -659,6 +728,7 @@ impl TyDecl {
             TraitDecl { .. } => "trait",
             StructDecl { .. } => "struct",
             EnumDecl { .. } => "enum",
+            EnumVariantDecl { .. } => "enum variant",
             ImplTrait { .. } => "impl trait",
             AbiDecl { .. } => "abi",
             GenericTypeForFunctionScope { .. } => "generic type parameter",
@@ -757,6 +827,10 @@ impl TyDecl {
             }
             EnumDecl { decl_id, .. } => {
                 let TyEnumDecl { visibility, .. } = decl_engine.get_enum(decl_id);
+                visibility
+            }
+            EnumVariantDecl { enum_ref, .. } => {
+                let TyEnumDecl { visibility, .. } = decl_engine.get_enum(enum_ref.id());
                 visibility
             }
             FunctionDecl { decl_id, .. } => {

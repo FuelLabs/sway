@@ -1,0 +1,15 @@
+category = "compile"
+
+# check: $()fn get(self) -> u64 {
+# nextln: $()
+# nextln: $()
+# nextln: $()
+# nextln: $()This method is never called.
+
+# check: $()fn get2(self) -> u64 {
+# nextln: $()
+# nextln: $()
+# nextln: $()
+# nextln: $()This method is never called.
+
+expected_warnings = 2

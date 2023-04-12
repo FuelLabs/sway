@@ -26,6 +26,7 @@ fn expr_validate(engines: Engines<'_>, expr: &ty::TyExpression) -> CompileResult
     let mut warnings: Vec<CompileWarning> = vec![];
     match &expr.expression {
         ty::TyExpressionVariant::Literal(_)
+        | ty::TyExpressionVariant::ConstantExpression { .. }
         | ty::TyExpressionVariant::VariableExpression { .. }
         | ty::TyExpressionVariant::FunctionParameter
         | ty::TyExpressionVariant::AsmExpression { .. }
@@ -53,7 +54,10 @@ fn expr_validate(engines: Engines<'_>, expr: &ty::TyExpression) -> CompileResult
             ..
         })
         | ty::TyExpressionVariant::Tuple { fields: exprvec }
-        | ty::TyExpressionVariant::Array { contents: exprvec } => {
+        | ty::TyExpressionVariant::Array {
+            elem_type: _,
+            contents: exprvec,
+        } => {
             for f in exprvec {
                 check!(expr_validate(engines, f), continue, warnings, errors)
             }
@@ -258,6 +262,30 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDecl) -> CompileResult<()> {
                     errors
                 );
             }
+        }
+        ty::TyDecl::EnumVariantDecl {
+            enum_ref,
+            variant_name,
+            ..
+        } => {
+            let enum_decl = decl_engine.get_enum(enum_ref.id());
+            let variant = check!(
+                enum_decl.expect_variant_from_name(variant_name),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            check!(
+                check_type(
+                    engines,
+                    variant.type_argument.type_id,
+                    variant.span.clone(),
+                    false
+                ),
+                (),
+                warnings,
+                errors
+            );
         }
         ty::TyDecl::StorageDecl {
             decl_id,

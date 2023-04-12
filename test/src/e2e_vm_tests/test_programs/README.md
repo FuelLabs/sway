@@ -90,6 +90,8 @@ validate_abi = true
 
 And this example is similar but expects return data.
 
+> _Note:_ The return data expected is presented as a memory range because that's what the `RETD` opcode returns
+
 ```toml
 category = "run"
 expected_result = { action = "return_data", value = "0000000003ffffc400000000000000040000000000000003" }
