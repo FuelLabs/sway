@@ -1,0 +1,19 @@
+category = "compile"
+
+# check: $()fn unused_fn(i: u64) {
+# nextln: $()This function is never called.
+# nextln: $()let d = i;
+
+# check: $()let d = i;
+# nextln: $()This declaration is never used.
+
+# check: $()fn f(i: u64) {
+# nextln: $()This declaration is never used.
+
+# check: $()fn g(i: u64) {
+# nextln: $()This declaration is never used.
+
+# check: $()fn h(self, i: u64) {
+# nextln: $()This declaration is never used.
+
+expected_warnings = 5

@@ -1,0 +1,16 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-E73E20C083E19AAB'
+
+[[package]]
+name = 'mutable_and_initd'
+source = 'member'
+dependencies = [
+    'core',
+    'std',
+]
+
+[[package]]
+name = 'std'
+source = 'path+from-root-E73E20C083E19AAB'
+dependencies = ['core']

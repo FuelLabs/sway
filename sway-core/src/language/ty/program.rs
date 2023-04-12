@@ -253,18 +253,6 @@ impl TyProgram {
                 // Directly returning a `raw_slice` is allowed, which will be just mapped to a RETD.
                 // TODO: Allow returning nested `raw_slice`s when our spec supports encoding DSTs.
                 let main_func = mains.remove(0);
-                if !main_func
-                    .return_type
-                    .type_id
-                    .extract_any_including_self(engines, &|type_info| {
-                        matches!(type_info, TypeInfo::RawUntypedPtr)
-                    })
-                    .is_empty()
-                {
-                    errors.push(CompileError::PointerReturnNotAllowedInMain {
-                        span: main_func.return_type.span.clone(),
-                    });
-                }
                 if !ty_engine
                     .get(main_func.return_type.type_id)
                     .extract_any(engines, &|type_info| {

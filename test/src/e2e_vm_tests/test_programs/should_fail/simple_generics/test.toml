@@ -1,5 +1,9 @@
 category = "fail"
 
+# check: fn generic<T>(input: T) -> T {
+# nextln: $()This declaration is never used.
+# nextln: $()do_it(input)
+
 # check: do_it(input)
 # nextln: $()Mismatched types.
 # nextln: $()expected: u64
