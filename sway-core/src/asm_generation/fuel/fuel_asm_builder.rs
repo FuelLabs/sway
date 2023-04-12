@@ -843,20 +843,55 @@ impl<'ir> FuelAsmBuilder<'ir> {
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
         match self.ptr_map.get(local_var) {
             Some(Storage::Stack(word_offs)) => {
-                let offset = word_offs * 8;
-                if offset == 0 {
+                if *word_offs == 0 {
                     self.reg_map
                         .insert(*instr_val, self.locals_base_reg().clone());
                 } else {
                     let instr_reg = self.reg_seqr.next();
                     let base_reg = self.locals_base_reg().clone();
-                    self.immediate_to_reg(
-                        offset,
-                        instr_reg.clone(),
-                        Some(&base_reg),
-                        "get offset to local",
-                        owning_span,
-                    );
+                    let byte_offs = *word_offs * 8;
+
+                    // If the byte offset requires a data section entry, then convert the word
+                    // offset to a register first (without any base). Then, multiply the result by
+                    // 8 to get the byte offse. The result can then be manually added to
+                    // `base_reg`.
+                    //
+                    // Otherwise, just convert the byte offset directly to a register.
+                    if byte_offs > compiler_constants::EIGHTEEN_BITS {
+                        self.immediate_to_reg(
+                            *word_offs,
+                            instr_reg.clone(),
+                            None,
+                            "get word offset to local from base",
+                            owning_span.clone(),
+                        );
+                        self.cur_bytecode.push(Op {
+                            opcode: Either::Left(VirtualOp::MULI(
+                                instr_reg.clone(),
+                                instr_reg.clone(),
+                                VirtualImmediate12 { value: 8u16 },
+                            )),
+                            comment: "get byte offset to local from base".into(),
+                            owning_span: owning_span.clone(),
+                        });
+                        self.cur_bytecode.push(Op {
+                            opcode: Either::Left(VirtualOp::ADD(
+                                instr_reg.clone(),
+                                base_reg.clone(),
+                                instr_reg.clone(),
+                            )),
+                            comment: "get absolute byte offset to local".into(),
+                            owning_span,
+                        });
+                    } else {
+                        self.immediate_to_reg(
+                            byte_offs,
+                            instr_reg.clone(),
+                            Some(&base_reg),
+                            "get offset to local",
+                            owning_span,
+                        );
+                    }
                     self.reg_map.insert(*instr_val, instr_reg);
                 }
                 Ok(())
