@@ -7,7 +7,7 @@ use crate::{
 };
 use dashmap::mapref::one::RefMut;
 use sway_core::{
-    decl_engine::InterfaceDeclId,
+    decl_engine::{id::DeclId, InterfaceDeclId},
     language::{
         parsed::{ImportType, Supertrait},
         ty::{self, GetDeclIdent, TyEnumVariant, TyModule, TyProgram, TySubmodule},
@@ -151,34 +151,11 @@ impl<'a> TypedTree<'a> {
                     }
                 }
             }
-            ty::TyDecl::EnumDecl { decl_id, .. } | ty::TyDecl::EnumVariantDecl { decl_id, .. } => {
-                let enum_decl = decl_engine.get_enum(decl_id);
-                if let Some(mut token) = self
-                    .ctx
-                    .tokens
-                    .try_get_mut(&to_ident_key(&enum_decl.call_path.suffix))
-                    .try_unwrap()
-                {
-                    token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
-                    token.type_def =
-                        Some(TypeDefinition::Ident(enum_decl.call_path.suffix.clone()));
-                }
-
-                for type_param in &enum_decl.type_parameters {
-                    if let Some(mut token) = self
-                        .ctx
-                        .tokens
-                        .try_get_mut(&to_ident_key(&type_param.name_ident))
-                        .try_unwrap()
-                    {
-                        token.typed = Some(TypedAstToken::TypedParameter(type_param.clone()));
-                        token.type_def = Some(TypeDefinition::TypeId(type_param.type_id));
-                    }
-                }
-
-                for variant in &enum_decl.variants {
-                    self.collect_ty_enum_variant(variant);
-                }
+            ty::TyDecl::EnumDecl { decl_id, .. } => {
+                self.handle_enum(decl_id, declaration);
+            }
+            ty::TyDecl::EnumVariantDecl { enum_ref, .. } => {
+                self.handle_enum(enum_ref.id(), declaration);
             }
             ty::TyDecl::ImplTrait { decl_id, .. } => {
                 let ty::TyImplTrait {
@@ -435,6 +412,36 @@ impl<'a> TypedTree<'a> {
                 }
             }
             IncludeStatement => {}
+        }
+    }
+
+    fn handle_enum(&self, decl_id: &DeclId<ty::TyEnumDecl>, declaration: &ty::TyDecl) {
+        let decl_engine = self.ctx.engines.de();
+        let enum_decl = decl_engine.get_enum(decl_id);
+        if let Some(mut token) = self
+            .ctx
+            .tokens
+            .try_get_mut(&to_ident_key(&enum_decl.call_path.suffix))
+            .try_unwrap()
+        {
+            token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+            token.type_def = Some(TypeDefinition::Ident(enum_decl.call_path.suffix.clone()));
+        }
+
+        for type_param in &enum_decl.type_parameters {
+            if let Some(mut token) = self
+                .ctx
+                .tokens
+                .try_get_mut(&to_ident_key(&type_param.name_ident))
+                .try_unwrap()
+            {
+                token.typed = Some(TypedAstToken::TypedParameter(type_param.clone()));
+                token.type_def = Some(TypeDefinition::TypeId(type_param.type_id));
+            }
+        }
+
+        for variant in &enum_decl.variants {
+            self.collect_ty_enum_variant(variant);
         }
     }
 

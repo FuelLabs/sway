@@ -512,9 +512,14 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             connect_struct_declaration(&struct_decl, *decl_id, graph, entry_node, tree_type);
             Ok(leaves.to_vec())
         }
-        EnumDecl { decl_id, .. } | EnumVariantDecl { decl_id, .. } => {
+        EnumDecl { decl_id, .. } => {
             let enum_decl = decl_engine.get_enum(decl_id);
             connect_enum_declaration(&enum_decl, *decl_id, graph, entry_node);
+            Ok(leaves.to_vec())
+        }
+        EnumVariantDecl { enum_ref, .. } => {
+            let enum_decl = decl_engine.get_enum(enum_ref.id());
+            connect_enum_declaration(&enum_decl, *enum_ref.id(), graph, entry_node);
             Ok(leaves.to_vec())
         }
         ImplTrait { decl_id, .. } => {
@@ -2089,11 +2094,11 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
                 allow_dead_code(decl_engine.get_enum(decl_id).attributes)
             }
             ty::TyDecl::EnumVariantDecl {
-                decl_id,
+                enum_ref,
                 variant_name,
                 ..
             } => decl_engine
-                .get_enum(decl_id)
+                .get_enum(enum_ref.id())
                 .variants
                 .into_iter()
                 .find(|v| v.name == *variant_name)
