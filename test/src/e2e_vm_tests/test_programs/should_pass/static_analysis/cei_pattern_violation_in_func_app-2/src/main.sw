@@ -7,7 +7,7 @@ abi TestAbi {
   fn deposit(amount: u64);
 }
 
-fn pure_function(x: u64, y: u64) -> u64 {
+fn pure_function(x: u64, _y: u64) -> u64 {
   x
 }
 

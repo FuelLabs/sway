@@ -5,7 +5,7 @@
       "attributes": null,
       "inputs": [
         {
-          "name": "arg1",
+          "name": "_arg1",
           "type": 22,
           "typeArguments": [
             {
@@ -21,17 +21,17 @@
           ]
         },
         {
-          "name": "arg2",
+          "name": "_arg2",
           "type": 6,
           "typeArguments": null
         },
         {
-          "name": "arg3",
+          "name": "_arg3",
           "type": 1,
           "typeArguments": null
         },
         {
-          "name": "arg4",
+          "name": "_arg4",
           "type": 21,
           "typeArguments": null
         }
@@ -47,7 +47,7 @@
       "attributes": null,
       "inputs": [
         {
-          "name": "arg",
+          "name": "_arg",
           "type": 20,
           "typeArguments": [
             {
@@ -74,7 +74,7 @@
       "attributes": null,
       "inputs": [
         {
-          "name": "arg",
+          "name": "_arg",
           "type": 23,
           "typeArguments": [
             {
