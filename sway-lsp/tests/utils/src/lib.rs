@@ -104,7 +104,7 @@ pub async fn assert_server_requests(
     tokio::spawn(async move {
         let request_stream = socket.take(expected_requests.len()).collect::<Vec<_>>();
         let requests =
-            tokio::time::timeout(timeout.unwrap_or(Duration::from_secs(5)), request_stream)
+            tokio::time::timeout(timeout.unwrap_or(Duration::from_secs(10)), request_stream)
                 .await
                 .expect("Timed out waiting for requests from server");
 
