@@ -6,7 +6,7 @@ struct TestStruct {
     field_1: bool,
     field_2: u64,
 }
-fn is_ref_type<T>(param: T) -> bool {
+fn is_ref_type<T>(_param: T) -> bool {
     is_reference_type::<T>()
 }
 

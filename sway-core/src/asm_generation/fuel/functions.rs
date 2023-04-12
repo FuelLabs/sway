@@ -610,43 +610,55 @@ impl<'ir> FuelAsmBuilder<'ir> {
 
     fn init_locals(&mut self, function: Function) {
         // If they're immutable and have a constant initialiser then they go in the data section.
-        // XXX Everything is mutable in the IR now.
         //
         // Otherwise they go in runtime allocated space, either a register or on the stack.
         //
         // Stack offsets are in words to both enforce alignment and simplify use with LW/SW.
-        let stack_base = function
-            .locals_iter(self.context)
-            .fold(0, |stack_base, (_name, ptr)| {
-                if let Some(constant) = ptr.get_initializer(self.context) {
+        let (stack_base, init_mut_vars) = function.locals_iter(self.context).fold(
+            (0, Vec::new()),
+            |(stack_base, mut init_mut_vars), (_name, ptr)| {
+                if let (false, Some(constant)) = (
+                    ptr.is_mutable(self.context),
+                    ptr.get_initializer(self.context),
+                ) {
                     let data_id = self.data_section.insert_data_value(Entry::from_constant(
                         self.context,
                         constant,
                         None,
                     ));
                     self.ptr_map.insert(*ptr, Storage::Data(data_id));
-                    stack_base
+                    (stack_base, init_mut_vars)
                 } else {
                     self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
 
                     let ptr_ty = ptr.get_inner_type(self.context);
-                    stack_base
-                        + match ptr_ty.get_content(self.context) {
-                            TypeContent::Unit
-                            | TypeContent::Bool
-                            | TypeContent::Uint(_)
-                            | TypeContent::Pointer(_) => 1,
-                            TypeContent::Slice => 2,
-                            TypeContent::B256 => 4,
-                            TypeContent::String(n) => size_bytes_round_up_to_word_alignment!(n),
-                            TypeContent::Array(..)
-                            | TypeContent::Struct(_)
-                            | TypeContent::Union(_) => {
-                                size_bytes_in_words!(ir_type_size_in_bytes(self.context, &ptr_ty))
-                            }
+                    let var_size = match ptr_ty.get_content(self.context) {
+                        TypeContent::Unit
+                        | TypeContent::Bool
+                        | TypeContent::Uint(_)
+                        | TypeContent::Pointer(_) => 1,
+                        TypeContent::Slice => 2,
+                        TypeContent::B256 => 4,
+                        TypeContent::String(n) => size_bytes_round_up_to_word_alignment!(n),
+                        TypeContent::Array(..) | TypeContent::Struct(_) | TypeContent::Union(_) => {
+                            size_bytes_in_words!(ir_type_size_in_bytes(self.context, &ptr_ty))
                         }
+                    };
+
+                    if let Some(constant) = ptr.get_initializer(self.context) {
+                        let data_id = self.data_section.insert_data_value(Entry::from_constant(
+                            self.context,
+                            constant,
+                            None,
+                        ));
+
+                        init_mut_vars.push((stack_base, var_size, data_id));
+                    }
+
+                    (stack_base + var_size, init_mut_vars)
                 }
-            });
+            },
+        );
 
         // Reserve space on the stack (in bytes) for all our locals which require it.  Firstly save
         // the current $sp.
@@ -671,6 +683,65 @@ impl<'ir> FuelAsmBuilder<'ir> {
                 owning_span: None,
             });
         }
+
+        // Initialise that stack variables which require it.
+        for (var_stack_offs, var_word_size, var_data_id) in init_mut_vars {
+            // Load our initialiser from the data section.
+            self.cur_bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::LWDataId(
+                    VirtualRegister::Constant(ConstantRegister::Scratch),
+                    var_data_id,
+                )),
+                comment: "load initializer from data section".to_owned(),
+                owning_span: None,
+            });
+
+            let var_stack_offs = var_stack_offs * 8;
+            assert!(var_stack_offs <= compiler_constants::TWELVE_BITS);
+
+            // Get the destination on the stack.
+            let dst_reg = self.reg_seqr.next();
+            self.cur_bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::ADDI(
+                    dst_reg.clone(),
+                    locals_base_reg.clone(),
+                    VirtualImmediate12 {
+                        value: var_stack_offs as u16,
+                    },
+                )),
+                comment: "calc local variable address".to_owned(),
+                owning_span: None,
+            });
+
+            if var_word_size == 1 {
+                // Initialise by value.
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::SW(
+                        dst_reg,
+                        VirtualRegister::Constant(ConstantRegister::Scratch),
+                        VirtualImmediate12 { value: 0 },
+                    )),
+                    comment: "store initializer to local variable".to_owned(),
+                    owning_span: None,
+                });
+            } else {
+                // Initialise by reference.
+                let var_byte_size = var_word_size * 8;
+                assert!(var_byte_size <= compiler_constants::TWELVE_BITS);
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::MCPI(
+                        dst_reg,
+                        VirtualRegister::Constant(ConstantRegister::Scratch),
+                        VirtualImmediate12 {
+                            value: var_byte_size as u16,
+                        },
+                    )),
+                    comment: "copy initializer from data section to local variable".to_owned(),
+                    owning_span: None,
+                });
+            }
+        }
+
         self.locals_ctxs.push((locals_size, locals_base_reg));
     }
 

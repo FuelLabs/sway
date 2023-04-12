@@ -165,8 +165,13 @@ fn demote_caller(
     let call_function = call_block.get_function(context);
     for (arg_idx, arg_ty) in arg_idcs {
         // First we make a new local variable.
-        let loc_var =
-            call_function.new_unique_local_var(context, "__tmp_arg".to_owned(), *arg_ty, None);
+        let loc_var = call_function.new_unique_local_var(
+            context,
+            "__tmp_arg".to_owned(),
+            *arg_ty,
+            None,
+            false,
+        );
         let get_loc_val = Value::new_instruction(context, Instruction::GetLocal(loc_var));
 
         // Before the call we store the original arg value to the new local var.
@@ -251,8 +256,13 @@ fn demote_block_signature(context: &mut Context, function: &Function, block: Blo
     let arg_vars = candidate_args
         .into_iter()
         .map(|(idx, arg_val, arg_ty)| {
-            let local_var =
-                function.new_unique_local_var(context, "__tmp_block_arg".to_owned(), arg_ty, None);
+            let local_var = function.new_unique_local_var(
+                context,
+                "__tmp_block_arg".to_owned(),
+                arg_ty,
+                None,
+                false,
+            );
             (idx, arg_val, local_var)
         })
         .collect::<Vec<(usize, Value, crate::LocalVar)>>();
