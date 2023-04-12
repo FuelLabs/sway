@@ -84,6 +84,7 @@ pub async fn run_cli() -> Result<()> {
         verbosity: Some(opt.verbose),
         silent: Some(opt.silent),
         log_level: opt.log_level,
+        ansi: Some(true),
         ..Default::default()
     };
 
