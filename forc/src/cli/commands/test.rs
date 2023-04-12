@@ -73,12 +73,10 @@ pub(crate) fn exec(cmd: Command) -> Result<()> {
             for pkg in &pkgs {
                 let built = &pkg.built.descriptor.name;
                 info!("\n   tested -- {built}\n");
-                print_tested_pkg(&pkg, &test_print_opts)?;
+                print_tested_pkg(pkg, &test_print_opts)?;
             }
             info!("\n   Finished in {:?}", duration);
-            pkgs.iter()
-                .map(|pkg| pkg.tests_passed())
-                .fold(true, |acc, pkg| acc && pkg)
+            pkgs.iter().all(|pkg| pkg.tests_passed())
         }
         forc_test::Tested::Package(pkg) => {
             print_tested_pkg(&pkg, &test_print_opts)?;

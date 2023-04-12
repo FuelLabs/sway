@@ -170,10 +170,7 @@ struct ContractTestSetup {
 
 impl TestedPackage {
     pub fn tests_passed(&self) -> bool {
-        self.tests
-            .iter()
-            .map(|test| test.passed())
-            .fold(true, |acc, test| acc && test)
+        self.tests.iter().all(|test| test.passed())
     }
 }
 
