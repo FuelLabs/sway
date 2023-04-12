@@ -4,8 +4,8 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
-    AnalysisResults, Block, Context, Function, Instruction, IrError, LocalVar, Pass,
-    PassMutability, ScopedPass, Value, ValueDatum,
+    AnalysisResults, Block, BlockArgument, Context, Function, Instruction, IrError, LocalVar, Pass,
+    PassMutability, ScopedPass, Type, Value, ValueDatum,
 };
 
 pub const MEMCPYOPT_NAME: &str = "memcpyopt";
@@ -31,10 +31,26 @@ pub fn mem_copy_opt(
     Ok(modified)
 }
 
-fn get_local(context: &Context, val: Value) -> Option<LocalVar> {
-    match val.get_instruction(context) {
-        Some(Instruction::GetLocal(local)) => Some(*local),
-        Some(Instruction::GetElemPtr { base, .. }) => get_local(context, *base),
+#[derive(Eq, PartialEq, Copy, Clone, Hash)]
+enum Symbol {
+    Local(LocalVar),
+    Arg(BlockArgument),
+}
+
+impl Symbol {
+    pub fn get_type(&self, context: &Context) -> Type {
+        match self {
+            Symbol::Local(l) => l.get_type(context),
+            Symbol::Arg(ba) => ba.ty,
+        }
+    }
+}
+
+fn get_symbol(context: &Context, val: Value) -> Option<Symbol> {
+    match context.values[val.0].value {
+        ValueDatum::Instruction(Instruction::GetLocal(local)) => Some(Symbol::Local(local)),
+        ValueDatum::Instruction(Instruction::GetElemPtr { base, .. }) => get_symbol(context, base),
+        ValueDatum::Argument(b) => Some(Symbol::Arg(b)),
         _ => None,
     }
 }
@@ -50,17 +66,17 @@ struct InstInfo {
 /// a data-flow analysis. Until then, we do a safe approximation,
 /// restricting to when every related instruction is in the same block.
 fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, IrError> {
-    let mut loads_map = FxHashMap::<LocalVar, Vec<Value>>::default();
-    let mut stores_map = FxHashMap::<LocalVar, Vec<Value>>::default();
+    let mut loads_map = FxHashMap::<Symbol, Vec<Value>>::default();
+    let mut stores_map = FxHashMap::<Symbol, Vec<Value>>::default();
     let mut instr_info_map = FxHashMap::<Value, InstInfo>::default();
-    let mut asm_uses = FxHashSet::<LocalVar>::default();
+    let mut asm_uses = FxHashSet::<Symbol>::default();
 
     for (pos, (block, inst)) in function.instruction_iter(context).enumerate() {
         let info = || InstInfo { block, pos };
         let inst_e = inst.get_instruction(context).unwrap();
         match inst_e {
             Instruction::Load(src_val_ptr) => {
-                if let Some(local) = get_local(context, *src_val_ptr) {
+                if let Some(local) = get_symbol(context, *src_val_ptr) {
                     loads_map
                         .entry(local)
                         .and_modify(|loads| loads.push(inst))
@@ -69,7 +85,7 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
                 }
             }
             Instruction::Store { dst_val_ptr, .. } => {
-                if let Some(local) = get_local(context, *dst_val_ptr) {
+                if let Some(local) = get_symbol(context, *dst_val_ptr) {
                     stores_map
                         .entry(local)
                         .and_modify(|stores| stores.push(inst))
@@ -80,7 +96,7 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
             Instruction::AsmBlock(_, args) => {
                 for arg in args {
                     if let Some(arg) = arg.initializer {
-                        if let Some(local) = get_local(context, arg) {
+                        if let Some(local) = get_symbol(context, arg) {
                             asm_uses.insert(local);
                         }
                     }
@@ -91,7 +107,7 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
     }
 
     let mut to_delete = FxHashSet::<Value>::default();
-    let candidates: FxHashMap<LocalVar, LocalVar> = function
+    let candidates: FxHashMap<Symbol, Symbol> = function
         .instruction_iter(context)
         .enumerate()
         .filter_map(|(pos, (block, instr_val))| {
@@ -104,7 +120,7 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
                         stored_val,
                     } = instr
                     {
-                        get_local(context, *dst_val_ptr).and_then(|dst_local| {
+                        get_symbol(context, *dst_val_ptr).and_then(|dst_local| {
                             stored_val
                                 .get_instruction(context)
                                 .map(|src_instr| (src_instr, stored_val, dst_local))
@@ -116,7 +132,7 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
                 .and_then(|(src_instr, stored_val, dst_local)| {
                     // Is the Store source a Load?
                     if let Instruction::Load(src_val_ptr) = src_instr {
-                        get_local(context, *src_val_ptr)
+                        get_symbol(context, *src_val_ptr)
                             .map(|src_local| (stored_val, dst_local, src_local))
                     } else {
                         None
@@ -146,6 +162,8 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
                         || asm_uses.contains(&dst_local)
                         // We don't deal part copies.
                         || dst_local.get_type(context) != src_local.get_type(context)
+                        // We don't replace the destination when it's an arg.
+                        || matches!(dst_local, Symbol::Arg(_))
                     {
                         None
                     } else {
@@ -157,30 +175,52 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
         .collect();
 
     // if we have A replaces B and B replaces C, then A must replace C also.
-    fn closure(
-        candidates: &FxHashMap<LocalVar, LocalVar>,
-        src_local: &LocalVar,
-    ) -> Option<LocalVar> {
+    fn closure(candidates: &FxHashMap<Symbol, Symbol>, src_local: &Symbol) -> Option<Symbol> {
         candidates
             .get(src_local)
             .map(|replace_with| closure(candidates, replace_with).unwrap_or(*replace_with))
     }
+
+    // If the source is an Arg, we introduce new `get_local`,
+    // otherwise (`get_local`), we replace the local symbol in-place.
+    enum ReplaceWith {
+        InPlaceLocal(ValueDatum),
+        Value(Value),
+    }
+
     // Because we can't borrow context for both iterating and replacing, do it in 2 steps.
     let replaces: Vec<_> = function
         .instruction_iter(context)
         .filter_map(|(_block, value)| match value.get_instruction(context) {
-            Some(Instruction::GetLocal(local)) => closure(&candidates, local).map(|replace_with| {
-                (
-                    value,
-                    ValueDatum::Instruction(Instruction::GetLocal(replace_with)),
-                )
-            }),
+            Some(Instruction::GetLocal(local)) => {
+                closure(&candidates, &Symbol::Local(*local)).map(|replace_with| {
+                    (
+                        value,
+                        match replace_with {
+                            Symbol::Local(local) => ReplaceWith::InPlaceLocal(
+                                ValueDatum::Instruction(Instruction::GetLocal(local)),
+                            ),
+                            Symbol::Arg(ba) => {
+                                ReplaceWith::Value(ba.block.get_arg(context, ba.idx).unwrap())
+                            }
+                        },
+                    )
+                })
+            }
             _ => None,
         })
         .collect();
+
+    let mut value_replace = FxHashMap::<Value, Value>::default();
     for (value, replace_with) in replaces.into_iter() {
-        value.replace(context, replace_with);
+        match replace_with {
+            ReplaceWith::InPlaceLocal(replace_with) => value.replace(context, replace_with),
+            ReplaceWith::Value(replace_with) => {
+                value_replace.insert(value, replace_with);
+            }
+        }
     }
+    function.replace_values(context, &value_replace, None);
 
     // Delete stores to the replaced local.
     let blocks: Vec<Block> = function.block_iter(context).collect();
@@ -222,7 +262,7 @@ fn is_clobbered(
                 stored_val: _,
             }) = inst.get_instruction(context)
             {
-                if get_local(context, *dst_val_ptr) == get_local(context, src_ptr) {
+                if get_symbol(context, *dst_val_ptr) == get_symbol(context, src_ptr) {
                     return true;
                 }
             }
@@ -278,7 +318,7 @@ fn load_store_to_memcopy(context: &mut Context, function: Function) -> Result<bo
                 })
                 .and_then(
                     |candidate @ (block, load_val, store_val, _dst_ptr, src_ptr)| {
-                        // Ensure that there's no path from load_val to store_val that might overright src_ptr.
+                        // Ensure that there's no path from load_val to store_val that might overwrite src_ptr.
                         (!is_clobbered(context, block, store_val, load_val, src_ptr))
                             .then_some(candidate)
                     },

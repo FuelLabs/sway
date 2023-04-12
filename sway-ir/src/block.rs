@@ -41,7 +41,7 @@ pub struct BlockContent {
     pub preds: FxHashSet<Block>,
 }
 
-#[derive(Debug, Clone, DebugWithContext)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, DebugWithContext)]
 pub struct BlockArgument {
     /// The block of which this is an argument.
     pub block: Block,
