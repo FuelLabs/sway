@@ -74,10 +74,15 @@ pub fn find_nested_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
 /// Starts the search from child dirs of `starter_path`.
 pub fn find_nested_dir_with_file(starter_path: &Path, file_name: &str) -> Option<PathBuf> {
     use walkdir::WalkDir;
+    let starter_dir = if starter_path.is_dir() {
+        starter_path
+    } else {
+        starter_path.parent()?
+    };
     WalkDir::new(starter_path)
         .into_iter()
         .filter_map(|e| e.ok())
-        .filter(|entry| entry.path() != starter_path.join(file_name))
+        .filter(|entry| entry.path() != starter_dir.join(file_name))
         .filter(|entry| entry.file_name().to_string_lossy() == file_name)
         .map(|entry| {
             let mut entry = entry.path().to_path_buf();
