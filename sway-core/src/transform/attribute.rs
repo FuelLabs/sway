@@ -22,7 +22,7 @@
 
 use sway_ast::Literal;
 use sway_types::{
-    constants::{ALLOW_DEAD_CODE_NAME, CFG_TARGET_ARG_NAME},
+    constants::{ALLOW_DEAD_CODE_NAME, CFG_PROGRAM_TYPE_ARG_NAME, CFG_TARGET_ARG_NAME},
     Ident, Span, Spanned,
 };
 
@@ -90,7 +90,10 @@ impl AttributeKind {
             AttributeKind::Test => None,
             AttributeKind::Payable => None,
             AttributeKind::Allow => Some(vec![ALLOW_DEAD_CODE_NAME.to_string()]),
-            AttributeKind::Cfg => Some(vec![CFG_TARGET_ARG_NAME.to_string()]),
+            AttributeKind::Cfg => Some(vec![
+                CFG_TARGET_ARG_NAME.to_string(),
+                CFG_PROGRAM_TYPE_ARG_NAME.to_string(),
+            ]),
         }
     }
 }

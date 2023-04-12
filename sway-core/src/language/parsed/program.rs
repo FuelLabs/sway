@@ -1,3 +1,5 @@
+use strum::EnumString;
+
 use super::ParseModule;
 
 /// A parsed, but not yet type-checked, Sway program.
@@ -12,11 +14,15 @@ pub struct ParseProgram {
 /// A Sway program can be either a contract, script, predicate, or a library.
 ///
 /// All submodules declared with `dep` should be `Library`s.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, EnumString)]
 pub enum TreeType {
+    #[strum(serialize = "predicate")]
     Predicate,
+    #[strum(serialize = "script")]
     Script,
+    #[strum(serialize = "contract")]
     Contract,
+    #[strum(serialize = "library")]
     Library,
 }
 

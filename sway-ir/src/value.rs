@@ -209,6 +209,15 @@ impl Value {
         }
     }
 
+    /// Get a reference to this value as a constant or as a configurable, iff it is one of the two.
+    pub fn get_constant_or_configurable<'a>(&self, context: &'a Context) -> Option<&'a Constant> {
+        match &context.values[self.0].value {
+            ValueDatum::Constant(cn) => Some(cn),
+            ValueDatum::Configurable(cn) => Some(cn),
+            _ => None,
+        }
+    }
+
     /// Get the type for this value, if found.
     ///
     /// Arguments and constants always have a type, but only some instructions do.

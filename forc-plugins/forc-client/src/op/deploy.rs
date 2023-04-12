@@ -268,8 +268,8 @@ mod test {
 
         let manifests_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("test")
-            .join("data")
-            .join("manifests");
+            .join("data");
+
         for entry in manifests_dir.read_dir().unwrap() {
             let manifest =
                 PackageManifestFile::from_file(entry.unwrap().path().join("Forc.toml")).unwrap();

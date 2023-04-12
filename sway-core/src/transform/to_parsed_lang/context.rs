@@ -1,4 +1,4 @@
-use crate::BuildTarget;
+use crate::{language::parsed::TreeType, BuildTarget};
 
 #[derive(Default)]
 pub struct Context {
@@ -16,6 +16,9 @@ pub struct Context {
 
     /// The build target
     build_target: BuildTarget,
+
+    /// The build target
+    program_type: Option<TreeType>,
 }
 
 impl Context {
@@ -59,5 +62,15 @@ impl Context {
     /// Returns the build target
     pub fn build_target(&self) -> BuildTarget {
         self.build_target
+    }
+
+    /// Returns the build target
+    pub fn program_type(&self) -> Option<TreeType> {
+        self.program_type.clone()
+    }
+
+    /// Update the value of `program_type`
+    pub fn set_program_type(&mut self, program_type: TreeType) {
+        self.program_type = Some(program_type);
     }
 }
