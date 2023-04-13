@@ -49,6 +49,9 @@ pub struct BuildProfile {
     /// Treat warnings as errors.
     #[clap(long)]
     pub error_on_warnings: bool,
+    /// Enable the experimental storage implementation and UI.
+    #[clap(long)]
+    pub experimental_storage: bool,
 }
 
 /// Options related to printing stages of compiler output.
