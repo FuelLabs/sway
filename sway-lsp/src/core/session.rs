@@ -9,7 +9,7 @@ use crate::{
         document::TextDocument,
         sync::SyncWorkspace,
         token::{get_range_from_span, TypedAstToken},
-        token_map::TokenMap,
+        token_map::{TokenMap, TokenMapExt},
     },
     error::{DocumentError, LanguageServerError},
     traverse::{
@@ -256,30 +256,18 @@ impl Session {
 
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
         let (_, token) = self.token_map.token_at_position(url, position)?;
-        //let tokens = self.token_map.tokens_for_file(url);
-
         let te = self.type_engine.read();
         let de = self.decl_engine.read();
         let engines = Engines::new(&te, &de);
 
-        use crate::core::token_map::TokenMapExt;
-        let x = self
+        let mut token_ranges: Vec<_> = self
             .token_map
             .tokens_for_file(&url)
             .all_references_of_token(&token, engines)
-            .collect::<Vec<_>>();
-
-        let mut token_ranges: Vec<_> = self
-            .token_map
-            .iter()
-            .all_references_of_token(&token, engines)
-            .map(|(ident, _)| {
-                eprintln!("ident: {:#?}", ident);
-                get_range_from_span(&ident.span())
-            })
+            .map(|(ident, _)| get_range_from_span(&ident.span()))
             .collect();
-        token_ranges.sort_by(|a, b| a.start.line.cmp(&b.start.line));
 
+        token_ranges.sort_by(|a, b| a.start.line.cmp(&b.start.line));
         Some(token_ranges)
     }
 

@@ -3,4 +3,4 @@ pub mod session;
 pub(crate) mod sync;
 pub(crate) mod token;
 pub(crate) mod token_map;
-pub(crate) mod token_map_ext;
+pub mod token_map_ext;
