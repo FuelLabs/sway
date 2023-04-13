@@ -259,11 +259,12 @@ impl Session {
         let te = self.type_engine.read();
         let de = self.decl_engine.read();
         let engines = Engines::new(&te, &de);
-        let token_ranges = self
+        let mut token_ranges: Vec<_> = self
             .token_map
             .all_references_of_token(&token, engines)
             .map(|(ident, _)| get_range_from_span(&ident.span()))
             .collect();
+        token_ranges.sort_by(|a, b| a.start.line.cmp(&b.start.line));
 
         Some(token_ranges)
     }

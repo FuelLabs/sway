@@ -116,6 +116,16 @@ pub fn capabilities() -> ServerCapabilities {
             resolve_provider: Some(false),
         }),
         hover_provider: Some(HoverProviderCapability::Simple(true)),
+        rename_provider: Some(OneOf::Right(RenameOptions {
+            prepare_provider: Some(true),
+            work_done_progress_options: WorkDoneProgressOptions {
+                work_done_progress: Some(true),
+            },
+        })),
+        execute_command_provider: Some(ExecuteCommandOptions {
+            commands: vec![],
+            ..Default::default()
+        }),
         ..ServerCapabilities::default()
     }
 }
@@ -467,9 +477,13 @@ impl LanguageServer for Backend {
             Ok((uri, session)) => {
                 let new_name = params.new_name;
                 let position = params.text_document_position.position;
-                Ok(capabilities::rename::rename(
-                    session, new_name, uri, position,
-                ))
+                match capabilities::rename::rename(session, new_name, uri, position) {
+                    Ok(res) => Ok(Some(res)),
+                    Err(err) => {
+                        tracing::error!("{}", err.to_string());
+                        Ok(None)
+                    }
+                }
             }
             Err(err) => {
                 tracing::error!("{}", err.to_string());
@@ -484,8 +498,13 @@ impl LanguageServer for Backend {
     ) -> jsonrpc::Result<Option<PrepareRenameResponse>> {
         match self.get_uri_and_session(&params.text_document.uri) {
             Ok((uri, session)) => {
-                let position = params.position;
-                Ok(capabilities::rename::prepare_rename(session, uri, position))
+                match capabilities::rename::prepare_rename(session, uri, params.position) {
+                    Ok(res) => Ok(Some(res)),
+                    Err(err) => {
+                        tracing::error!("{}", err.to_string());
+                        Ok(None)
+                    }
+                }
             }
             Err(err) => {
                 tracing::error!("{}", err.to_string());

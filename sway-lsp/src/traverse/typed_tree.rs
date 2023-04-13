@@ -186,6 +186,12 @@ impl<'a> TypedTree<'a> {
                     }
                 }
 
+                // Which typed token should be used for collect_type_id
+                // if trait_decl_ref is some, then our ImplTrait is for an ABI or Trait. In this instance,
+                // we want to use the TypedArgument(implementing_for) type as the typed token.
+                //
+                // Otherwise, we use the TypedDeclaration(declaration.clone()) type as the typed token.
+                let mut typed_token = None;
                 if let Some(mut token) = self
                     .ctx
                     .tokens
@@ -195,6 +201,7 @@ impl<'a> TypedTree<'a> {
                     token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
 
                     token.type_def = if let Some(decl_ref) = &trait_decl_ref {
+                        typed_token = Some(TypedAstToken::TypedArgument(implementing_for.clone()));
                         match &decl_ref.id().clone() {
                             InterfaceDeclId::Abi(decl_id) => {
                                 let abi_decl = decl_engine.get_abi(decl_id);
@@ -206,6 +213,7 @@ impl<'a> TypedTree<'a> {
                             }
                         }
                     } else {
+                        typed_token = token.typed.clone();
                         Some(TypeDefinition::TypeId(implementing_for.type_id))
                     };
                 }
@@ -231,15 +239,17 @@ impl<'a> TypedTree<'a> {
 
                 // collect the root type argument again with declaration info this time so the
                 // impl is registered
-                self.collect_type_id(
-                    implementing_for.type_id,
-                    &TypedAstToken::TypedDeclaration(declaration.clone()),
-                    implementing_for
-                        .call_path_tree
-                        .as_ref()
-                        .map(|tree| tree.call_path.suffix.span())
-                        .unwrap_or(implementing_for.span()),
-                );
+                if let Some(typed_token) = typed_token {
+                    self.collect_type_id(
+                        implementing_for.type_id,
+                        &typed_token,
+                        implementing_for
+                            .call_path_tree
+                            .as_ref()
+                            .map(|tree| tree.call_path.suffix.span())
+                            .unwrap_or(implementing_for.span()),
+                    );
+                }
             }
             ty::TyDecl::AbiDecl { decl_id, .. } => {
                 let abi_decl = decl_engine.get_abi(decl_id);
@@ -1076,6 +1086,7 @@ impl<'a> TypedTree<'a> {
                     .submodule(mod_path)
                     .and_then(|tgt_submod| tgt_submod.span.clone())
                 {
+                    token.kind = SymbolKind::Module;
                     token.type_def = Some(TypeDefinition::Ident(Ident::new(span)));
                 }
             }
