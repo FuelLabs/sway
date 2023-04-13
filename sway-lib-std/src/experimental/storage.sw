@@ -24,6 +24,10 @@ use core::experimental::storage::StorageKey;
 /// ```
 #[storage(read, write)]
 pub fn write<T>(slot: b256, offset: u64, value: T) {
+    if __size_of::<T>() == 0 {
+        return;
+    }
+
     // Get the number of storage slots needed based on the size of `T`
     let number_of_slots = (offset * 8 + __size_of::<T>() + 31) >> 5;
 
@@ -67,6 +71,10 @@ pub fn write<T>(slot: b256, offset: u64, value: T) {
 /// ```
 #[storage(read)]
 pub fn read<T>(slot: b256, offset: u64) -> Option<T> {
+    if __size_of::<T>() == 0 {
+        return Option::None;
+    }
+
     // NOTE: we are leaking this value on the heap.
     // Get the number of storage slots needed based on the size of `T`
     let number_of_slots = (offset * 8 + __size_of::<T>() + 31) >> 5;
@@ -102,7 +110,7 @@ pub fn read<T>(slot: b256, offset: u64) -> Option<T> {
 /// assert(read::<u64>(ZERO_B256, 0).is_none());
 /// ```
 #[storage(write)]
-pub fn clear<T>(slot: b256) -> bool {
+fn clear<T>(slot: b256) -> bool {
     // Get the number of storage slots needed based on the size of `T` as the ceiling of 
     // `__size_of::<T>() / 32`
     let number_of_slots = (__size_of::<T>() + 31) >> 5;
