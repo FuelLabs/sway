@@ -49,7 +49,15 @@ impl ParseToEnd for AsmBlockContents {
             if let Some(consumed) = parser.check_empty() {
                 break (None, consumed);
             }
-            let ident = parser.parse()?;
+
+            // Parse the opcode directly instead of calling `parser.parse()` to avoid checking for
+            // illegal identifiers such as keywords. opcode names should not be subject to those
+            // checks because some opcodes, such as `mod`, are also Sway keywords.
+            let ident = match parser.take::<Ident>() {
+                Some(ident) => ident,
+                None => return Err(parser.emit_error(ParseErrorKind::ExpectedIdent)),
+            };
+
             if let Some(consumed) = parser.check_empty() {
                 let final_expr = AsmFinalExpr {
                     register: ident,
