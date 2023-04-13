@@ -13,7 +13,7 @@ use crate::{
         compile_constant_expression, compile_constant_expression_to_constant,
     },
     language::{
-        ty::{self, ProjectionKind},
+        ty::{self, ProjectionKind, TyConstantDecl},
         *,
     },
     metadata::MetadataManager,
@@ -28,6 +28,7 @@ use sway_types::{
     ident::Ident,
     span::{Span, Spanned},
     state::StateIndex,
+    Named,
 };
 
 use std::collections::HashMap;
@@ -161,7 +162,7 @@ impl<'eng> FnCompiler<'eng> {
                 }
                 ty::TyDecl::ConstantDecl { decl_id, .. } => {
                     let tcd = self.decl_engine.get_constant(decl_id);
-                    self.compile_const_decl(context, md_mgr, tcd, span_md_idx)?;
+                    self.compile_const_decl(context, md_mgr, &tcd, span_md_idx, false)?;
                     Ok(None)
                 }
                 ty::TyDecl::EnumDecl { decl_id, .. } => {
@@ -250,7 +251,7 @@ impl<'eng> FnCompiler<'eng> {
         let temp_name = self.lexical_map.insert_anon();
         let tmp_var = self
             .function
-            .new_local_var(context, temp_name, ty, None)
+            .new_local_var(context, temp_name, ty, None, false)
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
         let tmp_val = self.current_block.ins(context).get_local(tmp_var);
         self.current_block.ins(context).store(tmp_val, val);
@@ -303,6 +304,9 @@ impl<'eng> FnCompiler<'eng> {
             }
             ty::TyExpressionVariant::LazyOperator { op, lhs, rhs } => {
                 self.compile_lazy_op(context, md_mgr, op, lhs, rhs, span_md_idx)
+            }
+            ty::TyExpressionVariant::ConstantExpression { const_decl, .. } => {
+                self.compile_const_expr(context, md_mgr, const_decl, span_md_idx)
             }
             ty::TyExpressionVariant::VariableExpression {
                 name, call_path, ..
@@ -491,7 +495,7 @@ impl<'eng> FnCompiler<'eng> {
             // Local variable for the key
             let key_var = compiler
                 .function
-                .new_local_var(context, key_name, Type::get_b256(context), None)
+                .new_local_var(context, key_name, Type::get_b256(context), None, false)
                 .map_err(|ir_error| {
                     CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
                 })?;
@@ -876,6 +880,7 @@ impl<'eng> FnCompiler<'eng> {
                         recipient_and_message_aggregate_local_name,
                         recipient_and_message_aggregate,
                         None,
+                        false,
                     )
                     .map_err(|ir_error| {
                         CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
@@ -1096,7 +1101,7 @@ impl<'eng> FnCompiler<'eng> {
                         .insert(format!("{}{}", "arg_for_", ast_name));
                     let temp_var = self
                         .function
-                        .new_local_var(context, temp_arg_name, arg0_type, None)
+                        .new_local_var(context, temp_arg_name, arg0_type, None, false)
                         .map_err(|ir_error| {
                             CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
                         })?;
@@ -1127,6 +1132,7 @@ impl<'eng> FnCompiler<'eng> {
                         user_args_struct_local_name,
                         user_args_struct_type,
                         None,
+                        false,
                     )
                     .map_err(|ir_error| {
                         CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
@@ -1179,6 +1185,7 @@ impl<'eng> FnCompiler<'eng> {
                 self.lexical_map.insert_anon(),
                 ra_struct_type,
                 None,
+                false,
             )
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
 
@@ -1258,7 +1265,7 @@ impl<'eng> FnCompiler<'eng> {
                 let tmp_asset_id_name = self.lexical_map.insert_anon();
                 let tmp_var = self
                     .function
-                    .new_local_var(context, tmp_asset_id_name, b256_ty, None)
+                    .new_local_var(context, tmp_asset_id_name, b256_ty, None, false)
                     .map_err(|ir_error| {
                         CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
                     })?;
@@ -1655,6 +1662,27 @@ impl<'eng> FnCompiler<'eng> {
         self.function.get_arg(context, name)
     }
 
+    fn compile_const_expr(
+        &mut self,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        const_decl: &TyConstantDecl,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Result<Value, CompileError> {
+        let result = self.compile_var_expr(
+            context,
+            &Some(const_decl.call_path.clone()),
+            const_decl.name(),
+            span_md_idx,
+        );
+
+        if result.is_ok() {
+            result
+        } else {
+            self.compile_const_decl(context, md_mgr, const_decl, span_md_idx, true)
+        }
+    }
+
     fn compile_var_expr(
         &mut self,
         context: &mut Context,
@@ -1701,7 +1729,12 @@ impl<'eng> FnCompiler<'eng> {
         ast_var_decl: &ty::TyVariableDecl,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Option<Value>, CompileError> {
-        let ty::TyVariableDecl { name, body, .. } = ast_var_decl;
+        let ty::TyVariableDecl {
+            name,
+            body,
+            mutability,
+            ..
+        } = ast_var_decl;
         // Nothing to do for an abi cast declarations. The address specified in them is already
         // provided in each contract call node in the AST.
         if matches!(
@@ -1727,10 +1760,11 @@ impl<'eng> FnCompiler<'eng> {
         if init_val.is_diverging(context) || body_deterministically_aborts {
             return Ok(Some(init_val));
         }
+        let mutable = matches!(mutability, ty::VariableMutability::Mutable);
         let local_name = self.lexical_map.insert(name.as_str().to_owned());
         let local_var = self
             .function
-            .new_local_var(context, local_name, return_type, None)
+            .new_local_var(context, local_name, return_type, None, mutable)
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
 
         // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
@@ -1754,9 +1788,10 @@ impl<'eng> FnCompiler<'eng> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_const_decl: ty::TyConstantDecl,
+        ast_const_decl: &ty::TyConstantDecl,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<(), CompileError> {
+        is_const_expression: bool,
+    ) -> Result<Value, CompileError> {
         // This is local to the function, so we add it to the locals, rather than the module
         // globals like other const decls.
         // `is_configurable` should be `false` here.
@@ -1774,49 +1809,58 @@ impl<'eng> FnCompiler<'eng> {
                 self.module,
                 None,
                 Some(self),
-                &call_path,
-                &value,
-                is_configurable,
-            )?;
-            let local_name = self
-                .lexical_map
-                .insert(call_path.suffix.as_str().to_owned());
-            let return_type = convert_resolved_typeid(
-                self.type_engine,
-                self.decl_engine,
-                context,
-                &value.return_type,
-                &value.span,
+                call_path,
+                value,
+                *is_configurable,
             )?;
 
-            // We compile consts the same as vars are compiled. This is because ASM generation
-            // cannot handle
-            //    1. initializing aggregates
-            //    2. get_ptr()
-            // into the data section.
-            let local_var = self
-                .function
-                .new_local_var(context, local_name, return_type, None)
-                .map_err(|ir_error| {
-                    CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
-                })?;
+            if is_const_expression {
+                Ok(const_expr_val)
+            } else {
+                let local_name = self
+                    .lexical_map
+                    .insert(call_path.suffix.as_str().to_owned());
 
-            // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
-            // otherwise use a store.
-            let var_ty = local_var.get_type(context);
-            if ir_type_size_in_bytes(context, &var_ty) > 0 {
-                let local_val = self
-                    .current_block
-                    .ins(context)
-                    .get_local(local_var)
-                    .add_metadatum(context, span_md_idx);
-                self.current_block
-                    .ins(context)
-                    .store(local_val, const_expr_val)
-                    .add_metadatum(context, span_md_idx);
+                let return_type = convert_resolved_typeid(
+                    self.type_engine,
+                    self.decl_engine,
+                    context,
+                    &value.return_type,
+                    &value.span,
+                )?;
+
+                // We compile consts the same as vars are compiled. This is because ASM generation
+                // cannot handle
+                //    1. initializing aggregates
+                //    2. get_ptr()
+                // into the data section.
+                let local_var = self
+                    .function
+                    .new_local_var(context, local_name, return_type, None, false)
+                    .map_err(|ir_error| {
+                        CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+                    })?;
+
+                // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
+                // otherwise use a store.
+                let var_ty = local_var.get_type(context);
+                Ok(if ir_type_size_in_bytes(context, &var_ty) > 0 {
+                    let local_val = self
+                        .current_block
+                        .ins(context)
+                        .get_local(local_var)
+                        .add_metadatum(context, span_md_idx);
+                    self.current_block
+                        .ins(context)
+                        .store(local_val, const_expr_val)
+                        .add_metadatum(context, span_md_idx)
+                } else {
+                    const_expr_val
+                })
             }
+        } else {
+            unreachable!("cannot compile const declaration without an expression")
         }
-        Ok(())
     }
 
     fn compile_reassignment(
@@ -2004,7 +2048,7 @@ impl<'eng> FnCompiler<'eng> {
         let temp_name = self.lexical_map.insert_anon();
         let array_var = self
             .function
-            .new_local_var(context, temp_name, array_type, None)
+            .new_local_var(context, temp_name, array_type, None, false)
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
         let array_value = self
             .current_block
@@ -2138,7 +2182,7 @@ impl<'eng> FnCompiler<'eng> {
         let temp_name = self.lexical_map.insert_anon();
         let struct_var = self
             .function
-            .new_local_var(context, temp_name, struct_type, None)
+            .new_local_var(context, temp_name, struct_type, None, false)
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
         let struct_val = self
             .current_block
@@ -2252,7 +2296,7 @@ impl<'eng> FnCompiler<'eng> {
         let temp_name = self.lexical_map.insert_anon();
         let enum_var = self
             .function
-            .new_local_var(context, temp_name, enum_type, None)
+            .new_local_var(context, temp_name, enum_type, None, false)
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
         let enum_ptr = self
             .current_block
@@ -2332,7 +2376,7 @@ impl<'eng> FnCompiler<'eng> {
             let temp_name = self.lexical_map.insert_anon();
             let tuple_var = self
                 .function
-                .new_local_var(context, temp_name, tuple_type, None)
+                .new_local_var(context, temp_name, tuple_type, None, false)
                 .map_err(|ir_error| {
                     CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
                 })?;
@@ -2561,7 +2605,7 @@ impl<'eng> FnCompiler<'eng> {
             let temp_name = self.lexical_map.insert_anon();
             let struct_var = self
                 .function
-                .new_local_var(context, temp_name, *ty, None)
+                .new_local_var(context, temp_name, *ty, None, false)
                 .map_err(|ir_error| {
                     CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
                 })?;
@@ -2636,7 +2680,13 @@ impl<'eng> FnCompiler<'eng> {
             // Local pointer for the key
             let key_var = self
                 .function
-                .new_local_var(context, alias_key_name, Type::get_b256(context), None)
+                .new_local_var(
+                    context,
+                    alias_key_name,
+                    Type::get_b256(context),
+                    None,
+                    false,
+                )
                 .map_err(|ir_error| {
                     CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
                 })?;
@@ -2662,7 +2712,13 @@ impl<'eng> FnCompiler<'eng> {
                 let storage_key_local_name = self.lexical_map.insert_anon();
                 let storage_key_ptr = self
                     .function
-                    .new_local_var(context, storage_key_local_name, storage_key_aggregate, None)
+                    .new_local_var(
+                        context,
+                        storage_key_local_name,
+                        storage_key_aggregate,
+                        None,
+                        false,
+                    )
                     .map_err(|ir_error| {
                         CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
                     })?;
@@ -2756,7 +2812,7 @@ impl<'eng> FnCompiler<'eng> {
                 let temp_name = self.lexical_map.insert_anon();
                 let tmp_struct_var = self
                     .function
-                    .new_local_var(context, temp_name, *ty, None)
+                    .new_local_var(context, temp_name, *ty, None, false)
                     .map_err(|ir_error| {
                         CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
                     })?;
@@ -2811,7 +2867,13 @@ impl<'eng> FnCompiler<'eng> {
                 // Local pointer for the key
                 let key_var = self
                     .function
-                    .new_local_var(context, alias_key_name, Type::get_b256(context), None)
+                    .new_local_var(
+                        context,
+                        alias_key_name,
+                        Type::get_b256(context),
+                        None,
+                        false,
+                    )
                     .map_err(|ir_error| {
                         CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
                     })?;
@@ -2938,7 +3000,13 @@ impl<'eng> FnCompiler<'eng> {
         // Local pointer to hold the B256
         let local_var = self
             .function
-            .new_local_var(context, alias_value_name, Type::get_b256(context), None)
+            .new_local_var(
+                context,
+                alias_value_name,
+                Type::get_b256(context),
+                None,
+                false,
+            )
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
 
         // Convert the local pointer created to a value using get_ptr
@@ -2982,7 +3050,13 @@ impl<'eng> FnCompiler<'eng> {
         // Local pointer to hold the B256
         let local_var = self
             .function
-            .new_local_var(context, alias_value_name, Type::get_b256(context), None)
+            .new_local_var(
+                context,
+                alias_value_name,
+                Type::get_b256(context),
+                None,
+                false,
+            )
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
 
         // Convert the local pointer created to a value using get_ptr
@@ -3037,7 +3111,7 @@ impl<'eng> FnCompiler<'eng> {
         // Local pointer to hold the array of b256s
         let local_var = self
             .function
-            .new_local_var(context, local_value_name, b256_array_type, None)
+            .new_local_var(context, local_value_name, b256_array_type, None, false)
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
 
         // Convert the local pointer created to a value of the original type using cast_ptr.
@@ -3112,7 +3186,7 @@ impl<'eng> FnCompiler<'eng> {
         // Local pointer to hold the array of b256s
         let local_var = self
             .function
-            .new_local_var(context, local_value_name, b256_array_type, None)
+            .new_local_var(context, local_value_name, b256_array_type, None, false)
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
 
         // Convert the local pointer created to a value of the original type using

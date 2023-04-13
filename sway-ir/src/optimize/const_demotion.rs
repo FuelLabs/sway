@@ -76,6 +76,7 @@ fn demote(context: &mut Context, function: &Function, block: &Block, constant: &
         "__const".to_owned(),
         constant.ty,
         Some(constant.clone()),
+        false,
     );
 
     // Create local_var and load instructions.

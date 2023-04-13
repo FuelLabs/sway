@@ -1,7 +1,7 @@
 script;
 // This tests function, tuple, struct arguments are evaluated from left to right
 
-fn func(a: u64, b: u64, c: u64, d: u64) -> u64 {
+fn func(_a: u64, _b: u64, _c: u64, d: u64) -> u64 {
     d
 }
 

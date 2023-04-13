@@ -39,20 +39,20 @@ impl TokenMap {
     /// This is useful for the highlighting and renaming LSP capabilities.
     pub fn all_references_of_token<'s>(
         &'s self,
-        token: &Token,
+        token_to_match: &Token,
         engines: Engines<'s>,
     ) -> impl 's + Iterator<Item = (Ident, Token)> {
-        let current_type_id = token.declared_token_span(engines);
+        let decl_span_to_match = token_to_match.declared_token_span(engines);
+        self.iter().filter_map(move |item| {
+            let ((ident, span), token) = item.pair();
+            let is_same_type = decl_span_to_match == token.declared_token_span(engines);
+            let is_decl_of_token = Some(span) == decl_span_to_match.as_ref();
 
-        self.iter()
-            .filter(move |item| {
-                let ((_, _), token) = item.pair();
-                current_type_id == token.declared_token_span(engines)
-            })
-            .map(|item| {
-                let ((ident, _), token) = item.pair();
-                (ident.clone(), token.clone())
-            })
+            if is_same_type || is_decl_of_token {
+                return Some((ident.clone(), token.clone()));
+            }
+            None
+        })
     }
 
     /// Given a cursor [Position], return the [Ident] of a token in the
@@ -70,6 +70,21 @@ impl TokenMap {
                 None
             })
             .collect()
+    }
+
+    /// Returns the first parent declaration found at the given cursor position.
+    ///
+    /// For example, if the cursor is inside a function body, this function returns the function declaration.
+    pub fn parent_decl_at_position(&self, uri: &Url, position: Position) -> Option<(Ident, Token)> {
+        self.tokens_at_position(uri, position, None)
+            .iter()
+            .find_map(|(ident, token)| {
+                if let Some(TypedAstToken::TypedDeclaration(_)) = token.typed {
+                    Some((ident.clone(), token.clone()))
+                } else {
+                    None
+                }
+            })
     }
 
     /// Returns the first collected tokens that is at the cursor position.
@@ -104,7 +119,12 @@ impl TokenMap {
         tokens
             .filter_map(|(ident, token)| {
                 let span = match token.typed {
-                    Some(TypedAstToken::TypedFunctionDeclaration(decl)) => decl.span(),
+                    Some(TypedAstToken::TypedFunctionDeclaration(decl))
+                        if functions_only == Some(true) =>
+                    {
+                        decl.span()
+                    }
+                    Some(TypedAstToken::TypedDeclaration(decl)) => decl.span(),
                     _ => ident.span(),
                 };
                 let range = token::get_range_from_span(&span);

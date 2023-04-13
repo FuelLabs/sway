@@ -9,10 +9,10 @@ use core::experimental::storage::StorageKey;
 ///
 /// ### Arguments
 ///
-/// * `key` - The storage slot at which the variable will be stored.
+/// * `slot` - The storage slot at which the variable will be stored.
 /// * `value` - The value to be stored.
-/// * `offset` - An offset, in words, from the beginning of slot at `key`, at which `value` should
-///              be stored.
+/// * `offset` - An offset, in words, from the beginning of `slot`, at which `value` should be 
+///              stored.
 ///
 /// ### Examples
 ///
@@ -23,11 +23,10 @@ use core::experimental::storage::StorageKey;
 /// assert(five == stored_five);
 /// ```
 #[storage(read, write)]
-pub fn write<T>(key: b256, offset: u64, value: T) {
+pub fn write<T>(slot: b256, offset: u64, value: T) {
     if __size_of::<T>() == 0 {
         return;
     }
-
     // Get the number of storage slots needed based on the size of `T`
     let number_of_slots = (offset * 8 + __size_of::<T>() + 31) >> 5;
 
@@ -40,17 +39,17 @@ pub fn write<T>(key: b256, offset: u64, value: T) {
     // These are the two slots where the start and end of `T` fall in considering `offset`. 
     // However, doing so requires that we perform addition on `b256` to compute the corresponding 
     // keys, and that is not possible today.
-    let _ = __state_load_quad(key, padded_value, number_of_slots);
+    let _ = __state_load_quad(slot, padded_value, number_of_slots);
 
     // Copy the value to be stored to `padded_value + offset`.
     padded_value.add::<u64>(offset).write::<T>(value);
 
     // Now store back the data at `padded_value` which now contains the old data but partially 
     // overwritten by the new data in the desired locations.
-    let _ = __state_store_quad(key, padded_value, number_of_slots);
+    let _ = __state_store_quad(slot, padded_value, number_of_slots);
 }
 
-/// Reads a value of type `T` starting at the location specified by `key` and `offset`. If the
+/// Reads a value of type `T` starting at the location specified by `slot` and `offset`. If the
 /// value crosses the boundary of a storage slot, reading continues at the following slot.
 ///
 /// Returns `Option(value)` if the storage slots read were valid and contain `value`. Otherwise, 
@@ -58,9 +57,8 @@ pub fn write<T>(key: b256, offset: u64, value: T) {
 ///
 /// ### Arguments
 ///
-/// * `key` - The storage slot to load the value from.
-/// * `offset` - An offset, in words, from the start of slot at `key`, from which the value should
-///              be read.
+/// * `slot` - The storage slot to load the value from.
+/// * `offset` - An offset, in words, from the start of `slot`, from which the value should be read.
 ///
 /// ### Examples
 ///
@@ -71,7 +69,7 @@ pub fn write<T>(key: b256, offset: u64, value: T) {
 /// assert(five == stored_five);
 /// ```
 #[storage(read)]
-pub fn read<T>(key: b256, offset: u64) -> Option<T> {
+pub fn read<T>(slot: b256, offset: u64) -> Option<T> {
     if __size_of::<T>() == 0 {
         return Option::None;
     }
@@ -84,22 +82,22 @@ pub fn read<T>(key: b256, offset: u64) -> Option<T> {
     // make the 'quad' storage instruction read without overflowing.
     let result_ptr = alloc::<u64>(number_of_slots * 32);
 
-    // Read `number_of_slots * 32` bytes starting at storage slot `key` and return an `Option` 
+    // Read `number_of_slots * 32` bytes starting at storage slot `slot` and return an `Option` 
     // wrapping the value stored at `result_ptr + offset` if all the slots are valid. Otherwise, 
     // return `Option::None`.
-    if __state_load_quad(key, result_ptr, number_of_slots) {
+    if __state_load_quad(slot, result_ptr, number_of_slots) {
         Option::Some(result_ptr.add::<u64>(offset).read::<T>())
     } else {
         Option::None
     }
 }
 
-/// Clear a sequence of consecutive storage slots starting at a some key. Returns a Boolean
+/// Clear a sequence of consecutive storage slots starting at a some slot. Returns a Boolean
 /// indicating whether all of the storage slots cleared were previously set.
 ///
 /// ### Arguments
 ///
-/// * `key` - The key of the first storage slot that will be cleared
+/// * `slot` - The key of the first storage slot that will be cleared
 ///
 /// ### Examples
 ///
@@ -111,32 +109,32 @@ pub fn read<T>(key: b256, offset: u64) -> Option<T> {
 /// assert(read::<u64>(ZERO_B256, 0).is_none());
 /// ```
 #[storage(write)]
-fn clear<T>(key: b256) -> bool {
+fn clear<T>(slot: b256) -> bool {
     // Get the number of storage slots needed based on the size of `T` as the ceiling of 
     // `__size_of::<T>() / 32`
     let number_of_slots = (__size_of::<T>() + 31) >> 5;
 
-    // Clear `number_of_slots * 32` bytes starting at storage slot `key`.
-    __state_clear(key, number_of_slots)
+    // Clear `number_of_slots * 32` bytes starting at storage slot `slot`.
+    __state_clear(slot, number_of_slots)
 }
 
 impl<T> StorageKey<T> {
     /// Reads a value of type `T` starting at the location specified by `self`. If the value
     /// crosses the boundary of a storage slot, reading continues at the following slot.
     ///
-    /// Returns the value previously stored if the storage slots read were valid and contain 
-    /// `value`. Reverts otherwise.
+    /// Returns the value previously stored if a the storage slots read were
+    /// valid and contain `value`. Panics otherwise.
     ///
-    /// ### Reverts
+    /// ### Arguments
     ///
-    /// Reverts if at least one of the storage slots needed to read a value of type `T` is not set.
-    /// 
+    /// None
+    ///
     /// ### Examples
     ///
     /// ```sway
     /// fn foo() {
     ///     let r: StorageKey<u64> = StorageKey {
-    ///         key: 0x0000000000000000000000000000000000000000000000000000000000000000,
+    ///         slot: 0x0000000000000000000000000000000000000000000000000000000000000000,
     ///         offset: 2,
     ///     };
     ///
@@ -146,7 +144,7 @@ impl<T> StorageKey<T> {
     /// ```
     #[storage(read)]
     pub fn read(self) -> T {
-        read::<T>(self.key, self.offset).unwrap()
+        read::<T>(self.slot, self.offset).unwrap()
     }
 
     /// Reads a value of type `T` starting at the location specified by `self`. If the value
@@ -164,7 +162,7 @@ impl<T> StorageKey<T> {
     /// ```sway
     /// fn foo() {
     ///     let r: StorageKey<u64> = StorageKey {
-    ///         key: 0x0000000000000000000000000000000000000000000000000000000000000000,
+    ///         slot: 0x0000000000000000000000000000000000000000000000000000000000000000,
     ///         offset: 2,
     ///     };
     ///
@@ -174,7 +172,7 @@ impl<T> StorageKey<T> {
     /// ```
     #[storage(read)]
     pub fn try_read(self) -> Option<T> {
-        read(self.key, self.offset)
+        read(self.slot, self.offset)
     }
 
     /// Writes a value of type `T` starting at the location specified by `self`. If the value
@@ -189,7 +187,7 @@ impl<T> StorageKey<T> {
     /// ```sway
     /// fn foo() {
     ///     let r: StorageKey<u64> = StorageKey {
-    ///         key: 0x0000000000000000000000000000000000000000000000000000000000000000,
+    ///         slot: 0x0000000000000000000000000000000000000000000000000000000000000000,
     ///         offset: 2,
     ///     };
     ///     let x = r.write(42); // Writes 42 at the third word of storage slot with key 0x000...0
@@ -197,7 +195,7 @@ impl<T> StorageKey<T> {
     /// ```
     #[storage(read, write)]
     pub fn write(self, value: T) {
-        write(self.key, self.offset, value);
+        write(self.slot, self.offset, value);
     }
 }
 
@@ -229,39 +227,7 @@ impl<K, V> StorageKey<StorageMap<K, V>> {
     /// ```
     #[storage(read, write)]
     pub fn insert(self, key: K, value: V) {
-        let key = sha256((key, self.key));
-        write::<V>(key, 0, value);
-    }
-
-    /// Retrieves the `StorageKey` that describes the raw location in storage of the value
-    /// Inserts a key-value pair into the map using the `[]` operator
-    ///
-    /// This is temporary until we are able to implement `trait IndexAssign`. The Sway compiler will
-    /// de-sugar the index operator `[]` in an assignment expression to a call to `index_assign()`.
-    ///
-    /// ### Arguments
-    ///
-    /// * `key` - The key to which the value is paired.
-    /// * `value` - The value to be stored.
-    ///
-    /// ### Examples
-    ///
-    /// ```sway
-    /// storage {
-    ///     map: StorageMap<u64, bool> = StorageMap {}
-    /// }
-    ///
-    /// fn foo() {
-    ///     let key = 5_u64;
-    ///     let value = true;
-    ///     storage.map[key] = value; // de-sugars to `storage.map.index_assign(key, value);`
-    ///     let retrieved = storage.map.get(key).read();
-    ///     assert(value == retrieved);
-    /// }
-    /// ```
-    #[storage(read, write)]
-    pub fn index_assign(self, key: K, value: V) {
-        let key = sha256((key, self.key));
+        let key = sha256((key, self.slot));
         write::<V>(key, 0, value);
     }
 
@@ -283,45 +249,14 @@ impl<K, V> StorageKey<StorageMap<K, V>> {
     ///     let key = 5_u64;
     ///     let value = true;
     ///     storage.map.insert(key, value);
-    ///     let retrieved = storage.map.get(key).read();
-    ///     assert(value == retrieved);
+    ///     let retrieved_value = storage.map.get(key).read();
+    ///     assert(value == retrieved_value);
     /// }
     /// ```
     #[storage(read)]
     pub fn get(self, key: K) -> StorageKey<V> {
         StorageKey {
-            key: sha256((key, self.key)),
-            offset: 0,
-        }
-    }
-
-    /// Retrieves the `StorageKey` that describes the raw location in storage of the value 
-    /// stored at `key`, regardless of whether a value is actually stored at that location or not.
-    ///
-    /// This is temporary until we are able to implement `trait Index`. The Sway compiler will
-    /// de-sugar the index operator `[]` in an expression to a call to `index()`.
-    ///
-    /// ### Arguments
-    ///
-    /// * `key` - The key to which the value is paired.
-    ///
-    /// ### Examples
-    ///
-    /// ```sway
-    /// storage {
-    ///     map: StorageMap<u64, bool> = StorageMap {}
-    /// }
-    ///
-    /// fn foo() {
-    ///     let key = 5_u64;
-    ///     let value = true;
-    ///     storage.map.insert(key, value);
-    ///     let retrieved = storage.map[key].read(); // de-sugars to `storage.map.get(key).read()`
-    ///     assert(value == retrieved);
-    /// }
-    pub fn index(self, key: K) -> StorageKey<V> {
-        StorageKey {
-            key: sha256((key, self.key)),
+            slot: sha256((key, self.slot)),
             offset: 0,
         }
     }
@@ -352,7 +287,7 @@ impl<K, V> StorageKey<StorageMap<K, V>> {
     /// ```
     #[storage(write)]
     pub fn remove(self, key: K) -> bool {
-        let key = sha256((key, self.key));
+        let key = sha256((key, self.slot));
         clear::<V>(key)
     }
 }

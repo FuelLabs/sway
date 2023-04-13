@@ -35,6 +35,9 @@ pub(crate) fn instruct_exp_inner(
             instruct_exp(ctx.by_ref(), handler, lhs)?;
             instruct_exp(ctx.by_ref(), handler, rhs)?;
         }
+        ty::TyExpressionVariant::ConstantExpression { .. } => {
+            // NOTE: may need to do something here later
+        }
         ty::TyExpressionVariant::VariableExpression { .. } => {
             // NOTE: may need to do something here later
         }

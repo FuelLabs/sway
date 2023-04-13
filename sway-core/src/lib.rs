@@ -382,15 +382,16 @@ pub fn parsed_to_ast(
             _ => None,
         }));
 
+    let (print_graph, print_graph_url_format) = match build_config {
+        Some(cfg) => (
+            cfg.print_dca_graph.clone(),
+            cfg.print_dca_graph_url_format.clone(),
+        ),
+        None => (None, None),
+    };
     // Perform control flow analysis and extend with any errors.
-    let cfa_res = perform_control_flow_analysis(
-        engines,
-        &typed_program,
-        match build_config {
-            Some(cfg) => cfg.print_dca_graph,
-            None => false,
-        },
-    );
+    let cfa_res =
+        perform_control_flow_analysis(engines, &typed_program, print_graph, print_graph_url_format);
     errors.extend(cfa_res.errors);
     warnings.extend(cfa_res.warnings);
 
@@ -691,7 +692,8 @@ pub fn asm_to_bytecode(
 fn perform_control_flow_analysis(
     engines: Engines<'_>,
     program: &ty::TyProgram,
-    print_graph: bool,
+    print_graph: Option<String>,
+    print_graph_url_format: Option<String>,
 ) -> CompileResult<()> {
     let dca_res = dead_code_analysis(engines, program);
     let rpa_errors = return_path_analysis(engines, program);
@@ -701,9 +703,7 @@ fn perform_control_flow_analysis(
         err(vec![], rpa_errors)
     };
     if let Some(graph) = dca_res.clone().value {
-        if print_graph {
-            graph.visualize(engines);
-        }
+        graph.visualize(engines, print_graph, print_graph_url_format);
     }
     dca_res.flat_map(|_| rpa_res)
 }

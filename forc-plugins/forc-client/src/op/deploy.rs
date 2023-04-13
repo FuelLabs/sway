@@ -236,7 +236,8 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::BuildOpts {
         },
         print: pkg::PrintOpts {
             ast: cmd.print.ast,
-            dca_graph: cmd.print.dca_graph,
+            dca_graph: cmd.print.dca_graph.clone(),
+            dca_graph_url_format: cmd.print.dca_graph_url_format.clone(),
             finalized_asm: cmd.print.finalized_asm,
             intermediate_asm: cmd.print.intermediate_asm,
             ir: cmd.print.ir,
@@ -267,8 +268,8 @@ mod test {
 
         let manifests_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("test")
-            .join("data")
-            .join("manifests");
+            .join("data");
+
         for entry in manifests_dir.read_dir().unwrap() {
             let manifest =
                 PackageManifestFile::from_file(entry.unwrap().path().join("Forc.toml")).unwrap();
