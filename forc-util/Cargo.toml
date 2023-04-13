@@ -26,3 +26,4 @@ sway-utils = { version = "0.37.0", path = "../sway-utils" }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["ansi", "env-filter", "json"] }
 unicode-xid = "0.2.2"
+walkdir = "2.3.3"
