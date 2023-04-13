@@ -99,6 +99,8 @@ pub enum SymbolKind {
     Field,
     /// Emitted for free-standing & associated functions.
     Function,
+    /// Emitted for compiler intrinsics.
+    Intrinsic,
     /// Emitted for keywords.
     Keyword,
     /// Emitted for modules.

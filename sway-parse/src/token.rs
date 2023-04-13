@@ -721,7 +721,7 @@ fn lex_int_ty_opt(l: &mut Lexer<'_>) -> Result<Option<(LitIntType, Span)>> {
 }
 
 /// Interpret the given `suffix` string as a `LitIntType`.
-fn parse_int_suffix(suffix: &str) -> Option<LitIntType> {
+pub fn parse_int_suffix(suffix: &str) -> Option<LitIntType> {
     Some(match suffix {
         "u8" => LitIntType::U8,
         "u16" => LitIntType::U16,
