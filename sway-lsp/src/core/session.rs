@@ -258,16 +258,20 @@ impl Session {
         let (_, token) = self.token_map.token_at_position(url, position)?;
         //let tokens = self.token_map.tokens_for_file(url);
 
-
         let te = self.type_engine.read();
         let de = self.decl_engine.read();
         let engines = Engines::new(&te, &de);
 
-        let x = self.token_map.tokens_for_file(&url).iter().self.token_map.all_references_of_token(&token, engines).collect::<Vec<_>>();
-
+        use crate::core::token_map::TokenMapExt;
+        let x = self
+            .token_map
+            .tokens_for_file(&url)
+            .all_references_of_token(&token, engines)
+            .collect::<Vec<_>>();
 
         let mut token_ranges: Vec<_> = self
             .token_map
+            .iter()
             .all_references_of_token(&token, engines)
             .map(|(ident, _)| {
                 eprintln!("ident: {:#?}", ident);
