@@ -56,7 +56,7 @@ where
             let is_same_type = decl_span_to_match == token.declared_token_span(self.engines);
             let is_decl_of_token = Some(&ident.span()) == decl_span_to_match.as_ref();
 
-            if is_same_type || is_decl_of_token {
+            if decl_span_to_match.is_some() && is_same_type || is_decl_of_token {
                 return Some((ident.clone(), token.clone()));
             }
         }
