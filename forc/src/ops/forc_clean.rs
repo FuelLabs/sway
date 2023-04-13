@@ -1,7 +1,7 @@
 use crate::cli::CleanCommand;
 use anyhow::{anyhow, bail, Result};
 use forc_pkg::manifest::ManifestFile;
-use forc_util::{default_output_directory, find_manifest_dir};
+use forc_util::{default_output_directory, find_parent_manifest_dir};
 use std::path::PathBuf;
 use sway_utils::MANIFEST_FILE_NAME;
 
@@ -15,7 +15,7 @@ pub fn clean(command: CleanCommand) -> Result<()> {
         std::env::current_dir().map_err(|e| anyhow!("{:?}", e))?
     };
 
-    let manifest_dir = match find_manifest_dir(&this_dir) {
+    let manifest_dir = match find_parent_manifest_dir(&this_dir) {
         Some(dir) => dir,
         None => {
             bail!(
