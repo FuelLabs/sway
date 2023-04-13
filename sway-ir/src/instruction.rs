@@ -442,7 +442,7 @@ impl Instruction {
                 indices.iter_mut().for_each(replace);
             }
             Instruction::IntToPtr(value, _) => replace(value),
-            Instruction::Load(_) => (),
+            Instruction::Load(ptr) => replace(ptr),
             Instruction::MemCopyBytes {
                 dst_val_ptr,
                 src_val_ptr,
@@ -461,8 +461,12 @@ impl Instruction {
             Instruction::Nop => (),
             Instruction::PtrToInt(value, _) => replace(value),
             Instruction::Ret(ret_val, _) => replace(ret_val),
-            Instruction::Store { stored_val, .. } => {
+            Instruction::Store {
+                stored_val,
+                dst_val_ptr,
+            } => {
                 replace(stored_val);
+                replace(dst_val_ptr);
             }
 
             Instruction::FuelVm(fuel_vm_instr) => match fuel_vm_instr {

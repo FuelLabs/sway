@@ -138,6 +138,17 @@ impl Block {
         idx
     }
 
+    pub fn set_arg(&self, context: &mut Context, arg: Value) {
+        match context.values[arg.0].value {
+            ValueDatum::Argument(BlockArgument { block, idx, ty: _ })
+                if block == *self && idx < context.blocks[self.0].args.len() =>
+            {
+                context.blocks[self.0].args[idx] = arg;
+            }
+            _ => panic!("Inconsistent block argument being set"),
+        }
+    }
+
     /// Add a block argument, asserts that `arg` is suitable here.
     pub fn add_arg(&self, context: &mut Context, arg: Value) {
         match context.values[arg.0].value {

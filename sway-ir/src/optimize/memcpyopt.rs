@@ -44,6 +44,13 @@ impl Symbol {
             Symbol::Arg(ba) => ba.ty,
         }
     }
+
+    pub fn _get_name(&self, context: &Context, function: Function) -> String {
+        match self {
+            Symbol::Local(l) => function.lookup_local_name(context, l).unwrap().clone(),
+            Symbol::Arg(ba) => format!("{}[{}]", ba.block.get_label(context), ba.idx),
+        }
+    }
 }
 
 fn get_symbol(context: &Context, val: Value) -> Option<Symbol> {
@@ -181,7 +188,7 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
             .map(|replace_with| closure(candidates, replace_with).unwrap_or(*replace_with))
     }
 
-    // If the source is an Arg, we introduce new `get_local`,
+    // If the source is an Arg, we replace uses of destination with Arg.
     // otherwise (`get_local`), we replace the local symbol in-place.
     enum ReplaceWith {
         InPlaceLocal(LocalVar),
