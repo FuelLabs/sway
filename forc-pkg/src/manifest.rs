@@ -240,34 +240,36 @@ impl PackageManifestFile {
         Ok(Self { manifest, path })
     }
 
-    /// Apply patch declarations from the workspace (which declares this package manifest as a
-    /// member) to this package manifest.
+    /// Returns an iterator over patches defined in underlying `PackageManifest` if this is a
+    /// standalone package.
     ///
-    /// If there are conflicting patch declarations from `PackageManifestFile` and
-    /// `WorkspaceManifestFile`, returns an error.
-    ///
-    /// This checks whether there is such workspace present before attempting to apply patches so
-    /// it is safe to use with standalone package manifests as well.
-    pub fn with_workspace_patches(&self) -> Result<Self> {
+    /// If this package is a member of a workspace, patches are fetched from
+    /// the workspace manifest file.
+    pub fn resolve_patches(&self) -> Result<impl Iterator<Item = (String, PatchMap)>> {
         let workspace_patches = self
             .workspace()
             .ok()
             .flatten()
             .and_then(|workspace| workspace.patch.clone());
         let package_patches = self.patch.clone();
-        let patch = match (workspace_patches, package_patches) {
+        match (workspace_patches, package_patches) {
             (Some(_), Some(_)) => bail!("Found [patch] table both in workspace and member package's manifest file. Consider removing [patch] table from package's manifest file."),
-            (Some(workspace_patches), None) => Some(workspace_patches),
-            (None, Some(pkg_patches)) => Some(pkg_patches),
-            (None, None) => None,
-        };
-        Ok(Self {
-            manifest: PackageManifest {
-                patch,
-                ..self.manifest.clone()
-            },
-            ..self.clone()
-        })
+            (Some(workspace_patches), None) => Ok(workspace_patches.into_iter()),
+            (None, Some(pkg_patches)) => Ok(pkg_patches.into_iter()),
+            (None, None) => Ok(BTreeMap::default().into_iter()),
+        }
+    }
+
+    /// Retrieve the listed patches for the given name from underlying `PackageManifest` if this is
+    /// a standalone package.
+    ///
+    /// If this package is a member of a workspace, patch is fetched from
+    /// the workspace manifest file.
+    pub fn resolve_patch(&self, patch_name: &str) -> Result<Option<PatchMap>> {
+        Ok(self
+            .resolve_patches()?
+            .find(|(p_name, _)| patch_name == p_name.as_str())
+            .map(|(_, patch)| patch))
     }
 
     /// Read the manifest from the `Forc.toml` in the directory specified by the given `path` or
