@@ -47,7 +47,7 @@ pub fn transfer_nft(asset: u64, from: Identity, to: Identity) {
 
 impl EnglishAuction for Contract {
     #[storage(read, write)]
-    fn bid(auction_id: u64, bid_asset: AuctionAsset) {
+    fn bid(auction_id: u64, _bid_asset: AuctionAsset) {
         let auction = storage.auctions.get(auction_id);
         require(auction.is_some(), 42);
 

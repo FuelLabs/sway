@@ -5,7 +5,7 @@
       "attributes": null,
       "inputs": [
         {
-          "name": "param",
+          "name": "_param",
           "type": 1,
           "typeArguments": null
         }
@@ -21,7 +21,7 @@
       "attributes": null,
       "inputs": [
         {
-          "name": "param",
+          "name": "_param",
           "type": 2,
           "typeArguments": null
         }

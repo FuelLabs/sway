@@ -8,7 +8,7 @@ struct Bar {
     value: u64
 }
 
-fn internal_fn(s: Bar) {
+fn internal_fn(_s: Bar) {
 
 }
 
