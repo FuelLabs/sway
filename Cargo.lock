@@ -1917,6 +1917,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "unicode-xid",
+ "walkdir",
 ]
 
 [[package]]
