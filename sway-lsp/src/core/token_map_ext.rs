@@ -51,13 +51,13 @@ where
     type Item = (Ident, Token);
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some((ident, token)) = self.iter.next() {
+        for (ident, token) in self.iter.by_ref() {
             let decl_span_to_match = self.token_to_match.declared_token_span(self.engines);
             let is_same_type = decl_span_to_match == token.declared_token_span(self.engines);
             let is_decl_of_token = Some(&ident.span()) == decl_span_to_match.as_ref();
 
             if decl_span_to_match.is_some() && is_same_type || is_decl_of_token {
-                return Some((ident.clone(), token.clone()));
+                return Some((ident, token));
             }
         }
         None

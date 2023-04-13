@@ -262,7 +262,7 @@ impl Session {
 
         let mut token_ranges: Vec<_> = self
             .token_map
-            .tokens_for_file(&url)
+            .tokens_for_file(url)
             .all_references_of_token(&token, engines)
             .map(|(ident, _)| get_range_from_span(&ident.span()))
             .collect();
