@@ -208,10 +208,15 @@ fn asm_block_ret_demotion(context: &mut Context, function: Function) -> Result<b
         .filter_map(|(block, instr_val)| {
             instr_val.get_instruction(context).and_then(|instr| {
                 // Is the instruction an ASM block?
-                if let Instruction::AsmBlock(asm_block, _args) = instr {
+                if let Instruction::AsmBlock(asm_block, args) = instr {
                     let ret_ty = asm_block.get_type(context);
-                    super::target_fuel::is_demotable_type(context, &ret_ty)
-                        .then_some((block, instr_val, *asm_block, ret_ty))
+                    super::target_fuel::is_demotable_type(context, &ret_ty).then_some((
+                        block,
+                        instr_val,
+                        *asm_block,
+                        args.clone(),
+                        ret_ty,
+                    ))
                 } else {
                     None
                 }
@@ -224,21 +229,25 @@ fn asm_block_ret_demotion(context: &mut Context, function: Function) -> Result<b
     }
 
     let mut replace_map = FxHashMap::default();
-    for (block, asm_block_instr_val, asm_block, ret_ty) in candidates {
+    for (block, asm_block_instr_val, asm_block, asm_args, ret_ty) in candidates {
         // Change the ASM block return type to be a pointer.
         let ret_ptr_ty = Type::new_ptr(context, ret_ty);
         asm_block.set_type(context, ret_ptr_ty);
+        let new_asm_block =
+            Value::new_instruction(context, Instruction::AsmBlock(asm_block, asm_args));
 
         // Insert a load after the block.  Still no instruction inserter...
-        let load_val = Value::new_instruction(context, Instruction::Load(asm_block_instr_val));
+        let load_val = Value::new_instruction(context, Instruction::Load(new_asm_block));
         let block_instrs = &mut context.blocks[block.0].instructions;
         let asm_inst_idx = block_instrs
             .iter()
             .position(|&instr_val| instr_val == asm_block_instr_val)
             .unwrap();
+
+        block_instrs[asm_inst_idx] = new_asm_block;
         block_instrs.insert(asm_inst_idx + 1, load_val);
 
-        // Replace uses of the ASM block with the new load.
+        // Replace uses of the old ASM block with the new load.
         replace_map.insert(asm_block_instr_val, load_val);
     }
     function.replace_values(context, &replace_map, None);

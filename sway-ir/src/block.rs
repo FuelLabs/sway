@@ -41,7 +41,7 @@ pub struct BlockContent {
     pub preds: FxHashSet<Block>,
 }
 
-#[derive(Debug, Clone, DebugWithContext)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, DebugWithContext)]
 pub struct BlockArgument {
     /// The block of which this is an argument.
     pub block: Block,
@@ -136,6 +136,17 @@ impl Block {
         );
         context.blocks[self.0].args.push(arg_val);
         idx
+    }
+
+    pub fn set_arg(&self, context: &mut Context, arg: Value) {
+        match context.values[arg.0].value {
+            ValueDatum::Argument(BlockArgument { block, idx, ty: _ })
+                if block == *self && idx < context.blocks[self.0].args.len() =>
+            {
+                context.blocks[self.0].args[idx] = arg;
+            }
+            _ => panic!("Inconsistent block argument being set"),
+        }
     }
 
     /// Add a block argument, asserts that `arg` is suitable here.
