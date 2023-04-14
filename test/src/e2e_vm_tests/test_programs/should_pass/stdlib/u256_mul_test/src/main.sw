@@ -39,5 +39,9 @@ fn main() -> bool {
     let expected = U256::from((17, 9666297223066687219, 7425695065611822185, 14699749183737298944));
     assert(product == expected);
 
+    let product_reverse = y * x;
+    let expected_reverse = U256::from((17, 9666297223066687219, 7425695065611822185, 14699749183737298944));
+    assert(product_reverse == expected_reverse);
+
     true
 }
