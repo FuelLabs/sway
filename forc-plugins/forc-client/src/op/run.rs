@@ -161,7 +161,7 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
             finalized_asm: cmd.print.finalized_asm,
             intermediate_asm: cmd.print.intermediate_asm,
             ir: cmd.print.ir,
-            reverse_order: cmd.print.ast,
+            reverse_order: cmd.print.reverse_order,
         },
         minify: pkg::MinifyOpts {
             json_abi: cmd.minify.json_abi,

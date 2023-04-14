@@ -186,7 +186,7 @@ fn opts_from_cmd(cmd: Command) -> forc_test::Opts {
             finalized_asm: cmd.build.print.finalized_asm,
             intermediate_asm: cmd.build.print.intermediate_asm,
             ir: cmd.build.print.ir,
-            reverse_order: cmd.build.print.ast,
+            reverse_order: cmd.build.print.reverse_order,
         },
         time_phases: cmd.build.print.time_phases,
         minify: pkg::MinifyOpts {
