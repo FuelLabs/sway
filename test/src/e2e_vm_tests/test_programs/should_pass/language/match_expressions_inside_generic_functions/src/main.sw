@@ -27,7 +27,7 @@ fn first_match<C>(value: C) -> u64 {
   }
 }
 
-fn third_if<D>(value: D) -> u8 {
+fn third_if<D>(_value: D) -> u8 {
   if true {
     5u8
   } else {
@@ -55,7 +55,7 @@ fn first_if<F>(value: F) -> u64 {
   }
 }
 
-fn double_double<Y, Z>(first: Y, second: Z) -> Z {
+fn double_double<Y, Z>(_first: Y, second: Z) -> Z {
   second
 }
 
@@ -69,7 +69,7 @@ fn generic_match<G>(value: G) -> u64 {
   }
 }
 
-fn generic_if<H>(value: H) -> u64 {
+fn generic_if<H>(_value: H) -> u64 {
   if true {
     3u64
   } else {

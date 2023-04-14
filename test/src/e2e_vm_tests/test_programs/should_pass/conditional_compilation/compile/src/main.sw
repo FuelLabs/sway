@@ -1,5 +1,13 @@
 script;
 
+// These baddies should not be compiled
+#[cfg(program_type = "predicate")]
+const VALUE: str[3] = "bad";
+#[cfg(program_type = "contract")]
+const VALUE: str[3] = "bad";
+#[cfg(program_type = "library")]
+const VALUE: str[3] = "bad";
+
 configurable {
   // Only compiles for FVM
   #[cfg(target = "fuel")]
@@ -13,10 +21,13 @@ configurable {
   CFG_VALUE: () = (),
 }
 
+#[cfg(program_type = "script")]
 #[cfg(target = "fuel")]
 const VALUE: u64 = 40;
+#[cfg(program_type = "script")]
 #[cfg(target = "evm")]
 const VALUE: () = ();
+#[cfg(program_type = "script")]
 #[cfg(target = "fuel")]
 #[cfg(target = "evm")]
 const VALUE: () = ();

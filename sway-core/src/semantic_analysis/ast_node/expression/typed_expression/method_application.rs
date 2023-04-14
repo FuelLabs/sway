@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::{DeclEngineInsert, DeclRefFunction},
+    decl_engine::{DeclEngineInsert, DeclRefFunction, UpdateConstantExpression},
     error::*,
     language::{parsed::*, ty, *},
     semantic_analysis::*,
@@ -528,6 +528,12 @@ pub(crate) fn resolve_method_name(
         warnings,
         errors
     );
+
+    if let Some(implementing_type) = &func_decl.implementing_type {
+        func_decl
+            .body
+            .update_constant_expression(engines, implementing_type);
+    }
 
     let decl_ref = ctx
         .decl_engine

@@ -54,7 +54,7 @@ async fn script_configurables() -> Result<()> {
         .set_ENUM(new_enum.clone());
 
     let response = instance
-        .with_configurables(configurables.into())
+        .with_configurables(configurables)
         .main()
         .call()
         .await?;

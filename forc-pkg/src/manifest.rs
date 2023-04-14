@@ -1,7 +1,7 @@
 use crate::pkg::{manifest_file_missing, parsing_failed, wrong_program_type};
 use anyhow::{anyhow, bail, Context, Result};
 use forc_tracing::println_yellow_err;
-use forc_util::{find_manifest_dir, validate_name};
+use forc_util::{find_nested_manifest_dir, find_parent_manifest_dir, validate_name};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, HashMap},
@@ -204,7 +204,8 @@ pub struct DependencyDetails {
 #[serde(rename_all = "kebab-case")]
 pub struct BuildProfile {
     pub print_ast: bool,
-    pub print_dca_graph: bool,
+    pub print_dca_graph: Option<String>,
+    pub print_dca_graph_url_format: Option<String>,
     pub print_ir: bool,
     pub print_finalized_asm: bool,
     pub print_intermediate_asm: bool,
@@ -214,6 +215,7 @@ pub struct BuildProfile {
     pub json_abi_with_callpaths: bool,
     pub error_on_warnings: bool,
     pub reverse_results: bool,
+    pub experimental_storage: bool,
 }
 
 impl Dependency {
@@ -238,7 +240,9 @@ impl PackageManifestFile {
     pub fn from_file(path: PathBuf) -> Result<Self> {
         let path = path.canonicalize()?;
         let manifest = PackageManifest::from_file(&path)?;
-        Ok(Self { manifest, path })
+        let manifest_file = Self { manifest, path };
+        manifest_file.validate()?;
+        Ok(manifest_file)
     }
 
     /// Read the manifest from the `Forc.toml` in the directory specified by the given `path` or
@@ -247,19 +251,20 @@ impl PackageManifestFile {
     /// This is short for `PackageManifest::from_file`, but takes care of constructing the path to the
     /// file.
     pub fn from_dir(manifest_dir: &Path) -> Result<Self> {
-        let dir = forc_util::find_manifest_dir(manifest_dir)
+        let dir = forc_util::find_parent_manifest_dir(manifest_dir)
             .ok_or_else(|| manifest_file_missing(manifest_dir))?;
         let path = dir.join(constants::MANIFEST_FILE_NAME);
         Self::from_file(path)
     }
 
-    /// Validate the `PackageManifest`.
+    /// Validate the `PackageManifestFile`.
     ///
-    /// This checks the project and organization names against a set of reserved/restricted
-    /// keywords and patterns, and if a given entry point exists.
-    pub fn validate(&self, path: &Path) -> Result<()> {
+    /// This checks:
+    /// 1. Validity of the underlying `PackageManifest`.
+    /// 2. Existence of the entry file.
+    pub fn validate(&self) -> Result<()> {
         self.manifest.validate()?;
-        let mut entry_path = path.to_path_buf();
+        let mut entry_path = self.path.clone();
         entry_path.pop();
         let entry_path = entry_path
             .join(constants::SRC_DIR)
@@ -269,6 +274,18 @@ impl PackageManifestFile {
                 "failed to validate path from entry field {:?} in Forc manifest file.",
                 self.project.entry
             )
+        }
+
+        // Check for nested packages.
+        //
+        // `path` is the path to manifest file. To start nested package search we need to start
+        // from manifest's directory. So, last part of the path (the filename, "/forc.toml") needs
+        // to be removed.
+        let mut pkg_dir = self.path.to_path_buf();
+        pkg_dir.pop();
+        if let Some(nested_package) = find_nested_manifest_dir(&pkg_dir) {
+            // remove file name from nested_package_manifest
+            bail!("Nested packages are not supported, please consider seperating the nested package at {} from the package at {}, or if it makes sense consider creating a workspace.", nested_package.display(), pkg_dir.display())
         }
         Ok(())
     }
@@ -390,6 +407,11 @@ impl PackageManifestFile {
             Ok(self.dir().to_path_buf().join(constants::LOCK_FILE_NAME))
         }
     }
+
+    /// Returns an immutable reference to the project name that this manifest file describes.
+    pub fn project_name(&self) -> &str {
+        &self.project.name
+    }
 }
 
 impl PackageManifest {
@@ -442,7 +464,8 @@ impl PackageManifest {
     /// This is short for `PackageManifest::from_file`, but takes care of constructing the path to the
     /// file.
     pub fn from_dir(dir: &Path) -> Result<Self> {
-        let manifest_dir = find_manifest_dir(dir).ok_or_else(|| manifest_file_missing(dir))?;
+        let manifest_dir =
+            find_parent_manifest_dir(dir).ok_or_else(|| manifest_file_missing(dir))?;
         let file_path = manifest_dir.join(constants::MANIFEST_FILE_NAME);
         Self::from_file(&file_path)
     }
@@ -594,7 +617,8 @@ impl BuildProfile {
     pub fn debug() -> Self {
         Self {
             print_ast: false,
-            print_dca_graph: false,
+            print_dca_graph: None,
+            print_dca_graph_url_format: None,
             print_ir: false,
             print_finalized_asm: false,
             print_intermediate_asm: false,
@@ -604,13 +628,15 @@ impl BuildProfile {
             json_abi_with_callpaths: false,
             error_on_warnings: false,
             reverse_results: false,
+            experimental_storage: false,
         }
     }
 
     pub fn release() -> Self {
         Self {
             print_ast: false,
-            print_dca_graph: false,
+            print_dca_graph: None,
+            print_dca_graph_url_format: None,
             print_ir: false,
             print_finalized_asm: false,
             print_intermediate_asm: false,
@@ -620,6 +646,7 @@ impl BuildProfile {
             json_abi_with_callpaths: false,
             error_on_warnings: false,
             reverse_results: false,
+            experimental_storage: false,
         }
     }
 }
@@ -726,24 +753,25 @@ impl WorkspaceManifestFile {
     /// This is short for `PackageManifest::from_file`, but takes care of constructing the path to the
     /// file.
     pub fn from_dir(manifest_dir: &Path) -> Result<Self> {
-        let dir = forc_util::find_manifest_dir_with_check(manifest_dir, |possible_manifest_dir| {
-            // Check if the found manifest file is a workspace manifest file or a standalone
-            // package manifest file.
-            let possible_path = possible_manifest_dir.join(constants::MANIFEST_FILE_NAME);
-            // We should not continue to search if the given manifest is a workspace manifest with
-            // some issues.
-            //
-            // If the error is missing field `workspace` (which happens when trying to read a
-            // package manifest as a workspace manifest), look into the parent directories for a
-            // legitimate workspace manifest. If the error returned is something else this is a
-            // workspace manifest with errors, classify this as a workspace manifest but with
-            // errors so that the erros will be displayed to the user.
-            Self::from_file(possible_path)
-                .err()
-                .map(|e| !e.to_string().contains("missing field `workspace`"))
-                .unwrap_or_else(|| true)
-        })
-        .ok_or_else(|| manifest_file_missing(manifest_dir))?;
+        let dir =
+            forc_util::find_parent_manifest_dir_with_check(manifest_dir, |possible_manifest_dir| {
+                // Check if the found manifest file is a workspace manifest file or a standalone
+                // package manifest file.
+                let possible_path = possible_manifest_dir.join(constants::MANIFEST_FILE_NAME);
+                // We should not continue to search if the given manifest is a workspace manifest with
+                // some issues.
+                //
+                // If the error is missing field `workspace` (which happens when trying to read a
+                // package manifest as a workspace manifest), look into the parent directories for a
+                // legitimate workspace manifest. If the error returned is something else this is a
+                // workspace manifest with errors, classify this as a workspace manifest but with
+                // errors so that the erros will be displayed to the user.
+                Self::from_file(possible_path)
+                    .err()
+                    .map(|e| !e.to_string().contains("missing field `workspace`"))
+                    .unwrap_or_else(|| true)
+            })
+            .ok_or_else(|| manifest_file_missing(manifest_dir))?;
         let path = dir.join(constants::MANIFEST_FILE_NAME);
         Self::from_file(path)
     }

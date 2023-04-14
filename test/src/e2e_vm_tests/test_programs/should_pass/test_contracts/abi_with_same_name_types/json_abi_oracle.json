@@ -5,17 +5,17 @@
       "attributes": null,
       "inputs": [
         {
-          "name": "arg1",
+          "name": "_arg1",
           "type": 4,
           "typeArguments": null
         },
         {
-          "name": "arg2",
+          "name": "_arg2",
           "type": 6,
           "typeArguments": null
         },
         {
-          "name": "arg3",
+          "name": "_arg3",
           "type": 1,
           "typeArguments": [
             {

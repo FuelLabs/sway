@@ -24,10 +24,11 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::warning::{CompileWarning, Warning};
 use sway_types::{
     constants::{
-        ALLOW_ATTRIBUTE_NAME, CFG_ATTRIBUTE_NAME, DESTRUCTURE_PREFIX, DOC_ATTRIBUTE_NAME,
-        DOC_COMMENT_ATTRIBUTE_NAME, INLINE_ATTRIBUTE_NAME, MATCH_RETURN_VAR_NAME_PREFIX,
-        PAYABLE_ATTRIBUTE_NAME, STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME,
-        STORAGE_PURITY_WRITE_NAME, TEST_ATTRIBUTE_NAME, TUPLE_NAME_PREFIX, VALID_ATTRIBUTE_NAMES,
+        ALLOW_ATTRIBUTE_NAME, CFG_ATTRIBUTE_NAME, CFG_PROGRAM_TYPE_ARG_NAME, CFG_TARGET_ARG_NAME,
+        DESTRUCTURE_PREFIX, DOC_ATTRIBUTE_NAME, DOC_COMMENT_ATTRIBUTE_NAME, INLINE_ATTRIBUTE_NAME,
+        MATCH_RETURN_VAR_NAME_PREFIX, PAYABLE_ATTRIBUTE_NAME, STORAGE_PURITY_ATTRIBUTE_NAME,
+        STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME, TEST_ATTRIBUTE_NAME,
+        TUPLE_NAME_PREFIX, VALID_ATTRIBUTE_NAMES,
     },
     integer_bits::IntegerBits,
 };
@@ -49,6 +50,7 @@ pub fn convert_parse_tree(
     module: Module,
 ) -> Result<(TreeType, ParseTree), ErrorEmitted> {
     let tree_type = convert_module_kind(&module.kind);
+    context.set_program_type(tree_type.clone());
     let tree = module_to_sway_parse_tree(context, handler, engines, module)?;
     Ok((tree_type, tree))
 }
@@ -188,7 +190,7 @@ fn item_to_ast_nodes(
         )?)),
         ItemKind::Const(item_const) => decl(Declaration::ConstantDeclaration(
             item_const_to_constant_declaration(
-                context, handler, engines, item_const, attributes, is_root,
+                context, handler, engines, item_const, attributes, true,
             )?,
         )),
         ItemKind::Storage(item_storage) => decl(Declaration::StorageDeclaration(
@@ -588,10 +590,10 @@ fn item_trait_to_trait_declaration(
                     fn_signature_to_trait_fn(context, handler, engines, fn_sig, attributes)
                         .map(TraitItem::TraitFn)
                 }
-                ItemTraitItem::Const(const_decl) => {
-                    item_const_to_const_decl(context, handler, engines, const_decl, attributes)
-                        .map(TraitItem::Constant)
-                }
+                ItemTraitItem::Const(const_decl) => item_const_to_constant_declaration(
+                    context, handler, engines, const_decl, attributes, false,
+                )
+                .map(TraitItem::Constant),
             }?))
         })
         .filter_map_ok(|item| item)
@@ -656,10 +658,10 @@ fn item_impl_to_declaration(
                     item_fn_to_function_declaration(context, handler, engines, fn_item, attributes)
                         .map(ImplItem::Fn)
                 }
-                sway_ast::ItemImplItem::Const(const_item) => {
-                    item_const_to_const_decl(context, handler, engines, const_item, attributes)
-                        .map(ImplItem::Constant)
-                }
+                sway_ast::ItemImplItem::Const(const_item) => item_const_to_constant_declaration(
+                    context, handler, engines, const_item, attributes, true,
+                )
+                .map(ImplItem::Constant),
             }?))
         })
         .filter_map_ok(|item| item)
@@ -767,8 +769,8 @@ fn item_abi_to_abi_declaration(
                             )?;
                             Ok(TraitItem::TraitFn(trait_fn))
                         }
-                        ItemTraitItem::Const(const_decl) => item_const_to_const_decl(
-                            context, handler, engines, const_decl, attributes,
+                        ItemTraitItem::Const(const_decl) => item_const_to_constant_declaration(
+                            context, handler, engines, const_decl, attributes, false,
                         )
                         .map(TraitItem::Constant),
                     }?))
@@ -820,25 +822,34 @@ pub(crate) fn item_const_to_constant_declaration(
     engines: Engines<'_>,
     item_const: ItemConst,
     attributes: AttributesMap,
-    is_root: bool,
+    require_expression: bool,
 ) -> Result<ConstantDeclaration, ErrorEmitted> {
     let span = item_const.span();
-
-    let type_ascription = match item_const.ty_opt {
-        Some((_colon_token, ty)) => ty_to_type_argument(context, handler, engines, ty)?,
-        None => engines.te().insert(engines.de(), TypeInfo::Unknown).into(),
-    };
 
     let expr = match item_const.expr_opt {
         Some(expr) => Some(expr_to_expression(context, handler, engines, expr)?),
         None => {
-            if is_root {
+            if require_expression {
                 let err = ConvertParseTreeError::ConstantRequiresExpression { span: span.clone() };
                 if let Some(errors) = emit_all(handler, vec![err]) {
                     return Err(errors);
                 }
             }
             None
+        }
+    };
+
+    let type_ascription = match item_const.ty_opt {
+        Some((_colon_token, ty)) => ty_to_type_argument(context, handler, engines, ty)?,
+        None => {
+            if expr.is_none() {
+                let err =
+                    ConvertParseTreeError::ConstantRequiresTypeAscription { span: span.clone() };
+                if let Some(errors) = emit_all(handler, vec![err]) {
+                    return Err(errors);
+                }
+            }
+            engines.te().insert(engines.de(), TypeInfo::Unknown).into()
         }
     };
 
@@ -1312,33 +1323,6 @@ fn ty_to_type_argument(
         span,
     };
     Ok(type_argument)
-}
-
-fn item_const_to_const_decl(
-    context: &mut Context,
-    handler: &Handler,
-    engines: Engines<'_>,
-    item: ItemConst,
-    attributes: AttributesMap,
-) -> Result<ConstantDeclaration, ErrorEmitted> {
-    let span = item.name.span();
-    let value = match item.expr_opt {
-        Some(expr) => Some(expr_to_expression(context, handler, engines, expr)?),
-        None => None,
-    };
-    let type_ascription = match item.ty_opt {
-        Some((_, ty)) => ty_to_type_argument(context, handler, engines, ty)?,
-        None => engines.te().insert(engines.de(), TypeInfo::Unknown).into(),
-    };
-    Ok(ConstantDeclaration {
-        name: item.name,
-        type_ascription,
-        value,
-        visibility: Visibility::Public,
-        is_configurable: true,
-        attributes,
-        span,
-    })
 }
 
 fn fn_signature_to_trait_fn(
@@ -4003,8 +3987,9 @@ pub fn cfg_eval(
     if let Some(cfg_attrs) = attrs_map.get(&AttributeKind::Cfg) {
         for cfg_attr in cfg_attrs {
             for arg in &cfg_attr.args {
+                dbg!(arg.name.as_str());
                 match arg.name.as_str() {
-                    "target" => {
+                    CFG_TARGET_ARG_NAME => {
                         if let Some(value) = &arg.value {
                             if let sway_ast::Literal::String(value_str) = value {
                                 if let Ok(target) = BuildTarget::from_str(value_str.parsed.as_str())
@@ -4033,9 +4018,41 @@ pub fn cfg_eval(
                             return Err(handler.emit_err(error.into()));
                         }
                     }
+                    CFG_PROGRAM_TYPE_ARG_NAME => {
+                        if let Some(value) = &arg.value {
+                            if let sway_ast::Literal::String(value_str) = value {
+                                if let Ok(program_type) =
+                                    TreeType::from_str(value_str.parsed.as_str())
+                                {
+                                    dbg!("kek", &program_type, &context.program_type().unwrap());
+                                    if program_type != context.program_type().unwrap() {
+                                        return Ok(false);
+                                    }
+                                } else {
+                                    let error =
+                                        ConvertParseTreeError::InvalidCfgProgramTypeArgValue {
+                                            span: value.span(),
+                                            value: value.span().str(),
+                                        };
+                                    return Err(handler.emit_err(error.into()));
+                                }
+                            } else {
+                                let error = ConvertParseTreeError::InvalidCfgProgramTypeArgValue {
+                                    span: value.span(),
+                                    value: value.span().str(),
+                                };
+                                return Err(handler.emit_err(error.into()));
+                            }
+                        } else {
+                            let error = ConvertParseTreeError::ExpectedCfgTargetArgValue {
+                                span: arg.span(),
+                            };
+                            return Err(handler.emit_err(error.into()));
+                        }
+                    }
                     _ => {
                         // Already checked with `AttributeKind::expected_args_*`
-                        unreachable!("cfg attribute should only have the target argument");
+                        unreachable!("cfg attribute should only have the `target` or the `program_type` argument");
                     }
                 }
             }

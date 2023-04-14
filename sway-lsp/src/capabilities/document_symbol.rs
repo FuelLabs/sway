@@ -21,7 +21,9 @@ pub(crate) fn symbol_kind(symbol_kind: &SymbolKind) -> lsp_types::SymbolKind {
     match symbol_kind {
         SymbolKind::Field => lsp_types::SymbolKind::FIELD,
         SymbolKind::BuiltinType => lsp_types::SymbolKind::TYPE_PARAMETER,
-        SymbolKind::Function | SymbolKind::DeriveHelper => lsp_types::SymbolKind::FUNCTION,
+        SymbolKind::Function | SymbolKind::DeriveHelper | SymbolKind::Intrinsic => {
+            lsp_types::SymbolKind::FUNCTION
+        }
         SymbolKind::Const => lsp_types::SymbolKind::CONSTANT,
         SymbolKind::Struct => lsp_types::SymbolKind::STRUCT,
         SymbolKind::Trait | SymbolKind::Storage => lsp_types::SymbolKind::INTERFACE,

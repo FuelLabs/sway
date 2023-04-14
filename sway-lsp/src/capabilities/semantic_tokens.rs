@@ -153,7 +153,7 @@ fn semantic_token_type(kind: &SymbolKind) -> SemanticTokenType {
         SymbolKind::Field => SemanticTokenType::PROPERTY,
         SymbolKind::ValueParam => SemanticTokenType::PARAMETER,
         SymbolKind::Variable => SemanticTokenType::VARIABLE,
-        SymbolKind::Function => SemanticTokenType::FUNCTION,
+        SymbolKind::Function | SymbolKind::Intrinsic => SemanticTokenType::FUNCTION,
         SymbolKind::Const => SemanticTokenType::VARIABLE,
         SymbolKind::Struct => SemanticTokenType::STRUCT,
         SymbolKind::Enum => SemanticTokenType::ENUM,

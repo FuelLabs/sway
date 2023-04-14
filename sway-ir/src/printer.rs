@@ -252,10 +252,11 @@ fn function_to_doc<'a>(
                                 )),
                                 None => Doc::Empty,
                             };
+                            let mut_str = if var_content.mutable { "mut " } else { "" };
                             Doc::line(
                                 // Print the inner, pointed-to type in the locals list.
                                 Doc::text(format!(
-                                    "local {} {name}",
+                                    "local {mut_str}{} {name}",
                                     var.get_inner_type(context).as_string(context)
                                 ))
                                 .append(init_doc),

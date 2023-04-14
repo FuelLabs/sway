@@ -7,7 +7,7 @@ use crate::{
 };
 use dashmap::mapref::one::RefMut;
 use sway_core::{
-    decl_engine::InterfaceDeclId,
+    decl_engine::{id::DeclId, InterfaceDeclId},
     language::{
         parsed::{ImportType, Supertrait},
         ty::{self, GetDeclIdent, TyEnumVariant, TyModule, TyProgram, TySubmodule},
@@ -85,9 +85,11 @@ impl<'a> TypedTree<'a> {
                 }
                 self.handle_expression(&variable.body);
             }
-            ty::TyDecl::ConstantDecl { decl_id, .. } => {
+            ty::TyDecl::ConstantDecl {
+                decl_id, decl_span, ..
+            } => {
                 let const_decl = decl_engine.get_constant(decl_id);
-                self.collect_const_decl(&const_decl);
+                self.collect_const_decl(&const_decl, decl_span);
             }
             ty::TyDecl::FunctionDecl { decl_id, .. } => {
                 let func_decl = decl_engine.get_function(decl_id);
@@ -113,7 +115,7 @@ impl<'a> TypedTree<'a> {
                         }
                         ty::TyTraitInterfaceItem::Constant(decl_ref) => {
                             let constant = decl_engine.get_constant(decl_ref);
-                            self.collect_const_decl(&constant);
+                            self.collect_const_decl(&constant, &decl_ref.span());
                         }
                     }
                 }
@@ -149,34 +151,11 @@ impl<'a> TypedTree<'a> {
                     }
                 }
             }
-            ty::TyDecl::EnumDecl { decl_id, .. } | ty::TyDecl::EnumVariantDecl { decl_id, .. } => {
-                let enum_decl = decl_engine.get_enum(decl_id);
-                if let Some(mut token) = self
-                    .ctx
-                    .tokens
-                    .try_get_mut(&to_ident_key(&enum_decl.call_path.suffix))
-                    .try_unwrap()
-                {
-                    token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
-                    token.type_def =
-                        Some(TypeDefinition::Ident(enum_decl.call_path.suffix.clone()));
-                }
-
-                for type_param in &enum_decl.type_parameters {
-                    if let Some(mut token) = self
-                        .ctx
-                        .tokens
-                        .try_get_mut(&to_ident_key(&type_param.name_ident))
-                        .try_unwrap()
-                    {
-                        token.typed = Some(TypedAstToken::TypedParameter(type_param.clone()));
-                        token.type_def = Some(TypeDefinition::TypeId(type_param.type_id));
-                    }
-                }
-
-                for variant in &enum_decl.variants {
-                    self.collect_ty_enum_variant(variant);
-                }
+            ty::TyDecl::EnumDecl { decl_id, .. } => {
+                self.handle_enum(decl_id, declaration);
+            }
+            ty::TyDecl::EnumVariantDecl { enum_ref, .. } => {
+                self.handle_enum(enum_ref.id(), declaration);
             }
             ty::TyDecl::ImplTrait { decl_id, .. } => {
                 let ty::TyImplTrait {
@@ -207,6 +186,12 @@ impl<'a> TypedTree<'a> {
                     }
                 }
 
+                // Which typed token should be used for collect_type_id
+                // if trait_decl_ref is some, then our ImplTrait is for an ABI or Trait. In this instance,
+                // we want to use the TypedArgument(implementing_for) type as the typed token.
+                //
+                // Otherwise, we use the TypedDeclaration(declaration.clone()) type as the typed token.
+                let mut typed_token = None;
                 if let Some(mut token) = self
                     .ctx
                     .tokens
@@ -216,6 +201,7 @@ impl<'a> TypedTree<'a> {
                     token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
 
                     token.type_def = if let Some(decl_ref) = &trait_decl_ref {
+                        typed_token = Some(TypedAstToken::TypedArgument(implementing_for.clone()));
                         match &decl_ref.id().clone() {
                             InterfaceDeclId::Abi(decl_id) => {
                                 let abi_decl = decl_engine.get_abi(decl_id);
@@ -227,6 +213,7 @@ impl<'a> TypedTree<'a> {
                             }
                         }
                     } else {
+                        typed_token = token.typed.clone();
                         Some(TypeDefinition::TypeId(implementing_for.type_id))
                     };
                 }
@@ -243,7 +230,7 @@ impl<'a> TypedTree<'a> {
                         }
                         ty::TyTraitItem::Constant(const_ref) => {
                             let constant = decl_engine.get_constant(&const_ref);
-                            self.collect_const_decl(&constant);
+                            self.collect_const_decl(&constant, &const_ref.span());
                         }
                     }
                 }
@@ -252,15 +239,17 @@ impl<'a> TypedTree<'a> {
 
                 // collect the root type argument again with declaration info this time so the
                 // impl is registered
-                self.collect_type_id(
-                    implementing_for.type_id,
-                    &TypedAstToken::TypedDeclaration(declaration.clone()),
-                    implementing_for
-                        .call_path_tree
-                        .as_ref()
-                        .map(|tree| tree.call_path.suffix.span())
-                        .unwrap_or(implementing_for.span()),
-                );
+                if let Some(typed_token) = typed_token {
+                    self.collect_type_id(
+                        implementing_for.type_id,
+                        &typed_token,
+                        implementing_for
+                            .call_path_tree
+                            .as_ref()
+                            .map(|tree| tree.call_path.suffix.span())
+                            .unwrap_or(implementing_for.span()),
+                    );
+                }
             }
             ty::TyDecl::AbiDecl { decl_id, .. } => {
                 let abi_decl = decl_engine.get_abi(decl_id);
@@ -282,7 +271,7 @@ impl<'a> TypedTree<'a> {
                         }
                         ty::TyTraitInterfaceItem::Constant(const_ref) => {
                             let constant = decl_engine.get_constant(const_ref);
-                            self.collect_const_decl(&constant);
+                            self.collect_const_decl(&constant, &const_ref.span());
                         }
                     }
                 }
@@ -436,6 +425,36 @@ impl<'a> TypedTree<'a> {
         }
     }
 
+    fn handle_enum(&self, decl_id: &DeclId<ty::TyEnumDecl>, declaration: &ty::TyDecl) {
+        let decl_engine = self.ctx.engines.de();
+        let enum_decl = decl_engine.get_enum(decl_id);
+        if let Some(mut token) = self
+            .ctx
+            .tokens
+            .try_get_mut(&to_ident_key(&enum_decl.call_path.suffix))
+            .try_unwrap()
+        {
+            token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+            token.type_def = Some(TypeDefinition::Ident(enum_decl.call_path.suffix.clone()));
+        }
+
+        for type_param in &enum_decl.type_parameters {
+            if let Some(mut token) = self
+                .ctx
+                .tokens
+                .try_get_mut(&to_ident_key(&type_param.name_ident))
+                .try_unwrap()
+            {
+                token.typed = Some(TypedAstToken::TypedParameter(type_param.clone()));
+                token.type_def = Some(TypeDefinition::TypeId(type_param.type_id));
+            }
+        }
+
+        for variant in &enum_decl.variants {
+            self.collect_ty_enum_variant(variant);
+        }
+    }
+
     fn handle_expression(&self, expression: &ty::TyExpression) {
         let decl_engine = self.ctx.engines.de();
         match &expression.expression {
@@ -524,6 +543,17 @@ impl<'a> TypedTree<'a> {
             ty::TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {
                 self.handle_expression(lhs);
                 self.handle_expression(rhs);
+            }
+            ty::TyExpressionVariant::ConstantExpression {
+                ref const_decl,
+                span,
+                call_path,
+            } => {
+                self.collect_const_decl(const_decl, span);
+
+                if let Some(call_path) = call_path {
+                    self.collect_call_path_prefixes(&call_path.prefixes);
+                }
             }
             ty::TyExpressionVariant::VariableExpression {
                 ref name,
@@ -1056,6 +1086,7 @@ impl<'a> TypedTree<'a> {
                     .submodule(mod_path)
                     .and_then(|tgt_submod| tgt_submod.span.clone())
                 {
+                    token.kind = SymbolKind::Module;
                     token.type_def = Some(TypeDefinition::Ident(Ident::new(span)));
                 }
             }
@@ -1328,11 +1359,11 @@ impl<'a> TypedTree<'a> {
         }
     }
 
-    fn collect_const_decl(&self, const_decl: &ty::TyConstantDecl) {
+    fn collect_const_decl(&self, const_decl: &ty::TyConstantDecl, span: &Span) {
         if let Some(mut token) = self
             .ctx
             .tokens
-            .try_get_mut(&to_ident_key(&const_decl.call_path.suffix))
+            .try_get_mut(&to_ident_key(&Ident::new(span.clone())))
             .try_unwrap()
         {
             token.typed = Some(TypedAstToken::TypedConstantDeclaration(const_decl.clone()));

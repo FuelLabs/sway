@@ -1,6 +1,6 @@
 [package]
 name = "sway-types"
-version = "0.35.5"
+version = "0.37.1"
 description = "Sway core types."
 authors.workspace = true
 edition.workspace = true
