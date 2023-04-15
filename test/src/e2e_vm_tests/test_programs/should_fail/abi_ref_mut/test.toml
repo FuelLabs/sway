@@ -16,31 +16,31 @@ category = "fail"
 
 # check: $()error
 # check: $()fn test_function1(ref mut p1: u64) {
-# nextln: $()Parameter reference type or mutability mismatch between the trait function declaration and its implementation
+# nextln: $()Parameter reference type or mutability mismatch between the trait function declaration and its implementation.
 
 # check: $()error
 # check: $()fn test_function5(ref p5: u64) {
-# nextln: $()Parameter reference type or mutability mismatch between the trait function declaration and its implementation
+# nextln: $()Parameter reference type or mutability mismatch between the trait function declaration and its implementation.
 
 # check: $()error
 # check: $()fn test_function6(mut p6: u64) {
-# nextln: $()Parameter reference type or mutability mismatch between the trait function declaration and its implementation
+# nextln: $()This parameter was declared as mutable, which is not supported yet, did you mean to use ref mut?
 
 #### Trait
 
 # check: $()error
 # check: $()fn check_function1(ref mut q1: u64) {
-# nextln: $()Parameter reference type or mutability mismatch between the trait function declaration and its implementation
+# nextln: $()Parameter reference type or mutability mismatch between the trait function declaration and its implementation.
 
 # check: $()error
-# check: $()fn check_function2(mut q2: u64);
+# check: $()fn check_function2(mut q2: u64) {
 # nextln: $()This parameter was declared as mutable, which is not supported yet, did you mean to use ref mut?
 
 # check: $()error
 # check: $()fn check_function5(ref q5: u64) {
-# nextln: $()Parameter reference type or mutability mismatch between the trait function declaration and its implementation
+# nextln: $()Parameter reference type or mutability mismatch between the trait function declaration and its implementation.
 
 # check: $()error
 # check: $()fn check_function6(mut q6: u64) {
-# nextln: $()Parameter reference type or mutability mismatch between the trait function declaration and its implementation
+# nextln: $()This parameter was declared as mutable, which is not supported yet, did you mean to use ref mut?
 
