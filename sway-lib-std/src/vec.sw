@@ -4,7 +4,6 @@ use ::alloc::{alloc, realloc};
 use ::assert::assert;
 use ::option::Option;
 use ::convert::From;
-use ::logging::log;
 
 struct RawVec<T> {
     ptr: raw_ptr,
