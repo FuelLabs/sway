@@ -272,7 +272,7 @@ impl<T> Vec<T> {
                 i += 1;
             }
         }
-        
+
         // Decrease length.
         self.len -= 1;
         ret
