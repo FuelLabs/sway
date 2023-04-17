@@ -4,6 +4,9 @@ use sway_core::{language::ty, type_system::TypeId, Engines};
 use sway_types::{Ident, Span, Spanned};
 use tower_lsp::lsp_types::{Position, Url};
 
+// Re-export the TokenMapExt trait.
+pub use crate::core::token_map_ext::TokenMapExt;
+
 /// The TokenMap is the main data structure of the language server.
 /// It stores all of the tokens that have been parsed and typechecked by the sway compiler.
 ///
@@ -17,41 +20,28 @@ impl TokenMap {
         TokenMap(DashMap::new())
     }
 
+    /// Create a custom iterator for the TokenMap.
+    ///
+    /// The iterator returns ([Ident], [Token]) pairs.
+    pub fn iter(&self) -> TokenMapIter {
+        TokenMapIter {
+            inner_iter: self.0.iter(),
+        }
+    }
+
     /// Return an Iterator of tokens belonging to the provided [Url].
     pub fn tokens_for_file<'s>(
         &'s self,
         uri: &'s Url,
     ) -> impl 's + Iterator<Item = (Ident, Token)> {
-        self.iter().flat_map(|item| {
-            let ((ident, span), token) = item.pair();
-            span.path().and_then(|path| {
+        self.iter().flat_map(|(ident, token)| {
+            ident.span().path().and_then(|path| {
                 if path.to_str() == Some(uri.path()) {
                     Some((ident.clone(), token.clone()))
                 } else {
                     None
                 }
             })
-        })
-    }
-
-    /// Find all references in the TokenMap for a given token.
-    ///
-    /// This is useful for the highlighting and renaming LSP capabilities.
-    pub fn all_references_of_token<'s>(
-        &'s self,
-        token_to_match: &Token,
-        engines: Engines<'s>,
-    ) -> impl 's + Iterator<Item = (Ident, Token)> {
-        let decl_span_to_match = token_to_match.declared_token_span(engines);
-        self.iter().filter_map(move |item| {
-            let ((ident, span), token) = item.pair();
-            let is_same_type = decl_span_to_match == token.declared_token_span(engines);
-            let is_decl_of_token = Some(span) == decl_span_to_match.as_ref();
-
-            if is_same_type || is_decl_of_token {
-                return Some((ident.clone(), token.clone()));
-            }
-            None
         })
     }
 
@@ -115,8 +105,7 @@ impl TokenMap {
         position: Position,
         functions_only: Option<bool>,
     ) -> Vec<(Ident, Token)> {
-        let tokens = self.tokens_for_file(uri);
-        tokens
+        self.tokens_for_file(uri)
             .filter_map(|(ident, token)| {
                 let span = match token.typed {
                     Some(TypedAstToken::TypedFunctionDeclaration(decl))
@@ -189,5 +178,26 @@ impl std::ops::Deref for TokenMap {
     type Target = DashMap<(Ident, Span), Token>;
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+/// A custom iterator for [TokenMap] that yields [Ident] and [Token] pairs.
+///
+/// This iterator skips the [Span] information when iterating over the items in the [TokenMap].
+pub struct TokenMapIter<'s> {
+    inner_iter: dashmap::iter::Iter<'s, (Ident, Span), Token>,
+}
+
+impl<'s> Iterator for TokenMapIter<'s> {
+    type Item = (Ident, Token);
+
+    /// Returns the next (Ident, Token) pair in the [TokenMap], skipping the [Span].
+    ///
+    /// If there are no more items, returns `None`.
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner_iter.next().map(|item| {
+            let ((ident, _), token) = item.pair();
+            (ident.clone(), token.clone())
+        })
     }
 }
