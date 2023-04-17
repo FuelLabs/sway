@@ -1,7 +1,7 @@
 use crate::cli::InitCommand;
 use crate::utils::{defaults, program_type::ProgramType};
 use anyhow::Context;
-use forc_util::{validate_name, ForcResult};
+use forc_util::{forc_result_bail, validate_name, ForcResult};
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -50,17 +50,17 @@ pub fn init(command: InitCommand) -> ForcResult<()> {
     };
 
     if !project_dir.is_dir() {
-        return Err(
-            anyhow::anyhow!("'{}' is not a valid directory.", project_dir.display()).into(),
-        );
+        forc_result_bail!(format!(
+            "'{}' is not a valid directory.",
+            project_dir.display()
+        ),);
     }
 
     if project_dir.join(constants::MANIFEST_FILE_NAME).exists() {
-        return Err(anyhow::anyhow!(
+        forc_result_bail!(
             "'{}' already includes a Forc.toml file.",
             project_dir.display()
-        )
-        .into());
+        );
     }
 
     debug!(
@@ -92,11 +92,10 @@ pub fn init(command: InitCommand) -> ForcResult<()> {
         (false, false, false, true, false) => InitType::Package(ProgramType::Library),
         (false, false, false, false, true) => InitType::Workspace,
         _ => {
-            return Err(anyhow::anyhow!(
+            forc_result_bail!(
                 "Multiple types detected, please specify only one initialization type: \
         \n Possible Types:\n - contract\n - script\n - predicate\n - library\n - workspace"
             )
-            .into())
         }
     };
 

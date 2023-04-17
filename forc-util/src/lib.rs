@@ -45,6 +45,15 @@ impl AsRef<anyhow::Error> for ForcError {
     }
 }
 
+impl From<&str> for ForcError {
+    fn from(value: &str) -> Self {
+        Self {
+            error: anyhow::anyhow!("{value}"),
+            exit_code: DEFAULT_ERROR_EXIT_CODE,
+        }
+    }
+}
+
 impl From<anyhow::Error> for ForcError {
     fn from(value: anyhow::Error) -> Self {
         Self {

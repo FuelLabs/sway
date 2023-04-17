@@ -2,5 +2,5 @@ use forc_util::ForcResult;
 
 #[tokio::main]
 async fn main() -> ForcResult<()> {
-    forc::cli::run_cli().await.into()
+    forc::cli::run_cli().await
 }

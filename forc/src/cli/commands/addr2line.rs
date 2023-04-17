@@ -75,7 +75,7 @@ pub(crate) fn exec(command: Command) -> ForcResult<()> {
 
         Ok(())
     } else {
-        Err(anyhow!("Address did not map to any source code location").into())
+        Err("Address did not map to any source code location".into())
     }
 }
 

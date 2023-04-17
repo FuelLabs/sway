@@ -86,7 +86,7 @@ pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
     if all_tests_passed {
         Ok(())
     } else {
-        Err(anyhow::anyhow!("Some tests failed.").into())
+        Err("Some tests failed.".into())
     }
 }
 
