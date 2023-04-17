@@ -852,18 +852,11 @@ table,
 .item-table {
   overflow-wrap: break-word;
 }
-.item-table {
-  display: table;
-}
 .item-row {
-  display: table-row;
+  padding: 10px 0;
 }
-.item-left,
 .item-right {
-  display: table-cell;
-}
-.item-left {
-  padding-right: 1.25rem;
+  padding-top: 4px;
 }
 .search-container {
   position: relative;
