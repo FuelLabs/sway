@@ -2,6 +2,7 @@ use crate::{
     core::{
         session::Session,
         token::{get_range_from_span, SymbolKind, Token, TypedAstToken},
+        token_map::TokenMapExt,
     },
     error::{LanguageServerError, RenameError},
 };
@@ -61,6 +62,7 @@ pub fn rename(
         // otherwise, just find all references of the token in the token map
         session
             .token_map()
+            .iter()
             .all_references_of_token(&token, engines)
             .map(|(ident, _)| ident)
             .collect::<Vec<Ident>>()
@@ -191,6 +193,7 @@ fn find_all_methods_for_decl(
 
     let idents = session
         .token_map()
+        .iter()
         .all_references_of_token(&decl_token, engines)
         .filter_map(|(_, token)| {
             token.typed.as_ref().and_then(|typed| match typed {
