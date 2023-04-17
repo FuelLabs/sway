@@ -1,6 +1,6 @@
 use crate::ops::forc_check;
 use clap::Parser;
-use forc_util::ForcResult;
+use forc_util::{forc_result_bail, ForcResult};
 use sway_core::{decl_engine::DeclEngine, BuildTarget, Engines, TypeEngine};
 
 /// Check the current or target project and all of its dependencies for errors.
@@ -37,7 +37,7 @@ pub(crate) fn exec(command: Command) -> ForcResult<()> {
     let engines = Engines::new(&type_engine, &decl_engine);
     let res = forc_check::check(command, engines)?;
     if !res.is_ok() {
-        return ForcResult::Err(anyhow::anyhow!("unable to type check").into());
+        forc_result_bail!("unable to type check");
     }
     Ok(())
 }

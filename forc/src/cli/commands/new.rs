@@ -1,7 +1,7 @@
 use crate::{cli::init::Command as InitCommand, ops::forc_init::init};
 use anyhow::anyhow;
 use clap::Parser;
-use forc_util::{validate_name, ForcResult};
+use forc_util::{forc_result_bail, validate_name, ForcResult};
 use std::path::{Path, PathBuf};
 
 /// Create a new Forc project at `<path>`.
@@ -60,13 +60,12 @@ pub(crate) fn exec(command: Command) -> ForcResult<()> {
 
     let dir_path = Path::new(&path);
     if dir_path.exists() {
-        return Err(anyhow::anyhow!(
+        forc_result_bail!(
             "Directory \"{}\" already exists.\nIf you wish to initialise a forc project inside \
             this directory, consider using `forc init --path {}`",
             dir_path.canonicalize()?.display(),
             dir_path.display(),
-        )
-        .into());
+        );
     } else {
         std::fs::create_dir_all(dir_path)?;
     }

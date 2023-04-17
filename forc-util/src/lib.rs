@@ -70,6 +70,19 @@ impl Termination for ForcError {
     }
 }
 
+#[macro_export]
+macro_rules! forc_result_bail {
+    ($msg:literal $(,)?) => {
+        return $crate::ForcResult::Err(anyhow::anyhow!($msg).into())
+    };
+    ($err:expr $(,)?) => {
+        return $crate::ForcResult::Err(anyhow::anyhow!($err).into())
+    };
+    ($fmt:expr, $($arg:tt)*) => {
+        return $crate::ForcResult::Err(anyhow::anyhow!($fmt, $($arg)*).into())
+    };
+}
+
 /// Added salt used to derive the contract ID.
 #[derive(Debug, Args, Default, Deserialize, Serialize)]
 pub struct Salt {

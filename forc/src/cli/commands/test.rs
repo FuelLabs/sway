@@ -3,7 +3,7 @@ use ansi_term::Colour;
 use clap::Parser;
 use forc_pkg as pkg;
 use forc_test::{TestRunnerCount, TestedPackage};
-use forc_util::{format_log_receipts, ForcResult};
+use forc_util::{forc_result_bail, format_log_receipts, ForcResult};
 use tracing::info;
 
 /// Run the Sway unit tests for the current project.
@@ -50,7 +50,7 @@ pub struct TestPrintOpts {
 
 pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
     if let Some(ref _filter) = cmd.filter {
-        return ForcResult::Err(anyhow::anyhow!("unit test filter not yet supported").into());
+        forc_result_bail!("unit test filter not yet supported");
     }
 
     let test_runner_count = match cmd.test_threads {
