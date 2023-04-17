@@ -1,10 +1,9 @@
 use crate::cli;
 use ansi_term::Colour;
-use anyhow::{bail, Result};
 use clap::Parser;
 use forc_pkg as pkg;
 use forc_test::{TestRunnerCount, TestedPackage};
-use forc_util::format_log_receipts;
+use forc_util::{forc_result_bail, format_log_receipts, ForcResult};
 use tracing::info;
 
 /// Run the Sway unit tests for the current project.
@@ -49,9 +48,9 @@ pub struct TestPrintOpts {
     pub print_logs: bool,
 }
 
-pub(crate) fn exec(cmd: Command) -> Result<()> {
+pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
     if let Some(ref _filter) = cmd.filter {
-        bail!("unit test filter not yet supported");
+        forc_result_bail!("unit test filter not yet supported");
     }
 
     let test_runner_count = match cmd.test_threads {
@@ -87,11 +86,11 @@ pub(crate) fn exec(cmd: Command) -> Result<()> {
     if all_tests_passed {
         Ok(())
     } else {
-        bail!("Some tests failed")
+        Err("Some tests failed.".into())
     }
 }
 
-fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> Result<()> {
+fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> ForcResult<()> {
     let succeeded = pkg.tests.iter().filter(|t| t.passed()).count();
     let failed = pkg.tests.len() - succeeded;
     let mut failed_tests = Vec::new();

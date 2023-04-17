@@ -5,7 +5,7 @@ use self::commands::{
     predicate_root, template, test, update,
 };
 use addr2line::Command as Addr2LineCommand;
-use anyhow::{anyhow, Result};
+use anyhow::anyhow;
 pub use build::Command as BuildCommand;
 pub use check::Command as CheckCommand;
 use clap::{Parser, Subcommand};
@@ -13,6 +13,7 @@ pub use clean::Command as CleanCommand;
 pub use completions::Command as CompletionsCommand;
 pub(crate) use contract_id::Command as ContractIdCommand;
 use forc_tracing::{init_tracing_subscriber, TracingSubscriberOptions};
+use forc_util::ForcResult;
 pub use init::Command as InitCommand;
 pub use new::Command as NewCommand;
 use parse_bytecode::Command as ParseBytecodeCommand;
@@ -78,7 +79,7 @@ enum Forc {
     Plugin(Vec<String>),
 }
 
-pub async fn run_cli() -> Result<()> {
+pub async fn run_cli() -> ForcResult<()> {
     let opt = Opt::parse();
     let tracing_options = TracingSubscriberOptions {
         verbosity: Some(opt.verbose),
