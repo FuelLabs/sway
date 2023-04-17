@@ -42,6 +42,7 @@ pub(crate) fn code_actions(
     let (_, token) = session
         .token_map()
         .token_at_position(temp_uri, range.start)?;
+
     let type_engine = session.type_engine.read();
     let decl_engine = session.decl_engine.read();
     let ctx = CodeActionContext {

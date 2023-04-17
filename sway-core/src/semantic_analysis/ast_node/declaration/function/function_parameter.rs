@@ -13,7 +13,6 @@ impl ty::TyFunctionParameter {
     pub(crate) fn type_check(
         mut ctx: TypeCheckContext,
         parameter: FunctionParameter,
-        is_from_method: bool,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -41,15 +40,13 @@ impl ty::TyFunctionParameter {
             errors,
         );
 
-        if !is_from_method {
-            let mutability = ty::VariableMutability::new_from_ref_mut(is_reference, is_mutable);
-            if mutability == ty::VariableMutability::Mutable {
-                errors.push(CompileError::MutableParameterNotSupported {
-                    param_name: name.clone(),
-                    span: name.span(),
-                });
-                return err(warnings, errors);
-            }
+        let mutability = ty::VariableMutability::new_from_ref_mut(is_reference, is_mutable);
+        if mutability == ty::VariableMutability::Mutable {
+            errors.push(CompileError::MutableParameterNotSupported {
+                param_name: name.clone(),
+                span: name.span(),
+            });
+            return err(warnings, errors);
         }
 
         let typed_parameter = ty::TyFunctionParameter {
