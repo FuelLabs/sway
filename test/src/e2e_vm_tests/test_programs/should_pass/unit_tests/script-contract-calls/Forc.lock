@@ -1,0 +1,19 @@
+[[package]]
+name = 'contract_to_call'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-4A05C8C19F99901B'
+
+[[package]]
+name = 'script_multi_test'
+source = 'member'
+dependencies = ['std']
+contract-dependencies = ['contract_to_call']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-4A05C8C19F99901B'
+dependencies = ['core']
