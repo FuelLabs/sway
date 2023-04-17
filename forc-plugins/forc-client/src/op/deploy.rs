@@ -1,7 +1,7 @@
 use crate::{
     cmd,
     util::{
-        pkg::built_pkgs_with_manifest,
+        pkg::built_pkgs,
         tx::{TransactionBuilderExt, TX_SUBMIT_TIMEOUT_MS},
     },
 };
@@ -85,17 +85,15 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
     };
 
     let build_opts = build_opts_from_cmd(&command);
-    let built_pkgs_with_manifest = built_pkgs_with_manifest(&curr_dir, build_opts)?;
+    let built_pkgs = built_pkgs(&curr_dir, build_opts)?;
 
     let contract_salt_map = if let Some(salt_input) = &command.salt {
         // If we're building 1 package, we just parse the salt as a string, ie. 0x00...
         // If we're building >1 package, we must parse the salt as a pair of strings, ie. contract_name:0x00...
-        if built_pkgs_with_manifest.len() > 1 {
+        if built_pkgs.len() > 1 {
             let map = validate_and_parse_salts(
                 salt_input.clone(),
-                built_pkgs_with_manifest
-                    .iter()
-                    .map(|bpwm| bpwm.package_manifest_file()),
+                built_pkgs.iter().map(|b| &b.descriptor.manifest_file),
             )?;
 
             Some(map)
@@ -113,8 +111,9 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
                 .unwrap();
             let mut contract_salt_map = ContractSaltMap::default();
             contract_salt_map.insert(
-                built_pkgs_with_manifest[0]
-                    .package_manifest_file()
+                built_pkgs[0]
+                    .descriptor
+                    .manifest_file
                     .project_name()
                     .to_string(),
                 salt,
@@ -125,15 +124,16 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
         None
     };
 
-    for built in built_pkgs_with_manifest {
-        let member_manifest = built.package_manifest_file();
-        if member_manifest
+    for pkg in built_pkgs {
+        if pkg
+            .descriptor
+            .manifest_file
             .check_program_type(vec![TreeType::Contract])
             .is_ok()
         {
             let salt = match (&contract_salt_map, command.random_salt) {
                 (Some(map), false) => {
-                    if let Some(salt) = map.get(member_manifest.project_name()) {
+                    if let Some(salt) = map.get(pkg.descriptor.manifest_file.project_name()) {
                         *salt
                     } else {
                         Default::default()
@@ -146,7 +146,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
                 }
             };
             let contract_id =
-                deploy_pkg(&command, member_manifest, built.built_package(), salt).await?;
+                deploy_pkg(&command, &pkg.descriptor.manifest_file, &pkg, salt).await?;
             contract_ids.push(contract_id);
         }
     }
