@@ -73,8 +73,8 @@ pub enum BuiltTests {
 /// execution.
 #[derive(Debug)]
 pub enum PackageTests {
-    Contract(ContractToTest),
-    Script(ScriptToTest),
+    Contract(PackageWithDeploymentToTest),
+    Script(PackageWithDeploymentToTest),
     Predicate(Arc<pkg::BuiltPackage>),
     Library(Arc<pkg::BuiltPackage>),
 }
@@ -83,18 +83,50 @@ pub enum PackageTests {
 #[derive(Debug)]
 pub struct ContractToTest {
     /// Tests included contract.
-    pub pkg: Arc<pkg::BuiltPackage>,
+    pkg: Arc<pkg::BuiltPackage>,
     /// Bytecode of the contract without tests.
-    pub without_tests_bytecode: pkg::BuiltPackageBytecode,
-    pub contract_dependencies: Vec<Arc<pkg::BuiltPackage>>,
+    without_tests_bytecode: pkg::BuiltPackageBytecode,
+    contract_dependencies: Vec<Arc<pkg::BuiltPackage>>,
 }
 
 /// A built script ready for test execution.
 #[derive(Debug)]
 pub struct ScriptToTest {
     /// Tests included contract.
-    pub pkg: Arc<pkg::BuiltPackage>,
-    pub contract_dependencies: Vec<Arc<pkg::BuiltPackage>>,
+    pkg: Arc<pkg::BuiltPackage>,
+    contract_dependencies: Vec<Arc<pkg::BuiltPackage>>,
+}
+
+/// A built package that requires deployment before test execution.
+#[derive(Debug)]
+pub enum PackageWithDeploymentToTest {
+    Script(ScriptToTest),
+    Contract(ContractToTest),
+}
+
+/// Required test setup for package types that requires a deployment.
+#[derive(Debug)]
+enum DeploymentSetup {
+    Script(ScriptTestSetup),
+    Contract(ContractTestSetup),
+}
+
+impl DeploymentSetup {
+    /// Returns the storage for this test setup
+    fn storage(&self) -> &vm::storage::MemoryStorage {
+        match self {
+            DeploymentSetup::Script(script_setup) => &script_setup.storage,
+            DeploymentSetup::Contract(contract_setup) => &contract_setup.storage,
+        }
+    }
+
+    /// Return the root contract id if this is a contract setup.
+    fn root_contract_id(&self) -> Option<tx::ContractId> {
+        match self {
+            DeploymentSetup::Script(_) => None,
+            DeploymentSetup::Contract(contract_setup) => Some(contract_setup.root_contract_id),
+        }
+    }
 }
 
 /// The set of options provided to the `test` function.
@@ -134,8 +166,7 @@ pub struct TestPrintOpts {
 /// The storage and the contract id (if a contract is being tested) for a test.
 #[derive(Debug)]
 enum TestSetup {
-    Contract(ContractTestSetup),
-    Script(ScriptTestSetup),
+    WithDeployment(DeploymentSetup),
     WithoutDeployment(vm::storage::MemoryStorage),
 }
 
@@ -143,8 +174,7 @@ impl TestSetup {
     /// Returns the storage for this test setup
     fn storage(&self) -> &vm::storage::MemoryStorage {
         match self {
-            TestSetup::Contract(contract_setup) => &contract_setup.storage,
-            TestSetup::Script(script_setup) => &script_setup.storage,
+            TestSetup::WithDeployment(deployment_setup) => deployment_setup.storage(),
             TestSetup::WithoutDeployment(storage) => storage,
         }
     }
@@ -152,20 +182,23 @@ impl TestSetup {
     /// Produces an iterator yielding contract ids of contract dependencies for this test setup.
     fn contract_dependency_ids(&self) -> impl Iterator<Item = &tx::ContractId> + '_ {
         match self {
-            TestSetup::Contract(contract_setup) => {
-                contract_setup.contract_dependency_ids.iter()
-            }
-            TestSetup::Script(script_setup) => script_setup.contract_dependency_ids.iter(),
+            TestSetup::WithDeployment(deployment_setup) => match deployment_setup {
+                DeploymentSetup::Script(script_setup) => {
+                    script_setup.contract_dependency_ids.iter()
+                }
+                DeploymentSetup::Contract(contract_setup) => {
+                    contract_setup.contract_dependency_ids.iter()
+                }
+            },
             TestSetup::WithoutDeployment(_) => [].iter(),
         }
     }
 
     /// Return the root contract id if this is a contract setup.
     fn root_contract_id(&self) -> Option<tx::ContractId> {
-        if let TestSetup::Contract(contract_setup) = self {
-            Some(contract_setup.root_contract_id)
-        } else {
-            None
+        match self {
+            TestSetup::WithDeployment(deployment_setup) => deployment_setup.root_contract_id(),
+            TestSetup::WithoutDeployment(_) => None,
         }
     }
 
@@ -199,52 +232,33 @@ impl TestedPackage {
     }
 }
 
-impl ContractToTest {
-    /// Deploy the contract dependencies and tests excluded version for this package.
-    fn deploy(&self) -> anyhow::Result<TestSetup> {
-        // Setup the interpreter for deployment.
-        let params = tx::ConsensusParameters::default();
-        let storage = vm::storage::MemoryStorage::default();
-        let mut interpreter =
-            vm::interpreter::Interpreter::with_storage(storage, params, GasCosts::default());
-
-        // Iterate and create deployment transactions for contract dependencies of the root
-        // contract.
-        let contract_dependency_setups = self
-            .contract_dependencies
-            .iter()
-            .map(|built_pkg| deployment_transaction(built_pkg, &built_pkg.bytecode, params));
-
-        // Deploy contract dependencies of the root contract and collect their ids.
-        let contract_dependency_ids = contract_dependency_setups
-            .map(|(contract_id, tx)| {
-                // Transact the deployment transaction constructed for this contract dependency.
-                interpreter.transact(tx)?;
-                Ok(contract_id)
-            })
-            .collect::<anyhow::Result<Vec<_>>>()?;
-
-        // Root contract is the contract that we are going to be running the tests of, after this
-        // deployment.
-        let (root_contract_id, root_contract_tx) =
-            deployment_transaction(&self.pkg, &self.without_tests_bytecode, params);
-
-        // Deploy the root contract.
-        interpreter.transact(root_contract_tx)?;
-        let storage = interpreter.as_ref().clone();
-
-        let contract_test_setup = ContractTestSetup {
-            storage,
-            contract_dependency_ids,
-            root_contract_id,
-        };
-
-        Ok(TestSetup::Contract(contract_test_setup))
+impl PackageWithDeploymentToTest {
+    /// Returns a reference to the underlying `BuiltPackage`.
+    ///
+    /// If this is a contract built package with tests included is returned.
+    fn pkg(&self) -> &BuiltPackage {
+        match self {
+            PackageWithDeploymentToTest::Script(script) => &script.pkg,
+            PackageWithDeploymentToTest::Contract(contract) => &contract.pkg,
+        }
     }
-}
 
-impl ScriptToTest {
-    /// Deploy the contract dependencies of this package.
+    /// Returns an iterator over contract dependencies of the package represented by this struct.
+    fn contract_dependencies(&self) -> impl Iterator<Item = &Arc<BuiltPackage>> + '_ {
+        match self {
+            PackageWithDeploymentToTest::Script(script_to_test) => {
+                script_to_test.contract_dependencies.iter()
+            }
+            PackageWithDeploymentToTest::Contract(contract_to_test) => {
+                contract_to_test.contract_dependencies.iter()
+            }
+        }
+    }
+
+    /// Deploy the contract dependencies for packages that require deployment.
+    ///
+    /// For scripts deploys all contract dependencies.
+    /// For contract deploys all contract dependencies and the root contract itself.
     fn deploy(&self) -> anyhow::Result<TestSetup> {
         // Setup the interpreter for deployment.
         let params = tx::ConsensusParameters::default();
@@ -255,8 +269,7 @@ impl ScriptToTest {
         // Iterate and create deployment transactions for contract dependencies of the root
         // contract.
         let contract_dependency_setups = self
-            .contract_dependencies
-            .iter()
+            .contract_dependencies()
             .map(|built_pkg| deployment_transaction(built_pkg, &built_pkg.bytecode, params));
 
         // Deploy contract dependencies of the root contract and collect their ids.
@@ -268,13 +281,32 @@ impl ScriptToTest {
             })
             .collect::<anyhow::Result<Vec<_>>>()?;
 
-        let storage = interpreter.as_ref().clone();
-        let script_test_setup = ScriptTestSetup {
-            storage,
-            contract_dependency_ids,
+        let deployment_setup = if let PackageWithDeploymentToTest::Contract(contract_to_test) = self
+        {
+            // Root contract is the contract that we are going to be running the tests of, after this
+            // deployment.
+            let (root_contract_id, root_contract_tx) = deployment_transaction(
+                &contract_to_test.pkg,
+                &contract_to_test.without_tests_bytecode,
+                params,
+            );
+            // Deploy the root contract.
+            interpreter.transact(root_contract_tx)?;
+            let storage = interpreter.as_ref().clone();
+            DeploymentSetup::Contract(ContractTestSetup {
+                storage,
+                contract_dependency_ids,
+                root_contract_id,
+            })
+        } else {
+            let storage = interpreter.as_ref().clone();
+            DeploymentSetup::Script(ScriptTestSetup {
+                storage,
+                contract_dependency_ids,
+            })
         };
 
-        Ok(TestSetup::Script(script_test_setup))
+        Ok(TestSetup::WithDeployment(deployment_setup))
     }
 }
 
@@ -310,8 +342,8 @@ impl<'a> PackageTests {
     /// returned.
     pub(crate) fn built_pkg_with_tests(&'a self) -> &'a BuiltPackage {
         match self {
-            PackageTests::Contract(contract) => &contract.pkg,
-            PackageTests::Script(script) => &script.pkg,
+            PackageTests::Contract(contract) => contract.pkg(),
+            PackageTests::Script(script) => script.pkg(),
             PackageTests::Predicate(predicate) => predicate,
             PackageTests::Library(library) => library,
         }
@@ -334,7 +366,7 @@ impl<'a> PackageTests {
                     without_tests_bytecode: contract_without_tests,
                     contract_dependencies,
                 };
-                PackageTests::Contract(contract_to_test)
+                PackageTests::Contract(PackageWithDeploymentToTest::Contract(contract_to_test))
             }
             None => match built_pkg.tree_type {
                 sway_core::language::parsed::TreeType::Predicate => {
@@ -346,7 +378,7 @@ impl<'a> PackageTests {
                         pkg: built_pkg,
                         contract_dependencies,
                     };
-                    PackageTests::Script(script_to_test)
+                    PackageTests::Script(PackageWithDeploymentToTest::Script(script_to_test))
                 }
                 _ => unreachable!("contracts are already handled"),
             },
