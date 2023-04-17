@@ -14,7 +14,7 @@ use petgraph::{prelude::NodeIndex, visit::Dfs};
 use std::collections::{BTreeSet, HashMap};
 use sway_error::warning::{CompileWarning, Warning};
 use sway_error::{error::CompileError, type_error::TypeError};
-use sway_types::{constants::ALLOW_DEAD_CODE_NAME, span::Span, Ident, Spanned};
+use sway_types::{constants::ALLOW_DEAD_CODE_NAME, span::Span, Ident, Named, Spanned};
 
 impl<'cfg> ControlFlowGraph<'cfg> {
     pub(crate) fn find_dead_code(&self, decl_engine: &DeclEngine) -> Vec<CompileWarning> {
@@ -41,26 +41,6 @@ impl<'cfg> ControlFlowGraph<'cfg> {
         }
 
         let is_dead_check = |n: &NodeIndex| {
-            if let ControlFlowGraphNode::ProgramNode {
-                node:
-                    ty::TyAstNode {
-                        content: ty::TyAstNodeContent::Declaration(ty::TyDecl::VariableDecl { .. }),
-                        ..
-                    },
-                ..
-            } = &self.graph[*n]
-            {
-                // Consider variables declarations dead when count is not greater than 1
-                connections_count
-                    .get(n)
-                    .cloned()
-                    .map_or(true, |count| count <= 1)
-            } else {
-                false
-            }
-        };
-
-        let is_alive_check = |n: &NodeIndex| {
             match &self.graph[*n] {
                 ControlFlowGraphNode::ProgramNode {
                     node:
@@ -71,11 +51,64 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                         },
                     ..
                 } => {
-                    // Consider variables declarations alive when count is greater than 1
+                    // Consider variables declarations dead when count is not greater than 1
                     connections_count
                         .get(n)
                         .cloned()
-                        .map_or(false, |count| count > 1)
+                        .map_or(true, |count| count <= 1)
+                }
+                ControlFlowGraphNode::FunctionParameter { .. } => {
+                    // Consider variables declarations dead when count is not greater than 1
+                    // Function param always has the function pointing to them
+                    connections_count
+                        .get(n)
+                        .cloned()
+                        .map_or(true, |count| count <= 1)
+                }
+                _ => false,
+            }
+        };
+
+        let is_alive_check = |n: &NodeIndex| {
+            match &self.graph[*n] {
+                ControlFlowGraphNode::ProgramNode {
+                    node:
+                        ty::TyAstNode {
+                            content:
+                                ty::TyAstNodeContent::Declaration(ty::TyDecl::VariableDecl(decl)),
+                            ..
+                        },
+                    ..
+                } => {
+                    if decl.name.as_str().starts_with('_') {
+                        true
+                    } else {
+                        // Consider variables declarations alive when count is greater than 1
+                        // This is explicilty required because the variable may be considered dead
+                        // when it is not connected from an entry point, while it may still be used by other dead code.
+                        connections_count
+                            .get(n)
+                            .cloned()
+                            .map_or(false, |count| count > 1)
+                    }
+                }
+                ControlFlowGraphNode::FunctionParameter {
+                    param_name,
+                    is_self,
+                    ..
+                } => {
+                    if *is_self || param_name.as_str().starts_with('_') {
+                        // self type parameter is always alive
+                        true
+                    } else {
+                        // Consider param alive when count is greater than 1
+                        // This is explicilty required because the param may be considered dead
+                        // when it is not connected from an entry point, while it may still be used by other dead code.
+                        connections_count
+                            .get(n)
+                            .cloned()
+                            .map_or(true, |count| count > 1)
+                    }
                 }
                 ControlFlowGraphNode::ProgramNode {
                     node:
@@ -189,6 +222,12 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                             })
                         }
                         ControlFlowGraphNode::OrganizationalDominator(..) => None,
+                        ControlFlowGraphNode::FunctionParameter { param_name, .. } => {
+                            Some(CompileWarning {
+                                span: param_name.span(),
+                                warning_content: Warning::DeadDeclaration,
+                            })
+                        }
                     }
                 }
             })
@@ -434,7 +473,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             } = decl_engine.get_constant(decl_id);
             graph
                 .namespace
-                .insert_constant(call_path.suffix, entry_node);
+                .insert_global_constant(call_path.suffix, entry_node);
             if let Some(value) = &value {
                 connect_expression(
                     engines,
@@ -473,9 +512,14 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             connect_struct_declaration(&struct_decl, *decl_id, graph, entry_node, tree_type);
             Ok(leaves.to_vec())
         }
-        EnumDecl { decl_id, .. } | EnumVariantDecl { decl_id, .. } => {
+        EnumDecl { decl_id, .. } => {
             let enum_decl = decl_engine.get_enum(decl_id);
             connect_enum_declaration(&enum_decl, *decl_id, graph, entry_node);
+            Ok(leaves.to_vec())
+        }
+        EnumVariantDecl { enum_ref, .. } => {
+            let enum_decl = decl_engine.get_enum(enum_ref.id());
+            connect_enum_declaration(&enum_decl, *enum_ref.id(), graph, entry_node);
             Ok(leaves.to_vec())
         }
         ImplTrait { decl_id, .. } => {
@@ -846,6 +890,26 @@ fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
     options: NodeConnectionOptions,
 ) -> Result<(), CompileError> {
     let type_engine = engines.te();
+
+    graph.namespace.push_code_block();
+    for fn_param in fn_decl.parameters.iter() {
+        let fn_param_node = graph.add_node(ControlFlowGraphNode::FunctionParameter {
+            param_name: fn_param.name.clone(),
+            is_self: matches!(
+                type_engine.get(fn_param.type_argument.initial_type_id),
+                TypeInfo::SelfType
+            ),
+        });
+        graph.add_edge(entry_node, fn_param_node, "".into());
+
+        graph.namespace.insert_variable(
+            fn_param.name.clone(),
+            VariableNamespaceEntry {
+                variable_decl_ix: fn_param_node,
+            },
+        )
+    }
+
     let fn_exit_node = graph.add_node(format!("\"{}\" fn exit", fn_decl.name.as_str()).into());
     let (_exit_nodes, _exit_node) = depth_first_insertion_code_block(
         engines,
@@ -859,6 +923,8 @@ fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
             parent_node: Some(entry_node),
         },
     )?;
+    graph.namespace.pop_code_block();
+
     if let Some(exit_node) = exit_node {
         graph.add_edge(fn_exit_node, exit_node, "".into());
     }
@@ -1204,7 +1270,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 // Variables may refer to global const declarations.
                 Ok(graph
                     .namespace
-                    .get_constant(name)
+                    .get_global_constant(name)
                     .cloned()
                     .map(|node| {
                         for leaf in leaves {
@@ -1214,6 +1280,20 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                     })
                     .unwrap_or_else(|| leaves.to_vec()))
             }
+        }
+        ConstantExpression { const_decl, .. } => {
+            let node = if let Some(node) = graph.namespace.get_global_constant(const_decl.name()) {
+                *node
+            } else if let Some(node) = graph.namespace.get_constant(const_decl) {
+                *node
+            } else {
+                return Ok(leaves.to_vec());
+            };
+
+            for leaf in leaves {
+                graph.add_edge(*leaf, node, "".into());
+            }
+            Ok(vec![node])
         }
         EnumInstantiation {
             enum_ref,
@@ -1655,17 +1735,27 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             }
             Ok(vec![])
         }
-        Reassignment(typed_reassignment) => connect_expression(
-            engines,
-            &typed_reassignment.rhs.expression,
-            graph,
-            leaves,
-            exit_node,
-            "variable reassignment",
-            tree_type,
-            typed_reassignment.rhs.clone().span,
-            options,
-        ),
+        Reassignment(typed_reassignment) => {
+            if let Some(variable_entry) = graph
+                .namespace
+                .get_variable(&typed_reassignment.lhs_base_name)
+            {
+                for leaf in leaves {
+                    graph.add_edge(*leaf, variable_entry.variable_decl_ix, "".into());
+                }
+            }
+            connect_expression(
+                engines,
+                &typed_reassignment.rhs.expression,
+                graph,
+                leaves,
+                exit_node,
+                "variable reassignment",
+                tree_type,
+                typed_reassignment.rhs.clone().span,
+                options,
+            )
+        }
         StorageReassignment(typed_storage_reassignment) => connect_expression(
             engines,
             &typed_storage_reassignment.rhs.expression,
@@ -1888,9 +1978,6 @@ fn construct_dead_code_warning_from_node(
             content: ty::TyAstNodeContent::Declaration(ty::TyDecl::VariableDecl(decl)),
             span,
         } => {
-            if decl.name.as_str().starts_with('_') {
-                return None;
-            }
             // In rare cases, variable declaration spans don't have a path, so we need to check for that
             if decl.name.span().path().is_some() {
                 CompileWarning {
@@ -2007,11 +2094,11 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
                 allow_dead_code(decl_engine.get_enum(decl_id).attributes)
             }
             ty::TyDecl::EnumVariantDecl {
-                decl_id,
+                enum_ref,
                 variant_name,
                 ..
             } => decl_engine
-                .get_enum(decl_id)
+                .get_enum(enum_ref.id())
                 .variants
                 .into_iter()
                 .find(|v| v.name == *variant_name)
@@ -2068,5 +2155,6 @@ fn allow_dead_code_node(
         }
         ControlFlowGraphNode::StorageField { .. } => false,
         ControlFlowGraphNode::OrganizationalDominator(..) => false,
+        ControlFlowGraphNode::FunctionParameter { .. } => false,
     }
 }

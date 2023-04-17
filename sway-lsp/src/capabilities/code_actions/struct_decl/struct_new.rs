@@ -4,7 +4,7 @@ use tower_lsp::lsp_types::{CodeActionDisabled, Position, Range, Url};
 
 use crate::{
     capabilities::code_actions::{CodeAction, CodeActionContext, CODE_ACTION_NEW_TITLE},
-    core::token::TypedAstToken,
+    core::{token::TypedAstToken, token_map::TokenMapExt},
 };
 
 pub(crate) struct StructNewCodeAction<'a> {
@@ -20,7 +20,8 @@ impl<'a> CodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
         // First, find the first impl block for this struct if it exists.
         let existing_impl_decl = ctx
             .tokens
-            .all_references_of_token(ctx.token, ctx.engines.te(), ctx.engines.de())
+            .iter()
+            .all_references_of_token(ctx.token, ctx.engines)
             .find_map(|(_, token)| {
                 if let Some(TypedAstToken::TypedDeclaration(TyDecl::ImplTrait {
                     decl_id, ..

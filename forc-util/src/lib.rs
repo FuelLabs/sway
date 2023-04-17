@@ -6,7 +6,9 @@ use annotate_snippets::{
 };
 use ansi_term::Colour;
 use anyhow::{bail, Result};
+use clap::Args;
 use forc_tracing::{println_red_err, println_yellow_err};
+use serde::{Deserialize, Serialize};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::str;
@@ -20,6 +22,16 @@ use sway_utils::constants;
 pub mod restricted;
 
 pub const DEFAULT_OUTPUT_DIRECTORY: &str = "out";
+
+/// Added salt used to derive the contract ID.
+#[derive(Debug, Args, Default, Deserialize, Serialize)]
+pub struct Salt {
+    /// Added salt used to derive the contract ID.
+    ///
+    /// By default, this is `0x0000000000000000000000000000000000000000000000000000000000000000`.
+    #[clap(long = "salt")]
+    pub salt: Option<fuel_tx::Salt>,
+}
 
 /// Format `Log` and `LogData` receipts.
 pub fn format_log_receipts(receipts: &[fuel_tx::Receipt], pretty_print: bool) -> Result<String> {
@@ -52,7 +64,37 @@ pub fn format_log_receipts(receipts: &[fuel_tx::Receipt], pretty_print: bool) ->
     }
 }
 
+/// Continually go down in the file tree until a Forc manifest file is found.
+pub fn find_nested_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
+    find_nested_dir_with_file(starter_path, constants::MANIFEST_FILE_NAME)
+}
+
+/// Continually go down in the file tree until a specified file is found.
+///
+/// Starts the search from child dirs of `starter_path`.
+pub fn find_nested_dir_with_file(starter_path: &Path, file_name: &str) -> Option<PathBuf> {
+    use walkdir::WalkDir;
+    let starter_dir = if starter_path.is_dir() {
+        starter_path
+    } else {
+        starter_path.parent()?
+    };
+    WalkDir::new(starter_path)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|entry| entry.path() != starter_dir.join(file_name))
+        .filter(|entry| entry.file_name().to_string_lossy() == file_name)
+        .map(|entry| {
+            let mut entry = entry.path().to_path_buf();
+            entry.pop();
+            entry
+        })
+        .next()
+}
+
 /// Continually go up in the file tree until a specified file is found.
+///
+/// Starts the search from `starter_path`.
 #[allow(clippy::branches_sharing_code)]
 pub fn find_parent_dir_with_file(starter_path: &Path, file_name: &str) -> Option<PathBuf> {
     let mut path = std::fs::canonicalize(starter_path).ok()?;
@@ -70,22 +112,22 @@ pub fn find_parent_dir_with_file(starter_path: &Path, file_name: &str) -> Option
     None
 }
 /// Continually go up in the file tree until a Forc manifest file is found.
-pub fn find_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
+pub fn find_parent_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
     find_parent_dir_with_file(starter_path, constants::MANIFEST_FILE_NAME)
 }
 
 /// Continually go up in the file tree until a Forc manifest file is found and given predicate
 /// returns true.
-pub fn find_manifest_dir_with_check<F>(starter_path: &Path, f: F) -> Option<PathBuf>
+pub fn find_parent_manifest_dir_with_check<F>(starter_path: &Path, f: F) -> Option<PathBuf>
 where
     F: Fn(&Path) -> bool,
 {
-    find_manifest_dir(starter_path).and_then(|manifest_dir| {
+    find_parent_manifest_dir(starter_path).and_then(|manifest_dir| {
         // If given check satisifies return current dir otherwise start searching from the parent.
         if f(&manifest_dir) {
             Some(manifest_dir)
         } else if let Some(parent_dir) = manifest_dir.parent() {
-            find_manifest_dir_with_check(parent_dir, f)
+            find_parent_manifest_dir_with_check(parent_dir, f)
         } else {
             None
         }

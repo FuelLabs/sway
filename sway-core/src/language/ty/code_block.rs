@@ -48,6 +48,14 @@ impl ReplaceDecls for TyCodeBlock {
     }
 }
 
+impl UpdateConstantExpression for TyCodeBlock {
+    fn update_constant_expression(&mut self, engines: Engines<'_>, implementing_type: &TyDecl) {
+        self.contents
+            .iter_mut()
+            .for_each(|x| x.update_constant_expression(engines, implementing_type));
+    }
+}
+
 impl DeterministicallyAborts for TyCodeBlock {
     fn deterministically_aborts(&self, decl_engine: &DeclEngine, check_call_body: bool) -> bool {
         self.contents

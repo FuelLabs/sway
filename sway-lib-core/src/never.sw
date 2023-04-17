@@ -50,16 +50,16 @@ impl Not for Never {
 }
 
 impl Eq for Never {
-    fn eq(self, other: Self) -> bool {
+    fn eq(self, _other: Self) -> bool {
         self
     }
 }
 
 impl Ord for Never {
-    fn gt(self, other: Self) -> bool {
+    fn gt(self, _other: Self) -> bool {
         self
     }
-    fn lt(self, other: Self) -> bool {
+    fn lt(self, _other: Self) -> bool {
         self
     }
 }

@@ -6,7 +6,7 @@ use std::{
 
 use crate::{decl_engine::DeclEngine, type_system::TypeEngine};
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct Engines<'a> {
     type_engine: &'a TypeEngine,
     decl_engine: &'a DeclEngine,

@@ -1,6 +1,5 @@
 use sway_ast::Intrinsic;
 use sway_core::{
-    decl_engine::DeclEngine,
     language::{
         parsed::{
             AbiCastExpression, AmbiguousPathExpression, Declaration, DelineatedPathExpression,
@@ -13,7 +12,7 @@ use sway_core::{
     },
     transform::Attribute,
     type_system::{TypeId, TypeInfo, TypeParameter},
-    TraitConstraint, TypeArgument, TypeEngine,
+    Engines, TraitConstraint, TypeArgument, TypeEngine,
 };
 use sway_types::{Ident, Span, Spanned};
 use tower_lsp::lsp_types::{Position, Range};
@@ -100,6 +99,8 @@ pub enum SymbolKind {
     Field,
     /// Emitted for free-standing & associated functions.
     Function,
+    /// Emitted for compiler intrinsics.
+    Intrinsic,
     /// Emitted for keywords.
     Keyword,
     /// Emitted for modules.
@@ -164,13 +165,9 @@ impl Token {
     }
 
     /// Return the [Ident] of the declaration of the provided token.
-    pub fn declared_token_ident(
-        &self,
-        type_engine: &TypeEngine,
-        decl_engine: &DeclEngine,
-    ) -> Option<Ident> {
+    pub fn declared_token_ident(&self, engines: Engines<'_>) -> Option<Ident> {
         self.type_def.as_ref().and_then(|type_def| match type_def {
-            TypeDefinition::TypeId(type_id) => ident_of_type_id(type_engine, decl_engine, type_id),
+            TypeDefinition::TypeId(type_id) => ident_of_type_id(engines, type_id),
             TypeDefinition::Ident(ident) => Some(ident.clone()),
         })
     }
@@ -178,15 +175,9 @@ impl Token {
     /// Return the [Span] of the declaration of the provided token. This is useful for
     /// performaing == comparisons on spans. We need to do this instead of comparing
     /// the [Ident] because the [PartialEq] implementation is only comparing the name.
-    pub fn declared_token_span(
-        &self,
-        type_engine: &TypeEngine,
-        decl_engine: &DeclEngine,
-    ) -> Option<Span> {
+    pub fn declared_token_span(&self, engines: Engines<'_>) -> Option<Span> {
         self.type_def.as_ref().and_then(|type_def| match type_def {
-            TypeDefinition::TypeId(type_id) => {
-                Some(ident_of_type_id(type_engine, decl_engine, type_id)?.span())
-            }
+            TypeDefinition::TypeId(type_id) => Some(ident_of_type_id(engines, type_id)?.span()),
             TypeDefinition::Ident(ident) => Some(ident.span()),
         })
     }
@@ -209,15 +200,11 @@ pub fn to_ident_key(ident: &Ident) -> (Ident, Span) {
 }
 
 /// Use the [TypeId] to look up the associated [TypeInfo] and return the [Ident] if one is found.
-pub fn ident_of_type_id(
-    type_engine: &TypeEngine,
-    decl_engine: &DeclEngine,
-    type_id: &TypeId,
-) -> Option<Ident> {
-    match type_engine.get(*type_id) {
+pub fn ident_of_type_id(engines: Engines<'_>, type_id: &TypeId) -> Option<Ident> {
+    match engines.te().get(*type_id) {
         TypeInfo::UnknownGeneric { name, .. } => Some(name),
-        TypeInfo::Enum(decl_ref) => Some(decl_engine.get_enum(&decl_ref).call_path.suffix),
-        TypeInfo::Struct(decl_ref) => Some(decl_engine.get_struct(&decl_ref).call_path.suffix),
+        TypeInfo::Enum(decl_ref) => Some(engines.de().get_enum(&decl_ref).call_path.suffix),
+        TypeInfo::Struct(decl_ref) => Some(engines.de().get_struct(&decl_ref).call_path.suffix),
         TypeInfo::Custom { call_path, .. } => Some(call_path.suffix),
         _ => None,
     }

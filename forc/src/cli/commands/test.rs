@@ -3,7 +3,7 @@ use ansi_term::Colour;
 use anyhow::{bail, Result};
 use clap::Parser;
 use forc_pkg as pkg;
-use forc_test::TestedPackage;
+use forc_test::{TestRunnerCount, TestedPackage};
 use forc_util::format_log_receipts;
 use tracing::info;
 
@@ -32,6 +32,10 @@ pub struct Command {
     pub test_print: TestPrintOpts,
     /// When specified, only tests containing the given string will be executed.
     pub filter: Option<String>,
+    #[clap(long)]
+    /// Number of threads to utilize when running the tests. By default, this is the number of
+    /// threads available in your system.
+    pub test_threads: Option<usize>,
 }
 
 /// The set of options provided for controlling output of a test.
@@ -50,28 +54,41 @@ pub(crate) fn exec(cmd: Command) -> Result<()> {
         bail!("unit test filter not yet supported");
     }
 
+    let test_runner_count = match cmd.test_threads {
+        Some(runner_count) => TestRunnerCount::Manual(runner_count),
+        None => TestRunnerCount::Auto,
+    };
+
     let test_print_opts = cmd.test_print.clone();
     let opts = opts_from_cmd(cmd);
     let built_tests = forc_test::build(opts)?;
     let start = std::time::Instant::now();
     info!("   Running {} tests", built_tests.test_count());
-    let tested = built_tests.run()?;
+    let tested = built_tests.run(test_runner_count)?;
     let duration = start.elapsed();
 
     // Eventually we'll print this in a fancy manner, but this will do for testing.
-    match tested {
+    let all_tests_passed = match tested {
         forc_test::Tested::Workspace(pkgs) => {
-            for pkg in pkgs {
+            for pkg in &pkgs {
                 let built = &pkg.built.descriptor.name;
                 info!("\n   tested -- {built}\n");
-                print_tested_pkg(&pkg, &test_print_opts)?;
+                print_tested_pkg(pkg, &test_print_opts)?;
             }
             info!("\n   Finished in {:?}", duration);
+            pkgs.iter().all(|pkg| pkg.tests_passed())
         }
-        forc_test::Tested::Package(pkg) => print_tested_pkg(&pkg, &test_print_opts)?,
+        forc_test::Tested::Package(pkg) => {
+            print_tested_pkg(&pkg, &test_print_opts)?;
+            pkg.tests_passed()
+        }
     };
 
-    Ok(())
+    if all_tests_passed {
+        Ok(())
+    } else {
+        bail!("Some tests failed")
+    }
 }
 
 fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> Result<()> {
@@ -165,6 +182,7 @@ fn opts_from_cmd(cmd: Command) -> forc_test::Opts {
         print: pkg::PrintOpts {
             ast: cmd.build.print.ast,
             dca_graph: cmd.build.print.dca_graph,
+            dca_graph_url_format: cmd.build.print.dca_graph_url_format,
             finalized_asm: cmd.build.print.finalized_asm,
             intermediate_asm: cmd.build.print.intermediate_asm,
             ir: cmd.build.print.ir,
@@ -180,5 +198,6 @@ fn opts_from_cmd(cmd: Command) -> forc_test::Opts {
         binary_outfile: cmd.build.output.bin_file,
         debug_outfile: cmd.build.output.debug_file,
         build_target: cmd.build.build_target,
+        experimental_storage: cmd.build.profile.experimental_storage,
     }
 }

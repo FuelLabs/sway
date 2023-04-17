@@ -1,0 +1,70 @@
+script {
+    entry fn main() -> () {
+        entry():
+        v0 = call test_single()
+        v1 = call test_double()
+        v2 = const unit ()
+        ret () v2
+    }
+
+    fn test_single() -> b256 {
+        local b256 a = const b256 0x0000000000000000000000000000000000000000000000000000000000000000
+        local mut b256 b
+
+        entry():
+        v0 = get_local ptr b256, a
+        v1 = load v0
+        v2 = get_local ptr b256, b
+        store v1 to v2
+        v3 = load v2
+        ret b256 v3
+    }
+
+    fn test_double() -> b256 {
+        local b256 a = const b256 0x0000000000000000000000000000000000000000000000000000000000000000
+        local b256 b
+        local mut b256 c
+
+        entry():
+        v0 = get_local ptr b256, a
+        v1 = load v0
+        v2 = get_local ptr b256, b
+        store v1 to v2
+        v3 = get_local ptr b256, c
+        v4 = load v2
+        store v4 to v3
+        v5 = load v3
+        ret b256 v5
+    }
+}
+
+// regex: VAL=v\d+
+
+// For the single propagation since `b` was mutable it must now make `a` mutable.
+
+// check: fn test_single()
+// check: local mut b256 a = const b256 0x0000000000000000000000000000000000000000000000000000000000000000
+
+// Now dead:
+// check: $VAL = get_local ptr b256, a
+
+// check: $(a_loc=$VAL) = get_local ptr b256, a
+// check: $(a_val=$VAL) = load $a_loc
+// check: ret b256 $a_val
+
+// For the double propagation since `c` was mutable is must now make `a` mutable.
+
+// check: fn test_double()
+// check: local mut b256 a = const b256 0x0000000000000000000000000000000000000000000000000000000000000000
+
+// Now dead:
+// check: $VAL = get_local ptr b256, a
+// check: $VAL = get_local ptr b256, a
+
+// check: $(a_loc=$VAL) = get_local ptr b256, a
+
+// Also dead.
+// check: $VAL = load $VAL
+
+// check: $(a_val=$VAL) = load $a_loc
+// check: ret b256 $a_val

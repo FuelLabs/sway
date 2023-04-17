@@ -1,7 +1,7 @@
 //! This is the flow graph, a graph which contains edges that represent possible steps of program
 //! execution.
 
-use std::collections::HashMap;
+use std::{collections::HashMap, fs};
 
 use crate::{
     decl_engine::*,
@@ -10,7 +10,7 @@ use crate::{
     transform, Engines, Ident,
 };
 
-use sway_types::{span::Span, BaseIdent, IdentUnique};
+use sway_types::{span::Span, BaseIdent, IdentUnique, Spanned};
 
 use petgraph::{graph::EdgeIndex, prelude::NodeIndex};
 
@@ -81,6 +81,10 @@ pub enum ControlFlowGraphNode<'cfg> {
     StorageField {
         field_name: Ident,
     },
+    FunctionParameter {
+        param_name: Ident,
+        is_self: bool,
+    },
 }
 
 impl<'cfg> GetDeclIdent for ControlFlowGraphNode<'cfg> {
@@ -96,6 +100,7 @@ impl<'cfg> GetDeclIdent for ControlFlowGraphNode<'cfg> {
                 struct_field_name, ..
             } => Some(struct_field_name.clone()),
             ControlFlowGraphNode::StorageField { field_name, .. } => Some(field_name.clone()),
+            ControlFlowGraphNode::FunctionParameter { param_name, .. } => Some(param_name.clone()),
         }
     }
 }
@@ -156,6 +161,9 @@ impl<'cfg> DebugWithEngines for ControlFlowGraphNode<'cfg> {
             ControlFlowGraphNode::StorageField { field_name } => {
                 format!("Storage field {}", field_name.as_str())
             }
+            ControlFlowGraphNode::FunctionParameter { param_name, .. } => {
+                format!("Function param {}", param_name.as_str())
+            }
         };
         f.write_str(&text)
     }
@@ -200,17 +208,60 @@ impl<'cfg> ControlFlowGraph<'cfg> {
     }
 
     /// Prints out GraphViz DOT format for this graph.
-    pub(crate) fn visualize(&self, engines: Engines<'_>) {
-        use petgraph::dot::{Config, Dot};
-        let string_graph = self.graph.filter_map(
-            |_idx, node| Some(format!("{:?}", engines.help_out(node))),
-            |_idx, edge| Some(edge.0.clone()),
-        );
+    pub(crate) fn visualize(
+        &self,
+        engines: Engines<'_>,
+        print_graph: Option<String>,
+        print_graph_url_format: Option<String>,
+    ) {
+        if let Some(graph_path) = print_graph {
+            use petgraph::dot::{Config, Dot};
+            let string_graph = self.graph.filter_map(
+                |_idx, node| Some(format!("{:?}", engines.help_out(node))),
+                |_idx, edge| Some(edge.0.clone()),
+            );
 
-        tracing::info!(
-            "{:?}",
-            Dot::with_config(&string_graph, &[Config::EdgeNoLabel])
-        );
+            let output = format!(
+                "{:?}",
+                Dot::with_attr_getters(
+                    &string_graph,
+                    &[Config::NodeNoLabel, Config::EdgeNoLabel],
+                    &|_, er| format!("label = {:?}", er.weight()),
+                    &|_, nr| {
+                        let node = &self.graph[nr.0];
+                        let mut shape = "";
+                        if self.entry_points.contains(&nr.0) {
+                            shape = "shape=doubleoctagon";
+                        }
+                        let mut url = "".to_string();
+                        if let Some(url_format) = print_graph_url_format.clone() {
+                            if let Some(span) = node.span() {
+                                if let Some(path) = span.path_str() {
+                                    let (line, col) = span.start_pos().line_col();
+                                    let url_format = url_format
+                                        .replace("{path}", path.to_string().as_str())
+                                        .replace("{line}", line.to_string().as_str())
+                                        .replace("{col}", col.to_string().as_str());
+                                    url = format!("URL = {url_format:?}");
+                                }
+                            }
+                        }
+                        format!("{shape} label = {:?} {url}", nr.1)
+                    },
+                )
+            );
+
+            if graph_path.is_empty() {
+                tracing::info!("{output}");
+            } else {
+                let result = fs::write(graph_path.clone(), output);
+                if let Some(error) = result.err() {
+                    tracing::error!(
+                        "There was an issue while outputing DCA grap to path {graph_path:?}\n{error}"
+                    );
+                }
+            }
+        }
     }
 }
 
@@ -241,6 +292,20 @@ impl<'cfg> ControlFlowGraphNode<'cfg> {
         ControlFlowGraphNode::ProgramNode {
             node: node.clone(),
             parent_node: None,
+        }
+    }
+
+    fn span(&self) -> Option<Span> {
+        match self {
+            ControlFlowGraphNode::OrganizationalDominator(_) => None,
+            ControlFlowGraphNode::ProgramNode { node, .. } => Some(node.span.clone()),
+            ControlFlowGraphNode::EnumVariant { variant_name, .. } => Some(variant_name.span()),
+            ControlFlowGraphNode::MethodDeclaration { span, .. } => Some(span.clone()),
+            ControlFlowGraphNode::StructField {
+                struct_field_name, ..
+            } => Some(struct_field_name.span()),
+            ControlFlowGraphNode::StorageField { field_name } => Some(field_name.span()),
+            ControlFlowGraphNode::FunctionParameter { param_name, .. } => Some(param_name.span()),
         }
     }
 }

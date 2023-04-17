@@ -99,6 +99,21 @@ impl ReplaceDecls for TyAstNode {
     }
 }
 
+impl UpdateConstantExpression for TyAstNode {
+    fn update_constant_expression(&mut self, engines: Engines<'_>, implementing_type: &TyDecl) {
+        match self.content {
+            TyAstNodeContent::ImplicitReturnExpression(ref mut expr) => {
+                expr.update_constant_expression(engines, implementing_type)
+            }
+            TyAstNodeContent::Declaration(_) => {}
+            TyAstNodeContent::Expression(ref mut expr) => {
+                expr.update_constant_expression(engines, implementing_type)
+            }
+            TyAstNodeContent::SideEffect(_) => (),
+        }
+    }
+}
+
 impl CollectTypesMetadata for TyAstNode {
     fn collect_types_metadata(
         &self,
