@@ -1,7 +1,7 @@
 use crate::{cli::init::Command as InitCommand, ops::forc_init::init};
-use anyhow::{anyhow, bail, Result};
+use anyhow::anyhow;
 use clap::Parser;
-use forc_util::validate_name;
+use forc_util::{validate_name, ForcResult};
 use std::path::{Path, PathBuf};
 
 /// Create a new Forc project at `<path>`.
@@ -30,7 +30,7 @@ pub struct Command {
     pub path: String,
 }
 
-pub(crate) fn exec(command: Command) -> Result<()> {
+pub(crate) fn exec(command: Command) -> ForcResult<()> {
     // `forc new` is roughly short-hand for `forc init`, but we create the directory first if it
     // doesn't yet exist. Here we create the directory if it doesn't exist then re-use the existing
     // `forc init` logic.
@@ -60,12 +60,13 @@ pub(crate) fn exec(command: Command) -> Result<()> {
 
     let dir_path = Path::new(&path);
     if dir_path.exists() {
-        bail!(
+        return Err(anyhow::anyhow!(
             "Directory \"{}\" already exists.\nIf you wish to initialise a forc project inside \
             this directory, consider using `forc init --path {}`",
             dir_path.canonicalize()?.display(),
             dir_path.display(),
-        );
+        )
+        .into());
     } else {
         std::fs::create_dir_all(dir_path)?;
     }
@@ -80,5 +81,6 @@ pub(crate) fn exec(command: Command) -> Result<()> {
         name,
     };
 
-    init(init_cmd)
+    init(init_cmd)?;
+    Ok(())
 }

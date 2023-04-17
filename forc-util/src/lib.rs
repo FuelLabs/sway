@@ -9,19 +9,66 @@ use anyhow::{bail, Result};
 use clap::Args;
 use forc_tracing::{println_red_err, println_yellow_err};
 use serde::{Deserialize, Serialize};
-use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::str;
+use std::{ffi::OsStr, process::Termination};
 use sway_core::fuel_prelude::fuel_tx;
 use sway_core::language::parsed::TreeType;
 use sway_error::error::CompileError;
 use sway_error::warning::CompileWarning;
 use sway_types::{LineCol, Spanned};
 use sway_utils::constants;
+use tracing::error;
 
 pub mod restricted;
 
 pub const DEFAULT_OUTPUT_DIRECTORY: &str = "out";
+pub const DEFAULT_ERROR_EXIT_CODE: u8 = 1;
+
+pub type ForcResult<T, E = ForcError> = Result<T, E>;
+
+#[derive(Debug)]
+pub struct ForcError {
+    error: anyhow::Error,
+    exit_code: u8,
+}
+
+impl ForcError {
+    pub fn new(error: anyhow::Error, exit_code: u8) -> Self {
+        Self { error, exit_code }
+    }
+}
+
+impl AsRef<anyhow::Error> for ForcError {
+    fn as_ref(&self) -> &anyhow::Error {
+        &self.error
+    }
+}
+
+impl From<anyhow::Error> for ForcError {
+    fn from(value: anyhow::Error) -> Self {
+        Self {
+            error: value,
+            exit_code: DEFAULT_ERROR_EXIT_CODE,
+        }
+    }
+}
+
+impl From<std::io::Error> for ForcError {
+    fn from(value: std::io::Error) -> Self {
+        Self {
+            error: value.into(),
+            exit_code: DEFAULT_ERROR_EXIT_CODE,
+        }
+    }
+}
+
+impl Termination for ForcError {
+    fn report(self) -> std::process::ExitCode {
+        error!("Error: {:?}", self.error);
+        std::process::ExitCode::from(self.exit_code)
+    }
+}
 
 /// Added salt used to derive the contract ID.
 #[derive(Debug, Args, Default, Deserialize, Serialize)]
