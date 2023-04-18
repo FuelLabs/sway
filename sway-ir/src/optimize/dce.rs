@@ -52,14 +52,11 @@ pub fn dce(
     // Go through each instruction and update use_count.
     for (block, inst) in function.instruction_iter(context) {
         let inst = inst.get_instruction(context).unwrap();
-        match inst {
-            Instruction::GetLocal(local) => {
-                num_local_uses
-                    .entry(*local)
-                    .and_modify(|count| *count += 1)
-                    .or_insert(1);
-            }
-            _ => (),
+        if let Instruction::GetLocal(local) = inst {
+            num_local_uses
+                .entry(*local)
+                .and_modify(|count| *count += 1)
+                .or_insert(1);
         }
         let opds = inst.get_operands();
         for v in opds {
