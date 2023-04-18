@@ -437,11 +437,11 @@ impl Module {
                     });
                 }
 
-                if let TyDecl::EnumDecl {
+                if let TyDecl::EnumDecl(ty::EnumDecl {
                     decl_id,
                     subst_list: _,
                     ..
-                } = decl
+                }) = decl
                 {
                     let enum_decl = decl_engine.get_enum(&decl_id);
                     let enum_ref = DeclRef::new(
@@ -465,11 +465,11 @@ impl Module {
                                 (
                                     src.to_vec(),
                                     GlobImport::No,
-                                    TyDecl::EnumVariantDecl {
+                                    TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
                                         enum_ref: enum_ref.clone(),
                                         variant_name: variant_name.clone(),
                                         variant_decl_span: variant_decl.span.clone(),
-                                    },
+                                    }),
                                 ),
                             );
                         };
@@ -539,11 +539,11 @@ impl Module {
                     });
                 }
 
-                if let TyDecl::EnumDecl {
+                if let TyDecl::EnumDecl(ty::EnumDecl {
                     decl_id,
                     subst_list: _,
                     ..
-                } = decl
+                }) = decl
                 {
                     let enum_decl = decl_engine.get_enum(&decl_id);
                     let enum_ref = DeclRef::new(
@@ -562,11 +562,11 @@ impl Module {
                             (
                                 src.to_vec(),
                                 GlobImport::Yes,
-                                TyDecl::EnumVariantDecl {
+                                TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
                                     enum_ref: enum_ref.clone(),
                                     variant_name,
                                     variant_decl_span: variant_decl.span.clone(),
-                                },
+                                }),
                             ),
                         );
                     }

@@ -97,7 +97,7 @@ fn type_check_variable(
 
     let typed_scrutinee = match ctx.namespace.resolve_symbol(&name).value {
         // If this variable is a constant, then we turn it into a [TyScrutinee::Constant](ty::TyScrutinee::Constant).
-        Some(ty::TyDecl::ConstantDecl { decl_id, .. }) => {
+        Some(ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. })) => {
             let constant_decl = decl_engine.get_constant(decl_id);
             let value = match constant_decl.value {
                 Some(ref value) => value,
@@ -292,7 +292,7 @@ fn type_check_enum(
                 warnings,
                 errors
             );
-            if let TyDecl::EnumVariantDecl { enum_ref, .. } = decl {
+            if let TyDecl::EnumVariantDecl(ty::EnumVariantDecl { enum_ref, .. }) = decl {
                 (call_path.suffix.span(), decl_engine.get_enum(enum_ref.id()))
             } else {
                 errors.push(CompileError::EnumNotFound {

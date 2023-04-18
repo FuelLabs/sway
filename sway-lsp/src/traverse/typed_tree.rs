@@ -85,17 +85,17 @@ impl<'a> TypedTree<'a> {
                 }
                 self.handle_expression(&variable.body);
             }
-            ty::TyDecl::ConstantDecl {
+            ty::TyDecl::ConstantDecl(ty::ConstantDecl {
                 decl_id, decl_span, ..
-            } => {
+            }) => {
                 let const_decl = decl_engine.get_constant(decl_id);
                 self.collect_const_decl(&const_decl, decl_span);
             }
-            ty::TyDecl::FunctionDecl { decl_id, .. } => {
+            ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. }) => {
                 let func_decl = decl_engine.get_function(decl_id);
                 self.collect_typed_fn_decl(&func_decl);
             }
-            ty::TyDecl::TraitDecl { decl_id, .. } => {
+            ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. }) => {
                 let trait_decl = decl_engine.get_trait(decl_id);
                 if let Some(mut token) = self
                     .ctx
@@ -123,7 +123,7 @@ impl<'a> TypedTree<'a> {
                     self.collect_supertrait(&supertrait);
                 }
             }
-            ty::TyDecl::StructDecl { decl_id, .. } => {
+            ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
                 let struct_decl = decl_engine.get_struct(decl_id);
                 if let Some(mut token) = self
                     .ctx
@@ -151,13 +151,13 @@ impl<'a> TypedTree<'a> {
                     }
                 }
             }
-            ty::TyDecl::EnumDecl { decl_id, .. } => {
+            ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
                 self.handle_enum(decl_id, declaration);
             }
-            ty::TyDecl::EnumVariantDecl { enum_ref, .. } => {
+            ty::TyDecl::EnumVariantDecl(ty::EnumVariantDecl { enum_ref, .. }) => {
                 self.handle_enum(enum_ref.id(), declaration);
             }
-            ty::TyDecl::ImplTrait { decl_id, .. } => {
+            ty::TyDecl::ImplTrait(ty::ImplTrait { decl_id, .. }) => {
                 let ty::TyImplTrait {
                     impl_type_parameters,
                     trait_name,
@@ -251,7 +251,7 @@ impl<'a> TypedTree<'a> {
                     );
                 }
             }
-            ty::TyDecl::AbiDecl { decl_id, .. } => {
+            ty::TyDecl::AbiDecl(ty::AbiDecl { decl_id, .. }) => {
                 let abi_decl = decl_engine.get_abi(decl_id);
                 if let Some(mut token) = self
                     .ctx
@@ -280,7 +280,10 @@ impl<'a> TypedTree<'a> {
                     self.collect_supertrait(&supertrait);
                 }
             }
-            ty::TyDecl::GenericTypeForFunctionScope { name, type_id } => {
+            ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
+                name,
+                type_id,
+            }) => {
                 if let Some(mut token) = self
                     .ctx
                     .tokens
@@ -292,7 +295,7 @@ impl<'a> TypedTree<'a> {
                 }
             }
             ty::TyDecl::ErrorRecovery(_) => {}
-            ty::TyDecl::StorageDecl { decl_id, .. } => {
+            ty::TyDecl::StorageDecl(ty::StorageDecl { decl_id, .. }) => {
                 let storage_decl = decl_engine.get_storage(decl_id);
                 for field in &storage_decl.fields {
                     if let Some(mut token) = self
@@ -310,7 +313,7 @@ impl<'a> TypedTree<'a> {
                     self.handle_expression(&field.initializer);
                 }
             }
-            ty::TyDecl::TypeAliasDecl { decl_id, .. } => {
+            ty::TyDecl::TypeAliasDecl(ty::TypeAliasDecl { decl_id, .. }) => {
                 let type_alias_decl = decl_engine.get_type_alias(decl_id);
                 self.collect_type_alias_decl(&type_alias_decl);
             }

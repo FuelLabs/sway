@@ -110,11 +110,11 @@ impl ty::TyTraitDecl {
                     check!(
                         ctx.namespace.insert_symbol(
                             const_name.clone(),
-                            ty::TyDecl::ConstantDecl {
+                            ty::TyDecl::ConstantDecl(ty::ConstantDecl {
                                 name: const_name.clone(),
                                 decl_id: *decl_ref.id(),
                                 decl_span: const_decl.span.clone()
-                            }
+                            })
                         ),
                         return err(warnings, errors),
                         warnings,
@@ -366,11 +366,11 @@ impl ty::TyTraitDecl {
                     let const_name = const_decl.call_path.suffix.clone();
                     ctx.namespace.insert_symbol(
                         const_name.clone(),
-                        ty::TyDecl::ConstantDecl {
+                        ty::TyDecl::ConstantDecl(ty::ConstantDecl {
                             name: const_name,
                             decl_id: *decl_ref.id(),
                             decl_span: const_decl.span.clone(),
-                        },
+                        }),
                     );
                 }
             }

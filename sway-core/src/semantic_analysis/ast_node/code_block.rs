@@ -71,12 +71,12 @@ impl ty::TyCodeBlock {
                         .resolve_symbol(&never_mod_path, &never_ident)
                         .value;
 
-                    if let Some(ty::TyDecl::EnumDecl {
+                    if let Some(ty::TyDecl::EnumDecl(ty::EnumDecl {
                         name,
                         decl_id,
                         subst_list: _,
                         decl_span,
-                    }) = never_decl_opt
+                    })) = never_decl_opt
                     {
                         return ctx.engines().te().insert(
                             decl_engine,
