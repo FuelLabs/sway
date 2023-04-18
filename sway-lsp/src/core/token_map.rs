@@ -168,7 +168,9 @@ impl TokenMap {
     ) -> Option<ty::TyStructDecl> {
         self.declaration_of_type_id(engines, type_id)
             .and_then(|decl| match decl {
-                ty::TyDecl::StructDecl { decl_id, .. } => Some(engines.de().get_struct(&decl_id)),
+                ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
+                    Some(engines.de().get_struct(&decl_id))
+                }
                 _ => None,
             })
     }

@@ -438,10 +438,9 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
     leaves: &[NodeIndex],
     options: NodeConnectionOptions,
 ) -> Result<Vec<NodeIndex>, CompileError> {
-    use ty::TyDecl::*;
     let decl_engine = engines.de();
     match decl {
-        VariableDecl(var_decl) => {
+        ty::TyDecl::VariableDecl(var_decl) => {
             let ty::TyVariableDecl { body, name, .. } = &**var_decl;
             let result = connect_expression(
                 engines,
@@ -467,7 +466,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             );
             result
         }
-        ConstantDecl { decl_id, .. } => {
+        ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
             let ty::TyConstantDecl {
                 call_path, value, ..
             } = decl_engine.get_constant(decl_id);
@@ -490,39 +489,39 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
                 Ok(leaves.to_vec())
             }
         }
-        FunctionDecl { decl_id, .. } => {
+        ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. }) => {
             let fn_decl = decl_engine.get_function(decl_id);
             connect_typed_fn_decl(
                 engines, &fn_decl, graph, entry_node, span, exit_node, tree_type, options,
             )?;
             Ok(leaves.to_vec())
         }
-        TraitDecl { decl_id, .. } => {
+        ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. }) => {
             let trait_decl = decl_engine.get_trait(decl_id);
             connect_trait_declaration(&trait_decl, graph, entry_node, tree_type);
             Ok(leaves.to_vec())
         }
-        AbiDecl { decl_id, .. } => {
+        ty::TyDecl::AbiDecl(ty::AbiDecl { decl_id, .. }) => {
             let abi_decl = decl_engine.get_abi(decl_id);
             connect_abi_declaration(engines, &abi_decl, graph, entry_node, tree_type)?;
             Ok(leaves.to_vec())
         }
-        StructDecl { decl_id, .. } => {
+        ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
             let struct_decl = decl_engine.get_struct(decl_id);
             connect_struct_declaration(&struct_decl, *decl_id, graph, entry_node, tree_type);
             Ok(leaves.to_vec())
         }
-        EnumDecl { decl_id, .. } => {
+        ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
             let enum_decl = decl_engine.get_enum(decl_id);
             connect_enum_declaration(&enum_decl, *decl_id, graph, entry_node);
             Ok(leaves.to_vec())
         }
-        EnumVariantDecl { enum_ref, .. } => {
+        ty::TyDecl::EnumVariantDecl(ty::EnumVariantDecl { enum_ref, .. }) => {
             let enum_decl = decl_engine.get_enum(enum_ref.id());
             connect_enum_declaration(&enum_decl, *enum_ref.id(), graph, entry_node);
             Ok(leaves.to_vec())
         }
-        ImplTrait { decl_id, .. } => {
+        ty::TyDecl::ImplTrait(ty::ImplTrait { decl_id, .. }) => {
             let ty::TyImplTrait {
                 trait_name,
                 items,
@@ -542,16 +541,18 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             )?;
             Ok(leaves.to_vec())
         }
-        StorageDecl { decl_id, .. } => {
+        ty::TyDecl::StorageDecl(ty::StorageDecl { decl_id, .. }) => {
             let storage = decl_engine.get_storage(decl_id);
             connect_storage_declaration(&storage, graph, entry_node, tree_type);
             Ok(leaves.to_vec())
         }
-        TypeAliasDecl { .. } => {
+        ty::TyDecl::TypeAliasDecl(_) => {
             // TODO - handle type aliases properly. For now, always skip DCA for them.
             Ok(leaves.to_vec())
         }
-        ErrorRecovery(_) | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),
+        ty::TyDecl::ErrorRecovery(_) | ty::TyDecl::GenericTypeForFunctionScope(_) => {
+            Ok(leaves.to_vec())
+        }
     }
 }
 
@@ -1023,25 +1024,25 @@ fn get_trait_fn_node_index<'a>(
     let fn_decl = decl_engine.get_function(&function_decl_ref);
     if let Some(implementing_type) = fn_decl.implementing_type {
         match implementing_type {
-            ty::TyDecl::TraitDecl { decl_id, .. } => {
+            ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. }) => {
                 let trait_decl = decl_engine.get_trait(&decl_id);
                 Ok(graph
                     .namespace
                     .find_trait_method(&trait_decl.name.into(), &fn_decl.name))
             }
-            ty::TyDecl::StructDecl { decl_id, .. } => {
+            ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
                 let struct_decl = decl_engine.get_struct(&decl_id);
                 Ok(graph
                     .namespace
                     .find_trait_method(&struct_decl.call_path.suffix.into(), &fn_decl.name))
             }
-            ty::TyDecl::ImplTrait { decl_id, .. } => {
+            ty::TyDecl::ImplTrait(ty::ImplTrait { decl_id, .. }) => {
                 let impl_trait = decl_engine.get_impl_trait(&decl_id);
                 Ok(graph
                     .namespace
                     .find_trait_method(&impl_trait.trait_name, &fn_decl.name))
             }
-            ty::TyDecl::AbiDecl { decl_id, .. } => {
+            ty::TyDecl::AbiDecl(ty::AbiDecl { decl_id, .. }) => {
                 let abi_decl = decl_engine.get_abi(&decl_id);
                 Ok(graph
                     .namespace
@@ -1940,35 +1941,48 @@ fn construct_dead_code_warning_from_node(
         // if this is a function, struct, or trait declaration that is never called, then it is dead
         // code.
         ty::TyAstNode {
-            content: ty::TyAstNodeContent::Declaration(ty::TyDecl::FunctionDecl { name, .. }),
+            content:
+                ty::TyAstNodeContent::Declaration(ty::TyDecl::FunctionDecl(ty::FunctionDecl {
+                    name,
+                    ..
+                })),
             ..
         } => CompileWarning {
             span: name.span(),
             warning_content: Warning::DeadFunctionDeclaration,
         },
         ty::TyAstNode {
-            content: ty::TyAstNodeContent::Declaration(ty::TyDecl::StructDecl { name, .. }),
+            content:
+                ty::TyAstNodeContent::Declaration(ty::TyDecl::StructDecl(ty::StructDecl {
+                    name, ..
+                })),
             ..
         } => CompileWarning {
             span: name.span(),
             warning_content: Warning::DeadStructDeclaration,
         },
         ty::TyAstNode {
-            content: ty::TyAstNodeContent::Declaration(ty::TyDecl::EnumDecl { name, .. }),
+            content:
+                ty::TyAstNodeContent::Declaration(ty::TyDecl::EnumDecl(ty::EnumDecl { name, .. })),
             ..
         } => CompileWarning {
             span: name.span(),
             warning_content: Warning::DeadEnumDeclaration,
         },
         ty::TyAstNode {
-            content: ty::TyAstNodeContent::Declaration(ty::TyDecl::TraitDecl { name, .. }),
+            content:
+                ty::TyAstNodeContent::Declaration(ty::TyDecl::TraitDecl(ty::TraitDecl { name, .. })),
             ..
         } => CompileWarning {
             span: name.span(),
             warning_content: Warning::DeadTrait,
         },
         ty::TyAstNode {
-            content: ty::TyAstNodeContent::Declaration(ty::TyDecl::ConstantDecl { name, .. }),
+            content:
+                ty::TyAstNodeContent::Declaration(ty::TyDecl::ConstantDecl(ty::ConstantDecl {
+                    name,
+                    ..
+                })),
             ..
         } => CompileWarning {
             span: name.span(),
@@ -1994,7 +2008,10 @@ fn construct_dead_code_warning_from_node(
             }
         }
         ty::TyAstNode {
-            content: ty::TyAstNodeContent::Declaration(ty::TyDecl::ImplTrait { decl_id, .. }),
+            content:
+                ty::TyAstNodeContent::Declaration(ty::TyDecl::ImplTrait(ty::ImplTrait {
+                    decl_id, ..
+                })),
             span,
         } => {
             let ty::TyImplTrait { .. } = decl_engine.get_impl_trait(decl_id);
@@ -2004,13 +2021,13 @@ fn construct_dead_code_warning_from_node(
             }
         }
         ty::TyAstNode {
-            content: ty::TyAstNodeContent::Declaration(ty::TyDecl::AbiDecl { .. }),
+            content: ty::TyAstNodeContent::Declaration(ty::TyDecl::AbiDecl(_)),
             ..
         } => return None,
         // We handle storage fields individually. There is no need to emit any warnings for the
         // storage declaration itself.
         ty::TyAstNode {
-            content: ty::TyAstNodeContent::Declaration(ty::TyDecl::StorageDecl { .. }),
+            content: ty::TyAstNodeContent::Declaration(ty::TyDecl::StorageDecl(_)),
             ..
         } => return None,
         // If there is already an error for the declaration, we don't need to emit a dead code warning.
@@ -2078,26 +2095,26 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
     match &node.content {
         ty::TyAstNodeContent::Declaration(decl) => match &decl {
             ty::TyDecl::VariableDecl(_) => false,
-            ty::TyDecl::ConstantDecl { decl_id, .. } => {
+            ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
                 allow_dead_code(decl_engine.get_constant(decl_id).attributes)
             }
-            ty::TyDecl::FunctionDecl { decl_id, .. } => {
+            ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. }) => {
                 allow_dead_code(decl_engine.get_function(decl_id).attributes)
             }
-            ty::TyDecl::TraitDecl { decl_id, .. } => {
+            ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. }) => {
                 allow_dead_code(decl_engine.get_trait(decl_id).attributes)
             }
-            ty::TyDecl::StructDecl { decl_id, .. } => {
+            ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
                 allow_dead_code(decl_engine.get_struct(decl_id).attributes)
             }
-            ty::TyDecl::EnumDecl { decl_id, .. } => {
+            ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
                 allow_dead_code(decl_engine.get_enum(decl_id).attributes)
             }
-            ty::TyDecl::EnumVariantDecl {
+            ty::TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
                 enum_ref,
                 variant_name,
                 ..
-            } => decl_engine
+            }) => decl_engine
                 .get_enum(enum_ref.id())
                 .variants
                 .into_iter()
