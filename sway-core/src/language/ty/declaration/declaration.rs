@@ -18,67 +18,100 @@ use crate::{
 #[derive(Clone, Debug)]
 pub enum TyDecl {
     VariableDecl(Box<TyVariableDecl>),
-    ConstantDecl {
-        name: Ident,
-        decl_id: DeclId<TyConstantDecl>,
-        decl_span: Span,
-    },
-    FunctionDecl {
-        name: Ident,
-        decl_id: DeclId<TyFunctionDecl>,
-        subst_list: Template<SubstList>,
-        decl_span: Span,
-    },
-    TraitDecl {
-        name: Ident,
-        decl_id: DeclId<TyTraitDecl>,
-        subst_list: Template<SubstList>,
-        decl_span: Span,
-    },
-    StructDecl {
-        name: Ident,
-        decl_id: DeclId<TyStructDecl>,
-        subst_list: Template<SubstList>,
-        decl_span: Span,
-    },
-    EnumDecl {
-        name: Ident,
-        decl_id: DeclId<TyEnumDecl>,
-        subst_list: Template<SubstList>,
-        decl_span: Span,
-    },
-    EnumVariantDecl {
-        enum_ref: DeclRefEnum,
-        variant_name: Ident,
-        variant_decl_span: Span,
-    },
-    ImplTrait {
-        name: Ident,
-        decl_id: DeclId<TyImplTrait>,
-        subst_list: Template<SubstList>,
-        decl_span: Span,
-    },
-    AbiDecl {
-        name: Ident,
-        decl_id: DeclId<TyAbiDecl>,
-        decl_span: Span,
-    },
+    ConstantDecl(ConstantDecl),
+    FunctionDecl(FunctionDecl),
+    TraitDecl(TraitDecl),
+    StructDecl(StructDecl),
+    EnumDecl(EnumDecl),
+    EnumVariantDecl(EnumVariantDecl),
+    ImplTrait(ImplTrait),
+    AbiDecl(AbiDecl),
     // If type parameters are defined for a function, they are put in the namespace just for
     // the body of that function.
-    GenericTypeForFunctionScope {
-        name: Ident,
-        type_id: TypeId,
-    },
+    GenericTypeForFunctionScope(GenericTypeForFunctionScope),
     ErrorRecovery(Span),
-    StorageDecl {
-        decl_id: DeclId<TyStorageDecl>,
-        decl_span: Span,
-    },
-    TypeAliasDecl {
-        name: Ident,
-        decl_id: DeclId<TyTypeAliasDecl>,
-        decl_span: Span,
-    },
+    StorageDecl(StorageDecl),
+    TypeAliasDecl(TypeAliasDecl),
+}
+
+#[derive(Clone, Debug)]
+pub struct ConstantDecl {
+    pub name: Ident,
+    pub decl_id: DeclId<TyConstantDecl>,
+    pub decl_span: Span,
+}
+
+#[derive(Clone, Debug)]
+pub struct FunctionDecl {
+    pub name: Ident,
+    pub decl_id: DeclId<TyFunctionDecl>,
+    pub subst_list: Template<SubstList>,
+    pub decl_span: Span,
+}
+
+#[derive(Clone, Debug)]
+pub struct TraitDecl {
+    pub name: Ident,
+    pub decl_id: DeclId<TyTraitDecl>,
+    pub subst_list: Template<SubstList>,
+    pub decl_span: Span,
+}
+
+#[derive(Clone, Debug)]
+pub struct StructDecl {
+    pub name: Ident,
+    pub decl_id: DeclId<TyStructDecl>,
+    pub subst_list: Template<SubstList>,
+    pub decl_span: Span,
+}
+
+#[derive(Clone, Debug)]
+pub struct EnumDecl {
+    pub name: Ident,
+    pub decl_id: DeclId<TyEnumDecl>,
+    pub subst_list: Template<SubstList>,
+    pub decl_span: Span,
+}
+
+#[derive(Clone, Debug)]
+pub struct EnumVariantDecl {
+    pub enum_ref: DeclRefEnum,
+    pub variant_name: Ident,
+    pub variant_decl_span: Span,
+}
+
+#[derive(Clone, Debug)]
+pub struct ImplTrait {
+    pub name: Ident,
+    pub decl_id: DeclId<TyImplTrait>,
+    pub subst_list: Template<SubstList>,
+    pub decl_span: Span,
+}
+
+#[derive(Clone, Debug)]
+pub struct AbiDecl {
+    pub name: Ident,
+    pub decl_id: DeclId<TyAbiDecl>,
+    pub decl_span: Span,
+}
+
+#[derive(Clone, Debug)]
+pub struct GenericTypeForFunctionScope {
+    pub name: Ident,
+    pub type_id: TypeId,
+}
+
+#[derive(Clone, Debug)]
+pub struct StorageDecl {
+    pub decl_id: DeclId<TyStorageDecl>,
+    pub decl_span: Span,
+}
+
+#[derive(Clone, Debug)]
+pub struct TypeAliasDecl {
+    pub name: Ident,
+    pub decl_id: DeclId<TyTypeAliasDecl>,
+    pub decl_span: Span,
 }
 
 impl EqWithEngines for TyDecl {}
