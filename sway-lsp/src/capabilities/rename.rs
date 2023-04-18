@@ -7,10 +7,7 @@ use crate::{
     error::{LanguageServerError, RenameError},
 };
 use std::{collections::HashMap, sync::Arc};
-use sway_core::{
-    language::ty::{TyDecl, TyTraitInterfaceItem, TyTraitItem},
-    Engines,
-};
+use sway_core::{language::ty, Engines};
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{Position, PrepareRenameResponse, TextEdit, Url, WorkspaceEdit};
 
@@ -168,11 +165,11 @@ fn is_token_in_workspace(
 }
 
 /// Returns a `Vec<Ident>` containing the identifiers of all trait functions found.
-fn trait_interface_idents(interface_surface: &[TyTraitInterfaceItem]) -> Vec<Ident> {
+fn trait_interface_idents(interface_surface: &[ty::TyTraitInterfaceItem]) -> Vec<Ident> {
     interface_surface
         .iter()
         .flat_map(|item| match item {
-            TyTraitInterfaceItem::TraitFn(fn_decl) => Some(fn_decl.name().clone()),
+            ty::TyTraitInterfaceItem::TraitFn(fn_decl) => Some(fn_decl.name().clone()),
             _ => None,
         })
         .collect()
@@ -198,22 +195,22 @@ fn find_all_methods_for_decl(
         .filter_map(|(_, token)| {
             token.typed.as_ref().and_then(|typed| match typed {
                 TypedAstToken::TypedDeclaration(decl) => match decl {
-                    TyDecl::AbiDecl { decl_id, .. } => {
+                    ty::TyDecl::AbiDecl(ty::AbiDecl { decl_id, .. }) => {
                         let abi_decl = engines.de().get_abi(decl_id);
                         Some(trait_interface_idents(&abi_decl.interface_surface))
                     }
-                    TyDecl::TraitDecl { decl_id, .. } => {
+                    ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. }) => {
                         let trait_decl = engines.de().get_trait(decl_id);
                         Some(trait_interface_idents(&trait_decl.interface_surface))
                     }
-                    TyDecl::ImplTrait { decl_id, .. } => {
+                    ty::TyDecl::ImplTrait(ty::ImplTrait { decl_id, .. }) => {
                         let impl_trait = engines.de().get_impl_trait(decl_id);
                         Some(
                             impl_trait
                                 .items
                                 .iter()
                                 .filter_map(|item| match item {
-                                    TyTraitItem::Fn(fn_decl) => Some(fn_decl.name().clone()),
+                                    ty::TyTraitItem::Fn(fn_decl) => Some(fn_decl.name().clone()),
                                     _ => None,
                                 })
                                 .collect::<Vec<Ident>>(),

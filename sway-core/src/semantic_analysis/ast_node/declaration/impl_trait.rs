@@ -105,7 +105,7 @@ impl ty::TyImplTrait {
             .ok(&mut warnings, &mut errors)
             .cloned()
         {
-            Some(ty::TyDecl::TraitDecl { decl_id, .. }) => {
+            Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
                 let mut trait_decl = decl_engine.get_trait(&decl_id);
 
                 // monomorphize the trait declaration
@@ -153,7 +153,7 @@ impl ty::TyImplTrait {
                     implementing_for,
                 }
             }
-            Some(ty::TyDecl::AbiDecl { decl_id, .. }) => {
+            Some(ty::TyDecl::AbiDecl(ty::AbiDecl { decl_id, .. })) => {
                 // if you are comparing this with the `impl_trait` branch above, note that
                 // there are no type arguments here because we don't support generic types
                 // in contract ABIs yet (or ever?) due to the complexity of communicating
@@ -362,7 +362,7 @@ impl ty::TyImplTrait {
                 ty::TyDecl::VariableDecl(decl) => {
                     expr_contains_get_storage_index(decl_engine, &decl.body, access_span)
                 }
-                ty::TyDecl::ConstantDecl { decl_id, .. } => {
+                ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
                     let ty::TyConstantDecl { value: expr, .. } = decl_engine.get_constant(decl_id);
                     match expr {
                         Some(expr) => {
@@ -537,11 +537,11 @@ impl ty::TyImplTrait {
                     check!(
                         ctx.namespace.insert_symbol(
                             decl_ref.name().clone(),
-                            ty::TyDecl::ConstantDecl {
+                            ty::TyDecl::ConstantDecl(ty::ConstantDecl {
                                 name: decl_ref.name().clone(),
                                 decl_id: *decl_ref.id(),
                                 decl_span: decl_ref.span().clone()
-                            }
+                            })
                         ),
                         return err(warnings, errors),
                         warnings,
@@ -1273,7 +1273,7 @@ fn handle_supertraits(
             .ok(&mut warnings, &mut errors)
             .cloned()
         {
-            Some(ty::TyDecl::TraitDecl { decl_id, .. }) => {
+            Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
                 let trait_decl = decl_engine.get_trait(&decl_id);
 
                 // Right now we don't parse type arguments for supertraits, so

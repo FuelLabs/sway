@@ -143,12 +143,12 @@ impl ty::TyDecl {
                         .resolve_call_path(&supertrait.name)
                         .cloned()
                         .map(|supertrait_decl| {
-                            if let ty::TyDecl::TraitDecl {
+                            if let ty::TyDecl::TraitDecl(ty::TraitDecl {
                                 name: supertrait_name,
                                 decl_id: supertrait_decl_id,
                                 subst_list: _,
                                 decl_span: supertrait_decl_span,
-                            } = supertrait_decl
+                            }) = supertrait_decl
                             {
                                 supertrait.decl_ref = Some(DeclRef::new(
                                     supertrait_name,
@@ -264,12 +264,12 @@ impl ty::TyDecl {
                         .resolve_call_path(&supertrait.name)
                         .cloned()
                         .map(|supertrait_decl| {
-                            if let ty::TyDecl::TraitDecl {
+                            if let ty::TyDecl::TraitDecl(ty::TraitDecl {
                                 name: supertrait_name,
                                 decl_id: supertrait_decl_id,
                                 subst_list: _,
                                 decl_span: supertrait_decl_span,
-                            } = supertrait_decl
+                            }) = supertrait_decl
                             {
                                 supertrait.decl_ref = Some(DeclRef::new(
                                     supertrait_name,
