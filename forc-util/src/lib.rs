@@ -9,9 +9,12 @@ use anyhow::{bail, Result};
 use clap::Args;
 use forc_tracing::{println_red_err, println_yellow_err};
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
 use std::str;
 use std::{ffi::OsStr, process::Termination};
+use std::{
+    fmt::Display,
+    path::{Path, PathBuf},
+};
 use sway_core::fuel_prelude::fuel_tx;
 use sway_core::language::parsed::TreeType;
 use sway_error::error::CompileError;
@@ -24,9 +27,21 @@ pub mod restricted;
 
 pub const DEFAULT_OUTPUT_DIRECTORY: &str = "out";
 pub const DEFAULT_ERROR_EXIT_CODE: u8 = 1;
+pub const DEFAULT_SUCCESS_EXIT_CODE: u8 = 0;
 
+/// A result type for forc operations. This shouldn't be returned from entry points, instead return
+/// `ForcCliResult` to exit with correct exit code.
 pub type ForcResult<T, E = ForcError> = Result<T, E>;
 
+/// A wrapper around `ForcResult`. Designed to be returned from entry points as it handles
+/// error reporting and exits with correct exit code.
+#[derive(Debug)]
+pub struct ForcCliResult<T> {
+    result: ForcResult<T>,
+}
+
+/// A forc error type which is a wrapper around `anyhow::Error`. It enables propagation of custom
+/// exit code alongisde the original error.
 #[derive(Debug)]
 pub struct ForcError {
     error: anyhow::Error,
@@ -72,10 +87,27 @@ impl From<std::io::Error> for ForcError {
     }
 }
 
-impl Termination for ForcError {
+impl Display for ForcError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.error.fmt(f)
+    }
+}
+
+impl<T> Termination for ForcCliResult<T> {
     fn report(self) -> std::process::ExitCode {
-        error!("Error: {:?}", self.error);
-        std::process::ExitCode::from(self.exit_code)
+        match self.result {
+            Ok(_) => DEFAULT_SUCCESS_EXIT_CODE.into(),
+            Err(e) => {
+                error!("Error: {}", e);
+                e.exit_code.into()
+            }
+        }
+    }
+}
+
+impl<T> From<ForcResult<T>> for ForcCliResult<T> {
+    fn from(value: ForcResult<T>) -> Self {
+        Self { result: value }
     }
 }
 
