@@ -152,11 +152,13 @@
         0 =&gt; 10,
         1 =&gt; 20,
         5 =&gt; 50,
+        6 | 7 =&gt; 60,
         catch_all =&gt; 0,
     };
 </code></pre>
 <p>The left side of the arrow <code>=&gt;</code> is the pattern that we are matching on and the right side of the arrow <code>=&gt;</code> is the logic that we want to perform, in this case we are returning a different multiple of <code>10</code> depending on which arm is matched.</p>
 <p>We check each arm starting from <code>0</code> and make our way down until we either find a match on our pattern or we reach the <code>catch_all</code> case.</p>
+<p>The <code>|</code> operator can be used to produce a pattern that is a disjuction of other patterns.</p>
 <p>The <code>catch_all</code> case is equivalent to an <code>else</code> in <a href="../if-expressions.html">if expressions</a> and it does not have to be called <code>catch_all</code>. Any pattern declared after a <code>catch_all</code> case will not be matched because once the compiler sees the first <code>catch_all</code> it stop performing further checks.</p>
 
                     </main>
