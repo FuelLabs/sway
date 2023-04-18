@@ -398,6 +398,15 @@ impl Function {
         context.functions[self.0].local_storage.iter()
     }
 
+    /// Remove given list of locals
+    pub fn remove_locals(&self, context: &mut Context, removals: &Vec<String>) {
+        for remove in removals {
+            if let Some(local) = context.functions[self.0].local_storage.remove(remove) {
+                context.local_vars.remove(local.0);
+            }
+        }
+    }
+
     /// Merge values from another [`Function`] into this one.
     ///
     /// The names of the merged values are guaranteed to be unique via the use of
