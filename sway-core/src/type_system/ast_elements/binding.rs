@@ -360,7 +360,11 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
         );
 
         // Get a new copy from the declaration engine.
-        let mut new_copy = if let ty::TyDecl::EnumVariantDecl { enum_ref, .. } = &unknown_decl {
+        let mut new_copy = if let ty::TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
+            enum_ref,
+            ..
+        }) = &unknown_decl
+        {
             decl_engine.get_enum(enum_ref.id())
         } else {
             // Check to see if this is a enum declaration.

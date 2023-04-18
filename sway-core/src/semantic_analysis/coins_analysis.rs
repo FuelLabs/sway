@@ -25,7 +25,7 @@ pub fn possibly_nonzero_u64_expression(
                         ty::TyDecl::VariableDecl(var_decl) => {
                             possibly_nonzero_u64_expression(namespace, decl_engine, &var_decl.body)
                         }
-                        ty::TyDecl::ConstantDecl { decl_id, .. } => {
+                        ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
                             let const_decl = decl_engine.get_constant(decl_id);
                             match const_decl.value {
                                 Some(value) => {

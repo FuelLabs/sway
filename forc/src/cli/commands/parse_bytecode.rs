@@ -1,5 +1,6 @@
-use anyhow::{anyhow, Result};
+use anyhow::anyhow;
 use clap::Parser;
+use forc_util::ForcResult;
 use std::fs::{self, File};
 use std::io::Read;
 use term_table::row::Row;
@@ -12,7 +13,7 @@ pub(crate) struct Command {
     file_path: String,
 }
 
-pub(crate) fn exec(command: Command) -> Result<()> {
+pub(crate) fn exec(command: Command) -> ForcResult<()> {
     let mut f = File::open(&command.file_path)
         .map_err(|_| anyhow!("{}: file not found", command.file_path))?;
     let metadata = fs::metadata(&command.file_path)
