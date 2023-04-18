@@ -23,6 +23,15 @@ impl Format for Pattern {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         match self {
+            Self::Or {
+                lhs,
+                pipe_token: _,
+                rhs,
+            } => {
+                lhs.format(formatted_code, formatter)?;
+                formatted_code.push_str(" | ");
+                rhs.format(formatted_code, formatter)?;
+            }
             Self::Wildcard { underscore_token } => {
                 formatted_code.push_str(underscore_token.span().as_str())
             }
@@ -262,6 +271,15 @@ impl LeafSpans for Pattern {
         match self {
             Pattern::Wildcard { underscore_token } => {
                 collected_spans.push(ByteSpan::from(underscore_token.span()));
+            }
+            Pattern::Or {
+                lhs,
+                pipe_token,
+                rhs,
+            } => {
+                collected_spans.append(&mut lhs.leaf_spans());
+                collected_spans.push(ByteSpan::from(pipe_token.span()));
+                collected_spans.append(&mut rhs.leaf_spans());
             }
             Pattern::Var {
                 reference,
