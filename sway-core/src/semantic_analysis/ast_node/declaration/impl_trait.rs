@@ -510,6 +510,17 @@ impl ty::TyImplTrait {
             .with_help_text("")
             .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
 
+        // Insert implementing type decl as `Self` symbol.
+        let self_decl: Option<ty::TyDecl> = match type_engine.get(implementing_for.type_id) {
+            TypeInfo::Enum(r) => Some(r.into()),
+            TypeInfo::Struct(r) => Some(r.into()),
+            _ => None,
+        };
+        if let Some(self_decl) = self_decl {
+            ctx.namespace
+                .insert_symbol(Ident::new_no_span("Self".to_string()), self_decl);
+        }
+
         // type check the items inside of the impl block
         let mut new_items = vec![];
 
