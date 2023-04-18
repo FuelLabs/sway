@@ -39,7 +39,7 @@ pub(crate) fn insert_supertraits_into_namespace(
             .ok(&mut warnings, &mut errors)
             .cloned()
         {
-            Some(ty::TyDecl::TraitDecl { decl_id, .. }) => {
+            Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
                 let mut trait_decl = decl_engine.get_trait(&decl_id);
 
                 // Right now we don't parse type arguments for supertraits, so
