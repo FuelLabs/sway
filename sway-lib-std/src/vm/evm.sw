@@ -1,3 +1,4 @@
+//! EVM-specific utilities.
 library;
 
 mod evm_address;

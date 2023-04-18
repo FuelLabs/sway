@@ -1,3 +1,4 @@
+//! Helper functions to verify EVM signatures.
 library;
 
 use ::b512::B512;

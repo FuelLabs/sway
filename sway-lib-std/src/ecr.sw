@@ -1,3 +1,4 @@
+//! Helper functions to verify signatures.
 library;
 
 use ::address::Address;

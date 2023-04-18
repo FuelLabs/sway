@@ -1,11 +1,12 @@
+//! Functions to panic or revert with a given error code.
 library;
 
 use ::logging::log;
 use ::error_signals::FAILED_REQUIRE_SIGNAL;
 
-/// Context-dependent:
-/// Will panic if used in a predicate.
-/// Will revert if used in a contract.
+/// Will either panic or revert with a given number depending on the context.
+/// If used in a predicate, it will panic.
+/// If used in a contract, it will revert.
 ///
 /// ### Arguments
 ///

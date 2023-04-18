@@ -1,3 +1,4 @@
+//! Utilities for common math operations.
 library;
 
 pub trait Root {

@@ -1,3 +1,4 @@
+//! A 128-bit unsigned integer type.
 library;
 
 use ::assert::assert;

@@ -1,3 +1,4 @@
+//! Contract storage utilities.
 library;
 
 use ::alloc::{alloc, alloc_bytes, realloc_bytes};
