@@ -24,6 +24,8 @@ pub(crate) struct DocLinks {
 impl Renderable for DocLinks {
     fn render(self, _render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
         let mut new_vec = Vec::new();
+        // sort the doc links alphabetically
+        // for the AllDoc page, sort based on the module prefix
         match self.style {
             DocStyle::AllDoc(_) => {
                 for (block_title, mut doc_link) in self.links {
