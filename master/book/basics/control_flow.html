@@ -171,6 +171,7 @@
 <pre><code class="language-sway">let result = match expression {
     pattern1 =&gt; code_to_execute_if_expression_matches_pattern1,
     pattern2 =&gt; code_to_execute_if_expression_matches_pattern2,
+    pattern3 | pattern4 =&gt; code_to_execute_if_expression_matches_pattern3_or_pattern4
     ...
     _ =&gt; code_to_execute_if_expression_matches_no_pattern,
 }
@@ -188,7 +189,7 @@ fn on_odd(num: u64) {
 
 fn main(num: u64) -&gt; u64 {
     // Match as an expression
-    let isEven = match num % 2 {
+    let is_even = match num % 2 {
         0 =&gt; true,
         _ =&gt; false,
     };
@@ -207,17 +208,22 @@ fn main(num: u64) -&gt; u64 {
         Cloudy: (),
         Snowy: (),
     }
-    let currentWeather = Weather::Sunny;
-    let avgTemp = match currentWeather {
+    let current_weather = Weather::Sunny;
+    let avg_temp = match current_weather {
         Weather::Sunny =&gt; 80,
         Weather::Rainy =&gt; 50,
         Weather::Cloudy =&gt; 60,
         Weather::Snowy =&gt; 20,
     };
 
+    let is_sunny = match current_weather {
+        Weather::Sunny =&gt; true,
+        Weather::Rainy | Weather::Cloudy | Weather::Snowy =&gt; false,
+    };
+
     // match expression used for a return
-    let outsideTemp = Weather::Sunny;
-    match outsideTemp {
+    let outside_temp = Weather::Sunny;
+    match outside_temp {
         Weather::Sunny =&gt; 80,
         Weather::Rainy =&gt; 50,
         Weather::Cloudy =&gt; 60,
