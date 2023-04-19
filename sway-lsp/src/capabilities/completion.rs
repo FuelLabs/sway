@@ -31,7 +31,7 @@ fn completion_items_for_type_id(
     let mut completion_items = vec![];
     let type_info = engines.te().get(type_id);
 
-    if let TypeInfo::Struct(decl_ref) = type_info.clone() {
+    if let TypeInfo::Struct(decl_ref) = type_info {
         let struct_decl = engines.de().get_struct(&decl_ref.id().clone());
         for field in struct_decl.fields {
             let item = CompletionItem {
@@ -78,7 +78,7 @@ fn completion_items_for_type_id(
                     new_text: format!("{}({})", method.name().clone().as_str(), params_edit_str),
                 })),
                 label_details: Some(CompletionItemLabelDetails {
-                    description: Some(fn_signature_string(&fn_decl, &type_info)),
+                    description: Some(fn_signature_string(engines, &fn_decl, &type_id)),
                     detail: None,
                 }),
                 ..Default::default()
@@ -91,24 +91,38 @@ fn completion_items_for_type_id(
 }
 
 /// Returns the [String] of the shortened function signature to display in the completion item's label details.
-fn fn_signature_string(fn_decl: &TyFunctionDecl, parent_type_info: &TypeInfo) -> String {
+fn fn_signature_string(
+    engines: Engines,
+    fn_decl: &TyFunctionDecl,
+    parent_type_id: &TypeId,
+) -> String {
     let params_str = fn_decl
         .parameters
         .iter()
-        .map(|p| replace_self_with_type_str(p.type_argument.clone().span.str(), parent_type_info))
+        .map(|p| {
+            replace_self_with_type_str(engines, p.type_argument.clone().span.str(), parent_type_id)
+        })
         .collect::<Vec<String>>()
         .join(", ");
     format!(
         "fn({}) -> {}",
         params_str,
-        replace_self_with_type_str(fn_decl.return_type.clone().span.str(), parent_type_info)
+        replace_self_with_type_str(
+            engines,
+            fn_decl.return_type.clone().span.str(),
+            parent_type_id
+        )
     )
 }
 
 /// Given a [String] representing a type, replaces `Self` with the display name of the type.
-fn replace_self_with_type_str(type_str: String, parent_type_info: &TypeInfo) -> String {
+fn replace_self_with_type_str(
+    engines: Engines,
+    type_str: String,
+    parent_type_id: &TypeId,
+) -> String {
     if type_str == "Self" {
-        return parent_type_info.display_name();
+        return engines.help_out(parent_type_id).to_string();
     }
     type_str
 }

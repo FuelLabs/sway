@@ -20,14 +20,22 @@ impl ty::TyProgram {
         parsed: &ParseProgram,
         initial_namespace: namespace::Module,
         package_name: &str,
+        experimental_storage: bool,
     ) -> CompileResult<Self> {
         let mut namespace = Namespace::init_root(initial_namespace);
-        let ctx =
-            TypeCheckContext::from_root(&mut namespace, engines).with_kind(parsed.kind.clone());
+        let ctx = TypeCheckContext::from_root(&mut namespace, engines)
+            .with_kind(parsed.kind.clone())
+            .with_experimental_storage(experimental_storage);
         let ParseProgram { root, kind } = parsed;
         let mod_res = ty::TyModule::type_check(ctx, root);
         mod_res.flat_map(|root| {
-            let res = Self::validate_root(engines, &root, kind.clone(), package_name);
+            let res = Self::validate_root(
+                engines,
+                &root,
+                kind.clone(),
+                package_name,
+                experimental_storage,
+            );
             res.map(|(kind, declarations, configurables)| Self {
                 kind,
                 root,
@@ -46,6 +54,7 @@ impl ty::TyProgram {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         module: Module,
+        experimental_storage: bool,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -59,14 +68,20 @@ impl ty::TyProgram {
 
                 // Expecting at most a single storage declaration
                 match storage_decl {
-                    Some(ty::TyDecl::StorageDecl {
+                    Some(ty::TyDecl::StorageDecl(ty::StorageDecl {
                         decl_id,
                         decl_span: _,
                         ..
-                    }) => {
+                    })) => {
                         let decl = decl_engine.get_storage(decl_id);
                         let mut storage_slots = check!(
-                            decl.get_initialized_storage_slots(engines, context, md_mgr, module),
+                            decl.get_initialized_storage_slots(
+                                engines,
+                                context,
+                                md_mgr,
+                                module,
+                                experimental_storage
+                            ),
                             return err(warnings, errors),
                             warnings,
                             errors,

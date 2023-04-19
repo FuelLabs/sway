@@ -10,7 +10,7 @@ fn on_odd(num: u64) {
 
 fn main(num: u64) -> u64 {
     // Match as an expression
-    let isEven = match num % 2 {
+    let is_even = match num % 2 {
         0 => true,
         _ => false,
     };
@@ -29,17 +29,22 @@ fn main(num: u64) -> u64 {
         Cloudy: (),
         Snowy: (),
     }
-    let currentWeather = Weather::Sunny;
-    let avgTemp = match currentWeather {
+    let current_weather = Weather::Sunny;
+    let avg_temp = match current_weather {
         Weather::Sunny => 80,
         Weather::Rainy => 50,
         Weather::Cloudy => 60,
         Weather::Snowy => 20,
     };
 
+    let is_sunny = match current_weather {
+        Weather::Sunny => true,
+        Weather::Rainy | Weather::Cloudy | Weather::Snowy => false,
+    };
+
     // match expression used for a return
-    let outsideTemp = Weather::Sunny;
-    match outsideTemp {
+    let outside_temp = Weather::Sunny;
+    match outside_temp {
         Weather::Sunny => 80,
         Weather::Rainy => 50,
         Weather::Cloudy => 60,

@@ -98,10 +98,10 @@ fn contract_entry_points(
     ast_nodes
         .iter()
         .flat_map(|ast_node| match &ast_node.content {
-            Declaration(ty::TyDecl::FunctionDecl { decl_id, .. }) => {
+            Declaration(ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. })) => {
                 decl_id_to_fn_decls(decl_engine, decl_id)
             }
-            Declaration(ty::TyDecl::ImplTrait { decl_id, .. }) => {
+            Declaration(ty::TyDecl::ImplTrait(ty::ImplTrait { decl_id, .. })) => {
                 impl_trait_methods(decl_engine, decl_id)
             }
             _ => vec![],
@@ -210,6 +210,7 @@ fn analyze_expression(
     match &expr.expression {
         // base cases: no warnings can be emitted
         Literal(_)
+        | ConstantExpression { .. }
         | VariableExpression { .. }
         | FunctionParameter
         | StorageAccess(_)
@@ -506,6 +507,7 @@ fn effects_of_expression(engines: Engines<'_>, expr: &ty::TyExpression) -> HashS
     let decl_engine = engines.de();
     match &expr.expression {
         Literal(_)
+        | ConstantExpression { .. }
         | VariableExpression { .. }
         | FunctionParameter
         | Break

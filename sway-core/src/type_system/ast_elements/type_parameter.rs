@@ -106,9 +106,14 @@ impl Spanned for TypeParameter {
     }
 }
 
-impl DisplayWithEngines for TypeParameter {
+impl DebugWithEngines for TypeParameter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
-        write!(f, "{}: {}", self.name_ident, engines.help_out(self.type_id))
+        write!(
+            f,
+            "{}: {:?}",
+            self.name_ident,
+            engines.help_out(self.type_id)
+        )
     }
 }
 
@@ -203,10 +208,11 @@ impl TypeParameter {
 
         // Insert the type parameter into the namespace as a dummy type
         // declaration.
-        let type_parameter_decl = ty::TyDecl::GenericTypeForFunctionScope {
-            name: name_ident.clone(),
-            type_id,
-        };
+        let type_parameter_decl =
+            ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
+                name: name_ident.clone(),
+                type_id,
+            });
         ctx.namespace
             .insert_symbol(name_ident.clone(), type_parameter_decl)
             .ok(&mut warnings, &mut errors);
@@ -308,7 +314,7 @@ fn handle_trait(
         .ok(&mut warnings, &mut errors)
         .cloned()
     {
-        Some(ty::TyDecl::TraitDecl { decl_id, .. }) => {
+        Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
             let trait_decl = decl_engine.get_trait(&decl_id);
 
             let (trait_interface_item_refs, trait_item_refs, trait_impld_item_refs) = trait_decl

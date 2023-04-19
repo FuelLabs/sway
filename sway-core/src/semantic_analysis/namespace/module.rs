@@ -1,4 +1,5 @@
 use crate::{
+    decl_engine::DeclRef,
     engine_threading::Engines,
     error::*,
     language::{
@@ -436,20 +437,25 @@ impl Module {
                     });
                 }
 
-                if let TyDecl::EnumDecl {
+                if let TyDecl::EnumDecl(ty::EnumDecl {
                     decl_id,
-                    subst_list,
+                    subst_list: _,
                     ..
-                } = decl
+                }) = decl
                 {
                     let enum_decl = decl_engine.get_enum(&decl_id);
+                    let enum_ref = DeclRef::new(
+                        enum_decl.call_path.suffix.clone(),
+                        decl_id,
+                        enum_decl.span(),
+                    );
 
                     if let Some(variant_decl) =
                         enum_decl.variants.iter().find(|v| v.name == *variant_name)
                     {
                         // import it this way.
                         let dst_ns = &mut self[dst];
-                        let add_synonym = |name| {
+                        let mut add_synonym = |name| {
                             if let Some((_, GlobImport::No, _)) = dst_ns.use_synonyms.get(name) {
                                 errors
                                     .push(CompileError::ShadowsOtherSymbol { name: name.clone() });
@@ -459,12 +465,11 @@ impl Module {
                                 (
                                     src.to_vec(),
                                     GlobImport::No,
-                                    TyDecl::EnumVariantDecl {
-                                        decl_id,
-                                        subst_list,
+                                    TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
+                                        enum_ref: enum_ref.clone(),
                                         variant_name: variant_name.clone(),
                                         variant_decl_span: variant_decl.span.clone(),
-                                    },
+                                    }),
                                 ),
                             );
                         };
@@ -534,13 +539,18 @@ impl Module {
                     });
                 }
 
-                if let TyDecl::EnumDecl {
+                if let TyDecl::EnumDecl(ty::EnumDecl {
                     decl_id,
-                    subst_list,
+                    subst_list: _,
                     ..
-                } = decl
+                }) = decl
                 {
                     let enum_decl = decl_engine.get_enum(&decl_id);
+                    let enum_ref = DeclRef::new(
+                        enum_decl.call_path.suffix.clone(),
+                        decl_id,
+                        enum_decl.span(),
+                    );
 
                     for variant_decl in enum_decl.variants {
                         let variant_name = variant_decl.name;
@@ -552,12 +562,11 @@ impl Module {
                             (
                                 src.to_vec(),
                                 GlobImport::Yes,
-                                TyDecl::EnumVariantDecl {
-                                    decl_id,
-                                    subst_list: subst_list.clone(),
+                                TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
+                                    enum_ref: enum_ref.clone(),
                                     variant_name,
                                     variant_decl_span: variant_decl.span.clone(),
-                                },
+                                }),
                             ),
                         );
                     }

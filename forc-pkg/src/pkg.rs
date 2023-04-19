@@ -242,8 +242,13 @@ pub struct PkgOpts {
 pub struct PrintOpts {
     /// Print the generated Sway AST (Abstract Syntax Tree).
     pub ast: bool,
-    /// Print the computed Sway DCA (Dead Code Analysis) graph.
-    pub dca_graph: bool,
+    /// Print the computed Sway DCA (Dead Code Analysis) graph to the specified path.
+    /// If not specified prints to stdout.
+    pub dca_graph: Option<String>,
+    /// Specifies the url format to be used in the generated dot file.
+    /// Variables {path}, {line} {col} can be used in the provided format.
+    /// An example for vscode would be: "vscode://file/{path}:{line}:{col}"
+    pub dca_graph_url_format: Option<String>,
     /// Print the finalized ASM.
     ///
     /// This is the state of the ASM with registers allocated and optimisations applied.
@@ -297,6 +302,8 @@ pub struct BuildOpts {
     pub tests: bool,
     /// The set of options to filter by member project kind.
     pub member_filter: MemberFilter,
+    /// Enable the experimental storage implementation and UI.
+    pub experimental_storage: bool,
 }
 
 /// The set of options to filter type of projects to build in a workspace.
@@ -326,7 +333,7 @@ impl Default for MemberFilter {
 }
 
 impl MemberFilter {
-    /// Returns a new `BuildFilter` that only builds scripts.
+    /// Returns a new `MemberFilter` that only builds scripts.
     pub fn only_scripts() -> Self {
         Self {
             build_contracts: false,
@@ -336,7 +343,7 @@ impl MemberFilter {
         }
     }
 
-    /// Returns a new `BuildFilter` that only builds contracts.
+    /// Returns a new `MemberFilter` that only builds contracts.
     pub fn only_contracts() -> Self {
         Self {
             build_contracts: true,
@@ -346,7 +353,17 @@ impl MemberFilter {
         }
     }
 
-    /// Filter given target of output nodes according to the this `BuildFilter`.
+    /// Returns a new `MemberFilter`, that only builds predicates.
+    pub fn only_predicates() -> Self {
+        Self {
+            build_contracts: false,
+            build_scripts: false,
+            build_predicates: true,
+            build_libraries: false,
+        }
+    }
+
+    /// Filter given target of output nodes according to the this `MemberFilter`.
     pub fn filter_outputs(
         &self,
         build_plan: &BuildPlan,
@@ -754,6 +771,24 @@ impl BuildPlan {
             manifest_map[&graph[member_node].id()]
                 .build_profiles()
                 .map(|(n, p)| (n.clone(), p.clone()))
+        })
+    }
+
+    /// Returns a salt for the given pinned package if it is a contract and `None` for libraries.
+    pub fn salt(&self, pinned: &Pinned) -> Option<fuel_tx::Salt> {
+        let graph = self.graph();
+        let node_ix = graph
+            .node_indices()
+            .find(|node_ix| graph[*node_ix] == *pinned);
+        node_ix.and_then(|node| {
+            graph
+                .edges_directed(node, Direction::Incoming)
+                .map(|e| match e.weight().kind {
+                    DepKind::Library => None,
+                    DepKind::Contract { salt } => Some(salt),
+                })
+                .next()
+                .flatten()
         })
     }
 }
@@ -1506,11 +1541,13 @@ pub fn sway_build_config(
         manifest_dir.to_path_buf(),
         build_target,
     )
-    .print_dca_graph(build_profile.print_dca_graph)
+    .print_dca_graph(build_profile.print_dca_graph.clone())
+    .print_dca_graph_url_format(build_profile.print_dca_graph_url_format.clone())
     .print_finalized_asm(build_profile.print_finalized_asm)
     .print_intermediate_asm(build_profile.print_intermediate_asm)
     .print_ir(build_profile.print_ir)
-    .include_tests(build_profile.include_tests);
+    .include_tests(build_profile.include_tests)
+    .experimental_storage(build_profile.experimental_storage);
     Ok(build_config)
 }
 
@@ -1952,6 +1989,7 @@ fn build_profile_from_opts(
         time_phases,
         tests,
         error_on_warnings,
+        experimental_storage,
         ..
     } = build_options;
     let mut selected_build_profile = BuildProfile::DEBUG;
@@ -1988,7 +2026,12 @@ fn build_profile_from_opts(
             Default::default()
         });
     profile.print_ast |= print.ast;
-    profile.print_dca_graph |= print.dca_graph;
+    if profile.print_dca_graph.is_none() {
+        profile.print_dca_graph = print.dca_graph.clone();
+    }
+    if profile.print_dca_graph_url_format.is_none() {
+        profile.print_dca_graph_url_format = print.dca_graph_url_format.clone();
+    }
     profile.print_ir |= print.ir;
     profile.print_finalized_asm |= print.finalized_asm;
     profile.print_intermediate_asm |= print.intermediate_asm;
@@ -1997,6 +2040,7 @@ fn build_profile_from_opts(
     profile.include_tests |= tests;
     profile.json_abi_with_callpaths |= pkg.json_abi_with_callpaths;
     profile.error_on_warnings |= error_on_warnings;
+    profile.experimental_storage |= experimental_storage;
 
     Ok((selected_build_profile.to_string(), profile))
 }

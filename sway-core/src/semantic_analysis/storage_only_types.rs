@@ -26,6 +26,7 @@ fn expr_validate(engines: Engines<'_>, expr: &ty::TyExpression) -> CompileResult
     let mut warnings: Vec<CompileWarning> = vec![];
     match &expr.expression {
         ty::TyExpressionVariant::Literal(_)
+        | ty::TyExpressionVariant::ConstantExpression { .. }
         | ty::TyExpressionVariant::VariableExpression { .. }
         | ty::TyExpressionVariant::FunctionParameter
         | ty::TyExpressionVariant::AsmExpression { .. }
@@ -188,7 +189,7 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDecl) -> CompileResult<()> {
             );
             check!(expr_validate(engines, &decl.body), (), warnings, errors)
         }
-        ty::TyDecl::ConstantDecl { decl_id, .. } => {
+        ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
             check!(
                 validate_const_decl(engines, decl_id),
                 return err(warnings, errors),
@@ -196,7 +197,7 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDecl) -> CompileResult<()> {
                 errors
             );
         }
-        ty::TyDecl::FunctionDecl { decl_id, .. } => {
+        ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. }) => {
             check!(
                 validate_fn_decl(engines, decl_id),
                 return err(warnings, errors),
@@ -204,10 +205,10 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDecl) -> CompileResult<()> {
                 errors
             );
         }
-        ty::TyDecl::AbiDecl { .. } | ty::TyDecl::TraitDecl { .. } => {
+        ty::TyDecl::AbiDecl(_) | ty::TyDecl::TraitDecl(_) => {
             // These methods are not typed. They are however handled from ImplTrait.
         }
-        ty::TyDecl::ImplTrait { decl_id, .. } => {
+        ty::TyDecl::ImplTrait(ty::ImplTrait { decl_id, .. }) => {
             let ty::TyImplTrait { items, .. } = decl_engine.get_impl_trait(decl_id);
             for item in items {
                 match item {
@@ -230,7 +231,7 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDecl) -> CompileResult<()> {
                 }
             }
         }
-        ty::TyDecl::StructDecl { decl_id, .. } => {
+        ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
             let ty::TyStructDecl { fields, .. } = decl_engine.get_struct(decl_id);
             for field in fields {
                 check!(
@@ -246,7 +247,7 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDecl) -> CompileResult<()> {
                 );
             }
         }
-        ty::TyDecl::EnumDecl { decl_id, .. } => {
+        ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
             let ty::TyEnumDecl { variants, .. } = decl_engine.get_enum(decl_id);
             for variant in variants {
                 check!(
@@ -262,12 +263,12 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDecl) -> CompileResult<()> {
                 );
             }
         }
-        ty::TyDecl::EnumVariantDecl {
-            decl_id,
+        ty::TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
+            enum_ref,
             variant_name,
             ..
-        } => {
-            let enum_decl = decl_engine.get_enum(decl_id);
+        }) => {
+            let enum_decl = decl_engine.get_enum(enum_ref.id());
             let variant = check!(
                 enum_decl.expect_variant_from_name(variant_name),
                 return err(warnings, errors),
@@ -286,10 +287,10 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDecl) -> CompileResult<()> {
                 errors
             );
         }
-        ty::TyDecl::StorageDecl {
+        ty::TyDecl::StorageDecl(ty::StorageDecl {
             decl_id,
             decl_span: _,
-        } => {
+        }) => {
             let ty::TyStorageDecl { fields, .. } = decl_engine.get_storage(decl_id);
             for field in fields {
                 check!(
@@ -305,7 +306,7 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDecl) -> CompileResult<()> {
                 );
             }
         }
-        ty::TyDecl::TypeAliasDecl { decl_id, .. } => {
+        ty::TyDecl::TypeAliasDecl(ty::TypeAliasDecl { decl_id, .. }) => {
             let ty::TyTypeAliasDecl { ty, span, .. } = decl_engine.get_type_alias(decl_id);
             check!(
                 check_type(engines, ty.type_id, span, false),
@@ -314,7 +315,7 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDecl) -> CompileResult<()> {
                 errors
             );
         }
-        ty::TyDecl::GenericTypeForFunctionScope { .. } | ty::TyDecl::ErrorRecovery(_) => {}
+        ty::TyDecl::GenericTypeForFunctionScope(_) | ty::TyDecl::ErrorRecovery(_) => {}
     }
     if errors.is_empty() {
         ok((), warnings, errors)

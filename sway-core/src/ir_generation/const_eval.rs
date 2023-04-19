@@ -105,7 +105,7 @@ pub(crate) fn compile_const_decl(
             // See if we it's a global const and whether we can compile it *now*.
             let decl = module_ns.check_symbol(&call_path.suffix)?;
             let decl_name_value = match decl {
-                ty::TyDecl::ConstantDecl { decl_id, .. } => {
+                ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
                     let ty::TyConstantDecl {
                         call_path,
                         value,
@@ -267,6 +267,22 @@ fn const_eval_typed_expr(
                 known_consts.pop(name);
             }
             res
+        }
+        ty::TyExpressionVariant::ConstantExpression { const_decl, .. } => {
+            let call_path = &const_decl.call_path;
+            let name = &call_path.suffix;
+
+            match known_consts.get(name) {
+                // 1. Check if name/call_path is in known_consts.
+                Some(cvs) => Some(cvs.clone()),
+                None => {
+                    // 2. Check if name is a global constant.
+                    (lookup.lookup)(lookup, call_path)
+                        .ok()
+                        .flatten()
+                        .and_then(|v| v.get_constant_or_configurable(lookup.context).cloned())
+                }
+            }
         }
         ty::TyExpressionVariant::VariableExpression {
             name, call_path, ..

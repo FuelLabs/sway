@@ -2,10 +2,10 @@ use std::fmt;
 
 use crate::language::ty::{TyTraitInterfaceItem, TyTraitItem};
 
-use super::{FunctionalDeclId, InterfaceItemMap, ItemMap};
+use super::{AssociatedItemDeclId, InterfaceItemMap, ItemMap};
 
-type SourceDecl = FunctionalDeclId;
-type DestinationDecl = FunctionalDeclId;
+type SourceDecl = AssociatedItemDeclId;
+type DestinationDecl = AssociatedItemDeclId;
 
 /// The [DeclMapping] is used to create a mapping between a [SourceDecl] (LHS)
 /// and a [DestinationDecl] (RHS).
@@ -25,9 +25,9 @@ impl fmt::Display for DeclMapping {
                         "{} -> {}",
                         source_type,
                         match dest_type {
-                            FunctionalDeclId::TraitFn(decl_id) => decl_id.inner(),
-                            FunctionalDeclId::Function(decl_id) => decl_id.inner(),
-                            FunctionalDeclId::Constant(decl_id) => decl_id.inner(),
+                            AssociatedItemDeclId::TraitFn(decl_id) => decl_id.inner(),
+                            AssociatedItemDeclId::Function(decl_id) => decl_id.inner(),
+                            AssociatedItemDeclId::Constant(decl_id) => decl_id.inner(),
                         }
                     )
                 })

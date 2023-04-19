@@ -1,4 +1,4 @@
-mod constant_declaration;
+mod constant_expression;
 mod enum_instantiation;
 mod function_application;
 mod if_expression;
@@ -9,7 +9,7 @@ mod struct_instantiation;
 mod tuple_index_access;
 mod unsafe_downcast;
 
-use self::constant_declaration::instantiate_constant_decl;
+use self::constant_expression::instantiate_constant_expression;
 pub(crate) use self::{
     enum_instantiation::*, function_application::*, if_expression::*, lazy_operator::*,
     method_application::*, struct_field_access::*, struct_instantiation::*, tuple_index_access::*,
@@ -37,7 +37,7 @@ use sway_error::{
     error::CompileError,
     warning::{CompileWarning, Warning},
 };
-use sway_types::{integer_bits::IntegerBits, Ident, Span, Spanned};
+use sway_types::{integer_bits::IntegerBits, Ident, Named, Span, Spanned};
 
 use rustc_hash::FxHashSet;
 
@@ -234,7 +234,7 @@ impl ty::TyExpression {
                     .by_ref()
                     .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown))
                     .with_help_text("");
-                Self::type_check_storage_load(ctx, field_names, &span)
+                Self::type_check_storage_access(ctx, field_names, &span)
             }
             ExpressionKind::IntrinsicFunction(IntrinsicFunctionExpression {
                 kind_binding,
@@ -408,26 +408,20 @@ impl ty::TyExpression {
                     span,
                 }
             }
-            Some(ty::TyDecl::ConstantDecl { decl_id, .. }) => {
-                let ty::TyConstantDecl {
-                    call_path: decl_name,
-                    return_type,
-                    ..
-                } = decl_engine.get_constant(decl_id);
+            Some(ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. })) => {
+                let const_decl = decl_engine.get_constant(decl_id);
+                let decl_name = const_decl.name().clone();
                 ty::TyExpression {
-                    return_type,
-                    // Although this isn't strictly a 'variable' expression we can treat it as one for
-                    // this context.
-                    expression: ty::TyExpressionVariant::VariableExpression {
-                        name: decl_name.suffix.clone(),
+                    return_type: const_decl.return_type,
+                    expression: ty::TyExpressionVariant::ConstantExpression {
+                        const_decl: Box::new(const_decl),
                         span: name.span(),
-                        mutability: ty::VariableMutability::Immutable,
-                        call_path: Some(decl_name.to_fullpath(ctx.namespace)),
+                        call_path: Some(CallPath::from(decl_name).to_fullpath(ctx.namespace)),
                     },
                     span,
                 }
             }
-            Some(ty::TyDecl::AbiDecl { decl_id, .. }) => {
+            Some(ty::TyDecl::AbiDecl(ty::AbiDecl { decl_id, .. })) => {
                 let decl = decl_engine.get_abi(decl_id);
                 ty::TyExpression {
                     return_type: decl.create_type_id(engines),
@@ -874,7 +868,7 @@ impl ty::TyExpression {
     /// Look up the current global storage state that has been created by storage declarations.
     /// If there isn't any storage, then this is an error. If there is storage, find the corresponding
     /// field that has been specified and return that value.
-    fn type_check_storage_load(
+    fn type_check_storage_access(
         ctx: TypeCheckContext,
         checkee: Vec<Ident>,
         span: &Span,
@@ -884,6 +878,7 @@ impl ty::TyExpression {
 
         let type_engine = ctx.type_engine;
         let decl_engine = ctx.decl_engine;
+        let engines = ctx.engines();
 
         if !ctx.namespace.has_storage_declared() {
             errors.push(CompileError::NoDeclaredStorage { span: span.clone() });
@@ -898,7 +893,7 @@ impl ty::TyExpression {
         );
 
         // Do all namespace checking here!
-        let (storage_access, return_type) = check!(
+        let (storage_access, mut access_type) = check!(
             ctx.namespace.apply_storage_load(
                 Engines::new(type_engine, decl_engine),
                 checkee,
@@ -908,10 +903,72 @@ impl ty::TyExpression {
             warnings,
             errors
         );
+
+        if ctx.experimental_storage_enabled() {
+            // The type of a storage access is `core::experimental::storage::StorageKey`. This is
+            // the path to it.
+            let storage_key_mod_path = vec![
+                Ident::new_with_override("core".into(), span.clone()),
+                Ident::new_with_override("experimental".into(), span.clone()),
+                Ident::new_with_override("storage".into(), span.clone()),
+            ];
+            let storage_key_ident = Ident::new_with_override("StorageKey".into(), span.clone());
+
+            // Search for the struct declaration with the call path above.
+            let storage_key_decl_opt = check!(
+                ctx.namespace
+                    .root()
+                    .resolve_symbol(&storage_key_mod_path, &storage_key_ident),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            let storage_key_struct_decl_ref = check!(
+                storage_key_decl_opt.to_struct_ref(engines),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            let mut storage_key_struct_decl = decl_engine.get_struct(&storage_key_struct_decl_ref);
+
+            // Set the type arguments to `StorageKey` to the `access_type`, which is represents the
+            // type of the data that the `StorageKey` "points" to.
+            let mut type_arguments = vec![TypeArgument {
+                initial_type_id: access_type,
+                type_id: access_type,
+                span: span.clone(),
+                call_path_tree: None,
+            }];
+
+            // Monomorphize the generic `StorageKey` type given the type argument specified above
+            let mut ctx = ctx;
+            check!(
+                ctx.monomorphize(
+                    &mut storage_key_struct_decl,
+                    &mut type_arguments,
+                    EnforceTypeArguments::Yes,
+                    span
+                ),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+
+            // Update `access_type` to be the type of the monomorphized struct after inserting it
+            // into the type engine
+            let storage_key_struct_decl_ref = ctx.engines().de().insert(storage_key_struct_decl);
+            access_type =
+                type_engine.insert(decl_engine, TypeInfo::Struct(storage_key_struct_decl_ref));
+
+            // take any trait items that apply to `StorageKey<T>` and copy them to the
+            // monomorphized type
+            ctx.namespace
+                .insert_trait_implementation_for_type(engines, access_type);
+        }
         ok(
             ty::TyExpression {
                 expression: ty::TyExpressionVariant::StorageAccess(storage_access),
-                return_type,
+                return_type: access_type,
                 span: span.clone(),
             },
             warnings,
@@ -1199,7 +1256,7 @@ impl ty::TyExpression {
                     );
                 }
                 check!(
-                    instantiate_constant_decl(ctx, const_ref, call_path_binding),
+                    instantiate_constant_expression(ctx, const_ref, call_path_binding),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1325,11 +1382,11 @@ impl ty::TyExpression {
             errors
         );
         let abi_ref = match abi {
-            ty::TyDecl::AbiDecl {
+            ty::TyDecl::AbiDecl(ty::AbiDecl {
                 name,
                 decl_id,
                 decl_span,
-            } => DeclRef::new(name, decl_id, decl_span),
+            }) => DeclRef::new(name, decl_id, decl_span),
             ty::TyDecl::VariableDecl(ref decl) => {
                 let ty::TyVariableDecl { body: expr, .. } = &**decl;
                 let ret_ty = type_engine.get(expr.return_type);
