@@ -4,7 +4,7 @@ use storage_access_abi::*;
 use std::hash::sha256;
 
 fn main() -> bool {
-    let contract_id = 0x9ec7ac3cce15b1b75adabd598a374e96b606471a56229486a2d0ca26c08ed994;
+    let contract_id = 0x8982d742b1f313818d24516f7410519ca4fd4bbab470012809ffde710c45c0a4;
     let caller = abi(StorageAccess, contract_id);
 
     // Test initializers

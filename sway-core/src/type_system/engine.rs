@@ -314,10 +314,10 @@ impl TypeEngine {
                     .ok(&mut warnings, &mut errors)
                     .cloned()
                 {
-                    Some(ty::TyDecl::StructDecl {
+                    Some(ty::TyDecl::StructDecl(ty::StructDecl {
                         decl_id: original_id,
                         ..
-                    }) => {
+                    })) => {
                         // get the copy from the declaration engine
                         let mut new_copy = decl_engine.get_struct(&original_id);
 
@@ -351,10 +351,10 @@ impl TypeEngine {
                         // return the id
                         type_id
                     }
-                    Some(ty::TyDecl::EnumDecl {
+                    Some(ty::TyDecl::EnumDecl(ty::EnumDecl {
                         decl_id: original_id,
                         ..
-                    }) => {
+                    })) => {
                         // get the copy from the declaration engine
                         let mut new_copy = decl_engine.get_enum(&original_id);
 
@@ -388,10 +388,10 @@ impl TypeEngine {
                         // return the id
                         type_id
                     }
-                    Some(ty::TyDecl::TypeAliasDecl {
+                    Some(ty::TyDecl::TypeAliasDecl(ty::TypeAliasDecl {
                         decl_id: original_id,
                         ..
-                    }) => {
+                    })) => {
                         let new_copy = decl_engine.get_type_alias(&original_id);
 
                         // TODO: monomorphize the copy, in place, when generic type aliases are
@@ -402,7 +402,9 @@ impl TypeEngine {
 
                         type_id
                     }
-                    Some(ty::TyDecl::GenericTypeForFunctionScope { type_id, .. }) => type_id,
+                    Some(ty::TyDecl::GenericTypeForFunctionScope(
+                        ty::GenericTypeForFunctionScope { type_id, .. },
+                    )) => type_id,
                     _ => {
                         errors.push(CompileError::UnknownTypeName {
                             name: call_path.to_string(),

@@ -48,7 +48,6 @@ fn main() -> u64 {
 // check: local b256 $(asset_id_2_const=$ID) = const b256 0x0000000000000000000000000000000000000000000000000000000000000000
 
 // check: local u64 a
-// check: local b256 arg_for_get_b256
 // check: local { u64, b256 } args_struct_for_get_s
 // check: local b256 b
 // check: local { u64, b256 } s

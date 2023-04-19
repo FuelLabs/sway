@@ -408,7 +408,7 @@ impl ty::TyExpression {
                     span,
                 }
             }
-            Some(ty::TyDecl::ConstantDecl { decl_id, .. }) => {
+            Some(ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. })) => {
                 let const_decl = decl_engine.get_constant(decl_id);
                 let decl_name = const_decl.name().clone();
                 ty::TyExpression {
@@ -421,7 +421,7 @@ impl ty::TyExpression {
                     span,
                 }
             }
-            Some(ty::TyDecl::AbiDecl { decl_id, .. }) => {
+            Some(ty::TyDecl::AbiDecl(ty::AbiDecl { decl_id, .. })) => {
                 let decl = decl_engine.get_abi(decl_id);
                 ty::TyExpression {
                     return_type: decl.create_type_id(engines),
@@ -1382,11 +1382,11 @@ impl ty::TyExpression {
             errors
         );
         let abi_ref = match abi {
-            ty::TyDecl::AbiDecl {
+            ty::TyDecl::AbiDecl(ty::AbiDecl {
                 name,
                 decl_id,
                 decl_span,
-            } => DeclRef::new(name, decl_id, decl_span),
+            }) => DeclRef::new(name, decl_id, decl_span),
             ty::TyDecl::VariableDecl(ref decl) => {
                 let ty::TyVariableDecl { body: expr, .. } = &**decl;
                 let ret_ty = type_engine.get(expr.return_type);
