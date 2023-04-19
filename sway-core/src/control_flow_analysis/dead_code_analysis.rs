@@ -927,7 +927,14 @@ fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
             VariableNamespaceEntry {
                 variable_decl_ix: fn_param_node,
             },
-        )
+        );
+
+        connect_type_id(
+            engines,
+            fn_param.type_argument.type_id,
+            graph,
+            fn_param_node,
+        )?;
     }
 
     let fn_exit_node = graph.add_node(format!("\"{}\" fn exit", fn_decl.name.as_str()).into());
