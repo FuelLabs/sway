@@ -52,6 +52,14 @@ impl ForcError {
     pub fn new(error: anyhow::Error, exit_code: u8) -> Self {
         Self { error, exit_code }
     }
+
+    /// Returns a `ForcError` with provided exit_code.
+    pub fn exit_code(self, exit_code: u8) -> Self {
+        Self {
+            error: self.error,
+            exit_code,
+        }
+    }
 }
 
 impl AsRef<anyhow::Error> for ForcError {

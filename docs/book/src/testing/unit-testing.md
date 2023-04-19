@@ -15,6 +15,8 @@ Each test function is ran as if it were the entry point for a
 [script](../sway-program-types/scripts.md). Tests "pass" if they return
 successfully, and "fail" if they revert or vice versa while [testing failure](#testing-failure).
 
+If the project has failing tests `forc test` will exit with exit status `101`.
+
 ## Building and Running Tests
 
 We can build and execute all tests within a package with the following:
