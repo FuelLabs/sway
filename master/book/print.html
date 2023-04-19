@@ -1137,7 +1137,7 @@ fn main() -&gt; Result&lt;u64, str[4]&gt; {
 <li>Return value for otherwise reporting simple errors, where <code>None</code> is returned on error.</li>
 </ul>
 <p>The implementation of <code>Option</code> matches on the variant: if it's <code>Ok</code> it returns the inner value, if it's <code>None</code>, it <a href="https://github.com/FuelLabs/fuel-specs/blob/master/src/vm/instruction_set.md#rvrt-revert">reverts</a>.</p>
-<pre><code class="language-sway">/// `Option` is a type that represents an optional value.
+<pre><code class="language-sway">/// A type that represents an optional value, either `Some(val)` or `None`.
 pub enum Option&lt;T&gt; {
     /// No value.
     None: (),
