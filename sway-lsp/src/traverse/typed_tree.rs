@@ -7,7 +7,7 @@ use crate::{
 };
 use dashmap::mapref::one::RefMut;
 use sway_core::{
-    decl_engine::{id::DeclId, InterfaceDeclId, DeclRefConstant},
+    decl_engine::{id::DeclId, DeclRefConstant, InterfaceDeclId},
     language::{
         parsed::{ImportType, Supertrait},
         ty::{self, GetDeclIdent, TyEnumVariant, TyModule, TyProgram, TySubmodule},
@@ -18,7 +18,6 @@ use sway_core::{
     TraitConstraint, TypeId, TypeInfo,
 };
 use sway_types::{Ident, Span, Spanned};
-
 
 pub struct TypedTree<'a> {
     ctx: &'a ParseContext<'a>,
@@ -59,18 +58,15 @@ impl<'a> TypedTree<'a> {
             }
             self.collect_module(module);
         }
-    }    
+    }
 }
-
 
 impl Parse for ty::TyAstNode {
     fn parse(&self, ctx: &ParseContext) {
         match &self.content {
             ty::TyAstNodeContent::Declaration(declaration) => declaration.parse(ctx),
             ty::TyAstNodeContent::Expression(expression)
-            | ty::TyAstNodeContent::ImplicitReturnExpression(expression) => {
-                expression.parse(ctx)
-            }
+            | ty::TyAstNodeContent::ImplicitReturnExpression(expression) => expression.parse(ctx),
             ty::TyAstNodeContent::SideEffect(side_effect) => side_effect.parse(ctx),
         };
     }
@@ -89,7 +85,7 @@ impl Parse for ty::TyDecl {
             ty::TyDecl::ImplTrait(decl) => decl.parse(ctx),
             ty::TyDecl::AbiDecl(decl) => decl.parse(ctx),
             ty::TyDecl::GenericTypeForFunctionScope(decl) => decl.parse(ctx),
-            ty::TyDecl::ErrorRecovery(_) => {},
+            ty::TyDecl::ErrorRecovery(_) => {}
             ty::TyDecl::StorageDecl(decl) => decl.parse(ctx),
             ty::TyDecl::TypeAliasDecl(decl) => decl.parse(ctx),
         }
@@ -109,13 +105,11 @@ impl Parse for ty::TySideEffect {
                 },
             ) => {
                 for (mod_path, ident) in iter_prefixes(call_path).zip(call_path) {
-                    if let Some(mut token) = ctx
-                        .tokens
-                        .try_get_mut(&to_ident_key(ident))
-                        .try_unwrap()
+                    if let Some(mut token) =
+                        ctx.tokens.try_get_mut(&to_ident_key(ident)).try_unwrap()
                     {
                         token.typed = Some(TypedAstToken::TypedUseStatement(use_statement.clone()));
-    
+
                         if let Some(span) = ctx
                             .namespace
                             .submodule(mod_path)
@@ -127,15 +121,13 @@ impl Parse for ty::TySideEffect {
                 }
                 match &import_type {
                     ImportType::Item(item) => {
-                        if let Some(mut token) = ctx
-                            .tokens
-                            .try_get_mut(&to_ident_key(item))
-                            .try_unwrap()
+                        if let Some(mut token) =
+                            ctx.tokens.try_get_mut(&to_ident_key(item)).try_unwrap()
                         {
                             token.typed =
                                 Some(TypedAstToken::TypedUseStatement(use_statement.clone()));
                             let mut symbol_kind = SymbolKind::Unknown;
-                            let mut type_def = None;    
+                            let mut type_def = None;
                             if let Some(decl_ident) = ctx
                                 .namespace
                                 .submodule(call_path)
@@ -143,10 +135,8 @@ impl Parse for ty::TySideEffect {
                                 .and_then(|decl| decl.get_decl_ident())
                             {
                                 // Update the symbol kind to match the declarations symbol kind
-                                if let Some(decl) = ctx
-                                    .tokens
-                                    .try_get(&to_ident_key(&decl_ident))
-                                    .try_unwrap()
+                                if let Some(decl) =
+                                    ctx.tokens.try_get(&to_ident_key(&decl_ident)).try_unwrap()
                                 {
                                     symbol_kind = decl.value().kind.clone();
                                 }
@@ -156,10 +146,8 @@ impl Parse for ty::TySideEffect {
                             token.type_def = type_def.clone();
                             // the alias should take on the same symbol kind and type definition
                             if let Some(alias) = alias {
-                                if let Some(mut token) = ctx
-                                    .tokens
-                                    .try_get_mut(&to_ident_key(alias))
-                                    .try_unwrap()
+                                if let Some(mut token) =
+                                    ctx.tokens.try_get_mut(&to_ident_key(alias)).try_unwrap()
                                 {
                                     token.typed = Some(TypedAstToken::TypedUseStatement(
                                         use_statement.clone(),
@@ -216,21 +204,25 @@ impl Parse for ty::TyExpression {
                 ..
             } => {
                 if let Some(type_binding) = type_binding {
-                    type_binding.type_arguments.to_vec().iter().for_each(|type_arg| {
-                        collect_type_argument(ctx, type_arg);
-                    });
+                    type_binding
+                        .type_arguments
+                        .to_vec()
+                        .iter()
+                        .for_each(|type_arg| {
+                            collect_type_argument(ctx, type_arg);
+                        });
                 }
-                let implementing_type_name = ctx.engines.de()
+                let implementing_type_name = ctx
+                    .engines
+                    .de()
                     .get_function(&fn_ref)
                     .implementing_type
                     .and_then(|impl_type| impl_type.get_decl_ident());
                 let prefixes = if let Some(impl_type_name) = implementing_type_name {
                     // the last prefix of the call path is not a module but a type
                     if let Some((last, prefixes)) = call_path.prefixes.split_last() {
-                        if let Some(mut token) = ctx
-                            .tokens
-                            .try_get_mut(&to_ident_key(last))
-                            .try_unwrap()
+                        if let Some(mut token) =
+                            ctx.tokens.try_get_mut(&to_ident_key(last)).try_unwrap()
                         {
                             token.typed = Some(TypedAstToken::Ident(impl_type_name.clone()));
                             token.type_def = Some(TypeDefinition::Ident(impl_type_name));
@@ -254,17 +246,19 @@ impl Parse for ty::TyExpression {
                 }
                 contract_call_params.values().for_each(|exp| exp.parse(ctx));
                 for (ident, exp) in arguments {
-                    if let Some(mut token) = ctx
-                        .tokens
-                        .try_get_mut(&to_ident_key(&ident))
-                        .try_unwrap()
+                    if let Some(mut token) =
+                        ctx.tokens.try_get_mut(&to_ident_key(&ident)).try_unwrap()
                     {
                         token.typed = Some(TypedAstToken::Ident(ident.clone()));
                     }
                     exp.parse(ctx);
                 }
                 let function_decl = ctx.engines.de().get_function(&fn_ref);
-                function_decl.body.contents.iter().for_each(|node| node.parse(ctx));
+                function_decl
+                    .body
+                    .contents
+                    .iter()
+                    .for_each(|node| node.parse(ctx));
             }
             ty::TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {
                 lhs.parse(ctx);
@@ -324,9 +318,13 @@ impl Parse for ty::TyExpression {
                     token.typed = Some(TypedAstToken::TypedExpression(self.clone()));
                     token.type_def = Some(TypeDefinition::TypeId(self.return_type));
                 }
-                call_path_binding.type_arguments.to_vec().iter().for_each(|type_arg| {
-                    collect_type_argument(ctx, type_arg);
-                });
+                call_path_binding
+                    .type_arguments
+                    .to_vec()
+                    .iter()
+                    .for_each(|type_arg| {
+                        collect_type_argument(ctx, type_arg);
+                    });
                 collect_call_path_prefixes(ctx, &call_path_binding.inner.prefixes);
                 fields.iter().for_each(|field| {
                     if let Some(mut token) = ctx
@@ -336,10 +334,10 @@ impl Parse for ty::TyExpression {
                     {
                         token.typed = Some(TypedAstToken::TypedExpression(field.value.clone()));
 
-                        if let Some(struct_decl) = &ctx.tokens.struct_declaration_of_type_id(
-                            ctx.engines,
-                            &self.return_type,
-                        ) {
+                        if let Some(struct_decl) = &ctx
+                            .tokens
+                            .struct_declaration_of_type_id(ctx.engines, &self.return_type)
+                        {
                             struct_decl.fields.iter().for_each(|decl_field| {
                                 if decl_field.name == field.name {
                                     token.type_def =
@@ -429,9 +427,13 @@ impl Parse for ty::TyExpression {
                     token.typed = Some(TypedAstToken::TypedExpression(self.clone()));
                     token.type_def = Some(TypeDefinition::Ident(enum_ref.name().clone()));
                 }
-                call_path_binding.type_arguments.to_vec().iter().for_each(|type_arg| {
-                    collect_type_argument(ctx, type_arg);
-                });
+                call_path_binding
+                    .type_arguments
+                    .to_vec()
+                    .iter()
+                    .for_each(|type_arg| {
+                        collect_type_argument(ctx, type_arg);
+                    });
                 collect_call_path_prefixes(ctx, &call_path_binding.inner.prefixes);
                 if let Some(mut token) = ctx
                     .tokens
@@ -522,7 +524,9 @@ impl Parse for ty::TyVariableDecl {
             .try_get_mut(&to_ident_key(&self.name))
             .try_unwrap()
         {
-            token.typed = Some(TypedAstToken::TypedDeclaration(ty::TyDecl::VariableDecl(Box::new(self.clone()))));
+            token.typed = Some(TypedAstToken::TypedDeclaration(ty::TyDecl::VariableDecl(
+                Box::new(self.clone()),
+            )));
             token.type_def = Some(TypeDefinition::Ident(self.name.clone()));
         }
         if let Some(call_path_tree) = &self.type_ascription.call_path_tree {
@@ -551,8 +555,15 @@ impl Parse for ty::FunctionDecl {
             token.typed = Some(typed_token.clone());
             token.type_def = Some(TypeDefinition::Ident(func_decl.name.clone()));
         }
-        func_decl.body.contents.iter().for_each(|node| node.parse(ctx));
-        func_decl.parameters.iter().for_each(|param| param.parse(ctx));
+        func_decl
+            .body
+            .contents
+            .iter()
+            .for_each(|node| node.parse(ctx));
+        func_decl
+            .parameters
+            .iter()
+            .for_each(|param| param.parse(ctx));
         func_decl.type_parameters.iter().for_each(|type_param| {
             collect_type_id(
                 ctx,
@@ -561,16 +572,12 @@ impl Parse for ty::FunctionDecl {
                 type_param.name_ident.span().clone(),
             );
         });
-        collect_type_argument(ctx,&func_decl.return_type);
+        collect_type_argument(ctx, &func_decl.return_type);
         for (ident, trait_constraints) in &func_decl.where_clause {
             trait_constraints.iter().for_each(|constraint| {
                 collect_trait_constraint(ctx, constraint);
             });
-            if let Some(mut token) = ctx
-                .tokens
-                .try_get_mut(&to_ident_key(ident))
-                .try_unwrap()
-            {
+            if let Some(mut token) = ctx.tokens.try_get_mut(&to_ident_key(ident)).try_unwrap() {
                 token.typed = Some(typed_token.clone());
                 if let Some(param_decl_ident) = func_decl
                     .type_parameters
@@ -593,11 +600,15 @@ impl Parse for ty::TraitDecl {
             .try_get_mut(&to_ident_key(&trait_decl.name))
             .try_unwrap()
         {
-            token.typed = Some(TypedAstToken::TypedDeclaration(ty::TyDecl::TraitDecl(self.clone())));
+            token.typed = Some(TypedAstToken::TypedDeclaration(ty::TyDecl::TraitDecl(
+                self.clone(),
+            )));
             token.type_def = Some(TypeDefinition::Ident(trait_decl.name.clone()));
         }
-        trait_decl.interface_surface.iter().for_each(|item| {
-            match item {
+        trait_decl
+            .interface_surface
+            .iter()
+            .for_each(|item| match item {
                 ty::TyTraitInterfaceItem::TraitFn(trait_fn_decl_ref) => {
                     let trait_fn = ctx.engines.de().get_trait_fn(trait_fn_decl_ref);
                     trait_fn.parse(ctx);
@@ -606,8 +617,7 @@ impl Parse for ty::TraitDecl {
                     let constant = ctx.engines.de().get_constant(decl_ref);
                     collect_const_decl(ctx, &constant, &decl_ref.span());
                 }
-            }
-        });
+            });
         trait_decl.supertraits.iter().for_each(|supertrait| {
             collect_supertrait(ctx, supertrait);
         });
@@ -622,7 +632,9 @@ impl Parse for ty::StructDecl {
             .try_get_mut(&to_ident_key(&struct_decl.call_path.suffix))
             .try_unwrap()
         {
-            token.typed = Some(TypedAstToken::TypedDeclaration(ty::TyDecl::StructDecl(self.clone())));
+            token.typed = Some(TypedAstToken::TypedDeclaration(ty::TyDecl::StructDecl(
+                self.clone(),
+            )));
             token.type_def = Some(TypeDefinition::Ident(struct_decl.call_path.suffix));
         }
         struct_decl.fields.iter().for_each(|field| {
@@ -661,11 +673,7 @@ impl Parse for ty::ImplTrait {
             );
         });
         trait_name.prefixes.iter().for_each(|ident| {
-            if let Some(mut token) = ctx
-                .tokens
-                .try_get_mut(&to_ident_key(ident))
-                .try_unwrap()
-            {
+            if let Some(mut token) = ctx.tokens.try_get_mut(&to_ident_key(ident)).try_unwrap() {
                 token.typed = Some(TypedAstToken::Ident(ident.clone()));
             }
         });
@@ -681,7 +689,9 @@ impl Parse for ty::ImplTrait {
             .try_get_mut(&to_ident_key(&trait_name.suffix))
             .try_unwrap()
         {
-            token.typed = Some(TypedAstToken::TypedDeclaration(ty::TyDecl::ImplTrait(self.clone())));
+            token.typed = Some(TypedAstToken::TypedDeclaration(ty::TyDecl::ImplTrait(
+                self.clone(),
+            )));
             token.type_def = if let Some(decl_ref) = &trait_decl_ref {
                 typed_token = Some(TypedAstToken::TypedArgument(implementing_for.clone()));
                 match &decl_ref.id().clone() {
@@ -702,16 +712,14 @@ impl Parse for ty::ImplTrait {
         trait_type_arguments.iter().for_each(|type_arg| {
             collect_type_argument(ctx, type_arg);
         });
-        items.iter().for_each(|item| {
-            match item {
-                ty::TyTraitItem::Fn(method_ref) => {
-                    let method = ctx.engines.de().get_function(method_ref);
-                    method.parse(ctx);
-                }
-                ty::TyTraitItem::Constant(const_ref) => {
-                    let constant = ctx.engines.de().get_constant(const_ref);
-                    collect_const_decl(ctx, &constant, &const_ref.span());
-                }
+        items.iter().for_each(|item| match item {
+            ty::TyTraitItem::Fn(method_ref) => {
+                let method = ctx.engines.de().get_function(method_ref);
+                method.parse(ctx);
+            }
+            ty::TyTraitItem::Constant(const_ref) => {
+                let constant = ctx.engines.de().get_constant(const_ref);
+                collect_const_decl(ctx, &constant, &const_ref.span());
             }
         });
         collect_type_argument(ctx, &implementing_for);
@@ -741,11 +749,15 @@ impl Parse for ty::AbiDecl {
             .try_get_mut(&to_ident_key(&abi_decl.name))
             .try_unwrap()
         {
-            token.typed = Some(TypedAstToken::TypedDeclaration(ty::TyDecl::AbiDecl(self.clone())));
+            token.typed = Some(TypedAstToken::TypedDeclaration(ty::TyDecl::AbiDecl(
+                self.clone(),
+            )));
             token.type_def = Some(TypeDefinition::Ident(abi_decl.name.clone()));
         }
-        abi_decl.interface_surface.iter().for_each(|item| {
-            match item {
+        abi_decl
+            .interface_surface
+            .iter()
+            .for_each(|item| match item {
                 ty::TyTraitInterfaceItem::TraitFn(trait_fn_decl_ref) => {
                     let trait_fn = ctx.engines.de().get_trait_fn(trait_fn_decl_ref);
                     trait_fn.parse(ctx);
@@ -754,8 +766,7 @@ impl Parse for ty::AbiDecl {
                     let constant = ctx.engines.de().get_constant(const_ref);
                     collect_const_decl(ctx, &constant, &const_ref.span());
                 }
-            }
-        });
+            });
         abi_decl.supertraits.iter().for_each(|supertrait| {
             supertrait.parse(ctx);
         });
@@ -769,7 +780,9 @@ impl Parse for ty::GenericTypeForFunctionScope {
             .try_get_mut(&to_ident_key(&self.name))
             .try_unwrap()
         {
-            token.typed = Some(TypedAstToken::TypedDeclaration(ty::TyDecl::GenericTypeForFunctionScope(self.clone())));
+            token.typed = Some(TypedAstToken::TypedDeclaration(
+                ty::TyDecl::GenericTypeForFunctionScope(self.clone()),
+            ));
             token.type_def = Some(TypeDefinition::TypeId(self.type_id));
         }
     }
@@ -892,12 +905,8 @@ impl Parse for ty::TyFunctionDecl {
         for (ident, trait_constraints) in &self.where_clause {
             trait_constraints.iter().for_each(|constraint| {
                 collect_trait_constraint(ctx, &constraint);
-            });    
-            if let Some(mut token) = ctx
-                .tokens
-                .try_get_mut(&to_ident_key(ident))
-                .try_unwrap()
-            {
+            });
+            if let Some(mut token) = ctx.tokens.try_get_mut(&to_ident_key(ident)).try_unwrap() {
                 token.typed = Some(typed_token.clone());
                 if let Some(param_decl_ident) = self
                     .type_parameters
@@ -943,11 +952,7 @@ impl Parse for ty::TyScrutinee {
         match &self.variant {
             CatchAll => {}
             Constant(name, _, const_decl) => {
-                if let Some(mut token) = ctx
-                    .tokens
-                    .try_get_mut(&to_ident_key(name))
-                    .try_unwrap()
-                {
+                if let Some(mut token) = ctx.tokens.try_get_mut(&to_ident_key(name)).try_unwrap() {
                     token.typed = Some(TypedAstToken::TypedScrutinee(self.clone()));
                     token.type_def =
                         Some(TypeDefinition::Ident(const_decl.call_path.suffix.clone()));
@@ -963,11 +968,7 @@ impl Parse for ty::TyScrutinee {
                 }
             }
             Variable(ident) => {
-                if let Some(mut token) = ctx
-                    .tokens
-                    .try_get_mut(&to_ident_key(ident))
-                    .try_unwrap()
-                {
+                if let Some(mut token) = ctx.tokens.try_get_mut(&to_ident_key(ident)).try_unwrap() {
                     token.typed = Some(TypedAstToken::TypedScrutinee(self.clone()));
                 }
             }
@@ -995,10 +996,8 @@ impl Parse for ty::TyScrutinee {
                 let prefixes =
                     if let Some((last, prefixes)) = instantiation_call_path.prefixes.split_last() {
                         // the last prefix of the call path is not a module but a type
-                        if let Some(mut token) = ctx
-                            .tokens
-                            .try_get_mut(&to_ident_key(last))
-                            .try_unwrap()
+                        if let Some(mut token) =
+                            ctx.tokens.try_get_mut(&to_ident_key(last)).try_unwrap()
                         {
                             token.typed = Some(TypedAstToken::TypedScrutinee(self.clone()));
                             token.type_def = Some(TypeDefinition::Ident(enum_ref.name().clone()));
@@ -1053,18 +1052,11 @@ impl Parse for ty::TyReassignment {
         }
         self.lhs_indices.iter().for_each(|proj_kind| {
             if let ty::ProjectionKind::StructField { name } = proj_kind {
-                if let Some(mut token) = ctx
-                    .tokens
-                    .try_get_mut(&to_ident_key(name))
-                    .try_unwrap()
-                {
-                    token.typed =
-                        Some(TypedAstToken::TypedReassignment(self.clone()));
-                    if let Some(struct_decl) =
-                        &ctx.tokens.struct_declaration_of_type_id(
-                            ctx.engines,
-                            &self.lhs_type,
-                        )
+                if let Some(mut token) = ctx.tokens.try_get_mut(&to_ident_key(name)).try_unwrap() {
+                    token.typed = Some(TypedAstToken::TypedReassignment(self.clone()));
+                    if let Some(struct_decl) = &ctx
+                        .tokens
+                        .struct_declaration_of_type_id(ctx.engines, &self.lhs_type)
                     {
                         struct_decl.fields.iter().for_each(|decl_field| {
                             if &decl_field.name == name {
@@ -1089,7 +1081,9 @@ impl Parse for ty::TyStorageReassignment {
             )))
             .try_unwrap()
         {
-            token.typed = Some(TypedAstToken::TyStorageResassignment(Box::new(self.clone())));
+            token.typed = Some(TypedAstToken::TyStorageResassignment(Box::new(
+                self.clone(),
+            )));
             if let Some(storage) = ctx.namespace.get_declared_storage(ctx.engines.de()) {
                 token.type_def = Some(TypeDefinition::Ident(storage.storage_keyword));
             }
@@ -1128,12 +1122,14 @@ impl Parse for ty::TyStorageReassignment {
                     .try_get_mut(&to_ident_key(&field.name))
                     .try_unwrap()
                 {
-                    token.typed = Some(
-                        TypedAstToken::TypeCheckedStorageReassignDescriptor(field.clone()),
-                    );
+                    token.typed = Some(TypedAstToken::TypeCheckedStorageReassignDescriptor(
+                        field.clone(),
+                    ));
                     match ctx.engines.te().get(container_type_id) {
                         TypeInfo::Struct(decl_ref) => {
-                            if let Some(field_name) = ctx.engines.de()
+                            if let Some(field_name) = ctx
+                                .engines
+                                .de()
                                 .get_struct(&decl_ref)
                                 .fields
                                 .iter()
@@ -1229,11 +1225,7 @@ fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, type_arg: &Ty
 
 fn collect_call_path_prefixes(ctx: &ParseContext, prefixes: &[Ident]) {
     for (mod_path, ident) in iter_prefixes(prefixes).zip(prefixes) {
-        if let Some(mut token) = ctx
-            .tokens
-            .try_get_mut(&to_ident_key(ident))
-            .try_unwrap()
-        {
+        if let Some(mut token) = ctx.tokens.try_get_mut(&to_ident_key(ident)).try_unwrap() {
             token.typed = Some(TypedAstToken::Ident(ident.clone()));
             if let Some(span) = ctx
                 .namespace
@@ -1264,7 +1256,12 @@ fn collect_const_decl(ctx: &ParseContext, const_decl: &ty::TyConstantDecl, span:
     }
 }
 
-fn collect_type_id(ctx: &ParseContext, type_id: TypeId, typed_token: &TypedAstToken, type_span: Span) {
+fn collect_type_id(
+    ctx: &ParseContext,
+    type_id: TypeId,
+    typed_token: &TypedAstToken,
+    type_span: Span,
+) {
     let type_info = ctx.engines.te().get(type_id);
     let symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), &type_info, Some(&type_span));
     match &type_info {
