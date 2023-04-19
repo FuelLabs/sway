@@ -334,22 +334,12 @@ pub fn parsed_to_ast(
     build_config: Option<&BuildConfig>,
     package_name: &str,
 ) -> CompileResult<ty::TyProgram> {
-    let experimental_storage = match build_config {
-        Some(build_config) => build_config.experimental_storage,
-        None => true,
-    };
     // Type check the program.
     let CompileResult {
         value: typed_program_opt,
         mut warnings,
         mut errors,
-    } = ty::TyProgram::type_check(
-        engines,
-        parse_program,
-        initial_namespace,
-        package_name,
-        experimental_storage,
-    );
+    } = ty::TyProgram::type_check(engines, parse_program, initial_namespace, package_name);
     let mut typed_program = match typed_program_opt {
         Some(typed_program) => typed_program,
         None => return err(warnings, errors),
@@ -420,7 +410,6 @@ pub fn parsed_to_ast(
         &mut ctx,
         &mut md_mgr,
         module,
-        experimental_storage,
     );
     warnings.extend(typed_wiss_res.warnings);
     errors.extend(typed_wiss_res.errors);
@@ -561,12 +550,8 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // IR phase.
 
     let tree_type = program.kind.tree_type();
-    let mut ir = match ir_generation::compile_program(
-        program,
-        build_config.include_tests,
-        engines,
-        build_config.experimental_storage,
-    ) {
+    let mut ir = match ir_generation::compile_program(program, build_config.include_tests, engines)
+    {
         Ok(ir) => ir,
         Err(e) => return err(warnings, vec![e]),
     };

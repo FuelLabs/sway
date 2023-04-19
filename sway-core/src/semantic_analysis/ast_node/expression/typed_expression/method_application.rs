@@ -10,7 +10,7 @@ use std::collections::{HashMap, VecDeque};
 use sway_error::error::CompileError;
 use sway_types::{constants, integer_bits::IntegerBits};
 use sway_types::{constants::CONTRACT_CALL_COINS_PARAMETER_NAME, Spanned};
-use sway_types::{state::StateIndex, Ident, Span};
+use sway_types::{Ident, Span};
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn type_check_method_application(
@@ -156,40 +156,6 @@ pub(crate) fn type_check_method_application(
             }
         }
     }
-
-    // If this method was called with self being a `StorageAccess` (e.g. storage.map.insert(..)),
-    // then record the index of that storage variable and pass it on.
-    let mut self_state_idx = None;
-    if ctx.namespace.has_storage_declared() {
-        let storage_fields = check!(
-            ctx.namespace.get_storage_field_descriptors(decl_engine),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-
-        self_state_idx = match arguments.first().map(|expr| &expr.kind) {
-            Some(ExpressionKind::StorageAccess(StorageAccessExpression { field_names })) => {
-                let first_field = field_names[0].clone();
-                let self_state_idx = match storage_fields
-                    .iter()
-                    .enumerate()
-                    .find(|(_, ty::TyStorageField { name, .. })| name == &first_field)
-                {
-                    Some((ix, _)) => StateIndex::new(ix),
-                    None => {
-                        errors.push(CompileError::StorageFieldDoesNotExist {
-                            name: first_field.clone(),
-                            span: first_field.span(),
-                        });
-                        return err(warnings, errors);
-                    }
-                };
-                Some(self_state_idx)
-            }
-            _ => None,
-        }
-    };
 
     // If this function is being called with method call syntax, a.b(c),
     // then make sure the first parameter is self, else issue an error.
@@ -352,7 +318,6 @@ pub(crate) fn type_check_method_application(
             contract_call_params: contract_call_params_map,
             arguments: typed_arguments_with_names,
             fn_ref: decl_ref,
-            self_state_idx,
             selector,
             type_binding: Some(method_name_binding.strip_inner()),
         },

@@ -32,20 +32,20 @@ impl StorageExample for Contract {
     // ANCHOR: storage_write
     #[storage(write)]
     fn store_something() {
-        storage.var1.x = 42;
-        storage.var1.y = 77;
-        storage.var2.w = 0x1111111111111111111111111111111111111111111111111111111111111111;
-        storage.var2.z = true;
+        storage.var1.x.write(42);
+        storage.var1.y.write(77);
+        storage.var2.w.write(0x1111111111111111111111111111111111111111111111111111111111111111);
+        storage.var2.z.write(true);
     }
     // ANCHOR_END: storage_write
     // ANCHOR: storage_read
     #[storage(read)]
     fn get_something() -> (u64, u64, b256, bool) {
         (
-            storage.var1.x,
-            storage.var1.y,
-            storage.var2.w,
-            storage.var2.z,
+            storage.var1.x.read(),
+            storage.var1.y.read(),
+            storage.var2.w.read(),
+            storage.var2.z.read(),
         )
     }
     // ANCHOR_END: storage_read

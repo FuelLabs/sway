@@ -3,7 +3,6 @@ use crate::{
     error::*,
     fuel_prelude::fuel_tx::StorageSlot,
     language::{parsed, ty::*, Purity},
-    semantic_analysis::storage_only_types,
     type_system::*,
     types::*,
     Engines,
@@ -30,7 +29,6 @@ impl TyProgram {
         root: &TyModule,
         kind: parsed::TreeType,
         package_name: &str,
-        experimental_storage: bool,
     ) -> CompileResult<(TyProgramKind, Vec<TyDecl>, Vec<TyConstantDecl>)> {
         // Extract program-kind-specific properties from the root nodes.
         let mut errors = vec![];
@@ -48,7 +46,6 @@ impl TyProgram {
                     &submodule.module,
                     parsed::TreeType::Library,
                     package_name,
-                    experimental_storage,
                 ),
                 continue,
                 warnings,
@@ -138,20 +135,6 @@ impl TyProgram {
                 }
                 _ => {}
             };
-        }
-
-        if !experimental_storage {
-            for ast_n in &root.all_nodes {
-                check!(
-                    storage_only_types::validate_decls_for_storage_only_types_in_ast(
-                        engines,
-                        &ast_n.content
-                    ),
-                    continue,
-                    warnings,
-                    errors
-                );
-            }
         }
 
         // Some checks that are specific to non-contracts

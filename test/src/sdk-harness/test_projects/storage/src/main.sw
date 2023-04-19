@@ -1,6 +1,7 @@
 contract;
 
-use std::{registers::stack_ptr, storage::{clear, get, store}};
+use std::registers::stack_ptr;
+use std::storage::storage_api::*;
 
 pub struct SmallStruct {
     x: u64,
@@ -47,92 +48,64 @@ const S_14: b256 = 0x00000000000000000000000000000000000000000000000000000000000
 const S_15: b256 = 0x0000000000000000000000000000000000000000000000000000000000000015;
 
 abi StorageTest {
-    #[storage(write)]
-    fn clear_bool() -> bool;
-    #[storage(write)]
+    #[storage(read, write)]
     fn store_bool(value: bool);
     #[storage(read)]
     fn get_bool() -> Option<bool>;
-    #[storage(write)]
-    fn clear_u8() -> bool;
-    #[storage(write)]
+    #[storage(read, write)]
     fn store_u8(value: u8);
     #[storage(read)]
     fn get_u8() -> Option<u8>;
-    #[storage(write)]
-    fn clear_u16() -> bool;
-    #[storage(write)]
+    #[storage(read, write)]
     fn store_u16(value: u16);
     #[storage(read)]
     fn get_u16() -> Option<u16>;
-    #[storage(write)]
-    fn clear_u32() -> bool;
-    #[storage(write)]
+    #[storage(read, write)]
     fn store_u32(value: u32);
     #[storage(read)]
     fn get_u32() -> Option<u32>;
-    #[storage(write)]
-    fn clear_u64() -> bool;
-    #[storage(write)]
+    #[storage(read, write)]
     fn store_u64(value: u64);
     #[storage(read)]
     fn get_u64() -> Option<u64>;
-    #[storage(write)]
-    fn clear_b256() -> bool;
-    #[storage(write)]
+    #[storage(read, write)]
     fn store_b256(value: b256);
     #[storage(read)]
     fn get_b256() -> Option<b256>;
 
-    #[storage(write)]
-    fn clear_small_struct() -> bool;
-    #[storage(write)]
+    #[storage(read, write)]
     fn store_small_struct(value: SmallStruct);
     #[storage(read)]
     fn get_small_struct() -> Option<SmallStruct>;
-    #[storage(write)]
-    fn clear_medium_struct() -> bool;
-    #[storage(write)]
+    #[storage(read, write)]
     fn store_medium_struct(value: MediumStruct);
     #[storage(read)]
     fn get_medium_struct() -> Option<MediumStruct>;
-    #[storage(write)]
-    fn clear_large_struct() -> bool;
-    #[storage(write)]
+    #[storage(read, write)]
     fn store_large_struct(value: LargeStruct);
     #[storage(read)]
     fn get_large_struct() -> Option<LargeStruct>;
-    #[storage(write)]
-    fn clear_very_large_struct() -> bool;
-    #[storage(write)]
+    #[storage(read, write)]
     fn store_very_large_struct(value: VeryLargeStruct);
     #[storage(read)]
     fn get_very_large_struct() -> Option<VeryLargeStruct>;
 
-    #[storage(write)]
-    fn clear_enum() -> bool;
-    #[storage(write)]
+    #[storage(read, write)]
     fn store_enum(value: StorageEnum);
     #[storage(read)]
     fn get_enum() -> Option<StorageEnum>;
 
-    #[storage(write)]
-    fn clear_tuple() -> bool;
-    #[storage(write)]
+    #[storage(read, write)]
     fn store_tuple(value: (b256, u8, b256));
     #[storage(read)]
     fn get_tuple() -> Option<(b256, u8, b256)>;
 
-    #[storage(write)]
-    fn clear_string() -> bool;
-    #[storage(write)]
+    #[storage(read, write)]
     fn store_string(value: str[31]);
     #[storage(read)]
     fn get_string() -> Option<str[31]>;
 
-    #[storage(write)]
-    fn clear_array() -> bool;
-    #[storage(write)]
+    #[storage(read, write)]
     fn store_array();
     #[storage(read)]
     fn get_array() -> Option<[b256; 3]>;
@@ -142,219 +115,149 @@ abi StorageTest {
 }
 
 impl StorageTest for Contract {
-    #[storage(write)]
-    fn clear_bool() -> bool {
-        clear::<bool>(S_1)
-    }
-
-    #[storage(write)]
+    #[storage(read, write)]
     fn store_bool(value: bool) {
-        store(S_1, value);
+        write(S_1, 0, value);
     }
 
     #[storage(read)]
     fn get_bool() -> Option<bool> {
-        get::<bool>(S_1)
+        read::<bool>(S_1, 0)
     }
 
-    #[storage(write)]
-    fn clear_u8() -> bool {
-        clear::<u8>(S_2)
-    }
-
-    #[storage(write)]
+    #[storage(read, write)]
     fn store_u8(value: u8) {
-        store(S_2, value);
+        write(S_2, 0, value);
     }
 
     #[storage(read)]
     fn get_u8() -> Option<u8> {
-        get::<u8>(S_2)
+        read::<u8>(S_2, 0)
     }
 
-    #[storage(write)]
-    fn clear_u16() -> bool {
-        clear::<u16>(S_3)
-    }
-
-    #[storage(write)]
+    #[storage(read, write)]
     fn store_u16(value: u16) {
-        store(S_3, value);
+        write(S_3, 0, value);
     }
 
     #[storage(read)]
     fn get_u16() -> Option<u16> {
-        get::<u16>(S_3)
+        read::<u16>(S_3, 0)
     }
 
-    #[storage(write)]
-    fn clear_u32() -> bool {
-        clear::<u32>(S_4)
-    }
-
-    #[storage(write)]
+    #[storage(read, write)]
     fn store_u32(value: u32) {
-        store(S_4, value);
+        write(S_4, 0, value);
     }
 
     #[storage(read)]
     fn get_u32() -> Option<u32> {
-        get::<u32>(S_4)
+        read::<u32>(S_4, 0)
     }
 
-    #[storage(write)]
-    fn clear_u64() -> bool {
-        clear::<u64>(S_5)
-    }
-
-    #[storage(write)]
+    #[storage(read, write)]
     fn store_u64(value: u64) {
-        store(S_5, value);
+        write(S_5, 0, value);
     }
 
     #[storage(read)]
     fn get_u64() -> Option<u64> {
-        get::<u64>(S_5)
+        read::<u64>(S_5, 0)
     }
 
-    #[storage(write)]
-    fn clear_b256() -> bool {
-        clear::<b256>(S_6)
-    }
-
-    #[storage(write)]
+    #[storage(read, write)]
     fn store_b256(value: b256) {
-        store(S_6, value);
+        write(S_6, 0, value);
     }
 
     #[storage(read)]
     fn get_b256() -> Option<b256> {
-        get::<b256>(S_6)
+        read::<b256>(S_6, 0)
     }
 
-    #[storage(write)]
-    fn clear_small_struct() -> bool {
-        clear::<SmallStruct>(S_8)
-    }
-
-    #[storage(write)]
+    #[storage(read, write)]
     fn store_small_struct(value: SmallStruct) {
-        store(S_8, value);
+        write(S_7, 0, value);
     }
 
     #[storage(read)]
     fn get_small_struct() -> Option<SmallStruct> {
-        get::<SmallStruct>(S_8)
+        read::<SmallStruct>(S_7, 0)
     }
 
-    #[storage(write)]
-    fn clear_medium_struct() -> bool {
-        clear::<MediumStruct>(S_9)
-    }
-
-    #[storage(write)]
+    #[storage(read, write)]
     fn store_medium_struct(value: MediumStruct) {
-        store(S_9, value);
+        write(S_8, 0, value);
     }
 
     #[storage(read)]
     fn get_medium_struct() -> Option<MediumStruct> {
-        get::<MediumStruct>(S_9)
+        read::<MediumStruct>(S_8, 0)
     }
 
-    #[storage(write)]
-    fn clear_large_struct() -> bool {
-        clear::<LargeStruct>(S_9)
-    }
-
-    #[storage(write)]
+    #[storage(read, write)]
     fn store_large_struct(value: LargeStruct) {
-        store(S_9, value);
+        write(S_9, 0, value);
     }
 
     #[storage(read)]
     fn get_large_struct() -> Option<LargeStruct> {
-        get::<LargeStruct>(S_9)
+        read::<LargeStruct>(S_9, 0)
     }
 
-    #[storage(write)]
-    fn clear_very_large_struct() -> bool {
-        clear::<VeryLargeStruct>(S_10)
-    }
-
-    #[storage(write)]
+    #[storage(read, write)]
     fn store_very_large_struct(value: VeryLargeStruct) {
-        store(S_10, value);
+        write(S_10, 0, value);
     }
 
     #[storage(read)]
     fn get_very_large_struct() -> Option<VeryLargeStruct> {
-        get::<VeryLargeStruct>(S_10)
+        read::<VeryLargeStruct>(S_10, 0)
     }
 
-    #[storage(write)]
-    fn clear_enum() -> bool {
-        clear::<StorageEnum>(S_11)
-    }
-
-    #[storage(write)]
+    #[storage(read, write)]
     fn store_enum(value: StorageEnum) {
-        store(S_11, value);
+        write(S_11, 0, value);
     }
 
     #[storage(read)]
     fn get_enum() -> Option<StorageEnum> {
-        get::<StorageEnum>(S_11)
+        read::<StorageEnum>(S_11, 0)
     }
 
-    #[storage(write)]
-    fn clear_tuple() -> bool {
-        clear::<(b256, u8, b256)>(S_12)
-    }
-
-    #[storage(write)]
+    #[storage(read, write)]
     fn store_tuple(value: (b256, u8, b256)) {
-        store(S_12, value);
+        write(S_12, 0, value);
     }
 
     #[storage(read)]
     fn get_tuple() -> Option<(b256, u8, b256)> {
-        get::<(b256, u8, b256)>(S_12)
+        read::<(b256, u8, b256)>(S_12, 0)
     }
 
-    #[storage(write)]
-    fn clear_string() -> bool {
-        clear::<str[31]>(S_13)
-    }
-
-    #[storage(write)]
+    #[storage(read, write)]
     fn store_string(value: str[31]) {
-        store(S_13, value);
+        write(S_13, 0, value);
     }
 
     #[storage(read)]
     fn get_string() -> Option<str[31]> {
-        get::<str[31]>(S_13)
+        read::<str[31]>(S_13, 0)
     }
 
-    #[storage(write)]
-    fn clear_array() -> bool {
-        clear::<[b256; 3]>(S_14)
-    }
-
-    #[storage(write)]
+    #[storage(read, write)]
     fn store_array() {
         let a = [
             0x9999999999999999999999999999999999999999999999999999999999999999,
             0x8888888888888888888888888888888888888888888888888888888888888888,
             0x7777777777777777777777777777777777777777777777777777777777777777,
         ];
-        store(S_14, a);
+        write(S_14, 0, a);
     }
 
     #[storage(read)]
     fn get_array() -> Option<[b256; 3]> {
-        get::<[b256; 3]>(S_14)
+        read::<[b256; 3]>(S_14, 0)
     }
 
     #[storage(read, write)]
@@ -384,12 +287,12 @@ fn non_inlined_function(arg: u32) -> bool {
     // By storing and reading from a large complex data structure we're ensuring that this function
     // is too large to be inlined.  The stored value type must be a reference type too, to ensure
     // the use of memory (not a register) to read it back.
-    store(S_15, LargeStruct {
+    write(S_15, 0, LargeStruct {
         x: arg,
         y: 0x9999999999999999999999999999999999999999999999999999999999999999,
         z: arg,
     });
 
-    let ls = get::<LargeStruct>(S_15).unwrap();
+    let ls = read::<LargeStruct>(S_15, 0).unwrap();
     ls.x == arg
 }

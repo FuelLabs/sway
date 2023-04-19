@@ -420,22 +420,6 @@ impl CollectTypesMetadata for TyExpression {
                     errors
                 ));
             }
-            StorageReassignment(storage_reassignment) => {
-                for field in storage_reassignment.fields.iter() {
-                    res.append(&mut check!(
-                        field.type_id.collect_types_metadata(ctx),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
-                }
-                res.append(&mut check!(
-                    storage_reassignment.rhs.collect_types_metadata(ctx),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
-            }
         }
         ok(res, warnings, errors)
     }
@@ -524,9 +508,6 @@ impl DeterministicallyAborts for TyExpression {
             Break => false,
             Continue => false,
             Reassignment(reassignment) => reassignment
-                .rhs
-                .deterministically_aborts(decl_engine, check_call_body),
-            StorageReassignment(storage_reassignment) => storage_reassignment
                 .rhs
                 .deterministically_aborts(decl_engine, check_call_body),
             // TODO: Is this correct?

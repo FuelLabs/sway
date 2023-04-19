@@ -198,7 +198,6 @@ impl<'a> InstructionVerifier<'a> {
 
                     // XXX move the fuelvm verification into a module
                     Instruction::FuelVm(fuel_vm_instr) => match fuel_vm_instr {
-                        FuelVmInstruction::GetStorageKey(_ty) => (),
                         FuelVmInstruction::Gtf { index, tx_field_id } => {
                             self.verify_gtf(index, tx_field_id)?
                         }

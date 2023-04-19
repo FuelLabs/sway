@@ -32,7 +32,7 @@ Generic storage maps are available in the standard library as `StorageMap<K, V>`
 
 ## Manual Storage Management
 
-It is possible to leverage FuelVM storage operations directly using the `std::storage::store` and `std::storage::get` functions provided in the standard library. With this approach you will have to manually assign the internal key used for storage. An example is as follows:
+It is possible to leverage FuelVM storage operations directly using the `std::storage::storage_api::write` and `std::storage::storage_api::read` functions provided in the standard library. With this approach you will have to manually assign the internal key used for storage. An example is as follows:
 
 ```sway
 {{#include ../../../../examples/storage_example/src/main.sw}}

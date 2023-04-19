@@ -17,6 +17,6 @@ impl TestAbi for Contract {
         // interaction
         other_contract.deposit();
         // effect -- therefore violation of CEI where effect should go before interaction
-        storage.var = 42;
+        storage.var.write(42);
     }
 }

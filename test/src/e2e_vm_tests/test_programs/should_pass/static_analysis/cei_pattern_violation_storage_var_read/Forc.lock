@@ -1,3 +1,13 @@
 [[package]]
 name = 'cei_pattern_violation_storage_var_read'
 source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-26DB879E78D43907'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-26DB879E78D43907'
+dependencies = ['core']

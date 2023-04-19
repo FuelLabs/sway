@@ -5,54 +5,6 @@
       "attributes": [
         {
           "arguments": [
-            "read",
-            "write"
-          ],
-          "name": "storage"
-        }
-      ],
-      "inputs": [
-        {
-          "name": "k",
-          "type": 9,
-          "typeArguments": null
-        }
-      ],
-      "name": "add_to_s_dot_t_dot_x",
-      "output": {
-        "name": "",
-        "type": 0,
-        "typeArguments": null
-      }
-    },
-    {
-      "attributes": [
-        {
-          "arguments": [
-            "read",
-            "write"
-          ],
-          "name": "storage"
-        }
-      ],
-      "inputs": [
-        {
-          "name": "k",
-          "type": 9,
-          "typeArguments": null
-        }
-      ],
-      "name": "divide_s_dot_t_dot_x",
-      "output": {
-        "name": "",
-        "type": 0,
-        "typeArguments": null
-      }
-    },
-    {
-      "attributes": [
-        {
-          "arguments": [
             "read"
           ],
           "name": "storage"
@@ -403,30 +355,6 @@
       "output": {
         "name": "",
         "type": 1,
-        "typeArguments": null
-      }
-    },
-    {
-      "attributes": [
-        {
-          "arguments": [
-            "read",
-            "write"
-          ],
-          "name": "storage"
-        }
-      ],
-      "inputs": [
-        {
-          "name": "k",
-          "type": 9,
-          "typeArguments": null
-        }
-      ],
-      "name": "multiply_by_s_dot_t_dot_x",
-      "output": {
-        "name": "",
-        "type": 0,
         "typeArguments": null
       }
     },
@@ -884,78 +812,6 @@
         }
       ],
       "name": "set_y",
-      "output": {
-        "name": "",
-        "type": 0,
-        "typeArguments": null
-      }
-    },
-    {
-      "attributes": [
-        {
-          "arguments": [
-            "read",
-            "write"
-          ],
-          "name": "storage"
-        }
-      ],
-      "inputs": [
-        {
-          "name": "k",
-          "type": 9,
-          "typeArguments": null
-        }
-      ],
-      "name": "shift_left_s_dot_t_dot_x",
-      "output": {
-        "name": "",
-        "type": 0,
-        "typeArguments": null
-      }
-    },
-    {
-      "attributes": [
-        {
-          "arguments": [
-            "read",
-            "write"
-          ],
-          "name": "storage"
-        }
-      ],
-      "inputs": [
-        {
-          "name": "k",
-          "type": 9,
-          "typeArguments": null
-        }
-      ],
-      "name": "shift_right_s_dot_t_dot_x",
-      "output": {
-        "name": "",
-        "type": 0,
-        "typeArguments": null
-      }
-    },
-    {
-      "attributes": [
-        {
-          "arguments": [
-            "read",
-            "write"
-          ],
-          "name": "storage"
-        }
-      ],
-      "inputs": [
-        {
-          "name": "k",
-          "type": 9,
-          "typeArguments": null
-        }
-      ],
-      "name": "subtract_from_s_dot_t_dot_x",
       "output": {
         "name": "",
         "type": 0,
