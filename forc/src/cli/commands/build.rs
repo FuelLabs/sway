@@ -1,6 +1,6 @@
 use crate::{cli, ops::forc_build};
-use anyhow::Result;
 use clap::Parser;
+use forc_util::ForcResult;
 
 /// Compile the current or target project.
 ///
@@ -25,7 +25,7 @@ pub struct Command {
     pub tests: bool,
 }
 
-pub(crate) fn exec(command: Command) -> Result<()> {
+pub(crate) fn exec(command: Command) -> ForcResult<()> {
     forc_build::build(command)?;
     Ok(())
 }

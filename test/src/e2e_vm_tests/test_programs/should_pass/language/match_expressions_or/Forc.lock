@@ -1,0 +1,16 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-ECD36C05270985BF'
+
+[[package]]
+name = 'or-patterns'
+source = 'member'
+dependencies = [
+    'core',
+    'std',
+]
+
+[[package]]
+name = 'std'
+source = 'path+from-root-ECD36C05270985BF'
+dependencies = ['core']

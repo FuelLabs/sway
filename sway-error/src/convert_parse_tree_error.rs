@@ -55,6 +55,8 @@ pub enum ConvertParseTreeError {
     StructPatternsNotSupportedHere { span: Span },
     #[error("wildcard patterns not supported in this position")]
     WildcardPatternsNotSupportedHere { span: Span },
+    #[error("or patterns not supported in this position")]
+    OrPatternsNotSupportedHere { span: Span },
     #[error("tuple patterns not supported in this position")]
     TuplePatternsNotSupportedHere { span: Span },
     #[error("ref patterns not supported in this position")]
@@ -150,6 +152,7 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::ConstructorPatternsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::StructPatternsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::WildcardPatternsNotSupportedHere { span } => span.clone(),
+            ConvertParseTreeError::OrPatternsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::TuplePatternsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::RefPatternsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::ConstructorPatternOneArg { span } => span.clone(),
