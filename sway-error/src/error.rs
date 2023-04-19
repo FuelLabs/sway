@@ -461,6 +461,8 @@ pub enum CompileError {
         missing_fields: Vec<String>,
         span: Span,
     },
+    #[error("Variable \"{var}\" is not bound in all patterns")]
+    MatchVariableNotBoundInAllPatterns { var: Ident, span: Span },
     #[error(
         "Storage attribute access mismatch. Try giving the surrounding function more access by \
         adding \"#[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]\" to the function declaration."
@@ -742,6 +744,7 @@ impl Spanned for CompileError {
             GenericShadowsGeneric { name } => name.span(),
             MatchExpressionNonExhaustive { span, .. } => span.clone(),
             MatchStructPatternMissingFields { span, .. } => span.clone(),
+            MatchVariableNotBoundInAllPatterns { span, .. } => span.clone(),
             NotAnEnum { span, .. } => span.clone(),
             StorageAccessMismatch { span, .. } => span.clone(),
             TraitDeclPureImplImpure { span, .. } => span.clone(),

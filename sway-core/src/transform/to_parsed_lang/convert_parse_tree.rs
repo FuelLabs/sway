@@ -2319,6 +2319,10 @@ fn fn_arg_to_function_parameter(
             let error = ConvertParseTreeError::WildcardPatternsNotSupportedHere { span: pat_span };
             return Err(handler.emit_err(error.into()));
         }
+        Pattern::Or { .. } => {
+            let error = ConvertParseTreeError::OrPatternsNotSupportedHere { span: pat_span };
+            return Err(handler.emit_err(error.into()));
+        }
         Pattern::Var {
             reference,
             mutable,
@@ -3176,6 +3180,10 @@ fn statement_let_to_ast_nodes(
                 }
                 ast_nodes
             }
+            Pattern::Or { .. } => {
+                let error = ConvertParseTreeError::OrPatternsNotSupportedHere { span };
+                return Err(handler.emit_err(error.into()));
+            }
             Pattern::Tuple(pat_tuple) => {
                 let mut ast_nodes = Vec::new();
 
@@ -3389,6 +3397,32 @@ fn pattern_to_scrutinee(
 ) -> Result<Scrutinee, ErrorEmitted> {
     let span = pattern.span();
     let scrutinee = match pattern {
+        Pattern::Or {
+            lhs,
+            pipe_token: _,
+            rhs,
+        } => {
+            let mut elems = vec![rhs];
+            let mut current_lhs = lhs;
+
+            while let Pattern::Or {
+                lhs: new_lhs,
+                pipe_token: _,
+                rhs: new_rhs,
+            } = *current_lhs
+            {
+                elems.push(new_rhs);
+                current_lhs = new_lhs;
+            }
+            elems.push(current_lhs);
+
+            let elems = elems
+                .into_iter()
+                .rev()
+                .map(|p| pattern_to_scrutinee(context, handler, *p))
+                .collect::<Result<Vec<_>, _>>()?;
+            Scrutinee::Or { span, elems }
+        }
         Pattern::Wildcard { underscore_token } => Scrutinee::CatchAll {
             span: underscore_token.span(),
         },

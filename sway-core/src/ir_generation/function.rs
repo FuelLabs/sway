@@ -160,12 +160,12 @@ impl<'eng> FnCompiler<'eng> {
                 ty::TyDecl::VariableDecl(tvd) => {
                     self.compile_var_decl(context, md_mgr, tvd, span_md_idx)
                 }
-                ty::TyDecl::ConstantDecl { decl_id, .. } => {
+                ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
                     let tcd = self.decl_engine.get_constant(decl_id);
                     self.compile_const_decl(context, md_mgr, &tcd, span_md_idx, false)?;
                     Ok(None)
                 }
-                ty::TyDecl::EnumDecl { decl_id, .. } => {
+                ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
                     let ted = self.decl_engine.get_enum(decl_id);
                     create_tagged_union_type(
                         self.type_engine,

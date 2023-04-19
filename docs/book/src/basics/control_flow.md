@@ -40,6 +40,7 @@ The basic syntax of a `match` statement is as follows:
 let result = match expression {
     pattern1 => code_to_execute_if_expression_matches_pattern1,
     pattern2 => code_to_execute_if_expression_matches_pattern2,
+    pattern3 | pattern4 => code_to_execute_if_expression_matches_pattern3_or_pattern4
     ...
     _ => code_to_execute_if_expression_matches_no_pattern,
 }

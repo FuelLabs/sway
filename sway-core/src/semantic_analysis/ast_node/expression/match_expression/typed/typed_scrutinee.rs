@@ -14,12 +14,34 @@ use crate::{
 };
 
 impl ty::TyScrutinee {
-    pub(crate) fn type_check(ctx: TypeCheckContext, scrutinee: Scrutinee) -> CompileResult<Self> {
-        let warnings = vec![];
-        let errors = vec![];
+    pub(crate) fn type_check(
+        mut ctx: TypeCheckContext,
+        scrutinee: Scrutinee,
+    ) -> CompileResult<Self> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
         let type_engine = ctx.type_engine;
         let decl_engine = ctx.decl_engine;
         match scrutinee {
+            Scrutinee::Or { elems, span } => {
+                let type_id = type_engine.insert(decl_engine, TypeInfo::Unknown);
+
+                let mut typed_elems = Vec::with_capacity(elems.len());
+                for scrutinee in elems {
+                    typed_elems.push(check!(
+                        ty::TyScrutinee::type_check(ctx.by_ref(), scrutinee),
+                        return err(warnings, errors),
+                        warnings,
+                        errors,
+                    ));
+                }
+                let typed_scrutinee = ty::TyScrutinee {
+                    variant: ty::TyScrutineeVariant::Or(typed_elems),
+                    type_id,
+                    span,
+                };
+                ok(typed_scrutinee, warnings, errors)
+            }
             Scrutinee::CatchAll { span } => {
                 let type_id = type_engine.insert(decl_engine, TypeInfo::Unknown);
                 let dummy_type_param = TypeParameter {
@@ -75,7 +97,7 @@ fn type_check_variable(
 
     let typed_scrutinee = match ctx.namespace.resolve_symbol(&name).value {
         // If this variable is a constant, then we turn it into a [TyScrutinee::Constant](ty::TyScrutinee::Constant).
-        Some(ty::TyDecl::ConstantDecl { decl_id, .. }) => {
+        Some(ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. })) => {
             let constant_decl = decl_engine.get_constant(decl_id);
             let value = match constant_decl.value {
                 Some(ref value) => value,
@@ -270,7 +292,7 @@ fn type_check_enum(
                 warnings,
                 errors
             );
-            if let TyDecl::EnumVariantDecl { enum_ref, .. } = decl {
+            if let TyDecl::EnumVariantDecl(ty::EnumVariantDecl { enum_ref, .. }) = decl {
                 (call_path.suffix.span(), decl_engine.get_enum(enum_ref.id()))
             } else {
                 errors.push(CompileError::EnumNotFound {
