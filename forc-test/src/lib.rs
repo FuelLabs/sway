@@ -69,8 +69,7 @@ pub enum BuiltTests {
 /// If the built package is a contract, a second built package for the same contract without the
 /// tests are also populated.
 ///
-/// For contract and script packages needs their `[contract-dependencies]` deployed before
-/// For packages containing contracts and scripts, ensure that their [contract-dependencies] are deployed prior to execution.
+/// For packages containing contracts or scripts, their [contract-dependencies] are needed for deployment.
 #[derive(Debug)]
 pub enum PackageTests {
     Contract(PackageWithDeploymentToTest),
