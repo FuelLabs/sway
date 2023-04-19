@@ -824,7 +824,7 @@ async fn go_to_definition_for_paths() {
         req_uri: &uri,
         req_line: 24,
         req_char: 31,
-        def_line: 5,
+        def_line: 9,
         def_start_char: 10,
         def_end_char: 19,
         def_path: "sway-lib-std/src/constants.sw",

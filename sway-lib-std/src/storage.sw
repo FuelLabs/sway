@@ -1,3 +1,4 @@
+//! Contract storage utilities.
 library;
 
 use ::alloc::{alloc, alloc_bytes, realloc_bytes};
@@ -239,6 +240,7 @@ pub fn clear_slice(key: b256) -> bool {
     __state_clear(sha256(key), number_of_slots)
 }
 
+/// A general way to persistently store heap types.
 pub trait StorableSlice<T> {
     #[storage(write)]
     fn store(self, argument: T);
@@ -1046,6 +1048,7 @@ impl<V> StorageVec<V> {
     }
 }
 
+/// A persistent storage type to store a collection of tightly packed bytes.
 pub struct StorageBytes {}
 
 impl StorableSlice<Bytes> for StorageBytes {

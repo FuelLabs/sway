@@ -23,9 +23,28 @@ pub(crate) struct DocLinks {
 }
 impl Renderable for DocLinks {
     fn render(self, _render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
+        let mut links_vec = Vec::new();
+        // sort the doc links alphabetically
+        // for the AllDoc page, sort based on the module prefix
+        match self.style {
+            DocStyle::AllDoc(_) => {
+                for (block_title, mut doc_link) in self.links {
+                    doc_link.sort_by(|a, b| {
+                        a.module_info.module_prefixes[1].cmp(&b.module_info.module_prefixes[1])
+                    });
+                    links_vec.push((block_title, doc_link));
+                }
+            }
+            _ => {
+                for (block_title, mut doc_link) in self.links {
+                    doc_link.sort();
+                    links_vec.push((block_title, doc_link));
+                }
+            }
+        }
         let doc_links = match self.style {
             DocStyle::AllDoc(_) => box_html! {
-                @ for (title, list_items) in self.links {
+                @ for (title, list_items) in links_vec {
                     @ if !list_items.is_empty() {
                         h2(id=format!("{}", title.html_title_string())) { : title.as_str(); }
                         div(class="item-table") {
@@ -56,7 +75,7 @@ impl Renderable for DocLinks {
             .into_string()
             .unwrap(),
             DocStyle::ProjectIndex(_) => box_html! {
-                @ for (title, list_items) in self.links {
+                @ for (title, list_items) in links_vec {
                     @ if !list_items.is_empty() {
                         h2(id=format!("{}", title.html_title_string())) { : title.as_str(); }
                         div(class="item-table") {
@@ -91,7 +110,7 @@ impl Renderable for DocLinks {
             .into_string()
             .unwrap(),
             _ => box_html! {
-                @ for (title, list_items) in self.links {
+                @ for (title, list_items) in links_vec {
                     @ if !list_items.is_empty() {
                         h2(id=format!("{}", title.html_title_string())) { : title.as_str(); }
                         div(class="item-table") {
