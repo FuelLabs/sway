@@ -1082,7 +1082,7 @@ fn find_const_decl_from_impl(
     const_decl: &mut Box<TyConstantDecl>,
 ) -> Option<TyConstantDecl> {
     match implementing_type {
-        TyDecl::ImplTrait { decl_id, .. } => {
+        TyDecl::ImplTrait(ImplTrait { decl_id, .. }) => {
             let impl_trait = decl_engine.get_impl_trait(&decl_id.clone());
             impl_trait
                 .items
@@ -1099,9 +1099,9 @@ fn find_const_decl_from_impl(
                     _ => unreachable!(),
                 })
         }
-        TyDecl::AbiDecl {
+        TyDecl::AbiDecl(AbiDecl {
             decl_id: _decl_id, ..
-        } => todo!(),
+        }) => todo!(),
         _ => unreachable!(),
     }
 }

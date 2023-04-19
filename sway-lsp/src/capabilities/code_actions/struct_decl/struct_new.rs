@@ -1,4 +1,4 @@
-use sway_core::language::ty::{TyDecl, TyImplTrait, TyStructDecl, TyStructField};
+use sway_core::language::ty::{self, TyImplTrait, TyStructDecl, TyStructField};
 use sway_types::Spanned;
 use tower_lsp::lsp_types::{CodeActionDisabled, Position, Range, Url};
 
@@ -23,9 +23,9 @@ impl<'a> CodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
             .iter()
             .all_references_of_token(ctx.token, ctx.engines)
             .find_map(|(_, token)| {
-                if let Some(TypedAstToken::TypedDeclaration(TyDecl::ImplTrait {
-                    decl_id, ..
-                })) = token.typed
+                if let Some(TypedAstToken::TypedDeclaration(ty::TyDecl::ImplTrait(
+                    ty::ImplTrait { decl_id, .. },
+                ))) = token.typed
                 {
                     Some(ctx.engines.de().get_impl_trait(&decl_id))
                 } else {

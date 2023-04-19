@@ -2,6 +2,11 @@ use crate::priv_prelude::*;
 
 #[derive(Clone, Debug, Serialize)]
 pub enum Pattern {
+    Or {
+        lhs: Box<Pattern>,
+        pipe_token: PipeToken,
+        rhs: Box<Pattern>,
+    },
     Wildcard {
         underscore_token: UnderscoreToken,
     },
@@ -28,6 +33,11 @@ pub enum Pattern {
 impl Spanned for Pattern {
     fn span(&self) -> Span {
         match self {
+            Pattern::Or {
+                lhs,
+                pipe_token,
+                rhs,
+            } => Span::join(Span::join(lhs.span(), pipe_token.span()), rhs.span()),
             Pattern::Wildcard { underscore_token } => underscore_token.span(),
             Pattern::Var {
                 reference,

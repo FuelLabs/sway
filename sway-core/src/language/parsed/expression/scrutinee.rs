@@ -11,6 +11,10 @@ use sway_types::{ident::Ident, span::Span, Spanned};
 #[allow(clippy::enum_variant_names)]
 #[derive(Debug, Clone)]
 pub enum Scrutinee {
+    Or {
+        elems: Vec<Scrutinee>,
+        span: Span,
+    },
     CatchAll {
         span: Span,
     },
@@ -58,6 +62,7 @@ pub enum StructScrutineeField {
 impl Spanned for Scrutinee {
     fn span(&self) -> Span {
         match self {
+            Scrutinee::Or { span, .. } => span.clone(),
             Scrutinee::CatchAll { span } => span.clone(),
             Scrutinee::Literal { span, .. } => span.clone(),
             Scrutinee::Variable { span, .. } => span.clone(),
@@ -157,7 +162,7 @@ impl Scrutinee {
                 let value = value.gather_approximate_typeinfo_dependencies();
                 vec![name, value].concat()
             }
-            Scrutinee::Tuple { elems, .. } => elems
+            Scrutinee::Tuple { elems, .. } | Scrutinee::Or { elems, .. } => elems
                 .iter()
                 .flat_map(|scrutinee| scrutinee.gather_approximate_typeinfo_dependencies())
                 .collect::<Vec<TypeInfo>>(),

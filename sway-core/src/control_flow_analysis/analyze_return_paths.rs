@@ -179,25 +179,24 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
     graph: &mut ControlFlowGraph<'cfg>,
     leaves: &[NodeIndex],
 ) -> Result<Vec<NodeIndex>, CompileError> {
-    use ty::TyDecl::*;
     let decl_engine = engines.de();
     match decl {
-        TraitDecl { .. }
-        | AbiDecl { .. }
-        | StructDecl { .. }
-        | EnumDecl { .. }
-        | EnumVariantDecl { .. }
-        | StorageDecl { .. }
-        | TypeAliasDecl { .. }
-        | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),
-        VariableDecl(_) | ConstantDecl { .. } => {
+        ty::TyDecl::TraitDecl(_)
+        | ty::TyDecl::AbiDecl(_)
+        | ty::TyDecl::StructDecl(_)
+        | ty::TyDecl::EnumDecl(_)
+        | ty::TyDecl::EnumVariantDecl(_)
+        | ty::TyDecl::StorageDecl(_)
+        | ty::TyDecl::TypeAliasDecl(_)
+        | ty::TyDecl::GenericTypeForFunctionScope(_) => Ok(leaves.to_vec()),
+        ty::TyDecl::VariableDecl(_) | ty::TyDecl::ConstantDecl(_) => {
             let entry_node = graph.add_node(ControlFlowGraphNode::from_node(node));
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
             }
             Ok(vec![entry_node])
         }
-        FunctionDecl { decl_id, .. } => {
+        ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. }) => {
             let fn_decl = decl_engine.get_function(decl_id);
             let entry_node = graph.add_node(ControlFlowGraphNode::from_node(node));
             for leaf in leaves {
@@ -206,7 +205,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             connect_typed_fn_decl(engines, &fn_decl, graph, entry_node)?;
             Ok(leaves.to_vec())
         }
-        ImplTrait { decl_id, .. } => {
+        ty::TyDecl::ImplTrait(ty::ImplTrait { decl_id, .. }) => {
             let ty::TyImplTrait {
                 trait_name, items, ..
             } = decl_engine.get_impl_trait(decl_id);
@@ -218,7 +217,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             connect_impl_trait(engines, &trait_name, graph, &items, entry_node)?;
             Ok(leaves.to_vec())
         }
-        ErrorRecovery(_) => Ok(leaves.to_vec()),
+        ty::TyDecl::ErrorRecovery(_) => Ok(leaves.to_vec()),
     }
 }
 

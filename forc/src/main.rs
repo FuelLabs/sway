@@ -1,6 +1,6 @@
-use forc_util::ForcResult;
+use forc_util::ForcCliResult;
 
 #[tokio::main]
-async fn main() -> ForcResult<()> {
-    forc::cli::run_cli().await
+async fn main() -> ForcCliResult<()> {
+    forc::cli::run_cli().await.into()
 }
