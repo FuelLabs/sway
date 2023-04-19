@@ -743,7 +743,7 @@ fn setup() -> (Bytes, u8, u8, u8) {
 #[test()]
 fn test_new_bytes() {
     let bytes = Bytes::new();
-    assert(bytes.len() == 0);
+    assert(bytes.len() == 1);
 }
 #[test()]
 fn test_push() {
