@@ -26,7 +26,10 @@ pub fn hover_data(
     let range = get_range_from_span(&ident.span());
 
     // check if our token is a keyword
-    if token.kind == SymbolKind::Keyword {
+    if match token.kind {
+        SymbolKind::BoolLiteral | SymbolKind::Keyword | SymbolKind::SelfKeyword => true,
+        _ => false,
+    } {
         let name = ident.as_str();
         let documentation = keyword_docs.get(name).unwrap();
         let prefix = format!("\n```sway\n{name}\n```\n\n---\n\n");
