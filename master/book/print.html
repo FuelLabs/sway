@@ -2957,6 +2957,7 @@ fn test_meaning_of_life() {
 <p>Each test function is ran as if it were the entry point for a
 <a href="testing/../sway-program-types/scripts.html">script</a>. Tests &quot;pass&quot; if they return
 successfully, and &quot;fail&quot; if they revert or vice versa while <a href="testing/unit-testing.html#testing-failure">testing failure</a>.</p>
+<p>If the project has failing tests <code>forc test</code> will exit with exit status <code>101</code>.</p>
 <h2 id="building-and-running-tests"><a class="header" href="#building-and-running-tests">Building and Running Tests</a></h2>
 <p>We can build and execute all tests within a package with the following:</p>
 <pre><code class="language-console">forc test
