@@ -88,7 +88,7 @@ impl Power for u8 {
 }
 
 /// Trait for exponential functions.
-// Should exist for UFP64, UFP128 and their signed versions
+/// This should exist for UFP64, UFP128 and their signed versions.
 pub trait Exponent {
     // exponential function: e ^ exponent
     fn exp(exponent: Self) -> Self;
