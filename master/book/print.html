@@ -3794,6 +3794,7 @@ foo = { path = &quot;../foo&quot;, salt = &quot;0x100000000000000000000000000000
 <p>Workspace manifests are declared within <code>Forc.toml</code> files and support the following fields:</p>
 <ul>
 <li><a href="forc/workspaces.html#the-members-field"><code>members</code></a> - Packages to include in the workspace.</li>
+<li><a href="forc/workspaces.html#the-patch-section"><code>[patch]</code></a> - Defines the patches.</li>
 </ul>
 <p>An empty workspace can be created with <code>forc new --workspace</code> or <code>forc init --workspace</code>.</p>
 <h2 id="the-members-field"><a class="header" href="#the-members-field">The <code>members</code> field</a></h2>
@@ -3803,6 +3804,18 @@ members = [&quot;member1&quot;, &quot;path/to/member2&quot;]
 </code></pre>
 <p>The <code>members</code> field accepts entries to be given in relative path with respect to the workspace root.
 Packages that are located within a workspace directory but are <em>not</em> contained within the <code>members</code> set are ignored.</p>
+<h2 id="the-patch-section-1"><a class="header" href="#the-patch-section-1">The <code>[patch]</code> section</a></h2>
+<p>The <code>[patch]</code> section can be used to override any dependency in the workspace dependency graph. The usage is the same with package level <code>[patch]</code> section and details can be seen <a href="forc/./manifest_reference.html#the-patch-section">here</a>.</p>
+<p>It is not allowed to declare patch table in member of a workspace if the workspace manifest file contains a patch table.</p>
+<p>Example:</p>
+<pre><code class="language-toml">[workspace]
+members = [&quot;member1&quot;, &quot;path/to/member2&quot;]
+
+
+[patch.'https://github.com/fuellabs/sway']
+std = { git = &quot;https://github.com/fuellabs/sway&quot;, branch = &quot;test&quot; }
+</code></pre>
+<p>In the above example each occurance of <code>std</code> as a dependency in the workspace will be changed with <code>std</code> from <code>test</code> branch of sway repo.</p>
 <h2 id="some-forc-commands-that-support-workspaces"><a class="header" href="#some-forc-commands-that-support-workspaces">Some <code>forc</code> commands that support workspaces</a></h2>
 <ul>
 <li><code>forc build</code> - Builds an entire workspace.</li>
