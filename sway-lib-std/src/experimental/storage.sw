@@ -1,3 +1,4 @@
+//! Experimental storage types.
 library;
 
 use ::alloc::{alloc, realloc_bytes};

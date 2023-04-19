@@ -27,6 +27,8 @@ pub const GTF_OUTPUT_MESSAGE_AMOUNT = 0x209;
 
 // pub const GTF_OUTPUT_CONTRACT_CREATED_CONTRACT_ID = 0x20A;
 // pub const GTF_OUTPUT_CONTRACT_CREATED_STATE_ROOT = 0x20B;
+
+/// The output type for a transaction.
 pub enum Output {
     Coin: (),
     Contract: (),

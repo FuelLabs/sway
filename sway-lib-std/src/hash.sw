@@ -1,3 +1,4 @@
+//! Utility functions for cryptographic hashing.
 library;
 
 /// Returns the `SHA-2-256` hash of `param`.

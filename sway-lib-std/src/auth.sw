@@ -8,6 +8,7 @@ use ::option::Option;
 use ::result::Result;
 use ::inputs::{Input, input_count, input_owner, input_type};
 
+/// The error type used when an `Identity` cannot be determined.
 pub enum AuthError {
     InputsNotAllOwnedBySameAddress: (),
 }

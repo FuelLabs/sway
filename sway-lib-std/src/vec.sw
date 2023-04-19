@@ -1,3 +1,4 @@
+//! A vector type for dynamically sized arrays outside of storage.
 library;
 
 use ::alloc::{alloc, realloc};
