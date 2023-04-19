@@ -25,6 +25,44 @@ pub struct TypedTree<'a> {
     namespace: &'a namespace::Module,
 }
 
+impl<'a> TypedTree<'a> {
+    pub fn new(ctx: &'a ParseContext<'a>, namespace: &'a namespace::Module) -> Self {
+        Self { ctx, namespace }
+    }
+
+    pub fn traverse_node(&self, node: &ty::TyAstNode) {
+        node.parse(self.ctx);
+    }
+
+    /// Collects module names from the mod statements
+    pub fn collect_module_spans(&self, typed_program: &TyProgram) {
+        self.collect_module(&typed_program.root);
+    }
+
+    fn collect_module(&self, typed_module: &TyModule) {
+        for (
+            _,
+            TySubmodule {
+                module,
+                mod_name_span,
+            },
+        ) in &typed_module.submodules
+        {
+            if let Some(mut token) = self
+                .ctx
+                .tokens
+                .try_get_mut(&to_ident_key(&Ident::new(mod_name_span.clone())))
+                .try_unwrap()
+            {
+                token.typed = Some(TypedAstToken::TypedIncludeStatement);
+                token.type_def = Some(TypeDefinition::Ident(Ident::new(module.span.clone())));
+            }
+            self.collect_module(module);
+        }
+    }    
+}
+
+
 impl Parse for ty::TyAstNode {
     fn parse(&self, ctx: &ParseContext) {
         match &self.content {
@@ -58,10 +96,117 @@ impl Parse for ty::TyDecl {
     }
 }
 
+impl Parse for ty::TySideEffect {
+    fn parse(&self, ctx: &ParseContext) {
+        use ty::TySideEffectVariant::*;
+        match &self.side_effect {
+            UseStatement(
+                use_statement @ ty::TyUseStatement {
+                    call_path,
+                    import_type,
+                    alias,
+                    is_absolute: _,
+                },
+            ) => {
+                for (mod_path, ident) in iter_prefixes(call_path).zip(call_path) {
+                    if let Some(mut token) = ctx
+                        .tokens
+                        .try_get_mut(&to_ident_key(ident))
+                        .try_unwrap()
+                    {
+                        token.typed = Some(TypedAstToken::TypedUseStatement(use_statement.clone()));
+    
+                        if let Some(span) = ctx
+                            .namespace
+                            .submodule(mod_path)
+                            .and_then(|tgt_submod| tgt_submod.span.clone())
+                        {
+                            token.type_def = Some(TypeDefinition::Ident(Ident::new(span)));
+                        }
+                    }
+                }
+                match &import_type {
+                    ImportType::Item(item) => {
+                        if let Some(mut token) = ctx
+                            .tokens
+                            .try_get_mut(&to_ident_key(item))
+                            .try_unwrap()
+                        {
+                            token.typed =
+                                Some(TypedAstToken::TypedUseStatement(use_statement.clone()));
+                            let mut symbol_kind = SymbolKind::Unknown;
+                            let mut type_def = None;    
+                            if let Some(decl_ident) = ctx
+                                .namespace
+                                .submodule(call_path)
+                                .and_then(|module| module.symbols().get(item))
+                                .and_then(|decl| decl.get_decl_ident())
+                            {
+                                // Update the symbol kind to match the declarations symbol kind
+                                if let Some(decl) = ctx
+                                    .tokens
+                                    .try_get(&to_ident_key(&decl_ident))
+                                    .try_unwrap()
+                                {
+                                    symbol_kind = decl.value().kind.clone();
+                                }
+                                type_def = Some(TypeDefinition::Ident(decl_ident));
+                            }
+                            token.kind = symbol_kind.clone();
+                            token.type_def = type_def.clone();
+                            // the alias should take on the same symbol kind and type definition
+                            if let Some(alias) = alias {
+                                if let Some(mut token) = ctx
+                                    .tokens
+                                    .try_get_mut(&to_ident_key(alias))
+                                    .try_unwrap()
+                                {
+                                    token.typed = Some(TypedAstToken::TypedUseStatement(
+                                        use_statement.clone(),
+                                    ));
+                                    token.kind = symbol_kind;
+                                    token.type_def = type_def;
+                                }
+                            }
+                        }
+                    }
+                    ImportType::SelfImport(span) => {
+                        if let Some(mut token) = ctx
+                            .tokens
+                            .try_get_mut(&to_ident_key(&Ident::new(span.clone())))
+                            .try_unwrap()
+                        {
+                            token.typed =
+                                Some(TypedAstToken::TypedUseStatement(use_statement.clone()));
+                            if let Some(span) = ctx
+                                .namespace
+                                .submodule(call_path)
+                                .and_then(|tgt_submod| tgt_submod.span.clone())
+                            {
+                                token.type_def = Some(TypeDefinition::Ident(Ident::new(span)));
+                            }
+                        }
+                    }
+                    ImportType::Star => {}
+                }
+            }
+            IncludeStatement => {}
+        }
+    }
+}
+
 impl Parse for ty::TyExpression {
     fn parse(&self, ctx: &ParseContext) {
         match self.expression {
-            ty::TyExpressionVariant::Literal { .. } => {}
+            ty::TyExpressionVariant::Literal { .. } => {
+                if let Some(mut token) = ctx
+                    .tokens
+                    .try_get_mut(&to_ident_key(&Ident::new(self.span.clone())))
+                    .try_unwrap()
+                {
+                    token.typed = Some(TypedAstToken::TypedExpression(self.clone()));
+                }
+            }
             ty::TyExpressionVariant::FunctionApplication {
                 call_path,
                 contract_call_params,
@@ -69,7 +214,58 @@ impl Parse for ty::TyExpression {
                 fn_ref,
                 type_binding,
                 ..
-            } => {}
+            } => {
+                if let Some(type_binding) = type_binding {
+                    type_binding.type_arguments.to_vec().iter().for_each(|type_arg| {
+                        collect_type_argument(ctx, type_arg);
+                    });
+                }
+                let implementing_type_name = ctx.engines.de()
+                    .get_function(&fn_ref)
+                    .implementing_type
+                    .and_then(|impl_type| impl_type.get_decl_ident());
+                let prefixes = if let Some(impl_type_name) = implementing_type_name {
+                    // the last prefix of the call path is not a module but a type
+                    if let Some((last, prefixes)) = call_path.prefixes.split_last() {
+                        if let Some(mut token) = ctx
+                            .tokens
+                            .try_get_mut(&to_ident_key(last))
+                            .try_unwrap()
+                        {
+                            token.typed = Some(TypedAstToken::Ident(impl_type_name.clone()));
+                            token.type_def = Some(TypeDefinition::Ident(impl_type_name));
+                        }
+                        prefixes
+                    } else {
+                        &call_path.prefixes
+                    }
+                } else {
+                    &call_path.prefixes
+                };
+                collect_call_path_prefixes(ctx, prefixes);
+                if let Some(mut token) = ctx
+                    .tokens
+                    .try_get_mut(&to_ident_key(&call_path.suffix))
+                    .try_unwrap()
+                {
+                    token.typed = Some(TypedAstToken::TypedExpression(self.clone()));
+                    let function_decl = ctx.engines.de().get_function(&fn_ref);
+                    token.type_def = Some(TypeDefinition::Ident(function_decl.name));
+                }
+                contract_call_params.values().for_each(|exp| exp.parse(ctx));
+                for (ident, exp) in arguments {
+                    if let Some(mut token) = ctx
+                        .tokens
+                        .try_get_mut(&to_ident_key(&ident))
+                        .try_unwrap()
+                    {
+                        token.typed = Some(TypedAstToken::Ident(ident.clone()));
+                    }
+                    exp.parse(ctx);
+                }
+                let function_decl = ctx.engines.de().get_function(&fn_ref);
+                function_decl.body.contents.iter().for_each(|node| node.parse(ctx));
+            }
             ty::TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {
                 lhs.parse(ctx);
                 rhs.parse(ctx);
@@ -78,13 +274,30 @@ impl Parse for ty::TyExpression {
                 ref const_decl,
                 span,
                 call_path,
-            } => {}
+            } => {
+                collect_const_decl(ctx, const_decl, &span);
+                if let Some(call_path) = call_path {
+                    collect_call_path_prefixes(ctx, &call_path.prefixes);
+                }
+            }
             ty::TyExpressionVariant::VariableExpression {
                 ref name,
                 ref span,
                 ref call_path,
                 ..
-            } => {}
+            } => {
+                if let Some(call_path) = call_path {
+                    collect_call_path_prefixes(ctx, &call_path.prefixes);
+                }
+                if let Some(mut token) = ctx
+                    .tokens
+                    .try_get_mut(&to_ident_key(&Ident::new(span.clone())))
+                    .try_unwrap()
+                {
+                    token.typed = Some(TypedAstToken::TypedExpression(self.clone()));
+                    token.type_def = Some(TypeDefinition::Ident(name.clone()));
+                }
+            }
             ty::TyExpressionVariant::Tuple { fields } => {
                 fields.iter().for_each(|field| field.parse(ctx));
             }
@@ -102,7 +315,42 @@ impl Parse for ty::TyExpression {
                 fields,
                 call_path_binding,
                 ..
-            } => {}
+            } => {
+                if let Some(mut token) = ctx
+                    .tokens
+                    .try_get_mut(&to_ident_key(&call_path_binding.inner.suffix))
+                    .try_unwrap()
+                {
+                    token.typed = Some(TypedAstToken::TypedExpression(self.clone()));
+                    token.type_def = Some(TypeDefinition::TypeId(self.return_type));
+                }
+                call_path_binding.type_arguments.to_vec().iter().for_each(|type_arg| {
+                    collect_type_argument(ctx, type_arg);
+                });
+                collect_call_path_prefixes(ctx, &call_path_binding.inner.prefixes);
+                fields.iter().for_each(|field| {
+                    if let Some(mut token) = ctx
+                        .tokens
+                        .try_get_mut(&to_ident_key(&field.name))
+                        .try_unwrap()
+                    {
+                        token.typed = Some(TypedAstToken::TypedExpression(field.value.clone()));
+
+                        if let Some(struct_decl) = &ctx.tokens.struct_declaration_of_type_id(
+                            ctx.engines,
+                            &self.return_type,
+                        ) {
+                            struct_decl.fields.iter().for_each(|decl_field| {
+                                if decl_field.name == field.name {
+                                    token.type_def =
+                                        Some(TypeDefinition::Ident(decl_field.name.clone()));
+                                }
+                            });
+                        }
+                    }
+                    field.value.parse(ctx);
+                });
+            }
             ty::TyExpressionVariant::CodeBlock(code_block) => {
                 code_block.contents.iter().for_each(|node| node.parse(ctx));
             }
@@ -140,12 +388,31 @@ impl Parse for ty::TyExpression {
                 field_to_access,
                 field_instantiation_span,
                 ..
-            } => {}
+            } => {
+                prefix.parse(ctx);
+                if let Some(mut token) = ctx
+                    .tokens
+                    .try_get_mut(&to_ident_key(&Ident::new(field_instantiation_span.clone())))
+                    .try_unwrap()
+                {
+                    token.typed = Some(TypedAstToken::TypedExpression(self.clone()));
+                    token.type_def = Some(TypeDefinition::Ident(field_to_access.name.clone()));
+                }
+            }
             ty::TyExpressionVariant::TupleElemAccess {
                 prefix,
                 elem_to_access_span,
                 ..
-            } => {}
+            } => {
+                prefix.parse(ctx);
+                if let Some(mut token) = ctx
+                    .tokens
+                    .try_get_mut(&to_ident_key(&Ident::new(elem_to_access_span.clone())))
+                    .try_unwrap()
+                {
+                    token.typed = Some(TypedAstToken::TypedExpression(self.clone()));
+                }
+            }
             ty::TyExpressionVariant::EnumInstantiation {
                 variant_name,
                 variant_instantiation_span,
@@ -153,24 +420,96 @@ impl Parse for ty::TyExpression {
                 contents,
                 call_path_binding,
                 ..
-            } => {}
+            } => {
+                if let Some(mut token) = ctx
+                    .tokens
+                    .try_get_mut(&to_ident_key(&call_path_binding.inner.suffix))
+                    .try_unwrap()
+                {
+                    token.typed = Some(TypedAstToken::TypedExpression(self.clone()));
+                    token.type_def = Some(TypeDefinition::Ident(enum_ref.name().clone()));
+                }
+                call_path_binding.type_arguments.to_vec().iter().for_each(|type_arg| {
+                    collect_type_argument(ctx, type_arg);
+                });
+                collect_call_path_prefixes(ctx, &call_path_binding.inner.prefixes);
+                if let Some(mut token) = ctx
+                    .tokens
+                    .try_get_mut(&to_ident_key(&Ident::new(
+                        variant_instantiation_span.clone(),
+                    )))
+                    .try_unwrap()
+                {
+                    token.typed = Some(TypedAstToken::TypedExpression(self.clone()));
+                    token.type_def = Some(TypeDefinition::Ident(variant_name.clone()));
+                }
+                if let Some(contents) = contents.as_deref() {
+                    contents.parse(ctx);
+                }
+            }
             ty::TyExpressionVariant::AbiCast {
                 abi_name, address, ..
-            } => {}
-            ty::TyExpressionVariant::StorageAccess(storage_access) => {}
-            ty::TyExpressionVariant::IntrinsicFunction(kind) => {}
+            } => {
+                collect_call_path_prefixes(ctx, &abi_name.prefixes);
+                if let Some(mut token) = ctx
+                    .tokens
+                    .try_get_mut(&to_ident_key(&abi_name.suffix))
+                    .try_unwrap()
+                {
+                    token.typed = Some(TypedAstToken::TypedExpression(self.clone()));
+                    if let Some(abi_def_ident) = ctx
+                        .namespace
+                        .submodule(&abi_name.prefixes)
+                        .and_then(|module| module.symbols().get(&abi_name.suffix))
+                        .and_then(|decl| decl.get_decl_ident())
+                    {
+                        token.type_def = Some(TypeDefinition::Ident(abi_def_ident));
+                    }
+                }
+                address.parse(ctx);
+            }
+            ty::TyExpressionVariant::StorageAccess(storage_access) => {
+                storage_access.fields.iter().for_each(|field| {
+                    if let Some(mut token) = ctx
+                        .tokens
+                        .try_get_mut(&to_ident_key(&field.name))
+                        .try_unwrap()
+                    {
+                        token.typed = Some(TypedAstToken::TyStorageAccessDescriptor(field.clone()));
+                    }
+                });
+            }
+            ty::TyExpressionVariant::IntrinsicFunction(kind) => {
+                kind.parse(ctx);
+            }
             ty::TyExpressionVariant::AbiName { .. } => {}
             ty::TyExpressionVariant::EnumTag { exp } => {
                 exp.parse(ctx);
             }
-            ty::TyExpressionVariant::UnsafeDowncast { exp, variant } => {}
+            ty::TyExpressionVariant::UnsafeDowncast { exp, variant } => {
+                exp.parse(ctx);
+                if let Some(mut token) = ctx
+                    .tokens
+                    .try_get_mut(&to_ident_key(&variant.name))
+                    .try_unwrap()
+                {
+                    token.typed = Some(TypedAstToken::TypedExpression(self.clone()));
+                }
+            }
             ty::TyExpressionVariant::WhileLoop {
                 body, condition, ..
-            } => {}
+            } => {
+                condition.parse(ctx);
+                body.contents.iter().for_each(|node| node.parse(ctx));
+            }
             ty::TyExpressionVariant::Break => (),
             ty::TyExpressionVariant::Continue => (),
-            ty::TyExpressionVariant::Reassignment(reassignment) => {}
-            ty::TyExpressionVariant::StorageReassignment(storage_reassignment) => {}
+            ty::TyExpressionVariant::Reassignment(reassignment) => {
+                reassignment.parse(ctx);
+            }
+            ty::TyExpressionVariant::StorageReassignment(storage_reassignment) => {
+                storage_reassignment.parse(ctx);
+            }
             ty::TyExpressionVariant::Return(exp) => exp.parse(ctx),
         }
     }
@@ -587,679 +926,49 @@ impl Parse for ty::TyTypeAliasDecl {
     }
 }
 
-
-
-
-impl<'a> TypedTree<'a> {
-    pub fn new(ctx: &'a ParseContext<'a>, namespace: &'a namespace::Module) -> Self {
-        Self { ctx, namespace }
+impl Parse for ty::TyIntrinsicFunctionKind {
+    fn parse(&self, ctx: &ParseContext) {
+        self.type_arguments.iter().for_each(|type_arg| {
+            collect_type_argument(ctx, type_arg);
+        });
+        self.arguments.iter().for_each(|arg| {
+            arg.parse(ctx);
+        });
     }
+}
 
-    pub fn traverse_node(&self, node: &ty::TyAstNode) {
-        match &node.content {
-            ty::TyAstNodeContent::Declaration(declaration) => self.handle_declaration(declaration),
-            ty::TyAstNodeContent::Expression(expression)
-            | ty::TyAstNodeContent::ImplicitReturnExpression(expression) => {
-                self.handle_expression(expression)
-            }
-            ty::TyAstNodeContent::SideEffect(side_effect) => self.handle_side_effect(side_effect),
-        };
-    }
-
-    /// Collects module names from the mod statements
-    pub fn collect_module_spans(&self, typed_program: &TyProgram) {
-        self.collect_module(&typed_program.root);
-    }
-
-    fn collect_module(&self, typed_module: &TyModule) {
-        for (
-            _,
-            TySubmodule {
-                module,
-                mod_name_span,
-            },
-        ) in &typed_module.submodules
-        {
-            if let Some(mut token) = self
-                .ctx
-                .tokens
-                .try_get_mut(&to_ident_key(&Ident::new(mod_name_span.clone())))
-                .try_unwrap()
-            {
-                token.typed = Some(TypedAstToken::TypedIncludeStatement);
-                token.type_def = Some(TypeDefinition::Ident(Ident::new(module.span.clone())));
-            }
-            self.collect_module(module);
-        }
-    }
-
-    
-
-    fn handle_side_effect(&self, side_effect: &ty::TySideEffect) {
-        use ty::TySideEffectVariant::*;
-        match &side_effect.side_effect {
-            UseStatement(
-                use_statement @ ty::TyUseStatement {
-                    call_path,
-                    import_type,
-                    alias,
-                    is_absolute: _,
-                },
-            ) => {
-                for (mod_path, ident) in iter_prefixes(call_path).zip(call_path) {
-                    if let Some(mut token) = self
-                        .ctx
-                        .tokens
-                        .try_get_mut(&to_ident_key(ident))
-                        .try_unwrap()
-                    {
-                        token.typed = Some(TypedAstToken::TypedUseStatement(use_statement.clone()));
-
-                        if let Some(span) = self
-                            .namespace
-                            .submodule(mod_path)
-                            .and_then(|tgt_submod| tgt_submod.span.clone())
-                        {
-                            token.type_def = Some(TypeDefinition::Ident(Ident::new(span)));
-                        }
-                    }
-                }
-
-                match &import_type {
-                    ImportType::Item(item) => {
-                        if let Some(mut token) = self
-                            .ctx
-                            .tokens
-                            .try_get_mut(&to_ident_key(item))
-                            .try_unwrap()
-                        {
-                            token.typed =
-                                Some(TypedAstToken::TypedUseStatement(use_statement.clone()));
-
-                            let mut symbol_kind = SymbolKind::Unknown;
-                            let mut type_def = None;
-
-                            if let Some(decl_ident) = self
-                                .namespace
-                                .submodule(call_path)
-                                .and_then(|module| module.symbols().get(item))
-                                .and_then(|decl| decl.get_decl_ident())
-                            {
-                                // Update the symbol kind to match the declarations symbol kind
-                                if let Some(decl) = self
-                                    .ctx
-                                    .tokens
-                                    .try_get(&to_ident_key(&decl_ident))
-                                    .try_unwrap()
-                                {
-                                    symbol_kind = decl.value().kind.clone();
-                                }
-                                type_def = Some(TypeDefinition::Ident(decl_ident));
-                            }
-
-                            token.kind = symbol_kind.clone();
-                            token.type_def = type_def.clone();
-
-                            // the alias should take on the same symbol kind and type definition
-                            if let Some(alias) = alias {
-                                if let Some(mut token) = self
-                                    .ctx
-                                    .tokens
-                                    .try_get_mut(&to_ident_key(alias))
-                                    .try_unwrap()
-                                {
-                                    token.typed = Some(TypedAstToken::TypedUseStatement(
-                                        use_statement.clone(),
-                                    ));
-                                    token.kind = symbol_kind;
-                                    token.type_def = type_def;
-                                }
-                            }
-                        }
-                    }
-                    ImportType::SelfImport(span) => {
-                        if let Some(mut token) = self
-                            .ctx
-                            .tokens
-                            .try_get_mut(&to_ident_key(&Ident::new(span.clone())))
-                            .try_unwrap()
-                        {
-                            token.typed =
-                                Some(TypedAstToken::TypedUseStatement(use_statement.clone()));
-
-                            if let Some(span) = self
-                                .namespace
-                                .submodule(call_path)
-                                .and_then(|tgt_submod| tgt_submod.span.clone())
-                            {
-                                token.type_def = Some(TypeDefinition::Ident(Ident::new(span)));
-                            }
-                        }
-                    }
-                    ImportType::Star => {}
-                }
-            }
-            IncludeStatement => {}
-        }
-    }
-
-    
-    fn handle_expression(&self, expression: &ty::TyExpression) {
-        let decl_engine = self.ctx.engines.de();
-        match &expression.expression {
-            ty::TyExpressionVariant::Literal { .. } => {
-                if let Some(mut token) = self
-                    .ctx
-                    .tokens
-                    .try_get_mut(&to_ident_key(&Ident::new(expression.span.clone())))
-                    .try_unwrap()
-                {
-                    token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
-                }
-            }
-            ty::TyExpressionVariant::FunctionApplication {
-                call_path,
-                contract_call_params,
-                arguments,
-                fn_ref,
-                type_binding,
-                ..
-            } => {
-                if let Some(type_binding) = type_binding {
-                    for type_arg in &type_binding.type_arguments.to_vec() {
-                        self.collect_type_argument(type_arg);
-                    }
-                }
-
-                let implementing_type_name = decl_engine
-                    .get_function(fn_ref)
-                    .implementing_type
-                    .and_then(|impl_type| impl_type.get_decl_ident());
-
-                let prefixes = if let Some(impl_type_name) = implementing_type_name {
-                    // the last prefix of the call path is not a module but a type
-                    if let Some((last, prefixes)) = call_path.prefixes.split_last() {
-                        if let Some(mut token) = self
-                            .ctx
-                            .tokens
-                            .try_get_mut(&to_ident_key(last))
-                            .try_unwrap()
-                        {
-                            token.typed = Some(TypedAstToken::Ident(impl_type_name.clone()));
-                            token.type_def = Some(TypeDefinition::Ident(impl_type_name));
-                        }
-                        prefixes
-                    } else {
-                        &call_path.prefixes
-                    }
-                } else {
-                    &call_path.prefixes
-                };
-                self.collect_call_path_prefixes(prefixes);
-
-                if let Some(mut token) = self
-                    .ctx
-                    .tokens
-                    .try_get_mut(&to_ident_key(&call_path.suffix))
-                    .try_unwrap()
-                {
-                    token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
-                    let function_decl = decl_engine.get_function(fn_ref);
-                    token.type_def = Some(TypeDefinition::Ident(function_decl.name));
-                }
-
-                for exp in contract_call_params.values() {
-                    self.handle_expression(exp);
-                }
-
-                for (ident, exp) in arguments {
-                    if let Some(mut token) = self
-                        .ctx
-                        .tokens
-                        .try_get_mut(&to_ident_key(ident))
-                        .try_unwrap()
-                    {
-                        token.typed = Some(TypedAstToken::Ident(ident.clone()));
-                    }
-                    self.handle_expression(exp);
-                }
-
-                let function_decl = decl_engine.get_function(fn_ref);
-                for node in &function_decl.body.contents {
-                    self.traverse_node(node);
-                }
-            }
-            ty::TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {
-                self.handle_expression(lhs);
-                self.handle_expression(rhs);
-            }
-            ty::TyExpressionVariant::ConstantExpression {
-                ref const_decl,
-                span,
-                call_path,
-            } => {
-                self.collect_const_decl(const_decl, span);
-
-                if let Some(call_path) = call_path {
-                    self.collect_call_path_prefixes(&call_path.prefixes);
-                }
-            }
-            ty::TyExpressionVariant::VariableExpression {
-                ref name,
-                ref span,
-                ref call_path,
-                ..
-            } => {
-                if let Some(call_path) = call_path {
-                    self.collect_call_path_prefixes(&call_path.prefixes);
-                }
-
-                if let Some(mut token) = self
-                    .ctx
-                    .tokens
-                    .try_get_mut(&to_ident_key(&Ident::new(span.clone())))
-                    .try_unwrap()
-                {
-                    token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
-                    token.type_def = Some(TypeDefinition::Ident(name.clone()));
-                }
-            }
-            ty::TyExpressionVariant::Tuple { fields } => {
-                for exp in fields {
-                    self.handle_expression(exp);
-                }
-            }
-            ty::TyExpressionVariant::Array {
-                elem_type: _,
-                contents,
-            } => {
-                for exp in contents {
-                    self.handle_expression(exp);
-                }
-            }
-            ty::TyExpressionVariant::ArrayIndex { prefix, index } => {
-                self.handle_expression(prefix);
-                self.handle_expression(index);
-            }
-            ty::TyExpressionVariant::StructExpression {
-                fields,
-                call_path_binding,
-                ..
-            } => {
-                if let Some(mut token) = self
-                    .ctx
-                    .tokens
-                    .try_get_mut(&to_ident_key(&call_path_binding.inner.suffix))
-                    .try_unwrap()
-                {
-                    token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
-                    token.type_def = Some(TypeDefinition::TypeId(expression.return_type));
-                }
-
-                for type_arg in &call_path_binding.type_arguments.to_vec() {
-                    self.collect_type_argument(type_arg);
-                }
-
-                self.collect_call_path_prefixes(&call_path_binding.inner.prefixes);
-
-                for field in fields {
-                    if let Some(mut token) = self
-                        .ctx
-                        .tokens
-                        .try_get_mut(&to_ident_key(&field.name))
-                        .try_unwrap()
-                    {
-                        token.typed = Some(TypedAstToken::TypedExpression(field.value.clone()));
-
-                        if let Some(struct_decl) = &self.ctx.tokens.struct_declaration_of_type_id(
-                            self.ctx.engines,
-                            &expression.return_type,
-                        ) {
-                            for decl_field in &struct_decl.fields {
-                                if decl_field.name == field.name {
-                                    token.type_def =
-                                        Some(TypeDefinition::Ident(decl_field.name.clone()));
-                                }
-                            }
-                        }
-                    }
-                    self.handle_expression(&field.value);
-                }
-            }
-            ty::TyExpressionVariant::CodeBlock(code_block) => {
-                for node in &code_block.contents {
-                    self.traverse_node(node);
-                }
-            }
-            ty::TyExpressionVariant::FunctionParameter { .. } => {}
-            ty::TyExpressionVariant::MatchExp {
-                desugared,
-                scrutinees,
-            } => {
-                // Order is important here, the expression must be processed first otherwise the
-                // scrutinee information will get overwritten by processing the underlying tree of
-                // conditions
-                self.handle_expression(desugared);
-                for s in scrutinees {
-                    self.handle_scrutinee(s);
-                }
-            }
-            ty::TyExpressionVariant::IfExp {
-                condition,
-                then,
-                r#else,
-            } => {
-                self.handle_expression(condition);
-                self.handle_expression(then);
-                if let Some(r#else) = r#else {
-                    self.handle_expression(r#else);
-                }
-            }
-            ty::TyExpressionVariant::AsmExpression { registers, .. } => {
-                for register in registers {
-                    if let Some(initializer) = &register.initializer {
-                        self.handle_expression(initializer);
-                    }
-                }
-            }
-            ty::TyExpressionVariant::StructFieldAccess {
-                prefix,
-                field_to_access,
-                field_instantiation_span,
-                ..
-            } => {
-                self.handle_expression(prefix);
-
-                if let Some(mut token) = self
-                    .ctx
-                    .tokens
-                    .try_get_mut(&to_ident_key(&Ident::new(field_instantiation_span.clone())))
-                    .try_unwrap()
-                {
-                    token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
-                    token.type_def = Some(TypeDefinition::Ident(field_to_access.name.clone()));
-                }
-            }
-            ty::TyExpressionVariant::TupleElemAccess {
-                prefix,
-                elem_to_access_span,
-                ..
-            } => {
-                self.handle_expression(prefix);
-
-                if let Some(mut token) = self
-                    .ctx
-                    .tokens
-                    .try_get_mut(&to_ident_key(&Ident::new(elem_to_access_span.clone())))
-                    .try_unwrap()
-                {
-                    token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
-                }
-            }
-            ty::TyExpressionVariant::EnumInstantiation {
-                variant_name,
-                variant_instantiation_span,
-                enum_ref,
-                contents,
-                call_path_binding,
-                ..
-            } => {
-                if let Some(mut token) = self
-                    .ctx
-                    .tokens
-                    .try_get_mut(&to_ident_key(&call_path_binding.inner.suffix))
-                    .try_unwrap()
-                {
-                    token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
-                    token.type_def = Some(TypeDefinition::Ident(enum_ref.name().clone()));
-                }
-
-                for type_arg in &call_path_binding.type_arguments.to_vec() {
-                    self.collect_type_argument(type_arg);
-                }
-
-                self.collect_call_path_prefixes(&call_path_binding.inner.prefixes);
-
-                if let Some(mut token) = self
-                    .ctx
-                    .tokens
-                    .try_get_mut(&to_ident_key(&Ident::new(
-                        variant_instantiation_span.clone(),
-                    )))
-                    .try_unwrap()
-                {
-                    token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
-                    token.type_def = Some(TypeDefinition::Ident(variant_name.clone()));
-                }
-
-                if let Some(contents) = contents.as_deref() {
-                    self.handle_expression(contents);
-                }
-            }
-            ty::TyExpressionVariant::AbiCast {
-                abi_name, address, ..
-            } => {
-                self.collect_call_path_prefixes(&abi_name.prefixes);
-
-                if let Some(mut token) = self
-                    .ctx
-                    .tokens
-                    .try_get_mut(&to_ident_key(&abi_name.suffix))
-                    .try_unwrap()
-                {
-                    token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
-                    if let Some(abi_def_ident) = self
-                        .namespace
-                        .submodule(&abi_name.prefixes)
-                        .and_then(|module| module.symbols().get(&abi_name.suffix))
-                        .and_then(|decl| decl.get_decl_ident())
-                    {
-                        token.type_def = Some(TypeDefinition::Ident(abi_def_ident));
-                    }
-                }
-
-                self.handle_expression(address);
-            }
-            ty::TyExpressionVariant::StorageAccess(storage_access) => {
-                for field in &storage_access.fields {
-                    if let Some(mut token) = self
-                        .ctx
-                        .tokens
-                        .try_get_mut(&to_ident_key(&field.name))
-                        .try_unwrap()
-                    {
-                        token.typed = Some(TypedAstToken::TyStorageAccessDescriptor(field.clone()));
-                    }
-                }
-            }
-            ty::TyExpressionVariant::IntrinsicFunction(kind) => {
-                self.handle_intrinsic_function(kind);
-            }
-            ty::TyExpressionVariant::AbiName { .. } => {}
-            ty::TyExpressionVariant::EnumTag { exp } => {
-                self.handle_expression(exp);
-            }
-            ty::TyExpressionVariant::UnsafeDowncast { exp, variant } => {
-                self.handle_expression(exp);
-                if let Some(mut token) = self
-                    .ctx
-                    .tokens
-                    .try_get_mut(&to_ident_key(&variant.name))
-                    .try_unwrap()
-                {
-                    token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
-                }
-            }
-            ty::TyExpressionVariant::WhileLoop {
-                body, condition, ..
-            } => self.handle_while_loop(body, condition),
-            ty::TyExpressionVariant::Break => (),
-            ty::TyExpressionVariant::Continue => (),
-            ty::TyExpressionVariant::Reassignment(reassignment) => {
-                self.handle_expression(&reassignment.rhs);
-
-                if let Some(mut token) = self
-                    .ctx
-                    .tokens
-                    .try_get_mut(&to_ident_key(&reassignment.lhs_base_name))
-                    .try_unwrap()
-                {
-                    token.typed = Some(TypedAstToken::TypedReassignment((**reassignment).clone()));
-                }
-
-                for proj_kind in &reassignment.lhs_indices {
-                    if let ty::ProjectionKind::StructField { name } = proj_kind {
-                        if let Some(mut token) = self
-                            .ctx
-                            .tokens
-                            .try_get_mut(&to_ident_key(name))
-                            .try_unwrap()
-                        {
-                            token.typed =
-                                Some(TypedAstToken::TypedReassignment((**reassignment).clone()));
-                            if let Some(struct_decl) =
-                                &self.ctx.tokens.struct_declaration_of_type_id(
-                                    self.ctx.engines,
-                                    &reassignment.lhs_type,
-                                )
-                            {
-                                for decl_field in &struct_decl.fields {
-                                    if &decl_field.name == name {
-                                        token.type_def =
-                                            Some(TypeDefinition::Ident(decl_field.name.clone()));
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            ty::TyExpressionVariant::StorageReassignment(storage_reassignment) => {
-                let type_engine = self.ctx.engines.te();
-                let decl_engine = self.ctx.engines.de();
-
-                // collect storage keyword
-                if let Some(mut token) = self
-                    .ctx
-                    .tokens
-                    .try_get_mut(&to_ident_key(&Ident::new(
-                        storage_reassignment.storage_keyword_span.clone(),
-                    )))
-                    .try_unwrap()
-                {
-                    token.typed = Some(TypedAstToken::TyStorageResassignment(
-                        storage_reassignment.clone(),
-                    ));
-                    if let Some(storage) = self.namespace.get_declared_storage(decl_engine) {
-                        token.type_def = Some(TypeDefinition::Ident(storage.storage_keyword));
-                    }
-                }
-
-                if let Some((head_field, tail_fields)) = storage_reassignment.fields.split_first() {
-                    // collect the first ident as a field of the storage definition
-                    if let Some(mut token) = self
-                        .ctx
-                        .tokens
-                        .try_get_mut(&to_ident_key(&head_field.name))
-                        .try_unwrap()
-                    {
-                        token.typed = Some(TypedAstToken::TypeCheckedStorageReassignDescriptor(
-                            head_field.clone(),
-                        ));
-
-                        if let Some(storage_field) = self
-                            .namespace
-                            .get_declared_storage(decl_engine)
-                            .and_then(|storage| {
-                                // find the corresponding field in the storage declaration
-                                storage
-                                    .fields
-                                    .into_iter()
-                                    .find(|f| f.name.as_str() == head_field.name.as_str())
-                            })
-                        {
-                            token.type_def = Some(TypeDefinition::Ident(storage_field.name));
-                        }
-                    }
-
-                    // collect the rest of the idents as fields of their respective types
-                    for (field, container_type_id) in tail_fields
-                        .iter()
-                        .zip(storage_reassignment.fields.iter().map(|f| f.type_id))
-                    {
-                        if let Some(mut token) = self
-                            .ctx
-                            .tokens
-                            .try_get_mut(&to_ident_key(&field.name))
-                            .try_unwrap()
-                        {
-                            token.typed = Some(
-                                TypedAstToken::TypeCheckedStorageReassignDescriptor(field.clone()),
-                            );
-
-                            match type_engine.get(container_type_id) {
-                                TypeInfo::Struct(decl_ref) => {
-                                    if let Some(field_name) = decl_engine
-                                        .get_struct(&decl_ref)
-                                        .fields
-                                        .iter()
-                                        .find(|struct_field| {
-                                            // find the corresponding field in the containing type declaration
-                                            struct_field.name.as_str() == field.name.as_str()
-                                        })
-                                        .map(|struct_field| struct_field.name.clone())
-                                    {
-                                        token.type_def = Some(TypeDefinition::Ident(field_name));
-                                    }
-                                }
-                                _ => {
-                                    token.type_def = Some(TypeDefinition::TypeId(field.type_id));
-                                }
-                            }
-                        }
-                    }
-                }
-
-                self.handle_expression(&storage_reassignment.rhs);
-            }
-            ty::TyExpressionVariant::Return(exp) => self.handle_expression(exp),
-        }
-    }
-
-    fn handle_scrutinee(&self, scrutinee: &ty::TyScrutinee) {
+impl Parse for ty::TyScrutinee {
+    fn parse(&self, ctx: &ParseContext) {
         use ty::TyScrutineeVariant::*;
-        match &scrutinee.variant {
+        match &self.variant {
             CatchAll => {}
             Constant(name, _, const_decl) => {
-                if let Some(mut token) = self
-                    .ctx
+                if let Some(mut token) = ctx
                     .tokens
                     .try_get_mut(&to_ident_key(name))
                     .try_unwrap()
                 {
-                    token.typed = Some(TypedAstToken::TypedScrutinee(scrutinee.clone()));
+                    token.typed = Some(TypedAstToken::TypedScrutinee(self.clone()));
                     token.type_def =
                         Some(TypeDefinition::Ident(const_decl.call_path.suffix.clone()));
                 }
             }
             Literal(_) => {
-                if let Some(mut token) = self
-                    .ctx
+                if let Some(mut token) = ctx
                     .tokens
-                    .try_get_mut(&to_ident_key(&Ident::new(scrutinee.span.clone())))
+                    .try_get_mut(&to_ident_key(&Ident::new(self.span.clone())))
                     .try_unwrap()
                 {
-                    token.typed = Some(TypedAstToken::TypedScrutinee(scrutinee.clone()));
+                    token.typed = Some(TypedAstToken::TypedScrutinee(self.clone()));
                 }
             }
             Variable(ident) => {
-                if let Some(mut token) = self
-                    .ctx
+                if let Some(mut token) = ctx
                     .tokens
                     .try_get_mut(&to_ident_key(ident))
                     .try_unwrap()
                 {
-                    token.typed = Some(TypedAstToken::TypedScrutinee(scrutinee.clone()));
+                    token.typed = Some(TypedAstToken::TypedScrutinee(self.clone()));
                 }
             }
             StructScrutinee {
@@ -1267,31 +976,15 @@ impl<'a> TypedTree<'a> {
                 fields,
                 instantiation_call_path,
             } => {
-                if let Some(mut token) = self
-                    .ctx
+                if let Some(mut token) = ctx
                     .tokens
                     .try_get_mut(&to_ident_key(&instantiation_call_path.suffix))
                     .try_unwrap()
                 {
-                    token.typed = Some(TypedAstToken::TypedScrutinee(scrutinee.clone()));
+                    token.typed = Some(TypedAstToken::TypedScrutinee(self.clone()));
                     token.type_def = Some(TypeDefinition::Ident(struct_ref.name().clone()));
                 }
-
-                for field in fields {
-                    if let Some(mut token) = self
-                        .ctx
-                        .tokens
-                        .try_get_mut(&to_ident_key(&field.field))
-                        .try_unwrap()
-                    {
-                        token.typed = Some(TypedAstToken::TypedScrutinee(scrutinee.clone()));
-                        token.type_def = Some(TypeDefinition::Ident(field.field_def_name.clone()));
-                    }
-
-                    if let Some(scrutinee) = &field.scrutinee {
-                        self.handle_scrutinee(scrutinee);
-                    }
-                }
+                fields.iter().for_each(|field| field.parse(ctx));
             }
             EnumScrutinee {
                 enum_ref,
@@ -1302,62 +995,165 @@ impl<'a> TypedTree<'a> {
                 let prefixes =
                     if let Some((last, prefixes)) = instantiation_call_path.prefixes.split_last() {
                         // the last prefix of the call path is not a module but a type
-                        if let Some(mut token) = self
-                            .ctx
+                        if let Some(mut token) = ctx
                             .tokens
                             .try_get_mut(&to_ident_key(last))
                             .try_unwrap()
                         {
-                            token.typed = Some(TypedAstToken::TypedScrutinee(scrutinee.clone()));
+                            token.typed = Some(TypedAstToken::TypedScrutinee(self.clone()));
                             token.type_def = Some(TypeDefinition::Ident(enum_ref.name().clone()));
                         }
                         prefixes
                     } else {
                         &instantiation_call_path.prefixes
                     };
-                self.collect_call_path_prefixes(prefixes);
-
-                if let Some(mut token) = self
-                    .ctx
+                collect_call_path_prefixes(ctx, prefixes);
+                if let Some(mut token) = ctx
                     .tokens
                     .try_get_mut(&to_ident_key(&instantiation_call_path.suffix))
                     .try_unwrap()
                 {
-                    token.typed = Some(TypedAstToken::TypedScrutinee(scrutinee.clone()));
+                    token.typed = Some(TypedAstToken::TypedScrutinee(self.clone()));
                     token.type_def = Some(TypeDefinition::Ident(variant.name.clone()));
                 }
-
-                self.handle_scrutinee(value);
+                value.parse(ctx);
             }
             Tuple(scrutinees) | Or(scrutinees) => {
-                for s in scrutinees {
-                    self.handle_scrutinee(s);
+                scrutinees.iter().for_each(|s| s.parse(ctx));
+            }
+        }
+    }
+}
+
+impl Parse for ty::TyStructScrutineeField {
+    fn parse(&self, ctx: &ParseContext) {
+        if let Some(mut token) = ctx
+            .tokens
+            .try_get_mut(&to_ident_key(&self.field))
+            .try_unwrap()
+        {
+            token.typed = Some(TypedAstToken::TyStructScrutineeField(self.clone()));
+            token.type_def = Some(TypeDefinition::Ident(self.field_def_name.clone()));
+        }
+        if let Some(scrutinee) = &self.scrutinee {
+            scrutinee.parse(ctx);
+        }
+    }
+}
+
+impl Parse for ty::TyReassignment {
+    fn parse(&self, ctx: &ParseContext) {
+        self.rhs.parse(ctx);
+        if let Some(mut token) = ctx
+            .tokens
+            .try_get_mut(&to_ident_key(&self.lhs_base_name))
+            .try_unwrap()
+        {
+            token.typed = Some(TypedAstToken::TypedReassignment(self.clone()));
+        }
+        self.lhs_indices.iter().for_each(|proj_kind| {
+            if let ty::ProjectionKind::StructField { name } = proj_kind {
+                if let Some(mut token) = ctx
+                    .tokens
+                    .try_get_mut(&to_ident_key(name))
+                    .try_unwrap()
+                {
+                    token.typed =
+                        Some(TypedAstToken::TypedReassignment(self.clone()));
+                    if let Some(struct_decl) =
+                        &ctx.tokens.struct_declaration_of_type_id(
+                            ctx.engines,
+                            &self.lhs_type,
+                        )
+                    {
+                        struct_decl.fields.iter().for_each(|decl_field| {
+                            if &decl_field.name == name {
+                                token.type_def =
+                                    Some(TypeDefinition::Ident(decl_field.name.clone()));
+                            }
+                        });
+                    }
+                }
+            }
+        });
+    }
+}
+
+impl Parse for ty::TyStorageReassignment {
+    fn parse(&self, ctx: &ParseContext) {
+        // collect storage keyword
+        if let Some(mut token) = ctx
+            .tokens
+            .try_get_mut(&to_ident_key(&Ident::new(
+                self.storage_keyword_span.clone(),
+            )))
+            .try_unwrap()
+        {
+            token.typed = Some(TypedAstToken::TyStorageResassignment(Box::new(self.clone())));
+            if let Some(storage) = ctx.namespace.get_declared_storage(ctx.engines.de()) {
+                token.type_def = Some(TypeDefinition::Ident(storage.storage_keyword));
+            }
+        }
+        if let Some((head_field, tail_fields)) = self.fields.split_first() {
+            // collect the first ident as a field of the storage definition
+            if let Some(mut token) = ctx
+                .tokens
+                .try_get_mut(&to_ident_key(&head_field.name))
+                .try_unwrap()
+            {
+                token.typed = Some(TypedAstToken::TypeCheckedStorageReassignDescriptor(
+                    head_field.clone(),
+                ));
+                if let Some(storage_field) = ctx
+                    .namespace
+                    .get_declared_storage(ctx.engines.de())
+                    .and_then(|storage| {
+                        // find the corresponding field in the storage declaration
+                        storage
+                            .fields
+                            .into_iter()
+                            .find(|f| f.name.as_str() == head_field.name.as_str())
+                    })
+                {
+                    token.type_def = Some(TypeDefinition::Ident(storage_field.name));
+                }
+            }
+            // collect the rest of the idents as fields of their respective types
+            for (field, container_type_id) in tail_fields
+                .iter()
+                .zip(self.fields.iter().map(|f| f.type_id))
+            {
+                if let Some(mut token) = ctx
+                    .tokens
+                    .try_get_mut(&to_ident_key(&field.name))
+                    .try_unwrap()
+                {
+                    token.typed = Some(
+                        TypedAstToken::TypeCheckedStorageReassignDescriptor(field.clone()),
+                    );
+                    match ctx.engines.te().get(container_type_id) {
+                        TypeInfo::Struct(decl_ref) => {
+                            if let Some(field_name) = ctx.engines.de()
+                                .get_struct(&decl_ref)
+                                .fields
+                                .iter()
+                                .find(|struct_field| {
+                                    // find the corresponding field in the containing type declaration
+                                    struct_field.name.as_str() == field.name.as_str()
+                                })
+                                .map(|struct_field| struct_field.name.clone())
+                            {
+                                token.type_def = Some(TypeDefinition::Ident(field_name));
+                            }
+                        }
+                        _ => {
+                            token.type_def = Some(TypeDefinition::TypeId(field.type_id));
+                        }
+                    }
                 }
             }
         }
-    }
-
-    fn handle_intrinsic_function(
-        &self,
-        ty::TyIntrinsicFunctionKind {
-            arguments,
-            type_arguments,
-            ..
-        }: &ty::TyIntrinsicFunctionKind,
-    ) {
-        for type_arg in type_arguments {
-            self.collect_type_argument(type_arg);
-        }
-        for arg in arguments {
-            self.handle_expression(arg);
-        }
-    }
-
-    fn handle_while_loop(&self, body: &ty::TyCodeBlock, condition: &ty::TyExpression) {
-        self.handle_expression(condition);
-        for node in &body.contents {
-            self.traverse_node(node);
-        }
+        self.rhs.parse(ctx);
     }
 }
 
@@ -1372,15 +1168,8 @@ fn assign_type_to_token(
     token.type_def = Some(TypeDefinition::TypeId(type_id));
 }
 
-fn iter_prefixes<T>(slice: &[T]) -> impl Iterator<Item = &[T]> + DoubleEndedIterator {
-    (1..=slice.len()).map(move |len| &slice[..len])
-}
-
 fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, type_arg: &TypeArgument) {
-    let type_engine = ctx.engines.te();
-    let decl_engine = ctx.engines.de();
-    let type_info = type_engine.get(type_arg.type_id);
-
+    let type_info = ctx.engines.te().get(type_arg.type_id);
     collect_call_path_prefixes(ctx, &tree.call_path.prefixes);
     collect_type_id(
         ctx,
@@ -1388,17 +1177,16 @@ fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, type_arg: &Ty
         &TypedAstToken::TypedArgument(type_arg.clone()),
         tree.call_path.suffix.span(),
     );
-
     match &type_info {
         TypeInfo::Enum(decl_ref) => {
-            let decl = decl_engine.get_enum(decl_ref);
+            let decl = ctx.engines.de().get_enum(decl_ref);
             let child_type_args = decl.type_parameters.iter().map(TypeArgument::from);
             for (child_tree, type_arg) in tree.children.iter().zip(child_type_args) {
                 collect_call_path_tree(ctx, child_tree, &type_arg);
             }
         }
         TypeInfo::Struct(decl_ref) => {
-            let decl = decl_engine.get_struct(decl_ref);
+            let decl = ctx.engines.de().get_struct(decl_ref);
             let child_type_args = decl.type_parameters.iter().map(TypeArgument::from);
             for (child_tree, type_arg) in tree.children.iter().zip(child_type_args) {
                 collect_call_path_tree(ctx, child_tree, &type_arg);
@@ -1417,7 +1205,6 @@ fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, type_arg: &Ty
             // definition call path which we can collect without recursion
             if let Some(child_tree) = tree.children.first() {
                 let abi_call_path = &child_tree.call_path;
-
                 collect_call_path_prefixes(ctx, &abi_call_path.prefixes);
                 if let Some(mut token) = ctx
                     .tokens
@@ -1448,7 +1235,6 @@ fn collect_call_path_prefixes(ctx: &ParseContext, prefixes: &[Ident]) {
             .try_unwrap()
         {
             token.typed = Some(TypedAstToken::Ident(ident.clone()));
-
             if let Some(span) = ctx
                 .namespace
                 .submodule(mod_path)
@@ -1479,10 +1265,8 @@ fn collect_const_decl(ctx: &ParseContext, const_decl: &ty::TyConstantDecl, span:
 }
 
 fn collect_type_id(ctx: &ParseContext, type_id: TypeId, typed_token: &TypedAstToken, type_span: Span) {
-    let type_engine = ctx.engines.te();
-    let decl_engine = ctx.engines.de();
-    let type_info = type_engine.get(type_id);
-    let symbol_kind = type_info_to_symbol_kind(type_engine, &type_info, Some(&type_span));
+    let type_info = ctx.engines.te().get(type_id);
+    let symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), &type_info, Some(&type_span));
     match &type_info {
         TypeInfo::Array(type_arg, ..) => {
             collect_type_argument(ctx, type_arg);
@@ -1493,7 +1277,7 @@ fn collect_type_id(ctx: &ParseContext, type_id: TypeId, typed_token: &TypedAstTo
             });
         }
         TypeInfo::Enum(decl_ref) => {
-            let decl = decl_engine.get_enum(decl_ref);
+            let decl = ctx.engines.de().get_enum(decl_ref);
             if let Some(token) = ctx
                 .tokens
                 .try_get_mut(&to_ident_key(&Ident::new(type_span)))
@@ -1501,22 +1285,20 @@ fn collect_type_id(ctx: &ParseContext, type_id: TypeId, typed_token: &TypedAstTo
             {
                 assign_type_to_token(token, symbol_kind, typed_token.clone(), type_id);
             }
-
-            for param in decl.type_parameters {
+            decl.type_parameters.iter().for_each(|param| {
                 collect_type_id(
                     ctx,
                     param.type_id,
                     &TypedAstToken::TypedParameter(param.clone()),
                     param.name_ident.span().clone(),
                 );
-            }
-
-            for variant in &decl.variants {
-                self.collect_ty_enum_variant(variant);
-            }
+            });
+            decl.variants.iter().for_each(|variant| {
+                variant.parse(ctx);
+            });
         }
         TypeInfo::Struct(decl_ref) => {
-            let decl = decl_engine.get_struct(decl_ref);
+            let decl = ctx.engines.de().get_struct(decl_ref);
             if let Some(token) = ctx
                 .tokens
                 .try_get_mut(&to_ident_key(&Ident::new(type_span)))
@@ -1524,19 +1306,17 @@ fn collect_type_id(ctx: &ParseContext, type_id: TypeId, typed_token: &TypedAstTo
             {
                 assign_type_to_token(token, symbol_kind, typed_token.clone(), type_id);
             }
-
-            for param in decl.type_parameters {
+            decl.type_parameters.iter().for_each(|param| {
                 collect_type_id(
                     ctx,
                     param.type_id,
                     &TypedAstToken::TypedParameter(param.clone()),
                     param.name_ident.span().clone(),
                 );
-            }
-
-            for field in decl.fields {
-                self.collect_ty_struct_field(&field);
-            }
+            });
+            decl.fields.iter().for_each(|field| {
+                field.parse(ctx);
+            });
         }
         TypeInfo::Custom {
             type_arguments,
@@ -1549,7 +1329,6 @@ fn collect_type_id(ctx: &ParseContext, type_id: TypeId, typed_token: &TypedAstTo
             {
                 assign_type_to_token(token, symbol_kind, typed_token.clone(), type_id);
             }
-
             if let Some(type_arguments) = type_arguments {
                 for type_arg in type_arguments {
                     collect_type_argument(ctx, type_arg);
@@ -1557,9 +1336,9 @@ fn collect_type_id(ctx: &ParseContext, type_id: TypeId, typed_token: &TypedAstTo
             }
         }
         TypeInfo::Storage { fields } => {
-            for field in fields {
-                self.collect_ty_struct_field(field);
-            }
+            fields.iter().for_each(|field| {
+                field.parse(ctx);
+            });
         }
         _ => {
             if let Some(token) = ctx
@@ -1633,7 +1412,6 @@ fn collect_supertrait(ctx: &ParseContext, supertrait: &Supertrait) {
 }
 
 fn collect_enum(ctx: &ParseContext, decl_id: &DeclId<ty::TyEnumDecl>, declaration: &ty::TyDecl) {
-    let decl_engine = ctx.engines.de();
     let enum_decl = ctx.engines.de().get_enum(decl_id);
     if let Some(mut token) = ctx
         .tokens
@@ -1656,4 +1434,8 @@ fn collect_enum(ctx: &ParseContext, decl_id: &DeclId<ty::TyEnumDecl>, declaratio
     enum_decl.variants.iter().for_each(|variant| {
         variant.parse(ctx);
     });
+}
+
+fn iter_prefixes<T>(slice: &[T]) -> impl Iterator<Item = &[T]> + DoubleEndedIterator {
+    (1..=slice.len()).map(move |len| &slice[..len])
 }
