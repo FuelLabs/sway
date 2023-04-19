@@ -3,7 +3,7 @@ use crate::{
     core::token::{
         to_ident_key, type_info_to_symbol_kind, SymbolKind, Token, TypeDefinition, TypedAstToken,
     },
-    traverse::ParseContext,
+    traverse::{Parse, ParseContext},
 };
 use dashmap::mapref::one::RefMut;
 use sway_core::{
@@ -19,10 +19,259 @@ use sway_core::{
 };
 use sway_types::{Ident, Span, Spanned};
 
+
 pub struct TypedTree<'a> {
     ctx: &'a ParseContext<'a>,
     namespace: &'a namespace::Module,
 }
+
+impl Parse for ty::TyAstNode {
+    fn parse(&self, ctx: &ParseContext) {
+        match &self.content {
+            ty::TyAstNodeContent::Declaration(declaration) => declaration.parse(ctx),
+            ty::TyAstNodeContent::Expression(expression)
+            | ty::TyAstNodeContent::ImplicitReturnExpression(expression) => {
+                expression.parse(ctx)
+            }
+            ty::TyAstNodeContent::SideEffect(side_effect) => side_effect.parse(ctx),
+        };
+    }
+}
+
+impl Parse for ty::TyDecl {
+    fn parse(&self, ctx: &ParseContext) {
+        match self {
+            ty::TyDecl::VariableDecl(decl) => decl.parse(ctx),
+            ty::TyDecl::ConstantDecl(decl) => decl.parse(ctx),
+            ty::TyDecl::FunctionDecl(decl) => decl.parse(ctx),
+            ty::TyDecl::TraitDecl(decl) => decl.parse(ctx),
+            ty::TyDecl::StructDecl(decl) => decl.parse(ctx),
+            ty::TyDecl::EnumDecl(decl) => decl.parse(ctx),
+            ty::TyDecl::EnumVariantDecl(decl) => decl.parse(ctx),
+            ty::TyDecl::ImplTrait(decl) => decl.parse(ctx),
+            ty::TyDecl::AbiDecl(decl) => decl.parse(ctx),
+            ty::TyDecl::GenericTypeForFunctionScope(decl) => decl.parse(ctx),
+            ty::TyDecl::ErrorRecovery(_) => {},
+            ty::TyDecl::StorageDecl(decl) => decl.parse(ctx),
+            ty::TyDecl::TypeAliasDecl(decl) => decl.parse(ctx),
+        }
+    }
+}
+
+impl Parse for ty::TyExpression {
+    fn parse(&self, ctx: &ParseContext) {
+        match self.expression {
+            ty::TyExpressionVariant::Literal { .. } => {}
+            ty::TyExpressionVariant::FunctionApplication {
+                call_path,
+                contract_call_params,
+                arguments,
+                fn_ref,
+                type_binding,
+                ..
+            } => {}
+            ty::TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {
+                lhs.parse(ctx);
+                rhs.parse(ctx);
+            }
+            ty::TyExpressionVariant::ConstantExpression {
+                ref const_decl,
+                span,
+                call_path,
+            } => {}
+            ty::TyExpressionVariant::VariableExpression {
+                ref name,
+                ref span,
+                ref call_path,
+                ..
+            } => {}
+            ty::TyExpressionVariant::Tuple { fields } => {
+                fields.iter().for_each(|field| field.parse(ctx));
+            }
+            ty::TyExpressionVariant::Array {
+                elem_type: _,
+                contents,
+            } => {
+                contents.iter().for_each(|exp| exp.parse(ctx));
+            }
+            ty::TyExpressionVariant::ArrayIndex { prefix, index } => {
+                prefix.parse(ctx);
+                index.parse(ctx);
+            }
+            ty::TyExpressionVariant::StructExpression {
+                fields,
+                call_path_binding,
+                ..
+            } => {}
+            ty::TyExpressionVariant::CodeBlock(code_block) => {
+                code_block.contents.iter().for_each(|node| node.parse(ctx));
+            }
+            ty::TyExpressionVariant::FunctionParameter { .. } => {}
+            ty::TyExpressionVariant::MatchExp {
+                desugared,
+                scrutinees,
+            } => {
+                // Order is important here, the expression must be processed first otherwise the
+                // scrutinee information will get overwritten by processing the underlying tree of
+                // conditions
+                desugared.parse(ctx);
+                scrutinees.iter().for_each(|s| s.parse(ctx));
+            }
+            ty::TyExpressionVariant::IfExp {
+                condition,
+                then,
+                r#else,
+            } => {
+                condition.parse(ctx);
+                then.parse(ctx);
+                if let Some(r#else) = r#else {
+                    r#else.parse(ctx);
+                }
+            }
+            ty::TyExpressionVariant::AsmExpression { registers, .. } => {
+                registers.iter().for_each(|r| {
+                    if let Some(initializer) = &r.initializer {
+                        initializer.parse(ctx);
+                    }
+                });
+            }
+            ty::TyExpressionVariant::StructFieldAccess {
+                prefix,
+                field_to_access,
+                field_instantiation_span,
+                ..
+            } => {}
+            ty::TyExpressionVariant::TupleElemAccess {
+                prefix,
+                elem_to_access_span,
+                ..
+            } => {}
+            ty::TyExpressionVariant::EnumInstantiation {
+                variant_name,
+                variant_instantiation_span,
+                enum_ref,
+                contents,
+                call_path_binding,
+                ..
+            } => {}
+            ty::TyExpressionVariant::AbiCast {
+                abi_name, address, ..
+            } => {}
+            ty::TyExpressionVariant::StorageAccess(storage_access) => {}
+            ty::TyExpressionVariant::IntrinsicFunction(kind) => {}
+            ty::TyExpressionVariant::AbiName { .. } => {}
+            ty::TyExpressionVariant::EnumTag { exp } => {
+                exp.parse(ctx);
+            }
+            ty::TyExpressionVariant::UnsafeDowncast { exp, variant } => {}
+            ty::TyExpressionVariant::WhileLoop {
+                body, condition, ..
+            } => {}
+            ty::TyExpressionVariant::Break => (),
+            ty::TyExpressionVariant::Continue => (),
+            ty::TyExpressionVariant::Reassignment(reassignment) => {}
+            ty::TyExpressionVariant::StorageReassignment(storage_reassignment) => {}
+            ty::TyExpressionVariant::Return(exp) => exp.parse(ctx),
+        }
+    }
+}
+
+impl Parse for ty::TyVariableDecl {
+    fn parse(&self, ctx: &ParseContext) {
+        if let Some(mut token) = ctx
+            .tokens
+            .try_get_mut(&to_ident_key(&self.name))
+            .try_unwrap()
+        {
+            token.typed = Some(TypedAstToken::TypedDeclaration(ty::TyDecl::VariableDecl(Box::new(self.clone()))));
+            token.type_def = Some(TypeDefinition::Ident(self.name.clone()));
+        }
+        if let Some(call_path_tree) = &self.type_ascription.call_path_tree {
+            self.collect_call_path_tree(call_path_tree, &self.type_ascription);
+        }
+        self.body.parse(ctx);
+    }
+}
+
+impl Parse for ty::ConstantDecl {
+    fn parse(&self, ctx: &ParseContext) {
+
+    }
+}
+
+impl Parse for ty::FunctionDecl {
+    fn parse(&self, ctx: &ParseContext) {
+
+    }
+}
+
+impl Parse for ty::TraitDecl {
+    fn parse(&self, ctx: &ParseContext) {
+
+    }
+}
+
+impl Parse for ty::StructDecl {
+    fn parse(&self, ctx: &ParseContext) {
+
+    }
+}
+
+impl Parse for ty::EnumDecl {
+    fn parse(&self, ctx: &ParseContext) {
+
+    }
+}
+
+impl Parse for ty::EnumVariantDecl {
+    fn parse(&self, ctx: &ParseContext) {
+
+    }
+}
+
+impl Parse for ty::ImplTrait {
+    fn parse(&self, ctx: &ParseContext) {
+
+    }
+}
+
+impl Parse for ty::AbiDecl {
+    fn parse(&self, ctx: &ParseContext) {
+
+    }
+}
+
+impl Parse for ty::GenericTypeForFunctionScope {
+    fn parse(&self, ctx: &ParseContext) {
+
+    }
+}
+
+impl Parse for ty::StorageDecl {
+    fn parse(&self, ctx: &ParseContext) {
+
+    }
+}
+
+impl Parse for ty::TypeAliasDecl {
+    fn parse(&self, ctx: &ParseContext) {
+
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 impl<'a> TypedTree<'a> {
     pub fn new(ctx: &'a ParseContext<'a>, namespace: &'a namespace::Module) -> Self {
