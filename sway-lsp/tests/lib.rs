@@ -1610,6 +1610,53 @@ async fn hover_docs_with_code_examples() {
 }
 
 #[tokio::test]
+async fn hover_docs_for_self_keywords() {
+    let (mut service, _) = LspService::new(Backend::new);
+    let uri = init_and_open(
+        &mut service,
+        test_fixtures_dir().join("completion/src/main.sw"),
+    )
+    .await;
+    let mut i = 0..;
+
+    let mut hover = HoverDocumentation {
+        req_uri: &uri,
+        req_line: 11,
+        req_char: 13,
+        documentation: "\n```sway\nself\n```\n\n---\n\n The receiver of a method, or the current module.\n\n `self` is used in two situations: referencing the current module and marking\n the receiver of a method.\n\n In paths, `self` can be used to refer to the current module, either in a\n [`use`] statement or in a path to access an element:\n\n ```sway\n use std::contract_id::{self, ContractId};\n ```\n\n Is functionally the same as:\n\n ```sway\n use std::contract_id;\n use std::contract_id::ContractId;\n ```\n\n `self` as the current receiver for a method allows to omit the parameter\n type most of the time. With the exception of this particularity, `self` is\n used much like any other parameter:\n\n ```sway\n struct Foo(u32);\n\n impl Foo {\n     // No `self`.\n     fn new() -> Self {\n         Self(0)\n     }\n\n     // Borrowing `self`.\n     fn value(&self) -> u32 {\n         self.0\n     }\n\n     // Updating `self` mutably.\n     fn clear(ref mut self) {\n         self.0 = 0\n     }\n }\n ```",
+    };
+
+    let _ = lsp::hover_request(&mut service, &hover, &mut i).await;
+    hover.req_char = 24;
+    hover.documentation = "```sway\nstruct MyStruct\n```\n---";
+    let _ = lsp::hover_request(&mut service, &hover, &mut i).await;
+}
+
+#[tokio::test]
+async fn hover_docs_for_boolean_keywords() {
+    let (mut service, _) = LspService::new(Backend::new);
+    let uri = init_and_open(
+        &mut service,
+        test_fixtures_dir().join("tokens/storage/src/main.sw"),
+    )
+    .await;
+    let mut i = 0..;
+
+    let mut hover = HoverDocumentation {
+        req_uri: &uri,
+        req_line: 13,
+        req_char: 36,
+        documentation: "\n```sway\nfalse\n```\n\n---\n\n A value of type [`bool`] representing logical **false**.\n\n `false` is the logical opposite of [`true`].\n\n See the documentation for [`true`] for more information.",
+    };
+
+    let _ = lsp::hover_request(&mut service, &hover, &mut i).await;
+    hover.req_line = 25;
+    hover.req_char = 27;
+    hover.documentation = "\n```sway\ntrue\n```\n\n---\n\n A value of type [`bool`] representing logical **true**.\n\n Logically `true` is not equal to [`false`].\n\n ## Control structures that check for **true**\n\n Several of Sway's control structures will check for a `bool` condition evaluating to **true**.\n\n   * The condition in an [`if`] expression must be of type `bool`.\n     Whenever that condition evaluates to **true**, the `if` expression takes\n     on the value of the first block. If however, the condition evaluates\n     to `false`, the expression takes on value of the `else` block if there is one.\n\n   * [`while`] is another control flow construct expecting a `bool`-typed condition.\n     As long as the condition evaluates to **true**, the `while` loop will continually\n     evaluate its associated block.\n\n   * [`match`] arms can have guard clauses on them.";
+    let _ = lsp::hover_request(&mut service, &hover, &mut i).await;
+}
+
+#[tokio::test]
 async fn rename() {
     let (mut service, _) = LspService::new(Backend::new);
     let uri = init_and_open(
