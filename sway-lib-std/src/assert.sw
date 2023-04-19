@@ -1,3 +1,4 @@
+//! Functions to assert a given condition.
 library;
 
 use ::logging::log;

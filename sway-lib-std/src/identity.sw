@@ -5,6 +5,7 @@ library;
 use ::address::Address;
 use ::contract_id::ContractId;
 
+/// The `Identity` type: either an `Address` or a `ContractId`.
 // ANCHOR: docs_identity
 pub enum Identity {
     Address: Address,
