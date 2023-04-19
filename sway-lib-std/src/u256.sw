@@ -31,6 +31,7 @@ pub struct U256 {
     d: u64,
 }
 
+/// The error type used for `u256` type errors.
 pub enum U256Error {
     LossOfPrecision: (),
 }

@@ -8,6 +8,7 @@ use ::option::Option;
 use ::revert::require;
 use ::vec::Vec;
 
+/// A struct representing the call parameters of a function call.
 pub struct CallParams {
     coins: u64,
     asset_id: ContractId,

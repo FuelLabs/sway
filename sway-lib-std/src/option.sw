@@ -78,7 +78,7 @@ use ::result::Result;
 use ::revert::revert;
 
 // ANCHOR: docs_option
-/// `Option` is a type that represents an optional value.
+/// A type that represents an optional value, either `Some(val)` or `None`.
 pub enum Option<T> {
     /// No value.
     None: (),
