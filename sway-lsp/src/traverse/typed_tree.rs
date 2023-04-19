@@ -7,13 +7,12 @@ use crate::{
 };
 use dashmap::mapref::one::RefMut;
 use sway_core::{
-    decl_engine::{id::DeclId, DeclRefConstant, InterfaceDeclId},
+    decl_engine::{id::DeclId, InterfaceDeclId},
     language::{
         parsed::{ImportType, Supertrait},
-        ty::{self, GetDeclIdent, TyEnumVariant, TyModule, TyProgram, TySubmodule},
+        ty::{self, GetDeclIdent, TyModule, TyProgram, TySubmodule},
         CallPathTree,
     },
-    namespace,
     type_system::TypeArgument,
     TraitConstraint, TypeId, TypeInfo,
 };
@@ -21,12 +20,11 @@ use sway_types::{Ident, Span, Spanned};
 
 pub struct TypedTree<'a> {
     ctx: &'a ParseContext<'a>,
-    namespace: &'a namespace::Module,
 }
 
 impl<'a> TypedTree<'a> {
-    pub fn new(ctx: &'a ParseContext<'a>, namespace: &'a namespace::Module) -> Self {
-        Self { ctx, namespace }
+    pub fn new(ctx: &'a ParseContext<'a>) -> Self {
+        Self { ctx }
     }
 
     pub fn traverse_node(&self, node: &ty::TyAstNode) {
@@ -185,7 +183,7 @@ impl Parse for ty::TySideEffect {
 
 impl Parse for ty::TyExpression {
     fn parse(&self, ctx: &ParseContext) {
-        match self.expression {
+        match &self.expression {
             ty::TyExpressionVariant::Literal { .. } => {
                 if let Some(mut token) = ctx
                     .tokens
@@ -215,7 +213,7 @@ impl Parse for ty::TyExpression {
                 let implementing_type_name = ctx
                     .engines
                     .de()
-                    .get_function(&fn_ref)
+                    .get_function(fn_ref)
                     .implementing_type
                     .and_then(|impl_type| impl_type.get_decl_ident());
                 let prefixes = if let Some(impl_type_name) = implementing_type_name {
@@ -241,7 +239,7 @@ impl Parse for ty::TyExpression {
                     .try_unwrap()
                 {
                     token.typed = Some(TypedAstToken::TypedExpression(self.clone()));
-                    let function_decl = ctx.engines.de().get_function(&fn_ref);
+                    let function_decl = ctx.engines.de().get_function(fn_ref);
                     token.type_def = Some(TypeDefinition::Ident(function_decl.name));
                 }
                 contract_call_params.values().for_each(|exp| exp.parse(ctx));
@@ -253,7 +251,7 @@ impl Parse for ty::TyExpression {
                     }
                     exp.parse(ctx);
                 }
-                let function_decl = ctx.engines.de().get_function(&fn_ref);
+                let function_decl = ctx.engines.de().get_function(fn_ref);
                 function_decl
                     .body
                     .contents
