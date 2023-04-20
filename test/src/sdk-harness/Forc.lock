@@ -1,0 +1,327 @@
+[[package]]
+name = 'auth_caller_contract'
+source = 'member'
+dependencies = [
+    'auth_testing_abi',
+    'std',
+]
+
+[[package]]
+name = 'auth_caller_script'
+source = 'member'
+dependencies = [
+    'auth_testing_abi',
+    'std',
+]
+
+[[package]]
+name = 'auth_testing_abi'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'auth_testing_contract'
+source = 'member'
+dependencies = [
+    'auth_testing_abi',
+    'std',
+]
+
+[[package]]
+name = 'balance_contract'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'block'
+source = 'member'
+dependencies = [
+    'block_test_abi',
+    'std',
+]
+
+[[package]]
+name = 'block_test_abi'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'call_frames'
+source = 'member'
+dependencies = [
+    'call_frames_test_abi',
+    'std',
+]
+
+[[package]]
+name = 'call_frames_test_abi'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'configurables_in_contract'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'configurables_in_script'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'context'
+source = 'member'
+dependencies = [
+    'context_testing_abi',
+    'std',
+]
+
+[[package]]
+name = 'context_caller_contract'
+source = 'member'
+dependencies = [
+    'context_testing_abi',
+    'std',
+]
+
+[[package]]
+name = 'context_testing_abi'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'contract_bytecode'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-5781B31F5E4458CC'
+
+[[package]]
+name = 'ec_recover'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'ec_recover_and_match_predicate'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'evm'
+source = 'member'
+dependencies = [
+    'evm_test_abi',
+    'std',
+]
+
+[[package]]
+name = 'evm_ec_recover'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'evm_test_abi'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'generics_in_abi'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'hashing'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'logging'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'messages'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'methods_abi'
+source = 'member'
+
+[[package]]
+name = 'methods_contract'
+source = 'member'
+dependencies = [
+    'methods_abi',
+    'std',
+]
+
+[[package]]
+name = 'option_field_order'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'option_in_abi'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'parsing_logs'
+source = 'member'
+dependencies = [
+    'parsing_logs_test_abi',
+    'std',
+]
+
+[[package]]
+name = 'parsing_logs_test_abi'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'pow'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'predicate_data_simple'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'predicate_data_struct'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'registers'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'result_in_abi'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'script_bytecode'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'script_data'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-5781B31F5E4458CC'
+dependencies = ['core']
+
+[[package]]
+name = 'storage'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'storage_bytes'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'storage_map'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'svec_array'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'svec_b256'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'svec_bool'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'svec_enum'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'svec_str'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'svec_struct'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'svec_tuple'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'svec_u16'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'svec_u32'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'svec_u64'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'svec_u8'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'test_contract'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'test_script'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'token_ops'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'tx_contract'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'tx_predicate'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'type_aliases'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'vec_in_abi'
+source = 'member'
+dependencies = ['std']

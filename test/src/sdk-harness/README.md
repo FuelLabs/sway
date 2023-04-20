@@ -9,11 +9,11 @@ cd sway
 cargo install --path ./forc
 ```
 
-In the `sway/test/src/sdk-harness` directory is a bash build script. To run it:
+In the `sway/test/src/sdk-harness`, compile all the Sway programs in the workspace:
 
 ```sh
 cd sway/test/src/sdk-harness
-./build.sh
+forc build
 ```
 
 This will build all contracts and scripts under the `sway/test/src/sdk-harness` directory.
