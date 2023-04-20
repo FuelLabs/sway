@@ -17,9 +17,6 @@ impl BlockTest for Contract {
     }
 
     fn get_block_and_timestamp() -> (u64, u64) {
-        (
-            height(),
-            timestamp(),
-        )
+        (height(), timestamp())
     }
 }
