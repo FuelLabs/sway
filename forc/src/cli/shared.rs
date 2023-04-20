@@ -46,6 +46,12 @@ pub struct BuildProfile {
     ///  If --build-profile is also provided, forc omits this flag and uses provided build-profile.
     #[clap(long)]
     pub release: bool,
+    /// Treat warnings as errors.
+    #[clap(long)]
+    pub error_on_warnings: bool,
+    /// Enable the experimental storage implementation and UI.
+    #[clap(long)]
+    pub experimental_storage: bool,
 }
 
 /// Options related to printing stages of compiler output.
@@ -55,8 +61,16 @@ pub struct Print {
     #[clap(long)]
     pub ast: bool,
     /// Print the computed Sway DCA graph.
+    /// DCA graph is printed to the specified path.
+    /// If specified '' graph is printed to stdout.
     #[clap(long)]
-    pub dca_graph: bool,
+    pub dca_graph: Option<String>,
+    /// Specifies the url format to be used in the generated dot file.
+    /// Variables {path}, {line} {col} can be used in the provided format.
+    /// An example for vscode would be:
+    ///   "vscode://file/{path}:{line}:{col}"
+    #[clap(long, verbatim_doc_comment)]
+    pub dca_graph_url_format: Option<String>,
     /// Print the finalized ASM.
     ///
     /// This is the state of the ASM with registers allocated and optimisations applied.
@@ -98,6 +112,9 @@ pub struct Pkg {
     /// needs to be updated, Forc will exit with an error
     #[clap(long)]
     pub locked: bool,
+    /// Outputs json abi with callpaths instead of names for struct and enums.
+    #[clap(long)]
+    pub json_abi_with_callpaths: bool,
 }
 
 /// Options related to minifying output.

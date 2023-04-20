@@ -1,6 +1,6 @@
 use crate::priv_prelude::*;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct ItemFn {
     pub fn_signature: FnSignature,
     pub body: Braces<CodeBlockContents>,

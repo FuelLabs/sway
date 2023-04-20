@@ -14,7 +14,7 @@ use crate::{
 };
 use sway_types::{style::is_snake_case, Spanned};
 
-impl ty::TyFunctionDeclaration {
+impl ty::TyFunctionDecl {
     pub fn type_check(
         mut ctx: TypeCheckContext,
         fn_decl: FunctionDeclaration,
@@ -34,6 +34,7 @@ impl ty::TyFunctionDeclaration {
             type_parameters,
             visibility,
             purity,
+            where_clause,
         } = fn_decl;
 
         let type_engine = ctx.type_engine;
@@ -77,7 +78,7 @@ impl ty::TyFunctionDeclaration {
         let mut new_parameters = vec![];
         for parameter in parameters.into_iter() {
             new_parameters.push(check!(
-                ty::TyFunctionParameter::type_check(ctx.by_ref(), parameter, is_method),
+                ty::TyFunctionParameter::type_check(ctx.by_ref(), parameter),
                 continue,
                 warnings,
                 errors
@@ -145,7 +146,7 @@ impl ty::TyFunctionDeclaration {
             (visibility, ctx.mode() == Mode::ImplAbiFn)
         };
 
-        let function_decl = ty::TyFunctionDeclaration {
+        let function_decl = ty::TyFunctionDecl {
             name,
             body,
             parameters: new_parameters,
@@ -157,6 +158,7 @@ impl ty::TyFunctionDeclaration {
             visibility,
             is_contract_call,
             purity,
+            where_clause,
         };
 
         ok(function_decl, warnings, errors)
@@ -208,9 +210,9 @@ fn test_function_selector_behavior() {
     let type_engine = TypeEngine::default();
     let decl_engine = DeclEngine::default();
 
-    let decl = ty::TyFunctionDeclaration {
+    let decl = ty::TyFunctionDecl {
         purity: Default::default(),
-        name: Ident::new_no_span("foo"),
+        name: Ident::new_no_span("foo".into()),
         implementing_type: None,
         body: ty::TyCodeBlock { contents: vec![] },
         parameters: vec![],
@@ -220,23 +222,24 @@ fn test_function_selector_behavior() {
         type_parameters: vec![],
         visibility: Visibility::Public,
         is_contract_call: false,
+        where_clause: vec![],
     };
 
-    let selector_text = match decl.to_selector_name(&type_engine).value {
+    let selector_text = match decl.to_selector_name(&type_engine, &decl_engine).value {
         Some(value) => value,
         _ => panic!("test failure"),
     };
 
     assert_eq!(selector_text, "foo()".to_string());
 
-    let decl = ty::TyFunctionDeclaration {
+    let decl = ty::TyFunctionDecl {
         purity: Default::default(),
-        name: Ident::new_with_override("bar", Span::dummy()),
+        name: Ident::new_with_override("bar".into(), Span::dummy()),
         implementing_type: None,
         body: ty::TyCodeBlock { contents: vec![] },
         parameters: vec![
             ty::TyFunctionParameter {
-                name: Ident::new_no_span("foo"),
+                name: Ident::new_no_span("foo".into()),
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
@@ -245,7 +248,7 @@ fn test_function_selector_behavior() {
                     .into(),
             },
             ty::TyFunctionParameter {
-                name: Ident::new_no_span("baz"),
+                name: Ident::new_no_span("baz".into()),
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
@@ -267,9 +270,10 @@ fn test_function_selector_behavior() {
         type_parameters: vec![],
         visibility: Visibility::Public,
         is_contract_call: false,
+        where_clause: vec![],
     };
 
-    let selector_text = match decl.to_selector_name(&type_engine).value {
+    let selector_text = match decl.to_selector_name(&type_engine, &decl_engine).value {
         Some(value) => value,
         _ => panic!("test failure"),
     };

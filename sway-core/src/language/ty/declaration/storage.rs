@@ -1,61 +1,61 @@
 use std::hash::{Hash, Hasher};
 
 use sway_error::error::CompileError;
-use sway_types::{state::StateIndex, Ident, Span, Spanned};
+use sway_types::{state::StateIndex, Ident, Named, Span, Spanned};
 
-use crate::{engine_threading::*, error::*, language::ty::*, transform, type_system::*};
+use crate::{
+    decl_engine::DeclEngine, engine_threading::*, error::*, language::ty::*, transform,
+    type_system::*,
+};
 
 #[derive(Clone, Debug)]
-pub struct TyStorageDeclaration {
+pub struct TyStorageDecl {
     pub fields: Vec<TyStorageField>,
     pub span: Span,
     pub attributes: transform::AttributesMap,
+    pub storage_keyword: Ident,
 }
 
-impl EqWithEngines for TyStorageDeclaration {}
-impl PartialEqWithEngines for TyStorageDeclaration {
+impl Named for TyStorageDecl {
+    fn name(&self) -> &Ident {
+        &self.storage_keyword
+    }
+}
+
+impl EqWithEngines for TyStorageDecl {}
+impl PartialEqWithEngines for TyStorageDecl {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         self.fields.eq(&other.fields, engines) && self.attributes == other.attributes
     }
 }
 
-impl HashWithEngines for TyStorageDeclaration {
+impl HashWithEngines for TyStorageDecl {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let TyStorageDeclaration {
+        let TyStorageDecl {
             fields,
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
             span: _,
             attributes: _,
+            storage_keyword: _,
         } = self;
         fields.hash(state, engines);
     }
 }
 
-impl Spanned for TyStorageDeclaration {
+impl Spanned for TyStorageDecl {
     fn span(&self) -> Span {
         self.span.clone()
     }
 }
 
-impl TyStorageDeclaration {
-    pub fn new(
-        fields: Vec<TyStorageField>,
-        span: Span,
-        attributes: transform::AttributesMap,
-    ) -> Self {
-        TyStorageDeclaration {
-            fields,
-            span,
-            attributes,
-        }
-    }
-
+impl TyStorageDecl {
     /// Given a field, find its type information in the declaration and return it. If the field has not
     /// been declared as a part of storage, return an error.
     pub fn apply_storage_load(
         &self,
         type_engine: &TypeEngine,
+        decl_engine: &DeclEngine,
         fields: Vec<Ident>,
         storage_fields: &[TyStorageField],
     ) -> CompileResult<(TyStorageAccess, TypeId)> {
@@ -90,7 +90,7 @@ impl TyStorageDeclaration {
         });
 
         let update_available_struct_fields = |id: TypeId| match type_engine.get(id) {
-            TypeInfo::Struct { fields, .. } => fields,
+            TypeInfo::Struct(decl_ref) => decl_engine.get_struct(&decl_ref).fields,
             _ => vec![],
         };
 

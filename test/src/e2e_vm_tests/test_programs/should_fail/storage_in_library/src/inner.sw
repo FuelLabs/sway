@@ -1,4 +1,4 @@
-library inner;
+library;
 
 // Expecting the following error:
 //  9 | / storage {

@@ -10,7 +10,7 @@ pub use crate::error::DocumentError;
 use serde_json::Value;
 use std::{collections::HashMap, sync::Arc};
 use sway_core::{
-    language::ty::TyDeclaration,
+    language::ty,
     transform::{AttributeKind, AttributesMap},
     Engines, TypeParameter,
 };
@@ -42,6 +42,7 @@ pub(crate) fn code_actions(
     let (_, token) = session
         .token_map()
         .token_at_position(temp_uri, range.start)?;
+
     let type_engine = session.type_engine.read();
     let decl_engine = session.decl_engine.read();
     let ctx = CodeActionContext {
@@ -52,12 +53,12 @@ pub(crate) fn code_actions(
     };
     token.typed.and_then(|typed_token| match typed_token {
         TypedAstToken::TypedDeclaration(decl) => match decl {
-            TyDeclaration::AbiDeclaration {
-                decl_id, decl_span, ..
-            } => abi_decl::code_actions(&decl_id, &decl_span, ctx),
-            TyDeclaration::StructDeclaration {
-                decl_id, decl_span, ..
-            } => struct_decl::code_actions(&decl_id, &decl_span, ctx),
+            ty::TyDecl::AbiDecl(ty::AbiDecl { decl_id, .. }) => {
+                abi_decl::code_actions(&decl_id, ctx)
+            }
+            ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
+                struct_decl::code_actions(&decl_id, ctx)
+            }
             _ => None,
         },
         _ => None,

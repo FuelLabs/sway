@@ -19,6 +19,7 @@ pub fn compile_program(
     program: &ty::TyProgram,
     include_tests: bool,
     engines: Engines<'_>,
+    experimental_storage: bool,
 ) -> Result<Context, CompileError> {
     let declaration_engine = engines.de();
 
@@ -59,6 +60,7 @@ pub fn compile_program(
             &logged_types,
             &messages_types,
             &test_fns,
+            experimental_storage,
         ),
         ty::TyProgramKind::Predicate { main_function } => compile::compile_predicate(
             engines,
@@ -69,6 +71,7 @@ pub fn compile_program(
             &logged_types,
             &messages_types,
             &test_fns,
+            experimental_storage,
         ),
         ty::TyProgramKind::Contract { abi_entries } => compile::compile_contract(
             &mut ctx,
@@ -79,6 +82,7 @@ pub fn compile_program(
             &messages_types,
             &test_fns,
             engines,
+            experimental_storage,
         ),
         ty::TyProgramKind::Library { .. } => compile::compile_library(
             engines,
@@ -88,8 +92,13 @@ pub fn compile_program(
             &logged_types,
             &messages_types,
             &test_fns,
+            experimental_storage,
         ),
     }?;
-    ctx.verify()
-        .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))
+
+    //println!("{ctx}");
+
+    ctx.verify().map_err(|ir_error: sway_ir::IrError| {
+        CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+    })
 }

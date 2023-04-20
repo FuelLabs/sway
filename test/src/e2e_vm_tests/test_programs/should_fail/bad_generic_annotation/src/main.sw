@@ -7,5 +7,5 @@ fn three_generics<A, B, C>(a: A, b: B, c: C) -> B {
 
 fn main() {
 // this should fail, since three_generics will return a value of type `str[3]` 
-  let g: u32 = three_generics(true, "foo", 10);
+  let _g: u32 = three_generics(true, "foo", 10);
 }

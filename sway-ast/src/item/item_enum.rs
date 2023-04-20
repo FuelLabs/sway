@@ -1,6 +1,6 @@
 use crate::priv_prelude::*;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct ItemEnum {
     pub visibility: Option<PubToken>,
     pub enum_token: EnumToken,

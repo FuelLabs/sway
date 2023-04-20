@@ -1,5 +1,5 @@
 use crate::{
-    comments::maybe_write_comments_from_map,
+    comments::write_comments,
     formatter::{
         shape::{ExprKind, LineStyle},
         *,
@@ -9,11 +9,10 @@ use crate::{
         CurlyBrace,
     },
 };
-use std::{
-    fmt::Write,
-    ops::{ControlFlow, Range},
+use std::{fmt::Write, ops::Range};
+use sway_ast::{
+    expr::LoopControlFlow, token::Delimiter, IfCondition, IfExpr, MatchBranch, MatchBranchKind,
 };
-use sway_ast::{token::Delimiter, IfCondition, IfExpr, MatchBranch, MatchBranchKind};
 use sway_types::Spanned;
 
 impl Format for IfExpr {
@@ -28,7 +27,7 @@ impl Format for IfExpr {
                 .with_code_line_from(LineStyle::default(), ExprKind::Conditional),
             |formatter| -> Result<(), FormatterError> {
                 let range: Range<usize> = self.span().into();
-                let comments = formatter.comment_map.comments_between(&range);
+                let comments = formatter.comments_context.map.comments_between(&range);
                 // check if the entire expression could fit into a single line
                 let full_width_line_style = if comments.peekable().peek().is_some() {
                     LineStyle::Multiline
@@ -169,12 +168,9 @@ fn format_else_opt(
         let mut else_if_str = FormattedCode::new();
 
         IfExpr::close_curly_brace(&mut else_if_str, formatter)?;
-        let comments_written = maybe_write_comments_from_map(
+        let comments_written = write_comments(
             &mut else_if_str,
-            Range {
-                start: if_expr.then_block.span().end(),
-                end: else_token.span().start(),
-            },
+            if_expr.then_block.span().end()..else_token.span().start(),
             formatter,
         )?;
 
@@ -189,11 +185,11 @@ fn format_else_opt(
         }
         write!(else_if_str, "{}", else_token.span().as_str())?;
         match &control_flow {
-            ControlFlow::Continue(if_expr) => {
+            LoopControlFlow::Continue(if_expr) => {
                 write!(else_if_str, " ")?;
                 if_expr.format(&mut else_if_str, formatter)?
             }
-            ControlFlow::Break(code_block_contents) => {
+            LoopControlFlow::Break(code_block_contents) => {
                 IfExpr::open_curly_brace(&mut else_if_str, formatter)?;
                 code_block_contents
                     .get()
@@ -398,8 +394,8 @@ impl LeafSpans for IfExpr {
         if let Some(else_block) = &self.else_opt {
             collected_spans.push(ByteSpan::from(else_block.0.span()));
             let mut else_body_spans = match &else_block.1 {
-                std::ops::ControlFlow::Continue(if_expr) => if_expr.leaf_spans(),
-                std::ops::ControlFlow::Break(else_body) => else_body.leaf_spans(),
+                LoopControlFlow::Continue(if_expr) => if_expr.leaf_spans(),
+                LoopControlFlow::Break(else_body) => else_body.leaf_spans(),
             };
             collected_spans.append(&mut else_body_spans);
         }

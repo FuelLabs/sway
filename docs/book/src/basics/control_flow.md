@@ -32,7 +32,21 @@ Note that all branches of the `if` expression must return a value of the same ty
 
 ### `match` expressions
 
-Sway supports advanced pattern matching through exhaustive `match` expressions.
+Sway supports advanced pattern matching through exhaustive `match` expressions. Unlike an `if` statement, a `match` expression asserts **at compile** time that all possible patterns have been matched. If you don't handle all the patterns, you will get compiler error indicating that your `match` expression is non-exhaustive.
+
+The basic syntax of a `match` statement is as follows:
+
+```sway
+let result = match expression {
+    pattern1 => code_to_execute_if_expression_matches_pattern1,
+    pattern2 => code_to_execute_if_expression_matches_pattern2,
+    pattern3 | pattern4 => code_to_execute_if_expression_matches_pattern3_or_pattern4
+    ...
+    _ => code_to_execute_if_expression_matches_no_pattern,
+}
+```
+
+Some examples of how you can use a match statement:
 
 ```sway
 {{#include ../../../../examples/match_statements/src/main.sw}}

@@ -1,6 +1,6 @@
 //! A wrapper around two `b256` types to support the usage of 64-byte values in Sway,
 //! which are needed when working with public keys and signatures.
-library b512;
+library;
 
 use ::constants::ZERO_B256;
 use ::convert::From;

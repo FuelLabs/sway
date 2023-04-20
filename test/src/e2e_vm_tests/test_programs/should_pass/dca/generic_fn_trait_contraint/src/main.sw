@@ -5,7 +5,7 @@ pub trait MyEq {
 }
 
 impl MyEq for u64 {
-    fn my_eq(self, other: Self) {
+    fn my_eq(self, _other: Self) {
     }
 }
 

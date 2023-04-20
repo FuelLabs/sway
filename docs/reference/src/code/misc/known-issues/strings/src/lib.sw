@@ -1,4 +1,4 @@
-library strings;
+library;
 
 fn single_quotes() {
     // ANCHOR: single_quotes

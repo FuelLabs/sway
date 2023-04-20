@@ -1,10 +1,9 @@
 use crate::cli;
 use ansi_term::Colour;
-use anyhow::{bail, Result};
 use clap::Parser;
 use forc_pkg as pkg;
-use forc_test::TestedPackage;
-use forc_util::format_log_receipts;
+use forc_test::{TestRunnerCount, TestedPackage};
+use forc_util::{forc_result_bail, format_log_receipts, ForcError, ForcResult};
 use tracing::info;
 
 /// Run the Sway unit tests for the current project.
@@ -32,6 +31,10 @@ pub struct Command {
     pub test_print: TestPrintOpts,
     /// When specified, only tests containing the given string will be executed.
     pub filter: Option<String>,
+    #[clap(long)]
+    /// Number of threads to utilize when running the tests. By default, this is the number of
+    /// threads available in your system.
+    pub test_threads: Option<usize>,
 }
 
 /// The set of options provided for controlling output of a test.
@@ -45,39 +48,54 @@ pub struct TestPrintOpts {
     pub print_logs: bool,
 }
 
-pub(crate) fn exec(cmd: Command) -> Result<()> {
+pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
     if let Some(ref _filter) = cmd.filter {
-        bail!("unit test filter not yet supported");
+        forc_result_bail!("unit test filter not yet supported");
     }
+
+    let test_runner_count = match cmd.test_threads {
+        Some(runner_count) => TestRunnerCount::Manual(runner_count),
+        None => TestRunnerCount::Auto,
+    };
 
     let test_print_opts = cmd.test_print.clone();
     let opts = opts_from_cmd(cmd);
     let built_tests = forc_test::build(opts)?;
     let start = std::time::Instant::now();
     info!("   Running {} tests", built_tests.test_count());
-    let tested = built_tests.run()?;
+    let tested = built_tests.run(test_runner_count)?;
     let duration = start.elapsed();
 
     // Eventually we'll print this in a fancy manner, but this will do for testing.
-    match tested {
+    let all_tests_passed = match tested {
         forc_test::Tested::Workspace(pkgs) => {
-            for pkg in pkgs {
-                let built = &pkg.built.pkg_name;
+            for pkg in &pkgs {
+                let built = &pkg.built.descriptor.name;
                 info!("\n   tested -- {built}\n");
-                print_tested_pkg(&pkg, &test_print_opts)?;
+                print_tested_pkg(pkg, &test_print_opts)?;
             }
             info!("\n   Finished in {:?}", duration);
+            pkgs.iter().all(|pkg| pkg.tests_passed())
         }
-        forc_test::Tested::Package(pkg) => print_tested_pkg(&pkg, &test_print_opts)?,
+        forc_test::Tested::Package(pkg) => {
+            print_tested_pkg(&pkg, &test_print_opts)?;
+            pkg.tests_passed()
+        }
     };
 
-    Ok(())
+    if all_tests_passed {
+        Ok(())
+    } else {
+        let forc_error: ForcError = "Some tests failed.".into();
+        const FAILING_UNIT_TESTS_EXIT_CODE: u8 = 101;
+        Err(forc_error.exit_code(FAILING_UNIT_TESTS_EXIT_CODE))
+    }
 }
 
-fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> Result<()> {
+fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> ForcResult<()> {
     let succeeded = pkg.tests.iter().filter(|t| t.passed()).count();
     let failed = pkg.tests.len() - succeeded;
-    let mut failed_test_details = Vec::new();
+    let mut failed_tests = Vec::new();
     for test in &pkg.tests {
         let test_passed = test.passed();
         let (state, color) = match test_passed {
@@ -85,10 +103,11 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> Res
             false => ("FAILED", Colour::Red),
         };
         info!(
-            "      test {} ... {} ({:?})",
+            "      test {} ... {} ({:?}, {} gas)",
             test.name,
             color.paint(state),
-            test.duration
+            test.duration,
+            test.gas_used
         );
 
         // If logs are enabled, print them.
@@ -98,10 +117,9 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> Res
             info!("{}", formatted_logs);
         }
 
-        // If the test is failing, save details.
+        // If the test is failing, save the test result for printing the details later on.
         if !test_passed {
-            let details = test.details()?;
-            failed_test_details.push((test.name.clone(), details));
+            failed_tests.push(test);
         }
     }
     let (state, color) = match succeeded == pkg.tests.len() {
@@ -110,13 +128,28 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> Res
     };
     if failed != 0 {
         info!("\n   failures:");
-        for (failed_test_name, failed_test_detail) in failed_test_details {
-            let path = &*failed_test_detail.file_path;
-            let line_number = failed_test_detail.line_number;
+        for failed_test in failed_tests {
+            let failed_test_name = &failed_test.name;
+            let failed_test_details = failed_test.details()?;
+            let path = &*failed_test_details.file_path;
+            let line_number = failed_test_details.line_number;
+            let logs = &failed_test.logs;
+            let formatted_logs = format_log_receipts(logs, test_print_opts.pretty_print)?;
             info!(
                 "      - test {}, {:?}:{} ",
                 failed_test_name, path, line_number
             );
+            if let Some(revert_code) = failed_test.revert_code() {
+                // If we have a revert_code, try to get a known error signal
+                let mut failed_info_str = format!("        revert code: {revert_code:x}");
+                let error_signal = failed_test.error_signal().ok();
+                if let Some(error_signal) = error_signal {
+                    let error_signal_str = error_signal.to_string();
+                    failed_info_str.push_str(&format!(" -- {error_signal_str}"));
+                }
+                info!("{failed_info_str}");
+            }
+            info!("        Logs: {}", formatted_logs);
         }
         info!("\n");
     }
@@ -145,10 +178,12 @@ fn opts_from_cmd(cmd: Command) -> forc_test::Opts {
             terse: cmd.build.pkg.terse,
             locked: cmd.build.pkg.locked,
             output_directory: cmd.build.pkg.output_directory,
+            json_abi_with_callpaths: cmd.build.pkg.json_abi_with_callpaths,
         },
         print: pkg::PrintOpts {
             ast: cmd.build.print.ast,
             dca_graph: cmd.build.print.dca_graph,
+            dca_graph_url_format: cmd.build.print.dca_graph_url_format,
             finalized_asm: cmd.build.print.finalized_asm,
             intermediate_asm: cmd.build.print.intermediate_asm,
             ir: cmd.build.print.ir,
@@ -160,8 +195,10 @@ fn opts_from_cmd(cmd: Command) -> forc_test::Opts {
         },
         build_profile: cmd.build.profile.build_profile,
         release: cmd.build.profile.release,
+        error_on_warnings: cmd.build.profile.error_on_warnings,
         binary_outfile: cmd.build.output.bin_file,
         debug_outfile: cmd.build.output.debug_file,
         build_target: cmd.build.build_target,
+        experimental_storage: cmd.build.profile.experimental_storage,
     }
 }

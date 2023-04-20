@@ -1,4 +1,4 @@
-library testlib2;
+library;
 
 pub fn bar() {
     log(2);

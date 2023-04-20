@@ -1,4 +1,4 @@
-library interface;
+library;
 
 abi Vault {
     fn deposit();

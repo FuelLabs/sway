@@ -1,6 +1,6 @@
 use crate::ops::forc_template;
-use anyhow::Result;
 use clap::Parser;
+use forc_util::ForcResult;
 
 /// Create a new Forc project from a git template.
 #[derive(Debug, Parser)]
@@ -17,7 +17,7 @@ pub struct Command {
     pub project_name: String,
 }
 
-pub(crate) fn exec(command: Command) -> Result<()> {
+pub(crate) fn exec(command: Command) -> ForcResult<()> {
     forc_template::init(command)?;
     Ok(())
 }

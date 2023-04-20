@@ -1,4 +1,4 @@
-library call_frames_test_abi;
+library;
 
 pub struct TestStruct {
     value0: u64,

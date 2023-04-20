@@ -11,7 +11,7 @@
 use crate::{
     decl_engine::*,
     language::{
-        ty::{self, TyFunctionDeclaration},
+        ty::{self, TyFunctionDecl, TyImplTrait},
         AsmOp,
     },
     Engines,
@@ -93,16 +93,16 @@ fn analyze_contract(engines: Engines<'_>, ast_nodes: &[ty::TyAstNode]) -> Vec<Co
 fn contract_entry_points(
     decl_engine: &DeclEngine,
     ast_nodes: &[ty::TyAstNode],
-) -> Vec<ty::TyFunctionDeclaration> {
+) -> Vec<ty::TyFunctionDecl> {
     use crate::ty::TyAstNodeContent::Declaration;
     ast_nodes
         .iter()
         .flat_map(|ast_node| match &ast_node.content {
-            Declaration(ty::TyDeclaration::FunctionDeclaration { decl_id, .. }) => {
-                decl_id_to_fn_decls(decl_engine, decl_id, &ast_node.span)
+            Declaration(ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. })) => {
+                decl_id_to_fn_decls(decl_engine, decl_id)
             }
-            Declaration(ty::TyDeclaration::ImplTrait { decl_id, .. }) => {
-                impl_trait_methods(decl_engine, decl_id, &ast_node.span)
+            Declaration(ty::TyDecl::ImplTrait(ty::ImplTrait { decl_id, .. })) => {
+                impl_trait_methods(decl_engine, decl_id)
             }
             _ => vec![],
         })
@@ -111,27 +111,25 @@ fn contract_entry_points(
 
 fn decl_id_to_fn_decls(
     decl_engine: &DeclEngine,
-    decl_id: &DeclId,
-    span: &Span,
-) -> Vec<TyFunctionDeclaration> {
-    decl_engine
-        .get_function(decl_id, span)
-        .map_or(vec![], |fn_decl| vec![fn_decl])
+    decl_id: &DeclId<TyFunctionDecl>,
+) -> Vec<TyFunctionDecl> {
+    vec![decl_engine.get_function(decl_id)]
 }
 
 fn impl_trait_methods(
     decl_engine: &DeclEngine,
-    impl_trait_decl_id: &DeclId,
-    span: &Span,
-) -> Vec<ty::TyFunctionDeclaration> {
-    match decl_engine.get_impl_trait(impl_trait_decl_id, span) {
-        Ok(impl_trait) => impl_trait
-            .methods
-            .iter()
-            .flat_map(|fn_decl| decl_id_to_fn_decls(decl_engine, &fn_decl.id, span))
-            .collect(),
-        Err(_) => vec![],
-    }
+    impl_trait_decl_id: &DeclId<TyImplTrait>,
+) -> Vec<ty::TyFunctionDecl> {
+    let impl_trait = decl_engine.get_impl_trait(impl_trait_decl_id);
+    impl_trait
+        .items
+        .iter()
+        .flat_map(|item| match item {
+            ty::TyImplItem::Fn(fn_decl) => Some(fn_decl),
+            ty::TyImplItem::Constant(_) => None,
+        })
+        .flat_map(|fn_decl| decl_id_to_fn_decls(decl_engine, &fn_decl.id().clone()))
+        .collect()
 }
 
 // This is the main part of the analysis algorithm:
@@ -189,16 +187,14 @@ fn analyze_code_block_entry(
 
 fn analyze_codeblock_decl(
     engines: Engines<'_>,
-    decl: &ty::TyDeclaration,
+    decl: &ty::TyDecl,
     block_name: &Ident,
     warnings: &mut Vec<CompileWarning>,
 ) -> HashSet<Effect> {
     // Declarations (except variable declarations) are not allowed in a codeblock
-    use crate::ty::TyDeclaration::*;
+    use crate::ty::TyDecl::*;
     match decl {
-        VariableDeclaration(var_decl) => {
-            analyze_expression(engines, &var_decl.body, block_name, warnings)
-        }
+        VariableDecl(var_decl) => analyze_expression(engines, &var_decl.body, block_name, warnings),
         _ => HashSet::new(),
     }
 }
@@ -214,6 +210,7 @@ fn analyze_expression(
     match &expr.expression {
         // base cases: no warnings can be emitted
         Literal(_)
+        | ConstantExpression { .. }
         | VariableExpression { .. }
         | FunctionParameter
         | StorageAccess(_)
@@ -247,14 +244,12 @@ fn analyze_expression(
         } => analyze_two_expressions(engines, left, right, block_name, warnings),
         FunctionApplication {
             arguments,
-            function_decl_ref,
+            fn_ref,
             selector,
             call_path,
             ..
         } => {
-            let func = decl_engine
-                .get_function(function_decl_ref, &expr.span)
-                .unwrap();
+            let func = decl_engine.get_function(fn_ref);
             // we don't need to run full analysis on the function body as it will be covered
             // as a separate step of the whole contract analysis
             // we just need function's effects at this point
@@ -302,7 +297,11 @@ fn analyze_expression(
             }
             set_union(intr_effs, args_effs)
         }
-        Tuple { fields: exprs } | Array { contents: exprs } => {
+        Tuple { fields: exprs }
+        | Array {
+            elem_type: _,
+            contents: exprs,
+        } => {
             // assuming left-to-right fields/elements evaluation
             analyze_expressions(engines, exprs.iter().collect(), block_name, warnings)
         }
@@ -493,10 +492,10 @@ fn effects_of_codeblock_entry(engines: Engines<'_>, ast_node: &ty::TyAstNode) ->
     }
 }
 
-fn effects_of_codeblock_decl(engines: Engines<'_>, decl: &ty::TyDeclaration) -> HashSet<Effect> {
-    use crate::ty::TyDeclaration::*;
+fn effects_of_codeblock_decl(engines: Engines<'_>, decl: &ty::TyDecl) -> HashSet<Effect> {
+    use crate::ty::TyDecl::*;
     match decl {
-        VariableDeclaration(var_decl) => effects_of_expression(engines, &var_decl.body),
+        VariableDecl(var_decl) => effects_of_expression(engines, &var_decl.body),
         // Declarations (except variable declarations) are not allowed in the body of a function
         _ => HashSet::new(),
     }
@@ -508,6 +507,7 @@ fn effects_of_expression(engines: Engines<'_>, expr: &ty::TyExpression) -> HashS
     let decl_engine = engines.de();
     match &expr.expression {
         Literal(_)
+        | ConstantExpression { .. }
         | VariableExpression { .. }
         | FunctionParameter
         | Break
@@ -519,10 +519,16 @@ fn effects_of_expression(engines: Engines<'_>, expr: &ty::TyExpression) -> HashS
             // accessing a storage map's method (or a storage vector's method),
             // which is represented using a struct with empty fields
             // does not result in a storage read
-            crate::TypeInfo::Struct { fields, .. } if fields.is_empty() => HashSet::new(),
+            crate::TypeInfo::Struct(decl_ref)
+                if decl_engine.get_struct(&decl_ref).fields.is_empty() =>
+            {
+                HashSet::new()
+            }
             // if it's an empty enum then it cannot be constructed and hence cannot be read
             // adding this check here just to be on the safe side
-            crate::TypeInfo::Enum { variant_types, .. } if variant_types.is_empty() => {
+            crate::TypeInfo::Enum(decl_ref)
+                if decl_engine.get_enum(&decl_ref).variants.is_empty() =>
+            {
                 HashSet::new()
             }
             _ => HashSet::from([Effect::StorageRead]),
@@ -542,9 +548,11 @@ fn effects_of_expression(engines: Engines<'_>, expr: &ty::TyExpression) -> HashS
             effs.extend(rhs_effs);
             effs
         }
-        Tuple { fields: exprs } | Array { contents: exprs } => {
-            effects_of_expressions(engines, exprs)
-        }
+        Tuple { fields: exprs }
+        | Array {
+            elem_type: _,
+            contents: exprs,
+        } => effects_of_expressions(engines, exprs),
         StructExpression { fields, .. } => effects_of_struct_expressions(engines, fields),
         CodeBlock(codeblock) => effects_of_codeblock(engines, codeblock),
         MatchExp { desugared, .. } => effects_of_expression(engines, desugared),
@@ -581,15 +589,12 @@ fn effects_of_expression(engines: Engines<'_>, expr: &ty::TyExpression) -> HashS
             .cloned()
             .collect(),
         FunctionApplication {
-            function_decl_ref,
+            fn_ref,
             arguments,
             selector,
             ..
         } => {
-            let fn_body = decl_engine
-                .get_function(function_decl_ref, &expr.span)
-                .unwrap()
-                .body;
+            let fn_body = decl_engine.get_function(fn_ref).body;
             let mut effs = effects_of_codeblock(engines, &fn_body);
             let args_effs = map_hashsets_union(arguments, |e| effects_of_expression(engines, &e.1));
             effs.extend(args_effs);
@@ -617,8 +622,10 @@ fn effects_of_intrinsic(intr: &sway_ast::Intrinsic) -> HashSet<Effect> {
         StateClear | StateStoreWord | StateStoreQuad => HashSet::from([Effect::StorageWrite]),
         StateLoadWord | StateLoadQuad => HashSet::from([Effect::StorageRead]),
         Smo => HashSet::from([Effect::OutputMessage]),
-        Revert | IsReferenceType | SizeOfType | SizeOfVal | Eq | Gtf | AddrOf | Log | Add | Sub
-        | Mul | Div | PtrAdd | PtrSub | GetStorageKey => HashSet::new(),
+        Revert | IsReferenceType | SizeOfType | SizeOfVal | Eq | Gt | Lt | Gtf | AddrOf | Log
+        | Add | Sub | Mul | Div | And | Or | Xor | PtrAdd | PtrSub | GetStorageKey => {
+            HashSet::new()
+        }
     }
 }
 

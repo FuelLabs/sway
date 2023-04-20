@@ -1,4 +1,5 @@
-library u128;
+//! A 128-bit unsigned integer type.
+library;
 
 use ::assert::assert;
 use ::convert::From;
@@ -13,6 +14,7 @@ pub struct U128 {
     lower: u64,
 }
 
+/// The error type used for `u128` type errors.
 pub enum U128Error {
     LossOfPrecision: (),
 }
@@ -378,7 +380,9 @@ impl Power for U128 {
         }
 
         if exp == one {
-            return self;
+            // Manually clone `self`. Otherwise, we may have a `MemoryOverflow`
+            // issue with code that looks like: `x = x.pow(other)`
+            return U128::from((self.upper, self.lower));
         }
 
         while exp & one == zero {

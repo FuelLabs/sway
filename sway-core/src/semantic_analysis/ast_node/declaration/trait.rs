@@ -1,17 +1,24 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
-use sway_error::warning::{CompileWarning, Warning};
-use sway_types::{style::is_upper_camel_case, Spanned};
+use sway_error::{
+    error::CompileError,
+    warning::{CompileWarning, Warning},
+};
+use sway_types::{style::is_upper_camel_case, Ident, Spanned};
 
 use crate::{
     decl_engine::*,
     error::*,
-    language::{parsed::*, ty, CallPath},
+    language::{
+        parsed::*,
+        ty::{self, TyImplItem, TyTraitItem},
+        CallPath,
+    },
     semantic_analysis::{declaration::insert_supertraits_into_namespace, Mode, TypeCheckContext},
     type_system::*,
 };
 
-impl ty::TyTraitDeclaration {
+impl ty::TyTraitDecl {
     pub(crate) fn type_check(
         ctx: TypeCheckContext,
         trait_decl: TraitDeclaration,
@@ -67,20 +74,63 @@ impl ty::TyTraitDeclaration {
         // type check the interface surface
         let mut new_interface_surface = vec![];
         let mut dummy_interface_surface = vec![];
-        for method in interface_surface.into_iter() {
-            let method = check!(
-                ty::TyTraitFn::type_check(ctx.by_ref(), method),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            let decl_ref = decl_engine.insert(method.clone());
-            dummy_interface_surface.push(
-                decl_engine
-                    .insert(method.to_dummy_func(Mode::NonAbi))
-                    .with_parent(decl_engine, &decl_ref),
-            );
-            new_interface_surface.push(decl_ref);
+
+        let mut ids: HashSet<Ident> = HashSet::default();
+
+        for item in interface_surface.into_iter() {
+            let decl_name = match item {
+                TraitItem::TraitFn(method) => {
+                    let method = check!(
+                        ty::TyTraitFn::type_check(ctx.by_ref(), method),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    let decl_ref = decl_engine.insert(method.clone());
+                    dummy_interface_surface.push(ty::TyImplItem::Fn(
+                        decl_engine
+                            .insert(method.to_dummy_func(Mode::NonAbi))
+                            .with_parent(decl_engine, (*decl_ref.id()).into()),
+                    ));
+                    new_interface_surface.push(ty::TyTraitInterfaceItem::TraitFn(decl_ref));
+                    method.name.clone()
+                }
+                TraitItem::Constant(const_decl) => {
+                    let const_decl = check!(
+                        ty::TyConstantDecl::type_check(ctx.by_ref(), const_decl.clone(),),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    let decl_ref = ctx.decl_engine.insert(const_decl.clone());
+                    new_interface_surface
+                        .push(ty::TyTraitInterfaceItem::Constant(decl_ref.clone()));
+
+                    let const_name = const_decl.call_path.suffix.clone();
+                    check!(
+                        ctx.namespace.insert_symbol(
+                            const_name.clone(),
+                            ty::TyDecl::ConstantDecl(ty::ConstantDecl {
+                                name: const_name.clone(),
+                                decl_id: *decl_ref.id(),
+                                decl_span: const_decl.span.clone()
+                            })
+                        ),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+
+                    const_name
+                }
+            };
+
+            if !ids.insert(decl_name.clone()) {
+                errors.push(CompileError::MultipleDefinitionsOfName {
+                    name: decl_name.clone(),
+                    span: decl_name.span(),
+                })
+            }
         }
 
         // insert placeholder functions representing the interface surface
@@ -104,23 +154,23 @@ impl ty::TyTraitDeclaration {
             errors
         );
 
-        // type check the methods
-        let mut new_methods = vec![];
+        // Type check the items.
+        let mut new_items = vec![];
         for method in methods.into_iter() {
             let method = check!(
-                ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone(), true, false),
-                ty::TyFunctionDeclaration::error(method),
+                ty::TyFunctionDecl::type_check(ctx.by_ref(), method.clone(), true, false),
+                ty::TyFunctionDecl::error(method),
                 warnings,
                 errors
             );
-            new_methods.push(decl_engine.insert(method));
+            new_items.push(ty::TyTraitItem::Fn(decl_engine.insert(method)));
         }
 
-        let typed_trait_decl = ty::TyTraitDeclaration {
+        let typed_trait_decl = ty::TyTraitDecl {
             name,
             type_parameters: new_type_parameters,
             interface_surface: new_interface_surface,
-            methods: new_methods,
+            items: new_items,
             supertraits,
             visibility,
             attributes,
@@ -129,58 +179,69 @@ impl ty::TyTraitDeclaration {
         ok(typed_trait_decl, warnings, errors)
     }
 
-    /// Retrieves the interface surface and implemented methods for this trait.
-    pub(crate) fn retrieve_interface_surface_and_implemented_methods_for_type(
+    /// Retrieves the interface surface and implemented items for this trait.
+    pub(crate) fn retrieve_interface_surface_and_implemented_items_for_type(
         &self,
         ctx: TypeCheckContext,
         type_id: TypeId,
         call_path: &CallPath,
-    ) -> (MethodMap, MethodMap) {
-        let mut interface_surface_method_refs: MethodMap = BTreeMap::new();
-        let mut impld_method_refs: MethodMap = BTreeMap::new();
+    ) -> (InterfaceItemMap, ItemMap) {
+        let mut interface_surface_item_refs: InterfaceItemMap = BTreeMap::new();
+        let mut impld_item_refs: ItemMap = BTreeMap::new();
 
-        let ty::TyTraitDeclaration {
+        let ty::TyTraitDecl {
             interface_surface, ..
         } = self;
 
         let engines = ctx.engines();
 
         // Retrieve the interface surface for this trait.
-        for decl_ref in interface_surface.iter() {
-            interface_surface_method_refs.insert(decl_ref.name.clone(), decl_ref.clone());
+        for item in interface_surface.iter() {
+            match item {
+                ty::TyTraitInterfaceItem::TraitFn(decl_ref) => {
+                    interface_surface_item_refs.insert(decl_ref.name().clone(), item.clone());
+                }
+                ty::TyTraitInterfaceItem::Constant(decl_ref) => {
+                    interface_surface_item_refs.insert(decl_ref.name().clone(), item.clone());
+                }
+            }
         }
 
-        // Retrieve the implemented methods for this type.
-        for decl_ref in ctx
+        // Retrieve the implemented items for this type.
+        for item in ctx
             .namespace
-            .get_methods_for_type_and_trait_name(engines, type_id, call_path)
+            .get_items_for_type_and_trait_name(engines, type_id, call_path)
             .into_iter()
         {
-            impld_method_refs.insert(decl_ref.name.clone(), decl_ref);
+            match &item {
+                ty::TyTraitItem::Fn(decl_ref) => {
+                    impld_item_refs.insert(decl_ref.name().clone(), item.clone());
+                }
+                ty::TyTraitItem::Constant(decl_ref) => {
+                    impld_item_refs.insert(decl_ref.name().clone(), item.clone());
+                }
+            };
         }
 
-        (interface_surface_method_refs, impld_method_refs)
+        (interface_surface_item_refs, impld_item_refs)
     }
 
-    /// Retrieves the interface surface, methods, and implemented methods for
+    /// Retrieves the interface surface, items, and implemented items for
     /// this trait.
-    pub(crate) fn retrieve_interface_surface_and_methods_and_implemented_methods_for_type(
+    pub(crate) fn retrieve_interface_surface_and_items_and_implemented_items_for_type(
         &self,
         ctx: TypeCheckContext,
         type_id: TypeId,
         call_path: &CallPath,
         type_arguments: &[TypeArgument],
-    ) -> CompileResult<(MethodMap, MethodMap, MethodMap)> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+    ) -> (InterfaceItemMap, ItemMap, ItemMap) {
+        let mut interface_surface_item_refs: InterfaceItemMap = BTreeMap::new();
+        let mut item_refs: ItemMap = BTreeMap::new();
+        let mut impld_item_refs: ItemMap = BTreeMap::new();
 
-        let mut interface_surface_method_refs: MethodMap = BTreeMap::new();
-        let mut method_refs: MethodMap = BTreeMap::new();
-        let mut impld_method_refs: MethodMap = BTreeMap::new();
-
-        let ty::TyTraitDeclaration {
+        let ty::TyTraitDecl {
             interface_surface,
-            methods,
+            items,
             type_parameters,
             ..
         } = self;
@@ -189,16 +250,30 @@ impl ty::TyTraitDeclaration {
         let engines = ctx.engines();
 
         // Retrieve the interface surface for this trait.
-        for decl_ref in interface_surface.iter() {
-            interface_surface_method_refs.insert(decl_ref.name.clone(), decl_ref.clone());
+        for item in interface_surface.iter() {
+            match item {
+                ty::TyTraitInterfaceItem::TraitFn(decl_ref) => {
+                    interface_surface_item_refs.insert(decl_ref.name().clone(), item.clone());
+                }
+                ty::TyTraitInterfaceItem::Constant(decl_ref) => {
+                    interface_surface_item_refs.insert(decl_ref.name().clone(), item.clone());
+                }
+            }
         }
 
-        // Retrieve the trait methods for this trait.
-        for decl_ref in methods.iter() {
-            method_refs.insert(decl_ref.name.clone(), decl_ref.clone());
+        // Retrieve the trait items for this trait.
+        for item in items.iter() {
+            match item {
+                ty::TyTraitItem::Fn(decl_ref) => {
+                    item_refs.insert(decl_ref.name().clone(), item.clone());
+                }
+                ty::TyTraitItem::Constant(decl_ref) => {
+                    item_refs.insert(decl_ref.name().clone(), item.clone());
+                }
+            }
         }
 
-        // Retrieve the implemented methods for this type.
+        // Retrieve the implemented items for this type.
         let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
             type_parameters
                 .iter()
@@ -209,60 +284,58 @@ impl ty::TyTraitDeclaration {
                 .map(|type_arg| type_arg.type_id)
                 .collect(),
         );
-        for decl_ref in ctx
+        for item in ctx
             .namespace
-            .get_methods_for_type_and_trait_name(engines, type_id, call_path)
+            .get_items_for_type_and_trait_name(engines, type_id, call_path)
             .into_iter()
         {
-            let mut method = check!(
-                CompileResult::from(decl_engine.get_function(&decl_ref, &call_path.span())),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            method.subst(&type_mapping, engines);
-            impld_method_refs.insert(
-                method.name.clone(),
-                decl_engine
-                    .insert(method)
-                    .with_parent(decl_engine, &decl_ref),
-            );
+            match item {
+                ty::TyTraitItem::Fn(decl_ref) => {
+                    let mut method = decl_engine.get_function(&decl_ref);
+                    method.subst(&type_mapping, engines);
+                    impld_item_refs.insert(
+                        method.name.clone(),
+                        TyTraitItem::Fn(
+                            decl_engine
+                                .insert(method)
+                                .with_parent(decl_engine, (*decl_ref.id()).into()),
+                        ),
+                    );
+                }
+                ty::TyTraitItem::Constant(decl_ref) => {
+                    let mut const_decl = decl_engine.get_constant(&decl_ref);
+                    const_decl.subst(&type_mapping, engines);
+                    impld_item_refs.insert(
+                        const_decl.call_path.suffix.clone(),
+                        TyTraitItem::Constant(decl_engine.insert(const_decl)),
+                    );
+                }
+            }
         }
 
-        ok(
-            (
-                interface_surface_method_refs,
-                method_refs,
-                impld_method_refs,
-            ),
-            warnings,
-            errors,
-        )
+        (interface_surface_item_refs, item_refs, impld_item_refs)
     }
 
-    pub(crate) fn insert_interface_surface_and_methods_into_namespace(
+    pub(crate) fn insert_interface_surface_and_items_into_namespace(
         &self,
         ctx: TypeCheckContext,
         trait_name: &CallPath,
         type_arguments: &[TypeArgument],
         type_id: TypeId,
-    ) -> CompileResult<()> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
+    ) {
         let decl_engine = ctx.decl_engine;
         let engines = ctx.engines();
 
-        let ty::TyTraitDeclaration {
+        let ty::TyTraitDecl {
             interface_surface,
-            methods,
+            items,
             type_parameters,
             ..
         } = self;
 
-        let mut all_methods = vec![];
+        let mut all_items = vec![];
 
-        // Retrieve the trait methods for this trait. Transform them into the
+        // Retrieve the trait items for this trait. Transform them into the
         // correct typing for this impl block by using the type parameters from
         // the original trait declaration and the given type arguments.
         let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
@@ -275,35 +348,53 @@ impl ty::TyTraitDeclaration {
                 .map(|type_arg| type_arg.type_id)
                 .collect(),
         );
-        for decl_ref in interface_surface.iter() {
-            let mut method = check!(
-                CompileResult::from(decl_engine.get_trait_fn(decl_ref, &trait_name.span())),
-                continue,
-                warnings,
-                errors
-            );
-            method.replace_self_type(engines, type_id);
-            method.subst(&type_mapping, engines);
-            all_methods.push(
-                ctx.decl_engine
-                    .insert(method.to_dummy_func(Mode::NonAbi))
-                    .with_parent(ctx.decl_engine, decl_ref),
-            );
+
+        for item in interface_surface.iter() {
+            match item {
+                ty::TyTraitInterfaceItem::TraitFn(decl_ref) => {
+                    let mut method = decl_engine.get_trait_fn(decl_ref);
+                    method.replace_self_type(engines, type_id);
+                    method.subst(&type_mapping, engines);
+                    all_items.push(TyImplItem::Fn(
+                        ctx.decl_engine
+                            .insert(method.to_dummy_func(Mode::NonAbi))
+                            .with_parent(ctx.decl_engine, (*decl_ref.id()).into()),
+                    ));
+                }
+                ty::TyTraitInterfaceItem::Constant(decl_ref) => {
+                    let const_decl = decl_engine.get_constant(decl_ref);
+                    let const_name = const_decl.call_path.suffix.clone();
+                    all_items.push(TyImplItem::Constant(decl_ref.clone()));
+                    ctx.namespace.insert_symbol(
+                        const_name.clone(),
+                        ty::TyDecl::ConstantDecl(ty::ConstantDecl {
+                            name: const_name,
+                            decl_id: *decl_ref.id(),
+                            decl_span: const_decl.span.clone(),
+                        }),
+                    );
+                }
+            }
         }
-        for decl_ref in methods.iter() {
-            let mut method = check!(
-                CompileResult::from(decl_engine.get_function(decl_ref, &trait_name.span())),
-                continue,
-                warnings,
-                errors
-            );
-            method.replace_self_type(engines, type_id);
-            method.subst(&type_mapping, engines);
-            all_methods.push(
-                ctx.decl_engine
-                    .insert(method)
-                    .with_parent(ctx.decl_engine, decl_ref),
-            );
+        for item in items.iter() {
+            match item {
+                ty::TyTraitItem::Fn(decl_ref) => {
+                    let mut method = decl_engine.get_function(decl_ref);
+                    method.replace_self_type(engines, type_id);
+                    method.subst(&type_mapping, engines);
+                    all_items.push(TyImplItem::Fn(
+                        ctx.decl_engine
+                            .insert(method)
+                            .with_parent(ctx.decl_engine, (*decl_ref.id()).into()),
+                    ));
+                }
+                ty::TyTraitItem::Constant(decl_ref) => {
+                    let mut const_decl = decl_engine.get_constant(decl_ref);
+                    const_decl.replace_self_type(engines, type_id);
+                    const_decl.subst(&type_mapping, engines);
+                    all_items.push(TyImplItem::Constant(ctx.decl_engine.insert(const_decl)));
+                }
+            }
         }
 
         // Insert the methods of the trait into the namespace.
@@ -314,16 +405,10 @@ impl ty::TyTraitDeclaration {
             trait_name.clone(),
             type_arguments.to_vec(),
             type_id,
-            &all_methods,
+            &all_items,
             &trait_name.span(),
             false,
             engines,
         );
-
-        if errors.is_empty() {
-            ok((), warnings, errors)
-        } else {
-            err(warnings, errors)
-        }
     }
 }

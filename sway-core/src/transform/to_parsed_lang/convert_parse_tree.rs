@@ -2,27 +2,29 @@ use crate::{
     language::{parsed::*, *},
     transform::{attribute::*, to_parsed_lang::context::Context},
     type_system::*,
-    Engines,
+    BuildTarget, Engines,
 };
 
+use itertools::Itertools;
 use sway_ast::{
     attribute::Annotated,
-    expr::{ReassignmentOp, ReassignmentOpVariant},
+    expr::{LoopControlFlow, ReassignmentOp, ReassignmentOpVariant},
     ty::TyTupleDescriptor,
     AbiCastArgs, AngleBrackets, AsmBlock, Assignable, AttributeDecl, Braces, CodeBlockContents,
-    CommaToken, Dependency, DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField,
-    ExprTupleDescriptor, FnArg, FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition,
-    IfExpr, Instruction, Intrinsic, Item, ItemAbi, ItemConfigurable, ItemConst, ItemEnum, ItemFn,
-    ItemImpl, ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemUse, LitInt, LitIntType,
+    CommaToken, DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor,
+    FnArg, FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition, IfExpr, Instruction,
+    Intrinsic, Item, ItemAbi, ItemConfigurable, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemKind,
+    ItemStorage, ItemStruct, ItemTrait, ItemTraitItem, ItemTypeAlias, ItemUse, LitInt, LitIntType,
     MatchBranchKind, Module, ModuleKind, Parens, PathExpr, PathExprSegment, PathType,
     PathTypeSegment, Pattern, PatternStructField, PubToken, Punctuated, QualifiedPathRoot,
-    Statement, StatementLet, Traits, Ty, TypeField, UseTree, WhereClause,
+    Statement, StatementLet, Submodule, Traits, Ty, TypeField, UseTree, WhereClause,
 };
 use sway_error::convert_parse_tree_error::ConvertParseTreeError;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::warning::{CompileWarning, Warning};
 use sway_types::{
     constants::{
+        ALLOW_ATTRIBUTE_NAME, CFG_ATTRIBUTE_NAME, CFG_PROGRAM_TYPE_ARG_NAME, CFG_TARGET_ARG_NAME,
         DESTRUCTURE_PREFIX, DOC_ATTRIBUTE_NAME, DOC_COMMENT_ATTRIBUTE_NAME, INLINE_ATTRIBUTE_NAME,
         MATCH_RETURN_VAR_NAME_PREFIX, PAYABLE_ATTRIBUTE_NAME, STORAGE_PURITY_ATTRIBUTE_NAME,
         STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME, TEST_ATTRIBUTE_NAME,
@@ -37,7 +39,7 @@ use std::{
     convert::TryFrom,
     iter,
     mem::MaybeUninit,
-    ops::ControlFlow,
+    str::FromStr,
     sync::Arc,
 };
 
@@ -48,6 +50,7 @@ pub fn convert_parse_tree(
     module: Module,
 ) -> Result<(TreeType, ParseTree), ErrorEmitted> {
     let tree_type = convert_module_kind(&module.kind);
+    context.set_program_type(tree_type.clone());
     let tree = module_to_sway_parse_tree(context, handler, engines, module)?;
     Ok((tree_type, tree))
 }
@@ -58,7 +61,7 @@ pub fn convert_module_kind(kind: &ModuleKind) -> TreeType {
         ModuleKind::Script { .. } => TreeType::Script,
         ModuleKind::Contract { .. } => TreeType::Contract,
         ModuleKind::Predicate { .. } => TreeType::Predicate,
-        ModuleKind::Library { name, .. } => TreeType::Library { name: name.clone() },
+        ModuleKind::Library { .. } => TreeType::Library,
     }
 }
 
@@ -101,12 +104,15 @@ fn item_to_ast_nodes(
     prev_item: Option<Annotated<ItemKind>>,
 ) -> Result<Vec<AstNode>, ErrorEmitted> {
     let attributes = item_attrs_to_map(context, handler, &item.attribute_list)?;
+    if !cfg_eval(context, handler, &attributes)? {
+        return Ok(vec![]);
+    }
 
     let decl = |d| vec![AstNodeContent::Declaration(d)];
 
     let span = item.span();
     let contents = match item.value {
-        ItemKind::Dependency(dependency) => {
+        ItemKind::Submodule(submodule) => {
             // Check that Dependency is not annotated
             if attributes.contains_key(&AttributeKind::DocComment) {
                 let error = ConvertParseTreeError::CannotDocCommentDependency {
@@ -133,13 +139,13 @@ fn item_to_ast_nodes(
             // Check that Dependency comes after only other Dependencies
             let emit_expected_dep_at_beginning = || {
                 let error = ConvertParseTreeError::ExpectedDependencyAtBeginning {
-                    span: dependency.span(),
+                    span: submodule.span(),
                 };
                 handler.emit_err(error.into());
             };
             match prev_item {
                 Some(Annotated {
-                    value: ItemKind::Dependency(_),
+                    value: ItemKind::Submodule(_),
                     ..
                 }) => (),
                 Some(_) => emit_expected_dep_at_beginning(),
@@ -148,7 +154,7 @@ fn item_to_ast_nodes(
             if !is_root {
                 emit_expected_dep_at_beginning();
             }
-            let incl_stmt = dependency_to_include_statement(&dependency);
+            let incl_stmt = submodule_to_include_statement(&submodule);
             vec![AstNodeContent::IncludeStatement(incl_stmt)]
         }
         ItemKind::Use(item_use) => item_use_to_use_statements(context, handler, item_use)?
@@ -183,7 +189,9 @@ fn item_to_ast_nodes(
             context, handler, engines, item_abi, attributes,
         )?)),
         ItemKind::Const(item_const) => decl(Declaration::ConstantDeclaration(
-            item_const_to_constant_declaration(context, handler, engines, item_const, attributes)?,
+            item_const_to_constant_declaration(
+                context, handler, engines, item_const, attributes, true,
+            )?,
         )),
         ItemKind::Storage(item_storage) => decl(Declaration::StorageDeclaration(
             item_storage_to_storage_declaration(
@@ -204,6 +212,15 @@ fn item_to_ast_nodes(
         .into_iter()
         .map(|decl| AstNodeContent::Declaration(Declaration::ConstantDeclaration(decl)))
         .collect(),
+        ItemKind::TypeAlias(item_type_alias) => decl(Declaration::TypeAliasDeclaration(
+            item_type_alias_to_type_alias_declaration(
+                context,
+                handler,
+                engines,
+                item_type_alias,
+                attributes,
+            )?,
+        )),
     };
 
     Ok(contents
@@ -317,8 +334,18 @@ fn item_struct_to_struct_declaration(
         .into_iter()
         .map(|type_field| {
             let attributes = item_attrs_to_map(context, handler, &type_field.attribute_list)?;
-            type_field_to_struct_field(context, handler, engines, type_field.value, attributes)
+            if !cfg_eval(context, handler, &attributes)? {
+                return Ok(None);
+            }
+            Ok(Some(type_field_to_struct_field(
+                context,
+                handler,
+                engines,
+                type_field.value,
+                attributes,
+            )?))
         })
+        .filter_map_ok(|field| field)
         .collect::<Result<Vec<_>, _>>()?;
 
     if fields.iter().any(
@@ -375,8 +402,19 @@ fn item_enum_to_enum_declaration(
         .enumerate()
         .map(|(tag, type_field)| {
             let attributes = item_attrs_to_map(context, handler, &type_field.attribute_list)?;
-            type_field_to_enum_variant(context, handler, engines, type_field.value, attributes, tag)
+            if !cfg_eval(context, handler, &attributes)? {
+                return Ok(None);
+            }
+            Ok(Some(type_field_to_enum_variant(
+                context,
+                handler,
+                engines,
+                type_field.value,
+                attributes,
+                tag,
+            )?))
         })
+        .filter_map_ok(|field| field)
         .collect::<Result<Vec<_>, _>>()?;
 
     if variants.iter().any(|variant| {
@@ -458,8 +496,16 @@ fn item_fn_to_function_declaration(
             handler,
             engines,
             item_fn.fn_signature.generics,
-            item_fn.fn_signature.where_clause_opt,
+            item_fn.fn_signature.where_clause_opt.clone(),
         )?,
+        where_clause: item_fn
+            .fn_signature
+            .where_clause_opt
+            .map(|where_clause| {
+                where_clause_to_trait_constraints(context, handler, engines, where_clause)
+            })
+            .transpose()?
+            .unwrap_or(vec![]),
     })
 }
 
@@ -479,7 +525,7 @@ fn get_attributed_purity(
     match attributes.get(&AttributeKind::Storage) {
         Some(attrs) if !attrs.is_empty() => {
             for arg in attrs.iter().flat_map(|attr| &attr.args) {
-                match arg.as_str() {
+                match arg.name.as_str() {
                     STORAGE_PURITY_READ_NAME => add_impurity(Purity::Reads, Purity::Writes),
                     STORAGE_PURITY_WRITE_NAME => add_impurity(Purity::Writes, Purity::Reads),
                     _otherwise => {
@@ -497,6 +543,24 @@ fn get_attributed_purity(
     }
 }
 
+fn where_clause_to_trait_constraints(
+    context: &mut Context,
+    handler: &Handler,
+    engines: Engines<'_>,
+    where_clause: WhereClause,
+) -> Result<Vec<(Ident, Vec<TraitConstraint>)>, ErrorEmitted> {
+    where_clause
+        .bounds
+        .into_iter()
+        .map(|bound| {
+            Ok((
+                bound.ty_name,
+                traits_to_trait_constraints(context, handler, engines, bound.bounds)?,
+            ))
+        })
+        .collect()
+}
+
 fn item_trait_to_trait_declaration(
     context: &mut Context,
     handler: &Handler,
@@ -512,17 +576,28 @@ fn item_trait_to_trait_declaration(
         item_trait.generics,
         item_trait.where_clause_opt,
     )?;
-    let interface_surface = {
-        item_trait
-            .trait_items
-            .into_inner()
-            .into_iter()
-            .map(|(fn_signature, _)| {
-                let attributes = item_attrs_to_map(context, handler, &fn_signature.attribute_list)?;
-                fn_signature_to_trait_fn(context, handler, engines, fn_signature.value, attributes)
-            })
-            .collect::<Result<_, _>>()?
-    };
+    let interface_surface = item_trait
+        .trait_items
+        .into_inner()
+        .into_iter()
+        .map(|(annotated, _)| {
+            let attributes = item_attrs_to_map(context, handler, &annotated.attribute_list)?;
+            if !cfg_eval(context, handler, &attributes)? {
+                return Ok(None);
+            }
+            Ok(Some(match annotated.value {
+                ItemTraitItem::Fn(fn_sig) => {
+                    fn_signature_to_trait_fn(context, handler, engines, fn_sig, attributes)
+                        .map(TraitItem::TraitFn)
+                }
+                ItemTraitItem::Const(const_decl) => item_const_to_constant_declaration(
+                    context, handler, engines, const_decl, attributes, false,
+                )
+                .map(TraitItem::Constant),
+            }?))
+        })
+        .filter_map_ok(|item| item)
+        .collect::<Result<_, _>>()?;
     let methods = match item_trait.trait_defs_opt {
         None => Vec::new(),
         Some(trait_defs) => trait_defs
@@ -530,14 +605,18 @@ fn item_trait_to_trait_declaration(
             .into_iter()
             .map(|item_fn| {
                 let attributes = item_attrs_to_map(context, handler, &item_fn.attribute_list)?;
-                item_fn_to_function_declaration(
+                if !cfg_eval(context, handler, &attributes)? {
+                    return Ok(None);
+                }
+                Ok(Some(item_fn_to_function_declaration(
                     context,
                     handler,
                     engines,
                     item_fn.value,
                     attributes,
-                )
+                )?))
             })
+            .filter_map_ok(|fn_decl| fn_decl)
             .collect::<Result<_, _>>()?,
     };
     let supertraits = match item_trait.super_traits {
@@ -564,16 +643,28 @@ fn item_impl_to_declaration(
     item_impl: ItemImpl,
 ) -> Result<Declaration, ErrorEmitted> {
     let block_span = item_impl.span();
-    let type_implementing_for_span = item_impl.ty.span();
-    let type_implementing_for = ty_to_type_info(context, handler, engines, item_impl.ty)?;
-    let functions = item_impl
+    let implementing_for = ty_to_type_argument(context, handler, engines, item_impl.ty)?;
+    let items = item_impl
         .contents
         .into_inner()
         .into_iter()
         .map(|item| {
             let attributes = item_attrs_to_map(context, handler, &item.attribute_list)?;
-            item_fn_to_function_declaration(context, handler, engines, item.value, attributes)
+            if !cfg_eval(context, handler, &attributes)? {
+                return Ok(None);
+            }
+            Ok(Some(match item.value {
+                sway_ast::ItemImplItem::Fn(fn_item) => {
+                    item_fn_to_function_declaration(context, handler, engines, fn_item, attributes)
+                        .map(ImplItem::Fn)
+                }
+                sway_ast::ItemImplItem::Const(const_item) => item_const_to_constant_declaration(
+                    context, handler, engines, const_item, attributes, true,
+                )
+                .map(ImplItem::Constant),
+            }?))
         })
+        .filter_map_ok(|item| item)
         .collect::<Result<_, _>>()?;
 
     let impl_type_parameters = generic_params_opt_to_type_parameters(
@@ -592,22 +683,20 @@ fn item_impl_to_declaration(
                 impl_type_parameters,
                 trait_name,
                 trait_type_arguments,
-                type_implementing_for,
-                type_implementing_for_span,
-                functions,
+                implementing_for,
+                items,
                 block_span,
             };
             Ok(Declaration::ImplTrait(impl_trait))
         }
-        None => match type_implementing_for {
+        None => match engines.te().get(implementing_for.type_id) {
             TypeInfo::Contract => Err(handler
                 .emit_err(ConvertParseTreeError::SelfImplForContract { span: block_span }.into())),
             _ => {
                 let impl_self = ImplSelf {
-                    type_implementing_for,
-                    type_implementing_for_span,
+                    implementing_for,
                     impl_type_parameters,
-                    functions,
+                    items,
                     block_span,
                 };
                 Ok(Declaration::ImplSelf(impl_self))
@@ -656,26 +745,42 @@ fn item_abi_to_abi_declaration(
                 .abi_items
                 .into_inner()
                 .into_iter()
-                .map(|(fn_signature, _semicolon_token)| {
+                .map(|(annotated, _)| {
                     let attributes =
-                        item_attrs_to_map(context, handler, &fn_signature.attribute_list)?;
-                    let trait_fn = fn_signature_to_trait_fn(
-                        context,
-                        handler,
-                        engines,
-                        fn_signature.value,
-                        attributes,
-                    )?;
-                    error_if_self_param_is_not_allowed(
-                        context,
-                        handler,
-                        engines,
-                        &trait_fn.parameters,
-                        "an ABI method signature",
-                    )?;
-                    Ok(trait_fn)
+                        item_attrs_to_map(context, handler, &annotated.attribute_list)?;
+                    if !cfg_eval(context, handler, &attributes)? {
+                        return Ok(None);
+                    }
+                    Ok(Some(match annotated.value {
+                        ItemTraitItem::Fn(fn_signature) => {
+                            let trait_fn = fn_signature_to_trait_fn(
+                                context,
+                                handler,
+                                engines,
+                                fn_signature,
+                                attributes,
+                            )?;
+                            error_if_self_param_is_not_allowed(
+                                context,
+                                handler,
+                                engines,
+                                &trait_fn.parameters,
+                                "an ABI method signature",
+                            )?;
+                            Ok(TraitItem::TraitFn(trait_fn))
+                        }
+                        ItemTraitItem::Const(const_decl) => item_const_to_constant_declaration(
+                            context, handler, engines, const_decl, attributes, false,
+                        )
+                        .map(TraitItem::Constant),
+                    }?))
                 })
+                .filter_map_ok(|item| item)
                 .collect::<Result<_, _>>()?
+        },
+        supertraits: match item_abi.super_traits {
+            None => Vec::new(),
+            Some((_colon_token, traits)) => traits_to_supertraits(context, handler, traits)?,
         },
         methods: match item_abi.abi_defs_opt {
             None => Vec::new(),
@@ -684,6 +789,9 @@ fn item_abi_to_abi_declaration(
                 .into_iter()
                 .map(|item_fn| {
                     let attributes = item_attrs_to_map(context, handler, &item_fn.attribute_list)?;
+                    if !cfg_eval(context, handler, &attributes)? {
+                        return Ok(None);
+                    }
                     let function_declaration = item_fn_to_function_declaration(
                         context,
                         handler,
@@ -698,8 +806,9 @@ fn item_abi_to_abi_declaration(
                         &function_declaration.parameters,
                         "a method provided by ABI",
                     )?;
-                    Ok(function_declaration)
+                    Ok(Some(function_declaration))
                 })
+                .filter_map_ok(|fn_decl| fn_decl)
                 .collect::<Result<_, _>>()?,
         },
         span,
@@ -713,17 +822,41 @@ pub(crate) fn item_const_to_constant_declaration(
     engines: Engines<'_>,
     item_const: ItemConst,
     attributes: AttributesMap,
+    require_expression: bool,
 ) -> Result<ConstantDeclaration, ErrorEmitted> {
     let span = item_const.span();
+
+    let expr = match item_const.expr_opt {
+        Some(expr) => Some(expr_to_expression(context, handler, engines, expr)?),
+        None => {
+            if require_expression {
+                let err = ConvertParseTreeError::ConstantRequiresExpression { span: span.clone() };
+                if let Some(errors) = emit_all(handler, vec![err]) {
+                    return Err(errors);
+                }
+            }
+            None
+        }
+    };
+
     let type_ascription = match item_const.ty_opt {
         Some((_colon_token, ty)) => ty_to_type_argument(context, handler, engines, ty)?,
-        None => engines.te().insert(engines.de(), TypeInfo::Unknown).into(),
+        None => {
+            if expr.is_none() {
+                let err =
+                    ConvertParseTreeError::ConstantRequiresTypeAscription { span: span.clone() };
+                if let Some(errors) = emit_all(handler, vec![err]) {
+                    return Err(errors);
+                }
+            }
+            engines.te().insert(engines.de(), TypeInfo::Unknown).into()
+        }
     };
 
     Ok(ConstantDeclaration {
         name: item_const.name,
         type_ascription,
-        value: expr_to_expression(context, handler, engines, item_const.expr)?,
+        value: expr,
         visibility: pub_token_opt_to_visibility(item_const.visibility),
         is_configurable: false,
         attributes,
@@ -746,14 +879,18 @@ fn item_storage_to_storage_declaration(
         .into_iter()
         .map(|storage_field| {
             let attributes = item_attrs_to_map(context, handler, &storage_field.attribute_list)?;
-            storage_field_to_storage_field(
+            if !cfg_eval(context, handler, &attributes)? {
+                return Ok(None);
+            }
+            Ok(Some(storage_field_to_storage_field(
                 context,
                 handler,
                 engines,
                 storage_field.value,
                 attributes,
-            )
+            )?))
         })
+        .filter_map_ok(|field| field)
         .collect::<Result<_, _>>()?;
 
     // Make sure each storage field is declared once
@@ -775,6 +912,7 @@ fn item_storage_to_storage_declaration(
         attributes,
         span,
         fields,
+        storage_keyword: item_storage.storage_token.into(),
     };
     Ok(storage_declaration)
 }
@@ -801,14 +939,18 @@ fn item_configurable_to_constant_declarations(
         .map(|configurable_field| {
             let attributes =
                 item_attrs_to_map(context, handler, &configurable_field.attribute_list)?;
-            configurable_field_to_constant_declaration(
+            if !cfg_eval(context, handler, &attributes)? {
+                return Ok(None);
+            }
+            Ok(Some(configurable_field_to_constant_declaration(
                 context,
                 handler,
                 engines,
                 configurable_field.value,
                 attributes,
-            )
+            )?))
         })
+        .filter_map_ok(|decl| decl)
         .collect::<Result<_, _>>()?;
 
     // Make sure each configurable is declared once
@@ -829,6 +971,23 @@ fn item_configurable_to_constant_declarations(
     context.set_module_has_configurable_block(true);
 
     Ok(declarations)
+}
+
+fn item_type_alias_to_type_alias_declaration(
+    context: &mut Context,
+    handler: &Handler,
+    engines: Engines<'_>,
+    item_type_alias: ItemTypeAlias,
+    attributes: AttributesMap,
+) -> Result<TypeAliasDeclaration, ErrorEmitted> {
+    let span = item_type_alias.span();
+    Ok(TypeAliasDeclaration {
+        name: item_type_alias.name.clone(),
+        attributes,
+        ty: ty_to_type_argument(context, handler, engines, item_type_alias.ty)?,
+        visibility: pub_token_opt_to_visibility(item_type_alias.visibility),
+        span,
+    })
 }
 
 fn type_field_to_struct_field(
@@ -910,14 +1069,11 @@ fn generic_params_opt_to_type_parameters(
 
         param_to_edit.trait_constraints_span = Span::join(ty_name.span(), bounds.span());
 
-        param_to_edit.trait_constraints.extend(
-            traits_to_call_paths(context, handler, engines, bounds)?
-                .into_iter()
-                .map(|(trait_name, type_arguments)| TraitConstraint {
-                    trait_name,
-                    type_arguments,
-                }),
-        );
+        param_to_edit
+            .trait_constraints
+            .extend(traits_to_trait_constraints(
+                context, handler, engines, bounds,
+            )?);
     }
     if let Some(errors) = emit_all(handler, errors) {
         return Err(errors);
@@ -1199,12 +1355,12 @@ fn fn_signature_to_trait_fn(
     Ok(trait_fn)
 }
 
-fn traits_to_call_paths(
+fn traits_to_trait_constraints(
     context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     traits: Traits,
-) -> Result<Vec<(CallPath, Vec<TypeArgument>)>, ErrorEmitted> {
+) -> Result<Vec<TraitConstraint>, ErrorEmitted> {
     let mut parsed_traits = vec![path_type_to_call_path_and_type_arguments(
         context,
         handler,
@@ -1216,7 +1372,13 @@ fn traits_to_call_paths(
             path_type_to_call_path_and_type_arguments(context, handler, engines, suffix)?;
         parsed_traits.push(supertrait);
     }
-    Ok(parsed_traits)
+    Ok(parsed_traits
+        .into_iter()
+        .map(|(trait_name, type_arguments)| TraitConstraint {
+            trait_name,
+            type_arguments,
+        })
+        .collect())
 }
 
 fn traits_to_supertraits(
@@ -1465,13 +1627,17 @@ fn expr_func_app_to_expression_kind(
         _ => {}
     }
 
-    // Only `foo(args)`? It's a simple function call and not delineated / ambiguous.
+    // Only `foo(args)`? It could either be a function application or an enum variant.
     let last = match last {
         Some(last) => last,
         None => {
+            let suffix = AmbiguousSuffix {
+                before: None,
+                suffix: call_seg.name,
+            };
             let call_path = CallPath {
                 prefixes,
-                suffix: call_seg.name,
+                suffix,
                 is_absolute,
             };
             let span = match type_arguments_span {
@@ -1483,10 +1649,10 @@ fn expr_func_app_to_expression_kind(
                 type_arguments: TypeArgs::Regular(type_arguments),
                 span,
             };
-            return Ok(ExpressionKind::FunctionApplication(Box::new(
-                FunctionApplicationExpression {
+            return Ok(ExpressionKind::AmbiguousPathExpression(Box::new(
+                AmbiguousPathExpression {
+                    args: arguments,
                     call_path_binding,
-                    arguments,
                 },
             )));
         }
@@ -1495,11 +1661,11 @@ fn expr_func_app_to_expression_kind(
     // Ambiguous call. Could be a method call or a normal function call.
     // We don't know until type checking what `last` refers to, so let's defer.
     let (last_ty_args, last_ty_args_span) = convert_ty_args(context, last.generics_opt)?;
-    let before = TypeBinding {
+    let before = Some(TypeBinding {
         span: name_args_span(last.name.span(), last_ty_args_span),
         inner: last.name,
         type_arguments: TypeArgs::Regular(last_ty_args),
-    };
+    });
     let suffix = AmbiguousSuffix {
         before,
         suffix: call_seg.name,
@@ -1644,10 +1810,8 @@ fn expr_to_expression(
                 MATCH_RETURN_VAR_NAME_PREFIX,
                 context.next_match_expression_return_var_unique_suffix(),
             );
-            let var_decl_name = Ident::new_with_override(
-                Box::leak(match_return_var_name.into_boxed_str()),
-                var_decl_span.clone(),
-            );
+            let var_decl_name =
+                Ident::new_with_override(match_return_var_name, var_decl_span.clone());
 
             let var_decl_exp = Expression {
                 kind: ExpressionKind::Variable(var_decl_name.clone()),
@@ -2050,10 +2214,10 @@ fn op_call(
         inner: MethodName::FromTrait {
             call_path: CallPath {
                 prefixes: vec![
-                    Ident::new_with_override("core", op_span.clone()),
-                    Ident::new_with_override("ops", op_span.clone()),
+                    Ident::new_with_override("core".into(), op_span.clone()),
+                    Ident::new_with_override("ops".into(), op_span.clone()),
                 ],
-                suffix: Ident::new_with_override(name, op_span.clone()),
+                suffix: Ident::new_with_override(name.into(), op_span.clone()),
                 is_absolute: true,
             },
         },
@@ -2100,7 +2264,12 @@ fn configurable_field_to_constant_declaration(
     Ok(ConstantDeclaration {
         name: configurable_field.name,
         type_ascription: ty_to_type_argument(context, handler, engines, configurable_field.ty)?,
-        value: expr_to_expression(context, handler, engines, configurable_field.initializer)?,
+        value: Some(expr_to_expression(
+            context,
+            handler,
+            engines,
+            configurable_field.initializer,
+        )?),
         visibility: Visibility::Public,
         is_configurable: true,
         attributes,
@@ -2148,6 +2317,10 @@ fn fn_arg_to_function_parameter(
     let (reference, mutable, name) = match fn_arg.pattern {
         Pattern::Wildcard { .. } => {
             let error = ConvertParseTreeError::WildcardPatternsNotSupportedHere { span: pat_span };
+            return Err(handler.emit_err(error.into()));
+        }
+        Pattern::Or { .. } => {
+            let error = ConvertParseTreeError::OrPatternsNotSupportedHere { span: pat_span };
             return Err(handler.emit_err(error.into()));
         }
         Pattern::Var {
@@ -2393,7 +2566,7 @@ fn if_expr_to_expression(
         None => None,
         Some((_else_token, tail)) => {
             let expression = match tail {
-                ControlFlow::Break(braced_code_block_contents) => {
+                LoopControlFlow::Break(braced_code_block_contents) => {
                     braced_code_block_contents_to_expression(
                         context,
                         handler,
@@ -2401,7 +2574,7 @@ fn if_expr_to_expression(
                         braced_code_block_contents,
                     )?
                 }
-                ControlFlow::Continue(if_expr) => {
+                LoopControlFlow::Continue(if_expr) => {
                     if_expr_to_expression(context, handler, engines, *if_expr)?
                 }
             };
@@ -2560,7 +2733,7 @@ fn literal_to_literal(
                         }
                     }
                 }
-                Some((lit_int_type, _span)) => match lit_int_type {
+                Some((lit_int_type, _)) => match lit_int_type {
                     LitIntType::U8 => {
                         let value = match u8::try_from(parsed) {
                             Ok(value) => value,
@@ -2872,7 +3045,7 @@ fn statement_let_to_ast_nodes(
                         mutable,
                         name,
                     } => (reference, mutable, name),
-                    Pattern::Wildcard { .. } => (None, None, Ident::new_no_span("_")),
+                    Pattern::Wildcard { .. } => (None, None, Ident::new_no_span("_".into())),
                     _ => unreachable!(),
                 };
                 if reference.is_some() {
@@ -2925,10 +3098,8 @@ fn statement_let_to_ast_nodes(
                     DESTRUCTURE_PREFIX,
                     context.next_destructured_struct_unique_suffix()
                 );
-                let destructure_name = Ident::new_with_override(
-                    Box::leak(destructured_name.into_boxed_str()),
-                    path.prefix.name.span(),
-                );
+                let destructure_name =
+                    Ident::new_with_override(destructured_name, path.prefix.name.span());
 
                 // Parse the type ascription and the type ascription span.
                 // In the event that the user did not provide a type ascription,
@@ -3009,6 +3180,10 @@ fn statement_let_to_ast_nodes(
                 }
                 ast_nodes
             }
+            Pattern::Or { .. } => {
+                let error = ConvertParseTreeError::OrPatternsNotSupportedHere { span };
+                return Err(handler.emit_err(error.into()));
+            }
             Pattern::Tuple(pat_tuple) => {
                 let mut ast_nodes = Vec::new();
 
@@ -3018,8 +3193,7 @@ fn statement_let_to_ast_nodes(
                     TUPLE_NAME_PREFIX,
                     context.next_destructured_tuple_unique_suffix()
                 );
-                let tuple_name =
-                    Ident::new_with_override(Box::leak(tuple_name.into_boxed_str()), span.clone());
+                let tuple_name = Ident::new_with_override(tuple_name, span.clone());
 
                 // Parse the type ascription and the type ascription span.
                 // In the event that the user did not provide a type ascription,
@@ -3051,11 +3225,71 @@ fn statement_let_to_ast_nodes(
                     span: span.clone(),
                 });
 
+                // Acript a second declaration to a tuple of placeholders to check that the tuple
+                // is properly sized to the pattern
+                let placeholders_type_ascription = {
+                    let type_id = engines.te().insert(
+                        engines.de(),
+                        TypeInfo::Tuple(
+                            pat_tuple
+                                .clone()
+                                .into_inner()
+                                .into_iter()
+                                .map(|_| {
+                                    let initial_type_id =
+                                        engines.te().insert(engines.de(), TypeInfo::Unknown);
+                                    let dummy_type_param = TypeParameter {
+                                        type_id: initial_type_id,
+                                        initial_type_id,
+                                        name_ident: Ident::new_with_override(
+                                            "_".into(),
+                                            span.clone(),
+                                        ),
+                                        trait_constraints: vec![],
+                                        trait_constraints_span: Span::dummy(),
+                                    };
+                                    let initial_type_id = engines.te().insert(
+                                        engines.de(),
+                                        TypeInfo::Placeholder(dummy_type_param),
+                                    );
+                                    TypeArgument {
+                                        type_id: initial_type_id,
+                                        initial_type_id,
+                                        call_path_tree: None,
+                                        span: Span::dummy(),
+                                    }
+                                })
+                                .collect(),
+                        ),
+                    );
+                    TypeArgument {
+                        type_id,
+                        initial_type_id: type_id,
+                        span: tuple_name.span(),
+                        call_path_tree: None,
+                    }
+                };
+
                 // create a variable expression that points to the new tuple name that we just created
                 let new_expr = Expression {
-                    kind: ExpressionKind::Variable(tuple_name),
+                    kind: ExpressionKind::Variable(tuple_name.clone()),
                     span: span.clone(),
                 };
+
+                // Override the previous declaration with a tuple of placeholders to check the
+                // shape of the tuple
+                let check_tuple_shape_second = VariableDeclaration {
+                    name: tuple_name,
+                    type_ascription: placeholders_type_ascription,
+                    body: new_expr.clone(),
+                    is_mutable: false,
+                };
+                ast_nodes.push(AstNode {
+                    content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
+                        check_tuple_shape_second,
+                    )),
+                    span: span.clone(),
+                });
 
                 // from the possible type annotation, if the annotation was a tuple annotation,
                 // extract the internal types of the annotation
@@ -3110,11 +3344,10 @@ fn statement_let_to_ast_nodes(
     )
 }
 
-fn dependency_to_include_statement(dependency: &Dependency) -> IncludeStatement {
+fn submodule_to_include_statement(dependency: &Submodule) -> IncludeStatement {
     IncludeStatement {
-        _alias: None,
-        span: dependency.span(),
-        _path_span: dependency.path.span(),
+        _span: dependency.span(),
+        _mod_name_span: dependency.name.span(),
     }
 }
 
@@ -3164,6 +3397,32 @@ fn pattern_to_scrutinee(
 ) -> Result<Scrutinee, ErrorEmitted> {
     let span = pattern.span();
     let scrutinee = match pattern {
+        Pattern::Or {
+            lhs,
+            pipe_token: _,
+            rhs,
+        } => {
+            let mut elems = vec![rhs];
+            let mut current_lhs = lhs;
+
+            while let Pattern::Or {
+                lhs: new_lhs,
+                pipe_token: _,
+                rhs: new_rhs,
+            } = *current_lhs
+            {
+                elems.push(new_rhs);
+                current_lhs = new_lhs;
+            }
+            elems.push(current_lhs);
+
+            let elems = elems
+                .into_iter()
+                .rev()
+                .map(|p| pattern_to_scrutinee(context, handler, *p))
+                .collect::<Result<Vec<_>, _>>()?;
+            Scrutinee::Or { span, elems }
+        }
         Pattern::Wildcard { underscore_token } => Scrutinee::CatchAll {
             span: underscore_token.span(),
         },
@@ -3472,7 +3731,7 @@ fn assignable_to_reassignment_target(
             Assignable::Var(name) => {
                 if name.as_str() == "storage" {
                     let idents = idents.into_iter().rev().cloned().collect();
-                    return Ok(ReassignmentTarget::StorageField(idents));
+                    return Ok(ReassignmentTarget::StorageField(name.span(), idents));
                 }
                 break;
             }
@@ -3646,7 +3905,18 @@ fn item_attrs_to_map(
             let args = attr
                 .args
                 .as_ref()
-                .map(|parens| parens.get().into_iter().cloned().collect())
+                .map(|parens| {
+                    parens
+                        .get()
+                        .into_iter()
+                        .cloned()
+                        .map(|arg| AttributeArg {
+                            name: arg.name.clone(),
+                            value: arg.value.clone(),
+                            span: arg.span(),
+                        })
+                        .collect()
+                })
                 .unwrap_or_else(Vec::new);
 
             let attribute = Attribute {
@@ -3662,6 +3932,8 @@ fn item_attrs_to_map(
                 INLINE_ATTRIBUTE_NAME => Some(AttributeKind::Inline),
                 TEST_ATTRIBUTE_NAME => Some(AttributeKind::Test),
                 PAYABLE_ATTRIBUTE_NAME => Some(AttributeKind::Payable),
+                ALLOW_ATTRIBUTE_NAME => Some(AttributeKind::Allow),
+                CFG_ATTRIBUTE_NAME => Some(AttributeKind::Cfg),
                 _ => None,
             } {
                 match attrs_map.get_mut(&attr_kind) {
@@ -3670,6 +3942,45 @@ fn item_attrs_to_map(
                     }
                     None => {
                         attrs_map.insert(attr_kind, vec![attribute]);
+                    }
+                }
+            }
+        }
+    }
+
+    // Check attribute arguments
+    for (attribute_kind, attributes) in &attrs_map {
+        for attribute in attributes {
+            // check attribute arguments length
+            let (expected_min_len, expected_max_len) =
+                attribute_kind.clone().expected_args_len_min_max();
+            if attribute.args.len() < expected_min_len
+                || attribute.args.len() > expected_max_len.unwrap_or(usize::MAX)
+            {
+                handler.emit_warn(CompileWarning {
+                    span: attribute.name.span().clone(),
+                    warning_content: Warning::AttributeExpectedNumberOfArguments {
+                        attrib_name: attribute.name.clone(),
+                        received_args: attribute.args.len(),
+                        expected_min_len,
+                        expected_max_len,
+                    },
+                })
+            }
+
+            // check attribute argument value
+            for (index, arg) in attribute.args.iter().enumerate() {
+                let possible_values = attribute_kind.clone().expected_args_values(index);
+                if let Some(possible_values) = possible_values {
+                    if !possible_values.iter().any(|v| v == arg.name.as_str()) {
+                        handler.emit_warn(CompileWarning {
+                            span: attribute.name.span().clone(),
+                            warning_content: Warning::UnexpectedAttributeArgumentValue {
+                                attrib_name: attribute.name.clone(),
+                                received_value: arg.name.as_str().to_string(),
+                                expected_values: possible_values,
+                            },
+                        })
                     }
                 }
             }
@@ -3698,4 +4009,88 @@ fn error_if_self_param_is_not_allowed(
         }
     }
     Ok(())
+}
+
+/// Walks all the cfg attributes in a map, evaluating them
+/// and returning false if any evaluated to false.
+pub fn cfg_eval(
+    context: &mut Context,
+    handler: &Handler,
+    attrs_map: &AttributesMap,
+) -> Result<bool, ErrorEmitted> {
+    if let Some(cfg_attrs) = attrs_map.get(&AttributeKind::Cfg) {
+        for cfg_attr in cfg_attrs {
+            for arg in &cfg_attr.args {
+                dbg!(arg.name.as_str());
+                match arg.name.as_str() {
+                    CFG_TARGET_ARG_NAME => {
+                        if let Some(value) = &arg.value {
+                            if let sway_ast::Literal::String(value_str) = value {
+                                if let Ok(target) = BuildTarget::from_str(value_str.parsed.as_str())
+                                {
+                                    if target != context.build_target() {
+                                        return Ok(false);
+                                    }
+                                } else {
+                                    let error = ConvertParseTreeError::InvalidCfgTargetArgValue {
+                                        span: value.span(),
+                                        value: value.span().str(),
+                                    };
+                                    return Err(handler.emit_err(error.into()));
+                                }
+                            } else {
+                                let error = ConvertParseTreeError::InvalidCfgTargetArgValue {
+                                    span: value.span(),
+                                    value: value.span().str(),
+                                };
+                                return Err(handler.emit_err(error.into()));
+                            }
+                        } else {
+                            let error = ConvertParseTreeError::ExpectedCfgTargetArgValue {
+                                span: arg.span(),
+                            };
+                            return Err(handler.emit_err(error.into()));
+                        }
+                    }
+                    CFG_PROGRAM_TYPE_ARG_NAME => {
+                        if let Some(value) = &arg.value {
+                            if let sway_ast::Literal::String(value_str) = value {
+                                if let Ok(program_type) =
+                                    TreeType::from_str(value_str.parsed.as_str())
+                                {
+                                    dbg!("kek", &program_type, &context.program_type().unwrap());
+                                    if program_type != context.program_type().unwrap() {
+                                        return Ok(false);
+                                    }
+                                } else {
+                                    let error =
+                                        ConvertParseTreeError::InvalidCfgProgramTypeArgValue {
+                                            span: value.span(),
+                                            value: value.span().str(),
+                                        };
+                                    return Err(handler.emit_err(error.into()));
+                                }
+                            } else {
+                                let error = ConvertParseTreeError::InvalidCfgProgramTypeArgValue {
+                                    span: value.span(),
+                                    value: value.span().str(),
+                                };
+                                return Err(handler.emit_err(error.into()));
+                            }
+                        } else {
+                            let error = ConvertParseTreeError::ExpectedCfgTargetArgValue {
+                                span: arg.span(),
+                            };
+                            return Err(handler.emit_err(error.into()));
+                        }
+                    }
+                    _ => {
+                        // Already checked with `AttributeKind::expected_args_*`
+                        unreachable!("cfg attribute should only have the `target` or the `program_type` argument");
+                    }
+                }
+            }
+        }
+    }
+    Ok(true)
 }

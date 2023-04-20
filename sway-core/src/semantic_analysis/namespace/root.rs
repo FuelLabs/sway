@@ -3,7 +3,7 @@ use sway_types::Spanned;
 
 use crate::{
     error::*,
-    language::{ty, CallPath, Visibility},
+    language::{ty, CallPath},
     CompileResult, Engines, Ident,
 };
 
@@ -31,7 +31,7 @@ impl Root {
         &self,
         mod_path: &Path,
         call_path: &CallPath,
-    ) -> CompileResult<&ty::TyDeclaration> {
+    ) -> CompileResult<&ty::TyDecl> {
         let symbol_path: Vec<_> = mod_path
             .iter()
             .chain(&call_path.prefixes)
@@ -52,8 +52,8 @@ impl Root {
         engines: Engines<'_>,
         mod_path: &Path,
         call_path: &CallPath,
-    ) -> CompileResult<&ty::TyDeclaration> {
-        let mut warnings = vec![];
+    ) -> CompileResult<&ty::TyDecl> {
+        let warnings = vec![];
         let mut errors = vec![];
 
         let result = self.resolve_call_path(mod_path, call_path);
@@ -67,18 +67,14 @@ impl Root {
             value: Some(decl), ..
         } = result
         {
-            let visibility = check!(
-                decl.visibility(engines.de()),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            if visibility != Visibility::Public {
+            if !decl.visibility(engines.de()).is_public() {
                 errors.push(CompileError::ImportPrivateSymbol {
                     name: call_path.suffix.clone(),
                     span: call_path.suffix.span(),
                 });
-                return err(warnings, errors);
+                // Returns ok with error, this allows functions which call this to
+                // also access the returned TyDecl and throw more suitable errors.
+                return ok(decl, warnings, errors);
             }
         }
 
@@ -94,13 +90,14 @@ impl Root {
         &self,
         mod_path: &Path,
         symbol: &Ident,
-    ) -> CompileResult<&ty::TyDeclaration> {
+    ) -> CompileResult<&ty::TyDecl> {
         self.check_submodule(mod_path).flat_map(|module| {
             let true_symbol = self[mod_path]
                 .use_aliases
                 .get(symbol.as_str())
                 .unwrap_or(symbol);
             match module.use_synonyms.get(symbol) {
+                Some((_, _, decl @ ty::TyDecl::EnumVariantDecl { .. })) => ok(decl, vec![], vec![]),
                 Some((src_path, _, _)) if mod_path != src_path => {
                     self.resolve_symbol(src_path, true_symbol)
                 }

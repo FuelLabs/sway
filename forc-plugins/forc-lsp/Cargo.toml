@@ -1,15 +1,15 @@
 [package]
 name = "forc-lsp"
-version = "0.35.1"
-authors = ["Fuel Labs <contact@fuel.sh>"]
-edition = "2021"
-homepage = "https://fuel.network/"
-license = "Apache-2.0"
-repository = "https://github.com/FuelLabs/sway"
+version = "0.37.1"
 description = "A simple `forc` plugin for starting the sway language server."
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
 anyhow = "1"
 clap = { version = "3", features = ["derive"] }
-sway-lsp = { version = "0.35.1", path = "../../sway-lsp" }
+sway-lsp = { version = "0.37.1", path = "../../sway-lsp" }
 tokio = { version = "1.8" }

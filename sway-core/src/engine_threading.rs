@@ -1,12 +1,12 @@
 use std::{
     cmp::Ordering,
     fmt,
-    hash::{Hash, Hasher},
+    hash::{BuildHasher, Hash, Hasher},
 };
 
-use crate::{decl_engine::DeclEngine, TypeEngine};
+use crate::{decl_engine::DeclEngine, type_system::TypeEngine};
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct Engines<'a> {
     type_engine: &'a TypeEngine,
     decl_engine: &'a DeclEngine,
@@ -61,12 +61,14 @@ impl<'a, T> WithEngines<'a, T> {
     }
 }
 
+/// Displays the user-friendly formatted view of `thing` using `engines` as context.
 impl<T: DisplayWithEngines> fmt::Display for WithEngines<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.thing.fmt(f, self.engines)
     }
 }
 
+/// Displays the internals of `thing` using `engines` as context. Useful for debugging.
 impl<T: DebugWithEngines> fmt::Debug for WithEngines<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.thing.fmt(f, self.engines)
@@ -92,7 +94,7 @@ where
     T: PartialEqWithEngines,
 {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.thing.cmp(&other.thing, self.engines.te()))
+        Some(self.thing.cmp(&other.thing, self.engines))
     }
 }
 
@@ -101,7 +103,7 @@ where
     T: EqWithEngines,
 {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.thing.cmp(&other.thing, self.engines.te())
+        self.thing.cmp(&other.thing, self.engines)
     }
 }
 
@@ -159,7 +161,7 @@ pub trait PartialEqWithEngines {
 }
 
 pub trait OrdWithEngines {
-    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering;
+    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering;
 }
 
 impl<T: EqWithEngines + ?Sized> EqWithEngines for &T {}
@@ -169,15 +171,15 @@ impl<T: PartialEqWithEngines + ?Sized> PartialEqWithEngines for &T {
     }
 }
 impl<T: OrdWithEngines + ?Sized> OrdWithEngines for &T {
-    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
-        (*self).cmp(*other, type_engine)
+    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
+        (*self).cmp(*other, engines)
     }
 }
 
 impl<T: OrdWithEngines> OrdWithEngines for Option<T> {
-    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
+    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
         match (self, other) {
-            (Some(x), Some(y)) => x.cmp(y, type_engine),
+            (Some(x), Some(y)) => x.cmp(y, engines),
             (Some(_), None) => Ordering::Less,
             (None, Some(_)) => Ordering::Greater,
             (None, None) => Ordering::Equal,
@@ -203,11 +205,25 @@ impl<T: PartialEqWithEngines> PartialEqWithEngines for [T] {
     }
 }
 impl<T: OrdWithEngines> OrdWithEngines for [T] {
-    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
+    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
         self.iter()
             .zip(other.iter())
-            .map(|(x, y)| x.cmp(y, type_engine))
+            .map(|(x, y)| x.cmp(y, engines))
             .find(|o| o.is_ne())
             .unwrap_or_else(|| self.len().cmp(&other.len()))
+    }
+}
+
+pub(crate) fn make_hasher<'a: 'b, 'b, K>(
+    hash_builder: &'a impl BuildHasher,
+    engines: Engines<'b>,
+) -> impl Fn(&K) -> u64 + 'b
+where
+    K: HashWithEngines + ?Sized,
+{
+    move |key: &K| {
+        let mut state = hash_builder.build_hasher();
+        key.hash(&mut state, engines);
+        state.finish()
     }
 }

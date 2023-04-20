@@ -1,4 +1,5 @@
-library message;
+//! Helper functions to sign and send messages.
+library;
 
 use ::alloc::alloc_bytes;
 use ::bytes::Bytes;

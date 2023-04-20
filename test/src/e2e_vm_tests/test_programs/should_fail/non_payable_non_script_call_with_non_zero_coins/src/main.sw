@@ -1,6 +1,6 @@
 contract;
 
-dep other_contract;
+mod other_contract;
 
 use other_contract::*;
 

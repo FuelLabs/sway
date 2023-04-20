@@ -2,18 +2,11 @@
 
 ## Building test projects
 
-First, ensure we have the current version of `forc` installed.
+Compile all the Sway programs in the workspace as follows:
 
 ```sh
-cd sway
-cargo install --path ./forc
-```
-
-In the `sway/test/src/sdk-harness` directory is a bash build script. To run it:
-
-```sh
-cd sway/test/src/sdk-harness
-./build.sh
+# from project root
+cargo run --bin=forc build --path test/src/sdk-harness
 ```
 
 This will build all contracts and scripts under the `sway/test/src/sdk-harness` directory.

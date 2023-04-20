@@ -1,4 +1,4 @@
-library lib_multi_test;
+library;
 
 fn pow2(x: u64) -> u64 {
     log(x);

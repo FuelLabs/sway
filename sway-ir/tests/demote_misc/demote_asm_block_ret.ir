@@ -1,0 +1,17 @@
+script {
+    entry fn main() -> b256 {
+        entry():
+        v0 = const b256 0x2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b
+        v2 = asm(pointer: v0) -> b256 pointer { }
+        ret b256 v2
+    }
+}
+
+// regex: VAL=v\d+
+// regex: ID=[[:alpha:]0-9_]+
+
+// check: $(tmp_ptr=$VAL) = get_local ptr b256, $ID
+// check: store $VAL to $tmp_ptr
+// check: $(asm_ret_ptr=$VAL) = asm(pointer: $tmp_ptr) -> ptr b256 pointer
+// check: $(asm_val=$VAL) = load $asm_ret_ptr
+// check: ret b256 $asm_val

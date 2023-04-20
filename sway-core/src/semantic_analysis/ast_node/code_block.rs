@@ -1,5 +1,8 @@
 use super::*;
-use crate::language::{parsed::CodeBlock, ty};
+use crate::{
+    decl_engine::DeclRef,
+    language::{parsed::CodeBlock, ty},
+};
 
 impl ty::TyCodeBlock {
     pub(crate) fn type_check(
@@ -57,10 +60,10 @@ impl ty::TyCodeBlock {
             .unwrap_or_else(|| {
                 if node_deterministically_aborts {
                     let never_mod_path = vec![
-                        Ident::new_with_override("core", span.clone()),
-                        Ident::new_with_override("never", span.clone()),
+                        Ident::new_with_override("core".into(), span.clone()),
+                        Ident::new_with_override("never".into(), span.clone()),
                     ];
-                    let never_ident = Ident::new_with_override("Never", span.clone());
+                    let never_ident = Ident::new_with_override("Never".into(), span.clone());
 
                     let never_decl_opt = ctx
                         .namespace
@@ -68,14 +71,17 @@ impl ty::TyCodeBlock {
                         .resolve_symbol(&never_mod_path, &never_ident)
                         .value;
 
-                    if let Some(ty::TyDeclaration::EnumDeclaration {
-                        decl_id: never_decl_id,
-                        ..
-                    }) = never_decl_opt
+                    if let Some(ty::TyDecl::EnumDecl(ty::EnumDecl {
+                        name,
+                        decl_id,
+                        subst_list: _,
+                        decl_span,
+                    })) = never_decl_opt
                     {
-                        if let Ok(never_decl) = decl_engine.get_enum(never_decl_id, &span) {
-                            return never_decl.create_type_id(ctx.engines());
-                        }
+                        return ctx.engines().te().insert(
+                            decl_engine,
+                            TypeInfo::Enum(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
+                        );
                     }
 
                     ctx.type_engine.insert(decl_engine, TypeInfo::Unknown)

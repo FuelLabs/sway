@@ -39,13 +39,8 @@ pub(crate) fn insert_supertraits_into_namespace(
             .ok(&mut warnings, &mut errors)
             .cloned()
         {
-            Some(ty::TyDeclaration::TraitDeclaration { decl_id, .. }) => {
-                let mut trait_decl = check!(
-                    CompileResult::from(decl_engine.get_trait(&decl_id, &supertrait.span())),
-                    break,
-                    warnings,
-                    errors
-                );
+            Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
+                let mut trait_decl = decl_engine.get_trait(&decl_id);
 
                 // Right now we don't parse type arguments for supertraits, so
                 // we should give this error message to users.
@@ -75,16 +70,11 @@ pub(crate) fn insert_supertraits_into_namespace(
 
                 // Insert the interface surface and methods from this trait into
                 // the namespace.
-                check!(
-                    trait_decl.insert_interface_surface_and_methods_into_namespace(
-                        ctx.by_ref(),
-                        &supertrait.name,
-                        &type_arguments,
-                        type_id
-                    ),
-                    continue,
-                    warnings,
-                    errors
+                trait_decl.insert_interface_surface_and_items_into_namespace(
+                    ctx.by_ref(),
+                    &supertrait.name,
+                    &type_arguments,
+                    type_id,
                 );
 
                 // Recurse to insert versions of interfaces and methods of the
@@ -100,11 +90,9 @@ pub(crate) fn insert_supertraits_into_namespace(
                     errors
                 );
             }
-            Some(ty::TyDeclaration::AbiDeclaration { .. }) => {
-                errors.push(CompileError::AbiAsSupertrait {
-                    span: supertrait.name.span().clone(),
-                })
-            }
+            Some(ty::TyDecl::AbiDecl { .. }) => errors.push(CompileError::AbiAsSupertrait {
+                span: supertrait.name.span().clone(),
+            }),
             _ => errors.push(CompileError::TraitNotFound {
                 name: supertrait.name.to_string(),
                 span: supertrait.name.span(),

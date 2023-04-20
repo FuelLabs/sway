@@ -16,6 +16,7 @@ use regex::Regex;
 use std::collections::HashSet;
 use std::io::stdout;
 use std::io::Write;
+use std::str::FromStr;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -61,6 +62,7 @@ struct TestDescription {
     category: TestCategory,
     script_data: Option<Vec<u8>>,
     expected_result: Option<TestResult>,
+    expected_warnings: u32,
     contract_paths: Vec<String>,
     validate_abi: bool,
     validate_storage_slots: bool,
@@ -95,6 +97,7 @@ impl TestContext {
             category,
             script_data,
             expected_result,
+            expected_warnings,
             contract_paths,
             validate_abi,
             validate_storage_slots,
@@ -124,11 +127,18 @@ impl TestContext {
                 let compiled = result?;
 
                 let compiled = match compiled {
-                    forc_pkg::Built::Package(built_pkg) => *built_pkg,
+                    forc_pkg::Built::Package(built_pkg) => built_pkg.as_ref().clone(),
                     forc_pkg::Built::Workspace(_) => {
                         panic!("workspaces are not supported in the test suite yet")
                     }
                 };
+
+                if compiled.warnings.len() > expected_warnings as usize {
+                    return Err(anyhow::Error::msg(format!(
+                        "Expected warnings: {expected_warnings}\nActual number of warnings: {}",
+                        compiled.warnings.len()
+                    )));
+                }
 
                 let result = harness::runs_in_vm(compiled.clone(), script_data)?;
                 let result = match result {
@@ -158,6 +168,13 @@ impl TestContext {
                             panic!("EVM exited with unhandled reason: {:?}", state.exit_reason);
                         }
                     },
+                    harness::VMExecutionResult::MidenVM(trace) => {
+                        let outputs = trace.program_outputs();
+                        let stack = outputs.stack();
+                        // for now, just test primitive u64s.
+                        // Later on, we can test stacks that have more elements in them.
+                        TestResult::Return(stack[0])
+                    }
                 };
 
                 if result != res {
@@ -185,10 +202,23 @@ impl TestContext {
                 *output = out;
 
                 let compiled_pkgs = match result? {
-                    forc_pkg::Built::Package(built_pkg) => vec![(name.clone(), *built_pkg)],
+                    forc_pkg::Built::Package(built_pkg) => {
+                        if built_pkg.warnings.len() > expected_warnings as usize {
+                            return Err(anyhow::Error::msg(format!(
+                                "Expected warnings: {expected_warnings}\nActual number of warnings: {}",
+                                built_pkg.warnings.len()
+                            )));
+                        }
+                        vec![(name.clone(), built_pkg.as_ref().clone())]
+                    }
                     forc_pkg::Built::Workspace(built_workspace) => built_workspace
                         .iter()
-                        .map(|(n, b)| (n.clone(), b.clone()))
+                        .map(|built_pkg| {
+                            (
+                                built_pkg.descriptor.pinned.name.clone(),
+                                built_pkg.as_ref().clone(),
+                            )
+                        })
                         .collect(),
                 };
 
@@ -300,7 +330,7 @@ impl TestContext {
                             .map(move |test| {
                                 format!(
                                     "{}: Test '{}' failed with state {:?}, expected: {:?}",
-                                    tested_pkg.built.pkg_name,
+                                    tested_pkg.built.descriptor.name,
                                     test.name,
                                     test.state,
                                     test.condition,
@@ -622,6 +652,14 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription> {
         .map(|v| v.as_bool().unwrap_or(false))
         .unwrap_or(false);
 
+    let expected_warnings = u32::try_from(
+        toml_content
+            .get("expected_warnings")
+            .map(|v| v.as_integer().unwrap_or(0))
+            .unwrap_or(0),
+    )
+    .unwrap_or(0u32);
+
     let validate_storage_slots = toml_content
         .get("validate_storage_slots")
         .map(|v| v.as_bool().unwrap_or(false))
@@ -664,6 +702,7 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription> {
         category,
         script_data,
         expected_result,
+        expected_warnings,
         contract_paths,
         validate_abi,
         validate_storage_slots,
@@ -674,9 +713,8 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription> {
 
 fn get_test_abi_from_value(value: &toml::Value) -> Result<BuildTarget> {
     match value.as_str() {
-        Some(target) => match target {
-            "fuel" => Ok(BuildTarget::Fuel),
-            "evm" => Ok(BuildTarget::EVM),
+        Some(target) => match BuildTarget::from_str(target) {
+            Ok(target) => Ok(target),
             _ => Err(anyhow!(format!("Unknown build target: {target}"))),
         },
         None => Err(anyhow!("Invalid TOML value")),

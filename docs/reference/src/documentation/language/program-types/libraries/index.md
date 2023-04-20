@@ -4,7 +4,7 @@ A library is used to contain code that performs common operations in order to pr
 
 ## Definition
 
-Libraries are defined using the `library` keyword at the beginning of a file followed by a name so that they can be identified and imported.
+Libraries are defined using the `library` keyword at the beginning of a file.
 
 ```sway
 {{#include ../../../../code/language/program-types/libraries/internal/my_library/src/my_library.sw:module}}

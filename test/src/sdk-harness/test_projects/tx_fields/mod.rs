@@ -1,13 +1,9 @@
 use fuel_vm::fuel_crypto::Hasher;
 use fuels::{
+    accounts::{predicate::Predicate, Account},
     prelude::*,
-    programs::execution_script::ExecutableFuelCall,
-    tx::{
-        field::Script as ScriptField, field::Witnesses, field::*, Bytes32, ConsensusParameters,
-        ContractId, Input as TxInput, TxPointer, UniqueIdentifier, UtxoId,
-    },
+    tx::{field::*, Bytes32, ConsensusParameters, ContractId, Input as TxInput, TxPointer, UtxoId},
 };
-// use fuels_types::core::contract::execution_script::ExecutableFuelCall;
 use std::str::FromStr;
 
 const MESSAGE_DATA: [u8; 3] = [1u8, 2u8, 3u8];
@@ -23,7 +19,12 @@ abigen!(
     )
 );
 
-async fn get_contracts() -> (TxContractTest, ContractId, WalletUnlocked, WalletUnlocked) {
+async fn get_contracts() -> (
+    TxContractTest<WalletUnlocked>,
+    ContractId,
+    WalletUnlocked,
+    WalletUnlocked,
+) {
     let mut wallet = WalletUnlocked::new_random(None);
     let mut deployment_wallet = WalletUnlocked::new_random(None);
 
@@ -49,8 +50,7 @@ async fn get_contracts() -> (TxContractTest, ContractId, WalletUnlocked, WalletU
         MESSAGE_DATA.to_vec(),
     );
 
-    let (provider, _address) =
-        setup_test_provider(coins.clone(), messages.clone(), None, None).await;
+    let (provider, _address) = setup_test_provider(coins.clone(), vec![messages], None, None).await;
 
     wallet.set_provider(provider.clone());
     deployment_wallet.set_provider(provider);
@@ -58,8 +58,7 @@ async fn get_contracts() -> (TxContractTest, ContractId, WalletUnlocked, WalletU
     let contract_id = Contract::deploy(
         "test_artifacts/tx_contract/out/debug/tx_contract.bin",
         &deployment_wallet,
-        TxParameters::default(),
-        StorageConfiguration::default(),
+        DeployConfiguration::default(),
     )
     .await
     .unwrap();
@@ -75,11 +74,14 @@ async fn generate_predicate_inputs(
     wallet: &WalletUnlocked,
 ) -> (Vec<u8>, TxInput, TxInput) {
     let predicate =
-        TestPredicate::load_from("test_projects/tx_fields/out/debug/tx_predicate.bin").unwrap();
+        Predicate::load_from("test_projects/tx_fields/out/debug/tx_predicate.bin").unwrap();
+
+    let predicate_code =
+        std::fs::read("test_projects/tx_fields/out/debug/tx_predicate.bin").unwrap();
 
     let predicate_root = predicate.address();
 
-    let provider = wallet.get_provider().unwrap();
+    let provider = wallet.provider().unwrap();
     let balance: u64 = wallet.get_asset_balance(&AssetId::default()).await.unwrap();
 
     assert!(balance >= amount);
@@ -105,7 +107,7 @@ async fn generate_predicate_inputs(
         asset_id: AssetId::from(predicate_coin.asset_id.clone()),
         tx_pointer: TxPointer::default(),
         maturity: 0,
-        predicate: predicate.code().clone(),
+        predicate: predicate_code.clone(),
         predicate_data: vec![],
     };
     let predicate_address: Address = predicate.address().into();
@@ -125,14 +127,14 @@ async fn generate_predicate_inputs(
         amount: message.amount,
         nonce: message.nonce.clone(),
         data: data.clone(),
-        predicate: predicate.code().clone(),
+        predicate: predicate_code.clone(),
         predicate_data: vec![],
     };
 
-    (predicate.code(), predicate_coin, predicate_message)
+    (predicate_code, predicate_coin, predicate_message)
 }
 
-async fn add_message_input(call: &mut ExecutableFuelCall, wallet: WalletUnlocked) {
+async fn add_message_input(tx: &mut ScriptTransaction, wallet: WalletUnlocked) {
     let message = &wallet.get_messages().await.unwrap()[0];
 
     let message_id = TxInput::compute_message_id(
@@ -153,7 +155,7 @@ async fn add_message_input(call: &mut ExecutableFuelCall, wallet: WalletUnlocked
         data: message.data.clone(),
     };
 
-    call.tx.inputs_mut().push(message_input);
+    tx.tx.inputs_mut().push(message_input);
 }
 
 mod tx {
@@ -170,7 +172,7 @@ mod tx {
             .await
             .unwrap();
         // Script transactions are of type = 0
-        assert_eq!(result.value, Transaction::Script);
+        assert_eq!(result.value, super::Transaction::Script);
     }
 
     #[tokio::test]
@@ -181,7 +183,7 @@ mod tx {
         let result = contract_instance
             .methods()
             .get_tx_gas_price()
-            .tx_params(TxParameters::new(Some(gas_price), None, None))
+            .tx_params(TxParameters::default().set_gas_price(gas_price))
             .call()
             .await
             .unwrap();
@@ -197,7 +199,7 @@ mod tx {
         let result = contract_instance
             .methods()
             .get_tx_gas_limit()
-            .tx_params(TxParameters::new(None, Some(gas_limit), None))
+            .tx_params(TxParameters::default().set_gas_limit(gas_limit))
             .call()
             .await
             .unwrap();
@@ -255,14 +257,16 @@ mod tx {
         let (contract_instance, _, wallet, _) = get_contracts().await;
 
         let handler = contract_instance.methods().get_tx_inputs_count();
-        let mut executable = handler.get_executable_call().await.unwrap();
+        let mut tx = handler.build_tx().await.unwrap();
 
-        add_message_input(&mut executable, wallet.clone()).await;
+        add_message_input(&mut tx, wallet.clone()).await;
 
-        let inputs = executable.tx.inputs();
+        let inputs = tx.inputs();
 
-        let receipts = executable
-            .execute(&wallet.get_provider().unwrap())
+        let receipts = wallet
+            .provider()
+            .unwrap()
+            .send_transaction(&tx)
             .await
             .unwrap();
 
@@ -275,8 +279,8 @@ mod tx {
         let (contract_instance, _, _, _) = get_contracts().await;
 
         let call_handler = contract_instance.methods().get_tx_outputs_count();
-        let script = call_handler.get_executable_call().await.unwrap();
-        let outputs = script.tx.outputs();
+        let tx = call_handler.build_tx().await.unwrap();
+        let outputs = tx.outputs();
 
         let result = contract_instance
             .methods()
@@ -303,15 +307,20 @@ mod tx {
 
     #[tokio::test]
     async fn can_get_witness_pointer() {
-        let (contract_instance, _, _, _) = get_contracts().await;
+        let (contract_instance, _, wallet, deployment_wallet) = get_contracts().await;
 
-        let result = contract_instance
-            .methods()
-            .get_tx_witness_pointer(0)
-            .call()
+        let handler = contract_instance.methods().get_tx_witness_pointer(1);
+        let mut tx = handler.build_tx().await.unwrap();
+        deployment_wallet.sign_transaction(&mut tx).unwrap();
+
+        let receipts = wallet
+            .provider()
+            .unwrap()
+            .send_transaction(&tx)
             .await
             .unwrap();
-        assert_eq!(result.value, 10960);
+
+        assert_eq!(receipts[1].val().unwrap(), 11032);
     }
 
     #[tokio::test]
@@ -332,11 +341,13 @@ mod tx {
         let (contract_instance, _, wallet, _) = get_contracts().await;
 
         let handler = contract_instance.methods().get_tx_witness_data(0);
-        let executable = handler.get_executable_call().await.unwrap();
-        let witnesses = executable.tx.witnesses();
+        let tx = handler.build_tx().await.unwrap();
+        let witnesses = tx.witnesses();
 
-        let receipts = executable
-            .execute(&wallet.get_provider().unwrap())
+        let receipts = wallet
+            .provider()
+            .unwrap()
+            .send_transaction(&tx)
             .await
             .unwrap();
 
@@ -382,10 +393,9 @@ mod tx {
         let tx = contract_instance
             .methods()
             .get_tx_script_bytecode_hash()
-            .get_executable_call()
+            .build_tx()
             .await
-            .unwrap()
-            .tx;
+            .unwrap();
 
         let script = tx.script();
         let hash = if script.len() > 1 {
@@ -408,11 +418,13 @@ mod tx {
         let (contract_instance, _, wallet, _) = get_contracts().await;
 
         let handler = contract_instance.methods().get_tx_id();
-        let executable = handler.get_executable_call().await.unwrap();
-        let tx_id = executable.tx.id();
+        let tx = handler.build_tx().await.unwrap();
+        let tx_id = tx.id();
 
-        let receipts = executable
-            .execute(&wallet.get_provider().unwrap())
+        let receipts = wallet
+            .provider()
+            .unwrap()
+            .send_transaction(&tx)
             .await
             .unwrap();
         let byte_array: [u8; 32] = tx_id.into();
@@ -522,12 +534,14 @@ mod inputs {
             let handler = contract_instance
                 .methods()
                 .get_input_predicate(2, predicate_bytes.clone());
-            let mut executable = handler.get_executable_call().await.unwrap();
+            let mut tx = handler.build_tx().await.unwrap();
 
-            executable.tx.inputs_mut().push(predicate_coin);
+            tx.tx.inputs_mut().push(predicate_coin);
 
-            let receipts = executable
-                .execute(&wallet.get_provider().unwrap())
+            let receipts = wallet
+                .provider()
+                .unwrap()
+                .send_transaction(&tx)
                 .await
                 .unwrap();
 
@@ -542,16 +556,18 @@ mod inputs {
                 let (contract_instance, _, wallet, _) = get_contracts().await;
 
                 let handler = contract_instance.methods().get_input_message_msg_id(2);
-                let mut executable = handler.get_executable_call().await.unwrap();
-                add_message_input(&mut executable, wallet.clone()).await;
-
-                let receipts = executable
-                    .execute(&wallet.get_provider().unwrap())
-                    .await
-                    .unwrap();
+                let mut tx = handler.build_tx().await.unwrap();
+                add_message_input(&mut tx, wallet.clone()).await;
 
                 let messages = wallet.get_messages().await?;
                 let message_id: [u8; 32] = *messages[0].message_id();
+
+                let receipts = wallet
+                    .provider()
+                    .unwrap()
+                    .send_transaction(&tx)
+                    .await
+                    .unwrap();
 
                 assert_eq!(receipts[1].data().unwrap(), message_id);
                 Ok(())
@@ -561,14 +577,16 @@ mod inputs {
             async fn can_get_input_message_sender() -> Result<()> {
                 let (contract_instance, _, wallet, _) = get_contracts().await;
                 let handler = contract_instance.methods().get_input_message_sender(2);
-                let mut executable = handler.get_executable_call().await.unwrap();
-                add_message_input(&mut executable, wallet.clone()).await; // let result = contract_instance
+                let mut tx = handler.build_tx().await.unwrap();
+                add_message_input(&mut tx, wallet.clone()).await; // let result = contract_instance
 
-                let receipts = executable
-                    .execute(&wallet.get_provider().unwrap())
+                let messages = wallet.get_messages().await?;
+                let receipts = wallet
+                    .provider()
+                    .unwrap()
+                    .send_transaction(&tx)
                     .await
                     .unwrap();
-                let messages = wallet.get_messages().await?;
 
                 assert_eq!(receipts[1].data().unwrap(), *messages[0].sender.hash());
                 Ok(())
@@ -578,14 +596,16 @@ mod inputs {
             async fn can_get_input_message_recipient() -> Result<()> {
                 let (contract_instance, _, wallet, _) = get_contracts().await;
                 let handler = contract_instance.methods().get_input_message_recipient(2);
-                let mut executable = handler.get_executable_call().await.unwrap();
-                add_message_input(&mut executable, wallet.clone()).await;
+                let mut tx = handler.build_tx().await.unwrap();
+                add_message_input(&mut tx, wallet.clone()).await;
 
-                let receipts = executable
-                    .execute(&wallet.get_provider().unwrap())
+                let messages = wallet.get_messages().await?;
+                let receipts = wallet
+                    .provider()
+                    .unwrap()
+                    .send_transaction(&tx)
                     .await
                     .unwrap();
-                let messages = wallet.get_messages().await?;
                 assert_eq!(receipts[1].data().unwrap(), *messages[0].recipient.hash());
                 Ok(())
             }
@@ -594,14 +614,16 @@ mod inputs {
             async fn can_get_input_message_nonce() -> Result<()> {
                 let (contract_instance, _, wallet, _) = get_contracts().await;
                 let handler = contract_instance.methods().get_input_message_nonce(2);
-                let mut executable = handler.get_executable_call().await.unwrap();
-                add_message_input(&mut executable, wallet.clone()).await;
+                let mut tx = handler.build_tx().await.unwrap();
+                add_message_input(&mut tx, wallet.clone()).await;
 
-                let receipts = executable
-                    .execute(&wallet.get_provider().unwrap())
+                let messages = wallet.get_messages().await?;
+                let receipts = wallet
+                    .provider()
+                    .unwrap()
+                    .send_transaction(&tx)
                     .await
                     .unwrap();
-                let messages = wallet.get_messages().await?;
                 let nonce: u64 = messages[0].nonce.clone().into();
                 assert_eq!(receipts[1].val().unwrap(), nonce);
                 Ok(())
@@ -624,11 +646,13 @@ mod inputs {
             async fn can_get_input_message_data_length() {
                 let (contract_instance, _, wallet, _) = get_contracts().await;
                 let handler = contract_instance.methods().get_input_message_data_length(2);
-                let mut executable = handler.get_executable_call().await.unwrap();
-                add_message_input(&mut executable, wallet.clone()).await;
+                let mut tx = handler.build_tx().await.unwrap();
+                add_message_input(&mut tx, wallet.clone()).await;
 
-                let receipts = executable
-                    .execute(&wallet.get_provider().unwrap())
+                let receipts = wallet
+                    .provider()
+                    .unwrap()
+                    .send_transaction(&tx)
                     .await
                     .unwrap();
 
@@ -641,11 +665,13 @@ mod inputs {
                 let (predicate_bytecode, _, predicate_message) =
                     generate_predicate_inputs(100, vec![], &wallet).await;
                 let handler = contract_instance.methods().get_input_predicate_length(2);
-                let mut executable = handler.get_executable_call().await.unwrap();
-                executable.tx.inputs_mut().push(predicate_message);
+                let mut tx = handler.build_tx().await.unwrap();
+                tx.tx.inputs_mut().push(predicate_message);
 
-                let receipts = executable
-                    .execute(&wallet.get_provider().unwrap())
+                let receipts = wallet
+                    .provider()
+                    .unwrap()
+                    .send_transaction(&tx)
                     .await
                     .unwrap();
 
@@ -661,11 +687,13 @@ mod inputs {
                 let handler = contract_instance
                     .methods()
                     .get_input_predicate_data_length(1);
-                let mut executable = handler.get_executable_call().await.unwrap();
-                executable.tx.inputs_mut().push(predicate_message);
+                let mut tx = handler.build_tx().await.unwrap();
+                tx.tx.inputs_mut().push(predicate_message);
 
-                let receipts = executable
-                    .execute(&wallet.get_provider().unwrap())
+                let receipts = wallet
+                    .provider()
+                    .unwrap()
+                    .send_transaction(&tx)
                     .await
                     .unwrap();
                 assert_eq!(receipts[1].val().unwrap(), predicate_data.len() as u64);
@@ -679,11 +707,13 @@ mod inputs {
                     contract_instance
                         .methods()
                         .get_input_message_data(2, 0, MESSAGE_DATA);
-                let mut executable = handler.get_executable_call().await.unwrap();
-                add_message_input(&mut executable, wallet.clone()).await;
+                let mut tx = handler.build_tx().await.unwrap();
+                add_message_input(&mut tx, wallet.clone()).await;
 
-                let receipts = executable
-                    .execute(&wallet.get_provider().unwrap())
+                let receipts = wallet
+                    .provider()
+                    .unwrap()
+                    .send_transaction(&tx)
                     .await
                     .unwrap();
 
@@ -699,12 +729,14 @@ mod inputs {
                 let handler = contract_instance
                     .methods()
                     .get_input_predicate(2, predicate_bytes.clone());
-                let mut executable = handler.get_executable_call().await.unwrap();
+                let mut tx = handler.build_tx().await.unwrap();
 
-                executable.tx.inputs_mut().push(predicate_message);
+                tx.tx.inputs_mut().push(predicate_message);
 
-                let receipts = executable
-                    .execute(&wallet.get_provider().unwrap())
+                let receipts = wallet
+                    .provider()
+                    .unwrap()
+                    .send_transaction(&tx)
                     .await
                     .unwrap();
 

@@ -6,8 +6,8 @@
 //! This pass does not do CFG transformations. That is handled by simplify_cfg.
 
 use crate::{
-    AnalysisResults, Block, Context, Function, Instruction, IrError, Module, Pass, PassMutability,
-    ScopedPass, Value, ValueDatum,
+    AnalysisResults, Block, Context, Function, Instruction, IrError, LocalVar, Module, Pass,
+    PassMutability, ScopedPass, Value, ValueDatum,
 };
 
 use std::collections::{HashMap, HashSet};
@@ -47,10 +47,18 @@ pub fn dce(
 ) -> Result<bool, IrError> {
     // Number of uses that an instruction has.
     let mut num_uses: HashMap<Value, (Block, u32)> = HashMap::new();
+    let mut num_local_uses: HashMap<LocalVar, u32> = HashMap::new();
 
     // Go through each instruction and update use_count.
     for (block, inst) in function.instruction_iter(context) {
-        let opds = inst.get_instruction(context).unwrap().get_operands();
+        let inst = inst.get_instruction(context).unwrap();
+        if let Instruction::GetLocal(local) = inst {
+            num_local_uses
+                .entry(*local)
+                .and_modify(|count| *count += 1)
+                .or_insert(1);
+        }
+        let opds = inst.get_operands();
         for v in opds {
             match context.values[v.0].value {
                 ValueDatum::Instruction(_) => {
@@ -94,7 +102,24 @@ pub fn dce(
         }
 
         in_block.remove_instruction(context, dead);
+
+        if let ValueDatum::Instruction(Instruction::GetLocal(local)) = context.values[dead.0].value
+        {
+            let count = num_local_uses.get_mut(&local).unwrap();
+            *count -= 1;
+        }
         modified = true;
+    }
+
+    let local_removals: Vec<_> = function
+        .locals_iter(context)
+        .filter_map(|(name, local)| {
+            (num_local_uses.get(local).cloned().unwrap_or(0) == 0).then_some(name.clone())
+        })
+        .collect();
+    if !local_removals.is_empty() {
+        modified = true;
+        function.remove_locals(context, &local_removals);
     }
 
     Ok(modified)

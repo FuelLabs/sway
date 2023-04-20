@@ -39,7 +39,7 @@ keyword_impls! {
     ContractToken,
     PredicateToken,
     LibraryToken,
-    DepToken,
+    ModToken,
     PubToken,
     UseToken,
     AsToken,
@@ -70,7 +70,8 @@ keyword_impls! {
     FalseToken,
     BreakToken,
     ContinueToken,
-    ConfigurableToken
+    ConfigurableToken,
+    TypeToken
 }
 
 fn peek_token<T: Token>(peeker: Peeker<'_>) -> Option<T> {
@@ -147,7 +148,8 @@ token_impls! {
     DoubleAmpersandToken,
     DoublePipeToken,
     UnderscoreToken,
-    HashToken
+    HashToken,
+    HashBangToken
 }
 
 // Keep this in sync with the list in `sway-ast/keywords.rs` defined by define_keyword!
@@ -156,7 +158,7 @@ pub const RESERVED_KEYWORDS: phf::Set<&'static str> = phf::phf_set! {
     "contract",
     "predicate",
     "library",
-    "dep",
+    "mod",
     "pub",
     "use",
     "as",
@@ -187,4 +189,5 @@ pub const RESERVED_KEYWORDS: phf::Set<&'static str> = phf::phf_set! {
     "break",
     "continue",
     "configurable",
+    "type",
 };

@@ -721,8 +721,8 @@ impl KeywordDocs {
         };
 
         // TODO
-        let dep_keyword: ItemMod = parse_quote! {
-            mod dep_keyword {}
+        let mod_keyword: ItemMod = parse_quote! {
+            mod mod_keyword {}
         };
 
         // TODO
@@ -748,6 +748,11 @@ impl KeywordDocs {
         // TODO
         let configurable_keyword: ItemMod = parse_quote! {
             mod configurable_keyword {}
+        };
+
+        // TODO
+        let type_keyword: ItemMod = parse_quote! {
+            mod type_keyword {}
         };
 
         let mut keyword_docs = HashMap::new();
@@ -782,12 +787,13 @@ impl KeywordDocs {
             contract_keyword,
             predicate_keyword,
             library_keyword,
-            dep_keyword,
+            mod_keyword,
             abi_keyword,
             storage_keyword,
             asm_keyword,
             deref_keyword,
             configurable_keyword,
+            type_keyword,
         ];
 
         keywords.iter().for_each(|keyword| {

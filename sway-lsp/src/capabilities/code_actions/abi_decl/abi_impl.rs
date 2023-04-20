@@ -1,8 +1,7 @@
 use sway_core::{
-    language::ty::{TyAbiDeclaration, TyFunctionParameter, TyTraitFn},
+    language::ty::{self, TyAbiDecl, TyFunctionParameter, TyTraitFn},
     Engines,
 };
-use sway_types::Spanned;
 use tower_lsp::lsp_types::Url;
 
 use crate::capabilities::code_actions::{
@@ -11,12 +10,12 @@ use crate::capabilities::code_actions::{
 
 pub(crate) struct AbiImplCodeAction<'a> {
     engines: Engines<'a>,
-    decl: &'a TyAbiDeclaration,
+    decl: &'a TyAbiDecl,
     uri: &'a Url,
 }
 
-impl<'a> CodeAction<'a, TyAbiDeclaration> for AbiImplCodeAction<'a> {
-    fn new(ctx: CodeActionContext<'a>, decl: &'a TyAbiDeclaration) -> Self {
+impl<'a> CodeAction<'a, TyAbiDecl> for AbiImplCodeAction<'a> {
+    fn new(ctx: CodeActionContext<'a>, decl: &'a TyAbiDecl) -> Self {
         Self {
             engines: ctx.engines,
             decl,
@@ -40,7 +39,7 @@ impl<'a> CodeAction<'a, TyAbiDeclaration> for AbiImplCodeAction<'a> {
         self.decl.name.to_string()
     }
 
-    fn decl(&self) -> &TyAbiDeclaration {
+    fn decl(&self) -> &TyAbiDecl {
         self.decl
     }
 
@@ -67,11 +66,10 @@ impl AbiImplCodeAction<'_> {
             self.decl
                 .interface_surface
                 .iter()
-                .filter_map(|function_decl_ref| {
-                    decl_engine
-                        .get_trait_fn(function_decl_ref, &function_decl_ref.span())
-                        .ok()
-                        .map(|function_decl| {
+                .map(|item| {
+                    match item {
+                        ty::TyTraitInterfaceItem::TraitFn(function_decl_ref) => {
+                            let function_decl = decl_engine.get_trait_fn(function_decl_ref);
                             self.fn_signature_string(
                                 function_decl.name.to_string(),
                                 self.params_string(&function_decl.parameters),
@@ -79,7 +77,9 @@ impl AbiImplCodeAction<'_> {
                                 self.return_type_string(&function_decl),
                                 None,
                             )
-                        })
+                        }
+                        ty::TyTraitInterfaceItem::Constant(_) => unreachable!(),
+                    }
                 })
                 .collect::<Vec<String>>()
                 .join("\n")

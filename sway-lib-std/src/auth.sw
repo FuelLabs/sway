@@ -1,5 +1,5 @@
 //! Functionality for determining who is calling a contract.
-library auth;
+library;
 
 use ::address::Address;
 use ::contract_id::ContractId;
@@ -8,6 +8,7 @@ use ::option::Option;
 use ::result::Result;
 use ::inputs::{Input, input_count, input_owner, input_type};
 
+/// The error type used when an `Identity` cannot be determined.
 pub enum AuthError {
     InputsNotAllOwnedBySameAddress: (),
 }

@@ -1,0 +1,3 @@
+[[package]]
+name = 'supertraits_via_self'
+source = 'member'

@@ -1,3 +1,3 @@
-library foo;
+library;
 
 pub fn free_fn() {}

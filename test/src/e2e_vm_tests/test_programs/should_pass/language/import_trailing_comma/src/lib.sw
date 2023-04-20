@@ -1,4 +1,4 @@
-library A;
+library;
 
 pub struct B {
     b: u64,

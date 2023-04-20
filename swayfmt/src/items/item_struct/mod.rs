@@ -1,5 +1,5 @@
 use crate::{
-    comments::maybe_write_comments_from_map,
+    comments::{rewrite_with_comments, write_comments},
     config::{items::ItemBraceStyle, user_def::FieldAlignment},
     formatter::{
         shape::{ExprKind, LineStyle},
@@ -10,7 +10,7 @@ use crate::{
         CurlyBrace,
     },
 };
-use std::{fmt::Write, ops::Range};
+use std::fmt::Write;
 use sway_ast::{token::Delimiter, ItemStruct};
 use sway_types::Spanned;
 
@@ -28,6 +28,8 @@ impl Format for ItemStruct {
                 .shape
                 .with_code_line_from(LineStyle::Multiline, ExprKind::default()),
             |formatter| -> Result<(), FormatterError> {
+                // Required for comment formatting
+                let start_len = formatted_code.len();
                 // If there is a visibility token add it to the formatted_code with a ` ` after it.
                 if let Some(visibility) = &self.visibility {
                     write!(formatted_code, "{} ", visibility.span().as_str())?;
@@ -46,8 +48,7 @@ impl Format for ItemStruct {
                 Self::open_curly_brace(formatted_code, formatter)?;
 
                 if fields.final_value_opt.is_none() && fields.value_separator_pairs.is_empty() {
-                    let range: Range<usize> = self.span().into();
-                    maybe_write_comments_from_map(formatted_code, range, formatter)?;
+                    write_comments(formatted_code, self.span().into(), formatter)?;
                 }
 
                 // Determine alignment tactic
@@ -120,6 +121,13 @@ impl Format for ItemStruct {
                 // Handle closing brace
                 Self::close_curly_brace(formatted_code, formatter)?;
 
+                rewrite_with_comments::<ItemStruct>(
+                    formatter,
+                    self.span(),
+                    self.leaf_spans(),
+                    formatted_code,
+                    start_len,
+                )?;
                 Ok(())
             },
         )?;

@@ -14,7 +14,7 @@ use taplo::formatter as taplo_fmt;
 use tracing::{error, info};
 
 use forc_tracing::{init_tracing_subscriber, println_green, println_red};
-use forc_util::{find_manifest_dir, is_sway_file};
+use forc_util::{find_parent_manifest_dir, is_sway_file};
 use sway_core::{BuildConfig, BuildTarget};
 use sway_utils::{constants, get_sway_files};
 use swayfmt::Formatter;
@@ -62,8 +62,8 @@ fn run() -> Result<()> {
 
         // If we're formatting a single file, find the nearest manifest if within a project.
         // Otherwise, we simply provide 'None' to format_file().
-        let manifest_file =
-            find_manifest_dir(file_path).map(|path| path.join(constants::MANIFEST_FILE_NAME));
+        let manifest_file = find_parent_manifest_dir(file_path)
+            .map(|path| path.join(constants::MANIFEST_FILE_NAME));
 
         if is_sway_file(file_path) {
             format_file(&app, file_path.to_path_buf(), manifest_file, &mut formatter)?;
@@ -205,9 +205,7 @@ fn format_workspace_at_dir(app: &App, workspace: &WorkspaceManifestFile, dir: &P
     let manifest_file = dir.join(constants::MANIFEST_FILE_NAME);
 
     // Finally, format the root manifest using taplo formatter
-    if let Ok(edited) = format_manifest(app, manifest_file) {
-        contains_edits = edited;
-    }
+    contains_edits |= format_manifest(app, manifest_file)?;
 
     if app.check && contains_edits {
         // One or more files are not formatted, exit with error
@@ -254,7 +252,7 @@ fn format_manifest(app: &App, manifest_file: PathBuf) -> Result<bool> {
 
 /// Format the package at the given directory.
 fn format_pkg_at_dir(app: &App, dir: &Path, formatter: &mut Formatter) -> Result<()> {
-    match find_manifest_dir(dir) {
+    match find_parent_manifest_dir(dir) {
         Some(path) => {
             let manifest_path = path.clone();
             let manifest_file = manifest_path.join(constants::MANIFEST_FILE_NAME);
@@ -262,14 +260,10 @@ fn format_pkg_at_dir(app: &App, dir: &Path, formatter: &mut Formatter) -> Result
             let mut contains_edits = false;
 
             for file in files {
-                if let Ok(edited) = format_file(app, file, Some(manifest_file.clone()), formatter) {
-                    contains_edits = edited;
-                };
+                contains_edits |= format_file(app, file, Some(manifest_file.clone()), formatter)?;
             }
             // format manifest using taplo formatter
-            if let Ok(edited) = format_manifest(app, manifest_file) {
-                contains_edits = contains_edits || edited;
-            }
+            contains_edits |= format_manifest(app, manifest_file)?;
 
             if app.check && contains_edits {
                 // One or more files are not formatted, exit with error

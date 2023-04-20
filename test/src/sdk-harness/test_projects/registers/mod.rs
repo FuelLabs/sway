@@ -10,15 +10,12 @@ abigen!(Contract(
 // TO DO :
 //    -  Ability to return any type of Contract.
 //    -  Return a result
-async fn deploy_test_registers_instance() -> TestRegistersContract {
+async fn deploy_test_registers_instance() -> TestRegistersContract<WalletUnlocked> {
     let wallet = launch_provider_and_get_wallet().await;
     let id = Contract::deploy(
         "test_projects/registers/out/debug/registers.bin",
         &wallet,
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "test_projects/registers/out/debug/registers-storage_slots.json".to_string(),
-        )),
+        DeployConfiguration::default(),
     )
     .await
     .unwrap();

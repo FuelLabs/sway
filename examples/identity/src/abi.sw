@@ -1,4 +1,4 @@
-library r#abi;
+library;
 
 abi IdentityExample {
     #[storage(read)]

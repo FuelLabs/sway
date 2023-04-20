@@ -12,3 +12,4 @@ validate_abi = false
 # check: $()#[bad_attr(blah)]
 # nextln: $()Unknown attribute: "bad_attr".
 # nextln: $()struct BadStruct {}
+expected_warnings = 5

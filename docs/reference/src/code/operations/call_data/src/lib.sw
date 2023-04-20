@@ -1,4 +1,4 @@
-library call_data;
+library;
 
 // ANCHOR: import_sender
 use std::auth::msg_sender;

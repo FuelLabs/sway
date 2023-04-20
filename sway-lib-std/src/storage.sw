@@ -1,6 +1,7 @@
-library r#storage;
+//! Contract storage utilities.
+library;
 
-use ::alloc::{alloc, realloc_bytes};
+use ::alloc::{alloc, alloc_bytes, realloc_bytes};
 use ::assert::assert;
 use ::hash::sha256;
 use ::option::Option;
@@ -137,6 +138,120 @@ pub fn clear<T>(key: b256) -> bool {
     __state_clear(key, number_of_slots)
 }
 
+/// Store a raw_slice from the heap into storage.
+///
+/// ### Arguments
+///
+/// * `key` - The storage slot at which the variable will be stored.
+/// * `slice` - The raw_slice to be stored.
+///
+/// ### Examples
+///
+/// ```sway
+/// use std::{alloc::alloc_bytes, storage::{store_slice, get_slice}, constants::ZERO_B256};
+///
+/// let slice = asm(ptr: (alloc_bytes(1), 1)) { ptr: raw_slice };
+/// assert(get_slice(ZERO_B256).is_none());
+/// store_slice(ZERO_B256, slice);
+/// let stored_slice = get_slice(ZERO_B256).unwrap();
+/// assert(slice == stored_slice);
+/// ```
+#[storage(write)]
+pub fn store_slice(key: b256, slice: raw_slice) {
+    // Get the number of storage slots needed based on the size of bytes.
+    let number_of_bytes = slice.number_of_bytes();
+    let number_of_slots = (number_of_bytes + 31) >> 5;
+    let mut ptr = slice.ptr();
+
+    // The capacity needs to be a multiple of 32 bytes so we can 
+    // make the 'quad' storage instruction store without accessing unallocated heap memory.
+    ptr = realloc_bytes(ptr, number_of_bytes, number_of_slots * 32);
+
+    // Store `number_of_slots * 32` bytes starting at storage slot `key`.
+    let _ = __state_store_quad(sha256(key), ptr, number_of_slots);
+
+    // Store the length of the bytes
+    store(key, number_of_bytes);
+}
+
+/// Load a raw_slice from storage.
+///
+/// If no value was previously stored at `key`, `Option::None` is returned. Otherwise,
+/// `Option::Some(value)` is returned, where `value` is the value stored at `key`.
+///
+/// ### Arguments
+///
+/// * `key` - The storage slot to load the value from.
+///
+/// ### Examples
+///
+/// ```sway
+/// use std::{alloc::alloc_bytes, storage::{store_slice, get_slice}, constants::ZERO_B256};
+///
+/// let slice = asm(ptr: (alloc_bytes(1), 1)) { ptr: raw_slice };
+/// assert(get_slice(ZERO_B256).is_none());
+/// store_slice(ZERO_B256, slice);
+/// let stored_slice = get_slice(ZERO_B256).unwrap();
+/// assert(slice == stored_slice);
+/// ```
+#[storage(read)]
+pub fn get_slice(key: b256) -> Option<raw_slice> {
+    // Get the length of the slice that is stored.
+    match get::<u64>(key).unwrap_or(0) {
+        0 => Option::None,
+        len => {
+            // Get the number of storage slots needed based on the size.
+            let number_of_slots = (len + 31) >> 5;
+            let ptr = alloc_bytes(number_of_slots * 32);
+            // Load the stored slice into the pointer.
+            let _ = __state_load_quad(sha256(key), ptr, number_of_slots);
+            Option::Some(asm(ptr: (ptr, len)) { ptr: raw_slice })
+        }
+    }
+}
+
+/// Clear a sequence of storage slots starting at a some key. Returns a Boolean
+/// indicating whether all of the storage slots cleared were previously set.
+///
+/// ### Arguments
+///
+/// * `key` - The key of the first storage slot that will be cleared
+///
+/// ### Examples
+///
+/// ```sway
+/// use std::{alloc::alloc_bytes, storage::{clear_slice, store_slice, get_slice}, constants::ZERO_B256};
+///
+/// let slice = asm(ptr: (alloc_bytes(1), 1)) { ptr: raw_slice };
+/// store_slice(ZERO_B256, slice);
+/// assert(get_slice(ZERO_B256).is_some());
+/// let cleared = clear_slice(ZERO_B256);
+/// assert(cleared);
+/// assert(get_slice(ZERO_B256).is_none());
+/// ```
+#[storage(read, write)]
+pub fn clear_slice(key: b256) -> bool {
+    // Get the number of storage slots needed based on the ceiling of `len / 32`
+    let len = get::<u64>(key).unwrap_or(0);
+    let number_of_slots = (len + 31) >> 5;
+
+    // Clear length and `number_of_slots` bytes starting at storage slot `sha256(key)`
+    let _ = __state_clear(key, 1);
+    __state_clear(sha256(key), number_of_slots)
+}
+
+/// A general way to persistently store heap types.
+pub trait StorableSlice<T> {
+    #[storage(write)]
+    fn store(self, argument: T);
+    #[storage(read)]
+    fn load(self) -> Option<T>;
+    #[storage(read, write)]
+    fn clear(self) -> bool;
+    #[storage(read)]
+    fn len(self) -> u64;
+}
+
 /// A persistent key-value pair mapping struct.
 pub struct StorageMap<K, V> {}
 
@@ -240,6 +355,11 @@ impl<V> StorageVec<V> {
     ///
     /// * `value` - The item being added to the end of the vector.
     ///
+    /// ### Number of Storage Accesses
+    ///
+    /// * Reads: `1`
+    /// * Writes: `2`
+    ///
     /// ### Examples
     ///
     /// ```sway
@@ -252,8 +372,7 @@ impl<V> StorageVec<V> {
     /// fn foo() {
     ///     let five = 5_u64;
     ///     storage.vec.push(five);
-    ///     let retrieved_value = storage.vec.get(0).unwrap();
-    ///     assert(five == retrieved_value);
+    ///     assert(five == storage.vec.get(0).unwrap());
     /// }
     /// ```
     #[storage(read, write)]
@@ -270,6 +389,11 @@ impl<V> StorageVec<V> {
     }
 
     /// Removes the last element of the vector and returns it, `None` if empty.
+    ///
+    /// ### Number of Storage Accesses
+    ///
+    /// * Reads: `2`
+    /// * Writes: `1`
     ///
     /// ### Examples
     ///
@@ -302,7 +426,7 @@ impl<V> StorageVec<V> {
         store(__get_storage_key(), len - 1);
 
         let key = sha256((len - 1, __get_storage_key()));
-        Option::Some::<V>(get::<V>(key).unwrap())
+        get::<V>(key)
     }
 
     /// Gets the value in the given index, `None` if index is out of bounds.
@@ -310,6 +434,10 @@ impl<V> StorageVec<V> {
     /// ### Arguments
     ///
     /// * `index` - The index of the vec to retrieve the item from.
+    ///
+    /// ### Number of Storage Accesses
+    ///
+    /// * Reads: `2`
     ///
     /// ### Examples
     ///
@@ -323,10 +451,8 @@ impl<V> StorageVec<V> {
     /// fn foo() {
     ///     let five = 5_u64;
     ///     storage.vec.push(five);
-    ///     let retrieved_value = storage.vec.get(0).unwrap();
-    ///     assert(five == retrieved_value);
-    ///     let none_value = storage.vec.get(1);
-    ///     assert(none_value.is_none())
+    ///     assert(five == storage.vec.get(0).unwrap());
+    ///     assert(storage.vec.get(1).is_none())
     /// }
     /// ```
     #[storage(read)]
@@ -338,8 +464,7 @@ impl<V> StorageVec<V> {
             return Option::None;
         }
 
-        let key = sha256((index, __get_storage_key()));
-        Option::Some::<V>(get::<V>(key).unwrap())
+        get::<V>(sha256((index, __get_storage_key())))
     }
 
     /// Removes the element in the given index and moves all the elements in the following indexes
@@ -354,6 +479,11 @@ impl<V> StorageVec<V> {
     /// ### Reverts
     ///
     /// Reverts if index is larger or equal to length of the vec.
+    ///
+    /// ### Number of Storage Accesses
+    ///
+    /// * Reads: `2 + self.len() - index`
+    /// * Writes: `self.len() - index`
     ///
     /// ### Examples
     ///
@@ -412,6 +542,11 @@ impl<V> StorageVec<V> {
     ///
     /// Reverts if index is larger or equal to length of the vec.
     ///
+    /// ### Number of Storage Accesses
+    ///
+    /// * Reads: `3`
+    /// * Writes: `2`
+    ///
     /// ### Examples
     ///
     /// ```sway
@@ -427,7 +562,7 @@ impl<V> StorageVec<V> {
     ///     storage.vec.push(15);
     ///     let removed_value = storage.vec.swap_remove(0);
     ///     assert(5 == removed_value);
-    ///     let swapped_value = storage.vec.get(0);
+    ///     let swapped_value = storage.vec.get(0).unwrap();
     ///     assert(15 == swapped_value);
     /// }
     /// ```
@@ -450,6 +585,7 @@ impl<V> StorageVec<V> {
 
         element_to_be_removed
     }
+
     /// Sets or mutates the value at the given index.
     ///
     /// ### Arguments
@@ -460,6 +596,11 @@ impl<V> StorageVec<V> {
     /// ### Reverts
     ///
     /// Reverts if index is larger than or equal to the length of the vec.
+    ///
+    /// ### Number of Storage Accesses
+    ///
+    /// * Reads: `1`
+    /// * Writes: `1`
     ///
     /// ### Examples
     ///
@@ -476,7 +617,7 @@ impl<V> StorageVec<V> {
     ///     storage.vec.push(15);
     ///
     ///     storage.vec.set(0, 20);
-    ///     let set_value = storage.vec.get(0);
+    ///     let set_value = storage.vec.get(0).unwrap();
     ///     assert(20 == set_value);
     /// }
     /// ```
@@ -505,6 +646,11 @@ impl<V> StorageVec<V> {
     ///
     /// Reverts if index is larger than the length of the vec.
     ///
+    /// ### Number of Storage Accesses
+    ///
+    /// * Reads: `if self.len() == index { 1 } else { 1 + self.len() - index }`
+    /// * Writes: `if self.len() == index { 2 } else { 2 + self.len() - index }`
+    ///
     /// ### Examples
     ///
     /// ```sway
@@ -520,9 +666,9 @@ impl<V> StorageVec<V> {
     ///
     ///     storage.vec.insert(1, 10);
     ///
-    ///     assert(5 == storage.vec.get(0));
-    ///     assert(10 == storage.vec.get(1))
-    ///     assert(15 == storage.vec.get(2));
+    ///     assert(5 == storage.vec.get(0).unwrap());
+    ///     assert(10 == storage.vec.get(1).unwrap());
+    ///     assert(15 == storage.vec.get(2).unwrap());
     /// }
     /// ```
     #[storage(read, write)]
@@ -565,6 +711,10 @@ impl<V> StorageVec<V> {
 
     /// Returns the length of the vector.
     ///
+    /// ### Number of Storage Accesses
+    ///
+    /// * Reads: `1`
+    ///
     /// ### Examples
     ///
     /// ```sway
@@ -588,6 +738,10 @@ impl<V> StorageVec<V> {
     }
 
     /// Checks whether the len is zero or not.
+    ///
+    /// ### Number of Storage Accesses
+    ///
+    /// * Reads: `1`
     ///
     /// ### Examples
     ///
@@ -617,6 +771,10 @@ impl<V> StorageVec<V> {
 
     /// Sets the len to zero.
     ///
+    /// ### Number of Storage Accesses
+    ///
+    /// * Clears: `1`
+    ///
     /// ### Examples
     ///
     /// ```sway
@@ -636,19 +794,274 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(write)]
     pub fn clear(self) {
-        store(__get_storage_key(), 0);
+        let _ = clear::<u64>(__get_storage_key());
+    }
+
+    /// Swaps two elements.
+    ///
+    /// ### Arguments
+    ///
+    /// * element1_index - The index of the first element.
+    /// * element2_index - The index of the second element.
+    ///
+    /// ### Reverts
+    ///
+    /// * If `element1_index` or `element2_index` is greater than the length of the vector.
+    ///
+    /// ### Number of Storage Accesses
+    ///
+    /// * Reads: `3`
+    /// * Writes: `2`
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std::storage::StorageVec;
+    ///
+    /// storage {
+    ///     vec: StorageVec<u64> = StorageVec {}
+    /// }
+    ///
+    /// fn foo() {
+    ///     storage.vec.push(5);
+    ///     storage.vec.push(10);
+    ///     storage.vec.push(15);
+    ///
+    ///     storage.vec.swap(0, 2);
+    ///     assert(15 == storage.vec.get(0).unwrap());
+    ///     assert(10 == storage.vec.get(1).unwrap());
+    ///     assert(5 == storage.vec.get(2).unwrap());
+    /// ```
+    #[storage(read, write)]
+    pub fn swap(self, element1_index: u64, element2_index: u64) {
+        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
+        assert(element1_index < len);
+        assert(element2_index < len);
+
+        if element1_index == element2_index {
+            return;
+        }
+
+        let element1_key = sha256((element1_index, __get_storage_key()));
+        let element2_key = sha256((element2_index, __get_storage_key()));
+
+        let element1_value = get::<V>(element1_key).unwrap();
+        store::<V>(element1_key, get::<V>(element2_key).unwrap());
+        store::<V>(element2_key, element1_value);
+    }
+
+    /// Returns the first element of the vector, or `None` if it is empty.
+    ///
+    /// ### Number of Storage Accesses
+    ///
+    /// * Reads: `2`
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// storage {
+    ///     vec: StorageVec<u64> = StorageVec {},
+    /// }
+    ///
+    /// fn foo() {
+    ///     assert(storage.vec.first().is_none());
+    ///
+    ///     storage.vec.push(5);
+    ///
+    ///     assert(5 == storage.vec.first().unwrwap());
+    /// }
+    /// ```
+    #[storage(read)]
+    pub fn first(self) -> Option<V> {
+        match get::<u64>(__get_storage_key()).unwrap_or(0) {
+            0 => Option::None,
+            _ => get::<V>(sha256((0, __get_storage_key()))),
+        }
+    }
+
+    /// Returns the last element of the vector, or `None` if it is empty.
+    ///
+    /// ### Number of Storage Accesses
+    ///
+    /// * Reads: `2`
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// storage {
+    ///     vec: StorageVec<u64> = StorageVec {},
+    /// }
+    ///
+    /// fn foo() {
+    ///     assert(storage.vec.last().is_none());
+    ///
+    ///     storage.vec.push(5);
+    ///     storage.vec.push(10);
+    ///
+    ///     assert(10 == storage.vec.last().unwrap());
+    /// }
+    /// ```
+    #[storage(read)]
+    pub fn last(self) -> Option<V> {
+        match get::<u64>(__get_storage_key()).unwrap_or(0) {
+            0 => Option::None,
+            len => get::<V>(sha256((len - 1, __get_storage_key()))),
+        }
+    }
+
+    /// Reverses the order of elements in the vector, in place.
+    ///
+    /// ### Number of Storage Accesses
+    ///
+    /// * Reads: `1 + (2 * (self.len() / 2))`
+    /// * Writes: `2 * (self.len() / 2)`
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// storage {
+    ///     vec: StorageVec<u64> = StorageVec {},
+    /// }
+    ///
+    /// fn foo() {
+    ///     storage.vec.push(5);
+    ///     storage.vec.push(10);
+    ///     storage.vec.push(15);
+    ///     storage.vec.reverse();
+    ///
+    ///     assert(15 == storage.vec.get(0).unwrap());
+    ///     assert(10 == storage.vec.get(1).unwrap());
+    ///     assert(5 == storage.vec.get(2).unwrap());
+    /// }
+    /// ```
+    #[storage(read, write)]
+    pub fn reverse(self) {
+        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
+
+        if len < 2 {
+            return;
+        }
+
+        let mid = len / 2;
+        let mut i = 0;
+        while i < mid {
+            let element1_key = sha256((i, __get_storage_key()));
+            let element2_key = sha256((len - i - 1, __get_storage_key()));
+
+            let element1_value = get::<V>(element1_key).unwrap();
+            store::<V>(element1_key, get::<V>(element2_key).unwrap());
+            store::<V>(element2_key, element1_value);
+
+            i += 1;
+        }
+    }
+
+    /// Fills `self` with elements by cloning `value`.
+    ///
+    /// ### Arguments
+    ///
+    /// * value - Value to copy to each element of the vector.
+    ///
+    /// ### Number of Storage Accesses
+    ///
+    /// * Reads: `1`
+    /// * Writes: `self.len()`
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// storage {
+    ///     vec: StorageVec<u64> = StorageVec {},
+    /// }
+    ///
+    /// fn foo() {
+    ///     storage.vec.push(5);
+    ///     storage.vec.push(10);
+    ///     storage.vec.push(15);
+    ///     storage.vec.fill(20);
+    ///
+    ///     assert(20 == storage.vec.get(0).unwrap());
+    ///     assert(20 == storage.vec.get(1).unwrap());
+    ///     assert(20 == storage.vec.get(2).unwrap());
+    /// }
+    /// ```
+    #[storage(read, write)]
+    pub fn fill(self, value: V) {
+        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
+
+        let mut i = 0;
+        while i < len {
+            store::<V>(sha256((i, __get_storage_key())), value);
+            i += 1;
+        }
+    }
+
+    /// Resizes `self` in place so that `len` is equal to `new_len`.
+    ///
+    /// If `new_len` is greater than `len`, `self` is extended by the difference, with each
+    /// additional slot being filled with `value`. If the `new_len` is less than `len`, `self` is
+    /// simply truncated.
+    ///
+    /// ### Arguments
+    ///
+    /// * new_len - The new length to expand or truncate to
+    /// * value - The value to fill into new slots if the `new_len` is greater than the current length
+    ///
+    /// ### Number of Storage Accesses
+    ///
+    /// * Reads - `1`
+    /// * Writes - `if new_len > self.len() { new_len - len + 1 } else { 1 }`
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// storage {
+    ///     vec: StorageVec<u64> = StorageVec {},
+    /// }
+    ///
+    /// fn foo() {
+    ///     storage.vec.push(5);
+    ///     storage.vec.push(10);
+    ///     storage.vec.resize(4, 20);
+    ///
+    ///     assert(5 == storage.vec.get(0).unwrap());
+    ///     assert(10 == storage.vec.get(1).unwrap());
+    ///     assert(20 == storage.vec.get(2).unwrap());
+    ///     assert(20 == storage.vec.get(3).unwrap());
+    ///
+    ///     storage.vec.resize(2, 0);
+    ///
+    ///     assert(5 == storage.vec.get(0).unwrap());
+    ///     assert(10 == storage.vec.get(1).unwrap());
+    ///     assert(Option::None == storage.vec.get(2));
+    ///     assert(Option::None == storage.vec.get(3));
+    /// }
+    /// ```
+    #[storage(read, write)]
+    pub fn resize(self, new_len: u64, value: V) {
+        let mut len = get::<u64>(__get_storage_key()).unwrap_or(0);
+        while len < new_len {
+            store::<V>(sha256((len, __get_storage_key())), value);
+            len += 1;
+        }
+        store::<u64>(__get_storage_key(), new_len);
     }
 }
 
+/// A persistent storage type to store a collection of tightly packed bytes.
 pub struct StorageBytes {}
 
-impl StorageBytes {
+impl StorableSlice<Bytes> for StorageBytes {
     /// Takes a `Bytes` type and stores the underlying collection of tightly packed bytes.
     ///
     /// ### Arguments
     ///
     /// * `bytes` - The bytes which will be stored.
     ///
+    /// ### Number of Storage Accesses
+    ///
+    /// * Writes: `2`
+    ///
     /// ### Examples
     ///
     /// ```sway
@@ -662,30 +1075,21 @@ impl StorageBytes {
     ///     bytes.push(7_u8);
     ///     bytes.push(9_u8);
     ///
-    ///     storage.stored_bytes.store_bytes(bytes);
+    ///     storage.stored_bytes.store(bytes);
     /// }
     /// ```
     #[storage(write)]
-    pub fn store_bytes(self, mut bytes: Bytes) {
-        // Get the number of storage slots needed based on the size of bytes.
-        let number_of_slots = (bytes.len() + 31) >> 5;
-
-        // The bytes capacity needs to be greater than or a multiple of 32 bytes so we can 
-        // make the 'quad' storage instruction store without accessing unallocated heap memory.
-        if bytes.buf.cap < number_of_slots * 32 {
-            bytes.buf.ptr = realloc_bytes(bytes.buf.ptr, bytes.buf.cap, number_of_slots * 32);
-        }
-
-        // Store `number_of_slots * 32` bytes starting at storage slot `key`.
-        let key = sha256(__get_storage_key());
-        let _ = __state_store_quad(key, bytes.buf.ptr, number_of_slots);
-
-        // Store the length of the bytes
-        store(__get_storage_key(), bytes.len());
+    fn store(self, bytes: Bytes) {
+        let key = __get_storage_key();
+        store_slice(key, bytes.as_raw_slice());
     }
 
     /// Constructs a `Bytes` type from a collection of tightly packed bytes in storage.
     ///
+    /// ### Number of Storage Accesses
+    ///
+    /// * Reads: `2`
+    ///
     /// ### Examples
     ///
     /// ```sway
@@ -698,32 +1102,84 @@ impl StorageBytes {
     ///     bytes.push(5_u8);
     ///     bytes.push(7_u8);
     ///     bytes.push(9_u8);
-    ///     storage.stored_bytes.write_bytes(bytes);
     ///
-    ///     let retrieved_bytes = storage.stored_bytes.into_bytes(key);
+    ///     assert(storage.stored_bytes.load(key).is_none());
+    ///     storage.stored_bytes.store(bytes);
+    ///     let retrieved_bytes = storage.stored_bytes.load(key).unwrap();
     ///     assert(bytes == retrieved_bytes);
     /// }
     /// ```
     #[storage(read)]
-    pub fn into_bytes(self) -> Option<Bytes> {
-        // Get the length of the bytes and create a new `Bytes` type on the heap.
-        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
-
-        if len > 0 {
-            // Get the number of storage slots needed based on the size of bytes.
-            let number_of_slots = (len + 31) >> 5;
-
-            // Create a new bytes type with a capacity that is a multiple of 32 bytes so we can 
-            // make the 'quad' storage instruction read without overflowing.
-            let mut bytes = Bytes::with_capacity(number_of_slots * 32);
-            bytes.len = len;
-
-            // Load the stores bytes into the `Bytes` type pointer.
-            let _ = __state_load_quad(sha256(__get_storage_key()), bytes.buf.ptr, number_of_slots);
-
-            Option::Some(bytes)
-        } else {
-            Option::None
+    fn load(self) -> Option<Bytes> {
+        let key = __get_storage_key();
+        match get_slice(key) {
+            Option::Some(slice) => {
+                 Option::Some(Bytes::from_raw_slice(slice))
+            },
+            Option::None => Option::None,
         }
+    }
+
+    /// Clears a collection of tightly packed bytes in storage.
+    ///
+    /// ### Number of Storage Accesses
+    ///
+    /// * Reads: `1`
+    /// * Clears: `2`
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// storage {
+    ///     stored_bytes: StorageBytes = StorageBytes {}
+    /// }
+    ///
+    /// fn foo() {
+    ///     let mut bytes = Bytes::new();
+    ///     bytes.push(5_u8);
+    ///     bytes.push(7_u8);
+    ///     bytes.push(9_u8);
+    ///     storage.stored_bytes.store(bytes);
+    ///
+    ///     assert(storage.stored_bytes.load(key).is_some());
+    ///     let cleared = storage.stored_bytes.clear();
+    ///     assert(cleared);
+    ///     let retrieved_bytes = storage.stored_bytes.load(key);
+    ///     assert(retrieved_bytes.is_none());
+    /// }
+    /// ```
+    #[storage(read, write)]
+    fn clear(self) -> bool {
+        let key = __get_storage_key();
+        clear_slice(key)
+    }
+
+    /// Returns the length of tightly packed bytes in storage.
+    ///
+    /// ### Number of Storage Accesses
+    ///
+    /// * Reads: `1`
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// storage {
+    ///     stored_bytes: StorageBytes = StorageBytes {}
+    /// }
+    ///
+    /// fn foo() {
+    ///     let mut bytes = Bytes::new();
+    ///     bytes.push(5_u8);
+    ///     bytes.push(7_u8);
+    ///     bytes.push(9_u8);
+    ///
+    ///     assert(storage.stored_bytes.len() == 0)
+    ///     storage.stored_bytes.store(bytes);
+    ///     assert(storage.stored_bytes.len() == 3);
+    /// }
+    /// ```
+    #[storage(read)]
+    fn len(self) -> u64 {
+        get::<u64>(__get_storage_key()).unwrap_or(0)
     }
 }

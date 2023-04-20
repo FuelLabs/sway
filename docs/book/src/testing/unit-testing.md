@@ -15,6 +15,8 @@ Each test function is ran as if it were the entry point for a
 [script](../sway-program-types/scripts.md). Tests "pass" if they return
 successfully, and "fail" if they revert or vice versa while [testing failure](#testing-failure).
 
+If the project has failing tests `forc test` will exit with exit status `101`.
+
 ## Building and Running Tests
 
 We can build and execute all tests within a package with the following:
@@ -92,3 +94,25 @@ fn test_fail() {
 ```
 
 > **Note:** When running `forc test`, your contract will be built twice: first *without* unit tests in order to determine the contract's ID, then a second time *with* unit tests with the `CONTRACT_ID` provided to their namespace. This `CONTRACT_ID` can be used with the `abi` cast to enable contract calls within unit tests.
+
+Unit tests can call methods of external contracts if those contracts are added as contract dependencies, i.e. in the the [`contract-dependencies`](../forc/manifest_reference.md#the-contract-dependencies-section) section of the manifest file. An example of such calls is shown below:
+
+```sway
+{{#include ../../../../examples/multi_contract_calls/caller/src/main.sw:multi_contract_calls}}
+```
+
+Example `Forc.toml` for contract above:
+
+```toml
+{{#include ../../../../examples/multi_contract_calls/caller/Forc.toml:multi_contract_call_toml}}
+```
+
+## Running Tests in Parallel or Serially
+
+By default, all unit tests in your project are run in parallel. Note that this does not lead to any data races in storage because each unit test has its own storage space that is not shared by any other unit test.
+
+By default, `forc test` will use all the available threads in your system. To request that a specific number of threads be used, the flag `--test-threads <val>` can be provided to `forc test`.
+
+```console
+forc test --test-threads 1
+```

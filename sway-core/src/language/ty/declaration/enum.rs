@@ -4,7 +4,7 @@ use std::{
 };
 
 use sway_error::error::CompileError;
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     engine_threading::*,
@@ -15,7 +15,7 @@ use crate::{
 };
 
 #[derive(Clone, Debug)]
-pub struct TyEnumDeclaration {
+pub struct TyEnumDecl {
     pub call_path: CallPath,
     pub type_parameters: Vec<TypeParameter>,
     pub attributes: transform::AttributesMap,
@@ -24,8 +24,14 @@ pub struct TyEnumDeclaration {
     pub visibility: Visibility,
 }
 
-impl EqWithEngines for TyEnumDeclaration {}
-impl PartialEqWithEngines for TyEnumDeclaration {
+impl Named for TyEnumDecl {
+    fn name(&self) -> &Ident {
+        &self.call_path.suffix
+    }
+}
+
+impl EqWithEngines for TyEnumDecl {}
+impl PartialEqWithEngines for TyEnumDecl {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         self.call_path.suffix == other.call_path.suffix
             && self.type_parameters.eq(&other.type_parameters, engines)
@@ -34,9 +40,9 @@ impl PartialEqWithEngines for TyEnumDeclaration {
     }
 }
 
-impl HashWithEngines for TyEnumDeclaration {
+impl HashWithEngines for TyEnumDecl {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let TyEnumDeclaration {
+        let TyEnumDecl {
             call_path,
             type_parameters,
             variants,
@@ -53,7 +59,7 @@ impl HashWithEngines for TyEnumDeclaration {
     }
 }
 
-impl SubstTypes for TyEnumDeclaration {
+impl SubstTypes for TyEnumDecl {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.variants
             .iter_mut()
@@ -64,7 +70,7 @@ impl SubstTypes for TyEnumDeclaration {
     }
 }
 
-impl ReplaceSelfType for TyEnumDeclaration {
+impl ReplaceSelfType for TyEnumDecl {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         self.variants
             .iter_mut()
@@ -75,28 +81,13 @@ impl ReplaceSelfType for TyEnumDeclaration {
     }
 }
 
-impl CreateTypeId for TyEnumDeclaration {
-    fn create_type_id(&self, engines: Engines<'_>) -> TypeId {
-        let type_engine = engines.te();
-        let decl_engine = engines.de();
-        type_engine.insert(
-            decl_engine,
-            TypeInfo::Enum {
-                call_path: self.call_path.clone(),
-                variant_types: self.variants.clone(),
-                type_parameters: self.type_parameters.clone(),
-            },
-        )
-    }
-}
-
-impl Spanned for TyEnumDeclaration {
+impl Spanned for TyEnumDecl {
     fn span(&self) -> Span {
         self.span.clone()
     }
 }
 
-impl MonomorphizeHelper for TyEnumDeclaration {
+impl MonomorphizeHelper for TyEnumDecl {
     fn type_parameters(&self) -> &[TypeParameter] {
         &self.type_parameters
     }
@@ -106,7 +97,7 @@ impl MonomorphizeHelper for TyEnumDeclaration {
     }
 }
 
-impl TyEnumDeclaration {
+impl TyEnumDecl {
     pub(crate) fn expect_variant_from_name(
         &self,
         variant_name: &Ident,
@@ -158,7 +149,7 @@ impl PartialEqWithEngines for TyEnumVariant {
 }
 
 impl OrdWithEngines for TyEnumVariant {
-    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
+    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
         let TyEnumVariant {
             name: ln,
             type_argument: lta,
@@ -178,7 +169,7 @@ impl OrdWithEngines for TyEnumVariant {
             attributes: _,
         } = other;
         ln.cmp(rn)
-            .then_with(|| lta.cmp(rta, type_engine))
+            .then_with(|| lta.cmp(rta, engines))
             .then_with(|| lt.cmp(rt))
     }
 }

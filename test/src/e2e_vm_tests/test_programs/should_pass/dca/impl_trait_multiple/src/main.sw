@@ -32,10 +32,10 @@ fn main() -> u64 {
     let a = Data1 {
         value: 7
     };
-    let b = Data2 {
+    let _b = Data2 {
         value: 8
     };
-    let c = a.get();
+    let _c = a.get();
 
     0
 }

@@ -36,13 +36,56 @@ impl ty::TyAstNode {
                         ctx.namespace.find_module_path(&a.call_path)
                     };
                     let mut res = match a.import_type {
-                        ImportType::Star => ctx.namespace.star_import(&path, engines),
+                        ImportType::Star => {
+                            // try a standard starimport first
+                            let import = ctx.namespace.star_import(&path, engines);
+                            if import.is_ok() {
+                                import
+                            } else {
+                                // if it doesn't work it could be an enum star import
+                                if let Some((enum_name, path)) = path.split_last() {
+                                    let variant_import =
+                                        ctx.namespace.variant_star_import(path, engines, enum_name);
+                                    if variant_import.is_ok() {
+                                        variant_import
+                                    } else {
+                                        import
+                                    }
+                                } else {
+                                    import
+                                }
+                            }
+                        }
                         ImportType::SelfImport(_) => {
                             ctx.namespace.self_import(engines, &path, a.alias.clone())
                         }
                         ImportType::Item(ref s) => {
-                            ctx.namespace
-                                .item_import(engines, &path, s, a.alias.clone())
+                            // try a standard item import first
+                            let import =
+                                ctx.namespace
+                                    .item_import(engines, &path, s, a.alias.clone());
+
+                            if import.is_ok() {
+                                import
+                            } else {
+                                // if it doesn't work it could be an enum variant import
+                                if let Some((enum_name, path)) = path.split_last() {
+                                    let variant_import = ctx.namespace.variant_import(
+                                        engines,
+                                        path,
+                                        enum_name,
+                                        s,
+                                        a.alias.clone(),
+                                    );
+                                    if variant_import.is_ok() {
+                                        variant_import
+                                    } else {
+                                        import
+                                    }
+                                } else {
+                                    import
+                                }
+                            }
                         }
                     };
                     warnings.append(&mut res.warnings);
@@ -62,7 +105,7 @@ impl ty::TyAstNode {
                     })
                 }
                 AstNodeContent::Declaration(decl) => ty::TyAstNodeContent::Declaration(check!(
-                    ty::TyDeclaration::type_check(ctx, decl),
+                    ty::TyDecl::type_check(ctx, decl),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -103,7 +146,8 @@ impl ty::TyAstNode {
                 r#type: engines.help_out(node.type_info(type_engine)).to_string(),
             };
             assert_or_warn!(
-                node.type_info(type_engine).can_safely_ignore(type_engine),
+                node.type_info(type_engine)
+                    .can_safely_ignore(type_engine, decl_engine),
                 warnings,
                 node.span.clone(),
                 warning
@@ -119,6 +163,7 @@ pub(crate) fn reassign_storage_subfield(
     fields: Vec<Ident>,
     rhs: Expression,
     span: Span,
+    storage_keyword_span: Span,
 ) -> CompileResult<ty::TyStorageReassignment> {
     let mut errors = vec![];
     let mut warnings = vec![];
@@ -134,8 +179,7 @@ pub(crate) fn reassign_storage_subfield(
     }
 
     let storage_fields = check!(
-        ctx.namespace
-            .get_storage_field_descriptors(decl_engine, &span),
+        ctx.namespace.get_storage_field_descriptors(decl_engine),
         return err(warnings, errors),
         warnings,
         errors
@@ -168,7 +212,7 @@ pub(crate) fn reassign_storage_subfield(
     });
 
     let update_available_struct_fields = |id: TypeId| match type_engine.get(id) {
-        TypeInfo::Struct { fields, .. } => fields,
+        TypeInfo::Struct(decl_ref) => decl_engine.get_struct(&decl_ref).fields,
         _ => vec![],
     };
     let mut curr_type = initial_field_type;
@@ -219,6 +263,7 @@ pub(crate) fn reassign_storage_subfield(
 
     ok(
         ty::TyStorageReassignment {
+            storage_keyword_span,
             fields: type_checked_buf,
             ix,
             rhs,

@@ -1,0 +1,21 @@
+[package]
+name = "test-macros"
+version = "0.0.0"
+description = "Macros for testing the Sway formatter."
+publish = false
+edition.workspace = true
+authors.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+[dev-dependencies]
+paste = "1.0"
+prettydiff = "0.6"
+
+[package.metadata.cargo-udeps.ignore]
+development = ["paste", "prettydiff"]

@@ -2,6 +2,7 @@ use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
+    decl_engine::DeclRefStruct,
     error::*,
     language::{parsed::*, ty, CallPath},
     semantic_analysis::TypeCheckContext,
@@ -24,7 +25,8 @@ pub(crate) fn struct_instantiation(
     // We need the call_path_binding to have types that point to proper definitions so the LSP can
     // look for them, but its types haven't been resolved yet.
     // To that end we do a dummy type check which has the side effect of resolving the types.
-    let _ = TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref());
+    let _: CompileResult<(DeclRefStruct, _)> =
+        TypeBinding::type_check(&mut call_path_binding, ctx.by_ref());
 
     let TypeBinding {
         inner: CallPath {
@@ -86,19 +88,22 @@ pub(crate) fn struct_instantiation(
 
     // extract the struct name and fields from the type info
     let type_info = type_engine.get(type_id);
-    let (struct_name, struct_fields) = check!(
+    let struct_ref = check!(
         type_info.expect_struct(engines, &span),
         return err(warnings, errors),
         warnings,
         errors
     );
-    let mut struct_fields = struct_fields.clone();
+    let struct_decl = decl_engine.get_struct(&struct_ref);
+    let struct_name = struct_decl.call_path.suffix;
+    let struct_fields = struct_decl.fields;
+    let mut struct_fields = struct_fields;
 
     let typed_fields = check!(
         type_check_field_arguments(
             ctx.by_ref(),
             &fields,
-            struct_name,
+            &struct_name,
             &mut struct_fields,
             &span
         ),
@@ -127,9 +132,9 @@ pub(crate) fn struct_instantiation(
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::StructExpression {
-            struct_name: struct_name.clone(),
+            struct_ref,
             fields: typed_fields,
-            span: inner_span,
+            instantiation_span: inner_span,
             call_path_binding,
         },
         return_type: type_id,
@@ -211,7 +216,7 @@ fn unify_field_arguments_and_struct_fields(
     for struct_field in struct_fields.iter() {
         if let Some(typed_field) = typed_fields.iter().find(|x| x.name == struct_field.name) {
             check!(
-                CompileResult::from(type_engine.unify_adt(
+                CompileResult::from(type_engine.unify(
                     decl_engine,
                     typed_field.value.return_type,
                     struct_field.type_argument.type_id,

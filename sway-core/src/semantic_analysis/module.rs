@@ -1,6 +1,6 @@
 use crate::{
     error::*,
-    language::{parsed::*, ty, DepName},
+    language::{parsed::*, ty, ModName},
     semantic_analysis::*,
 };
 
@@ -9,7 +9,12 @@ impl ty::TyModule {
     ///
     /// Recursively type-checks submodules first.
     pub fn type_check(mut ctx: TypeCheckContext, parsed: &ParseModule) -> CompileResult<Self> {
-        let ParseModule { submodules, tree } = parsed;
+        let ParseModule {
+            submodules,
+            tree,
+            attributes,
+            span,
+        } = parsed;
 
         // Type-check submodules first in order of declaration.
         let mut submodules_res = ok(vec![], vec![], vec![]);
@@ -25,7 +30,7 @@ impl ty::TyModule {
 
         // TODO: Ordering should be solved across all modules prior to the beginning of type-check.
         let ordered_nodes_res = node_dependencies::order_ast_nodes_by_dependency(
-            ctx.type_engine,
+            ctx.engines(),
             tree.root_nodes.clone(),
         );
 
@@ -34,9 +39,11 @@ impl ty::TyModule {
 
         submodules_res.flat_map(|submodules| {
             typed_nodes_res.map(|all_nodes| Self {
+                span: span.clone(),
                 submodules,
                 namespace: ctx.namespace.module().clone(),
                 all_nodes,
+                attributes: attributes.clone(),
             })
         })
     }
@@ -59,20 +66,18 @@ impl ty::TyModule {
 impl ty::TySubmodule {
     pub fn type_check(
         parent_ctx: TypeCheckContext,
-        dep_name: DepName,
+        mod_name: ModName,
         submodule: &ParseSubmodule,
     ) -> CompileResult<Self> {
         let ParseSubmodule {
-            library_name,
             module,
-            dependency_path_span,
+            mod_name_span,
         } = submodule;
-        parent_ctx.enter_submodule(dep_name, |submod_ctx| {
+        parent_ctx.enter_submodule(mod_name, module.span.clone(), |submod_ctx| {
             let module_res = ty::TyModule::type_check(submod_ctx, module);
             module_res.map(|module| ty::TySubmodule {
-                library_name: library_name.clone(),
                 module,
-                dependency_path_span: dependency_path_span.clone(),
+                mod_name_span: mod_name_span.clone(),
             })
         })
     }

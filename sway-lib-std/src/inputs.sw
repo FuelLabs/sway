@@ -1,6 +1,6 @@
 //! Getters for fields on transaction inputs.
 //! This includes `Input::Coins`, `Input::Messages` and `Input::Contracts`.
-library inputs;
+library;
 
 use ::address::Address;
 use ::assert::assert;
@@ -59,6 +59,7 @@ pub const GTF_INPUT_MESSAGE_DATA = 0x11D;
 pub const GTF_INPUT_MESSAGE_PREDICATE = 0x11E;
 pub const GTF_INPUT_MESSAGE_PREDICATE_DATA = 0x11F;
 
+/// The input type for a transaction.
 pub enum Input {
     Coin: (),
     Contract: (),

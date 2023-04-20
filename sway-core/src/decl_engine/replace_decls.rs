@@ -1,8 +1,11 @@
-use crate::{engine_threading::Engines, language::ty};
+use crate::{
+    engine_threading::Engines,
+    language::ty::{self, TyDecl},
+};
 
 use super::DeclMapping;
 
-pub(crate) trait ReplaceDecls {
+pub trait ReplaceDecls {
     fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>);
 
     fn replace_decls(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
@@ -13,9 +16,9 @@ pub(crate) trait ReplaceDecls {
 }
 
 pub(crate) trait ReplaceFunctionImplementingType {
-    fn replace_implementing_type(
-        &mut self,
-        engines: Engines<'_>,
-        implementing_type: ty::TyDeclaration,
-    );
+    fn replace_implementing_type(&mut self, engines: Engines<'_>, implementing_type: ty::TyDecl);
+}
+
+pub(crate) trait UpdateConstantExpression {
+    fn update_constant_expression(&mut self, engines: Engines<'_>, implementing_type: &TyDecl);
 }

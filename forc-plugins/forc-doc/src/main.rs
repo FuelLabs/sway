@@ -1,11 +1,6 @@
-mod cli;
-mod descriptor;
-mod doc;
-mod render;
-
 use crate::{
     doc::{Document, Documentation},
-    render::{RenderedDocumentation, INDEX_FILENAME},
+    render::{constant::INDEX_FILENAME, RenderedDocumentation},
 };
 use anyhow::{bail, Result};
 use clap::Parser;
@@ -16,9 +11,35 @@ use include_dir::{include_dir, Dir};
 use pkg::manifest::ManifestFile;
 use std::{
     process::Command as Process,
+    sync::Arc,
     {fs, path::PathBuf},
 };
 use sway_core::{decl_engine::DeclEngine, BuildTarget, Engines, TypeEngine};
+
+mod cli;
+mod doc;
+mod render;
+
+/// Information passed to the render phase to get TypeInfo, CallPath or visibility for type anchors.
+#[derive(Clone)]
+struct RenderPlan {
+    document_private_items: bool,
+    type_engine: Arc<TypeEngine>,
+    decl_engine: Arc<DeclEngine>,
+}
+impl RenderPlan {
+    fn new(
+        document_private_items: bool,
+        type_engine: Arc<TypeEngine>,
+        decl_engine: Arc<DeclEngine>,
+    ) -> RenderPlan {
+        Self {
+            document_private_items,
+            type_engine,
+            decl_engine,
+        }
+    }
+}
 
 /// Main method for `forc doc`.
 pub fn main() -> Result<()> {
@@ -82,18 +103,31 @@ pub fn main() -> Result<()> {
         no_deps,
         document_private_items,
     )?;
+    let root_attributes =
+        (!typed_program.root.attributes.is_empty()).then_some(typed_program.root.attributes);
+    let program_kind = typed_program.kind;
     // render docs to HTML
     let forc_version = pkg_manifest
         .project
         .forc_version
         .as_ref()
-        .map(|ver| format!("{}.{}.{}", ver.major, ver.minor, ver.patch));
-    let rendered_docs = RenderedDocumentation::from(raw_docs, forc_version)?;
+        .map(|ver| format!("Forc v{}.{}.{}", ver.major, ver.minor, ver.patch));
+    let rendered_docs = RenderedDocumentation::from_raw_docs(
+        raw_docs,
+        RenderPlan::new(
+            document_private_items,
+            Arc::from(type_engine),
+            Arc::from(decl_engine),
+        ),
+        root_attributes,
+        program_kind,
+        forc_version,
+    )?;
 
     // write contents to outfile
     for doc in rendered_docs.0 {
         let mut doc_path = doc_path.clone();
-        for prefix in doc.module_info.0 {
+        for prefix in doc.module_info.module_prefixes {
             if &prefix != project_name {
                 doc_path.push(prefix);
             }
@@ -113,8 +147,8 @@ pub fn main() -> Result<()> {
         fs::write(asset_path, file.contents())?;
     }
     // Sway syntax highlighting file
-    const SWAY_HJS_FILENAME: &str = "sway.js";
-    let sway_hjs = std::include_bytes!("assets/sway.js");
+    const SWAY_HJS_FILENAME: &str = "highlight.js";
+    let sway_hjs = std::include_bytes!("assets/highlight.js");
     fs::write(assets_path.join(SWAY_HJS_FILENAME), sway_hjs)?;
 
     // check if the user wants to open the doc in the browser

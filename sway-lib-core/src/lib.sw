@@ -1,8 +1,9 @@
-library core;
+library;
 
-dep primitives;
-dep raw_ptr;
-dep raw_slice;
-dep ops;
-dep never;
-dep prelude;
+mod experimental;
+mod primitives;
+mod raw_ptr;
+mod raw_slice;
+mod ops;
+mod never;
+mod prelude;

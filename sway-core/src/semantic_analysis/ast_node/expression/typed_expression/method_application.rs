@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::DeclRef,
+    decl_engine::{DeclEngineInsert, DeclRefFunction, UpdateConstantExpression},
     error::*,
     language::{parsed::*, ty, *},
     semantic_analysis::*,
@@ -49,12 +49,7 @@ pub(crate) fn type_check_method_application(
         warnings,
         errors
     );
-    let method = check!(
-        CompileResult::from(decl_engine.get_function(&decl_ref, &method_name_binding.span())),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    let method = decl_engine.get_function(&decl_ref);
 
     // check the method visibility
     if span.path() != method.span.path() && method.visibility.is_private() {
@@ -167,8 +162,7 @@ pub(crate) fn type_check_method_application(
     let mut self_state_idx = None;
     if ctx.namespace.has_storage_declared() {
         let storage_fields = check!(
-            ctx.namespace
-                .get_storage_field_descriptors(decl_engine, &span),
+            ctx.namespace.get_storage_field_descriptors(decl_engine),
             return err(warnings, errors),
             warnings,
             errors
@@ -237,7 +231,7 @@ pub(crate) fn type_check_method_application(
             );
 
             let is_decl_mutable = match unknown_decl {
-                ty::TyDeclaration::ConstantDeclaration { .. } => false,
+                ty::TyDecl::ConstantDecl { .. } => false,
                 _ => {
                     let variable_decl = check!(
                         unknown_decl.expect_variable().cloned(),
@@ -289,7 +283,10 @@ pub(crate) fn type_check_method_application(
     // build the function selector
     let selector = if method.is_contract_call {
         let contract_caller = args_buf.pop_front();
-        let contract_address = match contract_caller.map(|x| type_engine.get(x.return_type)) {
+        let contract_address = match contract_caller
+            .clone()
+            .map(|x| type_engine.get(x.return_type))
+        {
             Some(TypeInfo::ContractCaller { address, .. }) => address,
             _ => {
                 errors.push(CompileError::Internal(
@@ -308,14 +305,16 @@ pub(crate) fn type_check_method_application(
             return err(warnings, errors);
         };
         let func_selector = check!(
-            method.to_fn_selector_value(type_engine),
+            method.to_fn_selector_value(type_engine, decl_engine),
             [0; 4],
             warnings,
             errors
         );
+        let contract_caller = contract_caller.unwrap();
         Some(ty::ContractCallParams {
             func_selector,
             contract_address,
+            contract_caller: Box::new(contract_caller),
         })
     } else {
         None
@@ -352,7 +351,7 @@ pub(crate) fn type_check_method_application(
             call_path,
             contract_call_params: contract_call_params_map,
             arguments: typed_arguments_with_names,
-            function_decl_ref: decl_ref,
+            fn_ref: decl_ref,
             self_state_idx,
             selector,
             type_binding: Some(method_name_binding.strip_inner()),
@@ -414,7 +413,7 @@ pub(crate) fn resolve_method_name(
     mut ctx: TypeCheckContext,
     method_name: &mut TypeBinding<MethodName>,
     arguments: VecDeque<ty::TyExpression>,
-) -> CompileResult<DeclRef> {
+) -> CompileResult<DeclRefFunction> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
@@ -514,12 +513,7 @@ pub(crate) fn resolve_method_name(
         }
     };
 
-    let mut func_decl = check!(
-        CompileResult::from(decl_engine.get_function(&decl_ref, &decl_ref.span())),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    let mut func_decl = decl_engine.get_function(&decl_ref);
 
     // monomorphize the function declaration
     let method_name_span = method_name.span();
@@ -535,10 +529,16 @@ pub(crate) fn resolve_method_name(
         errors
     );
 
+    if let Some(implementing_type) = &func_decl.implementing_type {
+        func_decl
+            .body
+            .update_constant_expression(engines, implementing_type);
+    }
+
     let decl_ref = ctx
         .decl_engine
         .insert(func_decl)
-        .with_parent(ctx.decl_engine, &decl_ref);
+        .with_parent(ctx.decl_engine, (*decl_ref.id()).into());
 
     ok(decl_ref, warnings, errors)
 }

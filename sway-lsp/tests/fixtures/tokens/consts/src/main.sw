@@ -1,6 +1,6 @@
 contract;
 
-dep more_consts;
+mod more_consts;
 use more_consts::{Data, Value};
 
 /// documentation for CONSTANT_1

@@ -1,15 +1,15 @@
 use self::shape::Shape;
+use crate::comments::{write_comments, CommentsContext};
 use crate::parse::parse_file;
 use crate::utils::map::comments::CommentMap;
-use crate::utils::map::{
-    comments::handle_comments, newline::handle_newlines, newline_style::apply_newline_style,
-};
+use crate::utils::map::{newline::handle_newlines, newline_style::apply_newline_style};
 pub use crate::{
     config::manifest::Config,
     error::{ConfigError, FormatterError},
 };
 use std::{fmt::Write, path::Path, sync::Arc};
 use sway_core::BuildConfig;
+use sway_types::Spanned;
 
 pub(crate) mod shape;
 
@@ -17,7 +17,7 @@ pub(crate) mod shape;
 pub struct Formatter {
     pub shape: Shape,
     pub config: Config,
-    pub comment_map: CommentMap,
+    pub comments_context: CommentsContext,
 }
 
 pub type FormattedCode = String;
@@ -65,22 +65,21 @@ impl Formatter {
         let mut raw_formatted_code = String::with_capacity(src.len());
 
         // Collect Span -> Comment mapping from unformatted input.
-        self.comment_map = CommentMap::from_src(Arc::from(src))?;
+        self.comments_context =
+            CommentsContext::new(CommentMap::from_src(Arc::from(src))?, src.to_string());
 
-        let module = parse_file(Arc::from(src), path.clone())?;
+        let module = parse_file(Arc::from(src), path.clone())?.value;
         module.format(&mut raw_formatted_code, self)?;
 
         let mut formatted_code = String::from(&raw_formatted_code);
 
-        // Add comments
-        handle_comments(
-            Arc::from(src),
-            &module,
-            Arc::from(formatted_code.clone()),
-            path.clone(),
+        // Write post-module comments
+        write_comments(
             &mut formatted_code,
-            &mut self.comment_map,
+            module.span().end()..src.len() + 1,
+            self,
         )?;
+
         // Add newline sequences
         handle_newlines(
             Arc::from(src),

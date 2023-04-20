@@ -1,4 +1,5 @@
-library assert;
+//! Functions to assert a given condition.
+library;
 
 use ::logging::log;
 use ::revert::revert;

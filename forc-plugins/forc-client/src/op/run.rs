@@ -1,7 +1,7 @@
 use crate::{
     cmd,
     util::{
-        pkg::built_pkgs_with_manifest,
+        pkg::built_pkgs,
         tx::{TransactionBuilderExt, TX_SUBMIT_TIMEOUT_MS},
     },
 };
@@ -37,13 +37,15 @@ pub async fn run(command: cmd::Run) -> Result<Vec<RanScript>> {
         std::env::current_dir().map_err(|e| anyhow!("{:?}", e))?
     };
     let build_opts = build_opts_from_cmd(&command);
-    let built_pkgs_with_manifest = built_pkgs_with_manifest(&curr_dir, build_opts)?;
-    for (member_manifest, built_pkg) in built_pkgs_with_manifest {
-        if member_manifest
+    let built_pkgs_with_manifest = built_pkgs(&curr_dir, build_opts)?;
+    for built in built_pkgs_with_manifest {
+        if built
+            .descriptor
+            .manifest_file
             .check_program_type(vec![TreeType::Script])
             .is_ok()
         {
-            let pkg_receipts = run_pkg(&command, &member_manifest, &built_pkg).await?;
+            let pkg_receipts = run_pkg(&command, &built.descriptor.manifest_file, &built).await?;
             receipts.push(pkg_receipts);
         }
     }
@@ -76,9 +78,11 @@ pub async fn run_pkg(
                 .map_err(|e| anyhow!("Failed to parse contract id: {}", e))
         })
         .collect::<Result<Vec<ContractId>>>()?;
-    let tx = TransactionBuilder::script(compiled.bytecode.clone(), script_data)
+    let tx = TransactionBuilder::script(compiled.bytecode.bytes.clone(), script_data)
         .gas_limit(command.gas.limit)
         .gas_price(command.gas.price)
+        // TODO: Spec says maturity should be u32, but fuel-tx expects u64.
+        .maturity(u64::from(command.maturity.maturity))
         .add_contracts(contract_ids)
         .finalize_signed(client.clone(), command.unsigned, command.signing_key)
         .await?;
@@ -142,7 +146,6 @@ async fn send_tx(
 }
 
 fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
-    let const_inject_map = std::collections::HashMap::new();
     pkg::BuildOpts {
         pkg: pkg::PkgOpts {
             path: cmd.pkg.path.clone(),
@@ -150,10 +153,12 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
             terse: cmd.pkg.terse,
             locked: cmd.pkg.locked,
             output_directory: cmd.pkg.output_directory.clone(),
+            json_abi_with_callpaths: cmd.pkg.json_abi_with_callpaths,
         },
         print: pkg::PrintOpts {
             ast: cmd.print.ast,
-            dca_graph: cmd.print.dca_graph,
+            dca_graph: cmd.print.dca_graph.clone(),
+            dca_graph_url_format: cmd.print.dca_graph_url_format.clone(),
             finalized_asm: cmd.print.finalized_asm,
             intermediate_asm: cmd.print.intermediate_asm,
             ir: cmd.print.ir,
@@ -165,11 +170,12 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
         build_target: BuildTarget::default(),
         build_profile: cmd.build_profile.build_profile.clone(),
         release: cmd.build_profile.release,
+        error_on_warnings: cmd.build_profile.error_on_warnings,
         time_phases: cmd.print.time_phases,
         binary_outfile: cmd.build_output.bin_file.clone(),
         debug_outfile: cmd.build_output.debug_file.clone(),
         tests: false,
-        const_inject_map,
         member_filter: pkg::MemberFilter::only_scripts(),
+        experimental_storage: cmd.build_profile.experimental_storage,
     }
 }

@@ -4,6 +4,7 @@ use std::fmt::Write;
 use sway_error::error::CompileError;
 use sway_types::Span;
 
+use crate::decl_engine::DeclEngine;
 use crate::{error::*, language::ty, language::Literal, TypeInfo};
 
 use super::{patstack::PatStack, range::Range};
@@ -121,9 +122,9 @@ impl Pattern {
             ty::TyScrutineeVariant::Literal(value) => Pattern::from_literal(value),
             ty::TyScrutineeVariant::Constant(_, value, _) => Pattern::from_literal(value),
             ty::TyScrutineeVariant::StructScrutinee {
-                struct_name,
+                struct_ref,
                 fields,
-                ..
+                instantiation_call_path: _,
             } => {
                 let mut new_fields = vec![];
                 for field in fields.into_iter() {
@@ -139,9 +140,21 @@ impl Pattern {
                     new_fields.push((field.field.as_str().to_string(), f));
                 }
                 Pattern::Struct(StructPattern {
-                    struct_name: struct_name.to_string(),
+                    struct_name: struct_ref.name().to_string(),
                     fields: new_fields,
                 })
+            }
+            ty::TyScrutineeVariant::Or(elems) => {
+                let mut new_elems = PatStack::empty();
+                for elem in elems.into_iter() {
+                    new_elems.push(check!(
+                        Pattern::from_scrutinee(elem),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
+                Pattern::Or(new_elems)
             }
             ty::TyScrutineeVariant::Tuple(elems) => {
                 let mut new_elems = PatStack::empty();
@@ -156,21 +169,20 @@ impl Pattern {
                 Pattern::Tuple(new_elems)
             }
             ty::TyScrutineeVariant::EnumScrutinee {
-                call_path, value, ..
-            } => {
-                let enum_name = call_path.prefixes.last().unwrap().to_string();
-                let variant_name = call_path.suffix.to_string();
-                Pattern::Enum(EnumPattern {
-                    enum_name,
-                    variant_name,
-                    value: Box::new(check!(
-                        Pattern::from_scrutinee(*value),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    )),
-                })
-            }
+                enum_ref,
+                variant,
+                value,
+                ..
+            } => Pattern::Enum(EnumPattern {
+                enum_name: enum_ref.name().to_string(),
+                variant_name: variant.name.to_string(),
+                value: Box::new(check!(
+                    Pattern::from_scrutinee(*value),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )),
+            }),
         };
         ok(pat, warnings, errors)
     }
@@ -495,7 +507,31 @@ impl Pattern {
                     errors
                 )
             }
-            Pattern::Or(_) => unreachable!(),
+            Pattern::Or(elems) => {
+                if elems.len() != args.len() {
+                    errors.push(CompileError::Internal(
+                        "malformed constructor request",
+                        span.clone(),
+                    ));
+                    return err(warnings, errors);
+                }
+                let pats: PatStack = check!(
+                    args.serialize_multi_patterns(span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+                .into_iter()
+                .map(Pattern::Or)
+                .collect::<Vec<_>>()
+                .into();
+                check!(
+                    Pattern::from_pat_stack(pats, span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
         };
         ok(pat, warnings, errors)
     }
@@ -678,7 +714,7 @@ impl Pattern {
         }
     }
 
-    pub(crate) fn matches_type_info(&self, type_info: &TypeInfo) -> bool {
+    pub(crate) fn matches_type_info(&self, type_info: &TypeInfo, decl_engine: &DeclEngine) -> bool {
         match (self, type_info) {
             (
                 Pattern::Enum(EnumPattern {
@@ -686,14 +722,12 @@ impl Pattern {
                     variant_name,
                     ..
                 }),
-                TypeInfo::Enum {
-                    call_path: r_enum_call_path,
-                    variant_types,
-                    ..
-                },
+                TypeInfo::Enum(r_enum_decl_ref),
             ) => {
-                l_enum_name.as_str() == r_enum_call_path.suffix.as_str()
-                    && variant_types
+                let r_decl = decl_engine.get_enum(r_enum_decl_ref);
+                l_enum_name.as_str() == r_decl.call_path.suffix.as_str()
+                    && r_decl
+                        .variants
                         .iter()
                         .map(|variant_type| variant_type.name.clone())
                         .any(|name| name.as_str() == variant_name.as_str())

@@ -1,4 +1,5 @@
-library vec;
+//! A vector type for dynamically sized arrays outside of storage.
+library;
 
 use ::alloc::{alloc, realloc};
 use ::assert::assert;
@@ -265,10 +266,12 @@ impl<T> Vec<T> {
 
         // Shift everything down to fill in that spot.
         let mut i = index;
-        while i < self.len {
-            let ptr = buf_start.add::<T>(i);
-            ptr.add::<T>(1).copy_to::<T>(ptr, 1);
-            i += 1;
+        if self.len > 1 {
+            while i < self.len {
+                let ptr = buf_start.add::<T>(i);
+                ptr.add::<T>(1).copy_to::<T>(ptr, 1);
+                i += 1;
+            }
         }
 
         // Decrease length.
@@ -446,4 +449,14 @@ impl<T> From<raw_slice> for Vec<T> {
     fn into(self) -> raw_slice {
         asm(ptr: (self.buf.ptr(), self.len)) { ptr: raw_slice }
     }
+}
+
+#[test()]
+fn test_vec_with_len_1() {
+    let mut ve: Vec<u64> = Vec::new();
+    assert(ve.len == 0);
+    ve.push(1);
+    assert(ve.len == 1);
+    let _ = ve.remove(0);
+    assert(ve.len == 0);
 }

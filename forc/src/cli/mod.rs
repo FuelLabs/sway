@@ -1,21 +1,24 @@
 use std::str::FromStr;
 
 use self::commands::{
-    addr2line, build, check, clean, completions, init, new, parse_bytecode, plugins, template,
-    test, update,
+    addr2line, build, check, clean, completions, contract_id, init, new, parse_bytecode, plugins,
+    predicate_root, template, test, update,
 };
 use addr2line::Command as Addr2LineCommand;
-use anyhow::{anyhow, Result};
+use anyhow::anyhow;
 pub use build::Command as BuildCommand;
 pub use check::Command as CheckCommand;
 use clap::{Parser, Subcommand};
 pub use clean::Command as CleanCommand;
 pub use completions::Command as CompletionsCommand;
+pub(crate) use contract_id::Command as ContractIdCommand;
 use forc_tracing::{init_tracing_subscriber, TracingSubscriberOptions};
+use forc_util::ForcResult;
 pub use init::Command as InitCommand;
 pub use new::Command as NewCommand;
 use parse_bytecode::Command as ParseBytecodeCommand;
 pub use plugins::Command as PluginsCommand;
+pub(crate) use predicate_root::Command as PredicateRootCommand;
 pub use template::Command as TemplateCommand;
 pub use test::Command as TestCommand;
 use tracing::metadata::LevelFilter;
@@ -62,6 +65,8 @@ enum Forc {
     Update(UpdateCommand),
     Plugins(PluginsCommand),
     Template(TemplateCommand),
+    ContractId(ContractIdCommand),
+    PredicateRoot(PredicateRootCommand),
     /// This is a catch-all for unknown subcommands and their arguments.
     ///
     /// When we receive an unknown subcommand, we check for a plugin exe named
@@ -74,7 +79,7 @@ enum Forc {
     Plugin(Vec<String>),
 }
 
-pub async fn run_cli() -> Result<()> {
+pub async fn run_cli() -> ForcResult<()> {
     let opt = Opt::parse();
     let tracing_options = TracingSubscriberOptions {
         verbosity: Some(opt.verbose),
@@ -98,6 +103,8 @@ pub async fn run_cli() -> Result<()> {
         Forc::Test(command) => test::exec(command),
         Forc::Update(command) => update::exec(command).await,
         Forc::Template(command) => template::exec(command),
+        Forc::ContractId(command) => contract_id::exec(command),
+        Forc::PredicateRoot(command) => predicate_root::exec(command),
         Forc::Plugin(args) => {
             let output = plugin::execute_external_subcommand(args)?;
             let code = output

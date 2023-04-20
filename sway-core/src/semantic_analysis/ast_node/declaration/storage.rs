@@ -12,13 +12,14 @@ use sway_error::error::CompileError;
 use sway_ir::{Context, Module};
 use sway_types::state::StateIndex;
 
-impl ty::TyStorageDeclaration {
+impl ty::TyStorageDecl {
     pub(crate) fn get_initialized_storage_slots(
         &self,
         engines: Engines<'_>,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         module: Module,
+        experimental_storage: bool,
     ) -> CompileResult<Vec<StorageSlot>> {
         let mut errors = vec![];
         let storage_slots = self
@@ -32,6 +33,7 @@ impl ty::TyStorageDeclaration {
                     md_mgr,
                     module,
                     &StateIndex::new(i),
+                    experimental_storage,
                 )
             })
             .filter_map(|s| s.map_err(|e| errors.push(e)).ok())
@@ -53,6 +55,7 @@ impl ty::TyStorageField {
         md_mgr: &mut MetadataManager,
         module: Module,
         ix: &StateIndex,
+        experimental_storage: bool,
     ) -> Result<Vec<StorageSlot>, CompileError> {
         compile_constant_expression_to_constant(
             engines,
@@ -63,6 +66,15 @@ impl ty::TyStorageField {
             None,
             &self.initializer,
         )
-        .map(|constant| serialize_to_storage_slots(&constant, context, ix, &constant.ty, &[]))
+        .map(|constant| {
+            serialize_to_storage_slots(
+                &constant,
+                context,
+                ix,
+                &constant.ty,
+                &[],
+                experimental_storage,
+            )
+        })
     }
 }

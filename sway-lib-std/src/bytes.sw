@@ -1,5 +1,5 @@
 //! The `Bytes` type is used when a collection of tightly-packed arbitrary bytes is needed.
-library bytes;
+library;
 
 use ::{alloc::{alloc_bytes, realloc_bytes}, vec::Vec};
 use ::assert::assert;
@@ -50,6 +50,7 @@ impl RawBytes {
     }
 }
 
+/// A type used to represent raw bytes.
 pub struct Bytes {
     buf: RawBytes,
     len: u64,
@@ -636,7 +637,7 @@ impl Bytes {
     /// assert(bytes.len() == first_length + second_length);
     /// assert(bytes.capacity() == first_length + first_length);
     /// ```
-    pub fn append(ref mut self, ref other: self) {
+    pub fn append(ref mut self, ref mut other: self) {
         if other.len == 0 {
             return
         };
@@ -668,6 +669,18 @@ impl Bytes {
         // clear `other`
         other.clear();
     }
+
+    // Should be remove and replace when https://github.com/FuelLabs/sway/pull/3882 is resovled
+    pub fn from_raw_slice(slice: raw_slice) -> Self {
+        let number_of_bytes = slice.number_of_bytes();
+        Self {
+            buf: RawBytes {
+                ptr: slice.ptr(),
+                cap: number_of_bytes,
+            },
+            len: number_of_bytes,
+        }
+    }
 }
 
 impl core::ops::Eq for Bytes {
@@ -680,6 +693,13 @@ impl core::ops::Eq for Bytes {
             meq result r2 r3 r4;
             result: bool
         }
+    }
+}
+
+impl AsRawSlice for Bytes {
+    /// Returns a raw slice of all of the elements in the vector.
+    fn as_raw_slice(self) -> raw_slice {
+        asm(ptr: (self.buf.ptr(), self.len)) { ptr: raw_slice }
     }
 }
 
@@ -885,7 +905,7 @@ fn test_swap() {
 
 #[test()]
 fn test_set() {
-    let (mut bytes, a, b, c) = setup();
+    let (mut bytes, a, _b, c) = setup();
     assert(bytes.len() == 3);
     let d = 11u8;
 
@@ -950,7 +970,7 @@ fn test_bytes_limits() {
 
 #[test()]
 fn test_split_at() {
-    let (mut original, a, b, c) = setup();
+    let (mut original, _a, _b, _c) = setup();
     assert(original.len() == 3);
     let index = 1;
     let (left, right) = original.split_at(index);
@@ -962,7 +982,7 @@ fn test_split_at() {
 
 #[test()]
 fn test_split_at_0() {
-    let (mut original, a, b, c) = setup();
+    let (mut original, _a, _b, _c) = setup();
     assert(original.len() == 3);
     let index = 0;
     let (left, right) = original.split_at(index);
@@ -974,7 +994,7 @@ fn test_split_at_0() {
 
 #[test()]
 fn test_split_at_len() {
-    let (mut original, a, b, c) = setup();
+    let (mut original, _a, _b, _c) = setup();
     assert(original.len() == 3);
     let index = 3;
     let (left, right) = original.split_at(index);
@@ -1006,8 +1026,8 @@ fn test_append() {
 
     let first_length = bytes.len();
     let second_length = bytes2.len();
-    let first_cap = bytes.capacity();
-    let second_cap = bytes2.capacity();
+    let _first_cap = bytes.capacity();
+    let _second_cap = bytes2.capacity();
     bytes.append(bytes2);
     assert(bytes.len() == first_length + second_length);
     assert(bytes.capacity() == first_length + first_length);
@@ -1044,8 +1064,8 @@ fn test_append_to_empty_bytes() {
     let (mut bytes2, a, b, c) = setup();
     assert(bytes2.len() == 3);
 
-    let first_length = bytes.len();
-    let first_cap = bytes.capacity();
+    let _first_length = bytes.len();
+    let _first_cap = bytes.capacity();
     let second_length = bytes2.len();
     let second_cap = bytes2.capacity();
     bytes.append(bytes2);
@@ -1065,8 +1085,8 @@ fn test_append_to_empty_bytes() {
 
 #[test()]
 fn test_eq() {
-    let (mut bytes, a, b, c) = setup();
-    let (mut bytes2, a, b, c) = setup();
+    let (mut bytes, _a, _b, _c) = setup();
+    let (mut bytes2, _a, _b, _c) = setup();
     assert(bytes == bytes2);
 
     let d = 5u8;
@@ -1091,7 +1111,7 @@ fn test_eq() {
 #[test()]
 fn test_sha256() {
     use ::hash::sha256;
-    let (mut bytes, a, b, c) = setup();
+    let (mut bytes, _a, _b, _c) = setup();
     bytes.push(0u8);
     bytes.push(0u8);
     bytes.push(0u8);
@@ -1105,7 +1125,7 @@ fn test_sha256() {
 #[test()]
 fn test_keccak256() {
     use ::hash::keccak256;
-    let (mut bytes, a, b, c) = setup();
+    let (mut bytes, _a, _b, _c) = setup();
     bytes.push(0u8);
     bytes.push(0u8);
     bytes.push(0u8);
@@ -1114,6 +1134,27 @@ fn test_keccak256() {
 
     // The u8 bytes [5, 7, 9, 0, 0, 0, 0, 0] are equivalent to the u64 integer "362268190631264256"
     assert(keccak256(362268190631264256) == bytes.keccak256());
+}
+
+#[test()]
+fn test_as_raw_slice() {
+    let val = 0x3497297632836282349729763283628234972976328362823497297632836282;
+    let slice_1 = asm(ptr: (__addr_of(val), 32)) { ptr: raw_slice };
+    let mut bytes = Bytes::from_raw_slice(slice_1);
+    let slice_2 = bytes.as_raw_slice();
+    assert(slice_1.ptr() == slice_2.ptr());
+    assert(slice_1.number_of_bytes() == slice_2.number_of_bytes());
+}
+
+// This test will need to be updated once https://github.com/FuelLabs/sway/pull/3882 is resolved
+#[test()]
+fn test_from_raw_slice() {
+    let val = 0x3497297632836282349729763283628234972976328362823497297632836282;
+    let slice_1 = asm(ptr: (__addr_of(val), 32)) { ptr: raw_slice };
+    let mut bytes = Bytes::from_raw_slice(slice_1);
+    let slice_2 = bytes.as_raw_slice();
+    assert(slice_1.ptr() == slice_2.ptr());
+    assert(slice_1.number_of_bytes() == slice_2.number_of_bytes());
 }
 
 #[test]

@@ -1,8 +1,6 @@
 use swayfmt::FormatterError;
 use thiserror::Error;
 
-use crate::capabilities::diagnostic::Diagnostics;
-
 #[derive(Debug, Error)]
 pub enum LanguageServerError {
     // Inherited errors
@@ -10,6 +8,8 @@ pub enum LanguageServerError {
     DocumentError(#[from] DocumentError),
     #[error(transparent)]
     DirectoryError(#[from] DirectoryError),
+    #[error(transparent)]
+    RenameError(#[from] RenameError),
 
     // Top level errors
     #[error("Failed to create build plan. {0}")]
@@ -17,7 +17,7 @@ pub enum LanguageServerError {
     #[error("Failed to compile. {0}")]
     FailedToCompile(anyhow::Error),
     #[error("Failed to parse document")]
-    FailedToParse { diagnostics: Diagnostics },
+    FailedToParse,
     #[error("Error formatting document: {0}")]
     FormatError(FormatterError),
 }
@@ -58,4 +58,22 @@ pub enum DirectoryError {
     StripPrefixError(std::path::StripPrefixError),
     #[error("Unable to create Url from path {:?}", path)]
     UrlFromPathFailed { path: String },
+}
+
+#[derive(Debug, Error, PartialEq, Eq)]
+pub enum RenameError {
+    #[error("No token was found in the token map at that position")]
+    TokenNotFound,
+    #[error("Token is not part of the user's workspace")]
+    TokenNotPartOfWorkspace,
+    #[error("Keywords and instrinsics are unable to be renamed")]
+    SymbolKindNotAllowed,
+    #[error("Invalid name {:?}: not an identifier", name)]
+    InvalidName { name: String },
+    #[error("Identifiers cannot begin with a double underscore, as that naming convention is reserved for compiler intrinsics.")]
+    InvalidDoubleUnderscore,
+    #[error("The file {:?}: already exists", path)]
+    FileAlreadyExists { path: String },
+    #[error("The module {:?}: cannot be renamed", path)]
+    UnableToRenameModule { path: String },
 }

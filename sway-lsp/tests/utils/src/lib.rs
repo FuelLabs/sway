@@ -9,7 +9,7 @@ use std::{
     time::Duration,
 };
 use tokio::task::JoinHandle;
-use tower_lsp::{lsp_types::Url, ClientSocket};
+use tower_lsp::{jsonrpc::Response, lsp_types::Url, ClientSocket, ExitedError};
 
 pub fn load_sway_example(src_path: PathBuf) -> (Url, String) {
     let mut file = fs::File::open(&src_path).unwrap();
@@ -104,7 +104,7 @@ pub async fn assert_server_requests(
     tokio::spawn(async move {
         let request_stream = socket.take(expected_requests.len()).collect::<Vec<_>>();
         let requests =
-            tokio::time::timeout(timeout.unwrap_or(Duration::from_secs(5)), request_stream)
+            tokio::time::timeout(timeout.unwrap_or(Duration::from_secs(10)), request_stream)
                 .await
                 .expect("Timed out waiting for requests from server");
 
@@ -121,4 +121,17 @@ pub async fn assert_server_requests(
             );
         }
     })
+}
+
+pub fn extract_result_array(response: Result<Option<Response>, ExitedError>) -> Vec<Value> {
+    response
+        .unwrap()
+        .unwrap()
+        .into_parts()
+        .1
+        .ok()
+        .unwrap()
+        .as_array()
+        .unwrap()
+        .clone()
 }

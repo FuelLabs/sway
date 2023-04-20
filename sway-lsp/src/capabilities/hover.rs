@@ -26,7 +26,10 @@ pub fn hover_data(
     let range = get_range_from_span(&ident.span());
 
     // check if our token is a keyword
-    if token.kind == SymbolKind::Keyword {
+    if matches!(
+        token.kind,
+        SymbolKind::BoolLiteral | SymbolKind::Keyword | SymbolKind::SelfKeyword
+    ) {
         let name = ident.as_str();
         let documentation = keyword_docs.get(name).unwrap();
         let prefix = format!("\n```sway\n{name}\n```\n\n---\n\n");
@@ -39,7 +42,10 @@ pub fn hover_data(
         });
     }
 
-    let (decl_ident, decl_token) = match token.declared_token_ident(&session.type_engine.read()) {
+    let te = session.type_engine.read();
+    let de = session.decl_engine.read();
+    let engines = Engines::new(&te, &de);
+    let (decl_ident, decl_token) = match token.declared_token_ident(engines) {
         Some(decl_ident) => {
             let decl_token = session
                 .token_map()
@@ -53,11 +59,7 @@ pub fn hover_data(
         None => (ident, token),
     };
 
-    let contents = hover_format(
-        Engines::new(&session.type_engine.read(), &session.decl_engine.read()),
-        &decl_token,
-        &decl_ident,
-    );
+    let contents = hover_format(engines, &decl_token, &decl_ident);
     Some(lsp_types::Hover {
         contents,
         range: Some(range),
@@ -83,7 +85,7 @@ fn format_doc_attributes(token: &Token) -> String {
         doc_comment = attributes
             .iter()
             .map(|attribute| {
-                let comment = attribute.args.first().unwrap().as_str();
+                let comment = attribute.args.first().unwrap().name.as_str();
                 format!("{comment}\n")
             })
             .collect()
@@ -130,7 +132,7 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
         .as_ref()
         .and_then(|typed_token| match typed_token {
             TypedAstToken::TypedDeclaration(decl) => match decl {
-                ty::TyDeclaration::VariableDeclaration(var_decl) => {
+                ty::TyDecl::VariableDecl(var_decl) => {
                     let type_name =
                         format!("{}", engines.help_out(var_decl.type_ascription.type_id));
                     Some(format_variable_hover(
@@ -139,36 +141,33 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
                         &token_name,
                     ))
                 }
-                ty::TyDeclaration::StructDeclaration { decl_id, .. } => decl_engine
-                    .get_struct(decl_id, &decl.span())
-                    .map(|struct_decl| {
-                        format_visibility_hover(
-                            struct_decl.visibility,
-                            decl.friendly_type_name(),
-                            &token_name,
-                        )
-                    })
-                    .ok(),
-                ty::TyDeclaration::TraitDeclaration { decl_id, .. } => decl_engine
-                    .get_trait(decl_id, &decl.span())
-                    .map(|trait_decl| {
-                        format_visibility_hover(
-                            trait_decl.visibility,
-                            decl.friendly_type_name(),
-                            &token_name,
-                        )
-                    })
-                    .ok(),
-                ty::TyDeclaration::EnumDeclaration { decl_id, .. } => decl_engine
-                    .get_enum(decl_id, &decl.span())
-                    .map(|enum_decl| {
-                        format_visibility_hover(
-                            enum_decl.visibility,
-                            decl.friendly_type_name(),
-                            &token_name,
-                        )
-                    })
-                    .ok(),
+                ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
+                    let struct_decl = decl_engine.get_struct(decl_id);
+                    Some(format_visibility_hover(
+                        struct_decl.visibility,
+                        decl.friendly_type_name(),
+                        &token_name,
+                    ))
+                }
+                ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. }) => {
+                    let trait_decl = decl_engine.get_trait(decl_id);
+                    Some(format_visibility_hover(
+                        trait_decl.visibility,
+                        decl.friendly_type_name(),
+                        &token_name,
+                    ))
+                }
+                ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
+                    let enum_decl = decl_engine.get_enum(decl_id);
+                    Some(format_visibility_hover(
+                        enum_decl.visibility,
+                        decl.friendly_type_name(),
+                        &token_name,
+                    ))
+                }
+                ty::TyDecl::AbiDecl { .. } => {
+                    Some(format!("{} {}", decl.friendly_type_name(), &token_name))
+                }
                 _ => None,
             },
             TypedAstToken::TypedFunctionDeclaration(func) => {

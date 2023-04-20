@@ -1,5 +1,5 @@
 script;
 
 fn main() {
-   let x:u8 = 256;
+   let _x:u8 = 256;
 }

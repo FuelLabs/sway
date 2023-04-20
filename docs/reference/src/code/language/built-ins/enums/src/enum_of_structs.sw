@@ -1,4 +1,4 @@
-library enum_of_structs;
+library;
 
 // ANCHOR: content
 struct Item {

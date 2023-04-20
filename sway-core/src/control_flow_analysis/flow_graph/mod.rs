@@ -1,21 +1,24 @@
 //! This is the flow graph, a graph which contains edges that represent possible steps of program
 //! execution.
 
-use std::collections::HashMap;
+use std::{collections::HashMap, fs};
 
 use crate::{
     decl_engine::*,
+    engine_threading::DebugWithEngines,
     language::ty::{self, GetDeclIdent},
-    Engines, Ident,
+    transform, Engines, Ident,
 };
 
-use sway_types::{span::Span, BaseIdent, IdentUnique};
+use sway_types::{span::Span, BaseIdent, IdentUnique, Spanned};
 
 use petgraph::{graph::EdgeIndex, prelude::NodeIndex};
 
 mod namespace;
 use namespace::ControlFlowNamespace;
 pub(crate) use namespace::FunctionNamespaceEntry;
+pub(crate) use namespace::TraitNamespaceEntry;
+pub(crate) use namespace::VariableNamespaceEntry;
 
 pub type EntryPoint = NodeIndex;
 pub type ExitPoint = NodeIndex;
@@ -54,23 +57,33 @@ impl std::convert::From<&str> for ControlFlowGraphEdge {
 pub enum ControlFlowGraphNode<'cfg> {
     OrganizationalDominator(String),
     #[allow(clippy::large_enum_variant)]
-    ProgramNode(ty::TyAstNode),
+    ProgramNode {
+        node: ty::TyAstNode,
+        parent_node: Option<NodeIndex>,
+    },
     EnumVariant {
+        enum_decl_id: DeclId<ty::TyEnumDecl>,
         variant_name: Ident,
         is_public: bool,
     },
     MethodDeclaration {
         span: Span,
         method_name: Ident,
-        method_decl_ref: DeclRef,
+        method_decl_ref: DeclRefFunction,
         engines: Engines<'cfg>,
     },
     StructField {
+        struct_decl_id: DeclId<ty::TyStructDecl>,
         struct_field_name: Ident,
+        attributes: transform::AttributesMap,
         span: Span,
     },
     StorageField {
         field_name: Ident,
+    },
+    FunctionParameter {
+        param_name: Ident,
+        is_self: bool,
     },
 }
 
@@ -78,7 +91,7 @@ impl<'cfg> GetDeclIdent for ControlFlowGraphNode<'cfg> {
     fn get_decl_ident(&self) -> Option<Ident> {
         match self {
             ControlFlowGraphNode::OrganizationalDominator(_) => None,
-            ControlFlowGraphNode::ProgramNode(node) => node.get_decl_ident(),
+            ControlFlowGraphNode::ProgramNode { node, .. } => node.get_decl_ident(),
             ControlFlowGraphNode::EnumVariant { variant_name, .. } => Some(variant_name.clone()),
             ControlFlowGraphNode::MethodDeclaration { method_name, .. } => {
                 Some(method_name.clone())
@@ -87,6 +100,7 @@ impl<'cfg> GetDeclIdent for ControlFlowGraphNode<'cfg> {
                 struct_field_name, ..
             } => Some(struct_field_name.clone()),
             ControlFlowGraphNode::StorageField { field_name, .. } => Some(field_name.clone()),
+            ControlFlowGraphNode::FunctionParameter { param_name, .. } => Some(param_name.clone()),
         }
     }
 }
@@ -99,20 +113,6 @@ impl<'cfg> std::convert::From<&ty::TyStorageField> for ControlFlowGraphNode<'cfg
     }
 }
 
-impl<'cfg> std::convert::From<&ty::TyAstNode> for ControlFlowGraphNode<'cfg> {
-    fn from(other: &ty::TyAstNode) -> Self {
-        ControlFlowGraphNode::ProgramNode(other.clone())
-    }
-}
-
-impl<'cfg> std::convert::From<&ty::TyStructField> for ControlFlowGraphNode<'cfg> {
-    fn from(other: &ty::TyStructField) -> Self {
-        ControlFlowGraphNode::StructField {
-            struct_field_name: other.name.clone(),
-            span: other.span.clone(),
-        }
-    }
-}
 impl<'cfg> std::convert::From<String> for ControlFlowGraphNode<'cfg> {
     fn from(other: String) -> Self {
         ControlFlowGraphNode::OrganizationalDominator(other)
@@ -125,11 +125,13 @@ impl<'cfg> std::convert::From<&str> for ControlFlowGraphNode<'cfg> {
     }
 }
 
-impl<'cfg> std::fmt::Debug for ControlFlowGraphNode<'cfg> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl<'cfg> DebugWithEngines for ControlFlowGraphNode<'cfg> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, engines: Engines<'_>) -> std::fmt::Result {
         let text = match self {
             ControlFlowGraphNode::OrganizationalDominator(s) => s.to_string(),
-            ControlFlowGraphNode::ProgramNode(node) => format!("{node:?}"),
+            ControlFlowGraphNode::ProgramNode { node, .. } => {
+                format!("{:?}", engines.help_out(node))
+            }
             ControlFlowGraphNode::EnumVariant { variant_name, .. } => {
                 format!("Enum variant {variant_name}")
             }
@@ -140,9 +142,7 @@ impl<'cfg> std::fmt::Debug for ControlFlowGraphNode<'cfg> {
                 ..
             } => {
                 let decl_engines = engines.de();
-                let method = decl_engines
-                    .get_function(method_decl_ref, &Span::dummy())
-                    .unwrap();
+                let method = decl_engines.get_function(method_decl_ref);
                 if let Some(implementing_type) = method.implementing_type {
                     format!(
                         "Method {}.{}",
@@ -160,6 +160,9 @@ impl<'cfg> std::fmt::Debug for ControlFlowGraphNode<'cfg> {
             }
             ControlFlowGraphNode::StorageField { field_name } => {
                 format!("Storage field {}", field_name.as_str())
+            }
+            ControlFlowGraphNode::FunctionParameter { param_name, .. } => {
+                format!("Function param {}", param_name.as_str())
             }
         };
         f.write_str(&text)
@@ -205,23 +208,104 @@ impl<'cfg> ControlFlowGraph<'cfg> {
     }
 
     /// Prints out GraphViz DOT format for this graph.
-    pub(crate) fn visualize(&self) {
-        use petgraph::dot::{Config, Dot};
-        tracing::info!(
-            "{:?}",
-            Dot::with_config(&self.graph, &[Config::EdgeNoLabel])
-        );
+    pub(crate) fn visualize(
+        &self,
+        engines: Engines<'_>,
+        print_graph: Option<String>,
+        print_graph_url_format: Option<String>,
+    ) {
+        if let Some(graph_path) = print_graph {
+            use petgraph::dot::{Config, Dot};
+            let string_graph = self.graph.filter_map(
+                |_idx, node| Some(format!("{:?}", engines.help_out(node))),
+                |_idx, edge| Some(edge.0.clone()),
+            );
+
+            let output = format!(
+                "{:?}",
+                Dot::with_attr_getters(
+                    &string_graph,
+                    &[Config::NodeNoLabel, Config::EdgeNoLabel],
+                    &|_, er| format!("label = {:?}", er.weight()),
+                    &|_, nr| {
+                        let node = &self.graph[nr.0];
+                        let mut shape = "";
+                        if self.entry_points.contains(&nr.0) {
+                            shape = "shape=doubleoctagon";
+                        }
+                        let mut url = "".to_string();
+                        if let Some(url_format) = print_graph_url_format.clone() {
+                            if let Some(span) = node.span() {
+                                if let Some(path) = span.path_str() {
+                                    let (line, col) = span.start_pos().line_col();
+                                    let url_format = url_format
+                                        .replace("{path}", path.to_string().as_str())
+                                        .replace("{line}", line.to_string().as_str())
+                                        .replace("{col}", col.to_string().as_str());
+                                    url = format!("URL = {url_format:?}");
+                                }
+                            }
+                        }
+                        format!("{shape} label = {:?} {url}", nr.1)
+                    },
+                )
+            );
+
+            if graph_path.is_empty() {
+                tracing::info!("{output}");
+            } else {
+                let result = fs::write(graph_path.clone(), output);
+                if let Some(error) = result.err() {
+                    tracing::error!(
+                        "There was an issue while outputing DCA grap to path {graph_path:?}\n{error}"
+                    );
+                }
+            }
+        }
     }
 }
 
 impl<'cfg> ControlFlowGraphNode<'cfg> {
     pub(crate) fn from_enum_variant(
+        enum_decl_id: DeclId<ty::TyEnumDecl>,
         other_name: BaseIdent,
         is_public: bool,
     ) -> ControlFlowGraphNode<'cfg> {
         ControlFlowGraphNode::EnumVariant {
+            enum_decl_id,
             variant_name: other_name,
             is_public,
+        }
+    }
+
+    pub(crate) fn from_node_with_parent(
+        node: &ty::TyAstNode,
+        parent_node: Option<NodeIndex>,
+    ) -> ControlFlowGraphNode<'cfg> {
+        ControlFlowGraphNode::ProgramNode {
+            node: node.clone(),
+            parent_node,
+        }
+    }
+
+    pub(crate) fn from_node(node: &ty::TyAstNode) -> ControlFlowGraphNode<'cfg> {
+        ControlFlowGraphNode::ProgramNode {
+            node: node.clone(),
+            parent_node: None,
+        }
+    }
+
+    fn span(&self) -> Option<Span> {
+        match self {
+            ControlFlowGraphNode::OrganizationalDominator(_) => None,
+            ControlFlowGraphNode::ProgramNode { node, .. } => Some(node.span.clone()),
+            ControlFlowGraphNode::EnumVariant { variant_name, .. } => Some(variant_name.span()),
+            ControlFlowGraphNode::MethodDeclaration { span, .. } => Some(span.clone()),
+            ControlFlowGraphNode::StructField {
+                struct_field_name, ..
+            } => Some(struct_field_name.span()),
+            ControlFlowGraphNode::StorageField { field_name } => Some(field_name.span()),
+            ControlFlowGraphNode::FunctionParameter { param_name, .. } => Some(param_name.span()),
         }
     }
 }

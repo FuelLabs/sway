@@ -1,4 +1,4 @@
-library basic_enum;
+library;
 
 // ANCHOR: definition
 enum Color {

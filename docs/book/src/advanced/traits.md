@@ -58,6 +58,55 @@ impl Ord for u64 {
 
 To require a supertrait, add a `:` after the trait name and then list the traits you would like to require and separate them with a `+`.
 
+### ABI supertraits
+
+ABIs can also have supertrait annotations:
+
+```sway
+{{#include ../../../../examples/abi_supertraits/src/main.sw}}
+```
+
+The implementation of `MyAbi` for `Contract` must also implement the `ABIsupertrait` trait. Methods in `ABIsupertrait` are not available externally, i.e. they're not actually contract methods, but they can be used in the actual contract methods, as shown in the example above.
+
+ABI supertraits are intended to make contract implementations compositional, allowing combining orthogonal contract features using, for instance, libraries.
+
+## Associated Items
+
+Traits can declare different kinds of associated items in their interface surface:
+
+- [Functions](#associated-functions)
+- [Constants](#associated-constants)
+
+### Associated functions
+
+Associated functions in traits consist of just function signatures. This indicates that each implementation of the trait for a given type must define all the trait functions.
+
+```sway
+trait Trait {
+    fn associated_fn(self, b: Self) -> bool;
+}
+```
+
+### Associated constants
+
+Associated constants are constants associated with a type.
+
+```sway
+trait Trait {
+    const ID: u32 = 0;
+}
+```
+
+The initializer expression of an [associated constants](../basic/consts.md#associated-constants) in a trait definition may be omitted to indicate that each implementation of the `trait` for a given type must specify an initializer:
+
+```sway
+trait Trait {
+    const ID: u32;
+}
+```
+
+Check the `associated consts` section on [constants](../basic/consts.md) page.
+
 ## Use Cases
 
 ### Custom Types (structs, enums)
@@ -65,7 +114,7 @@ To require a supertrait, add a `:` after the trait name and then list the traits
 Often, libraries and APIs have interfaces that are abstracted over a type that implements a certain trait. It is up to the consumer of the interface to implement that trait for the type they wish to use with the interface. For example, let's take a look at a trait and an interface built off of it.
 
 ```sway
-library games;
+library;
 
 pub enum Suit {
     Hearts: (),

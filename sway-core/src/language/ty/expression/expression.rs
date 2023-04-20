@@ -8,7 +8,7 @@ use crate::{
     error::*,
     language::{ty::*, Literal},
     type_system::*,
-    types::DeterministicallyAborts,
+    types::*,
 };
 
 #[derive(Clone, Debug)]
@@ -64,11 +64,29 @@ impl ReplaceDecls for TyExpression {
     }
 }
 
+impl UpdateConstantExpression for TyExpression {
+    fn update_constant_expression(&mut self, engines: Engines<'_>, implementing_type: &TyDecl) {
+        self.expression
+            .update_constant_expression(engines, implementing_type)
+    }
+}
+
 impl DisplayWithEngines for TyExpression {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         write!(
             f,
             "{} ({})",
+            engines.help_out(&self.expression),
+            engines.help_out(self.return_type)
+        )
+    }
+}
+
+impl DebugWithEngines for TyExpression {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{:?} ({:?})",
             engines.help_out(&self.expression),
             engines.help_out(self.return_type)
         )
@@ -93,7 +111,7 @@ impl CollectTypesMetadata for TyExpression {
         match &self.expression {
             FunctionApplication {
                 arguments,
-                function_decl_ref,
+                fn_ref,
                 call_path,
                 ..
             } => {
@@ -105,10 +123,7 @@ impl CollectTypesMetadata for TyExpression {
                         errors
                     ));
                 }
-                let function_decl = match decl_engine.get_function(function_decl_ref, &self.span) {
-                    Ok(decl) => decl,
-                    Err(e) => return err(vec![], vec![e]),
-                };
+                let function_decl = decl_engine.get_function(fn_ref);
 
                 ctx.call_site_push();
                 for type_parameter in function_decl.type_parameters {
@@ -147,13 +162,20 @@ impl CollectTypesMetadata for TyExpression {
                     }
                 }
             }
-            StructExpression { fields, span, .. } => {
-                if let TypeInfo::Struct {
-                    type_parameters, ..
-                } = ctx.type_engine.get(self.return_type)
-                {
-                    for type_parameter in type_parameters {
-                        ctx.call_site_insert(type_parameter.type_id, span.clone());
+            StructExpression {
+                fields,
+                instantiation_span,
+                struct_ref,
+                ..
+            } => {
+                let struct_decl = decl_engine.get_struct(struct_ref);
+                for type_parameter in struct_decl.type_parameters {
+                    ctx.call_site_insert(type_parameter.type_id, instantiation_span.clone());
+                }
+                if let TypeInfo::Struct(decl_ref) = ctx.type_engine.get(self.return_type) {
+                    let decl = decl_engine.get_struct(&decl_ref);
+                    for type_parameter in decl.type_parameters {
+                        ctx.call_site_insert(type_parameter.type_id, instantiation_span.clone());
                     }
                 }
                 for field in fields.iter() {
@@ -179,7 +201,10 @@ impl CollectTypesMetadata for TyExpression {
                     errors
                 ));
             }
-            Array { contents } => {
+            Array {
+                elem_type: _,
+                contents,
+            } => {
                 for content in contents.iter() {
                     res.append(&mut check!(
                         content.collect_types_metadata(ctx),
@@ -282,11 +307,12 @@ impl CollectTypesMetadata for TyExpression {
                 ));
             }
             EnumInstantiation {
-                enum_decl,
+                enum_ref,
                 contents,
                 call_path_binding,
                 ..
             } => {
+                let enum_decl = decl_engine.get_enum(enum_ref);
                 for type_param in enum_decl.type_parameters.iter() {
                     ctx.call_site_insert(type_param.type_id, call_path_binding.inner.suffix.span())
                 }
@@ -379,6 +405,7 @@ impl CollectTypesMetadata for TyExpression {
             // variable expressions don't ever have return types themselves, they're stored in
             // `TyExpression::return_type`. Variable expressions are just names of variables.
             VariableExpression { .. }
+            | ConstantExpression { .. }
             | StorageAccess { .. }
             | Literal(_)
             | AbiName(_)
@@ -419,17 +446,12 @@ impl DeterministicallyAborts for TyExpression {
         use TyExpressionVariant::*;
         match &self.expression {
             FunctionApplication {
-                function_decl_ref,
-                arguments,
-                ..
+                fn_ref, arguments, ..
             } => {
                 if !check_call_body {
                     return false;
                 }
-                let function_decl = match decl_engine.get_function(function_decl_ref, &self.span) {
-                    Ok(decl) => decl,
-                    Err(_e) => panic!("failed to get function"),
-                };
+                let function_decl = decl_engine.get_function(fn_ref);
                 function_decl
                     .body
                     .deterministically_aborts(decl_engine, check_call_body)
@@ -460,6 +482,7 @@ impl DeterministicallyAborts for TyExpression {
             | Literal(_)
             | StorageAccess { .. }
             | VariableExpression { .. }
+            | ConstantExpression { .. }
             | FunctionParameter
             | TupleElemAccess { .. } => false,
             IntrinsicFunction(kind) => kind.deterministically_aborts(decl_engine, check_call_body),

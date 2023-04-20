@@ -3,6 +3,8 @@
 mod auth;
 mod block;
 mod call_frames;
+mod configurables_in_contract;
+mod configurables_in_script;
 mod context;
 mod contract_bytecode;
 mod ec_recover;
@@ -30,4 +32,5 @@ mod storage_map;
 mod storage_vec;
 mod token_ops;
 mod tx_fields;
+mod type_aliases;
 mod vec_in_abi;
