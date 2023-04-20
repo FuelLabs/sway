@@ -25,12 +25,20 @@ impl Renderable for DocLinks {
     fn render(self, _render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
         let mut links_vec = Vec::new();
         // sort the doc links alphabetically
-        // for the AllDoc page, sort based on the module prefix
+        // for the AllDoc page, sort based on the module prefix and name
         match self.style {
             DocStyle::AllDoc(_) => {
                 for (block_title, mut doc_link) in self.links {
                     doc_link.sort_by(|a, b| {
-                        a.module_info.module_prefixes[1].cmp(&b.module_info.module_prefixes[1])
+                        let first = a.module_info.to_path_literal_string(
+                            &a.name,
+                            a.module_info.project_name()
+                        );
+                        let second = b.module_info.to_path_literal_string(
+                            &b.name,
+                            b.module_info.project_name()
+                        );
+                        first.cmp(&second)
                     });
                     links_vec.push((block_title, doc_link));
                 }
