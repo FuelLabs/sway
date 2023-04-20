@@ -25,3 +25,7 @@ Math in the FuelVM is by default safe (i.e. any overflow or exception is a panic
 ## No* Code Size Limit
 
 There is no practical code size limit to Sway contracts. The physical limit is governed by the [`VM_MAX_RAM` VM parameter](https://fuellabs.github.io/fuel-specs/master/vm#parameters), which at the time of writing is 64 MiB.
+
+## Account Types
+
+Account types in the FuelVM have type-safe wrappers around primitive `b256` hashes to clearly distinguish their respective types. The wrapper `Address` mirrors that of an EOA (Externally Owned Account) and has the ability to hold UTXOs in the context of the EVM. The other wrapper, `ContractId`, reflects that of a deployed contract in the EVM but cannot hold UTXOs.
