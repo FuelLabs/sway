@@ -83,7 +83,7 @@ abi StorageTest {
     fn store_b256(value: b256);
     #[storage(read)]
     fn get_b256() -> Option<b256>;
-    
+
     #[storage(write)]
     fn clear_small_struct() -> bool;
     #[storage(write)]
@@ -206,7 +206,6 @@ impl StorageTest for Contract {
     fn clear_u64() -> bool {
         clear::<u64>(S_5)
     }
-
 
     #[storage(write)]
     fn store_u64(value: u64) {
@@ -371,11 +370,11 @@ impl StorageTest for Contract {
         let post_sp = stack_ptr();
 
         if pre_sp != post_sp {
-            111         // Code to indicate bad stack (it would probably crash before here though).
+            111 // Code to indicate bad stack (it would probably crash before here though).
         } else if !res {
-            222         // Code to indicate storage I/O failure.
+            222 // Code to indicate storage I/O failure.
         } else {
-            333         // Code for success - something non-trivial so we can't accidentally succeed.
+            333 // Code for success - something non-trivial so we can't accidentally succeed.
         }
     }
 }
