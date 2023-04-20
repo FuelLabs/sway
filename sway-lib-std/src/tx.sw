@@ -112,10 +112,10 @@ pub fn tx_witnesses_count() -> u64 {
 
 /// Get a pointer to the witness at index `index` for either `tx_type`
 /// (transaction-script or transaction-create).
-pub fn tx_witness_pointer(_index: u64) -> u64 {
+pub fn tx_witness_pointer(index: u64) -> u64 {
     match tx_type() {
-        Transaction::Script => __gtf::<u64>(0, GTF_SCRIPT_WITNESS_AT_INDEX),
-        Transaction::Create => __gtf::<u64>(0, GTF_CREATE_WITNESS_AT_INDEX),
+        Transaction::Script => __gtf::<u64>(index, GTF_SCRIPT_WITNESS_AT_INDEX),
+        Transaction::Create => __gtf::<u64>(index, GTF_CREATE_WITNESS_AT_INDEX),
     }
 }
 
