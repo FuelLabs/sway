@@ -217,7 +217,8 @@ pub(crate) fn compile_constants(
         if let Some(ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. })) =
             module_ns.symbols.get(decl_name)
         {
-            let ty::TyConstantDecl { call_path, .. } = engines.de().get_constant(decl_id);
+            let const_decl = engines.de().get_constant(decl_id);
+            let call_path = const_decl.call_path.clone();
             compile_const_decl(
                 &mut LookupEnv {
                     type_engine,
@@ -230,6 +231,7 @@ pub(crate) fn compile_constants(
                     lookup: compile_const_decl,
                 },
                 &call_path,
+                &Some(const_decl),
             )?;
         }
     }
@@ -263,6 +265,7 @@ fn compile_declarations(
         match declaration {
             ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
                 let decl = decl_engine.get_constant(decl_id);
+                let call_path = decl.call_path.clone();
                 compile_const_decl(
                     &mut LookupEnv {
                         type_engine,
@@ -274,7 +277,8 @@ fn compile_declarations(
                         function_compiler: None,
                         lookup: compile_const_decl,
                     },
-                    &decl.call_path,
+                    &call_path,
+                    &Some(decl),
                 )?;
             }
 
