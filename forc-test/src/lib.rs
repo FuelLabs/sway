@@ -153,6 +153,8 @@ pub struct Opts {
     pub time_phases: bool,
     /// Enable the experimental storage implementation and UI.
     pub experimental_storage: bool,
+    /// Enable the experimental module privacy enforcement.
+    pub experimental_private_modules: bool,
 }
 
 /// The set of options provided for controlling logs printed for each test.
@@ -483,6 +485,7 @@ impl Opts {
             tests: true,
             member_filter: Default::default(),
             experimental_storage: self.experimental_storage,
+            experimental_private_modules: self.experimental_private_modules,
         }
     }
 }

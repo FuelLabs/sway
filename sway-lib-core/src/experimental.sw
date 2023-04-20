@@ -1,3 +1,3 @@
 library;
 
-mod r#storage;
+pub mod r#storage;

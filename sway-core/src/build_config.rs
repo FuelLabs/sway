@@ -47,6 +47,7 @@ pub struct BuildConfig {
     pub(crate) print_ir: bool,
     pub(crate) include_tests: bool,
     pub(crate) experimental_storage: bool,
+    pub(crate) experimental_private_modules: bool,
 }
 
 impl BuildConfig {
@@ -90,6 +91,7 @@ impl BuildConfig {
             print_ir: false,
             include_tests: false,
             experimental_storage: false,
+            experimental_private_modules: false,
         }
     }
 
@@ -131,6 +133,13 @@ impl BuildConfig {
     pub fn experimental_storage(self, a: bool) -> Self {
         Self {
             experimental_storage: a,
+            ..self
+        }
+    }
+
+    pub fn experimental_private_modules(self, a: bool) -> Self {
+        Self {
+            experimental_private_modules: a,
             ..self
         }
     }

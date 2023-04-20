@@ -52,6 +52,8 @@ pub struct BuildProfile {
     /// Enable the experimental storage implementation and UI.
     #[clap(long)]
     pub experimental_storage: bool,
+    #[clap(long)]
+    pub experimental_private_modules: bool,
 }
 
 /// Options related to printing stages of compiler output.

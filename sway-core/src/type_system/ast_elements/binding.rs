@@ -233,7 +233,11 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
         // Grab the declaration.
         let unknown_decl = check!(
             ctx.namespace
-                .resolve_call_path_with_visibility_check(engines, &self.inner)
+                .resolve_call_path_with_visibility_check(
+                    engines,
+                    &self.inner,
+                    ctx.experimental_private_modules_enabled()
+                )
                 .cloned(),
             return err(warnings, errors),
             warnings,
@@ -302,7 +306,11 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
         // Grab the declaration.
         let unknown_decl = check!(
             ctx.namespace
-                .resolve_call_path_with_visibility_check(engines, &self.inner)
+                .resolve_call_path_with_visibility_check(
+                    engines,
+                    &self.inner,
+                    ctx.experimental_private_modules_enabled()
+                )
                 .cloned(),
             return err(warnings, errors),
             warnings,
@@ -352,7 +360,11 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
         // Grab the declaration.
         let unknown_decl = check!(
             ctx.namespace
-                .resolve_call_path_with_visibility_check(engines, &self.inner)
+                .resolve_call_path_with_visibility_check(
+                    engines,
+                    &self.inner,
+                    ctx.experimental_private_modules_enabled()
+                )
                 .cloned(),
             return err(warnings, errors),
             warnings,
@@ -412,7 +424,11 @@ impl TypeCheckTypeBinding<ty::TyConstantDecl> for TypeBinding<CallPath> {
         // Grab the declaration.
         let unknown_decl = check!(
             ctx.namespace
-                .resolve_call_path_with_visibility_check(engines, &self.inner)
+                .resolve_call_path_with_visibility_check(
+                    engines,
+                    &self.inner,
+                    ctx.experimental_private_modules_enabled()
+                )
                 .cloned(),
             return err(warnings, errors),
             warnings,

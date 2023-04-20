@@ -1,7 +1,7 @@
 use crate::{
     decl_engine::DeclEngine,
     engine_threading::*,
-    language::{parsed::TreeType, Purity},
+    language::{parsed::TreeType, Purity, Visibility},
     namespace::Path,
     semantic_analysis::{ast_node::Mode, Namespace},
     type_system::{
@@ -65,6 +65,9 @@ pub struct TypeCheckContext<'a> {
 
     /// Enable the experimental storage implementation and UI.
     experimental_storage: bool,
+
+    /// Enable experimental module privacy rules
+    experimental_private_modules: bool,
 }
 
 impl<'a> TypeCheckContext<'a> {
@@ -95,6 +98,7 @@ impl<'a> TypeCheckContext<'a> {
             kind: TreeType::Contract,
             disallow_functions: false,
             experimental_storage: false,
+            experimental_private_modules: false,
         }
     }
 
@@ -119,6 +123,7 @@ impl<'a> TypeCheckContext<'a> {
             decl_engine: self.decl_engine,
             disallow_functions: self.disallow_functions,
             experimental_storage: self.experimental_storage,
+            experimental_private_modules: self.experimental_private_modules,
         }
     }
 
@@ -136,6 +141,7 @@ impl<'a> TypeCheckContext<'a> {
             decl_engine: self.decl_engine,
             disallow_functions: self.disallow_functions,
             experimental_storage: self.experimental_storage,
+            experimental_private_modules: self.experimental_private_modules,
         }
     }
 
@@ -146,6 +152,7 @@ impl<'a> TypeCheckContext<'a> {
     pub fn enter_submodule<T>(
         self,
         mod_name: Ident,
+        visibility: Visibility,
         module_span: Span,
         with_submod_ctx: impl FnOnce(TypeCheckContext) -> T,
     ) -> T {
@@ -153,7 +160,7 @@ impl<'a> TypeCheckContext<'a> {
         // namespace. However, we will likely want to pass through the type engine and declaration
         // engine here once they're added.
         let Self { namespace, .. } = self;
-        let mut submod_ns = namespace.enter_submodule(mod_name, module_span);
+        let mut submod_ns = namespace.enter_submodule(mod_name, visibility, module_span);
         let submod_ctx = TypeCheckContext::from_module_namespace(
             &mut submod_ns,
             Engines::new(self.type_engine, self.decl_engine),
@@ -193,6 +200,17 @@ impl<'a> TypeCheckContext<'a> {
     pub(crate) fn with_experimental_storage(self, experimental_storage: bool) -> Self {
         Self {
             experimental_storage,
+            ..self
+        }
+    }
+
+    /// Map this `TypeCheckContext` instance to a new one with the given module kind.
+    pub(crate) fn with_experimental_private_modules(
+        self,
+        experimental_private_modules: bool,
+    ) -> Self {
+        Self {
+            experimental_private_modules,
             ..self
         }
     }
@@ -255,6 +273,10 @@ impl<'a> TypeCheckContext<'a> {
         self.experimental_storage
     }
 
+    pub(crate) fn experimental_private_modules_enabled(&self) -> bool {
+        self.experimental_private_modules
+    }
+
     // Provide some convenience functions around the inner context.
 
     /// Short-hand for calling the `monomorphize` function in the type engine
@@ -277,6 +299,7 @@ impl<'a> TypeCheckContext<'a> {
             call_site_span,
             self.namespace,
             &mod_path,
+            self.experimental_private_modules,
         )
     }
 
@@ -296,6 +319,7 @@ impl<'a> TypeCheckContext<'a> {
             span,
             enforce_type_args,
             type_info_prefix,
+            self.experimental_private_modules,
         )
     }
 
@@ -306,8 +330,13 @@ impl<'a> TypeCheckContext<'a> {
         span: &Span,
         type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
-        self.namespace
-            .resolve_type_without_self(self.engines(), type_id, span, type_info_prefix)
+        self.namespace.resolve_type_without_self(
+            self.engines(),
+            type_id,
+            span,
+            type_info_prefix,
+            self.experimental_private_modules,
+        )
     }
 
     /// Short-hand around `type_system::unify_with_self`, where the `TypeCheckContext` provides the

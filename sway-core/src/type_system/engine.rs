@@ -117,6 +117,7 @@ impl TypeEngine {
         call_site_span: &Span,
         namespace: &mut Namespace,
         mod_path: &Path,
+        experimental_private_modules: bool,
     ) -> CompileResult<()>
     where
         T: MonomorphizeHelper + SubstTypes,
@@ -177,7 +178,8 @@ impl TypeEngine {
                             enforce_type_arguments,
                             None,
                             namespace,
-                            mod_path
+                            mod_path,
+                            experimental_private_modules,
                         ),
                         self.insert(decl_engine, TypeInfo::ErrorRecovery),
                         warnings,
@@ -298,6 +300,7 @@ impl TypeEngine {
         type_info_prefix: Option<&Path>,
         namespace: &mut Namespace,
         mod_path: &Path,
+        experimental_private_modules: bool,
     ) -> CompileResult<TypeId> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -310,7 +313,12 @@ impl TypeEngine {
             } => {
                 match namespace
                     .root()
-                    .resolve_call_path_with_visibility_check(engines, module_path, &call_path)
+                    .resolve_call_path_with_visibility_check(
+                        engines,
+                        module_path,
+                        &call_path,
+                        experimental_private_modules,
+                    )
                     .ok(&mut warnings, &mut errors)
                     .cloned()
                 {
@@ -330,7 +338,8 @@ impl TypeEngine {
                                 enforce_type_arguments,
                                 span,
                                 namespace,
-                                mod_path
+                                mod_path,
+                                experimental_private_modules,
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -367,7 +376,8 @@ impl TypeEngine {
                                 enforce_type_arguments,
                                 span,
                                 namespace,
-                                mod_path
+                                mod_path,
+                                experimental_private_modules,
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -423,7 +433,8 @@ impl TypeEngine {
                         enforce_type_arguments,
                         None,
                         namespace,
-                        mod_path
+                        mod_path,
+                        experimental_private_modules
                     ),
                     self.insert(decl_engine, TypeInfo::ErrorRecovery),
                     warnings,
@@ -441,7 +452,8 @@ impl TypeEngine {
                             enforce_type_arguments,
                             None,
                             namespace,
-                            mod_path
+                            mod_path,
+                            experimental_private_modules
                         ),
                         self.insert(decl_engine, TypeInfo::ErrorRecovery),
                         warnings,
@@ -468,6 +480,7 @@ impl TypeEngine {
         type_info_prefix: Option<&Path>,
         namespace: &mut Namespace,
         mod_path: &Path,
+        experimental_private_modules: bool,
     ) -> CompileResult<TypeId> {
         type_id.replace_self_type(Engines::new(self, decl_engine), self_type);
         self.resolve(
@@ -478,6 +491,7 @@ impl TypeEngine {
             type_info_prefix,
             namespace,
             mod_path,
+            experimental_private_modules,
         )
     }
 

@@ -72,13 +72,19 @@ impl ty::TySubmodule {
         let ParseSubmodule {
             module,
             mod_name_span,
+            visibility,
         } = submodule;
-        parent_ctx.enter_submodule(mod_name, module.span.clone(), |submod_ctx| {
-            let module_res = ty::TyModule::type_check(submod_ctx, module);
-            module_res.map(|module| ty::TySubmodule {
-                module,
-                mod_name_span: mod_name_span.clone(),
-            })
-        })
+        parent_ctx.enter_submodule(
+            mod_name,
+            visibility.clone(),
+            module.span.clone(),
+            |submod_ctx| {
+                let module_res = ty::TyModule::type_check(submod_ctx, module);
+                module_res.map(|module| ty::TySubmodule {
+                    module,
+                    mod_name_span: mod_name_span.clone(),
+                })
+            },
+        )
     }
 }

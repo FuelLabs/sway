@@ -218,6 +218,7 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
     println!("Compiling {} ...", file_name.bold());
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let build_opts = forc_pkg::BuildOpts {
+        experimental_private_modules: true,
         build_target: run_config.build_target,
         pkg: forc_pkg::PkgOpts {
             path: Some(format!(

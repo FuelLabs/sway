@@ -38,14 +38,22 @@ impl ty::TyAstNode {
                     let mut res = match a.import_type {
                         ImportType::Star => {
                             // try a standard starimport first
-                            let import = ctx.namespace.star_import(&path, engines);
+                            let import = ctx.namespace.star_import(
+                                &path,
+                                engines,
+                                ctx.experimental_storage_enabled(),
+                            );
                             if import.is_ok() {
                                 import
                             } else {
                                 // if it doesn't work it could be an enum star import
                                 if let Some((enum_name, path)) = path.split_last() {
-                                    let variant_import =
-                                        ctx.namespace.variant_star_import(path, engines, enum_name);
+                                    let variant_import = ctx.namespace.variant_star_import(
+                                        path,
+                                        engines,
+                                        enum_name,
+                                        ctx.experimental_storage_enabled(),
+                                    );
                                     if variant_import.is_ok() {
                                         variant_import
                                     } else {
@@ -56,14 +64,21 @@ impl ty::TyAstNode {
                                 }
                             }
                         }
-                        ImportType::SelfImport(_) => {
-                            ctx.namespace.self_import(engines, &path, a.alias.clone())
-                        }
+                        ImportType::SelfImport(_) => ctx.namespace.self_import(
+                            engines,
+                            &path,
+                            a.alias.clone(),
+                            ctx.experimental_storage_enabled(),
+                        ),
                         ImportType::Item(ref s) => {
                             // try a standard item import first
-                            let import =
-                                ctx.namespace
-                                    .item_import(engines, &path, s, a.alias.clone());
+                            let import = ctx.namespace.item_import(
+                                engines,
+                                &path,
+                                s,
+                                a.alias.clone(),
+                                ctx.experimental_storage_enabled(),
+                            );
 
                             if import.is_ok() {
                                 import
@@ -76,6 +91,7 @@ impl ty::TyAstNode {
                                         enum_name,
                                         s,
                                         a.alias.clone(),
+                                        ctx.experimental_storage_enabled(),
                                     );
                                     if variant_import.is_ok() {
                                         variant_import

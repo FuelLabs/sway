@@ -17,6 +17,7 @@ use sway_core::{
     TraitConstraint, TypeId, TypeInfo,
 };
 use sway_types::{Ident, Span, Spanned};
+use sway_utils::iter_prefixes;
 
 pub struct TypedTree<'a> {
     ctx: &'a ParseContext<'a>,
@@ -1429,8 +1430,4 @@ fn collect_enum(ctx: &ParseContext, decl_id: &DeclId<ty::TyEnumDecl>, declaratio
     enum_decl.variants.iter().for_each(|variant| {
         variant.parse(ctx);
     });
-}
-
-fn iter_prefixes<T>(slice: &[T]) -> impl Iterator<Item = &[T]> + DoubleEndedIterator {
-    (1..=slice.len()).map(move |len| &slice[..len])
 }
