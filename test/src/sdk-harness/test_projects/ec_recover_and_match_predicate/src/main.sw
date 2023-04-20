@@ -13,7 +13,6 @@ fn extract_public_key_and_match(signature: B512, expected_public_key: b256) -> u
 }
 
 fn main(signatures: [B512; 3]) -> bool {
-
     // let signatures: [B512; 3] = input_predicate_data(0);
     let public_keys = [
         0xd58573593432a30a800f97ad32f877425c223a9e427ab557aab5d5bb89156db0,

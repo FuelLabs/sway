@@ -307,15 +307,20 @@ mod tx {
 
     #[tokio::test]
     async fn can_get_witness_pointer() {
-        let (contract_instance, _, _, _) = get_contracts().await;
+        let (contract_instance, _, wallet, deployment_wallet) = get_contracts().await;
 
-        let result = contract_instance
-            .methods()
-            .get_tx_witness_pointer(0)
-            .call()
+        let handler = contract_instance.methods().get_tx_witness_pointer(1);
+        let mut tx = handler.build_tx().await.unwrap();
+        deployment_wallet.sign_transaction(&mut tx).unwrap();
+
+        let receipts = wallet
+            .provider()
+            .unwrap()
+            .send_transaction(&tx)
             .await
             .unwrap();
-        assert_eq!(result.value, 10960);
+
+        assert_eq!(receipts[1].val().unwrap(), 11032);
     }
 
     #[tokio::test]
