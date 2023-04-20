@@ -30,14 +30,12 @@ impl Renderable for DocLinks {
             DocStyle::AllDoc(_) => {
                 for (block_title, mut doc_link) in self.links {
                     doc_link.sort_by(|a, b| {
-                        let first = a.module_info.to_path_literal_string(
-                            &a.name,
-                            a.module_info.project_name()
-                        );
-                        let second = b.module_info.to_path_literal_string(
-                            &b.name,
-                            b.module_info.project_name()
-                        );
+                        let first = a
+                            .module_info
+                            .to_path_literal_string(&a.name, a.module_info.project_name());
+                        let second = b
+                            .module_info
+                            .to_path_literal_string(&b.name, b.module_info.project_name());
                         first.cmp(&second)
                     });
                     links_vec.push((block_title, doc_link));
