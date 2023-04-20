@@ -158,6 +158,8 @@
 <p>Math in the FuelVM is by default safe (i.e. any overflow or exception is a panic). Safety checks are performed natively in the VM implementation, rather than at the bytecode level like <a href="https://docs.soliditylang.org/en/latest/080-breaking-changes.html#silent-changes-of-the-semantics">Solidity's default safe math</a>.</p>
 <h2 id="no-code-size-limit"><a class="header" href="#no-code-size-limit">No* Code Size Limit</a></h2>
 <p>There is no practical code size limit to Sway contracts. The physical limit is governed by the <a href="https://fuellabs.github.io/fuel-specs/master/vm#parameters"><code>VM_MAX_RAM</code> VM parameter</a>, which at the time of writing is 64 MiB.</p>
+<h2 id="account-types"><a class="header" href="#account-types">Account Types</a></h2>
+<p>Account types in the FuelVM have type-safe wrappers around primitive <code>b256</code> hashes to clearly distinguish their respective types. The wrapper <code>Address</code> mirrors that of an EOA (Externally Owned Account) and has the ability to hold UTXOs in the context of the EVM. The other wrapper, <code>ContractId</code>, reflects that of a deployed contract in the EVM but cannot hold UTXOs.</p>
 
                     </main>
 
