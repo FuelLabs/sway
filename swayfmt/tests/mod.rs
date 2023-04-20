@@ -1486,3 +1486,48 @@ impl MyAbi for Contract {
 "#,
     );
 }
+
+#[test]
+fn test_comments_after_deps() {
+    check(
+        r#"library;
+
+use std::{u256::U256, vec::*};
+use ::utils::vec::sort;
+use ::utils::numbers::*;
+
+// pub fn aggregate_results(results: Vec<Vec<U256>>) -> Vec<U256> {
+//     let mut aggregated = Vec::new();
+
+//     let mut i = 0;
+//     while (i < results.len) {
+//         let values = results.get(i).unwrap();
+//         aggregated.push(aggregate_values(values));
+
+//         i += 1;
+//     }
+
+//     return aggregated;
+// }"#,
+        r#"library;
+
+use std::{u256::U256, vec::*};
+use ::utils::vec::sort;
+use ::utils::numbers::*;
+
+// pub fn aggregate_results(results: Vec<Vec<U256>>) -> Vec<U256> {
+//     let mut aggregated = Vec::new();
+
+//     let mut i = 0;
+//     while (i < results.len) {
+//         let values = results.get(i).unwrap();
+//         aggregated.push(aggregate_values(values));
+
+//         i += 1;
+//     }
+
+//     return aggregated;
+// }
+"#,
+    );
+}
