@@ -50,6 +50,7 @@ impl RawBytes {
     }
 }
 
+/// A type used to represent raw bytes.
 pub struct Bytes {
     buf: RawBytes,
     len: u64,

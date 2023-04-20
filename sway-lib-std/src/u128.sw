@@ -1,3 +1,4 @@
+//! A 128-bit unsigned integer type.
 library;
 
 use ::assert::assert;
@@ -13,6 +14,7 @@ pub struct U128 {
     lower: u64,
 }
 
+/// The error type used for `u128` type errors.
 pub enum U128Error {
     LossOfPrecision: (),
 }
