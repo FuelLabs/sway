@@ -39,3 +39,4 @@ The current version of the prelude lives in [`std::prelude`](https://github.com/
 - [`std::revert::require`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/revert.sw), a function that reverts the VM and logs a given value if the condition provided to it is `false`.
 - [`std::revert::revert`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/revert.sw), a function that reverts the VM.
 - [`std::logging::log`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/logging.sw), a function that logs arbitrary stack types.
+- [`std::auth::msg_sender`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/auth.sw), a function that gets the `Identity` from which a call was made.
