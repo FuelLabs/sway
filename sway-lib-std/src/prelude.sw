@@ -26,3 +26,6 @@ use ::convert::From;
 
 // Logging
 use ::logging::log;
+
+// Auth
+use ::auth::msg_sender;

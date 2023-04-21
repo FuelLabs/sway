@@ -2,8 +2,6 @@ contract;
 
 use methods_abi::MethodsContract;
 
-use std::auth::*;
-
 fn bogus() -> Identity {
     let sender = msg_sender();
     sender.unwrap()

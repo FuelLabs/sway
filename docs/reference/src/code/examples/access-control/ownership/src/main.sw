@@ -1,8 +1,5 @@
 contract;
 
-// ANCHOR: identity
-use std::auth::msg_sender;
-
 storage {
     owner: Option<Identity> = Option::None,
 }

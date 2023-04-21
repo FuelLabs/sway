@@ -20,7 +20,6 @@ abi NFT {
 
 use std::{
     block::height,
-    auth::msg_sender,
     call_frames::{
         contract_id,
         msg_asset_id,
