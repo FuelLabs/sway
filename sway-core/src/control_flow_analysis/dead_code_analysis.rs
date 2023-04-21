@@ -782,7 +782,7 @@ fn connect_abi_declaration(
                     }
                 }
             }
-            ty::TyTraitInterfaceItem::Constant(_) => todo!(),
+            ty::TyTraitInterfaceItem::Constant(_const_decl) => {}
         }
     }
 

@@ -121,6 +121,15 @@ impl ty::TyImplTrait {
                     errors
                 );
 
+                // Insert the interface surface and methods from this trait into
+                // the namespace.
+                trait_decl.insert_interface_surface_and_items_into_namespace(
+                    ctx.by_ref(),
+                    &trait_name,
+                    &trait_type_arguments,
+                    implementing_for.type_id,
+                );
+
                 let new_items = check!(
                     type_check_trait_implementation(
                         ctx.by_ref(),
@@ -172,6 +181,13 @@ impl ty::TyImplTrait {
                 }
 
                 let mut ctx = ctx.with_mode(Mode::ImplAbiFn);
+
+                // Insert the interface surface and methods from this trait into
+                // the namespace.
+                abi.insert_interface_surface_and_items_into_namespace(
+                    ctx.by_ref(),
+                    implementing_for.type_id,
+                );
 
                 let new_items = check!(
                     type_check_trait_implementation(
