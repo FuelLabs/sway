@@ -182,13 +182,13 @@ impl MyOwnedContract for Contract {
 <p>The following is an example of how to properly set ownership of a contract:</p>
 <pre><code class="language-sway">    #[storage(write)]
     fn set_owner(identity: Identity) {
-        storage.owner = Option::Some(identity);
+        storage.owner.write(Option::Some(identity));
     }
 </code></pre>
 <p>The following is an example of how to properly revoke ownership of a contract:</p>
 <pre><code class="language-sway">    #[storage(write)]
     fn revoke_ownership() {
-        storage.owner = Option::None;
+        storage.owner.write(Option::None);
     }
 </code></pre>
 

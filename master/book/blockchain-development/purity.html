@@ -157,6 +157,9 @@ fn increment_amount(increment: u64) -&gt; u64 {
     ...
 }
 </code></pre>
+<blockquote>
+<p><strong>Note</strong>: the <code>#[storage(write)]</code> attribute also permits a function to read from storage. This is due to the fact that partially writing a storage slot requires first reading the slot.</p>
+</blockquote>
 <p>Impure functions which call other impure functions must have at least the same storage privileges or a superset of those for the function called. For example, to call a function with write access a caller must also have write access, or both read and write access. To call a function with read and write access the caller must also have both privileges.</p>
 <p>The <code>storage</code> attribute may also be applied to <a href="../basics/methods_and_associated_functions.html">methods and associated functions</a>, <a href="../advanced/traits.html">trait</a> and <a href="../sway-program-types/smart_contracts.html#the-abi-declaration">ABI</a> declarations.</p>
 <p>A pure function gives you some guarantees: you will not incur excessive storage gas costs, the compiler can apply additional optimizations, and they are generally easy to reason about and audit. <a href="https://docs.soliditylang.org/en/v0.8.10/contracts.html#pure-functions">A similar concept exists in Solidity</a>. Note that Solidity refers to contract storage as <em>contract state</em>, and in the Sway/Fuel ecosystem, these two terms are largely interchangeable.</p>

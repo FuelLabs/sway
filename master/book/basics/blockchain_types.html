@@ -196,7 +196,7 @@ let forty_two: b256 = my_contract_id.into();
 </code></pre>
 <p>A common use case for <code>Identity</code> is for access control. The use of <code>Identity</code> uniquely allows both <code>ContractId</code> and <code>Address</code> to have access control inclusively.</p>
 <pre><code class="language-sway">        let sender = msg_sender().unwrap();
-        require(sender == storage.owner, MyError::UnauthorizedUser(sender));
+        require(sender == storage.owner.read(), MyError::UnauthorizedUser(sender));
 </code></pre>
 
                     </main>

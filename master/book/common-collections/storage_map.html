@@ -186,27 +186,29 @@ There is no need to add the <code>mut</code> keyword when declaring a <code>Stor
         storage.map.insert(addr1, 42);
         storage.map.insert(addr2, 77);
 
-        let value1 = storage.map.get(addr1).unwrap_or(0);
+        let value1 = storage.map.get(addr1).try_read().unwrap_or(0);
     }
 </code></pre>
 <p>Here, <code>value1</code> will have the value that's associated with the first address, and the result will be <code>42</code>. The <code>get</code> method returns an <code>Option&lt;V&gt;</code>; if there’s no value for that key in the storage map, <code>get</code> will return <code>Option::None</code>. This program handles the <code>Option</code> by calling <code>unwrap_or</code> to set <code>value1</code> to zero if <code>map</code> doesn't have an entry for the key.</p>
-<h2 id="storage-maps-with-multiple-keys"><a class="header" href="#storage-maps-with-multiple-keys">Storage maps with multiple keys</a></h2>
-<p>You might find yourself needing a <code>StorageMap&lt;K1, V1&gt;</code> where the type <code>V1</code> is itself another <code>StorageMap&lt;K2, V2&gt;</code>. This is not allowed in Sway. The right approach is to use a single <code>StorageMap&lt;K, V&gt;</code> where <code>K</code> is a tuple <code>(K1, K2)</code>. For example:</p>
+<h2 id="storage-maps-with-multiple-keys"><a class="header" href="#storage-maps-with-multiple-keys">Storage Maps with Multiple Keys</a></h2>
+<p>Maps with multiple keys can be implemented using tuples as keys. For example:</p>
 <pre><code class="language-sway">    map_two_keys: StorageMap&lt;(b256, bool), b256&gt; = StorageMap {},
 </code></pre>
-<h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
-<p>It is not currently allowed to have a <code>StorageMap&lt;K, V&gt;</code> as a component of a complex type such as a struct or an enum. For example, the code below is not legal:</p>
-<pre><code class="language-sway">Struct Wrapper {
-    map1: StorageMap&lt;u64, u64&gt;,
-    map2: StorageMap&lt;u64, u64&gt;,
-}
+<h2 id="nested-storage-naps"><a class="header" href="#nested-storage-naps">Nested Storage Naps</a></h2>
+<p>It is possible to nest storage maps as follows:</p>
+<pre><code class="language-sway">    nested_map: StorageMap&lt;u64, StorageMap&lt;u64, u64&gt;&gt; = StorageMap {},
+</code></pre>
+<p>The nested map can then be accessed as follows:</p>
+<pre><code class="language-sway">    #[storage(read, write)]
+    fn access_nested_map() {
+        storage.nested_map.get(0).insert(1, 42);
+        storage.nested_map.get(2).insert(3, 24);
 
-storage {
-    w: Wrapper
-}
-...
-
-storage.w.map1.insert(..);
+        assert(storage.nested_map.get(0).get(1).read() == 42);
+        assert(storage.nested_map.get(0).get(0).try_read().is_none()); // Nothing inserted here
+        assert(storage.nested_map.get(2).get(3).read() == 24);
+        assert(storage.nested_map.get(2).get(2).try_read().is_none()); // Nothing inserted here
+    }
 </code></pre>
 
                     </main>

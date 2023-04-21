@@ -147,7 +147,7 @@
                         <h1 id="storage-vectors"><a class="header" href="#storage-vectors">Storage Vectors</a></h1>
 <p>The second collection type we’ll look at is <code>StorageVec&lt;T&gt;</code>. Just like vectors on the heap (i.e. <code>Vec&lt;T&gt;</code>), storage vectors allow you to store more than one value in a single data structure where each value is assigned an index and can only store values of the same type. However, unlike <code>Vec&lt;T&gt;</code>, the elements of a <code>StorageVec</code> are stored in <em>persistent storage</em>, and consecutive elements are not necessarily stored in storage slots that have consecutive keys.</p>
 <p>In order to use <code>StorageVec&lt;T&gt;</code>, you must first import <code>StorageVec</code> as follows:</p>
-<pre><code class="language-sway">use std::storage::StorageVec;
+<pre><code class="language-sway">use std::storage::storage_vec::*;
 </code></pre>
 <p>Another major difference between <code>Vec&lt;T&gt;</code> and <code>StorageVec&lt;T&gt;</code> is that <code>StorageVec&lt;T&gt;</code> can only be used in a contract because only contracts are allowed to access persistent storage.</p>
 <h2 id="creating-a-new-storage-vector"><a class="header" href="#creating-a-new-storage-vector">Creating a New Storage Vector</a></h2>
@@ -182,12 +182,12 @@ There is no need to add the <code>mut</code> keyword when declaring a <code>Stor
     fn read_from_storage_vec() {
         let third = storage.v.get(2);
         match third {
-            Option::Some(third) =&gt; log(third),
+            Option::Some(third) =&gt; log(third.read()),
             Option::None =&gt; revert(42),
         }
     }
 </code></pre>
-<p>Note three details here. First, we use the index value of <code>2</code> to get the third element because vectors are indexed by number, starting at zero. Second, we get the third element by using the <code>get</code> method with the index passed as an argument, which gives us an <code>Option&lt;T&gt;</code>. Third, the ABI function calling <code>get</code> only requires the annotation <code>#[storage(read)]</code> as one might expect because <code>get</code> does not write to storage.</p>
+<p>Note three details here. First, we use the index value of <code>2</code> to get the third element because vectors are indexed by number, starting at zero. Second, we get the third element by using the <code>get</code> method with the index passed as an argument, which gives us an <code>Option&lt;StorageKey&lt;T&gt;&gt;</code>. Third, the ABI function calling <code>get</code> only requires the annotation <code>#[storage(read)]</code> as one might expect because <code>get</code> does not write to storage.</p>
 <p>When the <code>get</code> method is passed an index that is outside the vector, it returns <code>None</code> without panicking. This is particularly useful if accessing an element beyond the range of the vector may happen occasionally under normal circumstances. Your code will then have logic to handle having either <code>Some(element)</code> or <code>None</code>. For example, the index could be coming as a contract method argument. If the argument passed is too large, the method <code>get</code> will return a <code>None</code> value, and the contract method may then decide to revert when that happens or return a meaningful error that tells the user how many items are in the current vector and give them another chance to pass a valid value.</p>
 <h2 id="iterating-over-the-values-in-a-vector"><a class="header" href="#iterating-over-the-values-in-a-vector">Iterating over the Values in a Vector</a></h2>
 <p>To access each element in a vector in turn, we would iterate through all of the valid indices using a <code>while</code> loop and the <code>len</code> method as shown below:</p>
@@ -195,12 +195,12 @@ There is no need to add the <code>mut</code> keyword when declaring a <code>Stor
     fn iterate_over_a_storage_vec() {
         let mut i = 0;
         while i &lt; storage.v.len() {
-            log(storage.v.get(i).unwrap());
+            log(storage.v.get(i).unwrap().read());
             i += 1;
         }
     }
 </code></pre>
-<p>Again, this is quite similar to iterating over the elements of a <code>Vec&lt;T&gt;</code> where we use the method <code>len</code> to return the length of the vector. We also call the method <code>unwrap</code> to extract the <code>Option</code> returned by <code>get</code>. We know that <code>unwrap</code> will not fail (i.e. will not cause a revert) because each index <code>i</code> passed to <code>get</code> is known to be smaller than the length of the vector.</p>
+<p>Again, this is quite similar to iterating over the elements of a <code>Vec&lt;T&gt;</code> where we use the method <code>len</code> to return the length of the vector. We also call the method <code>unwrap</code> to extract the <code>Option</code> returned by <code>get</code> followed by a call to <code>read()</code> to actually read the stored value. We know that <code>unwrap</code> will not fail (i.e. will not cause a revert) because each index <code>i</code> passed to <code>get</code> is known to be smaller than the length of the vector.</p>
 <h2 id="using-an-enum-to-store-multiple-types"><a class="header" href="#using-an-enum-to-store-multiple-types">Using an Enum to store Multiple Types</a></h2>
 <p>Storage vectors, just like <code>Vec&lt;T&gt;</code>, can only store values that are the same type. Similarly to what we did for <code>Vec&lt;T&gt;</code> in the section <a href="./vec.html#using-an-enum-to-store-multiple-types">Using an Enum to store Multiple Types</a>, we can define an enum whose variants will hold the different value types, and all the enum variants will be considered the same type: that of the enum. This is shown below:</p>
 <pre><code class="language-sway">enum TableCell {
@@ -221,6 +221,38 @@ There is no need to add the <code>mut</code> keyword when declaring a <code>Stor
     }
 </code></pre>
 <p>Now that we’ve discussed some of the most common ways to use storage vectors, be sure to review the API documentation for all the many useful methods defined on <code>StorageVec&lt;T&gt;</code> by the standard library. For now, these can be found in the <a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/storage.sw">source code for <code>StorageVec&lt;T&gt;</code></a>. For example, in addition to <code>push</code>, a <code>pop</code> method removes and returns the last element, a <code>remove</code> method removes and returns the element at some chosen index within the vector, an <code>insert</code> method inserts an element at some chosen index within the vector, etc.</p>
+<h2 id="nested-storage-vecs"><a class="header" href="#nested-storage-vecs">Nested Storage Vecs</a></h2>
+<p>It is possible to nest storage vectors as follows:</p>
+<pre><code class="language-sway">    nested_vec: StorageVec&lt;StorageVec&lt;u64&gt;&gt; = StorageVec {},
+</code></pre>
+<p>The nested vector can then be accessed as follows:</p>
+<pre><code class="language-sway">    #[storage(read, write)]
+    fn access_nested_vec() {
+        storage.nested_vec.push(StorageVec {});
+        storage.nested_vec.push(StorageVec {});
+
+        let mut inner_vec0 = storage.nested_vec.get(0).unwrap();
+        let mut inner_vec1 = storage.nested_vec.get(1).unwrap();
+
+        inner_vec0.push(0);
+        inner_vec0.push(1);
+
+        inner_vec1.push(2);
+        inner_vec1.push(3);
+        inner_vec1.push(4);
+
+        assert(inner_vec0.len() == 2);
+        assert(inner_vec0.get(0).unwrap().read() == 0);
+        assert(inner_vec0.get(1).unwrap().read() == 1);
+        assert(inner_vec0.get(2).is_none());
+
+        assert(inner_vec1.len() == 3);
+        assert(inner_vec1.get(0).unwrap().read() == 2);
+        assert(inner_vec1.get(1).unwrap().read() == 3);
+        assert(inner_vec1.get(2).unwrap().read() == 4);
+        assert(inner_vec1.get(3).is_none());
+    }
+</code></pre>
 
                     </main>
 

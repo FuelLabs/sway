@@ -172,30 +172,30 @@ storage {
 <p>To write into a storage variable, you need to use the <code>storage</code> keyword as follows:</p>
 <pre><code class="language-sway">    #[storage(write)]
     fn store_something() {
-        storage.var1.x = 42;
-        storage.var1.y = 77;
-        storage.var2.w = 0x1111111111111111111111111111111111111111111111111111111111111111;
-        storage.var2.z = true;
+        storage.var1.x.write(42);
+        storage.var1.y.write(77);
+        storage.var2.w.write(0x1111111111111111111111111111111111111111111111111111111111111111);
+        storage.var2.z.write(true);
     }
 </code></pre>
 <p>To read a storage variable, you also need to use the <code>storage</code> keyword as follows:</p>
 <pre><code class="language-sway">    #[storage(read)]
     fn get_something() -&gt; (u64, u64, b256, bool) {
         (
-            storage.var1.x,
-            storage.var1.y,
-            storage.var2.w,
-            storage.var2.z,
+            storage.var1.x.read(),
+            storage.var1.y.read(),
+            storage.var2.w.read(),
+            storage.var2.z.read(),
         )
     }
 </code></pre>
 <h2 id="storage-maps"><a class="header" href="#storage-maps">Storage Maps</a></h2>
 <p>Generic storage maps are available in the standard library as <code>StorageMap&lt;K, V&gt;</code> which have to be defined inside a <code>storage</code> block and allow you to call <code>insert()</code> and <code>get()</code> to insert values at specific keys and get those values respectively. Refer to <a href="../common-collections/storage_map.html">Storage Maps</a> for more information about <code>StorageMap&lt;K, V&gt;</code>.</p>
 <h2 id="manual-storage-management"><a class="header" href="#manual-storage-management">Manual Storage Management</a></h2>
-<p>It is possible to leverage FuelVM storage operations directly using the <code>std::storage::store</code> and <code>std::storage::get</code> functions provided in the standard library. With this approach you will have to manually assign the internal key used for storage. An example is as follows:</p>
+<p>It is possible to leverage FuelVM storage operations directly using the <code>std::storage::storage_api::write</code> and <code>std::storage::storage_api::read</code> functions provided in the standard library. With this approach you will have to manually assign the internal key used for storage. An example is as follows:</p>
 <pre><code class="language-sway">contract;
 
-use std::storage::{get, store};
+use std::storage::storage_api::{read, write};
 
 abi StorageExample {
     #[storage(write)]
@@ -210,12 +210,12 @@ const STORAGE_KEY: b256 = 0x0000000000000000000000000000000000000000000000000000
 impl StorageExample for Contract {
     #[storage(write)]
     fn store_something(amount: u64) {
-        store(STORAGE_KEY, amount);
+        write(STORAGE_KEY, 0, amount);
     }
 
     #[storage(read)]
     fn get_something() -&gt; u64 {
-        let value: Option&lt;u64&gt; = get::&lt;u64&gt;(STORAGE_KEY);
+        let value: Option&lt;u64&gt; = read::&lt;u64&gt;(STORAGE_KEY, 0);
         value.unwrap_or(0)
     }
 }

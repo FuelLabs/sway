@@ -151,7 +151,7 @@
 <h2 id="using-the-standard-library"><a class="header" href="#using-the-standard-library">Using the Standard Library</a></h2>
 <p>The standard library is made implicitly available to all Forc projects created using <a href="../forc/commands/forc_new.html"><code>forc new</code></a>. In other words, it is not required to manually specify <code>std</code> as an explicit dependency. Forc will automatically use the version of <code>std</code> that matches its version.</p>
 <p>Importing items from the standard library can be done using the <code>use</code> keyword, just as importing items from any Sway project. For example:</p>
-<pre><code class="language-sway">use std::storage::StorageVec;
+<pre><code class="language-sway">use std::storage::storage_vec::*;
 </code></pre>
 <p>This imports the <code>StorageVec</code> type into the current namespace.</p>
 <h2 id="standard-library-prelude"><a class="header" href="#standard-library-prelude">Standard Library Prelude</a></h2>
@@ -163,7 +163,8 @@
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/contract_id.sw"><code>std::contract_id::ContractId</code></a>, a wrapper around the <code>b256</code> type representing the ID of a contract.</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/identity.sw"><code>std::identity::Identity</code></a>, an enum with two possible variants: <code>Address: Address</code> and <code>ContractId: ContractId</code>.</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/vec.sw"><code>std::vec::Vec</code></a>, a growable, heap-allocated vector.</li>
-<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/storage.sw"><code>std::storage::StorageMap</code></a>, a key-value mapping in contract storage.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/storage/storage_key.sw"><code>std::storage::storage_key::*</code></a>, contains the API for accessing a <code>core::storage::StorageKey</code> which describes a location in storage.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/storage/storage_map.sw"><code>std::storage::storage_map::*</code></a>, a key-value mapping in contract storage.</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/option.sw"><code>std::option::Option</code></a>, an enum which expresses the presence or absence of a value.</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/result.sw"><code>std::result::Result</code></a>, an enum for functions that may succeed or fail.</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/assert.sw"><code>std::assert::assert</code></a>, a function that reverts the VM if the condition provided to it is <code>false</code>.</li>
