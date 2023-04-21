@@ -227,12 +227,32 @@ source = 'member'
 dependencies = ['std']
 
 [[package]]
+name = 'storage_access'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
 name = 'storage_bytes'
 source = 'member'
 dependencies = ['std']
 
 [[package]]
+name = 'storage_init'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
 name = 'storage_map'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'storage_map_nested'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'storage_vec_nested'
 source = 'member'
 dependencies = ['std']
 

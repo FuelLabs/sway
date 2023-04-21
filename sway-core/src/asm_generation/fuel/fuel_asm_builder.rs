@@ -13,7 +13,6 @@ use crate::{
     asm_lang::{virtual_register::*, Label, Op, VirtualImmediate12, VirtualImmediate18, VirtualOp},
     decl_engine::DeclRefFunction,
     error::*,
-    fuel_prelude::fuel_crypto::Hasher,
     metadata::MetadataManager,
 };
 
@@ -183,9 +182,6 @@ impl<'ir> FuelAsmBuilder<'ir> {
                     ..
                 } => self.compile_contract_call(instr_val, params, coins, asset_id, gas),
                 Instruction::FuelVm(fuel_vm_instr) => match fuel_vm_instr {
-                    FuelVmInstruction::GetStorageKey(_ty) => {
-                        self.compile_get_storage_key(instr_val)
-                    }
                     FuelVmInstruction::Gtf { index, tx_field_id } => {
                         self.compile_gtf(instr_val, index, *tx_field_id)
                     }
@@ -627,47 +623,6 @@ impl<'ir> FuelAsmBuilder<'ir> {
             None,
         ));
         self.reg_map.insert(*instr_val, instr_reg);
-        Ok(())
-    }
-
-    fn compile_get_storage_key(&mut self, instr_val: &Value) -> Result<(), CompileError> {
-        let state_idx = self.md_mgr.val_to_storage_key(self.context, *instr_val);
-        let instr_span = self.md_mgr.val_to_span(self.context, *instr_val);
-
-        let storage_slot_to_hash = match state_idx {
-            Some(state_idx) => {
-                format!(
-                    "{}{}",
-                    sway_utils::constants::STORAGE_DOMAIN_SEPARATOR,
-                    state_idx
-                )
-            }
-            None => {
-                return Err(CompileError::Internal(
-                    "State index for __get_storage_key is not available as a metadata",
-                    instr_span.unwrap_or_else(Span::dummy),
-                ));
-            }
-        };
-
-        let hashed_storage_slot = Hasher::hash(storage_slot_to_hash);
-
-        let data_id = self.data_section.insert_data_value(Entry::new_byte_array(
-            (*hashed_storage_slot).to_vec(),
-            None,
-            None,
-        ));
-
-        // Allocate a register for it, and a load instruction.
-        let reg = self.reg_seqr.next();
-
-        self.cur_bytecode.push(Op {
-            opcode: either::Either::Left(VirtualOp::LWDataId(reg.clone(), data_id)),
-            comment: "literal instantiation".into(),
-            owning_span: instr_span,
-        });
-        self.reg_map.insert(*instr_val, reg);
-
         Ok(())
     }
 

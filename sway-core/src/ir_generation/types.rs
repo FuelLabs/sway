@@ -142,9 +142,7 @@ impl TypedNamedField for ty::ProjectionKind {
 }
 
 use ty::TyStorageAccessDescriptor;
-use ty::TyStorageReassignDescriptor;
 impl_typed_named_field_for!(TyStorageAccessDescriptor);
-impl_typed_named_field_for!(TyStorageReassignDescriptor);
 
 pub(super) fn get_indices_for_struct_access(
     type_engine: &TypeEngine,

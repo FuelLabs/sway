@@ -497,7 +497,6 @@ fn const_eval_typed_expr(
         ty::TyExpressionVariant::ArrayIndex { .. }
         | ty::TyExpressionVariant::CodeBlock(_)
         | ty::TyExpressionVariant::Reassignment(_)
-        | ty::TyExpressionVariant::StorageReassignment(_)
         | ty::TyExpressionVariant::FunctionParameter
         | ty::TyExpressionVariant::IfExp { .. }
         | ty::TyExpressionVariant::AsmExpression { .. }
@@ -622,8 +621,7 @@ fn const_eval_intrinsic(
         sway_ast::Intrinsic::AddrOf => Ok(None),
         sway_ast::Intrinsic::PtrAdd => Ok(None),
         sway_ast::Intrinsic::PtrSub => Ok(None),
-        sway_ast::Intrinsic::GetStorageKey
-        | sway_ast::Intrinsic::IsReferenceType
+        sway_ast::Intrinsic::IsReferenceType
         | sway_ast::Intrinsic::Gtf
         | sway_ast::Intrinsic::StateClear
         | sway_ast::Intrinsic::StateLoadWord

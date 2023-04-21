@@ -39,148 +39,128 @@ storage {
 impl StorageAccess for Contract {
     // Setters
     #[storage(write)]fn set_x(x: u64) {
-        storage.x = x;
+        storage.x.write(x);
     }
     #[storage(write)]fn set_y(y: b256) {
-        storage.y = y;
+        storage.y.write(y);
     }
     #[storage(write)]fn set_s(s: S) {
-        storage.s = s;
+        storage.s.write(s);
     }
     #[storage(write)]fn set_boolean(boolean: bool) {
-        storage.boolean = boolean;
+        storage.boolean.write(boolean);
     }
     #[storage(write)]fn set_int8(int8: u8) {
-        storage.int8 = int8;
+        storage.int8.write(int8);
     }
     #[storage(write)]fn set_int16(int16: u16) {
-        storage.int16 = int16;
+        storage.int16.write(int16);
     }
     #[storage(write)]fn set_int32(int32: u32) {
-        storage.int32 = int32;
+        storage.int32.write(int32);
     }
     #[storage(write)]fn set_s_dot_x(x: u64) {
-        storage.s.x = x;
+        storage.s.x.write(x);
     }
     #[storage(write)]fn set_s_dot_y(y: u64) {
-        storage.s.y = y;
+        storage.s.y.write(y);
     }
     #[storage(write)]fn set_s_dot_z(z: b256) {
-        storage.s.z = z;
+        storage.s.z.write(z);
     }
     #[storage(write)]fn set_s_dot_t(t: T) {
-        storage.s.t = t;
+        storage.s.t.write(t);
     }
     #[storage(write)]fn set_s_dot_t_dot_x(x: u64) {
-        storage.s.t.x = x;
+        storage.s.t.x.write(x);
     }
     #[storage(write)]fn set_s_dot_t_dot_y(y: u64) {
-        storage.s.t.y = y;
+        storage.s.t.y.write(y);
     }
     #[storage(write)]fn set_s_dot_t_dot_z(z: b256) {
-        storage.s.t.z = z;
+        storage.s.t.z.write(z);
     }
     #[storage(write)]fn set_s_dot_t_dot_boolean(boolean: bool) {
-        storage.s.t.boolean = boolean;
+        storage.s.t.boolean.write(boolean);
     }
     #[storage(write)]fn set_s_dot_t_dot_int8(int8: u8) {
-        storage.s.t.int8 = int8;
+        storage.s.t.int8.write(int8);
     }
     #[storage(write)]fn set_s_dot_t_dot_int16(int16: u16) {
-        storage.s.t.int16 = int16;
+        storage.s.t.int16.write(int16);
     }
     #[storage(write)]fn set_s_dot_t_dot_int32(int32: u32) {
-        storage.s.t.int32 = int32;
+        storage.s.t.int32.write(int32);
     }
     #[storage(write)]fn set_e(e: E) {
-        storage.e = e;
+        storage.e.write(e);
     }
     #[storage(write)]fn set_string(string: str[40]) {
-        storage.string = string;
+        storage.string.write(string);
     }
 
     // Getters
     #[storage(read)]fn get_x() -> u64 {
-        storage.x
+        storage.x.read()
     }
     #[storage(read)]fn get_y() -> b256 {
-        storage.y
+        storage.y.read()
     }
     #[storage(read)]fn get_s() -> S {
-        storage.s
+        storage.s.read()
     }
     #[storage(read)]fn get_boolean() -> bool {
-        storage.boolean
+        storage.boolean.read()
     }
     #[storage(read)]fn get_int8() -> u8 {
-        storage.int8
+        storage.int8.read()
     }
     #[storage(read)]fn get_int16() -> u16 {
-        storage.int16
+        storage.int16.read()
     }
     #[storage(read)]fn get_int32() -> u32 {
-        storage.int32
+        storage.int32.read()
     }
     #[storage(read)]fn get_s_dot_x() -> u64 {
-        storage.s.x
+        storage.s.x.read()
     }
     #[storage(read)]fn get_s_dot_y() -> u64 {
-        storage.s.y
+        storage.s.y.read()
     }
     #[storage(read)]fn get_s_dot_z() -> b256 {
-        storage.s.z
+        storage.s.z.read()
     }
     #[storage(read)]fn get_s_dot_t() -> T {
-        storage.s.t
+        storage.s.t.read()
     }
     #[storage(read)]fn get_s_dot_t_dot_x() -> u64 {
-        storage.s.t.x
+        storage.s.t.x.read()
     }
     #[storage(read)]fn get_s_dot_t_dot_y() -> u64 {
-        storage.s.t.y
+        storage.s.t.y.read()
     }
     #[storage(read)]fn get_s_dot_t_dot_z() -> b256 {
-        storage.s.t.z
+        storage.s.t.z.read()
     }
     #[storage(read)]fn get_s_dot_t_dot_boolean() -> bool {
-        storage.s.t.boolean
+        storage.s.t.boolean.read()
     }
     #[storage(read)]fn get_s_dot_t_dot_int8() -> u8 {
-        storage.s.t.int8
+        storage.s.t.int8.read()
     }
     #[storage(read)]fn get_s_dot_t_dot_int16() -> u16 {
-        storage.s.t.int16
+        storage.s.t.int16.read()
     }
     #[storage(read)]fn get_s_dot_t_dot_int32() -> u32 {
-        storage.s.t.int32
+        storage.s.t.int32.read()
     }
     #[storage(read)]fn get_e() -> E {
-        storage.e
+        storage.e.read()
     }
     #[storage(read)]fn get_e2() -> E {
-        storage.e2
+        storage.e2.read()
     }
     #[storage(read)]fn get_string() -> str[40] {
-        storage.string
-    }
-
-    // Operations
-    #[storage(read, write)]fn add_to_s_dot_t_dot_x(k: u64) {
-        storage.s.t.x += k;
-    }
-    #[storage(read, write)]fn subtract_from_s_dot_t_dot_x(k: u64) {
-        storage.s.t.x -= k;
-    }
-    #[storage(read, write)]fn multiply_by_s_dot_t_dot_x(k: u64) {
-        storage.s.t.x *= k;
-    }
-    #[storage(read, write)]fn divide_s_dot_t_dot_x(k: u64) {
-        storage.s.t.x /= k;
-    }
-    #[storage(read, write)]fn shift_left_s_dot_t_dot_x(k: u64) {
-        storage.s.t.x <<= k;
-    }
-    #[storage(read, write)]fn shift_right_s_dot_t_dot_x(k: u64) {
-        storage.s.t.x >>= k;
+        storage.string.read()
     }
 }

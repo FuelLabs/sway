@@ -19,7 +19,6 @@ impl ty::TyStorageDecl {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         module: Module,
-        experimental_storage: bool,
     ) -> CompileResult<Vec<StorageSlot>> {
         let mut errors = vec![];
         let storage_slots = self
@@ -33,7 +32,6 @@ impl ty::TyStorageDecl {
                     md_mgr,
                     module,
                     &StateIndex::new(i),
-                    experimental_storage,
                 )
             })
             .filter_map(|s| s.map_err(|e| errors.push(e)).ok())
@@ -55,7 +53,6 @@ impl ty::TyStorageField {
         md_mgr: &mut MetadataManager,
         module: Module,
         ix: &StateIndex,
-        experimental_storage: bool,
     ) -> Result<Vec<StorageSlot>, CompileError> {
         compile_constant_expression_to_constant(
             engines,
@@ -66,15 +63,6 @@ impl ty::TyStorageField {
             None,
             &self.initializer,
         )
-        .map(|constant| {
-            serialize_to_storage_slots(
-                &constant,
-                context,
-                ix,
-                &constant.ty,
-                &[],
-                experimental_storage,
-            )
-        })
+        .map(|constant| serialize_to_storage_slots(&constant, context, ix, &constant.ty, &[]))
     }
 }

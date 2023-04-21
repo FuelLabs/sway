@@ -3728,13 +3728,7 @@ fn assignable_to_reassignment_target(
                 idents.push(name);
                 base = target;
             }
-            Assignable::Var(name) => {
-                if name.as_str() == "storage" {
-                    let idents = idents.into_iter().rev().cloned().collect();
-                    return Ok(ReassignmentTarget::StorageField(name.span(), idents));
-                }
-                break;
-            }
+            Assignable::Var(_) => break,
             Assignable::Index { .. } => break,
             Assignable::TupleFieldProjection { .. } => break,
         }

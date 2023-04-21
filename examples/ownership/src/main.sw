@@ -17,17 +17,17 @@ impl OwnershipExample for Contract {
     // ANCHOR: revoke_owner_example
     #[storage(write)]
     fn revoke_ownership() {
-        storage.owner = Option::None;
+        storage.owner.write(Option::None);
     }
     // ANCHOR_END: revoke_owner_example
     // ANCHOR: set_owner_example
     #[storage(write)]
     fn set_owner(identity: Identity) {
-        storage.owner = Option::Some(identity);
+        storage.owner.write(Option::Some(identity));
     }
     // ANCHOR_END: set_owner_example
     #[storage(read)]
     fn owner() -> Option<Identity> {
-        storage.owner
+        storage.owner.read()
     }
 }

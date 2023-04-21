@@ -1,6 +1,6 @@
 contract;
 
-use std::storage::StorageVec;
+use std::storage::storage_vec::*;
 
 struct TestStruct {
     a: bool,
@@ -74,7 +74,7 @@ impl MyContract for Contract {
 
     #[storage(read)]
     fn get(index: u64) -> TestStruct {
-        storage.my_vec.get(index).unwrap()
+        storage.my_vec.get(index).unwrap().read()
     }
 
     #[storage(read, write)]
@@ -119,12 +119,12 @@ impl MyContract for Contract {
 
     #[storage(read)]
     fn first() -> TestStruct {
-        storage.my_vec.first().unwrap()
+        storage.my_vec.first().unwrap().read()
     }
 
     #[storage(read)]
     fn last() -> TestStruct {
-        storage.my_vec.last().unwrap()
+        storage.my_vec.last().unwrap().read()
     }
 
     #[storage(read, write)]

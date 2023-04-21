@@ -1,6 +1,3 @@
-//! The official standard library for the Sway smart contract language.
-//!
-//! Source: https://github.com/FuelLabs/sway/tree/master/sway-lib-std
 library;
 
 mod error_signals;
@@ -25,7 +22,6 @@ mod identity;
 mod vec;
 mod bytes;
 mod r#storage;
-mod experimental;
 mod b256;
 mod tx;
 mod inputs;

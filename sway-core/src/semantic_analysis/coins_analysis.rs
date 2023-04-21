@@ -75,7 +75,6 @@ pub fn possibly_nonzero_u64_expression(
         | Break
         | Continue
         | Reassignment(_)
-        | Return(_)
-        | StorageReassignment(_) => true,
+        | Return(_) => true,
     }
 }

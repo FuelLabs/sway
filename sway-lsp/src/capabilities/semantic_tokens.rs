@@ -158,7 +158,7 @@ fn semantic_token_type(kind: &SymbolKind) -> SemanticTokenType {
         SymbolKind::Struct => SemanticTokenType::STRUCT,
         SymbolKind::Enum => SemanticTokenType::ENUM,
         SymbolKind::Variant => SemanticTokenType::ENUM_MEMBER,
-        SymbolKind::Trait | SymbolKind::Storage => SemanticTokenType::INTERFACE,
+        SymbolKind::Trait => SemanticTokenType::INTERFACE,
         SymbolKind::TypeParameter => SemanticTokenType::TYPE_PARAMETER,
         SymbolKind::Module => SemanticTokenType::NAMESPACE,
         SymbolKind::StringLiteral => SemanticTokenType::STRING,

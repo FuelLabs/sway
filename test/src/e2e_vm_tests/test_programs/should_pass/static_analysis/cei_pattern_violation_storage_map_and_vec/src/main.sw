@@ -1,7 +1,7 @@
 contract;
 
 use std::auth::msg_sender;
-use std::storage::StorageVec;
+use std::storage::storage_vec::*;
 
 abi MyContract {
     #[storage(read, write)]
@@ -17,7 +17,7 @@ impl MyContract for Contract {
     #[storage(read, write)]
     fn withdraw() {
         let sender = msg_sender().unwrap();
-        let bal = storage.balances.get(sender).unwrap_or(0);
+        let bal = storage.balances.get(sender).try_read().unwrap_or(0);
 
         assert(bal > 0);
 

@@ -117,19 +117,18 @@ pub(crate) fn check_function_purity(
 
         // Or the attribute must match the behaviour.
         (Some(StorageOperation::Reads), _, true) => error(span, "write", Reads, Writes),
-        (Some(StorageOperation::Writes), true, _) => error(span, "read", Writes, Reads),
 
         // Or we have unneeded attributes.
         (Some(StorageOperation::ReadsWrites), false, true) => warn(span, Reads),
         (Some(StorageOperation::ReadsWrites), true, false) => warn(span, Writes),
         (Some(StorageOperation::ReadsWrites), false, false) => warn(span, ReadsWrites),
         (Some(StorageOperation::Reads), false, false) => warn(span, Reads),
-        (Some(StorageOperation::Writes), false, false) => warn(span, Writes),
+        (Some(StorageOperation::Writes), _, false) => warn(span, Writes),
 
         // Attributes and effects are in total agreement
         (None, false, false)
         | (Some(StorageOperation::Reads), true, false)
-        | (Some(StorageOperation::Writes), false, true)
+        | (Some(StorageOperation::Writes), _, true) // storage(write) allows reading as well 
         | (Some(StorageOperation::ReadsWrites), true, true) => (),
     };
 
