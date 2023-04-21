@@ -1,8 +1,10 @@
 contract;
 
+// ANCHOR: identity
 storage {
     owner: Option<Identity> = Option::None,
 }
+
 // ANCHOR_END: identity
 // ANCHOR: abi
 abi Ownership {
