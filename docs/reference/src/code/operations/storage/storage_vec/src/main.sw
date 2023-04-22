@@ -1,7 +1,7 @@
 contract;
 
 // ANCHOR: initialization
-use std::{chain::auth::msg_sender, storage::StorageVec};
+use std::storage::StorageVec;
 
 storage {
     // T = u64
