@@ -1,4 +1,4 @@
-use fuels::prelude::*;
+use fuels::{prelude::*, types::Bits256};
 use tai64::Tai64;
 use tokio::time::{sleep, Duration};
 
@@ -7,8 +7,9 @@ abigen!(Contract(
     abi = "test_projects/block/out/debug/block-abi.json"
 ));
 
-async fn get_block_instance() -> (BlockTestContract<WalletUnlocked>, ContractId) {
+async fn get_block_instance() -> (BlockTestContract<WalletUnlocked>, ContractId, Provider) {
     let wallet = launch_provider_and_get_wallet().await;
+    let provider = wallet.provider().unwrap();
     let id = Contract::deploy(
         "test_projects/block/out/debug/block.bin",
         &wallet,
@@ -16,14 +17,14 @@ async fn get_block_instance() -> (BlockTestContract<WalletUnlocked>, ContractId)
     )
     .await
     .unwrap();
-    let instance = BlockTestContract::new(id.clone(), wallet);
+    let instance = BlockTestContract::new(id.clone(), wallet.clone());
 
-    (instance, id.into())
+    (instance, id.into(), provider.clone())
 }
 
 #[tokio::test]
 async fn can_get_block_height() {
-    let (instance, _id) = get_block_instance().await;
+    let (instance, _id, _) = get_block_instance().await;
     let block_0 = instance.methods().get_block_height().call().await.unwrap();
     let block_1 = instance.methods().get_block_height().call().await.unwrap();
     let block_2 = instance.methods().get_block_height().call().await.unwrap();
@@ -35,8 +36,28 @@ async fn can_get_block_height() {
 }
 
 #[tokio::test]
+async fn can_get_header_hash_of_block() {
+    let (instance, _id, provider) = get_block_instance().await;
+    let block_1 = instance.methods().get_block_height().call().await.unwrap();
+    let _block_2 = instance.methods().get_block_height().call().await.unwrap();
+    let result = instance
+        .methods()
+        .get_block_header_hash(block_1.value)
+        .call()
+        .await
+        .unwrap();
+
+    // TODO: when SDK supports getting block-header hash, compare it to hash returned by Sway std::block::block_header_hash()
+    assert_ne!(
+        result.value,
+        Bits256::from_hex_str("0x0000000000000000000000000000000000000000000000000000000000000000")
+            .unwrap()
+    );
+}
+
+#[tokio::test]
 async fn can_get_timestamp() {
-    let (instance, _id) = get_block_instance().await;
+    let (instance, _id, _) = get_block_instance().await;
     let block_0_time = instance.methods().get_timestamp().call().await.unwrap();
     let now = Tai64::now();
 
@@ -68,7 +89,7 @@ async fn can_get_timestamp() {
 
 #[tokio::test]
 async fn can_get_timestamp_of_block() {
-    let (instance, _id) = get_block_instance().await;
+    let (instance, _id, _) = get_block_instance().await;
 
     let block_0 = instance
         .methods()
