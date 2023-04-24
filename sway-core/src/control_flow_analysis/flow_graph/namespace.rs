@@ -58,6 +58,7 @@ pub struct ControlFlowNamespace {
     pub(crate) const_namespace: HashMap<Ident, NodeIndex>,
     pub(crate) storage: HashMap<Ident, NodeIndex>,
     pub(crate) code_blocks: Vec<ControlFlowCodeBlock>,
+    pub(crate) alias: HashMap<IdentUnique, NodeIndex>,
 }
 
 #[derive(Default, Clone)]
@@ -239,5 +240,12 @@ impl ControlFlowNamespace {
             }
         }
         None
+    }
+
+    pub(crate) fn insert_alias(&mut self, name: Ident, entry: NodeIndex) {
+        self.alias.insert(name.into(), entry);
+    }
+    pub(crate) fn get_alias(&self, name: &Ident) -> Option<&NodeIndex> {
+        self.alias.get(&name.into())
     }
 }
