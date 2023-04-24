@@ -63,7 +63,9 @@ impl MyContract for Contract {
     fn string_test(input: Option<str[4]>) -> Option<str[4]> {
         input
     }
-    fn result_in_option_test(input: Option<Result<str[4], SomeError>>) -> Option<Result<str[4], SomeError>> {
+    fn result_in_option_test(
+        input: Option<Result<str[4], SomeError>>,
+    ) -> Option<Result<str[4], SomeError>> {
         input
     }
 }

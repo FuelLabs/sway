@@ -8,8 +8,11 @@ use ::address::Address;
 use ::contract_id::{ContractId, AssetId};
 use ::identity::Identity;
 
+// `StorageKey` API
+use ::storage::storage_key::*;
+
 // Collections
-use ::storage::StorageMap;
+use ::storage::storage_map::*;
 use ::vec::Vec;
 
 // Error handling

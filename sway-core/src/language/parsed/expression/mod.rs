@@ -221,13 +221,9 @@ pub enum ExpressionKind {
     Return(Box<Expression>),
 }
 
-/// Represents the left hand side of a reassignment, which could either be a regular variable
-/// expression, denoted by [ReassignmentTarget::VariableExpression], or, a storage field, denoted
-/// by [ReassignmentTarget::StorageField].
 #[derive(Debug, Clone)]
 pub enum ReassignmentTarget {
     VariableExpression(Box<Expression>),
-    StorageField(Span, Vec<Ident>),
 }
 
 #[derive(Debug, Clone)]

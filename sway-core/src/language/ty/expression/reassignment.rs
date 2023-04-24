@@ -3,7 +3,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use sway_types::{state::StateIndex, Ident, Span, Spanned};
+use sway_types::{Ident, Span, Spanned};
 
 use crate::{decl_engine::*, engine_threading::*, language::ty::*, type_system::*};
 
@@ -162,93 +162,5 @@ impl ProjectionKind {
             ProjectionKind::TupleField { index, .. } => Cow::Owned(index.to_string()),
             ProjectionKind::ArrayIndex { index, .. } => Cow::Owned(format!("{index:#?}")),
         }
-    }
-}
-
-/// Describes each field being drilled down into in storage and its type.
-#[derive(Clone, Debug)]
-pub struct TyStorageReassignment {
-    pub fields: Vec<TyStorageReassignDescriptor>,
-    pub(crate) ix: StateIndex,
-    pub rhs: TyExpression,
-    pub storage_keyword_span: Span,
-}
-
-impl EqWithEngines for TyStorageReassignment {}
-impl PartialEqWithEngines for TyStorageReassignment {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        self.fields.eq(&other.fields, engines)
-            && self.ix == other.ix
-            && self.rhs.eq(&other.rhs, engines)
-    }
-}
-
-impl HashWithEngines for TyStorageReassignment {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let TyStorageReassignment {
-            fields,
-            ix,
-            rhs,
-            // these fields are not hashed because they aren't relevant/a
-            // reliable source of obj v. obj distinction
-            storage_keyword_span: _,
-        } = self;
-        fields.hash(state, engines);
-        ix.hash(state);
-        rhs.hash(state, engines);
-    }
-}
-
-impl Spanned for TyStorageReassignment {
-    fn span(&self) -> Span {
-        self.fields
-            .iter()
-            .fold(self.fields[0].span.clone(), |acc, field| {
-                Span::join(acc, field.span.clone())
-            })
-    }
-}
-
-impl TyStorageReassignment {
-    pub fn names(&self) -> Vec<Ident> {
-        self.fields
-            .iter()
-            .map(|f| f.name.clone())
-            .collect::<Vec<_>>()
-    }
-}
-
-/// Describes a single subfield access in the sequence when reassigning to a subfield within
-/// storage.
-#[derive(Clone, Debug)]
-pub struct TyStorageReassignDescriptor {
-    pub name: Ident,
-    pub type_id: TypeId,
-    pub(crate) span: Span,
-}
-
-impl EqWithEngines for TyStorageReassignDescriptor {}
-impl PartialEqWithEngines for TyStorageReassignDescriptor {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        let type_engine = engines.te();
-        self.name == other.name
-            && type_engine
-                .get(self.type_id)
-                .eq(&type_engine.get(other.type_id), engines)
-    }
-}
-
-impl HashWithEngines for TyStorageReassignDescriptor {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let TyStorageReassignDescriptor {
-            name,
-            type_id,
-            // these fields are not hashed because they aren't relevant/a
-            // reliable source of obj v. obj distinction
-            span: _,
-        } = self;
-        let type_engine = engines.te();
-        name.hash(state);
-        type_engine.get(*type_id).hash(state, engines);
     }
 }

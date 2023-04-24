@@ -10,6 +10,7 @@ pub(crate) fn instantiate_unsafe_downcast(
     engines: Engines<'_>,
     exp: &ty::TyExpression,
     variant: ty::TyEnumVariant,
+    call_path_decl: ty::TyDecl,
     span: Span,
 ) -> (MatchReqMap, ty::TyExpression) {
     let type_engine = engines.te();
@@ -38,6 +39,7 @@ pub(crate) fn instantiate_unsafe_downcast(
         expression: ty::TyExpressionVariant::UnsafeDowncast {
             exp: Box::new(exp.clone()),
             variant: variant.clone(),
+            call_path_decl,
         },
         return_type: variant.type_argument.type_id,
         span,

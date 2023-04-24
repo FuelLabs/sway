@@ -205,9 +205,10 @@ pub(crate) fn matcher(
         ty::TyScrutineeVariant::EnumScrutinee {
             enum_ref: _,
             variant,
+            call_path_decl,
             value,
             ..
-        } => match_enum(ctx, exp, *variant, *value, span),
+        } => match_enum(ctx, exp, *variant, call_path_decl, *value, span),
         ty::TyScrutineeVariant::Tuple(elems) => match_tuple(ctx, exp, elems, span),
     }
 }
@@ -322,13 +323,14 @@ fn match_enum(
     ctx: TypeCheckContext,
     exp: &ty::TyExpression,
     variant: ty::TyEnumVariant,
+    call_path_decl: ty::TyDecl,
     scrutinee: ty::TyScrutinee,
     span: Span,
 ) -> CompileResult<MatcherResult> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let (mut match_req_map, unsafe_downcast) =
-        instantiate_unsafe_downcast(ctx.engines(), exp, variant, span);
+        instantiate_unsafe_downcast(ctx.engines(), exp, variant, call_path_decl, span);
     let (mut new_match_req_map, match_decl_map) = check!(
         matcher(ctx, &unsafe_downcast, scrutinee),
         return err(warnings, errors),

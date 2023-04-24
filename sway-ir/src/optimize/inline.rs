@@ -556,7 +556,6 @@ fn inline_instruction(
                 map_value(gas),
             ),
             Instruction::FuelVm(fuel_vm_instr) => match fuel_vm_instr {
-                FuelVmInstruction::GetStorageKey(_ty) => new_block.ins(context).get_storage_key(),
                 FuelVmInstruction::Gtf { index, tx_field_id } => {
                     new_block.ins(context).gtf(map_value(index), tx_field_id)
                 }

@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-0A73F145D8D4FEED'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-0A73F145D8D4FEED'
+dependencies = ['core']
+
+[[package]]
+name = 'storage_vec_nested'
+source = 'member'
+dependencies = ['std']
