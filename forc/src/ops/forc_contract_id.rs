@@ -75,7 +75,6 @@ fn build_opts_from_cmd(cmd: &ContractIdCommand) -> pkg::BuildOpts {
         build_target: BuildTarget::default(),
         tests: false,
         member_filter: pkg::MemberFilter::only_contracts(),
-        experimental_storage: cmd.build_profile.experimental_storage,
         experimental_private_modules: cmd.build_profile.experimental_private_modules,
     }
 }

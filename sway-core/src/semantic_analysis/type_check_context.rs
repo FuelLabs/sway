@@ -63,9 +63,6 @@ pub struct TypeCheckContext<'a> {
     /// body).
     disallow_functions: bool,
 
-    /// Enable the experimental storage implementation and UI.
-    experimental_storage: bool,
-
     /// Enable experimental module privacy rules
     experimental_private_modules: bool,
 }
@@ -97,7 +94,6 @@ impl<'a> TypeCheckContext<'a> {
             purity: Purity::default(),
             kind: TreeType::Contract,
             disallow_functions: false,
-            experimental_storage: false,
             experimental_private_modules: false,
         }
     }
@@ -122,7 +118,6 @@ impl<'a> TypeCheckContext<'a> {
             type_engine: self.type_engine,
             decl_engine: self.decl_engine,
             disallow_functions: self.disallow_functions,
-            experimental_storage: self.experimental_storage,
             experimental_private_modules: self.experimental_private_modules,
         }
     }
@@ -140,7 +135,6 @@ impl<'a> TypeCheckContext<'a> {
             type_engine: self.type_engine,
             decl_engine: self.decl_engine,
             disallow_functions: self.disallow_functions,
-            experimental_storage: self.experimental_storage,
             experimental_private_modules: self.experimental_private_modules,
         }
     }
@@ -194,14 +188,6 @@ impl<'a> TypeCheckContext<'a> {
     /// Map this `TypeCheckContext` instance to a new one with the given module kind.
     pub(crate) fn with_kind(self, kind: TreeType) -> Self {
         Self { kind, ..self }
-    }
-
-    /// Map this `TypeCheckContext` instance to a new one with the given module kind.
-    pub(crate) fn with_experimental_storage(self, experimental_storage: bool) -> Self {
-        Self {
-            experimental_storage,
-            ..self
-        }
     }
 
     /// Map this `TypeCheckContext` instance to a new one with the given module kind.
@@ -267,10 +253,6 @@ impl<'a> TypeCheckContext<'a> {
 
     pub(crate) fn functions_disallowed(&self) -> bool {
         self.disallow_functions
-    }
-
-    pub(crate) fn experimental_storage_enabled(&self) -> bool {
-        self.experimental_storage
     }
 
     pub(crate) fn experimental_private_modules_enabled(&self) -> bool {

@@ -25,7 +25,7 @@ pub(crate) fn struct_instantiation(
     // We need the call_path_binding to have types that point to proper definitions so the LSP can
     // look for them, but its types haven't been resolved yet.
     // To that end we do a dummy type check which has the side effect of resolving the types.
-    let _: CompileResult<(DeclRefStruct, _)> =
+    let _: CompileResult<(DeclRefStruct, _, _)> =
         TypeBinding::type_check(&mut call_path_binding, ctx.by_ref());
 
     let TypeBinding {

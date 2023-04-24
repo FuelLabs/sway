@@ -1,6 +1,3 @@
-//! The official standard library for the Sway smart contract language.
-//!
-//! Source: https://github.com/FuelLabs/sway/tree/master/sway-lib-std
 library;
 
 pub mod error_signals;
@@ -25,7 +22,6 @@ pub mod identity;
 pub mod vec;
 pub mod bytes;
 pub mod r#storage;
-pub mod experimental;
 pub mod b256;
 pub mod tx;
 pub mod inputs;

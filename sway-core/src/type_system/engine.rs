@@ -16,7 +16,6 @@ use sway_types::{span::Span, Ident, Spanned};
 #[derive(Debug, Default)]
 pub struct TypeEngine {
     pub(super) slab: ConcurrentSlab<TypeInfo>,
-    storage_only_types: ConcurrentSlab<TypeInfo>,
     id_map: RwLock<HashMap<TypeInfo, TypeId>>,
 }
 
@@ -60,21 +59,6 @@ impl TypeEngine {
             TypeInfo::Alias { ty, .. } => self.get_unaliased(ty.type_id),
             ty_info => ty_info,
         }
-    }
-
-    /// Denotes the given [TypeId] as being used with storage.
-    pub(crate) fn set_type_as_storage_only(&self, id: TypeId) {
-        self.storage_only_types.insert(self.get(id));
-    }
-
-    /// Checks if the given [TypeInfo] is a storage only type.
-    pub(crate) fn is_type_info_storage_only(
-        &self,
-        decl_engine: &DeclEngine,
-        ti: &TypeInfo,
-    ) -> bool {
-        self.storage_only_types
-            .exists(|x| ti.is_subset_of(x, Engines::new(self, decl_engine)))
     }
 
     /// Given a `value` of type `T` that is able to be monomorphized and a set

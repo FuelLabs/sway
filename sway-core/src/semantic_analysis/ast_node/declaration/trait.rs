@@ -154,7 +154,7 @@ impl ty::TyTraitDecl {
             errors
         );
 
-        // type check the items
+        // Type check the items.
         let mut new_items = vec![];
         for method in methods.into_iter() {
             let method = check!(
@@ -364,6 +364,7 @@ impl ty::TyTraitDecl {
                 ty::TyTraitInterfaceItem::Constant(decl_ref) => {
                     let const_decl = decl_engine.get_constant(decl_ref);
                     let const_name = const_decl.call_path.suffix.clone();
+                    all_items.push(TyImplItem::Constant(decl_ref.clone()));
                     ctx.namespace.insert_symbol(
                         const_name.clone(),
                         ty::TyDecl::ConstantDecl(ty::ConstantDecl {

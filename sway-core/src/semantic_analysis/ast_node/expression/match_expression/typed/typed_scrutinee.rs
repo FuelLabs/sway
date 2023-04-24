@@ -262,7 +262,7 @@ fn type_check_enum(
     let decl_engine = ctx.decl_engine;
 
     let mut prefixes = call_path.prefixes.clone();
-    let (callsite_span, mut enum_decl) = match prefixes.pop() {
+    let (callsite_span, mut enum_decl, call_path_decl) = match prefixes.pop() {
         Some(enum_name) => {
             let enum_callpath = CallPath {
                 suffix: enum_name,
@@ -282,7 +282,11 @@ fn type_check_enum(
                 warnings,
                 errors
             );
-            (enum_callpath.span(), decl_engine.get_enum(&enum_ref))
+            (
+                enum_callpath.span(),
+                decl_engine.get_enum(&enum_ref),
+                unknown_decl,
+            )
         }
         None => {
             // we may have an imported variant
@@ -292,8 +296,12 @@ fn type_check_enum(
                 warnings,
                 errors
             );
-            if let TyDecl::EnumVariantDecl(ty::EnumVariantDecl { enum_ref, .. }) = decl {
-                (call_path.suffix.span(), decl_engine.get_enum(enum_ref.id()))
+            if let TyDecl::EnumVariantDecl(ty::EnumVariantDecl { enum_ref, .. }) = decl.clone() {
+                (
+                    call_path.suffix.span(),
+                    decl_engine.get_enum(enum_ref.id()),
+                    decl,
+                )
             } else {
                 errors.push(CompileError::EnumNotFound {
                     name: call_path.suffix.clone(),
@@ -339,6 +347,7 @@ fn type_check_enum(
         variant: ty::TyScrutineeVariant::EnumScrutinee {
             enum_ref: enum_ref.clone(),
             variant: Box::new(variant),
+            call_path_decl,
             value: Box::new(typed_value),
             instantiation_call_path: call_path,
         },

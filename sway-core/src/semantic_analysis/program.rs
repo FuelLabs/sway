@@ -20,24 +20,16 @@ impl ty::TyProgram {
         parsed: &ParseProgram,
         initial_namespace: namespace::Module,
         package_name: &str,
-        experimental_storage: bool,
         experimental_private_modules: bool,
     ) -> CompileResult<Self> {
         let mut namespace = Namespace::init_root(initial_namespace);
         let ctx = TypeCheckContext::from_root(&mut namespace, engines)
             .with_kind(parsed.kind.clone())
-            .with_experimental_storage(experimental_storage)
             .with_experimental_private_modules(experimental_private_modules);
         let ParseProgram { root, kind } = parsed;
         let mod_res = ty::TyModule::type_check(ctx, root);
         mod_res.flat_map(|root| {
-            let res = Self::validate_root(
-                engines,
-                &root,
-                kind.clone(),
-                package_name,
-                experimental_storage,
-            );
+            let res = Self::validate_root(engines, &root, kind.clone(), package_name);
             res.map(|(kind, declarations, configurables)| Self {
                 kind,
                 root,
@@ -56,7 +48,6 @@ impl ty::TyProgram {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         module: Module,
-        experimental_storage: bool,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -77,13 +68,7 @@ impl ty::TyProgram {
                     })) => {
                         let decl = decl_engine.get_storage(decl_id);
                         let mut storage_slots = check!(
-                            decl.get_initialized_storage_slots(
-                                engines,
-                                context,
-                                md_mgr,
-                                module,
-                                experimental_storage
-                            ),
+                            decl.get_initialized_storage_slots(engines, context, md_mgr, module,),
                             return err(warnings, errors),
                             warnings,
                             errors,

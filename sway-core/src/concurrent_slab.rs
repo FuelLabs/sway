@@ -70,11 +70,6 @@ where
         let inner = self.inner.read().unwrap();
         inner[index].clone()
     }
-
-    pub fn exists<F: Fn(&T) -> bool>(&self, f: F) -> bool {
-        let inner = self.inner.read().unwrap();
-        inner.iter().any(f)
-    }
 }
 
 impl ConcurrentSlab<TypeInfo> {

@@ -464,6 +464,7 @@ impl Module {
     /// Pull a single variant `variant` from the enum `enum_name` from the given `src` module and import it into the `dst` module.
     ///
     /// Paths are assumed to be relative to `self`.
+    #[allow(clippy::too_many_arguments)] // TODO: remove lint bypass once private modules are no longer experimental
     pub(crate) fn variant_import(
         &mut self,
         engines: Engines<'_>,
@@ -679,7 +680,7 @@ impl Module {
             // you are always allowed to access your ancestor's symbols
             if !is_ancestor(src, dst, experimental_private_modules) {
                 // we don't check the first prefix because direct children are always accessible
-                for prefix in iter_prefixes(&src).skip(1) {
+                for prefix in iter_prefixes(src).skip(1) {
                     let module = check!(
                         self.check_submodule(prefix),
                         return err(warnings, errors),

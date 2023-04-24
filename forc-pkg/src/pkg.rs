@@ -302,8 +302,6 @@ pub struct BuildOpts {
     pub tests: bool,
     /// The set of options to filter by member project kind.
     pub member_filter: MemberFilter,
-    /// Enable the experimental storage implementation and UI.
-    pub experimental_storage: bool,
     /// Enable the experimental module privacy enforcement.
     pub experimental_private_modules: bool,
 }
@@ -1549,7 +1547,6 @@ pub fn sway_build_config(
     .print_intermediate_asm(build_profile.print_intermediate_asm)
     .print_ir(build_profile.print_ir)
     .include_tests(build_profile.include_tests)
-    .experimental_storage(build_profile.experimental_storage)
     .experimental_private_modules(build_profile.experimental_private_modules);
     Ok(build_config)
 }
@@ -1997,7 +1994,6 @@ fn build_profile_from_opts(
         time_phases,
         tests,
         error_on_warnings,
-        experimental_storage,
         experimental_private_modules,
         ..
     } = build_options;
@@ -2049,7 +2045,6 @@ fn build_profile_from_opts(
     profile.include_tests |= tests;
     profile.json_abi_with_callpaths |= pkg.json_abi_with_callpaths;
     profile.error_on_warnings |= error_on_warnings;
-    profile.experimental_storage |= experimental_storage;
     profile.experimental_private_modules |= experimental_private_modules;
 
     Ok((selected_build_profile.to_string(), profile))

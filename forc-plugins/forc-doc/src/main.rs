@@ -88,6 +88,7 @@ pub fn main() -> Result<()> {
         silent,
         tests_enabled,
         engines,
+        true,
     )?
     .pop()
     .and_then(|compilation| compilation.value)

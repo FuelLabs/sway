@@ -49,9 +49,6 @@ pub struct BuildProfile {
     /// Treat warnings as errors.
     #[clap(long)]
     pub error_on_warnings: bool,
-    /// Enable the experimental storage implementation and UI.
-    #[clap(long)]
-    pub experimental_storage: bool,
     #[clap(long)]
     pub experimental_private_modules: bool,
 }

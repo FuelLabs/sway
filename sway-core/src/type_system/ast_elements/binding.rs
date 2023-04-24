@@ -213,18 +213,23 @@ impl TypeBinding<CallPath> {
 
 /// Trait that adds a workaround for easy generic returns in Rust:
 /// https://blog.jcoglan.com/2019/04/22/generic-returns-in-rust/
+#[allow(clippy::type_complexity)]
 pub(crate) trait TypeCheckTypeBinding<T> {
     fn type_check(
         &mut self,
         ctx: TypeCheckContext,
-    ) -> CompileResult<(DeclRef<DeclId<T>>, Option<TypeId>)>;
+    ) -> CompileResult<(DeclRef<DeclId<T>>, Option<TypeId>, Option<ty::TyDecl>)>;
 }
 
 impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
     fn type_check(
         &mut self,
         mut ctx: TypeCheckContext,
-    ) -> CompileResult<(DeclRef<DeclId<ty::TyFunctionDecl>>, Option<TypeId>)> {
+    ) -> CompileResult<(
+        DeclRef<DeclId<ty::TyFunctionDecl>>,
+        Option<TypeId>,
+        Option<ty::TyDecl>,
+    )> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_engine = ctx.type_engine;
@@ -289,7 +294,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
             .decl_engine
             .insert(new_copy)
             .with_parent(ctx.decl_engine, fn_ref.id().into());
-        ok((new_fn_ref, None), warnings, errors)
+        ok((new_fn_ref, None, None), warnings, errors)
     }
 }
 
@@ -297,7 +302,11 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
     fn type_check(
         &mut self,
         mut ctx: TypeCheckContext,
-    ) -> CompileResult<(DeclRef<DeclId<ty::TyStructDecl>>, Option<TypeId>)> {
+    ) -> CompileResult<(
+        DeclRef<DeclId<ty::TyStructDecl>>,
+        Option<TypeId>,
+        Option<ty::TyDecl>,
+    )> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_engine = ctx.type_engine;
@@ -343,7 +352,7 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
         let type_id = type_engine.insert(decl_engine, TypeInfo::Struct(new_struct_ref.clone()));
         ctx.namespace
             .insert_trait_implementation_for_type(engines, type_id);
-        ok((new_struct_ref, Some(type_id)), warnings, errors)
+        ok((new_struct_ref, Some(type_id), None), warnings, errors)
     }
 }
 
@@ -351,7 +360,11 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
     fn type_check(
         &mut self,
         mut ctx: TypeCheckContext,
-    ) -> CompileResult<(DeclRef<DeclId<ty::TyEnumDecl>>, Option<TypeId>)> {
+    ) -> CompileResult<(
+        DeclRef<DeclId<ty::TyEnumDecl>>,
+        Option<TypeId>,
+        Option<ty::TyDecl>,
+    )> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_engine = ctx.type_engine;
@@ -407,7 +420,11 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
         let type_id = type_engine.insert(decl_engine, TypeInfo::Enum(new_enum_ref.clone()));
         ctx.namespace
             .insert_trait_implementation_for_type(engines, type_id);
-        ok((new_enum_ref, Some(type_id)), warnings, errors)
+        ok(
+            (new_enum_ref, Some(type_id), Some(unknown_decl)),
+            warnings,
+            errors,
+        )
     }
 }
 
@@ -415,7 +432,11 @@ impl TypeCheckTypeBinding<ty::TyConstantDecl> for TypeBinding<CallPath> {
     fn type_check(
         &mut self,
         ctx: TypeCheckContext,
-    ) -> CompileResult<(DeclRef<DeclId<ty::TyConstantDecl>>, Option<TypeId>)> {
+    ) -> CompileResult<(
+        DeclRef<DeclId<ty::TyConstantDecl>>,
+        Option<TypeId>,
+        Option<ty::TyDecl>,
+    )> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -443,6 +464,6 @@ impl TypeCheckTypeBinding<ty::TyConstantDecl> for TypeBinding<CallPath> {
             errors
         );
 
-        ok((const_ref, None), warnings, errors)
+        ok((const_ref, None, None), warnings, errors)
     }
 }

@@ -5,7 +5,7 @@ use crate::{
     decl_engine::DeclEngine,
     engine_threading::*,
     language::{
-        ty::{self, TyIntrinsicFunctionKind},
+        ty::{self, TyConstantDecl, TyIntrinsicFunctionKind},
         CallPath,
     },
     metadata::MetadataManager,
@@ -39,12 +39,18 @@ pub(crate) struct LookupEnv<'a> {
     pub(crate) module: Module,
     pub(crate) module_ns: Option<&'a namespace::Module>,
     pub(crate) function_compiler: Option<&'a FnCompiler<'a>>,
-    pub(crate) lookup: fn(&mut LookupEnv, &CallPath) -> Result<Option<Value>, CompileError>,
+    #[allow(clippy::type_complexity)]
+    pub(crate) lookup: fn(
+        &mut LookupEnv,
+        &CallPath,
+        &Option<TyConstantDecl>,
+    ) -> Result<Option<Value>, CompileError>,
 }
 
 pub(crate) fn compile_const_decl(
     env: &mut LookupEnv,
     call_path: &CallPath,
+    const_decl: &Option<TyConstantDecl>,
 ) -> Result<Option<Value>, CompileError> {
     // Check if it's a processed local constant.
     if let Some(fn_compiler) = env.function_compiler {
@@ -103,47 +109,59 @@ pub(crate) fn compile_const_decl(
         (_, Some(config_val), _) => Ok(Some(config_val)),
         (None, None, Some(module_ns)) => {
             // See if we it's a global const and whether we can compile it *now*.
-            let decl = module_ns.check_symbol(&call_path.suffix)?;
-            let decl_name_value = match decl {
-                ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
+            let decl = module_ns.check_symbol(&call_path.suffix);
+            let const_decl = match const_decl {
+                Some(decl) => Some(decl),
+                None => None,
+            };
+            let const_decl = match decl {
+                Ok(decl) => match decl {
+                    ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
+                        Some(env.decl_engine.get_constant(decl_id))
+                    }
+                    _otherwise => const_decl.cloned(),
+                },
+                Err(_) => const_decl.cloned(),
+            };
+            match const_decl {
+                Some(const_decl) => {
                     let ty::TyConstantDecl {
                         call_path,
                         value,
                         is_configurable,
                         ..
-                    } = env.decl_engine.get_constant(decl_id);
-                    Some((call_path, value, is_configurable))
-                }
-                _otherwise => None,
-            };
-            if let Some((call_path, Some(value), is_configurable)) = decl_name_value {
-                let const_val = compile_constant_expression(
-                    Engines::new(env.type_engine, env.decl_engine),
-                    env.context,
-                    env.md_mgr,
-                    env.module,
-                    env.module_ns,
-                    env.function_compiler,
-                    &call_path,
-                    &value,
-                    is_configurable,
-                )?;
-                if !is_configurable {
-                    env.module.add_global_constant(
+                    } = const_decl;
+                    if value.is_none() {
+                        return Ok(None);
+                    }
+
+                    let const_val = compile_constant_expression(
+                        Engines::new(env.type_engine, env.decl_engine),
                         env.context,
-                        call_path.as_vec_string().to_vec(),
-                        const_val,
-                    );
-                } else {
-                    env.module.add_global_configurable(
-                        env.context,
-                        call_path.as_vec_string().to_vec(),
-                        const_val,
-                    );
+                        env.md_mgr,
+                        env.module,
+                        env.module_ns,
+                        env.function_compiler,
+                        &call_path,
+                        &value.unwrap(),
+                        is_configurable,
+                    )?;
+                    if !is_configurable {
+                        env.module.add_global_constant(
+                            env.context,
+                            call_path.as_vec_string().to_vec(),
+                            const_val,
+                        );
+                    } else {
+                        env.module.add_global_configurable(
+                            env.context,
+                            call_path.as_vec_string().to_vec(),
+                            const_val,
+                        );
+                    }
+                    Ok(Some(const_val))
                 }
-                Ok(Some(const_val))
-            } else {
-                Ok(None)
+                None => Ok(None),
             }
         }
         _ => Ok(None),
@@ -277,7 +295,7 @@ fn const_eval_typed_expr(
                 Some(cvs) => Some(cvs.clone()),
                 None => {
                     // 2. Check if name is a global constant.
-                    (lookup.lookup)(lookup, call_path)
+                    (lookup.lookup)(lookup, call_path, &Some(*const_decl.clone()))
                         .ok()
                         .flatten()
                         .and_then(|v| v.get_constant_or_configurable(lookup.context).cloned())
@@ -295,7 +313,7 @@ fn const_eval_typed_expr(
                     None => CallPath::from(name.clone()),
                 };
                 // 2. Check if name is a global constant.
-                (lookup.lookup)(lookup, &call_path)
+                (lookup.lookup)(lookup, &call_path, &None)
                     .ok()
                     .flatten()
                     .and_then(|v| v.get_constant(lookup.context).cloned())
@@ -479,7 +497,6 @@ fn const_eval_typed_expr(
         ty::TyExpressionVariant::ArrayIndex { .. }
         | ty::TyExpressionVariant::CodeBlock(_)
         | ty::TyExpressionVariant::Reassignment(_)
-        | ty::TyExpressionVariant::StorageReassignment(_)
         | ty::TyExpressionVariant::FunctionParameter
         | ty::TyExpressionVariant::IfExp { .. }
         | ty::TyExpressionVariant::AsmExpression { .. }
@@ -604,8 +621,7 @@ fn const_eval_intrinsic(
         sway_ast::Intrinsic::AddrOf => Ok(None),
         sway_ast::Intrinsic::PtrAdd => Ok(None),
         sway_ast::Intrinsic::PtrSub => Ok(None),
-        sway_ast::Intrinsic::GetStorageKey
-        | sway_ast::Intrinsic::IsReferenceType
+        sway_ast::Intrinsic::IsReferenceType
         | sway_ast::Intrinsic::Gtf
         | sway_ast::Intrinsic::StateClear
         | sway_ast::Intrinsic::StateLoadWord

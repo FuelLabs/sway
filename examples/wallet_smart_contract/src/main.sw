@@ -26,7 +26,7 @@ impl Wallet for Contract {
             // If we received `BASE_ASSET_ID` then keep track of the balance.
             // Otherwise, we're receiving other native assets and don't care
             // about our balance of tokens.
-            storage.balance += msg_amount();
+            storage.balance.write(storage.balance.read() + msg_amount());
         }
     }
 
@@ -38,10 +38,10 @@ impl Wallet for Contract {
             _ => revert(0),
         };
 
-        let current_balance = storage.balance;
+        let current_balance = storage.balance.read();
         assert(current_balance >= amount_to_send);
 
-        storage.balance = current_balance - amount_to_send;
+        storage.balance.write(current_balance - amount_to_send);
 
         // Note: `transfer_to_address()` is not a call and thus not an
         // interaction. Regardless, this code conforms to

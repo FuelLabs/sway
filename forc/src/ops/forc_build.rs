@@ -39,7 +39,6 @@ fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
         build_target: cmd.build.build_target,
         tests: cmd.tests,
         member_filter: Default::default(),
-        experimental_storage: cmd.build.profile.experimental_storage,
         experimental_private_modules: cmd.build.profile.experimental_private_modules,
     }
 }

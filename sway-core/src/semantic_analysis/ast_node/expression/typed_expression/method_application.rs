@@ -10,7 +10,7 @@ use std::collections::{HashMap, VecDeque};
 use sway_error::error::CompileError;
 use sway_types::{constants, integer_bits::IntegerBits};
 use sway_types::{constants::CONTRACT_CALL_COINS_PARAMETER_NAME, Spanned};
-use sway_types::{state::StateIndex, Ident, Span};
+use sway_types::{Ident, Span};
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn type_check_method_application(
@@ -43,7 +43,7 @@ pub(crate) fn type_check_method_application(
     }
 
     // resolve the method name to a typed function declaration and type_check
-    let decl_ref = check!(
+    let (decl_ref, call_path_typeid) = check!(
         resolve_method_name(ctx.by_ref(), &mut method_name_binding, args_buf.clone()),
         return err(warnings, errors),
         warnings,
@@ -156,40 +156,6 @@ pub(crate) fn type_check_method_application(
             }
         }
     }
-
-    // If this method was called with self being a `StorageAccess` (e.g. storage.map.insert(..)),
-    // then record the index of that storage variable and pass it on.
-    let mut self_state_idx = None;
-    if ctx.namespace.has_storage_declared() {
-        let storage_fields = check!(
-            ctx.namespace.get_storage_field_descriptors(decl_engine),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-
-        self_state_idx = match arguments.first().map(|expr| &expr.kind) {
-            Some(ExpressionKind::StorageAccess(StorageAccessExpression { field_names })) => {
-                let first_field = field_names[0].clone();
-                let self_state_idx = match storage_fields
-                    .iter()
-                    .enumerate()
-                    .find(|(_, ty::TyStorageField { name, .. })| name == &first_field)
-                {
-                    Some((ix, _)) => StateIndex::new(ix),
-                    None => {
-                        errors.push(CompileError::StorageFieldDoesNotExist {
-                            name: first_field.clone(),
-                            span: first_field.span(),
-                        });
-                        return err(warnings, errors);
-                    }
-                };
-                Some(self_state_idx)
-            }
-            _ => None,
-        }
-    };
 
     // If this function is being called with method call syntax, a.b(c),
     // then make sure the first parameter is self, else issue an error.
@@ -352,9 +318,9 @@ pub(crate) fn type_check_method_application(
             contract_call_params: contract_call_params_map,
             arguments: typed_arguments_with_names,
             fn_ref: decl_ref,
-            self_state_idx,
             selector,
             type_binding: Some(method_name_binding.strip_inner()),
+            call_path_typeid: Some(call_path_typeid),
         },
         return_type: method.return_type.type_id,
         span,
@@ -413,7 +379,7 @@ pub(crate) fn resolve_method_name(
     mut ctx: TypeCheckContext,
     method_name: &mut TypeBinding<MethodName>,
     arguments: VecDeque<ty::TyExpression>,
-) -> CompileResult<DeclRefFunction> {
+) -> CompileResult<(DeclRefFunction, TypeId)> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
@@ -422,7 +388,7 @@ pub(crate) fn resolve_method_name(
     let engines = ctx.engines();
 
     // retrieve the function declaration using the components of the method name
-    let decl_ref = match &method_name.inner {
+    let (decl_ref, type_id) = match &method_name.inner {
         MethodName::FromType {
             call_path_binding,
             method_name,
@@ -447,7 +413,7 @@ pub(crate) fn resolve_method_name(
             );
 
             // find the method
-            check!(
+            let decl_ref = check!(
                 ctx.namespace.find_method_for_type(
                     type_id,
                     &type_info_prefix,
@@ -460,7 +426,9 @@ pub(crate) fn resolve_method_name(
                 return err(warnings, errors),
                 warnings,
                 errors
-            )
+            );
+
+            (decl_ref, type_id)
         }
         MethodName::FromTrait { call_path } => {
             // find the module that the symbol is in
@@ -473,7 +441,7 @@ pub(crate) fn resolve_method_name(
                 .unwrap_or_else(|| type_engine.insert(decl_engine, TypeInfo::Unknown));
 
             // find the method
-            check!(
+            let decl_ref = check!(
                 ctx.namespace.find_method_for_type(
                     type_id,
                     &module_path,
@@ -486,7 +454,9 @@ pub(crate) fn resolve_method_name(
                 return err(warnings, errors),
                 warnings,
                 errors
-            )
+            );
+
+            (decl_ref, type_id)
         }
         MethodName::FromModule { method_name } => {
             // find the module that the symbol is in
@@ -499,7 +469,7 @@ pub(crate) fn resolve_method_name(
                 .unwrap_or_else(|| type_engine.insert(decl_engine, TypeInfo::Unknown));
 
             // find the method
-            check!(
+            let decl_ref = check!(
                 ctx.namespace.find_method_for_type(
                     type_id,
                     &module_path,
@@ -512,7 +482,9 @@ pub(crate) fn resolve_method_name(
                 return err(warnings, errors),
                 warnings,
                 errors
-            )
+            );
+
+            (decl_ref, type_id)
         }
     };
 
@@ -543,5 +515,5 @@ pub(crate) fn resolve_method_name(
         .insert(func_decl)
         .with_parent(ctx.decl_engine, (*decl_ref.id()).into());
 
-    ok(decl_ref, warnings, errors)
+    ok((decl_ref, type_id), warnings, errors)
 }
