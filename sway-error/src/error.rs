@@ -612,6 +612,8 @@ pub enum CompileError {
     CallingPrivateLibraryMethod { name: String, span: Span },
     #[error("Using \"while\" in a predicate is not allowed.")]
     DisallowedWhileInPredicate { span: Span },
+    #[error("Using intrinsic \"{intrinsic}\" in a predicate is not allowed.")]
+    DisallowedIntrinsicInPredicate { intrinsic: String, span: Span },
     #[error("Possibly non-zero amount of coins transferred to non-payable contract method \"{fn_name}\".")]
     CoinsPassedToNonPayableMethod { fn_name: Ident, span: Span },
     #[error(
@@ -799,6 +801,7 @@ impl Spanned for CompileError {
             DisallowedControlFlowInstruction { span, .. } => span.clone(),
             CallingPrivateLibraryMethod { span, .. } => span.clone(),
             DisallowedWhileInPredicate { span } => span.clone(),
+            DisallowedIntrinsicInPredicate { span, .. } => span.clone(),
             CoinsPassedToNonPayableMethod { span, .. } => span.clone(),
             TraitImplPayabilityMismatch { span, .. } => span.clone(),
             ConfigurableInLibrary { span } => span.clone(),

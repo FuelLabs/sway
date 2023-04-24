@@ -8,7 +8,7 @@ pub mod storage;
 mod types;
 
 use sway_error::error::CompileError;
-use sway_ir::Context;
+use sway_ir::{Context, Kind};
 use sway_types::span::Span;
 
 pub(crate) use purity::{check_function_purity, PurityEnv};
@@ -48,6 +48,13 @@ pub fn compile_program(
         .collect();
 
     let mut ctx = Context::default();
+    ctx.program_kind = match kind {
+        ty::TyProgramKind::Script { .. } => Kind::Script,
+        ty::TyProgramKind::Predicate { .. } => Kind::Predicate,
+        ty::TyProgramKind::Contract { .. } => Kind::Contract,
+        ty::TyProgramKind::Library { .. } => Kind::Library,
+    };
+
     match kind {
         // predicates and scripts have the same codegen, their only difference is static
         // type-check time checks.

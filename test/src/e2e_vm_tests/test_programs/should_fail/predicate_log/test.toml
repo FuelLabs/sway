@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: __log::<T>(value);
+# nextln: $()Using intrinsic "log" in a predicate is not allowed.
