@@ -46,7 +46,6 @@ pub struct BuildConfig {
     pub(crate) print_finalized_asm: bool,
     pub(crate) print_ir: bool,
     pub(crate) include_tests: bool,
-    pub(crate) experimental_storage: bool,
 }
 
 impl BuildConfig {
@@ -89,7 +88,6 @@ impl BuildConfig {
             print_finalized_asm: false,
             print_ir: false,
             include_tests: false,
-            experimental_storage: false,
         }
     }
 
@@ -124,13 +122,6 @@ impl BuildConfig {
     pub fn print_ir(self, a: bool) -> Self {
         Self {
             print_ir: a,
-            ..self
-        }
-    }
-
-    pub fn experimental_storage(self, a: bool) -> Self {
-        Self {
-            experimental_storage: a,
             ..self
         }
     }

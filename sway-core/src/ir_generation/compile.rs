@@ -30,7 +30,6 @@ pub(super) fn compile_script(
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     test_fns: &[(ty::TyFunctionDecl, DeclRefFunction)],
-    experimental_storage: bool,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Script);
     let mut md_mgr = MetadataManager::default();
@@ -53,7 +52,6 @@ pub(super) fn compile_script(
         logged_types_map,
         messages_types_map,
         None,
-        experimental_storage,
     )?;
     compile_tests(
         engines,
@@ -63,7 +61,6 @@ pub(super) fn compile_script(
         logged_types_map,
         messages_types_map,
         test_fns,
-        experimental_storage,
     )?;
 
     Ok(module)
@@ -79,7 +76,6 @@ pub(super) fn compile_predicate(
     logged_types: &HashMap<TypeId, LogId>,
     messages_types: &HashMap<TypeId, MessageId>,
     test_fns: &[(ty::TyFunctionDecl, DeclRefFunction)],
-    experimental_storage: bool,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Predicate);
     let mut md_mgr = MetadataManager::default();
@@ -102,7 +98,6 @@ pub(super) fn compile_predicate(
         &HashMap::new(),
         &HashMap::new(),
         None,
-        experimental_storage,
     )?;
     compile_tests(
         engines,
@@ -112,7 +107,6 @@ pub(super) fn compile_predicate(
         logged_types,
         messages_types,
         test_fns,
-        experimental_storage,
     )?;
 
     Ok(module)
@@ -128,7 +122,6 @@ pub(super) fn compile_contract(
     messages_types_map: &HashMap<TypeId, MessageId>,
     test_fns: &[(ty::TyFunctionDecl, DeclRefFunction)],
     engines: Engines<'_>,
-    experimental_storage: bool,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Contract);
     let mut md_mgr = MetadataManager::default();
@@ -151,7 +144,6 @@ pub(super) fn compile_contract(
             logged_types_map,
             messages_types_map,
             engines,
-            experimental_storage,
         )?;
     }
     compile_tests(
@@ -162,7 +154,6 @@ pub(super) fn compile_contract(
         logged_types_map,
         messages_types_map,
         test_fns,
-        experimental_storage,
     )?;
 
     Ok(module)
@@ -177,7 +168,6 @@ pub(super) fn compile_library(
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     test_fns: &[(ty::TyFunctionDecl, DeclRefFunction)],
-    experimental_storage: bool,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Library);
     let mut md_mgr = MetadataManager::default();
@@ -199,7 +189,6 @@ pub(super) fn compile_library(
         logged_types_map,
         messages_types_map,
         test_fns,
-        experimental_storage,
     )?;
 
     Ok(module)
@@ -217,7 +206,8 @@ pub(crate) fn compile_constants(
         if let Some(ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. })) =
             module_ns.symbols.get(decl_name)
         {
-            let ty::TyConstantDecl { call_path, .. } = engines.de().get_constant(decl_id);
+            let const_decl = engines.de().get_constant(decl_id);
+            let call_path = const_decl.call_path.clone();
             compile_const_decl(
                 &mut LookupEnv {
                     type_engine,
@@ -230,6 +220,7 @@ pub(crate) fn compile_constants(
                     lookup: compile_const_decl,
                 },
                 &call_path,
+                &Some(const_decl),
             )?;
         }
     }
@@ -263,6 +254,7 @@ fn compile_declarations(
         match declaration {
             ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
                 let decl = decl_engine.get_constant(decl_id);
+                let call_path = decl.call_path.clone();
                 compile_const_decl(
                     &mut LookupEnv {
                         type_engine,
@@ -274,7 +266,8 @@ fn compile_declarations(
                         function_compiler: None,
                         lookup: compile_const_decl,
                     },
-                    &decl.call_path,
+                    &call_path,
+                    &Some(decl),
                 )?;
             }
 
@@ -322,7 +315,6 @@ pub(super) fn compile_function(
     messages_types_map: &HashMap<TypeId, MessageId>,
     is_entry: bool,
     test_decl_ref: Option<DeclRefFunction>,
-    experimental_storage: bool,
 ) -> Result<Option<Function>, CompileError> {
     // Currently monomorphization of generics is inlined into main() and the functions with generic
     // args are still present in the AST declarations, but they can be ignored.
@@ -340,7 +332,6 @@ pub(super) fn compile_function(
             logged_types_map,
             messages_types_map,
             test_decl_ref,
-            experimental_storage,
         )
         .map(Some)
     }
@@ -356,7 +347,6 @@ pub(super) fn compile_entry_function(
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     test_decl_ref: Option<DeclRefFunction>,
-    experimental_storage: bool,
 ) -> Result<Function, CompileError> {
     let is_entry = true;
     compile_function(
@@ -369,7 +359,6 @@ pub(super) fn compile_entry_function(
         messages_types_map,
         is_entry,
         test_decl_ref,
-        experimental_storage,
     )
     .map(|f| f.expect("entry point should never contain generics"))
 }
@@ -383,7 +372,6 @@ pub(super) fn compile_tests(
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     test_fns: &[(ty::TyFunctionDecl, DeclRefFunction)],
-    experimental_storage: bool,
 ) -> Result<Vec<Function>, CompileError> {
     test_fns
         .iter()
@@ -397,7 +385,6 @@ pub(super) fn compile_tests(
                 logged_types_map,
                 messages_types_map,
                 Some(decl_ref.clone()),
-                experimental_storage,
             )
         })
         .collect()
@@ -415,7 +402,6 @@ fn compile_fn(
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     test_decl_ref: Option<DeclRefFunction>,
-    experimental_storage: bool,
 ) -> Result<Function, CompileError> {
     let type_engine = engines.te();
     let decl_engine = engines.de();
@@ -500,7 +486,6 @@ fn compile_fn(
         func,
         logged_types_map,
         messages_types_map,
-        experimental_storage,
     );
     let mut ret_val = compiler.compile_code_block(context, md_mgr, body)?;
 
@@ -548,7 +533,6 @@ fn compile_abi_method(
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     engines: Engines<'_>,
-    experimental_storage: bool,
 ) -> Result<Function, CompileError> {
     let type_engine = engines.te();
     let decl_engine = engines.de();
@@ -588,6 +572,5 @@ fn compile_abi_method(
         logged_types_map,
         messages_types_map,
         None,
-        experimental_storage,
     )
 }

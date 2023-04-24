@@ -3,7 +3,7 @@ use ansi_term::Colour;
 use clap::Parser;
 use forc_pkg as pkg;
 use forc_test::{TestRunnerCount, TestedPackage};
-use forc_util::{forc_result_bail, format_log_receipts, ForcResult};
+use forc_util::{forc_result_bail, format_log_receipts, ForcError, ForcResult};
 use tracing::info;
 
 /// Run the Sway unit tests for the current project.
@@ -86,7 +86,9 @@ pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
     if all_tests_passed {
         Ok(())
     } else {
-        Err("Some tests failed.".into())
+        let forc_error: ForcError = "Some tests failed.".into();
+        const FAILING_UNIT_TESTS_EXIT_CODE: u8 = 101;
+        Err(forc_error.exit_code(FAILING_UNIT_TESTS_EXIT_CODE))
     }
 }
 
@@ -197,6 +199,5 @@ fn opts_from_cmd(cmd: Command) -> forc_test::Opts {
         binary_outfile: cmd.build.output.bin_file,
         debug_outfile: cmd.build.output.debug_file,
         build_target: cmd.build.build_target,
-        experimental_storage: cmd.build.profile.experimental_storage,
     }
 }

@@ -102,7 +102,6 @@ impl ty::TyExpression {
                 contract_call_params: HashMap::new(),
                 arguments: args_and_names,
                 fn_ref: decl_ref,
-                self_state_idx: None,
                 selector: None,
                 type_binding: None,
                 call_path_typeid: None,
@@ -905,67 +904,65 @@ impl ty::TyExpression {
             errors
         );
 
-        if ctx.experimental_storage_enabled() {
-            // The type of a storage access is `core::experimental::storage::StorageKey`. This is
-            // the path to it.
-            let storage_key_mod_path = vec![
-                Ident::new_with_override("core".into(), span.clone()),
-                Ident::new_with_override("experimental".into(), span.clone()),
-                Ident::new_with_override("storage".into(), span.clone()),
-            ];
-            let storage_key_ident = Ident::new_with_override("StorageKey".into(), span.clone());
+        // The type of a storage access is `core::storage::StorageKey`. This is
+        // the path to it.
+        let storage_key_mod_path = vec![
+            Ident::new_with_override("core".into(), span.clone()),
+            Ident::new_with_override("storage".into(), span.clone()),
+        ];
+        let storage_key_ident = Ident::new_with_override("StorageKey".into(), span.clone());
 
-            // Search for the struct declaration with the call path above.
-            let storage_key_decl_opt = check!(
-                ctx.namespace
-                    .root()
-                    .resolve_symbol(&storage_key_mod_path, &storage_key_ident),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            let storage_key_struct_decl_ref = check!(
-                storage_key_decl_opt.to_struct_ref(engines),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            let mut storage_key_struct_decl = decl_engine.get_struct(&storage_key_struct_decl_ref);
-
-            // Set the type arguments to `StorageKey` to the `access_type`, which is represents the
-            // type of the data that the `StorageKey` "points" to.
-            let mut type_arguments = vec![TypeArgument {
-                initial_type_id: access_type,
-                type_id: access_type,
-                span: span.clone(),
-                call_path_tree: None,
-            }];
-
-            // Monomorphize the generic `StorageKey` type given the type argument specified above
-            let mut ctx = ctx;
-            check!(
-                ctx.monomorphize(
-                    &mut storage_key_struct_decl,
-                    &mut type_arguments,
-                    EnforceTypeArguments::Yes,
-                    span
-                ),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-
-            // Update `access_type` to be the type of the monomorphized struct after inserting it
-            // into the type engine
-            let storage_key_struct_decl_ref = ctx.engines().de().insert(storage_key_struct_decl);
-            access_type =
-                type_engine.insert(decl_engine, TypeInfo::Struct(storage_key_struct_decl_ref));
-
-            // take any trait items that apply to `StorageKey<T>` and copy them to the
-            // monomorphized type
+        // Search for the struct declaration with the call path above.
+        let storage_key_decl_opt = check!(
             ctx.namespace
-                .insert_trait_implementation_for_type(engines, access_type);
-        }
+                .root()
+                .resolve_symbol(&storage_key_mod_path, &storage_key_ident),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let storage_key_struct_decl_ref = check!(
+            storage_key_decl_opt.to_struct_ref(engines),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let mut storage_key_struct_decl = decl_engine.get_struct(&storage_key_struct_decl_ref);
+
+        // Set the type arguments to `StorageKey` to the `access_type`, which is represents the
+        // type of the data that the `StorageKey` "points" to.
+        let mut type_arguments = vec![TypeArgument {
+            initial_type_id: access_type,
+            type_id: access_type,
+            span: span.clone(),
+            call_path_tree: None,
+        }];
+
+        // Monomorphize the generic `StorageKey` type given the type argument specified above
+        let mut ctx = ctx;
+        check!(
+            ctx.monomorphize(
+                &mut storage_key_struct_decl,
+                &mut type_arguments,
+                EnforceTypeArguments::Yes,
+                span
+            ),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        // Update `access_type` to be the type of the monomorphized struct after inserting it
+        // into the type engine
+        let storage_key_struct_decl_ref = ctx.engines().de().insert(storage_key_struct_decl);
+        access_type =
+            type_engine.insert(decl_engine, TypeInfo::Struct(storage_key_struct_decl_ref));
+
+        // take any trait items that apply to `StorageKey<T>` and copy them to the
+        // monomorphized type
+        ctx.namespace
+            .insert_trait_implementation_for_type(engines, access_type);
+
         ok(
             ty::TyExpression {
                 expression: ty::TyExpressionVariant::StorageAccess(storage_access),
@@ -1891,28 +1888,6 @@ impl ty::TyExpression {
                                 lhs_indices: names_vec,
                                 rhs,
                             },
-                        )),
-                        return_type: type_engine.insert(decl_engine, TypeInfo::Tuple(Vec::new())),
-                        span,
-                    },
-                    warnings,
-                    errors,
-                )
-            }
-            ReassignmentTarget::StorageField(storage_keyword_span, fields) => {
-                let ctx = ctx
-                    .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown))
-                    .with_help_text("");
-                let reassignment = check!(
-                    reassign_storage_subfield(ctx, fields, rhs, span.clone(), storage_keyword_span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors,
-                );
-                ok(
-                    ty::TyExpression {
-                        expression: ty::TyExpressionVariant::StorageReassignment(Box::new(
-                            reassignment,
                         )),
                         return_type: type_engine.insert(decl_engine, TypeInfo::Tuple(Vec::new())),
                         span,

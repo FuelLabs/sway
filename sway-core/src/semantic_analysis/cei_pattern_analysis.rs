@@ -218,20 +218,6 @@ fn analyze_expression(
         | Continue
         | AbiName(_) => effects_of_expression(engines, expr),
         Reassignment(reassgn) => analyze_expression(engines, &reassgn.rhs, block_name, warnings),
-        StorageReassignment(reassgn) => {
-            let storage_effs = HashSet::from([Effect::StorageWrite]);
-            let rhs_effs = analyze_expression(engines, &reassgn.rhs, block_name, warnings);
-            if rhs_effs.contains(&Effect::Interaction) {
-                warn_after_interaction(
-                    &storage_effs,
-                    &reassgn.rhs.span,
-                    &expr.span,
-                    block_name,
-                    warnings,
-                )
-            };
-            set_union(storage_effs, rhs_effs)
-        }
         CodeBlock(codeblock) => analyze_code_block(engines, codeblock, block_name, warnings),
         LazyOperator {
             lhs: left,
@@ -533,11 +519,6 @@ fn effects_of_expression(engines: Engines<'_>, expr: &ty::TyExpression) -> HashS
             }
             _ => HashSet::from([Effect::StorageRead]),
         },
-        StorageReassignment(storage_reassign) => {
-            let mut effs = HashSet::from([Effect::StorageWrite]);
-            effs.extend(effects_of_expression(engines, &storage_reassign.rhs));
-            effs
-        }
         LazyOperator { lhs, rhs, .. }
         | ArrayIndex {
             prefix: lhs,
@@ -623,9 +604,7 @@ fn effects_of_intrinsic(intr: &sway_ast::Intrinsic) -> HashSet<Effect> {
         StateLoadWord | StateLoadQuad => HashSet::from([Effect::StorageRead]),
         Smo => HashSet::from([Effect::OutputMessage]),
         Revert | IsReferenceType | SizeOfType | SizeOfVal | Eq | Gt | Lt | Gtf | AddrOf | Log
-        | Add | Sub | Mul | Div | And | Or | Xor | PtrAdd | PtrSub | GetStorageKey => {
-            HashSet::new()
-        }
+        | Add | Sub | Mul | Div | And | Or | Xor | PtrAdd | PtrSub => HashSet::new(),
     }
 }
 

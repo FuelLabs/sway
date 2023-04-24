@@ -824,7 +824,7 @@ async fn go_to_definition_for_paths() {
         req_uri: &uri,
         req_line: 24,
         req_char: 31,
-        def_line: 5,
+        def_line: 9,
         def_start_char: 10,
         def_end_char: 19,
         def_path: "sway-lib-std/src/constants.sw",
@@ -909,95 +909,6 @@ async fn go_to_definition_for_traits() {
     trait_go_to.req_char = 20;
     trait_go_to.def_line = 3;
     let _ = lsp::definition_check(&mut service, &trait_go_to, &mut i).await;
-
-    shutdown_and_exit(&mut service).await;
-}
-
-#[tokio::test]
-async fn go_to_definition_for_storage() {
-    let (mut service, _) = LspService::new(Backend::new);
-    let uri = init_and_open(
-        &mut service,
-        test_fixtures_dir().join("tokens/storage/src/main.sw"),
-    )
-    .await;
-    let mut i = 0..;
-
-    let mut go_to = GotoDefinition {
-        req_uri: &uri,
-        req_line: 24,
-        req_char: 9,
-        def_line: 12,
-        def_start_char: 0,
-        def_end_char: 7,
-        def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
-    };
-    // storage
-    let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
-    definition_check_with_req_offset(&mut service, &mut go_to, 25, 8, &mut i).await;
-    definition_check_with_req_offset(&mut service, &mut go_to, 26, 8, &mut i).await;
-
-    let mut go_to = GotoDefinition {
-        req_uri: &uri,
-        req_line: 24,
-        req_char: 17,
-        def_line: 13,
-        def_start_char: 4,
-        def_end_char: 8,
-        def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
-    };
-    // storage.var1
-    let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
-    definition_check_with_req_offset(&mut service, &mut go_to, 25, 17, &mut i).await;
-    definition_check_with_req_offset(&mut service, &mut go_to, 26, 17, &mut i).await;
-
-    let go_to = GotoDefinition {
-        req_uri: &uri,
-        req_line: 24,
-        req_char: 21,
-        def_line: 3,
-        def_start_char: 4,
-        def_end_char: 5,
-        def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
-    };
-    // storage.var1.x
-    let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
-
-    let go_to = GotoDefinition {
-        req_uri: &uri,
-        req_line: 25,
-        req_char: 21,
-        def_line: 4,
-        def_start_char: 4,
-        def_end_char: 5,
-        def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
-    };
-    // storage.var1.y
-    let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
-
-    let go_to = GotoDefinition {
-        req_uri: &uri,
-        req_line: 26,
-        req_char: 21,
-        def_line: 5,
-        def_start_char: 4,
-        def_end_char: 5,
-        def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
-    };
-    // storage.var1.z
-    let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
-
-    let go_to = GotoDefinition {
-        req_uri: &uri,
-        req_line: 26,
-        req_char: 23,
-        def_line: 9,
-        def_start_char: 4,
-        def_end_char: 5,
-        def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
-    };
-    // storage.var1.z.x
-    let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
 
     shutdown_and_exit(&mut service).await;
 }
@@ -1606,6 +1517,53 @@ async fn hover_docs_with_code_examples() {
             documentation: "```sway\nstruct Data\n```\n---\n Struct holding:\n\n 1. A `value` of type `NumberOrString`\n 2. An `address` of type `u64`",
         };
     let mut i = 0..;
+    let _ = lsp::hover_request(&mut service, &hover, &mut i).await;
+}
+
+#[tokio::test]
+async fn hover_docs_for_self_keywords() {
+    let (mut service, _) = LspService::new(Backend::new);
+    let uri = init_and_open(
+        &mut service,
+        test_fixtures_dir().join("completion/src/main.sw"),
+    )
+    .await;
+    let mut i = 0..;
+
+    let mut hover = HoverDocumentation {
+        req_uri: &uri,
+        req_line: 11,
+        req_char: 13,
+        documentation: "\n```sway\nself\n```\n\n---\n\n The receiver of a method, or the current module.\n\n `self` is used in two situations: referencing the current module and marking\n the receiver of a method.\n\n In paths, `self` can be used to refer to the current module, either in a\n [`use`] statement or in a path to access an element:\n\n ```sway\n use std::contract_id::{self, ContractId};\n ```\n\n Is functionally the same as:\n\n ```sway\n use std::contract_id;\n use std::contract_id::ContractId;\n ```\n\n `self` as the current receiver for a method allows to omit the parameter\n type most of the time. With the exception of this particularity, `self` is\n used much like any other parameter:\n\n ```sway\n struct Foo(u32);\n\n impl Foo {\n     // No `self`.\n     fn new() -> Self {\n         Self(0)\n     }\n\n     // Borrowing `self`.\n     fn value(&self) -> u32 {\n         self.0\n     }\n\n     // Updating `self` mutably.\n     fn clear(ref mut self) {\n         self.0 = 0\n     }\n }\n ```",
+    };
+
+    let _ = lsp::hover_request(&mut service, &hover, &mut i).await;
+    hover.req_char = 24;
+    hover.documentation = "```sway\nstruct MyStruct\n```\n---";
+    let _ = lsp::hover_request(&mut service, &hover, &mut i).await;
+}
+
+#[tokio::test]
+async fn hover_docs_for_boolean_keywords() {
+    let (mut service, _) = LspService::new(Backend::new);
+    let uri = init_and_open(
+        &mut service,
+        test_fixtures_dir().join("tokens/storage/src/main.sw"),
+    )
+    .await;
+    let mut i = 0..;
+
+    let mut hover = HoverDocumentation {
+        req_uri: &uri,
+        req_line: 13,
+        req_char: 36,
+        documentation: "\n```sway\nfalse\n```\n\n---\n\n A value of type [`bool`] representing logical **false**.\n\n `false` is the logical opposite of [`true`].\n\n See the documentation for [`true`] for more information.",
+    };
+
+    let _ = lsp::hover_request(&mut service, &hover, &mut i).await;
+    hover.req_line = 25;
+    hover.req_char = 31;
+    hover.documentation = "\n```sway\ntrue\n```\n\n---\n\n A value of type [`bool`] representing logical **true**.\n\n Logically `true` is not equal to [`false`].\n\n ## Control structures that check for **true**\n\n Several of Sway's control structures will check for a `bool` condition evaluating to **true**.\n\n   * The condition in an [`if`] expression must be of type `bool`.\n     Whenever that condition evaluates to **true**, the `if` expression takes\n     on the value of the first block. If however, the condition evaluates\n     to `false`, the expression takes on value of the `else` block if there is one.\n\n   * [`while`] is another control flow construct expecting a `bool`-typed condition.\n     As long as the condition evaluates to **true**, the `while` loop will continually\n     evaluate its associated block.\n\n   * [`match`] arms can have guard clauses on them.";
     let _ = lsp::hover_request(&mut service, &hover, &mut i).await;
 }
 

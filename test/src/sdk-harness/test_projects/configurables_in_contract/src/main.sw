@@ -27,7 +27,7 @@ abi TestContract {
 }
 
 impl TestContract for Contract {
-    fn return_configurables(    ) -> (u8, bool, [u32; 3], str[4], StructWithGeneric<u8>, EnumWithGeneric<bool>) {
+    fn return_configurables() -> (u8, bool, [u32; 3], str[4], StructWithGeneric<u8>, EnumWithGeneric<bool>) {
         (U8, BOOL, ARRAY, STR_4, STRUCT, ENUM)
     }
 }

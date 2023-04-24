@@ -4,7 +4,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use sway_types::{state::StateIndex, Ident, Named, Span};
+use sway_types::{Ident, Named, Span};
 
 use crate::{
     decl_engine::*,
@@ -21,9 +21,6 @@ pub enum TyExpressionVariant {
         contract_call_params: HashMap<String, TyExpression>,
         arguments: Vec<(Ident, TyExpression)>,
         fn_ref: DeclRefFunction,
-        /// If this is `Some(val)` then `val` is the metadata. If this is `None`, then
-        /// there is no selector.
-        self_state_idx: Option<StateIndex>,
         selector: Option<ContractCallParams>,
         /// optional binding information for the LSP
         type_binding: Option<TypeBinding<()>>,
@@ -138,7 +135,6 @@ pub enum TyExpressionVariant {
     Break,
     Continue,
     Reassignment(Box<TyReassignment>),
-    StorageReassignment(Box<TyStorageReassignment>),
     Return(Box<TyExpression>),
 }
 
@@ -418,7 +414,6 @@ impl HashWithEngines for TyExpressionVariant {
                 // these fields are not hashed because they aren't relevant/a
                 // reliable source of obj v. obj distinction
                 contract_call_params: _,
-                self_state_idx: _,
                 selector: _,
                 type_binding: _,
                 call_path_typeid: _,
@@ -595,9 +590,6 @@ impl HashWithEngines for TyExpressionVariant {
             Self::Reassignment(exp) => {
                 exp.hash(state, engines);
             }
-            Self::StorageReassignment(exp) => {
-                exp.hash(state, engines);
-            }
             Self::Return(exp) => {
                 exp.hash(state, engines);
             }
@@ -744,7 +736,6 @@ impl SubstTypes for TyExpressionVariant {
             Break => (),
             Continue => (),
             Reassignment(reassignment) => reassignment.subst(type_mapping, engines),
-            StorageReassignment(..) => (),
             Return(stmt) => stmt.subst(type_mapping, engines),
         }
     }
@@ -883,7 +874,6 @@ impl ReplaceSelfType for TyExpressionVariant {
             Break => (),
             Continue => (),
             Reassignment(reassignment) => reassignment.replace_self_type(engines, self_type),
-            StorageReassignment(..) => (),
             Return(stmt) => stmt.replace_self_type(engines, self_type),
         }
     }
@@ -991,7 +981,6 @@ impl ReplaceDecls for TyExpressionVariant {
             Break => (),
             Continue => (),
             Reassignment(reassignment) => reassignment.replace_decls(decl_mapping, engines),
-            StorageReassignment(..) => (),
             Return(stmt) => stmt.replace_decls(decl_mapping, engines),
         }
     }
@@ -1092,7 +1081,6 @@ impl UpdateConstantExpression for TyExpressionVariant {
             Reassignment(reassignment) => {
                 reassignment.update_constant_expression(engines, implementing_type)
             }
-            StorageReassignment(..) => (),
             Return(stmt) => stmt.update_constant_expression(engines, implementing_type),
         }
     }
@@ -1252,16 +1240,6 @@ impl DebugWithEngines for TyExpressionVariant {
                 }
                 format!("reassignment to {place}")
             }
-            TyExpressionVariant::StorageReassignment(storage_reassignment) => {
-                let place: String = {
-                    storage_reassignment
-                        .fields
-                        .iter()
-                        .map(|field| field.name.as_str())
-                        .collect()
-                };
-                format!("storage reassignment to {place}")
-            }
             TyExpressionVariant::Return(exp) => {
                 format!("return {:?}", engines.help_out(&**exp))
             }
@@ -1316,9 +1294,6 @@ impl TyExpressionVariant {
             }
             TyExpressionVariant::Reassignment(reassignment) => {
                 reassignment.rhs.gather_return_statements()
-            }
-            TyExpressionVariant::StorageReassignment(storage_reassignment) => {
-                storage_reassignment.rhs.gather_return_statements()
             }
             TyExpressionVariant::LazyOperator { lhs, rhs, .. } => [lhs, rhs]
                 .into_iter()

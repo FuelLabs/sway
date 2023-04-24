@@ -801,7 +801,7 @@ fn connect_abi_declaration(
                     }
                 }
             }
-            ty::TyTraitInterfaceItem::Constant(_) => todo!(),
+            ty::TyTraitInterfaceItem::Constant(_const_decl) => {}
         }
     }
 
@@ -1807,17 +1807,6 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 options,
             )
         }
-        StorageReassignment(typed_storage_reassignment) => connect_expression(
-            engines,
-            &typed_storage_reassignment.rhs.expression,
-            graph,
-            leaves,
-            exit_node,
-            "variable reassignment",
-            tree_type,
-            typed_storage_reassignment.rhs.clone().span,
-            options,
-        ),
         Return(exp) => {
             let this_index = graph.add_node("return entry".into());
             for leaf in leaves {
