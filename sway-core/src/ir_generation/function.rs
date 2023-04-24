@@ -721,6 +721,13 @@ impl<'eng> FnCompiler<'eng> {
                 }
             }
             Intrinsic::Log => {
+                if context.program_kind == Kind::Predicate {
+                    return Err(CompileError::DisallowedIntrinsicInPredicate {
+                        intrinsic: kind.to_string(),
+                        span: span.clone(),
+                    });
+                }
+
                 // The log value and the log ID are just Value.
                 let log_val = self.compile_expression_to_value(context, md_mgr, &arguments[0])?;
                 let log_id = match self.logged_types_map.get(&arguments[0].return_type) {
