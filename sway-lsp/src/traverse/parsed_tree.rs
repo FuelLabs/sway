@@ -322,20 +322,6 @@ impl Parse for ReassignmentExpression {
             ReassignmentTarget::VariableExpression(exp) => {
                 exp.parse(ctx);
             }
-            ReassignmentTarget::StorageField(storage_keyword_span, idents) => {
-                let storage_ident = Ident::new(storage_keyword_span.clone());
-                ctx.tokens.insert(
-                    to_ident_key(&storage_ident),
-                    Token::from_parsed(AstToken::Ident(storage_ident), SymbolKind::Storage),
-                );
-
-                for ident in idents {
-                    ctx.tokens.insert(
-                        to_ident_key(ident),
-                        Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Field),
-                    );
-                }
-            }
         }
     }
 }
@@ -346,7 +332,7 @@ impl Parse for IntrinsicFunctionExpression {
             to_ident_key(&self.name),
             Token::from_parsed(
                 AstToken::Intrinsic(self.kind_binding.inner.clone()),
-                SymbolKind::Function,
+                SymbolKind::Intrinsic,
             ),
         );
         self.arguments.iter().for_each(|arg| arg.parse(ctx));
@@ -534,7 +520,7 @@ impl Parse for Scrutinee {
                 ctx.tokens.insert(to_ident_key(&call_path.suffix), token);
                 value.parse(ctx);
             }
-            Scrutinee::Tuple { elems, .. } => {
+            Scrutinee::Tuple { elems, .. } | Scrutinee::Or { elems, .. } => {
                 elems.iter().for_each(|elem| elem.parse(ctx));
             }
             Scrutinee::Error { .. } => {
@@ -655,8 +641,13 @@ impl Parse for VariableDeclaration {
             // We want to use the span from variable.name to construct a
             // new Ident as the name_override_opt can be set to one of the
             // const prefixes and not the actual token name.
+            let ident = if self.name.is_raw_ident() {
+                Ident::new_with_raw(self.name.span(), true)
+            } else {
+                Ident::new(self.name.span())
+            };
             ctx.tokens.insert(
-                to_ident_key(&Ident::new(self.name.span())),
+                to_ident_key(&ident),
                 Token::from_parsed(
                     AstToken::Declaration(Declaration::VariableDeclaration(self.clone())),
                     symbol_kind,

@@ -252,10 +252,11 @@ fn function_to_doc<'a>(
                                 )),
                                 None => Doc::Empty,
                             };
+                            let mut_str = if var_content.mutable { "mut " } else { "" };
                             Doc::line(
                                 // Print the inner, pointed-to type in the locals list.
                                 Doc::text(format!(
-                                    "local {} {name}",
+                                    "local {mut_str}{} {name}",
                                     var.get_inner_type(context).as_string(context)
                                 ))
                                 .append(init_doc),
@@ -554,13 +555,6 @@ fn instruction_to_doc<'a>(
                     .append(md_namer.md_idx_to_doc(context, metadata)),
                 )),
             Instruction::FuelVm(fuel_vm_instr) => match fuel_vm_instr {
-                FuelVmInstruction::GetStorageKey(_ty) => Doc::line(
-                    Doc::text(format!(
-                        "{} = get_storage_key",
-                        namer.name(context, ins_value),
-                    ))
-                    .append(md_namer.md_idx_to_doc(context, metadata)),
-                ),
                 FuelVmInstruction::Gtf { index, tx_field_id } => {
                     maybe_constant_to_doc(context, md_namer, namer, index).append(Doc::line(
                         Doc::text(format!(

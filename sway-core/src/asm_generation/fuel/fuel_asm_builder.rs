@@ -13,7 +13,6 @@ use crate::{
     asm_lang::{virtual_register::*, Label, Op, VirtualImmediate12, VirtualImmediate18, VirtualOp},
     decl_engine::DeclRefFunction,
     error::*,
-    fuel_prelude::fuel_crypto::Hasher,
     metadata::MetadataManager,
 };
 
@@ -183,9 +182,6 @@ impl<'ir> FuelAsmBuilder<'ir> {
                     ..
                 } => self.compile_contract_call(instr_val, params, coins, asset_id, gas),
                 Instruction::FuelVm(fuel_vm_instr) => match fuel_vm_instr {
-                    FuelVmInstruction::GetStorageKey(_ty) => {
-                        self.compile_get_storage_key(instr_val)
-                    }
                     FuelVmInstruction::Gtf { index, tx_field_id } => {
                         self.compile_gtf(instr_val, index, *tx_field_id)
                     }
@@ -630,47 +626,6 @@ impl<'ir> FuelAsmBuilder<'ir> {
         Ok(())
     }
 
-    fn compile_get_storage_key(&mut self, instr_val: &Value) -> Result<(), CompileError> {
-        let state_idx = self.md_mgr.val_to_storage_key(self.context, *instr_val);
-        let instr_span = self.md_mgr.val_to_span(self.context, *instr_val);
-
-        let storage_slot_to_hash = match state_idx {
-            Some(state_idx) => {
-                format!(
-                    "{}{}",
-                    sway_utils::constants::STORAGE_DOMAIN_SEPARATOR,
-                    state_idx
-                )
-            }
-            None => {
-                return Err(CompileError::Internal(
-                    "State index for __get_storage_key is not available as a metadata",
-                    instr_span.unwrap_or_else(Span::dummy),
-                ));
-            }
-        };
-
-        let hashed_storage_slot = Hasher::hash(storage_slot_to_hash);
-
-        let data_id = self.data_section.insert_data_value(Entry::new_byte_array(
-            (*hashed_storage_slot).to_vec(),
-            None,
-            None,
-        ));
-
-        // Allocate a register for it, and a load instruction.
-        let reg = self.reg_seqr.next();
-
-        self.cur_bytecode.push(Op {
-            opcode: either::Either::Left(VirtualOp::LWDataId(reg.clone(), data_id)),
-            comment: "literal instantiation".into(),
-            owning_span: instr_span,
-        });
-        self.reg_map.insert(*instr_val, reg);
-
-        Ok(())
-    }
-
     fn compile_get_elem_ptr(
         &mut self,
         instr_val: &Value,
@@ -843,20 +798,55 @@ impl<'ir> FuelAsmBuilder<'ir> {
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
         match self.ptr_map.get(local_var) {
             Some(Storage::Stack(word_offs)) => {
-                let offset = word_offs * 8;
-                if offset == 0 {
+                if *word_offs == 0 {
                     self.reg_map
                         .insert(*instr_val, self.locals_base_reg().clone());
                 } else {
                     let instr_reg = self.reg_seqr.next();
                     let base_reg = self.locals_base_reg().clone();
-                    self.immediate_to_reg(
-                        offset,
-                        instr_reg.clone(),
-                        Some(&base_reg),
-                        "get offset to local",
-                        owning_span,
-                    );
+                    let byte_offs = *word_offs * 8;
+
+                    // If the byte offset requires a data section entry, then convert the word
+                    // offset to a register first (without any base). Then, multiply the result by
+                    // 8 to get the byte offset. The result can then be manually added to
+                    // `base_reg`.
+                    //
+                    // Otherwise, just convert the byte offset directly to a register.
+                    if byte_offs > compiler_constants::EIGHTEEN_BITS {
+                        self.immediate_to_reg(
+                            *word_offs,
+                            instr_reg.clone(),
+                            None,
+                            "get word offset to local from base",
+                            owning_span.clone(),
+                        );
+                        self.cur_bytecode.push(Op {
+                            opcode: Either::Left(VirtualOp::MULI(
+                                instr_reg.clone(),
+                                instr_reg.clone(),
+                                VirtualImmediate12 { value: 8u16 },
+                            )),
+                            comment: "get byte offset to local from base".into(),
+                            owning_span: owning_span.clone(),
+                        });
+                        self.cur_bytecode.push(Op {
+                            opcode: Either::Left(VirtualOp::ADD(
+                                instr_reg.clone(),
+                                base_reg.clone(),
+                                instr_reg.clone(),
+                            )),
+                            comment: "get absolute byte offset to local".into(),
+                            owning_span,
+                        });
+                    } else {
+                        self.immediate_to_reg(
+                            byte_offs,
+                            instr_reg.clone(),
+                            Some(&base_reg),
+                            "get offset to local",
+                            owning_span,
+                        );
+                    }
                     self.reg_map.insert(*instr_val, instr_reg);
                 }
                 Ok(())

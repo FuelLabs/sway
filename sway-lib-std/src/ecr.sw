@@ -1,3 +1,4 @@
+//! Helper functions to verify signatures.
 library;
 
 use ::address::Address;
@@ -6,6 +7,7 @@ use ::registers::error;
 use ::hash::sha256;
 use ::result::Result;
 
+/// The error type used when the `ec_recover` function fails.
 pub enum EcRecoverError {
     UnrecoverablePublicKey: (),
 }

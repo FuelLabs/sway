@@ -9,7 +9,7 @@ use crate::{
         document::TextDocument,
         sync::SyncWorkspace,
         token::{get_range_from_span, TypedAstToken},
-        token_map::TokenMap,
+        token_map::{TokenMap, TokenMapExt},
     },
     error::{DocumentError, LanguageServerError},
     traverse::{
@@ -32,6 +32,7 @@ use sway_core::{
 };
 use sway_types::{Span, Spanned};
 use sway_utils::helpers::get_sway_files;
+use tokio::sync::Semaphore;
 use tower_lsp::lsp_types::{
     CompletionItem, GotoDefinitionResponse, Location, Position, Range, SymbolInformation,
     TextDocumentContentChangeEvent, TextEdit, Url,
@@ -60,6 +61,11 @@ pub struct Session {
     pub type_engine: RwLock<TypeEngine>,
     pub decl_engine: RwLock<DeclEngine>,
     pub sync: SyncWorkspace,
+    // Limit the number of threads that can wait to parse at the same time. One thread can be parsing
+    // and one thread can be waiting to start parsing. All others will return the cached diagnostics.
+    parse_permits: Arc<Semaphore>,
+    // Cached diagnostic results that require a lock to access. Readers will wait for writers to complete.
+    diagnostics: Arc<RwLock<Diagnostics>>,
 }
 
 impl Session {
@@ -72,6 +78,8 @@ impl Session {
             type_engine: <_>::default(),
             decl_engine: <_>::default(),
             sync: SyncWorkspace::new(),
+            parse_permits: Arc::new(Semaphore::new(2)),
+            diagnostics: Arc::new(RwLock::new(Diagnostics::default())),
         }
     }
 
@@ -108,9 +116,22 @@ impl Session {
         &self.token_map
     }
 
-    pub fn parse_project(&self, uri: &Url) -> Result<Diagnostics, LanguageServerError> {
-        self.token_map.clear();
-        self.runnables.clear();
+    /// Wait for the cached [Diagnostics] to be unlocked after parsing and return a copy.
+    pub fn wait_for_parsing(&self) -> Diagnostics {
+        self.diagnostics.read().clone()
+    }
+
+    /// Parses the project and returns true if the compiler diagnostics are new and should be published.
+    pub fn parse_project(&self, uri: &Url) -> Result<bool, LanguageServerError> {
+        // Acquire a permit to parse the project. If there are none available, return false. This way,
+        // we avoid publishing the same diagnostics multiple times.
+        let permit = self.parse_permits.try_acquire();
+        if permit.is_err() {
+            return Ok(false);
+        }
+
+        // Lock the diagnostics result to prevent multiple threads from parsing the project at the same time.
+        let mut diagnostics = self.diagnostics.write();
 
         let manifest_dir = PathBuf::from(uri.path());
         let locked = false;
@@ -140,19 +161,31 @@ impl Session {
             pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)
                 .map_err(LanguageServerError::BuildPlanFailed)?;
 
-        let mut diagnostics = Diagnostics {
-            warnings: vec![],
-            errors: vec![],
-        };
-
-        *self.type_engine.write() = <_>::default();
-        *self.decl_engine.write() = <_>::default();
-        let type_engine = &*self.type_engine.read();
-        let decl_engine = &*self.decl_engine.read();
-        let engines = Engines::new(type_engine, decl_engine);
+        let new_type_engine = TypeEngine::default();
+        let new_decl_engine = DeclEngine::default();
         let tests_enabled = true;
-        let results = pkg::check(&plan, BuildTarget::default(), true, tests_enabled, engines)
-            .map_err(LanguageServerError::FailedToCompile)?;
+
+        let results = pkg::check(
+            &plan,
+            BuildTarget::default(),
+            true,
+            tests_enabled,
+            Engines::new(&new_type_engine, &new_decl_engine),
+        )
+        .map_err(LanguageServerError::FailedToCompile)?;
+
+        // Acquire locks for the engines before clearing anything.
+        let mut type_engine = self.type_engine.write();
+        let mut decl_engine = self.decl_engine.write();
+
+        // Update the engines with the new data.
+        *type_engine = new_type_engine;
+        *decl_engine = new_decl_engine;
+
+        // Clear other data stores.
+        self.token_map.clear();
+        self.runnables.clear();
+
         let results_len = results.len();
         for (i, res) in results.into_iter().enumerate() {
             // We can convert these destructured elements to a Vec<Diagnostic> later on.
@@ -172,8 +205,20 @@ impl Session {
             } = value.unwrap();
 
             let ast_res = CompileResult::new(typed, warnings, errors);
-            let typed_program = self.compile_res_to_typed_program(&ast_res)?;
-            let ctx = ParseContext::new(&self.token_map, engines);
+
+            // Get a reference to the typed program AST.
+            let typed_program = ast_res.value.as_ref().ok_or_else(|| {
+                *diagnostics = get_diagnostics(&ast_res.warnings, &ast_res.errors);
+                LanguageServerError::FailedToParse
+            })?;
+
+            // Create context with write guards to make readers wait until the update to token_map is complete.
+            // This operation is fast because we already have the compile results.
+            let ctx = ParseContext::new(
+                &self.token_map,
+                Engines::new(&type_engine, &decl_engine),
+                &typed_program.root.namespace,
+            );
 
             // The final element in the results is the main program.
             if i == results_len - 1 {
@@ -186,9 +231,9 @@ impl Session {
                 self.parse_ast_to_tokens(&parsed, &ctx, |an, _ctx| parsed_tree.traverse_node(an));
 
                 // Finally, create runnables and populate our token_map with typed ast nodes.
-                self.create_runnables(typed_program);
+                self.create_runnables(typed_program, &decl_engine);
 
-                let typed_tree = TypedTree::new(&ctx, &typed_program.root.namespace);
+                let typed_tree = TypedTree::new(&ctx);
                 typed_tree.collect_module_spans(typed_program);
                 self.parse_ast_to_typed_tokens(typed_program, &ctx, |node, _ctx| {
                     typed_tree.traverse_node(node)
@@ -198,7 +243,7 @@ impl Session {
                 self.save_parsed_program(parsed.to_owned().clone());
                 self.save_typed_program(typed_program.to_owned().clone());
 
-                diagnostics = get_diagnostics(&ast_res.warnings, &ast_res.errors);
+                *diagnostics = get_diagnostics(&ast_res.warnings, &ast_res.errors);
             } else {
                 // Collect tokens from dependencies and the standard library prelude.
                 self.parse_ast_to_tokens(&parsed, &ctx, |an, ctx| {
@@ -210,7 +255,7 @@ impl Session {
                 });
             }
         }
-        Ok(diagnostics)
+        Ok(true)
     }
 
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
@@ -218,12 +263,15 @@ impl Session {
         let te = self.type_engine.read();
         let de = self.decl_engine.read();
         let engines = Engines::new(&te, &de);
-        let token_ranges = self
+
+        let mut token_ranges: Vec<_> = self
             .token_map
+            .tokens_for_file(url)
             .all_references_of_token(&token, engines)
             .map(|(ident, _)| get_range_from_span(&ident.span()))
             .collect();
 
+        token_ranges.sort_by(|a, b| a.start.line.cmp(&b.start.line));
         Some(token_ranges)
     }
 
@@ -414,23 +462,9 @@ impl Session {
         root_nodes.chain(sub_nodes).for_each(|n| f(n, ctx));
     }
 
-    /// Get a reference to the [ty::TyProgram] AST.
-    fn compile_res_to_typed_program<'a>(
-        &'a self,
-        ast_res: &'a CompileResult<ty::TyProgram>,
-    ) -> Result<&'a ty::TyProgram, LanguageServerError> {
-        ast_res
-            .value
-            .as_ref()
-            .ok_or(LanguageServerError::FailedToParse {
-                diagnostics: get_diagnostics(&ast_res.warnings, &ast_res.errors),
-            })
-    }
-
     /// Create runnables if the `TyProgramKind` of the `TyProgram` is a script.
-    fn create_runnables(&self, typed_program: &ty::TyProgram) {
+    fn create_runnables(&self, typed_program: &ty::TyProgram, decl_engine: &DeclEngine) {
         // Insert runnable test functions.
-        let decl_engine = &self.decl_engine.read();
         for (decl, _) in typed_program.test_fns(decl_engine) {
             // Get the span of the first attribute if it exists, otherwise use the span of the function name.
             let span = decl

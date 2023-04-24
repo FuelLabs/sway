@@ -81,6 +81,10 @@ pub enum ControlFlowGraphNode<'cfg> {
     StorageField {
         field_name: Ident,
     },
+    FunctionParameter {
+        param_name: Ident,
+        is_self: bool,
+    },
 }
 
 impl<'cfg> GetDeclIdent for ControlFlowGraphNode<'cfg> {
@@ -96,6 +100,7 @@ impl<'cfg> GetDeclIdent for ControlFlowGraphNode<'cfg> {
                 struct_field_name, ..
             } => Some(struct_field_name.clone()),
             ControlFlowGraphNode::StorageField { field_name, .. } => Some(field_name.clone()),
+            ControlFlowGraphNode::FunctionParameter { param_name, .. } => Some(param_name.clone()),
         }
     }
 }
@@ -155,6 +160,9 @@ impl<'cfg> DebugWithEngines for ControlFlowGraphNode<'cfg> {
             }
             ControlFlowGraphNode::StorageField { field_name } => {
                 format!("Storage field {}", field_name.as_str())
+            }
+            ControlFlowGraphNode::FunctionParameter { param_name, .. } => {
+                format!("Function param {}", param_name.as_str())
             }
         };
         f.write_str(&text)
@@ -297,6 +305,7 @@ impl<'cfg> ControlFlowGraphNode<'cfg> {
                 struct_field_name, ..
             } => Some(struct_field_name.span()),
             ControlFlowGraphNode::StorageField { field_name } => Some(field_name.span()),
+            ControlFlowGraphNode::FunctionParameter { param_name, .. } => Some(param_name.span()),
         }
     }
 }

@@ -1,10 +1,9 @@
 use crate::cli;
 use ansi_term::Colour;
-use anyhow::{bail, Result};
 use clap::Parser;
 use forc_pkg as pkg;
 use forc_test::{TestRunnerCount, TestedPackage};
-use forc_util::format_log_receipts;
+use forc_util::{forc_result_bail, format_log_receipts, ForcError, ForcResult};
 use tracing::info;
 
 /// Run the Sway unit tests for the current project.
@@ -49,9 +48,9 @@ pub struct TestPrintOpts {
     pub print_logs: bool,
 }
 
-pub(crate) fn exec(cmd: Command) -> Result<()> {
+pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
     if let Some(ref _filter) = cmd.filter {
-        bail!("unit test filter not yet supported");
+        forc_result_bail!("unit test filter not yet supported");
     }
 
     let test_runner_count = match cmd.test_threads {
@@ -68,22 +67,32 @@ pub(crate) fn exec(cmd: Command) -> Result<()> {
     let duration = start.elapsed();
 
     // Eventually we'll print this in a fancy manner, but this will do for testing.
-    match tested {
+    let all_tests_passed = match tested {
         forc_test::Tested::Workspace(pkgs) => {
-            for pkg in pkgs {
+            for pkg in &pkgs {
                 let built = &pkg.built.descriptor.name;
                 info!("\n   tested -- {built}\n");
-                print_tested_pkg(&pkg, &test_print_opts)?;
+                print_tested_pkg(pkg, &test_print_opts)?;
             }
             info!("\n   Finished in {:?}", duration);
+            pkgs.iter().all(|pkg| pkg.tests_passed())
         }
-        forc_test::Tested::Package(pkg) => print_tested_pkg(&pkg, &test_print_opts)?,
+        forc_test::Tested::Package(pkg) => {
+            print_tested_pkg(&pkg, &test_print_opts)?;
+            pkg.tests_passed()
+        }
     };
 
-    Ok(())
+    if all_tests_passed {
+        Ok(())
+    } else {
+        let forc_error: ForcError = "Some tests failed.".into();
+        const FAILING_UNIT_TESTS_EXIT_CODE: u8 = 101;
+        Err(forc_error.exit_code(FAILING_UNIT_TESTS_EXIT_CODE))
+    }
 }
 
-fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> Result<()> {
+fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> ForcResult<()> {
     let succeeded = pkg.tests.iter().filter(|t| t.passed()).count();
     let failed = pkg.tests.len() - succeeded;
     let mut failed_tests = Vec::new();

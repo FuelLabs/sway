@@ -174,7 +174,10 @@ impl TyAstNode {
         match &self {
             TyAstNode {
                 span: _,
-                content: TyAstNodeContent::Declaration(TyDecl::FunctionDecl { decl_id, .. }),
+                content:
+                    TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl {
+                        decl_id, ..
+                    })),
                 ..
             } => {
                 let TyFunctionDecl {
@@ -191,7 +194,10 @@ impl TyAstNode {
         match &self {
             TyAstNode {
                 span: _,
-                content: TyAstNodeContent::Declaration(TyDecl::FunctionDecl { decl_id, .. }),
+                content:
+                    TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl {
+                        decl_id, ..
+                    })),
                 ..
             } => {
                 let TyFunctionDecl { attributes, .. } = decl_engine.get_function(decl_id);
@@ -208,7 +214,11 @@ impl TyAstNode {
                 match self {
                     TyAstNode {
                         span: _,
-                        content: TyAstNodeContent::Declaration(TyDecl::FunctionDecl { decl_id, .. }),
+                        content:
+                            TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl {
+                                decl_id,
+                                ..
+                            })),
                         ..
                     } => {
                         let decl = decl_engine.get_function(decl_id);
@@ -220,11 +230,11 @@ impl TyAstNode {
             TreeType::Contract | TreeType::Library { .. } => match self {
                 TyAstNode {
                     content:
-                        TyAstNodeContent::Declaration(TyDecl::FunctionDecl {
+                        TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl {
                             decl_id,
                             decl_span: _,
                             ..
-                        }),
+                        })),
                     ..
                 } => {
                     let decl = decl_engine.get_function(decl_id);
@@ -232,15 +242,18 @@ impl TyAstNode {
                 }
                 TyAstNode {
                     content:
-                        TyAstNodeContent::Declaration(TyDecl::TraitDecl {
+                        TyAstNodeContent::Declaration(TyDecl::TraitDecl(TraitDecl {
                             decl_id,
                             decl_span: _,
                             ..
-                        }),
+                        })),
                     ..
                 } => decl_engine.get_trait(decl_id).visibility.is_public(),
                 TyAstNode {
-                    content: TyAstNodeContent::Declaration(TyDecl::StructDecl { decl_id, .. }),
+                    content:
+                        TyAstNodeContent::Declaration(TyDecl::StructDecl(StructDecl {
+                            decl_id, ..
+                        })),
                     ..
                 } => {
                     let struct_decl = decl_engine.get_struct(decl_id);
@@ -252,11 +265,11 @@ impl TyAstNode {
                 } => true,
                 TyAstNode {
                     content:
-                        TyAstNodeContent::Declaration(TyDecl::ConstantDecl {
+                        TyAstNodeContent::Declaration(TyDecl::ConstantDecl(ConstantDecl {
                             decl_id,
                             decl_span: _,
                             ..
-                        }),
+                        })),
                     ..
                 } => {
                     let decl = decl_engine.get_constant(decl_id);

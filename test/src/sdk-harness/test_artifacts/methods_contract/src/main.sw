@@ -28,10 +28,10 @@ impl MethodsContract for Contract {
     fn test_function() -> bool {
         let identity = bogus();
         let identity2 = bogus2();
-        storage.stored_struct = MyStruct {
+        storage.stored_struct.write(MyStruct {
             int_option: Option::Some(99u64),
-        };
-        let stored_struct = storage.stored_struct;
+        });
+        let stored_struct = storage.stored_struct.read();
         let stored_option_in_struct = stored_struct.int_option;
         require(stored_option_in_struct.is_some(), "Error");
         true

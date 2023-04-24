@@ -53,7 +53,7 @@ impl Context {
 
     fn verify_module(&self, module: &ModuleContent) -> Result<(), IrError> {
         for function in &module.functions {
-            self.verify_function(module, &self.functions[function.0])?;
+            self.verify_function(module, function)?;
         }
         Ok(())
     }
@@ -61,8 +61,20 @@ impl Context {
     fn verify_function(
         &self,
         cur_module: &ModuleContent,
-        function: &FunctionContent,
+        function: &Function,
     ) -> Result<(), IrError> {
+        let entry_block = function.get_entry_block(self);
+        // Ensure that the entry block arguments are same as function arguments.
+        if function.num_args(self) != entry_block.num_args(self) {
+            return Err(IrError::VerifyBlockArgMalformed);
+        }
+        for ((_, func_arg), block_arg) in function.args_iter(self).zip(entry_block.arg_iter(self)) {
+            if func_arg != block_arg {
+                return Err(IrError::VerifyBlockArgMalformed);
+            }
+        }
+
+        let function = &self.functions[function.0];
         for block in &function.blocks {
             self.verify_block(cur_module, function, &self.blocks[block.0])?;
         }
@@ -186,7 +198,6 @@ impl<'a> InstructionVerifier<'a> {
 
                     // XXX move the fuelvm verification into a module
                     Instruction::FuelVm(fuel_vm_instr) => match fuel_vm_instr {
-                        FuelVmInstruction::GetStorageKey(_ty) => (),
                         FuelVmInstruction::Gtf { index, tx_field_id } => {
                             self.verify_gtf(index, tx_field_id)?
                         }

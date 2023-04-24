@@ -15,6 +15,7 @@ pub struct TyScrutinee {
 
 #[derive(Debug, Clone)]
 pub enum TyScrutineeVariant {
+    Or(Vec<TyScrutinee>),
     CatchAll,
     Literal(Literal),
     Variable(Ident),

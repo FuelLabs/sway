@@ -1,7 +1,7 @@
 use crate::{
     cmd,
     util::{
-        pkg::built_pkgs_with_manifest,
+        pkg::built_pkgs,
         tx::{TransactionBuilderExt, TX_SUBMIT_TIMEOUT_MS},
     },
 };
@@ -37,14 +37,15 @@ pub async fn run(command: cmd::Run) -> Result<Vec<RanScript>> {
         std::env::current_dir().map_err(|e| anyhow!("{:?}", e))?
     };
     let build_opts = build_opts_from_cmd(&command);
-    let built_pkgs_with_manifest = built_pkgs_with_manifest(&curr_dir, build_opts)?;
+    let built_pkgs_with_manifest = built_pkgs(&curr_dir, build_opts)?;
     for built in built_pkgs_with_manifest {
-        let member_manifest = built.package_manifest_file();
-        if member_manifest
+        if built
+            .descriptor
+            .manifest_file
             .check_program_type(vec![TreeType::Script])
             .is_ok()
         {
-            let pkg_receipts = run_pkg(&command, member_manifest, built.built_package()).await?;
+            let pkg_receipts = run_pkg(&command, &built.descriptor.manifest_file, &built).await?;
             receipts.push(pkg_receipts);
         }
     }

@@ -461,6 +461,8 @@ pub enum CompileError {
         missing_fields: Vec<String>,
         span: Span,
     },
+    #[error("Variable \"{var}\" is not bound in all patterns")]
+    MatchVariableNotBoundInAllPatterns { var: Ident, span: Span },
     #[error(
         "Storage attribute access mismatch. Try giving the surrounding function more access by \
         adding \"#[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]\" to the function declaration."
@@ -594,8 +596,6 @@ pub enum CompileError {
     TypeNotAllowedInContractStorage { ty: String, span: Span },
     #[error("ref mut parameter not allowed for main()")]
     RefMutableNotAllowedInMain { param_name: Ident, span: Span },
-    #[error("Returning a `raw_ptr` from `main()` is not allowed.")]
-    PointerReturnNotAllowedInMain { span: Span },
     #[error(
         "Returning a type containing `raw_slice` from `main()` is not allowed. \
             Consider converting it into a flat `raw_slice` first."
@@ -744,6 +744,7 @@ impl Spanned for CompileError {
             GenericShadowsGeneric { name } => name.span(),
             MatchExpressionNonExhaustive { span, .. } => span.clone(),
             MatchStructPatternMissingFields { span, .. } => span.clone(),
+            MatchVariableNotBoundInAllPatterns { span, .. } => span.clone(),
             NotAnEnum { span, .. } => span.clone(),
             StorageAccessMismatch { span, .. } => span.clone(),
             TraitDeclPureImplImpure { span, .. } => span.clone(),
@@ -793,7 +794,6 @@ impl Spanned for CompileError {
             ContractIdValueNotALiteral { span } => span.clone(),
             TypeNotAllowedInContractStorage { span, .. } => span.clone(),
             RefMutableNotAllowedInMain { span, .. } => span.clone(),
-            PointerReturnNotAllowedInMain { span } => span.clone(),
             NestedSliceReturnNotAllowedInMain { span } => span.clone(),
             InitializedRegisterReassignment { span, .. } => span.clone(),
             DisallowedControlFlowInstruction { span, .. } => span.clone(),

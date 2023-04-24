@@ -47,28 +47,24 @@ We can get a value out of the storage map by providing its `key` to the `get` me
 
 Here, `value1` will have the value that's associated with the first address, and the result will be `42`. The `get` method returns an `Option<V>`; if there’s no value for that key in the storage map, `get` will return `Option::None`. This program handles the `Option` by calling `unwrap_or` to set `value1` to zero if `map` doesn't have an entry for the key.
 
-## Storage maps with multiple keys
+## Storage Maps with Multiple Keys
 
-You might find yourself needing a `StorageMap<K1, V1>` where the type `V1` is itself another `StorageMap<K2, V2>`. This is not allowed in Sway. The right approach is to use a single `StorageMap<K, V>` where `K` is a tuple `(K1, K2)`. For example:
+Maps with multiple keys can be implemented using tuples as keys. For example:
 
 ```sway
 {{#include ../../../../examples/storage_map/src/main.sw:storage_map_tuple_key}}
 ```
 
-## Limitations
+## Nested Storage Naps
 
-It is not currently allowed to have a `StorageMap<K, V>` as a component of a complex type such as a struct or an enum. For example, the code below is not legal:
+It is possible to nest storage maps as follows:
 
 ```sway
-Struct Wrapper {
-    map1: StorageMap<u64, u64>,
-    map2: StorageMap<u64, u64>,
-}
+{{#include ../../../../examples/storage_map/src/main.sw:storage_map_nested}}
+```
 
-storage {
-    w: Wrapper
-}
-...
+The nested map can then be accessed as follows:
 
-storage.w.map1.insert(..);
+```sway
+{{#include ../../../../examples/storage_map/src/main.sw:storage_map_nested_access}}
 ```

@@ -107,27 +107,7 @@ pub fn serialize_to_storage_slots(
         ConstantValue::Array(_a) if ty.is_array(context) => {
             unimplemented!("Arrays in storage have not been implemented yet.")
         }
-        ConstantValue::Struct(vec) if ty.is_struct(context) => {
-            let field_tys = ty.get_field_types(context);
-            vec.iter()
-                .zip(field_tys.iter())
-                .enumerate()
-                .flat_map(|(i, (f, ty))| {
-                    serialize_to_storage_slots(
-                        f,
-                        context,
-                        ix,
-                        ty,
-                        &indices
-                            .iter()
-                            .cloned()
-                            .chain(vec![i].iter().cloned())
-                            .collect::<Vec<usize>>(),
-                    )
-                })
-                .collect()
-        }
-        _ if ty.is_string(context) || ty.is_union(context) => {
+        _ if ty.is_string(context) || ty.is_struct(context) || ty.is_union(context) => {
             // Serialize the constant data in words and add zero words until the number of words
             // is a multiple of 4. This is useful because each storage slot is 4 words.
             let mut packed = serialize_to_words(constant, context, ty);

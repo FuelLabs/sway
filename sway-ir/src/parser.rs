@@ -110,9 +110,9 @@ mod ir_builder {
                     (ty, name, mdi)
                 }
 
-            rule fn_local() -> (IrAstTy, String, Option<IrAstOperation>)
-                = "local" _ ty:ast_ty() name:id() init:fn_local_init()? {
-                    (ty, name, init)
+            rule fn_local() -> (IrAstTy, String, Option<IrAstOperation>, bool)
+                = "local" _ m:("mut" _)? ty:ast_ty() name:id() init:fn_local_init()? {
+                    (ty, name, init, m.is_some())
                 }
 
             rule fn_local_init() -> IrAstOperation
@@ -175,7 +175,6 @@ mod ir_builder {
                 / op_const()
                 / op_contract_call()
                 / op_get_elem_ptr()
-                / op_get_storage_key()
                 / op_get_local()
                 / op_gtf()
                 / op_int_to_ptr()
@@ -261,11 +260,6 @@ mod ir_builder {
                 = "get_elem_ptr" _ base:id() comma() ty:ast_ty() comma() idcs:(id() ++ comma()) {
                     IrAstOperation::GetElemPtr(base, ty, idcs)
             }
-
-            rule op_get_storage_key() -> IrAstOperation
-                = "get_storage_key" _ {
-                    IrAstOperation::GetStorageKey()
-                }
 
             rule op_get_local() -> IrAstOperation
                 = "get_local" _ ast_ty() comma() name:id() {
@@ -632,7 +626,7 @@ mod ir_builder {
         ret_type: IrAstTy,
         is_public: bool,
         metadata: Option<MdIdxRef>,
-        locals: Vec<(IrAstTy, String, Option<IrAstOperation>)>,
+        locals: Vec<(IrAstTy, String, Option<IrAstOperation>, bool)>,
         blocks: Vec<IrAstBlock>,
         selector: Option<[u8; 4]>,
         is_entry: bool,
@@ -671,7 +665,6 @@ mod ir_builder {
         Const(IrAstTy, IrAstConst),
         ContractCall(IrAstTy, String, String, String, String, String),
         GetElemPtr(String, IrAstTy, Vec<String>),
-        GetStorageKey(),
         GetLocal(String),
         Gtf(String, u64),
         IntToPtr(String, IrAstTy),
@@ -909,7 +902,7 @@ mod ir_builder {
             // config variables as they are globally available
             let mut arg_map = self.configs_map.clone();
             let mut local_map = HashMap::<String, LocalVar>::new();
-            for (ty, name, initializer) in fn_decl.locals {
+            for (ty, name, initializer, mutable) in fn_decl.locals {
                 let initializer = initializer.map(|const_init| {
                     if let IrAstOperation::Const(val_ty, val) = const_init {
                         val.value.as_constant(context, val_ty)
@@ -920,7 +913,7 @@ mod ir_builder {
                 let ty = ty.to_ir_type(context);
                 local_map.insert(
                     name.clone(),
-                    func.new_local_var(context, name, ty, initializer)?,
+                    func.new_local_var(context, name, ty, initializer, mutable)?,
                 );
             }
 
@@ -1150,10 +1143,6 @@ mod ir_builder {
                             )
                             .add_metadatum(context, opt_metadata)
                     }
-                    IrAstOperation::GetStorageKey() => block
-                        .ins(context)
-                        .get_storage_key()
-                        .add_metadatum(context, opt_metadata),
                     IrAstOperation::GetLocal(local_name) => block
                         .ins(context)
                         .get_local(*local_map.get(&local_name).unwrap())

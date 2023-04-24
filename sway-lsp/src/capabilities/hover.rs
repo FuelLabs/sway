@@ -26,7 +26,10 @@ pub fn hover_data(
     let range = get_range_from_span(&ident.span());
 
     // check if our token is a keyword
-    if token.kind == SymbolKind::Keyword {
+    if matches!(
+        token.kind,
+        SymbolKind::BoolLiteral | SymbolKind::Keyword | SymbolKind::SelfKeyword
+    ) {
         let name = ident.as_str();
         let documentation = keyword_docs.get(name).unwrap();
         let prefix = format!("\n```sway\n{name}\n```\n\n---\n\n");
@@ -138,7 +141,7 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
                         &token_name,
                     ))
                 }
-                ty::TyDecl::StructDecl { decl_id, .. } => {
+                ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
                     let struct_decl = decl_engine.get_struct(decl_id);
                     Some(format_visibility_hover(
                         struct_decl.visibility,
@@ -146,7 +149,7 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
                         &token_name,
                     ))
                 }
-                ty::TyDecl::TraitDecl { decl_id, .. } => {
+                ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. }) => {
                     let trait_decl = decl_engine.get_trait(decl_id);
                     Some(format_visibility_hover(
                         trait_decl.visibility,
@@ -154,7 +157,7 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
                         &token_name,
                     ))
                 }
-                ty::TyDecl::EnumDecl { decl_id, .. } => {
+                ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
                     let enum_decl = decl_engine.get_enum(decl_id);
                     Some(format_visibility_hover(
                         enum_decl.visibility,

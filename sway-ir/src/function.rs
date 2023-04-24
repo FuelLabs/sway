@@ -348,8 +348,9 @@ impl Function {
         name: String,
         local_type: Type,
         initializer: Option<Constant>,
+        mutable: bool,
     ) -> Result<LocalVar, IrError> {
-        let var = LocalVar::new(context, local_type, initializer);
+        let var = LocalVar::new(context, local_type, initializer, mutable);
         let func = context.functions.get_mut(self.0).unwrap();
         func.local_storage
             .insert(name.clone(), var)
@@ -366,6 +367,7 @@ impl Function {
         name: String,
         local_type: Type,
         initializer: Option<Constant>,
+        mutable: bool,
     ) -> LocalVar {
         let func = &context.functions[self.0];
         let new_name = if func.local_storage.contains_key(&name) {
@@ -384,7 +386,7 @@ impl Function {
         } else {
             name
         };
-        self.new_local_var(context, new_name, local_type, initializer)
+        self.new_local_var(context, new_name, local_type, initializer, mutable)
             .unwrap()
     }
 
@@ -394,6 +396,15 @@ impl Function {
         context: &'a Context,
     ) -> impl Iterator<Item = (&'a String, &'a LocalVar)> {
         context.functions[self.0].local_storage.iter()
+    }
+
+    /// Remove given list of locals
+    pub fn remove_locals(&self, context: &mut Context, removals: &Vec<String>) {
+        for remove in removals {
+            if let Some(local) = context.functions[self.0].local_storage.remove(remove) {
+                context.local_vars.remove(local.0);
+            }
+        }
     }
 
     /// Merge values from another [`Function`] into this one.
@@ -423,6 +434,7 @@ impl Function {
                 name.clone(),
                 old_ty,
                 old_var_content.initializer,
+                old_var_content.mutable,
             );
             var_map.insert(old_var, new_var);
         }

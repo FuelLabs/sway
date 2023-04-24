@@ -192,6 +192,13 @@ impl SyncWorkspace {
             .ok_or(DirectoryError::TempDirNotFound)
     }
 
+    /// Create a URL from a [PathBuf].
+    pub fn url_from_path(&self, path: &PathBuf) -> Result<Url, DirectoryError> {
+        Url::from_file_path(path).map_err(|_| DirectoryError::UrlFromPathFailed {
+            path: path.to_string_lossy().to_string(),
+        })
+    }
+
     fn convert_url(&self, uri: &Url, from: PathBuf, to: PathBuf) -> Result<Url, DirectoryError> {
         let path = from.join(
             PathBuf::from(uri.path())
@@ -199,12 +206,6 @@ impl SyncWorkspace {
                 .map_err(DirectoryError::StripPrefixError)?,
         );
         self.url_from_path(&path)
-    }
-
-    fn url_from_path(&self, path: &PathBuf) -> Result<Url, DirectoryError> {
-        Url::from_file_path(path).map_err(|_| DirectoryError::UrlFromPathFailed {
-            path: path.to_string_lossy().to_string(),
-        })
     }
 }
 

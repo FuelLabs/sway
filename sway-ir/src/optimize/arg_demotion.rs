@@ -89,17 +89,6 @@ fn fn_arg_demotion(context: &mut Context, function: Function) -> Result<bool, Ir
     Ok(true)
 }
 
-// Match the mutable argument value and change its type.
-macro_rules! set_arg_type {
-    ($context: ident, $arg_val: ident, $new_ty: ident) => {
-        if let ValueDatum::Argument(BlockArgument { ty, .. }) =
-            &mut $context.values[$arg_val.0].value
-        {
-            *ty = $new_ty
-        }
-    };
-}
-
 fn demote_fn_signature(context: &mut Context, function: &Function, arg_idcs: &[(usize, Type)]) {
     // Change the types of the arg values in place to their pointer counterparts.
     let entry_block = function.get_entry_block(context);
@@ -108,18 +97,27 @@ fn demote_fn_signature(context: &mut Context, function: &Function, arg_idcs: &[(
         .map(|(arg_idx, arg_ty)| {
             let ptr_ty = Type::new_ptr(context, *arg_ty);
 
-            // Update the function signature.
-            let fn_args = &context.functions[function.0].arguments;
-            let (_name, fn_arg_val) = &fn_args[*arg_idx];
-            set_arg_type!(context, fn_arg_val, ptr_ty);
-
-            // Update the entry block signature.
+            // Create a new block arg, same as the old one but with a different type.
             let blk_arg_val = entry_block
                 .get_arg(context, *arg_idx)
                 .expect("Entry block args should be mirror of function args.");
-            set_arg_type!(context, blk_arg_val, ptr_ty);
+            let ValueDatum::Argument(block_arg) = context.values[blk_arg_val.0].value else {
+                panic!("Block argument is not of right Value kind");
+            };
+            let new_blk_arg_val = Value::new_argument(
+                context,
+                BlockArgument {
+                    ty: ptr_ty,
+                    ..block_arg
+                },
+            );
 
-            *fn_arg_val
+            // Set both function and block arg to the new one.
+            entry_block.set_arg(context, new_blk_arg_val);
+            let (_name, fn_arg_val) = &mut context.functions[function.0].arguments[*arg_idx];
+            *fn_arg_val = new_blk_arg_val;
+
+            (blk_arg_val, new_blk_arg_val)
         })
         .collect::<Vec<_>>();
 
@@ -127,12 +125,12 @@ fn demote_fn_signature(context: &mut Context, function: &Function, arg_idcs: &[(
     let arg_val_pairs = old_arg_vals
         .into_iter()
         .rev()
-        .map(|old_arg_val| {
-            let new_arg_val = Value::new_instruction(context, Instruction::Load(old_arg_val));
+        .map(|(old_arg_val, new_arg_val)| {
+            let load_from_new_arg = Value::new_instruction(context, Instruction::Load(new_arg_val));
             context.blocks[entry_block.0]
                 .instructions
-                .insert(0, new_arg_val);
-            (old_arg_val, new_arg_val)
+                .insert(0, load_from_new_arg);
+            (old_arg_val, load_from_new_arg)
         })
         .collect::<Vec<_>>();
 
@@ -165,8 +163,13 @@ fn demote_caller(
     let call_function = call_block.get_function(context);
     for (arg_idx, arg_ty) in arg_idcs {
         // First we make a new local variable.
-        let loc_var =
-            call_function.new_unique_local_var(context, "__tmp_arg".to_owned(), *arg_ty, None);
+        let loc_var = call_function.new_unique_local_var(
+            context,
+            "__tmp_arg".to_owned(),
+            *arg_ty,
+            None,
+            false,
+        );
         let get_loc_val = Value::new_instruction(context, Instruction::GetLocal(loc_var));
 
         // Before the call we store the original arg value to the new local var.
@@ -232,9 +235,21 @@ fn demote_block_signature(context: &mut Context, function: &Function, block: Blo
         .rev()
         .map(|(_arg_idx, arg_val, arg_ty)| {
             let ptr_ty = Type::new_ptr(context, *arg_ty);
-            set_arg_type!(context, arg_val, ptr_ty);
 
-            let load_val = Value::new_instruction(context, Instruction::Load(*arg_val));
+            // Create a new block arg, same as the old one but with a different type.
+            let ValueDatum::Argument(block_arg) = context.values[arg_val.0].value else {
+                panic!("Block argument is not of right Value kind");
+            };
+            let new_blk_arg_val = Value::new_argument(
+                context,
+                BlockArgument {
+                    ty: ptr_ty,
+                    ..block_arg
+                },
+            );
+            block.set_arg(context, new_blk_arg_val);
+
+            let load_val = Value::new_instruction(context, Instruction::Load(new_blk_arg_val));
             let block_instrs = &mut context.blocks[block.0].instructions;
             block_instrs.insert(0, load_val);
 
@@ -251,8 +266,13 @@ fn demote_block_signature(context: &mut Context, function: &Function, block: Blo
     let arg_vars = candidate_args
         .into_iter()
         .map(|(idx, arg_val, arg_ty)| {
-            let local_var =
-                function.new_unique_local_var(context, "__tmp_block_arg".to_owned(), arg_ty, None);
+            let local_var = function.new_unique_local_var(
+                context,
+                "__tmp_block_arg".to_owned(),
+                arg_ty,
+                None,
+                false,
+            );
             (idx, arg_val, local_var)
         })
         .collect::<Vec<(usize, Value, crate::LocalVar)>>();
