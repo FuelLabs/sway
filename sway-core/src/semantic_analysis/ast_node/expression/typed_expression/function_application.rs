@@ -100,6 +100,7 @@ pub(crate) fn instantiate_function_application(
             fn_ref: new_decl_ref,
             selector: None,
             type_binding: Some(call_path_binding.strip_inner()),
+            call_path_typeid: None,
         },
         return_type: return_type.type_id,
         span,

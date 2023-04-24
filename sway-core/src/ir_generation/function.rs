@@ -274,6 +274,7 @@ impl<'eng> FnCompiler<'eng> {
                 fn_ref,
                 selector,
                 type_binding: _,
+                call_path_typeid: _,
             } => {
                 if let Some(metadata) = selector {
                     self.compile_contract_call(
@@ -402,9 +403,11 @@ impl<'eng> FnCompiler<'eng> {
             ty::TyExpressionVariant::AbiName(_) => {
                 Ok(Value::new_constant(context, Constant::new_unit(context)))
             }
-            ty::TyExpressionVariant::UnsafeDowncast { exp, variant } => {
-                self.compile_unsafe_downcast(context, md_mgr, exp, variant)
-            }
+            ty::TyExpressionVariant::UnsafeDowncast {
+                exp,
+                variant,
+                call_path_decl: _,
+            } => self.compile_unsafe_downcast(context, md_mgr, exp, variant),
             ty::TyExpressionVariant::EnumTag { exp } => {
                 self.compile_enum_tag(context, md_mgr, exp.to_owned())
             }

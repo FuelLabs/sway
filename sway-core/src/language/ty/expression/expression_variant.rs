@@ -24,6 +24,8 @@ pub enum TyExpressionVariant {
         selector: Option<ContractCallParams>,
         /// optional binding information for the LSP
         type_binding: Option<TypeBinding<()>>,
+        /// In case it is a method should contain a TypeId to either an enum, struct or a type alias.
+        call_path_typeid: Option<TypeId>,
     },
     LazyOperator {
         op: LazyOp,
@@ -101,6 +103,8 @@ pub enum TyExpressionVariant {
         /// They are also used in the language server.
         variant_instantiation_span: Span,
         call_path_binding: TypeBinding<CallPath>,
+        /// The enum type, can be a type alias.
+        call_path_decl: ty::TyDecl,
     },
     AbiCast {
         abi_name: CallPath,
@@ -121,6 +125,8 @@ pub enum TyExpressionVariant {
     UnsafeDowncast {
         exp: Box<TyExpression>,
         variant: TyEnumVariant,
+        /// Should contain a TyDecl to either an enum or a type alias.
+        call_path_decl: ty::TyDecl,
     },
     WhileLoop {
         condition: Box<TyExpression>,
@@ -366,10 +372,12 @@ impl PartialEqWithEngines for TyExpressionVariant {
                 Self::UnsafeDowncast {
                     exp: l_exp,
                     variant: l_variant,
+                    call_path_decl: _,
                 },
                 Self::UnsafeDowncast {
                     exp: r_exp,
                     variant: r_variant,
+                    call_path_decl: _,
                 },
             ) => l_exp.eq(r_exp, engines) && l_variant.eq(r_variant, engines),
             (Self::EnumTag { exp: l_exp }, Self::EnumTag { exp: r_exp }) => {
@@ -408,6 +416,7 @@ impl HashWithEngines for TyExpressionVariant {
                 contract_call_params: _,
                 selector: _,
                 type_binding: _,
+                call_path_typeid: _,
             } => {
                 call_path.hash(state);
                 fn_ref.hash(state, engines);
@@ -534,6 +543,7 @@ impl HashWithEngines for TyExpressionVariant {
                 // reliable source of obj v. obj distinction
                 variant_instantiation_span: _,
                 call_path_binding: _,
+                call_path_decl: _,
             } => {
                 enum_ref.hash(state, engines);
                 variant_name.hash(state);
@@ -564,7 +574,11 @@ impl HashWithEngines for TyExpressionVariant {
             Self::EnumTag { exp } => {
                 exp.hash(state, engines);
             }
-            Self::UnsafeDowncast { exp, variant } => {
+            Self::UnsafeDowncast {
+                exp,
+                variant,
+                call_path_decl: _,
+            } => {
                 exp.hash(state, engines);
                 variant.hash(state, engines);
             }
@@ -703,7 +717,11 @@ impl SubstTypes for TyExpressionVariant {
             EnumTag { exp } => {
                 exp.subst(type_mapping, engines);
             }
-            UnsafeDowncast { exp, variant } => {
+            UnsafeDowncast {
+                exp,
+                variant,
+                call_path_decl: _,
+            } => {
                 exp.subst(type_mapping, engines);
                 variant.subst(type_mapping, engines);
             }
@@ -837,7 +855,11 @@ impl ReplaceSelfType for TyExpressionVariant {
             EnumTag { exp } => {
                 exp.replace_self_type(engines, self_type);
             }
-            UnsafeDowncast { exp, variant } => {
+            UnsafeDowncast {
+                exp,
+                variant,
+                call_path_decl: _,
+            } => {
                 exp.replace_self_type(engines, self_type);
                 variant.replace_self_type(engines, self_type);
             }
@@ -1185,10 +1207,15 @@ impl DebugWithEngines for TyExpressionVariant {
             TyExpressionVariant::EnumTag { exp } => {
                 format!("({:?} as tag)", engines.help_out(exp.return_type))
             }
-            TyExpressionVariant::UnsafeDowncast { exp, variant } => {
+            TyExpressionVariant::UnsafeDowncast {
+                exp,
+                variant,
+                call_path_decl,
+            } => {
                 format!(
-                    "({:?} as {})",
+                    "({:?} as {}::{})",
                     engines.help_out(exp.return_type),
+                    engines.help_out(call_path_decl),
                     variant.name
                 )
             }
