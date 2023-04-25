@@ -284,6 +284,24 @@ impl Module {
             }
         }
 
+        let mut symbols_paths_and_decls = vec![];
+        for (symbol, (mod_path, _, decl)) in use_synonyms {
+            let mut is_external = false;
+            let submodule = src_ns.submodule(&[mod_path[0].clone()]);
+            if let Some(submodule) = submodule {
+                is_external = submodule.is_external
+            };
+
+            let mut path = src[..1].to_vec();
+            if is_external {
+                path = mod_path;
+            } else {
+                path.extend(mod_path);
+            }
+
+            symbols_paths_and_decls.push((symbol, path, decl));
+        }
+
         let dst_ns = &mut self[dst];
         dst_ns
             .implemented_traits
@@ -295,19 +313,12 @@ impl Module {
                 .insert(symbol, (path, GlobImport::Yes, decl));
         };
 
-        for symbol_and_decl in symbols_and_decls {
-            try_add(symbol_and_decl.0, src.to_vec(), symbol_and_decl.1);
+        for (symbol, decl) in symbols_and_decls {
+            try_add(symbol, src.to_vec(), decl);
         }
 
-        for (symbol, (mod_path, _, decl)) in use_synonyms {
-            // N.B. We had a path like `::bar::baz`, which makes the module `bar` "crate-relative".
-            // Given that `bar`'s "crate" is `foo`, we'll need `foo::bar::baz` outside of it.
-            //
-            // FIXME(Centril, #2780): Seems like the compiler has no way of
-            // distinguishing between external and crate-relative paths?
-            let mut src = src[..1].to_vec();
-            src.extend(mod_path);
-            try_add(symbol, src, decl);
+        for (symbol, path, decl) in symbols_paths_and_decls {
+            try_add(symbol, path, decl);
         }
 
         ok((), warnings, errors)
