@@ -30,14 +30,14 @@ Now you're ready to install [`fuelup`](https://github.com/FuelLabs/fuelup), the 
 
    ```sh
    curl --proto '=https' --tlsv1.2 -sSf \
-   https://fuellabs.github.io/fuelup/fuelup-init.sh | sh
+   https://install.fuel.network/fuelup-init.sh | sh
    ```
 
    This downloads the `fuelup-init` script to a temp directory on your machine, which installs `fuelup`. `fuelup-init` will ask for permission to add `~/.fuelup/bin` to your PATH. Otherwise, you can also pass `--no-modify-path` so that `fuelup-init` does not modify your PATH:
 
    ```sh
    curl --proto '=https' --tlsv1.2 -sSf \
-   https://fuellabs.github.io/fuelup/fuelup-init.sh | sh -s -- --no-modify-path
+   https://install.fuel.network/fuelup-init.sh | sh -s -- --no-modify-path
    ```
 
 2. Once fuelup is installed, fuelup-init automatically runs `fuelup toolchain install latest` to install the latest toolchain
@@ -46,7 +46,7 @@ Now you're ready to install [`fuelup`](https://github.com/FuelLabs/fuelup), the 
 
 3. (Optional) You can optionally install distributed toolchains optimized for different networks.
 
-   To configure the optimal toolchain for beta-2, run the following commands:
+   To configure the optimal toolchain for beta-3, run the following commands:
 
    ```sh
    $ fuelup self update
