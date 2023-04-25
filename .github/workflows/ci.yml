@@ -388,26 +388,11 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
 
-  publish:
-    # Only do this job if publishing a release
-    needs:
-      [
-        build-forc-test-project,
-        build-sway-examples,
-        build-sway-lib-core,
-        build-sway-lib-std,
-        cargo-build-workspace,
-        cargo-clippy,
-        cargo-fmt-check,
-        cargo-run-e2e-test,
-        cargo-run-e2e-test-evm,
-        cargo-test-lib-std,
-        cargo-test-workspace,
-        cargo-unused-deps-check,
-      ]
+  # This job carries out some validation steps to prepare for a publish.
+  # This is a separate job because we want this to fail fast if something is invalid here.
+  pre-publish-check:
     if: github.event_name == 'release' && github.event.action == 'published'
-    runs-on: buildjet-4vcpu-ubuntu-2204
-
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -440,6 +425,50 @@ jobs:
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-types/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-utils/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} swayfmt/Cargo.toml
+
+      - name: Notify if Job Fails
+        uses: ravsamhq/notify-slack-action@v2
+        if: always()
+        with:
+          status: ${{ job.status }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          notification_title: "{workflow} has {status_message}"
+          message_format: "{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>"
+          footer: ""
+          notify_when: "failure"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
+
+  publish:
+    # Only do this job if publishing a release
+    needs:
+      [
+        build-forc-test-project,
+        build-sway-examples,
+        build-sway-lib-core,
+        build-sway-lib-std,
+        cargo-build-workspace,
+        cargo-clippy,
+        cargo-fmt-check,
+        cargo-run-e2e-test,
+        cargo-run-e2e-test-evm,
+        cargo-test-lib-std,
+        cargo-test-workspace,
+        cargo-unused-deps-check,
+        pre-publish-check,
+      ]
+    if: github.event_name == 'release' && github.event.action == 'published'
+    runs-on: buildjet-4vcpu-ubuntu-2204
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
       - name: Publish crate
         uses: katyo/publish-crates@v2
         with:
