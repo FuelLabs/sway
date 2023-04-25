@@ -8,7 +8,7 @@ publish = false
 
 [dependencies]
 assert_matches = "1.5.0"
-fuel-core = { version = "0.17", default-features = false }
+fuel-core = { version = "0.17.11", default-features = false }
 fuel-core-client = { version = "0.17", default-features = false }
 fuel-types = "0.26"
 fuel-vm = "0.26"
