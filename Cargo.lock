@@ -617,13 +617,13 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "3.2.23"
+version = "3.2.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71655c45cb9845d3270c9d6df84ebe72b4dad3c2ba3f7023ad47c144e4e473a5"
+checksum = "eef2b3ded6a26dfaec672a742c93c8cf6b689220324da509ec5caa20de55dc83"
 dependencies = [
  "atty",
  "bitflags",
- "clap_derive 3.2.18",
+ "clap_derive 3.2.24",
  "clap_lex 0.2.4",
  "indexmap",
  "once_cell",
@@ -664,7 +664,7 @@ version = "3.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f7a2e0a962c45ce25afce14220bc24f9dade0a1787f185cecf96bfba7847cd8"
 dependencies = [
- "clap 3.2.23",
+ "clap 3.2.24",
 ]
 
 [[package]]
@@ -678,9 +678,9 @@ dependencies = [
 
 [[package]]
 name = "clap_derive"
-version = "3.2.18"
+version = "3.2.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea0c8bce528c4be4da13ea6fead8965e95b6073585a2f05204bd8f4119f82a65"
+checksum = "d756c5824fc5c0c1ee8e36000f576968dbcb2081def956c83fad6f40acd46f96"
 dependencies = [
  "heck 0.4.1",
  "proc-macro-error",
@@ -1725,7 +1725,7 @@ dependencies = [
  "annotate-snippets",
  "ansi_term",
  "anyhow",
- "clap 3.2.23",
+ "clap 3.2.24",
  "clap_complete 3.2.5",
  "forc-pkg",
  "forc-test",
@@ -1757,7 +1757,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "chrono",
- "clap 3.2.23",
+ "clap 3.2.24",
  "devault",
  "forc",
  "forc-pkg",
@@ -1807,7 +1807,7 @@ name = "forc-fmt"
 version = "0.38.0"
 dependencies = [
  "anyhow",
- "clap 3.2.23",
+ "clap 3.2.24",
  "forc-pkg",
  "forc-tracing",
  "forc-util",
@@ -1824,7 +1824,7 @@ name = "forc-lsp"
 version = "0.38.0"
 dependencies = [
  "anyhow",
- "clap 3.2.23",
+ "clap 3.2.24",
  "sway-lsp",
  "tokio",
 ]
@@ -1887,7 +1887,7 @@ name = "forc-tx"
 version = "0.38.0"
 dependencies = [
  "anyhow",
- "clap 3.2.23",
+ "clap 3.2.24",
  "devault",
  "forc-util",
  "fuel-tx",
@@ -1903,7 +1903,7 @@ dependencies = [
  "annotate-snippets",
  "ansi_term",
  "anyhow",
- "clap 3.2.23",
+ "clap 3.2.24",
  "dirs 3.0.2",
  "forc-tracing",
  "fuel-tx",
@@ -1979,9 +1979,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-core-chain-config"
-version = "0.17.10"
+version = "0.17.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "50ad76abdb1ea002d186b3acd6e539292ba4dbb5252c732dba0a13b717363a9f"
+checksum = "1c858f8848e1f1a3d2dc060679983b75bd3160e62a5dfcf7afc2e5eabfdfa227"
 dependencies = [
  "anyhow",
  "bech32 0.9.1",
@@ -1999,9 +1999,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-core-client"
-version = "0.17.10"
+version = "0.17.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb79711c8da796bcc007e612a5182c7a10657d079870f9f4176e7878cf259b04"
+checksum = "808f7273c7ea1ad10766794701f4dfc234426aa5a8b7e69720af007cd551889d"
 dependencies = [
  "anyhow",
  "cynic",
@@ -2022,9 +2022,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-core-storage"
-version = "0.17.10"
+version = "0.17.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e4c610880a9dac06c5ee416a8675ea706300f2257732043abd918c259b7581ef"
+checksum = "d0430e82e41e840c954645450113bae55ab5b31d8f0e77154c94fa6eb6c01a04"
 dependencies = [
  "anyhow",
  "fuel-core-types",
@@ -2034,9 +2034,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-core-types"
-version = "0.17.10"
+version = "0.17.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e7605cdf54d2cf583e5b87e85e17b9d466c81ea704d80ed18ea8692e97339c1"
+checksum = "83b7da3d01bd0cc89a8e74f4b40bd5bf160fcec3b506d8503bdb0703846fc567"
 dependencies = [
  "anyhow",
  "derive_more",
@@ -2714,11 +2714,11 @@ dependencies = [
 
 [[package]]
 name = "home"
-version = "0.5.4"
+version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "747309b4b440c06d57b0b25f2aee03ee9b5e5397d288c60e21fc709bb98a7408"
+checksum = "5444c27eef6923071f7ebcc33e3444508466a76f7a2b93da00ed6e19f30c1ddb"
 dependencies = [
- "winapi",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
@@ -3300,7 +3300,7 @@ name = "mdbook-forc-documenter"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "clap 3.2.23",
+ "clap 3.2.24",
  "mdbook",
  "semver",
  "serde",
@@ -5201,7 +5201,7 @@ dependencies = [
 name = "sway-core"
 version = "0.38.0"
 dependencies = [
- "clap 3.2.23",
+ "clap 3.2.24",
  "derivative",
  "dirs 3.0.2",
  "either",
@@ -5683,9 +5683,9 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "tokio"
-version = "1.27.0"
+version = "1.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0de47a4eecbe11f498978a9b29d792f0d2692d1dd003650c24c76510e3bc001"
+checksum = "c3c786bf8134e5a3a166db9b29ab8f48134739014a3eca7bc6bfa95d673b136f"
 dependencies = [
  "autocfg",
  "bytes",
@@ -5697,7 +5697,7 @@ dependencies = [
  "signal-hook-registry",
  "socket2",
  "tokio-macros",
- "windows-sys 0.45.0",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
@@ -5712,9 +5712,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-macros"
-version = "2.0.0"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61a573bdc87985e9d6ddeed1b3d864e8a302c847e40d647746df2f1de209d1ce"
+checksum = "630bdcf245f78637c13ec01ffae6187cca34625e8c63150d424b59e55af2675e"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5745,9 +5745,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-util"
-version = "0.7.7"
+version = "0.7.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5427d89453009325de0d8f342c9490009f76e999cb7672d77e46267448f7e6b2"
+checksum = "806fe8c2c87eccc8b3267cbae29ed3ab2d0bd37fca70ab622e46aaa9375ddb7d"
 dependencies = [
  "bytes",
  "futures-core",
@@ -5851,11 +5851,10 @@ checksum = "b6bc1c9ce2b5135ac7f93c72918fc37feb872bdc6a5533a8b85eb4b86bfdae52"
 
 [[package]]
 name = "tracing"
-version = "0.1.37"
+version = "0.1.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ce8c33a8d48bd45d624a6e523445fd21ec13d3653cd51f681abf67418f54eb8"
+checksum = "cf9cf6a813d3f40c88b0b6b6f29a5c95c6cdbf97c1f9cc53fb820200f5ad814d"
 dependencies = [
- "cfg-if 1.0.0",
  "pin-project-lite",
  "tracing-attributes",
  "tracing-core",
