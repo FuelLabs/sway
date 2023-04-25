@@ -164,11 +164,11 @@ rustup default stable
 <li>
 <p>Start by installing <code>fuelup</code> with the following command:</p>
 <pre><code class="language-sh">curl --proto '=https' --tlsv1.2 -sSf \
-https://fuellabs.github.io/fuelup/fuelup-init.sh | sh
+https://install.fuel.network/fuelup-init.sh | sh
 </code></pre>
 <p>This downloads the <code>fuelup-init</code> script to a temp directory on your machine, which installs <code>fuelup</code>. <code>fuelup-init</code> will ask for permission to add <code>~/.fuelup/bin</code> to your PATH. Otherwise, you can also pass <code>--no-modify-path</code> so that <code>fuelup-init</code> does not modify your PATH:</p>
 <pre><code class="language-sh">curl --proto '=https' --tlsv1.2 -sSf \
-https://fuellabs.github.io/fuelup/fuelup-init.sh | sh -s -- --no-modify-path
+https://install.fuel.network/fuelup-init.sh | sh -s -- --no-modify-path
 </code></pre>
 </li>
 <li>
@@ -177,7 +177,7 @@ https://fuellabs.github.io/fuelup/fuelup-init.sh | sh -s -- --no-modify-path
 </li>
 <li>
 <p>(Optional) You can optionally install distributed toolchains optimized for different networks.</p>
-<p>To configure the optimal toolchain for beta-2, run the following commands:</p>
+<p>To configure the optimal toolchain for beta-3, run the following commands:</p>
 <pre><code class="language-sh">$ fuelup self update
 Fetching binary from https://github.com/FuelLabs/fuelup/releases/download/v0.18.0/fuelup-0.18.0-aarch64-apple-darwin.tar.gz
  Downloading component fuelup without verifying checksum
