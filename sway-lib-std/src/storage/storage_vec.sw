@@ -3,7 +3,7 @@ library;
 use ::alloc::alloc;
 use ::assert::assert;
 use ::hash::sha256;
-use ::option::Option;
+use ::option::Option::{self, *};
 use ::storage::storage_api::*;
 use ::storage::storage_key::*;
 
@@ -80,7 +80,7 @@ impl<V> StorageKey<StorageVec<V>> {
 
         // if the length is 0, there is no item to pop from the vec
         if len == 0 {
-            return Option::None;
+            return None;
         }
 
         // reduces len by 1, effectively removing the last item in the vec
@@ -122,10 +122,10 @@ impl<V> StorageKey<StorageVec<V>> {
 
         // if the index is larger or equal to len, there is no item to return
         if len <= index {
-            return Option::None;
+            return None;
         }
 
-        Option::Some(StorageKey {
+        Some(StorageKey {
             slot: sha256((index, self.slot)),
             offset: 0,
         })
@@ -538,8 +538,8 @@ impl<V> StorageKey<StorageVec<V>> {
     #[storage(read)]
     pub fn first(self) -> Option<StorageKey<V>> {
         match read::<u64>(self.slot, 0).unwrap_or(0) {
-            0 => Option::None,
-            _ => Option::Some(StorageKey {
+            0 => None,
+            _ => Some(StorageKey {
                 slot: sha256((0, self.slot)),
                 offset: 0,
             }),
@@ -571,8 +571,8 @@ impl<V> StorageKey<StorageVec<V>> {
     #[storage(read)]
     pub fn last(self) -> Option<StorageKey<V>> {
         match read::<u64>(self.slot, 0).unwrap_or(0) {
-            0 => Option::None,
-            len => Option::Some(StorageKey {
+            0 => None,
+            len => Some(StorageKey {
                 slot: sha256((len - 1, self.slot)),
                 offset: 0,
             }),
@@ -703,8 +703,8 @@ impl<V> StorageKey<StorageVec<V>> {
     ///
     ///     assert(5 == storage.vec.get(0).unwrap());
     ///     assert(10 == storage.vec.get(1).unwrap());
-    ///     assert(Option::None == storage.vec.get(2));
-    ///     assert(Option::None == storage.vec.get(3));
+    ///     assert(None == storage.vec.get(2));
+    ///     assert(None == storage.vec.get(3));
     /// }
     /// ```
     #[storage(read, write)]

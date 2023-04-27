@@ -1,9 +1,9 @@
 category = "fail"
 
-# check: Option::None::<T>;
+# check: None::<T>;
 # nextln: $()This returns a value of type Option<T>, which is not assigned to anything and is ignored.
 
-# check: Option::None::<T>;
+# check: None::<T>;
 # nextln: $()Could not find symbol "T" in this scope.
 
 # check: foo()

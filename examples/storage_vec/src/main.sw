@@ -54,8 +54,8 @@ impl StorageVecContract for Contract {
     fn read_from_storage_vec() {
         let third = storage.v.get(2);
         match third {
-            Option::Some(third) => log(third.read()),
-            Option::None => revert(42),
+            Some(third) => log(third.read()),
+            None => revert(42),
         }
     }
     // ANCHOR_END: storage_vec_get

@@ -2,7 +2,7 @@ library;
 
 use ::alloc::{alloc, alloc_bytes, realloc_bytes};
 use ::hash::sha256;
-use ::option::Option;
+use ::option::Option::{self, *};
 use ::storage::storage_api::*;
 
 /// Store a raw_slice from the heap into storage.
@@ -43,8 +43,8 @@ pub fn store_slice(key: b256, slice: raw_slice) {
 
 /// Load a raw_slice from storage.
 ///
-/// If no value was previously stored at `key`, `Option::None` is returned. Otherwise,
-/// `Option::Some(value)` is returned, where `value` is the value stored at `key`.
+/// If no value was previously stored at `key`, `None` is returned. Otherwise,
+/// `Some(value)` is returned, where `value` is the value stored at `key`.
 ///
 /// ### Arguments
 ///
@@ -65,14 +65,14 @@ pub fn store_slice(key: b256, slice: raw_slice) {
 pub fn get_slice(key: b256) -> Option<raw_slice> {
     // Get the length of the slice that is stored.
     match read::<u64>(key, 0).unwrap_or(0) {
-        0 => Option::None,
+        0 => None,
         len => {
             // Get the number of storage slots needed based on the size.
             let number_of_slots = (len + 31) >> 5;
             let ptr = alloc_bytes(number_of_slots * 32);
             // Load the stored slice into the pointer.
             let _ = __state_load_quad(sha256(key), ptr, number_of_slots);
-            Option::Some(asm(ptr: (ptr, len)) { ptr: raw_slice })
+            Some(asm(ptr: (ptr, len)) { ptr: raw_slice })
         }
     }
 }

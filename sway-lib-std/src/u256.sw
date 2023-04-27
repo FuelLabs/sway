@@ -3,7 +3,7 @@ library;
 
 use ::assert::assert;
 use ::convert::From;
-use ::result::Result;
+use ::result::Result::{self, *};
 use ::u128::U128;
 
 /// Left shift a `u64` and preserve the overflow amount if any.
@@ -101,9 +101,9 @@ impl U256 {
     /// ```
     pub fn as_u64(self) -> Result<u64, U256Error> {
         if self.a == 0 && self.b == 0 && self.c == 0 {
-            Result::Ok(self.d)
+            Ok(self.d)
         } else {
-            Result::Err(U256Error::LossOfPrecision)
+            Err(U256Error::LossOfPrecision)
         }
     }
 
@@ -127,9 +127,9 @@ impl U256 {
     /// ```
     pub fn as_u128(self) -> Result<U128, U256Error> {
         if self.a == 0 && self.b == 0 {
-            Result::Ok(U128::from((self.c, self.d)))
+            Ok(U128::from((self.c, self.d)))
         } else {
-            Result::Err(U256Error::LossOfPrecision)
+            Err(U256Error::LossOfPrecision)
         }
     }
 

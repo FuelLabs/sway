@@ -9,8 +9,12 @@ The prelude contains the following:
 - [`Identity`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/identity.sw): An enum containing `Address` & `ContractID` structs
 - [`Vec`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/vec.sw): A growable, heap-allocated vector
 - [`StorageMap`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/storage.sw): A key-value mapping in contract storage
-- [`Option`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/option.sw): An enum containing either some generic value `<T>` or an absence of that value
-- [`Result`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/result.sw): An enum used to represent either a success or failure of an operation
+- [`Option`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/option.sw): An enum containing either some generic value `<T>` or an absence of that value, we also expose the variants directly:
+  - `Some`
+  - `None`
+- [`Result`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/result.sw): An enum used to represent either a success or failure of an operation, we also expose the variants directly:
+  - `Ok`
+  - `Err`
 - [`assert`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/assert.sw): A module containing
   - `assert`: A function that reverts the VM if the condition provided to it is false
   - `assert_eq`: A function that reverts the VM and logs its two inputs v1 and v2 if the condition v1 == v2 is false

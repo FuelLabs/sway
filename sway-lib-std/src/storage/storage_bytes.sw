@@ -1,7 +1,7 @@
 library;
 
 use ::bytes::Bytes;
-use ::option::Option;
+use ::option::Option::{self, *};
 use ::storage::storable_slice::*;
 use ::storage::storage_api::*;
 
@@ -70,10 +70,10 @@ impl StorableSlice<Bytes> for StorageKey<StorageBytes> {
     fn load(self) -> Option<Bytes> {
         let key = self.slot;
         match get_slice(key) {
-            Option::Some(slice) => {
-                Option::Some(Bytes::from_raw_slice(slice))
+            Some(slice) => {
+                Some(Bytes::from_raw_slice(slice))
             },
-            Option::None => Option::None,
+            None => None,
         }
     }
 

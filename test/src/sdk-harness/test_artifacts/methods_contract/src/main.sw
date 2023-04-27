@@ -17,7 +17,7 @@ struct MyStruct {
 
 storage {
     stored_struct: MyStruct = MyStruct {
-        int_option: Option::None,
+        int_option: None,
     },
 }
 
@@ -27,7 +27,7 @@ impl MethodsContract for Contract {
         let identity = bogus();
         let identity2 = bogus2();
         storage.stored_struct.write(MyStruct {
-            int_option: Option::Some(99u64),
+            int_option: Some(99u64),
         });
         let stored_struct = storage.stored_struct.read();
         let stored_option_in_struct = stored_struct.int_option;

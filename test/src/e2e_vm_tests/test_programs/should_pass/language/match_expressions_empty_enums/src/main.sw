@@ -10,11 +10,11 @@ impl MyNever {
 
 fn result_into_ok<T>(res: Result<T, MyNever>) -> T {
     match res {
-        Result::Ok(t) => t,
+        Ok(t) => t,
         // This branch can never be taken, and so the
         // compiler is happy to treat it as evaluating
         // to whatever type we wish - in this case, `T`.
-        Result::Err(never) => match never {},
+        Err(never) => match never {},
     }
 }
 
