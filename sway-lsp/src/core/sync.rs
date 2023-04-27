@@ -11,6 +11,7 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
+use sway_types::Span;
 use tempfile::Builder;
 use tower_lsp::lsp_types::Url;
 
@@ -192,11 +193,22 @@ impl SyncWorkspace {
             .ok_or(DirectoryError::TempDirNotFound)
     }
 
-    /// Create a URL from a [PathBuf].
+    /// Create a [Url] from a [PathBuf].
     pub fn url_from_path(&self, path: &PathBuf) -> Result<Url, DirectoryError> {
         Url::from_file_path(path).map_err(|_| DirectoryError::UrlFromPathFailed {
             path: path.to_string_lossy().to_string(),
         })
+    }
+
+    /// Create a [Url] from a [Span].
+    pub fn url_from_span(&self, span: &Span) -> Result<Url, DirectoryError> {
+        if let Some(path) = span.path() {
+            self.url_from_path(path)
+        } else {
+            Err(DirectoryError::UrlFromSpanFailed {
+                span: span.as_str().to_string(),
+            })
+        }
     }
 
     fn convert_url(&self, uri: &Url, from: PathBuf, to: PathBuf) -> Result<Url, DirectoryError> {

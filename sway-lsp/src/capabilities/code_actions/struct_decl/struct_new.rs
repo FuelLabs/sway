@@ -17,22 +17,12 @@ impl<'a> CodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
     fn new(ctx: CodeActionContext<'a>, decl: &'a TyStructDecl) -> Self {
         // Before the other functions are called, we need to determine if the new function
         // should be generated in a new impl block, an existing impl block, or not at all.
-        // First, find the first impl block for this struct if it exists.
+        // Find the first impl block for this struct if it exists.
         let existing_impl_decl = ctx
             .tokens
-            .iter()
-            .all_references_of_token(ctx.token, ctx.engines)
-            .find_map(|(_, token)| {
-                if let Some(TypedAstToken::TypedDeclaration(ty::TyDecl::ImplTrait(
-                    ty::ImplTrait { decl_id, .. },
-                ))) = token.typed
-                {
-                    Some(ctx.engines.de().get_impl_trait(&decl_id))
-                } else {
-                    None
-                }
-            });
-
+            .all_impls_of_token(ctx.engines, ctx.token)
+            .first()
+            .cloned();
         Self {
             decl,
             uri: ctx.uri,

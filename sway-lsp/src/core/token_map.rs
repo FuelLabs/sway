@@ -1,6 +1,10 @@
 use crate::core::token::{self, Token, TypedAstToken};
 use dashmap::DashMap;
-use sway_core::{language::ty, type_system::TypeId, Engines};
+use sway_core::{
+    language::ty::{self, TyImplTrait},
+    type_system::TypeId,
+    Engines,
+};
 use sway_types::{Ident, Span, Spanned};
 use tower_lsp::lsp_types::{Position, Url};
 
@@ -58,6 +62,23 @@ impl TokenMap {
                     return Some(ident);
                 }
                 None
+            })
+            .collect()
+    }
+
+    /// Returns all trait implementations of the given token.
+    pub fn all_impls_of_token(&self, engines: Engines<'_>, token: &Token) -> Vec<TyImplTrait> {
+        self.iter()
+            .all_references_of_token(token, engines)
+            .flat_map(|(_, token)| {
+                if let Some(TypedAstToken::TypedDeclaration(ty::TyDecl::ImplTrait(
+                    ty::ImplTrait { decl_id, .. },
+                ))) = token.typed
+                {
+                    Some(engines.de().get_impl_trait(&decl_id))
+                } else {
+                    None
+                }
             })
             .collect()
     }

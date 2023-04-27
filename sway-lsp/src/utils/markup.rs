@@ -3,7 +3,16 @@
 //! Sometimes, we want to display a "rich text" in the UI. At the moment, we use
 //! markdown for this purpose.
 //! Modified from rust-analyzer.
-use std::fmt;
+use crate::{
+    capabilities::hover::{Implementations, RelatedType},
+    core::token::get_range_from_span,
+};
+use serde_json::{json, Value};
+use std::fmt::{self, format};
+use sway_core::language::CallPath;
+use urlencoding::encode;
+
+const GO_TO_COMMAND: &str = "sway.goToDefinition";
 
 /// A handy wrapper around `String` for constructing markdown documents.
 #[derive(Default, Debug)]
@@ -40,27 +49,79 @@ impl Markup {
     /// If contents is `Some`, format the contents within a sway code block.
     pub fn maybe_add_sway_block(self, contents: Option<String>) -> Self {
         match contents {
-            Some(contents) => self.fenced_sway_block(&contents).line_sperator(),
+            Some(contents) => self.fenced_sway_block(&contents),
             None => self,
         }
     }
 
-    /// Contents will be formatted with sway syntax highlighting.
-    pub fn fenced_sway_block(mut self, contents: &impl fmt::Display) -> Self {
-        let code_block = format!("```sway\n{contents}\n```");
-        self.text.push_str(&code_block);
-        self
+    fn quoted_tooltip(&self, callpath: &CallPath) -> String {
+        format!("\"{}\"", callpath.to_string())
     }
 
-    /// Add a new line.
-    pub fn line_sperator(mut self) -> Self {
-        self.text.push_str("\n---\n");
-        self
+    /// Builds a markdown URI using the "command" scheme and args passed as encoded JSON.
+    fn command_uri(&self, command: &str, args: Value) -> String {
+        format!("command:{}?{}", command, encode(args.to_string().as_str()))
+    }
+
+    /// Adds go-to links if there are any related types, a link to view implementations if there are any,
+    /// or nothing if there are no related types or implementations.
+    pub fn maybe_add_links(
+        self,
+        related_types: Vec<RelatedType>,
+        implementations: Implementations,
+    ) -> Self {
+        if !related_types.is_empty() {
+            let links_string = related_types
+                .iter()
+                .map(|related_type| {
+                    let args = json!([{ "uri": related_type.uri, "range": &related_type.range }]);
+                    format!(
+                        "[{}]({} {})",
+                        related_type.name,
+                        self.command_uri(GO_TO_COMMAND, args),
+                        self.quoted_tooltip(&related_type.callpath)
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join(" | ");
+            self.text(&format!("Go to {}", links_string))
+        } else if !implementations.definition_span.is_none()
+            && !implementations.impl_spans.is_empty()
+        {
+            self.text(&format!(
+                "[{} implementations]({})",
+                implementations.impl_spans.len(),
+                "www.google.com" // implementations.definition_span.unwrap(),
+            ))
+            // self.text("[22 implementations](https://duckduckgo.com)")
+        } else {
+            self
+        }
+    }
+
+    /// Contents will be formatted with sway syntax highlighting.
+    pub fn fenced_sway_block(self, contents: &impl fmt::Display) -> Self {
+        let code_block = format!("```sway\n{contents}\n```");
+        self.text(&code_block)
     }
 
     /// Add text to the markup.
-    pub fn text(mut self, contents: &str) -> Self {
+    pub fn text(self, contents: &str) -> Self {
+        if !self.text.is_empty() {
+            return self.line_sperator().push_str(contents);
+        }
+        self.push_str(contents)
+    }
+
+    /// Add text without a line separator.
+    fn push_str(mut self, contents: &str) -> Self {
         self.text.push_str(contents);
+        self
+    }
+
+    /// Add a new section.
+    fn line_sperator(mut self) -> Self {
+        self.text.push_str("\n---\n");
         self
     }
 

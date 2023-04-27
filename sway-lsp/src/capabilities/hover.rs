@@ -1,19 +1,152 @@
 use crate::{
     core::{
         session::Session,
+        sync::SyncWorkspace,
         token::{get_range_from_span, to_ident_key, SymbolKind, Token, TypedAstToken},
+        token_map::TokenMap,
     },
     utils::{
         attributes::doc_comment_attributes, keyword_docs::KeywordDocs, markdown, markup::Markup,
     },
 };
-use std::sync::Arc;
+use serde::{Deserialize, Serialize};
+use std::{any::Any, sync::Arc};
 use sway_core::{
-    language::{ty, Visibility},
-    Engines, TypeId,
+    language::{ty, CallPath, Visibility},
+    Engines, TypeId, TypeInfo,
 };
 use sway_types::{Ident, Span, Spanned};
-use tower_lsp::lsp_types::{self, Position, Url};
+use tower_lsp::lsp_types::{self, Location, Position, Range, Url};
+
+#[derive(Debug, Clone)]
+pub struct RelatedType {
+    pub name: String,
+    pub uri: Url,
+    pub range: Range,
+    pub callpath: CallPath,
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct Implementations {
+    pub definition_span: Option<Span>,
+    pub impl_spans: Vec<Span>,
+}
+
+#[derive(Debug, Clone)]
+pub struct HoverLinkContents<'a> {
+    pub related_types: Vec<RelatedType>,
+    pub implementations: Implementations,
+    engines: Engines<'a>,
+    token_map: &'a TokenMap,
+    sync: &'a SyncWorkspace,
+    token: &'a Token,
+}
+
+impl<'a> HoverLinkContents<'a> {
+    fn new(
+        engines: Engines<'a>,
+        token_map: &'a TokenMap,
+        sync: &'a SyncWorkspace,
+        token: &'a Token,
+    ) -> Self {
+        Self {
+            related_types: Vec::new(),
+            implementations: Implementations::default(),
+            engines,
+            token_map,
+            sync,
+            token,
+        }
+    }
+
+    fn add_related_type(&mut self, name: String, span: &Span, callpath: CallPath) {
+        // eprintln!("var_decl.type_ascription: {:?}", var_decl.type_ascription);
+        // let tokens_at_pos = token_map.tokens_at_position(
+        //     uri,
+        //     get_range_from_span(var_decl.type_ascription.span()).start,
+        //     false,
+        // );
+
+        // If span contains angle brackets, split them up to get a list of related types in the span.
+        // Otherwise, there is only 1 related type.
+
+        // let type_names = Regex::new(r"[<+|>+|,]")
+        //     .unwrap()
+        //     .replace_all(span.as_str(), " ")
+        //     .split(" ")
+        //     .filter(|x| !x.is_empty())
+        //     .collect::<Vec<&str>>();
+
+        // The span might contain angle brackets, which indicates that there are multiple related types.
+        // if span.as_str().contains('<') {
+        //     // While the information we need is already available in the type engine, it's buried underneath
+        //     // many layers of nested types. Instead, we parse the information we need about the related types
+        //     // from the span itself.
+        //     let mut span_chars = span.as_str().chars().into_iter();
+        //     let mut type_name = "";
+        //     let mut span_index = 0;
+        //     while let Some(next_char) = span_chars.next() {
+        //         if matches!(next_char, '<' | '>' | ',') {
+        //             span_index += 1;
+        //             break;
+        //         }
+        //         span_index += 1;
+        //     }
+        // } else {
+        // Otherwise, we know there is only 1 related type contained in the span.
+        if let Ok(uri) = self.sync.url_from_span(&span) {
+            eprintln!("uri: {:?}", uri);
+            eprintln!("span: {:?}", span);
+
+            let range = get_range_from_span(&span);
+            self.related_types.push(RelatedType {
+                name,
+                uri,
+                range,
+                callpath,
+            });
+        };
+        // }
+    }
+
+    fn add_related_types(&mut self, type_id: &TypeId) {
+        let type_info = self.engines.te().get(*type_id);
+        match type_info {
+            TypeInfo::Enum(decl_ref) => {
+                let decl = self.engines.de().get_enum(&decl_ref);
+                eprintln!("enum decl: {:?}", decl);
+                self.add_related_type(decl_ref.name().to_string(), &decl.span(), decl.call_path);
+                decl.type_parameters
+                    .iter()
+                    .for_each(|type_param| self.add_related_types(&type_param.type_id));
+            }
+            TypeInfo::Struct(decl_ref) => {
+                let decl = self.engines.de().get_struct(&decl_ref);
+                eprintln!("struct decl: {:?}", decl);
+                self.add_related_type(decl_ref.name().to_string(), &decl.span(), decl.call_path);
+                decl.type_parameters
+                    .iter()
+                    .for_each(|type_param| self.add_related_types(&type_param.type_id));
+            }
+            _ => {}
+        }
+
+        // if let Ok(url) = sync.url_from_span(&span) {
+        //     let name = span.clone().str();
+        //     let path = sync.temp_to_workspace_url(&url).unwrap();
+        //     let range = get_range_from_span(&span);
+        //     related_types.push(RelatedType { name, path, range });
+        // };
+    }
+
+    fn add_impl(&mut self, definition_span: Span) {
+        self.implementations.definition_span = Some(definition_span);
+        self.token_map
+            .all_impls_of_token(self.engines, self.token)
+            .iter()
+            .for_each(|trait_impl| self.implementations.impl_spans.push(trait_impl.span()));
+    }
+}
 
 /// Extracts the hover information for a token at the current position.
 pub fn hover_data(
@@ -59,7 +192,13 @@ pub fn hover_data(
         None => (ident, token),
     };
 
-    let contents = hover_format(engines, &decl_token, &decl_ident);
+    let contents = hover_format(
+        engines,
+        session.token_map(),
+        &session.sync,
+        &decl_token,
+        &decl_ident,
+    );
     Some(lsp_types::Hover {
         contents,
         range: Some(range),
@@ -116,7 +255,13 @@ fn markup_content(markup: Markup) -> lsp_types::MarkupContent {
     lsp_types::MarkupContent { kind, value }
 }
 
-fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types::HoverContents {
+fn hover_format(
+    engines: Engines<'_>,
+    token_map: &TokenMap,
+    sync: &SyncWorkspace,
+    token: &Token,
+    ident: &Ident,
+) -> lsp_types::HoverContents {
     let decl_engine = engines.de();
 
     let token_name: String = ident.as_str().into();
@@ -127,7 +272,12 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
         format!("{name}: {type_name}")
     };
 
-    let value = token
+    // Collect all the information we need to generate links for the hover component.
+    let mut hover_link_contents = HoverLinkContents::new(engines, token_map, sync, token);
+
+    eprintln!("token.typed: {:?}", token.typed);
+
+    let sway_block = token
         .typed
         .as_ref()
         .and_then(|typed_token| match typed_token {
@@ -135,6 +285,7 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
                 ty::TyDecl::VariableDecl(var_decl) => {
                     let type_name =
                         format!("{}", engines.help_out(var_decl.type_ascription.type_id));
+                    hover_link_contents.add_related_types(&var_decl.type_ascription.type_id);
                     Some(format_variable_hover(
                         var_decl.mutability.is_mutable(),
                         &type_name,
@@ -143,6 +294,7 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
                 }
                 ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
                     let struct_decl = decl_engine.get_struct(decl_id);
+                    hover_link_contents.add_impl(struct_decl.span);
                     Some(format_visibility_hover(
                         struct_decl.visibility,
                         decl.friendly_type_name(),
@@ -151,6 +303,7 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
                 }
                 ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. }) => {
                     let trait_decl = decl_engine.get_trait(decl_id);
+                    hover_link_contents.add_impl(trait_decl.span());
                     Some(format_visibility_hover(
                         trait_decl.visibility,
                         decl.friendly_type_name(),
@@ -159,28 +312,37 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
                 }
                 ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
                     let enum_decl = decl_engine.get_enum(decl_id);
+                    hover_link_contents.add_impl(enum_decl.span());
                     Some(format_visibility_hover(
                         enum_decl.visibility,
                         decl.friendly_type_name(),
                         &token_name,
                     ))
                 }
-                ty::TyDecl::AbiDecl { .. } => {
+                ty::TyDecl::AbiDecl(ty::AbiDecl { decl_span, .. }) => {
+                    hover_link_contents.add_impl(decl_span.clone());
                     Some(format!("{} {}", decl.friendly_type_name(), &token_name))
                 }
                 _ => None,
             },
             TypedAstToken::TypedFunctionDeclaration(func) => {
+                hover_link_contents.add_related_types(&func.return_type.type_id);
                 Some(extract_fn_signature(&func.span()))
             }
-            TypedAstToken::TypedFunctionParameter(param) => Some(format_name_with_type(
-                param.name.as_str(),
-                &param.type_argument.type_id,
-            )),
-            TypedAstToken::TypedStructField(field) => Some(format_name_with_type(
-                field.name.as_str(),
-                &field.type_argument.type_id,
-            )),
+            TypedAstToken::TypedFunctionParameter(param) => {
+                hover_link_contents.add_related_types(&param.type_argument.type_id);
+                Some(format_name_with_type(
+                    param.name.as_str(),
+                    &param.type_argument.type_id,
+                ))
+            }
+            TypedAstToken::TypedStructField(field) => {
+                hover_link_contents.add_impl(field.span.clone());
+                Some(format_name_with_type(
+                    field.name.as_str(),
+                    &field.type_argument.type_id,
+                ))
+            }
             TypedAstToken::TypedExpression(expr) => match expr.expression {
                 ty::TyExpressionVariant::Literal { .. } => {
                     Some(format!("{}", engines.help_out(expr.return_type)))
@@ -190,7 +352,13 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
             _ => None,
         });
 
-    let content = Markup::new().maybe_add_sway_block(value).text(&doc_comment);
+    let content = Markup::new()
+        .maybe_add_sway_block(sway_block)
+        .text(&doc_comment)
+        .maybe_add_links(
+            hover_link_contents.related_types,
+            hover_link_contents.implementations,
+        );
 
     lsp_types::HoverContents::Markup(markup_content(content))
 }

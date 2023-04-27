@@ -58,6 +58,8 @@ pub enum DirectoryError {
     StripPrefixError(std::path::StripPrefixError),
     #[error("Unable to create Url from path {:?}", path)]
     UrlFromPathFailed { path: String },
+    #[error("Unable to create Url from span {:?}", span)]
+    UrlFromSpanFailed { span: String },
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
