@@ -357,7 +357,7 @@ jobs:
       - name: Check Unused Deps
         run: cargo udeps --locked --all-targets
 
-  notify-slack-on-failure:
+  verifications-complete:
     needs:
       [
         build-forc-test-project,
@@ -373,6 +373,13 @@ jobs:
         cargo-test-workspace,
         cargo-unused-deps-check,
       ]
+    runs-on: ubuntu-latest
+    steps:
+      - run: true
+
+  notify-slack-on-failure:
+    needs:
+      - verifications-complete
     runs-on: ubuntu-latest
     steps:
       - name: Notify Slack On Failure
@@ -396,12 +403,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
-
       - name: Verify tag version
         run: |
           cargo install toml-cli
@@ -425,7 +430,6 @@ jobs:
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-types/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-utils/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} swayfmt/Cargo.toml
-
       - name: Notify if Job Fails
         uses: ravsamhq/notify-slack-action@v2
         if: always()
@@ -442,21 +446,8 @@ jobs:
   publish:
     # Only do this job if publishing a release
     needs:
-      [
-        build-forc-test-project,
-        build-sway-examples,
-        build-sway-lib-core,
-        build-sway-lib-std,
-        cargo-build-workspace,
-        cargo-clippy,
-        cargo-fmt-check,
-        cargo-run-e2e-test,
-        cargo-run-e2e-test-evm,
-        cargo-test-lib-std,
-        cargo-test-workspace,
-        cargo-unused-deps-check,
-        pre-publish-check,
-      ]
+      - verifications-complete
+      - pre-publish-check
     if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: buildjet-4vcpu-ubuntu-2204
 
@@ -490,20 +481,7 @@ jobs:
 
   build-publish-master-image:
     needs:
-      [
-        build-forc-test-project,
-        build-sway-examples,
-        build-sway-lib-core,
-        build-sway-lib-std,
-        cargo-build-workspace,
-        cargo-clippy,
-        cargo-fmt-check,
-        cargo-run-e2e-test,
-        cargo-run-e2e-test-evm,
-        cargo-test-lib-std,
-        cargo-test-workspace,
-        cargo-unused-deps-check,
-      ]
+      - verifications-complete
     if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     permissions:
