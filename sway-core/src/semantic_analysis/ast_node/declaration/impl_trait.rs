@@ -14,7 +14,6 @@ use crate::{
     },
     semantic_analysis::{Mode, TypeCheckContext},
     type_system::*,
-    types::*,
 };
 
 impl ty::TyImplTrait {
@@ -803,52 +802,27 @@ fn type_check_impl_method(
         return err(warnings, errors);
     }
 
-    // if this method uses a type parameter from its parent's impl type
-    // parameters that is not constrained by the type that we are
-    // implementing for, then we need to add that type parameter to the
-    // method's type parameters so that in-line monomorphization can
-    // complete.
+    // We need to add impl type parameters to the  method's type parameters
+    // so that in-line monomorphization can complete.
+    //
+    // We also need to add impl type parameters to the method's type
+    // parameters so the type constraints are correctly applied to the method.
     //
     // NOTE: this is a semi-hack that is used to force monomorphization of
     // trait methods that contain a generic defined in the parent impl...
     // without stuffing the generic into the method's type parameters, its
     // not currently possible to monomorphize on that generic at function
     // application time.
-    //
-    // *This will change* when either https://github.com/FuelLabs/sway/issues/1267
-    // or https://github.com/FuelLabs/sway/issues/2814 goes in.
-    let unconstrained_type_parameters_in_this_function: HashSet<WithEngines<'_, TypeParameter>> =
-        impl_method
-            .unconstrained_type_parameters(engines, impl_type_parameters)
-            .into_iter()
+    impl_method.type_parameters.append(
+        &mut impl_type_parameters
+            .iter()
             .cloned()
-            .map(|x| WithEngines::new(x, engines))
-            .collect();
-    let constrained_type_parameters_in_the_type: HashSet<WithEngines<'_, TypeParameter>> =
-        self_type
-            .unconstrained_type_parameters(engines, impl_type_parameters)
-            .into_iter()
-            .cloned()
-            .map(|x| WithEngines::new(x, engines))
-            .collect::<HashSet<_>>();
-    let mut unconstrained_type_parameters_to_be_added =
-        unconstrained_type_parameters_in_this_function
-            .difference(&constrained_type_parameters_in_the_type)
-            .cloned()
-            .collect::<HashSet<_>>()
-            .intersection(
-                &impl_type_parameters
-                    .iter()
-                    .cloned()
-                    .map(|x| engines.help_out(x))
-                    .collect::<HashSet<_>>(),
-            )
-            .cloned()
-            .map(|x| x.thing)
-            .collect::<Vec<_>>();
-    impl_method
-        .type_parameters
-        .append(&mut unconstrained_type_parameters_to_be_added);
+            .map(|mut t| {
+                t.is_from_parent = true;
+                t
+            })
+            .collect::<Vec<_>>(),
+    );
 
     if errors.is_empty() {
         ok(impl_method, warnings, errors)
