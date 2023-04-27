@@ -2,7 +2,6 @@
 contract;
 
 use std::{
-    auth::msg_sender,
     call_frames::msg_asset_id,
     constants::BASE_ASSET_ID,
     context::msg_amount,

@@ -1,8 +1,6 @@
 script;
 
-use std::auth::*;
 use std::identity::*;
-//use std::b512::*;
 
 fn bogus() {
     let value = B512 {
