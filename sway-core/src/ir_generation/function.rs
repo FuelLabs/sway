@@ -274,6 +274,7 @@ impl<'eng> FnCompiler<'eng> {
                 fn_ref,
                 selector,
                 type_binding: _,
+                call_path_typeid: _,
             } => {
                 if let Some(metadata) = selector {
                     self.compile_contract_call(
@@ -402,9 +403,11 @@ impl<'eng> FnCompiler<'eng> {
             ty::TyExpressionVariant::AbiName(_) => {
                 Ok(Value::new_constant(context, Constant::new_unit(context)))
             }
-            ty::TyExpressionVariant::UnsafeDowncast { exp, variant } => {
-                self.compile_unsafe_downcast(context, md_mgr, exp, variant)
-            }
+            ty::TyExpressionVariant::UnsafeDowncast {
+                exp,
+                variant,
+                call_path_decl: _,
+            } => self.compile_unsafe_downcast(context, md_mgr, exp, variant),
             ty::TyExpressionVariant::EnumTag { exp } => {
                 self.compile_enum_tag(context, md_mgr, exp.to_owned())
             }
@@ -718,6 +721,13 @@ impl<'eng> FnCompiler<'eng> {
                 }
             }
             Intrinsic::Log => {
+                if context.program_kind == Kind::Predicate {
+                    return Err(CompileError::DisallowedIntrinsicInPredicate {
+                        intrinsic: kind.to_string(),
+                        span: span.clone(),
+                    });
+                }
+
                 // The log value and the log ID are just Value.
                 let log_val = self.compile_expression_to_value(context, md_mgr, &arguments[0])?;
                 let log_id = match self.logged_types_map.get(&arguments[0].return_type) {

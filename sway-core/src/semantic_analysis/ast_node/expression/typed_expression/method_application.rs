@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::{DeclEngineInsert, DeclRefFunction, UpdateConstantExpression},
+    decl_engine::{DeclEngineInsert, DeclRefFunction, ReplaceDecls, UpdateConstantExpression},
     error::*,
     language::{parsed::*, ty, *},
     semantic_analysis::*,
@@ -43,13 +43,13 @@ pub(crate) fn type_check_method_application(
     }
 
     // resolve the method name to a typed function declaration and type_check
-    let decl_ref = check!(
+    let (decl_ref, call_path_typeid) = check!(
         resolve_method_name(ctx.by_ref(), &mut method_name_binding, args_buf.clone()),
         return err(warnings, errors),
         warnings,
         errors
     );
-    let method = decl_engine.get_function(&decl_ref);
+    let mut method = decl_engine.get_function(&decl_ref);
 
     // check the method visibility
     if span.path() != method.span.path() && method.visibility.is_private() {
@@ -312,16 +312,36 @@ pub(crate) fn type_check_method_application(
     ctx.namespace
         .insert_trait_implementation_for_type(engines, method.return_type.type_id);
 
+    // Handle the trait constraints. This includes checking to see if the trait
+    // constraints are satisfied and replacing old decl ids based on the
+    // constraint with new decl ids based on the new type.
+    let decl_mapping = check!(
+        TypeParameter::gather_decl_mapping_from_trait_constraints(
+            ctx.by_ref(),
+            &method.type_parameters,
+            &call_path.span()
+        ),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    method.replace_decls(&decl_mapping, ctx.engines());
+    let return_type = method.return_type.type_id;
+    let new_decl_ref = decl_engine
+        .insert(method)
+        .with_parent(decl_engine, (*decl_ref.id()).into());
+
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {
             call_path,
             contract_call_params: contract_call_params_map,
             arguments: typed_arguments_with_names,
-            fn_ref: decl_ref,
+            fn_ref: new_decl_ref,
             selector,
             type_binding: Some(method_name_binding.strip_inner()),
+            call_path_typeid: Some(call_path_typeid),
         },
-        return_type: method.return_type.type_id,
+        return_type,
         span,
     };
 
@@ -378,7 +398,7 @@ pub(crate) fn resolve_method_name(
     mut ctx: TypeCheckContext,
     method_name: &mut TypeBinding<MethodName>,
     arguments: VecDeque<ty::TyExpression>,
-) -> CompileResult<DeclRefFunction> {
+) -> CompileResult<(DeclRefFunction, TypeId)> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
@@ -387,7 +407,7 @@ pub(crate) fn resolve_method_name(
     let engines = ctx.engines();
 
     // retrieve the function declaration using the components of the method name
-    let decl_ref = match &method_name.inner {
+    let (decl_ref, type_id) = match &method_name.inner {
         MethodName::FromType {
             call_path_binding,
             method_name,
@@ -412,7 +432,7 @@ pub(crate) fn resolve_method_name(
             );
 
             // find the method
-            check!(
+            let decl_ref = check!(
                 ctx.namespace.find_method_for_type(
                     type_id,
                     &type_info_prefix,
@@ -424,7 +444,9 @@ pub(crate) fn resolve_method_name(
                 return err(warnings, errors),
                 warnings,
                 errors
-            )
+            );
+
+            (decl_ref, type_id)
         }
         MethodName::FromTrait { call_path } => {
             // find the module that the symbol is in
@@ -437,7 +459,7 @@ pub(crate) fn resolve_method_name(
                 .unwrap_or_else(|| type_engine.insert(decl_engine, TypeInfo::Unknown));
 
             // find the method
-            check!(
+            let decl_ref = check!(
                 ctx.namespace.find_method_for_type(
                     type_id,
                     &module_path,
@@ -449,7 +471,9 @@ pub(crate) fn resolve_method_name(
                 return err(warnings, errors),
                 warnings,
                 errors
-            )
+            );
+
+            (decl_ref, type_id)
         }
         MethodName::FromModule { method_name } => {
             // find the module that the symbol is in
@@ -462,7 +486,7 @@ pub(crate) fn resolve_method_name(
                 .unwrap_or_else(|| type_engine.insert(decl_engine, TypeInfo::Unknown));
 
             // find the method
-            check!(
+            let decl_ref = check!(
                 ctx.namespace.find_method_for_type(
                     type_id,
                     &module_path,
@@ -474,7 +498,9 @@ pub(crate) fn resolve_method_name(
                 return err(warnings, errors),
                 warnings,
                 errors
-            )
+            );
+
+            (decl_ref, type_id)
         }
     };
 
@@ -505,5 +531,5 @@ pub(crate) fn resolve_method_name(
         .insert(func_decl)
         .with_parent(ctx.decl_engine, (*decl_ref.id()).into());
 
-    ok(decl_ref, warnings, errors)
+    ok((decl_ref, type_id), warnings, errors)
 }

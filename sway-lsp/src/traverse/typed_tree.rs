@@ -486,7 +486,11 @@ impl Parse for ty::TyExpression {
             ty::TyExpressionVariant::EnumTag { exp } => {
                 exp.parse(ctx);
             }
-            ty::TyExpressionVariant::UnsafeDowncast { exp, variant } => {
+            ty::TyExpressionVariant::UnsafeDowncast {
+                exp,
+                variant,
+                call_path_decl: _,
+            } => {
                 exp.parse(ctx);
                 if let Some(mut token) = ctx
                     .tokens
@@ -987,6 +991,7 @@ impl Parse for ty::TyScrutinee {
                 variant,
                 value,
                 instantiation_call_path,
+                call_path_decl: _,
             } => {
                 let prefixes =
                     if let Some((last, prefixes)) = instantiation_call_path.prefixes.split_last() {

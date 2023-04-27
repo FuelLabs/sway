@@ -28,6 +28,8 @@ pub enum TyScrutineeVariant {
     EnumScrutinee {
         enum_ref: DeclRefEnum,
         variant: Box<TyEnumVariant>,
+        /// Should contain a TyDecl to either an enum or a type alias.
+        call_path_decl: ty::TyDecl,
         value: Box<TyScrutinee>,
         instantiation_call_path: CallPath,
     },
