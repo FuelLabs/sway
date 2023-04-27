@@ -246,8 +246,6 @@ mod other_contract;
 
 use other_contract::*;
 
-use std::auth::msg_sender;
-
 abi MyContract {
     #[storage(read, write)]
     fn withdraw(external_contract_id: ContractId);
