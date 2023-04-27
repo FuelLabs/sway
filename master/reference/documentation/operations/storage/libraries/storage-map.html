@@ -151,8 +151,7 @@
 <h2 id="declaration"><a class="header" href="#declaration">Declaration</a></h2>
 <p>The <code>StorageMap</code> type is included in the <a href="../../../misc/prelude.html">prelude</a> therefore we do not need to import it. We'll be using <code>msg_sender()</code> in the subsequent section so we'll import that here.</p>
 <p>After the import we initialize our <code>StorageMap</code> as described in the <a href="../init.html">initialization</a> section.</p>
-<pre><code class="language-sway">use std::chain::auth::msg_sender;
-
+<pre><code class="language-sway">
 storage {
     // k = Identity, v = u64
     balance: StorageMap&lt;Identity, u64&gt; = StorageMap {},

@@ -1550,8 +1550,7 @@ fn read_write() {
 <h2 id="declaration-5"><a class="header" href="#declaration-5">Declaration</a></h2>
 <p>The <code>StorageMap</code> type is included in the <a href="documentation/operations/storage/libraries/../../../misc/prelude.html">prelude</a> therefore we do not need to import it. We'll be using <code>msg_sender()</code> in the subsequent section so we'll import that here.</p>
 <p>After the import we initialize our <code>StorageMap</code> as described in the <a href="documentation/operations/storage/libraries/../init.html">initialization</a> section.</p>
-<pre><code class="language-sway">use std::chain::auth::msg_sender;
-
+<pre><code class="language-sway">
 storage {
     // k = Identity, v = u64
     balance: StorageMap&lt;Identity, u64&gt; = StorageMap {},
@@ -1584,7 +1583,7 @@ fn writing_to_storage() {
 <h2 id="declaration-6"><a class="header" href="#declaration-6">Declaration</a></h2>
 <p>To use a <code>StorageVec</code> we need to import it from the <a href="https://github.com/FuelLabs/sway/tree/master/sway-lib-std">standard library</a> and while we're at it we'll import the <code>msg_sender()</code> so that we can use it in the following section.</p>
 <p>After the import we initialize our <code>StorageVec</code> as described in the <a href="documentation/operations/storage/libraries/../init.html">initialization</a> section.</p>
-<pre><code class="language-sway">use std::{chain::auth::msg_sender, storage::StorageVec};
+<pre><code class="language-sway">use std::storage::StorageVec;
 
 storage {
     // T = u64
@@ -1745,12 +1744,9 @@ fn read(key: b256) {
 <li><a href="documentation/operations/call-data/msg-asset-amount.html"><code>Amount of Asset Sent</code></a>: how much of an asset has been sent</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="message-sender"><a class="header" href="#message-sender">Message Sender</a></h1>
-<p>The <a href="https://github.com/FuelLabs/sway/tree/master/sway-lib-std">standard library</a> provides a function <a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/auth.sw"><code>msg_sender()</code></a> which retrieves the <a href="documentation/operations/call-data/../namespace/identity.html">Identity</a> of the caller.</p>
+<p>The standard <a href="https://github.com/FuelLabs/sway/blob/master/docs/reference/src/documentation/misc/prelude.md">prelude</a> imports a function <a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/auth.sw"><code>msg_sender()</code></a> automatically, which retrieves the <a href="documentation/operations/call-data/../namespace/identity.html">Identity</a> of the caller.</p>
 <p>The identity can be used for a variety of reasons however a common application is access control i.e. restricting functionality for non-privileged users (non-admins).</p>
 <h2 id="example-7"><a class="header" href="#example-7">Example</a></h2>
-<p>To use <code>msg_sender()</code> we must import it from the standard library.</p>
-<pre><code class="language-sway">use std::auth::msg_sender;
-</code></pre>
 <p>We can implement access control by specifying that only the owner can call a function.</p>
 <p>In the following snippet we accomplish this by comparing the caller <code>msg_sender()</code> to the <code>OWNER</code>. If a regular user calls the function then it will revert otherwise it will continue to run when called by the <code>OWNER</code>.</p>
 <pre><code class="language-sway">const OWNER = Identity::Address(Address::from(ADMIN));
@@ -2144,11 +2140,10 @@ impl Counter for Contract {
 <h2 id="identity-1"><a class="header" href="#identity-1">Identity</a></h2>
 <p>We must keep track of the owner in storage and compare them against the caller via <a href="documentation/examples/../operations/call-data/msg-sender.html"><code>msg_sender()</code></a>.</p>
 <p>Initially there is no owner so we'll set them to <code>None</code>.</p>
-<pre><code class="language-sway">use std::auth::msg_sender;
-
-storage {
+<pre><code class="language-sway">storage {
     owner: Option&lt;Identity&gt; = Option::None,
 }
+
 </code></pre>
 <h2 id="implementation-2"><a class="header" href="#implementation-2">Implementation</a></h2>
 <p>To set the owner one of two conditions must be met:</p>
@@ -2186,7 +2181,6 @@ storage {
 <h2 id="implementation-3"><a class="header" href="#implementation-3">Implementation</a></h2>
 <p>When receiving funds we assert that the wallet accepts the base asset and we track the amount sent. When transfering funds out of the wallet we assert that only the owner can perform the transfer.</p>
 <pre><code class="language-sway">use std::{
-    auth::msg_sender,
     call_frames::msg_asset_id,
     constants::BASE_ASSET_ID,
     context::msg_amount,
@@ -2217,22 +2211,29 @@ impl Wallet for Contract {
 <div style="break-before: page; page-break-before: always;"></div><h1 id="liquidity-pool"><a class="header" href="#liquidity-pool">Liquidity Pool</a></h1>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="standard-library-prelude"><a class="header" href="#standard-library-prelude">Standard Library Prelude</a></h1>
 <p>The <a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/prelude.sw">prelude</a> is a list of commonly used features from the <a href="https://github.com/FuelLabs/sway/tree/master/sway-lib-std">standard library</a> which is automatically imported into every Sway program.</p>
-<p>The prelude contains the following modules:</p>
+<p>The prelude contains the following:</p>
 <ul>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/address.sw"><code>Address</code></a>: A struct containing a <code>b256</code> value which represents the wallet address</li>
-<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/assert.sw"><code>assert</code></a>: A function that reverts if the condition provided is <code>false</code></li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/contract_id.sw"><code>ContractId</code></a> A struct containing a <code>b256</code> value which represents the ID of a contract</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/identity.sw"><code>Identity</code></a>: An enum containing <code>Address</code> &amp; <code>ContractID</code> structs</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/vec.sw"><code>Vec</code></a>: A growable, heap-allocated vector</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/storage.sw"><code>StorageMap</code></a>: A key-value mapping in contract storage</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/option.sw"><code>Option</code></a>: An enum containing either some generic value <code>&lt;T&gt;</code> or an absence of that value</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/result.sw"><code>Result</code></a>: An enum used to represent either a success or failure of an operation</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/assert.sw"><code>assert</code></a>: A module containing
+<ul>
+<li><code>assert</code>: A function that reverts the VM if the condition provided to it is false</li>
+<li><code>assert_eq</code>: A function that reverts the VM and logs its two inputs v1 and v2 if the condition v1 == v2 is false</li>
+</ul>
+</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/revert.sw"><code>revert</code></a>: A module containing
 <ul>
 <li><code>require</code>: A function that reverts and logs a given value if the condition is <code>false</code></li>
 <li><code>revert</code>: A function that reverts</li>
 </ul>
 </li>
-<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/storage.sw"><code>StorageMap</code></a>: A key-value mapping in contract storage</li>
-<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/vec.sw"><code>Vec</code></a>: A growable, heap-allocated vector</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/logging.sw"><code>log</code></a>: A function that logs arbitrary stack types</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/auth.sw"><code>msg_sender</code></a>: A function that gets the Identity from which a call was made</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="language-comparison"><a class="header" href="#language-comparison">Language Comparison</a></h1>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="rust"><a class="header" href="#rust">Rust</a></h1>

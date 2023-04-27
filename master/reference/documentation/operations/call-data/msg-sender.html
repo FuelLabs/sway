@@ -145,12 +145,9 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="message-sender"><a class="header" href="#message-sender">Message Sender</a></h1>
-<p>The <a href="https://github.com/FuelLabs/sway/tree/master/sway-lib-std">standard library</a> provides a function <a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/auth.sw"><code>msg_sender()</code></a> which retrieves the <a href="../namespace/identity.html">Identity</a> of the caller.</p>
+<p>The standard <a href="https://github.com/FuelLabs/sway/blob/master/docs/reference/src/documentation/misc/prelude.md">prelude</a> imports a function <a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/auth.sw"><code>msg_sender()</code></a> automatically, which retrieves the <a href="../namespace/identity.html">Identity</a> of the caller.</p>
 <p>The identity can be used for a variety of reasons however a common application is access control i.e. restricting functionality for non-privileged users (non-admins).</p>
 <h2 id="example"><a class="header" href="#example">Example</a></h2>
-<p>To use <code>msg_sender()</code> we must import it from the standard library.</p>
-<pre><code class="language-sway">use std::auth::msg_sender;
-</code></pre>
 <p>We can implement access control by specifying that only the owner can call a function.</p>
 <p>In the following snippet we accomplish this by comparing the caller <code>msg_sender()</code> to the <code>OWNER</code>. If a regular user calls the function then it will revert otherwise it will continue to run when called by the <code>OWNER</code>.</p>
 <pre><code class="language-sway">const OWNER = Identity::Address(Address::from(ADMIN));

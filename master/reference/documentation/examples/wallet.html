@@ -159,7 +159,6 @@
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
 <p>When receiving funds we assert that the wallet accepts the base asset and we track the amount sent. When transfering funds out of the wallet we assert that only the owner can perform the transfer.</p>
 <pre><code class="language-sway">use std::{
-    auth::msg_sender,
     call_frames::msg_asset_id,
     constants::BASE_ASSET_ID,
     context::msg_amount,

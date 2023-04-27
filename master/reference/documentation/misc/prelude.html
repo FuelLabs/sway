@@ -146,22 +146,29 @@
                     <main>
                         <h1 id="standard-library-prelude"><a class="header" href="#standard-library-prelude">Standard Library Prelude</a></h1>
 <p>The <a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/prelude.sw">prelude</a> is a list of commonly used features from the <a href="https://github.com/FuelLabs/sway/tree/master/sway-lib-std">standard library</a> which is automatically imported into every Sway program.</p>
-<p>The prelude contains the following modules:</p>
+<p>The prelude contains the following:</p>
 <ul>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/address.sw"><code>Address</code></a>: A struct containing a <code>b256</code> value which represents the wallet address</li>
-<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/assert.sw"><code>assert</code></a>: A function that reverts if the condition provided is <code>false</code></li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/contract_id.sw"><code>ContractId</code></a> A struct containing a <code>b256</code> value which represents the ID of a contract</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/identity.sw"><code>Identity</code></a>: An enum containing <code>Address</code> &amp; <code>ContractID</code> structs</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/vec.sw"><code>Vec</code></a>: A growable, heap-allocated vector</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/storage.sw"><code>StorageMap</code></a>: A key-value mapping in contract storage</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/option.sw"><code>Option</code></a>: An enum containing either some generic value <code>&lt;T&gt;</code> or an absence of that value</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/result.sw"><code>Result</code></a>: An enum used to represent either a success or failure of an operation</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/assert.sw"><code>assert</code></a>: A module containing
+<ul>
+<li><code>assert</code>: A function that reverts the VM if the condition provided to it is false</li>
+<li><code>assert_eq</code>: A function that reverts the VM and logs its two inputs v1 and v2 if the condition v1 == v2 is false</li>
+</ul>
+</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/revert.sw"><code>revert</code></a>: A module containing
 <ul>
 <li><code>require</code>: A function that reverts and logs a given value if the condition is <code>false</code></li>
 <li><code>revert</code>: A function that reverts</li>
 </ul>
 </li>
-<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/storage.sw"><code>StorageMap</code></a>: A key-value mapping in contract storage</li>
-<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/vec.sw"><code>Vec</code></a>: A growable, heap-allocated vector</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/logging.sw"><code>log</code></a>: A function that logs arbitrary stack types</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/auth.sw"><code>msg_sender</code></a>: A function that gets the Identity from which a call was made</li>
 </ul>
 
                     </main>
