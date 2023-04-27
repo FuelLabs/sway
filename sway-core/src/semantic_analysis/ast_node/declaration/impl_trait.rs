@@ -201,7 +201,7 @@ impl ty::TyImplTrait {
                         &items,
                         &trait_name,
                         &block_span,
-                        true,
+                        true
                     ),
                     return err(warnings, errors),
                     warnings,
@@ -323,7 +323,7 @@ impl ty::TyImplTrait {
             match item {
                 ImplItem::Fn(fn_decl) => {
                     let fn_decl = check!(
-                        ty::TyFunctionDecl::type_check(ctx.by_ref(), fn_decl, true, true,),
+                        ty::TyFunctionDecl::type_check(ctx.by_ref(), fn_decl, true, true),
                         continue,
                         warnings,
                         errors
@@ -332,7 +332,7 @@ impl ty::TyImplTrait {
                 }
                 ImplItem::Constant(const_decl) => {
                     let const_decl = check!(
-                        ty::TyConstantDecl::type_check(ctx.by_ref(), const_decl,),
+                        ty::TyConstantDecl::type_check(ctx.by_ref(), const_decl),
                         continue,
                         warnings,
                         errors
@@ -494,7 +494,7 @@ fn type_check_trait_implementation(
                         trait_name,
                         is_contract,
                         &impld_item_refs,
-                        &method_checklist,
+                        &method_checklist
                     ),
                     ty::TyFunctionDecl::error(impl_method.clone()),
                     warnings,
@@ -517,7 +517,7 @@ fn type_check_trait_implementation(
                         trait_name,
                         is_contract,
                         &impld_item_refs,
-                        &constant_checklist,
+                        &constant_checklist
                     ),
                     ty::TyConstantDecl::error(ctx.engines(), const_decl.clone()),
                     warnings,
