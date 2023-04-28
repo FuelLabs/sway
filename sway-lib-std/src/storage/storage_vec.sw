@@ -25,7 +25,7 @@ impl<V> StorageKey<StorageVec<V>> {
     /// ### Examples
     ///
     /// ```sway
-    /// use std::storage::StorageVec;
+    /// use std::storage::storage_vec::*;
     ///
     /// storage {
     ///     vec: StorageVec<u64> = StorageVec {}
@@ -59,7 +59,7 @@ impl<V> StorageKey<StorageVec<V>> {
     /// ### Examples
     ///
     /// ```sway
-    /// use std::storage::StorageVec;
+    /// use std::storage::storage_vec::*;
     ///
     /// storage {
     ///     vec: StorageVec<u64> = StorageVec {}
@@ -103,7 +103,7 @@ impl<V> StorageKey<StorageVec<V>> {
     /// ### Examples
     ///
     /// ```sway
-    /// use std::storage::StorageVec;
+    /// use std::storage::storage_vec::*;
     ///
     /// storage {
     ///     vec: StorageVec<u64> = StorageVec {}
@@ -152,7 +152,7 @@ impl<V> StorageKey<StorageVec<V>> {
     /// ### Examples
     ///
     /// ```sway
-    /// use std::storage::StorageVec;
+    /// use std::storage::storage_vec::*;
     ///
     /// storage {
     ///     vec: StorageVec<u64> = StorageVec {}
@@ -214,7 +214,7 @@ impl<V> StorageKey<StorageVec<V>> {
     /// ### Examples
     ///
     /// ```sway
-    /// use std::storage::StorageVec;
+    /// use std::storage::storage_vec::*;
     ///
     /// storage {
     ///     vec: StorageVec<u64> = StorageVec {}
@@ -269,7 +269,7 @@ impl<V> StorageKey<StorageVec<V>> {
     /// ### Examples
     ///
     /// ```sway
-    /// use std::storage::StorageVec;
+    /// use std::storage::storage_vec::*;
     ///
     /// storage {
     ///     vec: StorageVec<u64> = StorageVec {}
@@ -318,7 +318,7 @@ impl<V> StorageKey<StorageVec<V>> {
     /// ### Examples
     ///
     /// ```sway
-    /// use std::storage::StorageVec;
+    /// use std::storage::storage_vec::*;
     ///
     /// storage {
     ///     vec: StorageVec<u64> = StorageVec {}
@@ -362,7 +362,8 @@ impl<V> StorageKey<StorageVec<V>> {
             // shifts all the values up one index
             write::<V>(key, 0, read::<V>(sha256((count, self.slot)), 0).unwrap());
 
-            count -= 1
+            if count == 0 { break; }
+            count -= 1;
         }
 
         // inserts the value into the now unused index
@@ -382,7 +383,7 @@ impl<V> StorageKey<StorageVec<V>> {
     /// ### Examples
     ///
     /// ```sway
-    /// use std::storage::StorageVec;
+    /// use std::storage::storage_vec::*;
     ///
     /// storage {
     ///     vec: StorageVec<u64> = StorageVec {}
@@ -410,7 +411,7 @@ impl<V> StorageKey<StorageVec<V>> {
     /// ### Examples
     ///
     /// ```sway
-    /// use std::storage::StorageVec;
+    /// use std::storage::storage_vec::*;
     ///
     /// storage {
     ///     vec: StorageVec<u64> = StorageVec {}
@@ -442,7 +443,7 @@ impl<V> StorageKey<StorageVec<V>> {
     /// ### Examples
     ///
     /// ```sway
-    /// use std::storage::StorageVec;
+    /// use std::storage::storage_vec::*;
     ///
     /// storage {
     ///     vec: StorageVec<u64> = StorageVec {}
@@ -480,7 +481,7 @@ impl<V> StorageKey<StorageVec<V>> {
     /// ### Examples
     ///
     /// ```sway
-    /// use std::storage::StorageVec;
+    /// use std::storage::storage_vec::*;
     ///
     /// storage {
     ///     vec: StorageVec<u64> = StorageVec {}
