@@ -4064,7 +4064,6 @@ pub fn cfg_eval(
     if let Some(cfg_attrs) = attrs_map.get(&AttributeKind::Cfg) {
         for cfg_attr in cfg_attrs {
             for arg in &cfg_attr.args {
-                dbg!(arg.name.as_str());
                 match arg.name.as_str() {
                     CFG_TARGET_ARG_NAME => {
                         if let Some(value) = &arg.value {
@@ -4101,7 +4100,6 @@ pub fn cfg_eval(
                                 if let Ok(program_type) =
                                     TreeType::from_str(value_str.parsed.as_str())
                                 {
-                                    dbg!("kek", &program_type, &context.program_type().unwrap());
                                     if program_type != context.program_type().unwrap() {
                                         return Ok(false);
                                     }
