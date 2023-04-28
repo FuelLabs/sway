@@ -20,10 +20,12 @@ impl ty::TyProgram {
         parsed: &ParseProgram,
         initial_namespace: namespace::Module,
         package_name: &str,
+        experimental_private_modules: bool,
     ) -> CompileResult<Self> {
         let mut namespace = Namespace::init_root(initial_namespace);
-        let ctx =
-            TypeCheckContext::from_root(&mut namespace, engines).with_kind(parsed.kind.clone());
+        let ctx = TypeCheckContext::from_root(&mut namespace, engines)
+            .with_kind(parsed.kind.clone())
+            .with_experimental_private_modules(experimental_private_modules);
         let ParseProgram { root, kind } = parsed;
         let mod_res = ty::TyModule::type_check(ctx, root);
         mod_res.flat_map(|root| {

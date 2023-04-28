@@ -158,7 +158,7 @@ impl ty::TyTraitDecl {
         let mut new_items = vec![];
         for method in methods.into_iter() {
             let method = check!(
-                ty::TyFunctionDecl::type_check(ctx.by_ref(), method.clone(), true, false),
+                ty::TyFunctionDecl::type_check(ctx.by_ref(), method.clone(), true, false,),
                 ty::TyFunctionDecl::error(method),
                 warnings,
                 errors

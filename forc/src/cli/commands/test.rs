@@ -199,5 +199,6 @@ fn opts_from_cmd(cmd: Command) -> forc_test::Opts {
         binary_outfile: cmd.build.output.bin_file,
         debug_outfile: cmd.build.output.debug_file,
         build_target: cmd.build.build_target,
+        experimental_private_modules: cmd.build.profile.experimental_private_modules,
     }
 }

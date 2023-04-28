@@ -243,6 +243,8 @@ pub enum CompileError {
     SymbolNotFound { name: Ident, span: Span },
     #[error("Symbol \"{name}\" is private.")]
     ImportPrivateSymbol { name: Ident, span: Span },
+    #[error("Module \"{name}\" is private.")]
+    ImportPrivateModule { name: Ident, span: Span },
     #[error(
         "Because this if expression's value is used, an \"else\" branch is required and it must \
          return type \"{r#type}\""
@@ -690,6 +692,7 @@ impl Spanned for CompileError {
             FieldNotFound { span, .. } => span.clone(),
             SymbolNotFound { span, .. } => span.clone(),
             ImportPrivateSymbol { span, .. } => span.clone(),
+            ImportPrivateModule { span, .. } => span.clone(),
             NoElseBranch { span, .. } => span.clone(),
             NotAType { span, .. } => span.clone(),
             MissingEnumInstantiator { span, .. } => span.clone(),
