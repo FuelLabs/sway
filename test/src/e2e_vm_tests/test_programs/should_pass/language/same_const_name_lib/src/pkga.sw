@@ -1,6 +1,6 @@
 library;
 
-mod pkgb;
+pub mod pkgb;
 
 pub const TEST_CONST: u64 = 50;
 

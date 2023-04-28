@@ -108,6 +108,7 @@ pub enum Warning {
         effect_in_suggestion: String,
         block_name: Ident,
     },
+    ModulePrivacyDisabled,
 }
 
 impl fmt::Display for Warning {
@@ -249,6 +250,9 @@ impl fmt::Display for Warning {
             EffectAfterInteraction {effect, effect_in_suggestion, block_name} =>
                 write!(f, "{effect} after external contract interaction in function or method \"{block_name}\". \
                           Consider {effect_in_suggestion} before calling another contract"),
+            ModulePrivacyDisabled => write!(f, "Module privacy rules will soon change to make modules private by default.
+                                            You can enable the new behavior with the --experimental-private-modules flag, which will become the default behavior in a later release.
+                                            More details are available in the related RFC: https://github.com/FuelLabs/sway-rfcs/blob/master/rfcs/0008-private-modules.md"),
         }
     }
 }
