@@ -1,7 +1,7 @@
 // ANCHOR: body
 contract;
 
-use std::{auth::msg_sender, hash::sha256};
+use std::hash::sha256;
 
 ////////////////////////////////////////
 // Event declarations
