@@ -4,8 +4,8 @@ library;
 use ::address::Address;
 use ::contract_id::ContractId;
 use ::identity::Identity;
-use ::option::Option;
-use ::result::Result;
+use ::option::Option::{self, *};
+use ::result::Result::{self, *};
 use ::inputs::{Input, input_count, input_owner, input_type};
 
 /// The error type used when an `Identity` cannot be determined.
@@ -33,13 +33,13 @@ pub fn caller_contract_id() -> ContractId {
 }
 
 /// Get the `Identity` (i.e. `Address` or `ContractId`) from which a call was made.
-/// Returns a `Result::Ok(Identity)`, or `Result::Err(AuthError)` if an identity cannot be determined.
+/// Returns a `Ok(Identity)`, or `Err(AuthError)` if an identity cannot be determined.
 pub fn msg_sender() -> Result<Identity, AuthError> {
     if caller_is_external() {
         inputs_owner()
     } else {
         // Get caller's `ContractId`.
-        Result::Ok(Identity::ContractId(caller_contract_id()))
+        Ok(Identity::ContractId(caller_contract_id()))
     }
 }
 
@@ -47,7 +47,7 @@ pub fn msg_sender() -> Result<Identity, AuthError> {
 /// `TransactionScript` if they all share the same owner.
 fn inputs_owner() -> Result<Identity, AuthError> {
     let inputs = input_count();
-    let mut candidate = Option::None;
+    let mut candidate = None;
     let mut i = 0u8;
 
     // Note: `inputs_count` is guaranteed to be at least 1 for any valid tx.
@@ -73,7 +73,7 @@ fn inputs_owner() -> Result<Identity, AuthError> {
         }
 
         // Compare current input owner to candidate.
-        // `candidate` and `input_owner` must be `Option::Some`.
+        // `candidate` and `input_owner` must be `Some`.
         // at this point, so we can unwrap safely.
         if owner_of_input.unwrap() == candidate.unwrap() {
             // Owners are a match, continue looping.
@@ -82,9 +82,9 @@ fn inputs_owner() -> Result<Identity, AuthError> {
         }
 
         // Owners don't match. Return Err.
-        return Result::Err(AuthError::InputsNotAllOwnedBySameAddress);
+        return Err(AuthError::InputsNotAllOwnedBySameAddress);
     }
 
-    // `candidate` must be `Option::Some` at this point, so can unwrap safely.
-    Result::Ok(Identity::Address(candidate.unwrap()))
+    // `candidate` must be `Some` at this point, so can unwrap safely.
+    Ok(Identity::Address(candidate.unwrap()))
 }

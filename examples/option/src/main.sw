@@ -2,9 +2,9 @@ script;
 
 fn divide(numerator: u64, denominator: u64) -> Option<u64> {
     if denominator == 0 {
-        Option::None
+        None
     } else {
-        Option::Some(numerator / denominator)
+        Some(numerator / denominator)
     }
 }
 
@@ -13,8 +13,8 @@ fn main() {
     // Pattern match to retrieve the value
     match result {
         // The division was valid
-        Option::Some(x) => std::logging::log(x),
+        Some(x) => std::logging::log(x),
         // The division was invalid
-        Option::None => std::logging::log("Cannot divide by 0"),
+        None => std::logging::log("Cannot divide by 0"),
     }
 }

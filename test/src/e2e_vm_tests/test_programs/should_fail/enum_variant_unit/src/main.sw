@@ -33,10 +33,10 @@ fn main() -> u64 {
     let _s = lib_a::inner_lib::S2::new2();
 
 
-    let _n: Option<u64> = Option::None();
+    let _n: Option<u64> = None();
 
 
-    let _n = Option::None::<u64>();
+    let _n = None::<u64>();
 
 
     let _n = lib_a::inner_lib::MyEnum::VariantA;

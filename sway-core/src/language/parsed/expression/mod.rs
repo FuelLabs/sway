@@ -164,10 +164,12 @@ pub enum ExpressionKind {
     Error(Box<[Span]>),
     Literal(Literal),
     /// An ambiguous path where we don't know until type checking whether this
-    /// is a free function call or a UFCS (Rust term) style associated function call.
+    /// is a free function call, an enum variant or a UFCS (Rust term) style associated function call.
     AmbiguousPathExpression(Box<AmbiguousPathExpression>),
     FunctionApplication(Box<FunctionApplicationExpression>),
     LazyOperator(LazyOperatorExpression),
+    /// And ambiguous single ident which could either be a variable or an enum variant
+    AmbiguousVariableExpression(Ident),
     Variable(Ident),
     Tuple(Vec<Expression>),
     TupleIndex(TupleIndexExpression),

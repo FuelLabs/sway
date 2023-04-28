@@ -129,7 +129,7 @@ impl<T> MyOption<T> {
 
 impl<T, E> Result<T, E> {
     fn dummy(t: T) -> Result<T, bool> {
-        Result::Ok(t)
+        Ok(t)
     }
 }
 

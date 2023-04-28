@@ -454,6 +454,9 @@ impl Dependencies {
                 // ordered
                 self.gather_from_call_path(&(name.clone()).into(), false, false)
             }
+            ExpressionKind::AmbiguousVariableExpression(name) => {
+                self.gather_from_call_path(&(name.clone()).into(), false, false)
+            }
             ExpressionKind::FunctionApplication(function_application_expression) => {
                 let FunctionApplicationExpression {
                     call_path_binding,

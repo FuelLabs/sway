@@ -2,7 +2,7 @@ contract;
 
 // ANCHOR: identity
 storage {
-    owner: Option<Identity> = Option::None,
+    owner: Option<Identity> = None,
 }
 
 // ANCHOR_END: identity

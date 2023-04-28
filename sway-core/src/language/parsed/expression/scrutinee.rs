@@ -26,6 +26,7 @@ pub enum Scrutinee {
         name: Ident,
         span: Span,
     },
+    AmbiguousSingleIdent(Ident),
     StructScrutinee {
         struct_name: CallPath,
         fields: Vec<StructScrutineeField>,
@@ -66,6 +67,7 @@ impl Spanned for Scrutinee {
             Scrutinee::CatchAll { span } => span.clone(),
             Scrutinee::Literal { span, .. } => span.clone(),
             Scrutinee::Variable { span, .. } => span.clone(),
+            Scrutinee::AmbiguousSingleIdent(ident) => ident.span(),
             Scrutinee::StructScrutinee { span, .. } => span.clone(),
             Scrutinee::EnumScrutinee { span, .. } => span.clone(),
             Scrutinee::Tuple { span, .. } => span.clone(),
@@ -168,6 +170,7 @@ impl Scrutinee {
                 .collect::<Vec<TypeInfo>>(),
             Scrutinee::Literal { .. }
             | Scrutinee::CatchAll { .. }
+            | Scrutinee::AmbiguousSingleIdent(..)
             | Scrutinee::Variable { .. }
             | Scrutinee::Error { .. } => {
                 vec![]
