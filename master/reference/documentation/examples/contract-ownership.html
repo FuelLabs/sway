@@ -160,7 +160,7 @@
 <p>We must keep track of the owner in storage and compare them against the caller via <a href="../operations/call-data/msg-sender.html"><code>msg_sender()</code></a>.</p>
 <p>Initially there is no owner so we'll set them to <code>None</code>.</p>
 <pre><code class="language-sway">storage {
-    owner: Option&lt;Identity&gt; = Option::None,
+    owner: Option&lt;Identity&gt; = None,
 }
 
 </code></pre>

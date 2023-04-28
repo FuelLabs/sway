@@ -161,7 +161,7 @@ storage {
 </code></pre>
 <p>There are two <code>storage</code> variables: <code>balance</code> &amp; <code>user</code>. <code>balance</code> takes a single value as the key while <code>user</code> wraps two values into a <a href="../../../language/built-ins/tuples.html">tuple</a> and uses that as a key.</p>
 <h2 id="reading-from-storage"><a class="header" href="#reading-from-storage">Reading from Storage</a></h2>
-<p>Retrieving data from a storage variable is done through the <code>.get(key)</code> method. That is to say that we state which storage variable we would like to read from and append <code>.get()</code> to the end while providing the key for the data that we want to retrieve. The method <code>get</code> returns an <code>Option</code>; if there is no value for <code>key</code> in the map, <code>get</code> will return <code>Option::None</code>.</p>
+<p>Retrieving data from a storage variable is done through the <code>.get(key)</code> method. That is to say that we state which storage variable we would like to read from and append <code>.get()</code> to the end while providing the key for the data that we want to retrieve. The method <code>get</code> returns an <code>Option</code>; if there is no value for <code>key</code> in the map, <code>get</code> will return <code>None</code>.</p>
 <p>In this example we wrap the <a href="../../namespace/identity.html"><code>Identity</code></a> of the caller with their provided <code>id</code> into a <a href="../../../language/built-ins/tuples.html">tuple</a> and use that as the key.</p>
 <pre><code class="language-sway">#[storage(read)]
 fn reading_from_storage(id: u64) {

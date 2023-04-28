@@ -1560,7 +1560,7 @@ storage {
 </code></pre>
 <p>There are two <code>storage</code> variables: <code>balance</code> &amp; <code>user</code>. <code>balance</code> takes a single value as the key while <code>user</code> wraps two values into a <a href="documentation/operations/storage/libraries/../../../language/built-ins/tuples.html">tuple</a> and uses that as a key.</p>
 <h2 id="reading-from-storage-2"><a class="header" href="#reading-from-storage-2">Reading from Storage</a></h2>
-<p>Retrieving data from a storage variable is done through the <code>.get(key)</code> method. That is to say that we state which storage variable we would like to read from and append <code>.get()</code> to the end while providing the key for the data that we want to retrieve. The method <code>get</code> returns an <code>Option</code>; if there is no value for <code>key</code> in the map, <code>get</code> will return <code>Option::None</code>.</p>
+<p>Retrieving data from a storage variable is done through the <code>.get(key)</code> method. That is to say that we state which storage variable we would like to read from and append <code>.get()</code> to the end while providing the key for the data that we want to retrieve. The method <code>get</code> returns an <code>Option</code>; if there is no value for <code>key</code> in the map, <code>get</code> will return <code>None</code>.</p>
 <p>In this example we wrap the <a href="documentation/operations/storage/libraries/../../namespace/identity.html"><code>Identity</code></a> of the caller with their provided <code>id</code> into a <a href="documentation/operations/storage/libraries/../../../language/built-ins/tuples.html">tuple</a> and use that as the key.</p>
 <pre><code class="language-sway">#[storage(read)]
 fn reading_from_storage(id: u64) {
@@ -1635,7 +1635,7 @@ fn read(key: b256) {
     let value = get::&lt;u64&gt;(key);
 }
 </code></pre>
-<p>The function <code>get</code> returns an <code>Option</code>; if the storage slots requested have not been set before, <code>get</code> will return <code>Option::None</code>.</p>
+<p>The function <code>get</code> returns an <code>Option</code>; if the storage slots requested have not been set before, <code>get</code> will return <code>None</code>.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="assertions"><a class="header" href="#assertions">Assertions</a></h1>
 <p>An assertion is a condition which must evaluate to the <a href="documentation/operations/assertions/../../language/built-ins/boolean.html">Boolean</a> value of <code>true</code> and its purpose is to prevent undesirable computation when the condition is evaluated to <code>false</code>.</p>
 <p>For example, a function may only work if the condition <code>argument &lt; 5</code> is <code>true</code>. We can use an assertion to enforce this condition by:</p>
@@ -2141,7 +2141,7 @@ impl Counter for Contract {
 <p>We must keep track of the owner in storage and compare them against the caller via <a href="documentation/examples/../operations/call-data/msg-sender.html"><code>msg_sender()</code></a>.</p>
 <p>Initially there is no owner so we'll set them to <code>None</code>.</p>
 <pre><code class="language-sway">storage {
-    owner: Option&lt;Identity&gt; = Option::None,
+    owner: Option&lt;Identity&gt; = None,
 }
 
 </code></pre>
@@ -2218,8 +2218,18 @@ impl Wallet for Contract {
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/identity.sw"><code>Identity</code></a>: An enum containing <code>Address</code> &amp; <code>ContractID</code> structs</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/vec.sw"><code>Vec</code></a>: A growable, heap-allocated vector</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/storage.sw"><code>StorageMap</code></a>: A key-value mapping in contract storage</li>
-<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/option.sw"><code>Option</code></a>: An enum containing either some generic value <code>&lt;T&gt;</code> or an absence of that value</li>
-<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/result.sw"><code>Result</code></a>: An enum used to represent either a success or failure of an operation</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/option.sw"><code>Option</code></a>: An enum containing either some generic value <code>&lt;T&gt;</code> or an absence of that value, we also expose the variants directly:
+<ul>
+<li><code>Some</code></li>
+<li><code>None</code></li>
+</ul>
+</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/result.sw"><code>Result</code></a>: An enum used to represent either a success or failure of an operation, we also expose the variants directly:
+<ul>
+<li><code>Ok</code></li>
+<li><code>Err</code></li>
+</ul>
+</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/assert.sw"><code>assert</code></a>: A module containing
 <ul>
 <li><code>assert</code>: A function that reverts the VM if the condition provided to it is false</li>

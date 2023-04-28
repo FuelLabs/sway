@@ -153,8 +153,18 @@
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/identity.sw"><code>Identity</code></a>: An enum containing <code>Address</code> &amp; <code>ContractID</code> structs</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/vec.sw"><code>Vec</code></a>: A growable, heap-allocated vector</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/storage.sw"><code>StorageMap</code></a>: A key-value mapping in contract storage</li>
-<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/option.sw"><code>Option</code></a>: An enum containing either some generic value <code>&lt;T&gt;</code> or an absence of that value</li>
-<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/result.sw"><code>Result</code></a>: An enum used to represent either a success or failure of an operation</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/option.sw"><code>Option</code></a>: An enum containing either some generic value <code>&lt;T&gt;</code> or an absence of that value, we also expose the variants directly:
+<ul>
+<li><code>Some</code></li>
+<li><code>None</code></li>
+</ul>
+</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/result.sw"><code>Result</code></a>: An enum used to represent either a success or failure of an operation, we also expose the variants directly:
+<ul>
+<li><code>Ok</code></li>
+<li><code>Err</code></li>
+</ul>
+</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/assert.sw"><code>assert</code></a>: A module containing
 <ul>
 <li><code>assert</code>: A function that reverts the VM if the condition provided to it is false</li>
