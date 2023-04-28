@@ -17,8 +17,8 @@ use ::vec::Vec;
 
 // Error handling
 use ::assert::{assert, assert_eq};
-use ::option::Option;
-use ::result::Result;
+use ::option::Option::{self, *};
+use ::result::Result::{self, *};
 use ::revert::{require, revert};
 
 // Convert

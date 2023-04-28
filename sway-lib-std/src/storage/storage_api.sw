@@ -1,7 +1,7 @@
 library;
 
 use ::alloc::alloc;
-use ::option::Option;
+use ::option::Option::{self, *};
 
 /// Store a stack value in storage. Will not work for heap values.
 ///
@@ -70,7 +70,7 @@ pub fn write<T>(slot: b256, offset: u64, value: T) {
 #[storage(read)]
 pub fn read<T>(slot: b256, offset: u64) -> Option<T> {
     if __size_of::<T>() == 0 {
-        return Option::None;
+        return None;
     }
 
     // NOTE: we are leaking this value on the heap.
@@ -83,11 +83,11 @@ pub fn read<T>(slot: b256, offset: u64) -> Option<T> {
 
     // Read `number_of_slots * 32` bytes starting at storage slot `slot` and return an `Option` 
     // wrapping the value stored at `result_ptr + offset` if all the slots are valid. Otherwise, 
-    // return `Option::None`.
+    // return `None`.
     if __state_load_quad(slot, result_ptr, number_of_slots) {
-        Option::Some(result_ptr.add::<u64>(offset).read::<T>())
+        Some(result_ptr.add::<u64>(offset).read::<T>())
     } else {
-        Option::None
+        None
     }
 }
 

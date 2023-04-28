@@ -45,7 +45,7 @@ We can get a value out of the storage map by providing its `key` to the `get` me
 {{#include ../../../../examples/storage_map/src/main.sw:storage_map_get}}
 ```
 
-Here, `value1` will have the value that's associated with the first address, and the result will be `42`. The `get` method returns an `Option<V>`; if there’s no value for that key in the storage map, `get` will return `Option::None`. This program handles the `Option` by calling `unwrap_or` to set `value1` to zero if `map` doesn't have an entry for the key.
+Here, `value1` will have the value that's associated with the first address, and the result will be `42`. The `get` method returns an `Option<V>`; if there’s no value for that key in the storage map, `get` will return `None`. This program handles the `Option` by calling `unwrap_or` to set `value1` to zero if `map` doesn't have an entry for the key.
 
 ## Storage Maps with Multiple Keys
 

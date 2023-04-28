@@ -40,7 +40,7 @@ fn main() -> bool {
     __log(b);
     __log(test_struct);
     __log(test_enum);
-    __log(Option::Some(TestStruct {
+    __log(Some(TestStruct {
         field_1: true,
         field_2: 42,
         field_3: 42,

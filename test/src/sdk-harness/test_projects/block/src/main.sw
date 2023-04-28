@@ -23,8 +23,8 @@ impl BlockTest for Contract {
     fn get_block_header_hash(h: u64) -> b256 {
         let res = block_header_hash(h);
         match res {
-            Result::Ok(h) => h,
-            Result::Err(e) => revert(0),
+            Ok(h) => h,
+            Err(e) => revert(0),
         }
     }
 }

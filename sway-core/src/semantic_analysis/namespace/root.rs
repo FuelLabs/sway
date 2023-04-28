@@ -1,5 +1,6 @@
 use sway_error::error::CompileError;
 use sway_types::Spanned;
+use sway_utils::iter_prefixes;
 
 use crate::{
     error::*,
@@ -42,43 +43,63 @@ impl Root {
 
     /// Resolve a symbol that is potentially prefixed with some path, e.g. `foo::bar::symbol`.
     ///
-    /// This is short-hand for concatenating the `mod_path` with the `call_path`'s prefixes and
+    /// This will concatenate the `mod_path` with the `call_path`'s prefixes and
     /// then calling `resolve_symbol` with the resulting path and call_path's suffix.
     ///
-    /// When `call_path` contains prefixes and the resolved declaration visibility is not public
-    /// an error is thrown.
+    /// The `mod_path` is significant here as we assume the resolution is done within the
+    /// context of the module pointed to by `mod_path` and will only check the call path prefixes
+    /// and the symbol's own visibility
     pub(crate) fn resolve_call_path_with_visibility_check(
         &self,
         engines: Engines<'_>,
         mod_path: &Path,
         call_path: &CallPath,
+        experimental_private_modules: bool,
     ) -> CompileResult<&ty::TyDecl> {
-        let warnings = vec![];
+        let mut warnings = vec![];
         let mut errors = vec![];
 
-        let result = self.resolve_call_path(mod_path, call_path);
+        let decl = check!(
+            self.resolve_call_path(mod_path, call_path),
+            return err(warnings, errors),
+            warnings,
+            errors,
+        );
 
         // In case there are no prefixes we don't need to check visibility
         if call_path.prefixes.is_empty() {
-            return result;
+            return ok(decl, warnings, errors);
         }
 
-        if let CompileResult {
-            value: Some(decl), ..
-        } = result
-        {
-            if !decl.visibility(engines.de()).is_public() {
-                errors.push(CompileError::ImportPrivateSymbol {
-                    name: call_path.suffix.clone(),
-                    span: call_path.suffix.span(),
-                });
-                // Returns ok with error, this allows functions which call this to
-                // also access the returned TyDecl and throw more suitable errors.
-                return ok(decl, warnings, errors);
+        if experimental_private_modules {
+            // check the visibility of the call path elements
+            // we don't check the first prefix because direct children are always accessible
+            for prefix in iter_prefixes(&call_path.prefixes).skip(1) {
+                let module = check!(
+                    self.check_submodule(prefix),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                if module.visibility.is_private() {
+                    let prefix_last = prefix[prefix.len() - 1].clone();
+                    errors.push(CompileError::ImportPrivateModule {
+                        span: prefix_last.span(),
+                        name: prefix_last,
+                    });
+                }
             }
         }
 
-        result
+        // check the visibility of the symbol itself
+        if !decl.visibility(engines.de()).is_public() {
+            errors.push(CompileError::ImportPrivateSymbol {
+                name: call_path.suffix.clone(),
+                span: call_path.suffix.span(),
+            });
+        }
+
+        ok(decl, warnings, errors)
     }
 
     /// Given a path to a module and the identifier of a symbol within that module, resolve its
@@ -99,6 +120,7 @@ impl Root {
             match module.use_synonyms.get(symbol) {
                 Some((_, _, decl @ ty::TyDecl::EnumVariantDecl { .. })) => ok(decl, vec![], vec![]),
                 Some((src_path, _, _)) if mod_path != src_path => {
+                    // TODO: check that the symbol import is public?
                     self.resolve_symbol(src_path, true_symbol)
                 }
                 _ => CompileResult::from(module.check_symbol(true_symbol)),
