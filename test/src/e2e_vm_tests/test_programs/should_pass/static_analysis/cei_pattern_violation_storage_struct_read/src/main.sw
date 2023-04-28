@@ -1,6 +1,5 @@
 contract;
 
-use std::auth::msg_sender;
 use std::storage::storage_vec::StorageVec;
 
 abi MyContract {

@@ -347,6 +347,7 @@ fn compile_core(build_target: BuildTarget, engines: Engines<'_>) -> namespace::M
         terse_mode: true,
         disable_tests: false,
         locked: false,
+        experimental_private_modules: true,
     };
 
     let res = forc::test::forc_check::check(check_cmd, engines)

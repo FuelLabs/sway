@@ -33,19 +33,19 @@ category = "fail"
 # check: adt_tests.sw:55:15
 # check: $()Non-exhaustive match expression. Missing patterns `CrazyPoint { p1: Point { x: [1...MAX], ... }, ... }`
 
-# check: complex_tests.sw:79:13
+# check: complex_tests.sw:77:13
 # check: $()Non-exhaustive match expression. Missing patterns `Result::Ok(MyIdentity::ContractId(_))`
 
-# check: complex_tests.sw:94:13
+# check: complex_tests.sw:92:13
 # check: $()Non-exhaustive match expression. Missing patterns `Result::Ok(MyIdentity::Address(MyAddress { inner: 0 }))`, `Result::Ok(MyIdentity::Address(MyAddress { inner: [2...MAX] }))`
 
-# check: complex_tests.sw:102:13
+# check: complex_tests.sw:100:13
 # check: $()Non-exhaustive match expression. Missing patterns `Result::Ok(MyIdentity::ContractId(_))`
 
-# check: complex_tests.sw:109:13
+# check: complex_tests.sw:107:13
 # check: $()Non-exhaustive match expression. Missing patterns `Result::Ok(MyIdentity::Address(MyAddress { inner: 0 }))`, `Result::Ok(MyIdentity::Address(MyAddress { inner: [2...MAX] }))`
 
-# check: complex_tests.sw:117:13
+# check: complex_tests.sw:115:13
 # check: $()Non-exhaustive match expression. Missing patterns `Result::Ok(MyIdentity::Address(MyAddress { inner: 0 }))`, `Result::Ok(MyIdentity::Address(MyAddress { inner: 2 }))`, `Result::Ok(MyIdentity::Address(MyAddress { inner: [4...MAX] }))`
 
 # check: or_patterns.sw:14:5

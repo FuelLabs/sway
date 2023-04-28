@@ -2,7 +2,7 @@ use crate::{
     decl_engine::{DeclRefConstant, DeclRefFunction},
     engine_threading::*,
     error::*,
-    language::{ty, CallPath},
+    language::{ty, CallPath, Visibility},
     type_system::*,
     CompileResult, Ident,
 };
@@ -107,12 +107,18 @@ impl Namespace {
         &self,
         engines: Engines<'_>,
         call_path: &CallPath,
+        experimental_private_modules: bool,
     ) -> CompileResult<&ty::TyDecl> {
-        self.root
-            .resolve_call_path_with_visibility_check(engines, &self.mod_path, call_path)
+        self.root.resolve_call_path_with_visibility_check(
+            engines,
+            &self.mod_path,
+            call_path,
+            experimental_private_modules,
+        )
     }
 
     /// Short-hand for calling [Root::resolve_type_with_self] on `root` with the `mod_path`.
+    #[allow(clippy::too_many_arguments)] // TODO: remove lint bypass once private modules are no longer experimental
     pub(crate) fn resolve_type_with_self(
         &mut self,
         engines: Engines<'_>,
@@ -121,6 +127,7 @@ impl Namespace {
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
         type_info_prefix: Option<&Path>,
+        experimental_private_modules: bool,
     ) -> CompileResult<TypeId> {
         let mod_path = self.mod_path.clone();
         engines.te().resolve_with_self(
@@ -132,6 +139,7 @@ impl Namespace {
             type_info_prefix,
             self,
             &mod_path,
+            experimental_private_modules,
         )
     }
 
@@ -142,6 +150,7 @@ impl Namespace {
         type_id: TypeId,
         span: &Span,
         type_info_prefix: Option<&Path>,
+        experimental_private_modules: bool,
     ) -> CompileResult<TypeId> {
         let mod_path = self.mod_path.clone();
         engines.te().resolve(
@@ -152,6 +161,7 @@ impl Namespace {
             type_info_prefix,
             self,
             &mod_path,
+            experimental_private_modules,
         )
     }
 
@@ -164,6 +174,7 @@ impl Namespace {
         item_name: &Ident,
         self_type: TypeId,
         engines: Engines<'_>,
+        experimental_private_modules: bool,
     ) -> CompileResult<Vec<ty::TyTraitItem>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -200,7 +211,8 @@ impl Namespace {
                 EnforceTypeArguments::No,
                 None,
                 self,
-                item_prefix
+                item_prefix,
+                experimental_private_modules,
             ),
             type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
             warnings,
@@ -248,6 +260,7 @@ impl Namespace {
     ///
     /// This function will generate a missing method error if the method is not
     /// found.
+    #[allow(clippy::too_many_arguments)] // TODO: remove lint bypass once private modules are no longer experimental
     pub(crate) fn find_method_for_type(
         &mut self,
         type_id: TypeId,
@@ -256,6 +269,7 @@ impl Namespace {
         self_type: TypeId,
         args_buf: &VecDeque<ty::TyExpression>,
         engines: Engines<'_>,
+        experimental_private_modules: bool,
     ) -> CompileResult<DeclRefFunction> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -264,7 +278,14 @@ impl Namespace {
         let type_engine = engines.te();
 
         let matching_item_decl_refs = check!(
-            self.find_items_for_type(type_id, method_prefix, method_name, self_type, engines),
+            self.find_items_for_type(
+                type_id,
+                method_prefix,
+                method_name,
+                self_type,
+                engines,
+                experimental_private_modules
+            ),
             return err(warnings, errors),
             warnings,
             errors
@@ -343,12 +364,20 @@ impl Namespace {
         item_name: &Ident,
         self_type: TypeId,
         engines: Engines<'_>,
+        experimental_private_modules: bool,
     ) -> CompileResult<DeclRefConstant> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
         let matching_item_decl_refs = check!(
-            self.find_items_for_type(type_id, &Vec::<Ident>::new(), item_name, self_type, engines),
+            self.find_items_for_type(
+                type_id,
+                &Vec::<Ident>::new(),
+                item_name,
+                self_type,
+                engines,
+                experimental_private_modules
+            ),
             return err(warnings, errors),
             warnings,
             errors
@@ -370,8 +399,14 @@ impl Namespace {
     }
 
     /// Short-hand for performing a [Module::star_import] with `mod_path` as the destination.
-    pub(crate) fn star_import(&mut self, src: &Path, engines: Engines<'_>) -> CompileResult<()> {
-        self.root.star_import(src, &self.mod_path, engines)
+    pub(crate) fn star_import(
+        &mut self,
+        src: &Path,
+        engines: Engines<'_>,
+        experimental_private_modules: bool,
+    ) -> CompileResult<()> {
+        self.root
+            .star_import(src, &self.mod_path, engines, experimental_private_modules)
     }
 
     /// Short-hand for performing a [Module::variant_star_import] with `mod_path` as the destination.
@@ -380,9 +415,15 @@ impl Namespace {
         src: &Path,
         engines: Engines<'_>,
         enum_name: &Ident,
+        experimental_private_modules: bool,
     ) -> CompileResult<()> {
-        self.root
-            .variant_star_import(src, &self.mod_path, engines, enum_name)
+        self.root.variant_star_import(
+            src,
+            &self.mod_path,
+            engines,
+            enum_name,
+            experimental_private_modules,
+        )
     }
 
     /// Short-hand for performing a [Module::self_import] with `mod_path` as the destination.
@@ -391,8 +432,15 @@ impl Namespace {
         engines: Engines<'_>,
         src: &Path,
         alias: Option<Ident>,
+        experimental_private_modules: bool,
     ) -> CompileResult<()> {
-        self.root.self_import(engines, src, &self.mod_path, alias)
+        self.root.self_import(
+            engines,
+            src,
+            &self.mod_path,
+            alias,
+            experimental_private_modules,
+        )
     }
 
     /// Short-hand for performing a [Module::item_import] with `mod_path` as the destination.
@@ -402,9 +450,16 @@ impl Namespace {
         src: &Path,
         item: &Ident,
         alias: Option<Ident>,
+        experimental_private_modules: bool,
     ) -> CompileResult<()> {
-        self.root
-            .item_import(engines, src, item, &self.mod_path, alias)
+        self.root.item_import(
+            engines,
+            src,
+            item,
+            &self.mod_path,
+            alias,
+            experimental_private_modules,
+        )
     }
 
     /// Short-hand for performing a [Module::variant_import] with `mod_path` as the destination.
@@ -415,9 +470,17 @@ impl Namespace {
         enum_name: &Ident,
         variant_name: &Ident,
         alias: Option<Ident>,
+        experimental_private_modules: bool,
     ) -> CompileResult<()> {
-        self.root
-            .variant_import(engines, src, enum_name, variant_name, &self.mod_path, alias)
+        self.root.variant_import(
+            engines,
+            src,
+            enum_name,
+            variant_name,
+            &self.mod_path,
+            alias,
+            experimental_private_modules,
+        )
     }
 
     /// "Enter" the submodule at the given path by returning a new [SubmoduleNamespace].
@@ -429,6 +492,7 @@ impl Namespace {
     pub(crate) fn enter_submodule(
         &mut self,
         mod_name: Ident,
+        visibility: Visibility,
         module_span: Span,
     ) -> SubmoduleNamespace {
         let init = self.init.clone();
@@ -442,6 +506,7 @@ impl Namespace {
         let parent_mod_path = std::mem::replace(&mut self.mod_path, submod_path);
         self.name = Some(mod_name);
         self.span = Some(module_span);
+        self.visibility = visibility;
         self.is_external = false;
         SubmoduleNamespace {
             namespace: self,

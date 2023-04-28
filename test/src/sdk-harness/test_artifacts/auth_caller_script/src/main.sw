@@ -1,7 +1,6 @@
 script;
 
 use auth_testing_abi::AuthTesting;
-use std::auth::*;
 
 fn main() -> u64 {
     // TODO: ContractId for auth_testing_contract should ideally be passed to script as an arg when possible.

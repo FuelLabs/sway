@@ -25,7 +25,7 @@ pub trait Ownable : StorageHelpers {
 
     #[storage(read)]
     fn only_owner() {
-        assert(std::auth::msg_sender().unwrap() == Identity::Address(Address::from(Self::get_owner())));
+        assert(msg_sender().unwrap() == Identity::Address(Address::from(Self::get_owner())));
     }
 
     #[storage(write)]
