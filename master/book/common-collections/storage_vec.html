@@ -182,8 +182,8 @@ There is no need to add the <code>mut</code> keyword when declaring a <code>Stor
     fn read_from_storage_vec() {
         let third = storage.v.get(2);
         match third {
-            Option::Some(third) =&gt; log(third.read()),
-            Option::None =&gt; revert(42),
+            Some(third) =&gt; log(third.read()),
+            None =&gt; revert(42),
         }
     }
 </code></pre>

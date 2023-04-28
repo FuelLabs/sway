@@ -165,17 +165,17 @@ enum MyContractError {
 
 fn divide(numerator: u64, denominator: u64) -&gt; Result&lt;u64, MyContractError&gt; {
     if (denominator == 0) {
-        return Result::Err(MyContractError::DivisionByZero);
+        return Err(MyContractError::DivisionByZero);
     } else {
-        Result::Ok(numerator / denominator)
+        Ok(numerator / denominator)
     }
 }
 
 fn main() -&gt; Result&lt;u64, str[4]&gt; {
     let result = divide(20, 2);
     match result {
-        Result::Ok(value) =&gt; Result::Ok(value),
-        Result::Err(MyContractError::DivisionByZero) =&gt; Result::Err(&quot;Fail&quot;),
+        Ok(value) =&gt; Ok(value),
+        Err(MyContractError::DivisionByZero) =&gt; Err(&quot;Fail&quot;),
     }
 }
 </code></pre>
@@ -200,9 +200,9 @@ pub enum Option&lt;T&gt; {
 
 fn divide(numerator: u64, denominator: u64) -&gt; Option&lt;u64&gt; {
     if denominator == 0 {
-        Option::None
+        None
     } else {
-        Option::Some(numerator / denominator)
+        Some(numerator / denominator)
     }
 }
 
@@ -211,9 +211,9 @@ fn main() {
     // Pattern match to retrieve the value
     match result {
         // The division was valid
-        Option::Some(x) =&gt; std::logging::log(x),
+        Some(x) =&gt; std::logging::log(x),
         // The division was invalid
-        Option::None =&gt; std::logging::log(&quot;Cannot divide by 0&quot;),
+        None =&gt; std::logging::log(&quot;Cannot divide by 0&quot;),
     }
 }
 </code></pre>

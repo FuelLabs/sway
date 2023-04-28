@@ -166,8 +166,8 @@
 <p>To read a value stored in a vector at a particular index, you can use the <code>get</code> method as shown below:</p>
 <pre><code class="language-sway">    let third = v.get(2);
     match third {
-        Option::Some(third) =&gt; log(third),
-        Option::None =&gt; revert(42),
+        Some(third) =&gt; log(third),
+        None =&gt; revert(42),
     }
 </code></pre>
 <p>Note two details here. First, we use the index value of <code>2</code> to get the third element because vectors are indexed by number, starting at zero. Second, we get the third element by using the <code>get</code> method with the index passed as an argument, which gives us an <code>Option&lt;T&gt;</code>.</p>

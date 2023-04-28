@@ -189,7 +189,7 @@ There is no need to add the <code>mut</code> keyword when declaring a <code>Stor
         let value1 = storage.map.get(addr1).try_read().unwrap_or(0);
     }
 </code></pre>
-<p>Here, <code>value1</code> will have the value that's associated with the first address, and the result will be <code>42</code>. The <code>get</code> method returns an <code>Option&lt;V&gt;</code>; if there’s no value for that key in the storage map, <code>get</code> will return <code>Option::None</code>. This program handles the <code>Option</code> by calling <code>unwrap_or</code> to set <code>value1</code> to zero if <code>map</code> doesn't have an entry for the key.</p>
+<p>Here, <code>value1</code> will have the value that's associated with the first address, and the result will be <code>42</code>. The <code>get</code> method returns an <code>Option&lt;V&gt;</code>; if there’s no value for that key in the storage map, <code>get</code> will return <code>None</code>. This program handles the <code>Option</code> by calling <code>unwrap_or</code> to set <code>value1</code> to zero if <code>map</code> doesn't have an entry for the key.</p>
 <h2 id="storage-maps-with-multiple-keys"><a class="header" href="#storage-maps-with-multiple-keys">Storage Maps with Multiple Keys</a></h2>
 <p>Maps with multiple keys can be implemented using tuples as keys. For example:</p>
 <pre><code class="language-sway">    map_two_keys: StorageMap&lt;(b256, bool), b256&gt; = StorageMap {},

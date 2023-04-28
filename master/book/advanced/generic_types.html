@@ -230,12 +230,12 @@ For example, let's try to implement the successor function, <code>successor()</c
 <h2 id="type-arguments"><a class="header" href="#type-arguments">Type Arguments</a></h2>
 <p>Similar to Rust, Sway has what is colloquially known as the <a href="https://github.com/rust-lang/rust/blob/e98309298d927307c5184f4869604bd068d26183/src/test/ui/parser/bastion-of-the-turbofish.rs">turbofish</a>. The turbofish looks like this: <code>::&lt;&gt;</code> (see the little fish with bubbles behind it?). The turbofish is used to annotate types in a generic context. Say you have the following function:</p>
 <pre><code class="language-sway">fn foo&lt;T, E&gt;(t: T) -&gt; Result&lt;T, E&gt; {
-    Result::Ok(t)
+    Ok(t)
 }
 </code></pre>
 <p>In this code example, which is admittedly asinine, you can't possibly know what type <code>E</code> is. You'd need to provide the type manually, with a turbofish:</p>
 <pre><code class="language-sway">fn foo&lt;T, E&gt;(t: T) -&gt; Result&lt;T, E&gt; {
-    Result::Ok::&lt;T, MyErrorType&gt;(t)
+    Ok::&lt;T, MyErrorType&gt;(t)
 }
 </code></pre>
 <p>It is also common to see the turbofish used on the function itself:</p>
