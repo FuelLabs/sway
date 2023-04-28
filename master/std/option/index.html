@@ -14,9 +14,9 @@ returned on error.</li>
 of a value and take action, always accounting for the <code>None</code> case.</p>
 <pre><code class="language-sway">fn divide(numerator: u64, denominator: u64) -&gt; Option&lt;u64&gt; {
     if denominator == 0 {
-        Option::None
+        None
     } else {
-        Option::Some(numerator / denominator)
+        Some(numerator / denominator)
     }
 }
 
@@ -27,9 +27,9 @@ fn call_divide() {
     // Pattern match to retrieve the value
     match result {
         // The division was valid
-        Option::Some(x) =&gt; std::logging::log(x),
+        Some(x) =&gt; std::logging::log(x),
         // The division was invalid
-        Option::None    =&gt; std::logging::log(&quot;Cannot divide by 0&quot;),
+        None    =&gt; std::logging::log(&quot;Cannot divide by 0&quot;),
     }
 }
 </code></pre>
