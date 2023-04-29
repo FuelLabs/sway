@@ -16,7 +16,7 @@ The `Forc.toml` (the _manifest_ file) is a compulsory file for each package and 
 * `[network]` — Defines a network for forc to interact with.
   * `url` — URL of the network.
 
-* [`[build-profiles]`](#the-build-profiles--section) - Defines the build profiles.
+* [`[build-profile]`](#the-build-profile-section) - Defines the build profiles.
 
 * [`[patch]`](#the-patch-section) - Defines the patches.
 
@@ -62,18 +62,23 @@ For the following fields, a default value is provided so omitting them is allowe
 
 * `URL` - (default: _<http://127.0.0.1:4000>_)
 
-## The `[build-profiles-*]` section
+## The `[build-profile.*]` section
 
-The `[build-profiles]` tables provide a way to customize compiler settings such as debug options.
+The `[build-profile]` tables provide a way to customize compiler settings such as debug options.
 
-The following fields needs to be provided for a build-profile:
+The following fields can be provided for a build-profile:
 
-* `print-ast` - Whether to print out the generated AST (true) or not (false).
-* `print-dca-graph` - Whether to print out the computed DCA graph (in GraphViz DOT format).
-* `print-finalized-asm` - Whether to compile to bytecode (false) or to print out the generated ASM (true).
-* `print-intermediate-asm` - Whether to compile to bytecode (false) or to print out the generated ASM (true).
-* `print-ir` - Whether to compile to bytecode (false) or to print out the generated IR (true).
-* `terse-mode` - Terse mode. Limited warning and error output.
+* `print-ast` - Whether to print out the generated AST or not, defaults to false.
+* `print-dca-graph` - Whether to print out the computed DCA graph (in GraphViz DOT format), defaults to false.
+* `print-dca-graph-url-format` - The URL format to be used in the generated DOT file, an example for vscode would be: "vscode://file/{path}:{line}:{col}"
+* `print-ir` - Whether to compile to bytecode (false) or to print out the generated IR (true), defaults to false.
+* `print-finalized-asm` - Whether to compile to bytecode (false) or to print out the generated ASM (true), defaults to false.
+* `print-intermediate-asm` - Whether to compile to bytecode (false) or to print out the generated ASM (true), defaults to false.
+* `terse` - Terse mode. Limited warning and error output, defaults to false.
+* `time_phases` - Whether to output the time elapsed over each part of the compilation process, defaults to false.
+* `include_tests` -  Whether or not to include test functions in parsing, type-checking and codegen, this is set to true by invocations like `forc test`, defaults to false.
+* `json_abi_with_callpaths` - Whether to json abi with callpaths instead of names for struct and enums, defaults to false.
+* `error_on_warnings` - Whether to treat errors as warnings, defaults to false.
 
 There are two default `[build-profile]` available with every manifest file. These are `debug` and `release` profiles. If you want to override these profiles, you can provide them explicitly in the manifest file like the following example:
 
@@ -85,13 +90,13 @@ organization = "Fuel_Labs"
 license = "Apache-2.0"
 name = "wallet_contract"
 
-[build-profiles.debug]
+[build-profile.debug]
 print-finalized-asm = false
 print-intermediate-asm = false
 print-ir = false
 terse = false
 
-[build-profiles.release]
+[build-profile.release]
 print-finalized-asm = false 
 print-intermediate-asm = false
 print-ir = false
@@ -100,12 +105,20 @@ terse = true
 
 Since `release` and `debug` implicitly included in every manifest file, you can use them by just passing `--release` or by not passing anything (debug is default). For using a user defined build profile there is `--build-profile <profile name>` option available to the relevant commands. (For an example see [forc-build](../forc/commands/forc_build.md))
 
-Note that providing the corresponding cli options (like `--print-finalized-asm`) will override the selected build profile. For example if you pass both `--release` and `--print-finalized-asm`, release build profile is omitted and resulting build profile would have a structure like the following:
+Note that providing the corresponding cli options (like `--finalized-asm`) will override the selected build profile. For example if you pass both `--release` and `--finalized-asm`, release build profile is omitted and resulting build profile would have a structure like the following:
 
-* print-finalized-asm - true
-* print-intermediate-asm - false
-* print-ir - false
-* terse - false
+```toml
+print-ast = false
+print-ir = false
+print-finalized-asm = false
+print-intermediate-asm = false
+terse = false
+time-phases = false
+include-tests = false
+json-abi-with-callpaths = false
+error-on-warnings = false
+experimental-private-modules = false
+```
 
 ## The `[patch]` section
 
