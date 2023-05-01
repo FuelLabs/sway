@@ -253,6 +253,12 @@ impl Eq for raw_ptr {
     }
 }
 
+impl<T> Eq for __ptr[T] {
+    fn eq(self, other: Self) -> bool {
+        __eq(self, other)
+    }
+}
+
 pub trait Ord {
     fn gt(self, other: Self) -> bool;
     fn lt(self, other: Self) -> bool;

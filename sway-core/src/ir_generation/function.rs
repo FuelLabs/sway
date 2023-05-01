@@ -846,6 +846,12 @@ impl<'eng> FnCompiler<'eng> {
                     .ins(context)
                     .binary_op(op, lhs_value, rhs_value))
             }
+            Intrinsic::SlicePtr => {
+                unimplemented!("__slice_ptr intrinsic not yet implemented.")
+            }
+            Intrinsic::SliceLen => {
+                unimplemented!("__slice_len intrinsic not yet implemented.")
+            }
             Intrinsic::Smo => {
                 let span_md_idx = md_mgr.span_to_md(context, &span);
 

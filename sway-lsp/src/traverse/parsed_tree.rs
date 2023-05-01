@@ -987,6 +987,12 @@ impl Parse for TypeArgument {
                     type_arg.parse(ctx);
                 }
             }
+            TypeInfo::Ptr(type_arg) => {
+                type_arg.parse(ctx);
+            }
+            TypeInfo::Slice(type_arg) => {
+                type_arg.parse(ctx);
+            }
             _ => {
                 let symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), &type_info, None);
                 if let Some(tree) = &self.call_path_tree {
@@ -1035,6 +1041,12 @@ fn collect_type_info_token(ctx: &ParseContext, type_info: &TypeInfo, type_span: 
             type_arguments.iter().for_each(|type_arg| {
                 type_arg.parse(ctx);
             });
+        }
+        TypeInfo::Ptr(type_arg) => {
+            type_arg.parse(ctx);
+        }
+        TypeInfo::Slice(type_arg) => {
+            type_arg.parse(ctx);
         }
         TypeInfo::Custom {
             call_path,

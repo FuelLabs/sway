@@ -70,6 +70,8 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::PtrAdd | Intrinsic::PtrSub => {
                 type_check_ptr_ops(ctx, kind, arguments, type_arguments, span)
             }
+            Intrinsic::SlicePtr => type_check_slice_ops(ctx, kind, arguments, type_arguments, span),
+            Intrinsic::SliceLen => type_check_slice_ops(ctx, kind, arguments, type_arguments, span),
             Intrinsic::Smo => type_check_smo(ctx, kind, arguments, type_arguments, span),
         }
     }
@@ -303,7 +305,13 @@ fn type_check_cmp(
     );
     let is_valid_arg_ty = matches!(arg_ty, TypeInfo::UnsignedInteger(_))
         || (matches!(&kind, Intrinsic::Eq)
-            && matches!(arg_ty, TypeInfo::Boolean | TypeInfo::RawUntypedPtr));
+            && matches!(
+                arg_ty,
+                TypeInfo::Boolean
+                    | TypeInfo::RawUntypedPtr
+                    | TypeInfo::Ptr(..)
+                    | TypeInfo::Slice(..)
+            ));
     if !is_valid_arg_ty {
         errors.push(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
@@ -1263,11 +1271,11 @@ fn type_check_revert(
     )
 }
 
-/// Signature: `__ptr_add(ptr: raw_ptr, offset: u64)`
+/// Signature: `__ptr_add<T>(ptr: raw_ptr, offset: u64)`
 /// Description: Adds `offset` to the raw value of pointer `ptr`.
 /// Constraints: None.
 ///
-/// Signature: `__ptr_sub(ptr: raw_ptr, offset: u64)`
+/// Signature: `__ptr_sub<T>(ptr: raw_ptr, offset: u64)`
 /// Description: Subtracts `offset` to the raw value of pointer `ptr`.
 /// Constraints: None.
 fn type_check_ptr_ops(
@@ -1341,7 +1349,7 @@ fn type_check_ptr_ops(
         warnings,
         errors
     );
-    if !matches!(lhs_ty, TypeInfo::RawUntypedPtr) {
+    if !matches!(lhs_ty, TypeInfo::RawUntypedPtr | TypeInfo::Ptr(..)) {
         errors.push(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
             span: lhs.span,
@@ -1378,6 +1386,117 @@ fn type_check_ptr_ops(
                 span,
             },
             type_engine.insert(engines, lhs_ty),
+        ),
+        warnings,
+        errors,
+    )
+}
+
+/// Signature: `__slice_ptr<T>(slice: __slice[T])`
+/// Description: Returns a pointer to the `slice`.
+/// Constraints: None.
+///
+/// Signature: `__slice_len<T>(slice: __slice[T])`
+/// Description: Returns the length of the `slice`.
+/// Constraints: None.
+fn type_check_slice_ops(
+    mut ctx: TypeCheckContext,
+    kind: sway_ast::Intrinsic,
+    arguments: Vec<Expression>,
+    type_arguments: Vec<TypeArgument>,
+    span: Span,
+) -> CompileResult<(ty::TyIntrinsicFunctionKind, TypeId)> {
+    let type_engine = ctx.engines.te();
+
+    let mut warnings = vec![];
+    let mut errors = vec![];
+
+    if arguments.len() != 1 {
+        errors.push(CompileError::IntrinsicIncorrectNumArgs {
+            name: kind.to_string(),
+            expected: 1,
+            span,
+        });
+        return err(warnings, errors);
+    }
+    if type_arguments.len() != 1 {
+        errors.push(CompileError::IntrinsicIncorrectNumTArgs {
+            name: kind.to_string(),
+            expected: 1,
+            span,
+        });
+        return err(warnings, errors);
+    }
+    let targ = type_arguments[0].clone();
+    let initial_type_info = check!(
+        CompileResult::from(
+            type_engine
+                .to_typeinfo(targ.type_id, &targ.span)
+                .map_err(CompileError::from)
+        ),
+        TypeInfo::ErrorRecovery,
+        warnings,
+        errors
+    );
+    let initial_type_id = type_engine.insert(&ctx.engines, initial_type_info);
+    let type_id = check!(
+        ctx.resolve_type_with_self(initial_type_id, &targ.span, EnforceTypeArguments::No, None),
+        type_engine.insert(&ctx.engines, TypeInfo::ErrorRecovery),
+        warnings,
+        errors,
+    );
+
+    let type_annotation = type_engine.insert(&ctx.engines, TypeInfo::Unknown);
+    let mut ctx = ctx.by_ref().with_type_annotation(type_annotation);
+
+    let lhs = arguments[0].clone();
+    let lhs = check!(
+        ty::TyExpression::type_check(ctx.by_ref(), lhs),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    // Check for supported argument types
+    let lhs_ty = check!(
+        CompileResult::from(
+            type_engine
+                .to_typeinfo(lhs.return_type, &lhs.span)
+                .map_err(CompileError::from)
+        ),
+        TypeInfo::ErrorRecovery,
+        warnings,
+        errors
+    );
+    if !matches!(lhs_ty, TypeInfo::Slice(..)) {
+        errors.push(CompileError::IntrinsicUnsupportedArgType {
+            name: kind.to_string(),
+            span: lhs.span,
+            hint: Hint::empty(),
+        });
+        return err(warnings, errors);
+    }
+
+    let ret_ty = match kind {
+        sway_ast::Intrinsic::SlicePtr => TypeInfo::Ptr(targ.clone()),
+        sway_ast::Intrinsic::SliceLen => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        _ => unreachable!(),
+    };
+
+    ok(
+        (
+            ty::TyIntrinsicFunctionKind {
+                kind,
+                arguments: vec![lhs],
+                type_arguments: vec![TypeArgument {
+                    type_id,
+                    initial_type_id,
+                    span: targ.span,
+                    call_path_tree: targ.call_path_tree,
+                }],
+                span,
+            },
+            type_engine.insert(&ctx.engines, ret_ty),
         ),
         warnings,
         errors,

@@ -240,6 +240,22 @@ impl TypeSubstMap {
                     type_arguments,
                 )
             }
+            (TypeInfo::Ptr(type_parameter), TypeInfo::Ptr(type_argument)) => {
+                TypeSubstMap::from_superset_and_subset_helper(
+                    type_engine,
+                    decl_engine,
+                    vec![type_parameter.type_id],
+                    vec![type_argument.type_id],
+                )
+            }
+            (TypeInfo::Slice(type_parameter), TypeInfo::Slice(type_argument)) => {
+                TypeSubstMap::from_superset_and_subset_helper(
+                    type_engine,
+                    decl_engine,
+                    vec![type_parameter.type_id],
+                    vec![type_argument.type_id],
+                )
+            }
             (TypeInfo::Unknown, TypeInfo::Unknown)
             | (TypeInfo::Boolean, TypeInfo::Boolean)
             | (TypeInfo::SelfType, TypeInfo::SelfType)

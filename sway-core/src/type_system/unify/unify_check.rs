@@ -238,6 +238,13 @@ impl<'a> UnifyCheck<'a> {
                 return self.check_multiple(&l_types, &r_types);
             }
 
+            (TypeInfo::Ptr(l0), TypeInfo::Ptr(r0)) => {
+                return self.check_inner(l0.type_id, r0.type_id);
+            }
+            (TypeInfo::Slice(l0), TypeInfo::Slice(r0)) => {
+                return self.check_inner(l0.type_id, r0.type_id);
+            }
+
             (Struct(l_decl_ref), Struct(r_decl_ref)) => {
                 let l_decl = self.engines.de().get_struct(l_decl_ref);
                 let r_decl = self.engines.de().get_struct(r_decl_ref);

@@ -420,6 +420,40 @@ impl TypeEngine {
                 }
                 self.insert(engines, TypeInfo::Tuple(type_arguments))
             }
+            TypeInfo::Ptr(mut ty) => {
+                ty.type_id = check!(
+                    self.resolve(
+                        engines,
+                        ty.type_id,
+                        span,
+                        enforce_type_arguments,
+                        None,
+                        namespace,
+                        mod_path,
+                    ),
+                    self.insert(engines, TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors
+                );
+                self.insert(engines, TypeInfo::Ptr(ty))
+            }
+            TypeInfo::Slice(mut ty) => {
+                ty.type_id = check!(
+                    self.resolve(
+                        engines,
+                        ty.type_id,
+                        span,
+                        enforce_type_arguments,
+                        None,
+                        namespace,
+                        mod_path,
+                    ),
+                    self.insert(engines, TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors
+                );
+                self.insert(engines, TypeInfo::Slice(ty))
+            }
             _ => type_id,
         };
         ok(type_id, warnings, errors)

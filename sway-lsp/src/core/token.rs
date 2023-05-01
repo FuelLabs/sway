@@ -237,6 +237,14 @@ pub fn type_info_to_symbol_kind(
             let type_info = type_engine.get(elem_ty.type_id);
             type_info_to_symbol_kind(type_engine, &type_info, Some(&elem_ty.span()))
         }
+        TypeInfo::Ptr(ty) => {
+            let type_info = type_engine.get(ty.type_id);
+            type_info_to_symbol_kind(type_engine, &type_info, Some(&ty.span()))
+        }
+        TypeInfo::Slice(ty) => {
+            let type_info = type_engine.get(ty.type_id);
+            type_info_to_symbol_kind(type_engine, &type_info, Some(&ty.span()))
+        }
         TypeInfo::SelfType => SymbolKind::SelfTypeKeyword,
         _ => SymbolKind::Unknown,
     }
