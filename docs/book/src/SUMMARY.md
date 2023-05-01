@@ -26,6 +26,7 @@
   - [Functions](./basics/functions.md)
   - [Structs, Tuples, and Enums](./basics/structs_tuples_and_enums.md)
   - [Methods and Associated Functions](./basics/methods_and_associated_functions.md)
+  - [Constants](./basics/constants.md)
   - [Comments and Logging](./basics/comments_and_logging.md)
   - [Control Flow](./basics/control_flow.md)
 - [Blockchain Development with Sway](./blockchain-development/index.md)
