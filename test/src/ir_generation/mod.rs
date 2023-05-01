@@ -15,6 +15,7 @@ use sway_ir::{
     PassGroup, PassManager, ARGDEMOTION_NAME, CONSTDEMOTION_NAME, DCE_NAME, MEMCPYOPT_NAME,
     MISCDEMOTION_NAME, RETDEMOTION_NAME,
 };
+use sway_utils::PerformanceMetrics;
 
 pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
     // Compile core library and reuse it when compiling tests.
@@ -129,6 +130,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                 // Include unit tests in the build.
                 let bld_cfg = bld_cfg.include_tests(true);
 
+                let mut metrics = PerformanceMetrics::new();
                 let sway_str = String::from_utf8_lossy(&sway_str);
                 let typed_res = compile_to_ast(
                     engines,
@@ -136,6 +138,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                     core_lib.clone(),
                     Some(&bld_cfg),
                     "test_lib",
+                    &mut metrics,
                 );
                 if !typed_res.errors.is_empty() {
                     panic!(

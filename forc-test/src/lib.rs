@@ -153,6 +153,8 @@ pub struct Opts {
     pub time_phases: bool,
     /// Enable the experimental module privacy enforcement.
     pub experimental_private_modules: bool,
+    /// Output compilation metrics into file.
+    pub metrics_outfile: Option<String>,
 }
 
 /// The set of options provided for controlling logs printed for each test.
@@ -480,6 +482,7 @@ impl Opts {
             release: self.release,
             error_on_warnings: self.error_on_warnings,
             time_phases: self.time_phases,
+            metrics_outfile: self.metrics_outfile,
             tests: true,
             member_filter: Default::default(),
             experimental_private_modules: self.experimental_private_modules,
