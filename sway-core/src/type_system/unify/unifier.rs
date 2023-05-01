@@ -91,6 +91,10 @@ impl<'a> Unifier<'a> {
             (Contract, Contract) => (vec![], vec![]),
             (RawUntypedPtr, RawUntypedPtr) => (vec![], vec![]),
             (RawUntypedSlice, RawUntypedSlice) => (vec![], vec![]),
+            (Ptr(r), Ptr(e)) => self.unify_arrays(received, expected, span, r.type_id, e.type_id),
+            (Slice(r), Slice(e)) => {
+                self.unify_arrays(received, expected, span, r.type_id, e.type_id)
+            }
             (Str(l), Str(r)) => self.unify_strs(received, expected, span, l.val(), r.val()),
             (Tuple(rfs), Tuple(efs)) if rfs.len() == efs.len() => self.unify_tuples(rfs, efs),
             (Array(re, rc), Array(ee, ec)) if rc.val() == ec.val() => {

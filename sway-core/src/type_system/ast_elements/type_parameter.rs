@@ -164,7 +164,6 @@ impl TypeParameter {
 
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
-
         let TypeParameter {
             initial_type_id,
             name_ident,

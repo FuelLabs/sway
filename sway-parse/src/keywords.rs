@@ -192,4 +192,6 @@ pub const RESERVED_KEYWORDS: phf::Set<&'static str> = phf::phf_set! {
     "continue",
     "configurable",
     "type",
+    "__ptr",
+    "__slice",
 };

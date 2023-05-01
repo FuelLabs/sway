@@ -715,6 +715,8 @@ impl Dependencies {
                 |deps, variant| deps.gather_from_type_argument(engines, &variant.type_argument),
             ),
             TypeInfo::Alias { ty, .. } => self.gather_from_type_argument(engines, ty),
+            TypeInfo::Ptr(ty) => self.gather_from_type_argument(engines, ty),
+            TypeInfo::Slice(ty) => self.gather_from_type_argument(engines, ty),
             _ => self,
         }
     }

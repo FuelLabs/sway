@@ -31,6 +31,8 @@ pub enum Intrinsic {
     Revert,
     PtrAdd,
     PtrSub,
+    SlicePtr,
+    SliceLen,
     Smo,
     Not,
 }
@@ -67,6 +69,8 @@ impl fmt::Display for Intrinsic {
             Intrinsic::Revert => "revert",
             Intrinsic::PtrAdd => "ptr_add",
             Intrinsic::PtrSub => "ptr_sub",
+            Intrinsic::SlicePtr => "slice_ptr",
+            Intrinsic::SliceLen => "slice_len",
             Intrinsic::Smo => "smo",
             Intrinsic::Not => "not",
         };
@@ -107,6 +111,8 @@ impl Intrinsic {
             "__revert" => Revert,
             "__ptr_add" => PtrAdd,
             "__ptr_sub" => PtrSub,
+            "__slice_ptr" => SlicePtr,
+            "__slice_len" => SliceLen,
             "__smo" => Smo,
             "__not" => Not,
             _ => return None,

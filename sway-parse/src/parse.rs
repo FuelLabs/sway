@@ -113,16 +113,17 @@ impl Parse for Ident {
         match parser.take::<Ident>() {
             Some(ident) => {
                 let ident_str = ident.as_str();
-                if ident_str.starts_with("__") && Intrinsic::try_from_str(ident_str).is_none() {
-                    return Err(parser.emit_error_with_span(
-                        ParseErrorKind::InvalidDoubleUnderscore,
-                        ident.span(),
-                    ));
-                }
 
                 if !ident.is_raw_ident() && RESERVED_KEYWORDS.contains(ident_str) {
                     return Err(parser.emit_error_with_span(
                         ParseErrorKind::ReservedKeywordIdentifier,
+                        ident.span(),
+                    ));
+                }
+
+                if ident_str.starts_with("__") && Intrinsic::try_from_str(ident_str).is_none() {
+                    return Err(parser.emit_error_with_span(
+                        ParseErrorKind::InvalidDoubleUnderscore,
                         ident.span(),
                     ));
                 }

@@ -272,6 +272,9 @@ impl Namespace {
             warnings,
             errors
         );
+        if let TypeInfo::Slice(type_arg) = engines.te().get(type_id) {
+            dbg!(&matching_item_decl_refs);
+        }
 
         let matching_method_decl_refs = matching_item_decl_refs
             .into_iter()
@@ -280,6 +283,11 @@ impl Namespace {
                 ty::TyTraitItem::Constant(_) => None,
             })
             .collect::<Vec<_>>();
+        if let TypeInfo::Slice(type_arg) = engines.te().get(type_id) {
+            dbg!(&matching_method_decl_refs);
+        }
+
+        // TODO: fetch a method for a builtin type like pointers
 
         let mut qualified_call_path = None;
         let matching_method_decl_ref = {

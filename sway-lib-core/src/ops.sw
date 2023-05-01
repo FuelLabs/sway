@@ -253,6 +253,13 @@ impl Eq for raw_ptr {
     }
 }
 
+// FIXME: using T instead of Z gets this unified with the wrong types
+impl<Z> Eq for __ptr[Z] {
+    fn eq(self, other: Self) -> bool {
+        __eq(self, other)
+    }
+}
+
 pub trait Ord {
     fn gt(self, other: Self) -> bool;
     fn lt(self, other: Self) -> bool;

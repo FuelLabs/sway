@@ -732,6 +732,8 @@ fn const_eval_intrinsic(
         sway_ast::Intrinsic::AddrOf => Ok(None),
         sway_ast::Intrinsic::PtrAdd => Ok(None),
         sway_ast::Intrinsic::PtrSub => Ok(None),
+        sway_ast::Intrinsic::SlicePtr => Ok(None),
+        sway_ast::Intrinsic::SliceLen => Ok(None),
         sway_ast::Intrinsic::IsReferenceType
         | sway_ast::Intrinsic::IsStrType
         | sway_ast::Intrinsic::Gtf

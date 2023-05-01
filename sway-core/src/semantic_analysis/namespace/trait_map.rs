@@ -714,6 +714,10 @@ impl TraitMap {
         let type_engine = engines.te();
         let unify_check = UnifyCheck::non_dynamic_equality(engines);
 
+        if let TypeInfo::Slice(type_arg) = engines.te().get(type_id) {
+            dbg!(&"we're here");
+        }
+
         let mut items = vec![];
         // small performance gain in bad case
         if type_engine

@@ -178,7 +178,12 @@ impl TyProgram {
                                 .type_id
                                 .extract_any_including_self(
                                     engines,
-                                    &|type_info| matches!(type_info, TypeInfo::RawUntypedPtr),
+                                    &|type_info| {
+                                        matches!(
+                                            type_info,
+                                            TypeInfo::RawUntypedPtr | TypeInfo::Ptr(..)
+                                        )
+                                    },
                                     vec![],
                                 )
                                 .is_empty()

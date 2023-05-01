@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-7984290E1EB7ADF1'
+
+[[package]]
+name = 'slice'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-7984290E1EB7ADF1'
+dependencies = ['core']

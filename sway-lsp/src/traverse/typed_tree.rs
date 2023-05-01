@@ -1256,6 +1256,12 @@ fn collect_type_id(
                 field.parse(ctx);
             });
         }
+        TypeInfo::Ptr(type_arg) => {
+            collect_type_argument(ctx, type_arg);
+        }
+        TypeInfo::Slice(type_arg) => {
+            collect_type_argument(ctx, type_arg);
+        }
         _ => {
             if let Some(token) = ctx
                 .tokens
