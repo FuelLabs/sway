@@ -179,8 +179,8 @@ impl MyContract for Contract {
 }
 </code></pre>
 <p>The project is a <em>contract</em>, one of four different project types. For additional information on different project types, see <a href="../sway-program-types/index.html">here</a>.</p>
-<p>We now compile our project with <code>forc build</code>, passing the flag <code>--print-finalized-asm</code> to view the generated assembly:</p>
-<pre><code class="language-console">$ forc build --print-finalized-asm
+<p>We now compile our project with <code>forc build</code>, passing the flag <code>--finalized-asm</code> to view the generated assembly:</p>
+<pre><code class="language-console">$ forc build --finalized-asm
 ...
 .program:
 ji   i4

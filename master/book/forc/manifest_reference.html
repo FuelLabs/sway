@@ -173,7 +173,7 @@
 </ul>
 </li>
 <li>
-<p><a href="#the-build-profiles--section"><code>[build-profiles]</code></a> - Defines the build profiles.</p>
+<p><a href="#the-build-profile-section"><code>[build-profile]</code></a> - Defines the build profiles.</p>
 </li>
 <li>
 <p><a href="#the-patch-section"><code>[patch]</code></a> - Defines the patches.</p>
@@ -216,16 +216,21 @@ name = &quot;wallet_contract&quot;
 <ul>
 <li><code>URL</code> - (default: <em><a href="http://127.0.0.1:4000">http://127.0.0.1:4000</a></em>)</li>
 </ul>
-<h2 id="the-build-profiles--section"><a class="header" href="#the-build-profiles--section">The <code>[build-profiles-*]</code> section</a></h2>
-<p>The <code>[build-profiles]</code> tables provide a way to customize compiler settings such as debug options.</p>
-<p>The following fields needs to be provided for a build-profile:</p>
+<h2 id="the-build-profile-section"><a class="header" href="#the-build-profile-section">The <code>[build-profile.*]</code> section</a></h2>
+<p>The <code>[build-profile]</code> tables provide a way to customize compiler settings such as debug options.</p>
+<p>The following fields can be provided for a build-profile:</p>
 <ul>
-<li><code>print-ast</code> - Whether to print out the generated AST (true) or not (false).</li>
-<li><code>print-dca-graph</code> - Whether to print out the computed DCA graph (in GraphViz DOT format).</li>
-<li><code>print-finalized-asm</code> - Whether to compile to bytecode (false) or to print out the generated ASM (true).</li>
-<li><code>print-intermediate-asm</code> - Whether to compile to bytecode (false) or to print out the generated ASM (true).</li>
-<li><code>print-ir</code> - Whether to compile to bytecode (false) or to print out the generated IR (true).</li>
-<li><code>terse-mode</code> - Terse mode. Limited warning and error output.</li>
+<li><code>print-ast</code> - Whether to print out the generated AST or not, defaults to false.</li>
+<li><code>print-dca-graph</code> - Whether to print out the computed DCA graph (in GraphViz DOT format), defaults to false.</li>
+<li><code>print-dca-graph-url-format</code> - The URL format to be used in the generated DOT file, an example for vscode would be: &quot;vscode://file/{path}:{line}:{col}&quot;</li>
+<li><code>print-ir</code> - Whether to compile to bytecode (false) or to print out the generated IR (true), defaults to false.</li>
+<li><code>print-finalized-asm</code> - Whether to compile to bytecode (false) or to print out the generated ASM (true), defaults to false.</li>
+<li><code>print-intermediate-asm</code> - Whether to compile to bytecode (false) or to print out the generated ASM (true), defaults to false.</li>
+<li><code>terse</code> - Terse mode. Limited warning and error output, defaults to false.</li>
+<li><code>time_phases</code> - Whether to output the time elapsed over each part of the compilation process, defaults to false.</li>
+<li><code>include_tests</code> -  Whether or not to include test functions in parsing, type-checking and codegen, this is set to true by invocations like <code>forc test</code>, defaults to false.</li>
+<li><code>json_abi_with_callpaths</code> - Whether to json abi with callpaths instead of names for struct and enums, defaults to false.</li>
+<li><code>error_on_warnings</code> - Whether to treat errors as warnings, defaults to false.</li>
 </ul>
 <p>There are two default <code>[build-profile]</code> available with every manifest file. These are <code>debug</code> and <code>release</code> profiles. If you want to override these profiles, you can provide them explicitly in the manifest file like the following example:</p>
 <pre><code class="language-toml">[project]
@@ -235,26 +240,31 @@ organization = &quot;Fuel_Labs&quot;
 license = &quot;Apache-2.0&quot;
 name = &quot;wallet_contract&quot;
 
-[build-profiles.debug]
+[build-profile.debug]
 print-finalized-asm = false
 print-intermediate-asm = false
 print-ir = false
 terse = false
 
-[build-profiles.release]
+[build-profile.release]
 print-finalized-asm = false 
 print-intermediate-asm = false
 print-ir = false
 terse = true
 </code></pre>
 <p>Since <code>release</code> and <code>debug</code> implicitly included in every manifest file, you can use them by just passing <code>--release</code> or by not passing anything (debug is default). For using a user defined build profile there is <code>--build-profile &lt;profile name&gt;</code> option available to the relevant commands. (For an example see <a href="../forc/commands/forc_build.html">forc-build</a>)</p>
-<p>Note that providing the corresponding cli options (like <code>--print-finalized-asm</code>) will override the selected build profile. For example if you pass both <code>--release</code> and <code>--print-finalized-asm</code>, release build profile is omitted and resulting build profile would have a structure like the following:</p>
-<ul>
-<li>print-finalized-asm - true</li>
-<li>print-intermediate-asm - false</li>
-<li>print-ir - false</li>
-<li>terse - false</li>
-</ul>
+<p>Note that providing the corresponding cli options (like <code>--finalized-asm</code>) will override the selected build profile. For example if you pass both <code>--release</code> and <code>--finalized-asm</code>, release build profile is omitted and resulting build profile would have a structure like the following:</p>
+<pre><code class="language-toml">print-ast = false
+print-ir = false
+print-finalized-asm = false
+print-intermediate-asm = false
+terse = false
+time-phases = false
+include-tests = false
+json-abi-with-callpaths = false
+error-on-warnings = false
+experimental-private-modules = false
+</code></pre>
 <h2 id="the-patch-section"><a class="header" href="#the-patch-section">The <code>[patch]</code> section</a></h2>
 <p>The [patch] section of <code>Forc.toml</code> can be used to override dependencies with other copies. The example provided below patches <a href="https://github.com/fuellabs/sway">https://github.com/fuellabs/sway</a> source with master branch of the same repo.</p>
 <pre><code class="language-toml">[project]
