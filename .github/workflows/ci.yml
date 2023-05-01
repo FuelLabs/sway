@@ -292,6 +292,20 @@ jobs:
       - name: Cargo Test sway-lib-std
         run: cargo test --locked --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
 
+  forc-run-benchmarks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Install Forc
+        run: cargo install --locked --debug --path ./forc
+      - name: Run benchmarks
+        run: ./benchmark.sh
+
   forc-unit-tests:
     runs-on: ubuntu-latest
     steps:
