@@ -1,3 +1,4 @@
+//! Functions to work with external contracts.
 library;
 
 use ::constants::ZERO_B256;

@@ -50,6 +50,7 @@ impl ty::TyScrutinee {
                     name_ident: BaseIdent::new_with_override("_".into(), span.clone()),
                     trait_constraints: vec![],
                     trait_constraints_span: Span::dummy(),
+                    is_from_parent: false,
                 };
                 let typed_scrutinee = ty::TyScrutinee {
                     variant: ty::TyScrutineeVariant::CatchAll,
@@ -78,6 +79,27 @@ impl ty::TyScrutinee {
                 value,
                 span,
             } => type_check_enum(ctx, call_path, *value, span),
+            Scrutinee::AmbiguousSingleIdent(ident) => {
+                let maybe_enum = type_check_enum(
+                    ctx.by_ref(),
+                    CallPath {
+                        prefixes: vec![],
+                        suffix: ident.clone(),
+                        is_absolute: false,
+                    },
+                    Scrutinee::Tuple {
+                        elems: vec![],
+                        span: ident.span(),
+                    },
+                    ident.span(),
+                );
+
+                if maybe_enum.is_ok() {
+                    maybe_enum
+                } else {
+                    type_check_variable(ctx, ident.clone(), ident.span())
+                }
+            }
             Scrutinee::Tuple { elems, span } => type_check_tuple(ctx, elems, span),
             Scrutinee::Error { .. } => err(vec![], vec![]),
         }
@@ -262,7 +284,7 @@ fn type_check_enum(
     let decl_engine = ctx.decl_engine;
 
     let mut prefixes = call_path.prefixes.clone();
-    let (callsite_span, mut enum_decl) = match prefixes.pop() {
+    let (callsite_span, mut enum_decl, call_path_decl) = match prefixes.pop() {
         Some(enum_name) => {
             let enum_callpath = CallPath {
                 suffix: enum_name,
@@ -282,7 +304,11 @@ fn type_check_enum(
                 warnings,
                 errors
             );
-            (enum_callpath.span(), decl_engine.get_enum(&enum_ref))
+            (
+                enum_callpath.span(),
+                decl_engine.get_enum(&enum_ref),
+                unknown_decl,
+            )
         }
         None => {
             // we may have an imported variant
@@ -292,8 +318,12 @@ fn type_check_enum(
                 warnings,
                 errors
             );
-            if let TyDecl::EnumVariantDecl(ty::EnumVariantDecl { enum_ref, .. }) = decl {
-                (call_path.suffix.span(), decl_engine.get_enum(enum_ref.id()))
+            if let TyDecl::EnumVariantDecl(ty::EnumVariantDecl { enum_ref, .. }) = decl.clone() {
+                (
+                    call_path.suffix.span(),
+                    decl_engine.get_enum(enum_ref.id()),
+                    decl,
+                )
             } else {
                 errors.push(CompileError::EnumNotFound {
                     name: call_path.suffix.clone(),
@@ -339,6 +369,7 @@ fn type_check_enum(
         variant: ty::TyScrutineeVariant::EnumScrutinee {
             enum_ref: enum_ref.clone(),
             variant: Box::new(variant),
+            call_path_decl,
             value: Box::new(typed_value),
             instantiation_call_path: call_path,
         },

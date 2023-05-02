@@ -158,7 +158,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
 
                 // Compile to IR.
                 let include_tests = true;
-                let mut ir = compile_program(&typed_program, include_tests, engines, false)
+                let mut ir = compile_program(&typed_program, include_tests, engines)
                     .unwrap_or_else(|e| {
                         panic!("Failed to compile test {}:\n{e}", path.display());
                     })
@@ -347,6 +347,7 @@ fn compile_core(build_target: BuildTarget, engines: Engines<'_>) -> namespace::M
         terse_mode: true,
         disable_tests: false,
         locked: false,
+        experimental_private_modules: true,
     };
 
     let res = forc::test::forc_check::check(check_cmd, engines)

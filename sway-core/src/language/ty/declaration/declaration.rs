@@ -444,6 +444,8 @@ impl DisplayWithEngines for TyDecl {
                 TyDecl::FunctionDecl(FunctionDecl { name, .. })
                 | TyDecl::TraitDecl(TraitDecl { name, .. })
                 | TyDecl::StructDecl(StructDecl { name, .. })
+                | TyDecl::TypeAliasDecl(TypeAliasDecl { name, .. })
+                | TyDecl::ImplTrait(ImplTrait { name, .. })
                 | TyDecl::EnumDecl(EnumDecl { name, .. }) => name.as_str().into(),
                 _ => String::new(),
             }
@@ -778,8 +780,8 @@ impl TyDecl {
             AbiDecl(_) => "abi",
             GenericTypeForFunctionScope(_) => "generic type parameter",
             ErrorRecovery(_) => "error",
-            StorageDecl(_) => "contract storage declaration",
-            TypeAliasDecl(_) => "type alias declaration",
+            StorageDecl(_) => "contract storage",
+            TypeAliasDecl(_) => "type alias",
         }
     }
 

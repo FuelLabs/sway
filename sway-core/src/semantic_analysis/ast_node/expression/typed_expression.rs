@@ -75,7 +75,7 @@ impl ty::TyExpression {
             span: call_path.span(),
         };
         let arguments = VecDeque::from(arguments);
-        let decl_ref = check!(
+        let (decl_ref, _) = check!(
             resolve_method_name(ctx, &mut method_name_binding, arguments.clone()),
             return err(warnings, errors),
             warnings,
@@ -102,9 +102,9 @@ impl ty::TyExpression {
                 contract_call_params: HashMap::new(),
                 arguments: args_and_names,
                 fn_ref: decl_ref,
-                self_state_idx: None,
                 selector: None,
                 type_binding: None,
+                call_path_typeid: None,
             },
             return_type: return_type.type_id,
             span,
@@ -122,6 +122,30 @@ impl ty::TyExpression {
             // We've already emitted an error for the `::Error` case.
             ExpressionKind::Error(_) => ok(ty::TyExpression::error(span, engines), vec![], vec![]),
             ExpressionKind::Literal(lit) => Self::type_check_literal(engines, lit, span),
+            ExpressionKind::AmbiguousVariableExpression(name) => {
+                let call_path = CallPath {
+                    prefixes: vec![],
+                    suffix: name.clone(),
+                    is_absolute: false,
+                };
+                if matches!(
+                    ctx.namespace.resolve_call_path(&call_path).value,
+                    Some(ty::TyDecl::EnumVariantDecl { .. })
+                ) {
+                    Self::type_check_delineated_path(
+                        ctx.by_ref(),
+                        TypeBinding {
+                            span: call_path.span(),
+                            inner: call_path,
+                            type_arguments: TypeArgs::Regular(vec![]),
+                        },
+                        span,
+                        None,
+                    )
+                } else {
+                    Self::type_check_variable_expression(ctx.by_ref(), name, span)
+                }
+            }
             ExpressionKind::Variable(name) => {
                 Self::type_check_variable_expression(ctx.by_ref(), name, span)
             }
@@ -458,7 +482,7 @@ impl ty::TyExpression {
         let mut errors = vec![];
 
         // Grab the fn declaration.
-        let (fn_ref, _): (DeclRefFunction, _) = check!(
+        let (fn_ref, _, _): (DeclRefFunction, _, _) = check!(
             TypeBinding::type_check(&mut call_path_binding, ctx.by_ref()),
             return err(warnings, errors),
             warnings,
@@ -904,67 +928,65 @@ impl ty::TyExpression {
             errors
         );
 
-        if ctx.experimental_storage_enabled() {
-            // The type of a storage access is `core::experimental::storage::StorageKey`. This is
-            // the path to it.
-            let storage_key_mod_path = vec![
-                Ident::new_with_override("core".into(), span.clone()),
-                Ident::new_with_override("experimental".into(), span.clone()),
-                Ident::new_with_override("storage".into(), span.clone()),
-            ];
-            let storage_key_ident = Ident::new_with_override("StorageKey".into(), span.clone());
+        // The type of a storage access is `core::storage::StorageKey`. This is
+        // the path to it.
+        let storage_key_mod_path = vec![
+            Ident::new_with_override("core".into(), span.clone()),
+            Ident::new_with_override("storage".into(), span.clone()),
+        ];
+        let storage_key_ident = Ident::new_with_override("StorageKey".into(), span.clone());
 
-            // Search for the struct declaration with the call path above.
-            let storage_key_decl_opt = check!(
-                ctx.namespace
-                    .root()
-                    .resolve_symbol(&storage_key_mod_path, &storage_key_ident),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            let storage_key_struct_decl_ref = check!(
-                storage_key_decl_opt.to_struct_ref(engines),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            let mut storage_key_struct_decl = decl_engine.get_struct(&storage_key_struct_decl_ref);
-
-            // Set the type arguments to `StorageKey` to the `access_type`, which is represents the
-            // type of the data that the `StorageKey` "points" to.
-            let mut type_arguments = vec![TypeArgument {
-                initial_type_id: access_type,
-                type_id: access_type,
-                span: span.clone(),
-                call_path_tree: None,
-            }];
-
-            // Monomorphize the generic `StorageKey` type given the type argument specified above
-            let mut ctx = ctx;
-            check!(
-                ctx.monomorphize(
-                    &mut storage_key_struct_decl,
-                    &mut type_arguments,
-                    EnforceTypeArguments::Yes,
-                    span
-                ),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-
-            // Update `access_type` to be the type of the monomorphized struct after inserting it
-            // into the type engine
-            let storage_key_struct_decl_ref = ctx.engines().de().insert(storage_key_struct_decl);
-            access_type =
-                type_engine.insert(decl_engine, TypeInfo::Struct(storage_key_struct_decl_ref));
-
-            // take any trait items that apply to `StorageKey<T>` and copy them to the
-            // monomorphized type
+        // Search for the struct declaration with the call path above.
+        let storage_key_decl_opt = check!(
             ctx.namespace
-                .insert_trait_implementation_for_type(engines, access_type);
-        }
+                .root()
+                .resolve_symbol(&storage_key_mod_path, &storage_key_ident),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let storage_key_struct_decl_ref = check!(
+            storage_key_decl_opt.to_struct_ref(engines),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let mut storage_key_struct_decl = decl_engine.get_struct(&storage_key_struct_decl_ref);
+
+        // Set the type arguments to `StorageKey` to the `access_type`, which is represents the
+        // type of the data that the `StorageKey` "points" to.
+        let mut type_arguments = vec![TypeArgument {
+            initial_type_id: access_type,
+            type_id: access_type,
+            span: span.clone(),
+            call_path_tree: None,
+        }];
+
+        // Monomorphize the generic `StorageKey` type given the type argument specified above
+        let mut ctx = ctx;
+        check!(
+            ctx.monomorphize(
+                &mut storage_key_struct_decl,
+                &mut type_arguments,
+                EnforceTypeArguments::Yes,
+                span
+            ),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        // Update `access_type` to be the type of the monomorphized struct after inserting it
+        // into the type engine
+        let storage_key_struct_decl_ref = ctx.engines().de().insert(storage_key_struct_decl);
+        access_type =
+            type_engine.insert(decl_engine, TypeInfo::Struct(storage_key_struct_decl_ref));
+
+        // take any trait items that apply to `StorageKey<T>` and copy them to the
+        // monomorphized type
+        ctx.namespace
+            .insert_trait_implementation_for_type(engines, access_type);
+
         ok(
             ty::TyExpression {
                 expression: ty::TyExpressionVariant::StorageAccess(storage_access),
@@ -1171,13 +1193,13 @@ impl ty::TyExpression {
             let mut call_path_binding = unknown_call_path_binding.clone();
             TypeBinding::type_check(&mut call_path_binding, ctx.by_ref())
                 .ok(&mut function_probe_warnings, &mut function_probe_errors)
-                .map(|(fn_ref, _)| (fn_ref, call_path_binding))
+                .map(|(fn_ref, _, _)| (fn_ref, call_path_binding))
         };
 
         // Check if this could be an enum
         let mut enum_probe_warnings = vec![];
         let mut enum_probe_errors = vec![];
-        let maybe_enum: Option<(DeclRefEnum, _, _)> = {
+        let maybe_enum: Option<(DeclRefEnum, _, _, _)> = {
             let call_path_binding = unknown_call_path_binding.clone();
             let variant_name = call_path_binding.inner.suffix.clone();
             let enum_call_path = call_path_binding.inner.rshift();
@@ -1189,7 +1211,14 @@ impl ty::TyExpression {
             };
             TypeBinding::type_check(&mut call_path_binding, ctx.by_ref())
                 .ok(&mut enum_probe_warnings, &mut enum_probe_errors)
-                .map(|(enum_ref, _)| (enum_ref, variant_name, call_path_binding))
+                .map(|(enum_ref, _, ty_decl)| {
+                    (
+                        enum_ref,
+                        variant_name,
+                        call_path_binding,
+                        ty_decl.expect("type_check for TyEnumDecl should always return TyDecl"),
+                    )
+                })
         };
 
         // Check if this could be a constant
@@ -1206,11 +1235,24 @@ impl ty::TyExpression {
 
         // compare the results of the checks
         let exp = match (is_module, maybe_function, maybe_enum, maybe_const) {
-            (false, None, Some((enum_ref, variant_name, call_path_binding)), None) => {
+            (
+                false,
+                None,
+                Some((enum_ref, variant_name, call_path_binding, call_path_decl)),
+                None,
+            ) => {
                 warnings.append(&mut enum_probe_warnings);
                 errors.append(&mut enum_probe_errors);
                 check!(
-                    instantiate_enum(ctx, enum_ref, variant_name, args, call_path_binding, &span),
+                    instantiate_enum(
+                        ctx,
+                        enum_ref,
+                        variant_name,
+                        args,
+                        call_path_binding,
+                        call_path_decl,
+                        &span
+                    ),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1304,7 +1346,7 @@ impl ty::TyExpression {
         let const_opt: Option<(DeclRefConstant, _)> =
             TypeBinding::type_check(&mut call_path_binding, ctx.by_ref())
                 .ok(const_probe_warnings, const_probe_errors)
-                .map(|(const_ref, _)| (const_ref, call_path_binding.clone()));
+                .map(|(const_ref, _, _)| (const_ref, call_path_binding.clone()));
         if const_opt.is_some() {
             return const_opt;
         }
@@ -1322,7 +1364,7 @@ impl ty::TyExpression {
             span: call_path_binding.span.clone(),
         };
 
-        let (_, struct_type_id): (DeclRefStruct, _) = check!(
+        let (_, struct_type_id, _): (DeclRefStruct, _, _) = check!(
             TypeBinding::type_check(&mut const_call_path_binding, ctx.by_ref()),
             return None,
             const_probe_warnings,
@@ -1335,6 +1377,7 @@ impl ty::TyExpression {
                 &suffix,
                 ctx.self_type(),
                 ctx.engines(),
+                ctx.experimental_private_modules_enabled()
             ),
             return None,
             const_probe_warnings,
@@ -1870,28 +1913,6 @@ impl ty::TyExpression {
                                 lhs_indices: names_vec,
                                 rhs,
                             },
-                        )),
-                        return_type: type_engine.insert(decl_engine, TypeInfo::Tuple(Vec::new())),
-                        span,
-                    },
-                    warnings,
-                    errors,
-                )
-            }
-            ReassignmentTarget::StorageField(storage_keyword_span, fields) => {
-                let ctx = ctx
-                    .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown))
-                    .with_help_text("");
-                let reassignment = check!(
-                    reassign_storage_subfield(ctx, fields, rhs, span.clone(), storage_keyword_span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors,
-                );
-                ok(
-                    ty::TyExpression {
-                        expression: ty::TyExpressionVariant::StorageReassignment(Box::new(
-                            reassignment,
                         )),
                         return_type: type_engine.insert(decl_engine, TypeInfo::Tuple(Vec::new())),
                         span,

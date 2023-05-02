@@ -141,14 +141,14 @@ fn enum_tests() {
         value: 0x0000000000000000000000000000000000000000000000000000000000000001,
     };
     let z = AssetId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
-    let o = Option::Some(x);
-    if let Option::Some(AssetId { value }) = o {
+    let o = Some(x);
+    if let Some(AssetId { value }) = o {
         assert(value == z.value);
     }
 
     let value = match o {
-        Option::Some(value) => value.value,
-        Option::None => revert(42),
+        Some(value) => value.value,
+        None => revert(42),
     };
 
     let id1 = lib::MyIdentity::ContractId(x);

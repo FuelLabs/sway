@@ -4,7 +4,7 @@ library;
 use ::{alloc::{alloc_bytes, realloc_bytes}, vec::Vec};
 use ::assert::assert;
 use ::intrinsics::size_of_val;
-use ::option::Option;
+use ::option::Option::{self, *};
 use ::convert::From;
 
 struct RawBytes {
@@ -50,6 +50,7 @@ impl RawBytes {
     }
 }
 
+/// A type used to represent raw bytes.
 pub struct Bytes {
     buf: RawBytes,
     len: u64,
@@ -154,13 +155,13 @@ impl Bytes {
     /// ```
     pub fn pop(ref mut self) -> Option<u8> {
         if self.len == 0 {
-            return Option::None;
+            return None;
         };
         // Decrement length.
         self.len -= 1;
         let target = self.buf.ptr().add_uint_offset(self.len);
 
-        Option::Some(target.read_byte())
+        Some(target.read_byte())
     }
 
     /// Returns `Some(byte)` at `index`, or `None` if `index` is out of
@@ -183,12 +184,12 @@ impl Bytes {
     pub fn get(self, index: u64) -> Option<u8> {
         // First check that index is within bounds.
         if self.len <= index {
-            return Option::None;
+            return None;
         };
 
         let item_ptr = self.buf.ptr().add_uint_offset(index);
 
-        Option::Some(item_ptr.read_byte())
+        Some(item_ptr.read_byte())
     }
 
     /// Updates an element at position `index` with a new element `value`.

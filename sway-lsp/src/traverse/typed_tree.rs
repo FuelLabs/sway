@@ -17,6 +17,7 @@ use sway_core::{
     TraitConstraint, TypeId, TypeInfo,
 };
 use sway_types::{Ident, Span, Spanned};
+use sway_utils::iter_prefixes;
 
 pub struct TypedTree<'a> {
     ctx: &'a ParseContext<'a>,
@@ -486,7 +487,11 @@ impl Parse for ty::TyExpression {
             ty::TyExpressionVariant::EnumTag { exp } => {
                 exp.parse(ctx);
             }
-            ty::TyExpressionVariant::UnsafeDowncast { exp, variant } => {
+            ty::TyExpressionVariant::UnsafeDowncast {
+                exp,
+                variant,
+                call_path_decl: _,
+            } => {
                 exp.parse(ctx);
                 if let Some(mut token) = ctx
                     .tokens
@@ -506,9 +511,6 @@ impl Parse for ty::TyExpression {
             ty::TyExpressionVariant::Continue => (),
             ty::TyExpressionVariant::Reassignment(reassignment) => {
                 reassignment.parse(ctx);
-            }
-            ty::TyExpressionVariant::StorageReassignment(storage_reassignment) => {
-                storage_reassignment.parse(ctx);
             }
             ty::TyExpressionVariant::Return(exp) => exp.parse(ctx),
         }
@@ -990,6 +992,7 @@ impl Parse for ty::TyScrutinee {
                 variant,
                 value,
                 instantiation_call_path,
+                call_path_decl: _,
             } => {
                 let prefixes =
                     if let Some((last, prefixes)) = instantiation_call_path.prefixes.split_last() {
@@ -1066,88 +1069,6 @@ impl Parse for ty::TyReassignment {
                 }
             }
         });
-    }
-}
-
-impl Parse for ty::TyStorageReassignment {
-    fn parse(&self, ctx: &ParseContext) {
-        // collect storage keyword
-        if let Some(mut token) = ctx
-            .tokens
-            .try_get_mut(&to_ident_key(&Ident::new(
-                self.storage_keyword_span.clone(),
-            )))
-            .try_unwrap()
-        {
-            token.typed = Some(TypedAstToken::TyStorageResassignment(Box::new(
-                self.clone(),
-            )));
-            if let Some(storage) = ctx.namespace.get_declared_storage(ctx.engines.de()) {
-                token.type_def = Some(TypeDefinition::Ident(storage.storage_keyword));
-            }
-        }
-        if let Some((head_field, tail_fields)) = self.fields.split_first() {
-            // collect the first ident as a field of the storage definition
-            if let Some(mut token) = ctx
-                .tokens
-                .try_get_mut(&to_ident_key(&head_field.name))
-                .try_unwrap()
-            {
-                token.typed = Some(TypedAstToken::TypeCheckedStorageReassignDescriptor(
-                    head_field.clone(),
-                ));
-                if let Some(storage_field) = ctx
-                    .namespace
-                    .get_declared_storage(ctx.engines.de())
-                    .and_then(|storage| {
-                        // find the corresponding field in the storage declaration
-                        storage
-                            .fields
-                            .into_iter()
-                            .find(|f| f.name.as_str() == head_field.name.as_str())
-                    })
-                {
-                    token.type_def = Some(TypeDefinition::Ident(storage_field.name));
-                }
-            }
-            // collect the rest of the idents as fields of their respective types
-            for (field, container_type_id) in tail_fields
-                .iter()
-                .zip(self.fields.iter().map(|f| f.type_id))
-            {
-                if let Some(mut token) = ctx
-                    .tokens
-                    .try_get_mut(&to_ident_key(&field.name))
-                    .try_unwrap()
-                {
-                    token.typed = Some(TypedAstToken::TypeCheckedStorageReassignDescriptor(
-                        field.clone(),
-                    ));
-                    match ctx.engines.te().get(container_type_id) {
-                        TypeInfo::Struct(decl_ref) => {
-                            if let Some(field_name) = ctx
-                                .engines
-                                .de()
-                                .get_struct(&decl_ref)
-                                .fields
-                                .iter()
-                                .find(|struct_field| {
-                                    // find the corresponding field in the containing type declaration
-                                    struct_field.name.as_str() == field.name.as_str()
-                                })
-                                .map(|struct_field| struct_field.name.clone())
-                            {
-                                token.type_def = Some(TypeDefinition::Ident(field_name));
-                            }
-                        }
-                        _ => {
-                            token.type_def = Some(TypeDefinition::TypeId(field.type_id));
-                        }
-                    }
-                }
-            }
-        }
-        self.rhs.parse(ctx);
     }
 }
 
@@ -1429,8 +1350,4 @@ fn collect_enum(ctx: &ParseContext, decl_id: &DeclId<ty::TyEnumDecl>, declaratio
     enum_decl.variants.iter().for_each(|variant| {
         variant.parse(ctx);
     });
-}
-
-fn iter_prefixes<T>(slice: &[T]) -> impl Iterator<Item = &[T]> + DoubleEndedIterator {
-    (1..=slice.len()).map(move |len| &slice[..len])
 }

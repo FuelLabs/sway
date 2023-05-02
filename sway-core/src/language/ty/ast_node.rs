@@ -275,6 +275,17 @@ impl TyAstNode {
                     let decl = decl_engine.get_constant(decl_id);
                     decl.visibility.is_public()
                 }
+                TyAstNode {
+                    content:
+                        TyAstNodeContent::Declaration(TyDecl::TypeAliasDecl(TypeAliasDecl {
+                            decl_id,
+                            ..
+                        })),
+                    ..
+                } => {
+                    let decl = decl_engine.get_type_alias(decl_id);
+                    decl.visibility.is_public()
+                }
                 _ => false,
             },
         }

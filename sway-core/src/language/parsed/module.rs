@@ -1,4 +1,7 @@
-use crate::{language::ModName, transform};
+use crate::{
+    language::{ModName, Visibility},
+    transform,
+};
 
 use super::ParseTree;
 use sway_types::Span;
@@ -22,4 +25,5 @@ pub struct ParseModule {
 pub struct ParseSubmodule {
     pub module: ParseModule,
     pub mod_name_span: Span,
+    pub visibility: Visibility,
 }

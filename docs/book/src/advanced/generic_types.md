@@ -124,7 +124,7 @@ Similar to Rust, Sway has what is colloquially known as the [turbofish](https://
 
 ```sway
 fn foo<T, E>(t: T) -> Result<T, E> {
-    Result::Ok(t)
+    Ok(t)
 }
 ```
 
@@ -132,7 +132,7 @@ In this code example, which is admittedly asinine, you can't possibly know what 
 
 ```sway
 fn foo<T, E>(t: T) -> Result<T, E> {
-    Result::Ok::<T, MyErrorType>(t)
+    Ok::<T, MyErrorType>(t)
 }
 ```
 

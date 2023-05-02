@@ -40,6 +40,7 @@ pub const GTF_CREATE_WITNESS_AT_INDEX = 0x01D;
 pub const GTF_WITNESS_DATA_LENGTH = 0x301;
 pub const GTF_WITNESS_DATA = 0x302;
 
+/// A transaction type.
 pub enum Transaction {
     Script: (),
     Create: (),
@@ -109,21 +110,21 @@ pub fn tx_witnesses_count() -> u64 {
     }
 }
 
-// Get a pointer to the witness at index `index` for either `tx_type`
+/// Get a pointer to the witness at index `index` for either `tx_type`
 /// (transaction-script or transaction-create).
-pub fn tx_witness_pointer(_index: u64) -> u64 {
+pub fn tx_witness_pointer(index: u64) -> u64 {
     match tx_type() {
-        Transaction::Script => __gtf::<u64>(0, GTF_SCRIPT_WITNESS_AT_INDEX),
-        Transaction::Create => __gtf::<u64>(0, GTF_CREATE_WITNESS_AT_INDEX),
+        Transaction::Script => __gtf::<u64>(index, GTF_SCRIPT_WITNESS_AT_INDEX),
+        Transaction::Create => __gtf::<u64>(index, GTF_CREATE_WITNESS_AT_INDEX),
     }
 }
 
-// Get the length of the witness data at `index`.
+/// Get the length of the witness data at `index`.
 pub fn tx_witness_data_length(index: u64) -> u64 {
     __gtf::<u64>(index, GTF_WITNESS_DATA_LENGTH)
 }
 
-// Get the witness data at `index`.
+/// Get the witness data at `index`.
 pub fn tx_witness_data<T>(index: u64) -> T {
     __gtf::<raw_ptr>(index, GTF_WITNESS_DATA).read::<T>()
 }

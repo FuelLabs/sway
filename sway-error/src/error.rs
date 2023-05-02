@@ -243,6 +243,8 @@ pub enum CompileError {
     SymbolNotFound { name: Ident, span: Span },
     #[error("Symbol \"{name}\" is private.")]
     ImportPrivateSymbol { name: Ident, span: Span },
+    #[error("Module \"{name}\" is private.")]
+    ImportPrivateModule { name: Ident, span: Span },
     #[error(
         "Because this if expression's value is used, an \"else\" branch is required and it must \
          return type \"{r#type}\""
@@ -612,6 +614,8 @@ pub enum CompileError {
     CallingPrivateLibraryMethod { name: String, span: Span },
     #[error("Using \"while\" in a predicate is not allowed.")]
     DisallowedWhileInPredicate { span: Span },
+    #[error("Using intrinsic \"{intrinsic}\" in a predicate is not allowed.")]
+    DisallowedIntrinsicInPredicate { intrinsic: String, span: Span },
     #[error("Possibly non-zero amount of coins transferred to non-payable contract method \"{fn_name}\".")]
     CoinsPassedToNonPayableMethod { fn_name: Ident, span: Span },
     #[error(
@@ -688,6 +692,7 @@ impl Spanned for CompileError {
             FieldNotFound { span, .. } => span.clone(),
             SymbolNotFound { span, .. } => span.clone(),
             ImportPrivateSymbol { span, .. } => span.clone(),
+            ImportPrivateModule { span, .. } => span.clone(),
             NoElseBranch { span, .. } => span.clone(),
             NotAType { span, .. } => span.clone(),
             MissingEnumInstantiator { span, .. } => span.clone(),
@@ -799,6 +804,7 @@ impl Spanned for CompileError {
             DisallowedControlFlowInstruction { span, .. } => span.clone(),
             CallingPrivateLibraryMethod { span, .. } => span.clone(),
             DisallowedWhileInPredicate { span } => span.clone(),
+            DisallowedIntrinsicInPredicate { span, .. } => span.clone(),
             CoinsPassedToNonPayableMethod { span, .. } => span.clone(),
             TraitImplPayabilityMismatch { span, .. } => span.clone(),
             ConfigurableInLibrary { span } => span.clone(),

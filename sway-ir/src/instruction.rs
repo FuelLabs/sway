@@ -103,8 +103,6 @@ pub enum Instruction {
 
 #[derive(Debug, Clone, DebugWithContext)]
 pub enum FuelVmInstruction {
-    /// Generate a unique integer value
-    GetStorageKey(Type),
     Gtf {
         index: Value,
         tx_field_id: u64,
@@ -226,7 +224,6 @@ impl Instruction {
             Instruction::CastPtr(_val, ty) => Some(*ty),
             Instruction::Cmp(..) => Some(Type::get_bool(context)),
             Instruction::ContractCall { return_type, .. } => Some(*return_type),
-            Instruction::FuelVm(FuelVmInstruction::GetStorageKey(key_ptr_ty)) => Some(*key_ptr_ty),
             Instruction::FuelVm(FuelVmInstruction::Gtf { .. }) => Some(Type::get_uint64(context)),
             Instruction::FuelVm(FuelVmInstruction::Log { .. }) => Some(Type::get_unit(context)),
             Instruction::FuelVm(FuelVmInstruction::ReadRegister(_)) => {
@@ -345,7 +342,6 @@ impl Instruction {
             }
 
             Instruction::FuelVm(fuel_vm_instr) => match fuel_vm_instr {
-                FuelVmInstruction::GetStorageKey(_ty) => vec![],
                 FuelVmInstruction::Gtf {
                     index,
                     tx_field_id: _,
@@ -470,7 +466,6 @@ impl Instruction {
             }
 
             Instruction::FuelVm(fuel_vm_instr) => match fuel_vm_instr {
-                FuelVmInstruction::GetStorageKey(_ty) => (),
                 FuelVmInstruction::Gtf { index, .. } => replace(index),
                 FuelVmInstruction::Log {
                     log_val, log_id, ..
@@ -548,7 +543,6 @@ impl Instruction {
             | Instruction::CastPtr { .. }
             | Instruction::Cmp(..)
             | Instruction::ConditionalBranch { .. }
-            | Instruction::FuelVm(FuelVmInstruction::GetStorageKey(_))
             | Instruction::FuelVm(FuelVmInstruction::Gtf { .. })
             | Instruction::FuelVm(FuelVmInstruction::ReadRegister(_))
             | Instruction::FuelVm(FuelVmInstruction::Revert(..))
@@ -751,15 +745,6 @@ impl<'a> InstructionInserter<'a> {
                 asset_id,
                 gas,
             }
-        )
-    }
-
-    pub fn get_storage_key(self) -> Value {
-        let b256_ty = Type::get_b256(self.context);
-        let b256_ptr_ty = Type::new_ptr(self.context, b256_ty);
-        make_instruction!(
-            self,
-            Instruction::FuelVm(FuelVmInstruction::GetStorageKey(b256_ptr_ty))
         )
     }
 

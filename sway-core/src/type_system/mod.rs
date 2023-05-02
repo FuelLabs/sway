@@ -45,6 +45,7 @@ fn generic_enum_resolution() {
             name_ident: generic_name.clone(),
             trait_constraints: vec![],
             trait_constraints_span: sp.clone(),
+            is_from_parent: false,
         }),
     );
     let placeholder_type_param = TypeParameter {
@@ -53,6 +54,7 @@ fn generic_enum_resolution() {
         name_ident: generic_name.clone(),
         trait_constraints: vec![],
         trait_constraints_span: sp.clone(),
+        is_from_parent: false,
     };
     let variant_types = vec![ty::TyEnumVariant {
         name: a_name.clone(),
@@ -101,6 +103,7 @@ fn generic_enum_resolution() {
         name_ident: generic_name,
         trait_constraints: vec![],
         trait_constraints_span: sp.clone(),
+        is_from_parent: false,
     };
     let decl_ref_2 = decl_engine.insert(TyEnumDecl {
         call_path: result_name.into(),

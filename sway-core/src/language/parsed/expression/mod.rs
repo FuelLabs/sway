@@ -164,10 +164,12 @@ pub enum ExpressionKind {
     Error(Box<[Span]>),
     Literal(Literal),
     /// An ambiguous path where we don't know until type checking whether this
-    /// is a free function call or a UFCS (Rust term) style associated function call.
+    /// is a free function call, an enum variant or a UFCS (Rust term) style associated function call.
     AmbiguousPathExpression(Box<AmbiguousPathExpression>),
     FunctionApplication(Box<FunctionApplicationExpression>),
     LazyOperator(LazyOperatorExpression),
+    /// And ambiguous single ident which could either be a variable or an enum variant
+    AmbiguousVariableExpression(Ident),
     Variable(Ident),
     Tuple(Vec<Expression>),
     TupleIndex(TupleIndexExpression),
@@ -221,13 +223,9 @@ pub enum ExpressionKind {
     Return(Box<Expression>),
 }
 
-/// Represents the left hand side of a reassignment, which could either be a regular variable
-/// expression, denoted by [ReassignmentTarget::VariableExpression], or, a storage field, denoted
-/// by [ReassignmentTarget::StorageField].
 #[derive(Debug, Clone)]
 pub enum ReassignmentTarget {
     VariableExpression(Box<Expression>),
-    StorageField(Span, Vec<Ident>),
 }
 
 #[derive(Debug, Clone)]

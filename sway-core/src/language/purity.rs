@@ -15,7 +15,7 @@ impl Purity {
         match self {
             Purity::Pure => other == Purity::Pure,
             Purity::Reads => other == Purity::Pure || other == Purity::Reads,
-            Purity::Writes => other == Purity::Pure || other == Purity::Writes,
+            Purity::Writes => true, // storage(write) allows reading as well
             Purity::ReadsWrites => true,
         }
     }

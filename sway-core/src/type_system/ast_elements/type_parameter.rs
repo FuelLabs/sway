@@ -24,6 +24,7 @@ pub struct TypeParameter {
     pub name_ident: Ident,
     pub(crate) trait_constraints: Vec<TraitConstraint>,
     pub(crate) trait_constraints_span: Span,
+    pub(crate) is_from_parent: bool,
 }
 
 impl HashWithEngines for TypeParameter {
@@ -36,6 +37,7 @@ impl HashWithEngines for TypeParameter {
             // reliable source of obj v. obj distinction
             trait_constraints_span: _,
             initial_type_id: _,
+            is_from_parent: _,
         } = self;
         let type_engine = engines.te();
         type_engine.get(*type_id).hash(state, engines);
@@ -66,6 +68,7 @@ impl OrdWithEngines for TypeParameter {
             // reliable source of obj v. obj distinction
             trait_constraints_span: _,
             initial_type_id: _,
+            is_from_parent: _,
         } = self;
         let TypeParameter {
             type_id: rti,
@@ -75,6 +78,7 @@ impl OrdWithEngines for TypeParameter {
             // reliable source of obj v. obj distinction
             trait_constraints_span: _,
             initial_type_id: _,
+            is_from_parent: _,
         } = other;
         ln.cmp(rn)
             .then_with(|| engines.te().get(*lti).cmp(&engines.te().get(*rti), engines))
@@ -173,6 +177,7 @@ impl TypeParameter {
             name_ident,
             mut trait_constraints,
             trait_constraints_span,
+            is_from_parent,
             ..
         } = type_parameter;
 
@@ -206,16 +211,46 @@ impl TypeParameter {
             );
         }
 
-        // Insert the type parameter into the namespace as a dummy type
-        // declaration.
-        let type_parameter_decl =
-            ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
-                name: name_ident.clone(),
-                type_id,
-            });
-        ctx.namespace
-            .insert_symbol(name_ident.clone(), type_parameter_decl)
-            .ok(&mut warnings, &mut errors);
+        // When type parameter is from parent then it was already inserted.
+        // Instead of inserting a type with same name we unify them.
+        if is_from_parent {
+            if let Some(sy) = ctx.namespace.symbols.get(&name_ident) {
+                match sy {
+                    ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
+                        type_id: sy_type_id,
+                        ..
+                    }) => {
+                        append!(
+                            ctx.engines().te().unify(
+                                ctx.engines().de(),
+                                type_id,
+                                *sy_type_id,
+                                &trait_constraints_span,
+                                "",
+                                None
+                            ),
+                            warnings,
+                            errors
+                        );
+                    }
+                    _ => errors.push(CompileError::Internal(
+                        "Unexpected TyDeclaration for TypeParameter.",
+                        name_ident.span(),
+                    )),
+                }
+            }
+        } else {
+            // Insert the type parameter into the namespace as a dummy type
+            // declaration.
+            let type_parameter_decl =
+                ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
+                    name: name_ident.clone(),
+                    type_id,
+                });
+            ctx.namespace
+                .insert_symbol(name_ident.clone(), type_parameter_decl)
+                .ok(&mut warnings, &mut errors);
+        }
 
         let type_parameter = TypeParameter {
             name_ident,
@@ -223,6 +258,7 @@ impl TypeParameter {
             initial_type_id,
             trait_constraints,
             trait_constraints_span,
+            is_from_parent,
         };
         ok(type_parameter, warnings, errors)
     }

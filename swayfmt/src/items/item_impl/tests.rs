@@ -47,7 +47,7 @@ fmt_test_item!(  normal_with_generics
         Option::Some::<T>(value)
     }
     fn none() -> Self {
-        Option::None::<T>(())
+        None::<T>(())
     }
     fn to_result(self) -> Result<T> {
         if let Option::Some(value) = self {
@@ -63,7 +63,7 @@ fmt_test_item!(  normal_with_generics
                     Option::Some::<T>(value)
                 }
                 fn none() -> Self {
-                    Option::None::<T>(())
+                    None::<T>(())
                 }
                 fn to_result(self) -> Result<T> {
                     if let Option::Some(value) = self {

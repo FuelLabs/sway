@@ -168,8 +168,9 @@ fn item_to_ast_nodes(
             item_enum_to_enum_declaration(context, handler, engines, item_enum, attributes)?,
         )),
         ItemKind::Fn(item_fn) => {
-            let function_declaration =
-                item_fn_to_function_declaration(context, handler, engines, item_fn, attributes)?;
+            let function_declaration = item_fn_to_function_declaration(
+                context, handler, engines, item_fn, attributes, None,
+            )?;
             error_if_self_param_is_not_allowed(
                 context,
                 handler,
@@ -461,6 +462,7 @@ fn item_fn_to_function_declaration(
     engines: Engines<'_>,
     item_fn: ItemFn,
     attributes: AttributesMap,
+    parent_generic_params_opt: Option<GenericParams>,
 ) -> Result<FunctionDeclaration, ErrorEmitted> {
     let span = item_fn.span();
     let return_type = match item_fn.fn_signature.return_type_opt {
@@ -491,11 +493,12 @@ fn item_fn_to_function_declaration(
         )?,
         span,
         return_type,
-        type_parameters: generic_params_opt_to_type_parameters(
+        type_parameters: generic_params_opt_to_type_parameters_with_parent(
             context,
             handler,
             engines,
             item_fn.fn_signature.generics,
+            parent_generic_params_opt,
             item_fn.fn_signature.where_clause_opt.clone(),
         )?,
         where_clause: item_fn
@@ -573,7 +576,7 @@ fn item_trait_to_trait_declaration(
         context,
         handler,
         engines,
-        item_trait.generics,
+        item_trait.generics.clone(),
         item_trait.where_clause_opt,
     )?;
     let interface_surface = item_trait
@@ -614,6 +617,7 @@ fn item_trait_to_trait_declaration(
                     engines,
                     item_fn.value,
                     attributes,
+                    item_trait.generics.clone(),
                 )?))
             })
             .filter_map_ok(|fn_decl| fn_decl)
@@ -654,10 +658,15 @@ fn item_impl_to_declaration(
                 return Ok(None);
             }
             Ok(Some(match item.value {
-                sway_ast::ItemImplItem::Fn(fn_item) => {
-                    item_fn_to_function_declaration(context, handler, engines, fn_item, attributes)
-                        .map(ImplItem::Fn)
-                }
+                sway_ast::ItemImplItem::Fn(fn_item) => item_fn_to_function_declaration(
+                    context,
+                    handler,
+                    engines,
+                    fn_item,
+                    attributes,
+                    item_impl.generic_params_opt.clone(),
+                )
+                .map(ImplItem::Fn),
                 sway_ast::ItemImplItem::Const(const_item) => item_const_to_constant_declaration(
                     context, handler, engines, const_item, attributes, true,
                 )
@@ -798,6 +807,7 @@ fn item_abi_to_abi_declaration(
                         engines,
                         item_fn.value,
                         attributes,
+                        None,
                     )?;
                     error_if_self_param_is_not_allowed(
                         context,
@@ -1014,6 +1024,24 @@ fn generic_params_opt_to_type_parameters(
     generic_params_opt: Option<GenericParams>,
     where_clause_opt: Option<WhereClause>,
 ) -> Result<Vec<TypeParameter>, ErrorEmitted> {
+    generic_params_opt_to_type_parameters_with_parent(
+        context,
+        handler,
+        engines,
+        generic_params_opt,
+        None,
+        where_clause_opt,
+    )
+}
+
+fn generic_params_opt_to_type_parameters_with_parent(
+    context: &mut Context,
+    handler: &Handler,
+    engines: Engines<'_>,
+    generic_params_opt: Option<GenericParams>,
+    parent_generic_params_opt: Option<GenericParams>,
+    where_clause_opt: Option<WhereClause>,
+) -> Result<Vec<TypeParameter>, ErrorEmitted> {
     let type_engine = engines.te();
     let decl_engine = engines.de();
 
@@ -1026,7 +1054,8 @@ fn generic_params_opt_to_type_parameters(
         None => Vec::new(),
     };
 
-    let mut params = match generic_params_opt {
+    let generics_to_params = |generics: Option<GenericParams>, is_from_parent: bool| match generics
+    {
         Some(generic_params) => generic_params
             .parameters
             .into_inner()
@@ -1045,26 +1074,35 @@ fn generic_params_opt_to_type_parameters(
                     name_ident: ident,
                     trait_constraints: Vec::new(),
                     trait_constraints_span: Span::dummy(),
+                    is_from_parent,
                 }
             })
             .collect::<Vec<_>>(),
         None => Vec::new(),
     };
 
+    let mut params = generics_to_params(generic_params_opt, false);
+    let parent_params = generics_to_params(parent_generic_params_opt, true);
+
     let mut errors = Vec::new();
     for (ty_name, bounds) in trait_constraints.into_iter() {
-        let param_to_edit = match params
+        let param_to_edit = if let Some(o) = params
             .iter_mut()
             .find(|TypeParameter { name_ident, .. }| name_ident.as_str() == ty_name.as_str())
         {
-            Some(o) => o,
-            None => {
-                errors.push(ConvertParseTreeError::ConstrainedNonExistentType {
-                    ty_name: ty_name.clone(),
-                    span: ty_name.span().clone(),
-                });
-                continue;
-            }
+            o
+        } else if let Some(o2) = parent_params
+            .iter()
+            .find(|TypeParameter { name_ident, .. }| name_ident.as_str() == ty_name.as_str())
+        {
+            params.push(o2.clone());
+            params.last_mut().unwrap()
+        } else {
+            errors.push(ConvertParseTreeError::ConstrainedNonExistentType {
+                ty_name: ty_name.clone(),
+                span: ty_name.span().clone(),
+            });
+            continue;
         };
 
         param_to_edit.trait_constraints_span = Span::join(ty_name.span(), bounds.span());
@@ -2328,6 +2366,7 @@ fn fn_arg_to_function_parameter(
             mutable,
             name,
         } => (reference, mutable, name),
+        Pattern::AmbiguousSingleIdent(ident) => (None, None, ident),
         Pattern::Literal(..) => {
             let error = ConvertParseTreeError::LiteralPatternsNotSupportedHere { span: pat_span };
             return Err(handler.emit_err(error.into()));
@@ -2503,10 +2542,15 @@ fn path_expr_to_expression(
     path_expr: PathExpr,
 ) -> Result<Expression, ErrorEmitted> {
     let span = path_expr.span();
-    let expression = if path_expr.root_opt.is_none() && path_expr.suffix.is_empty() {
+    let expression = if path_expr.root_opt.is_none()
+        && path_expr.suffix.is_empty()
+        && path_expr.prefix.generics_opt.is_none()
+    {
+        // only `foo`, it coult either be a variable or an enum variant
+
         let name = path_expr_segment_to_ident(context, handler, &path_expr.prefix)?;
         Expression {
-            kind: ExpressionKind::Variable(name),
+            kind: ExpressionKind::AmbiguousVariableExpression(name),
             span,
         }
     } else {
@@ -3038,7 +3082,7 @@ fn statement_let_to_ast_nodes(
         span: Span,
     ) -> Result<Vec<AstNode>, ErrorEmitted> {
         let ast_nodes = match pattern {
-            Pattern::Wildcard { .. } | Pattern::Var { .. } => {
+            Pattern::Wildcard { .. } | Pattern::Var { .. } | Pattern::AmbiguousSingleIdent(..) => {
                 let (reference, mutable, name) = match pattern {
                     Pattern::Var {
                         reference,
@@ -3046,6 +3090,7 @@ fn statement_let_to_ast_nodes(
                         name,
                     } => (reference, mutable, name),
                     Pattern::Wildcard { .. } => (None, None, Ident::new_no_span("_".into())),
+                    Pattern::AmbiguousSingleIdent(ident) => (None, None, ident),
                     _ => unreachable!(),
                 };
                 if reference.is_some() {
@@ -3247,6 +3292,7 @@ fn statement_let_to_ast_nodes(
                                         ),
                                         trait_constraints: vec![],
                                         trait_constraints_span: Span::dummy(),
+                                        is_from_parent: false,
                                     };
                                     let initial_type_id = engines.te().insert(
                                         engines.de(),
@@ -3435,6 +3481,7 @@ fn pattern_to_scrutinee(
             }
             Scrutinee::Variable { name, span }
         }
+        Pattern::AmbiguousSingleIdent(ident) => Scrutinee::AmbiguousSingleIdent(ident),
         Pattern::Literal(literal) => Scrutinee::Literal {
             value: literal_to_literal(context, handler, literal)?,
             span,
@@ -3537,6 +3584,7 @@ fn ty_to_type_parameter(
                 name_ident: underscore_token.into(),
                 trait_constraints: Default::default(),
                 trait_constraints_span: Span::dummy(),
+                is_from_parent: false,
             });
         }
         Ty::Tuple(..) => panic!("tuple types are not allowed in this position"),
@@ -3556,6 +3604,7 @@ fn ty_to_type_parameter(
         name_ident,
         trait_constraints: Vec::new(),
         trait_constraints_span: Span::dummy(),
+        is_from_parent: false,
     })
 }
 
@@ -3728,13 +3777,7 @@ fn assignable_to_reassignment_target(
                 idents.push(name);
                 base = target;
             }
-            Assignable::Var(name) => {
-                if name.as_str() == "storage" {
-                    let idents = idents.into_iter().rev().cloned().collect();
-                    return Ok(ReassignmentTarget::StorageField(name.span(), idents));
-                }
-                break;
-            }
+            Assignable::Var(_) => break,
             Assignable::Index { .. } => break,
             Assignable::TupleFieldProjection { .. } => break,
         }
@@ -4021,7 +4064,6 @@ pub fn cfg_eval(
     if let Some(cfg_attrs) = attrs_map.get(&AttributeKind::Cfg) {
         for cfg_attr in cfg_attrs {
             for arg in &cfg_attr.args {
-                dbg!(arg.name.as_str());
                 match arg.name.as_str() {
                     CFG_TARGET_ARG_NAME => {
                         if let Some(value) = &arg.value {
@@ -4058,7 +4100,6 @@ pub fn cfg_eval(
                                 if let Ok(program_type) =
                                     TreeType::from_str(value_str.parsed.as_str())
                                 {
-                                    dbg!("kek", &program_type, &context.program_type().unwrap());
                                     if program_type != context.program_type().unwrap() {
                                         return Ok(false);
                                     }
