@@ -505,7 +505,7 @@ impl KeywordDocs {
             /// returned.
             ///
             /// ```sway
-            /// let opt = Option::None::<u32>;
+            /// let opt = None::<u32>;
             /// let x = match opt {
             ///     Some(int) => int,
             ///     None => 10,

@@ -15,14 +15,14 @@ storage {
 impl TestContract for Contract {
     #[storage(write)]
     fn initialize_counter(value: u64) -> u64 {
-        storage.counter = value;
+        storage.counter.write(value);
         value
     }
 
     #[storage(read, write)]
     fn increment_counter(amount: u64) -> u64 {
-        let incremented = storage.counter + amount;
-        storage.counter = incremented;
+        let incremented = storage.counter.read() + amount;
+        storage.counter.write(incremented);
         incremented
     }
 }

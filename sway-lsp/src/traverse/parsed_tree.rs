@@ -273,6 +273,12 @@ impl Parse for Expression {
                     Token::from_parsed(AstToken::Expression(self.clone()), SymbolKind::Field),
                 );
             }
+            ExpressionKind::AmbiguousVariableExpression(ident) => {
+                ctx.tokens.insert(
+                    to_ident_key(ident),
+                    Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Unknown),
+                );
+            }
             ExpressionKind::AmbiguousPathExpression(path_expr) => {
                 path_expr.parse(ctx);
             }
@@ -321,20 +327,6 @@ impl Parse for ReassignmentExpression {
         match &self.lhs {
             ReassignmentTarget::VariableExpression(exp) => {
                 exp.parse(ctx);
-            }
-            ReassignmentTarget::StorageField(storage_keyword_span, idents) => {
-                let storage_ident = Ident::new(storage_keyword_span.clone());
-                ctx.tokens.insert(
-                    to_ident_key(&storage_ident),
-                    Token::from_parsed(AstToken::Ident(storage_ident), SymbolKind::Storage),
-                );
-
-                for ident in idents {
-                    ctx.tokens.insert(
-                        to_ident_key(ident),
-                        Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Field),
-                    );
-                }
             }
         }
     }
@@ -533,6 +525,10 @@ impl Parse for Scrutinee {
                     Token::from_parsed(AstToken::Scrutinee(self.clone()), SymbolKind::Variant);
                 ctx.tokens.insert(to_ident_key(&call_path.suffix), token);
                 value.parse(ctx);
+            }
+            Scrutinee::AmbiguousSingleIdent(ident) => {
+                let token = Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Unknown);
+                ctx.tokens.insert(to_ident_key(ident), token);
             }
             Scrutinee::Tuple { elems, .. } | Scrutinee::Or { elems, .. } => {
                 elems.iter().for_each(|elem| elem.parse(ctx));

@@ -3,18 +3,18 @@ library;
 use ::assert::assert;
 use ::bytes::Bytes;
 use ::convert::TryFrom;
-use ::option::Option;
+use ::option::Option::{self, *};
 use ::logging::log;
 
 impl TryFrom<Bytes> for b256 {
     fn try_from(b: Bytes) -> Option<Self> {
         if b.len() > 32 {
-            Option::None
+            None
         } else {
             let mut val = 0x0000000000000000000000000000000000000000000000000000000000000000;
             let ptr = __addr_of(val);
             b.buf.ptr().copy_to::<b256>(ptr, 1);
-            Option::Some(val)
+            Some(val)
         }
     }
 }

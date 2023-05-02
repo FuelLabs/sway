@@ -3,7 +3,7 @@ library;
 
 use ::alloc::{alloc, realloc};
 use ::assert::assert;
-use ::option::Option;
+use ::option::Option::{self, *};
 use ::convert::From;
 
 struct RawVec<T> {
@@ -194,7 +194,7 @@ impl<T> Vec<T> {
         let ptr = self.buf.ptr().add::<T>(index);
 
         // Read from `ptr`
-        Option::Some(ptr.read::<T>())
+        Some(ptr.read::<T>())
     }
 
     /// Returns the number of elements in the vector, also referred to
@@ -346,10 +346,10 @@ impl<T> Vec<T> {
     /// ```
     pub fn pop(ref mut self) -> Option<T> {
         if self.len == 0 {
-            return Option::None;
+            return None;
         }
         self.len -= 1;
-        Option::Some(self.buf.ptr().add::<T>(self.len).read::<T>())
+        Some(self.buf.ptr().add::<T>(self.len).read::<T>())
     }
 
     /// Swaps two elements.

@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-10546B8FB2F34D61'
+
+[[package]]
+name = 'module_privacy'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-10546B8FB2F34D61'
+dependencies = ['core']

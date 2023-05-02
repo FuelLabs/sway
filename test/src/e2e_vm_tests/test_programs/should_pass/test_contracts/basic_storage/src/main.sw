@@ -1,5 +1,5 @@
 contract;
-use std::{hash::sha256, storage::*};
+use std::{hash::sha256, storage::storage_api::{read, write}};
 use basic_storage_abi::*;
 
 const C1 = 1;
@@ -23,12 +23,12 @@ storage {
 impl BasicStorage for Contract {
     #[storage(read)]
     fn get_u64(storage_key: b256) -> Option<u64> {
-        get(storage_key)
+        read(storage_key, 0)
     }
 
     #[storage(write)]
     fn store_u64(key: b256, value: u64) {
-        store(key, value);
+        write(key, 0, value);
     }
 
     #[storage(read)]
@@ -99,12 +99,12 @@ fn test_storage() {
     let key: b256 = 0x0101010101010101010101010101010101010101010101010101010101010101;
 
     let x: u64 = 64;
-    store(key, x);
-    assert(x == get::<u64>(key).unwrap());
+    write(key, 0, x);
+    assert(x == read::<u64>(key, 0).unwrap());
 
     let y: b256 = 0x1101010101010101010101010101010101010101010101010101010101010101;
-    store(key, y);
-    assert(y == get::<b256>(key).unwrap());
+    write(key, 0, y);
+    assert(y == read::<b256>(key, 0).unwrap());
 
     let s: S = S {
         x: 1,
@@ -120,27 +120,27 @@ fn test_storage() {
             int32: 9,
         },
     };
-    store(key, s);
-    let s_ = get::<S>(key).unwrap();
+    write(key, 0, s);
+    let s_ = read::<S>(key, 0).unwrap();
     assert(s.x == s_.x && s.y == s_.y && s.z == s_.z);
     assert(s.t.x == s_.t.x && s.t.y == s_.t.y && s.t.z == s_.t.z && s.t.boolean == s_.t.boolean); 
     assert(s.t.int8 == s_.t.int8 && s.t.int16 == s_.t.int16 && s.t.int32 == s_.t.int32);
 
     let boolean: bool = true;
-    store(key, boolean);
-    assert(boolean == get::<bool>(key).unwrap());
+    write(key, 0, boolean);
+    assert(boolean == read::<bool>(key, 0).unwrap());
 
     let int8: u8 = 8;
-    store(key, int8);
-    assert(int8 == get::<u8>(key).unwrap());
+    write(key, 0, int8);
+    assert(int8 == read::<u8>(key, 0).unwrap());
 
     let int16: u16 = 16;
-    store(key, int16);
-    assert(int16 == get::<u16>(key).unwrap());
+    write(key, 0, int16);
+    assert(int16 == read::<u16>(key, 0).unwrap());
 
     let int32: u32 = 32;
-    store(key, int32);
-    assert(int32 == get::<u32>(key).unwrap());
+    write(key, 0, int32);
+    assert(int32 == read::<u32>(key, 0).unwrap());
 
     let e: E = E::B(T {
         x: 1,
@@ -151,8 +151,8 @@ fn test_storage() {
         int16: 5,
         int32: 6,
     });
-    store(key, e);
-    let e_ = get::<E>(key).unwrap();
+    write(key, 0, e);
+    let e_ = read::<E>(key, 0).unwrap();
     match (e, e_) {
         (
 
@@ -182,8 +182,8 @@ fn test_storage() {
     }
 
     let e2: E = E::A(777);
-    store(key, e2);
-    let e2_ = get::<E>(key).unwrap();
+    write(key, 0, e2);
+    let e2_ = read::<E>(key, 0).unwrap();
     match (e2, e2_) {
         (E::A(i1), E::A(i2)) => {
             assert(i1 == i2);
@@ -191,18 +191,18 @@ fn test_storage() {
         _ => assert(false),
     }
 
-    assert_streq(storage.str0, "");
+    assert(storage.str0.try_read().is_none());
 
-    assert_streq(storage.str1, "a");
-    assert_streq(storage.str2, "aa");
-    assert_streq(storage.str3, "aaa");
-    assert_streq(storage.str4, "aaaa");
-    assert_streq(storage.str5, "aaaaa");
-    assert_streq(storage.str6, "aaaaaa");
-    assert_streq(storage.str7, "aaaaaaa");
-    assert_streq(storage.str8, "aaaaaaaa");
-    assert_streq(storage.str9, "aaaaaaaaa");
-    assert_streq(storage.str10, "aaaaaaaaaa");
+    assert_streq(storage.str1.read(), "a");
+    assert_streq(storage.str2.read(), "aa");
+    assert_streq(storage.str3.read(), "aaa");
+    assert_streq(storage.str4.read(), "aaaa");
+    assert_streq(storage.str5.read(), "aaaaa");
+    assert_streq(storage.str6.read(), "aaaaaa");
+    assert_streq(storage.str7.read(), "aaaaaaa");
+    assert_streq(storage.str8.read(), "aaaaaaaa");
+    assert_streq(storage.str9.read(), "aaaaaaaaa");
+    assert_streq(storage.str10.read(), "aaaaaaaaaa");
 }
 
 // If these comparisons are done inline just above then it blows out the register allocator due to

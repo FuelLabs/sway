@@ -97,11 +97,7 @@ fn parse_atomic_pattern(parser: &mut Parser) -> ParseResult<Pattern> {
             return Ok(Pattern::Struct { path, fields });
         }
         match path.try_into_ident() {
-            Ok(name) => Ok(Pattern::Var {
-                reference: None,
-                mutable: None,
-                name,
-            }),
+            Ok(name) => Ok(Pattern::AmbiguousSingleIdent(name)),
             Err(path) => Ok(Pattern::Constant(path)),
         }
     }

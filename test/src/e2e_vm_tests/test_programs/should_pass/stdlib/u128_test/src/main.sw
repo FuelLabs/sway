@@ -95,7 +95,7 @@ fn main() -> bool {
 
     let err_1 = U128::from((42, 11)).as_u64();
     assert(match err_1 {
-        Result::Err(U128Error::LossOfPrecision) => {
+        Err(U128Error::LossOfPrecision) => {
             true
         },
         _ => {
@@ -105,7 +105,7 @@ fn main() -> bool {
 
     let err_1 = U128::from((42, 0)).as_u64();
     assert(match err_1 {
-        Result::Err(U128Error::LossOfPrecision) => {
+        Err(U128Error::LossOfPrecision) => {
             true
         },
         _ => {

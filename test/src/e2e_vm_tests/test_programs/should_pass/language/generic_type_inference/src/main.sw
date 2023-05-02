@@ -44,12 +44,11 @@ fn simple_option_generics_test() {
     assert(get_an_option::<u64>().is_none());
 }
 
-// Disabled until https://github.com/FuelLabs/sway/issues/3946 is resolved
-/*fn test_assert_eq_u64() {
+fn test_assert_eq_u64() {
     let a = 42;
     let b = 40 + 2;
     assert_eq(a, b);
-}*/
+}
 
 fn test_try_from() {
     let x = u64::try_from(7);
@@ -61,7 +60,7 @@ fn main() {
     simple_vec_test();
     complex_vec_test();
     simple_option_generics_test();
-    // test_assert_eq_u64();
+    test_assert_eq_u64();
     test_try_from();
 }
 

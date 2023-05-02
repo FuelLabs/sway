@@ -4,8 +4,6 @@ mod other_contract;
 
 use other_contract::*;
 
-use std::auth::msg_sender;
-
 abi MyContract {
     #[storage(read, write)]
     fn withdraw(external_contract_id: ContractId);
@@ -19,7 +17,7 @@ impl MyContract for Contract {
     #[storage(read, write)]
     fn withdraw(external_contract_id: ContractId) {
         let sender = msg_sender().unwrap();
-        let bal = storage.balances.get(sender).unwrap_or(0);
+        let bal = storage.balances.get(sender).try_read().unwrap_or(0);
 
         assert(bal > 0);
 
