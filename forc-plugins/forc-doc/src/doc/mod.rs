@@ -67,8 +67,8 @@ impl Document {
         let mut impl_traits: Vec<TyImplTrait> = Vec::new();
         for ast_node in &typed_program.root.all_nodes {
             if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
-                if let TyDecl::ImplTrait { decl_id, .. } = decl {
-                    impl_traits.push(decl_engine.get_impl_trait(decl_id))
+                if let TyDecl::ImplTrait(impl_trait) = decl {
+                    impl_traits.push(decl_engine.get_impl_trait(&impl_trait.decl_id))
                 } else {
                     let desc = Descriptor::from_typed_decl(
                         decl_engine,
@@ -110,10 +110,12 @@ impl Document {
                 let mut impl_vec: Vec<TyImplTrait> = Vec::new();
 
                 match doc.item_body.ty_decl {
-                    TyDecl::StructDecl { ref name, .. } => {
+                    TyDecl::StructDecl(ref struct_decl) => {
                         for impl_trait in &impl_traits {
-                            if name.as_str() == impl_trait.implementing_for.span.as_str()
-                                && name.as_str() != impl_trait.trait_name.suffix.span().as_str()
+                            if struct_decl.name.as_str()
+                                == impl_trait.implementing_for.span.as_str()
+                                && struct_decl.name.as_str()
+                                    != impl_trait.trait_name.suffix.span().as_str()
                             {
                                 impl_vec.push(impl_trait.clone());
                             }
@@ -144,8 +146,8 @@ impl Document {
             .push(typed_submodule.mod_name_span.as_str().to_owned());
         for ast_node in &typed_submodule.module.all_nodes {
             if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
-                if let TyDecl::ImplTrait { decl_id, .. } = decl {
-                    impl_traits.push(decl_engine.get_impl_trait(decl_id))
+                if let TyDecl::ImplTrait(impl_trait) = decl {
+                    impl_traits.push(decl_engine.get_impl_trait(&impl_trait.decl_id))
                 } else {
                     let desc = Descriptor::from_typed_decl(
                         decl_engine,
