@@ -702,7 +702,6 @@ impl<'ir> FuelAsmBuilder<'ir> {
             // Check if we can use the `ADDi` opcode.
             if var_stack_off_bytes <= compiler_constants::TWELVE_BITS {
                 // Get the destination on the stack.
-                let dst_reg = self.reg_seqr.next();
                 self.cur_bytecode.push(Op {
                     opcode: Either::Left(VirtualOp::ADDI(
                         dst_reg.clone(),
