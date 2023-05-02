@@ -2,11 +2,11 @@
 name = "sway-core"
 version = "0.38.0"
 description = "Sway core language."
-authors.workspace = true
-edition.workspace = true
-homepage.workspace = true
-license.workspace = true
-repository.workspace = true
+authors = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
 
 [dependencies]
 clap = { version = "3.1", features = ["derive"] }

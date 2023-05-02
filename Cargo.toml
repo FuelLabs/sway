@@ -33,14 +33,15 @@ exclude = [
 debug = 2
 
 [workspace.dependencies]
-fuel-asm = "0.26"
-fuel-crypto = "0.26"
-fuel-tx = "0.26"
-fuel-core-client = "0.17"
-fuel-vm = "0.26"
-fuels-core = "0.36.1"
-fuels-signers = "0.36.1"
-fuels-types = "0.36.1"
+fuel-asm = "0.31"
+fuel-crypto = "0.31"
+fuel-types = "0.31"
+fuel-tx = "0.31"
+fuel-core-client = "0.18"
+fuel-vm = "0.31"
+fuels-core = "0.41"
+fuels-accounts = "0.41"
+fuels-types = "0.41"
 
 [workspace.package]
 edition = "2021"
@@ -48,3 +49,8 @@ authors = ["Fuel Labs <contact@fuel.sh>"]
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/sway"
+
+[patch.crates-io]
+fuels-core = { git = "https://github.com/FuelLabs/fuels-rs", branch = "feature/fuel-core-0.18" }
+fuels-types = { git = "https://github.com/FuelLabs/fuels-rs", branch = "feature/fuel-core-0.18" }
+fuels-accounts = { git = "https://github.com/FuelLabs/fuels-rs", branch = "feature/fuel-core-0.18" }

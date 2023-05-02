@@ -25,6 +25,7 @@ use std::{
     str::FromStr,
     sync::Arc,
 };
+use sway_core::fuel_prelude::fuel_tx::ConsensusParameters;
 use sway_core::{
     abi_generation::{
         evm_json_abi,
@@ -493,7 +494,14 @@ impl BuiltPackage {
             }
             TreeType::Predicate => {
                 // Get the root hash of the bytecode for predicates and store the result in a file in the output directory
-                let root = format!("0x{}", Contract::root_from_code(&self.bytecode.bytes));
+                // TODO: Pass the user specified `ChainId` into `predicate_owner`
+                let root = format!(
+                    "0x{}",
+                    fuel_tx::Input::predicate_owner(
+                        &self.bytecode.bytes,
+                        &ConsensusParameters::DEFAULT
+                    )
+                );
                 let root_file_name = format!("{}{}", &pkg_name, SWAY_BIN_ROOT_SUFFIX);
                 let root_path = output_dir.join(root_file_name);
                 fs::write(root_path, &root)?;

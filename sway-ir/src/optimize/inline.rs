@@ -569,14 +569,14 @@ fn inline_instruction(
                 FuelVmInstruction::ReadRegister(reg) => new_block.ins(context).read_register(reg),
                 FuelVmInstruction::Revert(val) => new_block.ins(context).revert(map_value(val)),
                 FuelVmInstruction::Smo {
-                    recipient_and_message,
+                    recipient,
+                    message,
                     message_size,
-                    output_index,
                     coins,
                 } => new_block.ins(context).smo(
-                    map_value(recipient_and_message),
+                    map_value(recipient),
+                    map_value(message),
                     map_value(message_size),
-                    map_value(output_index),
                     map_value(coins),
                 ),
                 FuelVmInstruction::StateClear {

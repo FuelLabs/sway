@@ -31,24 +31,26 @@ macro_rules! testgen {
 
                 pub async fn get_contract_instance() -> MyContract<WalletUnlocked> {
                     let wallet = launch_provider_and_get_wallet().await;
-
-                    let id = Contract::deploy(
+                    let id = Contract::load_from(
                         &format!(
                             "test_artifacts/storage_vec/svec_{}/out/debug/svec_{}.bin",
                             $type_label,
                             $type_label,
                         ),
-                        &wallet,
-                        DeployConfiguration::default()
-                        .set_tx_parameters(TxParameters::default().set_gas_limit(100_000_000))
-                        .set_storage_configuration(StorageConfiguration::default().set_storage_path(
-                            format!(
+                        LoadConfiguration::default()
+                        .set_storage_configuration(StorageConfiguration::load_from(
+                            &format!(
                                 "test_artifacts/storage_vec/svec_{}/out/debug/svec_{}-storage_slots.json",
                                 $type_label,
                                 $type_label,
-                            ).to_string()
-                        )),
-                    ).await.unwrap();
+                            )
+                        )
+                        .unwrap()),
+                    )
+                    .unwrap()
+                    .deploy(&wallet, TxParameters::default().set_gas_limit(100_000_000))
+                    .await
+                    .unwrap();
 
                     MyContract::new(id.clone(), wallet)
                 }

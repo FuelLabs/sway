@@ -2,11 +2,11 @@
 name = "forc-util"
 version = "0.38.0"
 description = "Utility items shared between forc crates."
-authors.workspace = true
-edition.workspace = true
-homepage.workspace = true
-license.workspace = true
-repository.workspace = true
+authors = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
 
 [dependencies]
 annotate-snippets = { version = "0.9", features = ["color"] }

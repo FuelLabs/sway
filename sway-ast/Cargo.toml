@@ -2,11 +2,11 @@
 name = "sway-ast"
 version = "0.38.0"
 description = "Sway's AST"
-authors.workspace = true
-edition.workspace = true
-homepage.workspace = true
-license.workspace = true
-repository.workspace = true
+authors = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
 
 [dependencies]
 extension-trait = "1.0.1"

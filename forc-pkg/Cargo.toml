@@ -2,11 +2,11 @@
 name = "forc-pkg"
 version = "0.38.0"
 description = "Building, locking, fetching and updating Sway projects as Forc packages."
-authors.workspace = true
-edition.workspace = true
-homepage.workspace = true
-license.workspace = true
-repository.workspace = true
+authors = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
 
 [dependencies]
 ansi_term = "0.12"

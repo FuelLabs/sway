@@ -2,11 +2,11 @@
 name = "sway-ir-macros"
 version = "0.38.0"
 description = "Macros for sway's intermediate representation."
-authors.workspace = true
-edition.workspace = true
-homepage.workspace = true
-license.workspace = true
-repository.workspace = true
+authors = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
 
 [lib]
 proc-macro = true

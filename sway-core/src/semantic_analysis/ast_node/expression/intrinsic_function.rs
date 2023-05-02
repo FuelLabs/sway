@@ -1267,10 +1267,9 @@ fn type_check_ptr_ops(
     )
 }
 
-/// Signature: `__smo<T>(recipient: b256, data: T, output_index: u64, coins: u64)`
+/// Signature: `__smo<T>(recipient: b256, data: T, coins: u64)`
 /// Description: Sends a message `data` of arbitrary type `T` and `coins` amount of the base asset
-/// to address `recipient`. This intrinsic assumes that an OutputMessage is available at index
-/// `output_index`.
+/// to address `recipient`.
 /// Constraints: None.
 fn type_check_smo(
     mut ctx: TypeCheckContext,
@@ -1285,10 +1284,10 @@ fn type_check_smo(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    if arguments.len() != 4 {
+    if arguments.len() != 3 {
         errors.push(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
-            expected: 4,
+            expected: 3,
             span,
         });
         return err(warnings, errors);
@@ -1366,25 +1365,13 @@ fn type_check_smo(
         errors
     );
 
-    // Type check the third argument which is the output index, so it has to be a `u64`.
-    let mut ctx = ctx.by_ref().with_type_annotation(type_engine.insert(
-        decl_engine,
-        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-    ));
-    let output_index = check!(
-        ty::TyExpression::type_check(ctx.by_ref(), arguments[2].clone()),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
     // Type check the fourth argument which is the amount of coins to send, so it has to be a `u64`.
     let mut ctx = ctx.by_ref().with_type_annotation(type_engine.insert(
         decl_engine,
         TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
     ));
     let coins = check!(
-        ty::TyExpression::type_check(ctx.by_ref(), arguments[3].clone()),
+        ty::TyExpression::type_check(ctx.by_ref(), arguments[2].clone()),
         return err(warnings, errors),
         warnings,
         errors
@@ -1394,7 +1381,7 @@ fn type_check_smo(
         (
             ty::TyIntrinsicFunctionKind {
                 kind,
-                arguments: vec![recipient, data, output_index, coins],
+                arguments: vec![recipient, data, coins],
                 type_arguments: type_argument.map_or(vec![], |ta| vec![ta]),
                 span,
             },

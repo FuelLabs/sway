@@ -2,11 +2,11 @@
 name = "forc-doc"
 version = "0.38.0"
 description = "Build the documentation for the local package and all dependencies. The output is placed in `out/doc` in the same format as the project."
-authors.workspace = true
-edition.workspace = true
-homepage.workspace = true
-license.workspace = true
-repository.workspace = true
+authors = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
 
 [dependencies]
 anyhow = "1.0.65"
