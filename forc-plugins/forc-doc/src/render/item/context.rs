@@ -443,10 +443,8 @@ impl Renderable for TyTraitItem {
 
         let method_id = format!("method.{}", method.name.as_str());
 
-        Ok(box_html! {
-            details(class="swaydoc-toggle method-toggle", open) {
-                summary {
-                    div(id=format!("method.{}", item.name().as_str()), class="method trait-impl") {
+        let impl_list = box_html! {
+            div(id=format!("method.{}", item.name().as_str()), class="method trait-impl") {
                         a(href=format!("{IDENTITY}method.{}", item.name().as_str()), class="anchor");
                         h4(class="code-header") {
                             : "fn ";
@@ -505,10 +503,20 @@ impl Renderable for TyTraitItem {
                             }
                         }
                     }
+        }.into_string()?;
+
+        Ok(box_html! {
+            @ if !attributes.is_empty() {
+                details(class="swaydoc-toggle method-toggle", open) {
+                    summary {
+                        : Raw(impl_list);
+                    }
+                    div(class="doc-block") {
+                        : Raw(attributes);
+                    }
                 }
-                div(class="doc-block") {
-                    : Raw(attributes);
-                }
+            } else {
+                : Raw(impl_list);
             }
         })
     }
