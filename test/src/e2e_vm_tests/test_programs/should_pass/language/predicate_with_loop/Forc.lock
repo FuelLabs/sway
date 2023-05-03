@@ -1,0 +1,8 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-4EBC207BE589285D'
+
+[[package]]
+name = 'predicate_with_loops'
+source = 'member'
+dependencies = ['core']
