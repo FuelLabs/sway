@@ -157,9 +157,21 @@ pub fn inline_in_non_predicate_module(
             None => {}
         }
 
+        let ret_type = func.get_return_type(ctx);
+        let num_args = {
+            func.args_iter(ctx).count()
+                + if super::target_fuel::is_demotable_type(ctx, &ret_type) {
+                    // The return type will be demoted to memory,
+                    // which means that there'll be an additional return arg.
+                    1
+                } else {
+                    0
+                }
+        };
+
         // For now, pending improvements to ASMgen for calls, we must inline any function which has
         // too many args.
-        if func.args_iter(ctx).count() as u8 > NUM_ARG_REGISTERS {
+        if num_args as u8 > NUM_ARG_REGISTERS {
             return true;
         }
 
