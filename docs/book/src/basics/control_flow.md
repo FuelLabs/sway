@@ -2,7 +2,10 @@
 
 ## `if` expressions
 
+<!-- This section should explain `if` expressions in Sway -->
+<!-- if:example:start -->
 Sway supports _if_, _else_, and _else if_ expressions that allow you to branch your code depending on conditions.
+<!-- if:example:end -->
 
 For example:
 
@@ -32,7 +35,10 @@ Note that all branches of the `if` expression must return a value of the same ty
 
 ### `match` expressions
 
+<!-- This section should explain `match` expressions in Sway -->
+<!-- match:example:start -->
 Sway supports advanced pattern matching through exhaustive `match` expressions. Unlike an `if` statement, a `match` expression asserts **at compile** time that all possible patterns have been matched. If you don't handle all the patterns, you will get compiler error indicating that your `match` expression is non-exhaustive.
+<!-- match:example:end -->
 
 The basic syntax of a `match` statement is as follows:
 

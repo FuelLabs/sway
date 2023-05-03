@@ -1761,10 +1761,6 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        if ctx.kind() == TreeType::Predicate {
-            errors.push(CompileError::DisallowedWhileInPredicate { span: span.clone() });
-        }
-
         let type_engine = ctx.type_engine;
         let decl_engine = ctx.decl_engine;
 
