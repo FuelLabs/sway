@@ -723,7 +723,7 @@ impl<V> StorageKey<StorageVec<V>> {
         let len_key = sha256((self.slot, self.offset));
         let mut len = read::<u64>(len_key, 0).unwrap_or(0);
         while len < new_len {
-            write::<V>(sha256((len, self.slot, self,offset)), 0, value);
+            write::<V>(sha256((len, self.slot, self.offset)), 0, value);
             len += 1;
         }
         write::<u64>(len_key, 0, new_len);

@@ -1,6 +1,7 @@
 library;
 
 use ::bytes::Bytes;
+use ::hash::sha256;
 use ::option::Option::{self, *};
 use ::storage::storable_slice::*;
 use ::storage::storage_api::*;
