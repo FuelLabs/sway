@@ -1,13 +1,14 @@
 library;
 
-use ::foo::Foo;
+use ::foo::{Foo, Baz};
 
 pub struct Bar {}
 
 impl Foo for Bar {
-    /// somethings more about foo();
+    /// something more about foo();
     fn foo() {}
 }
+impl Baz for Bar {}
 impl Bar {
     fn foo_bar() {
         Self::foo()
