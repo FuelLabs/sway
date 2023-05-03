@@ -1,6 +1,6 @@
 # Predicates
 
-A predicate is an executable that represents a UTXO spending condition, such as a multisig predicate, which has restrictions on the VM instructions that can be used (e.g. no jumps).
+A predicate is an executable that represents a UTXO spending condition, such as a multisig predicate, which has restrictions on the VM instructions that can be used .
 
 It does not need to be deployed to a blockchain because it only exists during a transaction. That being said, the predicate root is on chain as the owner of one or more UTXOs.
 

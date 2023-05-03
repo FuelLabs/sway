@@ -214,12 +214,32 @@ impl U256 {
 
 impl core::ops::Ord for U256 {
     fn gt(self, other: Self) -> bool {
-        self.a > other.a || (self.a == other.a && self.b > other.b || (self.b == other.b && self.c > other.c || (self.c == other.c && self.d > other.d)))
-    }
+        self.a > other.a ||
+                (self.a == other.a && (self.b > other.b ||
+                                      (self.b == other.b && (self.c > other.c ||
+                                                            (self.c == other.c && self.d > other.d)))) )
+        }
 
     fn lt(self, other: Self) -> bool {
-        self.a < other.a || (self.a == other.a && self.b < other.b || (self.b == other.b && self.c < other.c || (self.c == other.c && self.d < other.d)))
+        self.a < other.a ||
+                (self.a == other.a && (self.b < other.b ||
+                                      (self.b == other.b && (self.c < other.c ||
+                                                            (self.c == other.c && self.d < other.d)))) )
     }
+}
+
+#[test]
+fn test_u256_ord() {
+    assert(U256::from((0, 0, 0, 1)) < U256::from((0, u64::max(), 0, 0)));
+    assert(!(U256::from((0, 0, 0, 1)) > U256::from((0, u64::max(), 0, 0))));
+
+    assert(U256::from((0, u64::max(), 0, 0)) > U256::from((0, 0, 0, 1)));
+    assert(!(U256::from((0, u64::max(), 0, 0)) < U256::from((0, 0, 0, 1))));
+
+    assert(U256::max() > U256::from((0, 0, u64::max(), u64::max())));
+    assert(!(U256::max() < U256::from((0, 0, u64::max(), u64::max()))));
+    assert(U256::from((0, 0, u64::max(), u64::max())) < U256::max());
+    assert(!(U256::from((0, 0, u64::max(), u64::max())) > U256::max()));
 }
 
 impl core::ops::BitwiseAnd for U256 {
