@@ -146,7 +146,10 @@
                     <main>
                         <h1 id="control-flow"><a class="header" href="#control-flow">Control Flow</a></h1>
 <h2 id="if-expressions"><a class="header" href="#if-expressions"><code>if</code> expressions</a></h2>
+<!-- This section should explain `if` expressions in Sway -->
+<!-- if:example:start -->
 <p>Sway supports <em>if</em>, <em>else</em>, and <em>else if</em> expressions that allow you to branch your code depending on conditions.</p>
+<!-- if:example:end -->
 <p>For example:</p>
 <pre><code class="language-sway">fn main() {
     let number = 6;
@@ -166,7 +169,10 @@
 </code></pre>
 <p>Note that all branches of the <code>if</code> expression must return a value of the same type.</p>
 <h3 id="match-expressions"><a class="header" href="#match-expressions"><code>match</code> expressions</a></h3>
+<!-- This section should explain `match` expressions in Sway -->
+<!-- match:example:start -->
 <p>Sway supports advanced pattern matching through exhaustive <code>match</code> expressions. Unlike an <code>if</code> statement, a <code>match</code> expression asserts <strong>at compile</strong> time that all possible patterns have been matched. If you don't handle all the patterns, you will get compiler error indicating that your <code>match</code> expression is non-exhaustive.</p>
+<!-- match:example:end -->
 <p>The basic syntax of a <code>match</code> statement is as follows:</p>
 <pre><code class="language-sway">let result = match expression {
     pattern1 =&gt; code_to_execute_if_expression_matches_pattern1,

@@ -145,9 +145,12 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="storage"><a class="header" href="#storage">Storage</a></h1>
+<!-- This section should explain storage in Sway -->
+<!-- storage:example:start -->
 <p>When developing a <a href="../sway-program-types/smart_contracts.html">smart contract</a>, you will typically need some sort of persistent storage. In this case, persistent storage, often just called <em>storage</em> in this context, is a place where you can store values that are persisted inside the contract itself. This is in contrast to a regular value in <em>memory</em>, which disappears after the contract exits.</p>
 <p>Put in conventional programming terms, contract storage is like saving data to a hard drive. That data is saved even after the program which saved it exits. That data is persistent. Using memory is like declaring a variable in a program: it exists for the duration of the program and is non-persistent.</p>
 <p>Some basic use cases of storage include declaring an owner address for a contract and saving balances in a wallet.</p>
+<!-- storage:example:end -->
 <h2 id="storage-accesses-via-the-storage-keyword"><a class="header" href="#storage-accesses-via-the-storage-keyword">Storage Accesses Via the <code>storage</code> Keyword</a></h2>
 <p>Declaring variables in storage requires a <code>storage</code> declaration that contains a list of all your variables, their types, and their initial values as follows:</p>
 <pre><code class="language-sway">struct Type1 {

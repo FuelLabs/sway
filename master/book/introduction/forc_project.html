@@ -149,13 +149,19 @@
 <pre><code class="language-sh">forc new my-fuel-project
 </code></pre>
 <p>Here is the project that Forc has initialized:</p>
+<!-- This section should show the tree for a new forc project -->
+<!-- tree:example:start -->
 <pre><code class="language-console">$ cd my-fuel-project
 $ tree .
 ├── Forc.toml
 └── src
     └── main.sw
 </code></pre>
+<!-- tree:example:end -->
+<!-- This section should explain the `Forc.toml` file -->
+<!-- forc_toml:example:start -->
 <p><code>Forc.toml</code> is the <em>manifest file</em> (similar to <code>Cargo.toml</code> for Cargo or <code>package.json</code> for Node), and defines project metadata such as the project name and dependencies.</p>
+<!-- forc_toml:example:end -->
 <p>For additional information on dependency management, see: <a href="../forc/dependencies.html">here</a>.</p>
 <pre><code class="language-toml">[project]
 authors = [&quot;User&quot;]

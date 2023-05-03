@@ -145,9 +145,16 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="libraries"><a class="header" href="#libraries">Libraries</a></h1>
-<p>Libraries in Sway are files used to define new common behavior. The most prominent example of this is the <a href="../introduction/standard_library.html">Sway Standard Library</a> that is made implicitly available to all Forc projects created using <code>forc new</code>.</p>
+<!-- This section should explain what a library is -->
+<!-- library:example:start -->
+<p>Libraries in Sway are files used to define new common behavior.</p>
+<!-- library:example:end -->
+<p>The most prominent example of this is the <a href="../introduction/standard_library.html">Sway Standard Library</a> that is made implicitly available to all Forc projects created using <code>forc new</code>.</p>
 <h2 id="writing-libraries"><a class="header" href="#writing-libraries">Writing Libraries</a></h2>
+<!-- This section should explain how libraries are defined -->
+<!-- def_lib:example:start -->
 <p>Libraries are defined using the <code>library</code> keyword at the beginning of a file, followed by a name so that they can be imported.</p>
+<!-- def_lib:example:end -->
 <pre><code class="language-sway">library;
 
 // library code
@@ -194,8 +201,11 @@ name = &quot;my_library&quot;
 </code></pre>
 <p>which denotes the authors, an entry file, the name by which it can be imported, and any dependencies.</p>
 <p>For large libraries, it is recommended to have a <code>lib.sw</code> entry point re-export all other sub-libraries.</p>
+<!-- This section should explain the `mod` keyword -->
+<!-- mod:example:start -->
 <p>The <code>mod</code> keyword registers a submodule, making its items (such as functions and structs) accessible from the parent library.
 If used at the top level it will refer to a file in the <code>src</code> folder and in other cases in a folder named after the library in which it is defined.</p>
+<!-- mod:example:end -->
 <p>For example, the <code>lib.sw</code> of the standard library looks like:</p>
 <pre><code class="language-sway">library;
 

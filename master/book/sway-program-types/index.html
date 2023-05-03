@@ -145,8 +145,11 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="sway-program-types"><a class="header" href="#sway-program-types">Sway Program Types</a></h1>
+<!-- This section should explain program types -->
+<!-- programs:example:start -->
 <p>A Sway program itself has a type: it is either a <em>contract</em>, a <em>predicate</em>, a <em>script</em>, or a <em>library</em>. The first three of these things are all deployable to the blockchain. A <em>library</em> is simply a project designed for code reuse and is never directly deployed to the chain.</p>
 <p>Every Sway file <em>must</em> begin with a declaration of what type of program it is. A project can have many libraries within it, but only one contract, script, or predicate. Scripts and predicates require <code>main</code> functions to serve as entry points, while contracts instead publish an ABI. This chapter will go into detail about all of these various types of programs and what purposes they serve.</p>
+<!-- programs:example:end -->
 <p>Contracts are used primarily for protocols or systems that operate within a fixed set of rules. A good example would be a staking contract or a decentralized exchange.</p>
 <p>Scripts are used for complex on-chain interactions that won't persist. An example of this may be using a DEX and Lender to create a leveraged position (borrow, swap, re-collateralize, borrow) which is a complex transaction that would usually take multiple steps.</p>
 <p>Libraries are for code that is reusable and useful for handling common situations. A good example of this would be a library to handle fixed-point math or big number math.</p>

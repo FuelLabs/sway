@@ -145,18 +145,29 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="storage-maps"><a class="header" href="#storage-maps">Storage Maps</a></h1>
-<p>Another important common collection is the storage map. The type <code>StorageMap&lt;K, V&gt;</code> from the standard library stores a mapping of keys of type <code>K</code> to values of type <code>V</code> using a hashing function, which determines how it places these keys and values into <em>storage slots</em>. This is similar to <a href="https://doc.rust-lang.org/std/collections/struct.HashMap.html">Rust's <code>HashMap&lt;K, V&gt;</code></a> but with a few differences.</p>
+<p>Another important common collection is the storage map.</p>
+<!-- This section should explain storage maps in Sway -->
+<!-- storage_map:example:start -->
+<p>The type <code>StorageMap&lt;K, V&gt;</code> from the standard library stores a mapping of keys of type <code>K</code> to values of type <code>V</code> using a hashing function, which determines how it places these keys and values into <em>storage slots</em>. This is similar to <a href="https://doc.rust-lang.org/std/collections/struct.HashMap.html">Rust's <code>HashMap&lt;K, V&gt;</code></a> but with a few differences.</p>
 <p>Storage maps are useful when you want to look up data not by using an index, as you can with vectors, but by using a key that can be of any type. For example, when building a ledger-based sub-currency smart contract, you could keep track of the balance of each wallet in a storage map in which each key is a wallet’s <code>Address</code> and the values are each wallet’s balance. Given an <code>Address</code>, you can retrieve its balance.</p>
 <p>Similarly to <code>StorageVec&lt;T&gt;</code>, <code>StorageMap&lt;K, V&gt;</code> can only be used in a contract because only contracts are allowed to access persistent storage.</p>
 <p><code>StorageMap&lt;T&gt;</code> is included in the <a href="../introduction/standard_library.html#standard-library-prelude">standard library prelude</a> which means that there is no need to import it manually.</p>
+<!-- storage_map:example:end -->
 <h2 id="creating-a-new-storage-map"><a class="header" href="#creating-a-new-storage-map">Creating a New Storage Map</a></h2>
 <p>To create a new empty storage map, we have to declare the map in a <code>storage</code> block as follows:</p>
 <pre><code class="language-sway">    map: StorageMap&lt;Address, u64&gt; = StorageMap {},
 </code></pre>
+<!-- This section should explain how to implement storage maps in Sway -->
+<!-- use_storage_maps:example:start -->
 <p>Just like any other storage variable, two things are required when declaring a <code>StorageMap</code>: a type annotation and an initializer. The initializer is just an empty struct of type <code>StorageMap</code> because <code>StorageMap&lt;K, V&gt;</code> itself is an empty struct! Everything that is interesting about <code>StorageMap&lt;K, V&gt;</code> is implemented in its methods.</p>
 <p>Storage maps, just like <code>Vec&lt;T&gt;</code> and <code>StorageVec&lt;T&gt;</code>, are implemented using generics which means that the <code>StorageMap&lt;K, V&gt;</code> type provided by the standard library can map keys of any type <code>K</code> to values of any type <code>V</code>. In the example above, we’ve told the Sway compiler that the <code>StorageMap&lt;K, V&gt;</code> in <code>map</code> will map keys of type <code>Address</code> to values of type <code>u64</code>.</p>
+<!-- use_storage_maps:example:end -->
 <h2 id="updating-a-storage-map"><a class="header" href="#updating-a-storage-map">Updating a Storage Map</a></h2>
-<p>To insert key-value pairs into a storage map, we can use the <code>insert</code> method, as shown below:</p>
+<!-- This section should explain how to update storage maps in Sway -->
+<!-- update_storage_maps:example:start -->
+<p>To insert key-value pairs into a storage map, we can use the <code>insert</code> method.</p>
+<!-- update_storage_maps:example:end -->
+<p>For example:</p>
 <pre><code class="language-sway">    #[storage(write)]
     fn insert_into_storage_map() {
         let addr1 = Address::from(0x0101010101010101010101010101010101010101010101010101010101010101);
@@ -177,7 +188,11 @@ The storage annotation is also required for any private function defined in the 
 There is no need to add the <code>mut</code> keyword when declaring a <code>StorageMap&lt;K, V&gt;</code>. All storage variables are mutable by default.</p>
 </blockquote>
 <h2 id="accessing-values-in-a-storage-map"><a class="header" href="#accessing-values-in-a-storage-map">Accessing Values in a Storage Map</a></h2>
-<p>We can get a value out of the storage map by providing its <code>key</code> to the <code>get</code> method, as shown below:</p>
+<!-- This section should explain how to access storage map values in Sway -->
+<!-- access_storage_maps:example:start -->
+<p>We can get a value out of the storage map by providing its <code>key</code> to the <code>get</code> method.</p>
+<!-- access_storage_maps:example:end -->
+<p>For example:</p>
 <pre><code class="language-sway">    #[storage(read, write)]
     fn get_from_storage_map() {
         let addr1 = Address::from(0x0101010101010101010101010101010101010101010101010101010101010101);

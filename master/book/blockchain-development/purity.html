@@ -145,8 +145,11 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="purity"><a class="header" href="#purity">Purity</a></h1>
+<!-- This section should explain pure functions in Sway -->
+<!-- pure:example:start -->
 <p>A function is <em>pure</em> if it does not access any <a href="./storage.html">persistent storage</a>. Conversely, the function is <em>impure</em> if it does access any storage. Naturally, as storage is only available in smart contracts, impure functions cannot be used in predicates, scripts, or libraries. A pure function cannot call an impure function.</p>
 <p>In Sway, functions are pure by default but can be opted into impurity via the <code>storage</code> function attribute. The <code>storage</code> attribute may take <code>read</code> and/or <code>write</code> arguments indicating which type of access the function requires.</p>
+<!-- pure:example:end -->
 <pre><code class="language-sway">#[storage(read)]
 fn get_amount() -&gt; u64 {
     ...
@@ -160,9 +163,16 @@ fn increment_amount(increment: u64) -&gt; u64 {
 <blockquote>
 <p><strong>Note</strong>: the <code>#[storage(write)]</code> attribute also permits a function to read from storage. This is due to the fact that partially writing a storage slot requires first reading the slot.</p>
 </blockquote>
+<!-- This section should explain impure functions in Sway -->
+<!-- impure:example:start -->
 <p>Impure functions which call other impure functions must have at least the same storage privileges or a superset of those for the function called. For example, to call a function with write access a caller must also have write access, or both read and write access. To call a function with read and write access the caller must also have both privileges.</p>
+<!-- impure:example:end -->
 <p>The <code>storage</code> attribute may also be applied to <a href="../basics/methods_and_associated_functions.html">methods and associated functions</a>, <a href="../advanced/traits.html">trait</a> and <a href="../sway-program-types/smart_contracts.html#the-abi-declaration">ABI</a> declarations.</p>
-<p>A pure function gives you some guarantees: you will not incur excessive storage gas costs, the compiler can apply additional optimizations, and they are generally easy to reason about and audit. <a href="https://docs.soliditylang.org/en/v0.8.10/contracts.html#pure-functions">A similar concept exists in Solidity</a>. Note that Solidity refers to contract storage as <em>contract state</em>, and in the Sway/Fuel ecosystem, these two terms are largely interchangeable.</p>
+<!-- This section should explain the benefits of using pure functions in Sway -->
+<!-- pure_benefits:example:start -->
+<p>A pure function gives you some guarantees: you will not incur excessive storage gas costs, the compiler can apply additional optimizations, and they are generally easy to reason about and audit.</p>
+<!-- pure_benefits:example:end -->
+<p><a href="https://docs.soliditylang.org/en/v0.8.10/contracts.html#pure-functions">A similar concept exists in Solidity</a>. Note that Solidity refers to contract storage as <em>contract state</em>, and in the Sway/Fuel ecosystem, these two terms are largely interchangeable.</p>
 
                     </main>
 

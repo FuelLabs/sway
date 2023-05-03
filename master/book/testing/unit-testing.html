@@ -145,8 +145,12 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="unit-testing"><a class="header" href="#unit-testing">Unit Testing</a></h1>
+<!-- This section should explain unit testing in Sway -->
+<!-- unit_test:example:start -->
 <p>Forc provides built-in support for building and executing tests for a package.</p>
-<p>Tests are written as free functions with the <code>#[test]</code> attribute. For example:</p>
+<p>Tests are written as free functions with the <code>#[test]</code> attribute.</p>
+<!-- unit_test:example:end -->
+<p>For example:</p>
 <pre><code class="language-sway">#[test]
 fn test_meaning_of_life() {
     assert(6 * 7 == 42);
@@ -172,7 +176,11 @@ successfully, and &quot;fail&quot; if they revert or vice versa while <a href="#
 <p>Visit the <a href="../forc/commands/forc_test.html"><code>forc test</code></a> command reference to find
 the options available for <code>forc test</code>.</p>
 <h2 id="testing-failure"><a class="header" href="#testing-failure">Testing Failure</a></h2>
-<p>Forc supports testing failing cases for test functions declared with <code>#[test(should_revert)]</code>. For example:</p>
+<!-- This section should explain support for failing unit tests in Sway -->
+<!-- unit_test_fail:example:start -->
+<p>Forc supports testing failing cases for test functions declared with <code>#[test(should_revert)]</code>.</p>
+<!-- unit_test_fail:example:end -->
+<p>For example:</p>
 <pre><code class="language-sway">#[test(should_revert)]
 fn test_meaning_of_life() {
     assert(6 * 6 == 42);
@@ -209,9 +217,12 @@ fn test_fail() {
     assert(result == false)
 }
 </code></pre>
+<!-- This section should explain how the `CONTRACT_ID` variable works in Sway unit tests -->
+<!-- contract_id:example:start -->
 <blockquote>
 <p><strong>Note:</strong> When running <code>forc test</code>, your contract will be built twice: first <em>without</em> unit tests in order to determine the contract's ID, then a second time <em>with</em> unit tests with the <code>CONTRACT_ID</code> provided to their namespace. This <code>CONTRACT_ID</code> can be used with the <code>abi</code> cast to enable contract calls within unit tests.</p>
 </blockquote>
+<!-- contract_id:example:end -->
 <p>Unit tests can call methods of external contracts if those contracts are added as contract dependencies, i.e. in the the <a href="../forc/manifest_reference.html#the-contract-dependencies-section"><code>contract-dependencies</code></a> section of the manifest file. An example of such calls is shown below:</p>
 <pre><code class="language-sway">contract;
 
@@ -254,7 +265,10 @@ std = { path = &quot;../../../sway-lib-std/&quot; }
 callee = { path = &quot;../callee&quot; }
 </code></pre>
 <h2 id="running-tests-in-parallel-or-serially"><a class="header" href="#running-tests-in-parallel-or-serially">Running Tests in Parallel or Serially</a></h2>
+<!-- This section should explain how unit tests do not share storage -->
+<!-- storage:example:start -->
 <p>By default, all unit tests in your project are run in parallel. Note that this does not lead to any data races in storage because each unit test has its own storage space that is not shared by any other unit test.</p>
+<!-- storage:example:end -->
 <p>By default, <code>forc test</code> will use all the available threads in your system. To request that a specific number of threads be used, the flag <code>--test-threads &lt;val&gt;</code> can be provided to <code>forc test</code>.</p>
 <pre><code class="language-console">forc test --test-threads 1
 </code></pre>

@@ -158,7 +158,11 @@
 }
 </code></pre>
 <h2 id="mutable-parameters"><a class="header" href="#mutable-parameters">Mutable Parameters</a></h2>
-<p>We can make a function parameter mutable by adding <code>ref mut</code> before the parameter name. This allows mutating the argument passed into the function when the function is called. For example:</p>
+<!-- This section should explain how/when to use `ref mut` -->
+<!-- ref_mut:example:start -->
+<p>We can make a function parameter mutable by adding <code>ref mut</code> before the parameter name. This allows mutating the argument passed into the function when the function is called.</p>
+<!-- ref_mut:example:end -->
+<p>For example:</p>
 <pre><code class="language-sway">fn increment(ref mut num: u32) {
     let prev = num;
     num = prev + 1u32;

@@ -148,7 +148,10 @@
 <p>Sway is fundamentally a blockchain language, and it offers a selection of types tailored for the blockchain use case.</p>
 <p>These are provided via the standard library (<a href="https://github.com/FuelLabs/sway/tree/master/sway-lib-std"><code>lib-std</code></a>) which both add a degree of type-safety, as well as make the intention of the developer more clear.</p>
 <h2 id="address-type"><a class="header" href="#address-type"><code>Address</code> Type</a></h2>
+<!-- This section should explain the `Address` type -->
+<!-- address:example:start -->
 <p>The <code>Address</code> type is a type-safe wrapper around the primitive <code>b256</code> type. Unlike the EVM, an address <strong>never</strong> refers to a deployed smart contract (see the <code>ContractId</code> type below). An <code>Address</code> can be either the hash of a public key (effectively an <a href="https://ethereum.org/en/whitepaper/#ethereum-accounts">externally owned account</a> if you're coming from the EVM) or the hash of a <a href="../sway-program-types/predicates.html">predicate</a>. Addresses own UTXOs.</p>
+<!-- address:example:end -->
 <p>An <code>Address</code> is implemented as follows.</p>
 <pre><code class="language-sway">pub struct Address {
     value: b256,
@@ -160,7 +163,10 @@ let my_address: Address = Address::from(my_number);
 let forty_two: b256 = my_address.into();
 </code></pre>
 <h2 id="contractid-type"><a class="header" href="#contractid-type"><code>ContractId</code> Type</a></h2>
+<!-- This section should explain the `ContractId` type -->
+<!-- contract_id:example:start -->
 <p>The <code>ContractId</code> type is a type-safe wrapper around the primitive <code>b256</code> type. A contract's ID is a unique, deterministic identifier analogous to a contract's address in the EVM. Contracts cannot own UTXOs but can own assets.</p>
+<!-- contract_id:example:end -->
 <p>A <code>ContractId</code> is implemented as follows.</p>
 <pre><code class="language-sway">pub struct ContractId {
     value: b256,
@@ -172,7 +178,10 @@ let my_contract_id: ContractId = ContractId::from(my_number);
 let forty_two: b256 = my_contract_id.into();
 </code></pre>
 <h2 id="identity-type"><a class="header" href="#identity-type"><code>Identity</code> Type</a></h2>
+<!-- This section should explain the `Identity` type -->
+<!-- identity:example:start -->
 <p>The <code>Identity</code> type is an enum that allows for the handling of both <code>Address</code> and <code>ContractId</code> types. This is useful in cases where either type is accepted, e.g. receiving funds from an identified sender, but not caring if the sender is an address or a contract.</p>
+<!-- identity:example:end -->
 <p>An <code>Identity</code> is implemented as follows.</p>
 <pre><code class="language-sway">pub enum Identity {
     Address: Address,
@@ -194,7 +203,10 @@ let forty_two: b256 = my_contract_id.into();
             Identity::ContractId(contract_id) =&gt; force_transfer_to_contract(amount, token_id, contract_id),
         };
 </code></pre>
+<!-- This section should explain the use case for the `Identity` type -->
+<!-- use_identity:example:start -->
 <p>A common use case for <code>Identity</code> is for access control. The use of <code>Identity</code> uniquely allows both <code>ContractId</code> and <code>Address</code> to have access control inclusively.</p>
+<!-- use_identity:example:end -->
 <pre><code class="language-sway">        let sender = msg_sender().unwrap();
         require(sender == storage.owner.read(), MyError::UnauthorizedUser(sender));
 </code></pre>

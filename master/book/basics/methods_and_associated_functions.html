@@ -145,9 +145,12 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="methods-and-associated-functions"><a class="header" href="#methods-and-associated-functions">Methods and Associated Functions</a></h1>
+<!-- This section should explain methods & associated functions in Sway -->
+<!-- methods_af:example:start -->
 <p>Methods are similar to functions in that we declare them with the <code>fn</code> keyword and they have parameters and return a value. However, unlike functions, <em>Methods</em> are defined within the context of a struct (or enum), and either refers to that type or mutates it. The first parameter of a method is always <code>self</code>, which represents the instance of the struct the method is being called on.</p>
 <p><em>Associated functions</em> are very similar to <em>methods</em>, in that they are also defined in the context of a struct or enum, but they do not actually use any of the data in the struct and as a result do not take <em>self</em> as a parameter. Associated functions could be standalone functions, but they are included in a specific type for organizational or semantic reasons.</p>
 <p>To declare methods and associated functions for a struct or enum, use an <em>impl block</em>. Here, <code>impl</code> stands for implementation.</p>
+<!-- methods_af:example:end -->
 <pre><code class="language-sway">script;
 
 struct Foo {
@@ -175,8 +178,15 @@ fn main() {
     assert(foo.is_baz_true());
 }
 </code></pre>
+<!-- This section should explain how to call a method -->
+<!-- call_method:example:start -->
 <p>To call a method, simply use dot syntax: <code>foo.iz_baz_true()</code>.</p>
-<p>Similarly to <a href="functions.html">free functions</a>, methods and associated functions may accept <code>ref mut</code> parameters. For example:</p>
+<!-- call_method:example:end -->
+<!-- This section should explain how methods + assoc. fns can accept `ref mut` params -->
+<!-- ref_mut:example:start -->
+<p>Similarly to <a href="functions.html">free functions</a>, methods and associated functions may accept <code>ref mut</code> parameters.</p>
+<!-- ref_mut:example:end -->
+<p>For example:</p>
 <pre><code class="language-sway">struct Coordinates {
     x: u64,
     y: u64,

@@ -322,13 +322,19 @@ default formatter, like this:</p>
 <pre><code class="language-sh">forc new my-fuel-project
 </code></pre>
 <p>Here is the project that Forc has initialized:</p>
+<!-- This section should show the tree for a new forc project -->
+<!-- tree:example:start -->
 <pre><code class="language-console">$ cd my-fuel-project
 $ tree .
 ├── Forc.toml
 └── src
     └── main.sw
 </code></pre>
+<!-- tree:example:end -->
+<!-- This section should explain the `Forc.toml` file -->
+<!-- forc_toml:example:start -->
 <p><code>Forc.toml</code> is the <em>manifest file</em> (similar to <code>Cargo.toml</code> for Cargo or <code>package.json</code> for Node), and defines project metadata such as the project name and dependencies.</p>
+<!-- forc_toml:example:end -->
 <p>For additional information on dependency management, see: <a href="introduction/../forc/dependencies.html">here</a>.</p>
 <pre><code class="language-toml">[project]
 authors = [&quot;User&quot;]
@@ -376,8 +382,11 @@ data_0 .word 559005003
   Bytecode size is 60 bytes.
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="standard-library"><a class="header" href="#standard-library">Standard Library</a></h1>
+<!-- This section should explain what the std-lib is -->
+<!-- std_lib:example:start -->
 <p>Similar to Rust, Sway comes with its own standard library.</p>
 <p>The Sway Standard Library is the foundation of portable Sway software, a set of minimal shared abstractions for the broader Sway ecosystem. It offers core types, like <code>Result&lt;T, E&gt;</code> and <code>Option&lt;T&gt;</code>, library-defined operations on language primitives, native asset management, blockchain contextual operations, access control, storage management, and support for types from other VMs, among many other things.</p>
+<!-- std_lib:example:end -->
 <p>The entire Sway standard library is a Forc project called <code>std</code>, and is available directly here: <a href="https://github.com/FuelLabs/sway/tree/master/sway-lib-std">https://github.com/FuelLabs/sway/tree/master/sway-lib-std</a> (navigate to the appropriate tagged release if the latest <code>master</code> is not compatible). For the latest <code>std</code> documentation see: <a href="https://fuellabs.github.io/sway/master/std/">https://fuellabs.github.io/sway/master/std/</a>.</p>
 <h2 id="using-the-standard-library"><a class="header" href="#using-the-standard-library">Using the Standard Library</a></h2>
 <p>The standard library is made implicitly available to all Forc projects created using <a href="introduction/../forc/commands/forc_new.html"><code>forc new</code></a>. In other words, it is not required to manually specify <code>std</code> as an explicit dependency. Forc will automatically use the version of <code>std</code> that matches its version.</p>
@@ -386,6 +395,8 @@ data_0 .word 559005003
 </code></pre>
 <p>This imports the <code>StorageVec</code> type into the current namespace.</p>
 <h2 id="standard-library-prelude"><a class="header" href="#standard-library-prelude">Standard Library Prelude</a></h2>
+<!-- This section should explain what the std-lib prelude is -->
+<!-- prelude:example:start -->
 <p>Sway comes with a variety of things in its standard library. However, if you had to manually import every single thing that you used, it would be very verbose. But importing a lot of things that a program never uses isn't good either. A balance needs to be struck.</p>
 <p>The prelude is the list of things that Sway automatically imports into every Sway program. It's kept as small as possible, and is focused on things which are used in almost every single Sway program.</p>
 <p>The current version of the prelude lives in <a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/prelude.sw"><code>std::prelude</code></a>, and re-exports the following:</p>
@@ -405,6 +416,7 @@ data_0 .word 559005003
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/logging.sw"><code>std::logging::log</code></a>, a function that logs arbitrary stack types.</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/auth.sw"><code>std::auth::msg_sender</code></a>, a function that gets the <code>Identity</code> from which a call was made.</li>
 </ul>
+<!-- prelude:example:end -->
 <div style="break-before: page; page-break-before: always;"></div><h1 id="example"><a class="header" href="#example">Example</a></h1>
 <p>Some basic example contracts to see how Sway and Forc work.</p>
 <ul>
@@ -632,8 +644,11 @@ impl Wallet for Contract {
 }
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="sway-program-types"><a class="header" href="#sway-program-types">Sway Program Types</a></h1>
+<!-- This section should explain program types -->
+<!-- programs:example:start -->
 <p>A Sway program itself has a type: it is either a <em>contract</em>, a <em>predicate</em>, a <em>script</em>, or a <em>library</em>. The first three of these things are all deployable to the blockchain. A <em>library</em> is simply a project designed for code reuse and is never directly deployed to the chain.</p>
 <p>Every Sway file <em>must</em> begin with a declaration of what type of program it is. A project can have many libraries within it, but only one contract, script, or predicate. Scripts and predicates require <code>main</code> functions to serve as entry points, while contracts instead publish an ABI. This chapter will go into detail about all of these various types of programs and what purposes they serve.</p>
+<!-- programs:example:end -->
 <p>Contracts are used primarily for protocols or systems that operate within a fixed set of rules. A good example would be a staking contract or a decentralized exchange.</p>
 <p>Scripts are used for complex on-chain interactions that won't persist. An example of this may be using a DEX and Lender to create a leveraged position (borrow, swap, re-collateralize, borrow) which is a complex transaction that would usually take multiple steps.</p>
 <p>Libraries are for code that is reusable and useful for handling common situations. A good example of this would be a library to handle fixed-point math or big number math.</p>
@@ -644,9 +659,18 @@ impl Wallet for Contract {
 <li><a href="sway-program-types/./predicates.html">Predicates</a></li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="what-is-a-smart-contract"><a class="header" href="#what-is-a-smart-contract">What is a Smart Contract?</a></h1>
-<p>A smart contract is no different than a script or predicate in that it is a piece of bytecode that is deployed to the blockchain via a <a href="https://fuellabs.github.io/fuel-specs/master/protocol/tx_format">transaction</a>. The main features of a smart contract that differentiate it from scripts or predicates are that it is <em>callable</em> and <em>stateful</em>. Put another way, a smart contract is analogous to a deployed API with some database state. The interface of a smart contract, also just called a contract, must be defined strictly with an <a href="sway-program-types/smart_contracts.html#the-abi-declaration">ABI declaration</a>. See <a href="sway-program-types/../examples/subcurrency.html">this contract</a> for an example.</p>
+<!-- This section should explain what is a smart contract -->
+<!-- contract:example:start -->
+<p>A smart contract is no different than a script or predicate in that it is a piece of bytecode that is deployed to the blockchain via a <a href="https://fuellabs.github.io/fuel-specs/master/protocol/tx_format">transaction</a>. The main features of a smart contract that differentiate it from scripts or predicates are that it is <em>callable</em> and <em>stateful</em>. Put another way, a smart contract is analogous to a deployed API with some database state.</p>
+<!-- contract:example:end -->
+<p>The interface of a smart contract, also just called a contract, must be defined strictly with an <a href="sway-program-types/smart_contracts.html#the-abi-declaration">ABI declaration</a>. See <a href="sway-program-types/../examples/subcurrency.html">this contract</a> for an example.</p>
 <h2 id="syntax-of-a-smart-contract"><a class="header" href="#syntax-of-a-smart-contract">Syntax of a Smart Contract</a></h2>
-<p>As with any Sway program, the program starts with a declaration of what <a href="sway-program-types/./index.html">program type</a> it is. A contract must also either define or import an <a href="sway-program-types/smart_contracts.html#the-abi-declaration">ABI declaration</a> and implement it. It is considered good practice to define your ABI in a separate library and import it into your contract. This allows callers of your contract to simply import the ABI directly and use it in their scripts to call your contract. Let's take a look at an ABI declaration in a library:</p>
+<p>As with any Sway program, the program starts with a declaration of what <a href="sway-program-types/./index.html">program type</a> it is. A contract must also either define or import an <a href="sway-program-types/smart_contracts.html#the-abi-declaration">ABI declaration</a> and implement it.</p>
+<!-- This section should explain best practices for ABIs -->
+<!-- abi:example:start -->
+<p>It is considered good practice to define your ABI in a separate library and import it into your contract. This allows callers of your contract to simply import the ABI directly and use it in their scripts to call your contract.</p>
+<!-- abi:example:end -->
+<p>Let's take a look at an ABI declaration in a library:</p>
 <pre><code class="language-sway">library;
 
 abi Wallet {
@@ -757,9 +781,16 @@ fn main() {
 <li>The default value for <code>asset_id</code> is <code>ZERO_B256</code>.</li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="libraries"><a class="header" href="#libraries">Libraries</a></h1>
-<p>Libraries in Sway are files used to define new common behavior. The most prominent example of this is the <a href="sway-program-types/../introduction/standard_library.html">Sway Standard Library</a> that is made implicitly available to all Forc projects created using <code>forc new</code>.</p>
+<!-- This section should explain what a library is -->
+<!-- library:example:start -->
+<p>Libraries in Sway are files used to define new common behavior.</p>
+<!-- library:example:end -->
+<p>The most prominent example of this is the <a href="sway-program-types/../introduction/standard_library.html">Sway Standard Library</a> that is made implicitly available to all Forc projects created using <code>forc new</code>.</p>
 <h2 id="writing-libraries"><a class="header" href="#writing-libraries">Writing Libraries</a></h2>
+<!-- This section should explain how libraries are defined -->
+<!-- def_lib:example:start -->
 <p>Libraries are defined using the <code>library</code> keyword at the beginning of a file, followed by a name so that they can be imported.</p>
+<!-- def_lib:example:end -->
 <pre><code class="language-sway">library;
 
 // library code
@@ -806,8 +837,11 @@ name = &quot;my_library&quot;
 </code></pre>
 <p>which denotes the authors, an entry file, the name by which it can be imported, and any dependencies.</p>
 <p>For large libraries, it is recommended to have a <code>lib.sw</code> entry point re-export all other sub-libraries.</p>
+<!-- This section should explain the `mod` keyword -->
+<!-- mod:example:start -->
 <p>The <code>mod</code> keyword registers a submodule, making its items (such as functions and structs) accessible from the parent library.
 If used at the top level it will refer to a file in the <code>src</code> folder and in other cases in a folder named after the library in which it is defined.</p>
+<!-- mod:example:end -->
 <p>For example, the <code>lib.sw</code> of the standard library looks like:</p>
 <pre><code class="language-sway">library;
 
@@ -953,19 +987,25 @@ fn main() -&gt; bool {
 <p>As a workaround, the predicate can be written, tested, and debugged first as a <code>script</code>, and then changed back into a <code>predicate</code>.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="sway-language-basics"><a class="header" href="#sway-language-basics">Sway Language basics</a></h1>
 <p>Sway is a programming language designed for the FuelVM. It is a statically typed, compiled language with type inference and traits. Sway aims to make smart contract development safer and more performant through the use of strong static analysis and compiler feedback.</p>
-<p>Sway basics.</p>
+<p>Get started with the basics of Sway:</p>
 <ul>
 <li><a href="basics/./variables.html">Variables</a></li>
 <li><a href="basics/./built_in_types.html">Built-in Types</a></li>
+<li><a href="basics/./commonly_used_library_types.html">Commonly Used Library Types</a></li>
 <li><a href="basics/./blockchain_types.html">Blockchain Types</a></li>
 <li><a href="basics/./functions.html">Functions</a></li>
 <li><a href="basics/./structs_tuples_and_enums.html">Structs, Tuples, and Enums</a></li>
 <li><a href="basics/./methods_and_associated_functions.html">Methods and Associated Functions</a></li>
-<li><a href="basics/./control_flow.html">Control Flow</a></li>
+<li><a href="basics/./constants.html">Constants</a></li>
 <li><a href="basics/./comments_and_logging.html">Comments and Logging</a></li>
+<li><a href="basics/./control_flow.html">Control Flow</a></li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="variables"><a class="header" href="#variables">Variables</a></h1>
-<p>Variables in Sway are <em>immutable by default</em>. This means that, by default, once a variable is declared, its value cannot change. This is one of the ways how Sway encourages safe programming, and many modern languages have this same default. Let's take a look at variables in detail.</p>
+<!-- This section should explain how variables are immutable -->
+<!-- immutable_vars:example:start -->
+<p>Variables in Sway are <em>immutable by default</em>. This means that, by default, once a variable is declared, its value cannot change. This is one of the ways how Sway encourages safe programming, and many modern languages have this same default.</p>
+<!-- immutable_vars:example:end -->
+<p>Let's take a look at variables in detail.</p>
 <h2 id="declaring-a-variable"><a class="header" href="#declaring-a-variable">Declaring a Variable</a></h2>
 <p>Let's look at a variable declaration:</p>
 <pre><code class="language-sway">let foo = 5;
@@ -983,18 +1023,30 @@ foo = 6;
 </code></pre>
 <p>Now, <code>foo</code> is mutable, and the reassignment to the number <code>6</code> is valid. That is, we are allowed to <em>mutate</em> the variable <code>foo</code> to change its value.</p>
 <h2 id="type-annotations"><a class="header" href="#type-annotations">Type Annotations</a></h2>
-<p>A variable declaration can contain a <em>type annotation</em>. A type annotation serves the purpose of declaring the type, in addition to the value, of a variable. Let's take a look:</p>
+<!-- This section should explain type annotations -->
+<!-- type_annotations:example:start -->
+<p>A variable declaration can contain a <em>type annotation</em>. A type annotation serves the purpose of declaring the type, in addition to the value, of a variable.</p>
+<!-- type_annotations:example:end -->
+<p>Let's take a look:</p>
 <pre><code class="language-sway">let foo: u32 = 5;
 </code></pre>
 <p>We have just declared the <em>type</em> of the variable <code>foo</code> as a <code>u32</code>, which is an unsigned 32-bit integer. Let's take a look at a few other type annotations:</p>
 <pre><code class="language-sway">let bar: str[4] = &quot;sway&quot;;
 let baz: bool = true;
 </code></pre>
+<!-- This section should explain what happens if there is a type conflict -->
+<!-- type_conflict:example:start -->
 <p>If the value declared cannot be assigned to the declared type, there will be an error generated by the compiler.</p>
+<!-- type_conflict:example:end -->
 <div style="break-before: page; page-break-before: always;"></div><h1 id="built-in-types"><a class="header" href="#built-in-types">Built-in Types</a></h1>
 <p>Every value in Sway is of a certain type. Although deep down, all values are just ones and zeroes in the underlying virtual machine, Sway needs to know what those ones and zeroes actually mean. This is accomplished with <em>types</em>.</p>
+<!-- This section should explain how Sway types are inferred -->
+<!-- sway_types:example:start -->
 <p>Sway is a statically typed language. At compile time, the types of every value must be known. This does not mean you need to specify every single type: usually, the type can be reasonably inferred by the compiler.</p>
+<!-- sway_types:example:end -->
 <h2 id="primitive-types"><a class="header" href="#primitive-types">Primitive Types</a></h2>
+<!-- This section should list the primitive types in Sway -->
+<!-- prim_types:example:start -->
 <p>Sway has the following primitive types:</p>
 <ol>
 <li><code>u8</code> (8-bit unsigned integer)</li>
@@ -1006,6 +1058,7 @@ let baz: bool = true;
 <li><code>b256</code> (256 bits (32 bytes), i.e. a hash)</li>
 </ol>
 <p>All other types in Sway are built up of these primitive types, or references to these primitive types. You may notice that there are no signed integers—this is by design. In the blockchain domain that Sway occupies, floating-point values and negative numbers have smaller utility, so their implementation has been left up to libraries for specific use cases.</p>
+<!-- prim_types:example:end -->
 <h2 id="numeric-types"><a class="header" href="#numeric-types">Numeric Types</a></h2>
 <p>All of the unsigned integer types are numeric types.</p>
 <p>Numbers can be declared with binary syntax, hexadecimal syntax, base-10 syntax, and underscores for delineation. Let's take a look at the following valid numeric primitives:</p>
@@ -1016,30 +1069,49 @@ let baz: bool = true;
 0x1111_0000 // underscore delineated binary
 0xfff_aaa   // underscore delineated hexadecimal
 </code></pre>
+<!-- This section should explain the default numeric type in Sway -->
+<!-- default_num:example:start -->
 <p>The default numeric type is <code>u64</code>. The FuelVM's word size is 64 bits, and the cases where using a smaller numeric type saves space are minimal.</p>
+<!-- default_num:example:end -->
 <h2 id="boolean-type"><a class="header" href="#boolean-type">Boolean Type</a></h2>
-<p>The boolean type (<code>bool</code>) has two potential values: <code>true</code> or <code>false</code>. Boolean values are typically used for conditional logic or validation, for example in <code>if</code> expressions. Booleans can be negated, or flipped, with the unary negation operator <code>!</code>. For example:</p>
+<!-- This section should explain the `bool` type -->
+<!-- bool:example:start -->
+<p>The boolean type (<code>bool</code>) has two potential values: <code>true</code> or <code>false</code>. Boolean values are typically used for conditional logic or validation, for example in <code>if</code> expressions. Booleans can be negated, or flipped, with the unary negation operator <code>!</code>.</p>
+<!-- bool:example:end -->
+<p>For example:</p>
 <pre><code class="language-sway">fn returns_false() -&gt; bool {
     let boolean_value: bool = true;
     !boolean_value
 }
 </code></pre>
 <h2 id="string-type"><a class="header" href="#string-type">String Type</a></h2>
-<p>In Sway, static-length strings are a primitive type. This means that when you declare a string, its size is a part of its type. This is necessary for the compiler to know how much memory to give for the storage of that data. The size of the string is denoted with square brackets. Let's take a look:</p>
+<!-- This section should explain the string type in Sway -->
+<!-- str:example:start -->
+<p>In Sway, static-length strings are a primitive type. This means that when you declare a string, its size is a part of its type. This is necessary for the compiler to know how much memory to give for the storage of that data. The size of the string is denoted with square brackets.</p>
+<!-- str:example:end -->
+<p>Let's take a look:</p>
 <pre><code class="language-sway">let my_string: str[4] = &quot;fuel&quot;;
 </code></pre>
 <p>Because the string literal <code>&quot;fuel&quot;</code> is four letters, the type is <code>str[4]</code>, denoting a static length of 4 characters. Strings default to UTF-8 in Sway.</p>
 <h2 id="compound-types"><a class="header" href="#compound-types">Compound Types</a></h2>
 <p><em>Compound types</em> are types that group multiple values into one type. In Sway, we have arrays and tuples.</p>
 <h2 id="tuple-types"><a class="header" href="#tuple-types">Tuple Types</a></h2>
-<p>A tuple is a general-purpose static-length aggregation of types. In more plain terms, a tuple is a single type that consists of an aggregate of zero or more types. The internal types that make up a tuple, and the tuple's arity, define the tuple's type. Let's take a look at some examples.</p>
+<!-- This section should explain what a tuple is -->
+<!-- tuple:example:start -->
+<p>A tuple is a general-purpose static-length aggregation of types. In more plain terms, a tuple is a single type that consists of an aggregate of zero or more types. The internal types that make up a tuple, and the tuple's arity, define the tuple's type.</p>
+<!-- tuple:example:end -->
+<p>Let's take a look at some examples.</p>
 <pre><code class="language-sway">let x: (u64, u64) = (0, 0);
 </code></pre>
 <p>This is a tuple, denoted by parenthesized, comma-separated values. Note that the type annotation, <code>(u64, u64)</code>, is similar in syntax to the expression which instantiates that type, <code>(0, 0)</code>.</p>
 <pre><code class="language-sway">let x: (u64, bool) = (42, true);
 assert(x.1);
 </code></pre>
-<p>In this example, we have created a new tuple type, <code>(u64, bool)</code>, which is a composite of a <code>u64</code> and a <code>bool</code>. To access a value within a tuple, we use <em>tuple indexing</em>: <code>x.1</code> stands for the first (zero-indexed, so the <code>bool</code>) value of the tuple. Likewise, <code>x.0</code> would be the zeroth, <code>u64</code> value of the tuple. Tuple values can also be accessed via destructuring:</p>
+<p>In this example, we have created a new tuple type, <code>(u64, bool)</code>, which is a composite of a <code>u64</code> and a <code>bool</code>.</p>
+<!-- This section should explain how to access a value in a tuple -->
+<!-- tuple_val:example:start -->
+<p>To access a value within a tuple, we use <em>tuple indexing</em>: <code>x.1</code> stands for the first (zero-indexed, so the <code>bool</code>) value of the tuple. Likewise, <code>x.0</code> would be the zeroth, <code>u64</code> value of the tuple. Tuple values can also be accessed via destructuring.</p>
+<!-- tuple_val:example:end -->
 <pre><code class="language-sway">struct Foo {}
 let x: (u64, Foo, bool) = (42, Foo {}, true);
 let (number, foo, boolean) = x;
@@ -1051,12 +1123,18 @@ let z: (u64,) = (42,); // z is of type (u64), i.e. a one-arity tuple
 let w: (u64) = (42,);  // type error
 </code></pre>
 <h2 id="arrays"><a class="header" href="#arrays">Arrays</a></h2>
+<!-- This section should explain what an array is -->
+<!-- array:example:start -->
 <p>An array is similar to a tuple, but an array's values must all be of the same type. Arrays can hold arbitrary types including non-primitive types.</p>
+<!-- array:example:end -->
 <p>An array is written as a comma-separated list inside square brackets:</p>
 <pre><code class="language-sway">let x = [1, 2, 3, 4, 5];
 </code></pre>
+<!-- This section should explain arrays in depth -->
+<!-- array_details:example:start -->
 <p>Arrays are allocated on the stack since their size is known. An array's size is <em>always</em> static, i.e. it cannot change. An array of five elements cannot become an array of six elements.</p>
 <p>Arrays can be iterated over, unlike tuples. An array's type is written as the type the array contains followed by the number of elements, semicolon-separated and within square brackets, e.g. <code>[u64; 5]</code>. To access an element in an array, use the <em>array indexing syntax</em>, i.e. square brackets.</p>
+<!-- array_details:example:end -->
 <p>Array elements can also be mutated if the underlying array is declared as mutable:</p>
 <pre><code class="language-sway">let mut x = [1, 2, 3, 4, 5];
 x[0] = 0;
@@ -1099,7 +1177,10 @@ fn main() {
 <div style="break-before: page; page-break-before: always;"></div><h1 id="commonly-used-library-types"><a class="header" href="#commonly-used-library-types">Commonly Used Library Types</a></h1>
 <p>The Sway Standard Library is the foundation of portable Sway software, a set of minimal shared abstractions for the broader Sway ecosystem. It offers core types, library-defined operations on language primitives, native asset management, blockchain contextual operations, access control, storage management, and support for types from other VMs, among many other things. Reference the standard library docs <a href="https://fuellabs.github.io/sway/master/std/index.html">here</a>.</p>
 <h2 id="resultt-e"><a class="header" href="#resultt-e"><code>Result&lt;T, E&gt;</code></a></h2>
+<!-- This section should explain what the `Result` type is -->
+<!-- result:example:start -->
 <p>Type <code>Result</code> is the type used for returning and propagating errors. It is an <code>enum</code> with two variants: <code>Ok(T)</code>, representing success and containing a value, and <code>Err(E)</code>, representing error and containing an error value. The <code>T</code> and <code>E</code> in this definition are type parameters, allowing <code>Result</code> to be generic and to be used with any types.</p>
+<!-- result:example:end -->
 <pre><code class="language-sway">/// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
 pub enum Result&lt;T, E&gt; {
     /// Contains the success value.
@@ -1108,7 +1189,11 @@ pub enum Result&lt;T, E&gt; {
     Err: E,
 }
 </code></pre>
-<p>Functions return <code>Result</code> whenever errors are expected and recoverable. Take the following example:</p>
+<!-- This section should explain when to use the `Result` type -->
+<!-- use_result:example:start -->
+<p>Functions return <code>Result</code> whenever errors are expected and recoverable.</p>
+<!-- use_result:example:end -->
+<p>Take the following example:</p>
 <pre><code class="language-sway">script;
 
 enum MyContractError {
@@ -1132,12 +1217,15 @@ fn main() -&gt; Result&lt;u64, str[4]&gt; {
 }
 </code></pre>
 <h2 id="optiont"><a class="header" href="#optiont"><code>Option&lt;T&gt;</code></a></h2>
+<!-- This section should explain the `Option` type -->
+<!-- option:example:start -->
 <p>Type <code>Option</code> represents an optional value: every <code>Option</code> is either <code>Some</code> and contains a value, or <code>None</code>, and does not. <code>Option</code> types are very common in Sway code, as they have a number of uses:</p>
 <ul>
 <li>Initial values where <code>None</code> can be used as an initializer.</li>
 <li>Return value for otherwise reporting simple errors, where <code>None</code> is returned on error.</li>
 </ul>
 <p>The implementation of <code>Option</code> matches on the variant: if it's <code>Ok</code> it returns the inner value, if it's <code>None</code>, it <a href="https://github.com/FuelLabs/fuel-specs/blob/master/src/vm/instruction_set.md#rvrt-revert">reverts</a>.</p>
+<!-- option:example:end -->
 <pre><code class="language-sway">/// A type that represents an optional value, either `Some(val)` or `None`.
 pub enum Option&lt;T&gt; {
     /// No value.
@@ -1146,7 +1234,10 @@ pub enum Option&lt;T&gt; {
     Some: T,
 }
 </code></pre>
+<!-- This section should explain when to use the `Option` type -->
+<!-- use_option:example:start -->
 <p><code>Option</code> is commonly paired with pattern matching to query the presence of a value and take action, allowing developers to choose how to handle the <code>None</code> case.</p>
+<!-- use_option:example:end -->
 <p>Below is an example that uses pattern matching to handle invalid divisions by 0 by returning an <code>Option</code>:</p>
 <pre><code class="language-sway">script;
 
@@ -1173,7 +1264,10 @@ fn main() {
 <p>Sway is fundamentally a blockchain language, and it offers a selection of types tailored for the blockchain use case.</p>
 <p>These are provided via the standard library (<a href="https://github.com/FuelLabs/sway/tree/master/sway-lib-std"><code>lib-std</code></a>) which both add a degree of type-safety, as well as make the intention of the developer more clear.</p>
 <h2 id="address-type"><a class="header" href="#address-type"><code>Address</code> Type</a></h2>
+<!-- This section should explain the `Address` type -->
+<!-- address:example:start -->
 <p>The <code>Address</code> type is a type-safe wrapper around the primitive <code>b256</code> type. Unlike the EVM, an address <strong>never</strong> refers to a deployed smart contract (see the <code>ContractId</code> type below). An <code>Address</code> can be either the hash of a public key (effectively an <a href="https://ethereum.org/en/whitepaper/#ethereum-accounts">externally owned account</a> if you're coming from the EVM) or the hash of a <a href="basics/../sway-program-types/predicates.html">predicate</a>. Addresses own UTXOs.</p>
+<!-- address:example:end -->
 <p>An <code>Address</code> is implemented as follows.</p>
 <pre><code class="language-sway">pub struct Address {
     value: b256,
@@ -1185,7 +1279,10 @@ let my_address: Address = Address::from(my_number);
 let forty_two: b256 = my_address.into();
 </code></pre>
 <h2 id="contractid-type"><a class="header" href="#contractid-type"><code>ContractId</code> Type</a></h2>
+<!-- This section should explain the `ContractId` type -->
+<!-- contract_id:example:start -->
 <p>The <code>ContractId</code> type is a type-safe wrapper around the primitive <code>b256</code> type. A contract's ID is a unique, deterministic identifier analogous to a contract's address in the EVM. Contracts cannot own UTXOs but can own assets.</p>
+<!-- contract_id:example:end -->
 <p>A <code>ContractId</code> is implemented as follows.</p>
 <pre><code class="language-sway">pub struct ContractId {
     value: b256,
@@ -1197,7 +1294,10 @@ let my_contract_id: ContractId = ContractId::from(my_number);
 let forty_two: b256 = my_contract_id.into();
 </code></pre>
 <h2 id="identity-type"><a class="header" href="#identity-type"><code>Identity</code> Type</a></h2>
+<!-- This section should explain the `Identity` type -->
+<!-- identity:example:start -->
 <p>The <code>Identity</code> type is an enum that allows for the handling of both <code>Address</code> and <code>ContractId</code> types. This is useful in cases where either type is accepted, e.g. receiving funds from an identified sender, but not caring if the sender is an address or a contract.</p>
+<!-- identity:example:end -->
 <p>An <code>Identity</code> is implemented as follows.</p>
 <pre><code class="language-sway">pub enum Identity {
     Address: Address,
@@ -1219,7 +1319,10 @@ let forty_two: b256 = my_contract_id.into();
             Identity::ContractId(contract_id) =&gt; force_transfer_to_contract(amount, token_id, contract_id),
         };
 </code></pre>
+<!-- This section should explain the use case for the `Identity` type -->
+<!-- use_identity:example:start -->
 <p>A common use case for <code>Identity</code> is for access control. The use of <code>Identity</code> uniquely allows both <code>ContractId</code> and <code>Address</code> to have access control inclusively.</p>
+<!-- use_identity:example:end -->
 <pre><code class="language-sway">        let sender = msg_sender().unwrap();
         require(sender == storage.owner.read(), MyError::UnauthorizedUser(sender));
 </code></pre>
@@ -1237,7 +1340,11 @@ let forty_two: b256 = my_contract_id.into();
 }
 </code></pre>
 <h2 id="mutable-parameters"><a class="header" href="#mutable-parameters">Mutable Parameters</a></h2>
-<p>We can make a function parameter mutable by adding <code>ref mut</code> before the parameter name. This allows mutating the argument passed into the function when the function is called. For example:</p>
+<!-- This section should explain how/when to use `ref mut` -->
+<!-- ref_mut:example:start -->
+<p>We can make a function parameter mutable by adding <code>ref mut</code> before the parameter name. This allows mutating the argument passed into the function when the function is called.</p>
+<!-- ref_mut:example:end -->
+<p>For example:</p>
 <pre><code class="language-sway">fn increment(ref mut num: u32) {
     let prev = num;
     num = prev + 1u32;
@@ -1282,7 +1389,10 @@ The only place, in a Sway program, where the <code>ref</code> keyword is valid i
 </blockquote>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="structs-tuples-and-enums"><a class="header" href="#structs-tuples-and-enums">Structs, Tuples, and Enums</a></h1>
 <h2 id="structs"><a class="header" href="#structs">Structs</a></h2>
+<!-- This section should explain structs in Sway -->
+<!-- structs:example:start -->
 <p>Structs in Sway are a named grouping of types. You may also be familiar with structs via another name: <em>product types</em>. Sway does not make any significantly unique usages of structs; they are similar to most other languages which have structs. If you're coming from an object-oriented background, a struct is like the data attributes of an object.</p>
+<!-- structs:example:end -->
 <p>Firstly, we declare a struct named <code>Foo</code> with two fields. The first field is named <code>bar</code> and it accepts values of type <code>u64</code>, the second field is named <code>baz</code> and it accepts <code>bool</code> values.</p>
 <pre><code class="language-sway">library;
 
@@ -1307,6 +1417,8 @@ pub struct TupleInStruct {
     nested_tuple: (u64, (u32, (bool, str[2]))),
 }
 </code></pre>
+<!-- This section should explain how to instantiate a struct in Sway -->
+<!-- new_struct:example:start -->
 <p>In order to instantiate the struct we use <em>struct instantiation syntax</em>, which is very similar to the declaration syntax except with expressions in place of types.</p>
 <p>There are three ways to instantiate the struct.</p>
 <ul>
@@ -1314,6 +1426,7 @@ pub struct TupleInStruct {
 <li>Passing in variables with names different than the struct fields</li>
 <li>Using a shorthand notation via variables that are the same as the field names</li>
 </ul>
+<!-- new_struct:example:end -->
 <pre><code class="language-sway">library;
 
 mod data_structures;
@@ -1409,8 +1522,11 @@ This information is not vital if you are new to the language, or programming in 
 </blockquote>
 <p>Structs have zero memory overhead. What that means is that in memory, each struct field is laid out sequentially. No metadata regarding the struct's name or other properties is preserved at runtime. In other words, structs are compile-time constructs. This is the same in Rust, but different in other languages with runtimes like Java.</p>
 <h2 id="tuples"><a class="header" href="#tuples">Tuples</a></h2>
+<!-- This section should explain what tuples are and how to access tuple values -->
+<!-- tuples:example:start -->
 <p>Tuples are a <a href="basics/./built_in_types.html#tuple-types">basic static-length type</a> which contain multiple different types within themselves. The type of a tuple is defined by the types of the values within it, and a tuple can contain basic types as well as structs and enums.</p>
 <p>You can access values directly by using the <code>.</code> syntax. Moreover, multiple variables can be extracted from a tuple using the destructuring syntax.</p>
+<!-- tuples:example:end -->
 <pre><code class="language-sway">library;
 
 fn tuple() {
@@ -1438,7 +1554,10 @@ fn tuple() {
 }
 </code></pre>
 <h2 id="enums"><a class="header" href="#enums">Enums</a></h2>
+<!-- This section should explain what enums are -->
+<!-- enums:example:start -->
 <p><em>Enumerations</em>, or <em>enums</em>, are also known as <em>sum types</em>. An enum is a type that could be one of several variants. To declare an enum, you enumerate all potential variants.</p>
+<!-- enums:example:end -->
 <p>Here, we have defined five potential colors. Each enum variant is just the color name. As there is no extra data associated with each variant, we say that each variant is of type <code>()</code>, or unit.</p>
 <pre><code class="language-sway">library;
 
@@ -1534,9 +1653,12 @@ This information is not vital if you are new to the language, or programming in 
 </blockquote>
 <p>Enums do have some memory overhead. To know which variant is being represented, Sway stores a one-word (8-byte) tag for the enum variant. The space reserved after the tag is equivalent to the size of the <em>largest</em> enum variant. So, to calculate the size of an enum in memory, add 8 bytes to the size of the largest variant. For example, in the case of <code>Color</code> above, where the variants are all <code>()</code>, the size would be 8 bytes since the size of the largest variant is 0 bytes.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="methods-and-associated-functions"><a class="header" href="#methods-and-associated-functions">Methods and Associated Functions</a></h1>
+<!-- This section should explain methods & associated functions in Sway -->
+<!-- methods_af:example:start -->
 <p>Methods are similar to functions in that we declare them with the <code>fn</code> keyword and they have parameters and return a value. However, unlike functions, <em>Methods</em> are defined within the context of a struct (or enum), and either refers to that type or mutates it. The first parameter of a method is always <code>self</code>, which represents the instance of the struct the method is being called on.</p>
 <p><em>Associated functions</em> are very similar to <em>methods</em>, in that they are also defined in the context of a struct or enum, but they do not actually use any of the data in the struct and as a result do not take <em>self</em> as a parameter. Associated functions could be standalone functions, but they are included in a specific type for organizational or semantic reasons.</p>
 <p>To declare methods and associated functions for a struct or enum, use an <em>impl block</em>. Here, <code>impl</code> stands for implementation.</p>
+<!-- methods_af:example:end -->
 <pre><code class="language-sway">script;
 
 struct Foo {
@@ -1564,8 +1686,15 @@ fn main() {
     assert(foo.is_baz_true());
 }
 </code></pre>
+<!-- This section should explain how to call a method -->
+<!-- call_method:example:start -->
 <p>To call a method, simply use dot syntax: <code>foo.iz_baz_true()</code>.</p>
-<p>Similarly to <a href="basics/functions.html">free functions</a>, methods and associated functions may accept <code>ref mut</code> parameters. For example:</p>
+<!-- call_method:example:end -->
+<!-- This section should explain how methods + assoc. fns can accept `ref mut` params -->
+<!-- ref_mut:example:start -->
+<p>Similarly to <a href="basics/functions.html">free functions</a>, methods and associated functions may accept <code>ref mut</code> parameters.</p>
+<!-- ref_mut:example:end -->
+<p>For example:</p>
 <pre><code class="language-sway">struct Coordinates {
     x: u64,
     y: u64,
@@ -1584,19 +1713,25 @@ impl Coordinates {
     assert(point.y == 1);
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="constants"><a class="header" href="#constants">Constants</a></h1>
+<!-- This section should explain what constants are in Sway -->
+<!-- constants:example:start -->
 <p>Constants are similar to variables; however, there are a few differences:</p>
 <ul>
 <li>Constants are always evaluated at compile-time</li>
 <li>Constants can be declared both inside of a <a href="basics/../index.html">function</a> and at global / <code>impl</code> scope.</li>
 <li>The <code>mut</code> keyword cannot be used with constants.</li>
 </ul>
+<!-- constants:example:end -->
 <pre><code class="language-sway">const ID: u32 = 0;
 </code></pre>
 <h2 id="associated-constants"><a class="header" href="#associated-constants">Associated Constants</a></h2>
+<!-- This section should explain what associated constants are -->
+<!-- assoc_constants:example:start -->
 <p>Associated constants are constants associated with a type and can be declared in an <code>impl</code> block or in a <code>trait</code> definition.</p>
 <p>Associated constants declared inside a <code>trait</code> definition may omit their initializers to indicate that each implementation of the trait must specify those initializers.</p>
 <p>The identifier is the name of the constant used in the path. The type is the type that the
 definition has to implement.</p>
+<!-- assoc_constants:example:end -->
 <p>You can <em>define</em> an associated const directly in the interface surface of a trait:</p>
 <pre><code class="language-sway">script;
 
@@ -1640,7 +1775,10 @@ fn main() -&gt; u64  {
 }
 </code></pre>
 <h2 id="configurable-constants"><a class="header" href="#configurable-constants">Configurable Constants</a></h2>
+<!-- This section should explain what configurable constants are in Sway -->
+<!-- config_constants:example:start -->
 <p>Configurable constants are special constants that behave like regular constants in the sense that they cannot change during program execution, but they can be configured <em>after</em> the Sway program has been built. The Rust and TS SDKs allow updating the values of these constants by injecting new values for them directly in the bytecode without having to build the program again. These are useful for contract factories and behave somewhat similarly to <code>immutable</code> variables from languages like Solidity.</p>
+<!-- config_constants:example:end -->
 <p>Configurable constants are declared inside a <code>configurable</code> block and require a type ascription and an initializer as follows:</p>
 <pre><code class="language-sway">configurable {
     U8: u8 = 8u8,
@@ -1662,7 +1800,10 @@ fn main() -&gt; u64  {
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="comments-and-logging"><a class="header" href="#comments-and-logging">Comments and Logging</a></h1>
 <h2 id="comments"><a class="header" href="#comments">Comments</a></h2>
+<!-- This section should explain how to add comments in Sway -->
+<!-- comments:example:start -->
 <p>Comments in Sway start with two slashes and continue until the end of the line. For comments that extend beyond a single line, you'll need to include <code>//</code> on each line.</p>
+<!-- comments:example:end -->
 <pre><code class="language-sway">// hello world
 </code></pre>
 <pre><code class="language-sway">// let's make a couple of lines
@@ -1683,7 +1824,10 @@ fn main() -&gt; u64  {
 }
 </code></pre>
 <h2 id="logging"><a class="header" href="#logging">Logging</a></h2>
+<!-- This section should explain logging in Sway -->
+<!-- logging:example:start -->
 <p>The <code>logging</code> library provides a generic <code>log</code> function that can be imported using <code>use std::logging::log</code> and used to log variables of any type. Each call to <code>log</code> appends a <code>receipt</code> to the list of receipts. There are two types of receipts that a <code>log</code> can generate: <code>Log</code> and <code>LogData</code>.</p>
+<!-- logging:example:end -->
 <pre><code class="language-sway">fn log_values(){
   // Generates a Log receipt
   log(42);
@@ -1694,7 +1838,11 @@ fn main() -&gt; u64  {
 }
 </code></pre>
 <h3 id="log-receipt"><a class="header" href="#log-receipt"><code>Log</code> Receipt</a></h3>
-<p>The <code>Log</code> receipt is generated for <em>non-reference</em> types, namely <code>bool</code>, <code>u8</code>, <code>u16</code>, <code>u32</code>, and <code>u64</code>. For example, logging an integer variable <code>x</code> that holds the value <code>42</code> using <code>log(x)</code> may generate the following receipt:</p>
+<!-- This section should explain when `Log` receipts are produced -->
+<!-- log_rec:example:start -->
+<p>The <code>Log</code> receipt is generated for <em>non-reference</em> types, namely <code>bool</code>, <code>u8</code>, <code>u16</code>, <code>u32</code>, and <code>u64</code>.</p>
+<!-- log_rec:example:end -->
+<p>For example, logging an integer variable <code>x</code> that holds the value <code>42</code> using <code>log(x)</code> may generate the following receipt:</p>
 <pre><code class="language-console">&quot;Log&quot;: {
   &quot;id&quot;: &quot;0000000000000000000000000000000000000000000000000000000000000000&quot;,
   &quot;is&quot;: 10352,
@@ -1707,7 +1855,11 @@ fn main() -&gt; u64  {
 </code></pre>
 <p>Note that <code>ra</code> will include the value being logged. The additional registers <code>rc</code> and <code>rd</code> will be zero when using <code>log</code> while <code>rb</code> may include a non-zero value representing a unique ID for the <code>log</code> instance. The unique ID is not meaningful on its own but allows the Rust and the TS SDKs to know the type of the data being logged, by looking up the log ID in the JSON ABI file.</p>
 <h3 id="logdata-receipt"><a class="header" href="#logdata-receipt"><code>LogData</code> Receipt</a></h3>
-<p><code>LogData</code> is generated for <em>reference</em> types which include all types except for the <em>non_reference</em> types mentioned above. For example, logging a <code>b256</code> variable <code>b</code> that holds the value <code>0x1111111111111111111111111111111111111111111111111111111111111111</code> using <code>log(b)</code> may generate the following receipt:</p>
+<!-- This section should explain when `LogData` receipts are produced -->
+<!-- log_data_rec:example:start -->
+<p><code>LogData</code> is generated for <em>reference</em> types which include all types except for <em>non_reference</em> types.</p>
+<!-- log_data_rec:example:end -->
+<p>For example, logging a <code>b256</code> variable <code>b</code> that holds the value <code>0x1111111111111111111111111111111111111111111111111111111111111111</code> using <code>log(b)</code> may generate the following receipt:</p>
 <pre><code class="language-console">&quot;LogData&quot;: {
   &quot;data&quot;: &quot;1111111111111111111111111111111111111111111111111111111111111111&quot;,
   &quot;digest&quot;: &quot;02d449a31fbb267c8f352e9968a79e3e5fc95c1bbeaa502fd6454ebde5a4bedc&quot;,
@@ -1727,7 +1879,10 @@ The Rust SDK exposes <a href="https://fuellabs.github.io/fuels-rs/master/calling
 </blockquote>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="control-flow"><a class="header" href="#control-flow">Control Flow</a></h1>
 <h2 id="if-expressions"><a class="header" href="#if-expressions"><code>if</code> expressions</a></h2>
+<!-- This section should explain `if` expressions in Sway -->
+<!-- if:example:start -->
 <p>Sway supports <em>if</em>, <em>else</em>, and <em>else if</em> expressions that allow you to branch your code depending on conditions.</p>
+<!-- if:example:end -->
 <p>For example:</p>
 <pre><code class="language-sway">fn main() {
     let number = 6;
@@ -1747,7 +1902,10 @@ The Rust SDK exposes <a href="https://fuellabs.github.io/fuels-rs/master/calling
 </code></pre>
 <p>Note that all branches of the <code>if</code> expression must return a value of the same type.</p>
 <h3 id="match-expressions"><a class="header" href="#match-expressions"><code>match</code> expressions</a></h3>
+<!-- This section should explain `match` expressions in Sway -->
+<!-- match:example:start -->
 <p>Sway supports advanced pattern matching through exhaustive <code>match</code> expressions. Unlike an <code>if</code> statement, a <code>match</code> expression asserts <strong>at compile</strong> time that all possible patterns have been matched. If you don't handle all the patterns, you will get compiler error indicating that your <code>match</code> expression is non-exhaustive.</p>
+<!-- match:example:end -->
 <p>The basic syntax of a <code>match</code> statement is as follows:</p>
 <pre><code class="language-sway">let result = match expression {
     pattern1 =&gt; code_to_execute_if_expression_matches_pattern1,
@@ -2035,9 +2193,12 @@ fn main() {
 <p><strong>Note</strong>: Recovery of EVM addresses is also supported via <code>std::vm::evm</code>.</p>
 </blockquote>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="storage"><a class="header" href="#storage">Storage</a></h1>
+<!-- This section should explain storage in Sway -->
+<!-- storage:example:start -->
 <p>When developing a <a href="blockchain-development/../sway-program-types/smart_contracts.html">smart contract</a>, you will typically need some sort of persistent storage. In this case, persistent storage, often just called <em>storage</em> in this context, is a place where you can store values that are persisted inside the contract itself. This is in contrast to a regular value in <em>memory</em>, which disappears after the contract exits.</p>
 <p>Put in conventional programming terms, contract storage is like saving data to a hard drive. That data is saved even after the program which saved it exits. That data is persistent. Using memory is like declaring a variable in a program: it exists for the duration of the program and is non-persistent.</p>
 <p>Some basic use cases of storage include declaring an owner address for a contract and saving balances in a wallet.</p>
+<!-- storage:example:end -->
 <h2 id="storage-accesses-via-the-storage-keyword"><a class="header" href="#storage-accesses-via-the-storage-keyword">Storage Accesses Via the <code>storage</code> Keyword</a></h2>
 <p>Declaring variables in storage requires a <code>storage</code> declaration that contains a list of all your variables, their types, and their initial values as follows:</p>
 <pre><code class="language-sway">struct Type1 {
@@ -2114,8 +2275,11 @@ impl StorageExample for Contract {
 <p><strong>Note</strong>: Though these functions can be used for any data type, they should mostly be used for arrays because arrays are not yet supported in <code>storage</code> blocks. Note, however, that <em>all</em> data types can be used as types for keys and/or values in <code>StorageMap&lt;K, V&gt;</code> without any restrictions.</p>
 </blockquote>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="purity"><a class="header" href="#purity">Purity</a></h1>
+<!-- This section should explain pure functions in Sway -->
+<!-- pure:example:start -->
 <p>A function is <em>pure</em> if it does not access any <a href="blockchain-development/./storage.html">persistent storage</a>. Conversely, the function is <em>impure</em> if it does access any storage. Naturally, as storage is only available in smart contracts, impure functions cannot be used in predicates, scripts, or libraries. A pure function cannot call an impure function.</p>
 <p>In Sway, functions are pure by default but can be opted into impurity via the <code>storage</code> function attribute. The <code>storage</code> attribute may take <code>read</code> and/or <code>write</code> arguments indicating which type of access the function requires.</p>
+<!-- pure:example:end -->
 <pre><code class="language-sway">#[storage(read)]
 fn get_amount() -&gt; u64 {
     ...
@@ -2129,9 +2293,16 @@ fn increment_amount(increment: u64) -&gt; u64 {
 <blockquote>
 <p><strong>Note</strong>: the <code>#[storage(write)]</code> attribute also permits a function to read from storage. This is due to the fact that partially writing a storage slot requires first reading the slot.</p>
 </blockquote>
+<!-- This section should explain impure functions in Sway -->
+<!-- impure:example:start -->
 <p>Impure functions which call other impure functions must have at least the same storage privileges or a superset of those for the function called. For example, to call a function with write access a caller must also have write access, or both read and write access. To call a function with read and write access the caller must also have both privileges.</p>
+<!-- impure:example:end -->
 <p>The <code>storage</code> attribute may also be applied to <a href="blockchain-development/../basics/methods_and_associated_functions.html">methods and associated functions</a>, <a href="blockchain-development/../advanced/traits.html">trait</a> and <a href="blockchain-development/../sway-program-types/smart_contracts.html#the-abi-declaration">ABI</a> declarations.</p>
-<p>A pure function gives you some guarantees: you will not incur excessive storage gas costs, the compiler can apply additional optimizations, and they are generally easy to reason about and audit. <a href="https://docs.soliditylang.org/en/v0.8.10/contracts.html#pure-functions">A similar concept exists in Solidity</a>. Note that Solidity refers to contract storage as <em>contract state</em>, and in the Sway/Fuel ecosystem, these two terms are largely interchangeable.</p>
+<!-- This section should explain the benefits of using pure functions in Sway -->
+<!-- pure_benefits:example:start -->
+<p>A pure function gives you some guarantees: you will not incur excessive storage gas costs, the compiler can apply additional optimizations, and they are generally easy to reason about and audit.</p>
+<!-- pure_benefits:example:end -->
+<p><a href="https://docs.soliditylang.org/en/v0.8.10/contracts.html#pure-functions">A similar concept exists in Solidity</a>. Note that Solidity refers to contract storage as <em>contract state</em>, and in the Sway/Fuel ecosystem, these two terms are largely interchangeable.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="identifiers"><a class="header" href="#identifiers">Identifiers</a></h1>
 <p>Addresses in Sway are similar to EVM addresses. The two major differences are:</p>
 <ol>
@@ -2140,10 +2311,13 @@ fn increment_amount(increment: u64) -&gt; u64 {
 </ol>
 <p>Contracts, on the other hand, are uniquely identified with a contract ID rather than an address. A contract's ID is also 32 bytes long and is calculated <a href="https://fuellabs.github.io/fuel-specs/master/protocol/id/contract">here</a>.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="native-support-for-multiple-asset-types"><a class="header" href="#native-support-for-multiple-asset-types">Native Support for Multiple Asset Types</a></h1>
+<!-- This section should explain native assets in Sway -->
+<!-- native_assets:example:start -->
 <p>The FuelVM has built-in support for working with multiple assets.</p>
 <p>What does this mean in practice?</p>
 <p>As in the EVM, sending ETH to an address or contract is an operation built into the FuelVM, meaning it doesn't rely on the existence of some token smart contract to update balances to track ownership.</p>
 <p>However, unlike the EVM, the process for sending <em>any</em> native asset is the same. This means that while you would still need a smart contract to handle the minting and burning of fungible tokens, the sending and receiving of these tokens can be done independently of the token contract.</p>
+<!-- native_assets:example:end -->
 <h2 id="liquidity-pool-example"><a class="header" href="#liquidity-pool-example">Liquidity Pool Example</a></h2>
 <p>All contracts in Fuel can mint and burn their own native token. Contracts can also receive and transfer any native asset including their own. Internal balances of all native assets pushed through calls or minted by the contract are tracked by the FuelVM and can be queried at any point using the balance_of function from the <code>std</code> library. Therefore, there is no need for any manual accounting of the contract's balances using persistent storage.</p>
 <p>The <code>std</code> library provides handy methods for accessing Fuel's native assset operations.</p>
@@ -2253,9 +2427,15 @@ impl NativeAssetToken for Contract {
 }
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="access-control"><a class="header" href="#access-control">Access Control</a></h1>
+<!-- This section should explain access control in Sway -->
+<!-- access_control:example:start -->
 <p>Smart contracts require the ability to restrict access to and identify certain users or contracts. Unlike account-based blockchains, transactions in UTXO-based blockchains (i.e. Fuel) do not necessarily have a unique transaction sender. Additional logic is needed to handle this difference, and is provided by the standard library.</p>
+<!-- access_control:example:end -->
 <h2 id="msg_sender"><a class="header" href="#msg_sender"><code>msg_sender</code></a></h2>
+<!-- This section should explain what the `msg_sender` method is -->
+<!-- msg_sender:example:start -->
 <p>To deliver an experience akin to the EVM's access control, the <code>std</code> library provides a <code>msg_sender</code> function, which identifies a unique caller based upon the call and/or transaction input data.</p>
+<!-- msg_sender:example:end -->
 <pre><code class="language-sway">contract;
 
 abi MyOwnedContract {
@@ -2277,12 +2457,15 @@ impl MyOwnedContract for Contract {
     }
 }
 </code></pre>
+<!-- This section should explain how the `msg_sender` method works -->
+<!-- msg_sender_details:example:start -->
 <p>The <code>msg_sender</code> function works as follows:</p>
 <ul>
 <li>If the caller is a contract, then <code>Ok(Sender)</code> is returned with the <code>ContractId</code> sender variant.</li>
 <li>If the caller is external (i.e. from a script), then all coin input owners in the transaction are checked. If all owners are the same, then <code>Ok(Sender)</code> is returned with the <code>Address</code> sender variant.</li>
 <li>If the caller is external and coin input owners are different, then the caller cannot be determined and a <code>Err(AuthError)</code> is returned.</li>
 </ul>
+<!-- msg_sender_details:example:end -->
 <h2 id="contract-ownership"><a class="header" href="#contract-ownership">Contract Ownership</a></h2>
 <p>Many contracts require some form of ownership for access control. To accomplish this, it is recommended that a storage variable of type <code>Option&lt;Identity&gt;</code> is used to keep track of the owner. This allows setting and revoking ownership using the variants <code>Some(..)</code> and <code>None</code> respectively. This is better, safer, and more readable than using the <code>Identity</code> type directly where revoking ownership has to be done using some magic value such as <code>std::constants::ZERO_B256</code> or otherwise.</p>
 <p>The following is an example of how to properly set ownership of a contract:</p>
@@ -2979,18 +3162,29 @@ There is no need to add the <code>mut</code> keyword when declaring a <code>Stor
     }
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="storage-maps-1"><a class="header" href="#storage-maps-1">Storage Maps</a></h1>
-<p>Another important common collection is the storage map. The type <code>StorageMap&lt;K, V&gt;</code> from the standard library stores a mapping of keys of type <code>K</code> to values of type <code>V</code> using a hashing function, which determines how it places these keys and values into <em>storage slots</em>. This is similar to <a href="https://doc.rust-lang.org/std/collections/struct.HashMap.html">Rust's <code>HashMap&lt;K, V&gt;</code></a> but with a few differences.</p>
+<p>Another important common collection is the storage map.</p>
+<!-- This section should explain storage maps in Sway -->
+<!-- storage_map:example:start -->
+<p>The type <code>StorageMap&lt;K, V&gt;</code> from the standard library stores a mapping of keys of type <code>K</code> to values of type <code>V</code> using a hashing function, which determines how it places these keys and values into <em>storage slots</em>. This is similar to <a href="https://doc.rust-lang.org/std/collections/struct.HashMap.html">Rust's <code>HashMap&lt;K, V&gt;</code></a> but with a few differences.</p>
 <p>Storage maps are useful when you want to look up data not by using an index, as you can with vectors, but by using a key that can be of any type. For example, when building a ledger-based sub-currency smart contract, you could keep track of the balance of each wallet in a storage map in which each key is a wallet’s <code>Address</code> and the values are each wallet’s balance. Given an <code>Address</code>, you can retrieve its balance.</p>
 <p>Similarly to <code>StorageVec&lt;T&gt;</code>, <code>StorageMap&lt;K, V&gt;</code> can only be used in a contract because only contracts are allowed to access persistent storage.</p>
 <p><code>StorageMap&lt;T&gt;</code> is included in the <a href="common-collections/../introduction/standard_library.html#standard-library-prelude">standard library prelude</a> which means that there is no need to import it manually.</p>
+<!-- storage_map:example:end -->
 <h2 id="creating-a-new-storage-map"><a class="header" href="#creating-a-new-storage-map">Creating a New Storage Map</a></h2>
 <p>To create a new empty storage map, we have to declare the map in a <code>storage</code> block as follows:</p>
 <pre><code class="language-sway">    map: StorageMap&lt;Address, u64&gt; = StorageMap {},
 </code></pre>
+<!-- This section should explain how to implement storage maps in Sway -->
+<!-- use_storage_maps:example:start -->
 <p>Just like any other storage variable, two things are required when declaring a <code>StorageMap</code>: a type annotation and an initializer. The initializer is just an empty struct of type <code>StorageMap</code> because <code>StorageMap&lt;K, V&gt;</code> itself is an empty struct! Everything that is interesting about <code>StorageMap&lt;K, V&gt;</code> is implemented in its methods.</p>
 <p>Storage maps, just like <code>Vec&lt;T&gt;</code> and <code>StorageVec&lt;T&gt;</code>, are implemented using generics which means that the <code>StorageMap&lt;K, V&gt;</code> type provided by the standard library can map keys of any type <code>K</code> to values of any type <code>V</code>. In the example above, we’ve told the Sway compiler that the <code>StorageMap&lt;K, V&gt;</code> in <code>map</code> will map keys of type <code>Address</code> to values of type <code>u64</code>.</p>
+<!-- use_storage_maps:example:end -->
 <h2 id="updating-a-storage-map"><a class="header" href="#updating-a-storage-map">Updating a Storage Map</a></h2>
-<p>To insert key-value pairs into a storage map, we can use the <code>insert</code> method, as shown below:</p>
+<!-- This section should explain how to update storage maps in Sway -->
+<!-- update_storage_maps:example:start -->
+<p>To insert key-value pairs into a storage map, we can use the <code>insert</code> method.</p>
+<!-- update_storage_maps:example:end -->
+<p>For example:</p>
 <pre><code class="language-sway">    #[storage(write)]
     fn insert_into_storage_map() {
         let addr1 = Address::from(0x0101010101010101010101010101010101010101010101010101010101010101);
@@ -3011,7 +3205,11 @@ The storage annotation is also required for any private function defined in the 
 There is no need to add the <code>mut</code> keyword when declaring a <code>StorageMap&lt;K, V&gt;</code>. All storage variables are mutable by default.</p>
 </blockquote>
 <h2 id="accessing-values-in-a-storage-map"><a class="header" href="#accessing-values-in-a-storage-map">Accessing Values in a Storage Map</a></h2>
-<p>We can get a value out of the storage map by providing its <code>key</code> to the <code>get</code> method, as shown below:</p>
+<!-- This section should explain how to access storage map values in Sway -->
+<!-- access_storage_maps:example:start -->
+<p>We can get a value out of the storage map by providing its <code>key</code> to the <code>get</code> method.</p>
+<!-- access_storage_maps:example:end -->
+<p>For example:</p>
 <pre><code class="language-sway">    #[storage(read, write)]
     fn get_from_storage_map() {
         let addr1 = Address::from(0x0101010101010101010101010101010101010101010101010101010101010101);
@@ -3058,8 +3256,12 @@ projects today using the cargo generate template and Rust SDK.</p>
 <li><a href="testing/./testing-with-rust.html">Testing with Rust</a></li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="unit-testing"><a class="header" href="#unit-testing">Unit Testing</a></h1>
+<!-- This section should explain unit testing in Sway -->
+<!-- unit_test:example:start -->
 <p>Forc provides built-in support for building and executing tests for a package.</p>
-<p>Tests are written as free functions with the <code>#[test]</code> attribute. For example:</p>
+<p>Tests are written as free functions with the <code>#[test]</code> attribute.</p>
+<!-- unit_test:example:end -->
+<p>For example:</p>
 <pre><code class="language-sway">#[test]
 fn test_meaning_of_life() {
     assert(6 * 7 == 42);
@@ -3085,7 +3287,11 @@ successfully, and &quot;fail&quot; if they revert or vice versa while <a href="t
 <p>Visit the <a href="testing/../forc/commands/forc_test.html"><code>forc test</code></a> command reference to find
 the options available for <code>forc test</code>.</p>
 <h2 id="testing-failure"><a class="header" href="#testing-failure">Testing Failure</a></h2>
-<p>Forc supports testing failing cases for test functions declared with <code>#[test(should_revert)]</code>. For example:</p>
+<!-- This section should explain support for failing unit tests in Sway -->
+<!-- unit_test_fail:example:start -->
+<p>Forc supports testing failing cases for test functions declared with <code>#[test(should_revert)]</code>.</p>
+<!-- unit_test_fail:example:end -->
+<p>For example:</p>
 <pre><code class="language-sway">#[test(should_revert)]
 fn test_meaning_of_life() {
     assert(6 * 6 == 42);
@@ -3122,9 +3328,12 @@ fn test_fail() {
     assert(result == false)
 }
 </code></pre>
+<!-- This section should explain how the `CONTRACT_ID` variable works in Sway unit tests -->
+<!-- contract_id:example:start -->
 <blockquote>
 <p><strong>Note:</strong> When running <code>forc test</code>, your contract will be built twice: first <em>without</em> unit tests in order to determine the contract's ID, then a second time <em>with</em> unit tests with the <code>CONTRACT_ID</code> provided to their namespace. This <code>CONTRACT_ID</code> can be used with the <code>abi</code> cast to enable contract calls within unit tests.</p>
 </blockquote>
+<!-- contract_id:example:end -->
 <p>Unit tests can call methods of external contracts if those contracts are added as contract dependencies, i.e. in the the <a href="testing/../forc/manifest_reference.html#the-contract-dependencies-section"><code>contract-dependencies</code></a> section of the manifest file. An example of such calls is shown below:</p>
 <pre><code class="language-sway">contract;
 
@@ -3167,7 +3376,10 @@ std = { path = &quot;../../../sway-lib-std/&quot; }
 callee = { path = &quot;../callee&quot; }
 </code></pre>
 <h2 id="running-tests-in-parallel-or-serially"><a class="header" href="#running-tests-in-parallel-or-serially">Running Tests in Parallel or Serially</a></h2>
+<!-- This section should explain how unit tests do not share storage -->
+<!-- storage:example:start -->
 <p>By default, all unit tests in your project are run in parallel. Note that this does not lead to any data races in storage because each unit test has its own storage space that is not shared by any other unit test.</p>
+<!-- storage:example:end -->
 <p>By default, <code>forc test</code> will use all the available threads in your system. To request that a specific number of threads be used, the flag <code>--test-threads &lt;val&gt;</code> can be provided to <code>forc test</code>.</p>
 <pre><code class="language-console">forc test --test-threads 1
 </code></pre>
@@ -3585,7 +3797,10 @@ on the language to place a copy of the attributed function in the caller.</p>
 <p>More details in <a href="reference/../testing/unit-testing.html">Unit Testing</a>.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="style-guide"><a class="header" href="#style-guide">Style Guide</a></h1>
 <h2 id="capitalization"><a class="header" href="#capitalization">Capitalization</a></h2>
+<!-- This section should explain the capitalization style guide -->
+<!-- cap:example:start -->
 <p>In Sway, structs, traits, and enums are <code>CapitalCase</code>. Modules, variables, and functions are <code>snake_case</code>, constants are <code>SCREAMING_SNAKE_CASE</code>. The compiler will warn you if your capitalization is ever unidiomatic.</p>
+<!-- cap:example:end -->
 <div style="break-before: page; page-break-before: always;"></div><h1 id="known-issues-and-workarounds"><a class="header" href="#known-issues-and-workarounds">Known Issues and Workarounds</a></h1>
 <h2 id="known-issues"><a class="header" href="#known-issues">Known Issues</a></h2>
 <ul>
@@ -3610,7 +3825,10 @@ on the language to place a copy of the attributed function in the caller.</p>
 <h2 id="global-revert"><a class="header" href="#global-revert">Global Revert</a></h2>
 <p>Panics in the FuelVM (called &quot;reverts&quot; in Solidity and the EVM) are global, i.e. they cannot be caught. A panic will completely and unconditionally revert the stateful effects of a transaction, minus gas used.</p>
 <h2 id="default-safe-math"><a class="header" href="#default-safe-math">Default Safe Math</a></h2>
+<!-- This section should explain safe math in Fuel vs EVM -->
+<!-- safe_math:example:start -->
 <p>Math in the FuelVM is by default safe (i.e. any overflow or exception is a panic). Safety checks are performed natively in the VM implementation, rather than at the bytecode level like <a href="https://docs.soliditylang.org/en/latest/080-breaking-changes.html#silent-changes-of-the-semantics">Solidity's default safe math</a>.</p>
+<!-- safe_math:example:end -->
 <h2 id="no-code-size-limit"><a class="header" href="#no-code-size-limit">No* Code Size Limit</a></h2>
 <p>There is no practical code size limit to Sway contracts. The physical limit is governed by the <a href="https://fuellabs.github.io/fuel-specs/master/vm#parameters"><code>VM_MAX_RAM</code> VM parameter</a>, which at the time of writing is 64 MiB.</p>
 <h2 id="account-types"><a class="header" href="#account-types">Account Types</a></h2>

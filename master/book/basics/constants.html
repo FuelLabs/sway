@@ -145,19 +145,25 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="constants"><a class="header" href="#constants">Constants</a></h1>
+<!-- This section should explain what constants are in Sway -->
+<!-- constants:example:start -->
 <p>Constants are similar to variables; however, there are a few differences:</p>
 <ul>
 <li>Constants are always evaluated at compile-time</li>
 <li>Constants can be declared both inside of a <a href="../index.html">function</a> and at global / <code>impl</code> scope.</li>
 <li>The <code>mut</code> keyword cannot be used with constants.</li>
 </ul>
+<!-- constants:example:end -->
 <pre><code class="language-sway">const ID: u32 = 0;
 </code></pre>
 <h2 id="associated-constants"><a class="header" href="#associated-constants">Associated Constants</a></h2>
+<!-- This section should explain what associated constants are -->
+<!-- assoc_constants:example:start -->
 <p>Associated constants are constants associated with a type and can be declared in an <code>impl</code> block or in a <code>trait</code> definition.</p>
 <p>Associated constants declared inside a <code>trait</code> definition may omit their initializers to indicate that each implementation of the trait must specify those initializers.</p>
 <p>The identifier is the name of the constant used in the path. The type is the type that the
 definition has to implement.</p>
+<!-- assoc_constants:example:end -->
 <p>You can <em>define</em> an associated const directly in the interface surface of a trait:</p>
 <pre><code class="language-sway">script;
 
@@ -201,7 +207,10 @@ fn main() -&gt; u64  {
 }
 </code></pre>
 <h2 id="configurable-constants"><a class="header" href="#configurable-constants">Configurable Constants</a></h2>
+<!-- This section should explain what configurable constants are in Sway -->
+<!-- config_constants:example:start -->
 <p>Configurable constants are special constants that behave like regular constants in the sense that they cannot change during program execution, but they can be configured <em>after</em> the Sway program has been built. The Rust and TS SDKs allow updating the values of these constants by injecting new values for them directly in the bytecode without having to build the program again. These are useful for contract factories and behave somewhat similarly to <code>immutable</code> variables from languages like Solidity.</p>
+<!-- config_constants:example:end -->
 <p>Configurable constants are declared inside a <code>configurable</code> block and require a type ascription and an initializer as follows:</p>
 <pre><code class="language-sway">configurable {
     U8: u8 = 8u8,

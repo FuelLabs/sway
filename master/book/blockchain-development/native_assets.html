@@ -145,10 +145,13 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="native-support-for-multiple-asset-types"><a class="header" href="#native-support-for-multiple-asset-types">Native Support for Multiple Asset Types</a></h1>
+<!-- This section should explain native assets in Sway -->
+<!-- native_assets:example:start -->
 <p>The FuelVM has built-in support for working with multiple assets.</p>
 <p>What does this mean in practice?</p>
 <p>As in the EVM, sending ETH to an address or contract is an operation built into the FuelVM, meaning it doesn't rely on the existence of some token smart contract to update balances to track ownership.</p>
 <p>However, unlike the EVM, the process for sending <em>any</em> native asset is the same. This means that while you would still need a smart contract to handle the minting and burning of fungible tokens, the sending and receiving of these tokens can be done independently of the token contract.</p>
+<!-- native_assets:example:end -->
 <h2 id="liquidity-pool-example"><a class="header" href="#liquidity-pool-example">Liquidity Pool Example</a></h2>
 <p>All contracts in Fuel can mint and burn their own native token. Contracts can also receive and transfer any native asset including their own. Internal balances of all native assets pushed through calls or minted by the contract are tracked by the FuelVM and can be queried at any point using the balance_of function from the <code>std</code> library. Therefore, there is no need for any manual accounting of the contract's balances using persistent storage.</p>
 <p>The <code>std</code> library provides handy methods for accessing Fuel's native assset operations.</p>

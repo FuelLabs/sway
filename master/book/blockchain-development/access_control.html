@@ -145,9 +145,15 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="access-control"><a class="header" href="#access-control">Access Control</a></h1>
+<!-- This section should explain access control in Sway -->
+<!-- access_control:example:start -->
 <p>Smart contracts require the ability to restrict access to and identify certain users or contracts. Unlike account-based blockchains, transactions in UTXO-based blockchains (i.e. Fuel) do not necessarily have a unique transaction sender. Additional logic is needed to handle this difference, and is provided by the standard library.</p>
+<!-- access_control:example:end -->
 <h2 id="msg_sender"><a class="header" href="#msg_sender"><code>msg_sender</code></a></h2>
+<!-- This section should explain what the `msg_sender` method is -->
+<!-- msg_sender:example:start -->
 <p>To deliver an experience akin to the EVM's access control, the <code>std</code> library provides a <code>msg_sender</code> function, which identifies a unique caller based upon the call and/or transaction input data.</p>
+<!-- msg_sender:example:end -->
 <pre><code class="language-sway">contract;
 
 abi MyOwnedContract {
@@ -169,12 +175,15 @@ impl MyOwnedContract for Contract {
     }
 }
 </code></pre>
+<!-- This section should explain how the `msg_sender` method works -->
+<!-- msg_sender_details:example:start -->
 <p>The <code>msg_sender</code> function works as follows:</p>
 <ul>
 <li>If the caller is a contract, then <code>Ok(Sender)</code> is returned with the <code>ContractId</code> sender variant.</li>
 <li>If the caller is external (i.e. from a script), then all coin input owners in the transaction are checked. If all owners are the same, then <code>Ok(Sender)</code> is returned with the <code>Address</code> sender variant.</li>
 <li>If the caller is external and coin input owners are different, then the caller cannot be determined and a <code>Err(AuthError)</code> is returned.</li>
 </ul>
+<!-- msg_sender_details:example:end -->
 <h2 id="contract-ownership"><a class="header" href="#contract-ownership">Contract Ownership</a></h2>
 <p>Many contracts require some form of ownership for access control. To accomplish this, it is recommended that a storage variable of type <code>Option&lt;Identity&gt;</code> is used to keep track of the owner. This allows setting and revoking ownership using the variants <code>Some(..)</code> and <code>None</code> respectively. This is better, safer, and more readable than using the <code>Identity</code> type directly where revoking ownership has to be done using some magic value such as <code>std::constants::ZERO_B256</code> or otherwise.</p>
 <p>The following is an example of how to properly set ownership of a contract:</p>

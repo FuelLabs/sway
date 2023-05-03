@@ -145,8 +145,11 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="standard-library"><a class="header" href="#standard-library">Standard Library</a></h1>
+<!-- This section should explain what the std-lib is -->
+<!-- std_lib:example:start -->
 <p>Similar to Rust, Sway comes with its own standard library.</p>
 <p>The Sway Standard Library is the foundation of portable Sway software, a set of minimal shared abstractions for the broader Sway ecosystem. It offers core types, like <code>Result&lt;T, E&gt;</code> and <code>Option&lt;T&gt;</code>, library-defined operations on language primitives, native asset management, blockchain contextual operations, access control, storage management, and support for types from other VMs, among many other things.</p>
+<!-- std_lib:example:end -->
 <p>The entire Sway standard library is a Forc project called <code>std</code>, and is available directly here: <a href="https://github.com/FuelLabs/sway/tree/master/sway-lib-std">https://github.com/FuelLabs/sway/tree/master/sway-lib-std</a> (navigate to the appropriate tagged release if the latest <code>master</code> is not compatible). For the latest <code>std</code> documentation see: <a href="https://fuellabs.github.io/sway/master/std/">https://fuellabs.github.io/sway/master/std/</a>.</p>
 <h2 id="using-the-standard-library"><a class="header" href="#using-the-standard-library">Using the Standard Library</a></h2>
 <p>The standard library is made implicitly available to all Forc projects created using <a href="../forc/commands/forc_new.html"><code>forc new</code></a>. In other words, it is not required to manually specify <code>std</code> as an explicit dependency. Forc will automatically use the version of <code>std</code> that matches its version.</p>
@@ -155,6 +158,8 @@
 </code></pre>
 <p>This imports the <code>StorageVec</code> type into the current namespace.</p>
 <h2 id="standard-library-prelude"><a class="header" href="#standard-library-prelude">Standard Library Prelude</a></h2>
+<!-- This section should explain what the std-lib prelude is -->
+<!-- prelude:example:start -->
 <p>Sway comes with a variety of things in its standard library. However, if you had to manually import every single thing that you used, it would be very verbose. But importing a lot of things that a program never uses isn't good either. A balance needs to be struck.</p>
 <p>The prelude is the list of things that Sway automatically imports into every Sway program. It's kept as small as possible, and is focused on things which are used in almost every single Sway program.</p>
 <p>The current version of the prelude lives in <a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/prelude.sw"><code>std::prelude</code></a>, and re-exports the following:</p>
@@ -174,6 +179,7 @@
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/logging.sw"><code>std::logging::log</code></a>, a function that logs arbitrary stack types.</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/auth.sw"><code>std::auth::msg_sender</code></a>, a function that gets the <code>Identity</code> from which a call was made.</li>
 </ul>
+<!-- prelude:example:end -->
 
                     </main>
 

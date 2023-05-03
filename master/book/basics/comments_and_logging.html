@@ -146,7 +146,10 @@
                     <main>
                         <h1 id="comments-and-logging"><a class="header" href="#comments-and-logging">Comments and Logging</a></h1>
 <h2 id="comments"><a class="header" href="#comments">Comments</a></h2>
+<!-- This section should explain how to add comments in Sway -->
+<!-- comments:example:start -->
 <p>Comments in Sway start with two slashes and continue until the end of the line. For comments that extend beyond a single line, you'll need to include <code>//</code> on each line.</p>
+<!-- comments:example:end -->
 <pre><code class="language-sway">// hello world
 </code></pre>
 <pre><code class="language-sway">// let's make a couple of lines
@@ -167,7 +170,10 @@
 }
 </code></pre>
 <h2 id="logging"><a class="header" href="#logging">Logging</a></h2>
+<!-- This section should explain logging in Sway -->
+<!-- logging:example:start -->
 <p>The <code>logging</code> library provides a generic <code>log</code> function that can be imported using <code>use std::logging::log</code> and used to log variables of any type. Each call to <code>log</code> appends a <code>receipt</code> to the list of receipts. There are two types of receipts that a <code>log</code> can generate: <code>Log</code> and <code>LogData</code>.</p>
+<!-- logging:example:end -->
 <pre><code class="language-sway">fn log_values(){
   // Generates a Log receipt
   log(42);
@@ -178,7 +184,11 @@
 }
 </code></pre>
 <h3 id="log-receipt"><a class="header" href="#log-receipt"><code>Log</code> Receipt</a></h3>
-<p>The <code>Log</code> receipt is generated for <em>non-reference</em> types, namely <code>bool</code>, <code>u8</code>, <code>u16</code>, <code>u32</code>, and <code>u64</code>. For example, logging an integer variable <code>x</code> that holds the value <code>42</code> using <code>log(x)</code> may generate the following receipt:</p>
+<!-- This section should explain when `Log` receipts are produced -->
+<!-- log_rec:example:start -->
+<p>The <code>Log</code> receipt is generated for <em>non-reference</em> types, namely <code>bool</code>, <code>u8</code>, <code>u16</code>, <code>u32</code>, and <code>u64</code>.</p>
+<!-- log_rec:example:end -->
+<p>For example, logging an integer variable <code>x</code> that holds the value <code>42</code> using <code>log(x)</code> may generate the following receipt:</p>
 <pre><code class="language-console">&quot;Log&quot;: {
   &quot;id&quot;: &quot;0000000000000000000000000000000000000000000000000000000000000000&quot;,
   &quot;is&quot;: 10352,
@@ -191,7 +201,11 @@
 </code></pre>
 <p>Note that <code>ra</code> will include the value being logged. The additional registers <code>rc</code> and <code>rd</code> will be zero when using <code>log</code> while <code>rb</code> may include a non-zero value representing a unique ID for the <code>log</code> instance. The unique ID is not meaningful on its own but allows the Rust and the TS SDKs to know the type of the data being logged, by looking up the log ID in the JSON ABI file.</p>
 <h3 id="logdata-receipt"><a class="header" href="#logdata-receipt"><code>LogData</code> Receipt</a></h3>
-<p><code>LogData</code> is generated for <em>reference</em> types which include all types except for the <em>non_reference</em> types mentioned above. For example, logging a <code>b256</code> variable <code>b</code> that holds the value <code>0x1111111111111111111111111111111111111111111111111111111111111111</code> using <code>log(b)</code> may generate the following receipt:</p>
+<!-- This section should explain when `LogData` receipts are produced -->
+<!-- log_data_rec:example:start -->
+<p><code>LogData</code> is generated for <em>reference</em> types which include all types except for <em>non_reference</em> types.</p>
+<!-- log_data_rec:example:end -->
+<p>For example, logging a <code>b256</code> variable <code>b</code> that holds the value <code>0x1111111111111111111111111111111111111111111111111111111111111111</code> using <code>log(b)</code> may generate the following receipt:</p>
 <pre><code class="language-console">&quot;LogData&quot;: {
   &quot;data&quot;: &quot;1111111111111111111111111111111111111111111111111111111111111111&quot;,
   &quot;digest&quot;: &quot;02d449a31fbb267c8f352e9968a79e3e5fc95c1bbeaa502fd6454ebde5a4bedc&quot;,

@@ -146,8 +146,13 @@
                     <main>
                         <h1 id="built-in-types"><a class="header" href="#built-in-types">Built-in Types</a></h1>
 <p>Every value in Sway is of a certain type. Although deep down, all values are just ones and zeroes in the underlying virtual machine, Sway needs to know what those ones and zeroes actually mean. This is accomplished with <em>types</em>.</p>
+<!-- This section should explain how Sway types are inferred -->
+<!-- sway_types:example:start -->
 <p>Sway is a statically typed language. At compile time, the types of every value must be known. This does not mean you need to specify every single type: usually, the type can be reasonably inferred by the compiler.</p>
+<!-- sway_types:example:end -->
 <h2 id="primitive-types"><a class="header" href="#primitive-types">Primitive Types</a></h2>
+<!-- This section should list the primitive types in Sway -->
+<!-- prim_types:example:start -->
 <p>Sway has the following primitive types:</p>
 <ol>
 <li><code>u8</code> (8-bit unsigned integer)</li>
@@ -159,6 +164,7 @@
 <li><code>b256</code> (256 bits (32 bytes), i.e. a hash)</li>
 </ol>
 <p>All other types in Sway are built up of these primitive types, or references to these primitive types. You may notice that there are no signed integers—this is by design. In the blockchain domain that Sway occupies, floating-point values and negative numbers have smaller utility, so their implementation has been left up to libraries for specific use cases.</p>
+<!-- prim_types:example:end -->
 <h2 id="numeric-types"><a class="header" href="#numeric-types">Numeric Types</a></h2>
 <p>All of the unsigned integer types are numeric types.</p>
 <p>Numbers can be declared with binary syntax, hexadecimal syntax, base-10 syntax, and underscores for delineation. Let's take a look at the following valid numeric primitives:</p>
@@ -169,30 +175,49 @@
 0x1111_0000 // underscore delineated binary
 0xfff_aaa   // underscore delineated hexadecimal
 </code></pre>
+<!-- This section should explain the default numeric type in Sway -->
+<!-- default_num:example:start -->
 <p>The default numeric type is <code>u64</code>. The FuelVM's word size is 64 bits, and the cases where using a smaller numeric type saves space are minimal.</p>
+<!-- default_num:example:end -->
 <h2 id="boolean-type"><a class="header" href="#boolean-type">Boolean Type</a></h2>
-<p>The boolean type (<code>bool</code>) has two potential values: <code>true</code> or <code>false</code>. Boolean values are typically used for conditional logic or validation, for example in <code>if</code> expressions. Booleans can be negated, or flipped, with the unary negation operator <code>!</code>. For example:</p>
+<!-- This section should explain the `bool` type -->
+<!-- bool:example:start -->
+<p>The boolean type (<code>bool</code>) has two potential values: <code>true</code> or <code>false</code>. Boolean values are typically used for conditional logic or validation, for example in <code>if</code> expressions. Booleans can be negated, or flipped, with the unary negation operator <code>!</code>.</p>
+<!-- bool:example:end -->
+<p>For example:</p>
 <pre><code class="language-sway">fn returns_false() -&gt; bool {
     let boolean_value: bool = true;
     !boolean_value
 }
 </code></pre>
 <h2 id="string-type"><a class="header" href="#string-type">String Type</a></h2>
-<p>In Sway, static-length strings are a primitive type. This means that when you declare a string, its size is a part of its type. This is necessary for the compiler to know how much memory to give for the storage of that data. The size of the string is denoted with square brackets. Let's take a look:</p>
+<!-- This section should explain the string type in Sway -->
+<!-- str:example:start -->
+<p>In Sway, static-length strings are a primitive type. This means that when you declare a string, its size is a part of its type. This is necessary for the compiler to know how much memory to give for the storage of that data. The size of the string is denoted with square brackets.</p>
+<!-- str:example:end -->
+<p>Let's take a look:</p>
 <pre><code class="language-sway">let my_string: str[4] = &quot;fuel&quot;;
 </code></pre>
 <p>Because the string literal <code>&quot;fuel&quot;</code> is four letters, the type is <code>str[4]</code>, denoting a static length of 4 characters. Strings default to UTF-8 in Sway.</p>
 <h2 id="compound-types"><a class="header" href="#compound-types">Compound Types</a></h2>
 <p><em>Compound types</em> are types that group multiple values into one type. In Sway, we have arrays and tuples.</p>
 <h2 id="tuple-types"><a class="header" href="#tuple-types">Tuple Types</a></h2>
-<p>A tuple is a general-purpose static-length aggregation of types. In more plain terms, a tuple is a single type that consists of an aggregate of zero or more types. The internal types that make up a tuple, and the tuple's arity, define the tuple's type. Let's take a look at some examples.</p>
+<!-- This section should explain what a tuple is -->
+<!-- tuple:example:start -->
+<p>A tuple is a general-purpose static-length aggregation of types. In more plain terms, a tuple is a single type that consists of an aggregate of zero or more types. The internal types that make up a tuple, and the tuple's arity, define the tuple's type.</p>
+<!-- tuple:example:end -->
+<p>Let's take a look at some examples.</p>
 <pre><code class="language-sway">let x: (u64, u64) = (0, 0);
 </code></pre>
 <p>This is a tuple, denoted by parenthesized, comma-separated values. Note that the type annotation, <code>(u64, u64)</code>, is similar in syntax to the expression which instantiates that type, <code>(0, 0)</code>.</p>
 <pre><code class="language-sway">let x: (u64, bool) = (42, true);
 assert(x.1);
 </code></pre>
-<p>In this example, we have created a new tuple type, <code>(u64, bool)</code>, which is a composite of a <code>u64</code> and a <code>bool</code>. To access a value within a tuple, we use <em>tuple indexing</em>: <code>x.1</code> stands for the first (zero-indexed, so the <code>bool</code>) value of the tuple. Likewise, <code>x.0</code> would be the zeroth, <code>u64</code> value of the tuple. Tuple values can also be accessed via destructuring:</p>
+<p>In this example, we have created a new tuple type, <code>(u64, bool)</code>, which is a composite of a <code>u64</code> and a <code>bool</code>.</p>
+<!-- This section should explain how to access a value in a tuple -->
+<!-- tuple_val:example:start -->
+<p>To access a value within a tuple, we use <em>tuple indexing</em>: <code>x.1</code> stands for the first (zero-indexed, so the <code>bool</code>) value of the tuple. Likewise, <code>x.0</code> would be the zeroth, <code>u64</code> value of the tuple. Tuple values can also be accessed via destructuring.</p>
+<!-- tuple_val:example:end -->
 <pre><code class="language-sway">struct Foo {}
 let x: (u64, Foo, bool) = (42, Foo {}, true);
 let (number, foo, boolean) = x;
@@ -204,12 +229,18 @@ let z: (u64,) = (42,); // z is of type (u64), i.e. a one-arity tuple
 let w: (u64) = (42,);  // type error
 </code></pre>
 <h2 id="arrays"><a class="header" href="#arrays">Arrays</a></h2>
+<!-- This section should explain what an array is -->
+<!-- array:example:start -->
 <p>An array is similar to a tuple, but an array's values must all be of the same type. Arrays can hold arbitrary types including non-primitive types.</p>
+<!-- array:example:end -->
 <p>An array is written as a comma-separated list inside square brackets:</p>
 <pre><code class="language-sway">let x = [1, 2, 3, 4, 5];
 </code></pre>
+<!-- This section should explain arrays in depth -->
+<!-- array_details:example:start -->
 <p>Arrays are allocated on the stack since their size is known. An array's size is <em>always</em> static, i.e. it cannot change. An array of five elements cannot become an array of six elements.</p>
 <p>Arrays can be iterated over, unlike tuples. An array's type is written as the type the array contains followed by the number of elements, semicolon-separated and within square brackets, e.g. <code>[u64; 5]</code>. To access an element in an array, use the <em>array indexing syntax</em>, i.e. square brackets.</p>
+<!-- array_details:example:end -->
 <p>Array elements can also be mutated if the underlying array is declared as mutable:</p>
 <pre><code class="language-sway">let mut x = [1, 2, 3, 4, 5];
 x[0] = 0;
