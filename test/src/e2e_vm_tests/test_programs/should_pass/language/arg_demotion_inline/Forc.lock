@@ -1,0 +1,16 @@
+[[package]]
+name = 'arg_demotion_inline'
+source = 'member'
+dependencies = [
+    'core',
+    'std',
+]
+
+[[package]]
+name = 'core'
+source = 'path+from-root-603115901A793008'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-603115901A793008'
+dependencies = ['core']
