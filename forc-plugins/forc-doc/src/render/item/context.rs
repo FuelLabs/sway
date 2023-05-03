@@ -46,6 +46,7 @@ impl Context {
 impl Renderable for Context {
     fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
         let mut rendered_list: Vec<String> = Vec::new();
+        let mut is_method_block = false;
         match self.context_type {
             ContextType::StructFields(fields) => {
                 for field in fields {
@@ -132,6 +133,7 @@ impl Renderable for Context {
                 }
             }
             ContextType::RequiredMethods(methods) => {
+                is_method_block = true;
                 for method in methods {
                     let mut fn_sig = format!("fn {}(", method.name.as_str());
                     for param in &method.parameters {
@@ -157,79 +159,101 @@ impl Renderable for Context {
                     let multiline = fn_sig.chars().count() >= 60;
                     let fn_sig = format!("fn {}(", method.name);
                     let method_id = format!("tymethod.{}", method.name.as_str());
-                    rendered_list.push(box_html! {
-                        div(class="methods") {
-                            div(id=&method_id, class="method has-srclink") {
-                                h4(class="code-header") {
-                                    : "fn ";
-                                    a(class="fnname", href=format!("{IDENTITY}{method_id}")) {
-                                        : method.name.as_str();
-                                    }
-                                    : "(";
-                                    @ if multiline {
-                                        @ for param in &method.parameters {
-                                            br;
-                                            : "    ";
-                                            @ if param.is_reference {
-                                                : "ref";
-                                            }
-                                            @ if param.is_mutable {
-                                                : "mut ";
-                                            }
-                                            @ if param.is_self() {
-                                                : "self,"
-                                            } else {
-                                                : param.name.as_str();
-                                                : ": ";
-                                                : param.type_argument.span.as_str();
-                                                : ","
-                                            }
-                                        }
+                    let method_attrs = method.attributes.clone();
+
+                    let rendered_method = box_html! {
+                        div(id=&method_id, class="method has-srclink") {
+                            a(href=format!("{IDENTITY}{method_id}"), class="anchor");
+                            h4(class="code-header") {
+                                : "fn ";
+                                a(class="fnname", href=format!("{IDENTITY}{method_id}")) {
+                                    : method.name.as_str();
+                                }
+                                : "(";
+                                @ if multiline {
+                                    @ for param in &method.parameters {
                                         br;
-                                        : ")";
-                                    } else {
-                                        @ for param in &method.parameters {
-                                            @ if param.is_reference {
-                                                : "ref";
-                                            }
-                                            @ if param.is_mutable {
-                                                : "mut ";
-                                            }
-                                            @ if param.is_self() {
-                                                : "self"
-                                            } else {
-                                                : param.name.as_str();
-                                                : ": ";
-                                                : param.type_argument.span.as_str();
-                                            }
-                                            @ if param.name.as_str()
-                                                != method.parameters.last()
-                                                .expect("no last element in trait method parameters list")
-                                                .name.as_str() {
-                                                : ", ";
-                                            }
+                                        : "    ";
+                                        @ if param.is_reference {
+                                            : "ref";
                                         }
-                                        : ")";
+                                        @ if param.is_mutable {
+                                            : "mut ";
+                                        }
+                                        @ if param.is_self() {
+                                            : "self,"
+                                        } else {
+                                            : param.name.as_str();
+                                            : ": ";
+                                            : param.type_argument.span.as_str();
+                                            : ","
+                                        }
                                     }
-                                    @ if !method.return_type_span.as_str().contains(&fn_sig) {
-                                        : " -> ";
-                                        : method.return_type_span.as_str();
+                                    br;
+                                    : ")";
+                                } else {
+                                    @ for param in &method.parameters {
+                                        @ if param.is_reference {
+                                            : "ref";
+                                        }
+                                        @ if param.is_mutable {
+                                            : "mut ";
+                                        }
+                                        @ if param.is_self() {
+                                            : "self"
+                                        } else {
+                                            : param.name.as_str();
+                                            : ": ";
+                                            : param.type_argument.span.as_str();
+                                        }
+                                        @ if param.name.as_str()
+                                            != method.parameters.last()
+                                            .expect("no last element in trait method parameters list")
+                                            .name.as_str() {
+                                            : ", ";
+                                        }
                                     }
+                                    : ")";
+                                }
+                                @ if !method.return_type_span.as_str().contains(&fn_sig) {
+                                    : " -> ";
+                                    : method.return_type_span.as_str();
                                 }
                             }
                         }
-                        @ if !method.attributes.is_empty() {
-                            div(class="docblock") {
-                                : Raw(method.attributes.to_html_string());
+                    }.into_string()?;
+
+                    rendered_list.push(
+                        box_html! {
+                            @ if !method_attrs.is_empty() {
+                                details(class="swaydoc-toggle open") {
+                                    summary {
+                                        : Raw(rendered_method);
+                                    }
+                                    div(class="docblock") {
+                                        : Raw(method_attrs.to_html_string());
+                                    }
+                                }
+                            } else {
+                                : Raw(rendered_method);
                             }
                         }
-                    }.into_string()?);
+                        .into_string()?,
+                    );
                 }
             }
         };
         Ok(box_html! {
-            @ for item in rendered_list {
-                : Raw(item);
+            @ if is_method_block {
+                div(class="methods") {
+                    @ for item in rendered_list {
+                        : Raw(item);
+                    }
+                }
+            } else {
+                @ for item in rendered_list {
+                    : Raw(item);
+                }
             }
         })
     }
