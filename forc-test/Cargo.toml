@@ -2,11 +2,11 @@
 name = "forc-test"
 version = "0.38.0"
 description = "A library for building and running Sway unit tests within Forc packages."
-authors = { workspace = true }
-edition = { workspace = true }
-homepage = { workspace = true }
-license = { workspace = true }
-repository = { workspace = true }
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
 anyhow = "1"

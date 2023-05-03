@@ -2,11 +2,11 @@
 name = "forc-tx"
 version = "0.38.0"
 description = "A `forc` plugin for constructing transactions."
-authors = { workspace = true }
-edition = { workspace = true }
-homepage = { workspace = true }
-license = { workspace = true }
-repository = { workspace = true }
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [lib]
 path = "src/lib.rs"

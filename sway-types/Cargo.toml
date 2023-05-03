@@ -2,11 +2,11 @@
 name = "sway-types"
 version = "0.38.0"
 description = "Sway core types."
-authors = { workspace = true }
-edition = { workspace = true }
-homepage = { workspace = true }
-license = { workspace = true }
-repository = { workspace = true }
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
 fuel-asm = { workspace = true }

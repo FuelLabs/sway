@@ -3,11 +3,11 @@ name = "sway-lsp-test-utils"
 version = "0.1.0"
 description = "Test utils for the Sway LSP Server."
 publish = false
-authors = { workspace = true }
-edition = { workspace = true }
-homepage = { workspace = true }
-license = { workspace = true }
-repository = { workspace = true }
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
 assert-json-diff = "2.0"

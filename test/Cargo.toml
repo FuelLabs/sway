@@ -2,8 +2,8 @@
 name = "test"
 version = "0.0.0"
 publish = false
-authors = { workspace = true }
-edition = { workspace = true }
+authors.workspace = true
+edition.workspace = true
 
 [dependencies]
 anyhow = "1.0.41"
