@@ -4,15 +4,17 @@
 //! markdown for this purpose.
 //! Modified from rust-analyzer.
 use crate::{
-    capabilities::hover::{Implementations, RelatedType},
-    core::token::get_range_from_span,
+    capabilities::hover::RelatedType, core::token::get_range_from_span,
+    utils::document::get_url_from_span,
 };
 use serde_json::{json, Value};
 use std::fmt::{self, format};
 use sway_core::language::CallPath;
+use sway_types::Span;
 use urlencoding::encode;
 
-const GO_TO_COMMAND: &str = "sway.goToDefinition";
+const GO_TO_COMMAND: &str = "sway.goToLocation";
+const PEEK_COMMAND: &str = "sway.peekLocations";
 
 /// A handy wrapper around `String` for constructing markdown documents.
 #[derive(Default, Debug)]
@@ -54,8 +56,8 @@ impl Markup {
         }
     }
 
-    fn quoted_tooltip(&self, callpath: &CallPath) -> String {
-        format!("\"{}\"", callpath.to_string())
+    fn quoted_tooltip(&self, text: String) -> String {
+        format!("\"{}\"", text)
     }
 
     /// Builds a markdown URI using the "command" scheme and args passed as encoded JSON.
@@ -68,7 +70,7 @@ impl Markup {
     pub fn maybe_add_links(
         self,
         related_types: Vec<RelatedType>,
-        implementations: Implementations,
+        implementations: Vec<Span>,
     ) -> Self {
         if !related_types.is_empty() {
             let links_string = related_types
@@ -79,23 +81,39 @@ impl Markup {
                         "[{}]({} {})",
                         related_type.name,
                         self.command_uri(GO_TO_COMMAND, args),
-                        self.quoted_tooltip(&related_type.callpath)
+                        self.quoted_tooltip(related_type.callpath.to_string())
                     )
                 })
                 .collect::<Vec<_>>()
                 .join(" | ");
             self.text(&format!("Go to {}", links_string))
-        } else if !implementations.definition_span.is_none()
-            && !implementations.impl_spans.is_empty()
-        {
-            self.text(&format!(
-                "[{} implementations]({})",
-                implementations.impl_spans.len(),
-                "www.google.com" // implementations.definition_span.unwrap(),
-            ))
-            // self.text("[22 implementations](https://duckduckgo.com)")
         } else {
-            self
+            let locations = implementations
+                .iter()
+                .map(|span| {
+                    if let Ok(uri) = get_url_from_span(span) {
+                        let range = get_range_from_span(span);
+                        Some(json!({ "uri": uri, "range": range }))
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>();
+            // The definition is stored as a location. We only want to show this if there is at least 1
+            // implementation in addition to the definition.
+            if locations.len() > 1 {
+                let args = json!([{ "locations": locations }]);
+                let links_string = format!(
+                    "[{} implementations]({} {})",
+                    implementations.len(),
+                    self.command_uri(PEEK_COMMAND, args),
+                    self.quoted_tooltip("View implementations".to_string())
+                );
+                self.text(&links_string)
+            } else {
+                self
+            }
+            // self.text("[22 implementations](https://duckduckgo.com)")
         }
     }
 

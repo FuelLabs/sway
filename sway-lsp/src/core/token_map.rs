@@ -66,23 +66,6 @@ impl TokenMap {
             .collect()
     }
 
-    /// Returns all trait implementations of the given token.
-    pub fn all_impls_of_token(&self, engines: Engines<'_>, token: &Token) -> Vec<TyImplTrait> {
-        self.iter()
-            .all_references_of_token(token, engines)
-            .flat_map(|(_, token)| {
-                if let Some(TypedAstToken::TypedDeclaration(ty::TyDecl::ImplTrait(
-                    ty::ImplTrait { decl_id, .. },
-                ))) = token.typed
-                {
-                    Some(engines.de().get_impl_trait(&decl_id))
-                } else {
-                    None
-                }
-            })
-            .collect()
-    }
-
     /// Returns the first parent declaration found at the given cursor position.
     ///
     /// For example, if the cursor is inside a function body, this function returns the function declaration.

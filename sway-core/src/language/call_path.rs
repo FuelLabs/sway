@@ -1,8 +1,10 @@
 use std::{fmt, sync::Arc};
 
-use crate::{Ident, Namespace};
+use crate::{namespace::Module, Ident, Namespace};
 
 use sway_types::{span::Span, Spanned};
+
+use super::ty::TyModule;
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct CallPathTree {
@@ -100,7 +102,7 @@ impl CallPath {
     ///
     /// Paths to _external_ libraries such `std::lib1::lib2::my_obj` are considered full already
     /// and are left unchanged since `std` is a root of the package `std`.
-    pub fn to_fullpath(&self, namespace: &mut Namespace) -> CallPath {
+    pub fn to_fullpath(&self, namespace: &Module) -> CallPath {
         if self.is_absolute {
             return self.clone();
         }
@@ -126,10 +128,10 @@ impl CallPath {
             let mut prefixes: Vec<Ident> = vec![];
 
             if synonym_prefixes.is_empty() || !submodule_name_in_synonym_prefixes {
-                if let Some(pkg_name) = &namespace.root().module.name {
+                if let Some(pkg_name) = &namespace.name {
                     prefixes.push(pkg_name.clone());
                 }
-                for mod_path in namespace.mod_path() {
+                for mod_path in &namespace.mod_path {
                     prefixes.push(mod_path.clone());
                 }
             }
@@ -150,10 +152,10 @@ impl CallPath {
                 self.clone()
             } else {
                 let mut prefixes: Vec<Ident> = vec![];
-                if let Some(pkg_name) = &namespace.root().module.name {
+                if let Some(pkg_name) = &namespace.name {
                     prefixes.push(pkg_name.clone());
                 }
-                for mod_path in namespace.mod_path() {
+                for mod_path in &namespace.mod_path {
                     prefixes.push(mod_path.clone());
                 }
 

@@ -155,7 +155,9 @@ fn semantic_token_type(kind: &SymbolKind) -> SemanticTokenType {
         SymbolKind::Variable => SemanticTokenType::VARIABLE,
         SymbolKind::Function | SymbolKind::Intrinsic => SemanticTokenType::FUNCTION,
         SymbolKind::Const => SemanticTokenType::VARIABLE,
-        SymbolKind::Struct => SemanticTokenType::STRUCT,
+        SymbolKind::Struct | SymbolKind::ImplSelf | SymbolKind::ImplTrait => {
+            SemanticTokenType::STRUCT
+        }
         SymbolKind::Enum => SemanticTokenType::ENUM,
         SymbolKind::Variant => SemanticTokenType::ENUM_MEMBER,
         SymbolKind::Trait => SemanticTokenType::INTERFACE,

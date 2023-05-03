@@ -5,6 +5,7 @@ use crate::{
         token_map::TokenMapExt,
     },
     error::{LanguageServerError, RenameError},
+    utils::document::get_url_from_path,
 };
 use std::{collections::HashMap, sync::Arc};
 use sway_core::{language::ty, Engines};
@@ -77,7 +78,7 @@ pub fn rename(
             range.start.character -= RAW_IDENTIFIER.len() as u32;
         }
         if let Some(path) = ident.span().path() {
-            let url = session.sync.url_from_path(path).ok()?;
+            let url = get_url_from_path(path).ok()?;
             if let Some(url) = session.sync.to_workspace_url(url) {
                 let edit = TextEdit::new(range, new_name.clone());
                 return Some((url, vec![edit]));

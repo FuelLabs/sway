@@ -26,11 +26,11 @@ use sway_core::{
     language::{
         lexed::LexedProgram,
         parsed::{AstNode, ParseProgram},
-        ty,
+        ty, CallPath,
     },
-    BuildTarget, CompileResult, Engines, TypeEngine,
+    BuildTarget, CompileResult, Engines, TypeEngine, TypeId,
 };
-use sway_types::{Span, Spanned};
+use sway_types::{Ident, Span, Spanned};
 use sway_utils::helpers::get_sway_files;
 use tokio::sync::Semaphore;
 use tower_lsp::lsp_types::{
@@ -327,6 +327,26 @@ impl Session {
             ));
         }
         None
+    }
+
+    /// Returns the spans of all implementations of the type that exist in the namespace.
+    pub fn impl_spans_for_type(&self, type_id: TypeId) -> Option<Vec<Span>> {
+        let compiled_program = &*self.compiled_program.read();
+        let program = compiled_program.typed.clone()?;
+        let namespace = program.root.namespace;
+        Some(namespace.get_impl_spans_for_type(
+            Engines::new(&self.type_engine.read(), &self.decl_engine.read()),
+            type_id,
+        ))
+    }
+
+    /// Returns the spans of all implementations of the trait of the given call path.
+    pub fn impl_spans_for_trait_name(&self, trait_name: &Ident) -> Option<Vec<Span>> {
+        let compiled_program = &*self.compiled_program.read();
+        let program = compiled_program.typed.clone()?;
+        let namespace = program.root.namespace;
+        let call_path = CallPath::from(trait_name.clone()).to_fullpath(&namespace);
+        Some(namespace.get_impl_spans_for_trait_name(&call_path))
     }
 
     pub fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {

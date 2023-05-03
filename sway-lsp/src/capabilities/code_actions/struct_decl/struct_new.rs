@@ -20,9 +20,18 @@ impl<'a> CodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
         // Find the first impl block for this struct if it exists.
         let existing_impl_decl = ctx
             .tokens
-            .all_impls_of_token(ctx.engines, ctx.token)
-            .first()
-            .cloned();
+            .iter()
+            .all_references_of_token(ctx.token, ctx.engines)
+            .find_map(|(_, token)| {
+                if let Some(TypedAstToken::TypedDeclaration(ty::TyDecl::ImplTrait(
+                    ty::ImplTrait { decl_id, .. },
+                ))) = token.typed
+                {
+                    Some(ctx.engines.de().get_impl_trait(&decl_id))
+                } else {
+                    None
+                }
+            });
         Self {
             decl,
             uri: ctx.uri,
