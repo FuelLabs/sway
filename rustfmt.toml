@@ -1,4 +1,4 @@
-fn_args_layout = "Tall"
+fn_params_layout = "Tall"
 hard_tabs = false
 match_arm_leading_pipes = "Never"
 max_width = 100
