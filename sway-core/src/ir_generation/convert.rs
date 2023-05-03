@@ -145,7 +145,6 @@ fn convert_resolved_type(
         }
         TypeInfo::RawUntypedPtr => Type::get_uint64(context),
         TypeInfo::RawUntypedSlice => Type::get_slice(context),
-        // TODO: Are these ok?
         TypeInfo::Ptr(_) => Type::get_uint64(context),
         TypeInfo::Slice(_) => Type::get_slice(context),
         TypeInfo::Alias { ty, .. } => {
