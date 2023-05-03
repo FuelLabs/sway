@@ -39,14 +39,15 @@ impl<V> StorageKey<StorageVec<V>> {
     /// ```
     #[storage(read, write)]
     pub fn push(self, value: V) {
-        let len = read::<u64>(self.slot, 0).unwrap_or(0);
+        let len_key = sha256((self.slot, self.offset));
+        let len = read::<u64>(len_key, 0).unwrap_or(0);
 
         // Storing the value at the current length index (if this is the first item, starts off at 0)
-        let key = sha256((len, self.slot));
+        let key = sha256((len, self.slot, self.offset));
         write::<V>(key, 0, value);
 
         // Incrementing the length
-        write(self.slot, 0, len + 1);
+        write(len_key, 0, len + 1);
     }
 
     /// Removes the last element of the vector and returns it, `None` if empty.
@@ -76,7 +77,8 @@ impl<V> StorageKey<StorageVec<V>> {
     /// ```
     #[storage(read, write)]
     pub fn pop(self) -> Option<V> {
-        let len = read::<u64>(self.slot, 0).unwrap_or(0);
+        let len_key = sha256((self.slot, self.offset));
+        let len = read::<u64>(len_key, 0).unwrap_or(0);
 
         // if the length is 0, there is no item to pop from the vec
         if len == 0 {
@@ -84,9 +86,9 @@ impl<V> StorageKey<StorageVec<V>> {
         }
 
         // reduces len by 1, effectively removing the last item in the vec
-        write(self.slot, 0, len - 1);
+        write(len_key, 0, len - 1);
 
-        let key = sha256((len - 1, self.slot));
+        let key = sha256((len - 1, self.slot, self.offset));
         read::<V>(key, 0)
     }
 
@@ -118,7 +120,8 @@ impl<V> StorageKey<StorageVec<V>> {
     /// ```
     #[storage(read)]
     pub fn get(self, index: u64) -> Option<StorageKey<V>> {
-        let len = read::<u64>(self.slot, 0).unwrap_or(0);
+        let len_key = sha256((self.slot, self.offset));
+        let len = read::<u64>(len_key, 0).unwrap_or(0);
 
         // if the index is larger or equal to len, there is no item to return
         if len <= index {
@@ -126,7 +129,7 @@ impl<V> StorageKey<StorageVec<V>> {
         }
 
         Some(StorageKey {
-            slot: sha256((index, self.slot)),
+            slot: sha256((index, self.slot, self.offset)),
             offset: 0,
         })
     }
@@ -169,28 +172,29 @@ impl<V> StorageKey<StorageVec<V>> {
     /// ```
     #[storage(read, write)]
     pub fn remove(self, index: u64) -> V {
-        let len = read::<u64>(self.slot, 0).unwrap_or(0);
+        let len_key = sha256((self.slot, self.offset));
+        let len = read::<u64>(len_key, 0).unwrap_or(0);
 
         // if the index is larger or equal to len, there is no item to remove
         assert(index < len);
 
         // gets the element before removing it, so it can be returned
-        let removed_element = read::<V>(sha256((index, self.slot)), 0).unwrap();
+        let removed_element = read::<V>(sha256((index, self.slot, self.offset)), 0).unwrap();
 
         // for every element in the vec with an index greater than the input index,
         // shifts the index for that element down one
         let mut count = index + 1;
         while count < len {
             // gets the storage location for the previous index
-            let key = sha256((count - 1, self.slot));
+            let key = sha256((count - 1, self.slot, self.offset));
             // moves the element of the current index into the previous index
-            write::<V>(key, 0, read::<V>(sha256((count, self.slot)), 0).unwrap());
+            write::<V>(key, 0, read::<V>(sha256((count, self.slot, self.offset)), 0).unwrap());
 
             count += 1;
         }
 
         // decrements len by 1
-        write(self.slot, 0, len - 1);
+        write(len_key, 0, len - 1);
 
         removed_element
     }
@@ -232,20 +236,21 @@ impl<V> StorageKey<StorageVec<V>> {
     /// ```
     #[storage(read, write)]
     pub fn swap_remove(self, index: u64) -> V {
-        let len = read::<u64>(self.slot, 0).unwrap_or(0);
+        let len_key = sha256((self.slot, self.offset));
+        let len = read::<u64>(len_key, 0).unwrap_or(0);
 
         // if the index is larger or equal to len, there is no item to remove
         assert(index < len);
 
-        let hash_of_to_be_removed = sha256((index, self.slot));
+        let hash_of_to_be_removed = sha256((index, self.slot, self.offset));
         // gets the element before removing it, so it can be returned
         let element_to_be_removed = read::<V>(hash_of_to_be_removed, 0).unwrap();
 
-        let last_element = read::<V>(sha256((len - 1, self.slot)), 0).unwrap();
+        let last_element = read::<V>(sha256((len - 1, self.slot, self.offset)), 0).unwrap();
         write::<V>(hash_of_to_be_removed, 0, last_element);
 
         // decrements len by 1
-        write(self.slot, 0, len - 1);
+        write(len_key, 0, len - 1);
 
         element_to_be_removed
     }
@@ -287,12 +292,13 @@ impl<V> StorageKey<StorageVec<V>> {
     /// ```
     #[storage(read, write)]
     pub fn set(self, index: u64, value: V) {
-        let len = read::<u64>(self.slot, 0).unwrap_or(0);
+        let len_key = sha256((self.slot, self.offset));
+        let len = read::<u64>(len_key, 0).unwrap_or(0);
 
         // if the index is higher than or equal len, there is no element to set
         assert(index < len);
 
-        let key = sha256((index, self.slot));
+        let key = sha256((index, self.slot, self.offset));
         write::<V>(key, 0, value);
     }
 
@@ -337,18 +343,19 @@ impl<V> StorageKey<StorageVec<V>> {
     /// ```
     #[storage(read, write)]
     pub fn insert(self, index: u64, value: V) {
-        let len = read::<u64>(self.slot, 0).unwrap_or(0);
+        let len_key = sha256((self.slot, self.offset));
+        let len = read::<u64>(len_key, 0).unwrap_or(0);
 
         // if the index is larger than len, there is no space to insert
         assert(index <= len);
 
         // if len is 0, index must also be 0 due to above check
         if len == index {
-            let key = sha256((index, self.slot));
+            let key = sha256((index, self.slot, self.offset));
             write::<V>(key, 0, value);
 
             // increments len by 1
-            write(self.slot, 0, len + 1);
+            write(len_key, 0, len + 1);
 
             return;
         }
@@ -358,20 +365,20 @@ impl<V> StorageKey<StorageVec<V>> {
         // performed in reverse to prevent data overwriting
         let mut count = len - 1;
         while count >= index {
-            let key = sha256((count + 1, self.slot));
+            let key = sha256((count + 1, self.slot, self.offset));
             // shifts all the values up one index
-            write::<V>(key, 0, read::<V>(sha256((count, self.slot)), 0).unwrap());
+            write::<V>(key, 0, read::<V>(sha256((count, self.slot, self.offset)), 0).unwrap());
 
             if count == 0 { break; }
             count -= 1;
         }
 
         // inserts the value into the now unused index
-        let key = sha256((index, self.slot));
+        let key = sha256((index, self.slot, self.offset));
         write::<V>(key, 0, value);
 
         // increments len by 1
-        write(self.slot, 0, len + 1);
+        write(len_key, 0, len + 1);
     }
 
     /// Returns the length of the vector.
@@ -399,7 +406,7 @@ impl<V> StorageKey<StorageVec<V>> {
     /// ```
     #[storage(read)]
     pub fn len(self) -> u64 {
-        read::<u64>(self.slot, 0).unwrap_or(0)
+        read::<u64>(sha256((self.slot, self.offset)), 0).unwrap_or(0)
     }
 
     /// Checks whether the len is zero or not.
@@ -431,7 +438,7 @@ impl<V> StorageKey<StorageVec<V>> {
     /// ```
     #[storage(read)]
     pub fn is_empty(self) -> bool {
-        read::<u64>(self.slot, 0).unwrap_or(0) == 0
+        read::<u64>(sha256((self.slot, self.offset)), 0).unwrap_or(0) == 0
     }
 
     /// Sets the len to zero.
@@ -459,7 +466,7 @@ impl<V> StorageKey<StorageVec<V>> {
     /// ```
     #[storage(write)]
     pub fn clear(self) {
-        let _ = clear::<u64>(self.slot);
+        let _ = clear::<u64>(sha256((self.slot, self.offset)));
     }
 
     /// Swaps two elements.
@@ -499,7 +506,8 @@ impl<V> StorageKey<StorageVec<V>> {
     /// ```
     #[storage(read, write)]
     pub fn swap(self, element1_index: u64, element2_index: u64) {
-        let len = read::<u64>(self.slot, 0).unwrap_or(0);
+        let len_key = sha256((self.slot, self.offset));
+        let len = read::<u64>(len_key, 0).unwrap_or(0);
         assert(element1_index < len);
         assert(element2_index < len);
 
@@ -507,8 +515,8 @@ impl<V> StorageKey<StorageVec<V>> {
             return;
         }
 
-        let element1_key = sha256((element1_index, self.slot));
-        let element2_key = sha256((element2_index, self.slot));
+        let element1_key = sha256((element1_index, self.slot, self.offset));
+        let element2_key = sha256((element2_index, self.slot, self.offset));
 
         let element1_value = read::<V>(element1_key, 0).unwrap();
         write::<V>(element1_key, 0, read::<V>(element2_key, 0).unwrap());
@@ -538,10 +546,10 @@ impl<V> StorageKey<StorageVec<V>> {
     /// ```
     #[storage(read)]
     pub fn first(self) -> Option<StorageKey<V>> {
-        match read::<u64>(self.slot, 0).unwrap_or(0) {
+        match read::<u64>(sha256((self.slot, self.offset)), 0).unwrap_or(0) {
             0 => None,
             _ => Some(StorageKey {
-                slot: sha256((0, self.slot)),
+                slot: sha256((0, self.slot, self.offset)),
                 offset: 0,
             }),
         }
@@ -571,10 +579,10 @@ impl<V> StorageKey<StorageVec<V>> {
     /// ```
     #[storage(read)]
     pub fn last(self) -> Option<StorageKey<V>> {
-        match read::<u64>(self.slot, 0).unwrap_or(0) {
+        match read::<u64>(sha256((self.slot, self.offset)), 0).unwrap_or(0) {
             0 => None,
             len => Some(StorageKey {
-                slot: sha256((len - 1, self.slot)),
+                slot: sha256((len - 1, self.slot, self.offset)),
                 offset: 0,
             }),
         }
@@ -607,7 +615,8 @@ impl<V> StorageKey<StorageVec<V>> {
     /// ```
     #[storage(read, write)]
     pub fn reverse(self) {
-        let len = read::<u64>(self.slot, 0).unwrap_or(0);
+        let len_key = sha256((self.slot, self.offset));
+        let len = read::<u64>(len_key, 0).unwrap_or(0);
 
         if len < 2 {
             return;
@@ -616,8 +625,8 @@ impl<V> StorageKey<StorageVec<V>> {
         let mid = len / 2;
         let mut i = 0;
         while i < mid {
-            let element1_key = sha256((i, self.slot));
-            let element2_key = sha256((len - i - 1, self.slot));
+            let element1_key = sha256((i, self.slot, self.offset));
+            let element2_key = sha256((len - i - 1, self.slot, self.offset));
 
             let element1_value = read::<V>(element1_key, 0).unwrap();
             write::<V>(element1_key, 0, read::<V>(element2_key, 0).unwrap());
@@ -658,11 +667,12 @@ impl<V> StorageKey<StorageVec<V>> {
     /// ```
     #[storage(read, write)]
     pub fn fill(self, value: V) {
-        let len = read::<u64>(self.slot, 0).unwrap_or(0);
+        let len_key = sha256((self.slot, self.offset));
+        let len = read::<u64>(len_key, 0).unwrap_or(0);
 
         let mut i = 0;
         while i < len {
-            write::<V>(sha256((i, self.slot)), 0, value);
+            write::<V>(sha256((i, self.slot, self.offset)), 0, value);
             i += 1;
         }
     }
@@ -710,11 +720,12 @@ impl<V> StorageKey<StorageVec<V>> {
     /// ```
     #[storage(read, write)]
     pub fn resize(self, new_len: u64, value: V) {
-        let mut len = read::<u64>(self.slot, 0).unwrap_or(0);
+        let len_key = sha256((self.slot, self.offset));
+        let mut len = read::<u64>(len_key, 0).unwrap_or(0);
         while len < new_len {
-            write::<V>(sha256((len, self.slot)), 0, value);
+            write::<V>(sha256((len, self.slot, self,offset)), 0, value);
             len += 1;
         }
-        write::<u64>(self.slot, 0, new_len);
+        write::<u64>(len_key, 0, new_len);
     }
 }

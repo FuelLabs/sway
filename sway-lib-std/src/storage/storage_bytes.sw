@@ -37,7 +37,7 @@ impl StorableSlice<Bytes> for StorageKey<StorageBytes> {
     /// ```
     #[storage(read, write)]
     fn store(self, bytes: Bytes) {
-        let key = self.slot;
+        let key = sha256((self.slot, self.offet));
         store_slice(key, bytes.as_raw_slice());
     }
 
@@ -68,7 +68,7 @@ impl StorableSlice<Bytes> for StorageKey<StorageBytes> {
     /// ```
     #[storage(read)]
     fn load(self) -> Option<Bytes> {
-        let key = self.slot;
+        let key = sha256((self.slot, self.offet));
         match get_slice(key) {
             Some(slice) => {
                 Some(Bytes::from_raw_slice(slice))
@@ -107,7 +107,7 @@ impl StorableSlice<Bytes> for StorageKey<StorageBytes> {
     /// ```
     #[storage(read, write)]
     fn clear(self) -> bool {
-        let key = self.slot;
+        let key = sha256((self.slot, self.offet));
         clear_slice(key)
     }
 
@@ -137,6 +137,6 @@ impl StorableSlice<Bytes> for StorageKey<StorageBytes> {
     /// ```
     #[storage(read)]
     fn len(self) -> u64 {
-        read::<u64>(self.slot, 0).unwrap_or(0)
+        read::<u64>(sha256((self.slot, self.offet)), 0).unwrap_or(0)
     }
 }
