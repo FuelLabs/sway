@@ -282,6 +282,8 @@ jobs:
 
   forc-run-benchmarks:
     runs-on: ubuntu-latest
+    permissions:
+        contents: write
     steps:
       - uses: actions/checkout@v3
       - name: Install toolchain
@@ -293,6 +295,18 @@ jobs:
         run: cargo install --locked --debug --path ./forc
       - name: Run benchmarks
         run: ./benchmark.sh
+      - name: Checkout benchmark data
+        uses: actions/checkout@v3
+        with:
+          repository: FuelLabs/sway-performance-data
+          path: performance-data
+      - name: Prepare benchmarks data for commit
+        run: ./benchmark.sh --prepare-for-commit
+      - uses: EndBug/add-and-commit@v9
+        with:
+          cwd: './performance-data'
+          message: 'Updated benchmark data'
+          default_author: github_actor
 
   forc-unit-tests:
     runs-on: ubuntu-latest
