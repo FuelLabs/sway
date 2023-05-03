@@ -152,7 +152,8 @@ h2,
   border-bottom: 1px solid var(--headings-border-bottom-color);
 }
 h3.code-header {
-  font-size: 1.125rem;
+  font-size: 1em;
+  font-weight: 600;
 }
 h4.code-header {
   font-size: 1rem;
@@ -160,7 +161,6 @@ h4.code-header {
 .code-header {
   font-weight: 600;
   border-bottom-style: none;
-  margin: 0;
   padding: 0;
   margin-top: 0.6em;
   margin-bottom: 0.4em;
@@ -249,7 +249,7 @@ ol ol {
   margin-bottom: 0.625em;
 }
 p {
-    margin: 0 0 .6em 0;
+  margin: 0 0 0.6em 0;
 }
 summary {
   outline: none;
@@ -375,13 +375,13 @@ nav.sub {
   padding-left: 24px;
 }
 .sidebar .location {
-    border: 1px solid;
-    font-size: 17px;
-    margin: 30px 10px 20px 10px;
-    text-align: center;
-    word-wrap: break-word;
-    font-weight: inherit;
-    padding: 0;
+  border: 1px solid;
+  font-size: 17px;
+  margin: 30px 10px 20px 10px;
+  text-align: center;
+  word-wrap: break-word;
+  font-weight: inherit;
+  padding: 0;
 }
 .swaydoc.source .sidebar {
   width: 50px;
@@ -639,7 +639,7 @@ h2.location a {
 }
 .content .in-band {
   flex-grow: 1;
-  margin: 0px;
+  margin-top: 0px;
   padding: 0px;
   overflow-wrap: break-word;
   overflow-wrap: anywhere;
@@ -824,7 +824,6 @@ a {
 .anchor {
   display: none;
   position: absolute;
-  left: -0.5em;
   background: none !important;
 }
 .anchor.field {
@@ -1865,9 +1864,6 @@ details.swaydoc-toggle[open] > summary.hideme::after {
 .method-toggle[open] {
   margin-bottom: 2em;
 }
-.implementors-toggle[open] {
-  margin-bottom: 2em;
-}
 #trait-implementations-list .method-toggle,
 #synthetic-implementations-list .method-toggle,
 #blanket-implementations-list .method-toggle {
@@ -2002,6 +1998,6 @@ details.swaydoc-toggle[open] > summary.hideme::after {
 .example-links ul {
   margin-bottom: 0;
 }
-#all-types>p {
-    margin: 5px 0;
+#all-types > p {
+  margin: 5px 0;
 }

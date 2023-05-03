@@ -387,24 +387,34 @@ impl Renderable for TyImplTrait {
             rendered_items.push(item.render(render_plan.clone())?)
         }
 
+        let impl_for = box_html! {
+                div(id=format!("impl-{}", trait_name.suffix.as_str()), class="impl has-srclink") {
+                a(href=format!("{IDENTITY}impl-{}", trait_name.suffix.as_str()), class="anchor");
+                h3(class="code-header in-band") {
+                    : "impl ";
+                    : trait_name.suffix.as_str(); // TODO: add links
+                    : " for ";
+                    : implementing_for.span.as_str();
+                }
+            }
+        }
+        .into_string()?;
+
         Ok(box_html! {
-            details(class="swaydoc-toggle implementors-toggle") {
-                summary {
-                    div(id=format!("impl-{}", trait_name.suffix.as_str()), class="impl") {
-                        a(href=format!("{IDENTITY}impl-{}", trait_name.suffix.as_str()), class="anchor");
-                        h3(class="code-header in-band") {
-                            : "impl ";
-                            : trait_name.suffix.as_str(); // TODO: add links
-                            : " for ";
-                            : implementing_for.span.as_str();
+            // check if the implementation has methods
+            @ if !rendered_items.is_empty() {
+                details(class="swaydoc-toggle implementors-toggle") {
+                    summary {
+                        : Raw(impl_for);
+                    }
+                    div(class="impl-items") {
+                        @ for item in rendered_items {
+                            : item;
                         }
                     }
                 }
-                div(class="impl-items") {
-                    @ for item in rendered_items {
-                        : item;
-                    }
-                }
+            } else {
+                : Raw(impl_for);
             }
         })
     }

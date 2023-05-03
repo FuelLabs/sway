@@ -31,14 +31,12 @@ h1.fqn a {
 h4 {
   border: none;
 }
-.in-band {
-  background-color: #0f1419;
-}
 .docblock code {
   color: #ffb454;
 }
 .code-header {
   color: #e6e1cf;
+  margin-left: 1em;
 }
 .docblock pre > code,
 pre > code {
@@ -189,7 +187,7 @@ nav.main .separator {
   border: 1px solid #5c6773;
 }
 a {
-    color: #c5c5c5;
+  color: #c5c5c5;
 }
 .sidebar h2 a,
 .sidebar h3 a {
