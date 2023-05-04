@@ -2832,6 +2832,11 @@ impl Ord for u64 {
 <p>ABIs can also have supertrait annotations:</p>
 <pre><code class="language-sway">contract;
 
+struct Foo {}
+impl ABIsupertrait for Foo {
+    fn foo() {}
+}
+
 trait ABIsupertrait {
     fn foo();
 }
