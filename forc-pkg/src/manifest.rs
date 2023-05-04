@@ -203,17 +203,27 @@ pub struct DependencyDetails {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct BuildProfile {
+    #[serde(default)]
     pub print_ast: bool,
     pub print_dca_graph: Option<String>,
     pub print_dca_graph_url_format: Option<String>,
+    #[serde(default)]
     pub print_ir: bool,
+    #[serde(default)]
     pub print_finalized_asm: bool,
+    #[serde(default)]
     pub print_intermediate_asm: bool,
+    #[serde(default)]
     pub terse: bool,
+    #[serde(default)]
     pub time_phases: bool,
+    #[serde(default)]
     pub include_tests: bool,
+    #[serde(default)]
     pub json_abi_with_callpaths: bool,
+    #[serde(default)]
     pub error_on_warnings: bool,
+    #[serde(default)]
     pub experimental_private_modules: bool,
 }
 

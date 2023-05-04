@@ -6,7 +6,10 @@ These are provided via the standard library ([`lib-std`](https://github.com/Fuel
 
 ## `Address` Type
 
+<!-- This section should explain the `Address` type -->
+<!-- address:example:start -->
 The `Address` type is a type-safe wrapper around the primitive `b256` type. Unlike the EVM, an address **never** refers to a deployed smart contract (see the `ContractId` type below). An `Address` can be either the hash of a public key (effectively an [externally owned account](https://ethereum.org/en/whitepaper/#ethereum-accounts) if you're coming from the EVM) or the hash of a [predicate](../sway-program-types/predicates.md). Addresses own UTXOs.
+<!-- address:example:end -->
 
 An `Address` is implemented as follows.
 
@@ -26,7 +29,10 @@ let forty_two: b256 = my_address.into();
 
 ## `ContractId` Type
 
+<!-- This section should explain the `ContractId` type -->
+<!-- contract_id:example:start -->
 The `ContractId` type is a type-safe wrapper around the primitive `b256` type. A contract's ID is a unique, deterministic identifier analogous to a contract's address in the EVM. Contracts cannot own UTXOs but can own assets.
+<!-- contract_id:example:end -->
 
 A `ContractId` is implemented as follows.
 
@@ -46,7 +52,10 @@ let forty_two: b256 = my_contract_id.into();
 
 ## `Identity` Type
 
+<!-- This section should explain the `Identity` type -->
+<!-- identity:example:start -->
 The `Identity` type is an enum that allows for the handling of both `Address` and `ContractId` types. This is useful in cases where either type is accepted, e.g. receiving funds from an identified sender, but not caring if the sender is an address or a contract.
+<!-- identity:example:end -->
 
 An `Identity` is implemented as follows.
 
@@ -69,8 +78,10 @@ A `match` statement can be used to return to an `Address` or `ContractId` as wel
 ```sway
 {{#include ../../../../examples/identity/src/main.sw:different_executions}}
 ```
-
+<!-- This section should explain the use case for the `Identity` type -->
+<!-- use_identity:example:start -->
 A common use case for `Identity` is for access control. The use of `Identity` uniquely allows both `ContractId` and `Address` to have access control inclusively.
+<!-- use_identity:example:end -->
 
 ```sway
 {{#include ../../../../examples/identity/src/main.sw:access_control_with_identity}}
