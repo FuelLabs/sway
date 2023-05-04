@@ -30,7 +30,7 @@ pub(crate) enum Descriptor {
 }
 
 impl Descriptor {
-    /// Decides whether a [TyDecl] is [Descriptor::Documentable].
+    /// Decides whether a [TyDecl] is [Descriptor::Documentable] and returns a [Document] if so.
     pub(crate) fn from_typed_decl(
         decl_engine: &DeclEngine,
         ty_decl: &ty::TyDecl,
@@ -70,6 +70,7 @@ impl Descriptor {
                             attrs_opt: attrs_opt.clone(),
                             item_context: ItemContext {
                                 context_opt: context,
+                                impl_traits: None,
                             },
                         },
                         raw_attributes: attrs_opt,
@@ -106,6 +107,7 @@ impl Descriptor {
                             attrs_opt: attrs_opt.clone(),
                             item_context: ItemContext {
                                 context_opt: context,
+                                impl_traits: None,
                             },
                         },
                         raw_attributes: attrs_opt,
@@ -153,6 +155,7 @@ impl Descriptor {
                             attrs_opt: attrs_opt.clone(),
                             item_context: ItemContext {
                                 context_opt: context,
+                                impl_traits: None,
                             },
                         },
                         raw_attributes: attrs_opt,
@@ -194,6 +197,7 @@ impl Descriptor {
                         attrs_opt: attrs_opt.clone(),
                         item_context: ItemContext {
                             context_opt: context,
+                            impl_traits: None,
                         },
                     },
                     raw_attributes: attrs_opt,
@@ -228,6 +232,7 @@ impl Descriptor {
                         attrs_opt: attrs_opt.clone(),
                         item_context: ItemContext {
                             context_opt: context,
+                            impl_traits: None,
                         },
                     },
                     raw_attributes: attrs_opt,
@@ -285,7 +290,10 @@ impl Descriptor {
                                 fn_decl.span.as_str(),
                             )),
                             attrs_opt: attrs_opt.clone(),
-                            item_context: ItemContext { context_opt: None },
+                            item_context: ItemContext {
+                                context_opt: None,
+                                impl_traits: None,
+                            },
                         },
                         raw_attributes: attrs_opt,
                     }))
@@ -315,7 +323,10 @@ impl Descriptor {
                                 const_decl.span.as_str(),
                             ),
                             attrs_opt: attrs_opt.clone(),
-                            item_context: ItemContext { context_opt: None },
+                            item_context: ItemContext {
+                                context_opt: None,
+                                impl_traits: None,
+                            },
                         },
                         raw_attributes: attrs_opt,
                     }))
