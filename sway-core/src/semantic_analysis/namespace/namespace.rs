@@ -527,7 +527,7 @@ impl Namespace {
     ) -> CompileResult<()> {
         // Use trait name with full path, improves consistency between
         // this inserting and getting in `get_methods_for_type_and_trait_name`.
-        let full_trait_name = trait_name.to_fullpath(self.root());
+        let full_trait_name = trait_name.to_fullpath(self);
 
         self.implemented_traits.insert(
             full_trait_name,
@@ -548,7 +548,7 @@ impl Namespace {
     ) -> Vec<ty::TyTraitItem> {
         // Use trait name with full path, improves consistency between
         // this get and inserting in `insert_trait_implementation`.
-        let trait_name = trait_name.to_fullpath(&self.root().module);
+        let trait_name = trait_name.to_fullpath(self);
 
         self.implemented_traits
             .get_items_for_type_and_trait_name(engines, type_id, &trait_name)

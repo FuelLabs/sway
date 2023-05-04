@@ -24,11 +24,7 @@ pub(crate) fn instantiate_constant_expression(
             expression: ty::TyExpressionVariant::ConstantExpression {
                 const_decl: Box::new(const_decl),
                 span: call_path_binding.inner.suffix.span(),
-                call_path: Some(
-                    call_path_binding
-                        .inner
-                        .to_fullpath(&ctx.namespace.root().module),
-                ),
+                call_path: Some(call_path_binding.inner.to_fullpath(ctx.namespace)),
             },
         },
         vec![],
