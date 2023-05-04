@@ -15,7 +15,7 @@ use std::{any::Any, sync::Arc};
 use sway_core::{
     language::{
         parsed::{AstNode, AstNodeContent, Declaration, ImplSelf, ImplTrait},
-        ty::{self, TyTraitDecl},
+        ty::{self, TyDecl, TyTraitDecl},
         CallPath, Visibility,
     },
     Engines, TypeId, TypeInfo,
@@ -72,11 +72,10 @@ impl<'a> HoverLinkContents<'a> {
     }
 
     fn add_related_types(&mut self, type_id: &TypeId) {
-        let type_info = self.engines.te().get(*type_id);
+        let type_info = self.engines.te().get(type_id.clone());
         match type_info {
             TypeInfo::Enum(decl_ref) => {
                 let decl = self.engines.de().get_enum(&decl_ref);
-                eprintln!("enum decl: {:?}", decl);
                 self.add_related_type(decl_ref.name().to_string(), &decl.span(), decl.call_path);
                 decl.type_parameters
                     .iter()
@@ -84,7 +83,6 @@ impl<'a> HoverLinkContents<'a> {
             }
             TypeInfo::Struct(decl_ref) => {
                 let decl = self.engines.de().get_struct(&decl_ref);
-                eprintln!("struct decl: {:?}", decl);
                 self.add_related_type(decl_ref.name().to_string(), &decl.span(), decl.call_path);
                 decl.type_parameters
                     .iter()
@@ -103,134 +101,22 @@ impl<'a> HoverLinkContents<'a> {
         self.implementations.append(&mut impl_spans);
     }
 
-    fn add_implementations(&mut self, definition_span: Span, type_id: TypeId) {
-        eprintln!("definition_span: {:?}", definition_span.clone());
-        // let definition_position = get_range_from_span(&definition_span).start;
-        // let definition_url = get_url_from_span(&definition_span);
-        // if let Ok(url) = definition_url {
-        //     self.token_map
-        //         .tokens_at_position(&url, definition_position, Some(false))
-        //         .iter()
-        //         .for_each(|(bi, tok)| {
-        //             eprintln!("bi: {:?}", bi);
-        //             if bi.to_string().contains("Result") {
-        //                 eprintln!("tok: {:?}", tok);
-        //             }
-        //         });
-        // }
+    fn add_implementations_for_decl(&mut self, ty_decl: &TyDecl) {
+        self.implementations.push(ty_decl.span());
+        let mut impl_spans = self
+            .session
+            .impl_spans_for_decl(ty_decl)
+            .unwrap_or_default();
+        self.implementations.append(&mut impl_spans);
+    }
 
+    fn add_implementations_for_type(&mut self, definition_span: Span, type_id: TypeId) {
         self.implementations.push(definition_span.clone());
         let mut impl_spans = self
             .session
             .impl_spans_for_type(type_id)
             .unwrap_or_default();
-
-        eprintln!("impl_spans: {:?}", impl_spans);
         self.implementations.append(&mut impl_spans);
-
-        // self.token_map
-        //     .iter()
-        //     // .filter(|(_, token)| matches!(token.kind, SymbolKind::ImplSelf | SymbolKind::ImplTrait))
-        //     .for_each(|(ident, token)| {
-        //         // eprintln!("impl_token: {:?}", token);
-        //         if ident.to_string().contains("Result") {
-        //             eprintln!("ident: {:?}", ident.clone());
-        //             eprintln!("token: {:?}", token.clone());
-        //             if let AstToken::Declaration(decl) = token.parsed {
-        //                 match decl {
-        //                     Declaration::ImplTrait(ImplTrait {
-        //                         block_span,
-        //                         implementing_for,
-        //                         ..
-        //                     }) => {
-        //                         // TODO
-        //                         // let implementing_for_ident = implementing_for
-        //                         //     .call_path_tree
-        //                         //     .map_or(Ident::new(implementing_for.span.clone()), |cpt| {
-        //                         //         cpt.call_path.suffix
-        //                         //     });
-
-        //                         // eprintln!(
-        //                         //     "implementing_for_ident: {:?}",
-        //                         //     implementing_for_ident.clone()
-        //                         // );
-        //                         // eprintln!("definition_ident {:?}", definition_ident);
-        //                         // if implementing_for_ident.as_str() == definition_ident.as_str() {
-        //                         //     eprintln!("it's a match!");
-        //                         //     self.implementations.push(block_span);
-        //                         // }
-        //                     }
-        //                     Declaration::ImplSelf(ImplSelf {
-        //                         block_span,
-        //                         implementing_for,
-        //                         ..
-        //                     }) => {
-        //                         // TODO
-        //                         let decl_of_type_id = self.token_map.declaration_of_type_id(
-        //                             self.engines,
-        //                             &implementing_for.type_id,
-        //                         );
-        //                         eprintln!("decl_of_type_id: {:?}", decl_of_type_id);
-
-        //                         // let type_info = self.engines.te().get(implementing_for.type_id);
-        //                         // eprintln!("self implementing for type_info: {:?}", type_info);
-
-        //                         // eprintln!("implementing_for: {:?}", implementing_for);
-
-        //                         // if let TypeInfo::Custom {
-        //                         //     call_path,
-        //                         //     type_arguments,
-        //                         // } = type_info
-        //                         // {
-        //                         //     let suffix = call_path.suffix;
-        //                         //     eprintln!("suffix: {:?}", suffix);
-        //                         // }
-        //                         //     // let decl = self.engines.de().get_struct(&decl_ref);
-        //                         //     // eprintln!("struct decl: {:?}", decl);
-        //                         //     // self.add_related_type(
-        //                         //     //     decl_ref.name().to_string(),
-        //                         //     //     &decl.span(),
-        //                         //     //     decl.call_path,
-        //                         //     // );
-        //                         //     // decl.type_parameters.iter().for_each(|type_param| {
-        //                         //     //     self.add_related_types(&type_param.type_id)
-        //                         //     // });
-        //                         // }
-
-        //                         // if implementing_for_ident.as_str() == definition_ident.as_str() {
-        //                         //     eprintln!("it's a match!");
-        //                         //     self.implementations.push(block_span);
-        //                         // }
-        //                     }
-        //                     _ => {}
-        //                 }
-        //             }
-        //         }
-        // if Some(definition_ident.span()) == token.declared_token_span(self.engines) {
-        //     eprintln!("it's a match!");
-        //     if let Some(TypedAstToken::TypedDeclaration(ty::TyDecl::ImplTrait(
-        //         ty::ImplTrait { decl_span, .. },
-        //     ))) = token.typed
-        //     {
-        //         eprintln!("pushing decl_span: {:?}", decl_span.clone());
-        //         self.implementations.push(decl_span);
-        //     }
-        // }
-        //     });
-
-        // return;
-        // self.token_map
-        //     .iter()
-        //     .all_references_of_token(self.token, self.engines)
-        //     .for_each(|(ident, token)| {
-        //         eprintln!("token: {:?}", token);
-        //         // eprintln!("token.parsed: {}", token.parsed);
-        //         // eprintln!("token.typed: {:?}", token.typed);
-        //         if matches!(token.kind, SymbolKind::ImplSelf | SymbolKind::ImplTrait) {
-        //             eprintln!("trait impl token: {:?}", token);
-        //             self.implementations.push(ident.span());
-        //         }
-        //     })
     }
 }
 
@@ -378,8 +264,7 @@ fn hover_format(
                 }
                 ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
                     let struct_decl = decl_engine.get_struct(decl_id);
-                    eprintln!("struct_decl: {:?}", struct_decl);
-                    // hover_link_contents.add_implementations(struct_decl.span.clone(), struct_decl);
+                    hover_link_contents.add_implementations_for_decl(decl);
                     Some(format_visibility_hover(
                         struct_decl.visibility,
                         decl.friendly_type_name(),
@@ -397,18 +282,15 @@ fn hover_format(
                 }
                 ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
                     let enum_decl = decl_engine.get_enum(decl_id);
-                    // hover_link_contents
-                    //     .add_implementations(enum_decl.span(), enum_decl.name().clone());
+                    hover_link_contents.add_implementations_for_decl(decl);
                     Some(format_visibility_hover(
                         enum_decl.visibility,
                         decl.friendly_type_name(),
                         &token_name,
                     ))
                 }
-                ty::TyDecl::AbiDecl(ty::AbiDecl {
-                    decl_span, name, ..
-                }) => {
-                    // hover_link_contents.add_implementations(decl_span.clone(), name.clone());
+                ty::TyDecl::AbiDecl(ty::AbiDecl { .. }) => {
+                    hover_link_contents.add_implementations_for_decl(decl);
                     Some(format!("{} {}", decl.friendly_type_name(), &token_name))
                 }
                 _ => None,
@@ -425,8 +307,7 @@ fn hover_format(
                 ))
             }
             TypedAstToken::TypedStructField(field) => {
-                hover_link_contents // TODO
-                    .add_implementations(field.span.clone(), field.type_argument.type_id);
+                hover_link_contents.add_related_types(&field.type_argument.type_id);
                 Some(format_name_with_type(
                     field.name.as_str(),
                     &field.type_argument.type_id,

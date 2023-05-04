@@ -26,7 +26,8 @@ use sway_core::{
     language::{
         lexed::LexedProgram,
         parsed::{AstNode, ParseProgram},
-        ty, CallPath,
+        ty::{self, TyDecl},
+        CallPath,
     },
     BuildTarget, CompileResult, Engines, TypeEngine, TypeId,
 };
@@ -329,7 +330,7 @@ impl Session {
         None
     }
 
-    /// Returns the spans of all implementations of the type that exist in the namespace.
+    /// Returns the spans of all implementations of the type.
     pub fn impl_spans_for_type(&self, type_id: TypeId) -> Option<Vec<Span>> {
         let compiled_program = &*self.compiled_program.read();
         let program = compiled_program.typed.clone()?;
@@ -337,6 +338,17 @@ impl Session {
         Some(namespace.get_impl_spans_for_type(
             Engines::new(&self.type_engine.read(), &self.decl_engine.read()),
             type_id,
+        ))
+    }
+
+    /// Returns the spans of all implementations of the typed declaration.
+    pub fn impl_spans_for_decl(&self, ty_decl: &TyDecl) -> Option<Vec<Span>> {
+        let compiled_program = &*self.compiled_program.read();
+        let program = compiled_program.typed.clone()?;
+        let namespace = program.root.namespace;
+        Some(namespace.get_impl_spans_for_decl(
+            Engines::new(&self.type_engine.read(), &self.decl_engine.read()),
+            ty_decl,
         ))
     }
 

@@ -107,7 +107,7 @@ impl Markup {
                     "[{} implementations]({} {})",
                     implementations.len(),
                     self.command_uri(PEEK_COMMAND, args),
-                    self.quoted_tooltip("View implementations".to_string())
+                    self.quoted_tooltip("Go to implementations".to_string())
                 );
                 self.text(&links_string)
             } else {
