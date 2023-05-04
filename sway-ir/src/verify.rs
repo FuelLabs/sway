@@ -713,7 +713,7 @@ impl<'a> InstructionVerifier<'a> {
             return Err(IrError::VerifySmoMessageSize);
         }
 
-        // Check that the fourth operand is a `u64` representing the amount of coins being sent.
+        // Check that the third operand is a `u64` representing the amount of coins being sent.
         if !coins
             .get_type(self.context)
             .is(Type::is_uint64, self.context)
