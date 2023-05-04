@@ -1365,7 +1365,7 @@ fn type_check_smo(
         errors
     );
 
-    // Type check the fourth argument which is the amount of coins to send, so it has to be a `u64`.
+    // Type check the third argument which is the amount of coins to send, so it has to be a `u64`.
     let mut ctx = ctx.by_ref().with_type_annotation(type_engine.insert(
         decl_engine,
         TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
