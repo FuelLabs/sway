@@ -33,12 +33,12 @@ exclude = [
 debug = 2
 
 [workspace.dependencies]
-fuel-asm = "0.31"
-fuel-crypto = "0.31"
-fuel-types = "0.31"
-fuel-tx = "0.31"
-fuel-core-client = "0.18"
-fuel-vm = "0.31"
+fuel-asm = "0.31.1"
+fuel-crypto = "0.31.1"
+fuel-types = "0.31.1"
+fuel-tx = "0.31.1"
+fuel-core-client = "0.18.1"
+fuel-vm = "0.31.1"
 fuels-core = "0.41"
 fuels-accounts = "0.41"
 fuels-types = "0.41"
