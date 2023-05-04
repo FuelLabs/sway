@@ -122,6 +122,30 @@ impl ty::TyExpression {
             // We've already emitted an error for the `::Error` case.
             ExpressionKind::Error(_) => ok(ty::TyExpression::error(span, engines), vec![], vec![]),
             ExpressionKind::Literal(lit) => Self::type_check_literal(engines, lit, span),
+            ExpressionKind::AmbiguousVariableExpression(name) => {
+                let call_path = CallPath {
+                    prefixes: vec![],
+                    suffix: name.clone(),
+                    is_absolute: false,
+                };
+                if matches!(
+                    ctx.namespace.resolve_call_path(&call_path).value,
+                    Some(ty::TyDecl::EnumVariantDecl { .. })
+                ) {
+                    Self::type_check_delineated_path(
+                        ctx.by_ref(),
+                        TypeBinding {
+                            span: call_path.span(),
+                            inner: call_path,
+                            type_arguments: TypeArgs::Regular(vec![]),
+                        },
+                        span,
+                        None,
+                    )
+                } else {
+                    Self::type_check_variable_expression(ctx.by_ref(), name, span)
+                }
+            }
             ExpressionKind::Variable(name) => {
                 Self::type_check_variable_expression(ctx.by_ref(), name, span)
             }
@@ -1353,6 +1377,7 @@ impl ty::TyExpression {
                 &suffix,
                 ctx.self_type(),
                 ctx.engines(),
+                ctx.experimental_private_modules_enabled()
             ),
             return None,
             const_probe_warnings,
@@ -1735,10 +1760,6 @@ impl ty::TyExpression {
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-
-        if ctx.kind() == TreeType::Predicate {
-            errors.push(CompileError::DisallowedWhileInPredicate { span: span.clone() });
-        }
 
         let type_engine = ctx.type_engine;
         let decl_engine = ctx.decl_engine;

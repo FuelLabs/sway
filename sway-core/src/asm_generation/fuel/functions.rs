@@ -696,22 +696,46 @@ impl<'ir> FuelAsmBuilder<'ir> {
                 owning_span: None,
             });
 
-            let var_stack_offs = var_stack_offs * 8;
-            assert!(var_stack_offs <= compiler_constants::TWELVE_BITS);
-
-            // Get the destination on the stack.
+            // Get the stack offset in bytes rather than words.
+            let var_stack_off_bytes = var_stack_offs * 8;
             let dst_reg = self.reg_seqr.next();
-            self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::ADDI(
-                    dst_reg.clone(),
-                    locals_base_reg.clone(),
-                    VirtualImmediate12 {
-                        value: var_stack_offs as u16,
-                    },
-                )),
-                comment: "calc local variable address".to_owned(),
-                owning_span: None,
-            });
+            // Check if we can use the `ADDi` opcode.
+            if var_stack_off_bytes <= compiler_constants::TWELVE_BITS {
+                // Get the destination on the stack.
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::ADDI(
+                        dst_reg.clone(),
+                        locals_base_reg.clone(),
+                        VirtualImmediate12 {
+                            value: var_stack_off_bytes as u16,
+                        },
+                    )),
+                    comment: "calc local variable address".to_owned(),
+                    owning_span: None,
+                });
+            } else {
+                assert!(var_stack_off_bytes <= compiler_constants::EIGHTEEN_BITS);
+                // We can't, so load the immediate into a register and then add.
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::MOVI(
+                        dst_reg.clone(),
+                        VirtualImmediate18 {
+                            value: var_stack_off_bytes as u32,
+                        },
+                    )),
+                    comment: "stack offset of local variable into register".to_owned(),
+                    owning_span: None,
+                });
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::ADD(
+                        dst_reg.clone(),
+                        locals_base_reg.clone(),
+                        dst_reg.clone(),
+                    )),
+                    comment: "calc local variable address".to_owned(),
+                    owning_span: None,
+                });
+            }
 
             if var_word_size == 1 {
                 // Initialise by value.

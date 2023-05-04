@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::{DeclEngineInsert, DeclRefFunction, UpdateConstantExpression},
+    decl_engine::{DeclEngineInsert, DeclRefFunction, ReplaceDecls, UpdateConstantExpression},
     error::*,
     language::{parsed::*, ty, *},
     semantic_analysis::*,
@@ -49,7 +49,7 @@ pub(crate) fn type_check_method_application(
         warnings,
         errors
     );
-    let method = decl_engine.get_function(&decl_ref);
+    let mut method = decl_engine.get_function(&decl_ref);
 
     // check the method visibility
     if span.path() != method.span.path() && method.visibility.is_private() {
@@ -312,17 +312,36 @@ pub(crate) fn type_check_method_application(
     ctx.namespace
         .insert_trait_implementation_for_type(engines, method.return_type.type_id);
 
+    // Handle the trait constraints. This includes checking to see if the trait
+    // constraints are satisfied and replacing old decl ids based on the
+    // constraint with new decl ids based on the new type.
+    let decl_mapping = check!(
+        TypeParameter::gather_decl_mapping_from_trait_constraints(
+            ctx.by_ref(),
+            &method.type_parameters,
+            &call_path.span()
+        ),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    method.replace_decls(&decl_mapping, ctx.engines());
+    let return_type = method.return_type.type_id;
+    let new_decl_ref = decl_engine
+        .insert(method)
+        .with_parent(decl_engine, (*decl_ref.id()).into());
+
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {
             call_path,
             contract_call_params: contract_call_params_map,
             arguments: typed_arguments_with_names,
-            fn_ref: decl_ref,
+            fn_ref: new_decl_ref,
             selector,
             type_binding: Some(method_name_binding.strip_inner()),
             call_path_typeid: Some(call_path_typeid),
         },
-        return_type: method.return_type.type_id,
+        return_type,
         span,
     };
 
@@ -421,6 +440,7 @@ pub(crate) fn resolve_method_name(
                     ctx.self_type(),
                     &arguments,
                     engines,
+                    ctx.experimental_private_modules_enabled()
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -448,6 +468,7 @@ pub(crate) fn resolve_method_name(
                     ctx.self_type(),
                     &arguments,
                     engines,
+                    ctx.experimental_private_modules_enabled(),
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -475,6 +496,7 @@ pub(crate) fn resolve_method_name(
                     ctx.self_type(),
                     &arguments,
                     engines,
+                    ctx.experimental_private_modules_enabled(),
                 ),
                 return err(warnings, errors),
                 warnings,

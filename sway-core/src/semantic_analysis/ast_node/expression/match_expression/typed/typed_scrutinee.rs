@@ -50,6 +50,7 @@ impl ty::TyScrutinee {
                     name_ident: BaseIdent::new_with_override("_".into(), span.clone()),
                     trait_constraints: vec![],
                     trait_constraints_span: Span::dummy(),
+                    is_from_parent: false,
                 };
                 let typed_scrutinee = ty::TyScrutinee {
                     variant: ty::TyScrutineeVariant::CatchAll,
@@ -78,6 +79,27 @@ impl ty::TyScrutinee {
                 value,
                 span,
             } => type_check_enum(ctx, call_path, *value, span),
+            Scrutinee::AmbiguousSingleIdent(ident) => {
+                let maybe_enum = type_check_enum(
+                    ctx.by_ref(),
+                    CallPath {
+                        prefixes: vec![],
+                        suffix: ident.clone(),
+                        is_absolute: false,
+                    },
+                    Scrutinee::Tuple {
+                        elems: vec![],
+                        span: ident.span(),
+                    },
+                    ident.span(),
+                );
+
+                if maybe_enum.is_ok() {
+                    maybe_enum
+                } else {
+                    type_check_variable(ctx, ident.clone(), ident.span())
+                }
+            }
             Scrutinee::Tuple { elems, span } => type_check_tuple(ctx, elems, span),
             Scrutinee::Error { .. } => err(vec![], vec![]),
         }

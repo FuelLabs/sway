@@ -3,7 +3,7 @@ library;
 
 use ::assert::assert;
 use ::constants::ZERO_B256;
-use ::result::Result;
+use ::result::Result::{self, *};
 use ::logging::log;
 
 enum BlockHashError {
@@ -42,9 +42,9 @@ pub fn block_header_hash(block_height: u64) -> Result<b256, BlockHashError> {
 
     // `bhsh` returns b256(0) if the block is not found, so catch this and return an error
     if header_hash == ZERO_B256 {
-        Result::Err(BlockHashError::BlockHeightTooHigh)
+        Err(BlockHashError::BlockHeightTooHigh)
     } else {
-        Result::Ok(header_hash)
+        Ok(header_hash)
     }
 }
 
@@ -57,8 +57,8 @@ fn test_block_header_hash_err_current_height() {
     // Get the header hash of the current block. Each time this test runs, the block height will be 1. calling BHSH with a height >= current height will fail.
     let mut hash = block_header_hash(height());
     let correct_error = match hash {
-        Result::Ok(_) => false,
-        Result::Err(BlockHashError::BlockHeightTooHigh) => true,
+        Ok(_) => false,
+        Err(BlockHashError::BlockHeightTooHigh) => true,
     };
 
     assert(correct_error);
@@ -71,8 +71,8 @@ fn test_block_header_hash_err_future_height() {
     // The function should return a BlockHashError
     let hash = block_header_hash(height() + 1);
     let correct_error = match hash {
-        Result::Ok(_) => false,
-        Result::Err(BlockHashError::BlockHeightTooHigh) => true,
+        Ok(_) => false,
+        Err(BlockHashError::BlockHeightTooHigh) => true,
     };
 
     assert(correct_error);

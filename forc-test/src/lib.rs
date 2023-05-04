@@ -151,6 +151,8 @@ pub struct Opts {
     pub error_on_warnings: bool,
     /// Output the time elapsed over each part of the compilation process.
     pub time_phases: bool,
+    /// Enable the experimental module privacy enforcement.
+    pub experimental_private_modules: bool,
 }
 
 /// The set of options provided for controlling logs printed for each test.
@@ -480,6 +482,7 @@ impl Opts {
             time_phases: self.time_phases,
             tests: true,
             member_filter: Default::default(),
+            experimental_private_modules: self.experimental_private_modules,
         }
     }
 }

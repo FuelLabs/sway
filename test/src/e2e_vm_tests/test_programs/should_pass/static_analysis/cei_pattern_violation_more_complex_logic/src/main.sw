@@ -20,7 +20,6 @@ abi NFT {
 
 use std::{
     block::height,
-    auth::msg_sender,
     call_frames::{
         contract_id,
         msg_asset_id,
@@ -56,10 +55,10 @@ impl EnglishAuction for Contract {
 
         let sender_deposit = storage.deposits.get((sender, auction_id)).try_read();
         let total_bid: AuctionAsset = match sender_deposit {
-            Option::Some(_) => {
+            Some(_) => {
                 AuctionAsset::TokenAsset(42)
             },
-            Option::None => {
+            None => {
                 AuctionAsset::NFTAsset(42)
             }
         };
@@ -73,7 +72,7 @@ impl EnglishAuction for Contract {
             }
         }
 
-        storage.deposits.insert((sender, auction_id), Option::Some(AuctionAsset::TokenAsset(42)));
+        storage.deposits.insert((sender, auction_id), Some(AuctionAsset::TokenAsset(42)));
     }
 
     #[storage(read, write)]
@@ -114,8 +113,8 @@ impl EnglishAuction for Contract {
         let auction = 42;
 
         let total_auctions = storage.total_auctions.read();
-        storage.deposits.insert((seller, total_auctions), Option::Some(sell_asset));
-        storage.auctions.insert(total_auctions, Option::Some(auction));
+        storage.deposits.insert((seller, total_auctions), Some(sell_asset));
+        storage.auctions.insert(total_auctions, Some(auction));
 
         storage.total_auctions.write(storage.total_auctions.read() + 1);
         total_auctions

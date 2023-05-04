@@ -7,7 +7,6 @@ use abi::IdentityExample;
 use errors::MyError;
 
 use std::{
-    auth::msg_sender,
     constants::{
         BASE_ASSET_ID,
         ZERO_B256,

@@ -49,6 +49,8 @@ pub struct BuildProfile {
     /// Treat warnings as errors.
     #[clap(long)]
     pub error_on_warnings: bool,
+    #[clap(long)]
+    pub experimental_private_modules: bool,
 }
 
 /// Options related to printing stages of compiler output.

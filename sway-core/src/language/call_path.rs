@@ -110,29 +110,28 @@ impl CallPath {
             // combination of the package name in which the symbol is defined and the path to the
             // current submodule.
             let mut synonym_prefixes = vec![];
-            let mut submodule_name_in_synonym_prefixes = false;
+            let mut is_external = false;
 
             if let Some(use_synonym) = namespace.use_synonyms.get(&self.suffix) {
                 synonym_prefixes = use_synonym.0.clone();
                 let submodule = namespace.submodule(&[use_synonym.0[0].clone()]);
                 if let Some(submodule) = submodule {
-                    if let Some(submodule_name) = submodule.name.clone() {
-                        submodule_name_in_synonym_prefixes =
-                            submodule_name.as_str() == synonym_prefixes[0].as_str();
-                    }
+                    is_external = submodule.is_external;
                 }
             }
 
             let mut prefixes: Vec<Ident> = vec![];
 
-            if synonym_prefixes.is_empty() || !submodule_name_in_synonym_prefixes {
+            if !is_external {
                 if let Some(pkg_name) = &namespace.name {
                     prefixes.push(pkg_name.clone());
                 }
+
                 for mod_path in &namespace.mod_path {
                     prefixes.push(mod_path.clone());
                 }
             }
+
             prefixes.extend(synonym_prefixes);
 
             CallPath {

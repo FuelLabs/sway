@@ -1,8 +1,11 @@
 # Sway Program Types
 
+<!-- This section should explain program types -->
+<!-- programs:example:start -->
 A Sway program itself has a type: it is either a _contract_, a _predicate_, a _script_, or a _library_. The first three of these things are all deployable to the blockchain. A _library_ is simply a project designed for code reuse and is never directly deployed to the chain.
 
 Every Sway file _must_ begin with a declaration of what type of program it is. A project can have many libraries within it, but only one contract, script, or predicate. Scripts and predicates require `main` functions to serve as entry points, while contracts instead publish an ABI. This chapter will go into detail about all of these various types of programs and what purposes they serve.
+<!-- programs:example:end -->
 
 Contracts are used primarily for protocols or systems that operate within a fixed set of rules. A good example would be a staking contract or a decentralized exchange.
 

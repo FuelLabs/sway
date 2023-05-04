@@ -243,6 +243,8 @@ pub enum CompileError {
     SymbolNotFound { name: Ident, span: Span },
     #[error("Symbol \"{name}\" is private.")]
     ImportPrivateSymbol { name: Ident, span: Span },
+    #[error("Module \"{name}\" is private.")]
+    ImportPrivateModule { name: Ident, span: Span },
     #[error(
         "Because this if expression's value is used, an \"else\" branch is required and it must \
          return type \"{r#type}\""
@@ -435,8 +437,6 @@ pub enum CompileError {
     ContractStorageFromExternalContext { span: Span },
     #[error("The {opcode} opcode cannot be used in a predicate.")]
     InvalidOpcodeFromPredicate { opcode: String, span: Span },
-    #[error("The {opcode} opcode cannot jump backwards in a predicate.")]
-    InvalidBackwardJumpFromPredicate { opcode: String, span: Span },
     #[error("Array index out of bounds; the length is {count} but the index is {index}.")]
     ArrayOutOfBounds { index: u64, count: u64, span: Span },
     #[error("Tuple index out of bounds; the arity is {count} but the index is {index}.")]
@@ -610,8 +610,6 @@ pub enum CompileError {
     DisallowedControlFlowInstruction { name: String, span: Span },
     #[error("Calling private library method {name} is not allowed.")]
     CallingPrivateLibraryMethod { name: String, span: Span },
-    #[error("Using \"while\" in a predicate is not allowed.")]
-    DisallowedWhileInPredicate { span: Span },
     #[error("Using intrinsic \"{intrinsic}\" in a predicate is not allowed.")]
     DisallowedIntrinsicInPredicate { intrinsic: String, span: Span },
     #[error("Possibly non-zero amount of coins transferred to non-payable contract method \"{fn_name}\".")]
@@ -690,6 +688,7 @@ impl Spanned for CompileError {
             FieldNotFound { span, .. } => span.clone(),
             SymbolNotFound { span, .. } => span.clone(),
             ImportPrivateSymbol { span, .. } => span.clone(),
+            ImportPrivateModule { span, .. } => span.clone(),
             NoElseBranch { span, .. } => span.clone(),
             NotAType { span, .. } => span.clone(),
             MissingEnumInstantiator { span, .. } => span.clone(),
@@ -740,7 +739,6 @@ impl Spanned for CompileError {
             BurnFromExternalContext { span, .. } => span.clone(),
             ContractStorageFromExternalContext { span, .. } => span.clone(),
             InvalidOpcodeFromPredicate { span, .. } => span.clone(),
-            InvalidBackwardJumpFromPredicate { span, .. } => span.clone(),
             ArrayOutOfBounds { span, .. } => span.clone(),
             ShadowsOtherSymbol { name } => name.span(),
             GenericShadowsGeneric { name } => name.span(),
@@ -800,7 +798,6 @@ impl Spanned for CompileError {
             InitializedRegisterReassignment { span, .. } => span.clone(),
             DisallowedControlFlowInstruction { span, .. } => span.clone(),
             CallingPrivateLibraryMethod { span, .. } => span.clone(),
-            DisallowedWhileInPredicate { span } => span.clone(),
             DisallowedIntrinsicInPredicate { span, .. } => span.clone(),
             CoinsPassedToNonPayableMethod { span, .. } => span.clone(),
             TraitImplPayabilityMismatch { span, .. } => span.clone(),
