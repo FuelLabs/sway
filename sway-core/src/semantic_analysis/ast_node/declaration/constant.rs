@@ -89,7 +89,7 @@ impl ty::TyConstantDecl {
         };
 
         let mut call_path: CallPath = name.into();
-        call_path = call_path.to_fullpath(ctx.namespace);
+        call_path = call_path.to_fullpath(&ctx.namespace.root().module);
 
         // create the const decl
         let decl = ty::TyConstantDecl {

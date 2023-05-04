@@ -440,7 +440,9 @@ impl ty::TyExpression {
                     expression: ty::TyExpressionVariant::ConstantExpression {
                         const_decl: Box::new(const_decl),
                         span: name.span(),
-                        call_path: Some(CallPath::from(decl_name).to_fullpath(ctx.namespace)),
+                        call_path: Some(
+                            CallPath::from(decl_name).to_fullpath(&ctx.namespace.root().module),
+                        ),
                     },
                     span,
                 }
