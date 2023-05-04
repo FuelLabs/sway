@@ -3,28 +3,23 @@ pub(crate) mod hover_link_contents;
 use crate::{
     core::{
         session::Session,
-        token::{get_range_from_span, to_ident_key, AstToken, SymbolKind, Token, TypedAstToken},
-        token_map::TokenMap,
-        token_map_ext::TokenMapExt,
+        token::{get_range_from_span, to_ident_key, SymbolKind, Token, TypedAstToken},
     },
     utils::{
-        attributes::doc_comment_attributes, document::get_url_from_span, keyword_docs::KeywordDocs,
-        markdown, markup::Markup,
+        attributes::doc_comment_attributes, keyword_docs::KeywordDocs, markdown, markup::Markup,
     },
 };
-use serde::{Deserialize, Serialize};
-use std::{any::Any, sync::Arc};
+use std::sync::Arc;
 use sway_core::{
     language::{
-        parsed::{AstNode, AstNodeContent, Declaration, ImplSelf, ImplTrait},
-        ty::{self, TyDecl, TyTraitDecl},
-        CallPath, Visibility,
+        ty::{self},
+        Visibility,
     },
-    Engines, TypeId, TypeInfo,
+    Engines, TypeId,
 };
 
-use sway_types::{Ident, Named, Span, Spanned};
-use tower_lsp::lsp_types::{self, Location, Position, Range, Url};
+use sway_types::{Ident, Span, Spanned};
+use tower_lsp::lsp_types::{self, Position, Url};
 
 use self::hover_link_contents::HoverLinkContents;
 
@@ -72,13 +67,7 @@ pub fn hover_data(
         None => (ident, token),
     };
 
-    let contents = hover_format(
-        session.clone(),
-        engines,
-        session.token_map(),
-        &decl_token,
-        &decl_ident,
-    );
+    let contents = hover_format(session.clone(), engines, &decl_token, &decl_ident);
     Some(lsp_types::Hover {
         contents,
         range: Some(range),
@@ -138,7 +127,6 @@ fn markup_content(markup: Markup) -> lsp_types::MarkupContent {
 fn hover_format(
     session: Arc<Session>,
     engines: Engines<'_>,
-    token_map: &TokenMap,
     token: &Token,
     ident: &Ident,
 ) -> lsp_types::HoverContents {

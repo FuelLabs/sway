@@ -1,17 +1,11 @@
-use std::any::Any;
-
 use crate::{
     core::token::{self, AstToken, SymbolKind, Token, TypeDefinition, TypedAstToken},
     traverse::ParseContext,
 };
-use sway_core::{
-    language::{
-        parsed::{AstNode, AstNodeContent, Declaration},
-        ty,
-    },
-    TypeInfo,
+use sway_core::language::{
+    parsed::{AstNode, AstNodeContent, Declaration},
+    ty,
 };
-use sway_types::Ident;
 
 /// Insert Declaration tokens into the TokenMap.
 pub fn collect_parsed_declaration(node: &AstNode, ctx: &ParseContext) {
@@ -27,29 +21,6 @@ pub fn collect_parsed_declaration(node: &AstNode, ctx: &ParseContext) {
             Declaration::FunctionDeclaration(decl) => (decl.name.clone(), SymbolKind::Function),
             Declaration::ConstantDeclaration(decl) => (decl.name.clone(), SymbolKind::Const),
             Declaration::EnumDeclaration(decl) => (decl.name.clone(), SymbolKind::Enum),
-
-            // Collect dependency impls as tokens as well. Try to collect only the suffix of the type since we don't
-            // want to collect type arguments when the type is generic.
-            Declaration::ImplTrait(impl_decl) => {
-                let ident = impl_decl
-                    .clone()
-                    .implementing_for
-                    .call_path_tree
-                    .map_or(Ident::new(impl_decl.implementing_for.span.clone()), |cpt| {
-                        cpt.call_path.suffix
-                    });
-                (ident, SymbolKind::ImplTrait)
-            }
-            Declaration::ImplSelf(impl_decl) => {
-                let ident = impl_decl
-                    .clone()
-                    .implementing_for
-                    .call_path_tree
-                    .map_or(Ident::new(impl_decl.implementing_for.span.clone()), |cpt| {
-                        cpt.call_path.suffix
-                    });
-                (ident, SymbolKind::ImplSelf)
-            }
             _ => return,
         };
 

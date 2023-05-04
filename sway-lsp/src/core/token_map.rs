@@ -1,7 +1,7 @@
 use crate::core::token::{self, Token, TypedAstToken};
 use dashmap::DashMap;
 use sway_core::{
-    language::ty::{self, TyImplTrait},
+    language::ty::{self},
     type_system::TypeId,
     Engines,
 };

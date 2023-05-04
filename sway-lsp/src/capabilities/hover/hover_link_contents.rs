@@ -1,28 +1,18 @@
 use crate::{
-    core::{
-        session::Session,
-        token::{get_range_from_span, to_ident_key, AstToken, SymbolKind, Token, TypedAstToken},
-        token_map::TokenMap,
-        token_map_ext::TokenMapExt,
-    },
-    utils::{
-        attributes::doc_comment_attributes, document::get_url_from_span, keyword_docs::KeywordDocs,
-        markdown, markup::Markup,
-    },
+    core::{session::Session, token::get_range_from_span},
+    utils::document::get_url_from_span,
 };
-use serde::{Deserialize, Serialize};
-use std::{any::Any, sync::Arc};
+use std::sync::Arc;
 use sway_core::{
     language::{
-        parsed::{AstNode, AstNodeContent, Declaration, ImplSelf, ImplTrait},
-        ty::{self, TyDecl, TyTraitDecl},
-        CallPath, Visibility,
+        ty::{TyDecl, TyTraitDecl},
+        CallPath,
     },
     Engines, TypeId, TypeInfo,
 };
 
-use sway_types::{Ident, Named, Span, Spanned};
-use tower_lsp::lsp_types::{self, Location, Position, Range, Url};
+use sway_types::{Span, Spanned};
+use tower_lsp::lsp_types::{Range, Url};
 
 #[derive(Debug, Clone)]
 pub struct RelatedType {
@@ -52,7 +42,7 @@ impl<'a> HoverLinkContents<'a> {
 
     /// Adds the given type and any related type parameters to the list of related types.
     pub fn add_related_types(&mut self, type_id: &TypeId) {
-        let type_info = self.engines.te().get(type_id.clone());
+        let type_info = self.engines.te().get(*type_id);
         match type_info {
             TypeInfo::Enum(decl_ref) => {
                 let decl = self.engines.de().get_enum(&decl_ref);
@@ -74,12 +64,12 @@ impl<'a> HoverLinkContents<'a> {
 
     /// Adds a single type to the list of related types.
     fn add_related_type(&mut self, name: String, span: &Span, callpath: CallPath) {
-        if let Ok(mut uri) = get_url_from_span(&span) {
+        if let Ok(mut uri) = get_url_from_span(span) {
             let converted_url = self.session.sync.temp_to_workspace_url(&uri);
             if let Ok(url) = converted_url {
                 uri = url;
             }
-            let range = get_range_from_span(&span);
+            let range = get_range_from_span(span);
             self.related_types.push(RelatedType {
                 name,
                 uri,
@@ -94,7 +84,7 @@ impl<'a> HoverLinkContents<'a> {
         if let Some(namespace) = self.session.namespace() {
             let call_path = CallPath::from(trait_decl.name.clone()).to_fullpath(&namespace);
             let impl_spans = namespace.get_impl_spans_for_trait_name(&call_path);
-            self.add_implementations(&trait_decl.span(), &impl_spans);
+            self.add_implementations(&trait_decl.span(), impl_spans);
         }
     }
 
@@ -102,7 +92,7 @@ impl<'a> HoverLinkContents<'a> {
     pub fn add_implementations_for_decl(&mut self, ty_decl: &TyDecl) {
         if let Some(namespace) = self.session.namespace() {
             let impl_spans = namespace.get_impl_spans_for_decl(self.engines, ty_decl);
-            self.add_implementations(&ty_decl.span(), &impl_spans);
+            self.add_implementations(&ty_decl.span(), impl_spans);
         }
     }
 
@@ -110,15 +100,15 @@ impl<'a> HoverLinkContents<'a> {
     pub fn add_implementations_for_type(&mut self, decl_span: &Span, type_id: &TypeId) {
         if let Some(namespace) = self.session.namespace() {
             let impl_spans = namespace.get_impl_spans_for_type(self.engines, type_id);
-            self.add_implementations(&decl_span, &impl_spans);
+            self.add_implementations(decl_span, impl_spans);
         }
     }
 
     /// Adds implementations to the list of implementation spans, with the declaration span first.
     /// Ensure that all paths are converted to workspace paths before adding them.
-    fn add_implementations(&mut self, decl_span: &Span, impl_spans: &Vec<Span>) {
+    fn add_implementations(&mut self, decl_span: &Span, mut impl_spans: Vec<Span>) {
         let mut all_spans = vec![decl_span.clone()];
-        all_spans.append(&mut impl_spans.clone());
+        all_spans.append(&mut impl_spans);
         all_spans.dedup();
         all_spans.iter().for_each(|span| {
             let span_result = self.session.sync.temp_to_workspace_span(span);

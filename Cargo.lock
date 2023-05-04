@@ -3255,19 +3255,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lsp-types"
-version = "0.94.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b63735a13a1f9cd4f4835223d828ed9c2e35c8c5e61837774399f558b6a1237"
-dependencies = [
- "bitflags",
- "serde",
- "serde_json",
- "serde_repr",
- "url",
-]
-
-[[package]]
 name = "matchers"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5321,7 +5308,7 @@ dependencies = [
  "tokio",
  "toml_edit",
  "tower",
- "tower-lsp 0.19.0",
+ "tower-lsp",
  "tracing",
  "urlencoding",
 ]
@@ -5336,7 +5323,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "tower",
- "tower-lsp 0.18.0",
+ "tower-lsp",
 ]
 
 [[package]]
@@ -5835,35 +5822,14 @@ dependencies = [
  "dashmap",
  "futures",
  "httparse",
- "lsp-types 0.93.2",
+ "lsp-types",
  "memchr",
  "serde",
  "serde_json",
  "tokio",
  "tokio-util",
  "tower",
- "tower-lsp-macros 0.7.0",
- "tracing",
-]
-
-[[package]]
-name = "tower-lsp"
-version = "0.19.0"
-dependencies = [
- "async-trait",
- "auto_impl",
- "bytes",
- "dashmap",
- "futures",
- "httparse",
- "lsp-types 0.94.0",
- "memchr",
- "serde",
- "serde_json",
- "tokio",
- "tokio-util",
- "tower",
- "tower-lsp-macros 0.8.0",
+ "tower-lsp-macros",
  "tracing",
 ]
 
@@ -5872,15 +5838,6 @@ name = "tower-lsp-macros"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "74697a0324a76eedfc784ffef1cc4de2300af19720de3c3fd99cd7ec484479da"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "tower-lsp-macros"
-version = "0.8.0"
 dependencies = [
  "proc-macro2",
  "quote",

@@ -409,25 +409,6 @@ impl LanguageServer for Backend {
         }
     }
 
-    async fn inlay_hint(&self, params: InlayHintParams) -> jsonrpc::Result<Option<Vec<InlayHint>>> {
-        match self.get_uri_and_session(&params.text_document.uri) {
-            Ok((uri, session)) => {
-                let _ = session.wait_for_parsing();
-                let config = &self.config.read().inlay_hints;
-                Ok(capabilities::inlay_hints::inlay_hints(
-                    session,
-                    &uri,
-                    &params.range,
-                    config,
-                ))
-            }
-            Err(err) => {
-                tracing::error!("{}", err.to_string());
-                Ok(None)
-            }
-        }
-    }
-
     async fn semantic_tokens_full(
         &self,
         params: SemanticTokensParams,

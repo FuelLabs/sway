@@ -3,7 +3,6 @@ use std::{
     collections::{BTreeMap, BTreeSet},
 };
 
-use itertools::Itertools;
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
@@ -721,13 +720,13 @@ impl TraitMap {
         let mut spans = vec![];
         // small performance gain in bad case
         if type_engine
-            .get(type_id.clone())
+            .get(*type_id)
             .eq(&TypeInfo::ErrorRecovery, engines)
         {
             return spans;
         }
         for entry in self.trait_impls.iter() {
-            if are_equal_minus_dynamic_types(engines, type_id.clone(), entry.key.type_id) {
+            if are_equal_minus_dynamic_types(engines, *type_id, entry.key.type_id) {
                 spans.push(entry.value.impl_span.clone());
             }
         }

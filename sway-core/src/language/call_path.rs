@@ -1,10 +1,8 @@
 use std::{fmt, sync::Arc};
 
-use crate::{namespace::Module, Ident, Namespace};
+use crate::{namespace::Module, Ident};
 
 use sway_types::{span::Span, Spanned};
-
-use super::ty::TyModule;
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct CallPathTree {

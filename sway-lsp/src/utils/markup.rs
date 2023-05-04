@@ -8,8 +8,7 @@ use crate::{
     utils::document::get_url_from_span,
 };
 use serde_json::{json, Value};
-use std::fmt::{self, format};
-use sway_core::language::CallPath;
+use std::fmt::{self};
 use sway_types::Span;
 use urlencoding::encode;
 

@@ -123,8 +123,8 @@ impl SyncWorkspace {
             let converted_path = get_path_from_url(&converted_url)?;
             let converted_span = Span::new(
                 span.src().clone(),
-                span.start().clone(),
-                span.end().clone(),
+                span.start(),
+                span.end(),
                 Some(converted_path.clone().into()),
             );
             match converted_span {

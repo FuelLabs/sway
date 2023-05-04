@@ -1,5 +1,5 @@
 use crate::error::DirectoryError;
-use std::{path::PathBuf, str::FromStr};
+use std::path::PathBuf;
 use sway_types::Span;
 use tower_lsp::lsp_types::Url;
 

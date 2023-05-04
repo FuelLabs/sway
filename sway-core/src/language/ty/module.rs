@@ -4,7 +4,6 @@ use crate::{
     decl_engine::{DeclEngine, DeclRef, DeclRefFunction},
     language::ty::*,
     language::ModName,
-    namespace::PathBuf,
     semantic_analysis::namespace,
     transform,
 };
