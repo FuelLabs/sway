@@ -180,43 +180,69 @@ pub(crate) fn type_check_method_application(
 
     // Validate mutability of self. Check that the variable that the method is called on is mutable
     // _if_ the method requires mutable self.
+    fn mutability_check(
+        ctx: &TypeCheckContext,
+        method_name_binding: &TypeBinding<MethodName>,
+        span: &Span,
+        exp: &ty::TyExpressionVariant,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        match exp {
+            ty::TyExpressionVariant::VariableExpression { name, .. } => {
+                let unknown_decl = check!(
+                    ctx.namespace.resolve_symbol(name).cloned(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+
+                let is_decl_mutable = match unknown_decl {
+                    ty::TyDecl::ConstantDecl { .. } => false,
+                    _ => {
+                        let variable_decl = check!(
+                            unknown_decl.expect_variable().cloned(),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        variable_decl.mutability.is_mutable()
+                    }
+                };
+
+                if !is_decl_mutable {
+                    errors.push(CompileError::MethodRequiresMutableSelf {
+                        method_name: method_name_binding.inner.easy_name(),
+                        variable_name: name.clone(),
+                        span: span.clone(),
+                    });
+                    return err(warnings, errors);
+                }
+
+                ok((), warnings, errors)
+            }
+            ty::TyExpressionVariant::StructFieldAccess { prefix, .. } => {
+                mutability_check(ctx, method_name_binding, span, &prefix.expression)
+            }
+            _ => ok((), warnings, errors),
+        }
+    }
+
     if let (
         Some(ty::TyExpression {
-            expression: ty::TyExpressionVariant::VariableExpression { name, .. },
-            ..
+            expression: exp, ..
         }),
         Some(ty::TyFunctionParameter { is_mutable, .. }),
     ) = (args_buf.get(0), method.parameters.get(0))
     {
         if *is_mutable {
-            let unknown_decl = check!(
-                ctx.namespace.resolve_symbol(name).cloned(),
+            check!(
+                mutability_check(&ctx, &method_name_binding, &span, exp),
                 return err(warnings, errors),
                 warnings,
                 errors
             );
-
-            let is_decl_mutable = match unknown_decl {
-                ty::TyDecl::ConstantDecl { .. } => false,
-                _ => {
-                    let variable_decl = check!(
-                        unknown_decl.expect_variable().cloned(),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    variable_decl.mutability.is_mutable()
-                }
-            };
-
-            if !is_decl_mutable {
-                errors.push(CompileError::MethodRequiresMutableSelf {
-                    method_name: method_name_binding.inner.easy_name(),
-                    variable_name: name.clone(),
-                    span,
-                });
-                return err(warnings, errors);
-            }
         }
     }
 
