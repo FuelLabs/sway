@@ -1,5 +1,5 @@
 use crate::error::DirectoryError;
-use std::path::PathBuf;
+use std::{path::PathBuf, str::FromStr};
 use sway_types::Span;
 use tower_lsp::lsp_types::Url;
 
@@ -8,6 +8,14 @@ pub fn get_url_from_path(path: &PathBuf) -> Result<Url, DirectoryError> {
     Url::from_file_path(path).map_err(|_| DirectoryError::UrlFromPathFailed {
         path: path.to_string_lossy().to_string(),
     })
+}
+
+/// Create a [PathBuf] from a [Url].
+pub fn get_path_from_url(url: &Url) -> Result<PathBuf, DirectoryError> {
+    url.to_file_path()
+        .map_err(|_| DirectoryError::PathFromUrlFailed {
+            url: url.to_string(),
+        })
 }
 
 /// Create a [Url] from a [Span].

@@ -60,6 +60,10 @@ pub enum DirectoryError {
     UrlFromPathFailed { path: String },
     #[error("Unable to create Url from span {:?}", span)]
     UrlFromSpanFailed { span: String },
+    #[error("Unable to create path from Url {:?}", url)]
+    PathFromUrlFailed { url: String },
+    #[error("Unable to create span from path {:?}", path)]
+    SpanFromPathFailed { path: String },
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]

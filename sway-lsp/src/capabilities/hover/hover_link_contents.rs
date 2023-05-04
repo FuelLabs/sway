@@ -74,7 +74,11 @@ impl<'a> HoverLinkContents<'a> {
 
     /// Adds a single type to the list of related types.
     fn add_related_type(&mut self, name: String, span: &Span, callpath: CallPath) {
-        if let Ok(uri) = get_url_from_span(&span) {
+        if let Ok(mut uri) = get_url_from_span(&span) {
+            let converted_url = self.session.sync.temp_to_workspace_url(&uri);
+            if let Ok(url) = converted_url {
+                uri = url;
+            }
             let range = get_range_from_span(&span);
             self.related_types.push(RelatedType {
                 name,
@@ -87,34 +91,42 @@ impl<'a> HoverLinkContents<'a> {
 
     /// Adds all implementations of the given [TyTraitDecl] to the list of implementations.
     pub fn add_implementations_for_trait(&mut self, trait_decl: &TyTraitDecl) {
-        let mut impl_spans = self
+        let impl_spans = self
             .session
             .impl_spans_for_trait_name(&trait_decl.name)
             .unwrap_or_default();
-        self.add_implementations(&trait_decl.span(), &mut impl_spans);
+        self.add_implementations(&trait_decl.span(), &impl_spans);
     }
 
     /// Adds implementations of the given type to the list of implementations using the [TyDecl].
     pub fn add_implementations_for_decl(&mut self, ty_decl: &TyDecl) {
-        let mut impl_spans = self
+        let impl_spans = self
             .session
             .impl_spans_for_decl(ty_decl)
             .unwrap_or_default();
-        self.add_implementations(&ty_decl.span(), &mut impl_spans);
+        self.add_implementations(&ty_decl.span(), &impl_spans);
     }
 
     /// Adds implementations of the given type to the list of implementations using the [TypeId].
     pub fn add_implementations_for_type(&mut self, decl_span: &Span, type_id: &TypeId) {
-        let mut impl_spans = self
+        let impl_spans = self
             .session
             .impl_spans_for_type(type_id)
             .unwrap_or_default();
-        self.add_implementations(&decl_span, &mut impl_spans);
+        self.add_implementations(&decl_span, &impl_spans);
     }
 
     /// Adds implementations to the list of implementation spans, with the declaration span first.
-    fn add_implementations(&mut self, decl_span: &Span, impl_spans: &mut Vec<Span>) {
-        self.implementations.push(decl_span.clone());
-        self.implementations.append(impl_spans);
+    /// Ensure that all paths are converted to workspace paths before adding them.
+    fn add_implementations(&mut self, decl_span: &Span, impl_spans: &Vec<Span>) {
+        let mut all_spans = vec![decl_span.clone()];
+        all_spans.append(&mut impl_spans.clone());
+        all_spans.dedup();
+        all_spans.iter().for_each(|span| {
+            let span_result = self.session.sync.temp_to_workspace_span(span);
+            if let Ok(span) = span_result {
+                self.implementations.push(span);
+            }
+        });
     }
 }

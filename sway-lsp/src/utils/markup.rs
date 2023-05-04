@@ -90,7 +90,7 @@ impl Markup {
         } else {
             let locations = implementations
                 .iter()
-                .map(|span| {
+                .flat_map(|span| {
                     if let Ok(uri) = get_url_from_span(span) {
                         let range = get_range_from_span(span);
                         Some(json!({ "uri": uri, "range": range }))
@@ -99,13 +99,14 @@ impl Markup {
                     }
                 })
                 .collect::<Vec<_>>();
+
             // The definition is stored as a location. We only want to show this if there is at least 1
             // implementation in addition to the definition.
             if locations.len() > 1 {
                 let args = json!([{ "locations": locations }]);
                 let links_string = format!(
                     "[{} implementations]({} {})",
-                    implementations.len(),
+                    locations.len(),
                     self.command_uri(PEEK_COMMAND, args),
                     self.quoted_tooltip("Go to implementations".to_string())
                 );
@@ -113,7 +114,6 @@ impl Markup {
             } else {
                 self
             }
-            // self.text("[22 implementations](https://duckduckgo.com)")
         }
     }
 
