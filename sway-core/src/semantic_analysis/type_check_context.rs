@@ -243,6 +243,7 @@ impl<'a> TypeCheckContext<'a> {
         self.purity
     }
 
+    #[allow(dead_code)]
     pub(crate) fn kind(&self) -> TreeType {
         self.kind.clone()
     }

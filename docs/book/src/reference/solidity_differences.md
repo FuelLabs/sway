@@ -20,7 +20,10 @@ Panics in the FuelVM (called "reverts" in Solidity and the EVM) are global, i.e.
 
 ## Default Safe Math
 
+<!-- This section should explain safe math in Fuel vs EVM -->
+<!-- safe_math:example:start -->
 Math in the FuelVM is by default safe (i.e. any overflow or exception is a panic). Safety checks are performed natively in the VM implementation, rather than at the bytecode level like [Solidity's default safe math](https://docs.soliditylang.org/en/latest/080-breaking-changes.html#silent-changes-of-the-semantics).
+<!-- safe_math:example:end -->
 
 ## No* Code Size Limit
 
