@@ -301,7 +301,11 @@ pub(crate) fn test_json_abi(file_name: &str, built_package: &BuiltPackage) -> Re
     let output_contents =
         fs::read_to_string(output_path).expect("Something went wrong reading the file.");
     if oracle_contents != output_contents {
-        bail!("Mismatched ABI JSON output.");
+        bail!(
+            "Mismatched ABI JSON output.\nOracle: {}\nOutput: {}",
+            oracle_contents,
+            output_contents
+        );
     }
     Ok(())
 }
