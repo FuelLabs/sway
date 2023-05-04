@@ -1,0 +1,31 @@
+category = "fail"
+
+# check: use ::alpha::bar as bar1;
+# nextln: $()Symbol "bar" is private.
+
+# check: use ::beta::bar as bar2;
+# nextln: $()Symbol "bar" is private.
+
+# check: use ::beta::gamma::foo as foo3;
+# nextln: $()Module "gamma" is private.
+
+# check: use ::beta::gamma::bar as bar3;
+# nextln: $()Module "gamma" is private.
+
+# check: use ::beta::gamma::bar as bar3;
+# nextln: $()Symbol "bar" is private.
+
+# check: use ::beta::gamma::*;
+# nextln: $()Module "gamma" is private.
+
+# check: ::beta::bar();
+# nextln: $()Symbol "bar" is private.
+
+# check: ::beta::gamma::foo();
+# nextln: $()Module "gamma" is private.
+
+# check: ::beta::gamma::bar();
+# nextln: $()Module "gamma" is private.
+
+# check: ::beta::gamma::bar();
+# nextln: $()Symbol "bar" is private.

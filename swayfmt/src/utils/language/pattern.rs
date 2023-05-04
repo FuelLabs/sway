@@ -48,6 +48,9 @@ impl Format for Pattern {
                 }
                 name.format(formatted_code, formatter)?;
             }
+            Self::AmbiguousSingleIdent(ident) => {
+                ident.format(formatted_code, formatter)?;
+            }
             Self::Literal(lit) => lit.format(formatted_code, formatter)?,
             Self::Constant(path) => path.format(formatted_code, formatter)?,
             Self::Constructor { path, args } => {
@@ -293,6 +296,9 @@ impl LeafSpans for Pattern {
                     collected_spans.push(ByteSpan::from(mutable.span()));
                 }
                 collected_spans.push(ByteSpan::from(name.span()));
+            }
+            Pattern::AmbiguousSingleIdent(ident) => {
+                collected_spans.push(ByteSpan::from(ident.span()));
             }
             Pattern::Literal(literal) => {
                 collected_spans.append(&mut literal.leaf_spans());

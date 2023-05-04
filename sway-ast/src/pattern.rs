@@ -10,6 +10,8 @@ pub enum Pattern {
     Wildcard {
         underscore_token: UnderscoreToken,
     },
+    /// A pattern made of a single ident, which could either be a variable or an enum variant
+    AmbiguousSingleIdent(Ident),
     Var {
         reference: Option<RefToken>,
         mutable: Option<MutToken>,
@@ -51,6 +53,7 @@ impl Spanned for Pattern {
                 (None, Some(mut_token)) => Span::join(mut_token.span(), name.span()),
                 (None, None) => name.span(),
             },
+            Pattern::AmbiguousSingleIdent(ident) => ident.span(),
             Pattern::Literal(literal) => literal.span(),
             Pattern::Constant(path_expr) => path_expr.span(),
             Pattern::Constructor { path, args } => Span::join(path.span(), args.span()),

@@ -7,20 +7,20 @@ use core::ops::*;
 // Generic Tests
 /////////////////////////////////////////////////////////////////////////////
 fn test_is_ok<T>(val: T) {
-    assert(Result::Ok::<T, T>(val).is_ok());
-    assert(!Result::Err::<T, T>(val).is_ok());
+    assert(Ok::<T, T>(val).is_ok());
+    assert(!Err::<T, T>(val).is_ok());
 }
 
 fn test_is_err<T>(val: T) {
-    assert(!Result::Ok::<T, T>(val).is_err());
-    assert(Result::Err::<T, T>(val).is_err());
+    assert(!Ok::<T, T>(val).is_err());
+    assert(Err::<T, T>(val).is_err());
 }
 
 fn test_unwrap<T>(val: T)
 where
     T: Eq
 {
-    assert(Result::Ok::<T, T>(val).unwrap() == val);
+    assert(Ok::<T, T>(val).unwrap() == val);
 }
 
 // TODO: Combine following two functions when the following issue is resolved:
@@ -29,13 +29,13 @@ fn test_unwrap_or_ok<T>(val: T, default: T)
 where
     T: Eq
 {
-    assert(Result::Ok::<T, T>(val).unwrap_or(default) == val);
+    assert(Ok::<T, T>(val).unwrap_or(default) == val);
 }
 fn test_unwrap_or_err<T>(val: T, default: T)
 where
     T: Eq
 {
-    assert(Result::Err::<T, T>(val).unwrap_or(default) == default);
+    assert(Err::<T, T>(val).unwrap_or(default) == default);
 }
 
 /////////////////////////////////////////////////////////////////////////////

@@ -10,20 +10,20 @@ abi OwnershipExample {
 }
 
 storage {
-    owner: Option<Identity> = Option::None,
+    owner: Option<Identity> = None,
 }
 
 impl OwnershipExample for Contract {
     // ANCHOR: revoke_owner_example
     #[storage(write)]
     fn revoke_ownership() {
-        storage.owner.write(Option::None);
+        storage.owner.write(None);
     }
     // ANCHOR_END: revoke_owner_example
     // ANCHOR: set_owner_example
     #[storage(write)]
     fn set_owner(identity: Identity) {
-        storage.owner.write(Option::Some(identity));
+        storage.owner.write(Some(identity));
     }
     // ANCHOR_END: set_owner_example
     #[storage(read)]

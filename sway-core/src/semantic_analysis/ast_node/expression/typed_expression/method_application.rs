@@ -466,6 +466,7 @@ pub(crate) fn resolve_method_name(
                     ctx.self_type(),
                     &arguments,
                     engines,
+                    ctx.experimental_private_modules_enabled()
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -493,6 +494,7 @@ pub(crate) fn resolve_method_name(
                     ctx.self_type(),
                     &arguments,
                     engines,
+                    ctx.experimental_private_modules_enabled(),
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -520,6 +522,7 @@ pub(crate) fn resolve_method_name(
                     ctx.self_type(),
                     &arguments,
                     engines,
+                    ctx.experimental_private_modules_enabled(),
                 ),
                 return err(warnings, errors),
                 warnings,

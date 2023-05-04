@@ -1,6 +1,6 @@
 library;
 
-mod nested_traits;
+pub mod nested_traits;
 
 use nested_traits::*;
 

@@ -20,7 +20,7 @@ There are two `storage` variables: `balance` & `user`. `balance` takes a single 
 
 ## Reading from Storage
 
-Retrieving data from a storage variable is done through the `.get(key)` method. That is to say that we state which storage variable we would like to read from and append `.get()` to the end while providing the key for the data that we want to retrieve. The method `get` returns an `Option`; if there is no value for `key` in the map, `get` will return `Option::None`.
+Retrieving data from a storage variable is done through the `.get(key)` method. That is to say that we state which storage variable we would like to read from and append `.get()` to the end while providing the key for the data that we want to retrieve. The method `get` returns an `Option`; if there is no value for `key` in the map, `get` will return `None`.
 
 In this example we wrap the [`Identity`](../../namespace/identity.md) of the caller with their provided `id` into a [tuple](../../../language/built-ins/tuples.md) and use that as the key.
 

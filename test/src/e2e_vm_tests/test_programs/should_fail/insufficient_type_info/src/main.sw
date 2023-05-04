@@ -8,5 +8,5 @@ fn main() {
     foo();
 
 
-    Option::None::<T>;
+    None::<T>;
 }

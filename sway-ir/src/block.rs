@@ -368,6 +368,13 @@ impl Block {
         ins.retain(|value| !pred(*value));
     }
 
+    /// Insert instruction(s) at the beginning of the block.
+    pub fn prepend_instructions(&self, context: &mut Context, mut insts: Vec<Value>) {
+        let block_ins = &mut context.blocks[self.0].instructions;
+        insts.append(block_ins);
+        context.blocks[self.0].instructions = insts;
+    }
+
     /// Replace an instruction in this block with another.  Will return a ValueNotFound on error.
     /// Any use of the old instruction value will also be replaced by the new value throughout the
     /// owning function.

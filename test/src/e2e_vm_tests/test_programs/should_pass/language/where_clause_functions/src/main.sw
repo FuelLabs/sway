@@ -140,16 +140,16 @@ enum MyOption<T> {
 impl<T> MyOption<T> {
     pub fn ok_or<E>(self, err: E) -> Result<T, E> {
         match self {
-            MyOption::Some(v) => Result::Ok(v),
-            MyOption::None => Result::Err(err),
+            MyOption::Some(v) => Ok(v),
+            MyOption::None => Err(err),
         }
     }
 }
 
 fn test_ok_or<T, E>(val: T, default: E) where T: Eq, E: Eq {
     match MyOption::Some(val).ok_or(default) {
-        Result::Ok(inner) => assert(val == inner),
-        Result::Err(_) => revert(0),
+        Ok(inner) => assert(val == inner),
+        Err(_) => revert(0),
     }
 }
 

@@ -2366,6 +2366,7 @@ fn fn_arg_to_function_parameter(
             mutable,
             name,
         } => (reference, mutable, name),
+        Pattern::AmbiguousSingleIdent(ident) => (None, None, ident),
         Pattern::Literal(..) => {
             let error = ConvertParseTreeError::LiteralPatternsNotSupportedHere { span: pat_span };
             return Err(handler.emit_err(error.into()));
@@ -2541,10 +2542,15 @@ fn path_expr_to_expression(
     path_expr: PathExpr,
 ) -> Result<Expression, ErrorEmitted> {
     let span = path_expr.span();
-    let expression = if path_expr.root_opt.is_none() && path_expr.suffix.is_empty() {
+    let expression = if path_expr.root_opt.is_none()
+        && path_expr.suffix.is_empty()
+        && path_expr.prefix.generics_opt.is_none()
+    {
+        // only `foo`, it coult either be a variable or an enum variant
+
         let name = path_expr_segment_to_ident(context, handler, &path_expr.prefix)?;
         Expression {
-            kind: ExpressionKind::Variable(name),
+            kind: ExpressionKind::AmbiguousVariableExpression(name),
             span,
         }
     } else {
@@ -3076,7 +3082,7 @@ fn statement_let_to_ast_nodes(
         span: Span,
     ) -> Result<Vec<AstNode>, ErrorEmitted> {
         let ast_nodes = match pattern {
-            Pattern::Wildcard { .. } | Pattern::Var { .. } => {
+            Pattern::Wildcard { .. } | Pattern::Var { .. } | Pattern::AmbiguousSingleIdent(..) => {
                 let (reference, mutable, name) = match pattern {
                     Pattern::Var {
                         reference,
@@ -3084,6 +3090,7 @@ fn statement_let_to_ast_nodes(
                         name,
                     } => (reference, mutable, name),
                     Pattern::Wildcard { .. } => (None, None, Ident::new_no_span("_".into())),
+                    Pattern::AmbiguousSingleIdent(ident) => (None, None, ident),
                     _ => unreachable!(),
                 };
                 if reference.is_some() {
@@ -3474,6 +3481,7 @@ fn pattern_to_scrutinee(
             }
             Scrutinee::Variable { name, span }
         }
+        Pattern::AmbiguousSingleIdent(ident) => Scrutinee::AmbiguousSingleIdent(ident),
         Pattern::Literal(literal) => Scrutinee::Literal {
             value: literal_to_literal(context, handler, literal)?,
             span,
@@ -4056,7 +4064,6 @@ pub fn cfg_eval(
     if let Some(cfg_attrs) = attrs_map.get(&AttributeKind::Cfg) {
         for cfg_attr in cfg_attrs {
             for arg in &cfg_attr.args {
-                dbg!(arg.name.as_str());
                 match arg.name.as_str() {
                     CFG_TARGET_ARG_NAME => {
                         if let Some(value) = &arg.value {
@@ -4093,7 +4100,6 @@ pub fn cfg_eval(
                                 if let Ok(program_type) =
                                     TreeType::from_str(value_str.parsed.as_str())
                                 {
-                                    dbg!("kek", &program_type, &context.program_type().unwrap());
                                     if program_type != context.program_type().unwrap() {
                                         return Ok(false);
                                     }

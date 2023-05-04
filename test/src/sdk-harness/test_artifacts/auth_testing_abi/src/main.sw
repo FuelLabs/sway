@@ -1,7 +1,5 @@
 library;
 
-use std::auth::*;
-
 abi AuthTesting {
     fn is_caller_external() -> bool;
     fn returns_msg_sender(expected_id: ContractId) -> bool;
