@@ -1,8 +1,11 @@
 # Standard Library
 
+<!-- This section should explain what the std-lib is -->
+<!-- std_lib:example:start -->
 Similar to Rust, Sway comes with its own standard library.
 
 The Sway Standard Library is the foundation of portable Sway software, a set of minimal shared abstractions for the broader Sway ecosystem. It offers core types, like `Result<T, E>` and `Option<T>`, library-defined operations on language primitives, native asset management, blockchain contextual operations, access control, storage management, and support for types from other VMs, among many other things.
+<!-- std_lib:example:end -->
 
 The entire Sway standard library is a Forc project called `std`, and is available directly here: <https://github.com/FuelLabs/sway/tree/master/sway-lib-std> (navigate to the appropriate tagged release if the latest `master` is not compatible). For the latest `std` documentation see: <https://fuellabs.github.io/sway/master/std/>.
 
@@ -20,6 +23,8 @@ This imports the `StorageVec` type into the current namespace.
 
 ## Standard Library Prelude
 
+<!-- This section should explain what the std-lib prelude is -->
+<!-- prelude:example:start -->
 Sway comes with a variety of things in its standard library. However, if you had to manually import every single thing that you used, it would be very verbose. But importing a lot of things that a program never uses isn't good either. A balance needs to be struck.
 
 The prelude is the list of things that Sway automatically imports into every Sway program. It's kept as small as possible, and is focused on things which are used in almost every single Sway program.
@@ -40,3 +45,4 @@ The current version of the prelude lives in [`std::prelude`](https://github.com/
 - [`std::revert::revert`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/revert.sw), a function that reverts the VM.
 - [`std::logging::log`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/logging.sw), a function that logs arbitrary stack types.
 - [`std::auth::msg_sender`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/auth.sw), a function that gets the `Identity` from which a call was made.
+<!-- prelude:example:end -->
