@@ -331,7 +331,7 @@ impl Session {
     }
 
     /// Returns the spans of all implementations of the type.
-    pub fn impl_spans_for_type(&self, type_id: TypeId) -> Option<Vec<Span>> {
+    pub fn impl_spans_for_type(&self, type_id: &TypeId) -> Option<Vec<Span>> {
         let compiled_program = &*self.compiled_program.read();
         let program = compiled_program.typed.clone()?;
         let namespace = program.root.namespace;

@@ -715,19 +715,19 @@ impl TraitMap {
     pub(crate) fn get_impl_spans_for_type(
         &self,
         engines: Engines<'_>,
-        type_id: TypeId,
+        type_id: &TypeId,
     ) -> Vec<Span> {
         let type_engine = engines.te();
         let mut spans = vec![];
         // small performance gain in bad case
         if type_engine
-            .get(type_id)
+            .get(type_id.clone())
             .eq(&TypeInfo::ErrorRecovery, engines)
         {
             return spans;
         }
         for entry in self.trait_impls.iter() {
-            if are_equal_minus_dynamic_types(engines, type_id, entry.key.type_id) {
+            if are_equal_minus_dynamic_types(engines, type_id.clone(), entry.key.type_id) {
                 spans.push(entry.value.impl_span.clone());
             }
         }

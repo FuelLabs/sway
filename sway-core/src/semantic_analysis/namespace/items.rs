@@ -176,12 +176,12 @@ impl Items {
             .value
             .map(|type_id| {
                 self.implemented_traits
-                    .get_impl_spans_for_type(engines, type_id)
+                    .get_impl_spans_for_type(engines, &type_id)
             })
             .unwrap_or_default()
     }
 
-    pub fn get_impl_spans_for_type(&self, engines: Engines<'_>, type_id: TypeId) -> Vec<Span> {
+    pub fn get_impl_spans_for_type(&self, engines: Engines<'_>, type_id: &TypeId) -> Vec<Span> {
         self.implemented_traits
             .get_impl_spans_for_type(engines, type_id)
     }

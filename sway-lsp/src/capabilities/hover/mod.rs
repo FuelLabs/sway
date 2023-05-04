@@ -1,3 +1,5 @@
+pub(crate) mod hover_link_contents;
+
 use crate::{
     core::{
         session::Session,
@@ -24,101 +26,7 @@ use sway_core::{
 use sway_types::{Ident, Named, Span, Spanned};
 use tower_lsp::lsp_types::{self, Location, Position, Range, Url};
 
-#[derive(Debug, Clone)]
-pub struct RelatedType {
-    pub name: String,
-    pub uri: Url,
-    pub range: Range,
-    pub callpath: CallPath,
-}
-
-#[derive(Debug, Clone)]
-pub struct HoverLinkContents<'a> {
-    pub related_types: Vec<RelatedType>,
-    pub implementations: Vec<Span>,
-    session: Arc<Session>,
-    engines: Engines<'a>,
-    token_map: &'a TokenMap,
-    token: &'a Token,
-}
-
-impl<'a> HoverLinkContents<'a> {
-    fn new(
-        session: Arc<Session>,
-        engines: Engines<'a>,
-        token_map: &'a TokenMap,
-        token: &'a Token,
-    ) -> Self {
-        Self {
-            related_types: Vec::new(),
-            implementations: Vec::new(),
-            session,
-            engines,
-            token_map,
-            token,
-        }
-    }
-
-    fn add_related_type(&mut self, name: String, span: &Span, callpath: CallPath) {
-        if let Ok(uri) = get_url_from_span(&span) {
-            let range = get_range_from_span(&span);
-            self.related_types.push(RelatedType {
-                name,
-                uri,
-                range,
-                callpath,
-            });
-        };
-    }
-
-    fn add_related_types(&mut self, type_id: &TypeId) {
-        let type_info = self.engines.te().get(type_id.clone());
-        match type_info {
-            TypeInfo::Enum(decl_ref) => {
-                let decl = self.engines.de().get_enum(&decl_ref);
-                self.add_related_type(decl_ref.name().to_string(), &decl.span(), decl.call_path);
-                decl.type_parameters
-                    .iter()
-                    .for_each(|type_param| self.add_related_types(&type_param.type_id));
-            }
-            TypeInfo::Struct(decl_ref) => {
-                let decl = self.engines.de().get_struct(&decl_ref);
-                self.add_related_type(decl_ref.name().to_string(), &decl.span(), decl.call_path);
-                decl.type_parameters
-                    .iter()
-                    .for_each(|type_param| self.add_related_types(&type_param.type_id));
-            }
-            _ => {}
-        }
-    }
-
-    fn add_implementations_for_trait(&mut self, trait_decl: &TyTraitDecl) {
-        self.implementations.push(trait_decl.span());
-        let mut impl_spans = self
-            .session
-            .impl_spans_for_trait_name(&trait_decl.name)
-            .unwrap_or_default();
-        self.implementations.append(&mut impl_spans);
-    }
-
-    fn add_implementations_for_decl(&mut self, ty_decl: &TyDecl) {
-        self.implementations.push(ty_decl.span());
-        let mut impl_spans = self
-            .session
-            .impl_spans_for_decl(ty_decl)
-            .unwrap_or_default();
-        self.implementations.append(&mut impl_spans);
-    }
-
-    fn add_implementations_for_type(&mut self, definition_span: Span, type_id: TypeId) {
-        self.implementations.push(definition_span.clone());
-        let mut impl_spans = self
-            .session
-            .impl_spans_for_type(type_id)
-            .unwrap_or_default();
-        self.implementations.append(&mut impl_spans);
-    }
-}
+use self::hover_link_contents::HoverLinkContents;
 
 /// Extracts the hover information for a token at the current position.
 pub fn hover_data(
@@ -245,7 +153,7 @@ fn hover_format(
     };
 
     // Used to collect all the information we need to generate links for the hover component.
-    let mut hover_link_contents = HoverLinkContents::new(session, engines, token_map, token);
+    let mut hover_link_contents = HoverLinkContents::new(session, engines);
 
     let sway_block = token
         .typed
@@ -307,7 +215,10 @@ fn hover_format(
                 ))
             }
             TypedAstToken::TypedStructField(field) => {
-                hover_link_contents.add_related_types(&field.type_argument.type_id);
+                hover_link_contents.add_implementations_for_type(
+                    &field.type_argument.span(),
+                    &field.type_argument.type_id,
+                );
                 Some(format_name_with_type(
                     field.name.as_str(),
                     &field.type_argument.type_id,

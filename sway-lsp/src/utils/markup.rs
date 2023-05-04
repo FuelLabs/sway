@@ -4,7 +4,7 @@
 //! markdown for this purpose.
 //! Modified from rust-analyzer.
 use crate::{
-    capabilities::hover::RelatedType, core::token::get_range_from_span,
+    capabilities::hover::hover_link_contents::RelatedType, core::token::get_range_from_span,
     utils::document::get_url_from_span,
 };
 use serde_json::{json, Value};
