@@ -32,7 +32,7 @@ impl<K, V> StorageKey<StorageMap<K, V>> {
     /// ```
     #[storage(read, write)]
     pub fn insert(self, key: K, value: V) {
-        let key = sha256((key, self.slot));
+        let key = sha256((key, self.field_id));
         write::<V>(key, 0, value);
     }
 
@@ -60,8 +60,9 @@ impl<K, V> StorageKey<StorageMap<K, V>> {
     /// ```
     pub fn get(self, key: K) -> StorageKey<V> {
         StorageKey {
-            slot: sha256((key, self.slot)),
+            slot: sha256((key, self.field_id)),
             offset: 0,
+            field_id: sha256((key, self.field_id)),
         }
     }
 
