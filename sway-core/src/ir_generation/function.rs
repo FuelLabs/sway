@@ -1,8 +1,5 @@
 use super::{
-    compile::compile_function,
-    convert::*,
-    lexical_map::LexicalMap,
-    storage::{add_to_b256, get_storage_key},
+    compile::compile_function, convert::*, lexical_map::LexicalMap, storage::get_storage_key,
     types::*,
 };
 use crate::{
@@ -2479,14 +2476,15 @@ impl<'eng> FnCompiler<'eng> {
             .add_metadatum(context, whole_block_span_md_idx))
     }
 
-    /// Get the offset, in words, to a particular field in an aggregate type.
-    fn get_offset(
+    // get the number of fields that exist before the field corresponding to the indices in an
+    // aggregate type
+    fn get_field_number(
         &mut self,
         context: &mut Context,
         ty: &Type,
         indices: &[u64],
     ) -> Result<u64, CompileError> {
-        let mut offset = 0;
+        let mut field_number = 0;
         let mut ty_at_idx = *ty;
         for index in indices.iter() {
             let fields = ty_at_idx.get_field_types(context);
@@ -2495,10 +2493,10 @@ impl<'eng> FnCompiler<'eng> {
                     ty_at_idx = field_type;
                     break;
                 }
-                offset += ir_type_size_in_bytes(context, &field_type);
+                field_number += 1;
             }
         }
-        Ok(offset / 8)
+        Ok(field_number)
     }
 
     fn compile_storage_read(
@@ -2509,21 +2507,16 @@ impl<'eng> FnCompiler<'eng> {
         base_type: &Type,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
-        // Get the actual storage key as a `Bytes32` as well as the offset, in words,
-        // within the slot. The offset depends on what field of the top level storage
-        // variable is being accessed.
+        // Get the actual storage key as a `Bytes32` as well as the offset within the slot.
+        // The offset is obtained by counting the fields before the one of the variable that is
+        // being accessed.
         let (storage_key, offset_within_slot) = {
-            let offset_in_words = self.get_offset(context, base_type, indices)?;
-            let offset_in_slots = offset_in_words / 4;
-            let offset_remaining = offset_in_words % 4;
+            let offset = self.get_field_number(context, base_type, indices)?;
 
+            dbg!(offset);
             // The storage key we need is the storage key of the top level storage variable
-            // plus the offset, in number of slots, computed above. The offset within this
-            // particular slot is the remaining offset, in words.
-            (
-                add_to_b256(get_storage_key::<u64>(ix, &[]), offset_in_slots),
-                offset_remaining,
-            )
+            // plus the offset, in number of fields, computed above.
+            (get_storage_key::<u64>(ix, &[]), offset)
         };
 
         // Const value for the key from the hash
