@@ -2,7 +2,10 @@
 
 ## Structs
 
+<!-- This section should explain structs in Sway -->
+<!-- structs:example:start -->
 Structs in Sway are a named grouping of types. You may also be familiar with structs via another name: _product types_. Sway does not make any significantly unique usages of structs; they are similar to most other languages which have structs. If you're coming from an object-oriented background, a struct is like the data attributes of an object.
+<!-- structs:example:end -->
 
 Firstly, we declare a struct named `Foo` with two fields. The first field is named `bar` and it accepts values of type `u64`, the second field is named `baz` and it accepts `bool` values.
 
@@ -10,6 +13,8 @@ Firstly, we declare a struct named `Foo` with two fields. The first field is nam
 {{#include ../../../../examples/structs/src/data_structures.sw}}
 ```
 
+<!-- This section should explain how to instantiate a struct in Sway -->
+<!-- new_struct:example:start -->
 In order to instantiate the struct we use _struct instantiation syntax_, which is very similar to the declaration syntax except with expressions in place of types.
 
 There are three ways to instantiate the struct.
@@ -17,6 +22,7 @@ There are three ways to instantiate the struct.
 - Hardcoding values for the fields
 - Passing in variables with names different than the struct fields
 - Using a shorthand notation via variables that are the same as the field names
+<!-- new_struct:example:end -->
 
 ```sway
 {{#include ../../../../examples/structs/src/main.sw}}
@@ -37,9 +43,12 @@ Structs have zero memory overhead. What that means is that in memory, each struc
 
 ## Tuples
 
+<!-- This section should explain what tuples are and how to access tuple values -->
+<!-- tuples:example:start -->
 Tuples are a [basic static-length type](./built_in_types.md#tuple-types) which contain multiple different types within themselves. The type of a tuple is defined by the types of the values within it, and a tuple can contain basic types as well as structs and enums.
 
 You can access values directly by using the `.` syntax. Moreover, multiple variables can be extracted from a tuple using the destructuring syntax.
+<!-- tuples:example:end -->
 
 ```sway
 {{#include ../../../../examples/tuples/src/main.sw}}
@@ -47,7 +56,10 @@ You can access values directly by using the `.` syntax. Moreover, multiple varia
 
 ## Enums
 
+<!-- This section should explain what enums are -->
+<!-- enums:example:start -->
 _Enumerations_, or _enums_, are also known as _sum types_. An enum is a type that could be one of several variants. To declare an enum, you enumerate all potential variants.
+<!-- enums:example:end -->
 
 Here, we have defined five potential colors. Each enum variant is just the color name. As there is no extra data associated with each variant, we say that each variant is of type `()`, or unit.
 

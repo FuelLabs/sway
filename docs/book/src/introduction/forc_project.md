@@ -8,6 +8,8 @@ forc new my-fuel-project
 
 Here is the project that Forc has initialized:
 
+<!-- This section should show the tree for a new forc project -->
+<!-- tree:example:start -->
 ```console
 $ cd my-fuel-project
 $ tree .
@@ -15,8 +17,12 @@ $ tree .
 └── src
     └── main.sw
 ```
+<!-- tree:example:end -->
 
+<!-- This section should explain the `Forc.toml` file -->
+<!-- forc_toml:example:start -->
 `Forc.toml` is the _manifest file_ (similar to `Cargo.toml` for Cargo or `package.json` for Node), and defines project metadata such as the project name and dependencies.
+<!-- forc_toml:example:end -->
 
 For additional information on dependency management, see: [here](../forc/dependencies.md).
 
