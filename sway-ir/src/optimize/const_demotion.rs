@@ -1,3 +1,5 @@
+use std::collections::hash_map::Entry;
+
 ///! Constant value demotion.
 ///!
 ///! This pass demotes 'by-value' constant types to 'by-reference` pointer types, based on target
@@ -6,8 +8,8 @@
 ///! Storage for constant values is created on the stack in variables which are initialized with the
 ///! original values.
 use crate::{
-    AnalysisResults, Block, Constant, Context, Function, IrError, Pass, PassMutability, ScopedPass,
-    Value,
+    AnalysisResults, Block, Constant, Context, Function, Instruction, IrError, Pass,
+    PassMutability, ScopedPass, Value,
 };
 
 use rustc_hash::FxHashMap;
@@ -29,57 +31,53 @@ pub fn const_demotion(
     function: Function,
 ) -> Result<bool, IrError> {
     // Find all candidate constant values and their wrapped constants.
-    let candidate_values = function
-        .instruction_iter(context)
-        .flat_map(|(_block, inst)| inst.get_instruction(context).unwrap().get_operands())
-        .filter_map(|val| {
-            val.get_constant(context).and_then(|c| {
-                super::target_fuel::is_demotable_type(context, &c.ty).then(|| (val, c.clone()))
-            })
-        })
-        .collect::<Vec<_>>();
+    let mut candidate_values: FxHashMap<Block, Vec<(Value, Constant)>> = FxHashMap::default();
+
+    for (block, inst) in function.instruction_iter(context) {
+        let operands = inst.get_instruction(context).unwrap().get_operands();
+        for val in operands.iter() {
+            if let Some(c) = val.get_constant(context) {
+                if super::target_fuel::is_demotable_type(context, &c.ty) {
+                    let dem = (*val, c.clone());
+                    match candidate_values.entry(block) {
+                        Entry::Occupied(mut occ) => {
+                            occ.get_mut().push(dem);
+                        }
+                        Entry::Vacant(vac) => {
+                            vac.insert(vec![dem]);
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     if candidate_values.is_empty() {
         return Ok(false);
     }
 
-    // Create a new entry block to initialise and load the constants.
-    let (const_init_block, orig_entry_block) =
-        function.get_entry_block(context).split_at(context, 0);
-
-    // Insert const initialisation into new init block, gather into a replacement map.
-    let replace_map =
-        FxHashMap::from_iter(candidate_values.into_iter().map(|(old_value, constant)| {
-            (
-                old_value,
-                demote(context, &function, &const_init_block, &constant),
-            )
-        }));
-
-    // Terminate the init block.
-    const_init_block
-        .ins(context)
-        .branch(orig_entry_block, Vec::new());
-
-    // Replace the value.
-    function.replace_values(context, &replace_map, Some(orig_entry_block));
-
-    assert_eq!(const_init_block, function.get_entry_block(context));
+    for (block, cands) in candidate_values {
+        let mut replace_map: FxHashMap<Value, Value> = FxHashMap::default();
+        // The new instructions we're going to insert at the start of this block.
+        let mut this_block_new = Vec::new();
+        for (c_val, c) in cands {
+            // Create a variable for const.
+            let var = function.new_unique_local_var(
+                context,
+                "__const".to_owned(),
+                c.ty,
+                Some(c.clone()),
+                false,
+            );
+            let var_val = Value::new_instruction(context, Instruction::GetLocal(var));
+            let load_val = Value::new_instruction(context, Instruction::Load(var_val));
+            replace_map.insert(c_val, load_val);
+            this_block_new.push(var_val);
+            this_block_new.push(load_val);
+        }
+        block.replace_values(context, &replace_map);
+        block.prepend_instructions(context, this_block_new);
+    }
 
     Ok(true)
-}
-
-fn demote(context: &mut Context, function: &Function, block: &Block, constant: &Constant) -> Value {
-    // Create a variable for const.
-    let var = function.new_unique_local_var(
-        context,
-        "__const".to_owned(),
-        constant.ty,
-        Some(constant.clone()),
-        false,
-    );
-
-    // Create local_var and load instructions.
-    let var_val = block.ins(context).get_local(var);
-    block.ins(context).load(var_val)
 }
