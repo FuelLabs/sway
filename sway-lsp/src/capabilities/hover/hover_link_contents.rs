@@ -91,29 +91,27 @@ impl<'a> HoverLinkContents<'a> {
 
     /// Adds all implementations of the given [TyTraitDecl] to the list of implementations.
     pub fn add_implementations_for_trait(&mut self, trait_decl: &TyTraitDecl) {
-        let impl_spans = self
-            .session
-            .impl_spans_for_trait_name(&trait_decl.name)
-            .unwrap_or_default();
-        self.add_implementations(&trait_decl.span(), &impl_spans);
+        if let Some(namespace) = self.session.namespace() {
+            let call_path = CallPath::from(trait_decl.name.clone()).to_fullpath(&namespace);
+            let impl_spans = namespace.get_impl_spans_for_trait_name(&call_path);
+            self.add_implementations(&trait_decl.span(), &impl_spans);
+        }
     }
 
     /// Adds implementations of the given type to the list of implementations using the [TyDecl].
     pub fn add_implementations_for_decl(&mut self, ty_decl: &TyDecl) {
-        let impl_spans = self
-            .session
-            .impl_spans_for_decl(ty_decl)
-            .unwrap_or_default();
-        self.add_implementations(&ty_decl.span(), &impl_spans);
+        if let Some(namespace) = self.session.namespace() {
+            let impl_spans = namespace.get_impl_spans_for_decl(self.engines, ty_decl);
+            self.add_implementations(&ty_decl.span(), &impl_spans);
+        }
     }
 
     /// Adds implementations of the given type to the list of implementations using the [TypeId].
     pub fn add_implementations_for_type(&mut self, decl_span: &Span, type_id: &TypeId) {
-        let impl_spans = self
-            .session
-            .impl_spans_for_type(type_id)
-            .unwrap_or_default();
-        self.add_implementations(&decl_span, &impl_spans);
+        if let Some(namespace) = self.session.namespace() {
+            let impl_spans = namespace.get_impl_spans_for_type(self.engines, type_id);
+            self.add_implementations(&decl_span, &impl_spans);
+        }
     }
 
     /// Adds implementations to the list of implementation spans, with the declaration span first.
