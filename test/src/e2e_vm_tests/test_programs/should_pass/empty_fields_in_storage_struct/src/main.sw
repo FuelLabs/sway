@@ -54,6 +54,16 @@ impl ReproAttempt for Contract {
     fn bar_get(key: u64) -> Option<u64> {
         storage.struct_of_maps.bar.get(key).try_read()
     }
+
+    #[storage(read)]    
+    fn foo_len() -> u64 {
+        storage.struct_of_maps.foo.len().try_read()
+    }
+
+    #[storage(read)]
+    fn bar_len() -> u64 {
+        storage.struct_of_maps.bar.len().try_read()
+    }
 }
 
 #[test()]
