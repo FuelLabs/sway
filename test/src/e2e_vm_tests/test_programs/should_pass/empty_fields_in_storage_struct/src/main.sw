@@ -9,11 +9,17 @@ abi ReproAttempt {
     #[storage(read)]
     fn foo_get(key: u64) -> Option<u64>;
 
+    #[storage(read)]
+    fn foo_len() -> u64;
+
     #[storage(read, write)]
     fn bar_insert(key: u64, value: u64);
 
     #[storage(read)]
     fn bar_get(key: u64) -> Option<u64>;
+
+    #[storage(read)]
+    fn bar_len() -> u64;
 }
 
 struct StructOfStorageMaps {
@@ -55,8 +61,15 @@ fn test_read_write() {
     let repro = abi(ReproAttempt, CONTRACT_ID);
 
     assert(repro.foo_get(1).is_none());
+    assert(repro.foo_len() == 0);
+    assert(repro.bar_get(1).is_none());
+    assert(repro.bar_len() == 0);
+
     repro.foo_insert(1, 2);
+
     assert(repro.foo_get(1).unwrap() == 2);
+    assert(repro.foo_len() == 1);
 
     assert(repro.bar_get(1).is_none());
+    assert(repro.bar_len() == 0);
 }
