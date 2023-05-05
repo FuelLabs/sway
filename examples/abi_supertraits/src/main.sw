@@ -1,5 +1,10 @@
 contract;
 
+struct Foo {}
+impl ABIsupertrait for Foo {
+    fn foo() {}
+}
+
 trait ABIsupertrait {
     fn foo();
 }
