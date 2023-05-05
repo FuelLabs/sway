@@ -2,10 +2,7 @@ use crate::{
     decl_engine::*,
     engine_threading::Engines,
     error::*,
-    language::{
-        ty::{self, TyDecl, TyStorageDecl},
-        CallPath,
-    },
+    language::ty::{self, TyStorageDecl},
     namespace::*,
     type_system::*,
 };
@@ -168,27 +165,6 @@ impl Items {
         type_id: TypeId,
     ) -> Vec<ty::TyTraitItem> {
         self.implemented_traits.get_items_for_type(engines, type_id)
-    }
-
-    pub fn get_impl_spans_for_decl(&self, engines: Engines<'_>, ty_decl: &TyDecl) -> Vec<Span> {
-        ty_decl
-            .return_type(engines)
-            .value
-            .map(|type_id| {
-                self.implemented_traits
-                    .get_impl_spans_for_type(engines, &type_id)
-            })
-            .unwrap_or_default()
-    }
-
-    pub fn get_impl_spans_for_type(&self, engines: Engines<'_>, type_id: &TypeId) -> Vec<Span> {
-        self.implemented_traits
-            .get_impl_spans_for_type(engines, type_id)
-    }
-
-    pub fn get_impl_spans_for_trait_name(&self, trait_name: &CallPath) -> Vec<Span> {
-        self.implemented_traits
-            .get_impl_spans_for_trait_name(trait_name)
     }
 
     pub fn get_methods_for_type(

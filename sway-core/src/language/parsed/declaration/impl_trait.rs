@@ -17,7 +17,7 @@ pub struct ImplTrait {
     pub implementing_for: TypeArgument,
     pub items: Vec<ImplItem>,
     // the span of the whole impl trait and block
-    pub block_span: Span,
+    pub(crate) block_span: Span,
 }
 
 /// An impl of methods without a trait
@@ -28,5 +28,5 @@ pub struct ImplSelf {
     pub implementing_for: TypeArgument,
     pub items: Vec<ImplItem>,
     // the span of the whole impl trait and block
-    pub block_span: Span,
+    pub(crate) block_span: Span,
 }

@@ -28,7 +28,6 @@ use sway_core::{
         parsed::{AstNode, ParseProgram},
         ty::{self},
     },
-    namespace::Module,
     BuildTarget, CompileResult, Engines, TypeEngine,
 };
 use sway_types::{Span, Spanned};
@@ -329,13 +328,6 @@ impl Session {
             ));
         }
         None
-    }
-
-    /// Returns the namespace [Module] from the compiled program if it exists.
-    pub fn namespace(&self) -> Option<Module> {
-        let compiled_program = &*self.compiled_program.read();
-        let program = compiled_program.typed.clone()?;
-        Some(program.root.namespace)
     }
 
     pub fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
