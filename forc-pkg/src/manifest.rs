@@ -197,6 +197,7 @@ pub struct DependencyDetails {
     pub(crate) tag: Option<String>,
     pub(crate) package: Option<String>,
     pub(crate) rev: Option<String>,
+    pub(crate) ipfs: Option<String>,
 }
 
 /// Parameters to pass through to the `sway_core::BuildConfig` during compilation.

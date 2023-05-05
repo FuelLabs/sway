@@ -8,6 +8,7 @@
 //! 4. Add variant support to the `from_manifest_dep` and `FromStr` implementations.
 
 pub mod git;
+mod ipfs;
 mod member;
 pub mod path;
 mod reg;
@@ -60,6 +61,8 @@ pub enum Source {
     Git(git::Source),
     /// A path to a directory with a `Forc.toml` manifest at its root.
     Path(path::Source),
+    /// A package described by its IPFS CID.
+    Ipfs(ipfs::Source),
     /// A forc project hosted on the official registry.
     Registry(reg::Source),
 }
@@ -73,6 +76,7 @@ pub enum Pinned {
     Member(member::Pinned),
     Git(git::Pinned),
     Path(path::Pinned),
+    Ipfs(ipfs::Pinned),
     Registry(reg::Pinned),
 }
 
@@ -125,41 +129,48 @@ impl Source {
                     ver_str
                 )
             }
-            manifest::Dependency::Detailed(ref det) => match (&det.path, &det.version, &det.git) {
-                (Some(relative_path), _, _) => {
-                    let path = manifest_dir.join(relative_path);
-                    let canonical_path = path.canonicalize().map_err(|e| {
-                        anyhow!("Failed to canonicalize dependency path {:?}: {}", path, e)
-                    })?;
-                    // Check if path is a member of a workspace.
-                    if member_manifests
-                        .values()
-                        .any(|pkg_manifest| pkg_manifest.dir() == canonical_path)
-                    {
-                        Source::Member(member::Source(canonical_path))
-                    } else {
-                        Source::Path(canonical_path)
+            manifest::Dependency::Detailed(ref det) => {
+                match (&det.path, &det.version, &det.git, &det.ipfs) {
+                    (Some(relative_path), _, _, _) => {
+                        let path = manifest_dir.join(relative_path);
+                        let canonical_path = path.canonicalize().map_err(|e| {
+                            anyhow!("Failed to canonicalize dependency path {:?}: {}", path, e)
+                        })?;
+                        // Check if path is a member of a workspace.
+                        if member_manifests
+                            .values()
+                            .any(|pkg_manifest| pkg_manifest.dir() == canonical_path)
+                        {
+                            Source::Member(member::Source(canonical_path))
+                        } else {
+                            Source::Path(canonical_path)
+                        }
+                    }
+                    (_, _, Some(repo), _) => {
+                        let reference = match (&det.branch, &det.tag, &det.rev) {
+                            (Some(branch), None, None) => git::Reference::Branch(branch.clone()),
+                            (None, Some(tag), None) => git::Reference::Tag(tag.clone()),
+                            (None, None, Some(rev)) => git::Reference::Rev(rev.clone()),
+                            (None, None, None) => git::Reference::DefaultBranch,
+                            _ => bail!(
+                                "git dependencies support at most one reference: \
+                                either `branch`, `tag` or `rev`"
+                            ),
+                        };
+                        let repo = Url::from_str(repo)?;
+                        let source = git::Source { repo, reference };
+                        Source::Git(source)
+                    }
+                    (_, _, _, Some(ipfs)) => {
+                        let cid = ipfs.parse()?;
+                        let source = ipfs::Source(cid);
+                        Source::Ipfs(source)
+                    }
+                    _ => {
+                        bail!("unsupported set of fields for dependency: {:?}", dep);
                     }
                 }
-                (_, _, Some(repo)) => {
-                    let reference = match (&det.branch, &det.tag, &det.rev) {
-                        (Some(branch), None, None) => git::Reference::Branch(branch.clone()),
-                        (None, Some(tag), None) => git::Reference::Tag(tag.clone()),
-                        (None, None, Some(rev)) => git::Reference::Rev(rev.clone()),
-                        (None, None, None) => git::Reference::DefaultBranch,
-                        _ => bail!(
-                            "git dependencies support at most one reference: \
-                                either `branch`, `tag` or `rev`"
-                        ),
-                    };
-                    let repo = Url::from_str(repo)?;
-                    let source = git::Source { repo, reference };
-                    Source::Git(source)
-                }
-                _ => {
-                    bail!("unsupported set of fields for dependency: {:?}", dep);
-                }
-            },
+            }
         };
         Ok(source)
     }
@@ -234,6 +245,7 @@ impl Source {
             Source::Member(source) => Ok(Pinned::Member(f(source, ctx, manifests)?)),
             Source::Path(source) => Ok(Pinned::Path(f(source, ctx, manifests)?)),
             Source::Git(source) => Ok(Pinned::Git(f(source, ctx, manifests)?)),
+            Source::Ipfs(source) => Ok(Pinned::Ipfs(f(source, ctx, manifests)?)),
             Source::Registry(source) => Ok(Pinned::Registry(f(source, ctx, manifests)?)),
         }
     }
@@ -248,6 +260,7 @@ impl Pinned {
             Self::Member(pinned) => pinned.dep_path(name),
             Self::Path(pinned) => pinned.dep_path(name),
             Self::Git(pinned) => pinned.dep_path(name),
+            Self::Ipfs(pinned) => pinned.dep_path(name),
             Self::Registry(pinned) => pinned.dep_path(name),
         }
     }
@@ -281,6 +294,7 @@ impl Pinned {
             Self::Member(_) => Source::Member(member::Source(path.to_owned())),
             Self::Git(git) => Source::Git(git.source.clone()),
             Self::Path(_) => Source::Path(path.to_owned()),
+            Self::Ipfs(ipfs) => Source::Ipfs(ipfs::Source(ipfs.0.clone())),
             Self::Registry(reg) => Source::Registry(reg.source.clone()),
         }
     }
@@ -307,6 +321,7 @@ impl fmt::Display for Pinned {
             Self::Member(src) => src.fmt(f),
             Self::Path(src) => src.fmt(f),
             Self::Git(src) => src.fmt(f),
+            Self::Ipfs(src) => src.fmt(f),
             Self::Registry(_reg) => todo!("pkg registries not yet implemented"),
         }
     }
@@ -318,6 +333,7 @@ impl<'a> fmt::Display for DisplayCompiling<'a, Pinned> {
             Pinned::Member(_) => self.manifest_dir.display().fmt(f),
             Pinned::Path(_src) => self.manifest_dir.display().fmt(f),
             Pinned::Git(src) => src.fmt(f),
+            Pinned::Ipfs(src) => src.fmt(f),
             Pinned::Registry(_src) => todo!("registry dependencies not yet implemented"),
         }
     }
@@ -334,6 +350,8 @@ impl FromStr for Pinned {
             Self::Path(src)
         } else if let Ok(src) = git::Pinned::from_str(s) {
             Self::Git(src)
+        } else if let Ok(src) = ipfs::Pinned::from_str(s) {
+            Self::Ipfs(src)
         } else {
             // TODO: Try parse registry source.
             return Err(PinnedParseError);

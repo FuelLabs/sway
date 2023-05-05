@@ -1,0 +1,213 @@
+use crate::{
+    manifest::{self, PackageManifestFile},
+    source,
+};
+use anyhow::Result;
+use futures::TryStreamExt;
+use ipfs_api::IpfsApi;
+use ipfs_api_backend_hyper as ipfs_api;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::{
+    fmt,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
+use tar::Archive;
+use tracing::{info, warn};
+
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct Cid(cid::Cid);
+
+/// A client that can interact with local ipfs daemon.
+pub type IpfsClient = ipfs_api::IpfsClient;
+
+/// Package source at a specific content address.
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
+pub struct Source(pub Cid);
+
+/// Package source at a specific content address.
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
+pub struct Pinned(pub Cid);
+
+impl Pinned {
+    pub const PREFIX: &'static str = "ipfs";
+}
+
+const PUBLIC_GATEWAY: &str = "https://ipfs.io";
+
+impl FromStr for Cid {
+    type Err = <cid::Cid as FromStr>::Err;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        let cid = s.parse()?;
+        Ok(Self(cid))
+    }
+}
+
+impl source::Pin for Source {
+    type Pinned = Pinned;
+    fn pin(&self, _ctx: source::PinCtx) -> Result<(Self::Pinned, PathBuf)> {
+        let cid = &self.0;
+        let pinned = Pinned(cid.clone());
+        let path = pkg_cache_dir(cid);
+        Ok((pinned, path))
+    }
+}
+
+impl source::Fetch for Pinned {
+    fn fetch(&self, ctx: source::PinCtx, repo_path: &Path) -> Result<PackageManifestFile> {
+        // TODO: implement local cache search for ipfs sources.
+        if ctx.offline {
+            anyhow::bail!("offline fetching for IPFS sources is not supported")
+        }
+
+        let mut lock = crate::pkg::path_lock(repo_path)?;
+        {
+            let _guard = lock.write()?;
+            if !repo_path.exists() {
+                info!(
+                    "  {} {} {}",
+                    ansi_term::Color::Green.bold().paint("Fetching"),
+                    ansi_term::Style::new().bold().paint(ctx.name),
+                    self
+                );
+                let cid = &self.0;
+                let ipfs_client = ipfs_client();
+                let dest = cache_dir();
+                let handle = tokio::runtime::Handle::current();
+                let _ = handle.enter();
+                futures::executor::block_on(async {
+                    if let Err(e) = cid.fetch_with_client(&ipfs_client, &dest).await {
+                        warn!(
+                    "    {}",
+                    ansi_term::Color::Yellow.bold().paint(format!("Couldn't fetch from local ipfs node, reason:\n{e:?}.\n Falling back to {PUBLIC_GATEWAY}")),
+                );
+
+                        cid.fetch_with_public_gateway(&dest).await
+                    } else {
+                        Ok(())
+                    }
+                })?;
+            }
+        }
+        let path = {
+            let _guard = lock.read()?;
+            manifest::find_within(repo_path, ctx.name()).ok_or_else(|| {
+                anyhow::anyhow!("failed to find package `{}` in {}", ctx.name(), self)
+            })?
+        };
+        PackageManifestFile::from_file(path)
+    }
+}
+
+impl source::DepPath for Pinned {
+    fn dep_path(&self, name: &str) -> anyhow::Result<source::DependencyPath> {
+        let repo_path = pkg_cache_dir(&self.0);
+        // Co-ordinate access to the ipfs checkout directory using an advisory file lock.
+        let lock = crate::pkg::path_lock(&repo_path)?;
+        let _guard = lock.read()?;
+        let path = manifest::find_within(&repo_path, name)
+            .ok_or_else(|| anyhow::anyhow!("failed to find package `{}` in {}", name, self))?;
+        Ok(source::DependencyPath::ManifestPath(path))
+    }
+}
+
+impl From<Pinned> for source::Pinned {
+    fn from(p: Pinned) -> Self {
+        Self::Ipfs(p)
+    }
+}
+
+impl fmt::Display for Pinned {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}+{}", Self::PREFIX, self.0 .0)
+    }
+}
+
+impl Cid {
+    /// Using local node, fetches a package with CID.
+    async fn fetch_with_client(&self, ipfs_client: &IpfsClient, dst: &Path) -> Result<()> {
+        let cid_path = format!("/ipfs/{}", self.0);
+        let bytes = ipfs_client
+            .get(&cid_path)
+            .map_ok(|chunk| chunk.to_vec())
+            .try_concat()
+            .await?;
+        let mut archive = Archive::new(bytes.as_slice());
+        archive.unpack(dst)?;
+        Ok(())
+    }
+
+    async fn fetch_with_public_gateway(&self, dst: &Path) -> Result<()> {
+        let client = reqwest::Client::new();
+        let fetch_url = format!(
+            "{}/ipfs/{}?download=true&format=tar&filename={}.tar",
+            PUBLIC_GATEWAY, self.0, self.0
+        );
+        let req = client.get(fetch_url);
+        let res = req.send().await?;
+        let bytes: Vec<_> = res.text().await?.bytes().collect();
+
+        let mut archive = Archive::new(bytes.as_slice());
+        archive.unpack(dst)?;
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub enum PinnedParseError {
+    Prefix,
+    Cid(<cid::Cid as FromStr>::Err),
+}
+
+impl FromStr for Pinned {
+    type Err = PinnedParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // ipfs+<cid>
+        let s = s.trim();
+        // Parse the prefix.
+        let prefix_plus = format!("{}+", Self::PREFIX);
+        if s.find(&prefix_plus) != Some(0) {
+            return Err(PinnedParseError::Prefix);
+        }
+        let s = &s[prefix_plus.len()..];
+        // Then the CID.
+        let cid: cid::Cid = s.parse().map_err(PinnedParseError::Cid)?;
+        Ok(Self(Cid(cid)))
+    }
+}
+
+impl Serialize for Cid {
+    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        let cid_string: String = format!("{}", self.0);
+        cid_string.serialize(s)
+    }
+}
+
+impl<'de> Deserialize<'de> for Cid {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        use serde::de::Error;
+        let cid_string = String::deserialize(d)?;
+        let cid: cid::Cid = cid_string.parse().map_err(|e| {
+            let msg = format!("failed to parse CID from {cid_string:?}: {e}");
+            D::Error::custom(msg)
+        })?;
+        Ok(Self(cid))
+    }
+}
+
+fn ipfs_dir() -> PathBuf {
+    forc_util::user_forc_directory().join("ipfs")
+}
+
+fn cache_dir() -> PathBuf {
+    ipfs_dir().join("cache")
+}
+
+fn pkg_cache_dir(cid: &Cid) -> PathBuf {
+    cache_dir().join(format!("{}", cid.0))
+}
+
+fn ipfs_client() -> IpfsClient {
+    IpfsClient::default()
+}

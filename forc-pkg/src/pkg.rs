@@ -1292,7 +1292,10 @@ fn find_path_root(graph: &Graph, mut node: NodeIx) -> Result<NodeIx> {
                     })?;
                 node = parent;
             }
-            source::Pinned::Git(_) | source::Pinned::Registry(_) | source::Pinned::Member(_) => {
+            source::Pinned::Git(_)
+            | source::Pinned::Ipfs(_)
+            | source::Pinned::Member(_)
+            | source::Pinned::Registry(_) => {
                 return Ok(node);
             }
         }
@@ -1473,9 +1476,10 @@ fn fetch_deps(
         })?;
 
         let path_root = match dep_pinned.source {
-            source::Pinned::Member(_) | source::Pinned::Git(_) | source::Pinned::Registry(_) => {
-                dep_pkg_id
-            }
+            source::Pinned::Member(_)
+            | source::Pinned::Git(_)
+            | source::Pinned::Ipfs(_)
+            | source::Pinned::Registry(_) => dep_pkg_id,
             source::Pinned::Path(_) => path_root,
         };
 
