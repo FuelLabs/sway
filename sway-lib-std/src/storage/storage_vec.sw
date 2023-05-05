@@ -42,7 +42,7 @@ impl<V> StorageKey<StorageVec<V>> {
         let len = read::<u64>(self.slot, 0).unwrap_or(0);
 
         // Storing the value at the current length index (if this is the first item, starts off at 0)
-        let key = sha256((len, self.slot));
+        let key = sha256((len, self.field_id));
         write::<V>(key, 0, value);
 
         // Incrementing the length
@@ -86,7 +86,7 @@ impl<V> StorageKey<StorageVec<V>> {
         // reduces len by 1, effectively removing the last item in the vec
         write(self.slot, 0, len - 1);
 
-        let key = sha256((len - 1, self.slot));
+        let key = sha256((len - 1, self.field_id));
         read::<V>(key, 0)
     }
 
@@ -126,8 +126,9 @@ impl<V> StorageKey<StorageVec<V>> {
         }
 
         Some(StorageKey {
-            slot: sha256((index, self.slot)),
+            slot: sha256((index, self.field_id)),
             offset: 0,
+            field_id: sha256((index, self.field_id)),
         })
     }
 
@@ -182,7 +183,7 @@ impl<V> StorageKey<StorageVec<V>> {
         let mut count = index + 1;
         while count < len {
             // gets the storage location for the previous index
-            let key = sha256((count - 1, self.slot));
+            let key = sha256((count - 1, self.field_id));
             // moves the element of the current index into the previous index
             write::<V>(key, 0, read::<V>(sha256((count, self.slot)), 0).unwrap());
 
@@ -292,7 +293,7 @@ impl<V> StorageKey<StorageVec<V>> {
         // if the index is higher than or equal len, there is no element to set
         assert(index < len);
 
-        let key = sha256((index, self.slot));
+        let key = sha256((index, self.field_id));
         write::<V>(key, 0, value);
     }
 
@@ -344,7 +345,7 @@ impl<V> StorageKey<StorageVec<V>> {
 
         // if len is 0, index must also be 0 due to above check
         if len == index {
-            let key = sha256((index, self.slot));
+            let key = sha256((index, self.field_id));
             write::<V>(key, 0, value);
 
             // increments len by 1
@@ -358,7 +359,7 @@ impl<V> StorageKey<StorageVec<V>> {
         // performed in reverse to prevent data overwriting
         let mut count = len - 1;
         while count >= index {
-            let key = sha256((count + 1, self.slot));
+            let key = sha256((count + 1, self.field_id));
             // shifts all the values up one index
             write::<V>(key, 0, read::<V>(sha256((count, self.slot)), 0).unwrap());
 
@@ -367,7 +368,7 @@ impl<V> StorageKey<StorageVec<V>> {
         }
 
         // inserts the value into the now unused index
-        let key = sha256((index, self.slot));
+        let key = sha256((index, self.field_id));
         write::<V>(key, 0, value);
 
         // increments len by 1
@@ -541,8 +542,9 @@ impl<V> StorageKey<StorageVec<V>> {
         match read::<u64>(self.slot, 0).unwrap_or(0) {
             0 => None,
             _ => Some(StorageKey {
-                slot: sha256((0, self.slot)),
+                slot: sha256((0, self.field_id)),
                 offset: 0,
+                field_id: sha256((0, self.field_id)),
             }),
         }
     }
@@ -576,6 +578,7 @@ impl<V> StorageKey<StorageVec<V>> {
             len => Some(StorageKey {
                 slot: sha256((len - 1, self.slot)),
                 offset: 0,
+                field_id: sha256((0, self.field_id)),
             }),
         }
     }
