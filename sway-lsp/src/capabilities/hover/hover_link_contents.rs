@@ -78,6 +78,7 @@ impl<'a> HoverLinkContents<'a> {
             });
         };
     }
+
     /// Adds all implementations of the given [TyTraitDecl] to the list of implementations.
     pub fn add_implementations_for_trait(&mut self, trait_decl: &TyTraitDecl) {
         if let Some(namespace) = self.session.namespace() {
