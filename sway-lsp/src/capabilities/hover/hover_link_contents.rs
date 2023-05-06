@@ -78,11 +78,10 @@ impl<'a> HoverLinkContents<'a> {
             });
         };
     }
-
     /// Adds all implementations of the given [TyTraitDecl] to the list of implementations.
     pub fn add_implementations_for_trait(&mut self, trait_decl: &TyTraitDecl) {
         if let Some(namespace) = self.session.namespace() {
-            let call_path = CallPath::from(trait_decl.name.clone()); //.to_fullpath(&namespace);
+            let call_path = CallPath::from(trait_decl.name.clone()).to_fullpath(&namespace);
             let impl_spans = namespace.get_impl_spans_for_trait_name(&call_path);
             self.add_implementations(&trait_decl.span(), impl_spans);
         }
