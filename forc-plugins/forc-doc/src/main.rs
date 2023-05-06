@@ -1,5 +1,5 @@
 use crate::{
-    doc::{Document, Documentation},
+    doc::Documentation,
     render::{constant::INDEX_FILENAME, RenderedDocumentation},
 };
 use anyhow::{bail, Result};
@@ -97,7 +97,7 @@ pub fn main() -> Result<()> {
         Some(typed_program) => typed_program,
         _ => bail!("CompileResult returned None"),
     };
-    let raw_docs: Documentation = Document::from_ty_program(
+    let raw_docs = Documentation::from_ty_program(
         &decl_engine,
         project_name,
         &typed_program,
@@ -129,9 +129,7 @@ pub fn main() -> Result<()> {
     for doc in rendered_docs.0 {
         let mut doc_path = doc_path.clone();
         for prefix in doc.module_info.module_prefixes {
-            if &prefix != project_name {
-                doc_path.push(prefix);
-            }
+            doc_path.push(prefix)
         }
 
         fs::create_dir_all(&doc_path)?;
@@ -156,7 +154,7 @@ pub fn main() -> Result<()> {
     // if opening in the browser fails, attempt to open using a file explorer
     if open_result {
         const BROWSER_ENV_VAR: &str = "BROWSER";
-        let path = doc_path.join(INDEX_FILENAME);
+        let path = doc_path.join(project_name).join(INDEX_FILENAME);
         let default_browser_opt = std::env::var_os(BROWSER_ENV_VAR);
         match default_browser_opt {
             Some(def_browser) => {

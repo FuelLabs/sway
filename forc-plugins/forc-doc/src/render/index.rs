@@ -46,12 +46,12 @@ impl Renderable for AllDocIndex {
                     content="List of all items in this project"
                 );
                 meta(name="keywords", content="sway, swaylang, sway-lang");
-                link(rel="icon", href="assets/sway-logo.svg");
+                link(rel="icon", href="../assets/sway-logo.svg");
                 title: "List of all items in this project";
-                link(rel="stylesheet", type="text/css", href="assets/normalize.css");
-                link(rel="stylesheet", type="text/css", href="assets/swaydoc.css", id="mainThemeStyle");
-                link(rel="stylesheet", type="text/css", href="assets/ayu.css");
-                link(rel="stylesheet", href="assets/ayu.min.css");
+                link(rel="stylesheet", type="text/css", href="../assets/normalize.css");
+                link(rel="stylesheet", type="text/css", href="../assets/swaydoc.css", id="mainThemeStyle");
+                link(rel="stylesheet", type="text/css", href="../assets/ayu.css");
+                link(rel="stylesheet", href="../assets/ayu.min.css");
             }
             body(class="swaydoc mod") {
                 : sidebar;
@@ -86,7 +86,7 @@ impl Renderable for AllDocIndex {
                         }
                     }
                 }
-                script(src="assets/highlight.js");
+                script(src="../assets/highlight.js");
                 script {
                     : "hljs.highlightAll();";
                 }

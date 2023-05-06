@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use crate::{
     doc::module::ModuleInfo,
     render::{
@@ -59,9 +61,12 @@ impl Renderable for Sidebar {
                 format!("{} {}", title.item_title_str(), name.as_str())
             }
         };
-        let root_path = self
-            .module_info
-            .to_html_shorthand_path_string(INDEX_FILENAME);
+        let root_path = self.module_info.to_html_shorthand_path_string(
+            PathBuf::from(self.module_info.project_name())
+                .join(INDEX_FILENAME)
+                .to_str()
+                .unwrap(),
+        );
         let logo_path_to_root = match style {
             DocStyle::AllDoc(_) | DocStyle::Item { .. } | DocStyle::ModuleIndex => root_path,
             DocStyle::ProjectIndex(_) => IDENTITY.to_owned(),
