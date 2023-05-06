@@ -1,6 +1,10 @@
 use crate::core::token::{self, Token, TypedAstToken};
 use dashmap::DashMap;
-use sway_core::{language::ty, type_system::TypeId, Engines};
+use sway_core::{
+    language::ty::{self},
+    type_system::TypeId,
+    Engines,
+};
 use sway_types::{Ident, Span, Spanned};
 use tower_lsp::lsp_types::{Position, Url};
 
