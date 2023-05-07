@@ -204,6 +204,14 @@ impl ReplaceSelfType for TypeId {
                         type_engine.insert(decl_engine, TypeInfo::Alias { name, ty })
                     })
                 }
+                TypeInfo::Ptr(mut ty) => helper(ty.type_id, engines, self_type).map(|type_id| {
+                    ty.type_id = type_id;
+                    type_engine.insert(decl_engine, TypeInfo::Ptr(ty))
+                }),
+                TypeInfo::Slice(mut ty) => helper(ty.type_id, engines, self_type).map(|type_id| {
+                    ty.type_id = type_id;
+                    type_engine.insert(decl_engine, TypeInfo::Slice(ty))
+                }),
                 TypeInfo::Unknown
                 | TypeInfo::UnknownGeneric { .. }
                 | TypeInfo::Str(_)
