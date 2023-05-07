@@ -873,6 +873,8 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Storage { .. } => "contract storage",
         TypeInfo::RawUntypedPtr => "raw untyped ptr",
         TypeInfo::RawUntypedSlice => "raw untyped slice",
+        TypeInfo::Ptr(..) => "__ptr",
+        TypeInfo::Slice(..) => "__slice",
         TypeInfo::Alias { .. } => "alias",
     }
     .to_string()
