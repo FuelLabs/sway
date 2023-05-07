@@ -1,4 +1,7 @@
-use crate::error::{DirectoryError, DocumentError, LanguageServerError};
+use crate::{
+    error::{DirectoryError, DocumentError, LanguageServerError},
+    utils::document::get_url_from_path,
+};
 use dashmap::DashMap;
 use forc_pkg::{manifest::Dependency, PackageManifestFile};
 use notify::RecursiveMode;
@@ -96,7 +99,7 @@ impl SyncWorkspace {
 
     /// Check if the current path is part of the users workspace.
     /// Returns false if the path is from a dependancy
-    pub(crate) fn is_path_in_workspace(&self, uri: &Url) -> bool {
+    pub(crate) fn is_path_in_temp_workspace(&self, uri: &Url) -> bool {
         uri.as_ref().contains(SyncWorkspace::LSP_TEMP_PREFIX)
     }
 
@@ -105,7 +108,7 @@ impl SyncWorkspace {
         self.convert_url(uri, self.temp_dir()?, self.manifest_dir()?)
     }
 
-    /// Convert the Url path from the temp folder to point to the same file in the users workspace
+    /// Convert the [Url] path from the temp folder to point to the same file in the users workspace.
     pub(crate) fn temp_to_workspace_url(&self, uri: &Url) -> Result<Url, DirectoryError> {
         self.convert_url(uri, self.manifest_dir()?, self.temp_dir()?)
     }
@@ -113,7 +116,7 @@ impl SyncWorkspace {
     /// If path is part of the users workspace, then convert URL from temp to workspace dir.
     /// Otherwise, pass through if it points to a dependency path
     pub(crate) fn to_workspace_url(&self, url: Url) -> Option<Url> {
-        if self.is_path_in_workspace(&url) {
+        if self.is_path_in_temp_workspace(&url) {
             Some(self.temp_to_workspace_url(&url).ok()?)
         } else {
             Some(url)
@@ -192,20 +195,13 @@ impl SyncWorkspace {
             .ok_or(DirectoryError::TempDirNotFound)
     }
 
-    /// Create a URL from a [PathBuf].
-    pub fn url_from_path(&self, path: &PathBuf) -> Result<Url, DirectoryError> {
-        Url::from_file_path(path).map_err(|_| DirectoryError::UrlFromPathFailed {
-            path: path.to_string_lossy().to_string(),
-        })
-    }
-
     fn convert_url(&self, uri: &Url, from: PathBuf, to: PathBuf) -> Result<Url, DirectoryError> {
         let path = from.join(
             PathBuf::from(uri.path())
                 .strip_prefix(to)
                 .map_err(DirectoryError::StripPrefixError)?,
         );
-        self.url_from_path(&path)
+        get_url_from_path(&path)
     }
 }
 

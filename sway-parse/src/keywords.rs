@@ -71,7 +71,9 @@ keyword_impls! {
     BreakToken,
     ContinueToken,
     ConfigurableToken,
-    TypeToken
+    TypeToken,
+    PtrToken,
+    SliceToken
 }
 
 fn peek_token<T: Token>(peeker: Peeker<'_>) -> Option<T> {
