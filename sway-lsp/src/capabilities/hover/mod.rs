@@ -1,3 +1,5 @@
+pub(crate) mod hover_link_contents;
+
 use crate::{
     core::{
         session::Session,
@@ -9,11 +11,17 @@ use crate::{
 };
 use std::sync::Arc;
 use sway_core::{
-    language::{ty, Visibility},
+    language::{
+        ty::{self},
+        Visibility,
+    },
     Engines, TypeId,
 };
+
 use sway_types::{Ident, Span, Spanned};
 use tower_lsp::lsp_types::{self, Position, Url};
+
+use self::hover_link_contents::HoverLinkContents;
 
 /// Extracts the hover information for a token at the current position.
 pub fn hover_data(
@@ -59,7 +67,7 @@ pub fn hover_data(
         None => (ident, token),
     };
 
-    let contents = hover_format(engines, &decl_token, &decl_ident);
+    let contents = hover_format(session.clone(), engines, &decl_token, &decl_ident);
     Some(lsp_types::Hover {
         contents,
         range: Some(range),
@@ -116,7 +124,12 @@ fn markup_content(markup: Markup) -> lsp_types::MarkupContent {
     lsp_types::MarkupContent { kind, value }
 }
 
-fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types::HoverContents {
+fn hover_format(
+    session: Arc<Session>,
+    engines: Engines<'_>,
+    token: &Token,
+    ident: &Ident,
+) -> lsp_types::HoverContents {
     let decl_engine = engines.de();
 
     let token_name: String = ident.as_str().into();
@@ -127,7 +140,10 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
         format!("{name}: {type_name}")
     };
 
-    let value = token
+    // Used to collect all the information we need to generate links for the hover component.
+    let mut hover_link_contents = HoverLinkContents::new(session, engines);
+
+    let sway_block = token
         .typed
         .as_ref()
         .and_then(|typed_token| match typed_token {
@@ -135,6 +151,7 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
                 ty::TyDecl::VariableDecl(var_decl) => {
                     let type_name =
                         format!("{}", engines.help_out(var_decl.type_ascription.type_id));
+                    hover_link_contents.add_related_types(&var_decl.type_ascription.type_id);
                     Some(format_variable_hover(
                         var_decl.mutability.is_mutable(),
                         &type_name,
@@ -165,18 +182,22 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
                         &token_name,
                     ))
                 }
-                ty::TyDecl::AbiDecl { .. } => {
+                ty::TyDecl::AbiDecl(ty::AbiDecl { .. }) => {
                     Some(format!("{} {}", decl.friendly_type_name(), &token_name))
                 }
                 _ => None,
             },
             TypedAstToken::TypedFunctionDeclaration(func) => {
+                hover_link_contents.add_related_types(&func.return_type.type_id);
                 Some(extract_fn_signature(&func.span()))
             }
-            TypedAstToken::TypedFunctionParameter(param) => Some(format_name_with_type(
-                param.name.as_str(),
-                &param.type_argument.type_id,
-            )),
+            TypedAstToken::TypedFunctionParameter(param) => {
+                hover_link_contents.add_related_types(&param.type_argument.type_id);
+                Some(format_name_with_type(
+                    param.name.as_str(),
+                    &param.type_argument.type_id,
+                ))
+            }
             TypedAstToken::TypedStructField(field) => Some(format_name_with_type(
                 field.name.as_str(),
                 &field.type_argument.type_id,
@@ -190,7 +211,13 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
             _ => None,
         });
 
-    let content = Markup::new().maybe_add_sway_block(value).text(&doc_comment);
+    let content = Markup::new()
+        .maybe_add_sway_block(sway_block)
+        .text(&doc_comment)
+        .maybe_add_links(
+            hover_link_contents.related_types,
+            hover_link_contents.implementations,
+        );
 
     lsp_types::HoverContents::Markup(markup_content(content))
 }
