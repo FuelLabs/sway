@@ -13,6 +13,14 @@ pub enum Ty {
     Infer {
         underscore_token: UnderscoreToken,
     },
+    Ptr {
+        ptr_token: PtrToken,
+        ty: SquareBrackets<Box<Ty>>,
+    },
+    Slice {
+        slice_token: SliceToken,
+        ty: SquareBrackets<Box<Ty>>,
+    },
 }
 
 impl Spanned for Ty {
@@ -23,6 +31,8 @@ impl Spanned for Ty {
             Ty::Array(array_type) => array_type.span(),
             Ty::Str { str_token, length } => Span::join(str_token.span(), length.span()),
             Ty::Infer { underscore_token } => underscore_token.span(),
+            Ty::Ptr { ptr_token, ty } => Span::join(ptr_token.span(), ty.span()),
+            Ty::Slice { slice_token, ty } => Span::join(slice_token.span(), ty.span()),
         }
     }
 }
