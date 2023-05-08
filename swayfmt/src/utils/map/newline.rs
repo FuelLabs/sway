@@ -191,18 +191,16 @@ fn add_newlines(
                         }
                     }
                 }
-            } else {
-                if let Some(newline_sequence) = first_newline_sequence_in_span(
-                    &ByteSpan {
-                        start,
-                        end: unformatted_newline_span.start,
-                    },
-                    &newline_map,
-                ) {
-                    let at = previous_formatted_newline_span.end + offset;
-                    offset +=
-                        insert_after_span(at, newline_sequence, formatted_code, newline_threshold)?;
-                }
+            } else if let Some(newline_sequence) = first_newline_sequence_in_span(
+                &ByteSpan {
+                    start,
+                    end: unformatted_newline_span.start,
+                },
+                &newline_map,
+            ) {
+                let at = previous_formatted_newline_span.end + offset;
+                offset +=
+                    insert_after_span(at, newline_sequence, formatted_code, newline_threshold)?;
             }
         }
         previous_unformatted_newline_span = unformatted_newline_span;
