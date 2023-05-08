@@ -1,12 +1,6 @@
 use anyhow::Result;
 use ropey::Rope;
-use std::{
-    collections::BTreeMap,
-    fmt::Write,
-    ops::Bound::{Excluded, Included},
-    path::PathBuf,
-    sync::Arc,
-};
+use std::{collections::BTreeMap, fmt::Write, path::PathBuf, sync::Arc};
 use sway_ast::Module;
 
 use crate::{
@@ -124,7 +118,6 @@ fn add_newlines(
 ) -> Result<(), FormatterError> {
     let mut unformatted_newline_spans = unformatted_module.leaf_spans();
     let mut formatted_newline_spans = formatted_module.leaf_spans();
-
     // Adding end of file to both spans so that last newline sequence(s) after an item would also be
     // found & included
     unformatted_newline_spans.push(ByteSpan {
@@ -255,29 +248,6 @@ fn first_newline_sequence_in_span(
     for (range, sequence) in newline_map.iter() {
         if span.start <= range.start && range.end < span.end {
             return Some(sequence.clone());
-        }
-    }
-    None
-}
-
-/// Returns a newline sequence between given spans, if found.
-fn get_newline_sequence_between_spans(
-    from: usize,
-    to: usize,
-    newline_map: &NewlineMap,
-) -> Option<NewlineSequence> {
-    if from < to {
-        if let Some((_, newline_sequence)) = newline_map
-            .range((
-                Included(ByteSpan {
-                    start: from,
-                    end: from,
-                }),
-                Excluded(ByteSpan { start: to, end: to }),
-            ))
-            .next()
-        {
-            return Some(newline_sequence.clone());
         }
     }
     None
