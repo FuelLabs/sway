@@ -28,9 +28,6 @@ abi ReproAttempt {
     fn map_foo_insert(key: u64, value: u64);
 
     #[storage(read)]
-    fn map_foo_insert(key: u64, value: u64);
-
-    #[storage(read)]
     fn map_foo_get(key: u64) -> Option<u64>;
 
     #[storage(read, write)]
