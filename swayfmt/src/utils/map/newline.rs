@@ -238,7 +238,9 @@ fn insert_after_span(
     Ok(sequence_string.len())
 }
 
-/// Returns a newline sequence contained in a span.
+/// Returns the first newline sequence contained in a span.
+/// This is inclusive at the start, and exclusive at the end, i.e.
+/// the bounds are [span.start, span.end).
 fn first_newline_sequence_in_span(
     span: &ByteSpan,
     newline_map: &NewlineMap,
