@@ -154,7 +154,7 @@ impl TraitMap {
             value:
                 TraitValue {
                     trait_items: map_trait_items,
-                    impl_span,
+                    ..
                 },
         } in self.trait_impls.iter()
         {
