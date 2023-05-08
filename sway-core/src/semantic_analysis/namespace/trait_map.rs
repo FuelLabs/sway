@@ -702,6 +702,56 @@ impl TraitMap {
         items
     }
 
+    /// Find the spans of all impls for the given type.
+    ///
+    /// Notes:
+    /// - equivalency is defined (1) based on whether the types contains types
+    ///     that are dynamic and can change and (2) whether the types hold
+    ///     equivalency after (1) is fulfilled
+    /// - this method does not translate types from the found entries to the
+    ///     `type_id` (like in `filter_by_type()`). This is because the only
+    ///     entries that qualify as hits are equivalents of `type_id`
+    pub(crate) fn get_impl_spans_for_type(
+        &self,
+        engines: Engines<'_>,
+        type_id: &TypeId,
+    ) -> Vec<Span> {
+        let type_engine = engines.te();
+        let mut spans = vec![];
+        // small performance gain in bad case
+        if type_engine
+            .get(*type_id)
+            .eq(&TypeInfo::ErrorRecovery, engines)
+        {
+            return spans;
+        }
+        for entry in self.trait_impls.iter() {
+            if are_equal_minus_dynamic_types(engines, *type_id, entry.key.type_id) {
+                spans.push(entry.value.impl_span.clone());
+            }
+        }
+        spans
+    }
+
+    /// Find the entries in `self` with trait name `trait_name` and return the
+    /// spans of the impls.
+    pub(crate) fn get_impl_spans_for_trait_name(&self, trait_name: &CallPath) -> Vec<Span> {
+        self.trait_impls
+            .iter()
+            .filter_map(|entry| {
+                let map_trait_name = CallPath {
+                    prefixes: entry.key.name.prefixes.clone(),
+                    suffix: entry.key.name.suffix.name.clone(),
+                    is_absolute: entry.key.name.is_absolute,
+                };
+                if &map_trait_name == trait_name {
+                    return Some(entry.value.impl_span.clone());
+                }
+                None
+            })
+            .collect()
+    }
+
     /// Find the entries in `self` that are equivalent to `type_id` with trait
     /// name `trait_name`.
     ///
