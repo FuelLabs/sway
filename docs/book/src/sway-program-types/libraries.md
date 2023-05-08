@@ -1,10 +1,18 @@
 # Libraries
 
-Libraries in Sway are files used to define new common behavior. The most prominent example of this is the [Sway Standard Library](../introduction/standard_library.html) that is made implicitly available to all Forc projects created using `forc new`.
+<!-- This section should explain what a library is -->
+<!-- library:example:start -->
+Libraries in Sway are files used to define new common behavior.
+<!-- library:example:end -->
+
+The most prominent example of this is the [Sway Standard Library](../introduction/standard_library.html) that is made implicitly available to all Forc projects created using `forc new`.
 
 ## Writing Libraries
 
+<!-- This section should explain how libraries are defined -->
+<!-- def_lib:example:start -->
 Libraries are defined using the `library` keyword at the beginning of a file, followed by a name so that they can be imported.
+<!-- def_lib:example:end -->
 
 ```sway
 library;
@@ -65,8 +73,11 @@ which denotes the authors, an entry file, the name by which it can be imported, 
 
 For large libraries, it is recommended to have a `lib.sw` entry point re-export all other sub-libraries.
 
+<!-- This section should explain the `mod` keyword -->
+<!-- mod:example:start -->
 The `mod` keyword registers a submodule, making its items (such as functions and structs) accessible from the parent library.
 If used at the top level it will refer to a file in the `src` folder and in other cases in a folder named after the library in which it is defined.
+<!-- mod:example:end -->
 
 For example, the `lib.sw` of the standard library looks like:
 

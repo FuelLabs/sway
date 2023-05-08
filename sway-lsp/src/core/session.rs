@@ -26,7 +26,7 @@ use sway_core::{
     language::{
         lexed::LexedProgram,
         parsed::{AstNode, ParseProgram},
-        ty,
+        ty::{self},
     },
     BuildTarget, CompileResult, Engines, TypeEngine,
 };
