@@ -4,6 +4,7 @@ use serde::Serialize;
 pub struct PerformanceMetric {
     pub phase: String,
     pub elapsed: f64,
+    pub memory_usage: u64,
 }
 
 pub type PerformanceMetrics = Vec<PerformanceMetric>;
@@ -21,9 +22,12 @@ macro_rules! time_expr {
                     println!("  Time elapsed to {}: {:?}", $description, elapsed);
                 }
                 if cfg.metrics_outfile.is_some() {
+                    let mut sys = System::new();
+                    sys.refresh_system();
                     $metrics.push(PerformanceMetric {
                         phase: $key.to_string(),
                         elapsed: elapsed.as_secs_f64(),
+                        memory_usage: sys.used_memory(),
                     });
                 }
                 output

@@ -49,6 +49,7 @@ use sway_core::{
 use sway_error::{error::CompileError, warning::CompileWarning};
 use sway_types::{Ident, Span, Spanned};
 use sway_utils::{constants, time_expr, PerformanceMetric, PerformanceMetrics};
+use sysinfo::{System, SystemExt};
 use tracing::{info, warn};
 
 type GraphIx = u32;
