@@ -78,11 +78,9 @@ impl source::Fetch for Pinned {
                 let _ = handle.enter();
                 futures::executor::block_on(async {
                     if let Err(e) = cid.fetch_with_client(&ipfs_client, &dest).await {
-                        warn!(
-                    "    {}",
-                    ansi_term::Color::Yellow.bold().paint(format!("Couldn't fetch from local ipfs node, reason:\n{e:?}.\n Falling back to {PUBLIC_GATEWAY}")),
-                );
-
+                        warn!("    {}", 
+                              ansi_term::Color::Yellow.bold().paint(format!("Couldn't fetch from local ipfs node, reason:\n{e:?}.\n Falling back to {PUBLIC_GATEWAY}"))
+                             );
                         cid.fetch_with_public_gateway(&dest).await
                     } else {
                         Ok(())
@@ -125,21 +123,25 @@ impl fmt::Display for Pinned {
 }
 
 impl Cid {
-    /// Using local node, fetches a package with CID.
+    /// Using local node, fetches the content described by this cid.
     async fn fetch_with_client(&self, ipfs_client: &IpfsClient, dst: &Path) -> Result<()> {
         let cid_path = format!("/ipfs/{}", self.0);
+        // Since we are fetching packages as a fodler, they are returned as a tar archive.
         let bytes = ipfs_client
             .get(&cid_path)
             .map_ok(|chunk| chunk.to_vec())
             .try_concat()
             .await?;
+        // After collecting bytes of the archive, we unpack it to the dst.
         let mut archive = Archive::new(bytes.as_slice());
         archive.unpack(dst)?;
         Ok(())
     }
 
+    /// Using a public gateway, fetches the content described by this cid.
     async fn fetch_with_public_gateway(&self, dst: &Path) -> Result<()> {
         let client = reqwest::Client::new();
+        // We request the content to be served to us in tar format by the public gateway.
         let fetch_url = format!(
             "{}/ipfs/{}?download=true&format=tar&filename={}.tar",
             PUBLIC_GATEWAY, self.0, self.0
@@ -148,6 +150,7 @@ impl Cid {
         let res = req.send().await?;
         let bytes: Vec<_> = res.text().await?.bytes().collect();
 
+        // After collecting bytes of the archive, we unpack it to the dst.
         let mut archive = Archive::new(bytes.as_slice());
         archive.unpack(dst)?;
         Ok(())
@@ -208,6 +211,23 @@ fn pkg_cache_dir(cid: &Cid) -> PathBuf {
     cache_dir().join(format!("{}", cid.0))
 }
 
+/// Returns a `IpfsClient` instance ready to be used to make requests to local ipfs node.
+/// TODO: Accept user specified local ipfs node port.
 fn ipfs_client() -> IpfsClient {
     IpfsClient::default()
+}
+
+#[test]
+fn test_source_ipfs_pinned_parsing() {
+    let string = "ipfs+QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG";
+
+    let expected = Pinned(Cid(cid::Cid::from_str(
+        "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG",
+    )
+    .unwrap()));
+
+    let parsed = Pinned::from_str(string).unwrap();
+    assert_eq!(parsed, expected);
+    let serialized = expected.to_string();
+    assert_eq!(&serialized, string);
 }
