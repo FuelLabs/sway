@@ -75,7 +75,7 @@ type TraitItems = im::HashMap<String, TyImplItem>;
 struct TraitValue {
     trait_items: TraitItems,
     // The span of the entire impl block.
-    // impl_span: Span,
+    impl_span: Span,
 }
 
 #[derive(Clone, Debug)]
@@ -154,7 +154,7 @@ impl TraitMap {
             value:
                 TraitValue {
                     trait_items: map_trait_items,
-                    // impl_span,
+                    impl_span,
                 },
         } in self.trait_impls.iter()
         {
@@ -244,13 +244,7 @@ impl TraitMap {
         };
 
         // even if there is a conflicting definition, add the trait anyway
-        self.insert_inner(
-            trait_name,
-            //  impl_span.clone(),
-            type_id,
-            trait_items,
-            engines,
-        );
+        self.insert_inner(trait_name, impl_span.clone(), type_id, trait_items, engines);
 
         if errors.is_empty() {
             ok((), warnings, errors)
@@ -262,7 +256,7 @@ impl TraitMap {
     fn insert_inner(
         &mut self,
         trait_name: TraitName,
-        // impl_span: Span,
+        impl_span: Span,
         type_id: TypeId,
         trait_methods: TraitItems,
         engines: Engines<'_>,
@@ -273,7 +267,7 @@ impl TraitMap {
         };
         let value = TraitValue {
             trait_items: trait_methods,
-            // impl_span,
+            impl_span,
         };
         let entry = TraitEntry { key, value };
         let trait_impls: TraitImpls = vec![entry];
@@ -613,7 +607,7 @@ impl TraitMap {
             value:
                 TraitValue {
                     trait_items: map_trait_items,
-                    // impl_span,
+                    impl_span,
                 },
         } in self.trait_impls.iter()
         {
@@ -622,7 +616,7 @@ impl TraitMap {
                 if !type_info.can_change(decl_engine) && *type_id == *map_type_id {
                     trait_map.insert_inner(
                         map_trait_name.clone(),
-                        // impl_span.clone(),
+                        impl_span.clone(),
                         *type_id,
                         map_trait_items.clone(),
                         engines,
@@ -660,7 +654,7 @@ impl TraitMap {
                         .collect();
                     trait_map.insert_inner(
                         map_trait_name.clone(),
-                        // impl_span.clone(),
+                        impl_span.clone(),
                         *type_id,
                         trait_items,
                         engines,
