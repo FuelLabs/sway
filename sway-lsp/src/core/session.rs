@@ -28,8 +28,7 @@ use sway_core::{
         parsed::{AstNode, ParseProgram},
         ty::{self},
     },
-    namespace::Module,
-    BuildTarget, CompileResult, Engines, TypeEngine,
+    BuildTarget, CompileResult, Engines, Namespace, TypeEngine,
 };
 use sway_types::{Span, Spanned};
 use sway_utils::helpers::get_sway_files;
@@ -331,8 +330,8 @@ impl Session {
         None
     }
 
-    /// Returns the namespace [Module] from the compiled program if it exists.
-    pub fn namespace(&self) -> Option<Module> {
+    /// Returns the [Namespace] from the compiled program if it exists.
+    pub fn namespace(&self) -> Option<Namespace> {
         let compiled_program = &*self.compiled_program.read();
         let program = compiled_program.typed.clone()?;
         Some(program.root.namespace)

@@ -1,6 +1,6 @@
 use std::{fmt, sync::Arc};
 
-use crate::{namespace::Module, Ident};
+use crate::{Ident, Namespace};
 
 use sway_types::{span::Span, Spanned};
 
@@ -100,7 +100,7 @@ impl CallPath {
     ///
     /// Paths to _external_ libraries such `std::lib1::lib2::my_obj` are considered full already
     /// and are left unchanged since `std` is a root of the package `std`.
-    pub fn to_fullpath(&self, namespace: &Module) -> CallPath {
+    pub fn to_fullpath(&self, namespace: &Namespace) -> CallPath {
         if self.is_absolute {
             return self.clone();
         }
@@ -123,11 +123,11 @@ impl CallPath {
             let mut prefixes: Vec<Ident> = vec![];
 
             if !is_external {
-                if let Some(pkg_name) = &namespace.name {
+                if let Some(pkg_name) = &namespace.root().module.name {
                     prefixes.push(pkg_name.clone());
                 }
 
-                for mod_path in &namespace.mod_path {
+                for mod_path in namespace.mod_path() {
                     prefixes.push(mod_path.clone());
                 }
             }
@@ -149,10 +149,10 @@ impl CallPath {
                 self.clone()
             } else {
                 let mut prefixes: Vec<Ident> = vec![];
-                if let Some(pkg_name) = &namespace.name {
+                if let Some(pkg_name) = &namespace.root().module.name {
                     prefixes.push(pkg_name.clone());
                 }
-                for mod_path in &namespace.mod_path {
+                for mod_path in namespace.mod_path() {
                     prefixes.push(mod_path.clone());
                 }
 
