@@ -72,9 +72,16 @@ impl OrdWithEngines for TraitKey {
 type TraitItems = im::HashMap<String, TyImplItem>;
 
 #[derive(Clone, Debug)]
+struct TraitValue {
+    trait_items: TraitItems,
+    // The span of the entire impl block.
+    impl_span: Span,
+}
+
+#[derive(Clone, Debug)]
 struct TraitEntry {
     key: TraitKey,
-    value: TraitItems,
+    value: TraitValue,
 }
 
 /// Map of trait name and type to [TraitItems].
@@ -144,7 +151,11 @@ impl TraitMap {
                     name: map_trait_name,
                     type_id: map_type_id,
                 },
-            value: map_trait_items,
+            value:
+                TraitValue {
+                    trait_items: map_trait_items,
+                    impl_span,
+                },
         } in self.trait_impls.iter()
         {
             let CallPath {
@@ -233,7 +244,7 @@ impl TraitMap {
         };
 
         // even if there is a conflicting definition, add the trait anyway
-        self.insert_inner(trait_name, type_id, trait_items, engines);
+        self.insert_inner(trait_name, impl_span.clone(), type_id, trait_items, engines);
 
         if errors.is_empty() {
             ok((), warnings, errors)
@@ -245,6 +256,7 @@ impl TraitMap {
     fn insert_inner(
         &mut self,
         trait_name: TraitName,
+        impl_span: Span,
         type_id: TypeId,
         trait_methods: TraitItems,
         engines: Engines<'_>,
@@ -253,10 +265,11 @@ impl TraitMap {
             name: trait_name,
             type_id,
         };
-        let entry = TraitEntry {
-            key,
-            value: trait_methods,
+        let value = TraitValue {
+            trait_items: trait_methods,
+            impl_span,
         };
+        let entry = TraitEntry { key, value };
         let trait_impls: TraitImpls = vec![entry];
         let trait_map = TraitMap { trait_impls };
 
@@ -362,7 +375,10 @@ impl TraitMap {
                 .binary_search_by(|se| se.key.cmp(&oe.key, engines));
 
             match pos {
-                Ok(pos) => self.trait_impls[pos].value.extend(oe.value.into_iter()),
+                Ok(pos) => self.trait_impls[pos]
+                    .value
+                    .trait_items
+                    .extend(oe.value.trait_items.into_iter()),
                 Err(pos) => self.trait_impls.insert(pos, oe),
             }
         }
@@ -588,7 +604,11 @@ impl TraitMap {
                     name: map_trait_name,
                     type_id: map_type_id,
                 },
-            value: map_trait_items,
+            value:
+                TraitValue {
+                    trait_items: map_trait_items,
+                    impl_span,
+                },
         } in self.trait_impls.iter()
         {
             for type_id in all_types.iter_mut() {
@@ -596,6 +616,7 @@ impl TraitMap {
                 if !type_info.can_change(decl_engine) && *type_id == *map_type_id {
                     trait_map.insert_inner(
                         map_trait_name.clone(),
+                        impl_span.clone(),
                         *type_id,
                         map_trait_items.clone(),
                         engines,
@@ -631,7 +652,13 @@ impl TraitMap {
                             }
                         })
                         .collect();
-                    trait_map.insert_inner(map_trait_name.clone(), *type_id, trait_items, engines);
+                    trait_map.insert_inner(
+                        map_trait_name.clone(),
+                        impl_span.clone(),
+                        *type_id,
+                        trait_items,
+                        engines,
+                    );
                 }
             }
         }
@@ -663,11 +690,66 @@ impl TraitMap {
         }
         for entry in self.trait_impls.iter() {
             if are_equal_minus_dynamic_types(engines, type_id, entry.key.type_id) {
-                let mut trait_items = entry.value.values().cloned().collect::<Vec<_>>();
+                let mut trait_items = entry
+                    .value
+                    .trait_items
+                    .values()
+                    .cloned()
+                    .collect::<Vec<_>>();
                 items.append(&mut trait_items);
             }
         }
         items
+    }
+
+    /// Find the spans of all impls for the given type.
+    ///
+    /// Notes:
+    /// - equivalency is defined (1) based on whether the types contains types
+    ///     that are dynamic and can change and (2) whether the types hold
+    ///     equivalency after (1) is fulfilled
+    /// - this method does not translate types from the found entries to the
+    ///     `type_id` (like in `filter_by_type()`). This is because the only
+    ///     entries that qualify as hits are equivalents of `type_id`
+    pub(crate) fn get_impl_spans_for_type(
+        &self,
+        engines: Engines<'_>,
+        type_id: &TypeId,
+    ) -> Vec<Span> {
+        let type_engine = engines.te();
+        let mut spans = vec![];
+        // small performance gain in bad case
+        if type_engine
+            .get(*type_id)
+            .eq(&TypeInfo::ErrorRecovery, engines)
+        {
+            return spans;
+        }
+        for entry in self.trait_impls.iter() {
+            if are_equal_minus_dynamic_types(engines, *type_id, entry.key.type_id) {
+                spans.push(entry.value.impl_span.clone());
+            }
+        }
+        spans
+    }
+
+    /// Find the entries in `self` with trait name `trait_name` and return the
+    /// spans of the impls.
+    pub(crate) fn get_impl_spans_for_trait_name(&self, trait_name: &CallPath) -> Vec<Span> {
+        self.trait_impls
+            .iter()
+            .filter_map(|entry| {
+                let map_trait_name = CallPath {
+                    prefixes: entry.key.name.prefixes.clone(),
+                    suffix: entry.key.name.suffix.name.clone(),
+                    is_absolute: entry.key.name.is_absolute,
+                };
+                if &map_trait_name == trait_name {
+                    return Some(entry.value.impl_span.clone());
+                }
+                None
+            })
+            .collect()
     }
 
     /// Find the entries in `self` that are equivalent to `type_id` with trait
@@ -704,7 +786,7 @@ impl TraitMap {
             if &map_trait_name == trait_name
                 && are_equal_minus_dynamic_types(engines, type_id, e.key.type_id)
             {
-                let mut trait_items = e.value.values().cloned().collect::<Vec<_>>();
+                let mut trait_items = e.value.trait_items.values().cloned().collect::<Vec<_>>();
                 items.append(&mut trait_items);
             }
         }
