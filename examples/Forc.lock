@@ -122,6 +122,7 @@ dependencies = ['std']
 [[package]]
 name = 'storage_variables'
 source = 'member'
+dependencies = ['std']
 
 [[package]]
 name = 'storage_vec'

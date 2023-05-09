@@ -1,4 +1,5 @@
+//! EVM-specific utilities.
 library;
 
-mod evm_address;
-mod ecr;
+pub mod evm_address;
+pub mod ecr;

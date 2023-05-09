@@ -11,8 +11,8 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     asm::AsmBlockContent, block::BlockContent, function::FunctionContent,
-    local_var::LocalVarContent, metadata::Metadatum, module::ModuleContent, module::ModuleIterator,
-    value::ValueContent, Type, TypeContent,
+    local_var::LocalVarContent, metadata::Metadatum, module::Kind, module::ModuleContent,
+    module::ModuleIterator, value::ValueContent, Type, TypeContent,
 };
 
 /// The main IR context handle.
@@ -30,6 +30,8 @@ pub struct Context {
     pub(crate) asm_blocks: Arena<AsmBlockContent>,
     pub(crate) metadata: Arena<Metadatum>,
 
+    pub program_kind: Kind,
+
     next_unique_sym_tag: u64,
 }
 
@@ -46,6 +48,7 @@ impl Default for Context {
             asm_blocks: Default::default(),
             metadata: Default::default(),
             next_unique_sym_tag: Default::default(),
+            program_kind: Kind::Contract,
         };
         Type::create_basic_types(&mut def);
         def

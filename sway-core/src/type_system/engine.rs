@@ -16,7 +16,6 @@ use sway_types::{span::Span, Ident, Spanned};
 #[derive(Debug, Default)]
 pub struct TypeEngine {
     pub(super) slab: ConcurrentSlab<TypeInfo>,
-    storage_only_types: ConcurrentSlab<TypeInfo>,
     id_map: RwLock<HashMap<TypeInfo, TypeId>>,
 }
 
@@ -62,21 +61,6 @@ impl TypeEngine {
         }
     }
 
-    /// Denotes the given [TypeId] as being used with storage.
-    pub(crate) fn set_type_as_storage_only(&self, id: TypeId) {
-        self.storage_only_types.insert(self.get(id));
-    }
-
-    /// Checks if the given [TypeInfo] is a storage only type.
-    pub(crate) fn is_type_info_storage_only(
-        &self,
-        decl_engine: &DeclEngine,
-        ti: &TypeInfo,
-    ) -> bool {
-        self.storage_only_types
-            .exists(|x| ti.is_subset_of(x, Engines::new(self, decl_engine)))
-    }
-
     /// Given a `value` of type `T` that is able to be monomorphized and a set
     /// of `type_arguments`, monomorphize `value` with the `type_arguments`.
     ///
@@ -117,6 +101,7 @@ impl TypeEngine {
         call_site_span: &Span,
         namespace: &mut Namespace,
         mod_path: &Path,
+        experimental_private_modules: bool,
     ) -> CompileResult<()>
     where
         T: MonomorphizeHelper + SubstTypes,
@@ -177,7 +162,8 @@ impl TypeEngine {
                             enforce_type_arguments,
                             None,
                             namespace,
-                            mod_path
+                            mod_path,
+                            experimental_private_modules,
                         ),
                         self.insert(decl_engine, TypeInfo::ErrorRecovery),
                         warnings,
@@ -298,6 +284,7 @@ impl TypeEngine {
         type_info_prefix: Option<&Path>,
         namespace: &mut Namespace,
         mod_path: &Path,
+        experimental_private_modules: bool,
     ) -> CompileResult<TypeId> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -310,14 +297,19 @@ impl TypeEngine {
             } => {
                 match namespace
                     .root()
-                    .resolve_call_path_with_visibility_check(engines, module_path, &call_path)
+                    .resolve_call_path_with_visibility_check(
+                        engines,
+                        module_path,
+                        &call_path,
+                        experimental_private_modules,
+                    )
                     .ok(&mut warnings, &mut errors)
                     .cloned()
                 {
-                    Some(ty::TyDecl::StructDecl {
+                    Some(ty::TyDecl::StructDecl(ty::StructDecl {
                         decl_id: original_id,
                         ..
-                    }) => {
+                    })) => {
                         // get the copy from the declaration engine
                         let mut new_copy = decl_engine.get_struct(&original_id);
 
@@ -330,7 +322,8 @@ impl TypeEngine {
                                 enforce_type_arguments,
                                 span,
                                 namespace,
-                                mod_path
+                                mod_path,
+                                experimental_private_modules,
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -351,10 +344,10 @@ impl TypeEngine {
                         // return the id
                         type_id
                     }
-                    Some(ty::TyDecl::EnumDecl {
+                    Some(ty::TyDecl::EnumDecl(ty::EnumDecl {
                         decl_id: original_id,
                         ..
-                    }) => {
+                    })) => {
                         // get the copy from the declaration engine
                         let mut new_copy = decl_engine.get_enum(&original_id);
 
@@ -367,7 +360,8 @@ impl TypeEngine {
                                 enforce_type_arguments,
                                 span,
                                 namespace,
-                                mod_path
+                                mod_path,
+                                experimental_private_modules,
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -388,10 +382,10 @@ impl TypeEngine {
                         // return the id
                         type_id
                     }
-                    Some(ty::TyDecl::TypeAliasDecl {
+                    Some(ty::TyDecl::TypeAliasDecl(ty::TypeAliasDecl {
                         decl_id: original_id,
                         ..
-                    }) => {
+                    })) => {
                         let new_copy = decl_engine.get_type_alias(&original_id);
 
                         // TODO: monomorphize the copy, in place, when generic type aliases are
@@ -402,7 +396,9 @@ impl TypeEngine {
 
                         type_id
                     }
-                    Some(ty::TyDecl::GenericTypeForFunctionScope { type_id, .. }) => type_id,
+                    Some(ty::TyDecl::GenericTypeForFunctionScope(
+                        ty::GenericTypeForFunctionScope { type_id, .. },
+                    )) => type_id,
                     _ => {
                         errors.push(CompileError::UnknownTypeName {
                             name: call_path.to_string(),
@@ -421,7 +417,8 @@ impl TypeEngine {
                         enforce_type_arguments,
                         None,
                         namespace,
-                        mod_path
+                        mod_path,
+                        experimental_private_modules
                     ),
                     self.insert(decl_engine, TypeInfo::ErrorRecovery),
                     warnings,
@@ -439,7 +436,8 @@ impl TypeEngine {
                             enforce_type_arguments,
                             None,
                             namespace,
-                            mod_path
+                            mod_path,
+                            experimental_private_modules
                         ),
                         self.insert(decl_engine, TypeInfo::ErrorRecovery),
                         warnings,
@@ -466,6 +464,7 @@ impl TypeEngine {
         type_info_prefix: Option<&Path>,
         namespace: &mut Namespace,
         mod_path: &Path,
+        experimental_private_modules: bool,
     ) -> CompileResult<TypeId> {
         type_id.replace_self_type(Engines::new(self, decl_engine), self_type);
         self.resolve(
@@ -476,6 +475,7 @@ impl TypeEngine {
             type_info_prefix,
             namespace,
             mod_path,
+            experimental_private_modules,
         )
     }
 

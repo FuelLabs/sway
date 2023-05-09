@@ -1,0 +1,13 @@
+[[package]]
+name = 'assert_eq_revert'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-92AC3CEAE777B425'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-92AC3CEAE777B425'
+dependencies = ['core']

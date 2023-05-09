@@ -1,7 +1,7 @@
 use crate::cli::InitCommand;
 use crate::utils::{defaults, program_type::ProgramType};
-use anyhow::{Context, Result};
-use forc_util::validate_name;
+use anyhow::Context;
+use forc_util::{forc_result_bail, validate_name, ForcResult};
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -41,7 +41,7 @@ fn print_welcome_message() {
     );
 }
 
-pub fn init(command: InitCommand) -> Result<()> {
+pub fn init(command: InitCommand) -> ForcResult<()> {
     let project_dir = match &command.path {
         Some(p) => PathBuf::from(p),
         None => {
@@ -50,11 +50,14 @@ pub fn init(command: InitCommand) -> Result<()> {
     };
 
     if !project_dir.is_dir() {
-        anyhow::bail!("'{}' is not a valid directory.", project_dir.display());
+        forc_result_bail!(format!(
+            "'{}' is not a valid directory.",
+            project_dir.display()
+        ),);
     }
 
     if project_dir.join(constants::MANIFEST_FILE_NAME).exists() {
-        anyhow::bail!(
+        forc_result_bail!(
             "'{}' already includes a Forc.toml file.",
             project_dir.display()
         );
@@ -88,10 +91,12 @@ pub fn init(command: InitCommand) -> Result<()> {
         (false, false, true, false, false) => InitType::Package(ProgramType::Predicate),
         (false, false, false, true, false) => InitType::Package(ProgramType::Library),
         (false, false, false, false, true) => InitType::Workspace,
-        _ => anyhow::bail!(
-            "Multiple types detected, please specify only one initialization type: \
+        _ => {
+            forc_result_bail!(
+                "Multiple types detected, please specify only one initialization type: \
         \n Possible Types:\n - contract\n - script\n - predicate\n - library\n - workspace"
-        ),
+            )
+        }
     };
 
     // Make a new directory for the project

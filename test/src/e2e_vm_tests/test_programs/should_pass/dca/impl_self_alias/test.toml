@@ -1,0 +1,6 @@
+category = "compile"
+
+# check: $()type Alias2 = MyStruct1;
+# nextln: $()This declaration is never used.
+
+expected_warnings = 1

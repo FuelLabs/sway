@@ -39,7 +39,7 @@ use sway_core::{
     language::{
         lexed::LexedProgram,
         parsed::{ParseProgram, TreeType},
-        ty,
+        ty, Visibility,
     },
     semantic_analysis::namespace,
     source_map::SourceMap,
@@ -304,8 +304,8 @@ pub struct BuildOpts {
     pub tests: bool,
     /// The set of options to filter by member project kind.
     pub member_filter: MemberFilter,
-    /// Enable the experimental storage implementation and UI.
-    pub experimental_storage: bool,
+    /// Enable the experimental module privacy enforcement.
+    pub experimental_private_modules: bool,
 }
 
 /// The set of options to filter type of projects to build in a workspace.
@@ -1549,7 +1549,7 @@ pub fn sway_build_config(
     .print_intermediate_asm(build_profile.print_intermediate_asm)
     .print_ir(build_profile.print_ir)
     .include_tests(build_profile.include_tests)
-    .experimental_storage(build_profile.experimental_storage);
+    .experimental_private_modules(build_profile.experimental_private_modules);
     Ok(build_config)
 }
 
@@ -1575,6 +1575,7 @@ pub fn dependency_namespace(
     node: NodeIx,
     engines: Engines<'_>,
     contract_id_value: Option<ContractIdConst>,
+    experimental_private_modules: bool,
 ) -> Result<namespace::Module, vec1::Vec1<CompileError>> {
     // TODO: Clean this up when config-time constants v1 are removed.
     let node_idx = &graph[node];
@@ -1587,6 +1588,7 @@ pub fn dependency_namespace(
 
     namespace.is_external = true;
     namespace.name = name;
+    namespace.visibility = Visibility::Public;
 
     // Add direct dependencies.
     let mut core_added = false;
@@ -1616,6 +1618,7 @@ pub fn dependency_namespace(
                 )?;
                 ns.is_external = true;
                 ns.name = name;
+                ns.visibility = Visibility::Public;
                 ns
             }
         };
@@ -1638,6 +1641,7 @@ pub fn dependency_namespace(
         &[CORE, PRELUDE].map(|s| Ident::new_no_span(s.into())),
         &[],
         engines,
+        experimental_private_modules,
     );
 
     if has_std_dep(graph, node) {
@@ -1645,6 +1649,7 @@ pub fn dependency_namespace(
             &[STD, PRELUDE].map(|s| Ident::new_no_span(s.into())),
             &[],
             engines,
+            experimental_private_modules,
         );
     }
 
@@ -1992,7 +1997,7 @@ fn build_profile_from_opts(
         time_phases,
         tests,
         error_on_warnings,
-        experimental_storage,
+        experimental_private_modules,
         ..
     } = build_options;
     let mut selected_build_profile = BuildProfile::DEBUG;
@@ -2043,7 +2048,7 @@ fn build_profile_from_opts(
     profile.include_tests |= tests;
     profile.json_abi_with_callpaths |= pkg.json_abi_with_callpaths;
     profile.error_on_warnings |= error_on_warnings;
-    profile.experimental_storage |= experimental_storage;
+    profile.experimental_private_modules |= experimental_private_modules;
 
     Ok((selected_build_profile.to_string(), profile))
 }
@@ -2276,6 +2281,7 @@ pub fn build(
                 node,
                 engines,
                 None,
+                profile.experimental_private_modules,
             ) {
                 Ok(o) => o,
                 Err(errs) => return fail(&[], &errs),
@@ -2331,6 +2337,7 @@ pub fn build(
             node,
             engines,
             contract_id_value.clone(),
+            profile.experimental_private_modules,
         ) {
             Ok(o) => o,
             Err(errs) => {
@@ -2517,6 +2524,7 @@ pub fn check(
     terse_mode: bool,
     include_tests: bool,
     engines: Engines<'_>,
+    experimental_private_modules: bool,
 ) -> anyhow::Result<Vec<CompileResult<Programs>>> {
     let mut lib_namespace_map = Default::default();
     let mut source_map = SourceMap::new();
@@ -2534,6 +2542,7 @@ pub fn check(
             node,
             engines,
             None,
+            experimental_private_modules,
         )
         .expect("failed to create dependency namespace");
 

@@ -1,7 +1,7 @@
 contract;
 
 configurable {
-  INITIAL_OWNER: Option<Identity> = Option::None,
+  INITIAL_OWNER: Option<Identity> = None,
 }
 
 storage {

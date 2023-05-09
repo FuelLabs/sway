@@ -108,18 +108,4 @@ abi StorageAccess {
     fn get_e2() -> E;
     #[storage(read)]
     fn get_string() -> str[40];
-
-    // Operations
-    #[storage(read, write)]
-    fn add_to_s_dot_t_dot_x(k: u64);
-    #[storage(read, write)]
-    fn subtract_from_s_dot_t_dot_x(k: u64);
-    #[storage(read, write)]
-    fn multiply_by_s_dot_t_dot_x(k: u64);
-    #[storage(read, write)]
-    fn divide_s_dot_t_dot_x(k: u64);
-    #[storage(read, write)]
-    fn shift_left_s_dot_t_dot_x(k: u64);
-    #[storage(read, write)]
-    fn shift_right_s_dot_t_dot_x(k: u64);
 }

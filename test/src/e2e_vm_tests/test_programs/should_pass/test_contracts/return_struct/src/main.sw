@@ -13,6 +13,6 @@ storage {
 impl MyContract for Contract {
     #[storage(read)]
     fn test_function() -> Option<MyStruct> {
-        storage.a.get(1)
+        storage.a.get(1).try_read()
     }
 }

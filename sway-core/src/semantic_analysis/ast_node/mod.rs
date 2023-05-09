@@ -15,8 +15,8 @@ use crate::{
     Ident,
 };
 
-use sway_error::{error::CompileError, warning::Warning};
-use sway_types::{span::Span, state::StateIndex, Spanned};
+use sway_error::warning::Warning;
+use sway_types::{span::Span, Spanned};
 
 impl ty::TyAstNode {
     pub(crate) fn type_check(ctx: TypeCheckContext, node: AstNode) -> CompileResult<Self> {
@@ -38,14 +38,22 @@ impl ty::TyAstNode {
                     let mut res = match a.import_type {
                         ImportType::Star => {
                             // try a standard starimport first
-                            let import = ctx.namespace.star_import(&path, engines);
+                            let import = ctx.namespace.star_import(
+                                &path,
+                                engines,
+                                ctx.experimental_private_modules_enabled(),
+                            );
                             if import.is_ok() {
                                 import
                             } else {
                                 // if it doesn't work it could be an enum star import
                                 if let Some((enum_name, path)) = path.split_last() {
-                                    let variant_import =
-                                        ctx.namespace.variant_star_import(path, engines, enum_name);
+                                    let variant_import = ctx.namespace.variant_star_import(
+                                        path,
+                                        engines,
+                                        enum_name,
+                                        ctx.experimental_private_modules_enabled(),
+                                    );
                                     if variant_import.is_ok() {
                                         variant_import
                                     } else {
@@ -56,14 +64,21 @@ impl ty::TyAstNode {
                                 }
                             }
                         }
-                        ImportType::SelfImport(_) => {
-                            ctx.namespace.self_import(engines, &path, a.alias.clone())
-                        }
+                        ImportType::SelfImport(_) => ctx.namespace.self_import(
+                            engines,
+                            &path,
+                            a.alias.clone(),
+                            ctx.experimental_private_modules_enabled(),
+                        ),
                         ImportType::Item(ref s) => {
                             // try a standard item import first
-                            let import =
-                                ctx.namespace
-                                    .item_import(engines, &path, s, a.alias.clone());
+                            let import = ctx.namespace.item_import(
+                                engines,
+                                &path,
+                                s,
+                                a.alias.clone(),
+                                ctx.experimental_private_modules_enabled(),
+                            );
 
                             if import.is_ok() {
                                 import
@@ -76,6 +91,7 @@ impl ty::TyAstNode {
                                         enum_name,
                                         s,
                                         a.alias.clone(),
+                                        ctx.experimental_private_modules_enabled(),
                                     );
                                     if variant_import.is_ok() {
                                         variant_import
@@ -156,119 +172,4 @@ impl ty::TyAstNode {
 
         ok(node, warnings, errors)
     }
-}
-
-pub(crate) fn reassign_storage_subfield(
-    ctx: TypeCheckContext,
-    fields: Vec<Ident>,
-    rhs: Expression,
-    span: Span,
-    storage_keyword_span: Span,
-) -> CompileResult<ty::TyStorageReassignment> {
-    let mut errors = vec![];
-    let mut warnings = vec![];
-
-    let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
-    let engines = ctx.engines();
-
-    if !ctx.namespace.has_storage_declared() {
-        errors.push(CompileError::NoDeclaredStorage { span });
-
-        return err(warnings, errors);
-    }
-
-    let storage_fields = check!(
-        ctx.namespace.get_storage_field_descriptors(decl_engine),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-    let mut type_checked_buf = vec![];
-    let mut fields: Vec<_> = fields.into_iter().rev().collect();
-
-    let first_field = fields.pop().expect("guaranteed by grammar");
-    let (ix, initial_field_type) = match storage_fields
-        .iter()
-        .enumerate()
-        .find(|(_, ty::TyStorageField { name, .. })| name == &first_field)
-    {
-        Some((ix, ty::TyStorageField { type_argument, .. })) => {
-            (StateIndex::new(ix), type_argument.type_id)
-        }
-        None => {
-            errors.push(CompileError::StorageFieldDoesNotExist {
-                name: first_field.clone(),
-                span: first_field.span(),
-            });
-            return err(warnings, errors);
-        }
-    };
-
-    type_checked_buf.push(ty::TyStorageReassignDescriptor {
-        name: first_field.clone(),
-        type_id: initial_field_type,
-        span: first_field.span(),
-    });
-
-    let update_available_struct_fields = |id: TypeId| match type_engine.get(id) {
-        TypeInfo::Struct(decl_ref) => decl_engine.get_struct(&decl_ref).fields,
-        _ => vec![],
-    };
-    let mut curr_type = initial_field_type;
-
-    // if the previously iterated type was a struct, put its fields here so we know that,
-    // in the case of a subfield, we can type check the that the subfield exists and its type.
-    let mut available_struct_fields = update_available_struct_fields(initial_field_type);
-
-    // get the initial field's type
-    // make sure the next field exists in that type
-    for field in fields.into_iter().rev() {
-        match available_struct_fields
-            .iter()
-            .find(|x| x.name.as_str() == field.as_str())
-        {
-            Some(struct_field) => {
-                curr_type = struct_field.type_argument.type_id;
-                type_checked_buf.push(ty::TyStorageReassignDescriptor {
-                    name: field.clone(),
-                    type_id: struct_field.type_argument.type_id,
-                    span: field.span().clone(),
-                });
-                available_struct_fields =
-                    update_available_struct_fields(struct_field.type_argument.type_id);
-            }
-            None => {
-                let available_fields = available_struct_fields
-                    .iter()
-                    .map(|x| x.name.as_str())
-                    .collect::<Vec<_>>();
-                errors.push(CompileError::FieldNotFound {
-                    field_name: field.clone(),
-                    available_fields: available_fields.join(", "),
-                    struct_name: type_checked_buf.last().unwrap().name.clone(),
-                    span: field.span(),
-                });
-                return err(warnings, errors);
-            }
-        }
-    }
-    let ctx = ctx.with_type_annotation(curr_type).with_help_text("");
-    let rhs = check!(
-        ty::TyExpression::type_check(ctx, rhs),
-        ty::TyExpression::error(span, engines),
-        warnings,
-        errors
-    );
-
-    ok(
-        ty::TyStorageReassignment {
-            storage_keyword_span,
-            fields: type_checked_buf,
-            ix,
-            rhs,
-        },
-        warnings,
-        errors,
-    )
 }

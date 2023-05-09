@@ -14,7 +14,7 @@ fn main() {
 
     // A recovered Fuel address.
     let result_address: Result<Address, EcRecoverError> = ec_recover_address(signature, MSG_HASH);
-    if let Result::Ok(address) = result_address {
+    if let Ok(address) = result_address {
         log(address.value);
     } else {
         revert(0);

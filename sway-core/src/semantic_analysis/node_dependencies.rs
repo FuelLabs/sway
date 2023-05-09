@@ -454,6 +454,9 @@ impl Dependencies {
                 // ordered
                 self.gather_from_call_path(&(name.clone()).into(), false, false)
             }
+            ExpressionKind::AmbiguousVariableExpression(name) => {
+                self.gather_from_call_path(&(name.clone()).into(), false, false)
+            }
             ExpressionKind::FunctionApplication(function_application_expression) => {
                 let FunctionApplicationExpression {
                     call_path_binding,
@@ -870,6 +873,8 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Storage { .. } => "contract storage",
         TypeInfo::RawUntypedPtr => "raw untyped ptr",
         TypeInfo::RawUntypedSlice => "raw untyped slice",
+        TypeInfo::Ptr(..) => "__ptr",
+        TypeInfo::Slice(..) => "__slice",
         TypeInfo::Alias { .. } => "alias",
     }
     .to_string()

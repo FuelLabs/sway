@@ -1,3 +1,4 @@
+//! VM-specific utilities.
 library;
 
-mod evm;
+pub mod evm;

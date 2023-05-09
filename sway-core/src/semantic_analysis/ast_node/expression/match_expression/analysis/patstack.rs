@@ -148,10 +148,6 @@ impl PatStack {
         self.pats.iter()
     }
 
-    pub(crate) fn into_iter(self) -> IntoIter<Pattern> {
-        self.pats.into_iter()
-    }
-
     /// Flattens the contents of a `PatStack` into a `PatStack`.
     pub(crate) fn flatten(&self) -> PatStack {
         let mut flattened = PatStack::empty();
@@ -312,6 +308,14 @@ impl PatStack {
             }
         }
         PatStack::from(new_pats)
+    }
+}
+
+impl IntoIterator for PatStack {
+    type Item = Pattern;
+    type IntoIter = IntoIter<Pattern>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.pats.into_iter()
     }
 }
 

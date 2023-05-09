@@ -18,11 +18,22 @@ impl Eq for Initialized {
     }
 }
 
+impl Initialized {
+    fn foo(self) -> bool {
+        match self {
+            Self::True(_) => true,
+            Self::False(_) => false,
+        }
+    }
+}
+
 fn main() -> u64 {
     let a = Initialized::True;
     let b = Initialized::False;
     let c = a == b;
     assert(c == false);
+
+    assert(a.foo());
 
     1
 }

@@ -110,11 +110,11 @@ impl ty::TyTraitDecl {
                     check!(
                         ctx.namespace.insert_symbol(
                             const_name.clone(),
-                            ty::TyDecl::ConstantDecl {
+                            ty::TyDecl::ConstantDecl(ty::ConstantDecl {
                                 name: const_name.clone(),
                                 decl_id: *decl_ref.id(),
                                 decl_span: const_decl.span.clone()
-                            }
+                            })
                         ),
                         return err(warnings, errors),
                         warnings,
@@ -154,11 +154,11 @@ impl ty::TyTraitDecl {
             errors
         );
 
-        // type check the items
+        // Type check the items.
         let mut new_items = vec![];
         for method in methods.into_iter() {
             let method = check!(
-                ty::TyFunctionDecl::type_check(ctx.by_ref(), method.clone(), true, false),
+                ty::TyFunctionDecl::type_check(ctx.by_ref(), method.clone(), true, false,),
                 ty::TyFunctionDecl::error(method),
                 warnings,
                 errors
@@ -364,13 +364,14 @@ impl ty::TyTraitDecl {
                 ty::TyTraitInterfaceItem::Constant(decl_ref) => {
                     let const_decl = decl_engine.get_constant(decl_ref);
                     let const_name = const_decl.call_path.suffix.clone();
+                    all_items.push(TyImplItem::Constant(decl_ref.clone()));
                     ctx.namespace.insert_symbol(
                         const_name.clone(),
-                        ty::TyDecl::ConstantDecl {
+                        ty::TyDecl::ConstantDecl(ty::ConstantDecl {
                             name: const_name,
                             decl_id: *decl_ref.id(),
                             decl_span: const_decl.span.clone(),
-                        },
+                        }),
                     );
                 }
             }

@@ -2,9 +2,16 @@ use crate::priv_prelude::*;
 
 #[derive(Clone, Debug, Serialize)]
 pub enum Pattern {
+    Or {
+        lhs: Box<Pattern>,
+        pipe_token: PipeToken,
+        rhs: Box<Pattern>,
+    },
     Wildcard {
         underscore_token: UnderscoreToken,
     },
+    /// A pattern made of a single ident, which could either be a variable or an enum variant
+    AmbiguousSingleIdent(Ident),
     Var {
         reference: Option<RefToken>,
         mutable: Option<MutToken>,
@@ -28,6 +35,11 @@ pub enum Pattern {
 impl Spanned for Pattern {
     fn span(&self) -> Span {
         match self {
+            Pattern::Or {
+                lhs,
+                pipe_token,
+                rhs,
+            } => Span::join(Span::join(lhs.span(), pipe_token.span()), rhs.span()),
             Pattern::Wildcard { underscore_token } => underscore_token.span(),
             Pattern::Var {
                 reference,
@@ -41,6 +53,7 @@ impl Spanned for Pattern {
                 (None, Some(mut_token)) => Span::join(mut_token.span(), name.span()),
                 (None, None) => name.span(),
             },
+            Pattern::AmbiguousSingleIdent(ident) => ident.span(),
             Pattern::Literal(literal) => literal.span(),
             Pattern::Constant(path_expr) => path_expr.span(),
             Pattern::Constructor { path, args } => Span::join(path.span(), args.span()),

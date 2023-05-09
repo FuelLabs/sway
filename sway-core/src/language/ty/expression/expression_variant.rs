@@ -4,7 +4,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use sway_types::{state::StateIndex, Ident, Named, Span};
+use sway_types::{Ident, Named, Span};
 
 use crate::{
     decl_engine::*,
@@ -21,12 +21,11 @@ pub enum TyExpressionVariant {
         contract_call_params: HashMap<String, TyExpression>,
         arguments: Vec<(Ident, TyExpression)>,
         fn_ref: DeclRefFunction,
-        /// If this is `Some(val)` then `val` is the metadata. If this is `None`, then
-        /// there is no selector.
-        self_state_idx: Option<StateIndex>,
         selector: Option<ContractCallParams>,
         /// optional binding information for the LSP
         type_binding: Option<TypeBinding<()>>,
+        /// In case it is a method should contain a TypeId to either an enum, struct or a type alias.
+        call_path_typeid: Option<TypeId>,
     },
     LazyOperator {
         op: LazyOp,
@@ -104,6 +103,8 @@ pub enum TyExpressionVariant {
         /// They are also used in the language server.
         variant_instantiation_span: Span,
         call_path_binding: TypeBinding<CallPath>,
+        /// The enum type, can be a type alias.
+        call_path_decl: ty::TyDecl,
     },
     AbiCast {
         abi_name: CallPath,
@@ -124,6 +125,8 @@ pub enum TyExpressionVariant {
     UnsafeDowncast {
         exp: Box<TyExpression>,
         variant: TyEnumVariant,
+        /// Should contain a TyDecl to either an enum or a type alias.
+        call_path_decl: ty::TyDecl,
     },
     WhileLoop {
         condition: Box<TyExpression>,
@@ -132,7 +135,6 @@ pub enum TyExpressionVariant {
     Break,
     Continue,
     Reassignment(Box<TyReassignment>),
-    StorageReassignment(Box<TyStorageReassignment>),
     Return(Box<TyExpression>),
 }
 
@@ -370,10 +372,12 @@ impl PartialEqWithEngines for TyExpressionVariant {
                 Self::UnsafeDowncast {
                     exp: l_exp,
                     variant: l_variant,
+                    call_path_decl: _,
                 },
                 Self::UnsafeDowncast {
                     exp: r_exp,
                     variant: r_variant,
+                    call_path_decl: _,
                 },
             ) => l_exp.eq(r_exp, engines) && l_variant.eq(r_variant, engines),
             (Self::EnumTag { exp: l_exp }, Self::EnumTag { exp: r_exp }) => {
@@ -410,9 +414,9 @@ impl HashWithEngines for TyExpressionVariant {
                 // these fields are not hashed because they aren't relevant/a
                 // reliable source of obj v. obj distinction
                 contract_call_params: _,
-                self_state_idx: _,
                 selector: _,
                 type_binding: _,
+                call_path_typeid: _,
             } => {
                 call_path.hash(state);
                 fn_ref.hash(state, engines);
@@ -539,6 +543,7 @@ impl HashWithEngines for TyExpressionVariant {
                 // reliable source of obj v. obj distinction
                 variant_instantiation_span: _,
                 call_path_binding: _,
+                call_path_decl: _,
             } => {
                 enum_ref.hash(state, engines);
                 variant_name.hash(state);
@@ -569,7 +574,11 @@ impl HashWithEngines for TyExpressionVariant {
             Self::EnumTag { exp } => {
                 exp.hash(state, engines);
             }
-            Self::UnsafeDowncast { exp, variant } => {
+            Self::UnsafeDowncast {
+                exp,
+                variant,
+                call_path_decl: _,
+            } => {
                 exp.hash(state, engines);
                 variant.hash(state, engines);
             }
@@ -579,9 +588,6 @@ impl HashWithEngines for TyExpressionVariant {
             }
             Self::Break | Self::Continue | Self::FunctionParameter => {}
             Self::Reassignment(exp) => {
-                exp.hash(state, engines);
-            }
-            Self::StorageReassignment(exp) => {
                 exp.hash(state, engines);
             }
             Self::Return(exp) => {
@@ -711,7 +717,11 @@ impl SubstTypes for TyExpressionVariant {
             EnumTag { exp } => {
                 exp.subst(type_mapping, engines);
             }
-            UnsafeDowncast { exp, variant } => {
+            UnsafeDowncast {
+                exp,
+                variant,
+                call_path_decl: _,
+            } => {
                 exp.subst(type_mapping, engines);
                 variant.subst(type_mapping, engines);
             }
@@ -726,7 +736,6 @@ impl SubstTypes for TyExpressionVariant {
             Break => (),
             Continue => (),
             Reassignment(reassignment) => reassignment.subst(type_mapping, engines),
-            StorageReassignment(..) => (),
             Return(stmt) => stmt.subst(type_mapping, engines),
         }
     }
@@ -846,7 +855,11 @@ impl ReplaceSelfType for TyExpressionVariant {
             EnumTag { exp } => {
                 exp.replace_self_type(engines, self_type);
             }
-            UnsafeDowncast { exp, variant } => {
+            UnsafeDowncast {
+                exp,
+                variant,
+                call_path_decl: _,
+            } => {
                 exp.replace_self_type(engines, self_type);
                 variant.replace_self_type(engines, self_type);
             }
@@ -861,7 +874,6 @@ impl ReplaceSelfType for TyExpressionVariant {
             Break => (),
             Continue => (),
             Reassignment(reassignment) => reassignment.replace_self_type(engines, self_type),
-            StorageReassignment(..) => (),
             Return(stmt) => stmt.replace_self_type(engines, self_type),
         }
     }
@@ -969,7 +981,6 @@ impl ReplaceDecls for TyExpressionVariant {
             Break => (),
             Continue => (),
             Reassignment(reassignment) => reassignment.replace_decls(decl_mapping, engines),
-            StorageReassignment(..) => (),
             Return(stmt) => stmt.replace_decls(decl_mapping, engines),
         }
     }
@@ -1070,7 +1081,6 @@ impl UpdateConstantExpression for TyExpressionVariant {
             Reassignment(reassignment) => {
                 reassignment.update_constant_expression(engines, implementing_type)
             }
-            StorageReassignment(..) => (),
             Return(stmt) => stmt.update_constant_expression(engines, implementing_type),
         }
     }
@@ -1082,7 +1092,7 @@ fn find_const_decl_from_impl(
     const_decl: &mut Box<TyConstantDecl>,
 ) -> Option<TyConstantDecl> {
     match implementing_type {
-        TyDecl::ImplTrait { decl_id, .. } => {
+        TyDecl::ImplTrait(ImplTrait { decl_id, .. }) => {
             let impl_trait = decl_engine.get_impl_trait(&decl_id.clone());
             impl_trait
                 .items
@@ -1099,9 +1109,9 @@ fn find_const_decl_from_impl(
                     _ => unreachable!(),
                 })
         }
-        TyDecl::AbiDecl {
+        TyDecl::AbiDecl(AbiDecl {
             decl_id: _decl_id, ..
-        } => todo!(),
+        }) => todo!(),
         _ => unreachable!(),
     }
 }
@@ -1197,10 +1207,15 @@ impl DebugWithEngines for TyExpressionVariant {
             TyExpressionVariant::EnumTag { exp } => {
                 format!("({:?} as tag)", engines.help_out(exp.return_type))
             }
-            TyExpressionVariant::UnsafeDowncast { exp, variant } => {
+            TyExpressionVariant::UnsafeDowncast {
+                exp,
+                variant,
+                call_path_decl,
+            } => {
                 format!(
-                    "({:?} as {})",
+                    "({:?} as {}::{})",
                     engines.help_out(exp.return_type),
+                    engines.help_out(call_path_decl),
                     variant.name
                 )
             }
@@ -1224,16 +1239,6 @@ impl DebugWithEngines for TyExpressionVariant {
                     }
                 }
                 format!("reassignment to {place}")
-            }
-            TyExpressionVariant::StorageReassignment(storage_reassignment) => {
-                let place: String = {
-                    storage_reassignment
-                        .fields
-                        .iter()
-                        .map(|field| field.name.as_str())
-                        .collect()
-                };
-                format!("storage reassignment to {place}")
             }
             TyExpressionVariant::Return(exp) => {
                 format!("return {:?}", engines.help_out(&**exp))
@@ -1289,9 +1294,6 @@ impl TyExpressionVariant {
             }
             TyExpressionVariant::Reassignment(reassignment) => {
                 reassignment.rhs.gather_return_statements()
-            }
-            TyExpressionVariant::StorageReassignment(storage_reassignment) => {
-                storage_reassignment.rhs.gather_return_statements()
             }
             TyExpressionVariant::LazyOperator { lhs, rhs, .. } => [lhs, rhs]
                 .into_iter()

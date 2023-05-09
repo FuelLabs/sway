@@ -1,6 +1,6 @@
 library;
 
-mod pkga;
+pub mod pkga;
 
 pub const TEST_CONST: u64 = 60;
 

@@ -12,10 +12,10 @@ category = "fail"
 # check: $()let _s = lib_a::inner_lib::S2::new2;
 # nextln: $()Could not find symbol "new2" in this scope.
 
-# check: $()let _n: Option<u64> = Option::None();
+# check: $()let _n: Option<u64> = None();
 # nextln: $()The enum variant `None` is of type `unit`, so its constructor does not take arguments or parentheses. Try removing the ().
 
-# check: $()let _n = Option::None::<u64>();
+# check: $()let _n = None::<u64>();
 # nextln: $()The enum variant `None` is of type `unit`, so its constructor does not take arguments or parentheses. Try removing the ().
 
 # check: $()let _n = lib_a::inner_lib::MyEnum::VariantA();

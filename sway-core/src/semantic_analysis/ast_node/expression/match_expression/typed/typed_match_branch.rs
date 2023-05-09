@@ -128,7 +128,7 @@ impl ty::TyMatchBranch {
 
         // return!
         let typed_branch = ty::TyMatchBranch {
-            conditions: match_req_map,
+            cnf: match_req_map,
             result: new_result,
             span: branch_span,
         };

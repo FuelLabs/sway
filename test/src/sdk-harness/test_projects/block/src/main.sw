@@ -1,6 +1,6 @@
 contract;
 
-use std::block::{height, timestamp, timestamp_of_block};
+use std::block::{block_header_hash, height, timestamp, timestamp_of_block};
 use block_test_abi::BlockTest;
 
 impl BlockTest for Contract {
@@ -17,9 +17,14 @@ impl BlockTest for Contract {
     }
 
     fn get_block_and_timestamp() -> (u64, u64) {
-        (
-            height(),
-            timestamp(),
-        )
+        (height(), timestamp())
+    }
+
+    fn get_block_header_hash(h: u64) -> b256 {
+        let res = block_header_hash(h);
+        match res {
+            Ok(h) => h,
+            Err(e) => revert(0),
+        }
     }
 }

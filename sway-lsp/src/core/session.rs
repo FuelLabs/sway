@@ -9,7 +9,7 @@ use crate::{
         document::TextDocument,
         sync::SyncWorkspace,
         token::{get_range_from_span, TypedAstToken},
-        token_map::TokenMap,
+        token_map::{TokenMap, TokenMapExt},
     },
     error::{DocumentError, LanguageServerError},
     traverse::{
@@ -26,7 +26,7 @@ use sway_core::{
     language::{
         lexed::LexedProgram,
         parsed::{AstNode, ParseProgram},
-        ty,
+        ty::{self},
     },
     BuildTarget, CompileResult, Engines, TypeEngine,
 };
@@ -171,6 +171,7 @@ impl Session {
             true,
             tests_enabled,
             Engines::new(&new_type_engine, &new_decl_engine),
+            true,
         )
         .map_err(LanguageServerError::FailedToCompile)?;
 
@@ -185,10 +186,6 @@ impl Session {
         // Clear other data stores.
         self.token_map.clear();
         self.runnables.clear();
-
-        // Create context with write guards to make readers wait until the update to token_map is complete.
-        // This operation is fast because we already have the compile results.
-        let ctx = ParseContext::new(&self.token_map, Engines::new(&type_engine, &decl_engine));
 
         let results_len = results.len();
         for (i, res) in results.into_iter().enumerate() {
@@ -216,6 +213,14 @@ impl Session {
                 LanguageServerError::FailedToParse
             })?;
 
+            // Create context with write guards to make readers wait until the update to token_map is complete.
+            // This operation is fast because we already have the compile results.
+            let ctx = ParseContext::new(
+                &self.token_map,
+                Engines::new(&type_engine, &decl_engine),
+                &typed_program.root.namespace,
+            );
+
             // The final element in the results is the main program.
             if i == results_len - 1 {
                 // First, populate our token_map with sway keywords.
@@ -229,7 +234,7 @@ impl Session {
                 // Finally, create runnables and populate our token_map with typed ast nodes.
                 self.create_runnables(typed_program, &decl_engine);
 
-                let typed_tree = TypedTree::new(&ctx, &typed_program.root.namespace);
+                let typed_tree = TypedTree::new(&ctx);
                 typed_tree.collect_module_spans(typed_program);
                 self.parse_ast_to_typed_tokens(typed_program, &ctx, |node, _ctx| {
                     typed_tree.traverse_node(node)
@@ -259,13 +264,15 @@ impl Session {
         let te = self.type_engine.read();
         let de = self.decl_engine.read();
         let engines = Engines::new(&te, &de);
+
         let mut token_ranges: Vec<_> = self
             .token_map
+            .tokens_for_file(url)
             .all_references_of_token(&token, engines)
             .map(|(ident, _)| get_range_from_span(&ident.span()))
             .collect();
-        token_ranges.sort_by(|a, b| a.start.line.cmp(&b.start.line));
 
+        token_ranges.sort_by(|a, b| a.start.line.cmp(&b.start.line));
         Some(token_ranges)
     }
 

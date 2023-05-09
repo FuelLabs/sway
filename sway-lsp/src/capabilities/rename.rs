@@ -2,14 +2,13 @@ use crate::{
     core::{
         session::Session,
         token::{get_range_from_span, SymbolKind, Token, TypedAstToken},
+        token_map::TokenMapExt,
     },
     error::{LanguageServerError, RenameError},
+    utils::document::get_url_from_path,
 };
 use std::{collections::HashMap, sync::Arc};
-use sway_core::{
-    language::ty::{TyDecl, TyTraitInterfaceItem, TyTraitItem},
-    Engines,
-};
+use sway_core::{language::ty, Engines};
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{Position, PrepareRenameResponse, TextEdit, Url, WorkspaceEdit};
 
@@ -61,6 +60,7 @@ pub fn rename(
         // otherwise, just find all references of the token in the token map
         session
             .token_map()
+            .iter()
             .all_references_of_token(&token, engines)
             .map(|(ident, _)| ident)
             .collect::<Vec<Ident>>()
@@ -78,7 +78,7 @@ pub fn rename(
             range.start.character -= RAW_IDENTIFIER.len() as u32;
         }
         if let Some(path) = ident.span().path() {
-            let url = session.sync.url_from_path(path).ok()?;
+            let url = get_url_from_path(path).ok()?;
             if let Some(url) = session.sync.to_workspace_url(url) {
                 let edit = TextEdit::new(range, new_name.clone());
                 return Some((url, vec![edit]));
@@ -166,11 +166,11 @@ fn is_token_in_workspace(
 }
 
 /// Returns a `Vec<Ident>` containing the identifiers of all trait functions found.
-fn trait_interface_idents(interface_surface: &[TyTraitInterfaceItem]) -> Vec<Ident> {
+fn trait_interface_idents(interface_surface: &[ty::TyTraitInterfaceItem]) -> Vec<Ident> {
     interface_surface
         .iter()
         .flat_map(|item| match item {
-            TyTraitInterfaceItem::TraitFn(fn_decl) => Some(fn_decl.name().clone()),
+            ty::TyTraitInterfaceItem::TraitFn(fn_decl) => Some(fn_decl.name().clone()),
             _ => None,
         })
         .collect()
@@ -191,26 +191,27 @@ fn find_all_methods_for_decl(
 
     let idents = session
         .token_map()
+        .iter()
         .all_references_of_token(&decl_token, engines)
         .filter_map(|(_, token)| {
             token.typed.as_ref().and_then(|typed| match typed {
                 TypedAstToken::TypedDeclaration(decl) => match decl {
-                    TyDecl::AbiDecl { decl_id, .. } => {
+                    ty::TyDecl::AbiDecl(ty::AbiDecl { decl_id, .. }) => {
                         let abi_decl = engines.de().get_abi(decl_id);
                         Some(trait_interface_idents(&abi_decl.interface_surface))
                     }
-                    TyDecl::TraitDecl { decl_id, .. } => {
+                    ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. }) => {
                         let trait_decl = engines.de().get_trait(decl_id);
                         Some(trait_interface_idents(&trait_decl.interface_surface))
                     }
-                    TyDecl::ImplTrait { decl_id, .. } => {
+                    ty::TyDecl::ImplTrait(ty::ImplTrait { decl_id, .. }) => {
                         let impl_trait = engines.de().get_impl_trait(decl_id);
                         Some(
                             impl_trait
                                 .items
                                 .iter()
                                 .filter_map(|item| match item {
-                                    TyTraitItem::Fn(fn_decl) => Some(fn_decl.name().clone()),
+                                    ty::TyTraitItem::Fn(fn_decl) => Some(fn_decl.name().clone()),
                                     _ => None,
                                 })
                                 .collect::<Vec<Ident>>(),

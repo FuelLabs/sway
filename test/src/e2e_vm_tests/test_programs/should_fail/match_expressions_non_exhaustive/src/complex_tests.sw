@@ -1,7 +1,5 @@
 library;
 
-use std::result::*;
-
 fn a(x: u64) -> u64 {
     match x {
         7 => { 0 },
@@ -69,7 +67,7 @@ enum MyAuthError {
 }
 
 pub fn enum_match_exp_bugfix_test() {
-    let a: Result<MyIdentity, MyAuthError> = Result::Ok(
+    let a: Result<MyIdentity, MyAuthError> = Ok(
         MyIdentity::Address(
             MyAddress { inner: 7 }
         )
@@ -77,54 +75,54 @@ pub fn enum_match_exp_bugfix_test() {
 
     // should fail with non-exhaustive
     let b = match a {
-        Result::Ok(MyIdentity::Address(_)) => 1,
-        // missing Result::Ok(MyIdentity::ContractId(_))
-        Result::Err(_) => 5,
+        Ok(MyIdentity::Address(_)) => 1,
+        // missing Ok(MyIdentity::ContractId(_))
+        Err(_) => 5,
     };
 
     // should succeed
     let c = match a {
-        Result::Ok(MyIdentity::Address(_)) => 1,
-        Result::Ok(MyIdentity::ContractId(_)) => 4,
-        Result::Err(_) => 5,
+        Ok(MyIdentity::Address(_)) => 1,
+        Ok(MyIdentity::ContractId(_)) => 4,
+        Err(_) => 5,
     };
     assert(c == 4);
 
     // should fail with non-exhaustive
     let d = match a {
-        Result::Ok(MyIdentity::Address(MyAddress { inner: ORACLE_1 })) => 1,
-        // missing Result::Ok(MyIdentity::Address(MyAddress { inner: 0, 2..MAX }))
-        Result::Ok(MyIdentity::ContractId(_)) => 4,
-        Result::Err(_) => 5,
+        Ok(MyIdentity::Address(MyAddress { inner: ORACLE_1 })) => 1,
+        // missing Ok(MyIdentity::Address(MyAddress { inner: 0, 2..MAX }))
+        Ok(MyIdentity::ContractId(_)) => 4,
+        Err(_) => 5,
     };
 
     // should fail with non-exhaustive
     let e = match a {
-        Result::Ok(MyIdentity::Address(MyAddress { inner: ORACLE_1 })) => 1,
-        // missing Result::Ok(MyIdentity::ContractId(_))
-        Result::Err(_) => 5,
+        Ok(MyIdentity::Address(MyAddress { inner: ORACLE_1 })) => 1,
+        // missing Ok(MyIdentity::ContractId(_))
+        Err(_) => 5,
     };
 
     // should fail with non-exhaustive
     let f = match a {
-        Result::Ok(MyIdentity::Address(MyAddress { inner: ORACLE_1 })) => 1,
-        Result::Ok(MyIdentity::ContractId(_)) => 2,
-        // missing Result::Ok(MyIdentity::Address(MyAddress { inner: 0, 2..MAX }))
-        Result::Err(_) => 5,
+        Ok(MyIdentity::Address(MyAddress { inner: ORACLE_1 })) => 1,
+        Ok(MyIdentity::ContractId(_)) => 2,
+        // missing Ok(MyIdentity::Address(MyAddress { inner: 0, 2..MAX }))
+        Err(_) => 5,
     };
 
     // should fail with non-exhaustive
     let g = match a {
-        Result::Ok(MyIdentity::Address(MyAddress { inner: ORACLE_1 })) => 1,
-        Result::Ok(MyIdentity::ContractId(_)) => 2,
-        Result::Ok(MyIdentity::Address(MyAddress { inner: ORACLE_3 })) => 3,
-        // missing Result::Ok(MyIdentity::Address(MyAddress { inner: 0, 2, 4..MAX }))
-        Result::Err(_) => 5,
+        Ok(MyIdentity::Address(MyAddress { inner: ORACLE_1 })) => 1,
+        Ok(MyIdentity::ContractId(_)) => 2,
+        Ok(MyIdentity::Address(MyAddress { inner: ORACLE_3 })) => 3,
+        // missing Ok(MyIdentity::Address(MyAddress { inner: 0, 2, 4..MAX }))
+        Err(_) => 5,
     };
 }
 
 pub fn enum_match_exp_bugfix_test2() {
-    let a: Result<MyIdentity, MyAuthError> = Result::Ok(
+    let a: Result<MyIdentity, MyAuthError> = Ok(
         MyIdentity::ContractId(
             MyContractId { inner: false }
         )

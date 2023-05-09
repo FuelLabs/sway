@@ -1,5 +1,5 @@
 library;
-mod double_bar;
+pub mod double_bar;
 
 pub struct Bar1 {
     a: u32,

@@ -1,7 +1,7 @@
-use anyhow::Result;
 use clap::Command as ClapCommand;
 use clap::{CommandFactory, Parser};
 use clap_complete::{generate, Generator, Shell};
+use forc_util::ForcResult;
 
 /// Generate tab-completion scripts for your shell
 #[derive(Debug, Parser)]
@@ -15,7 +15,7 @@ pub struct Command {
     shell: Shell,
 }
 
-pub(crate) fn exec(command: Command) -> Result<()> {
+pub(crate) fn exec(command: Command) -> ForcResult<()> {
     let mut cmd = super::super::Opt::command();
     print_completions(command.shell, &mut cmd);
     Ok(())
