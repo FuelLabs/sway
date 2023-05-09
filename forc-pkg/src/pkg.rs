@@ -148,7 +148,7 @@ pub enum PkgEntryKind {
 /// The possible conditions for a test result to be considered "passing".
 #[derive(Debug, Clone)]
 pub enum TestPassCondition {
-    ShouldRevert,
+    ShouldRevert(Option<u64>),
     ShouldNotRevert,
 }
 
@@ -1949,18 +1949,37 @@ impl PkgTestEntry {
         let span = decl_ref.span();
         let test_function_decl = decl_engine.get_function(&decl_ref);
 
-        let test_args: HashSet<String> = test_function_decl
+        const FAILING_TEST_KEYWORD: &str = "should_revert";
+
+        let test_args: HashMap<String, Option<String>> = test_function_decl
             .attributes
             .get(&AttributeKind::Test)
             .expect("test declaration is missing test attribute")
             .iter()
-            .flat_map(|attr| attr.args.iter().map(|arg| arg.name.to_string()))
+            .flat_map(|attr| attr.args.iter())
+            .map(|arg| {
+                (
+                    arg.name.to_string(),
+                    arg.value
+                        .as_ref()
+                        .map(|val| val.span().as_str().to_string()),
+                )
+            })
             .collect();
+
+        println!("{test_args:?}");
 
         let pass_condition = if test_args.is_empty() {
             anyhow::Ok(TestPassCondition::ShouldNotRevert)
-        } else if test_args.get("should_revert").is_some() {
-            anyhow::Ok(TestPassCondition::ShouldRevert)
+        } else if let Some(args) = test_args.get(FAILING_TEST_KEYWORD) {
+            let expected_revert_code = args
+                .as_ref()
+                .map(|arg| {
+                    let arg_str = arg.replace('"', "");
+                    arg_str.parse::<u64>()
+                })
+                .transpose()?;
+            anyhow::Ok(TestPassCondition::ShouldRevert(expected_revert_code))
         } else {
             let test_name = &test_function_decl.name;
             bail!("Invalid test argument(s) for test: {test_name}.")
