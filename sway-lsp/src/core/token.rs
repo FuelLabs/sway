@@ -60,6 +60,7 @@ pub enum TypedAstToken {
     TypedDeclaration(ty::TyDecl),
     TypedExpression(ty::TyExpression),
     TypedScrutinee(ty::TyScrutinee),
+    TyStructScrutineeField(ty::TyStructScrutineeField),
     TypedConstantDeclaration(ty::TyConstantDecl),
     TypedFunctionDeclaration(ty::TyFunctionDecl),
     TypedFunctionParameter(ty::TyFunctionParameter),
@@ -68,9 +69,7 @@ pub enum TypedAstToken {
     TypedTraitFn(ty::TyTraitFn),
     TypedSupertrait(Supertrait),
     TypedStorageField(ty::TyStorageField),
-    TyStorageResassignment(Box<ty::TyStorageReassignment>),
     TyStorageAccessDescriptor(ty::TyStorageAccessDescriptor),
-    TypeCheckedStorageReassignDescriptor(ty::TyStorageReassignDescriptor),
     TypedReassignment(ty::TyReassignment),
     TypedArgument(TypeArgument),
     TypedParameter(TypeParameter),
@@ -111,8 +110,6 @@ pub enum SymbolKind {
     SelfKeyword,
     /// Emitted for the Self type parameter.
     SelfTypeKeyword,
-    /// Emitted for storage.
-    Storage,
     /// Emitted for string literals.
     StringLiteral,
     /// Emitted for structs.

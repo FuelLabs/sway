@@ -22,8 +22,8 @@ abi StorageExample {
 impl StorageExample  for Contract {
     #[storage(write)]
     fn store_something() {
-        storage.var1.x = 42;
-        storage.var1.y = true;
-        storage.var1.z.x = 1337;
+        storage.var1.x.write(42);
+        storage.var1.y.write(true);
+        storage.var1.z.x.write(1337);
     }
 }

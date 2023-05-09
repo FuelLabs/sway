@@ -3,10 +3,12 @@ script;
 mod primitive_tests;
 mod adt_tests;
 mod complex_tests;
+mod or_patterns;
 
 use primitive_tests::*;
 use adt_tests::*;
 use complex_tests::*;
+use or_patterns::*;
 
 fn main() -> u64 {
     simple_numbers_test();
@@ -17,6 +19,7 @@ fn main() -> u64 {
     nested_match_tests();
     enum_match_exp_bugfix_test();
     enum_match_exp_bugfix_test2();
+    or_patterns_test();
 
     42u64
 }

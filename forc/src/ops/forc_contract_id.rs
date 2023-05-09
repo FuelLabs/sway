@@ -1,6 +1,7 @@
 use crate::cli::ContractIdCommand;
 use anyhow::{bail, Result};
 use forc_pkg::{self as pkg, build_with_options};
+use forc_tracing::println_green;
 use sway_core::{fuel_prelude::fuel_tx, BuildTarget};
 use tracing::info;
 
@@ -33,9 +34,11 @@ pub fn contract_id(command: ContractIdCommand) -> Result<()> {
             .salt
             .or_else(|| build_plan.salt(pinned_contract))
             .unwrap_or_else(fuel_tx::Salt::zeroed);
+        let name = &pinned_contract.name;
         let storage_slots = built_contract.storage_slots.clone();
         let contract_id =
             pkg::contract_id(built_contract.bytecode.bytes.clone(), storage_slots, &salt);
+        println_green(&format!(" {name}"));
         info!("      Contract id: 0x{contract_id}");
     }
     Ok(())
@@ -72,6 +75,6 @@ fn build_opts_from_cmd(cmd: &ContractIdCommand) -> pkg::BuildOpts {
         build_target: BuildTarget::default(),
         tests: false,
         member_filter: pkg::MemberFilter::only_contracts(),
-        experimental_storage: cmd.build_profile.experimental_storage,
+        experimental_private_modules: cmd.build_profile.experimental_private_modules,
     }
 }

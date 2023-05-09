@@ -1,8 +1,8 @@
 use crate::cli::BuildCommand;
-use anyhow::Result;
 use forc_pkg as pkg;
+use forc_util::ForcResult;
 
-pub fn build(cmd: BuildCommand) -> Result<pkg::Built> {
+pub fn build(cmd: BuildCommand) -> ForcResult<pkg::Built> {
     let opts = opts_from_cmd(cmd);
     let built = pkg::build_with_options(opts)?;
     Ok(built)
@@ -39,6 +39,6 @@ fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
         build_target: cmd.build.build_target,
         tests: cmd.tests,
         member_filter: Default::default(),
-        experimental_storage: cmd.build.profile.experimental_storage,
+        experimental_private_modules: cmd.build.profile.experimental_private_modules,
     }
 }

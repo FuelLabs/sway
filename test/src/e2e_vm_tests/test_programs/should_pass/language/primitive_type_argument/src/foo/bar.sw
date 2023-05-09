@@ -1,3 +1,3 @@
 library;
 
-mod baz;
+pub mod baz;

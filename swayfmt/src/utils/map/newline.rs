@@ -149,15 +149,14 @@ fn add_newlines(
         .skip(1)
         .zip(formatted_newline_spans.iter().skip(1))
     {
-        let newline_sequences = get_newline_sequences_between_spans(
+        if let Some(newline_sequence) = get_newline_sequence_between_spans(
             previous_unformatted_newline_span,
             unformatted_newline_span,
             &newline_map,
-        );
-        if !newline_sequences.is_empty() {
+        ) {
             offset += insert_after_span(
                 previous_formatted_newline_span,
-                newline_sequences,
+                newline_sequence,
                 offset,
                 formatted_code,
                 newline_threshold,
@@ -169,7 +168,7 @@ fn add_newlines(
     Ok(())
 }
 
-fn format_newline_sequnce(newline_sequence: &NewlineSequence, threshold: usize) -> String {
+fn format_newline_sequence(newline_sequence: &NewlineSequence, threshold: usize) -> String {
     if newline_sequence.sequence_length > threshold {
         (0..threshold).map(|_| "\n").collect::<String>()
     } else {
@@ -177,42 +176,21 @@ fn format_newline_sequnce(newline_sequence: &NewlineSequence, threshold: usize) 
     }
 }
 
-/// Checks for newlines that are already in the source code.
-fn find_already_present_extra_newlines(from: usize, src: String) -> usize {
-    let mut number_of_newlines_present = 0;
-    for char in src.chars().skip(from) {
-        if char == '\n' {
-            number_of_newlines_present += 1;
-        } else {
-            break;
-        }
-    }
-    if number_of_newlines_present == 0 {
-        0
-    } else {
-        number_of_newlines_present - 1
-    }
-}
-
 /// Inserts after given span and returns the offset.
 fn insert_after_span(
     from: &ByteSpan,
-    newline_sequences_to_insert: Vec<NewlineSequence>,
+    newline_sequence: NewlineSequence,
     offset: usize,
     formatted_code: &mut FormattedCode,
     threshold: usize,
 ) -> Result<usize, FormatterError> {
-    let iter = newline_sequences_to_insert.iter();
     let mut sequence_string = String::new();
-    let newlines_to_skip =
-        find_already_present_extra_newlines(from.end, formatted_code.to_string());
-    for newline_sequence in iter.skip(newlines_to_skip) {
-        write!(
-            sequence_string,
-            "{}",
-            format_newline_sequnce(newline_sequence, threshold)
-        )?;
-    }
+
+    write!(
+        sequence_string,
+        "{}",
+        format_newline_sequence(&newline_sequence, threshold)
+    )?;
     let mut src_rope = Rope::from_str(formatted_code);
     src_rope.insert(from.end + offset, &sequence_string);
     formatted_code.clear();
@@ -220,19 +198,20 @@ fn insert_after_span(
     Ok(sequence_string.len())
 }
 
-/// Returns a list of newline sequence between given spans.
-fn get_newline_sequences_between_spans(
+/// Returns a newline sequence between given spans, if found.
+fn get_newline_sequence_between_spans(
     from: &ByteSpan,
     to: &ByteSpan,
     newline_map: &NewlineMap,
-) -> Vec<NewlineSequence> {
-    let mut newline_sequences: Vec<NewlineSequence> = Vec::new();
+) -> Option<NewlineSequence> {
     if from < to {
-        for (_, newline_sequence) in newline_map.range((Included(from), Excluded(to))) {
-            newline_sequences.push(newline_sequence.clone());
+        if let Some((_, newline_sequence)) =
+            newline_map.range((Included(from), Excluded(to))).next()
+        {
+            return Some(newline_sequence.clone());
         }
     }
-    newline_sequences
+    None
 }
 
 #[cfg(test)]

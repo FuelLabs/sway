@@ -58,7 +58,15 @@ impl std::fmt::Display for FinalProgram {
         match self {
             FinalProgram::Fuel {
                 data_section, ops, ..
-            } => write!(f, "{ops:?}\n{data_section}"),
+            } => write!(
+                f,
+                ".program:\n{}\n{}",
+                ops.iter()
+                    .map(|x| format!("{x}"))
+                    .collect::<Vec<_>>()
+                    .join("\n"),
+                data_section,
+            ),
             FinalProgram::Evm { ops, .. } => {
                 let mut separator = etk_dasm::blocks::basic::Separator::new();
 

@@ -7,7 +7,7 @@ use ::assert::assert;
 use ::bytes::Bytes;
 use ::constants::BASE_ASSET_ID;
 use ::contract_id::ContractId;
-use ::option::Option;
+use ::option::Option::{self, *};
 use ::revert::revert;
 use ::tx::{
     GTF_CREATE_INPUT_AT_INDEX,
@@ -59,6 +59,7 @@ pub const GTF_INPUT_MESSAGE_DATA = 0x11D;
 pub const GTF_INPUT_MESSAGE_PREDICATE = 0x11E;
 pub const GTF_INPUT_MESSAGE_PREDICATE_DATA = 0x11F;
 
+/// The input type for a transaction.
 pub enum Input {
     Coin: (),
     Contract: (),
@@ -106,35 +107,35 @@ pub fn input_pointer(index: u64) -> u64 {
 
 /// Get amount field from input at `index`.
 /// If the input's type is `Input::Coin` or `Input::Message`,
-/// return the amount as an `Option::Some(u64)`.
-/// Otherwise, returns `Option::None`.
+/// return the amount as an `Some(u64)`.
+/// Otherwise, returns `None`.
 pub fn input_amount(index: u64) -> Option<u64> {
     match input_type(index) {
-        Input::Coin => Option::Some(__gtf::<u64>(index, GTF_INPUT_COIN_AMOUNT)),
-        Input::Message => Option::Some(__gtf::<u64>(index, GTF_INPUT_MESSAGE_AMOUNT)),
-        Input::Contract => Option::None,
+        Input::Coin => Some(__gtf::<u64>(index, GTF_INPUT_COIN_AMOUNT)),
+        Input::Message => Some(__gtf::<u64>(index, GTF_INPUT_MESSAGE_AMOUNT)),
+        Input::Contract => None,
     }
 }
 
-/// If the input's type is `Input::Coin` return the owner as an `Option::Some(owner)`.
-/// If the input's type is `Input::Message` return the owner as an `Option::Some(recipient)`.
-/// Otherwise, returns Option::None.
+/// If the input's type is `Input::Coin` return the owner as an `Some(owner)`.
+/// If the input's type is `Input::Message` return the owner as an `Some(recipient)`.
+/// Otherwise, returns None.
 pub fn input_owner(index: u64) -> Option<Address> {
     match input_type(index) {
-        Input::Coin => Option::Some(Address::from(__gtf::<b256>(index, GTF_INPUT_COIN_OWNER))),
-        _ => Option::None,
+        Input::Coin => Some(Address::from(__gtf::<b256>(index, GTF_INPUT_COIN_OWNER))),
+        _ => None,
     }
 }
 
 /// Get the predicate data pointer from the input at `index`.
 /// If the input's type is `Input::Coin` or `Input::Message`,
-/// return the data as an `Option::Some(ptr)`.
-/// Otherwise, returns `Option::None`.
+/// return the data as an `Some(ptr)`.
+/// Otherwise, returns `None`.
 pub fn input_predicate_data_pointer(index: u64) -> Option<raw_ptr> {
     match input_type(index) {
-        Input::Coin => Option::Some(__gtf::<raw_ptr>(index, GTF_INPUT_COIN_PREDICATE_DATA)),
-        Input::Message => Option::Some(__gtf::<raw_ptr>(index, GTF_INPUT_MESSAGE_PREDICATE_DATA)),
-        Input::Contract => Option::None,
+        Input::Coin => Some(__gtf::<raw_ptr>(index, GTF_INPUT_COIN_PREDICATE_DATA)),
+        Input::Message => Some(__gtf::<raw_ptr>(index, GTF_INPUT_MESSAGE_PREDICATE_DATA)),
+        Input::Contract => None,
     }
 }
 
@@ -143,55 +144,55 @@ pub fn input_predicate_data_pointer(index: u64) -> Option<raw_ptr> {
 /// return the data, otherwise reverts.
 pub fn input_predicate_data<T>(index: u64) -> T {
     match input_predicate_data_pointer(index) {
-        Option::Some(d) => d.read::<T>(),
-        Option::None => revert(0),
+        Some(d) => d.read::<T>(),
+        None => revert(0),
     }
 }
 
-/// If the input's type is `Input::Coin` return the asset ID as an `Option::Some(id)`.
-/// If the input's type is `Input::Message` return the `BASE_ASSET_ID` as an `Option::Some(id)`.
-/// Otherwise, returns `Option::None`.
+/// If the input's type is `Input::Coin` return the asset ID as an `Some(id)`.
+/// If the input's type is `Input::Message` return the `BASE_ASSET_ID` as an `Some(id)`.
+/// Otherwise, returns `None`.
 pub fn input_asset_id(index: u64) -> Option<ContractId> {
     match input_type(index) {
-        Input::Coin => Option::Some(ContractId::from(__gtf::<b256>(index, GTF_INPUT_COIN_ASSET_ID))),
-        Input::Message => Option::Some(BASE_ASSET_ID),
-        Input::Contract => Option::None,
+        Input::Coin => Some(ContractId::from(__gtf::<b256>(index, GTF_INPUT_COIN_ASSET_ID))),
+        Input::Message => Some(BASE_ASSET_ID),
+        Input::Contract => None,
     }
 }
 
 /// Get the witness index from the input at `index`.
 /// If the input's type is `Input::Coin` or `Input::Message`,
-/// return the index as an `Option::Some(u8)`.
-/// Otherwise, returns `Option::None`.
+/// return the index as an `Some(u8)`.
+/// Otherwise, returns `None`.
 pub fn input_witness_index(index: u64) -> Option<u8> {
     match input_type(index) {
-        Input::Coin => Option::Some(__gtf::<u8>(index, GTF_INPUT_COIN_WITNESS_INDEX)),
-        Input::Message => Option::Some(__gtf::<u8>(index, GTF_INPUT_MESSAGE_WITNESS_INDEX)),
-        Input::Contract => Option::None,
+        Input::Coin => Some(__gtf::<u8>(index, GTF_INPUT_COIN_WITNESS_INDEX)),
+        Input::Message => Some(__gtf::<u8>(index, GTF_INPUT_MESSAGE_WITNESS_INDEX)),
+        Input::Contract => None,
     }
 }
 
 /// Get the predicate length from the input at `index`.
 /// If the input's type is `Input::Coin` or `Input::Message`,
-/// return the length as an `Option::Some(u16)`.
-/// Otherwise, returns `Option::None`.
+/// return the length as an `Some(u16)`.
+/// Otherwise, returns `None`.
 pub fn input_predicate_length(index: u64) -> Option<u16> {
     match input_type(index) {
-        Input::Coin => Option::Some(__gtf::<u16>(index, GTF_INPUT_COIN_PREDICATE_LENGTH)),
-        Input::Message => Option::Some(__gtf::<u16>(index, GTF_INPUT_MESSAGE_PREDICATE_LENGTH)),
-        Input::Contract => Option::None,
+        Input::Coin => Some(__gtf::<u16>(index, GTF_INPUT_COIN_PREDICATE_LENGTH)),
+        Input::Message => Some(__gtf::<u16>(index, GTF_INPUT_MESSAGE_PREDICATE_LENGTH)),
+        Input::Contract => None,
     }
 }
 
 /// Get the predicate pointer from the input at `index`.
 /// If the input's type is `Input::Coin` or `Input::Message`,
-/// return the pointer as an `Option::Some(ptr)`.
-/// Otherwise, returns `Option::None`.
+/// return the pointer as an `Some(ptr)`.
+/// Otherwise, returns `None`.
 pub fn input_predicate_pointer(index: u64) -> Option<raw_ptr> {
     match input_type(index) {
-        Input::Coin => Option::Some(__gtf::<raw_ptr>(index, GTF_INPUT_COIN_PREDICATE)),
-        Input::Message => Option::Some(__gtf::<raw_ptr>(index, GTF_INPUT_MESSAGE_PREDICATE)),
-        Input::Contract => Option::None,
+        Input::Coin => Some(__gtf::<raw_ptr>(index, GTF_INPUT_COIN_PREDICATE)),
+        Input::Message => Some(__gtf::<raw_ptr>(index, GTF_INPUT_MESSAGE_PREDICATE)),
+        Input::Contract => None,
     }
 }
 
@@ -206,24 +207,24 @@ pub fn input_predicate(index: u64) -> Bytes {
     let length = wrapped.unwrap();
     let mut data_bytes = Bytes::with_capacity(length);
     match input_predicate_pointer(index) {
-        Option::Some(d) => {
+        Some(d) => {
             data_bytes.len = length;
             d.copy_bytes_to(data_bytes.buf.ptr, length);
             data_bytes
         },
-        Option::None => revert(0),
+        None => revert(0),
     }
 }
 
 /// Get the predicate data length from the input at `index`.
 /// If the input's type is `Input::Coin` or `Input::Message`,
-/// return the data length as an `Option::Some(u16)`.
-/// Otherwise, returns `Option::None`.
+/// return the data length as an `Some(u16)`.
+/// Otherwise, returns `None`.
 pub fn input_predicate_data_length(index: u64) -> Option<u16> {
     match input_type(index) {
-        Input::Coin => Option::Some(__gtf::<u16>(index, GTF_INPUT_COIN_PREDICATE_DATA_LENGTH)),
-        Input::Message => Option::Some(__gtf::<u16>(index, GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH)),
-        Input::Contract => Option::None,
+        Input::Coin => Some(__gtf::<u16>(index, GTF_INPUT_COIN_PREDICATE_DATA_LENGTH)),
+        Input::Message => Some(__gtf::<u16>(index, GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH)),
+        Input::Contract => None,
     }
 }
 
@@ -231,12 +232,12 @@ pub fn input_predicate_data_length(index: u64) -> Option<u16> {
 //
 /// Get the maturity from the input at `index`.
 /// If the input's type is `Input::Coin`,
-/// return the index as an `Option::Some(u32)`.
-/// Otherwise, returns `Option::None`.
+/// return the index as an `Some(u32)`.
+/// Otherwise, returns `None`.
 pub fn input_maturity(index: u64) -> Option<u32> {
     match input_type(index) {
-        Input::Coin => Option::Some(__gtf::<u32>(index, GTF_INPUT_COIN_MATURITY)),
-        _ => Option::None,
+        Input::Coin => Some(__gtf::<u32>(index, GTF_INPUT_COIN_MATURITY)),
+        _ => None,
     }
 }
 

@@ -3,7 +3,6 @@ use crate::{
     error::*,
     fuel_prelude::fuel_tx::StorageSlot,
     language::{parsed, ty::*, Purity},
-    semantic_analysis::storage_only_types,
     type_system::*,
     types::*,
     Engines,
@@ -30,7 +29,6 @@ impl TyProgram {
         root: &TyModule,
         kind: parsed::TreeType,
         package_name: &str,
-        experimental_storage: bool,
     ) -> CompileResult<(TyProgramKind, Vec<TyDecl>, Vec<TyConstantDecl>)> {
         // Extract program-kind-specific properties from the root nodes.
         let mut errors = vec![];
@@ -48,7 +46,6 @@ impl TyProgram {
                     &submodule.module,
                     parsed::TreeType::Library,
                     package_name,
-                    experimental_storage,
                 ),
                 continue,
                 warnings,
@@ -62,12 +59,12 @@ impl TyProgram {
         let mut fn_declarations = std::collections::HashSet::new();
         for node in &root.all_nodes {
             match &node.content {
-                TyAstNodeContent::Declaration(TyDecl::FunctionDecl {
+                TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl {
                     name,
                     decl_id,
                     subst_list,
                     decl_span,
-                }) => {
+                })) => {
                     let func = decl_engine.get_function(decl_id);
 
                     if func.name.as_str() == "main" {
@@ -81,14 +78,17 @@ impl TyProgram {
                         });
                     }
 
-                    declarations.push(TyDecl::FunctionDecl {
+                    declarations.push(TyDecl::FunctionDecl(FunctionDecl {
                         name: name.clone(),
                         decl_id: *decl_id,
                         subst_list: subst_list.clone(),
                         decl_span: decl_span.clone(),
-                    });
+                    }));
                 }
-                TyAstNodeContent::Declaration(TyDecl::ConstantDecl { decl_id, .. }) => {
+                TyAstNodeContent::Declaration(TyDecl::ConstantDecl(ConstantDecl {
+                    decl_id,
+                    ..
+                })) => {
                     let config_decl = decl_engine.get_constant(decl_id);
                     if config_decl.is_configurable {
                         configurables.push(config_decl);
@@ -97,7 +97,7 @@ impl TyProgram {
                 // ABI entries are all functions declared in impl_traits on the contract type
                 // itself, except for ABI supertraits, which do not expose their methods to
                 // the user
-                TyAstNodeContent::Declaration(TyDecl::ImplTrait { decl_id, .. }) => {
+                TyAstNodeContent::Declaration(TyDecl::ImplTrait(ImplTrait { decl_id, .. })) => {
                     let TyImplTrait {
                         items,
                         implementing_for,
@@ -117,11 +117,11 @@ impl TyProgram {
                                         }
                                         TyImplItem::Constant(const_ref) => {
                                             let const_decl = decl_engine.get_constant(&const_ref);
-                                            declarations.push(TyDecl::ConstantDecl {
+                                            declarations.push(TyDecl::ConstantDecl(ConstantDecl {
                                                 name: const_decl.name().clone(),
                                                 decl_id: *const_ref.id(),
                                                 decl_span: const_decl.span,
-                                            });
+                                            }));
                                         }
                                     }
                                 }
@@ -135,20 +135,6 @@ impl TyProgram {
                 }
                 _ => {}
             };
-        }
-
-        if !experimental_storage {
-            for ast_n in &root.all_nodes {
-                check!(
-                    storage_only_types::validate_decls_for_storage_only_types_in_ast(
-                        engines,
-                        &ast_n.content
-                    ),
-                    continue,
-                    warnings,
-                    errors
-                );
-            }
         }
 
         // Some checks that are specific to non-contracts
@@ -167,7 +153,7 @@ impl TyProgram {
                 .iter()
                 .find(|decl| matches!(decl, TyDecl::StorageDecl { .. }));
 
-            if let Some(TyDecl::StorageDecl { decl_span, .. }) = storage_decl {
+            if let Some(TyDecl::StorageDecl(StorageDecl { decl_span, .. })) = storage_decl {
                 errors.push(CompileError::StorageDeclarationInNonContract {
                     program_kind: format!("{kind}"),
                     span: decl_span.clone(),
@@ -180,10 +166,10 @@ impl TyProgram {
             parsed::TreeType::Contract => {
                 // Types containing raw_ptr are not allowed in storage (e.g Vec)
                 for decl in declarations.iter() {
-                    if let TyDecl::StorageDecl {
+                    if let TyDecl::StorageDecl(StorageDecl {
                         decl_id,
                         decl_span: _,
-                    } = decl
+                    }) = decl
                     {
                         let storage_decl = decl_engine.get_storage(decl_id);
                         for field in storage_decl.fields.iter() {
@@ -444,7 +430,9 @@ fn disallow_impure_functions(
     let fn_decls = declarations
         .iter()
         .filter_map(|decl| match decl {
-            TyDecl::FunctionDecl { decl_id, .. } => Some(decl_engine.get_function(decl_id)),
+            TyDecl::FunctionDecl(FunctionDecl { decl_id, .. }) => {
+                Some(decl_engine.get_function(decl_id))
+            }
             _ => None,
         })
         .chain(mains.to_owned());

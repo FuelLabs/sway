@@ -5,6 +5,7 @@ pub struct Submodule {
     pub mod_token: ModToken,
     pub name: Ident,
     pub semicolon_token: SemicolonToken,
+    pub visibility: Option<PubToken>,
 }
 
 impl Spanned for Submodule {

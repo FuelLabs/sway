@@ -88,9 +88,30 @@ async fn run_blocking_parse_project(uri: Url, session: Arc<Session>) -> bool {
 /// indicating its support for various language server protocol features.
 pub fn capabilities() -> ServerCapabilities {
     ServerCapabilities {
-        text_document_sync: Some(TextDocumentSyncCapability::Kind(
-            TextDocumentSyncKind::INCREMENTAL,
-        )),
+        code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
+        code_lens_provider: Some(CodeLensOptions {
+            resolve_provider: Some(false),
+        }),
+        completion_provider: Some(CompletionOptions {
+            trigger_characters: Some(vec![".".to_string()]),
+            ..Default::default()
+        }),
+        definition_provider: Some(OneOf::Left(true)),
+        document_formatting_provider: Some(OneOf::Left(true)),
+        document_highlight_provider: Some(OneOf::Left(true)),
+        document_symbol_provider: Some(OneOf::Left(true)),
+        execute_command_provider: Some(ExecuteCommandOptions {
+            commands: vec![],
+            ..Default::default()
+        }),
+        hover_provider: Some(HoverProviderCapability::Simple(true)),
+        inlay_hint_provider: Some(OneOf::Left(true)),
+        rename_provider: Some(OneOf::Right(RenameOptions {
+            prepare_provider: Some(true),
+            work_done_progress_options: WorkDoneProgressOptions {
+                work_done_progress: Some(true),
+            },
+        })),
         semantic_tokens_provider: Some(
             SemanticTokensOptions {
                 legend: SemanticTokensLegend {
@@ -103,29 +124,9 @@ pub fn capabilities() -> ServerCapabilities {
             }
             .into(),
         ),
-        document_symbol_provider: Some(OneOf::Left(true)),
-        completion_provider: Some(CompletionOptions {
-            trigger_characters: Some(vec![".".to_string()]),
-            ..Default::default()
-        }),
-        document_formatting_provider: Some(OneOf::Left(true)),
-        definition_provider: Some(OneOf::Left(true)),
-        inlay_hint_provider: Some(OneOf::Left(true)),
-        code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
-        code_lens_provider: Some(CodeLensOptions {
-            resolve_provider: Some(false),
-        }),
-        hover_provider: Some(HoverProviderCapability::Simple(true)),
-        rename_provider: Some(OneOf::Right(RenameOptions {
-            prepare_provider: Some(true),
-            work_done_progress_options: WorkDoneProgressOptions {
-                work_done_progress: Some(true),
-            },
-        })),
-        execute_command_provider: Some(ExecuteCommandOptions {
-            commands: vec![],
-            ..Default::default()
-        }),
+        text_document_sync: Some(TextDocumentSyncCapability::Kind(
+            TextDocumentSyncKind::INCREMENTAL,
+        )),
         ..ServerCapabilities::default()
     }
 }

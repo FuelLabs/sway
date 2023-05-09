@@ -175,7 +175,6 @@ mod ir_builder {
                 / op_const()
                 / op_contract_call()
                 / op_get_elem_ptr()
-                / op_get_storage_key()
                 / op_get_local()
                 / op_gtf()
                 / op_int_to_ptr()
@@ -261,11 +260,6 @@ mod ir_builder {
                 = "get_elem_ptr" _ base:id() comma() ty:ast_ty() comma() idcs:(id() ++ comma()) {
                     IrAstOperation::GetElemPtr(base, ty, idcs)
             }
-
-            rule op_get_storage_key() -> IrAstOperation
-                = "get_storage_key" _ {
-                    IrAstOperation::GetStorageKey()
-                }
 
             rule op_get_local() -> IrAstOperation
                 = "get_local" _ ast_ty() comma() name:id() {
@@ -671,7 +665,6 @@ mod ir_builder {
         Const(IrAstTy, IrAstConst),
         ContractCall(IrAstTy, String, String, String, String, String),
         GetElemPtr(String, IrAstTy, Vec<String>),
-        GetStorageKey(),
         GetLocal(String),
         Gtf(String, u64),
         IntToPtr(String, IrAstTy),
@@ -1150,10 +1143,6 @@ mod ir_builder {
                             )
                             .add_metadatum(context, opt_metadata)
                     }
-                    IrAstOperation::GetStorageKey() => block
-                        .ins(context)
-                        .get_storage_key()
-                        .add_metadatum(context, opt_metadata),
                     IrAstOperation::GetLocal(local_name) => block
                         .ins(context)
                         .get_local(*local_map.get(&local_name).unwrap())

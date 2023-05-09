@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-58F9DCE1E1853B21'
+
+[[package]]
+name = 'predicate_log'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-58F9DCE1E1853B21'
+dependencies = ['core']

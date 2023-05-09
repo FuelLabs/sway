@@ -48,11 +48,11 @@ pub mod types;
 
 pub use error::CompileResult;
 use sway_error::error::CompileError;
-use sway_error::warning::CompileWarning;
+use sway_error::warning::{CompileWarning, Warning};
 use sway_types::{ident::Ident, span, Spanned};
 pub use type_system::*;
 
-use language::{lexed, parsed, ty};
+use language::{lexed, parsed, ty, Visibility};
 use transform::to_parsed_lang::{self, convert_module_kind};
 
 pub mod fuel_prelude {
@@ -244,6 +244,10 @@ fn parse_submodules(
 
             let parse_submodule = parsed::ParseSubmodule {
                 module: parse_module,
+                visibility: match submod.visibility {
+                    Some(..) => Visibility::Public,
+                    None => Visibility::Private,
+                },
                 mod_name_span: submod.name.span(),
             };
             let lexed_submodule = lexed::LexedSubmodule {
@@ -334,10 +338,8 @@ pub fn parsed_to_ast(
     build_config: Option<&BuildConfig>,
     package_name: &str,
 ) -> CompileResult<ty::TyProgram> {
-    let experimental_storage = match build_config {
-        Some(build_config) => build_config.experimental_storage,
-        None => true,
-    };
+    let experimental_private_modules =
+        build_config.map_or(true, |b| b.experimental_private_modules);
     // Type check the program.
     let CompileResult {
         value: typed_program_opt,
@@ -348,8 +350,16 @@ pub fn parsed_to_ast(
         parse_program,
         initial_namespace,
         package_name,
-        experimental_storage,
+        experimental_private_modules,
     );
+
+    if !experimental_private_modules {
+        warnings.push(CompileWarning {
+            span: parse_program.root.span.clone(),
+            warning_content: Warning::ModulePrivacyDisabled,
+        })
+    }
+
     let mut typed_program = match typed_program_opt {
         Some(typed_program) => typed_program,
         None => return err(warnings, errors),
@@ -420,7 +430,6 @@ pub fn parsed_to_ast(
         &mut ctx,
         &mut md_mgr,
         module,
-        experimental_storage,
     );
     warnings.extend(typed_wiss_res.warnings);
     errors.extend(typed_wiss_res.errors);
@@ -561,12 +570,8 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // IR phase.
 
     let tree_type = program.kind.tree_type();
-    let mut ir = match ir_generation::compile_program(
-        program,
-        build_config.include_tests,
-        engines,
-        build_config.experimental_storage,
-    ) {
+    let mut ir = match ir_generation::compile_program(program, build_config.include_tests, engines)
+    {
         Ok(ir) => ir,
         Err(e) => return err(warnings, vec![e]),
     };

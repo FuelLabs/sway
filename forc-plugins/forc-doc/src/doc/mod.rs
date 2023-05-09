@@ -6,8 +6,9 @@ use anyhow::Result;
 use std::option::Option;
 use sway_core::{
     decl_engine::DeclEngine,
-    language::ty::{TyAstNodeContent, TyProgram, TySubmodule},
+    language::ty::{TyAstNodeContent, TyDecl, TyImplTrait, TyProgram, TySubmodule},
 };
+use sway_types::Spanned;
 
 mod descriptor;
 pub mod module;
@@ -63,17 +64,22 @@ impl Document {
     ) -> Result<Documentation> {
         // the first module prefix will always be the project name
         let mut docs: Documentation = Default::default();
+        let mut impl_traits: Vec<TyImplTrait> = Vec::new();
         for ast_node in &typed_program.root.all_nodes {
             if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
-                let desc = Descriptor::from_typed_decl(
-                    decl_engine,
-                    decl,
-                    ModuleInfo::from_ty_module(vec![project_name.to_owned()], None),
-                    document_private_items,
-                )?;
+                if let TyDecl::ImplTrait(impl_trait) = decl {
+                    impl_traits.push(decl_engine.get_impl_trait(&impl_trait.decl_id))
+                } else {
+                    let desc = Descriptor::from_typed_decl(
+                        decl_engine,
+                        decl,
+                        ModuleInfo::from_ty_module(vec![project_name.to_owned()], None),
+                        document_private_items,
+                    )?;
 
-                if let Descriptor::Documentable(doc) = desc {
-                    docs.push(doc)
+                    if let Descriptor::Documentable(doc) = desc {
+                        docs.push(doc)
+                    }
                 }
             }
         }
@@ -89,9 +95,38 @@ impl Document {
                     decl_engine,
                     typed_submodule,
                     &mut docs,
+                    &mut impl_traits,
                     &module_prefix,
                     document_private_items,
                 )?;
+            }
+        }
+
+        // match for the spans to add the impl_traits to their corresponding doc:
+        // currently this compares the spans as str, but this needs to change
+        // to compare the actual types
+        if !impl_traits.is_empty() {
+            for doc in &mut docs {
+                let mut impl_vec: Vec<TyImplTrait> = Vec::new();
+
+                match doc.item_body.ty_decl {
+                    TyDecl::StructDecl(ref struct_decl) => {
+                        for impl_trait in &impl_traits {
+                            if struct_decl.name.as_str()
+                                == impl_trait.implementing_for.span.as_str()
+                                && struct_decl.name.as_str()
+                                    != impl_trait.trait_name.suffix.span().as_str()
+                            {
+                                impl_vec.push(impl_trait.clone());
+                            }
+                        }
+                    }
+                    _ => continue,
+                }
+
+                if !impl_vec.is_empty() {
+                    doc.item_body.item_context.impl_traits = Some(impl_vec);
+                }
             }
         }
 
@@ -101,6 +136,7 @@ impl Document {
         decl_engine: &DeclEngine,
         typed_submodule: &TySubmodule,
         docs: &mut Documentation,
+        impl_traits: &mut Vec<TyImplTrait>,
         module_prefix: &ModuleInfo,
         document_private_items: bool,
     ) -> Result<()> {
@@ -110,23 +146,29 @@ impl Document {
             .push(typed_submodule.mod_name_span.as_str().to_owned());
         for ast_node in &typed_submodule.module.all_nodes {
             if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
-                let desc = Descriptor::from_typed_decl(
-                    decl_engine,
-                    decl,
-                    new_submodule_prefix.clone(),
-                    document_private_items,
-                )?;
+                if let TyDecl::ImplTrait(impl_trait) = decl {
+                    impl_traits.push(decl_engine.get_impl_trait(&impl_trait.decl_id))
+                } else {
+                    let desc = Descriptor::from_typed_decl(
+                        decl_engine,
+                        decl,
+                        new_submodule_prefix.clone(),
+                        document_private_items,
+                    )?;
 
-                if let Descriptor::Documentable(doc) = desc {
-                    docs.push(doc)
+                    if let Descriptor::Documentable(doc) = desc {
+                        docs.push(doc)
+                    }
                 }
             }
         }
+
         for (_, submodule) in &typed_submodule.module.submodules {
             Document::from_ty_submodule(
                 decl_engine,
                 submodule,
                 docs,
+                impl_traits,
                 &new_submodule_prefix,
                 document_private_items,
             )?;

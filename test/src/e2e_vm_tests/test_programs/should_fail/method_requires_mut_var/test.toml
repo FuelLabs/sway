@@ -1,3 +1,10 @@
 category = "fail"
 
-# check: $()Cannot call method "f" on variable "a" because "a" is not declared as mutable.
+# check: $()self.a.f();
+# nextln: $()Cannot call method "f" on variable "self" because "self" is not declared as mutable.
+
+# check: $()self.b.a.f();
+# nextln: $()Cannot call method "f" on variable "self" because "self" is not declared as mutable.
+
+# check: $()a.f();
+# nextln: $()Cannot call method "f" on variable "a" because "a" is not declared as mutable.

@@ -135,7 +135,7 @@ pub enum TypeInfo {
     Storage {
         fields: Vec<ty::TyStructField>,
     },
-    /// Raw untyped pointers.
+    /// Pointers.
     /// These are represented in memory as u64 but are a different type since pointers only make
     /// sense in the context they were created in. Users can obtain pointers via standard library
     /// functions such `alloc` or `stack_ptr`. These functions are implemented using asm blocks
@@ -143,6 +143,8 @@ pub enum TypeInfo {
     /// gtf instruction, or manipulating u64s.
     RawUntypedPtr,
     RawUntypedSlice,
+    Ptr(TypeArgument),
+    Slice(TypeArgument),
     /// Type Alias. This type and the type `ty` it encapsulates always coerce. They are effectively
     /// interchangeable
     Alias {
@@ -207,6 +209,12 @@ impl HashWithEngines for TypeInfo {
             }
             TypeInfo::Alias { name, ty } => {
                 name.hash(state);
+                ty.hash(state, engines);
+            }
+            TypeInfo::Ptr(ty) => {
+                ty.hash(state, engines);
+            }
+            TypeInfo::Slice(ty) => {
                 ty.hash(state, engines);
             }
             TypeInfo::Numeric
@@ -464,6 +472,12 @@ impl DisplayWithEngines for TypeInfo {
             Storage { .. } => "storage".into(),
             RawUntypedPtr => "pointer".into(),
             RawUntypedSlice => "slice".into(),
+            Ptr(ty) => {
+                format!("__ptr[{}]", engines.help_out(ty))
+            }
+            Slice(ty) => {
+                format!("__slice[{}]", engines.help_out(ty))
+            }
             Alias { name, .. } => name.to_string(),
         };
         write!(f, "{s}")
@@ -534,6 +548,12 @@ impl DebugWithEngines for TypeInfo {
             Storage { .. } => "contract storage".into(),
             RawUntypedPtr => "raw untyped ptr".into(),
             RawUntypedSlice => "raw untyped slice".into(),
+            Ptr(ty) => {
+                format!("__ptr[{:?}]", engines.help_out(ty))
+            }
+            Slice(ty) => {
+                format!("__slice[{:?}]", engines.help_out(ty))
+            }
             Alias { name, ty } => {
                 format!("type {} = {:?}", name, engines.help_out(ty))
             }
@@ -571,6 +591,8 @@ impl TypeInfo {
             TypeInfo::RawUntypedSlice => 19,
             TypeInfo::TypeParam(_) => 20,
             TypeInfo::Alias { .. } => 21,
+            TypeInfo::Ptr(..) => 22,
+            TypeInfo::Slice(..) => 23,
         }
     }
 
@@ -936,6 +958,8 @@ impl TypeInfo {
             | TypeInfo::Numeric
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
+            | TypeInfo::Ptr(..)
+            | TypeInfo::Slice(..)
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery
             | TypeInfo::Array(_, _)
@@ -979,6 +1003,8 @@ impl TypeInfo {
             TypeInfo::Unknown
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
+            | TypeInfo::Ptr(..)
+            | TypeInfo::Slice(..)
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::Custom { .. }
             | TypeInfo::SelfType
@@ -1015,6 +1041,8 @@ impl TypeInfo {
             | TypeInfo::B256
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
+            | TypeInfo::Ptr(_)
+            | TypeInfo::Slice(_)
             | TypeInfo::Custom { .. }
             | TypeInfo::Str(_)
             | TypeInfo::Array(_, _)
@@ -1170,6 +1198,12 @@ impl TypeInfo {
                         );
                     }
                 }
+            }
+            TypeInfo::Ptr(ty) => {
+                found.extend(ty.type_id.extract_any_including_self(engines, filter_fn));
+            }
+            TypeInfo::Slice(ty) => {
+                found.extend(ty.type_id.extract_any_including_self(engines, filter_fn));
             }
         }
         found
@@ -1507,6 +1541,8 @@ impl TypeInfo {
             | TypeInfo::B256
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
+            | TypeInfo::Ptr(..)
+            | TypeInfo::Slice(..)
             | TypeInfo::ErrorRecovery => false,
             TypeInfo::Unknown
             | TypeInfo::UnknownGeneric { .. }

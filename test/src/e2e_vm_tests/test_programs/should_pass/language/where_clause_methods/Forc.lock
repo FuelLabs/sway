@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-415990365485FD0B'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-415990365485FD0B'
+dependencies = ['core']
+
+[[package]]
+name = 'where_clause_methods'
+source = 'member'
+dependencies = ['std']

@@ -35,9 +35,6 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::IsReferenceType => {
                 type_check_is_reference_type(ctx, kind, arguments, type_arguments, span)
             }
-            Intrinsic::GetStorageKey => {
-                type_check_get_storage_key(ctx, kind, arguments, type_arguments, span)
-            }
             Intrinsic::Eq | Intrinsic::Gt | Intrinsic::Lt => {
                 type_check_cmp(ctx, kind, arguments, span)
             }
@@ -242,35 +239,6 @@ fn type_check_is_reference_type(
         ),
         warnings,
         errors,
-    )
-}
-
-/// Signature: `__get_storage_key() -> b256`
-/// Description: Returns the storage key used by a given `struct` in storage when called from a
-///              method on that `struct`.
-/// Constraints: None.
-fn type_check_get_storage_key(
-    ctx: TypeCheckContext,
-    kind: sway_ast::Intrinsic,
-    _arguments: Vec<Expression>,
-    _type_arguments: Vec<TypeArgument>,
-    span: Span,
-) -> CompileResult<(ty::TyIntrinsicFunctionKind, TypeId)> {
-    let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
-
-    ok(
-        (
-            ty::TyIntrinsicFunctionKind {
-                kind,
-                arguments: vec![],
-                type_arguments: vec![],
-                span,
-            },
-            type_engine.insert(decl_engine, TypeInfo::B256),
-        ),
-        vec![],
-        vec![],
     )
 }
 

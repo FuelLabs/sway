@@ -1,0 +1,3 @@
+category = "fail"
+
+# check: $()Name "ID" is defined multiple times.

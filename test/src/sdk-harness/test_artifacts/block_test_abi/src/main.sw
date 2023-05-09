@@ -8,4 +8,6 @@ abi BlockTest {
     fn get_timestamp_of_block(block_height: u64) -> u64;
 
     fn get_block_and_timestamp() -> (u64, u64);
+
+    fn get_block_header_hash(h: u64) -> b256;
 }

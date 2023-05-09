@@ -1,5 +1,5 @@
-use anyhow::Result;
 use clap::Parser;
+use forc_util::ForcResult;
 
 pub use crate::cli::shared::{BuildOutput, BuildProfile, Minify, Pkg, Print};
 use crate::ops::forc_predicate_root;
@@ -20,6 +20,6 @@ pub struct Command {
     pub build_profile: BuildProfile,
 }
 
-pub(crate) fn exec(cmd: Command) -> Result<()> {
-    forc_predicate_root::predicate_root(cmd)
+pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
+    forc_predicate_root::predicate_root(cmd).map_err(|e| e.into())
 }

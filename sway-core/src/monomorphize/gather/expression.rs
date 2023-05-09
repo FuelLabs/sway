@@ -85,7 +85,6 @@ pub(crate) fn gather_from_exp_inner(
         ty::TyExpressionVariant::UnsafeDowncast { .. } => todo!(),
         ty::TyExpressionVariant::WhileLoop { .. } => todo!(),
         ty::TyExpressionVariant::Reassignment(_) => todo!(),
-        ty::TyExpressionVariant::StorageReassignment(_) => todo!(),
         ty::TyExpressionVariant::Return(exp) => {
             gather_from_exp(ctx.by_ref(), handler, exp)?;
         }

@@ -1,7 +1,7 @@
 // ANCHOR: body
 contract;
 
-use std::{auth::msg_sender, hash::sha256};
+use std::hash::sha256;
 
 ////////////////////////////////////////
 // Event declarations
@@ -64,7 +64,7 @@ impl Token for Contract {
         };
 
         // Increase the balance of receiver
-        storage.balances.insert(receiver, storage.balances.get(receiver).unwrap_or(0) + amount);
+        storage.balances.insert(receiver, storage.balances.get(receiver).try_read().unwrap_or(0) + amount);
     }
 
     #[storage(read, write)]
@@ -76,12 +76,12 @@ impl Token for Contract {
         };
 
         // Reduce the balance of sender
-        let sender_amount = storage.balances.get(sender).unwrap_or(0);
+        let sender_amount = storage.balances.get(sender).try_read().unwrap_or(0);
         assert(sender_amount > amount);
         storage.balances.insert(sender, sender_amount - amount);
 
         // Increase the balance of receiver
-        storage.balances.insert(receiver, storage.balances.get(receiver).unwrap_or(0) + amount);
+        storage.balances.insert(receiver, storage.balances.get(receiver).try_read().unwrap_or(0) + amount);
 
         log(Sent {
             from: sender,

@@ -213,18 +213,23 @@ impl TypeBinding<CallPath> {
 
 /// Trait that adds a workaround for easy generic returns in Rust:
 /// https://blog.jcoglan.com/2019/04/22/generic-returns-in-rust/
+#[allow(clippy::type_complexity)]
 pub(crate) trait TypeCheckTypeBinding<T> {
     fn type_check(
         &mut self,
         ctx: TypeCheckContext,
-    ) -> CompileResult<(DeclRef<DeclId<T>>, Option<TypeId>)>;
+    ) -> CompileResult<(DeclRef<DeclId<T>>, Option<TypeId>, Option<ty::TyDecl>)>;
 }
 
 impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
     fn type_check(
         &mut self,
         mut ctx: TypeCheckContext,
-    ) -> CompileResult<(DeclRef<DeclId<ty::TyFunctionDecl>>, Option<TypeId>)> {
+    ) -> CompileResult<(
+        DeclRef<DeclId<ty::TyFunctionDecl>>,
+        Option<TypeId>,
+        Option<ty::TyDecl>,
+    )> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_engine = ctx.type_engine;
@@ -233,7 +238,11 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
         // Grab the declaration.
         let unknown_decl = check!(
             ctx.namespace
-                .resolve_call_path_with_visibility_check(engines, &self.inner)
+                .resolve_call_path_with_visibility_check(
+                    engines,
+                    &self.inner,
+                    ctx.experimental_private_modules_enabled()
+                )
                 .cloned(),
             return err(warnings, errors),
             warnings,
@@ -285,7 +294,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
             .decl_engine
             .insert(new_copy)
             .with_parent(ctx.decl_engine, fn_ref.id().into());
-        ok((new_fn_ref, None), warnings, errors)
+        ok((new_fn_ref, None, None), warnings, errors)
     }
 }
 
@@ -293,7 +302,11 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
     fn type_check(
         &mut self,
         mut ctx: TypeCheckContext,
-    ) -> CompileResult<(DeclRef<DeclId<ty::TyStructDecl>>, Option<TypeId>)> {
+    ) -> CompileResult<(
+        DeclRef<DeclId<ty::TyStructDecl>>,
+        Option<TypeId>,
+        Option<ty::TyDecl>,
+    )> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_engine = ctx.type_engine;
@@ -302,7 +315,11 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
         // Grab the declaration.
         let unknown_decl = check!(
             ctx.namespace
-                .resolve_call_path_with_visibility_check(engines, &self.inner)
+                .resolve_call_path_with_visibility_check(
+                    engines,
+                    &self.inner,
+                    ctx.experimental_private_modules_enabled()
+                )
                 .cloned(),
             return err(warnings, errors),
             warnings,
@@ -335,7 +352,7 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
         let type_id = type_engine.insert(decl_engine, TypeInfo::Struct(new_struct_ref.clone()));
         ctx.namespace
             .insert_trait_implementation_for_type(engines, type_id);
-        ok((new_struct_ref, Some(type_id)), warnings, errors)
+        ok((new_struct_ref, Some(type_id), None), warnings, errors)
     }
 }
 
@@ -343,7 +360,11 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
     fn type_check(
         &mut self,
         mut ctx: TypeCheckContext,
-    ) -> CompileResult<(DeclRef<DeclId<ty::TyEnumDecl>>, Option<TypeId>)> {
+    ) -> CompileResult<(
+        DeclRef<DeclId<ty::TyEnumDecl>>,
+        Option<TypeId>,
+        Option<ty::TyDecl>,
+    )> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_engine = ctx.type_engine;
@@ -352,7 +373,11 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
         // Grab the declaration.
         let unknown_decl = check!(
             ctx.namespace
-                .resolve_call_path_with_visibility_check(engines, &self.inner)
+                .resolve_call_path_with_visibility_check(
+                    engines,
+                    &self.inner,
+                    ctx.experimental_private_modules_enabled()
+                )
                 .cloned(),
             return err(warnings, errors),
             warnings,
@@ -360,7 +385,11 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
         );
 
         // Get a new copy from the declaration engine.
-        let mut new_copy = if let ty::TyDecl::EnumVariantDecl { enum_ref, .. } = &unknown_decl {
+        let mut new_copy = if let ty::TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
+            enum_ref,
+            ..
+        }) = &unknown_decl
+        {
             decl_engine.get_enum(enum_ref.id())
         } else {
             // Check to see if this is a enum declaration.
@@ -391,7 +420,11 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
         let type_id = type_engine.insert(decl_engine, TypeInfo::Enum(new_enum_ref.clone()));
         ctx.namespace
             .insert_trait_implementation_for_type(engines, type_id);
-        ok((new_enum_ref, Some(type_id)), warnings, errors)
+        ok(
+            (new_enum_ref, Some(type_id), Some(unknown_decl)),
+            warnings,
+            errors,
+        )
     }
 }
 
@@ -399,7 +432,11 @@ impl TypeCheckTypeBinding<ty::TyConstantDecl> for TypeBinding<CallPath> {
     fn type_check(
         &mut self,
         ctx: TypeCheckContext,
-    ) -> CompileResult<(DeclRef<DeclId<ty::TyConstantDecl>>, Option<TypeId>)> {
+    ) -> CompileResult<(
+        DeclRef<DeclId<ty::TyConstantDecl>>,
+        Option<TypeId>,
+        Option<ty::TyDecl>,
+    )> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -408,7 +445,11 @@ impl TypeCheckTypeBinding<ty::TyConstantDecl> for TypeBinding<CallPath> {
         // Grab the declaration.
         let unknown_decl = check!(
             ctx.namespace
-                .resolve_call_path_with_visibility_check(engines, &self.inner)
+                .resolve_call_path_with_visibility_check(
+                    engines,
+                    &self.inner,
+                    ctx.experimental_private_modules_enabled()
+                )
                 .cloned(),
             return err(warnings, errors),
             warnings,
@@ -423,6 +464,6 @@ impl TypeCheckTypeBinding<ty::TyConstantDecl> for TypeBinding<CallPath> {
             errors
         );
 
-        ok((const_ref, None), warnings, errors)
+        ok((const_ref, None, None), warnings, errors)
     }
 }
