@@ -74,7 +74,7 @@ type TraitItems = im::HashMap<String, TyImplItem>;
 #[derive(Clone, Debug)]
 struct TraitValue {
     trait_items: TraitItems,
-    // The span of the entire impl block.
+    /// The span of the entire impl block.
     impl_span: Span,
 }
 
