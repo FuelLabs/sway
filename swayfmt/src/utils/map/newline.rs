@@ -159,29 +159,26 @@ fn add_newlines(
             // Here, we will try to insert newlines that occur before comments.
             while let Some((idx, character)) = whitespaces_with_comments_it.next() {
                 if character == '/' {
-                    match whitespaces_with_comments_it.peek() {
-                        Some((_, '/') | (_, '*')) => {
-                            comment_found = true;
+                    if let Some((_, '/') | (_, '*')) = whitespaces_with_comments_it.peek() {
+                        comment_found = true;
 
-                            // Insert newlines that occur before the first comment here
-                            if let Some(newline_sequence) = first_newline_sequence_in_span(
-                                &ByteSpan {
-                                    start,
-                                    end: start + idx,
-                                },
-                                &newline_map,
-                            ) {
-                                let at = previous_formatted_newline_span.end + offset;
-                                offset += insert_after_span(
-                                    at,
-                                    newline_sequence,
-                                    formatted_code,
-                                    newline_threshold,
-                                )?;
-                                break;
-                            }
+                        // Insert newlines that occur before the first comment here
+                        if let Some(newline_sequence) = first_newline_sequence_in_span(
+                            &ByteSpan {
+                                start,
+                                end: start + idx,
+                            },
+                            &newline_map,
+                        ) {
+                            let at = previous_formatted_newline_span.end + offset;
+                            offset += insert_after_span(
+                                at,
+                                newline_sequence,
+                                formatted_code,
+                                newline_threshold,
+                            )?;
+                            break;
                         }
-                        _ => {}
                     }
                 }
 
@@ -217,7 +214,7 @@ fn add_newlines(
                 let mut end_of_last_comment = whitespaces_with_comments.len();
 
                 // Find point of insertion of newline sequences
-                while let Some((idx, character)) = whitespaces_with_comments_rev_it.next() {
+                for (idx, character) in whitespaces_with_comments_rev_it.by_ref() {
                     if !character.is_whitespace() {
                         end_of_last_comment = idx + 1;
                         break;
@@ -226,28 +223,25 @@ fn add_newlines(
 
                 while let Some((_, character)) = whitespaces_with_comments_rev_it.next() {
                     if character == '/' {
-                        match whitespaces_with_comments_rev_it.peek() {
-                            // Comments either start with '//' or end with '*/'
-                            Some((_, '/') | (_, '*')) => {
-                                if let Some(newline_sequence) = first_newline_sequence_in_span(
-                                    &ByteSpan {
-                                        start: start + end_of_last_comment,
-                                        end: unformatted_newline_span.start,
-                                    },
-                                    &newline_map,
-                                ) {
-                                    offset += insert_after_span(
-                                        previous_formatted_newline_span.end
-                                            + end_of_last_comment
-                                            + offset,
-                                        newline_sequence,
-                                        formatted_code,
-                                        newline_threshold,
-                                    )?;
-                                }
-                                break;
+                        // Comments either start with '//' or end with '*/'
+                        if let Some((_, '/') | (_, '*')) = whitespaces_with_comments_rev_it.peek() {
+                            if let Some(newline_sequence) = first_newline_sequence_in_span(
+                                &ByteSpan {
+                                    start: start + end_of_last_comment,
+                                    end: unformatted_newline_span.start,
+                                },
+                                &newline_map,
+                            ) {
+                                offset += insert_after_span(
+                                    previous_formatted_newline_span.end
+                                        + end_of_last_comment
+                                        + offset,
+                                    newline_sequence,
+                                    formatted_code,
+                                    newline_threshold,
+                                )?;
                             }
-                            _ => {}
+                            break;
                         }
                     }
                 }
