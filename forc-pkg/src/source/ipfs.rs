@@ -25,7 +25,7 @@ pub type IpfsClient = ipfs_api::IpfsClient;
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct Source(pub Cid);
 
-/// Package source at a specific content address.
+/// A pinned instance of an ipfs source
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct Pinned(pub Cid);
 
@@ -34,6 +34,8 @@ impl Pinned {
 }
 
 const PUBLIC_GATEWAY: &str = "https://ipfs.io";
+const IPFS_DIR_NAME: &str = "ipfs";
+const IPFS_CACHE_DIR_NAME: &str = "cache";
 
 impl FromStr for Cid {
     type Err = <cid::Cid as FromStr>::Err;
@@ -200,11 +202,11 @@ impl<'de> Deserialize<'de> for Cid {
 }
 
 fn ipfs_dir() -> PathBuf {
-    forc_util::user_forc_directory().join("ipfs")
+    forc_util::user_forc_directory().join(IPFS_DIR_NAME)
 }
 
 fn cache_dir() -> PathBuf {
-    ipfs_dir().join("cache")
+    ipfs_dir().join(IPFS_CACHE_DIR_NAME)
 }
 
 fn pkg_cache_dir(cid: &Cid) -> PathBuf {
