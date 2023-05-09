@@ -144,63 +144,113 @@ fn add_newlines(
         .zip(formatted_newline_spans.iter().skip(1))
     {
         if previous_unformatted_newline_span.end < unformatted_newline_span.start {
-            let snippet = &unformatted_code
+            // At its core, the spaces between leaf spans are nothing more than just whitespace characters,
+            // and sometimes comments, since they are not considered valid AST nodes. We are interested in
+            // these spaces (with comments, if any)
+            let whitespaces_with_comments = &unformatted_code
                 [previous_unformatted_newline_span.end..unformatted_newline_span.start];
 
+            let mut whitespaces_with_comments_it =
+                whitespaces_with_comments.char_indices().peekable();
+
             let start = previous_unformatted_newline_span.end;
+            let mut comment_found = false;
 
-            // Here, we will try to insert newlines that occur before and after comments.
-            // The reason we do this is because comments aren't a part of the AST, and so they aren't
-            // collected as leaf spans - they simply exist between whitespaces.
-            if let Some(start_first_comment) = snippet.find("//") {
-                // Insert newlines that occur before the first comment here
-                if let Some(newline_sequence) = first_newline_sequence_in_span(
-                    &ByteSpan {
-                        start,
-                        end: start + start_first_comment,
-                    },
-                    &newline_map,
-                ) {
-                    let at = previous_formatted_newline_span.end + offset;
-                    offset +=
-                        insert_after_span(at, newline_sequence, formatted_code, newline_threshold)?;
-                }
+            // Here, we will try to insert newlines that occur before comments.
+            while let Some((idx, character)) = whitespaces_with_comments_it.next() {
+                if character == '/' {
+                    match whitespaces_with_comments_it.peek() {
+                        Some((_, '/') | (_, '*')) => {
+                            comment_found = true;
 
-                // Insert newlines that occur after the last comment here
-                if let Some(start_last_comment) = snippet.rfind("//") {
-                    if start_first_comment != start_last_comment {
-                        if let Some(end_last_comment) = snippet[start_last_comment..].find('\n') {
+                            // Insert newlines that occur before the first comment here
                             if let Some(newline_sequence) = first_newline_sequence_in_span(
                                 &ByteSpan {
-                                    start: start + start_last_comment + end_last_comment,
-                                    end: unformatted_newline_span.start,
+                                    start,
+                                    end: start + idx,
                                 },
                                 &newline_map,
                             ) {
-                                let at = previous_formatted_newline_span.end
-                                    + offset
-                                    + start_last_comment
-                                    + end_last_comment;
+                                let at = previous_formatted_newline_span.end + offset;
                                 offset += insert_after_span(
                                     at,
                                     newline_sequence,
                                     formatted_code,
                                     newline_threshold,
                                 )?;
+                                break;
                             }
+                        }
+                        _ => {}
+                    }
+                }
+
+                // If there are no comments found in the sequence of whitespaces, there is no point
+                // in trying to find newline sequences from the back. So we simply take the entire
+                // sequence, insert newlines at the start and we're done with this iteration of the for loop.
+                if idx == whitespaces_with_comments.len() - 1 && !comment_found {
+                    if let Some(newline_sequence) = first_newline_sequence_in_span(
+                        &ByteSpan {
+                            start,
+                            end: unformatted_newline_span.start,
+                        },
+                        &newline_map,
+                    ) {
+                        let at = previous_formatted_newline_span.end + offset;
+                        offset += insert_after_span(
+                            at,
+                            newline_sequence,
+                            formatted_code,
+                            newline_threshold,
+                        )?;
+                    }
+                }
+            }
+
+            // If we found some comment(s), we are also interested in inserting
+            // newline sequences that happen after the last comment.
+            //
+            // This can be a single comment or multiple comments.
+            if comment_found {
+                let mut whitespaces_with_comments_rev_it =
+                    whitespaces_with_comments.char_indices().rev().peekable();
+                let mut end_of_last_comment = whitespaces_with_comments.len();
+
+                // Find point of insertion of newline sequences
+                while let Some((idx, character)) = whitespaces_with_comments_rev_it.next() {
+                    if !character.is_whitespace() {
+                        end_of_last_comment = idx + 1;
+                        break;
+                    }
+                }
+
+                while let Some((_, character)) = whitespaces_with_comments_rev_it.next() {
+                    if character == '/' {
+                        match whitespaces_with_comments_rev_it.peek() {
+                            // Comments either start with '//' or end with '*/'
+                            Some((_, '/') | (_, '*')) => {
+                                if let Some(newline_sequence) = first_newline_sequence_in_span(
+                                    &ByteSpan {
+                                        start: start + end_of_last_comment,
+                                        end: unformatted_newline_span.start,
+                                    },
+                                    &newline_map,
+                                ) {
+                                    offset += insert_after_span(
+                                        previous_formatted_newline_span.end
+                                            + end_of_last_comment
+                                            + offset,
+                                        newline_sequence,
+                                        formatted_code,
+                                        newline_threshold,
+                                    )?;
+                                }
+                                break;
+                            }
+                            _ => {}
                         }
                     }
                 }
-            } else if let Some(newline_sequence) = first_newline_sequence_in_span(
-                &ByteSpan {
-                    start,
-                    end: unformatted_newline_span.start,
-                },
-                &newline_map,
-            ) {
-                let at = previous_formatted_newline_span.end + offset;
-                offset +=
-                    insert_after_span(at, newline_sequence, formatted_code, newline_threshold)?;
             }
         }
         previous_unformatted_newline_span = unformatted_newline_span;

@@ -1538,6 +1538,10 @@ fn temporarily_commented_out_fn_with_doc_comments() {
         r#"contract;
 
 abi MyContract {
+    /// Doc comment
+    /* 
+        Some comment
+    */
     fn test_function() -> bool;
 }
 
@@ -1553,6 +1557,10 @@ impl MyContract for Contract {
         r#"contract;
 
 abi MyContract {
+    /// Doc comment
+    /* 
+        Some comment
+    */
     fn test_function() -> bool;
 }
 
