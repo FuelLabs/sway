@@ -1967,8 +1967,6 @@ impl PkgTestEntry {
             })
             .collect();
 
-        println!("{test_args:?}");
-
         let pass_condition = if test_args.is_empty() {
             anyhow::Ok(TestPassCondition::ShouldNotRevert)
         } else if let Some(args) = test_args.get(FAILING_TEST_KEYWORD) {

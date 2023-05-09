@@ -63,6 +63,15 @@ fn test_meaning_of_life() {
 
 Tests with `#[test(should_revert)]` considered to be passing if they are reverting.
 
+It is also possible to specify a specify revert code like the following example.
+
+```sway
+#[test(should_revert = "18446744073709486084")]
+fn test_meaning_of_life() {
+    assert(6 * 6 == 42);
+}
+```
+
 ## Calling Contracts
 
 Unit tests can call contract functions an example for such calls can be seen below.
