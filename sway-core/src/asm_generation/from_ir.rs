@@ -1,12 +1,14 @@
 use super::{
     asm_builder::{AsmBuilder, AsmBuilderResult},
-    checks::check_invalid_opcodes,
     evm::EvmAsmBuilder,
-    finalized_asm::FinalizedAsm,
-    fuel::FuelAsmBuilder,
+    finalized_asm::{check_invalid_opcodes, FinalizedAsm},
+    fuel::{
+        data_section::{DataId, DataSection},
+        fuel_asm_builder::FuelAsmBuilder,
+        register_sequencer::RegisterSequencer,
+    },
     programs::{AbstractEntry, AbstractProgram, FinalProgram, ProgramKind},
-    register_sequencer::RegisterSequencer,
-    DataId, DataSection,
+    MidenVMAsmBuilder,
 };
 
 use crate::{err, ok, BuildConfig, BuildTarget, CompileResult, CompileWarning};
@@ -80,7 +82,8 @@ fn compile_module_to_asm(
             reg_seqr,
             context,
         )),
-        BuildTarget::EVM => Box::new(EvmAsmBuilder::new(kind, reg_seqr, context)),
+        BuildTarget::EVM => Box::new(EvmAsmBuilder::new(kind, context)),
+        BuildTarget::MidenVM => Box::new(MidenVMAsmBuilder::new(kind, context)),
     };
 
     // Pre-create labels for all functions before we generate other code, so we can call them
@@ -108,11 +111,11 @@ fn compile_module_to_asm(
             let (data_section, reg_seqr, entries, non_entries) = result;
             let entries = entries
                 .into_iter()
-                .map(|(func, label, ops, test_decl_id)| {
+                .map(|(func, label, ops, test_decl_ref)| {
                     let selector = func.get_selector(context);
                     let name = func.get_name(context).to_string();
                     AbstractEntry {
-                        test_decl_id,
+                        test_decl_ref,
                         selector,
                         label,
                         ops,
@@ -158,6 +161,7 @@ fn compile_module_to_asm(
             ops: result.ops,
             abi: result.abi,
         },
+        AsmBuilderResult::MidenVM(result) => FinalProgram::MidenVM { ops: result.ops },
     };
 
     ok(final_program, warnings, errors)
@@ -197,7 +201,7 @@ pub enum StateAccessType {
 
 pub(crate) fn ir_type_size_in_bytes(context: &Context, ty: &Type) -> u64 {
     match ty.get_content(context) {
-        TypeContent::Unit | TypeContent::Bool | TypeContent::Uint(_) => 8,
+        TypeContent::Unit | TypeContent::Bool | TypeContent::Uint(_) | TypeContent::Pointer(_) => 8,
         TypeContent::Slice => 16,
         TypeContent::B256 => 32,
         TypeContent::String(n) => size_bytes_round_up_to_word_alignment!(*n),
@@ -218,48 +222,4 @@ pub(crate) fn ir_type_size_in_bytes(context: &Context, ty: &Type) -> u64 {
                 .unwrap_or(0)
         }
     }
-}
-
-// Aggregate (nested) field offset in words and size in bytes.
-pub(crate) fn aggregate_idcs_to_field_layout(
-    context: &Context,
-    ty: &Type,
-    idcs: &[u64],
-) -> ((u64, u64), Type) {
-    idcs.iter().fold(((0, 0), *ty), |((offs, _), ty), idx| {
-        if ty.is_struct(context) {
-            let idx = *idx as usize;
-            let field_types = ty.get_field_types(context);
-            let field_type = field_types[idx];
-            let field_offs_in_bytes = field_types
-                .iter()
-                .take(idx)
-                .map(|field_ty| ir_type_size_in_bytes(context, field_ty))
-                .sum::<u64>();
-            let field_size_in_bytes = ir_type_size_in_bytes(context, &field_type);
-
-            (
-                (
-                    offs + size_bytes_in_words!(field_offs_in_bytes),
-                    field_size_in_bytes,
-                ),
-                field_type,
-            )
-        } else if ty.is_union(context) {
-            let idx = *idx as usize;
-            let field_type = ty.get_field_types(context)[idx];
-            let union_size_in_bytes = ir_type_size_in_bytes(context, &ty);
-            let field_size_in_bytes = ir_type_size_in_bytes(context, &field_type);
-            // The union fields are at offset (union_size - variant_size) due to left padding.
-            (
-                (
-                    offs + size_bytes_in_words!(union_size_in_bytes - field_size_in_bytes),
-                    field_size_in_bytes,
-                ),
-                field_type,
-            )
-        } else {
-            panic!("Attempt to access field in non-aggregate.")
-        }
-    })
 }

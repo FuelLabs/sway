@@ -2,10 +2,16 @@ script;
 use core::ops::Ord;
 
 fn main() -> bool {
-    let x = Option::Some(10); 
-    let y = Option::Some(true); 
+    let _x = Option::Some(10); 
+    let _y = Option::Some(true);
 
- //   x == Option::Some(10)
+    let _z = Option::<u32>::Some(10);
+    let _z = Option::Some::<u32>(10);
+
+    let _n = Option::<u32>::None;
+    let _n = Option::None::<u32>;
+
+ //   _x == Option::Some(10)
    true
 }
 

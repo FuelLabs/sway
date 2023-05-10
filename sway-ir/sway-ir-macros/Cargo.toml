@@ -1,12 +1,12 @@
 [package]
 name = "sway-ir-macros"
-version = "0.33.1"
-authors = ["Fuel Labs <contact@fuel.sh>"]
-edition = "2021"
-homepage = "https://fuel.network/"
-license = "Apache-2.0"
-repository = "https://github.com/FuelLabs/sway"
+version = "0.38.0"
 description = "Macros for sway's intermediate representation."
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [lib]
 proc-macro = true

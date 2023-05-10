@@ -1,7 +1,10 @@
 use fuels::prelude::*;
 use fuels::tx::ContractId;
 
-abigen!(TestPowContract, "test_artifacts/pow/out/debug/pow-abi.json");
+abigen!(Contract(
+    name = "TestPowContract",
+    abi = "test_artifacts/pow/out/debug/pow-abi.json"
+));
 
 #[tokio::test]
 #[should_panic(expected = "ArithmeticOverflow")]
@@ -97,14 +100,13 @@ async fn overflowing_pow_u8_panics_max() {
         .unwrap();
 }
 
-async fn get_pow_test_instance(wallet: WalletUnlocked) -> (TestPowContract, ContractId) {
+async fn get_pow_test_instance(
+    wallet: WalletUnlocked,
+) -> (TestPowContract<WalletUnlocked>, ContractId) {
     let pow_id = Contract::deploy(
         "test_artifacts/pow/out/debug/pow.bin",
         &wallet,
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "test_artifacts/pow/out/debug/pow-storage_slots.json".to_string(),
-        )),
+        DeployConfiguration::default(),
     )
     .await
     .unwrap();

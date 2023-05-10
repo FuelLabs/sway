@@ -3,8 +3,8 @@ script;
 use std::hash::sha256;
 
 struct MyStruct {
-    x: u64, 
-    y: bool
+    x: u64,
+    y: bool,
 }
 
 enum MyEnum {
@@ -15,8 +15,8 @@ enum MyEnum {
 impl core::ops::Eq for MyEnum {
     fn eq(self, other: MyEnum) -> bool {
         match (self, other) {
-            (MyEnum::A(inner1), MyEnum::A(inner2))  => inner1 == inner2,
-            (MyEnum::B(inner1), MyEnum::B(inner2))  => inner1 == inner2,
+            (MyEnum::A(inner1), MyEnum::A(inner2)) => inner1 == inner2,
+            (MyEnum::B(inner1), MyEnum::B(inner2)) => inner1 == inner2,
             _ => false,
         }
     }
@@ -31,6 +31,7 @@ configurable {
     C5: MyEnum = MyEnum::B(true),
     C6: str[4] = "fuel",
     C7: [u64; 4] = [1, 2, 3, 4],
+    C8: u64 = 0, // Unused - should not show up in the JSON file
 }
 
 #[inline(never)]

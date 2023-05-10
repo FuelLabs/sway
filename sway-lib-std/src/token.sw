@@ -1,28 +1,28 @@
 //! Functionality for performing common operations with tokens.
-library token;
+library;
 
 use ::address::Address;
 use ::call_frames::contract_id;
-use ::contract_id::ContractId;
+use ::contract_id::{ContractId, AssetId};
 use ::error_signals::FAILED_TRANSFER_TO_ADDRESS_SIGNAL;
 use ::identity::Identity;
 use ::revert::revert;
 use ::outputs::{Output, output_amount, output_count, output_type};
 
 /// Mint `amount` coins of the current contract's `asset_id` and transfer them
-/// to `to` by calling either force_transfer_to_contract() or
-/// transfer_to_address(), depending on the type of `Identity`.
+/// to `to` by calling either `force_transfer_to_contract` or
+/// `transfer_to_address`, depending on the type of `Identity`.
 ///
-/// # WARNING
-///
-/// If the `to` Identity is a contract this will transfer coins to the contract even with no way to retrieve them
-/// (i.e: no withdrawal functionality on the receiving contract), possibly leading to
-/// the PERMANENT LOSS OF COINS if not used with care.
+/// > **_WARNING:_**
+/// >
+/// > If the `to` Identity is a contract, this will transfer coins to the contract even with no way to retrieve them
+/// > (i.e: no withdrawal functionality on the receiving contract), possibly leading to
+/// > the **_PERMANENT LOSS OF COINS_** if not used with care.
 ///
 /// ### Arguments
 ///
-/// * `amount` - The amount of tokens to mint
-/// * `to` - The `Identity` to which to send the tokens
+/// * `amount` - The amount of tokens to mint.
+/// * `to` - The `Identity` to which to send the tokens.
 ///
 /// ### Examples
 ///
@@ -43,16 +43,16 @@ pub fn mint_to(amount: u64, to: Identity) {
 /// Mint `amount` coins of the current contract's `asset_id` and send them
 /// UNCONDITIONALLY to the contract at `to`.
 ///
-/// # WARNING
-///
-/// This will transfer coins to a contract even with no way to retrieve them
-/// (i.e: no withdrawal functionality on the receiving contract), possibly leading to
-/// the PERMANENT LOSS OF COINS if not used with care.
+/// > **_WARNING:_**
+/// >
+/// > This will transfer coins to a contract even with no way to retrieve them
+/// > (i.e: no withdrawal functionality on the receiving contract), possibly leading to
+/// > the **_PERMANENT LOSS OF COINS_** if not used with care.
 ///
 /// ### Arguments
 ///
-/// * `amount` - The amount of tokens to mint
-/// * `to` - The `ContractId` to which to send the tokens
+/// * `amount` - The amount of tokens to mint.
+/// * `to` - The `ContractId` to which to send the tokens.
 ///
 /// ### Examples
 ///
@@ -73,8 +73,8 @@ pub fn mint_to_contract(amount: u64, to: ContractId) {
 ///
 /// ### Arguments
 ///
-/// * `amount` - The amount of tokens to mint
-/// * `to` - The `Address` to which to send the tokens
+/// * `amount` - The amount of tokens to mint.
+/// * `to` - The `Address` to which to send the tokens.
 ///
 /// ### Examples
 ///
@@ -94,7 +94,7 @@ pub fn mint_to_address(amount: u64, to: Address) {
 ///
 /// ### Arguments
 ///
-/// * `amount` - The amount of tokens to mint
+/// * `amount` - The amount of tokens to mint.
 ///
 /// ### Examples
 ///
@@ -113,11 +113,11 @@ pub fn mint(amount: u64) {
 ///
 /// ### Arguments
 ///
-/// * `amount` - The amount of tokens to burn
+/// * `amount` - The amount of tokens to burn.
 ///
 /// ### Reverts
 ///
-/// Reverts if the contract balance is less than `amount`
+/// Reverts if the contract balance is less than `amount`.
 ///
 /// ### Examples
 ///
@@ -133,26 +133,26 @@ pub fn burn(amount: u64) {
 }
 
 /// Transfer `amount` coins of the type `asset_id` and send them
-/// to `to` by calling either force_transfer_to_contract() or
-/// transfer_to_address(), depending on the type of `Identity`.
+/// to `to` by calling either `force_transfer_to_contract` or
+/// `transfer_to_address`, depending on the type of `Identity`.
 ///
-/// # WARNING
-///
-/// If the `to` Identity is a contract this may transfer coins to the contract even with no way to retrieve them
-/// (i.e. no withdrawal functionality on receiving contract), possibly leading
-/// to the PERMANENT LOSS OF COINS if not used with care.
+/// > **_WARNING:_**
+/// >
+/// > If the `to` Identity is a contract this may transfer coins to the contract even with no way to retrieve them
+/// > (i.e. no withdrawal functionality on receiving contract), possibly leading
+/// > to the **_PERMANENT LOSS OF COINS_** if not used with care.
 ///
 /// ### Arguments
 ///
-/// * `amount` - The amount of tokens to transfer
-/// * `asset_id` - The `ContractId` of the token to transfer
-/// * `to` - The `Identity` of the recipient
+/// * `amount` - The amount of tokens to transfer.
+/// * `asset_id` - The `AssetId` of the token to transfer.
+/// * `to` - The `Identity` of the recipient.
 ///
 /// ### Reverts
 ///
-/// * If `amount` is greater than the contract balance for `asset_id`
-/// * If `amount` is equal to 0
-/// * If there are no free variable outputs when transferring to an `Address`
+/// * If `amount` is greater than the contract balance for `asset_id`.
+/// * If `amount` is equal to zero.
+/// * If there are no free variable outputs when transferring to an `Address`.
 ///
 /// ### Examples
 ///
@@ -165,7 +165,7 @@ pub fn burn(amount: u64) {
 /// transfer(500, BASE_ASSET_ID, to_address);
 /// transfer(500, BASE_ASSET_ID, to_contract_id);
 /// ```
-pub fn transfer(amount: u64, asset_id: ContractId, to: Identity) {
+pub fn transfer(amount: u64, asset_id: AssetId, to: Identity) {
     match to {
         Identity::Address(addr) => transfer_to_address(amount, asset_id, addr),
         Identity::ContractId(id) => force_transfer_to_contract(amount, asset_id, id),
@@ -175,22 +175,22 @@ pub fn transfer(amount: u64, asset_id: ContractId, to: Identity) {
 /// UNCONDITIONAL transfer of `amount` coins of type `asset_id` to
 /// the contract at `to`.
 ///
-/// # WARNING
-///
-/// This will transfer coins to a contract even with no way to retrieve them
-/// (i.e. no withdrawal functionality on receiving contract), possibly leading
-/// to the PERMANENT LOSS OF COINS if not used with care.
+/// > **_WARNING:_**
+/// >
+/// > This will transfer coins to a contract even with no way to retrieve them
+/// > (i.e. no withdrawal functionality on receiving contract), possibly leading
+/// > to the **_PERMANENT LOSS OF COINS_** if not used with care.
 ///
 /// ### Arguments
 ///
-/// * `amount` - The amount of tokens to transfer
-/// * `asset_id` - The `ContractId` of the token to transfer
-/// * `to` - The `ContractId` of the recipient contract
+/// * `amount` - The amount of tokens to transfer.
+/// * `asset_id` - The `AssetId` of the token to transfer.
+/// * `to` - The `ContractId` of the recipient contract.
 ///
 /// ### Reverts
 ///
-/// * If `amount` is greater than the contract balance for `asset_id`
-/// * If `amount` is equal to 0
+/// * If `amount` is greater than the contract balance for `asset_id`.
+/// * If `amount` is equal to zero.
 ///
 /// ### Examples
 ///
@@ -201,7 +201,7 @@ pub fn transfer(amount: u64, asset_id: ContractId, to: Identity) {
 /// let to_contract_id = Identity::ContractId(ContractId::from(ZERO_B256));
 /// force_transfer_to_contract(500, BASE_ASSET_ID, to_contract_id);
 /// ```
-pub fn force_transfer_to_contract(amount: u64, asset_id: ContractId, to: ContractId) {
+pub fn force_transfer_to_contract(amount: u64, asset_id: AssetId, to: ContractId) {
     asm(r1: amount, r2: asset_id.value, r3: to.value) {
         tr r3 r1 r2;
     }
@@ -212,15 +212,15 @@ pub fn force_transfer_to_contract(amount: u64, asset_id: ContractId, to: Contrac
 ///
 /// ### Arguments
 ///
-/// * `amount` - The amount of tokens to transfer
-/// * `asset_id` - The `ContractId` of the token to transfer
-/// * `to` - The `Address` of the recipient user
+/// * `amount` - The amount of tokens to transfer.
+/// * `asset_id` - The `AssetId` of the token to transfer.
+/// * `to` - The `Address` of the recipient user.
 ///
 /// ### Reverts
 ///
-/// * If `amount` is greater than the contract balance for `asset_id`
-/// * If `amount` is equal to 0
-/// * If there are no free variable outputs
+/// * If `amount` is greater than the contract balance for `asset_id`.
+/// * If `amount` is equal to zero.
+/// * If there are no free variable outputs.
 ///
 /// ### Examples
 ///
@@ -231,7 +231,7 @@ pub fn force_transfer_to_contract(amount: u64, asset_id: ContractId, to: Contrac
 /// let to_address = Identity::Address(Address::from(ZERO_B256));
 /// transfer_to_address(500, BASE_ASSET_ID, to_address);
 /// ```
-pub fn transfer_to_address(amount: u64, asset_id: ContractId, to: Address) {
+pub fn transfer_to_address(amount: u64, asset_id: AssetId, to: Address) {
     // maintain a manual index as we only have `while` loops in sway atm:
     let mut index = 0;
 

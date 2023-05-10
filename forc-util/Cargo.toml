@@ -1,26 +1,29 @@
 [package]
 name = "forc-util"
-version = "0.33.1"
-authors = ["Fuel Labs <contact@fuel.sh>"]
-edition = "2021"
-homepage = "https://fuel.network/"
-license = "Apache-2.0"
-repository = "https://github.com/FuelLabs/sway"
+version = "0.38.0"
 description = "Utility items shared between forc crates."
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
 annotate-snippets = { version = "0.9", features = ["color"] }
 ansi_term = "0.12"
 anyhow = "1"
+clap = { version = "3.1", features = ["cargo", "derive", "env"] }
 dirs = "3.0.2"
-forc-tracing = { version = "0.33.1", path = "../forc-tracing" }
-fuel-tx = { version = "0.23", features = ["builder"] }
+forc-tracing = { version = "0.38.0", path = "../forc-tracing" }
+fuel-tx = { workspace = true, features = ["serde"] }
 hex = "0.4.3"
+serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.73"
-sway-core = { version = "0.33.1", path = "../sway-core" }
-sway-error = { version = "0.33.1", path = "../sway-error" }
-sway-types = { version = "0.33.1", path = "../sway-types" }
-sway-utils = { version = "0.33.1", path = "../sway-utils" }
+sway-core = { version = "0.38.0", path = "../sway-core" }
+sway-error = { version = "0.38.0", path = "../sway-error" }
+sway-types = { version = "0.38.0", path = "../sway-types" }
+sway-utils = { version = "0.38.0", path = "../sway-utils" }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["ansi", "env-filter", "json"] }
 unicode-xid = "0.2.2"
+walkdir = "2.3.3"

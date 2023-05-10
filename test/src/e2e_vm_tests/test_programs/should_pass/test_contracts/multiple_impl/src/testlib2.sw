@@ -1,5 +1,5 @@
-library testlib2;
+library;
 
 pub fn bar() {
-    std::logging::log(2);
+    log(2);
 }

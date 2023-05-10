@@ -1,5 +1,5 @@
 //! Functionality for accessing context-specific information about the current contract or message.
-library context;
+library;
 
 use ::contract_id::ContractId;
 use ::call_frames::contract_id;
@@ -10,7 +10,7 @@ pub fn this_balance(asset_id: ContractId) -> u64 {
     balance_of(asset_id, contract_id())
 }
 
-/// Get the balance of coin `asset_id` for for the contract at 'target'.
+/// Get the balance of coin `asset_id` for the contract at 'target'.
 pub fn balance_of(asset_id: ContractId, target: ContractId) -> u64 {
     asm(balance, token: asset_id.value, id: target.value) {
         bal balance token id;

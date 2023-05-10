@@ -2,7 +2,6 @@ script;
 
 use std::alloc::*;
 use std::intrinsics::*;
-use std::assert::assert;
 
 fn lw(ptr: raw_ptr) -> u64 {
     asm(r1: ptr, res) {

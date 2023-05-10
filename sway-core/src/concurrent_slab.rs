@@ -1,6 +1,8 @@
 use std::{fmt, sync::RwLock};
 
-use crate::{decl_engine::*, engine_threading::*, type_system::TypeId, TypeInfo};
+use sway_types::{Named, Spanned};
+
+use crate::{decl_engine::*, engine_threading::*, type_system::*};
 
 #[derive(Debug)]
 pub(crate) struct ConcurrentSlab<T> {
@@ -19,10 +21,7 @@ where
     }
 }
 
-impl<T> Default for ConcurrentSlab<T>
-where
-    T: Default,
-{
+impl<T> Default for ConcurrentSlab<T> {
     fn default() -> Self {
         Self {
             inner: Default::default(),
@@ -50,7 +49,7 @@ where
             .clone()
             .into_iter()
             .enumerate()
-            .map(|(i, value)| format!("{:<10}\t->\t{}", i, value))
+            .map(|(i, value)| format!("{i:<10}\t->\t{value}"))
             .collect::<Vec<_>>();
         write!(f, "{}", fmt_elems.join("\n"))
     }
@@ -70,11 +69,6 @@ where
     pub fn get(&self, index: usize) -> T {
         let inner = self.inner.read().unwrap();
         inner[index].clone()
-    }
-
-    pub fn exists<F: Fn(&T) -> bool>(&self, f: F) -> bool {
-        let inner = self.inner.read().unwrap();
-        inner.iter().any(f)
     }
 }
 
@@ -106,10 +100,14 @@ impl ConcurrentSlab<TypeInfo> {
     }
 }
 
-impl ConcurrentSlab<DeclWrapper> {
-    pub fn replace(&self, index: DeclId, new_value: DeclWrapper) -> Option<DeclWrapper> {
+impl<T> ConcurrentSlab<T>
+where
+    DeclEngine: DeclEngineIndex<T>,
+    T: Named + Spanned,
+{
+    pub fn replace(&self, index: DeclId<T>, new_value: T) -> Option<T> {
         let mut inner = self.inner.write().unwrap();
-        inner[*index] = new_value;
+        inner[index.inner()] = new_value;
         None
     }
 }

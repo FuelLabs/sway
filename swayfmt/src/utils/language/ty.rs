@@ -6,7 +6,7 @@ use std::fmt::Write;
 use sway_ast::{
     brackets::SquareBrackets,
     expr::Expr,
-    keywords::{StrToken, Token, UnderscoreToken},
+    keywords::{PtrToken, SliceToken, StrToken, Token, UnderscoreToken},
     token::Delimiter,
     ty::{Ty, TyArrayDescriptor, TyTupleDescriptor},
 };
@@ -35,6 +35,12 @@ impl Format for Ty {
                 tup_descriptor.get().format(formatted_code, formatter)?;
                 write!(formatted_code, "{}", Delimiter::Parenthesis.as_close_char())?;
                 Ok(())
+            }
+            Self::Ptr { ptr_token, ty } => {
+                format_ptr(formatted_code, ptr_token.clone(), ty.clone())
+            }
+            Self::Slice { slice_token, ty } => {
+                format_slice(formatted_code, slice_token.clone(), ty.clone())
             }
         }
     }
@@ -78,6 +84,34 @@ fn format_str(
     Ok(())
 }
 
+fn format_ptr(
+    formatted_code: &mut FormattedCode,
+    ptr_token: PtrToken,
+    ty: SquareBrackets<Box<Ty>>,
+) -> Result<(), FormatterError> {
+    write!(
+        formatted_code,
+        "{}[{}]",
+        ptr_token.span().as_str(),
+        ty.into_inner().span().as_str()
+    )?;
+    Ok(())
+}
+
+fn format_slice(
+    formatted_code: &mut FormattedCode,
+    slice_token: SliceToken,
+    ty: SquareBrackets<Box<Ty>>,
+) -> Result<(), FormatterError> {
+    write!(
+        formatted_code,
+        "{}[{}]",
+        slice_token.span().as_str(),
+        ty.into_inner().span().as_str()
+    )?;
+    Ok(())
+}
+
 impl Format for TyTupleDescriptor {
     fn format(
         &self,
@@ -106,6 +140,12 @@ impl Format for TyTupleDescriptor {
     }
 }
 
+impl LeafSpans for Box<Ty> {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        self.as_ref().leaf_spans()
+    }
+}
+
 impl LeafSpans for Ty {
     fn leaf_spans(&self) -> Vec<ByteSpan> {
         match self {
@@ -118,6 +158,16 @@ impl LeafSpans for Ty {
                 collected_spans
             }
             Ty::Infer { underscore_token } => vec![ByteSpan::from(underscore_token.span())],
+            Ty::Ptr { ptr_token, ty } => {
+                let mut collected_spans = vec![ByteSpan::from(ptr_token.span())];
+                collected_spans.append(&mut ty.leaf_spans());
+                collected_spans
+            }
+            Ty::Slice { slice_token, ty } => {
+                let mut collected_spans = vec![ByteSpan::from(slice_token.span())];
+                collected_spans.append(&mut ty.leaf_spans());
+                collected_spans
+            }
         }
     }
 }

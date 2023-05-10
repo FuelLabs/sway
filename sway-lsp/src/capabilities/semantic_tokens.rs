@@ -112,7 +112,6 @@ pub(crate) const SUPPORTED_TYPES: &[SemanticTokenType] = &[
     SemanticTokenType::STRING,
     SemanticTokenType::NUMBER,
     SemanticTokenType::NAMESPACE,
-    SemanticTokenType::TYPE,
     SemanticTokenType::STRUCT,
     SemanticTokenType::CLASS,
     SemanticTokenType::INTERFACE,
@@ -129,6 +128,9 @@ pub(crate) const SUPPORTED_TYPES: &[SemanticTokenType] = &[
     SemanticTokenType::new("keyword"),
     SemanticTokenType::new("builtinType"),
     SemanticTokenType::new("deriveHelper"),
+    SemanticTokenType::new("selfKeyword"),
+    SemanticTokenType::new("selfTypeKeyword"),
+    SemanticTokenType::new("typeAlias"),
 ];
 
 pub(crate) const SUPPORTED_MODIFIERS: &[SemanticTokenModifier] = &[
@@ -151,7 +153,7 @@ fn semantic_token_type(kind: &SymbolKind) -> SemanticTokenType {
         SymbolKind::Field => SemanticTokenType::PROPERTY,
         SymbolKind::ValueParam => SemanticTokenType::PARAMETER,
         SymbolKind::Variable => SemanticTokenType::VARIABLE,
-        SymbolKind::Function => SemanticTokenType::FUNCTION,
+        SymbolKind::Function | SymbolKind::Intrinsic => SemanticTokenType::FUNCTION,
         SymbolKind::Const => SemanticTokenType::VARIABLE,
         SymbolKind::Struct => SemanticTokenType::STRUCT,
         SymbolKind::Enum => SemanticTokenType::ENUM,
@@ -162,10 +164,13 @@ fn semantic_token_type(kind: &SymbolKind) -> SemanticTokenType {
         SymbolKind::StringLiteral => SemanticTokenType::STRING,
         SymbolKind::ByteLiteral | SymbolKind::NumericLiteral => SemanticTokenType::NUMBER,
         SymbolKind::BoolLiteral => SemanticTokenType::new("boolean"),
+        SymbolKind::TypeAlias => SemanticTokenType::new("typeAlias"),
         SymbolKind::Keyword => SemanticTokenType::new("keyword"),
         SymbolKind::Unknown => SemanticTokenType::new("generic"),
         SymbolKind::BuiltinType => SemanticTokenType::new("builtinType"),
         SymbolKind::DeriveHelper => SemanticTokenType::new("deriveHelper"),
+        SymbolKind::SelfKeyword => SemanticTokenType::new("selfKeyword"),
+        SymbolKind::SelfTypeKeyword => SemanticTokenType::new("selfTypeKeyword"),
     }
 }
 

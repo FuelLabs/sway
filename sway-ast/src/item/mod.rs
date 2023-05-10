@@ -9,6 +9,7 @@ pub mod item_impl;
 pub mod item_storage;
 pub mod item_struct;
 pub mod item_trait;
+pub mod item_type_alias;
 pub mod item_use;
 
 pub type Item = Annotated<ItemKind>;
@@ -23,9 +24,9 @@ impl Spanned for Item {
 }
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub enum ItemKind {
-    Dependency(Dependency),
+    Submodule(Submodule),
     Use(ItemUse),
     Struct(ItemStruct),
     Enum(ItemEnum),
@@ -36,12 +37,13 @@ pub enum ItemKind {
     Const(ItemConst),
     Storage(ItemStorage),
     Configurable(ItemConfigurable),
+    TypeAlias(ItemTypeAlias),
 }
 
 impl Spanned for ItemKind {
     fn span(&self) -> Span {
         match self {
-            ItemKind::Dependency(item_dep) => item_dep.span(),
+            ItemKind::Submodule(item_mod) => item_mod.span(),
             ItemKind::Use(item_use) => item_use.span(),
             ItemKind::Struct(item_struct) => item_struct.span(),
             ItemKind::Enum(item_enum) => item_enum.span(),
@@ -52,11 +54,12 @@ impl Spanned for ItemKind {
             ItemKind::Const(item_const) => item_const.span(),
             ItemKind::Storage(item_storage) => item_storage.span(),
             ItemKind::Configurable(item_configurable) => item_configurable.span(),
+            ItemKind::TypeAlias(item_type_alias) => item_type_alias.span(),
         }
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct TypeField {
     pub name: Ident,
     pub colon_token: ColonToken,
@@ -69,7 +72,7 @@ impl Spanned for TypeField {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub enum FnArgs {
     Static(Punctuated<FnArg, CommaToken>),
     NonStatic {
@@ -80,7 +83,7 @@ pub enum FnArgs {
     },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct FnArg {
     pub pattern: Pattern,
     pub colon_token: ColonToken,
@@ -93,7 +96,7 @@ impl Spanned for FnArg {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct FnSignature {
     pub visibility: Option<PubToken>,
     pub fn_token: FnToken,

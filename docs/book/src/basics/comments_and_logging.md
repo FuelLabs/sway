@@ -2,7 +2,10 @@
 
 ## Comments
 
+<!-- This section should explain how to add comments in Sway -->
+<!-- comments:example:start -->
 Comments in Sway start with two slashes and continue until the end of the line. For comments that extend beyond a single line, you'll need to include `//` on each line.
+<!-- comments:example:end -->
 
 ```sway
 // hello world
@@ -35,7 +38,10 @@ fn main() {
 
 ## Logging
 
+<!-- This section should explain logging in Sway -->
+<!-- logging:example:start -->
 The `logging` library provides a generic `log` function that can be imported using `use std::logging::log` and used to log variables of any type. Each call to `log` appends a `receipt` to the list of receipts. There are two types of receipts that a `log` can generate: `Log` and `LogData`.
+<!-- logging:example:end -->
 
 ```sway
 fn log_values(){
@@ -50,7 +56,12 @@ fn log_values(){
 
 ### `Log` Receipt
 
-The `Log` receipt is generated for _non-reference_ types, namely `bool`, `u8`, `u16`, `u32`, and `u64`. For example, logging an integer variable `x` that holds the value `42` using `log(x)` may generate the following receipt:
+<!-- This section should explain when `Log` receipts are produced -->
+<!-- log_rec:example:start -->
+The `Log` receipt is generated for _non-reference_ types, namely `bool`, `u8`, `u16`, `u32`, and `u64`.
+<!-- log_rec:example:end -->
+
+For example, logging an integer variable `x` that holds the value `42` using `log(x)` may generate the following receipt:
 
 ```console
 "Log": {
@@ -68,7 +79,12 @@ Note that `ra` will include the value being logged. The additional registers `rc
 
 ### `LogData` Receipt
 
-`LogData` is generated for _reference_ types which include all types except for the _non_reference_ types mentioned above. For example, logging a `b256` variable `b` that holds the value `0x1111111111111111111111111111111111111111111111111111111111111111` using `log(b)` may generate the following receipt:
+<!-- This section should explain when `LogData` receipts are produced -->
+<!-- log_data_rec:example:start -->
+`LogData` is generated for _reference_ types which include all types except for _non_reference_ types.
+<!-- log_data_rec:example:end -->
+
+For example, logging a `b256` variable `b` that holds the value `0x1111111111111111111111111111111111111111111111111111111111111111` using `log(b)` may generate the following receipt:
 
 ```console
 "LogData": {

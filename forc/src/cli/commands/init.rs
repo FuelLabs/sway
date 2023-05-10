@@ -1,6 +1,6 @@
 use crate::ops::forc_init;
-use anyhow::Result;
 use clap::Parser;
+use forc_util::ForcResult;
 
 /// Create a new Forc project in an existing directory.
 #[derive(Debug, Parser)]
@@ -28,7 +28,7 @@ pub struct Command {
     pub name: Option<String>,
 }
 
-pub(crate) fn exec(command: Command) -> Result<()> {
+pub(crate) fn exec(command: Command) -> ForcResult<()> {
     forc_init::init(command)?;
     Ok(())
 }

@@ -1,12 +1,9 @@
 contract;
 
-dep wallet_abi;
+mod wallet_abi;
 
 use std::{
-    auth::{
-        AuthError,
-        msg_sender,
-    },
+    auth::AuthError,
     call_frames::msg_asset_id,
     constants::BASE_ASSET_ID,
     context::msg_amount,

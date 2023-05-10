@@ -16,6 +16,6 @@ abi MyContract {
 impl MyContract for Contract {
     #[storage(read)]
     fn is_none() -> bool {
-        storage.value.get(0).is_none()
+        storage.value.get(0).try_read().is_none()
     }
 }

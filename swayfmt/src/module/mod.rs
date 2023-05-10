@@ -1,13 +1,14 @@
 use crate::{
+    comments::write_comments,
     formatter::*,
     utils::map::byte_span::{self, ByteSpan, LeafSpans},
 };
 use std::fmt::Write;
-use sway_ast::{ItemKind, Module, ModuleKind};
+use sway_ast::{Item, ItemKind, Module, ModuleKind};
 use sway_types::Spanned;
 
-pub(crate) mod dependency;
 pub(crate) mod item;
+pub(crate) mod submodule;
 
 impl Format for Module {
     fn format(
@@ -15,17 +16,46 @@ impl Format for Module {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        write_comments(formatted_code, 0..self.span().start(), formatter)?;
         self.kind.format(formatted_code, formatter)?;
         writeln!(formatted_code, "{}", self.semicolon_token.span().as_str())?;
 
+        // Format comments between module kind declaration and rest of items
+        if !self.items.is_empty() {
+            write_comments(
+                formatted_code,
+                0..self.items.first().unwrap().span().start(),
+                formatter,
+            )?;
+        }
+
         let iter = self.items.iter();
+        let mut prev_item: Option<&Item> = None;
         for item in iter.clone() {
+            if let Some(prev_item) = prev_item {
+                write_comments(
+                    formatted_code,
+                    prev_item.span().end()..item.span().start(),
+                    formatter,
+                )?;
+            }
+
             item.format(formatted_code, formatter)?;
-            if let ItemKind::Dependency { .. } = item.value {
-                // Do not print a newline after a dependency
+            if let ItemKind::Submodule { .. } = item.value {
+                // Do not print a newline after a submodule
             } else {
                 writeln!(formatted_code)?;
             }
+
+            prev_item = Some(item);
+        }
+
+        if let Some(prev_item) = prev_item {
+            write_comments(
+                formatted_code,
+                prev_item.span().end()..self.span().end(),
+                formatter,
+            )?;
         }
 
         Ok(())
@@ -48,12 +78,8 @@ impl Format for ModuleKind {
             ModuleKind::Predicate { predicate_token } => {
                 write!(formatted_code, "{}", predicate_token.span().as_str())?
             }
-            ModuleKind::Library {
-                library_token,
-                name,
-            } => {
-                write!(formatted_code, "{} ", library_token.span().as_str())?;
-                name.format(formatted_code, _formatter)?;
+            ModuleKind::Library { library_token } => {
+                write!(formatted_code, "{}", library_token.span().as_str())?;
             }
         };
 
@@ -83,14 +109,8 @@ impl LeafSpans for ModuleKind {
             ModuleKind::Predicate { predicate_token } => {
                 vec![ByteSpan::from(predicate_token.span())]
             }
-            ModuleKind::Library {
-                library_token,
-                name,
-            } => {
-                vec![
-                    ByteSpan::from(library_token.span()),
-                    ByteSpan::from(name.span()),
-                ]
+            ModuleKind::Library { library_token } => {
+                vec![ByteSpan::from(library_token.span())]
             }
         }
     }

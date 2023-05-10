@@ -1,0 +1,8 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-1918441B04275B9A'
+
+[[package]]
+name = 'multiple_structs_with_the_same_name'
+source = 'member'
+dependencies = ['core']

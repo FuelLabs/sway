@@ -8,13 +8,13 @@ use foo::Foo;
 use ::foo::bar::{Bar, double_bar::DoubleBar};
 
 fn main() -> bool {
-    let foo = Foo {
+    let _foo = Foo {
         foo: "foo",
     };
-    let db = ::foo::bar::double_bar::DoubleBar {
+    let _db = ::foo::bar::double_bar::DoubleBar {
         a: 5u32,
     };
-    let bar = Bar {
+    let _bar = Bar {
         a: 5u32,
     };
     false

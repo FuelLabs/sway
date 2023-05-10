@@ -52,18 +52,16 @@ impl ty::TyMatchBranch {
         // insert it into the branch namespace, and add it to a block of code statements
         let mut code_block_contents: Vec<ty::TyAstNode> = vec![];
         for (left_decl, right_decl) in match_decl_map.into_iter() {
-            let type_ascription = right_decl.return_type;
+            let type_ascription = right_decl.return_type.into();
             let return_type = right_decl.return_type;
             let span = left_decl.span().clone();
-            let var_decl =
-                ty::TyDeclaration::VariableDeclaration(Box::new(ty::TyVariableDeclaration {
-                    name: left_decl.clone(),
-                    body: right_decl,
-                    mutability: ty::VariableMutability::Immutable,
-                    return_type,
-                    type_ascription,
-                    type_ascription_span: None,
-                }));
+            let var_decl = ty::TyDecl::VariableDecl(Box::new(ty::TyVariableDecl {
+                name: left_decl.clone(),
+                body: right_decl,
+                mutability: ty::VariableMutability::Immutable,
+                return_type,
+                type_ascription,
+            }));
             ctx.namespace.insert_symbol(left_decl, var_decl.clone());
             code_block_contents.push(ty::TyAstNode {
                 content: ty::TyAstNodeContent::Declaration(var_decl),
@@ -130,7 +128,7 @@ impl ty::TyMatchBranch {
 
         // return!
         let typed_branch = ty::TyMatchBranch {
-            conditions: match_req_map,
+            cnf: match_req_map,
             result: new_result,
             span: branch_span,
         };

@@ -1,7 +1,7 @@
 script;
 
-dep r#trait;
-dep utils;
+mod r#trait;
+mod utils;
 
 use r#trait::Trait;
 

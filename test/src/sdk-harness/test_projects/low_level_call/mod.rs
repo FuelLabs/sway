@@ -1,30 +1,30 @@
 use fuels::{
     prelude::*,
-    tx::ContractId,
-    tx::{Bytes32, Input, Output, TxPointer, UtxoId},
+    tx::{Bytes32, ContractId, Output, TxPointer, UtxoId},
+    types::{input::Input, Bits256, SizedAsciiString},
 };
 
 macro_rules! fn_selector {
     ( $fn_name: ident ( $($fn_arg: ty),* )  ) => {
-         ::fuels::core::code_gen::function_selector::resolve_fn_selector(stringify!($fn_name), &[$( <$fn_arg as ::fuels::core::Parameterize>::param_type() ),*]).to_vec()
+         ::fuels::core::function_selector::resolve_fn_selector(stringify!($fn_name), &[$( <$fn_arg as ::fuels::types::traits::Parameterize>::param_type() ),*]).to_vec()
     }
 }
 macro_rules! calldata {
     ( $($arg: expr),* ) => {
-        ::fuels::core::abi_encoder::ABIEncoder::encode(&[$(::fuels::core::Tokenizable::into_token($arg)),*]).unwrap().resolve(0)
+        ::fuels::core::abi_encoder::ABIEncoder::encode(&[$(::fuels::types::traits::Tokenizable::into_token($arg)),*]).unwrap().resolve(0)
     }
 }
 
-
 // Load abi from json
 abigen!(
-    TestContract,
-    "test_artifacts/low_level_callee_contract/out/debug/test_contract-abi.json"
-);
-
-script_abigen!(
-    TestScript,
-    "test_projects/low_level_call/out/debug/test_script-abi.json"
+    Contract(
+        name = "TestContract",
+        abi = "test_artifacts/low_level_callee_contract/out/debug/test_contract-abi.json"
+    ),
+    Script(
+        name = "TestScript",
+        abi = "test_projects/low_level_call/out/debug/test_script-abi.json"
+    )
 );
 
 async fn low_level_call(
@@ -60,36 +60,32 @@ async fn low_level_call(
         .main(id, function_selector, calldata, single_value_type_arg)
         .with_inputs(vec![contract_input])
         .with_outputs(vec![contract_output])
-        .tx_params(TxParameters::new(None, Some(10_000_000), None));
+        .tx_params(TxParameters::default().set_gas_limit(10_000_000));
 
     tx.call().await.unwrap();
 }
 
-async fn get_contract_instance() -> (TestContract, ContractId, WalletUnlocked) {
+async fn get_contract_instance() -> (TestContract<WalletUnlocked>, ContractId, WalletUnlocked) {
     // Launch a local network and deploy the contract
     let mut wallets = launch_custom_provider_and_get_wallets(
         WalletsConfig::new(
-            Some(1), /* Single wallet */
-            Some(1), /* Single coin (UTXO) */
+            Some(1),             /* Single wallet */
+            Some(1),             /* Single coin (UTXO) */
             Some(1_000_000_000), /* Amount per coin */
         ),
         None,
         None,
     )
-        .await;
+    .await;
     let wallet = wallets.pop().unwrap();
 
     let id = Contract::deploy(
         "test_artifacts/low_level_callee_contract/out/debug/test_contract.bin",
         &wallet,
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "test_artifacts/low_level_callee_contract/out/debug/test_contract-storage_slots.json"
-                .to_string(),
-        )),
+        DeployConfiguration::default(),
     )
-        .await
-        .unwrap();
+    .await
+    .unwrap();
 
     let instance = TestContract::new(id.clone(), wallet.clone());
 
@@ -145,7 +141,8 @@ async fn can_call_with_multiple_args() {
 async fn can_call_with_multiple_args_complex() {
     let (instance, id, wallet) = get_contract_instance().await;
 
-    let function_selector = fn_selector!(set_value_multiple_complex(MyStruct, SizedAsciiString::<4>));
+    let function_selector =
+        fn_selector!(set_value_multiple_complex(MyStruct, SizedAsciiString::<4>));
     let calldata = calldata!(
         MyStruct {
             a: true,

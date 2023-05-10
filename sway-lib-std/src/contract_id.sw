@@ -1,5 +1,6 @@
-library contract_id;
 //! A wrapper around the `b256` type to help enhance type-safety.
+library;
+
 use ::intrinsics::size_of_val;
 use ::convert::From;
 
@@ -24,3 +25,7 @@ impl From<b256> for ContractId {
         self.value
     }
 }
+
+/// The `AssetId` type is simply an alias for `ContractId` that represents the ID of a native asset
+/// which matches the ID of the contract that implements that asset.
+pub type AssetId = ContractId;

@@ -1,6 +1,7 @@
 use crate::cli::PluginsCommand;
-use anyhow::{anyhow, Result};
+use anyhow::anyhow;
 use clap::Parser;
+use forc_util::ForcResult;
 use std::path::{Path, PathBuf};
 use tracing::info;
 
@@ -17,7 +18,7 @@ pub struct Command {
     describe: bool,
 }
 
-pub(crate) fn exec(command: PluginsCommand) -> Result<()> {
+pub(crate) fn exec(command: PluginsCommand) -> ForcResult<()> {
     let PluginsCommand {
         print_full_path,
         describe,
@@ -67,7 +68,7 @@ fn format_print_description(
     path: PathBuf,
     print_full_path: bool,
     describe: bool,
-) -> Result<String> {
+) -> ForcResult<String> {
     let display = if print_full_path {
         path.display().to_string()
     } else {
@@ -81,7 +82,7 @@ fn format_print_description(
     let description = parse_description_for_plugin(&path);
 
     if describe {
-        Ok(format!("  {} \t\t{}", display, description))
+        Ok(format!("  {display} \t\t{description}"))
     } else {
         Ok(display)
     }
@@ -93,7 +94,7 @@ fn format_print_description(
 /// paths yielded from plugin::find_all(), as well as that the file names are in valid
 /// unicode format since file names should be prefixed with `forc-`. Should one of these 2
 /// assumptions fail, this function panics.
-fn print_plugin(path: PathBuf, print_full_path: bool, describe: bool) -> Result<String> {
+fn print_plugin(path: PathBuf, print_full_path: bool, describe: bool) -> ForcResult<String> {
     format_print_description(path, print_full_path, describe)
-        .map_err(|e| anyhow!("Could not get plugin info: {}", e))
+        .map_err(|e| anyhow!("Could not get plugin info: {}", e.as_ref()).into())
 }

@@ -1,36 +1,45 @@
 use sway_types::{Ident, Span};
 
 use crate::{
+    decl_engine::{DeclRefEnum, DeclRefStruct},
     language::{ty::*, *},
     type_system::*,
 };
 
 #[derive(Debug, Clone)]
-pub(crate) struct TyScrutinee {
-    pub(crate) variant: TyScrutineeVariant,
-    pub(crate) type_id: TypeId,
-    pub(crate) span: Span,
+pub struct TyScrutinee {
+    pub variant: TyScrutineeVariant,
+    pub type_id: TypeId,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum TyScrutineeVariant {
+pub enum TyScrutineeVariant {
+    Or(Vec<TyScrutinee>),
     CatchAll,
     Literal(Literal),
     Variable(Ident),
-    Constant(Ident, Literal, TypeId),
-    StructScrutinee(Ident, Vec<TyStructScrutineeField>),
-    #[allow(dead_code)]
+    Constant(Ident, Literal, TyConstantDecl),
+    StructScrutinee {
+        struct_ref: DeclRefStruct,
+        fields: Vec<TyStructScrutineeField>,
+        instantiation_call_path: CallPath,
+    },
     EnumScrutinee {
-        call_path: CallPath,
-        variant: TyEnumVariant,
+        enum_ref: DeclRefEnum,
+        variant: Box<TyEnumVariant>,
+        /// Should contain a TyDecl to either an enum or a type alias.
+        call_path_decl: ty::TyDecl,
         value: Box<TyScrutinee>,
+        instantiation_call_path: CallPath,
     },
     Tuple(Vec<TyScrutinee>),
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct TyStructScrutineeField {
-    pub(crate) field: Ident,
-    pub(crate) scrutinee: Option<TyScrutinee>,
-    pub(crate) span: Span,
+pub struct TyStructScrutineeField {
+    pub field: Ident,
+    pub scrutinee: Option<TyScrutinee>,
+    pub span: Span,
+    pub field_def_name: Ident,
 }

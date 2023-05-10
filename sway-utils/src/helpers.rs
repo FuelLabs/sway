@@ -24,7 +24,24 @@ pub fn get_sway_files(path: PathBuf) -> Vec<PathBuf> {
 
     files
 }
+
 pub fn is_sway_file(file: &Path) -> bool {
     let res = file.extension();
     Some(OsStr::new(constants::SWAY_EXTENSION)) == res
+}
+
+/// create an iterator over all prefixes in a slice, smallest first
+///
+/// ```
+/// # use sway_utils::iter_prefixes;
+/// let val = [1, 2, 3];
+/// let mut it = iter_prefixes(&val);
+/// assert_eq!(it.next(), Some([1].as_slice()));
+/// assert_eq!(it.next(), Some([1, 2].as_slice()));
+/// assert_eq!(it.next(), Some([1, 2, 3].as_slice()));
+/// assert_eq!(it.next(), None);
+///
+/// ```
+pub fn iter_prefixes<T>(slice: &[T]) -> impl Iterator<Item = &[T]> + DoubleEndedIterator {
+    (1..=slice.len()).map(move |len| &slice[..len])
 }

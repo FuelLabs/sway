@@ -82,7 +82,7 @@ html {
   }
 }
 body {
-  font: 1rem/1.5 "Source Serif 4", NanumBarunGothic, serif;
+  font: 16px/1.4 "Source Serif 4", NanumBarunGothic, serif;
   margin: 0;
   position: relative;
   overflow-wrap: break-word;
@@ -152,7 +152,8 @@ h2,
   border-bottom: 1px solid var(--headings-border-bottom-color);
 }
 h3.code-header {
-  font-size: 1.125rem;
+  font-size: 1em;
+  font-weight: 600;
 }
 h4.code-header {
   font-size: 1rem;
@@ -160,7 +161,6 @@ h4.code-header {
 .code-header {
   font-weight: 600;
   border-bottom-style: none;
-  margin: 0;
   padding: 0;
   margin-top: 0.6em;
   margin-bottom: 0.4em;
@@ -249,7 +249,7 @@ ol ol {
   margin-bottom: 0.625em;
 }
 p {
-  margin: 0 0 0.75em 0;
+  margin: 0 0 0.6em 0;
 }
 summary {
   outline: none;
@@ -363,7 +363,7 @@ nav.sub {
 }
 .sidebar {
   font-size: 0.875rem;
-  width: 250px;
+  width: 200px;
   min-width: 200px;
   overflow-y: scroll;
   position: sticky;
@@ -371,12 +371,17 @@ nav.sub {
   top: 0;
   left: 0;
 }
-.sidebar-elems,
 .sidebar > .location {
   padding-left: 24px;
 }
 .sidebar .location {
-  overflow-wrap: anywhere;
+  border: 1px solid;
+  font-size: 17px;
+  margin: 30px 10px 20px 10px;
+  text-align: center;
+  word-wrap: break-word;
+  font-weight: inherit;
+  padding: 0;
 }
 .swaydoc.source .sidebar {
   width: 50px;
@@ -413,7 +418,17 @@ nav.sub {
   visibility: visible;
 }
 #all-types {
-  margin-top: 1em;
+  text-align: center;
+  border: 1px solid;
+  margin: 0 10px;
+  margin-bottom: 10px;
+  display: block;
+  border-radius: 7px;
+}
+a#all-types:hover,
+a#all-types:active {
+  background-color: var(--sidebar-background-color-hover);
+  color: #c5c5c5;
 }
 * {
   scrollbar-width: initial;
@@ -475,7 +490,7 @@ nav.sub {
 h2.location a {
   display: block;
   padding: 0.25rem;
-  margin-left: -0.25rem;
+  margin-left: 2em;
   text-overflow: ellipsis;
   overflow: hidden;
 }
@@ -624,7 +639,7 @@ h2.location a {
 }
 .content .in-band {
   flex-grow: 1;
-  margin: 0px;
+  margin-top: 0px;
   padding: 0px;
   overflow-wrap: break-word;
   overflow-wrap: anywhere;
@@ -800,6 +815,7 @@ a {
 .in-band:hover > .anchor,
 .impl:hover > .anchor,
 .method.trait-impl:hover > .anchor,
+.method.has-srclink:hover > .anchor,
 .type.trait-impl:hover > .anchor,
 .associatedconstant.trait-impl:hover > .anchor,
 .associatedtype.trait-impl:hover > .anchor {
@@ -809,7 +825,6 @@ a {
 .anchor {
   display: none;
   position: absolute;
-  left: -0.5em;
   background: none !important;
 }
 .anchor.field {
@@ -837,18 +852,11 @@ table,
 .item-table {
   overflow-wrap: break-word;
 }
-.item-table {
-  display: table;
-}
 .item-row {
-  display: table-row;
+  padding: 10px 0;
 }
-.item-left,
 .item-right {
-  display: table-cell;
-}
-.item-left {
-  padding-right: 1.25rem;
+  padding-top: 4px;
 }
 .search-container {
   position: relative;
@@ -1857,9 +1865,6 @@ details.swaydoc-toggle[open] > summary.hideme::after {
 .method-toggle[open] {
   margin-bottom: 2em;
 }
-.implementors-toggle[open] {
-  margin-bottom: 2em;
-}
 #trait-implementations-list .method-toggle,
 #synthetic-implementations-list .method-toggle,
 #blanket-implementations-list .method-toggle {
@@ -1993,4 +1998,7 @@ details.swaydoc-toggle[open] > summary.hideme::after {
 }
 .example-links ul {
   margin-bottom: 0;
+}
+#all-types > p {
+  margin: 5px 0;
 }

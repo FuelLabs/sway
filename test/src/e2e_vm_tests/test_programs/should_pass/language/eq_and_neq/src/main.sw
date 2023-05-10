@@ -1,9 +1,6 @@
 script;
 
-use std::address::Address;
-use std::assert::assert;
 use std::b512::B512;
-use std::contract_id::ContractId;
 
 fn main() -> bool {
     // Primitive types

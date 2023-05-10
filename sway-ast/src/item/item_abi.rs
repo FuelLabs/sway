@@ -1,10 +1,11 @@
-use crate::priv_prelude::*;
+use crate::{priv_prelude::*, ItemTraitItem};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct ItemAbi {
     pub abi_token: AbiToken,
     pub name: Ident,
-    pub abi_items: Braces<Vec<(Annotated<FnSignature>, SemicolonToken)>>,
+    pub super_traits: Option<(ColonToken, Traits)>,
+    pub abi_items: Braces<Vec<(Annotated<ItemTraitItem>, SemicolonToken)>>,
     pub abi_defs_opt: Option<Braces<Vec<Annotated<ItemFn>>>>,
 }
 

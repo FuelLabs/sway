@@ -10,11 +10,12 @@ pub(crate) fn instantiate_unsafe_downcast(
     engines: Engines<'_>,
     exp: &ty::TyExpression,
     variant: ty::TyEnumVariant,
+    call_path_decl: ty::TyDecl,
     span: Span,
 ) -> (MatchReqMap, ty::TyExpression) {
     let type_engine = engines.te();
     let decl_engine = engines.de();
-    let match_req_map = vec![(
+    let match_req_map = vec![vec![(
         ty::TyExpression {
             expression: ty::TyExpressionVariant::EnumTag {
                 exp: Box::new(exp.clone()),
@@ -33,13 +34,14 @@ pub(crate) fn instantiate_unsafe_downcast(
             ),
             span: exp.span.clone(),
         },
-    )];
+    )]];
     let unsafe_downcast = ty::TyExpression {
         expression: ty::TyExpressionVariant::UnsafeDowncast {
             exp: Box::new(exp.clone()),
             variant: variant.clone(),
+            call_path_decl,
         },
-        return_type: variant.type_id,
+        return_type: variant.type_argument.type_id,
         span,
     };
     (match_req_map, unsafe_downcast)

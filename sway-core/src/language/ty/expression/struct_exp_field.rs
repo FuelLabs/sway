@@ -1,3 +1,5 @@
+use std::hash::{Hash, Hasher};
+
 use sway_types::Ident;
 
 use crate::{decl_engine::*, engine_threading::*, language::ty::*, type_system::*};
@@ -12,6 +14,14 @@ impl EqWithEngines for TyStructExpressionField {}
 impl PartialEqWithEngines for TyStructExpressionField {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         self.name == other.name && self.value.eq(&other.value, engines)
+    }
+}
+
+impl HashWithEngines for TyStructExpressionField {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TyStructExpressionField { name, value } = self;
+        name.hash(state);
+        value.hash(state, engines);
     }
 }
 

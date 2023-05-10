@@ -1,17 +1,17 @@
 [package]
 name = "sway-types"
-version = "0.33.1"
-authors = ["Fuel Labs <contact@fuel.sh>"]
-edition = "2021"
-homepage = "https://fuel.network/"
-license = "Apache-2.0"
-repository = "https://github.com/FuelLabs/sway"
+version = "0.38.0"
 description = "Sway core types."
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
-fuel-asm = "0.10"
-fuel-crypto = "0.6"
-fuel-tx = "0.23"
+fuel-asm = { workspace = true }
+fuel-crypto = { workspace = true }
+fuel-tx = { workspace = true }
 lazy_static = "1.4"
 serde = { version = "1.0", features = ["derive"] }
 

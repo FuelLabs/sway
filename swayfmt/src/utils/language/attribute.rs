@@ -7,12 +7,12 @@ use crate::{
 };
 use std::fmt::Write;
 use sway_ast::{
-    attribute::{Annotated, Attribute, AttributeDecl},
+    attribute::{Annotated, Attribute, AttributeArg, AttributeDecl, AttributeHashKind},
     token::{Delimiter, PunctKind},
 };
 use sway_types::{constants::DOC_COMMENT_ATTRIBUTE_NAME, Spanned};
 
-impl<T: Format> Format for Annotated<T> {
+impl<T: Format + Spanned> Format for Annotated<T> {
     fn format(
         &self,
         formatted_code: &mut FormattedCode,
@@ -21,6 +21,7 @@ impl<T: Format> Format for Annotated<T> {
         // format each `Attribute`
         for attr in &self.attribute_list {
             attr.format(formatted_code, formatter)?;
+
             write!(
                 formatted_code,
                 "{}",
@@ -31,6 +32,31 @@ impl<T: Format> Format for Annotated<T> {
         self.value.format(formatted_code, formatter)?;
 
         Ok(())
+    }
+}
+
+impl Format for AttributeArg {
+    fn format(
+        &self,
+        formatted_code: &mut FormattedCode,
+        _formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        write!(formatted_code, "{}", self.name.span().as_str())?;
+        if let Some(value) = &self.value {
+            write!(formatted_code, " = {}", value.span().as_str())?;
+        }
+
+        Ok(())
+    }
+}
+impl LeafSpans for AttributeArg {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = Vec::new();
+        collected_spans.push(ByteSpan::from(self.name.span()));
+        if let Some(value) = &self.value {
+            collected_spans.push(ByteSpan::from(value.span()));
+        }
+        collected_spans
     }
 }
 
@@ -53,14 +79,29 @@ impl Format for AttributeDecl {
                 .as_ref()
                 .map(|args| args.inner.final_value_opt.as_ref())
             {
-                writeln!(formatted_code, "///{}", doc_comment.as_str().trim_end())?;
+                match self.hash_kind {
+                    AttributeHashKind::Inner(_) => writeln!(
+                        formatted_code,
+                        "//!{}",
+                        doc_comment.name.as_str().trim_end()
+                    )?,
+                    AttributeHashKind::Outer(_) => writeln!(
+                        formatted_code,
+                        "///{}",
+                        doc_comment.name.as_str().trim_end()
+                    )?,
+                }
             }
             return Ok(());
         }
 
         // invariant: attribute lists cannot be empty
         // `#`
-        write!(formatted_code, "{}", self.hash_token.span().as_str())?;
+        let hash_type_token_span = match &self.hash_kind {
+            AttributeHashKind::Inner(_) => Err(FormatterError::HashBangAttributeError),
+            AttributeHashKind::Outer(hash_token) => Ok(hash_token.span()),
+        };
+        write!(formatted_code, "{}", hash_type_token_span?.as_str())?;
         // `[`
         Self::open_square_bracket(formatted_code, formatter)?;
         let mut regular_attrs = regular_attrs.iter().peekable();
@@ -127,7 +168,11 @@ impl Parenthesis for AttributeDecl {
 }
 impl LeafSpans for AttributeDecl {
     fn leaf_spans(&self) -> Vec<ByteSpan> {
-        let mut collected_spans = vec![ByteSpan::from(self.hash_token.span())];
+        let hash_type_token_span = match &self.hash_kind {
+            AttributeHashKind::Inner(hash_bang_token) => hash_bang_token.span(),
+            AttributeHashKind::Outer(hash_token) => hash_token.span(),
+        };
+        let mut collected_spans = vec![ByteSpan::from(hash_type_token_span)];
         collected_spans.append(&mut self.attribute.leaf_spans());
         collected_spans
     }

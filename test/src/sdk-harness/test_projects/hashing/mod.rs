@@ -1,11 +1,15 @@
-use fuels::{prelude::*, tx::ContractId};
+use fuels::{
+    prelude::*,
+    tx::ContractId,
+    types::{Bits256, SizedAsciiString},
+};
 use sha2::{Digest, Sha256};
 use sha3::Keccak256;
 
-abigen!(
-    HashingTestContract,
-    "test_projects/hashing/out/debug/hashing-abi.json"
-);
+abigen!(Contract(
+    name = "HashingTestContract",
+    abi = "test_projects/hashing/out/debug/hashing-abi.json"
+));
 
 enum Hash {
     Sha256,
@@ -123,16 +127,13 @@ fn hash_struct(arr: [u8; 80], algorithm: Hash) -> [u8; 32] {
     }
 }
 
-async fn get_hashing_instance() -> (HashingTestContract, ContractId) {
+async fn get_hashing_instance() -> (HashingTestContract<WalletUnlocked>, ContractId) {
     let wallet = launch_provider_and_get_wallet().await;
 
     let id = Contract::deploy(
         "test_projects/hashing/out/debug/hashing.bin",
         &wallet,
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "test_projects/hashing/out/debug/hashing-storage_slots.json".to_string(),
-        )),
+        DeployConfiguration::default(),
     )
     .await
     .unwrap();

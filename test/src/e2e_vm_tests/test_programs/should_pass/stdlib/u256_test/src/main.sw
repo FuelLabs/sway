@@ -1,6 +1,6 @@
 script;
 
-use std::{assert::assert, result::Result, u128::U128, u256::{U256, U256Error}};
+use std::{u128::U128, u256::{U256, U256Error}};
 
 fn main() -> bool {
     // test new()
@@ -62,7 +62,7 @@ fn main() -> bool {
     // test as_u64()
     let err_1 = U256::from((42, 0, 0, 11)).as_u64();
     assert(match err_1 {
-        Result::Err(U256Error::LossOfPrecision) => {
+        Err(U256Error::LossOfPrecision) => {
             true
         },
         _ => {
@@ -72,7 +72,7 @@ fn main() -> bool {
 
     let err_2 = U256::from((0, 42, 0, 11)).as_u64();
     assert(match err_2 {
-        Result::Err(U256Error::LossOfPrecision) => {
+        Err(U256Error::LossOfPrecision) => {
             true
         },
         _ => {
@@ -82,7 +82,7 @@ fn main() -> bool {
 
     let err_3 = U256::from((0, 0, 42, 11)).as_u64();
     assert(match err_3 {
-        Result::Err(U256Error::LossOfPrecision) => {
+        Err(U256Error::LossOfPrecision) => {
             true
         },
         _ => {
@@ -97,7 +97,7 @@ fn main() -> bool {
     // test as_u128()
     let err_1 = U256::from((42, 0, 0, 11)).as_u128();
     assert(match err_1 {
-        Result::Err(U256Error::LossOfPrecision) => {
+        Err(U256Error::LossOfPrecision) => {
             true
         },
         _ => {
@@ -107,7 +107,7 @@ fn main() -> bool {
 
     let err_2 = U256::from((0, 42, 0, 11)).as_u128();
     assert(match err_2 {
-        Result::Err(U256Error::LossOfPrecision) => {
+        Err(U256Error::LossOfPrecision) => {
             true
         },
         _ => {

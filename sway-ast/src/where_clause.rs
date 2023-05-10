@@ -1,12 +1,12 @@
 use crate::priv_prelude::*;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct WhereClause {
     pub where_token: WhereToken,
     pub bounds: Punctuated<WhereBound, CommaToken>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct WhereBound {
     pub ty_name: Ident,
     pub colon_token: ColonToken,

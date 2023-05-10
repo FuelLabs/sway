@@ -5,7 +5,8 @@ use crate::{
 };
 use std::fmt::Write;
 use sway_ast::{
-    keywords::CommaToken, punctuated::Punctuated, token::PunctKind, StorageField, TypeField,
+    keywords::CommaToken, punctuated::Punctuated, token::PunctKind, ConfigurableField,
+    StorageField, TypeField,
 };
 use sway_types::{Ident, Spanned};
 
@@ -54,7 +55,9 @@ where
                     write!(formatted_code, " ")?;
                 }
                 LineStyle::Multiline => {
-                    writeln!(formatted_code)?;
+                    if !formatted_code.ends_with('\n') {
+                        writeln!(formatted_code)?;
+                    }
                     let value_pairs_iter = self.value_separator_pairs.iter();
                     for (type_field, comma_token) in value_pairs_iter.clone() {
                         write!(
@@ -146,6 +149,34 @@ impl Format for TypeField {
             self.colon_token.span().as_str(),
         )?;
         self.ty.format(formatted_code, formatter)?;
+
+        Ok(())
+    }
+}
+
+impl Format for ConfigurableField {
+    fn format(
+        &self,
+        formatted_code: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        formatter.with_shape(
+            formatter.shape.with_default_code_line(),
+            |formatter| -> Result<(), FormatterError> {
+                write!(
+                    formatted_code,
+                    "{}{} ",
+                    self.name.span().as_str(),
+                    self.colon_token.span().as_str(),
+                )?;
+                self.ty.format(formatted_code, formatter)?;
+                write!(formatted_code, " {} ", self.eq_token.span().as_str())?;
+
+                Ok(())
+            },
+        )?;
+
+        self.initializer.format(formatted_code, formatter)?;
 
         Ok(())
     }

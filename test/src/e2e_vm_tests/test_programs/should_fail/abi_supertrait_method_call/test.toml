@@ -1,0 +1,3 @@
+category = "fail"
+
+# check: $()No method named "foo" found for type "ContractCaller<MyAbi>".

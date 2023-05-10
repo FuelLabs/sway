@@ -1,17 +1,17 @@
 use crate::cli::TemplateCommand;
 use anyhow::{anyhow, Context, Result};
 use forc_pkg::{
-    fetch_git, fetch_id, find_dir_within, git_commit_path, pin_git, PackageManifest, SourceGit,
+    manifest::{self, PackageManifest},
+    source::{self, git::Url},
 };
 use forc_util::validate_name;
 use fs_extra::dir::{copy, CopyOptions};
-use std::env;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+use std::{env, str::FromStr};
 use sway_utils::constants;
 use tracing::info;
-use url::Url;
 
 pub fn init(command: TemplateCommand) -> Result<()> {
     validate_name(&command.project_name, "project name")?;
@@ -21,37 +21,38 @@ pub fn init(command: TemplateCommand) -> Result<()> {
         .clone()
         .unwrap_or_else(|| format!("{}-template-source", command.project_name));
 
-    let source = SourceGit {
-        repo: Url::parse(&command.url)?,
-        reference: forc_pkg::GitReference::DefaultBranch,
+    let source = source::git::Source {
+        repo: Url::from_str(&command.url)?,
+        reference: source::git::Reference::DefaultBranch,
     };
 
     let current_dir = &env::current_dir()?;
 
     let fetch_ts = std::time::Instant::now();
-    let fetch_id = fetch_id(current_dir, fetch_ts);
+    let fetch_id = source::fetch_id(current_dir, fetch_ts);
 
     info!("Resolving the HEAD of {}", source.repo);
-    let git_source = pin_git(fetch_id, &local_repo_name, source)?;
+    let git_source = source::git::pin(fetch_id, &local_repo_name, source)?;
 
-    let repo_path = git_commit_path(
+    let repo_path = source::git::commit_path(
         &local_repo_name,
         &git_source.source.repo,
         &git_source.commit_hash,
     );
     if !repo_path.exists() {
         info!("  Fetching {}", git_source.to_string());
-        fetch_git(fetch_id, &local_repo_name, &git_source)?;
+        source::git::fetch(fetch_id, &local_repo_name, &git_source)?;
     }
 
     let from_path = match command.template_name {
-        Some(ref template_name) => find_dir_within(&repo_path, template_name).ok_or_else(|| {
-            anyhow!(
-                "failed to find a template `{}` in {}",
-                template_name,
-                command.url
-            )
-        })?,
+        Some(ref template_name) => manifest::find_dir_within(&repo_path, template_name)
+            .ok_or_else(|| {
+                anyhow!(
+                    "failed to find a template `{}` in {}",
+                    template_name,
+                    command.url
+                )
+            })?,
         None => {
             let manifest_path = repo_path.join(constants::MANIFEST_FILE_NAME);
             if PackageManifest::from_file(&manifest_path).is_err() {

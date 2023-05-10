@@ -1,13 +1,11 @@
-use sway_error::error::CompileError;
-
 use crate::{
     error::*,
-    language::{parsed::*, ty},
+    language::{parsed::*, ty, CallPath},
     semantic_analysis::*,
     type_system::*,
 };
 
-impl ty::TyStructDeclaration {
+impl ty::TyStructDecl {
     pub(crate) fn type_check(
         ctx: TypeCheckContext,
         decl: StructDeclaration,
@@ -29,23 +27,14 @@ impl ty::TyStructDeclaration {
         let mut decl_namespace = ctx.namespace.clone();
         let mut ctx = ctx.scoped(&mut decl_namespace);
 
-        // type check the type parameters
-        // insert them into the namespace
-        let mut new_type_parameters = vec![];
-        for type_parameter in type_parameters.into_iter() {
-            if !type_parameter.trait_constraints.is_empty() {
-                errors.push(CompileError::WhereClauseNotYetSupported {
-                    span: type_parameter.trait_constraints_span,
-                });
-                return err(warnings, errors);
-            }
-            new_type_parameters.push(check!(
-                TypeParameter::type_check(ctx.by_ref(), type_parameter),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ));
-        }
+        // Type check the type parameters. This will also insert them into the
+        // current namespace.
+        let new_type_parameters = check!(
+            TypeParameter::type_check_type_params(ctx.by_ref(), type_parameters, true),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
         // type check the fields
         let mut new_fields = vec![];
@@ -58,9 +47,12 @@ impl ty::TyStructDeclaration {
             ));
         }
 
+        let mut path: CallPath = name.into();
+        path = path.to_fullpath(ctx.namespace);
+
         // create the struct decl
-        let decl = ty::TyStructDeclaration {
-            name,
+        let decl = ty::TyStructDecl {
+            call_path: path,
             type_parameters: new_type_parameters,
             fields: new_fields,
             visibility,
@@ -78,11 +70,12 @@ impl ty::TyStructField {
         let mut errors = vec![];
         let type_engine = ctx.type_engine;
         let decl_engine = ctx.decl_engine;
-        let initial_type_id = type_engine.insert(decl_engine, field.type_info);
-        let r#type = check!(
+
+        let mut type_argument = field.type_argument;
+        type_argument.type_id = check!(
             ctx.resolve_type_with_self(
-                initial_type_id,
-                &field.type_span,
+                type_argument.type_id,
+                &type_argument.span,
                 EnforceTypeArguments::Yes,
                 None
             ),
@@ -92,10 +85,8 @@ impl ty::TyStructField {
         );
         let field = ty::TyStructField {
             name: field.name,
-            type_id: r#type,
-            initial_type_id,
             span: field.span,
-            type_span: field.type_span,
+            type_argument,
             attributes: field.attributes,
         };
         ok(field, warnings, errors)

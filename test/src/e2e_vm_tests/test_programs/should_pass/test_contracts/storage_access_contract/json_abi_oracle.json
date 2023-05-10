@@ -5,54 +5,6 @@
       "attributes": [
         {
           "arguments": [
-            "read",
-            "write"
-          ],
-          "name": "storage"
-        }
-      ],
-      "inputs": [
-        {
-          "name": "k",
-          "type": 9,
-          "typeArguments": null
-        }
-      ],
-      "name": "add_to_s_dot_t_dot_x",
-      "output": {
-        "name": "",
-        "type": 0,
-        "typeArguments": null
-      }
-    },
-    {
-      "attributes": [
-        {
-          "arguments": [
-            "read",
-            "write"
-          ],
-          "name": "storage"
-        }
-      ],
-      "inputs": [
-        {
-          "name": "k",
-          "type": 9,
-          "typeArguments": null
-        }
-      ],
-      "name": "divide_s_dot_t_dot_x",
-      "output": {
-        "name": "",
-        "type": 0,
-        "typeArguments": null
-      }
-    },
-    {
-      "attributes": [
-        {
-          "arguments": [
             "read"
           ],
           "name": "storage"
@@ -403,30 +355,6 @@
       "output": {
         "name": "",
         "type": 1,
-        "typeArguments": null
-      }
-    },
-    {
-      "attributes": [
-        {
-          "arguments": [
-            "read",
-            "write"
-          ],
-          "name": "storage"
-        }
-      ],
-      "inputs": [
-        {
-          "name": "k",
-          "type": 9,
-          "typeArguments": null
-        }
-      ],
-      "name": "multiply_by_s_dot_t_dot_x",
-      "output": {
-        "name": "",
-        "type": 0,
         "typeArguments": null
       }
     },
@@ -889,78 +817,6 @@
         "type": 0,
         "typeArguments": null
       }
-    },
-    {
-      "attributes": [
-        {
-          "arguments": [
-            "read",
-            "write"
-          ],
-          "name": "storage"
-        }
-      ],
-      "inputs": [
-        {
-          "name": "k",
-          "type": 9,
-          "typeArguments": null
-        }
-      ],
-      "name": "shift_left_s_dot_t_dot_x",
-      "output": {
-        "name": "",
-        "type": 0,
-        "typeArguments": null
-      }
-    },
-    {
-      "attributes": [
-        {
-          "arguments": [
-            "read",
-            "write"
-          ],
-          "name": "storage"
-        }
-      ],
-      "inputs": [
-        {
-          "name": "k",
-          "type": 9,
-          "typeArguments": null
-        }
-      ],
-      "name": "shift_right_s_dot_t_dot_x",
-      "output": {
-        "name": "",
-        "type": 0,
-        "typeArguments": null
-      }
-    },
-    {
-      "attributes": [
-        {
-          "arguments": [
-            "read",
-            "write"
-          ],
-          "name": "storage"
-        }
-      ],
-      "inputs": [
-        {
-          "name": "k",
-          "type": 9,
-          "typeArguments": null
-        }
-      ],
-      "name": "subtract_from_s_dot_t_dot_x",
-      "output": {
-        "name": "",
-        "type": 0,
-        "typeArguments": null
-      }
     }
   ],
   "loggedTypes": [],
@@ -997,7 +853,7 @@
           "typeArguments": null
         }
       ],
-      "type": "enum E",
+      "type": "enum storage_access_abi::E",
       "typeId": 3,
       "typeParameters": null
     },
@@ -1030,7 +886,7 @@
           "typeArguments": null
         }
       ],
-      "type": "struct S",
+      "type": "struct storage_access_abi::S",
       "typeId": 5,
       "typeParameters": null
     },
@@ -1072,7 +928,7 @@
           "typeArguments": null
         }
       ],
-      "type": "struct T",
+      "type": "struct storage_access_abi::T",
       "typeId": 6,
       "typeParameters": null
     },

@@ -4,7 +4,7 @@ use sway_error::warning::CompileWarning;
 use sway_error::{error::CompileError, warning::Warning};
 use sway_types::{LineCol, Spanned};
 
-#[derive(Debug)]
+#[derive(Debug, Default, Clone)]
 pub struct Diagnostics {
     pub warnings: Vec<Diagnostic>,
     pub errors: Vec<Diagnostic>,
@@ -14,7 +14,7 @@ fn get_error_diagnostics(errors: &[CompileError]) -> Vec<Diagnostic> {
     Vec::from_iter(errors.iter().map(|error| Diagnostic {
         range: get_range(error.span().line_col()),
         severity: Some(DiagnosticSeverity::ERROR),
-        message: format!("{}", error),
+        message: format!("{error}"),
         ..Default::default()
     }))
 }

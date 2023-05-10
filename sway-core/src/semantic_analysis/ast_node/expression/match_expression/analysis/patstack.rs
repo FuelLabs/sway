@@ -148,10 +148,6 @@ impl PatStack {
         self.pats.iter()
     }
 
-    pub(crate) fn into_iter(self) -> IntoIter<Pattern> {
-        self.pats.into_iter()
-    }
-
     /// Flattens the contents of a `PatStack` into a `PatStack`.
     pub(crate) fn flatten(&self) -> PatStack {
         let mut flattened = PatStack::empty();
@@ -315,6 +311,14 @@ impl PatStack {
     }
 }
 
+impl IntoIterator for PatStack {
+    type Item = Pattern;
+    type IntoIter = IntoIter<Pattern>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.pats.into_iter()
+    }
+}
+
 impl From<Vec<Pattern>> for PatStack {
     fn from(pats: Vec<Pattern>) -> Self {
         PatStack { pats }
@@ -328,9 +332,9 @@ impl fmt::Display for PatStack {
             .sort()
             .remove_duplicates()
             .into_iter()
-            .map(|x| format!("{}", x))
+            .map(|x| format!("{x}"))
             .join(", ");
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 

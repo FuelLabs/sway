@@ -1,19 +1,19 @@
-use fuels::prelude::*;
+use fuels::{
+    prelude::*,
+    types::{Bits256, SizedAsciiString},
+};
 
-abigen!(
-    ParsingLogsTestContract,
-    "test_projects/parsing_logs/out/debug/parsing_logs-abi.json"
-);
+abigen!(Contract(
+    name = "ParsingLogsTestContract",
+    abi = "test_projects/parsing_logs/out/debug/parsing_logs-abi.json"
+));
 
-async fn get_parsing_logs_instance() -> (ParsingLogsTestContract, ContractId) {
+async fn get_parsing_logs_instance() -> (ParsingLogsTestContract<WalletUnlocked>, ContractId) {
     let wallet = launch_provider_and_get_wallet().await;
     let id = Contract::deploy(
         "test_projects/parsing_logs/out/debug/parsing_logs.bin",
         &wallet,
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "test_projects/parsing_logs/out/debug/parsing_logs-storage_slots.json".to_string(),
-        )),
+        DeployConfiguration::default(),
     )
     .await
     .unwrap();
@@ -23,7 +23,7 @@ async fn get_parsing_logs_instance() -> (ParsingLogsTestContract, ContractId) {
 }
 
 #[tokio::test]
-async fn test_parse_logged_varibles() -> Result<(), Error> {
+async fn test_parse_logged_varibles() -> Result<()> {
     let (instance, _id) = get_parsing_logs_instance().await;
 
     let contract_methods = instance.methods();
@@ -48,7 +48,7 @@ async fn test_parse_logged_varibles() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_parse_logs_values() -> Result<(), Error> {
+async fn test_parse_logs_values() -> Result<()> {
     let (instance, _id) = get_parsing_logs_instance().await;
 
     let contract_methods = instance.methods();
@@ -71,7 +71,7 @@ async fn test_parse_logs_values() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_parse_logs_custom_types() -> Result<(), Error> {
+async fn test_parse_logs_custom_types() -> Result<()> {
     let (instance, _id) = get_parsing_logs_instance().await;
 
     let contract_methods = instance.methods();
@@ -89,7 +89,7 @@ async fn test_parse_logs_custom_types() -> Result<(), Error> {
         field_2: expected_bits256,
         field_3: 64,
     };
-    let expected_enum = TestEnum::VariantTwo();
+    let expected_enum = TestEnum::VariantTwo;
 
     assert_eq!(log_test_struct, vec![expected_struct]);
     assert_eq!(log_test_enum, vec![expected_enum]);
@@ -98,7 +98,7 @@ async fn test_parse_logs_custom_types() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_parse_logs_generic_types() -> Result<(), Error> {
+async fn test_parse_logs_generic_types() -> Result<()> {
     let (instance, _id) = get_parsing_logs_instance().await;
 
     let contract_methods = instance.methods();
@@ -139,7 +139,7 @@ async fn test_parse_logs_generic_types() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_get_logs() -> Result<(), Error> {
+async fn test_get_logs() -> Result<()> {
     let (instance, _id) = get_parsing_logs_instance().await;
 
     let contract_methods = instance.methods();
@@ -155,7 +155,7 @@ async fn test_get_logs() -> Result<(), Error> {
         field_2: expected_bits256,
         field_3: 64,
     };
-    let expected_enum = TestEnum::VariantTwo();
+    let expected_enum = TestEnum::VariantTwo;
     let expected_generic_struct = StructWithGeneric {
         field_1: expected_struct.clone(),
         field_2: 64,

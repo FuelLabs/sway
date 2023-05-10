@@ -81,13 +81,13 @@ pub struct SubfieldExpression {
 
 #[derive(Debug, Clone)]
 pub struct AmbiguousSuffix {
-    /// The ambiguous part of the suffix.
+    /// If the suffix is a pair, the ambiguous part of the suffix.
     ///
     /// For example, if we have `Foo::bar()`,
     /// we don't know whether `Foo` is a module or a type,
     /// so `before` would be `Foo` here with any type arguments.
-    pub before: TypeBinding<Ident>,
-    /// The final suffix, i.e., the function name.
+    pub before: Option<TypeBinding<Ident>>,
+    /// The final suffix, i.e., the function or variant name.
     ///
     /// In the example above, this would be `bar`.
     pub suffix: Ident,
@@ -95,7 +95,11 @@ pub struct AmbiguousSuffix {
 
 impl Spanned for AmbiguousSuffix {
     fn span(&self) -> Span {
-        Span::join(self.before.span(), self.suffix.span())
+        if let Some(before) = &self.before {
+            Span::join(before.span(), self.suffix.span())
+        } else {
+            self.suffix.span()
+        }
     }
 }
 
@@ -160,10 +164,12 @@ pub enum ExpressionKind {
     Error(Box<[Span]>),
     Literal(Literal),
     /// An ambiguous path where we don't know until type checking whether this
-    /// is a free function call or a UFCS (Rust term) style associated function call.
+    /// is a free function call, an enum variant or a UFCS (Rust term) style associated function call.
     AmbiguousPathExpression(Box<AmbiguousPathExpression>),
     FunctionApplication(Box<FunctionApplicationExpression>),
     LazyOperator(LazyOperatorExpression),
+    /// And ambiguous single ident which could either be a variable or an enum variant
+    AmbiguousVariableExpression(Ident),
     Variable(Ident),
     Tuple(Vec<Expression>),
     TupleIndex(TupleIndexExpression),
@@ -217,13 +223,9 @@ pub enum ExpressionKind {
     Return(Box<Expression>),
 }
 
-/// Represents the left hand side of a reassignment, which could either be a regular variable
-/// expression, denoted by [ReassignmentTarget::VariableExpression], or, a storage field, denoted
-/// by [ReassignmentTarget::StorageField].
 #[derive(Debug, Clone)]
 pub enum ReassignmentTarget {
     VariableExpression(Box<Expression>),
-    StorageField(Vec<Ident>),
 }
 
 #[derive(Debug, Clone)]
@@ -247,7 +249,7 @@ pub(crate) struct Op {
 
 impl Op {
     pub fn to_var_name(&self) -> Ident {
-        Ident::new_with_override(self.op_variant.as_str(), self.span.clone())
+        Ident::new_with_override(self.op_variant.as_str().to_string(), self.span.clone())
     }
 }
 

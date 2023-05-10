@@ -1,9 +1,11 @@
-//! A wrapper type with 2 variants, `Address` and `ContractId`. The use of this type allows for handling interactions with contracts and addresses in a unified manner.
-library identity;
+//! A wrapper type with two variants, `Address` and `ContractId`.
+//! The use of this type allows for handling interactions with contracts and addresses in a unified manner.
+library;
 
 use ::address::Address;
 use ::contract_id::ContractId;
 
+/// The `Identity` type: either an `Address` or a `ContractId`.
 // ANCHOR: docs_identity
 pub enum Identity {
     Address: Address,

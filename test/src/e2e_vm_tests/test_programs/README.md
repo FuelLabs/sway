@@ -51,6 +51,10 @@ be compiled and deployed.  It is important that these paths remain relative to t
 Some tests also require their ABI is verified.  To indicate this the `validate_abi` field may be
 specified, as a boolean value.
 
+## supported_targets
+
+Some tests are only compatible with some build targets. To indicate this the `supported_targets` field may be specified, as an array value.
+
 ## FileCheck for 'fail' tests
 
 The tests in the `fail` category _must_ employ verification using pattern matching via the [FileCheck](https://docs.rs/filecheck/latest/filecheck/)
@@ -86,9 +90,11 @@ validate_abi = true
 
 And this example is similar but expects return data.
 
+> _Note:_ The return data expected is presented as a memory range because that's what the `RETD` opcode returns
+
 ```toml
 category = "run"
-expected_result = { action = "return_data", value = [ 102, 104, 122, 173, 248, 98, 189, 119, 108, 143, 193, 139, 142, 159, 142, 32, 8, 151, 20, 133, 110, 226, 51, 179, 144, 42, 89, 29, 13, 95, 41, 37 ] }
+expected_result = { action = "return_data", value = "0000000003ffffc400000000000000040000000000000003" }
 validate_abi = true
 ```
 

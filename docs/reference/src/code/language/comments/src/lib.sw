@@ -1,4 +1,4 @@
-library comments;
+library;
 
 fn comment() {
     // ANCHOR: comment

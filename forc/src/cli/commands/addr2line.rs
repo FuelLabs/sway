@@ -1,5 +1,6 @@
-use anyhow::{anyhow, Result};
+use anyhow::anyhow;
 use clap::Parser;
+use forc_util::ForcResult;
 use std::collections::VecDeque;
 use std::fs::{self, File};
 use std::io::{self, prelude::*, BufReader};
@@ -30,7 +31,7 @@ pub(crate) struct Command {
     pub opcode_index: usize,
 }
 
-pub(crate) fn exec(command: Command) -> Result<()> {
+pub(crate) fn exec(command: Command) -> ForcResult<()> {
     let contents = fs::read(&command.sourcemap_path)
         .map_err(|err| anyhow!("{:?}: could not read: {:?}", command.sourcemap_path, err))?;
 
@@ -50,7 +51,7 @@ pub(crate) fn exec(command: Command) -> Result<()> {
         let rr = read_range(&path, range, command.context)
             .map_err(|err| anyhow!("{:?}: could not read: {:?}", path, err))?;
 
-        let path_str = format!("{:?}", path);
+        let path_str = format!("{path:?}");
         let snippet = Snippet {
             title: None,
             footer: vec![],
@@ -74,7 +75,7 @@ pub(crate) fn exec(command: Command) -> Result<()> {
 
         Ok(())
     } else {
-        Err(anyhow!("Address did not map to any source code location"))
+        Err("Address did not map to any source code location".into())
     }
 }
 

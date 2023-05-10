@@ -1,7 +1,7 @@
 use crate::priv_prelude::*;
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub enum Ty {
     Path(PathType),
     Tuple(Parens<TyTupleDescriptor>),
@@ -13,6 +13,14 @@ pub enum Ty {
     Infer {
         underscore_token: UnderscoreToken,
     },
+    Ptr {
+        ptr_token: PtrToken,
+        ty: SquareBrackets<Box<Ty>>,
+    },
+    Slice {
+        slice_token: SliceToken,
+        ty: SquareBrackets<Box<Ty>>,
+    },
 }
 
 impl Spanned for Ty {
@@ -23,11 +31,23 @@ impl Spanned for Ty {
             Ty::Array(array_type) => array_type.span(),
             Ty::Str { str_token, length } => Span::join(str_token.span(), length.span()),
             Ty::Infer { underscore_token } => underscore_token.span(),
+            Ty::Ptr { ptr_token, ty } => Span::join(ptr_token.span(), ty.span()),
+            Ty::Slice { slice_token, ty } => Span::join(slice_token.span(), ty.span()),
         }
     }
 }
 
-#[derive(Clone, Debug)]
+impl Ty {
+    pub fn name_span(&self) -> Option<Span> {
+        if let Ty::Path(path_type) = self {
+            Some(path_type.last_segment().name.span())
+        } else {
+            None
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize)]
 pub enum TyTupleDescriptor {
     Nil,
     Cons {
@@ -52,7 +72,7 @@ impl TyTupleDescriptor {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct TyArrayDescriptor {
     pub ty: Box<Ty>,
     pub semicolon_token: SemicolonToken,

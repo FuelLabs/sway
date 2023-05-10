@@ -128,3 +128,48 @@ impl Parse for QualifiedPathRoot {
         Ok(QualifiedPathRoot { ty, as_trait })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils::parse;
+    use insta::*;
+
+    #[test]
+    fn parse_nested_path() {
+        assert_ron_snapshot!(parse::<PathExpr>(r#"
+            std::vec::Vec
+        "#,), @r###"
+        PathExpr(
+          root_opt: None,
+          prefix: PathExprSegment(
+            name: Ident(
+              to_string: "std",
+              span: (13, 16),
+            ),
+            generics_opt: None,
+          ),
+          suffix: [
+            (DoubleColonToken(
+              span: (16, 18),
+            ), PathExprSegment(
+              name: Ident(
+                to_string: "vec",
+                span: (18, 21),
+              ),
+              generics_opt: None,
+            )),
+            (DoubleColonToken(
+              span: (21, 23),
+            ), PathExprSegment(
+              name: Ident(
+                to_string: "Vec",
+                span: (23, 26),
+              ),
+              generics_opt: None,
+            )),
+          ],
+        )
+        "###);
+    }
+}

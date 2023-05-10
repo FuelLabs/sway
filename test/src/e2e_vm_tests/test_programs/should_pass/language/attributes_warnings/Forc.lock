@@ -1,0 +1,13 @@
+[[package]]
+name = 'attributes_warnings'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-8B6385B3B4229CC8'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-8B6385B3B4229CC8'
+dependencies = ['core']

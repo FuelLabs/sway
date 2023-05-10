@@ -8,9 +8,9 @@ use super::{
     allocated_ops::{AllocatedOpcode, AllocatedRegister},
     virtual_immediate::*,
     virtual_register::*,
-    DataId, Op,
+    Op,
 };
-use crate::asm_generation::RegisterPool;
+use crate::asm_generation::fuel::{data_section::DataId, register_allocator::RegisterPool};
 
 use std::collections::{BTreeSet, HashMap};
 
@@ -520,7 +520,7 @@ impl VirtualOp {
 
     pub(crate) fn update_register(
         &self,
-        reg_to_reg_map: &HashMap<VirtualRegister, VirtualRegister>,
+        reg_to_reg_map: &HashMap<&VirtualRegister, &VirtualRegister>,
     ) -> Self {
         use VirtualOp::*;
         match self {
@@ -1299,11 +1299,11 @@ fn map_reg(
 }
 
 fn update_reg(
-    reg_to_reg_map: &HashMap<VirtualRegister, VirtualRegister>,
+    reg_to_reg_map: &HashMap<&VirtualRegister, &VirtualRegister>,
     reg: &VirtualRegister,
 ) -> VirtualRegister {
     if let Some(r) = reg_to_reg_map.get(reg) {
-        r.clone()
+        (*r).into()
     } else {
         reg.clone()
     }

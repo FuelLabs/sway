@@ -1,7 +1,11 @@
 use super::instruction_set::InstructionSet;
-use super::{DataSection, ProgramABI, ProgramKind};
+use super::ToMidenBytecode;
+use super::{
+    fuel::{checks, data_section::DataSection},
+    ProgramABI, ProgramKind,
+};
 use crate::asm_lang::allocated_ops::{AllocatedOp, AllocatedOpcode};
-use crate::decl_engine::DeclId;
+use crate::decl_engine::DeclRefFunction;
 use crate::error::*;
 use crate::source_map::SourceMap;
 
@@ -10,7 +14,7 @@ use sway_error::error::CompileError;
 use sway_types::span::Span;
 
 use either::Either;
-use std::{collections::BTreeMap, fmt, io::Read};
+use std::{collections::BTreeMap, fmt};
 
 /// Represents an ASM set which has had register allocation, jump elimination, and optimization
 /// applied to it
@@ -33,7 +37,7 @@ pub struct FinalizedEntry {
     pub selector: Option<[u8; 4]>,
     /// If this entry is constructed from a test function contains the declaration id for that
     /// function, otherwise contains `None`.
-    pub test_decl_id: Option<DeclId>,
+    pub test_decl_ref: Option<DeclRefFunction>,
 }
 
 /// The bytecode for a sway program as well as the byte offsets of configuration-time constants in
@@ -70,6 +74,14 @@ impl FinalizedAsm {
                     )
                 }
             }
+            InstructionSet::MidenVM { ops } => ok(
+                CompiledBytecode {
+                    bytecode: ops.to_bytecode().into(),
+                    config_const_offsets: Default::default(),
+                },
+                vec![],
+                vec![],
+            ),
         }
     }
 }
@@ -140,14 +152,13 @@ fn to_bytecode_mut(
                 if ops.len() > 1 {
                     buf.resize(buf.len() + ((ops.len() - 1) * 4), 0);
                 }
-                for mut op in ops {
+                for op in ops {
                     if let Some(span) = &span {
                         source_map.insert(half_word_ix, span);
                     }
                     let read_range_upper_bound =
                         core::cmp::min(half_word_ix * 4 + std::mem::size_of_val(&op), buf.len());
-                    op.read_exact(&mut buf[half_word_ix * 4..read_range_upper_bound])
-                        .expect("Failed to write to in-memory buffer.");
+                    buf[half_word_ix * 4..read_range_upper_bound].copy_from_slice(&op.to_bytes());
                     half_word_ix += 1;
                 }
             }
@@ -177,4 +188,19 @@ fn to_bytecode_mut(
         vec![],
         errors,
     )
+}
+
+/// Checks for disallowed opcodes in non-contract code.
+/// i.e., if this is a script or predicate, we can't use certain contract opcodes.
+/// See https://github.com/FuelLabs/sway/issues/350 for details.
+pub fn check_invalid_opcodes(asm: &FinalizedAsm) -> CompileResult<()> {
+    match &asm.program_section {
+        InstructionSet::Fuel { ops } => match asm.program_kind {
+            ProgramKind::Contract | ProgramKind::Library => ok((), vec![], vec![]),
+            ProgramKind::Script => checks::check_script_opcodes(&ops[..]),
+            ProgramKind::Predicate => checks::check_predicate_opcodes(&ops[..]),
+        },
+        InstructionSet::Evm { ops: _ } => ok((), vec![], vec![]),
+        InstructionSet::MidenVM { ops: _ } => ok((), vec![], vec![]),
+    }
 }

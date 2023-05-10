@@ -1,23 +1,24 @@
-library revert;
+//! Functions to panic or revert with a given error code.
+library;
 
 use ::logging::log;
 use ::error_signals::{FAILED_REQUIRE_SIGNAL, REVERT_WITH_LOG_SIGNAL};
 
-/// Context-dependent:
-/// will panic if used in a predicate
-/// will revert if used in a contract
+/// Will either panic or revert with a given number depending on the context.
+/// If used in a predicate, it will panic.
+/// If used in a contract, it will revert.
 ///
 /// ### Arguments
 ///
-/// * `code` - The code with which to revert the program
+/// * `code` - The code with which to revert the program.
 ///
 /// ### Reverts
 ///
-/// Reverts when called in a contract
+/// Reverts when called in a contract.
 ///
 /// ### Panics
 ///
-/// Panics when called in a predicate
+/// Panics when called in a predicate.
 ///
 /// ### Examples
 ///
@@ -42,12 +43,12 @@ pub fn revert<T>(code: T) {
 ///
 /// ### Arguments
 ///
-/// * `condition` - The condition upon which to decide whether to revert or not
-/// * `value` - The value which will be logged in case `condition` is `false`
+/// * `condition` - The condition upon which to decide whether to revert or not.
+/// * `value` - The value which will be logged in case `condition` is `false`.
 ///
 /// ### Reverts
 ///
-/// Reverts when `condition` is false
+/// Reverts when `condition` is `false`.
 ///
 /// ### Examples
 ///

@@ -1,7 +1,6 @@
-library enums_preferred;
+library;
 
-dep enum_of_enums;
-use enum_of_enums::{StateError, UserError};
+use ::enum_of_enums::{StateError, UserError};
 
 fn preferred() {
     let error1 = StateError::Void;

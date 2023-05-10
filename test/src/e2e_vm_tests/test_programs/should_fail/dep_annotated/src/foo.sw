@@ -1,3 +1,3 @@
-library foo;
+library;
 
 fn foo() -> bool { true } 

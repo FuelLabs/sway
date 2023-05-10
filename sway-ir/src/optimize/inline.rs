@@ -9,6 +9,7 @@ use rustc_hash::FxHashMap;
 use crate::{
     asm::AsmArg,
     block::Block,
+    call_graph,
     context::Context,
     error::IrError,
     function::Function,
@@ -17,29 +18,211 @@ use crate::{
     local_var::LocalVar,
     metadata::{combine, MetadataIndex},
     value::{Value, ValueContent, ValueDatum},
-    BlockArgument, NamedPass,
+    AnalysisResults, BlockArgument, Module, Pass, PassMutability, ScopedPass,
 };
 
-pub struct InlinePass;
+pub const INLINE_MAIN_NAME: &str = "inline_main";
 
-impl NamedPass for InlinePass {
-    fn name() -> &'static str {
-        "inline"
+pub fn create_inline_in_main_pass() -> Pass {
+    Pass {
+        name: INLINE_MAIN_NAME,
+        descr: "inline from main fn.",
+        deps: vec![],
+        runner: ScopedPass::ModulePass(PassMutability::Transform(inline_in_main)),
     }
+}
 
-    fn descr() -> &'static str {
-        "inline function calls."
-    }
+pub const INLINE_PREDICATE_NAME: &str = "inline_predicate_module";
 
-    fn run(ir: &mut Context) -> Result<bool, IrError> {
-        // For now we inline everything into `main()`.  Eventually we can be more selective.
-        let main_fn = ir
-            .module_iter()
-            .flat_map(|module| module.function_iter(ir))
-            .find(|f| f.get_name(ir) == "main")
-            .unwrap();
-        inline_all_function_calls(ir, &main_fn)
+pub fn create_inline_in_predicate_pass() -> Pass {
+    Pass {
+        name: INLINE_PREDICATE_NAME,
+        descr: "inline function calls in a predicate module.",
+        deps: vec![],
+        runner: ScopedPass::ModulePass(PassMutability::Transform(inline_in_predicate_module)),
     }
+}
+
+pub const INLINE_NONPREDICATE_NAME: &str = "inline_non_predicate_module";
+
+pub fn create_inline_in_non_predicate_pass() -> Pass {
+    Pass {
+        name: INLINE_NONPREDICATE_NAME,
+        descr: "inline function calls in a non-predicate module.",
+        deps: vec![],
+        runner: ScopedPass::ModulePass(PassMutability::Transform(inline_in_non_predicate_module)),
+    }
+}
+
+/// This is a copy of sway_core::inline::Inline.
+/// TODO: Reuse: Depend on sway_core? Move it to sway_types?
+#[derive(Debug)]
+enum Inline {
+    Always,
+    Never,
+}
+/// This is a copy of sway_core::asm_generation::compiler_constants.
+/// TODO: Once we have a target specific IR generator / legalizer,
+///       use that to mark related functions as ALWAYS_INLINE.
+///       Then we no longer depend on this const value below.
+const NUM_ARG_REGISTERS: u8 = 6;
+
+fn metadata_to_inline(context: &Context, md_idx: Option<MetadataIndex>) -> Option<Inline> {
+    fn for_each_md_idx<T, F: FnMut(MetadataIndex) -> Option<T>>(
+        context: &Context,
+        md_idx: Option<MetadataIndex>,
+        mut f: F,
+    ) -> Option<T> {
+        // If md_idx is not None and is a list then try them all.
+        md_idx.and_then(|md_idx| {
+            if let Some(md_idcs) = md_idx.get_content(context).unwrap_list() {
+                md_idcs.iter().find_map(|md_idx| f(*md_idx))
+            } else {
+                f(md_idx)
+            }
+        })
+    }
+    for_each_md_idx(context, md_idx, |md_idx| {
+        // Create a new inline and save it in the cache.
+        md_idx
+            .get_content(context)
+            .unwrap_struct("inline", 1)
+            .and_then(|fields| fields[0].unwrap_string())
+            .and_then(|inline_str| {
+                let inline = match inline_str {
+                    "always" => Some(Inline::Always),
+                    "never" => Some(Inline::Never),
+                    _otherwise => None,
+                }?;
+                Some(inline)
+            })
+    })
+}
+
+/// Inline function calls based on two conditions:
+/// 1. The program we're compiling is a "predicate". Predicates cannot jump backwards which means
+///    that supporting function calls (i.e. without inlining) is not possible. This is a protocol
+///    restriction and not a heuristic.
+/// 2. If the program is not a "predicate" then, we rely on some heuristic which is described below
+///    in the `inline_heuristc` closure in `inline_in_non_predicate_module`.
+pub fn inline_in_predicate_module(
+    context: &mut Context,
+    _: &AnalysisResults,
+    module: Module,
+) -> Result<bool, IrError> {
+    let cg =
+        call_graph::build_call_graph(context, &module.function_iter(context).collect::<Vec<_>>());
+
+    let functions = call_graph::callee_first_order(&cg);
+
+    let mut modified = false;
+
+    for function in functions {
+        modified |= inline_all_function_calls(context, &function)?;
+    }
+    Ok(modified)
+}
+
+pub fn inline_in_non_predicate_module(
+    context: &mut Context,
+    _: &AnalysisResults,
+    module: Module,
+) -> Result<bool, IrError> {
+    // Inspect ALL calls and count how often each function is called.
+    let call_counts: HashMap<Function, u64> =
+        module
+            .function_iter(context)
+            .fold(HashMap::new(), |mut counts, func| {
+                for (_block, ins) in func.instruction_iter(context) {
+                    if let Some(Instruction::Call(callee, _args)) = ins.get_instruction(context) {
+                        counts
+                            .entry(*callee)
+                            .and_modify(|count| *count += 1)
+                            .or_insert(1);
+                    }
+                }
+                counts
+            });
+
+    let inline_heuristic = |ctx: &Context, func: &Function, _call_site: &Value| {
+        let attributed_inline = metadata_to_inline(ctx, func.get_metadata(ctx));
+        match attributed_inline {
+            Some(Inline::Always) => {
+                // TODO: check if inlining of function is possible
+                // return true;
+            }
+            Some(Inline::Never) => {
+                return false;
+            }
+            None => {}
+        }
+
+        let ret_type = func.get_return_type(ctx);
+        let num_args = {
+            func.args_iter(ctx).count()
+                + if super::target_fuel::is_demotable_type(ctx, &ret_type) {
+                    // The return type will be demoted to memory,
+                    // which means that there'll be an additional return arg.
+                    1
+                } else {
+                    0
+                }
+        };
+
+        // For now, pending improvements to ASMgen for calls, we must inline any function which has
+        // too many args.
+        if num_args as u8 > NUM_ARG_REGISTERS {
+            return true;
+        }
+
+        // If the function is called only once then definitely inline it.
+        if call_counts.get(func).copied().unwrap_or(0) == 1 {
+            return true;
+        }
+
+        // If the function is (still) small then also inline it.
+        const MAX_INLINE_INSTRS_COUNT: usize = 4;
+        if func.num_instructions(ctx) <= MAX_INLINE_INSTRS_COUNT {
+            return true;
+        }
+
+        // As per https://github.com/FuelLabs/sway/issues/2819 we can hit problems if a function
+        // argument is used as a pointer (probably because it has a ref type) although it actually
+        // isn't one.  Ref type args which aren't pointers need to be inlined.
+        if func.args_iter(ctx).any(|(_name, arg_val)| {
+            arg_val.get_type(ctx).map_or(false, |ty| {
+                ty.is_ptr(ctx) || !(ty.is_unit(ctx) | ty.is_bool(ctx) | ty.is_uint(ctx))
+            })
+        }) {
+            return true;
+        }
+
+        false
+    };
+
+    let cg =
+        call_graph::build_call_graph(context, &module.function_iter(context).collect::<Vec<_>>());
+    let functions = call_graph::callee_first_order(&cg);
+    let mut modified = false;
+
+    for function in functions {
+        modified |= inline_some_function_calls(context, &function, inline_heuristic)?;
+    }
+    Ok(modified)
+}
+
+pub fn inline_in_main(
+    context: &mut Context,
+    _: &AnalysisResults,
+    module: Module,
+) -> Result<bool, IrError> {
+    // For now we inline everything into `main()`.  Eventually we can be more selective.
+    for function in module.function_iter(context) {
+        if function.get_name(context) == "main" {
+            return inline_all_function_calls(context, &function);
+        }
+    }
+    Ok(false)
 }
 
 /// Inline all calls made from a specific function, effectively removing all `Call` instructions.
@@ -131,21 +314,17 @@ pub fn is_small_fn(
     }
 
     move |context: &Context, function: &Function, _call_site: &Value| -> bool {
-        max_blocks
-            .map(|max_block_count| function.num_blocks(context) <= max_block_count)
-            .unwrap_or(true)
-            && max_instrs
-                .map(|max_instrs_count| function.num_instructions(context) <= max_instrs_count)
-                .unwrap_or(true)
-            && max_stack_size
-                .map(|max_stack_size_count| {
-                    function
-                        .locals_iter(context)
-                        .map(|(_name, ptr)| count_type_elements(context, &ptr.get_type(context)))
-                        .sum::<usize>()
-                        <= max_stack_size_count
-                })
-                .unwrap_or(true)
+        max_blocks.map_or(true, |max_block_count| {
+            function.num_blocks(context) <= max_block_count
+        }) && max_instrs.map_or(true, |max_instrs_count| {
+            function.num_instructions(context) <= max_instrs_count
+        }) && max_stack_size.map_or(true, |max_stack_size_count| {
+            function
+                .locals_iter(context)
+                .map(|(_name, ptr)| count_type_elements(context, &ptr.get_inner_type(context)))
+                .sum::<usize>()
+                <= max_stack_size_count
+        })
     }
 }
 
@@ -188,7 +367,7 @@ pub fn inline_function_call(
 
     // Returned values, if any, go to `post_block`, so a block arg there.
     // We don't expect `post_block` to already have any block args.
-    if post_block.new_arg(context, call_site.get_type(context).unwrap(), false) != 0 {
+    if post_block.new_arg(context, call_site.get_type(context).unwrap()) != 0 {
         panic!("Expected newly created post_block to not have block args")
     }
     function.replace_value(
@@ -243,7 +422,7 @@ pub fn inline_function_call(
             .create_block_before(
                 context,
                 &post_block,
-                Some(format!("{}_{}", inlined_fn_name, inlined_block_label)),
+                Some(format!("{inlined_fn_name}_{inlined_block_label}")),
             )
             .unwrap();
         block_map.insert(inlined_block, new_block);
@@ -254,10 +433,9 @@ pub fn inline_function_call(
                 block: _,
                 idx: _,
                 ty,
-                by_ref,
             }) = &context.values[inlined_arg.0].value
             {
-                let index = new_block.new_arg(context, *ty, *by_ref);
+                let index = new_block.new_arg(context, *ty);
                 value_map.insert(inlined_arg, new_block.get_arg(context, index).unwrap());
             } else {
                 unreachable!("Expected a block argument")
@@ -338,7 +516,6 @@ fn inline_instruction(
                 // We can re-use the old asm block with the updated args.
                 new_block.ins(context).asm_block_from_asm(asm, new_args)
             }
-            Instruction::AddrOf(arg) => new_block.ins(context).addr_of(map_value(arg)),
             Instruction::BitCast(value, ty) => new_block.ins(context).bitcast(map_value(value), ty),
             Instruction::BinaryOp { op, arg1, arg2 } => {
                 new_block
@@ -358,9 +535,7 @@ fn inline_instruction(
                     .collect::<Vec<Value>>()
                     .as_slice(),
             ),
-            Instruction::CastPtr(val, ty, offs) => {
-                new_block.ins(context).cast_ptr(map_value(val), ty, offs)
-            }
+            Instruction::CastPtr(val, ty) => new_block.ins(context).cast_ptr(map_value(val), ty),
             Instruction::Cmp(pred, lhs_value, rhs_value) => {
                 new_block
                     .ins(context)
@@ -392,22 +567,7 @@ fn inline_instruction(
                 map_value(asset_id),
                 map_value(gas),
             ),
-            Instruction::ExtractElement {
-                array,
-                ty,
-                index_val,
-            } => new_block
-                .ins(context)
-                .extract_element(map_value(array), ty, map_value(index_val)),
-            Instruction::ExtractValue {
-                aggregate,
-                ty,
-                indices,
-            } => new_block
-                .ins(context)
-                .extract_value(map_value(aggregate), ty, indices),
             Instruction::FuelVm(fuel_vm_instr) => match fuel_vm_instr {
-                FuelVmInstruction::GetStorageKey => new_block.ins(context).get_storage_key(),
                 FuelVmInstruction::Gtf { index, tx_field_id } => {
                     new_block.ins(context).gtf(map_value(index), tx_field_id)
                 }
@@ -431,6 +591,12 @@ fn inline_instruction(
                     map_value(output_index),
                     map_value(coins),
                 ),
+                FuelVmInstruction::StateClear {
+                    key,
+                    number_of_slots,
+                } => new_block
+                    .ins(context)
+                    .state_clear(map_value(key), map_value(number_of_slots)),
                 FuelVmInstruction::StateLoadQuadWord {
                     load_val,
                     key,
@@ -456,53 +622,54 @@ fn inline_instruction(
                     .ins(context)
                     .state_store_word(map_value(stored_val), map_value(key)),
             },
+            Instruction::GetElemPtr {
+                base,
+                elem_ptr_ty,
+                indices,
+            } => {
+                let elem_ty = elem_ptr_ty.get_pointee_type(context).unwrap();
+                new_block.ins(context).get_elem_ptr(
+                    map_value(base),
+                    elem_ty,
+                    indices.iter().map(|idx| map_value(*idx)).collect(),
+                )
+            }
             Instruction::GetLocal(local_var) => {
                 new_block.ins(context).get_local(map_local(local_var))
             }
-            Instruction::InsertElement {
-                array,
-                ty,
-                value,
-                index_val,
-            } => new_block.ins(context).insert_element(
-                map_value(array),
-                ty,
-                map_value(value),
-                map_value(index_val),
-            ),
-            Instruction::InsertValue {
-                aggregate,
-                ty,
-                value,
-                indices,
-            } => new_block.ins(context).insert_value(
-                map_value(aggregate),
-                ty,
-                map_value(value),
-                indices,
-            ),
             Instruction::IntToPtr(value, ty) => {
                 new_block.ins(context).int_to_ptr(map_value(value), ty)
             }
             Instruction::Load(src_val) => new_block.ins(context).load(map_value(src_val)),
-            Instruction::MemCopy {
-                dst_val,
-                src_val,
+            Instruction::MemCopyBytes {
+                dst_val_ptr,
+                src_val_ptr,
                 byte_len,
+            } => new_block.ins(context).mem_copy_bytes(
+                map_value(dst_val_ptr),
+                map_value(src_val_ptr),
+                byte_len,
+            ),
+            Instruction::MemCopyVal {
+                dst_val_ptr,
+                src_val_ptr,
             } => new_block
                 .ins(context)
-                .mem_copy(map_value(dst_val), map_value(src_val), byte_len),
+                .mem_copy_val(map_value(dst_val_ptr), map_value(src_val_ptr)),
             Instruction::Nop => new_block.ins(context).nop(),
+            Instruction::PtrToInt(value, ty) => {
+                new_block.ins(context).ptr_to_int(map_value(value), ty)
+            }
             // We convert `ret` to `br post_block` and add the returned value as a phi value.
             Instruction::Ret(val, _) => new_block
                 .ins(context)
                 .branch(*post_block, vec![map_value(val)]),
             Instruction::Store {
-                dst_val,
+                dst_val_ptr,
                 stored_val,
             } => new_block
                 .ins(context)
-                .store(map_value(dst_val), map_value(stored_val)),
+                .store(map_value(dst_val_ptr), map_value(stored_val)),
         }
         .add_metadatum(context, metadata);
 

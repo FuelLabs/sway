@@ -1,9 +1,7 @@
-library tests;
-
-dep data_structures;
+library;
 
 use core::ops::*;
-use data_structures::*;
+use ::data_structures::*;
 use std::hash::sha256;
 
 /* Currently need to occasionally use `sha256` to compare generic types because
@@ -14,28 +12,28 @@ use std::hash::sha256;
 // Generic Tests
 /////////////////////////////////////////////////////////////////////////////
 fn test_is_some<T>(val: T) {
-    assert(Option::Some(val).is_some());
-    assert(!Option::None::<T>.is_some());
+    assert(Some(val).is_some());
+    assert(!None::<T>.is_some());
 }
 
 fn test_is_none<T>(val: T) {
-    assert(!Option::Some(val).is_none());
-    assert(Option::None::<T>.is_none());
+    assert(!Some(val).is_none());
+    assert(None::<T>.is_none());
 }
 
 fn test_unwrap<T>(val: T)
 where
     T: Eq
 {
-    assert(Option::Some(val).unwrap() == val);
+    assert(Some(val).unwrap() == val);
 }
 
 fn test_unwrap_or<T>(val: T, default: T)
 where
     T: Eq
 {
-    assert(sha256(Option::Some(val).unwrap_or(default)) == sha256(val));
-    assert(sha256(Option::None::<T>.unwrap_or(default)) == sha256(default));
+    assert(sha256(Some(val).unwrap_or(default)) == sha256(val));
+    assert(sha256(None::<T>.unwrap_or(default)) == sha256(default));
 }
 
 /* Currently not able to combine the two functions below due to
@@ -44,18 +42,18 @@ fn test_some_ok_or<T, E>(val: T, default: E)
 where
     T: Eq
 {
-    match Option::Some(val).ok_or(default) {
-        Result::Ok(inner) => assert(val == inner),
-        Result::Err(_) => revert(0),
+    match Some(val).ok_or(default) {
+        Ok(inner) => assert(val == inner),
+        Err(_) => revert(0),
     }
 }
 fn test_none_ok_or<T, E>(_val: T, default: E)
 where
     E: Eq
 {
-    match Option::None::<T>.ok_or(default) {
-        Result::Ok(_) => revert(0),
-        Result::Err(e) => assert(sha256(default) == sha256(e)),
+    match None::<T>.ok_or(default) {
+        Ok(_) => revert(0),
+        Err(e) => assert(sha256(default) == sha256(e)),
     }
 }
 

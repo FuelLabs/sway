@@ -1,5 +1,6 @@
+use strum::EnumString;
+
 use super::ParseModule;
-use sway_types::Ident;
 
 /// A parsed, but not yet type-checked, Sway program.
 ///
@@ -13,12 +14,16 @@ pub struct ParseProgram {
 /// A Sway program can be either a contract, script, predicate, or a library.
 ///
 /// All submodules declared with `dep` should be `Library`s.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, EnumString)]
 pub enum TreeType {
+    #[strum(serialize = "predicate")]
     Predicate,
+    #[strum(serialize = "script")]
     Script,
+    #[strum(serialize = "contract")]
     Contract,
-    Library { name: Ident },
+    #[strum(serialize = "library")]
+    Library,
 }
 
 impl std::fmt::Display for TreeType {
@@ -30,7 +35,7 @@ impl std::fmt::Display for TreeType {
                 Self::Predicate => "predicate",
                 Self::Script => "script",
                 Self::Contract => "contract",
-                Self::Library { .. } => "library",
+                Self::Library => "library",
             }
         )
     }

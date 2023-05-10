@@ -1,4 +1,5 @@
 use crate::{
+    comments::rewrite_with_comments,
     config::{items::ItemBraceStyle, user_def::FieldAlignment},
     formatter::{
         shape::{ExprKind, LineStyle},
@@ -27,6 +28,9 @@ impl Format for ItemStorage {
                 .shape
                 .with_code_line_from(LineStyle::Multiline, ExprKind::default()),
             |formatter| -> Result<(), FormatterError> {
+                // Required for comment formatting
+                let start_len = formatted_code.len();
+
                 // Add storage token
                 write!(formatted_code, "{}", self.storage_token.span().as_str())?;
                 let fields = self.fields.get();
@@ -44,14 +48,16 @@ impl Format for ItemStorage {
                             // TODO: Handle annotations instead of stripping them
                             .map(|(storage_field, comma_token)| (&storage_field.value, comma_token))
                             .collect::<Vec<_>>();
-                        // In first iteration we are going to be collecting the lengths of the struct fields.
+                        // In first iteration we are going to be collecting the lengths of the
+                        // struct fields.
                         let field_length: Vec<usize> = value_pairs
                             .iter()
                             .map(|(storage_field, _)| storage_field.name.as_str().len())
                             .collect();
 
-                        // Find the maximum length in the `field_length` vector that is still smaller than `storage_field_align_threshold`.
-                        // `max_valid_field_length`: the length of the field that we are taking as a reference to align.
+                        // Find the maximum length in the `field_length` vector that is still
+                        // smaller than `storage_field_align_threshold`.  `max_valid_field_length`:
+                        // the length of the field that we are taking as a reference to align.
                         let mut max_valid_field_length = 0;
                         field_length.iter().for_each(|length| {
                             if *length > max_valid_field_length
@@ -73,7 +79,8 @@ impl Format for ItemStorage {
                             // Add name
                             storage_field.name.format(formatted_code, formatter)?;
 
-                            // `current_field_length`: the length of the current field that we are trying to format.
+                            // `current_field_length`: the length of the current field that we are
+                            // trying to format.
                             let current_field_length = field_length[field_index];
                             if current_field_length < max_valid_field_length {
                                 // We need to add alignment between `:` and `ty`
@@ -107,8 +114,17 @@ impl Format for ItemStorage {
                     }
                     FieldAlignment::Off => fields.format(formatted_code, formatter)?,
                 }
+
                 // Handle closing brace
                 Self::close_curly_brace(formatted_code, formatter)?;
+
+                rewrite_with_comments::<ItemStorage>(
+                    formatter,
+                    self.span(),
+                    self.leaf_spans(),
+                    formatted_code,
+                    start_len,
+                )?;
 
                 Ok(())
             },
@@ -129,11 +145,11 @@ impl CurlyBrace for ItemStorage {
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add opening brace to the next line.
-                write!(line, "\n{}", open_brace)?;
+                write!(line, "\n{open_brace}")?;
             }
             _ => {
                 // Add opening brace to the same line
-                write!(line, " {}", open_brace)?;
+                write!(line, " {open_brace}")?;
             }
         }
 

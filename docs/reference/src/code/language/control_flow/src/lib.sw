@@ -1,4 +1,4 @@
-library control_flow;
+library;
 
 fn conditional() {
     // ANCHOR: conditional
@@ -103,6 +103,7 @@ fn simple_match() {
         0 => 10,
         1 => 20,
         5 => 50,
+        6 | 7 => 60,
         catch_all => 0,
     };
     // ANCHOR_END: simple_match

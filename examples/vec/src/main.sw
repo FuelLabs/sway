@@ -1,7 +1,5 @@
 script;
 
-use std::logging::log;
-
 fn main() {
     // ANCHOR: vec_new
     let v: Vec<u64> = Vec::new();
@@ -17,8 +15,8 @@ fn main() {
     // ANCHOR: vec_get
     let third = v.get(2);
     match third {
-        Option::Some(third) => log(third),
-        Option::None => revert(42),
+        Some(third) => log(third),
+        None => revert(42),
     }
     // ANCHOR_END: vec_get
     // ANCHOR: vec_get_oob

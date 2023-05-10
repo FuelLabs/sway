@@ -1,42 +1,22 @@
 use core::fmt::Write;
-use core::hash::Hasher;
 use hashbrown::hash_map::RawEntryMut;
 use hashbrown::HashMap;
-use std::hash::BuildHasher;
 use std::sync::RwLock;
 
 use crate::concurrent_slab::ListDisplay;
+use crate::error::{err, ok};
 use crate::{
-    concurrent_slab::ConcurrentSlab, decl_engine::*, engine_threading::*, language::ty,
-    namespace::Path, type_system::*, Namespace,
+    concurrent_slab::ConcurrentSlab, decl_engine::*, engine_threading::*, error::*, language::ty,
+    namespace::Path, type_system::priv_prelude::*, Namespace,
 };
 
 use sway_error::{error::CompileError, type_error::TypeError, warning::CompileWarning};
 use sway_types::{span::Span, Ident, Spanned};
 
-use super::unify::Unifier;
-use super::unify_check::UnifyCheck;
-
 #[derive(Debug, Default)]
 pub struct TypeEngine {
     pub(super) slab: ConcurrentSlab<TypeInfo>,
-    storage_only_types: ConcurrentSlab<TypeInfo>,
     id_map: RwLock<HashMap<TypeInfo, TypeId>>,
-    unify_map: RwLock<HashMap<TypeId, Vec<TypeId>>>,
-}
-
-fn make_hasher<'a: 'b, 'b, K>(
-    hash_builder: &'a impl BuildHasher,
-    type_engine: &'b TypeEngine,
-) -> impl Fn(&K) -> u64 + 'b
-where
-    K: HashWithEngines + ?Sized,
-{
-    move |key: &K| {
-        let mut state = hash_builder.build_hasher();
-        key.hash(&mut state, type_engine);
-        state.finish()
-    }
 }
 
 impl TypeEngine {
@@ -45,53 +25,22 @@ impl TypeEngine {
     pub(crate) fn insert(&self, decl_engine: &DeclEngine, ty: TypeInfo) -> TypeId {
         let mut id_map = self.id_map.write().unwrap();
 
+        let engines = Engines::new(self, decl_engine);
         let hash_builder = id_map.hasher().clone();
-        let ty_hash = make_hasher(&hash_builder, self)(&ty);
+        let ty_hash = make_hasher(&hash_builder, engines)(&ty);
 
         let raw_entry = id_map
             .raw_entry_mut()
-            .from_hash(ty_hash, |x| x.eq(&ty, Engines::new(self, decl_engine)));
+            .from_hash(ty_hash, |x| x.eq(&ty, engines));
         match raw_entry {
             RawEntryMut::Occupied(o) => return *o.get(),
-            RawEntryMut::Vacant(_) if ty.can_change() => TypeId::new(self.slab.insert(ty)),
+            RawEntryMut::Vacant(_) if ty.can_change(decl_engine) => {
+                TypeId::new(self.slab.insert(ty))
+            }
             RawEntryMut::Vacant(v) => {
                 let type_id = TypeId::new(self.slab.insert(ty.clone()));
-                v.insert_with_hasher(ty_hash, ty, type_id, make_hasher(&hash_builder, self));
+                v.insert_with_hasher(ty_hash, ty, type_id, make_hasher(&hash_builder, engines));
                 type_id
-            }
-        }
-    }
-
-    pub(crate) fn insert_unified_type(&self, received: TypeId, expected: TypeId) {
-        let mut unify_map = self.unify_map.write().unwrap();
-        if let Some(type_ids) = unify_map.get(&received) {
-            if type_ids.contains(&expected) {
-                return;
-            }
-            let mut type_ids = type_ids.clone();
-            type_ids.push(expected);
-            unify_map.insert(received, type_ids);
-            return;
-        }
-
-        unify_map.insert(received, vec![expected]);
-    }
-
-    pub(crate) fn get_unified_types(&self, type_id: TypeId) -> Vec<TypeId> {
-        let mut final_unify_ids: Vec<TypeId> = vec![];
-        self.get_unified_types_rec(type_id, &mut final_unify_ids);
-        final_unify_ids
-    }
-
-    fn get_unified_types_rec(&self, type_id: TypeId, final_unify_ids: &mut Vec<TypeId>) {
-        let unify_map = self.unify_map.read().unwrap();
-        if let Some(unify_ids) = unify_map.get(&type_id) {
-            for unify_id in unify_ids {
-                if final_unify_ids.contains(unify_id) {
-                    continue;
-                }
-                final_unify_ids.push(*unify_id);
-                self.get_unified_types_rec(*unify_id, final_unify_ids);
             }
         }
     }
@@ -101,19 +50,15 @@ impl TypeEngine {
         self.slab.get(id.index())
     }
 
-    /// Denotes the given [TypeId] as being used with storage.
-    pub(crate) fn set_type_as_storage_only(&self, id: TypeId) {
-        self.storage_only_types.insert(self.get(id));
-    }
-
-    /// Checks if the given [TypeInfo] is a storage only type.
-    pub(crate) fn is_type_info_storage_only(
-        &self,
-        decl_engine: &DeclEngine,
-        ti: &TypeInfo,
-    ) -> bool {
-        self.storage_only_types
-            .exists(|x| ti.is_subset_of(x, Engines::new(self, decl_engine)))
+    /// Performs a lookup of `id` into the [TypeEngine] recursing when finding a
+    /// [TypeInfo::Alias].
+    pub fn get_unaliased(&self, id: TypeId) -> TypeInfo {
+        // A slight infinite loop concern if we somehow have self-referential aliases, but that
+        // shouldn't be possible.
+        match self.slab.get(id.index()) {
+            TypeInfo::Alias { ty, .. } => self.get_unaliased(ty.type_id),
+            ty_info => ty_info,
+        }
     }
 
     /// Given a `value` of type `T` that is able to be monomorphized and a set
@@ -156,6 +101,7 @@ impl TypeEngine {
         call_site_span: &Span,
         namespace: &mut Namespace,
         mod_path: &Path,
+        experimental_private_modules: bool,
     ) -> CompileResult<()>
     where
         T: MonomorphizeHelper + SubstTypes,
@@ -216,7 +162,8 @@ impl TypeEngine {
                             enforce_type_arguments,
                             None,
                             namespace,
-                            mod_path
+                            mod_path,
+                            experimental_private_modules,
                         ),
                         self.insert(decl_engine, TypeInfo::ErrorRecovery),
                         warnings,
@@ -315,103 +262,11 @@ impl TypeEngine {
         }
     }
 
-    /// Helper function for making the type of `expected` equivalent to
-    /// `received` for instantiating algebraic data types.
-    ///
-    /// This method simply switches the arguments of `received` and `expected`
-    /// and calls the `unify` method---the main purpose of this method is reduce
-    /// developer overhead during implementation, as it is a little non-intuitive
-    /// why `received` and `expected` should be switched.
-    ///
-    /// Let me explain, take this Sway code:
-    ///
-    /// ```ignore
-    /// enum Option<T> {
-    ///     Some(T),
-    ///     None
-    /// }
-    ///
-    /// struct Wrapper {
-    ///     option: Option<bool>,
-    /// }
-    ///
-    /// fn create_it<T>() -> Wrapper {
-    ///     Wrapper {
-    ///         option: Option::None
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// This is valid Sway code and we should expect it to compile. Here is the
-    /// pseudo-code of roughly what we can expect from type inference:
-    /// 1. `Option::None` is originally found to be of type `Option<T>` (because
-    ///     it is not possible to know what `T` is just from the `None` case)
-    /// 2. we call `unify_adt` with arguments `received` of type `Option<T>` and
-    ///     `expected` of type `Option<bool>`
-    /// 3. we switch `received` and `expected` and call the `unify` method
-    /// 4. we perform type inference with a `received` type of `Option<bool>`
-    ///     and an `expected` type of `Option<T>`
-    /// 5. we perform type inference with a `received` type of `bool` and an
-    ///     `expected` type of `T`
-    /// 6. because we have called the `unify` method (and not the `unify_right`
-    ///     method), we can replace `T` with `bool`
-    ///
-    /// What's important about this is flipping the arguments prioritizes
-    /// unifying `expected`, meaning if both `received` and `expected` are
-    /// generic types, then `expected` will be replaced with `received`.
-    pub(crate) fn unify_adt(
-        &self,
-        decl_engine: &DeclEngine,
-        received: TypeId,
-        expected: TypeId,
-        span: &Span,
-        help_text: &str,
-        err_override: Option<CompileError>,
-    ) -> (Vec<CompileWarning>, Vec<CompileError>) {
-        let engines = Engines::new(self, decl_engine);
-        if !UnifyCheck::new(engines).check(received, expected) {
-            // create a "mismatched type" error unless the `err_override`
-            // argument has been provided
-            let mut errors = vec![];
-            match err_override {
-                Some(err_override) => {
-                    errors.push(err_override);
-                }
-                None => {
-                    errors.push(CompileError::TypeError(TypeError::MismatchedType {
-                        expected: engines.help_out(expected).to_string(),
-                        received: engines.help_out(received).to_string(),
-                        help_text: help_text.to_string(),
-                        span: span.clone(),
-                    }));
-                }
-            }
-            return (vec![], errors);
-        }
-        let (warnings, errors) = normalize_err(
-            Unifier::new(engines, help_text)
-                .flip_arguments()
-                .unify(expected, received, span),
-        );
-        if errors.is_empty() {
-            (warnings, errors)
-        } else if err_override.is_some() {
-            // return the errors from unification unless the `err_override`
-            // argument has been provided
-            (warnings, vec![err_override.unwrap()])
-        } else {
-            (warnings, errors)
-        }
-    }
-
     pub(crate) fn to_typeinfo(&self, id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
         match self.get(id) {
-            TypeInfo::Unknown => {
-                //panic!();
-                Err(TypeError::UnknownType {
-                    span: error_span.clone(),
-                })
-            }
+            TypeInfo::Unknown => Err(TypeError::UnknownType {
+                span: error_span.clone(),
+            }),
             ty => Ok(ty),
         }
     }
@@ -429,6 +284,7 @@ impl TypeEngine {
         type_info_prefix: Option<&Path>,
         namespace: &mut Namespace,
         mod_path: &Path,
+        experimental_private_modules: bool,
     ) -> CompileResult<TypeId> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -436,23 +292,26 @@ impl TypeEngine {
         let module_path = type_info_prefix.unwrap_or(mod_path);
         let type_id = match self.get(type_id) {
             TypeInfo::Custom {
-                name,
+                call_path,
                 type_arguments,
             } => {
                 match namespace
                     .root()
-                    .resolve_symbol(module_path, &name)
+                    .resolve_call_path_with_visibility_check(
+                        engines,
+                        module_path,
+                        &call_path,
+                        experimental_private_modules,
+                    )
                     .ok(&mut warnings, &mut errors)
                     .cloned()
                 {
-                    Some(ty::TyDeclaration::StructDeclaration(original_id)) => {
+                    Some(ty::TyDecl::StructDecl(ty::StructDecl {
+                        decl_id: original_id,
+                        ..
+                    })) => {
                         // get the copy from the declaration engine
-                        let mut new_copy = check!(
-                            CompileResult::from(decl_engine.get_struct(original_id, &name.span())),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
+                        let mut new_copy = decl_engine.get_struct(&original_id);
 
                         // monomorphize the copy, in place
                         check!(
@@ -463,15 +322,21 @@ impl TypeEngine {
                                 enforce_type_arguments,
                                 span,
                                 namespace,
-                                mod_path
+                                mod_path,
+                                experimental_private_modules,
                             ),
                             return err(warnings, errors),
                             warnings,
                             errors,
                         );
 
+                        // insert the new copy in the decl engine
+                        let new_decl_ref = decl_engine.insert(new_copy);
+
                         // create the type id from the copy
-                        let type_id = new_copy.create_type_id(engines);
+                        let type_id = engines
+                            .te()
+                            .insert(decl_engine, TypeInfo::Struct(new_decl_ref));
 
                         // take any trait methods that apply to this type and copy them to the new type
                         namespace.insert_trait_implementation_for_type(engines, type_id);
@@ -479,14 +344,12 @@ impl TypeEngine {
                         // return the id
                         type_id
                     }
-                    Some(ty::TyDeclaration::EnumDeclaration(original_id)) => {
+                    Some(ty::TyDecl::EnumDecl(ty::EnumDecl {
+                        decl_id: original_id,
+                        ..
+                    })) => {
                         // get the copy from the declaration engine
-                        let mut new_copy = check!(
-                            CompileResult::from(decl_engine.get_enum(original_id, &name.span())),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
+                        let mut new_copy = decl_engine.get_enum(&original_id);
 
                         // monomorphize the copy, in place
                         check!(
@@ -497,15 +360,21 @@ impl TypeEngine {
                                 enforce_type_arguments,
                                 span,
                                 namespace,
-                                mod_path
+                                mod_path,
+                                experimental_private_modules,
                             ),
                             return err(warnings, errors),
                             warnings,
                             errors
                         );
 
+                        // insert the new copy in the decl engine
+                        let new_decl_ref = decl_engine.insert(new_copy);
+
                         // create the type id from the copy
-                        let type_id = new_copy.create_type_id(engines);
+                        let type_id = engines
+                            .te()
+                            .insert(decl_engine, TypeInfo::Enum(new_decl_ref));
 
                         // take any trait methods that apply to this type and copy them to the new type
                         namespace.insert_trait_implementation_for_type(engines, type_id);
@@ -513,11 +382,27 @@ impl TypeEngine {
                         // return the id
                         type_id
                     }
-                    Some(ty::TyDeclaration::GenericTypeForFunctionScope { type_id, .. }) => type_id,
+                    Some(ty::TyDecl::TypeAliasDecl(ty::TypeAliasDecl {
+                        decl_id: original_id,
+                        ..
+                    })) => {
+                        let new_copy = decl_engine.get_type_alias(&original_id);
+
+                        // TODO: monomorphize the copy, in place, when generic type aliases are
+                        // supported
+
+                        let type_id = new_copy.create_type_id(engines);
+                        namespace.insert_trait_implementation_for_type(engines, type_id);
+
+                        type_id
+                    }
+                    Some(ty::TyDecl::GenericTypeForFunctionScope(
+                        ty::GenericTypeForFunctionScope { type_id, .. },
+                    )) => type_id,
                     _ => {
                         errors.push(CompileError::UnknownTypeName {
-                            name: name.to_string(),
-                            span: name.span(),
+                            name: call_path.to_string(),
+                            span: call_path.span(),
                         });
                         self.insert(decl_engine, TypeInfo::ErrorRecovery)
                     }
@@ -532,7 +417,8 @@ impl TypeEngine {
                         enforce_type_arguments,
                         None,
                         namespace,
-                        mod_path
+                        mod_path,
+                        experimental_private_modules
                     ),
                     self.insert(decl_engine, TypeInfo::ErrorRecovery),
                     warnings,
@@ -550,7 +436,8 @@ impl TypeEngine {
                             enforce_type_arguments,
                             None,
                             namespace,
-                            mod_path
+                            mod_path,
+                            experimental_private_modules
                         ),
                         self.insert(decl_engine, TypeInfo::ErrorRecovery),
                         warnings,
@@ -577,6 +464,7 @@ impl TypeEngine {
         type_info_prefix: Option<&Path>,
         namespace: &mut Namespace,
         mod_path: &Path,
+        experimental_private_modules: bool,
     ) -> CompileResult<TypeId> {
         type_id.replace_self_type(Engines::new(self, decl_engine), self_type);
         self.resolve(
@@ -587,6 +475,7 @@ impl TypeEngine {
             type_info_prefix,
             namespace,
             mod_path,
+            experimental_private_modules,
         )
     }
 
@@ -597,9 +486,11 @@ impl TypeEngine {
         let engines = Engines::new(self, decl_engine);
         let mut builder = String::new();
         self.slab.with_slice(|elems| {
-            let list = elems.iter().map(|type_info| engines.help_out(type_info));
+            let list = elems
+                .iter()
+                .map(|type_info| format!("{:?}", engines.help_out(type_info)));
             let list = ListDisplay { list };
-            write!(builder, "TypeEngine {{\n{}\n}}", list).unwrap();
+            write!(builder, "TypeEngine {{\n{list}\n}}").unwrap();
         });
         builder
     }

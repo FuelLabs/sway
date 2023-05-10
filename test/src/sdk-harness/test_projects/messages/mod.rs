@@ -1,11 +1,15 @@
-use fuels::prelude::*;
+use fuels::{prelude::*, types::Bits256};
 
-abigen!(
-    TestMessagesContract,
-    "test_projects/messages/out/debug/messages-abi.json"
-);
+abigen!(Contract(
+    name = "TestMessagesContract",
+    abi = "test_projects/messages/out/debug/messages-abi.json"
+));
 
-async fn get_messages_contract_instance() -> (TestMessagesContract, ContractId, WalletUnlocked) {
+async fn get_messages_contract_instance() -> (
+    TestMessagesContract<WalletUnlocked>,
+    ContractId,
+    WalletUnlocked,
+) {
     let num_wallets = 1;
     let coins_per_wallet = 1;
     let amount_per_coin = 1_000_000;
@@ -21,10 +25,7 @@ async fn get_messages_contract_instance() -> (TestMessagesContract, ContractId, 
     let messages_contract_id = Contract::deploy(
         "test_projects/messages/out/debug/messages.bin",
         &wallets[0],
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "test_projects/messages/out/debug/messages-storage_slots.json".to_string(),
-        )),
+        DeployConfiguration::default(),
     )
     .await
     .unwrap();

@@ -1,7 +1,5 @@
 script;
 
-use std::{assert::assert, logging::log};
-
 const N = 10;
 
 fn simple_break_test() {

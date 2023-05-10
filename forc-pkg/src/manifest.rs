@@ -1,16 +1,15 @@
 use crate::pkg::{manifest_file_missing, parsing_failed, wrong_program_type};
 use anyhow::{anyhow, bail, Context, Result};
 use forc_tracing::println_yellow_err;
-use forc_util::{find_manifest_dir, validate_name};
+use forc_util::{find_nested_manifest_dir, find_parent_manifest_dir, validate_name};
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, HashMap},
     path::{Path, PathBuf},
     sync::Arc,
 };
 
-use sway_core::{fuel_prelude::fuel_tx, language::parsed::TreeType, parse_tree_type};
-pub use sway_types::ConfigTimeConstant;
+use sway_core::{fuel_prelude::fuel_tx, language::parsed::TreeType, parse_tree_type, BuildTarget};
 use sway_utils::constants;
 
 /// The name of a workspace member package.
@@ -125,7 +124,7 @@ impl ManifestFile {
 type PatchMap = BTreeMap<String, Dependency>;
 
 /// A [PackageManifest] that was deserialized from a file at a particular path.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PackageManifestFile {
     /// The deserialized `Forc.toml`.
     manifest: PackageManifest,
@@ -134,7 +133,7 @@ pub struct PackageManifestFile {
 }
 
 /// A direct mapping to a `Forc.toml`.
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct PackageManifest {
     pub project: Project,
@@ -142,12 +141,12 @@ pub struct PackageManifest {
     pub dependencies: Option<BTreeMap<String, Dependency>>,
     pub patch: Option<BTreeMap<String, PatchMap>>,
     /// A list of [configuration-time constants](https://github.com/FuelLabs/sway/issues/1498).
-    pub constants: Option<BTreeMap<String, ConfigTimeConstant>>,
+    pub build_target: Option<BTreeMap<String, BuildTarget>>,
     build_profile: Option<BTreeMap<String, BuildProfile>>,
     pub contract_dependencies: Option<BTreeMap<String, ContractDependency>>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct Project {
     pub authors: Option<Vec<String>>,
@@ -160,14 +159,14 @@ pub struct Project {
     pub forc_version: Option<semver::Version>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct Network {
     #[serde(default = "default_url")]
     pub url: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct ContractDependency {
     #[serde(flatten)]
@@ -176,7 +175,7 @@ pub struct ContractDependency {
     pub salt: fuel_tx::Salt,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum Dependency {
     /// In the simple format, only a version is specified, eg.
@@ -188,7 +187,7 @@ pub enum Dependency {
     Detailed(DependencyDetails),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct DependencyDetails {
     pub(crate) version: Option<String>,
@@ -201,17 +200,31 @@ pub struct DependencyDetails {
 }
 
 /// Parameters to pass through to the `sway_core::BuildConfig` during compilation.
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct BuildProfile {
+    #[serde(default)]
     pub print_ast: bool,
-    pub print_dca_graph: bool,
+    pub print_dca_graph: Option<String>,
+    pub print_dca_graph_url_format: Option<String>,
+    #[serde(default)]
     pub print_ir: bool,
+    #[serde(default)]
     pub print_finalized_asm: bool,
+    #[serde(default)]
     pub print_intermediate_asm: bool,
+    #[serde(default)]
     pub terse: bool,
+    #[serde(default)]
     pub time_phases: bool,
+    #[serde(default)]
     pub include_tests: bool,
+    #[serde(default)]
+    pub json_abi_with_callpaths: bool,
+    #[serde(default)]
+    pub error_on_warnings: bool,
+    #[serde(default)]
+    pub experimental_private_modules: bool,
 }
 
 impl Dependency {
@@ -236,7 +249,41 @@ impl PackageManifestFile {
     pub fn from_file(path: PathBuf) -> Result<Self> {
         let path = path.canonicalize()?;
         let manifest = PackageManifest::from_file(&path)?;
-        Ok(Self { manifest, path })
+        let manifest_file = Self { manifest, path };
+        manifest_file.validate()?;
+        Ok(manifest_file)
+    }
+
+    /// Returns an iterator over patches defined in underlying `PackageManifest` if this is a
+    /// standalone package.
+    ///
+    /// If this package is a member of a workspace, patches are fetched from
+    /// the workspace manifest file.
+    pub fn resolve_patches(&self) -> Result<impl Iterator<Item = (String, PatchMap)>> {
+        let workspace_patches = self
+            .workspace()
+            .ok()
+            .flatten()
+            .and_then(|workspace| workspace.patch.clone());
+        let package_patches = self.patch.clone();
+        match (workspace_patches, package_patches) {
+            (Some(_), Some(_)) => bail!("Found [patch] table both in workspace and member package's manifest file. Consider removing [patch] table from package's manifest file."),
+            (Some(workspace_patches), None) => Ok(workspace_patches.into_iter()),
+            (None, Some(pkg_patches)) => Ok(pkg_patches.into_iter()),
+            (None, None) => Ok(BTreeMap::default().into_iter()),
+        }
+    }
+
+    /// Retrieve the listed patches for the given name from underlying `PackageManifest` if this is
+    /// a standalone package.
+    ///
+    /// If this package is a member of a workspace, patch is fetched from
+    /// the workspace manifest file.
+    pub fn resolve_patch(&self, patch_name: &str) -> Result<Option<PatchMap>> {
+        Ok(self
+            .resolve_patches()?
+            .find(|(p_name, _)| patch_name == p_name.as_str())
+            .map(|(_, patch)| patch))
     }
 
     /// Read the manifest from the `Forc.toml` in the directory specified by the given `path` or
@@ -245,19 +292,20 @@ impl PackageManifestFile {
     /// This is short for `PackageManifest::from_file`, but takes care of constructing the path to the
     /// file.
     pub fn from_dir(manifest_dir: &Path) -> Result<Self> {
-        let dir = forc_util::find_manifest_dir(manifest_dir)
+        let dir = forc_util::find_parent_manifest_dir(manifest_dir)
             .ok_or_else(|| manifest_file_missing(manifest_dir))?;
         let path = dir.join(constants::MANIFEST_FILE_NAME);
         Self::from_file(path)
     }
 
-    /// Validate the `PackageManifest`.
+    /// Validate the `PackageManifestFile`.
     ///
-    /// This checks the project and organization names against a set of reserved/restricted
-    /// keywords and patterns, and if a given entry point exists.
-    pub fn validate(&self, path: &Path) -> Result<()> {
+    /// This checks:
+    /// 1. Validity of the underlying `PackageManifest`.
+    /// 2. Existence of the entry file.
+    pub fn validate(&self) -> Result<()> {
         self.manifest.validate()?;
-        let mut entry_path = path.to_path_buf();
+        let mut entry_path = self.path.clone();
         entry_path.pop();
         let entry_path = entry_path
             .join(constants::SRC_DIR)
@@ -267,6 +315,18 @@ impl PackageManifestFile {
                 "failed to validate path from entry field {:?} in Forc manifest file.",
                 self.project.entry
             )
+        }
+
+        // Check for nested packages.
+        //
+        // `path` is the path to manifest file. To start nested package search we need to start
+        // from manifest's directory. So, last part of the path (the filename, "/forc.toml") needs
+        // to be removed.
+        let mut pkg_dir = self.path.to_path_buf();
+        pkg_dir.pop();
+        if let Some(nested_package) = find_nested_manifest_dir(&pkg_dir) {
+            // remove file name from nested_package_manifest
+            bail!("Nested packages are not supported, please consider seperating the nested package at {} from the package at {}, or if it makes sense consider creating a workspace.", nested_package.display(), pkg_dir.display())
         }
         Ok(())
     }
@@ -347,10 +407,6 @@ impl PackageManifestFile {
             }
         })
     }
-    /// Getter for the config time constants on the manifest.
-    pub fn config_time_constants(&self) -> BTreeMap<String, ConfigTimeConstant> {
-        self.constants.as_ref().cloned().unwrap_or_default()
-    }
 
     /// Returns the workspace manifest file if this `PackageManifestFile` is one of the members.
     pub fn workspace(&self) -> Result<Option<WorkspaceManifestFile>> {
@@ -392,6 +448,11 @@ impl PackageManifestFile {
             Ok(self.dir().to_path_buf().join(constants::LOCK_FILE_NAME))
         }
     }
+
+    /// Returns an immutable reference to the project name that this manifest file describes.
+    pub fn project_name(&self) -> &str {
+        &self.project.name
+    }
 }
 
 impl PackageManifest {
@@ -414,7 +475,7 @@ impl PackageManifest {
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
         let toml_de = &mut toml::de::Deserializer::new(&manifest_str);
         let mut manifest: Self = serde_ignored::deserialize(toml_de, |path| {
-            let warning = format!("  WARNING! unused manifest key: {}", path);
+            let warning = format!("  WARNING! unused manifest key: {path}");
             warnings.push(warning);
         })
         .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
@@ -444,7 +505,8 @@ impl PackageManifest {
     /// This is short for `PackageManifest::from_file`, but takes care of constructing the path to the
     /// file.
     pub fn from_dir(dir: &Path) -> Result<Self> {
-        let manifest_dir = find_manifest_dir(dir).ok_or_else(|| manifest_file_missing(dir))?;
+        let manifest_dir =
+            find_parent_manifest_dir(dir).ok_or_else(|| manifest_file_missing(dir))?;
         let file_path = manifest_dir.join(constants::MANIFEST_FILE_NAME);
         Self::from_file(&file_path)
     }
@@ -487,6 +549,13 @@ impl PackageManifest {
             .as_ref()
             .into_iter()
             .flat_map(|patches| patches.iter())
+    }
+
+    /// Retrieve the listed patches for the given name.
+    pub fn patch(&self, patch_name: &str) -> Option<&PatchMap> {
+        self.patch
+            .as_ref()
+            .and_then(|patches| patches.get(patch_name))
     }
 
     /// Check for the `core` and `std` packages under `[dependencies]`. If both are missing, add
@@ -548,13 +617,6 @@ impl PackageManifest {
         })
     }
 
-    /// Retrieve the listed patches for the given name.
-    pub fn patch(&self, patch_name: &str) -> Option<&PatchMap> {
-        self.patch
-            .as_ref()
-            .and_then(|patches| patches.get(patch_name))
-    }
-
     /// Retrieve a reference to the contract dependency with the given name.
     pub fn contract_dep(&self, contract_dep_name: &str) -> Option<&ContractDependency> {
         self.contract_dependencies
@@ -596,26 +658,34 @@ impl BuildProfile {
     pub fn debug() -> Self {
         Self {
             print_ast: false,
-            print_dca_graph: false,
+            print_dca_graph: None,
+            print_dca_graph_url_format: None,
             print_ir: false,
             print_finalized_asm: false,
             print_intermediate_asm: false,
             terse: false,
             time_phases: false,
             include_tests: false,
+            json_abi_with_callpaths: false,
+            error_on_warnings: false,
+            experimental_private_modules: false,
         }
     }
 
     pub fn release() -> Self {
         Self {
             print_ast: false,
-            print_dca_graph: false,
+            print_dca_graph: None,
+            print_dca_graph_url_format: None,
             print_ir: false,
             print_finalized_asm: false,
             print_intermediate_asm: false,
             terse: false,
             time_phases: false,
             include_tests: false,
+            json_abi_with_callpaths: false,
+            error_on_warnings: false,
+            experimental_private_modules: false,
         }
     }
 }
@@ -693,6 +763,7 @@ pub struct WorkspaceManifestFile {
 #[serde(rename_all = "kebab-case")]
 pub struct WorkspaceManifest {
     workspace: Workspace,
+    patch: Option<BTreeMap<String, PatchMap>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -722,24 +793,25 @@ impl WorkspaceManifestFile {
     /// This is short for `PackageManifest::from_file`, but takes care of constructing the path to the
     /// file.
     pub fn from_dir(manifest_dir: &Path) -> Result<Self> {
-        let dir = forc_util::find_manifest_dir_with_check(manifest_dir, |possible_manifest_dir| {
-            // Check if the found manifest file is a workspace manifest file or a standalone
-            // package manifest file.
-            let possible_path = possible_manifest_dir.join(constants::MANIFEST_FILE_NAME);
-            // We should not continue to search if the given manifest is a workspace manifest with
-            // some issues.
-            //
-            // If the error is missing field `workspace` (which happens when trying to read a
-            // package manifest as a workspace manifest), look into the parent directories for a
-            // legitimate workspace manifest. If the error returned is something else this is a
-            // workspace manifest with errors, classify this as a workspace manifest but with
-            // errors so that the erros will be displayed to the user.
-            Self::from_file(possible_path)
-                .err()
-                .map(|e| !e.to_string().contains("missing field `workspace`"))
-                .unwrap_or_else(|| true)
-        })
-        .ok_or_else(|| manifest_file_missing(manifest_dir))?;
+        let dir =
+            forc_util::find_parent_manifest_dir_with_check(manifest_dir, |possible_manifest_dir| {
+                // Check if the found manifest file is a workspace manifest file or a standalone
+                // package manifest file.
+                let possible_path = possible_manifest_dir.join(constants::MANIFEST_FILE_NAME);
+                // We should not continue to search if the given manifest is a workspace manifest with
+                // some issues.
+                //
+                // If the error is missing field `workspace` (which happens when trying to read a
+                // package manifest as a workspace manifest), look into the parent directories for a
+                // legitimate workspace manifest. If the error returned is something else this is a
+                // workspace manifest with errors, classify this as a workspace manifest but with
+                // errors so that the erros will be displayed to the user.
+                Self::from_file(possible_path)
+                    .err()
+                    .map(|e| !e.to_string().contains("missing field `workspace`"))
+                    .unwrap_or_else(|| true)
+            })
+            .ok_or_else(|| manifest_file_missing(manifest_dir))?;
         let path = dir.join(constants::MANIFEST_FILE_NAME);
         Self::from_file(path)
     }
@@ -797,6 +869,14 @@ impl WorkspaceManifestFile {
     pub fn lock_path(&self) -> PathBuf {
         self.dir().to_path_buf().join(constants::LOCK_FILE_NAME)
     }
+
+    /// Produce an iterator yielding all listed patches.
+    pub fn patches(&self) -> impl Iterator<Item = (&String, &PatchMap)> {
+        self.patch
+            .as_ref()
+            .into_iter()
+            .flat_map(|patches| patches.iter())
+    }
 }
 
 impl WorkspaceManifest {
@@ -810,7 +890,7 @@ impl WorkspaceManifest {
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
         let toml_de = &mut toml::de::Deserializer::new(&manifest_str);
         let manifest: Self = serde_ignored::deserialize(toml_de, |path| {
-            let warning = format!("  WARNING! unused manifest key: {}", path);
+            let warning = format!("  WARNING! unused manifest key: {path}");
             warnings.push(warning);
         })
         .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
@@ -824,6 +904,7 @@ impl WorkspaceManifest {
     ///
     /// This checks if the listed members in the `WorkspaceManifest` are indeed in the given `Forc.toml`'s directory.
     pub fn validate(&self, path: &Path) -> Result<()> {
+        let mut pkg_name_to_paths: HashMap<String, Vec<PathBuf>> = HashMap::new();
         for member in self.workspace.members.iter() {
             let member_path = path.join(member).join("Forc.toml");
             if !member_path.exists() {
@@ -833,6 +914,36 @@ impl WorkspaceManifest {
                     member_path
                 );
             }
+            if Self::from_file(&member_path).is_ok() {
+                bail!("Unexpected nested workspace '{}'. Workspaces are currently only allowed in the project root.", member.display());
+            };
+
+            let member_manifest_file = PackageManifestFile::from_file(member_path.clone())?;
+            let pkg_name = member_manifest_file.manifest.project.name;
+            pkg_name_to_paths
+                .entry(pkg_name)
+                .or_default()
+                .push(member_path);
+        }
+
+        // Check for duplicate pkg name entries in member manifests of this workspace.
+        let duplciate_pkg_lines = pkg_name_to_paths
+            .iter()
+            .filter(|(_, paths)| paths.len() > 1)
+            .map(|(pkg_name, _)| {
+                let duplicate_paths = pkg_name_to_paths
+                    .get(pkg_name)
+                    .expect("missing duplicate paths");
+                format!("{pkg_name}: {duplicate_paths:#?}")
+            })
+            .collect::<Vec<_>>();
+
+        if !duplciate_pkg_lines.is_empty() {
+            let error_message = duplciate_pkg_lines.join("\n");
+            bail!(
+                "Duplicate package names detected in the workspace:\n\n{}",
+                error_message
+            );
         }
         Ok(())
     }
@@ -843,4 +954,28 @@ impl std::ops::Deref for WorkspaceManifestFile {
     fn deref(&self) -> &Self::Target {
         &self.manifest
     }
+}
+
+/// Attempt to find a `Forc.toml` with the given project name within the given directory.
+///
+/// Returns the path to the package on success, or `None` in the case it could not be found.
+pub fn find_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
+    walkdir::WalkDir::new(dir)
+        .into_iter()
+        .filter_map(Result::ok)
+        .filter(|entry| entry.path().ends_with(constants::MANIFEST_FILE_NAME))
+        .find_map(|entry| {
+            let path = entry.path();
+            let manifest = PackageManifest::from_file(path).ok()?;
+            if manifest.project.name == pkg_name {
+                Some(path.to_path_buf())
+            } else {
+                None
+            }
+        })
+}
+
+/// The same as [find_within], but returns the package's project directory.
+pub fn find_dir_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
+    find_within(dir, pkg_name).and_then(|path| path.parent().map(Path::to_path_buf))
 }

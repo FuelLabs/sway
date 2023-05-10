@@ -1,6 +1,4 @@
-library test_fuel_coin_abi;
-
-use std::contract_id::ContractId;
+library;
 
 abi TestFuelCoin {
     fn mint(mint_amount: u64);

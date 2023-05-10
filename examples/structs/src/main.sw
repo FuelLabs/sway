@@ -1,6 +1,6 @@
-library utils;
+library;
 
-dep data_structures;
+mod data_structures;
 use data_structures::{Foo, Line, Point, TupleInStruct};
 
 fn hardcoded_instantiation() -> Foo {

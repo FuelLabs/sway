@@ -1,10 +1,9 @@
-use fuels::prelude::*;
-use fuels::tx::Contract as FuelsTxContract;
+use fuels::{prelude::*, tx::Contract as FuelsTxContract, types::Bits256};
 
-abigen!(
-    ContractBytecodeTest,
-    "test_projects/contract_bytecode/out/debug/contract_bytecode-abi.json"
-);
+abigen!(Contract(
+    name = "ContractBytecodeTest",
+    abi = "test_projects/contract_bytecode/out/debug/contract_bytecode-abi.json"
+));
 
 #[tokio::test]
 async fn can_get_bytecode_root() {
@@ -15,7 +14,7 @@ async fn can_get_bytecode_root() {
     let bytecode_root = contract_instance
         .methods()
         .get_contract_bytecode_root(ContractId::from(id.clone()))
-        .set_contracts(&[id.clone()])
+        .set_contracts(&[&contract_instance])
         .call()
         .await
         .unwrap()
@@ -30,15 +29,11 @@ async fn can_get_bytecode_root() {
 
 async fn get_test_contract_instance(
     wallet: WalletUnlocked,
-) -> (ContractBytecodeTest, Bech32ContractId) {
+) -> (ContractBytecodeTest<WalletUnlocked>, Bech32ContractId) {
     let id = Contract::deploy(
         "test_projects/contract_bytecode/out/debug/contract_bytecode.bin",
         &wallet,
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "test_projects/contract_bytecode/out/debug/contract_bytecode-storage_slots.json"
-                .to_string(),
-        )),
+        DeployConfiguration::default(),
     )
     .await
     .unwrap();

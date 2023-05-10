@@ -74,10 +74,18 @@ pub enum ParseErrorKind {
     UnnecessaryVisibilityQualifier { visibility: Ident },
     #[error("Expected a doc comment.")]
     ExpectedDocComment,
+    #[error("Top of file doc comments are reserved for module level documentation.\nTry using the `//!` syntax.")]
+    ExpectedModuleDocComment,
     #[error("Use the `struct` keyword to define records, instead of `class`.")]
     UnexpectedClass,
     #[error("Field projections, e.g., `foo.bar` cannot have type arguments.")]
     FieldProjectionWithGenericArgs,
+    #[error("Unexpected token after __ptr type.")]
+    UnexpectedTokenAfterPtrType,
+    #[error("Unexpected token after __slice type.")]
+    UnexpectedTokenAfterSliceType,
+    #[error("Expected a path type.")]
+    ExpectedPathType,
 }
 
 #[derive(Debug, Error, Clone, PartialEq, Eq, Hash)]

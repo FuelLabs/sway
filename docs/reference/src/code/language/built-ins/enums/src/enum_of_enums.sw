@@ -1,4 +1,4 @@
-library enum_of_enums;
+library;
 
 // ANCHOR: content
 enum UserError {

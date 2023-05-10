@@ -1,6 +1,6 @@
-library never;
+library;
 
-use ::ops::{Not, Eq, Ord};
+use ::ops::{Eq, Not, Ord};
 
 /// `Never` represents the type of computations which never resolve to any value at all.
 ///
@@ -44,21 +44,22 @@ pub enum Never {}
 
 impl Not for Never {
     fn not(self) -> Self {
-        match self {}
+        match self {
+        }
     }
 }
 
 impl Eq for Never {
-    fn eq(self, other: Self) -> bool {
+    fn eq(self, _other: Self) -> bool {
         self
     }
 }
 
 impl Ord for Never {
-    fn gt(self, other: Self) -> bool {
+    fn gt(self, _other: Self) -> bool {
         self
     }
-    fn lt(self, other: Self) -> bool {
+    fn lt(self, _other: Self) -> bool {
         self
     }
 }

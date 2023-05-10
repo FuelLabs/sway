@@ -2,11 +2,15 @@ use sway_ir::Function;
 
 use crate::{asm_lang::Label, CompileResult};
 
-use super::{evm::EvmAsmBuilderResult, fuel::FuelAsmBuilderResult};
+use super::{
+    evm::EvmAsmBuilderResult, fuel::fuel_asm_builder::FuelAsmBuilderResult,
+    miden_vm::MidenVMAsmBuilderResult,
+};
 
 pub enum AsmBuilderResult {
     Fuel(FuelAsmBuilderResult),
     Evm(EvmAsmBuilderResult),
+    MidenVM(MidenVMAsmBuilderResult),
 }
 
 pub trait AsmBuilder {

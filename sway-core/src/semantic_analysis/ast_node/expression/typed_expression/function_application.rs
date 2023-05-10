@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::ReplaceDecls,
+    decl_engine::{DeclEngineInsert, DeclRefFunction, ReplaceDecls},
     error::*,
     language::{ty, *},
     semantic_analysis::{ast_node::*, TypeCheckContext},
@@ -11,8 +11,8 @@ use sway_types::Spanned;
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application(
     mut ctx: TypeCheckContext,
-    mut function_decl: ty::TyFunctionDeclaration,
-    call_path: CallPath,
+    function_decl_ref: DeclRefFunction,
+    call_path_binding: TypeBinding<CallPath>,
     arguments: Option<Vec<Expression>>,
     span: Span,
 ) -> CompileResult<ty::TyExpression> {
@@ -22,10 +22,12 @@ pub(crate) fn instantiate_function_application(
     let decl_engine = ctx.decl_engine;
     let engines = ctx.engines();
 
+    let mut function_decl = decl_engine.get_function(&function_decl_ref);
+
     if arguments.is_none() {
         errors.push(CompileError::MissingParenthesesForFunction {
-            method_name: call_path.suffix.clone(),
-            span: call_path.span(),
+            method_name: call_path_binding.inner.suffix.clone(),
+            span: call_path_binding.inner.span(),
         });
         return err(warnings, errors);
     }
@@ -35,13 +37,18 @@ pub(crate) fn instantiate_function_application(
     if !ctx.purity().can_call(function_decl.purity) {
         errors.push(CompileError::StorageAccessMismatch {
             attrs: promote_purity(ctx.purity(), function_decl.purity).to_attribute_syntax(),
-            span: call_path.span(),
+            span: call_path_binding.span(),
         });
     }
 
     // check that the number of parameters and the number of the arguments is the same
     check!(
-        check_function_arguments_arity(arguments.len(), &function_decl, &call_path, false),
+        check_function_arguments_arity(
+            arguments.len(),
+            &function_decl,
+            &call_path_binding.inner,
+            false
+        ),
         return err(warnings, errors),
         warnings,
         errors
@@ -61,6 +68,11 @@ pub(crate) fn instantiate_function_application(
         errors
     );
 
+    // Retrieve the implemented traits for the type of the return type and
+    // insert them in the broader namespace.
+    ctx.namespace
+        .insert_trait_implementation_for_type(engines, function_decl.return_type.type_id);
+
     // Handle the trait constraints. This includes checking to see if the trait
     // constraints are satisfied and replacing old decl ids based on the
     // constraint with new decl ids based on the new type.
@@ -68,26 +80,29 @@ pub(crate) fn instantiate_function_application(
         TypeParameter::gather_decl_mapping_from_trait_constraints(
             ctx.by_ref(),
             &function_decl.type_parameters,
-            &call_path.span()
+            &call_path_binding.span()
         ),
         return err(warnings, errors),
         warnings,
         errors
     );
     function_decl.replace_decls(&decl_mapping, engines);
-    let return_type = function_decl.return_type;
-    let new_decl_id = decl_engine.insert(function_decl);
+    let return_type = function_decl.return_type.clone();
+    let new_decl_ref = decl_engine
+        .insert(function_decl)
+        .with_parent(decl_engine, (*function_decl_ref.id()).into());
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {
-            call_path,
+            call_path: call_path_binding.inner.clone(),
             contract_call_params: HashMap::new(),
             arguments: typed_arguments_with_names,
-            function_decl_id: new_decl_id,
-            self_state_idx: None,
+            fn_ref: new_decl_ref,
             selector: None,
+            type_binding: Some(call_path_binding.strip_inner()),
+            call_path_typeid: None,
         },
-        return_type,
+        return_type: return_type.type_id,
         span,
     };
 
@@ -149,7 +164,7 @@ fn unify_arguments_and_parameters(
             CompileResult::from(type_engine.unify(
                 decl_engine,
                 arg.return_type,
-                param.type_id,
+                param.type_argument.type_id,
                 &arg.span,
                 "The argument that has been provided to this function's type does \
             not match the declared type of the parameter in the function \
@@ -182,7 +197,7 @@ fn unify_arguments_and_parameters(
 
 pub(crate) fn check_function_arguments_arity(
     arguments_len: usize,
-    function_decl: &ty::TyFunctionDeclaration,
+    function_decl: &ty::TyFunctionDecl,
     call_path: &CallPath,
     is_method_call_syntax_used: bool,
 ) -> CompileResult<()> {

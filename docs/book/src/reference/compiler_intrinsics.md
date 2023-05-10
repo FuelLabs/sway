@@ -45,6 +45,24 @@ __eq<T>(lhs: T, rhs: T) -> bool
 ___
 
 ```sway
+__gt<T>(lhs: T, rhs: T) -> bool
+```
+
+**Description:** Returns whether `lhs` is greater than `rhs`.
+
+**Constraints:** `T` is `u8`, `u16`, `u32`, `u64`.
+___
+
+```sway
+__lt<T>(lhs: T, rhs: T) -> bool
+```
+
+**Description:** Returns whether `lhs` is less than `rhs`.
+
+**Constraints:** `T` is `u8`, `u16`, `u32`, `u64`.
+___
+
+```sway
 __gtf<T>(index: u64, tx_field_id: u64) -> T
 ```
 
@@ -75,30 +93,30 @@ __state_load_word(key: b256) -> u64
 ___
 
 ```sway
-__state_load_quad(key: b256, ptr: raw_ptr, slots: u64)
+__state_load_quad(key: b256, ptr: raw_ptr, slots: u64) -> bool
 ```
 
-**Description:** Reads `slots` number of slots (`b256` each) from storage starting at key `key` and stores them in memory starting at address `ptr`
+**Description:** Reads `slots` number of slots (`b256` each) from storage starting at key `key` and stores them in memory starting at address `ptr`. Returns a Boolean describing whether all the storage slots were previously set.
 
 **Constraints:** None.
 
 ___
 
 ```sway
-__state_store_word(key: b256, val: u64)
+__state_store_word(key: b256, val: u64) -> bool
 ```
 
-**Description:** Stores a single word `val` into storage at key `key`.
+**Description:** Stores a single word `val` into storage at key `key`. Returns a Boolean describing whether the store slot was previously set.
 
 **Constraints:** None.
 
 ___
 
 ```sway
-__state_store_quad(key: b256, ptr: raw_ptr, slots: u64)
+__state_store_quad(key: b256, ptr: raw_ptr, slots: u64) -> bool
 ```
 
-**Description:** Stores `slots` number of slots (`b256` each) starting at address `ptr` in memory into storage starting at key `key`.
+**Description:** Stores `slots` number of slots (`b256` each) starting at address `ptr` in memory into storage starting at key `key`. Returns a Boolean describing whether the first storage slot was previously set.
 
 **Constraints:** None.
 
@@ -152,6 +170,35 @@ __div<T>(lhs: T, rhs: T) -> T
 
 **Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
 
+___
+
+```sway
+__and<T>(lhs: T, rhs: T) -> T
+```
+
+**Description:** Bitwise AND `lhs` and `rhs`.
+
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+
+___
+
+```sway
+or<T>(lhs: T, rhs: T) -> T
+```
+
+**Description:** Bitwise OR `lhs` and `rhs`.
+
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+
+___
+
+```sway
+__xor<T>(lhs: T, rhs: T) -> T
+```
+
+**Description:** Bitwise XOR `lhs` and `rhs`.
+
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
 ___
 
 ```sway

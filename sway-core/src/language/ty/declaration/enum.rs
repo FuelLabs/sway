@@ -1,13 +1,22 @@
-use std::hash::{Hash, Hasher};
+use std::{
+    cmp::Ordering,
+    hash::{Hash, Hasher},
+};
 
 use sway_error::error::CompileError;
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, Named, Span, Spanned};
 
-use crate::{engine_threading::*, error::*, language::Visibility, transform, type_system::*};
+use crate::{
+    engine_threading::*,
+    error::*,
+    language::{CallPath, Visibility},
+    transform,
+    type_system::*,
+};
 
 #[derive(Clone, Debug)]
-pub struct TyEnumDeclaration {
-    pub name: Ident,
+pub struct TyEnumDecl {
+    pub call_path: CallPath,
     pub type_parameters: Vec<TypeParameter>,
     pub attributes: transform::AttributesMap,
     pub variants: Vec<TyEnumVariant>,
@@ -15,20 +24,42 @@ pub struct TyEnumDeclaration {
     pub visibility: Visibility,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl EqWithEngines for TyEnumDeclaration {}
-impl PartialEqWithEngines for TyEnumDeclaration {
+impl Named for TyEnumDecl {
+    fn name(&self) -> &Ident {
+        &self.call_path.suffix
+    }
+}
+
+impl EqWithEngines for TyEnumDecl {}
+impl PartialEqWithEngines for TyEnumDecl {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        self.name == other.name
+        self.call_path.suffix == other.call_path.suffix
             && self.type_parameters.eq(&other.type_parameters, engines)
             && self.variants.eq(&other.variants, engines)
             && self.visibility == other.visibility
     }
 }
 
-impl SubstTypes for TyEnumDeclaration {
+impl HashWithEngines for TyEnumDecl {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TyEnumDecl {
+            call_path,
+            type_parameters,
+            variants,
+            visibility,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+            attributes: _,
+        } = self;
+        call_path.suffix.hash(state);
+        variants.hash(state, engines);
+        type_parameters.hash(state, engines);
+        visibility.hash(state);
+    }
+}
+
+impl SubstTypes for TyEnumDecl {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.variants
             .iter_mut()
@@ -39,7 +70,7 @@ impl SubstTypes for TyEnumDeclaration {
     }
 }
 
-impl ReplaceSelfType for TyEnumDeclaration {
+impl ReplaceSelfType for TyEnumDecl {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         self.variants
             .iter_mut()
@@ -50,38 +81,23 @@ impl ReplaceSelfType for TyEnumDeclaration {
     }
 }
 
-impl CreateTypeId for TyEnumDeclaration {
-    fn create_type_id(&self, engines: Engines<'_>) -> TypeId {
-        let type_engine = engines.te();
-        let decl_engine = engines.de();
-        type_engine.insert(
-            decl_engine,
-            TypeInfo::Enum {
-                name: self.name.clone(),
-                variant_types: self.variants.clone(),
-                type_parameters: self.type_parameters.clone(),
-            },
-        )
-    }
-}
-
-impl Spanned for TyEnumDeclaration {
+impl Spanned for TyEnumDecl {
     fn span(&self) -> Span {
         self.span.clone()
     }
 }
 
-impl MonomorphizeHelper for TyEnumDeclaration {
+impl MonomorphizeHelper for TyEnumDecl {
     fn type_parameters(&self) -> &[TypeParameter] {
         &self.type_parameters
     }
 
     fn name(&self) -> &Ident {
-        &self.name
+        &self.call_path.suffix
     }
 }
 
-impl TyEnumDeclaration {
+impl TyEnumDecl {
     pub(crate) fn expect_variant_from_name(
         &self,
         variant_name: &Ident,
@@ -96,7 +112,7 @@ impl TyEnumDeclaration {
             Some(variant) => ok(variant, warnings, errors),
             None => {
                 errors.push(CompileError::UnknownEnumVariant {
-                    enum_name: self.name.clone(),
+                    enum_name: self.call_path.suffix.clone(),
                     variant_name: variant_name.clone(),
                     span: variant_name.span(),
                 });
@@ -109,48 +125,63 @@ impl TyEnumDeclaration {
 #[derive(Debug, Clone)]
 pub struct TyEnumVariant {
     pub name: Ident,
-    pub type_id: TypeId,
-    pub initial_type_id: TypeId,
-    pub type_span: Span,
+    pub type_argument: TypeArgument,
     pub(crate) tag: usize,
     pub span: Span,
     pub attributes: transform::AttributesMap,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl HashWithEngines for TyEnumVariant {
-    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
         self.name.hash(state);
-        type_engine.get(self.type_id).hash(state, type_engine);
+        self.type_argument.hash(state, engines);
         self.tag.hash(state);
     }
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyEnumVariant {}
 impl PartialEqWithEngines for TyEnumVariant {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        let type_engine = engines.te();
         self.name == other.name
-            && type_engine
-                .get(self.type_id)
-                .eq(&type_engine.get(other.type_id), engines)
+            && self.type_argument.eq(&other.type_argument, engines)
             && self.tag == other.tag
+    }
+}
+
+impl OrdWithEngines for TyEnumVariant {
+    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
+        let TyEnumVariant {
+            name: ln,
+            type_argument: lta,
+            tag: lt,
+            // these fields are not compared because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+            attributes: _,
+        } = self;
+        let TyEnumVariant {
+            name: rn,
+            type_argument: rta,
+            tag: rt,
+            // these fields are not compared because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+            attributes: _,
+        } = other;
+        ln.cmp(rn)
+            .then_with(|| lta.cmp(rta, engines))
+            .then_with(|| lt.cmp(rt))
     }
 }
 
 impl SubstTypes for TyEnumVariant {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.type_id.subst(type_mapping, engines);
+        self.type_argument.subst_inner(type_mapping, engines);
     }
 }
 
 impl ReplaceSelfType for TyEnumVariant {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.type_id.replace_self_type(engines, self_type);
+        self.type_argument.replace_self_type(engines, self_type);
     }
 }

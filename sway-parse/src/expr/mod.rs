@@ -1,13 +1,12 @@
 use crate::{Parse, ParseBracket, ParseResult, ParseToEnd, Parser, ParserConsumed, Peek};
 
-use core::ops::ControlFlow;
 use sway_ast::brackets::{Braces, Parens, SquareBrackets};
-use sway_ast::expr::{ReassignmentOp, ReassignmentOpVariant};
+use sway_ast::expr::{LoopControlFlow, ReassignmentOp, ReassignmentOpVariant};
 use sway_ast::keywords::{
     AbiToken, AddEqToken, AsmToken, CommaToken, ConfigurableToken, ConstToken, DivEqToken,
     DoubleColonToken, EnumToken, EqToken, FalseToken, FnToken, IfToken, ImplToken, LetToken,
     OpenAngleBracketToken, PubToken, SemicolonToken, ShlEqToken, ShrEqToken, StarEqToken,
-    StorageToken, StructToken, SubEqToken, Token, TraitToken, TrueToken, UseToken,
+    StorageToken, StructToken, SubEqToken, Token, TraitToken, TrueToken, TypeToken, UseToken,
 };
 use sway_ast::literal::{LitBool, LitBoolType};
 use sway_ast::punctuated::Punctuated;
@@ -25,7 +24,7 @@ pub mod op_code;
 
 impl ParseToEnd for AbiCastArgs {
     fn parse_to_end<'a, 'e>(
-        mut parser: Parser<'a, 'e>,
+        mut parser: Parser<'a, '_>,
     ) -> ParseResult<(AbiCastArgs, ParserConsumed<'a>)> {
         let name = parser.parse()?;
         let comma_token = parser.parse()?;
@@ -52,8 +51,8 @@ impl Parse for IfExpr {
         let else_opt = match parser.take() {
             Some(else_token) => {
                 let else_body = match parser.guarded_parse::<IfToken, _>()? {
-                    Some(if_expr) => ControlFlow::Continue(Box::new(if_expr)),
-                    None => ControlFlow::Break(parser.parse()?),
+                    Some(if_expr) => LoopControlFlow::Continue(Box::new(if_expr)),
+                    None => LoopControlFlow::Break(parser.parse()?),
                 };
                 Some((else_token, else_body))
             }
@@ -126,7 +125,7 @@ impl Parse for StatementLet {
 
 impl ParseToEnd for CodeBlockContents {
     fn parse_to_end<'a, 'e>(
-        mut parser: Parser<'a, 'e>,
+        mut parser: Parser<'a, '_>,
     ) -> ParseResult<(CodeBlockContents, ParserConsumed<'a>)> {
         let mut statements = Vec::new();
         let (final_expr_opt, consumed) = loop {
@@ -169,6 +168,7 @@ fn parse_stmt<'a>(parser: &mut Parser<'a, '_>) -> ParseResult<StmtOrTail<'a>> {
         || parser.peek::<ImplToken>().is_some()
         || parser.peek::<(AbiToken, Ident)>().is_some()
         || parser.peek::<ConstToken>().is_some()
+        || parser.peek::<TypeToken>().is_some()
         || matches!(
             parser.peek::<(StorageToken, Delimiter)>(),
             Some((_, Delimiter::Brace))
@@ -568,7 +568,7 @@ fn parse_projection(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr>
                     parsed,
                     ty_opt,
                 } = lit_int;
-                if let Some((_, _span)) = ty_opt {
+                if ty_opt.is_some() {
                     return Err(
                         parser.emit_error_with_span(ParseErrorKind::IntFieldWithTypeSuffix, span)
                     );
@@ -746,7 +746,7 @@ impl Parse for ExprStructField {
 
 impl ParseToEnd for ExprArrayDescriptor {
     fn parse_to_end<'a, 'e>(
-        mut parser: Parser<'a, 'e>,
+        mut parser: Parser<'a, '_>,
     ) -> ParseResult<(ExprArrayDescriptor, ParserConsumed<'a>)> {
         if let Some(consumed) = parser.check_empty() {
             let punctuated = Punctuated::empty();

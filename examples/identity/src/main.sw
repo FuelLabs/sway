@@ -1,16 +1,12 @@
 contract;
 
-dep r#abi;
-dep errors;
+mod r#abi;
+mod errors;
 
 use abi::IdentityExample;
 use errors::MyError;
 
 use std::{
-    auth::{
-        AuthError,
-        msg_sender,
-    },
     constants::{
         BASE_ASSET_ID,
         ZERO_B256,
@@ -57,8 +53,8 @@ impl IdentityExample for Contract {
     #[storage(read)]
     fn access_control_with_identity() {
         // ANCHOR: access_control_with_identity
-        let sender: Result<Identity, AuthError> = msg_sender();
-        require(sender.unwrap() == storage.owner, MyError::UnauthorizedUser);
+        let sender = msg_sender().unwrap();
+        require(sender == storage.owner.read(), MyError::UnauthorizedUser(sender));
         // ANCHOR_END: access_control_with_identity
     }
 }

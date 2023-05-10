@@ -1,10 +1,22 @@
 # What is a Smart Contract?
 
-A smart contract is no different than a script or predicate in that it is a piece of bytecode that is deployed to the blockchain via a [transaction](https://fuellabs.github.io/fuel-specs/master/protocol/tx_format). The main features of a smart contract that differentiate it from scripts or predicates are that it is _callable_ and _stateful_. Put another way, a smart contract is analogous to a deployed API with some database state. The interface of a smart contract, also just called a contract, must be defined strictly with an [ABI declaration](#the-abi-declaration). See [this contract](../examples/subcurrency.md) for an example.
+<!-- This section should explain what is a smart contract -->
+<!-- contract:example:start -->
+A smart contract is no different than a script or predicate in that it is a piece of bytecode that is deployed to the blockchain via a [transaction](https://fuellabs.github.io/fuel-specs/master/protocol/tx_format). The main features of a smart contract that differentiate it from scripts or predicates are that it is _callable_ and _stateful_. Put another way, a smart contract is analogous to a deployed API with some database state.
+<!-- contract:example:end -->
+
+The interface of a smart contract, also just called a contract, must be defined strictly with an [ABI declaration](#the-abi-declaration). See [this contract](../examples/subcurrency.md) for an example.
 
 ## Syntax of a Smart Contract
 
-As with any Sway program, the program starts with a declaration of what [program type](./index.md) it is. A contract must also either define or import an [ABI declaration](#the-abi-declaration) and implement it. It is considered good practice to define your ABI in a separate library and import it into your contract. This allows callers of your contract to simply import the ABI directly and use it in their scripts to call your contract. Let's take a look at an ABI declaration in a library:
+As with any Sway program, the program starts with a declaration of what [program type](./index.md) it is. A contract must also either define or import an [ABI declaration](#the-abi-declaration) and implement it.
+
+<!-- This section should explain best practices for ABIs -->
+<!-- abi:example:start -->
+It is considered good practice to define your ABI in a separate library and import it into your contract. This allows callers of your contract to simply import the ABI directly and use it in their scripts to call your contract.
+<!-- abi:example:end -->
+
+Let's take a look at an ABI declaration in a library:
 
 ```sway
 {{#include ../../../../examples/wallet_abi/src/main.sw:abi_library}}

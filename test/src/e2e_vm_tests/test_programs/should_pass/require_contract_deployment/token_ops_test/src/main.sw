@@ -1,9 +1,6 @@
 script;
 
-use std::assert::assert;
-use std::address::Address;
 use std::context::balance_of;
-use std::contract_id::ContractId;
 use std::token::*;
 use test_fuel_coin_abi::*;
 
@@ -17,7 +14,7 @@ fn main() -> bool {
     let default_gas = 1_000_000_000_000;
 
     // the deployed fuel_coin Contract_Id:
-    let fuelcoin_id = ContractId::from(0x1721cddbad97ac6b28708abfd41194749229c658b8356ed79c5439640724f7d6);
+    let fuelcoin_id = ContractId::from(0x9a54451c35ee9943a1f4a8edf10b644125bff112fad043870965cc99a2d42233);
 
     // contract ID for sway/test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/balance_test_contract/
     let balance_test_id = ContractId::from(0x8dad20e27b24939770b4c58237e7b4ffa1dd11c2d2788feb30914eb57ad85c4f);

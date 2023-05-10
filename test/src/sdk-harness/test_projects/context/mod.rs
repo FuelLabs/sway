@@ -2,42 +2,38 @@ use fuel_vm::consts::VM_MAX_RAM;
 use fuels::{prelude::*, tx::ContractId};
 
 abigen!(
-    TestContextContract,
-    "test_projects/context/out/debug/context-abi.json",
-);
-abigen!(
-    TestContextCallerContract,
-    "test_artifacts/context_caller_contract/out/debug/context_caller_contract-abi.json",
-);
-abigen!(
-    FuelCoin,
-    "test_projects/token_ops/out/debug/token_ops-abi.json"
+    Contract(
+        name = "TestContextContract",
+        abi = "test_projects/context/out/debug/context-abi.json",
+    ),
+    Contract(
+        name = "TestContextCallerContract",
+        abi = "test_artifacts/context_caller_contract/out/debug/context_caller_contract-abi.json",
+    ),
+    Contract(
+        name = "FuelCoin",
+        abi = "test_projects/token_ops/out/debug/token_ops-abi.json"
+    )
 );
 
 async fn get_contracts() -> (
-    TestContextContract,
+    TestContextContract<WalletUnlocked>,
     ContractId,
-    TestContextCallerContract,
+    TestContextCallerContract<WalletUnlocked>,
     ContractId,
 ) {
     let wallet = launch_provider_and_get_wallet().await;
     let id_1 = Contract::deploy(
         "test_projects/context/out/debug/context.bin",
         &wallet,
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "test_projects/context/out/debug/context-storage_slots.json".to_string(),
-        )),
+        DeployConfiguration::default(),
     )
     .await
     .unwrap();
     let id_2 = Contract::deploy(
         "test_artifacts/context_caller_contract/out/debug/context_caller_contract.bin",
         &wallet,
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "test_artifacts/context_caller_contract/out/debug/context_caller_contract-storage_slots.json".to_string(),
-        )),
+        DeployConfiguration::default(),
     )
     .await
     .unwrap();
@@ -63,8 +59,8 @@ async fn can_get_this_balance() {
     caller_instance
         .methods()
         .call_receive_coins(send_amount, context_id)
-        .set_contracts(&[context_id.into()])
-        .tx_params(TxParameters::new(None, Some(1_000_000), None))
+        .set_contracts(&[&context_instance])
+        .tx_params(TxParameters::default().set_gas_limit(1_000_000))
         .call()
         .await
         .unwrap();
@@ -94,7 +90,7 @@ async fn can_get_balance_of_contract() {
     let result = context_instance
         .methods()
         .get_balance_of_contract(caller_id.clone(), caller_id.clone())
-        .set_contracts(&[caller_id.into()])
+        .set_contracts(&[&caller_instance])
         .call()
         .await
         .unwrap();
@@ -104,7 +100,7 @@ async fn can_get_balance_of_contract() {
 
 #[tokio::test]
 async fn can_get_msg_value() {
-    let (_, context_id, caller_instance, _) = get_contracts().await;
+    let (context_instance, context_id, caller_instance, _) = get_contracts().await;
     let send_amount = 11;
 
     caller_instance
@@ -117,7 +113,7 @@ async fn can_get_msg_value() {
     let result = caller_instance
         .methods()
         .call_get_amount_with_coins(send_amount, context_id)
-        .set_contracts(&[context_id.into()])
+        .set_contracts(&[&context_instance])
         .call()
         .await
         .unwrap();
@@ -127,7 +123,7 @@ async fn can_get_msg_value() {
 
 #[tokio::test]
 async fn can_get_msg_id() {
-    let (_, context_id, caller_instance, caller_id) = get_contracts().await;
+    let (context_instance, context_id, caller_instance, caller_id) = get_contracts().await;
     let send_amount = 42;
 
     caller_instance
@@ -140,8 +136,8 @@ async fn can_get_msg_id() {
     let result = caller_instance
         .methods()
         .call_get_asset_id_with_coins(send_amount, context_id)
-        .set_contracts(&[context_id.into()])
-        .tx_params(TxParameters::new(None, Some(1_000_000), None))
+        .set_contracts(&[&context_instance])
+        .tx_params(TxParameters::default().set_gas_limit(1_000_000))
         .call()
         .await
         .unwrap();
@@ -151,7 +147,7 @@ async fn can_get_msg_id() {
 
 #[tokio::test]
 async fn can_get_msg_gas() {
-    let (_, context_id, caller_instance, _) = get_contracts().await;
+    let (context_instance, context_id, caller_instance, _) = get_contracts().await;
     let send_amount = 11;
 
     caller_instance
@@ -164,8 +160,8 @@ async fn can_get_msg_gas() {
     let result = caller_instance
         .methods()
         .call_get_gas_with_coins(send_amount, context_id)
-        .set_contracts(&[context_id.into()])
-        .tx_params(TxParameters::new(Some(0), Some(1_000_000), None))
+        .set_contracts(&[&context_instance])
+        .tx_params(TxParameters::default().set_gas_limit(1_000_000))
         .call()
         .await
         .unwrap();
@@ -175,13 +171,13 @@ async fn can_get_msg_gas() {
 
 #[tokio::test]
 async fn can_get_global_gas() {
-    let (_, context_id, caller_instance, _) = get_contracts().await;
+    let (context_instance, context_id, caller_instance, _) = get_contracts().await;
     let send_amount = 11;
 
     caller_instance
         .methods()
         .mint_coins(send_amount)
-        .tx_params(TxParameters::new(None, Some(1_000_000), None))
+        .tx_params(TxParameters::default().set_gas_limit(1_000_000))
         .call()
         .await
         .unwrap();
@@ -189,8 +185,8 @@ async fn can_get_global_gas() {
     let result = caller_instance
         .methods()
         .call_get_global_gas_with_coins(send_amount, context_id)
-        .set_contracts(&[context_id.into()])
-        .tx_params(TxParameters::new(None, Some(1_000_000), None))
+        .set_contracts(&[&context_instance])
+        .tx_params(TxParameters::default().set_gas_limit(1_000_000))
         .call()
         .await
         .unwrap();

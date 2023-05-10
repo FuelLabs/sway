@@ -9,7 +9,6 @@ use crate::{
     Engines,
 };
 use sway_ir::{Context, Module};
-use sway_types::Spanned;
 
 impl ty::TyProgram {
     /// Type-check the given parsed program to produce a typed program.
@@ -20,15 +19,17 @@ impl ty::TyProgram {
         engines: Engines<'_>,
         parsed: &ParseProgram,
         initial_namespace: namespace::Module,
+        package_name: &str,
+        experimental_private_modules: bool,
     ) -> CompileResult<Self> {
         let mut namespace = Namespace::init_root(initial_namespace);
-        let ctx =
-            TypeCheckContext::from_root(&mut namespace, engines).with_kind(parsed.kind.clone());
+        let ctx = TypeCheckContext::from_root(&mut namespace, engines)
+            .with_kind(parsed.kind.clone())
+            .with_experimental_private_modules(experimental_private_modules);
         let ParseProgram { root, kind } = parsed;
-        let mod_span = root.tree.span.clone();
         let mod_res = ty::TyModule::type_check(ctx, root);
         mod_res.flat_map(|root| {
-            let res = Self::validate_root(engines, &root, kind.clone(), mod_span);
+            let res = Self::validate_root(engines, &root, kind.clone(), package_name);
             res.map(|(kind, declarations, configurables)| Self {
                 kind,
                 root,
@@ -56,21 +57,18 @@ impl ty::TyProgram {
                 let storage_decl = self
                     .declarations
                     .iter()
-                    .find(|decl| matches!(decl, ty::TyDeclaration::StorageDeclaration(_)));
+                    .find(|decl| matches!(decl, ty::TyDecl::StorageDecl { .. }));
 
                 // Expecting at most a single storage declaration
                 match storage_decl {
-                    Some(ty::TyDeclaration::StorageDeclaration(decl_id)) => {
-                        let decl = check!(
-                            CompileResult::from(
-                                decl_engine.get_storage(decl_id.clone(), &decl_id.span())
-                            ),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
+                    Some(ty::TyDecl::StorageDecl(ty::StorageDecl {
+                        decl_id,
+                        decl_span: _,
+                        ..
+                    })) => {
+                        let decl = decl_engine.get_storage(decl_id);
                         let mut storage_slots = check!(
-                            decl.get_initialized_storage_slots(engines, context, md_mgr, module),
+                            decl.get_initialized_storage_slots(engines, context, md_mgr, module,),
                             return err(warnings, errors),
                             warnings,
                             errors,
