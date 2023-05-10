@@ -1,12 +1,20 @@
+use sway_error::error::CompileError;
+use sway_types::{BaseIdent, Span};
+
 use crate::{
     decl_engine::{DeclEngine, DeclEngineInsert},
     engine_threading::*,
     error::*,
+    language::CallPath,
+    semantic_analysis::TypeCheckContext,
     type_system::priv_prelude::*,
     types::*,
 };
 
-use std::{collections::BTreeSet, fmt};
+use std::{
+    collections::{BTreeSet, HashMap},
+    fmt,
+};
 
 /// A identifier to uniquely refer to our type terms
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd, Debug)]
@@ -40,9 +48,9 @@ impl CollectTypesMetadata for TypeId {
                 || matches!(type_info, TypeInfo::Placeholder(_))
         }
         let engines = Engines::new(ctx.type_engine, ctx.decl_engine);
-        let possible = self.extract_any_including_self(engines, &filter_fn);
+        let possible = self.extract_any_including_self(engines, &filter_fn, vec![]);
         let mut res = vec![];
-        for type_id in possible.into_iter() {
+        for (type_id, _) in possible.into_iter() {
             match ctx.type_engine.get(type_id) {
                 TypeInfo::UnknownGeneric { name, .. } => {
                     res.push(TypeMetadata::UnresolvedType(
@@ -317,16 +325,108 @@ impl TypeId {
         &self,
         engines: Engines<'_>,
         filter_fn: &F,
-    ) -> BTreeSet<TypeId>
+        trait_constraints: Vec<TraitConstraint>,
+    ) -> HashMap<TypeId, Vec<TraitConstraint>>
     where
         F: Fn(&TypeInfo) -> bool,
     {
         let type_engine = engines.te();
         let type_info = type_engine.get(*self);
-        let mut found: BTreeSet<TypeId> = type_info.extract_any(engines, filter_fn);
+        let mut found = type_info.extract_any(engines, filter_fn);
         if filter_fn(&type_info) {
-            found.insert(*self);
+            found.insert(*self, trait_constraints);
         }
         found
+    }
+
+    /// `check_type_parameter_bounds` does two types of checks. Lets use the example below for demonstrating the two checks:
+    /// ```ignore
+    /// enum MyEnum<T> where T: MyAdd {
+    ///   X: T,
+    /// }
+    /// ```
+    /// The enum above has a constraint where `T` should implement the trait `MyAdd`.
+    ///
+    /// If `check_type_parameter_bounds` is called on type `MyEnum<u64>` and `u64`
+    /// does not implement the trait `MyAdd` then the error `CompileError::TraitConstraintNotSatisfied`
+    /// is thrown.
+    ///
+    /// The second type of check performed results in an error for the example below.
+    /// ```ignore
+    /// fn add2<G>(e: MyEnum<G>) -> G {
+    /// }
+    /// ```
+    /// If `check_type_parameter_bounds` is called on type `MyEnum<G>` and the type parameter `G`
+    /// does not have the trait constraint `where G: MyAdd` then the error `CompileError::TraitConstraintMissing`
+    /// is thrown.
+    pub(crate) fn check_type_parameter_bounds(
+        &self,
+        ctx: &TypeCheckContext,
+        span: &Span,
+    ) -> CompileResult<()> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        let engines = ctx.engines();
+
+        let structure_generics = engines
+            .te()
+            .get(*self)
+            .extract_inner_types_with_trait_constraints(engines);
+
+        for (structure_type_id, structure_trait_constraints) in &structure_generics {
+            if structure_trait_constraints.is_empty() {
+                continue;
+            }
+
+            let structure_type_info = engines.te().get(*structure_type_id);
+            let structure_type_info_with_engines = engines.help_out(structure_type_info.clone());
+            if let TypeInfo::UnknownGeneric {
+                trait_constraints, ..
+            } = &structure_type_info
+            {
+                let mut generic_trait_constraints_trait_names: Vec<CallPath<BaseIdent>> = vec![];
+                for trait_constraint in trait_constraints.iter() {
+                    generic_trait_constraints_trait_names.push(trait_constraint.trait_name.clone());
+                }
+                for structure_trait_constraint in structure_trait_constraints {
+                    if !generic_trait_constraints_trait_names
+                        .contains(&structure_trait_constraint.trait_name)
+                    {
+                        errors.push(CompileError::TraitConstraintMissing {
+                            param: structure_type_info_with_engines.to_string(),
+                            trait_name: structure_trait_constraint.trait_name.suffix.to_string(),
+                            span: span.clone(),
+                        });
+                    }
+                }
+            } else {
+                // TODO(Esdrubal): Use callpath directly instead of suffix,
+                // this will require TraitConstraint.trait_name to have an absolute CallPath
+                let generic_trait_constraints_trait_names = ctx
+                    .namespace
+                    .implemented_traits
+                    .get_trait_names_for_type(engines, *structure_type_id)
+                    .iter()
+                    .map(|c| c.suffix.clone())
+                    .collect::<Vec<_>>();
+                for structure_trait_constraint in structure_trait_constraints {
+                    if !generic_trait_constraints_trait_names
+                        .contains(&structure_trait_constraint.trait_name.suffix)
+                    {
+                        errors.push(CompileError::TraitConstraintNotSatisfied {
+                            ty: structure_type_info_with_engines.to_string(),
+                            trait_name: structure_trait_constraint.trait_name.suffix.to_string(),
+                            span: span.clone(),
+                        });
+                    }
+                }
+            }
+        }
+
+        if errors.is_empty() {
+            ok((), warnings, errors)
+        } else {
+            err(warnings, errors)
+        }
     }
 }

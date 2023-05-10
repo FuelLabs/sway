@@ -793,6 +793,33 @@ impl TraitMap {
         items
     }
 
+    pub(crate) fn get_trait_names_for_type(
+        &self,
+        engines: Engines<'_>,
+        type_id: TypeId,
+    ) -> Vec<CallPath> {
+        let type_engine = engines.te();
+        let mut trait_names = vec![];
+        // small performance gain in bad case
+        if type_engine
+            .get(type_id)
+            .eq(&TypeInfo::ErrorRecovery, engines)
+        {
+            return trait_names;
+        }
+        for entry in self.trait_impls.iter() {
+            if are_equal_minus_dynamic_types(engines, type_id, entry.key.type_id) {
+                let trait_call_path = CallPath {
+                    prefixes: entry.key.name.prefixes.clone(),
+                    suffix: entry.key.name.suffix.name.clone(),
+                    is_absolute: entry.key.name.is_absolute,
+                };
+                trait_names.push(trait_call_path);
+            }
+        }
+        trait_names
+    }
+
     /// Checks to see if the trait constraints are satisfied for a given type.
     pub(crate) fn check_if_trait_constraints_are_satisfied_for_type(
         &self,

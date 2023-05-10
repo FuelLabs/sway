@@ -146,6 +146,15 @@ impl ty::TyFunctionDecl {
             (visibility, ctx.mode() == Mode::ImplAbiFn)
         };
 
+        check!(
+            return_type
+                .type_id
+                .check_type_parameter_bounds(&ctx, &return_type.span),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
         let function_decl = ty::TyFunctionDecl {
             name,
             body,
