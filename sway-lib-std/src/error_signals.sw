@@ -12,8 +12,6 @@ pub const FAILED_TRANSFER_TO_ADDRESS_SIGNAL = 0xffff_ffff_ffff_0001;
 /// 18446744073709486082
 pub const FAILED_SEND_MESSAGE_SIGNAL = 0xffff_ffff_ffff_0002;
 
-/// the value passed to __revert intrinsic when calling revert() with a reference type.
-pub const REVERT_WITH_LOG_SIGNAL = 0xffff_ffff_ffff_0003;
 /// Revert with this value for a failing call to `std::assert::assert_eq`.
 /// 18446744073709486083
 pub const FAILED_ASSERT_EQ_SIGNAL = 0xffff_ffff_ffff_0003;
@@ -21,3 +19,7 @@ pub const FAILED_ASSERT_EQ_SIGNAL = 0xffff_ffff_ffff_0003;
 /// Revert with this value for a failing call to `std::assert::assert`.
 /// 18446744073709486084
 pub const FAILED_ASSERT_SIGNAL = 0xffff_ffff_ffff_0004;
+
+/// the value passed to __revert intrinsic when calling revert() with a reference type.
+/// 18446744073709486085
+pub const REVERT_WITH_LOG_SIGNAL = 0xffff_ffff_ffff_0005;
