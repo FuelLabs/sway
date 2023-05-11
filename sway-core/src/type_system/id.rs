@@ -400,19 +400,16 @@ impl TypeId {
                     }
                 }
             } else {
-                // TODO(Esdrubal): Use callpath directly instead of suffix,
-                // this will require TraitConstraint.trait_name to have an absolute CallPath
                 let generic_trait_constraints_trait_names = ctx
                     .namespace
                     .implemented_traits
-                    .get_trait_names_for_type(engines, *structure_type_id)
-                    .iter()
-                    .map(|c| c.suffix.clone())
-                    .collect::<Vec<_>>();
+                    .get_trait_names_for_type(engines, *structure_type_id);
                 for structure_trait_constraint in structure_trait_constraints {
-                    if !generic_trait_constraints_trait_names
-                        .contains(&structure_trait_constraint.trait_name.suffix)
-                    {
+                    if !generic_trait_constraints_trait_names.contains(
+                        &structure_trait_constraint
+                            .trait_name
+                            .to_fullpath(ctx.namespace),
+                    ) {
                         errors.push(CompileError::TraitConstraintNotSatisfied {
                             ty: structure_type_info_with_engines.to_string(),
                             trait_name: structure_trait_constraint.trait_name.suffix.to_string(),
