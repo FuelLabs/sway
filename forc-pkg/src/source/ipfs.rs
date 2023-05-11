@@ -79,10 +79,8 @@ impl source::Fetch for Pinned {
                 let handle = tokio::runtime::Handle::current();
                 let _ = handle.enter();
                 futures::executor::block_on(async {
-                    if let Err(e) = cid.fetch_with_client(&ipfs_client, &dest).await {
-                        warn!("    {}", 
-                              ansi_term::Color::Yellow.bold().paint(format!("Couldn't fetch from local ipfs node, reason:\n{e:?}.\n Falling back to {PUBLIC_GATEWAY}"))
-                             );
+                    if cid.fetch_with_client(&ipfs_client, &dest).await.is_err() {
+                        warn!("   Couldn't fetch from local ipfs node. Falling back to {PUBLIC_GATEWAY}.");
                         cid.fetch_with_public_gateway(&dest).await
                     } else {
                         Ok(())
@@ -142,14 +140,18 @@ impl Cid {
 
     /// Using a public gateway, fetches the content described by this cid.
     async fn fetch_with_public_gateway(&self, dst: &Path) -> Result<()> {
+        info!("   Fetching from public gateway, this might take some time.");
         let client = reqwest::Client::new();
         // We request the content to be served to us in tar format by the public gateway.
         let fetch_url = format!(
             "{}/ipfs/{}?download=true&format=tar&filename={}.tar",
             PUBLIC_GATEWAY, self.0, self.0
         );
-        let req = client.get(fetch_url);
+        let req = client.get(&fetch_url);
         let res = req.send().await?;
+        if !res.status().is_success() {
+            anyhow::bail!("Failed to fetch from {fetch_url:?}");
+        }
         let bytes: Vec<_> = res.text().await?.bytes().collect();
 
         // After collecting bytes of the archive, we unpack it to the dst.
