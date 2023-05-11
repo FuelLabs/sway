@@ -33,7 +33,6 @@ sway-types = { version = "0.40.0", path = "../sway-types" }
 sway-utils = { version = "0.40.0", path = "../sway-utils" }
 sysinfo = "0.29.0"
 tar = "0.4.38"
-tokio = { version = "1.0" }
 toml = "0.5"
 tracing = "0.1"
 url = { version = "2.2", features = ["serde"] }

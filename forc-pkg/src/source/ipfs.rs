@@ -76,8 +76,6 @@ impl source::Fetch for Pinned {
                 let cid = &self.0;
                 let ipfs_client = ipfs_client();
                 let dest = cache_dir();
-                let handle = tokio::runtime::Handle::current();
-                let _ = handle.enter();
                 futures::executor::block_on(async {
                     if cid.fetch_with_client(&ipfs_client, &dest).await.is_err() {
                         warn!("   Couldn't fetch from local ipfs node. Falling back to {PUBLIC_GATEWAY}.");
