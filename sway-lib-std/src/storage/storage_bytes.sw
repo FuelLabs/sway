@@ -32,11 +32,11 @@ impl StorableSlice<Bytes> for StorageKey<StorageBytes> {
     ///     bytes.push(7_u8);
     ///     bytes.push(9_u8);
     ///
-    ///     storage.stored_bytes.write(bytes);
+    ///     storage.stored_bytes.write_slice(bytes);
     /// }
     /// ```
     #[storage(read, write)]
-    fn write(self, bytes: Bytes) {
+    fn write_slice(self, bytes: Bytes) {
         write_slice(self.field_id, bytes.as_raw_slice());
     }
 
@@ -59,14 +59,14 @@ impl StorableSlice<Bytes> for StorageKey<StorageBytes> {
     ///     bytes.push(7_u8);
     ///     bytes.push(9_u8);
     ///
-    ///     assert(storage.stored_bytes.read(key).is_none());
-    ///     storage.stored_bytes.write(bytes);
-    ///     let retrieved_bytes = storage.stored_bytes.read(key).unwrap();
+    ///     assert(storage.stored_bytes.read_slice(key).is_none());
+    ///     storage.stored_bytes.write_slice(bytes);
+    ///     let retrieved_bytes = storage.stored_bytes.read_slice(key).unwrap();
     ///     assert(bytes == retrieved_bytes);
     /// }
     /// ```
     #[storage(read)]
-    fn read(self) -> Option<Bytes> {
+    fn read_slice(self) -> Option<Bytes> {
         match read_slice(self.field_id) {
             Some(slice) => {
                 Some(Bytes::from_raw_slice(slice))
@@ -94,12 +94,12 @@ impl StorableSlice<Bytes> for StorageKey<StorageBytes> {
     ///     bytes.push(5_u8);
     ///     bytes.push(7_u8);
     ///     bytes.push(9_u8);
-    ///     storage.stored_bytes.write(bytes);
+    ///     storage.stored_bytes.write_slice(bytes);
     ///
-    ///     assert(storage.stored_bytes.read(key).is_some());
+    ///     assert(storage.stored_bytes.read_slice(key).is_some());
     ///     let cleared = storage.stored_bytes.clear();
     ///     assert(cleared);
-    ///     let retrieved_bytes = storage.stored_bytes.read(key);
+    ///     let retrieved_bytes = storage.stored_bytes.read_slice(key);
     ///     assert(retrieved_bytes.is_none());
     /// }
     /// ```
@@ -128,7 +128,7 @@ impl StorableSlice<Bytes> for StorageKey<StorageBytes> {
     ///     bytes.push(9_u8);
     ///
     ///     assert(storage.stored_bytes.len() == 0)
-    ///     storage.stored_bytes.write(bytes);
+    ///     storage.stored_bytes.write_slice(bytes);
     ///     assert(storage.stored_bytes.len() == 3);
     /// }
     /// ```

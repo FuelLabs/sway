@@ -110,9 +110,9 @@ pub fn clear_slice(key: b256) -> bool {
 /// A general way to persistently store heap types.
 pub trait StorableSlice<T> {
     #[storage(read, write)]
-    fn write(self, argument: T);
+    fn write_slice(self, argument: T);
     #[storage(read)]
-    fn read(self) -> Option<T>;
+    fn read_slice(self) -> Option<T>;
     #[storage(read, write)]
     fn clear(self) -> bool;
     #[storage(read)]
