@@ -40,7 +40,7 @@ use sway_ir::{
     MODULEPRINTER_NAME, RETDEMOTION_NAME,
 };
 use sway_types::constants::DOC_COMMENT_ATTRIBUTE_NAME;
-use sway_utils::{time_expr, PerformanceMetric, PerformanceMetrics};
+use sway_utils::{time_expr, PerformanceData, PerformanceMetric};
 use transform::{Attribute, AttributeArg, AttributeKind, AttributesMap};
 use types::*;
 
@@ -451,7 +451,7 @@ pub fn compile_to_ast(
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
     package_name: &str,
-    metrics: &mut PerformanceMetrics,
+    metrics: &mut PerformanceData,
 ) -> CompileResult<ty::TyProgram> {
     // Parse the program to a concrete syntax tree (CST).
     let CompileResult {
@@ -517,7 +517,7 @@ pub fn compile_to_asm(
     initial_namespace: namespace::Module,
     build_config: BuildConfig,
     package_name: &str,
-    metrics: &mut PerformanceMetrics,
+    metrics: &mut PerformanceData,
 ) -> CompileResult<CompiledAsm> {
     let ast_res = compile_to_ast(
         engines,
@@ -661,7 +661,7 @@ pub fn compile_to_bytecode(
     build_config: BuildConfig,
     source_map: &mut SourceMap,
     package_name: &str,
-    metrics: &mut PerformanceMetrics,
+    metrics: &mut PerformanceData,
 ) -> CompileResult<CompiledBytecode> {
     let asm_res = compile_to_asm(
         engines,

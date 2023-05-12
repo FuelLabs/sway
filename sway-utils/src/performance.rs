@@ -7,12 +7,16 @@ pub struct PerformanceMetric {
     pub memory_usage: u64,
 }
 
-pub type PerformanceMetrics = Vec<PerformanceMetric>;
+#[derive(Debug, Default, Serialize)]
+pub struct PerformanceData {
+    pub bytecode_size: usize,
+    pub metrics: Vec<PerformanceMetric>,
+}
 
 #[macro_export]
 // Time the given expression and print/save the result.
 macro_rules! time_expr {
-    ($description:expr, $key:expr, $expression:expr, $build_config:expr, $metrics:expr) => {{
+    ($description:expr, $key:expr, $expression:expr, $build_config:expr, $data:expr) => {{
         if let Some(cfg) = $build_config {
             if cfg.time_phases || cfg.metrics_outfile.is_some() {
                 let expr_start = std::time::Instant::now();
@@ -24,7 +28,7 @@ macro_rules! time_expr {
                 if cfg.metrics_outfile.is_some() {
                     let mut sys = System::new();
                     sys.refresh_system();
-                    $metrics.push(PerformanceMetric {
+                    $data.metrics.push(PerformanceMetric {
                         phase: $key.to_string(),
                         elapsed: elapsed.as_secs_f64(),
                         memory_usage: sys.used_memory(),
