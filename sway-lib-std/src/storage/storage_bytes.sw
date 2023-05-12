@@ -32,12 +32,12 @@ impl StorableSlice<Bytes> for StorageKey<StorageBytes> {
     ///     bytes.push(7_u8);
     ///     bytes.push(9_u8);
     ///
-    ///     storage.stored_bytes.store(bytes);
+    ///     storage.stored_bytes.write(bytes);
     /// }
     /// ```
     #[storage(read, write)]
-    fn store(self, bytes: Bytes) {
-        store_slice(self.field_id, bytes.as_raw_slice());
+    fn write(self, bytes: Bytes) {
+        write_slice(self.field_id, bytes.as_raw_slice());
     }
 
     /// Constructs a `Bytes` type from a collection of tightly packed bytes in storage.
@@ -59,14 +59,14 @@ impl StorableSlice<Bytes> for StorageKey<StorageBytes> {
     ///     bytes.push(7_u8);
     ///     bytes.push(9_u8);
     ///
-    ///     assert(storage.stored_bytes.load(key).is_none());
-    ///     storage.stored_bytes.store(bytes);
-    ///     let retrieved_bytes = storage.stored_bytes.load(key).unwrap();
+    ///     assert(storage.stored_bytes.read(key).is_none());
+    ///     storage.stored_bytes.write(bytes);
+    ///     let retrieved_bytes = storage.stored_bytes.read(key).unwrap();
     ///     assert(bytes == retrieved_bytes);
     /// }
     /// ```
     #[storage(read)]
-    fn load(self) -> Option<Bytes> {
+    fn read(self) -> Option<Bytes> {
         match get_slice(self.field_id) {
             Some(slice) => {
                 Some(Bytes::from_raw_slice(slice))
@@ -94,12 +94,12 @@ impl StorableSlice<Bytes> for StorageKey<StorageBytes> {
     ///     bytes.push(5_u8);
     ///     bytes.push(7_u8);
     ///     bytes.push(9_u8);
-    ///     storage.stored_bytes.store(bytes);
+    ///     storage.stored_bytes.write(bytes);
     ///
-    ///     assert(storage.stored_bytes.load(key).is_some());
+    ///     assert(storage.stored_bytes.read(key).is_some());
     ///     let cleared = storage.stored_bytes.clear();
     ///     assert(cleared);
-    ///     let retrieved_bytes = storage.stored_bytes.load(key);
+    ///     let retrieved_bytes = storage.stored_bytes.read(key);
     ///     assert(retrieved_bytes.is_none());
     /// }
     /// ```
@@ -128,7 +128,7 @@ impl StorableSlice<Bytes> for StorageKey<StorageBytes> {
     ///     bytes.push(9_u8);
     ///
     ///     assert(storage.stored_bytes.len() == 0)
-    ///     storage.stored_bytes.store(bytes);
+    ///     storage.stored_bytes.write(bytes);
     ///     assert(storage.stored_bytes.len() == 3);
     /// }
     /// ```

@@ -15,16 +15,16 @@ use ::storage::storage_api::*;
 /// ### Examples
 ///
 /// ```sway
-/// use std::{alloc::alloc_bytes, storage::{store_slice, get_slice}, constants::ZERO_B256};
+/// use std::{alloc::alloc_bytes, storage::{write_slice, read_slice}, constants::ZERO_B256};
 ///
 /// let slice = asm(ptr: (alloc_bytes(1), 1)) { ptr: raw_slice };
-/// assert(get_slice(ZERO_B256).is_none());
-/// store_slice(ZERO_B256, slice);
-/// let stored_slice = get_slice(ZERO_B256).unwrap();
+/// assert(read_slice(ZERO_B256).is_none());
+/// write_slice(ZERO_B256, slice);
+/// let stored_slice = read_slice(ZERO_B256).unwrap();
 /// assert(slice == stored_slice);
 /// ```
 #[storage(read, write)]
-pub fn store_slice(key: b256, slice: raw_slice) {
+pub fn write_slice(key: b256, slice: raw_slice) {
     // Get the number of storage slots needed based on the size of bytes.
     let number_of_bytes = slice.number_of_bytes();
     let number_of_slots = (number_of_bytes + 31) >> 5;
@@ -53,16 +53,16 @@ pub fn store_slice(key: b256, slice: raw_slice) {
 /// ### Examples
 ///
 /// ```sway
-/// use std::{alloc::alloc_bytes, storage::{store_slice, get_slice}, constants::ZERO_B256};
+/// use std::{alloc::alloc_bytes, storage::{write_slice, read_slice}, constants::ZERO_B256};
 ///
 /// let slice = asm(ptr: (alloc_bytes(1), 1)) { ptr: raw_slice };
-/// assert(get_slice(ZERO_B256).is_none());
-/// store_slice(ZERO_B256, slice);
-/// let stored_slice = get_slice(ZERO_B256).unwrap();
+/// assert(read_slice(ZERO_B256).is_none());
+/// write_slice(ZERO_B256, slice);
+/// let stored_slice = read_slice(ZERO_B256).unwrap();
 /// assert(slice == stored_slice);
 /// ```
 #[storage(read)]
-pub fn get_slice(key: b256) -> Option<raw_slice> {
+pub fn read_slice(key: b256) -> Option<raw_slice> {
     // Get the length of the slice that is stored.
     match read::<u64>(key, 0).unwrap_or(0) {
         0 => None,
@@ -87,14 +87,14 @@ pub fn get_slice(key: b256) -> Option<raw_slice> {
 /// ### Examples
 ///
 /// ```sway
-/// use std::{alloc::alloc_bytes, storage::{clear_slice, store_slice, get_slice}, constants::ZERO_B256};
+/// use std::{alloc::alloc_bytes, storage::{clear_slice, write_slice, read_slice}, constants::ZERO_B256};
 ///
 /// let slice = asm(ptr: (alloc_bytes(1), 1)) { ptr: raw_slice };
-/// store_slice(ZERO_B256, slice);
-/// assert(get_slice(ZERO_B256).is_some());
+/// write_slice(ZERO_B256, slice);
+/// assert(read_slice(ZERO_B256).is_some());
 /// let cleared = clear_slice(ZERO_B256);
 /// assert(cleared);
-/// assert(get_slice(ZERO_B256).is_none());
+/// assert(read_slice(ZERO_B256).is_none());
 /// ```
 #[storage(read, write)]
 pub fn clear_slice(key: b256) -> bool {
@@ -110,9 +110,9 @@ pub fn clear_slice(key: b256) -> bool {
 /// A general way to persistently store heap types.
 pub trait StorableSlice<T> {
     #[storage(read, write)]
-    fn store(self, argument: T);
+    fn write(self, argument: T);
     #[storage(read)]
-    fn load(self) -> Option<T>;
+    fn read(self) -> Option<T>;
     #[storage(read, write)]
     fn clear(self) -> bool;
     #[storage(read)]
