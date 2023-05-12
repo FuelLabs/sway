@@ -48,7 +48,7 @@ use sway_core::{
 };
 use sway_error::{error::CompileError, warning::CompileWarning};
 use sway_types::{Ident, Span, Spanned};
-use sway_utils::{constants, time_expr, PerformanceMetric, PerformanceMetrics};
+use sway_utils::{constants, time_expr, PerformanceData, PerformanceMetric};
 use sysinfo::{System, SystemExt};
 use tracing::{info, warn};
 
@@ -180,7 +180,7 @@ pub struct CompiledPackage {
     pub bytecode: BuiltPackageBytecode,
     pub namespace: namespace::Root,
     pub warnings: Vec<CompileWarning>,
-    pub metrics: PerformanceMetrics,
+    pub metrics: PerformanceData,
 }
 
 /// Compiled contract dependency parts relevant to calculating a contract's ID.
@@ -1719,7 +1719,7 @@ pub fn compile_ast(
     engines: Engines<'_>,
     namespace: namespace::Module,
     package_name: &str,
-    metrics: &mut PerformanceMetrics,
+    metrics: &mut PerformanceData,
 ) -> Result<CompileResult<ty::TyProgram>> {
     let source = pkg.manifest_file.entry_string()?;
     let sway_build_config = sway_build_config(
@@ -1764,7 +1764,7 @@ pub fn compile(
     namespace: namespace::Module,
     source_map: &mut SourceMap,
 ) -> Result<CompiledPackage> {
-    let mut metrics = PerformanceMetrics::new();
+    let mut metrics = PerformanceData::default();
 
     let entry_path = pkg.manifest_file.entry_path();
     let sway_build_config =
@@ -1898,6 +1898,7 @@ pub fn compile(
         }
     }
 
+    metrics.bytecode_size = compiled.bytecode.len();
     let bytecode = BuiltPackageBytecode {
         bytes: compiled.bytecode,
         entries,
