@@ -7,26 +7,22 @@ use rustc_hash::FxHashMap;
 use std::collections::{HashMap, HashSet};
 use sway_utils::mapped_stack::MappedStack;
 
-pub struct Mem2RegPass;
+use crate::{
+    AnalysisResults, Block, BranchToWithArgs, Context, DomFronts, DomTree, Function, Instruction,
+    IrError, LocalVar, Pass, PassMutability, PostOrder, ScopedPass, Type, Value, ValueDatum,
+    DOMFRONTS_NAME, DOMINATORS_NAME, POSTORDER_NAME,
+};
 
-impl NamedPass for Mem2RegPass {
-    fn name() -> &'static str {
-        "mem2reg"
-    }
+pub const MEM2REG_NAME: &str = "mem2reg";
 
-    fn descr() -> &'static str {
-        "Promote local memory to SSA registers."
-    }
-
-    fn run(ir: &mut Context) -> Result<bool, IrError> {
-        Self::run_on_all_fns(ir, promote_to_registers)
+pub fn create_mem2reg_pass() -> Pass {
+    Pass {
+        name: MEM2REG_NAME,
+        descr: "Promote local memory to SSA registers.",
+        deps: vec![POSTORDER_NAME, DOMINATORS_NAME, DOMFRONTS_NAME],
+        runner: ScopedPass::FunctionPass(PassMutability::Transform(promote_to_registers)),
     }
 }
-
-use crate::{
-    compute_dom_fronts, dominator::compute_dom_tree, Block, BranchToWithArgs, Context, DomTree,
-    Function, Instruction, IrError, LocalVar, NamedPass, PostOrder, Type, Value, ValueDatum,
-};
 
 // Check if a value is a valid (for our optimization) local pointer
 fn get_validate_local_var(
@@ -50,7 +46,7 @@ fn filter_usable_locals(context: &mut Context, function: &Function) -> HashSet<S
     let mut locals: HashSet<String> = function
         .locals_iter(context)
         .filter(|(_, var)| {
-            let ty = var.get_type(context);
+            let ty = var.get_inner_type(context);
             ty.is_unit(context)
                 || ty.is_bool(context)
                 || (ty.is_uint(context) && ty.get_uint_width(context).unwrap() <= 64)
@@ -114,8 +110,8 @@ pub fn compute_livein(
                             _ => {}
                         }
                     }
-                    ValueDatum::Instruction(Instruction::Store { dst_val, .. }) => {
-                        let local_var = get_validate_local_var(context, function, &dst_val);
+                    ValueDatum::Instruction(Instruction::Store { dst_val_ptr, .. }) => {
+                        let local_var = get_validate_local_var(context, function, &dst_val_ptr);
                         match local_var {
                             Some((local, _)) if locals.contains(&local) => {
                                 cur_live.remove(&local);
@@ -140,16 +136,19 @@ pub fn compute_livein(
 /// We promote only locals of non-copy type, whose every use is in a `get_local`
 /// without offsets, and the result of such a `get_local` is used only in a load
 /// or a store.
-pub fn promote_to_registers(context: &mut Context, function: &Function) -> Result<bool, IrError> {
-    let safe_locals = filter_usable_locals(context, function);
-
+pub fn promote_to_registers(
+    context: &mut Context,
+    analyses: &AnalysisResults,
+    function: Function,
+) -> Result<bool, IrError> {
+    let safe_locals = filter_usable_locals(context, &function);
     if safe_locals.is_empty() {
         return Ok(false);
     }
-
-    let (dom_tree, po) = compute_dom_tree(context, function);
-    let dom_fronts = compute_dom_fronts(context, &dom_tree);
-    let liveins = compute_livein(context, function, &po, &safe_locals);
+    let po: &PostOrder = analyses.get_analysis_result(function);
+    let dom_tree: &DomTree = analyses.get_analysis_result(function);
+    let dom_fronts: &DomFronts = analyses.get_analysis_result(function);
+    let liveins = compute_livein(context, &function, po, &safe_locals);
 
     // A list of the PHIs we insert in this transform.
     let mut new_phi_tracker = HashSet::<(String, Block)>::new();
@@ -165,12 +164,12 @@ pub fn promote_to_registers(context: &mut Context, function: &Function) -> Resul
         .rev()
         .flat_map(|b| b.instruction_iter(context).map(|i| (*b, i)))
     {
-        if let ValueDatum::Instruction(Instruction::Store { dst_val, .. }) =
+        if let ValueDatum::Instruction(Instruction::Store { dst_val_ptr, .. }) =
             context.values[inst.0].value
         {
-            match get_validate_local_var(context, function, &dst_val) {
+            match get_validate_local_var(context, &function, &dst_val_ptr) {
                 Some((local, var)) if safe_locals.contains(&local) => {
-                    worklist.push((local, var.get_type(context), block));
+                    worklist.push((local, var.get_inner_type(context), block));
                 }
                 _ => (),
             }
@@ -182,7 +181,7 @@ pub fn promote_to_registers(context: &mut Context, function: &Function) -> Resul
         for df in dom_fronts[&known_def].iter() {
             if !new_phi_tracker.contains(&(local.clone(), *df)) && liveins[df].contains(&local) {
                 // Insert PHI for this local at block df.
-                let index = df.new_arg(context, ty, false);
+                let index = df.new_arg(context, ty);
                 phi_to_local.insert(df.get_arg(context, index).unwrap(), local.clone());
                 new_phi_tracker.insert((local.clone(), *df));
                 // Add df to the worklist.
@@ -247,10 +246,10 @@ pub fn promote_to_registers(context: &mut Context, function: &Function) -> Resul
                     }
                 }
                 ValueDatum::Instruction(Instruction::Store {
-                    dst_val,
+                    dst_val_ptr,
                     stored_val,
                 }) => {
-                    let local_var = get_validate_local_var(context, function, &dst_val);
+                    let local_var = get_validate_local_var(context, function, &dst_val_ptr);
                     match local_var {
                         Some((local, _)) if safe_locals.contains(&local) => {
                             // Henceforth, everything that's dominated by this inst must use stored_val
@@ -323,8 +322,8 @@ pub fn promote_to_registers(context: &mut Context, function: &Function) -> Resul
     let mut delete_insts = Vec::<(Block, Value)>::new();
     record_rewrites(
         context,
-        function,
-        &dom_tree,
+        &function,
+        dom_tree,
         function.get_entry_block(context),
         &safe_locals,
         &phi_to_local,

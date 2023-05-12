@@ -14,7 +14,7 @@ use crate::{
 };
 use sway_types::{style::is_snake_case, Spanned};
 
-impl ty::TyFunctionDeclaration {
+impl ty::TyFunctionDecl {
     pub fn type_check(
         mut ctx: TypeCheckContext,
         fn_decl: FunctionDeclaration,
@@ -30,11 +30,11 @@ impl ty::TyFunctionDeclaration {
             parameters,
             span,
             attributes,
-            return_type,
+            mut return_type,
             type_parameters,
-            return_type_span,
             visibility,
             purity,
+            where_clause,
         } = fn_decl;
 
         let type_engine = ctx.type_engine;
@@ -65,25 +65,20 @@ impl ty::TyFunctionDeclaration {
             .with_purity(purity)
             .disallow_functions();
 
-        // type check the type parameters, which will also insert them into the namespace
-        let mut new_type_parameters = vec![];
-        for type_parameter in type_parameters.into_iter() {
-            new_type_parameters.push(check!(
-                TypeParameter::type_check(ctx.by_ref(), type_parameter),
-                continue,
-                warnings,
-                errors
-            ));
-        }
-        if !errors.is_empty() {
-            return err(warnings, errors);
-        }
+        // Type check the type parameters. This will also insert them into the
+        // current namespace.
+        let new_type_parameters = check!(
+            TypeParameter::type_check_type_params(ctx.by_ref(), type_parameters, false),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
         // type check the function parameters, which will also insert them into the namespace
         let mut new_parameters = vec![];
         for parameter in parameters.into_iter() {
             new_parameters.push(check!(
-                ty::TyFunctionParameter::type_check(ctx.by_ref(), parameter, is_method),
+                ty::TyFunctionParameter::type_check(ctx.by_ref(), parameter),
                 continue,
                 warnings,
                 errors
@@ -94,11 +89,10 @@ impl ty::TyFunctionDeclaration {
         }
 
         // type check the return type
-        let initial_return_type = type_engine.insert(decl_engine, return_type);
-        let return_type = check!(
+        return_type.type_id = check!(
             ctx.resolve_type_with_self(
-                initial_return_type,
-                &return_type_span,
+                return_type.type_id,
+                &return_type.span,
                 EnforceTypeArguments::Yes,
                 None
             ),
@@ -116,7 +110,7 @@ impl ty::TyFunctionDeclaration {
                 .by_ref()
                 .with_purity(purity)
                 .with_help_text("Function body's return type does not match up with its return type annotation.")
-                .with_type_annotation(return_type);
+                .with_type_annotation(return_type.type_id);
             check!(
                 ty::TyCodeBlock::type_check(ctx, body),
                 (
@@ -136,7 +130,7 @@ impl ty::TyFunctionDeclaration {
             .collect();
 
         check!(
-            unify_return_statements(ctx.by_ref(), &return_statements, return_type),
+            unify_return_statements(ctx.by_ref(), &return_statements, return_type.type_id),
             return err(warnings, errors),
             warnings,
             errors
@@ -152,7 +146,16 @@ impl ty::TyFunctionDeclaration {
             (visibility, ctx.mode() == Mode::ImplAbiFn)
         };
 
-        let function_decl = ty::TyFunctionDeclaration {
+        check!(
+            return_type
+                .type_id
+                .check_type_parameter_bounds(&ctx, &return_type.span),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        let function_decl = ty::TyFunctionDecl {
             name,
             body,
             parameters: new_parameters,
@@ -160,12 +163,11 @@ impl ty::TyFunctionDeclaration {
             span,
             attributes,
             return_type,
-            initial_return_type,
             type_parameters: new_type_parameters,
-            return_type_span,
             visibility,
             is_contract_call,
             purity,
+            where_clause,
         };
 
         ok(function_decl, warnings, errors)
@@ -217,71 +219,70 @@ fn test_function_selector_behavior() {
     let type_engine = TypeEngine::default();
     let decl_engine = DeclEngine::default();
 
-    let decl = ty::TyFunctionDeclaration {
+    let decl = ty::TyFunctionDecl {
         purity: Default::default(),
-        name: Ident::new_no_span("foo"),
+        name: Ident::new_no_span("foo".into()),
         implementing_type: None,
         body: ty::TyCodeBlock { contents: vec![] },
         parameters: vec![],
         span: Span::dummy(),
         attributes: Default::default(),
-        return_type: 0.into(),
-        initial_return_type: 0.into(),
+        return_type: TypeId::from(0).into(),
         type_parameters: vec![],
-        return_type_span: Span::dummy(),
         visibility: Visibility::Public,
         is_contract_call: false,
+        where_clause: vec![],
     };
 
-    let selector_text = match decl.to_selector_name(&type_engine).value {
+    let selector_text = match decl.to_selector_name(&type_engine, &decl_engine).value {
         Some(value) => value,
         _ => panic!("test failure"),
     };
 
     assert_eq!(selector_text, "foo()".to_string());
 
-    let decl = ty::TyFunctionDeclaration {
+    let decl = ty::TyFunctionDecl {
         purity: Default::default(),
-        name: Ident::new_with_override("bar", Span::dummy()),
+        name: Ident::new_with_override("bar".into(), Span::dummy()),
         implementing_type: None,
         body: ty::TyCodeBlock { contents: vec![] },
         parameters: vec![
             ty::TyFunctionParameter {
-                name: Ident::new_no_span("foo"),
+                name: Ident::new_no_span("foo".into()),
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
-                type_id: type_engine
-                    .insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy()))),
-                initial_type_id: type_engine
-                    .insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy()))),
-                type_span: Span::dummy(),
+                type_argument: type_engine
+                    .insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy())))
+                    .into(),
             },
             ty::TyFunctionParameter {
-                name: Ident::new_no_span("baz"),
+                name: Ident::new_no_span("baz".into()),
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
-                type_id: type_engine.insert(
-                    &decl_engine,
-                    TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
-                ),
-                initial_type_id: type_engine
-                    .insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy()))),
-                type_span: Span::dummy(),
+                type_argument: TypeArgument {
+                    type_id: type_engine.insert(
+                        &decl_engine,
+                        TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
+                    ),
+                    initial_type_id: type_engine
+                        .insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy()))),
+                    span: Span::dummy(),
+                    call_path_tree: None,
+                },
             },
         ],
         span: Span::dummy(),
         attributes: Default::default(),
-        return_type: 0.into(),
-        initial_return_type: 0.into(),
+        return_type: TypeId::from(0).into(),
         type_parameters: vec![],
-        return_type_span: Span::dummy(),
         visibility: Visibility::Public,
         is_contract_call: false,
+        where_clause: vec![],
     };
 
-    let selector_text = match decl.to_selector_name(&type_engine).value {
+    let selector_text = match decl.to_selector_name(&type_engine, &decl_engine).value {
         Some(value) => value,
         _ => panic!("test failure"),
     };

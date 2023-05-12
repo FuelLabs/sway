@@ -1,4 +1,4 @@
-use fuels::{prelude::*, types::core::Bits256};
+use fuels::{prelude::*, types::Bits256};
 use std::str::FromStr;
 
 abigen!(Contract(
@@ -6,15 +6,12 @@ abigen!(Contract(
     abi = "test_projects/option_in_abi/out/debug/option_in_abi-abi.json"
 ));
 
-async fn get_option_in_abi_instance() -> (OptionInAbiTestContract, ContractId) {
+async fn get_option_in_abi_instance() -> (OptionInAbiTestContract<WalletUnlocked>, ContractId) {
     let wallet = launch_provider_and_get_wallet().await;
     let id = Contract::deploy(
         "test_projects/option_in_abi/out/debug/option_in_abi.bin",
         &wallet,
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "test_projects/option_in_abi/out/debug/option_in_abi-storage_slots.json".to_string(),
-        )),
+        DeployConfiguration::default(),
     )
     .await
     .unwrap();
@@ -24,7 +21,7 @@ async fn get_option_in_abi_instance() -> (OptionInAbiTestContract, ContractId) {
 }
 
 #[tokio::test]
-async fn test_bool() -> Result<(), Error> {
+async fn test_bool() -> Result<()> {
     let (instance, _id) = get_option_in_abi_instance().await;
     let contract_methods = instance.methods();
 
@@ -44,7 +41,7 @@ async fn test_bool() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_u8() -> Result<(), Error> {
+async fn test_u8() -> Result<()> {
     let (instance, _id) = get_option_in_abi_instance().await;
     let contract_methods = instance.methods();
 
@@ -60,7 +57,7 @@ async fn test_u8() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_u16() -> Result<(), Error> {
+async fn test_u16() -> Result<()> {
     let (instance, _id) = get_option_in_abi_instance().await;
     let contract_methods = instance.methods();
 
@@ -76,7 +73,7 @@ async fn test_u16() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_u32() -> Result<(), Error> {
+async fn test_u32() -> Result<()> {
     let (instance, _id) = get_option_in_abi_instance().await;
     let contract_methods = instance.methods();
 
@@ -92,7 +89,7 @@ async fn test_u32() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_u64() -> Result<(), Error> {
+async fn test_u64() -> Result<()> {
     let (instance, _id) = get_option_in_abi_instance().await;
     let contract_methods = instance.methods();
 
@@ -108,7 +105,7 @@ async fn test_u64() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_b256() -> Result<(), Error> {
+async fn test_b256() -> Result<()> {
     let (instance, _id) = get_option_in_abi_instance().await;
     let contract_methods = instance.methods();
 
@@ -124,7 +121,7 @@ async fn test_b256() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_struct() -> Result<(), Error> {
+async fn test_struct() -> Result<()> {
     let (instance, _id) = get_option_in_abi_instance().await;
     let contract_methods = instance.methods();
 
@@ -153,7 +150,7 @@ async fn test_struct() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_tuple() -> Result<(), Error> {
+async fn test_tuple() -> Result<()> {
     let (instance, _id) = get_option_in_abi_instance().await;
     let contract_methods = instance.methods();
 
@@ -179,7 +176,7 @@ async fn test_tuple() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_enum() -> Result<(), Error> {
+async fn test_enum() -> Result<()> {
     let (instance, _id) = get_option_in_abi_instance().await;
     let contract_methods = instance.methods();
 
@@ -206,7 +203,7 @@ async fn test_enum() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_array() -> Result<(), Error> {
+async fn test_array() -> Result<()> {
     let (instance, _id) = get_option_in_abi_instance().await;
     let contract_methods = instance.methods();
 
@@ -250,7 +247,7 @@ async fn test_array() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_string() -> Result<(), Error> {
+async fn test_string() -> Result<()> {
     let (instance, _id) = get_option_in_abi_instance().await;
     let contract_methods = instance.methods();
 
@@ -266,7 +263,7 @@ async fn test_string() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_result_in_option() -> Result<(), Error> {
+async fn test_result_in_option() -> Result<()> {
     let (instance, _id) = get_option_in_abi_instance().await;
     let contract_methods = instance.methods();
 

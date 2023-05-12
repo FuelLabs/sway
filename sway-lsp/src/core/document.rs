@@ -4,7 +4,7 @@ use tower_lsp::lsp_types::{Position, Range, TextDocumentContentChangeEvent};
 
 use crate::error::DocumentError;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TextDocument {
     #[allow(dead_code)]
     language_id: String,
@@ -28,6 +28,10 @@ impl TextDocument {
 
     pub fn get_uri(&self) -> &str {
         &self.uri
+    }
+
+    pub fn get_line(&self, line: usize) -> String {
+        self.content.line(line).to_string()
     }
 
     pub fn apply_change(&mut self, change: &TextDocumentContentChangeEvent) {
@@ -109,13 +113,12 @@ struct EditText<'text> {
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::test::get_absolute_path;
-
     use super::*;
+    use sway_lsp_test_utils::get_absolute_path;
 
     #[test]
     fn build_from_path_returns_text_document() {
-        let path = get_absolute_path("sway-lsp/test/fixtures/cats.txt");
+        let path = get_absolute_path("sway-lsp/tests/fixtures/cats.txt");
         let result = TextDocument::build_from_path(&path);
         assert!(result.is_ok(), "result = {result:?}");
     }

@@ -1,8 +1,6 @@
 script;
 
-dep test_lib;
-
-use std::{assert::assert, contract_id::ContractId};
+mod test_lib;
 
 fn main() -> u64 {
     let x = test_lib::NUMBER;

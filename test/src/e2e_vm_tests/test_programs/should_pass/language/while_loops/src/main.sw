@@ -1,7 +1,5 @@
 script;
 
-use std::assert::assert;
-
 fn main() -> bool {
     let mut counter = 0;
     // test standard while loop:
@@ -39,7 +37,7 @@ fn main() -> bool {
     assert(counter_4 == 7);
 
     // test while loop expression
-    let result = while true { break; };
+    let _result = while true { break; };
 
     true
 }

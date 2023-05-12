@@ -1,6 +1,6 @@
 use crate::priv_prelude::*;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct ItemConfigurable {
     pub configurable_token: ConfigurableToken,
     pub fields: Braces<Punctuated<Annotated<ConfigurableField>, CommaToken>>,
@@ -12,11 +12,23 @@ impl Spanned for ItemConfigurable {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct ConfigurableField {
     pub name: Ident,
     pub colon_token: ColonToken,
     pub ty: Ty,
     pub eq_token: EqToken,
     pub initializer: Expr,
+}
+
+impl Spanned for ConfigurableField {
+    fn span(&self) -> Span {
+        Span::join_all([
+            self.name.span(),
+            self.colon_token.span(),
+            self.ty.span(),
+            self.eq_token.span(),
+            self.initializer.span(),
+        ])
+    }
 }

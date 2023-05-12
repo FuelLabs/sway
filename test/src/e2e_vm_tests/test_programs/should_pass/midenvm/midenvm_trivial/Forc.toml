@@ -1,0 +1,8 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+license = "Apache-2.0"
+name = "midenvm-trivial"
+entry = "main.sw"
+implicit-std = false
+target = "midenvm"
+

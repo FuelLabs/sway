@@ -3,7 +3,9 @@ use std::collections::HashSet;
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span};
 
-use crate::{error::*, language::ty, type_system::TypeId, Engines, TypeEngine, TypeInfo};
+use crate::{
+    decl_engine::DeclEngine, error::*, language::ty, type_system::TypeId, Engines, TypeInfo,
+};
 
 use super::{
     patstack::PatStack,
@@ -16,23 +18,9 @@ pub(crate) struct ConstructorFactory {
 }
 
 impl ConstructorFactory {
-    pub(crate) fn new(
-        type_engine: &TypeEngine,
-        type_id: TypeId,
-        span: &Span,
-    ) -> CompileResult<Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let possible_types = check!(
-            type_engine
-                .get(type_id)
-                .extract_nested_types(type_engine, span),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        let factory = ConstructorFactory { possible_types };
-        ok(factory, warnings, errors)
+    pub(crate) fn new(engines: Engines<'_>, type_id: TypeId) -> Self {
+        let possible_types = engines.te().get(type_id).extract_nested_types(engines);
+        ConstructorFactory { possible_types }
     }
 
     /// Given Σ, computes a `Pattern` not present in Σ from the type of the
@@ -285,21 +273,23 @@ impl ConstructorFactory {
             }
             ref pat @ Pattern::Enum(ref enum_pattern) => {
                 let type_info = check!(
-                    self.resolve_possible_types(pat, span),
+                    self.resolve_possible_types(pat, span, engines.de()),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                let (enum_name, enum_variants) = check!(
+                let enum_decl = engines.de().get_enum(&check!(
                     type_info.expect_enum(engines, "", span),
                     return err(warnings, errors),
                     warnings,
                     errors
-                );
+                ));
+                let enum_name = enum_decl.call_path.suffix;
+                let enum_variants = enum_decl.variants;
                 let (all_variants, variant_tracker) = check!(
                     ConstructorFactory::resolve_enum(
-                        enum_name,
-                        enum_variants,
+                        &enum_name,
+                        &enum_variants,
                         enum_pattern,
                         rest,
                         span
@@ -313,7 +303,6 @@ impl ConstructorFactory {
                         PatStack::from(
                             all_variants
                                 .difference(&variant_tracker)
-                                .into_iter()
                                 .map(|x| {
                                     Pattern::Enum(EnumPattern {
                                         enum_name: enum_name.to_string(),
@@ -331,12 +320,22 @@ impl ConstructorFactory {
                 )
             }
             Pattern::Tuple(elems) => Pattern::Tuple(PatStack::fill_wildcards(elems.len())),
-            Pattern::Or(_) => {
-                errors.push(CompileError::Unimplemented(
-                    "or patterns are not supported",
-                    span.clone(),
-                ));
-                return err(warnings, errors);
+            Pattern::Or(elems) => {
+                let mut pat_stack = PatStack::empty();
+                for pat in elems.into_iter() {
+                    pat_stack.push(check!(
+                        self.create_pattern_not_present(engines, PatStack::from_pattern(pat), span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
+                check!(
+                    Pattern::from_pat_stack(pat_stack, span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
             }
         };
         ok(pat, warnings, errors)
@@ -402,12 +401,29 @@ impl ConstructorFactory {
     ) -> CompileResult<bool> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let preprocessed = pat_stack.flatten().filter_out_wildcards();
-        if preprocessed.is_empty() {
+
+        // flatten or patterns
+        let pat_stack = check!(
+            pat_stack.clone().serialize_multi_patterns(span),
+            return err(warnings, errors),
+            warnings,
+            errors
+        )
+        .into_iter()
+        .fold(PatStack::empty(), |mut acc, mut pats| {
+            acc.append(&mut pats);
+            acc
+        });
+
+        if pat_stack.is_empty() {
             return ok(false, warnings, errors);
         }
-        let (first, rest) = check!(
-            preprocessed.split_first(span),
+        if pat_stack.contains(&Pattern::Wildcard) {
+            return ok(true, warnings, errors);
+        }
+
+        let (first, mut rest) = check!(
+            pat_stack.split_first(span),
             return err(warnings, errors),
             warnings,
             errors
@@ -523,21 +539,23 @@ impl ConstructorFactory {
             }
             ref pat @ Pattern::Enum(ref enum_pattern) => {
                 let type_info = check!(
-                    self.resolve_possible_types(pat, span),
+                    self.resolve_possible_types(pat, span, engines.de()),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                let (enum_name, enum_variants) = check!(
+                let enum_decl = engines.de().get_enum(&check!(
                     type_info.expect_enum(engines, "", span),
                     return err(warnings, errors),
                     warnings,
                     errors
-                );
+                ));
+                let enum_name = enum_decl.call_path.suffix;
+                let enum_variants = enum_decl.variants;
                 let (all_variants, variant_tracker) = check!(
                     ConstructorFactory::resolve_enum(
-                        enum_name,
-                        enum_variants,
+                        &enum_name,
+                        &enum_variants,
                         enum_pattern,
                         rest,
                         span
@@ -575,22 +593,33 @@ impl ConstructorFactory {
                 ));
                 err(warnings, errors)
             }
-            Pattern::Or(_) => {
-                errors.push(CompileError::Unimplemented(
-                    "or patterns are not supported",
-                    span.clone(),
-                ));
-                err(warnings, errors)
+            Pattern::Or(mut elems) => {
+                elems.append(&mut rest);
+                ok(
+                    check!(
+                        self.is_complete_signature(engines, &elems, span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ),
+                    warnings,
+                    errors,
+                )
             }
         }
     }
 
-    fn resolve_possible_types(&self, pattern: &Pattern, span: &Span) -> CompileResult<&TypeInfo> {
+    fn resolve_possible_types(
+        &self,
+        pattern: &Pattern,
+        span: &Span,
+        decl_engine: &DeclEngine,
+    ) -> CompileResult<&TypeInfo> {
         let warnings = vec![];
         let mut errors = vec![];
         let mut type_info = None;
         for possible_type in self.possible_types.iter() {
-            let matches = pattern.matches_type_info(possible_type);
+            let matches = pattern.matches_type_info(possible_type, decl_engine);
             if matches {
                 type_info = Some(possible_type);
                 break;

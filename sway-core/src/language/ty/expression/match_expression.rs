@@ -12,7 +12,7 @@ pub(crate) struct TyMatchExpression {
 
 #[derive(Debug)]
 pub(crate) struct TyMatchBranch {
-    pub(crate) conditions: MatchReqMap,
+    pub(crate) cnf: MatchReqMap,
     pub(crate) result: TyExpression,
     #[allow(dead_code)]
     pub(crate) span: Span,

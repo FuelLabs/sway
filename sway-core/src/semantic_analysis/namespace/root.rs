@@ -1,6 +1,11 @@
+use sway_error::error::CompileError;
+use sway_types::Spanned;
+use sway_utils::iter_prefixes;
+
 use crate::{
+    error::*,
     language::{ty, CallPath},
-    CompileResult, Ident,
+    CompileResult, Engines, Ident,
 };
 
 use super::{module::Module, namespace::Namespace, Path};
@@ -27,13 +32,74 @@ impl Root {
         &self,
         mod_path: &Path,
         call_path: &CallPath,
-    ) -> CompileResult<&ty::TyDeclaration> {
+    ) -> CompileResult<&ty::TyDecl> {
         let symbol_path: Vec<_> = mod_path
             .iter()
             .chain(&call_path.prefixes)
             .cloned()
             .collect();
         self.resolve_symbol(&symbol_path, &call_path.suffix)
+    }
+
+    /// Resolve a symbol that is potentially prefixed with some path, e.g. `foo::bar::symbol`.
+    ///
+    /// This will concatenate the `mod_path` with the `call_path`'s prefixes and
+    /// then calling `resolve_symbol` with the resulting path and call_path's suffix.
+    ///
+    /// The `mod_path` is significant here as we assume the resolution is done within the
+    /// context of the module pointed to by `mod_path` and will only check the call path prefixes
+    /// and the symbol's own visibility
+    pub(crate) fn resolve_call_path_with_visibility_check(
+        &self,
+        engines: Engines<'_>,
+        mod_path: &Path,
+        call_path: &CallPath,
+        experimental_private_modules: bool,
+    ) -> CompileResult<&ty::TyDecl> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        let decl = check!(
+            self.resolve_call_path(mod_path, call_path),
+            return err(warnings, errors),
+            warnings,
+            errors,
+        );
+
+        // In case there are no prefixes we don't need to check visibility
+        if call_path.prefixes.is_empty() {
+            return ok(decl, warnings, errors);
+        }
+
+        if experimental_private_modules {
+            // check the visibility of the call path elements
+            // we don't check the first prefix because direct children are always accessible
+            for prefix in iter_prefixes(&call_path.prefixes).skip(1) {
+                let module = check!(
+                    self.check_submodule(prefix),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                if module.visibility.is_private() {
+                    let prefix_last = prefix[prefix.len() - 1].clone();
+                    errors.push(CompileError::ImportPrivateModule {
+                        span: prefix_last.span(),
+                        name: prefix_last,
+                    });
+                }
+            }
+        }
+
+        // check the visibility of the symbol itself
+        if !decl.visibility(engines.de()).is_public() {
+            errors.push(CompileError::ImportPrivateSymbol {
+                name: call_path.suffix.clone(),
+                span: call_path.suffix.span(),
+            });
+        }
+
+        ok(decl, warnings, errors)
     }
 
     /// Given a path to a module and the identifier of a symbol within that module, resolve its
@@ -45,14 +111,16 @@ impl Root {
         &self,
         mod_path: &Path,
         symbol: &Ident,
-    ) -> CompileResult<&ty::TyDeclaration> {
+    ) -> CompileResult<&ty::TyDecl> {
         self.check_submodule(mod_path).flat_map(|module| {
             let true_symbol = self[mod_path]
                 .use_aliases
                 .get(symbol.as_str())
                 .unwrap_or(symbol);
             match module.use_synonyms.get(symbol) {
+                Some((_, _, decl @ ty::TyDecl::EnumVariantDecl { .. })) => ok(decl, vec![], vec![]),
                 Some((src_path, _, _)) if mod_path != src_path => {
+                    // TODO: check that the symbol import is public?
                     self.resolve_symbol(src_path, true_symbol)
                 }
                 _ => CompileResult::from(module.check_symbol(true_symbol)),

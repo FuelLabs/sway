@@ -1,8 +1,8 @@
 script;
 // This tests importing other files.
 
-dep a_dependency;
-dep b_dependency;
+mod a_dependency;
+mod b_dependency;
 
 fn main() -> bool {
   false

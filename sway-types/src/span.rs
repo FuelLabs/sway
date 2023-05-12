@@ -1,3 +1,5 @@
+use serde::Serialize;
+
 use {
     lazy_static::lazy_static,
     std::{borrow::Cow, cmp, fmt, path::PathBuf, sync::Arc},
@@ -74,6 +76,27 @@ pub struct Span {
     end: usize,
     // A reference counted pointer to the file from which this span originated.
     path: Option<Arc<PathBuf>>,
+}
+
+impl Serialize for Span {
+    // Serialize a tuple two fields: `start` and `end`.
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeTuple;
+
+        let mut state = serializer.serialize_tuple(2)?;
+        state.serialize_element(&self.start)?;
+        state.serialize_element(&self.end)?;
+        state.end()
+    }
+}
+
+impl From<Span> for std::ops::Range<usize> {
+    fn from(value: Span) -> Self {
+        Self {
+            start: value.start,
+            end: value.end,
+        }
+    }
 }
 
 impl Span {

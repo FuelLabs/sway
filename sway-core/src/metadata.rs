@@ -1,4 +1,7 @@
-use crate::language::{Inline, Purity};
+use crate::{
+    decl_engine::DeclId,
+    language::{ty::TyFunctionDecl, Inline, Purity},
+};
 
 use sway_ir::{Context, MetadataIndex, Metadatum, Value};
 use sway_types::Span;
@@ -18,17 +21,15 @@ pub(crate) struct MetadataManager {
     md_span_cache: HashMap<MetadataIndex, Span>,
     md_file_loc_cache: HashMap<MetadataIndex, (Arc<PathBuf>, Arc<str>)>,
     md_storage_op_cache: HashMap<MetadataIndex, StorageOperation>,
-    md_storage_key_cache: HashMap<MetadataIndex, u64>,
     md_inline_cache: HashMap<MetadataIndex, Inline>,
-    md_test_decl_index_cache: HashMap<MetadataIndex, usize>,
+    md_test_decl_index_cache: HashMap<MetadataIndex, DeclId<TyFunctionDecl>>,
     md_config_const_name_cache: HashMap<MetadataIndex, Rc<str>>,
 
     span_md_cache: HashMap<Span, MetadataIndex>,
     file_loc_md_cache: HashMap<*const PathBuf, MetadataIndex>,
     storage_op_md_cache: HashMap<Purity, MetadataIndex>,
-    storage_key_md_cache: HashMap<u64, MetadataIndex>,
     inline_md_cache: HashMap<Inline, MetadataIndex>,
-    test_decl_index_md_cache: HashMap<usize, MetadataIndex>,
+    test_decl_index_md_cache: HashMap<DeclId<TyFunctionDecl>, MetadataIndex>,
     config_const_name_md_cache: HashMap<Rc<str>, MetadataIndex>,
 }
 
@@ -69,7 +70,7 @@ impl MetadataManager {
         &mut self,
         context: &Context,
         md_idx: Option<MetadataIndex>,
-    ) -> Option<usize> {
+    ) -> Option<DeclId<TyFunctionDecl>> {
         Self::for_each_md_idx(context, md_idx, |md_idx| {
             self.md_test_decl_index_cache
                 .get(&md_idx)
@@ -80,7 +81,9 @@ impl MetadataManager {
                         .get_content(context)
                         .unwrap_struct("decl_index", 1)
                         .and_then(|fields| {
-                            let index = fields[0].unwrap_integer().map(|index| index as usize)?;
+                            let index = fields[0]
+                                .unwrap_integer()
+                                .map(|index| DeclId::new(index as usize))?;
                             self.md_test_decl_index_cache.insert(md_idx, index);
                             Some(index)
                         })
@@ -117,29 +120,13 @@ impl MetadataManager {
         })
     }
 
-    pub(crate) fn md_to_storage_key(
-        &mut self,
-        context: &Context,
-        md_idx: Option<MetadataIndex>,
-    ) -> Option<u64> {
-        Self::for_each_md_idx(context, md_idx, |md_idx| {
-            self.md_storage_key_cache.get(&md_idx).copied().or_else(|| {
-                // Create a new storage key and save it in the cache.
-                md_idx
-                    .get_content(context)
-                    .unwrap_struct("state_index", 1)
-                    .and_then(|fields| {
-                        let key = fields[0].unwrap_integer()?;
-
-                        self.md_storage_key_cache.insert(md_idx, key);
-
-                        Some(key)
-                    })
-            })
-        })
-    }
-
     /// Gets Inline information from metadata index.
+    /// TODO: We temporarily allow this because we need this
+    /// in the sway-ir inliner, but cannot access it. So the code
+    /// itself has been (modified and) copied there. When we decide
+    /// on the right place for Metadata to be
+    /// (and how it can be accessed form sway-ir), this will be fixed.
+    #[allow(dead_code)]
     pub(crate) fn md_to_inline(
         &mut self,
         context: &Context,
@@ -219,10 +206,6 @@ impl MetadataManager {
         self.md_to_span(context, value.get_metadata(context))
     }
 
-    pub(crate) fn val_to_storage_key(&mut self, context: &Context, value: Value) -> Option<u64> {
-        self.md_to_storage_key(context, value.get_metadata(context))
-    }
-
     pub(crate) fn span_to_md(
         &mut self,
         context: &mut Context,
@@ -252,7 +235,7 @@ impl MetadataManager {
     pub(crate) fn test_decl_index_to_md(
         &mut self,
         context: &mut Context,
-        decl_index: usize,
+        decl_index: DeclId<TyFunctionDecl>,
     ) -> Option<MetadataIndex> {
         self.test_decl_index_md_cache
             .get(&decl_index)
@@ -261,31 +244,9 @@ impl MetadataManager {
                 let md_idx = MetadataIndex::new_struct(
                     context,
                     "decl_index",
-                    vec![Metadatum::Integer(decl_index as u64)],
+                    vec![Metadatum::Integer(decl_index.inner() as u64)],
                 );
                 self.test_decl_index_md_cache.insert(decl_index, md_idx);
-
-                Some(md_idx)
-            })
-    }
-
-    pub(crate) fn storage_key_to_md(
-        &mut self,
-        context: &mut Context,
-        storage_key: u64,
-    ) -> Option<MetadataIndex> {
-        self.storage_key_md_cache
-            .get(&storage_key)
-            .copied()
-            .or_else(|| {
-                // Create new metadatum.
-                let md_idx = MetadataIndex::new_struct(
-                    context,
-                    "state_index",
-                    vec![Metadatum::Integer(storage_key)],
-                );
-
-                self.storage_key_md_cache.insert(storage_key, md_idx);
 
                 Some(md_idx)
             })

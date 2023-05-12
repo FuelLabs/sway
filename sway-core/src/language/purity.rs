@@ -1,8 +1,9 @@
 /// The purity of a function is related to its access of contract storage. If a function accesses
 /// or could potentially access contract storage, it is [Purity::Impure]. If a function does not utilize any
 /// any accesses (reads _or_ writes) of storage, then it is [Purity::Pure].
-#[derive(Clone, Debug, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Copy, PartialEq, Eq, Hash, Default)]
 pub enum Purity {
+    #[default]
     Pure,
     Reads,
     Writes,
@@ -14,7 +15,7 @@ impl Purity {
         match self {
             Purity::Pure => other == Purity::Pure,
             Purity::Reads => other == Purity::Pure || other == Purity::Reads,
-            Purity::Writes => other == Purity::Pure || other == Purity::Writes,
+            Purity::Writes => true, // storage(write) allows reading as well
             Purity::ReadsWrites => true,
         }
     }
@@ -30,12 +31,6 @@ impl Purity {
                 format!("{STORAGE_PURITY_READ_NAME}, {STORAGE_PURITY_WRITE_NAME}")
             }
         }
-    }
-}
-
-impl Default for Purity {
-    fn default() -> Self {
-        Purity::Pure
     }
 }
 

@@ -1,8 +1,11 @@
-use std::fmt;
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+};
 
 use crate::{
     decl_engine::DeclEngine, engine_threading::*, error::*, language::ty::*, type_system::*,
-    types::DeterministicallyAborts,
+    types::*,
 };
 use itertools::Itertools;
 use sway_ast::Intrinsic;
@@ -22,6 +25,22 @@ impl PartialEqWithEngines for TyIntrinsicFunctionKind {
         self.kind == other.kind
             && self.arguments.eq(&other.arguments, engines)
             && self.type_arguments.eq(&other.type_arguments, engines)
+    }
+}
+
+impl HashWithEngines for TyIntrinsicFunctionKind {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TyIntrinsicFunctionKind {
+            kind,
+            arguments,
+            type_arguments,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+        } = self;
+        kind.hash(state);
+        arguments.hash(state, engines);
+        type_arguments.hash(state, engines);
     }
 }
 
@@ -47,17 +66,17 @@ impl ReplaceSelfType for TyIntrinsicFunctionKind {
     }
 }
 
-impl DisplayWithEngines for TyIntrinsicFunctionKind {
+impl DebugWithEngines for TyIntrinsicFunctionKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         let targs = self
             .type_arguments
             .iter()
-            .map(|targ| engines.help_out(targ.type_id))
+            .map(|targ| format!("{:?}", engines.help_out(targ.type_id)))
             .join(", ");
         let args = self
             .arguments
             .iter()
-            .map(|e| format!("{}", engines.help_out(e)))
+            .map(|e| format!("{:?}", engines.help_out(e)))
             .join(", ");
 
         write!(f, "{}::<{}>::({})", self.kind, targs, args)

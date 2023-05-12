@@ -1,7 +1,5 @@
 script;
 
-use std::revert::require;
-
 const MY_CUSTOM_ERROR_MESSAGE = 100;
 const forty_twos = 0x4242424242424242424242424242424242424242424242424242424242424242;
 

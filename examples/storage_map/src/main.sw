@@ -1,7 +1,5 @@
 contract;
 
-use std::logging::log;
-
 storage {
     // ANCHOR: storage_map_decl
     map: StorageMap<Address, u64> = StorageMap {},
@@ -9,6 +7,9 @@ storage {
     // ANCHOR: storage_map_tuple_key
     map_two_keys: StorageMap<(b256, bool), b256> = StorageMap {},
     // ANCHOR_END: storage_map_tuple_key
+    // ANCHOR: storage_map_nested
+    nested_map: StorageMap<u64, StorageMap<u64, u64>> = StorageMap {},
+    // ANCHOR_END: storage_map_nested
 }
 
 abi StorageMapExample {
@@ -17,6 +18,9 @@ abi StorageMapExample {
 
     #[storage(read, write)]
     fn get_from_storage_map();
+
+    #[storage(read, write)]
+    fn access_nested_map();
 }
 
 impl StorageMapExample for Contract {
@@ -39,7 +43,20 @@ impl StorageMapExample for Contract {
         storage.map.insert(addr1, 42);
         storage.map.insert(addr2, 77);
 
-        let value1 = storage.map.get(addr1).unwrap_or(0);
+        let value1 = storage.map.get(addr1).try_read().unwrap_or(0);
     }
     // ANCHOR_END: storage_map_get
+
+    // ANCHOR: storage_map_nested_access
+    #[storage(read, write)]
+    fn access_nested_map() {
+        storage.nested_map.get(0).insert(1, 42);
+        storage.nested_map.get(2).insert(3, 24);
+
+        assert(storage.nested_map.get(0).get(1).read() == 42);
+        assert(storage.nested_map.get(0).get(0).try_read().is_none()); // Nothing inserted here
+        assert(storage.nested_map.get(2).get(3).read() == 24);
+        assert(storage.nested_map.get(2).get(2).try_read().is_none()); // Nothing inserted here
+    }
+    // ANCHOR_END: storage_map_nested_access
 }

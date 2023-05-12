@@ -4,9 +4,9 @@ script;
 // but until then, multiple methods with the same name is undefined behavior.
 // https://doc.rust-lang.org/rust-by-example/trait/disambiguating.html
 
-dep my_double;
-dep my_point;
-dep my_triple;
+mod my_double;
+mod my_point;
+mod my_triple;
 
 use my_point::MyPoint;
 use my_triple::MyTriple;
@@ -130,6 +130,38 @@ impl MyTriple<u64> for MyU64 {
     }
 }
 
+pub struct A {
+    a: u64,
+}
+
+pub struct B {
+    b: u64,
+}
+
+pub struct C {
+    c: u64,
+}
+
+pub trait Convert<T> {
+    fn convert(t: T) -> Self;
+}
+
+impl Convert<B> for A {
+    fn convert(t: B) -> Self {
+        A {
+            a: t.b
+        }
+    }
+}
+
+impl Convert<C> for A {
+    fn convert(t: C) -> Self {
+        A {
+            a: t.c
+        }
+    }
+}
+
 fn main() -> u64 {
     let a = FooBarData {
         value: 1u8
@@ -170,6 +202,9 @@ fn main() -> u64 {
     };
     let q = p.my_triple(1);
 
+    let r_b = B { b: 42 };
+    let r_c = C { c: 42 };
+
     if c == 42u8
         && d
         && e == 9u64
@@ -179,7 +214,9 @@ fn main() -> u64 {
         && l == 50
         && n == 240
         && o == 360
-        && q == 93 {
+        && q == 93
+        && A::convert(r_b).a == 42
+        && A::convert(r_c).a == 42 {
         42
     } else {
         7

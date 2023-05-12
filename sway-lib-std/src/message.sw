@@ -1,11 +1,11 @@
-library message;
+//! Helper functions to sign and send messages.
+library;
 
 use ::alloc::alloc_bytes;
 use ::bytes::Bytes;
 use ::outputs::{Output, output_count, output_type};
 use ::revert::revert;
 use ::error_signals::FAILED_SEND_MESSAGE_SIGNAL;
-
 
 /// Sends a message `msg_data` to `recipient` with a `coins` amount of the base asset.
 ///

@@ -4,20 +4,143 @@ use annotate_snippets::{
     display_list::{DisplayList, FormatOptions},
     snippet::{Annotation, AnnotationType, Slice, Snippet, SourceAnnotation},
 };
+use ansi_term::Colour;
 use anyhow::{bail, Result};
-use forc_tracing::{println_green_err, println_red_err, println_yellow_err};
-use std::ffi::OsStr;
-use std::path::{Path, PathBuf};
+use clap::Args;
+use forc_tracing::{println_red_err, println_yellow_err};
+use serde::{Deserialize, Serialize};
 use std::str;
+use std::{ffi::OsStr, process::Termination};
+use std::{
+    fmt::Display,
+    path::{Path, PathBuf},
+};
+use sway_core::fuel_prelude::fuel_tx;
 use sway_core::language::parsed::TreeType;
 use sway_error::error::CompileError;
 use sway_error::warning::CompileWarning;
 use sway_types::{LineCol, Spanned};
 use sway_utils::constants;
+use tracing::error;
 
 pub mod restricted;
 
 pub const DEFAULT_OUTPUT_DIRECTORY: &str = "out";
+pub const DEFAULT_ERROR_EXIT_CODE: u8 = 1;
+pub const DEFAULT_SUCCESS_EXIT_CODE: u8 = 0;
+
+/// A result type for forc operations. This shouldn't be returned from entry points, instead return
+/// `ForcCliResult` to exit with correct exit code.
+pub type ForcResult<T, E = ForcError> = Result<T, E>;
+
+/// A wrapper around `ForcResult`. Designed to be returned from entry points as it handles
+/// error reporting and exits with correct exit code.
+#[derive(Debug)]
+pub struct ForcCliResult<T> {
+    result: ForcResult<T>,
+}
+
+/// A forc error type which is a wrapper around `anyhow::Error`. It enables propagation of custom
+/// exit code alongisde the original error.
+#[derive(Debug)]
+pub struct ForcError {
+    error: anyhow::Error,
+    exit_code: u8,
+}
+
+impl ForcError {
+    pub fn new(error: anyhow::Error, exit_code: u8) -> Self {
+        Self { error, exit_code }
+    }
+
+    /// Returns a `ForcError` with provided exit_code.
+    pub fn exit_code(self, exit_code: u8) -> Self {
+        Self {
+            error: self.error,
+            exit_code,
+        }
+    }
+}
+
+impl AsRef<anyhow::Error> for ForcError {
+    fn as_ref(&self) -> &anyhow::Error {
+        &self.error
+    }
+}
+
+impl From<&str> for ForcError {
+    fn from(value: &str) -> Self {
+        Self {
+            error: anyhow::anyhow!("{value}"),
+            exit_code: DEFAULT_ERROR_EXIT_CODE,
+        }
+    }
+}
+
+impl From<anyhow::Error> for ForcError {
+    fn from(value: anyhow::Error) -> Self {
+        Self {
+            error: value,
+            exit_code: DEFAULT_ERROR_EXIT_CODE,
+        }
+    }
+}
+
+impl From<std::io::Error> for ForcError {
+    fn from(value: std::io::Error) -> Self {
+        Self {
+            error: value.into(),
+            exit_code: DEFAULT_ERROR_EXIT_CODE,
+        }
+    }
+}
+
+impl Display for ForcError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.error.fmt(f)
+    }
+}
+
+impl<T> Termination for ForcCliResult<T> {
+    fn report(self) -> std::process::ExitCode {
+        match self.result {
+            Ok(_) => DEFAULT_SUCCESS_EXIT_CODE.into(),
+            Err(e) => {
+                error!("Error: {}", e);
+                e.exit_code.into()
+            }
+        }
+    }
+}
+
+impl<T> From<ForcResult<T>> for ForcCliResult<T> {
+    fn from(value: ForcResult<T>) -> Self {
+        Self { result: value }
+    }
+}
+
+#[macro_export]
+macro_rules! forc_result_bail {
+    ($msg:literal $(,)?) => {
+        return $crate::ForcResult::Err(anyhow::anyhow!($msg).into())
+    };
+    ($err:expr $(,)?) => {
+        return $crate::ForcResult::Err(anyhow::anyhow!($err).into())
+    };
+    ($fmt:expr, $($arg:tt)*) => {
+        return $crate::ForcResult::Err(anyhow::anyhow!($fmt, $($arg)*).into())
+    };
+}
+
+/// Added salt used to derive the contract ID.
+#[derive(Debug, Args, Default, Deserialize, Serialize)]
+pub struct Salt {
+    /// Added salt used to derive the contract ID.
+    ///
+    /// By default, this is `0x0000000000000000000000000000000000000000000000000000000000000000`.
+    #[clap(long = "salt")]
+    pub salt: Option<fuel_tx::Salt>,
+}
 
 /// Format `Log` and `LogData` receipts.
 pub fn format_log_receipts(receipts: &[fuel_tx::Receipt], pretty_print: bool) -> Result<String> {
@@ -50,7 +173,37 @@ pub fn format_log_receipts(receipts: &[fuel_tx::Receipt], pretty_print: bool) ->
     }
 }
 
+/// Continually go down in the file tree until a Forc manifest file is found.
+pub fn find_nested_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
+    find_nested_dir_with_file(starter_path, constants::MANIFEST_FILE_NAME)
+}
+
+/// Continually go down in the file tree until a specified file is found.
+///
+/// Starts the search from child dirs of `starter_path`.
+pub fn find_nested_dir_with_file(starter_path: &Path, file_name: &str) -> Option<PathBuf> {
+    use walkdir::WalkDir;
+    let starter_dir = if starter_path.is_dir() {
+        starter_path
+    } else {
+        starter_path.parent()?
+    };
+    WalkDir::new(starter_path)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|entry| entry.path() != starter_dir.join(file_name))
+        .filter(|entry| entry.file_name().to_string_lossy() == file_name)
+        .map(|entry| {
+            let mut entry = entry.path().to_path_buf();
+            entry.pop();
+            entry
+        })
+        .next()
+}
+
 /// Continually go up in the file tree until a specified file is found.
+///
+/// Starts the search from `starter_path`.
 #[allow(clippy::branches_sharing_code)]
 pub fn find_parent_dir_with_file(starter_path: &Path, file_name: &str) -> Option<PathBuf> {
     let mut path = std::fs::canonicalize(starter_path).ok()?;
@@ -68,22 +221,22 @@ pub fn find_parent_dir_with_file(starter_path: &Path, file_name: &str) -> Option
     None
 }
 /// Continually go up in the file tree until a Forc manifest file is found.
-pub fn find_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
+pub fn find_parent_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
     find_parent_dir_with_file(starter_path, constants::MANIFEST_FILE_NAME)
 }
 
 /// Continually go up in the file tree until a Forc manifest file is found and given predicate
 /// returns true.
-pub fn find_manifest_dir_with_check<F>(starter_path: &Path, f: F) -> Option<PathBuf>
+pub fn find_parent_manifest_dir_with_check<F>(starter_path: &Path, f: F) -> Option<PathBuf>
 where
     F: Fn(&Path) -> bool,
 {
-    find_manifest_dir(starter_path).and_then(|manifest_dir| {
+    find_parent_manifest_dir(starter_path).and_then(|manifest_dir| {
         // If given check satisifies return current dir otherwise start searching from the parent.
         if f(&manifest_dir) {
             Some(manifest_dir)
         } else if let Some(parent_dir) = manifest_dir.parent() {
-            find_manifest_dir_with_check(parent_dir, f)
+            find_parent_manifest_dir_with_check(parent_dir, f)
         } else {
             None
         }
@@ -92,7 +245,7 @@ where
 
 pub fn is_sway_file(file: &Path) -> bool {
     let res = file.extension();
-    Some(OsStr::new(constants::SWAY_EXTENSION)) == res
+    file.is_file() && Some(OsStr::new(constants::SWAY_EXTENSION)) == res
 }
 
 pub fn find_file_name<'sc>(manifest_dir: &Path, entry_path: &'sc Path) -> Result<&'sc Path> {
@@ -174,74 +327,78 @@ pub fn git_checkouts_directory() -> PathBuf {
     user_forc_directory().join("git").join("checkouts")
 }
 
-pub fn print_on_success(
+pub fn program_type_str(ty: &TreeType) -> &'static str {
+    match ty {
+        TreeType::Script {} => "script",
+        TreeType::Contract {} => "contract",
+        TreeType::Predicate {} => "predicate",
+        TreeType::Library { .. } => "library",
+    }
+}
+
+pub fn print_compiling(ty: Option<&TreeType>, name: &str, src: &dyn std::fmt::Display) {
+    // NOTE: We can only print the program type if we can parse the program, so
+    // program type must be optional.
+    let ty = match ty {
+        Some(ty) => format!("{} ", program_type_str(ty)),
+        None => "".to_string(),
+    };
+    tracing::info!(
+        " {} {ty}{} ({src})",
+        Colour::Green.bold().paint("Compiling"),
+        ansi_term::Style::new().bold().paint(name)
+    );
+}
+
+pub fn print_warnings(
     terse_mode: bool,
     proj_name: &str,
     warnings: &[CompileWarning],
     tree_type: &TreeType,
 ) {
-    let type_str = match &tree_type {
-        TreeType::Script {} => "script",
-        TreeType::Contract {} => "contract",
-        TreeType::Predicate {} => "predicate",
-        TreeType::Library { .. } => "library",
-    };
+    if warnings.is_empty() {
+        return;
+    }
+    let type_str = program_type_str(tree_type);
 
     if !terse_mode {
         warnings.iter().for_each(format_warning);
     }
 
-    if warnings.is_empty() {
-        println_green_err(&format!("  Compiled {type_str} {proj_name:?}."));
-    } else {
-        println_yellow_err(&format!(
-            "  Compiled {} {:?} with {} {}.",
-            type_str,
-            proj_name,
-            warnings.len(),
-            if warnings.len() > 1 {
-                "warnings"
-            } else {
-                "warning"
-            }
-        ));
-    }
-}
-
-pub fn print_on_success_library(terse_mode: bool, proj_name: &str, warnings: &[CompileWarning]) {
-    if !terse_mode {
-        warnings.iter().for_each(format_warning);
-    }
-
-    if warnings.is_empty() {
-        println_green_err(&format!("  Compiled library {proj_name:?}."));
-    } else {
-        println_yellow_err(&format!(
-            "  Compiled library {:?} with {} {}.",
-            proj_name,
-            warnings.len(),
-            if warnings.len() > 1 {
-                "warnings"
-            } else {
-                "warning"
-            }
-        ));
-    }
+    println_yellow_err(&format!(
+        "  Compiled {} {:?} with {} {}.",
+        type_str,
+        proj_name,
+        warnings.len(),
+        if warnings.len() > 1 {
+            "warnings"
+        } else {
+            "warning"
+        }
+    ));
 }
 
 pub fn print_on_failure(terse_mode: bool, warnings: &[CompileWarning], errors: &[CompileError]) {
     let e_len = errors.len();
+    let w_len = warnings.len();
 
     if !terse_mode {
         warnings.iter().for_each(format_warning);
         errors.iter().for_each(format_err);
     }
 
-    println_red_err(&format!(
-        "  Aborting due to {} {}.",
-        e_len,
-        if e_len > 1 { "errors" } else { "error" }
-    ));
+    if e_len == 0 && w_len > 0 {
+        println_red_err(&format!(
+            "  Aborting. {} warning(s) treated as error(s).",
+            warnings.len()
+        ));
+    } else {
+        println_red_err(&format!(
+            "  Aborting due to {} {}.",
+            e_len,
+            if e_len > 1 { "errors" } else { "error" }
+        ));
+    }
 }
 
 fn format_err(err: &CompileError) {

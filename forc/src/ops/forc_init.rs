@@ -1,7 +1,7 @@
 use crate::cli::InitCommand;
 use crate::utils::{defaults, program_type::ProgramType};
-use anyhow::{Context, Result};
-use forc_util::validate_name;
+use anyhow::Context;
+use forc_util::{forc_result_bail, validate_name, ForcResult};
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -41,7 +41,7 @@ fn print_welcome_message() {
     );
 }
 
-pub fn init(command: InitCommand) -> Result<()> {
+pub fn init(command: InitCommand) -> ForcResult<()> {
     let project_dir = match &command.path {
         Some(p) => PathBuf::from(p),
         None => {
@@ -50,11 +50,14 @@ pub fn init(command: InitCommand) -> Result<()> {
     };
 
     if !project_dir.is_dir() {
-        anyhow::bail!("'{}' is not a valid directory.", project_dir.display());
+        forc_result_bail!(format!(
+            "'{}' is not a valid directory.",
+            project_dir.display()
+        ),);
     }
 
     if project_dir.join(constants::MANIFEST_FILE_NAME).exists() {
-        anyhow::bail!(
+        forc_result_bail!(
             "'{}' already includes a Forc.toml file.",
             project_dir.display()
         );
@@ -88,10 +91,12 @@ pub fn init(command: InitCommand) -> Result<()> {
         (false, false, true, false, false) => InitType::Package(ProgramType::Predicate),
         (false, false, false, true, false) => InitType::Package(ProgramType::Library),
         (false, false, false, false, true) => InitType::Workspace,
-        _ => anyhow::bail!(
-            "Multiple types detected, please specify only one initialization type: \
+        _ => {
+            forc_result_bail!(
+                "Multiple types detected, please specify only one initialization type: \
         \n Possible Types:\n - contract\n - script\n - predicate\n - library\n - workspace"
-        ),
+            )
+        }
     };
 
     // Make a new directory for the project
@@ -109,7 +114,11 @@ pub fn init(command: InitCommand) -> Result<()> {
         )?,
         InitType::Package(ProgramType::Library) => fs::write(
             Path::new(&project_dir).join(constants::MANIFEST_FILE_NAME),
-            defaults::default_pkg_manifest(&project_name, constants::LIB_ENTRY),
+            // Library names cannot have `-` in them because the Sway compiler does not allow that.
+            // Even though this is technically not a problem in the toml file, we replace `-` with
+            // `_` here as well so that the library name in the Sway file matches the one in
+            // `Forc.toml`
+            defaults::default_pkg_manifest(&project_name.replace('-', "_"), constants::LIB_ENTRY),
         )?,
         _ => fs::write(
             Path::new(&project_dir).join(constants::MANIFEST_FILE_NAME),
@@ -134,7 +143,8 @@ pub fn init(command: InitCommand) -> Result<()> {
             Path::new(&project_dir)
                 .join("src")
                 .join(constants::LIB_ENTRY),
-            defaults::default_library(&project_name),
+            // Library names cannot have `-` in them because the Sway compiler does not allow that
+            defaults::default_library(),
         )?,
         InitType::Package(ProgramType::Predicate) => fs::write(
             Path::new(&project_dir)

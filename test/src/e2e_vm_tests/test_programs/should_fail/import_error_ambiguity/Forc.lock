@@ -1,0 +1,16 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-828D8D88DCD989CE'
+
+[[package]]
+name = 'import_error_ambiguity'
+source = 'member'
+dependencies = [
+    'core',
+    'std',
+]
+
+[[package]]
+name = 'std'
+source = 'path+from-root-828D8D88DCD989CE'
+dependencies = ['core']

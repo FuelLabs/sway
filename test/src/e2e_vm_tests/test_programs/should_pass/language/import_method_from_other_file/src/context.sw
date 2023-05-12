@@ -1,4 +1,4 @@
-library context;
+library;
 pub struct Context {
   something: u64
 }

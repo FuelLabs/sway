@@ -1,4 +1,4 @@
-library arrays;
+library;
 
 // ANCHOR: syntax
 fn syntax() {

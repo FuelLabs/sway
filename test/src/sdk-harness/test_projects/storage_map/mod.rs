@@ -1,6 +1,6 @@
 use fuels::{
     prelude::*,
-    types::core::{Bits256, SizedAsciiString},
+    types::{Bits256, SizedAsciiString},
 };
 
 abigen!(Contract(
@@ -8,15 +8,12 @@ abigen!(Contract(
     abi = "test_projects/storage_map/out/debug/storage_map-abi.json",
 ));
 
-async fn test_storage_map_instance() -> TestStorageMapContract {
+async fn test_storage_map_instance() -> TestStorageMapContract<WalletUnlocked> {
     let wallet = launch_provider_and_get_wallet().await;
     let id = Contract::deploy(
         "test_projects/storage_map/out/debug/storage_map.bin",
         &wallet,
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "test_projects/storage_map/out/debug/storage_map-storage_slots.json".to_string(),
-        )),
+        DeployConfiguration::default(),
     )
     .await
     .unwrap();
@@ -98,6 +95,29 @@ mod u64_to {
                 .value,
             Some(val3)
         );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_u64_to_bool_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u64_to_bool_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
+        );
     }
 
     #[tokio::test]
@@ -167,6 +187,29 @@ mod u64_to {
                 .unwrap()
                 .value,
             Some(val3)
+        );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_u64_to_u8_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u64_to_u8_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
         );
     }
 
@@ -238,6 +281,29 @@ mod u64_to {
                 .value,
             Some(val3)
         );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_u64_to_u16_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u64_to_u16_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
+        );
     }
 
     #[tokio::test]
@@ -308,6 +374,29 @@ mod u64_to {
                 .value,
             Some(val3)
         );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_u64_to_u32_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u64_to_u32_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
+        );
     }
 
     #[tokio::test]
@@ -377,6 +466,29 @@ mod u64_to {
                 .unwrap()
                 .value,
             Some(val3)
+        );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_u64_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u64_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
         );
     }
 
@@ -451,6 +563,29 @@ mod u64_to {
                 .unwrap()
                 .value,
             Some(val3)
+        );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_u64_to_tuple_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u64_to_tuple_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
         );
     }
 
@@ -538,6 +673,29 @@ mod u64_to {
                 .value,
             Some(val3)
         );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_u64_to_struct_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u64_to_struct_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
+        );
     }
 
     #[tokio::test]
@@ -611,6 +769,29 @@ mod u64_to {
                 .unwrap()
                 .value,
             Some(val3)
+        );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_u64_to_enum_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u64_to_enum_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
         );
     }
 
@@ -686,6 +867,29 @@ mod u64_to {
                 .value,
             Some(SizedAsciiString::try_from(val3).unwrap())
         );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_u64_to_str_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u64_to_str_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
+        );
     }
 }
 
@@ -744,6 +948,29 @@ mod to_u64_map {
                 .unwrap()
                 .value,
             Some(val2)
+        );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_bool_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_bool_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
         );
     }
 
@@ -815,6 +1042,29 @@ mod to_u64_map {
                 .value,
             Some(val3)
         );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_u8_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u8_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
+        );
     }
 
     #[tokio::test]
@@ -885,6 +1135,29 @@ mod to_u64_map {
                 .value,
             Some(val3)
         );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_u16_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u16_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
+        );
     }
 
     #[tokio::test]
@@ -954,6 +1227,29 @@ mod to_u64_map {
                 .unwrap()
                 .value,
             Some(val3)
+        );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_u32_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_u32_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
         );
     }
 
@@ -1029,6 +1325,29 @@ mod to_u64_map {
                 .value,
             Some(val3)
         );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_tuple_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_tuple_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
+        );
     }
 
     #[tokio::test]
@@ -1089,7 +1408,7 @@ mod to_u64_map {
         assert_eq!(
             instance
                 .methods()
-                .get_from_struct_to_u64_map(key1)
+                .get_from_struct_to_u64_map(key1.clone())
                 .call()
                 .await
                 .unwrap()
@@ -1115,6 +1434,29 @@ mod to_u64_map {
                 .unwrap()
                 .value,
             Some(val3)
+        );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_struct_to_u64_map(key1.clone())
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_struct_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
         );
     }
 
@@ -1163,7 +1505,7 @@ mod to_u64_map {
         assert_eq!(
             instance
                 .methods()
-                .get_from_enum_to_u64_map(key1)
+                .get_from_enum_to_u64_map(key1.clone())
                 .call()
                 .await
                 .unwrap()
@@ -1189,6 +1531,29 @@ mod to_u64_map {
                 .unwrap()
                 .value,
             Some(val3)
+        );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_enum_to_u64_map(key1.clone())
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_enum_to_u64_map(key1)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
         );
     }
 
@@ -1263,6 +1628,29 @@ mod to_u64_map {
                 .unwrap()
                 .value,
             Some(val3)
+        );
+
+        // Test `remove`
+        assert_eq!(
+            instance
+                .methods()
+                .remove_from_str_to_u64_map(SizedAsciiString::try_from(key1).unwrap())
+                .call()
+                .await
+                .unwrap()
+                .value,
+            true
+        );
+
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_str_to_u64_map(SizedAsciiString::try_from(key1).unwrap())
+                .call()
+                .await
+                .unwrap()
+                .value,
+            None
         );
     }
 }

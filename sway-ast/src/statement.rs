@@ -1,7 +1,7 @@
 use crate::priv_prelude::*;
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub enum Statement {
     Let(StatementLet),
     Item(Item),
@@ -11,7 +11,7 @@ pub enum Statement {
     },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct StatementLet {
     pub let_token: LetToken,
     pub pattern: Pattern,

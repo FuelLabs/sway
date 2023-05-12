@@ -15,14 +15,23 @@ struct Record {
 
 // check: local { u64, u64 } record
 
-// check: $(record_undef=$VAL) = get_local { u64, u64 } $ID
-// check: $(forty=$VAL) = const u64 40
-// check: $(record_0=$VAL) = insert_value $record_undef, { u64, u64 }, $forty, 0
-// check: $(two=$VAL) = const u64 2
-// check: $(record=$VAL) = insert_value $record_0, { u64, u64 }, $two, 1
-// check: $(record_var=$VAL) = get_local { u64, u64 } record
-// check: store $record to $record_var
+// check: $(temp_var=$VAL) = get_local ptr { u64, u64 }, __anon_0
 
-// check: $(record_var=$VAL) = get_local { u64, u64 } record
-// check: $(record_field=$VAL) = extract_value $record_var, { u64, u64 }, 0
-// check: ret u64 $record_field
+// check: $(idx_val=$VAL) = const u64 0
+// check: $(temp_ptr=$VAL) = get_elem_ptr $temp_var, ptr u64, $idx_val
+// check: $(forty=$VAL) = const u64 40
+// check: store $forty to $temp_ptr
+// check: $(idx_val=$VAL) = const u64 1
+// check: $(temp_ptr=$VAL) = get_elem_ptr $temp_var, ptr u64, $idx_val
+// check: $(two=$VAL) = const u64 2
+// check: store $two to $temp_ptr
+
+// check: $(temp_val=$VAL) = load $temp_var
+// check: $(record_ptr=$VAL) = get_local ptr { u64, u64 }, record
+// check: store $temp_val to $record_ptr
+
+// check: $(record_ptr=$VAL) = get_local ptr { u64, u64 }, record
+// check: $(idx_val=$VAL) = const u64 0
+// check: $(field_ptr=$VAL) = get_elem_ptr $record_ptr, ptr u64, $idx_val
+// check: $(field_val=$VAL) = load $field_ptr
+// check: ret u64 $field_val

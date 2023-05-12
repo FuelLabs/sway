@@ -1,5 +1,5 @@
-library errors;
+library;
 
 pub enum MyError {
-    UnauthorizedUser: (),
+    UnauthorizedUser: Identity,
 }

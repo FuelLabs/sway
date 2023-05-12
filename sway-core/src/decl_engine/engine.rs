@@ -1,76 +1,185 @@
 use std::{
     collections::{HashMap, HashSet, VecDeque},
-    fmt,
     sync::RwLock,
 };
 
-use sway_error::error::CompileError;
-use sway_types::Span;
+use sway_types::{Named, Spanned};
 
 use crate::{
-    concurrent_slab::{ConcurrentSlab, ListDisplay},
+    concurrent_slab::ConcurrentSlab,
     decl_engine::*,
     engine_threading::*,
-    language::ty,
+    language::ty::{
+        self, TyAbiDecl, TyConstantDecl, TyEnumDecl, TyFunctionDecl, TyImplTrait, TyStorageDecl,
+        TyStructDecl, TyTraitDecl, TyTraitFn, TyTypeAliasDecl,
+    },
 };
 
 /// Used inside of type inference to store declarations.
 #[derive(Debug, Default)]
 pub struct DeclEngine {
-    slab: ConcurrentSlab<DeclWrapper>,
-    parents: RwLock<HashMap<usize, Vec<DeclId>>>,
+    function_slab: ConcurrentSlab<TyFunctionDecl>,
+    trait_slab: ConcurrentSlab<TyTraitDecl>,
+    trait_fn_slab: ConcurrentSlab<TyTraitFn>,
+    impl_trait_slab: ConcurrentSlab<TyImplTrait>,
+    struct_slab: ConcurrentSlab<TyStructDecl>,
+    storage_slab: ConcurrentSlab<TyStorageDecl>,
+    abi_slab: ConcurrentSlab<TyAbiDecl>,
+    constant_slab: ConcurrentSlab<TyConstantDecl>,
+    enum_slab: ConcurrentSlab<TyEnumDecl>,
+    type_alias_slab: ConcurrentSlab<TyTypeAliasDecl>,
+
+    parents: RwLock<HashMap<AssociatedItemDeclId, Vec<AssociatedItemDeclId>>>,
 }
 
-impl fmt::Display for DeclEngine {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.slab.with_slice(|elems| {
-            let list = ListDisplay { list: elems.iter() };
-            write!(f, "DeclarationEngine {{\n{list}\n}}")
-        })
-    }
+pub trait DeclEngineGet<I, U> {
+    fn get(&self, index: &I) -> U;
 }
+
+pub trait DeclEngineInsert<T>
+where
+    T: Named + Spanned,
+{
+    fn insert(&self, decl: T) -> DeclRef<DeclId<T>>;
+}
+
+pub trait DeclEngineReplace<T> {
+    fn replace(&self, index: DeclId<T>, decl: T);
+}
+
+pub trait DeclEngineIndex<T>:
+    DeclEngineGet<DeclId<T>, T> + DeclEngineInsert<T> + DeclEngineReplace<T>
+where
+    T: Named + Spanned,
+{
+}
+
+macro_rules! decl_engine_get {
+    ($slab:ident, $decl:ty) => {
+        impl DeclEngineGet<DeclId<$decl>, $decl> for DeclEngine {
+            fn get(&self, index: &DeclId<$decl>) -> $decl {
+                self.$slab.get(index.inner())
+            }
+        }
+
+        impl DeclEngineGet<DeclRef<DeclId<$decl>>, $decl> for DeclEngine {
+            fn get(&self, index: &DeclRef<DeclId<$decl>>) -> $decl {
+                self.$slab.get(index.id().inner())
+            }
+        }
+    };
+}
+decl_engine_get!(function_slab, ty::TyFunctionDecl);
+decl_engine_get!(trait_slab, ty::TyTraitDecl);
+decl_engine_get!(trait_fn_slab, ty::TyTraitFn);
+decl_engine_get!(impl_trait_slab, ty::TyImplTrait);
+decl_engine_get!(struct_slab, ty::TyStructDecl);
+decl_engine_get!(storage_slab, ty::TyStorageDecl);
+decl_engine_get!(abi_slab, ty::TyAbiDecl);
+decl_engine_get!(constant_slab, ty::TyConstantDecl);
+decl_engine_get!(enum_slab, ty::TyEnumDecl);
+decl_engine_get!(type_alias_slab, ty::TyTypeAliasDecl);
+
+macro_rules! decl_engine_insert {
+    ($slab:ident, $decl:ty) => {
+        impl DeclEngineInsert<$decl> for DeclEngine {
+            fn insert(&self, decl: $decl) -> DeclRef<DeclId<$decl>> {
+                let span = decl.span();
+                DeclRef::new(
+                    decl.name().clone(),
+                    DeclId::new(self.$slab.insert(decl)),
+                    span,
+                )
+            }
+        }
+    };
+}
+decl_engine_insert!(function_slab, ty::TyFunctionDecl);
+decl_engine_insert!(trait_slab, ty::TyTraitDecl);
+decl_engine_insert!(trait_fn_slab, ty::TyTraitFn);
+decl_engine_insert!(impl_trait_slab, ty::TyImplTrait);
+decl_engine_insert!(struct_slab, ty::TyStructDecl);
+decl_engine_insert!(storage_slab, ty::TyStorageDecl);
+decl_engine_insert!(abi_slab, ty::TyAbiDecl);
+decl_engine_insert!(constant_slab, ty::TyConstantDecl);
+decl_engine_insert!(enum_slab, ty::TyEnumDecl);
+decl_engine_insert!(type_alias_slab, ty::TyTypeAliasDecl);
+
+macro_rules! decl_engine_replace {
+    ($slab:ident, $decl:ty) => {
+        impl DeclEngineReplace<$decl> for DeclEngine {
+            fn replace(&self, index: DeclId<$decl>, decl: $decl) {
+                self.$slab.replace(index, decl);
+            }
+        }
+    };
+}
+decl_engine_replace!(function_slab, ty::TyFunctionDecl);
+decl_engine_replace!(trait_slab, ty::TyTraitDecl);
+decl_engine_replace!(trait_fn_slab, ty::TyTraitFn);
+decl_engine_replace!(impl_trait_slab, ty::TyImplTrait);
+decl_engine_replace!(struct_slab, ty::TyStructDecl);
+decl_engine_replace!(storage_slab, ty::TyStorageDecl);
+decl_engine_replace!(abi_slab, ty::TyAbiDecl);
+decl_engine_replace!(constant_slab, ty::TyConstantDecl);
+decl_engine_replace!(enum_slab, ty::TyEnumDecl);
+decl_engine_replace!(type_alias_slab, ty::TyTypeAliasDecl);
+
+macro_rules! decl_engine_index {
+    ($slab:ident, $decl:ty) => {
+        impl DeclEngineIndex<$decl> for DeclEngine {}
+    };
+}
+decl_engine_index!(function_slab, ty::TyFunctionDecl);
+decl_engine_index!(trait_slab, ty::TyTraitDecl);
+decl_engine_index!(trait_fn_slab, ty::TyTraitFn);
+decl_engine_index!(impl_trait_slab, ty::TyImplTrait);
+decl_engine_index!(struct_slab, ty::TyStructDecl);
+decl_engine_index!(storage_slab, ty::TyStorageDecl);
+decl_engine_index!(abi_slab, ty::TyAbiDecl);
+decl_engine_index!(constant_slab, ty::TyConstantDecl);
+decl_engine_index!(enum_slab, ty::TyEnumDecl);
+decl_engine_index!(type_alias_slab, ty::TyTypeAliasDecl);
 
 impl DeclEngine {
-    pub(crate) fn get(&self, index: DeclId) -> DeclWrapper {
-        self.slab.get(*index)
-    }
-
-    pub(super) fn replace(&self, index: DeclId, wrapper: DeclWrapper) {
-        self.slab.replace(index, wrapper);
-    }
-
-    pub(crate) fn insert<T>(&self, decl: T) -> DeclId
-    where
-        T: Into<(DeclWrapper, Span)>,
-    {
-        let (decl_wrapper, span) = decl.into();
-        DeclId::new(self.slab.insert(decl_wrapper), span)
-    }
-
-    pub(crate) fn insert_wrapper(&self, decl_wrapper: DeclWrapper, span: Span) -> DeclId {
-        DeclId::new(self.slab.insert(decl_wrapper), span)
-    }
-
-    /// Given a [DeclId] `index`, finds all the parents of `index` and all the
+    /// Given a [DeclRef] `index`, finds all the parents of `index` and all the
     /// recursive parents of those parents, and so on. Does not perform
-    /// duplicated computation---if the parents of a [DeclId] have already been
+    /// duplicated computation---if the parents of a [DeclRef] have already been
     /// found, we do not find them again.
     #[allow(clippy::map_entry)]
-    pub(crate) fn find_all_parents(&self, engines: Engines<'_>, index: DeclId) -> Vec<DeclId> {
+    pub(crate) fn find_all_parents<'a, T>(
+        &self,
+        engines: Engines<'_>,
+        index: &'a T,
+    ) -> Vec<AssociatedItemDeclId>
+    where
+        AssociatedItemDeclId: From<&'a T>,
+    {
+        let index: AssociatedItemDeclId = AssociatedItemDeclId::from(index);
         let parents = self.parents.read().unwrap();
-        let mut acc_parents: HashMap<usize, DeclId> = HashMap::new();
-        let mut already_checked: HashSet<usize> = HashSet::new();
-        let mut left_to_check: VecDeque<DeclId> = VecDeque::from([index]);
+        let mut acc_parents: HashMap<AssociatedItemDeclId, AssociatedItemDeclId> = HashMap::new();
+        let mut already_checked: HashSet<AssociatedItemDeclId> = HashSet::new();
+        let mut left_to_check: VecDeque<AssociatedItemDeclId> = VecDeque::from([index]);
         while let Some(curr) = left_to_check.pop_front() {
-            if !already_checked.insert(*curr) {
+            if !already_checked.insert(curr.clone()) {
                 continue;
             }
-            if let Some(curr_parents) = parents.get(&*curr) {
+            if let Some(curr_parents) = parents.get(&curr) {
                 for curr_parent in curr_parents.iter() {
-                    if !acc_parents.contains_key(&**curr_parent) {
-                        acc_parents.insert(**curr_parent, curr_parent.clone());
+                    if !acc_parents.contains_key(curr_parent) {
+                        acc_parents.insert(curr_parent.clone(), curr_parent.clone());
                     }
-                    if !left_to_check.iter().any(|x| x.eq(curr_parent, engines)) {
+                    if !left_to_check.iter().any(|x| match (x, curr_parent) {
+                        (
+                            AssociatedItemDeclId::TraitFn(x_id),
+                            AssociatedItemDeclId::TraitFn(curr_parent_id),
+                        ) => self.get(x_id).eq(&self.get(curr_parent_id), engines),
+                        (
+                            AssociatedItemDeclId::Function(x_id),
+                            AssociatedItemDeclId::Function(curr_parent_id),
+                        ) => self.get(x_id).eq(&self.get(curr_parent_id), engines),
+                        _ => false,
+                    }) {
                         left_to_check.push_back(curr_parent.clone());
                     }
                 }
@@ -79,79 +188,137 @@ impl DeclEngine {
         acc_parents.values().cloned().collect()
     }
 
-    pub(crate) fn register_parent(&self, index: &DeclId, parent: DeclId) {
+    pub(crate) fn register_parent<I>(
+        &self,
+        index: AssociatedItemDeclId,
+        parent: AssociatedItemDeclId,
+    ) where
+        AssociatedItemDeclId: From<DeclId<I>>,
+    {
         let mut parents = self.parents.write().unwrap();
         parents
-            .entry(**index)
+            .entry(index)
             .and_modify(|e| e.push(parent.clone()))
             .or_insert_with(|| vec![parent]);
     }
 
-    pub fn get_function(
-        &self,
-        index: DeclId,
-        span: &Span,
-    ) -> Result<ty::TyFunctionDeclaration, CompileError> {
-        self.slab.get(*index).expect_function(span)
+    /// Friendly helper method for calling the `get` method from the
+    /// implementation of [DeclEngineGet] for [DeclEngine]
+    ///
+    /// Calling [DeclEngine][get] directly is equivalent to this method, but
+    /// this method adds additional syntax that some users may find helpful.
+    pub fn get_function<I>(&self, index: &I) -> ty::TyFunctionDecl
+    where
+        DeclEngine: DeclEngineGet<I, ty::TyFunctionDecl>,
+    {
+        self.get(index)
     }
 
-    pub fn get_trait(
-        &self,
-        index: DeclId,
-        span: &Span,
-    ) -> Result<ty::TyTraitDeclaration, CompileError> {
-        self.slab.get(*index).expect_trait(span)
+    /// Friendly helper method for calling the `get` method from the
+    /// implementation of [DeclEngineGet] for [DeclEngine]
+    ///
+    /// Calling [DeclEngine][get] directly is equivalent to this method, but
+    /// this method adds additional syntax that some users may find helpful.
+    pub fn get_trait<I>(&self, index: &I) -> ty::TyTraitDecl
+    where
+        DeclEngine: DeclEngineGet<I, ty::TyTraitDecl>,
+    {
+        self.get(index)
     }
 
-    pub fn get_trait_fn(&self, index: DeclId, span: &Span) -> Result<ty::TyTraitFn, CompileError> {
-        self.slab.get(*index).expect_trait_fn(span)
+    /// Friendly helper method for calling the `get` method from the
+    /// implementation of [DeclEngineGet] for [DeclEngine]
+    ///
+    /// Calling [DeclEngine][get] directly is equivalent to this method, but
+    /// this method adds additional syntax that some users may find helpful.
+    pub fn get_trait_fn<I>(&self, index: &I) -> ty::TyTraitFn
+    where
+        DeclEngine: DeclEngineGet<I, ty::TyTraitFn>,
+    {
+        self.get(index)
     }
 
-    pub fn get_impl_trait(
-        &self,
-        index: DeclId,
-        span: &Span,
-    ) -> Result<ty::TyImplTrait, CompileError> {
-        self.slab.get(*index).expect_impl_trait(span)
+    /// Friendly helper method for calling the `get` method from the
+    /// implementation of [DeclEngineGet] for [DeclEngine]
+    ///
+    /// Calling [DeclEngine][get] directly is equivalent to this method, but
+    /// this method adds additional syntax that some users may find helpful.
+    pub fn get_impl_trait<I>(&self, index: &I) -> ty::TyImplTrait
+    where
+        DeclEngine: DeclEngineGet<I, ty::TyImplTrait>,
+    {
+        self.get(index)
     }
 
-    pub fn get_struct(
-        &self,
-        index: DeclId,
-        span: &Span,
-    ) -> Result<ty::TyStructDeclaration, CompileError> {
-        self.slab.get(*index).expect_struct(span)
+    /// Friendly helper method for calling the `get` method from the
+    /// implementation of [DeclEngineGet] for [DeclEngine]
+    ///
+    /// Calling [DeclEngine][get] directly is equivalent to this method, but
+    /// this method adds additional syntax that some users may find helpful.
+    pub fn get_struct<I>(&self, index: &I) -> ty::TyStructDecl
+    where
+        DeclEngine: DeclEngineGet<I, ty::TyStructDecl>,
+    {
+        self.get(index)
     }
 
-    pub fn get_storage(
-        &self,
-        index: DeclId,
-        span: &Span,
-    ) -> Result<ty::TyStorageDeclaration, CompileError> {
-        self.slab.get(*index).expect_storage(span)
+    /// Friendly helper method for calling the `get` method from the
+    /// implementation of [DeclEngineGet] for [DeclEngine].
+    ///
+    /// Calling [DeclEngine][get] directly is equivalent to this method, but
+    /// this method adds additional syntax that some users may find helpful.
+    pub fn get_storage<I>(&self, index: &I) -> ty::TyStorageDecl
+    where
+        DeclEngine: DeclEngineGet<I, ty::TyStorageDecl>,
+    {
+        self.get(index)
     }
 
-    pub fn get_abi(
-        &self,
-        index: DeclId,
-        span: &Span,
-    ) -> Result<ty::TyAbiDeclaration, CompileError> {
-        self.slab.get(*index).expect_abi(span)
+    /// Friendly helper method for calling the `get` method from the
+    /// implementation of [DeclEngineGet] for [DeclEngine]
+    ///
+    /// Calling [DeclEngine][get] directly is equivalent to this method, but
+    /// this method adds additional syntax that some users may find helpful.
+    pub fn get_abi<I>(&self, index: &I) -> ty::TyAbiDecl
+    where
+        DeclEngine: DeclEngineGet<I, ty::TyAbiDecl>,
+    {
+        self.get(index)
     }
 
-    pub fn get_constant(
-        &self,
-        index: DeclId,
-        span: &Span,
-    ) -> Result<ty::TyConstantDeclaration, CompileError> {
-        self.slab.get(*index).expect_constant(span)
+    /// Friendly helper method for calling the `get` method from the
+    /// implementation of [DeclEngineGet] for [DeclEngine]
+    ///
+    /// Calling [DeclEngine][get] directly is equivalent to this method, but
+    /// this method adds additional syntax that some users may find helpful.
+    pub fn get_constant<I>(&self, index: &I) -> ty::TyConstantDecl
+    where
+        DeclEngine: DeclEngineGet<I, ty::TyConstantDecl>,
+    {
+        self.get(index)
     }
 
-    pub fn get_enum(
-        &self,
-        index: DeclId,
-        span: &Span,
-    ) -> Result<ty::TyEnumDeclaration, CompileError> {
-        self.slab.get(*index).expect_enum(span)
+    /// Friendly helper method for calling the `get` method from the
+    /// implementation of [DeclEngineGet] for [DeclEngine]
+    ///
+    /// Calling [DeclEngine][get] directly is equivalent to this method, but
+    /// this method adds additional syntax that some users may find helpful.
+    pub fn get_enum<I>(&self, index: &I) -> ty::TyEnumDecl
+    where
+        DeclEngine: DeclEngineGet<I, ty::TyEnumDecl>,
+    {
+        self.get(index)
+    }
+
+    /// Friendly helper method for calling the `get` method from the
+    /// implementation of [DeclEngineGet] for [DeclEngine]
+    ///
+    /// Calling [DeclEngine][get] directly is equivalent to this method, but
+    /// this method adds additional syntax that some users may find helpful.
+    pub fn get_type_alias<I>(&self, index: &I) -> ty::TyTypeAliasDecl
+    where
+        DeclEngine: DeclEngineGet<I, ty::TyTypeAliasDecl>,
+    {
+        self.get(index)
     }
 }

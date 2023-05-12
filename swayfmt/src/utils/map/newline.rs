@@ -1,12 +1,6 @@
 use anyhow::Result;
 use ropey::Rope;
-use std::{
-    collections::BTreeMap,
-    fmt::Write,
-    ops::Bound::{Excluded, Included},
-    path::PathBuf,
-    sync::Arc,
-};
+use std::{collections::BTreeMap, fmt::Write, path::PathBuf, sync::Arc};
 use sway_ast::Module;
 
 use crate::{
@@ -17,7 +11,7 @@ use crate::{
 };
 
 /// Represents a series of consecutive newlines
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct NewlineSequence {
     sequence_length: usize,
 }
@@ -94,7 +88,7 @@ pub fn handle_newlines(
     // formatting the code a second time will still produce the same result.
     let newline_map = newline_map_from_src(&unformatted_input)?;
     // After the formatting existing items should be the same (type of the item) but their spans will be changed since we applied formatting to them.
-    let formatted_module = parse_file(formatted_input, path)?;
+    let formatted_module = parse_file(formatted_input, path)?.value;
     // Actually find & insert the newline sequences
     add_newlines(
         newline_map,
@@ -149,19 +143,109 @@ fn add_newlines(
         .skip(1)
         .zip(formatted_newline_spans.iter().skip(1))
     {
-        let newline_sequences = get_newline_sequences_between_spans(
-            previous_unformatted_newline_span,
-            unformatted_newline_span,
-            &newline_map,
-        );
-        if !newline_sequences.is_empty() {
-            offset += insert_after_span(
-                previous_formatted_newline_span,
-                newline_sequences,
-                offset,
-                formatted_code,
-                newline_threshold,
-            )?;
+        if previous_unformatted_newline_span.end < unformatted_newline_span.start {
+            // At its core, the spaces between leaf spans are nothing more than just whitespace characters,
+            // and sometimes comments, since they are not considered valid AST nodes. We are interested in
+            // these spaces (with comments, if any)
+            let whitespaces_with_comments = &unformatted_code
+                [previous_unformatted_newline_span.end..unformatted_newline_span.start];
+
+            let mut whitespaces_with_comments_it =
+                whitespaces_with_comments.char_indices().peekable();
+
+            let start = previous_unformatted_newline_span.end;
+            let mut comment_found = false;
+
+            // Here, we will try to insert newlines that occur before comments.
+            while let Some((idx, character)) = whitespaces_with_comments_it.next() {
+                if character == '/' {
+                    if let Some((_, '/') | (_, '*')) = whitespaces_with_comments_it.peek() {
+                        comment_found = true;
+
+                        // Insert newlines that occur before the first comment here
+                        if let Some(newline_sequence) = first_newline_sequence_in_span(
+                            &ByteSpan {
+                                start,
+                                end: start + idx,
+                            },
+                            &newline_map,
+                        ) {
+                            let at = previous_formatted_newline_span.end + offset;
+                            offset += insert_after_span(
+                                at,
+                                newline_sequence,
+                                formatted_code,
+                                newline_threshold,
+                            )?;
+                            break;
+                        }
+                    }
+                }
+
+                // If there are no comments found in the sequence of whitespaces, there is no point
+                // in trying to find newline sequences from the back. So we simply take the entire
+                // sequence, insert newlines at the start and we're done with this iteration of the for loop.
+                if idx == whitespaces_with_comments.len() - 1 && !comment_found {
+                    if let Some(newline_sequence) = first_newline_sequence_in_span(
+                        &ByteSpan {
+                            start,
+                            end: unformatted_newline_span.start,
+                        },
+                        &newline_map,
+                    ) {
+                        let at = previous_formatted_newline_span.end + offset;
+                        offset += insert_after_span(
+                            at,
+                            newline_sequence,
+                            formatted_code,
+                            newline_threshold,
+                        )?;
+                    }
+                }
+            }
+
+            // If we found some comment(s), we are also interested in inserting
+            // newline sequences that happen after the last comment.
+            //
+            // This can be a single comment or multiple comments.
+            if comment_found {
+                let mut whitespaces_with_comments_rev_it =
+                    whitespaces_with_comments.char_indices().rev().peekable();
+                let mut end_of_last_comment = whitespaces_with_comments.len();
+
+                // Find point of insertion of newline sequences
+                for (idx, character) in whitespaces_with_comments_rev_it.by_ref() {
+                    if !character.is_whitespace() {
+                        end_of_last_comment = idx + 1;
+                        break;
+                    }
+                }
+
+                while let Some((_, character)) = whitespaces_with_comments_rev_it.next() {
+                    if character == '/' {
+                        // Comments either start with '//' or end with '*/'
+                        if let Some((_, '/') | (_, '*')) = whitespaces_with_comments_rev_it.peek() {
+                            if let Some(newline_sequence) = first_newline_sequence_in_span(
+                                &ByteSpan {
+                                    start: start + end_of_last_comment,
+                                    end: unformatted_newline_span.start,
+                                },
+                                &newline_map,
+                            ) {
+                                offset += insert_after_span(
+                                    previous_formatted_newline_span.end
+                                        + end_of_last_comment
+                                        + offset,
+                                    newline_sequence,
+                                    formatted_code,
+                                    newline_threshold,
+                                )?;
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
         }
         previous_unformatted_newline_span = unformatted_newline_span;
         previous_formatted_newline_span = formatted_newline_span;
@@ -169,7 +253,7 @@ fn add_newlines(
     Ok(())
 }
 
-fn format_newline_sequnce(newline_sequence: &NewlineSequence, threshold: usize) -> String {
+fn format_newline_sequence(newline_sequence: &NewlineSequence, threshold: usize) -> String {
     if newline_sequence.sequence_length > threshold {
         (0..threshold).map(|_| "\n").collect::<String>()
     } else {
@@ -177,67 +261,47 @@ fn format_newline_sequnce(newline_sequence: &NewlineSequence, threshold: usize) 
     }
 }
 
-/// Checks for newlines that are already in the source code.
-fn find_already_present_extra_newlines(from: usize, src: String) -> usize {
-    let mut number_of_newlines_present = 0;
-    for char in src.chars().skip(from) {
-        if char == '\n' {
-            number_of_newlines_present += 1;
-        } else {
-            break;
-        }
-    }
-    if number_of_newlines_present == 0 {
-        0
-    } else {
-        number_of_newlines_present - 1
-    }
-}
-
-/// Inserts after given span and returns the offset.
+/// Inserts a `NewlineSequence` at position `at` and returns the length of `NewlineSequence` inserted.
+/// The return value is used to calculate the new `at` in a later point.
 fn insert_after_span(
-    from: &ByteSpan,
-    newline_sequences_to_insert: Vec<NewlineSequence>,
-    offset: usize,
+    at: usize,
+    newline_sequence: NewlineSequence,
     formatted_code: &mut FormattedCode,
     threshold: usize,
 ) -> Result<usize, FormatterError> {
-    let iter = newline_sequences_to_insert.iter();
     let mut sequence_string = String::new();
-    let newlines_to_skip =
-        find_already_present_extra_newlines(from.end, formatted_code.to_string());
-    for newline_sequence in iter.skip(newlines_to_skip) {
-        write!(
-            sequence_string,
-            "{}",
-            format_newline_sequnce(newline_sequence, threshold)
-        )?;
-    }
+    write!(
+        sequence_string,
+        "{}",
+        format_newline_sequence(&newline_sequence, threshold)
+    )?;
     let mut src_rope = Rope::from_str(formatted_code);
-    src_rope.insert(from.end + offset, &sequence_string);
+    src_rope.insert(at, &sequence_string);
     formatted_code.clear();
     formatted_code.push_str(&src_rope.to_string());
     Ok(sequence_string.len())
 }
 
-/// Returns a list of newline sequence between given spans.
-fn get_newline_sequences_between_spans(
-    from: &ByteSpan,
-    to: &ByteSpan,
+/// Returns the first newline sequence contained in a span.
+/// This is inclusive at the start, and exclusive at the end, i.e.
+/// the bounds are [span.start, span.end).
+fn first_newline_sequence_in_span(
+    span: &ByteSpan,
     newline_map: &NewlineMap,
-) -> Vec<NewlineSequence> {
-    let mut newline_sequences: Vec<NewlineSequence> = Vec::new();
-    if from < to {
-        for (_, newline_sequence) in newline_map.range((Included(from), Excluded(to))) {
-            newline_sequences.push(newline_sequence.clone());
+) -> Option<NewlineSequence> {
+    for (range, sequence) in newline_map.iter() {
+        if span.start <= range.start && range.end < span.end {
+            return Some(sequence.clone());
         }
     }
-    newline_sequences
+    None
 }
 
 #[cfg(test)]
 mod tests {
-    use super::newline_map_from_src;
+    use crate::utils::map::{byte_span::ByteSpan, newline::first_newline_sequence_in_span};
+
+    use super::{newline_map_from_src, NewlineMap, NewlineSequence};
 
     #[test]
     fn test_newline_map() {
@@ -284,5 +348,30 @@ fn main() {
         let correct_newline_sequence_lengths = vec![1];
 
         assert_eq!(newline_sequence_lengths, correct_newline_sequence_lengths);
+    }
+
+    #[test]
+    fn test_newline_range_simple() {
+        let mut newline_map = NewlineMap::new();
+        let newline_sequence = NewlineSequence { sequence_length: 2 };
+
+        newline_map.insert(ByteSpan { start: 9, end: 10 }, newline_sequence.clone());
+        assert_eq!(
+            newline_sequence,
+            first_newline_sequence_in_span(&ByteSpan { start: 8, end: 11 }, &newline_map).unwrap()
+        );
+        assert_eq!(
+            newline_sequence,
+            first_newline_sequence_in_span(&ByteSpan { start: 9, end: 11 }, &newline_map).unwrap()
+        );
+        assert!(
+            first_newline_sequence_in_span(&ByteSpan { start: 9, end: 10 }, &newline_map).is_none()
+        );
+        assert!(
+            first_newline_sequence_in_span(&ByteSpan { start: 9, end: 9 }, &newline_map).is_none()
+        );
+        assert!(
+            first_newline_sequence_in_span(&ByteSpan { start: 8, end: 8 }, &newline_map).is_none()
+        );
     }
 }

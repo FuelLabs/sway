@@ -21,9 +21,6 @@ pub enum Literal {
     B256([u8; 32]),
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl Hash for Literal {
     fn hash<H: Hasher>(&self, state: &mut H) {
         use Literal::*;
@@ -64,9 +61,6 @@ impl Hash for Literal {
     }
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl PartialEq for Literal {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {

@@ -19,8 +19,8 @@ pub struct Module(pub generational_arena::Index);
 pub struct ModuleContent {
     pub kind: Kind,
     pub functions: Vec<Function>,
-    pub global_constants: HashMap<String, Value>,
-    pub global_configurable: BTreeMap<String, Value>,
+    pub global_constants: HashMap<Vec<String>, Value>,
+    pub global_configurable: BTreeMap<Vec<String>, Value>,
 }
 
 /// The different 'kinds' of Sway module: `Contract`, `Library`, `Predicate` or `Script`.
@@ -55,29 +55,46 @@ impl Module {
     }
 
     /// Add a global constant value to this module.
-    pub fn add_global_constant(&self, context: &mut Context, name: String, const_val: Value) {
+    pub fn add_global_constant(
+        &self,
+        context: &mut Context,
+        call_path: Vec<String>,
+        const_val: Value,
+    ) {
         context.modules[self.0]
             .global_constants
-            .insert(name, const_val);
+            .insert(call_path, const_val);
     }
 
     /// Get a named global constant value from this module, if found.
-    pub fn get_global_constant(&self, context: &Context, name: &str) -> Option<Value> {
-        context.modules[self.0].global_constants.get(name).copied()
+    pub fn get_global_constant(&self, context: &Context, call_path: &Vec<String>) -> Option<Value> {
+        context.modules[self.0]
+            .global_constants
+            .get(call_path)
+            .copied()
     }
 
     /// Add a global configurable value to this module.
-    pub fn add_global_configurable(&self, context: &mut Context, name: String, config_val: Value) {
+    pub fn add_global_configurable(
+        &self,
+        context: &mut Context,
+        call_path: Vec<String>,
+        config_val: Value,
+    ) {
         context.modules[self.0]
             .global_configurable
-            .insert(name, config_val);
+            .insert(call_path, config_val);
     }
 
     /// Get a named global configurable value from this module, if found.
-    pub fn get_global_configurable(&self, context: &Context, name: &str) -> Option<Value> {
+    pub fn get_global_configurable(
+        &self,
+        context: &Context,
+        call_path: &Vec<String>,
+    ) -> Option<Value> {
         context.modules[self.0]
             .global_configurable
-            .get(name)
+            .get(call_path)
             .copied()
     }
 

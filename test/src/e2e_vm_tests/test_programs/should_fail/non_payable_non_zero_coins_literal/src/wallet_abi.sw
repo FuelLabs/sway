@@ -1,4 +1,4 @@
-library wallet_abi;
+library;
 
 abi Wallet {
     #[payable, storage(read, write)]

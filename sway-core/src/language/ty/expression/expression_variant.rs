@@ -1,9 +1,10 @@
 use std::{
     collections::HashMap,
     fmt::{self, Write},
+    hash::{Hash, Hasher},
 };
 
-use sway_types::{state::StateIndex, Ident, Span};
+use sway_types::{Ident, Named, Span};
 
 use crate::{
     decl_engine::*,
@@ -19,28 +20,34 @@ pub enum TyExpressionVariant {
         call_path: CallPath,
         contract_call_params: HashMap<String, TyExpression>,
         arguments: Vec<(Ident, TyExpression)>,
-        function_decl_id: DeclId,
-        /// If this is `Some(val)` then `val` is the metadata. If this is `None`, then
-        /// there is no selector.
-        self_state_idx: Option<StateIndex>,
+        fn_ref: DeclRefFunction,
         selector: Option<ContractCallParams>,
         /// optional binding information for the LSP
         type_binding: Option<TypeBinding<()>>,
+        /// In case it is a method should contain a TypeId to either an enum, struct or a type alias.
+        call_path_typeid: Option<TypeId>,
     },
     LazyOperator {
         op: LazyOp,
         lhs: Box<TyExpression>,
         rhs: Box<TyExpression>,
     },
+    ConstantExpression {
+        span: Span,
+        const_decl: Box<TyConstantDecl>,
+        call_path: Option<CallPath>,
+    },
     VariableExpression {
         name: Ident,
         span: Span,
         mutability: VariableMutability,
+        call_path: Option<CallPath>,
     },
     Tuple {
         fields: Vec<TyExpression>,
     },
     Array {
+        elem_type: TypeId,
         contents: Vec<TyExpression>,
     },
     ArrayIndex {
@@ -48,13 +55,18 @@ pub enum TyExpressionVariant {
         index: Box<TyExpression>,
     },
     StructExpression {
-        struct_name: Ident,
+        struct_ref: DeclRef<DeclId<TyStructDecl>>,
         fields: Vec<TyStructExpressionField>,
-        span: Span,
+        instantiation_span: Span,
+        call_path_binding: TypeBinding<CallPath>,
     },
     CodeBlock(TyCodeBlock),
     // a flag that this value will later be provided as a parameter, but is currently unknown
     FunctionParameter,
+    MatchExp {
+        desugared: Box<TyExpression>,
+        scrutinees: Vec<TyScrutinee>,
+    },
     IfExp {
         condition: Box<TyExpression>,
         then: Box<TyExpression>,
@@ -81,8 +93,7 @@ pub enum TyExpressionVariant {
         elem_to_access_span: Span,
     },
     EnumInstantiation {
-        /// for printing
-        enum_decl: TyEnumDeclaration,
+        enum_ref: DeclRef<DeclId<TyEnumDecl>>,
         /// for printing
         variant_name: Ident,
         tag: usize,
@@ -90,9 +101,10 @@ pub enum TyExpressionVariant {
         /// If there is an error regarding this instantiation of the enum,
         /// use these spans as it points to the call site and not the declaration.
         /// They are also used in the language server.
-        enum_instantiation_span: Span,
         variant_instantiation_span: Span,
-        type_binding: TypeBinding<()>,
+        call_path_binding: TypeBinding<CallPath>,
+        /// The enum type, can be a type alias.
+        call_path_decl: ty::TyDecl,
     },
     AbiCast {
         abi_name: CallPath,
@@ -113,6 +125,8 @@ pub enum TyExpressionVariant {
     UnsafeDowncast {
         exp: Box<TyExpression>,
         variant: TyEnumVariant,
+        /// Should contain a TyDecl to either an enum or a type alias.
+        call_path_decl: ty::TyDecl,
     },
     WhileLoop {
         condition: Box<TyExpression>,
@@ -121,47 +135,36 @@ pub enum TyExpressionVariant {
     Break,
     Continue,
     Reassignment(Box<TyReassignment>),
-    StorageReassignment(Box<TyStorageReassignment>),
     Return(Box<TyExpression>),
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyExpressionVariant {}
 impl PartialEqWithEngines for TyExpressionVariant {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         let type_engine = engines.te();
-        let decl_engine = engines.de();
         match (self, other) {
             (Self::Literal(l0), Self::Literal(r0)) => l0 == r0,
             (
                 Self::FunctionApplication {
                     call_path: l_name,
                     arguments: l_arguments,
-                    function_decl_id: l_function_decl_id,
+                    fn_ref: l_fn_ref,
                     ..
                 },
                 Self::FunctionApplication {
                     call_path: r_name,
                     arguments: r_arguments,
-                    function_decl_id: r_function_decl_id,
+                    fn_ref: r_fn_ref,
                     ..
                 },
             ) => {
-                let l_function_decl = decl_engine
-                    .get_function(l_function_decl_id.clone(), &Span::dummy())
-                    .unwrap();
-                let r_function_decl = decl_engine
-                    .get_function(r_function_decl_id.clone(), &Span::dummy())
-                    .unwrap();
                 l_name == r_name
                     && l_arguments.len() == r_arguments.len()
                     && l_arguments
                         .iter()
                         .zip(r_arguments.iter())
                         .all(|((xa, xb), (ya, yb))| xa == ya && xb.eq(yb, engines))
-                    && l_function_decl.body.eq(&r_function_decl.body, engines)
+                    && l_fn_ref.eq(r_fn_ref, engines)
             }
             (
                 Self::LazyOperator {
@@ -180,15 +183,29 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     && (**l_rhs).eq(&(**r_rhs), engines)
             }
             (
+                Self::ConstantExpression {
+                    call_path: l_call_path,
+                    span: l_span,
+                    const_decl: _,
+                },
+                Self::ConstantExpression {
+                    call_path: r_call_path,
+                    span: r_span,
+                    const_decl: _,
+                },
+            ) => l_call_path == r_call_path && l_span == r_span,
+            (
                 Self::VariableExpression {
                     name: l_name,
                     span: l_span,
                     mutability: l_mutability,
+                    call_path: _,
                 },
                 Self::VariableExpression {
                     name: r_name,
                     span: r_span,
                     mutability: r_mutability,
+                    call_path: _,
                 },
             ) => l_name == r_name && l_span == r_span && l_mutability == r_mutability,
             (Self::Tuple { fields: l_fields }, Self::Tuple { fields: r_fields }) => {
@@ -197,9 +214,11 @@ impl PartialEqWithEngines for TyExpressionVariant {
             (
                 Self::Array {
                     contents: l_contents,
+                    ..
                 },
                 Self::Array {
                     contents: r_contents,
+                    ..
                 },
             ) => l_contents.eq(r_contents, engines),
             (
@@ -214,17 +233,21 @@ impl PartialEqWithEngines for TyExpressionVariant {
             ) => (**l_prefix).eq(&**r_prefix, engines) && (**l_index).eq(&**r_index, engines),
             (
                 Self::StructExpression {
-                    struct_name: l_struct_name,
+                    struct_ref: l_struct_ref,
                     fields: l_fields,
-                    span: l_span,
+                    instantiation_span: l_span,
+                    call_path_binding: _,
                 },
                 Self::StructExpression {
-                    struct_name: r_struct_name,
+                    struct_ref: r_struct_ref,
                     fields: r_fields,
-                    span: r_span,
+                    instantiation_span: r_span,
+                    call_path_binding: _,
                 },
             ) => {
-                l_struct_name == r_struct_name && l_fields.eq(r_fields, engines) && l_span == r_span
+                l_struct_ref.eq(r_struct_ref, engines)
+                    && l_fields.eq(r_fields, engines)
+                    && l_span == r_span
             }
             (Self::CodeBlock(l0), Self::CodeBlock(r0)) => l0.eq(r0, engines),
             (
@@ -307,21 +330,21 @@ impl PartialEqWithEngines for TyExpressionVariant {
             }
             (
                 Self::EnumInstantiation {
-                    enum_decl: l_enum_decl,
+                    enum_ref: l_enum_ref,
                     variant_name: l_variant_name,
                     tag: l_tag,
                     contents: l_contents,
                     ..
                 },
                 Self::EnumInstantiation {
-                    enum_decl: r_enum_decl,
+                    enum_ref: r_enum_ref,
                     variant_name: r_variant_name,
                     tag: r_tag,
                     contents: r_contents,
                     ..
                 },
             ) => {
-                l_enum_decl.eq(r_enum_decl, engines)
+                l_enum_ref.eq(r_enum_ref, engines)
                     && l_variant_name == r_variant_name
                     && l_tag == r_tag
                     && if let (Some(l_contents), Some(r_contents)) = (l_contents, r_contents) {
@@ -349,16 +372,18 @@ impl PartialEqWithEngines for TyExpressionVariant {
                 Self::UnsafeDowncast {
                     exp: l_exp,
                     variant: l_variant,
+                    call_path_decl: _,
                 },
                 Self::UnsafeDowncast {
                     exp: r_exp,
                     variant: r_variant,
+                    call_path_decl: _,
                 },
             ) => l_exp.eq(r_exp, engines) && l_variant.eq(r_variant, engines),
             (Self::EnumTag { exp: l_exp }, Self::EnumTag { exp: r_exp }) => {
                 l_exp.eq(&**r_exp, engines)
             }
-            (Self::StorageAccess(l_exp), Self::StorageAccess(r_exp)) => *l_exp == *r_exp,
+            (Self::StorageAccess(l_exp), Self::StorageAccess(r_exp)) => l_exp.eq(r_exp, engines),
             (
                 Self::WhileLoop {
                     body: l_body,
@@ -369,7 +394,205 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     condition: r_condition,
                 },
             ) => l_body.eq(r_body, engines) && l_condition.eq(r_condition, engines),
-            _ => false,
+            (l, r) => std::mem::discriminant(l) == std::mem::discriminant(r),
+        }
+    }
+}
+
+impl HashWithEngines for TyExpressionVariant {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let type_engine = engines.te();
+        std::mem::discriminant(self).hash(state);
+        match self {
+            Self::Literal(lit) => {
+                lit.hash(state);
+            }
+            Self::FunctionApplication {
+                call_path,
+                arguments,
+                fn_ref,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                contract_call_params: _,
+                selector: _,
+                type_binding: _,
+                call_path_typeid: _,
+            } => {
+                call_path.hash(state);
+                fn_ref.hash(state, engines);
+                arguments.iter().for_each(|(name, arg)| {
+                    name.hash(state);
+                    arg.hash(state, engines);
+                });
+            }
+            Self::LazyOperator { op, lhs, rhs } => {
+                op.hash(state);
+                lhs.hash(state, engines);
+                rhs.hash(state, engines);
+            }
+            Self::ConstantExpression {
+                const_decl,
+                span: _,
+                call_path: _,
+            } => {
+                const_decl.hash(state, engines);
+            }
+            Self::VariableExpression {
+                name,
+                mutability,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                call_path: _,
+                span: _,
+            } => {
+                name.hash(state);
+                mutability.hash(state);
+            }
+            Self::Tuple { fields } => {
+                fields.hash(state, engines);
+            }
+            Self::Array {
+                contents,
+                elem_type: _,
+            } => {
+                contents.hash(state, engines);
+            }
+            Self::ArrayIndex { prefix, index } => {
+                prefix.hash(state, engines);
+                index.hash(state, engines);
+            }
+            Self::StructExpression {
+                struct_ref,
+                fields,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                instantiation_span: _,
+                call_path_binding: _,
+            } => {
+                struct_ref.hash(state, engines);
+                fields.hash(state, engines);
+            }
+            Self::CodeBlock(contents) => {
+                contents.hash(state, engines);
+            }
+            Self::MatchExp {
+                desugared,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                scrutinees: _,
+            } => {
+                desugared.hash(state, engines);
+            }
+            Self::IfExp {
+                condition,
+                then,
+                r#else,
+            } => {
+                condition.hash(state, engines);
+                then.hash(state, engines);
+                if let Some(x) = r#else.as_ref() {
+                    x.hash(state, engines)
+                }
+            }
+            Self::AsmExpression {
+                registers,
+                body,
+                returns,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                whole_block_span: _,
+            } => {
+                registers.hash(state, engines);
+                body.hash(state);
+                returns.hash(state);
+            }
+            Self::StructFieldAccess {
+                prefix,
+                field_to_access,
+                resolved_type_of_parent,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                field_instantiation_span: _,
+            } => {
+                prefix.hash(state, engines);
+                field_to_access.hash(state, engines);
+                type_engine
+                    .get(*resolved_type_of_parent)
+                    .hash(state, engines);
+            }
+            Self::TupleElemAccess {
+                prefix,
+                elem_to_access_num,
+                resolved_type_of_parent,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                elem_to_access_span: _,
+            } => {
+                prefix.hash(state, engines);
+                elem_to_access_num.hash(state);
+                type_engine
+                    .get(*resolved_type_of_parent)
+                    .hash(state, engines);
+            }
+            Self::EnumInstantiation {
+                enum_ref,
+                variant_name,
+                tag,
+                contents,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                variant_instantiation_span: _,
+                call_path_binding: _,
+                call_path_decl: _,
+            } => {
+                enum_ref.hash(state, engines);
+                variant_name.hash(state);
+                tag.hash(state);
+                if let Some(x) = contents.as_ref() {
+                    x.hash(state, engines)
+                }
+            }
+            Self::AbiCast {
+                abi_name,
+                address,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                span: _,
+            } => {
+                abi_name.hash(state);
+                address.hash(state, engines);
+            }
+            Self::StorageAccess(exp) => {
+                exp.hash(state, engines);
+            }
+            Self::IntrinsicFunction(exp) => {
+                exp.hash(state, engines);
+            }
+            Self::AbiName(name) => {
+                name.hash(state);
+            }
+            Self::EnumTag { exp } => {
+                exp.hash(state, engines);
+            }
+            Self::UnsafeDowncast {
+                exp,
+                variant,
+                call_path_decl: _,
+            } => {
+                exp.hash(state, engines);
+                variant.hash(state, engines);
+            }
+            Self::WhileLoop { condition, body } => {
+                condition.hash(state, engines);
+                body.hash(state, engines);
+            }
+            Self::Break | Self::Continue | Self::FunctionParameter => {}
+            Self::Reassignment(exp) => {
+                exp.hash(state, engines);
+            }
+            Self::Return(exp) => {
+                exp.hash(state, engines);
+            }
         }
     }
 }
@@ -381,39 +604,60 @@ impl SubstTypes for TyExpressionVariant {
             Literal(..) => (),
             FunctionApplication {
                 arguments,
-                ref mut function_decl_id,
+                ref mut fn_ref,
                 ..
             } => {
                 arguments
                     .iter_mut()
                     .for_each(|(_ident, expr)| expr.subst(type_mapping, engines));
-                let new_decl_id = function_decl_id
+                let new_decl_ref = fn_ref
                     .clone()
-                    .subst_types_and_insert_new(type_mapping, engines);
-                function_decl_id.replace_id(*new_decl_id);
+                    .subst_types_and_insert_new_with_parent(type_mapping, engines);
+                fn_ref.replace_id(*new_decl_ref.id());
             }
             LazyOperator { lhs, rhs, .. } => {
                 (*lhs).subst(type_mapping, engines);
                 (*rhs).subst(type_mapping, engines);
             }
+            ConstantExpression { const_decl, .. } => {
+                const_decl.subst(type_mapping, engines);
+            }
             VariableExpression { .. } => (),
             Tuple { fields } => fields
                 .iter_mut()
                 .for_each(|x| x.subst(type_mapping, engines)),
-            Array { contents } => contents
-                .iter_mut()
-                .for_each(|x| x.subst(type_mapping, engines)),
+            Array {
+                ref mut elem_type,
+                contents,
+            } => {
+                elem_type.subst(type_mapping, engines);
+                contents
+                    .iter_mut()
+                    .for_each(|x| x.subst(type_mapping, engines))
+            }
             ArrayIndex { prefix, index } => {
                 (*prefix).subst(type_mapping, engines);
                 (*index).subst(type_mapping, engines);
             }
-            StructExpression { fields, .. } => fields
-                .iter_mut()
-                .for_each(|x| x.subst(type_mapping, engines)),
+            StructExpression {
+                struct_ref,
+                fields,
+                instantiation_span: _,
+                call_path_binding: _,
+            } => {
+                let new_struct_ref = struct_ref
+                    .clone()
+                    .subst_types_and_insert_new(type_mapping, engines);
+                struct_ref.replace_id(*new_struct_ref.id());
+                fields
+                    .iter_mut()
+                    .for_each(|x| x.subst(type_mapping, engines));
+            }
             CodeBlock(block) => {
                 block.subst(type_mapping, engines);
             }
             FunctionParameter => (),
+            MatchExp { desugared, .. } => desugared.subst(type_mapping, engines),
             IfExp {
                 condition,
                 then,
@@ -454,11 +698,12 @@ impl SubstTypes for TyExpressionVariant {
                 prefix.subst(type_mapping, engines);
             }
             EnumInstantiation {
-                enum_decl,
-                contents,
-                ..
+                enum_ref, contents, ..
             } => {
-                enum_decl.subst(type_mapping, engines);
+                let new_enum_ref = enum_ref
+                    .clone()
+                    .subst_types_and_insert_new(type_mapping, engines);
+                enum_ref.replace_id(*new_enum_ref.id());
                 if let Some(ref mut contents) = contents {
                     contents.subst(type_mapping, engines)
                 };
@@ -472,7 +717,11 @@ impl SubstTypes for TyExpressionVariant {
             EnumTag { exp } => {
                 exp.subst(type_mapping, engines);
             }
-            UnsafeDowncast { exp, variant } => {
+            UnsafeDowncast {
+                exp,
+                variant,
+                call_path_decl: _,
+            } => {
                 exp.subst(type_mapping, engines);
                 variant.subst(type_mapping, engines);
             }
@@ -487,7 +736,6 @@ impl SubstTypes for TyExpressionVariant {
             Break => (),
             Continue => (),
             Reassignment(reassignment) => reassignment.subst(type_mapping, engines),
-            StorageReassignment(..) => (),
             Return(stmt) => stmt.subst(type_mapping, engines),
         }
     }
@@ -500,39 +748,60 @@ impl ReplaceSelfType for TyExpressionVariant {
             Literal(..) => (),
             FunctionApplication {
                 arguments,
-                ref mut function_decl_id,
+                ref mut fn_ref,
                 ..
             } => {
                 arguments
                     .iter_mut()
                     .for_each(|(_ident, expr)| expr.replace_self_type(engines, self_type));
-                let new_decl_id = function_decl_id
+                let new_decl_ref = fn_ref
                     .clone()
-                    .replace_self_type_and_insert_new(engines, self_type);
-                function_decl_id.replace_id(*new_decl_id);
+                    .replace_self_type_and_insert_new_with_parent(engines, self_type);
+                fn_ref.replace_id(*new_decl_ref.id());
             }
             LazyOperator { lhs, rhs, .. } => {
                 (*lhs).replace_self_type(engines, self_type);
                 (*rhs).replace_self_type(engines, self_type);
             }
+            ConstantExpression { const_decl, .. } => {
+                const_decl.replace_self_type(engines, self_type)
+            }
             VariableExpression { .. } => (),
             Tuple { fields } => fields
                 .iter_mut()
                 .for_each(|x| x.replace_self_type(engines, self_type)),
-            Array { contents } => contents
-                .iter_mut()
-                .for_each(|x| x.replace_self_type(engines, self_type)),
+            Array {
+                ref mut elem_type,
+                contents,
+            } => {
+                elem_type.replace_self_type(engines, self_type);
+                contents
+                    .iter_mut()
+                    .for_each(|x| x.replace_self_type(engines, self_type))
+            }
             ArrayIndex { prefix, index } => {
                 (*prefix).replace_self_type(engines, self_type);
                 (*index).replace_self_type(engines, self_type);
             }
-            StructExpression { fields, .. } => fields
-                .iter_mut()
-                .for_each(|x| x.replace_self_type(engines, self_type)),
+            StructExpression {
+                struct_ref,
+                fields,
+                instantiation_span: _,
+                call_path_binding: _,
+            } => {
+                let new_struct_ref = struct_ref
+                    .clone()
+                    .replace_self_type_and_insert_new(engines, self_type);
+                struct_ref.replace_id(*new_struct_ref.id());
+                fields
+                    .iter_mut()
+                    .for_each(|x| x.replace_self_type(engines, self_type));
+            }
             CodeBlock(block) => {
                 block.replace_self_type(engines, self_type);
             }
             FunctionParameter => (),
+            MatchExp { desugared, .. } => desugared.replace_self_type(engines, self_type),
             IfExp {
                 condition,
                 then,
@@ -568,11 +837,12 @@ impl ReplaceSelfType for TyExpressionVariant {
                 prefix.replace_self_type(engines, self_type);
             }
             EnumInstantiation {
-                enum_decl,
-                contents,
-                ..
+                enum_ref, contents, ..
             } => {
-                enum_decl.replace_self_type(engines, self_type);
+                let new_enum_ref = enum_ref
+                    .clone()
+                    .replace_self_type_and_insert_new(engines, self_type);
+                enum_ref.replace_id(*new_enum_ref.id());
                 if let Some(ref mut contents) = contents {
                     contents.replace_self_type(engines, self_type)
                 };
@@ -585,7 +855,11 @@ impl ReplaceSelfType for TyExpressionVariant {
             EnumTag { exp } => {
                 exp.replace_self_type(engines, self_type);
             }
-            UnsafeDowncast { exp, variant } => {
+            UnsafeDowncast {
+                exp,
+                variant,
+                call_path_decl: _,
+            } => {
                 exp.replace_self_type(engines, self_type);
                 variant.replace_self_type(engines, self_type);
             }
@@ -600,7 +874,6 @@ impl ReplaceSelfType for TyExpressionVariant {
             Break => (),
             Continue => (),
             Reassignment(reassignment) => reassignment.replace_self_type(engines, self_type),
-            StorageReassignment(..) => (),
             Return(stmt) => stmt.replace_self_type(engines, self_type),
         }
     }
@@ -612,15 +885,15 @@ impl ReplaceDecls for TyExpressionVariant {
         match self {
             Literal(..) => (),
             FunctionApplication {
-                ref mut function_decl_id,
+                ref mut fn_ref,
                 ref mut arguments,
                 ..
             } => {
-                function_decl_id.replace_decls(decl_mapping, engines);
-                let new_decl_id = function_decl_id
+                fn_ref.replace_decls(decl_mapping, engines);
+                let new_decl_ref = fn_ref
                     .clone()
-                    .replace_decls_and_insert_new(decl_mapping, engines);
-                function_decl_id.replace_id(*new_decl_id);
+                    .replace_decls_and_insert_new_with_parent(decl_mapping, engines);
+                fn_ref.replace_id(*new_decl_ref.id());
                 for (_, arg) in arguments.iter_mut() {
                     arg.replace_decls(decl_mapping, engines);
                 }
@@ -629,24 +902,36 @@ impl ReplaceDecls for TyExpressionVariant {
                 (*lhs).replace_decls(decl_mapping, engines);
                 (*rhs).replace_decls(decl_mapping, engines);
             }
+            ConstantExpression { const_decl, .. } => {
+                const_decl.replace_decls(decl_mapping, engines)
+            }
             VariableExpression { .. } => (),
             Tuple { fields } => fields
                 .iter_mut()
                 .for_each(|x| x.replace_decls(decl_mapping, engines)),
-            Array { contents } => contents
+            Array {
+                elem_type: _,
+                contents,
+            } => contents
                 .iter_mut()
                 .for_each(|x| x.replace_decls(decl_mapping, engines)),
             ArrayIndex { prefix, index } => {
                 (*prefix).replace_decls(decl_mapping, engines);
                 (*index).replace_decls(decl_mapping, engines);
             }
-            StructExpression { fields, .. } => fields
+            StructExpression {
+                struct_ref: _,
+                fields,
+                instantiation_span: _,
+                call_path_binding: _,
+            } => fields
                 .iter_mut()
                 .for_each(|x| x.replace_decls(decl_mapping, engines)),
             CodeBlock(block) => {
                 block.replace_decls(decl_mapping, engines);
             }
             FunctionParameter => (),
+            MatchExp { desugared, .. } => desugared.replace_decls(decl_mapping, engines),
             IfExp {
                 condition,
                 then,
@@ -666,7 +951,7 @@ impl ReplaceDecls for TyExpressionVariant {
                 prefix.replace_decls(decl_mapping, engines);
             }
             EnumInstantiation {
-                enum_decl: _,
+                enum_ref: _,
                 contents,
                 ..
             } => {
@@ -696,13 +981,149 @@ impl ReplaceDecls for TyExpressionVariant {
             Break => (),
             Continue => (),
             Reassignment(reassignment) => reassignment.replace_decls(decl_mapping, engines),
-            StorageReassignment(..) => (),
             Return(stmt) => stmt.replace_decls(decl_mapping, engines),
         }
     }
 }
 
+impl UpdateConstantExpression for TyExpressionVariant {
+    fn update_constant_expression(&mut self, engines: Engines<'_>, implementing_type: &TyDecl) {
+        use TyExpressionVariant::*;
+        match self {
+            Literal(..) => (),
+            FunctionApplication { .. } => (),
+            LazyOperator { lhs, rhs, .. } => {
+                (*lhs).update_constant_expression(engines, implementing_type);
+                (*rhs).update_constant_expression(engines, implementing_type);
+            }
+            ConstantExpression {
+                ref mut const_decl, ..
+            } => {
+                if let Some(impl_const) =
+                    find_const_decl_from_impl(implementing_type, engines.de(), const_decl)
+                {
+                    *const_decl = Box::new(impl_const);
+                }
+            }
+            VariableExpression { .. } => (),
+            Tuple { fields } => fields
+                .iter_mut()
+                .for_each(|x| x.update_constant_expression(engines, implementing_type)),
+            Array {
+                contents,
+                elem_type: _,
+            } => contents
+                .iter_mut()
+                .for_each(|x| x.update_constant_expression(engines, implementing_type)),
+            ArrayIndex { prefix, index } => {
+                (*prefix).update_constant_expression(engines, implementing_type);
+                (*index).update_constant_expression(engines, implementing_type);
+            }
+            StructExpression { fields, .. } => fields.iter_mut().for_each(|x| {
+                x.value
+                    .update_constant_expression(engines, implementing_type)
+            }),
+            CodeBlock(block) => {
+                block.update_constant_expression(engines, implementing_type);
+            }
+            FunctionParameter => (),
+            MatchExp { desugared, .. } => {
+                desugared.update_constant_expression(engines, implementing_type)
+            }
+            IfExp {
+                condition,
+                then,
+                r#else,
+            } => {
+                condition.update_constant_expression(engines, implementing_type);
+                then.update_constant_expression(engines, implementing_type);
+                if let Some(ref mut r#else) = r#else {
+                    r#else.update_constant_expression(engines, implementing_type);
+                }
+            }
+            AsmExpression { .. } => {}
+            StructFieldAccess { prefix, .. } => {
+                prefix.update_constant_expression(engines, implementing_type);
+            }
+            TupleElemAccess { prefix, .. } => {
+                prefix.update_constant_expression(engines, implementing_type);
+            }
+            EnumInstantiation {
+                enum_ref: _,
+                contents,
+                ..
+            } => {
+                if let Some(ref mut contents) = contents {
+                    contents.update_constant_expression(engines, implementing_type);
+                };
+            }
+            AbiCast { address, .. } => {
+                address.update_constant_expression(engines, implementing_type)
+            }
+            StorageAccess { .. } => (),
+            IntrinsicFunction(_) => {}
+            EnumTag { exp } => {
+                exp.update_constant_expression(engines, implementing_type);
+            }
+            UnsafeDowncast { exp, .. } => {
+                exp.update_constant_expression(engines, implementing_type);
+            }
+            AbiName(_) => (),
+            WhileLoop {
+                ref mut condition,
+                ref mut body,
+            } => {
+                condition.update_constant_expression(engines, implementing_type);
+                body.update_constant_expression(engines, implementing_type);
+            }
+            Break => (),
+            Continue => (),
+            Reassignment(reassignment) => {
+                reassignment.update_constant_expression(engines, implementing_type)
+            }
+            Return(stmt) => stmt.update_constant_expression(engines, implementing_type),
+        }
+    }
+}
+
+fn find_const_decl_from_impl(
+    implementing_type: &TyDecl,
+    decl_engine: &DeclEngine,
+    const_decl: &mut Box<TyConstantDecl>,
+) -> Option<TyConstantDecl> {
+    match implementing_type {
+        TyDecl::ImplTrait(ImplTrait { decl_id, .. }) => {
+            let impl_trait = decl_engine.get_impl_trait(&decl_id.clone());
+            impl_trait
+                .items
+                .into_iter()
+                .find(|item| match item {
+                    TyTraitItem::Constant(decl_id) => {
+                        let trait_const_decl = decl_engine.get_constant(&decl_id.clone());
+                        const_decl.name().eq(trait_const_decl.name())
+                    }
+                    _ => false,
+                })
+                .map(|item| match item {
+                    TyTraitItem::Constant(decl_id) => decl_engine.get_constant(&decl_id),
+                    _ => unreachable!(),
+                })
+        }
+        TyDecl::AbiDecl(AbiDecl {
+            decl_id: _decl_id, ..
+        }) => todo!(),
+        _ => unreachable!(),
+    }
+}
+
 impl DisplayWithEngines for TyExpressionVariant {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+        // TODO: Implement user-friendly display strings if needed.
+        DebugWithEngines::fmt(self, f, engines)
+    }
+}
+
+impl DebugWithEngines for TyExpressionVariant {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         let s = match self {
             TyExpressionVariant::Literal(lit) => format!("literal {lit}"),
@@ -718,19 +1139,21 @@ impl DisplayWithEngines for TyExpressionVariant {
             TyExpressionVariant::Tuple { fields } => {
                 let fields = fields
                     .iter()
-                    .map(|field| engines.help_out(field).to_string())
+                    .map(|field| format!("{:?}", engines.help_out(field)))
                     .collect::<Vec<_>>()
                     .join(", ");
                 format!("tuple({fields})")
             }
             TyExpressionVariant::Array { .. } => "array".into(),
             TyExpressionVariant::ArrayIndex { .. } => "[..]".into(),
-            TyExpressionVariant::StructExpression { struct_name, .. } => {
-                format!("\"{}\" struct init", struct_name.as_str())
+            TyExpressionVariant::StructExpression { struct_ref, .. } => {
+                format!("\"{}\" struct init", struct_ref.name().as_str())
             }
             TyExpressionVariant::CodeBlock(_) => "code block entry".into(),
             TyExpressionVariant::FunctionParameter => "fn param access".into(),
-            TyExpressionVariant::IfExp { .. } => "if exp".into(),
+            TyExpressionVariant::MatchExp { .. } | TyExpressionVariant::IfExp { .. } => {
+                "if exp".into()
+            }
             TyExpressionVariant::AsmExpression { .. } => "inline asm".into(),
             TyExpressionVariant::AbiCast { abi_name, .. } => {
                 format!("abi cast {}", abi_name.suffix.as_str())
@@ -741,7 +1164,7 @@ impl DisplayWithEngines for TyExpressionVariant {
                 ..
             } => {
                 format!(
-                    "\"{}.{}\" struct field access",
+                    "\"{:?}.{}\" struct field access",
                     engines.help_out(*resolved_type_of_parent),
                     field_to_access.name
                 )
@@ -752,23 +1175,26 @@ impl DisplayWithEngines for TyExpressionVariant {
                 ..
             } => {
                 format!(
-                    "\"{}.{}\" tuple index",
+                    "\"{:?}.{}\" tuple index",
                     engines.help_out(*resolved_type_of_parent),
                     elem_to_access_num
                 )
+            }
+            TyExpressionVariant::ConstantExpression { const_decl, .. } => {
+                format!("\"{}\" constant exp", const_decl.name().as_str())
             }
             TyExpressionVariant::VariableExpression { name, .. } => {
                 format!("\"{}\" variable exp", name.as_str())
             }
             TyExpressionVariant::EnumInstantiation {
                 tag,
-                enum_decl,
+                enum_ref,
                 variant_name,
                 ..
             } => {
                 format!(
                     "{}::{} enum instantiation (tag: {})",
-                    enum_decl.name.as_str(),
+                    enum_ref.name().as_str(),
                     variant_name.as_str(),
                     tag
                 )
@@ -776,20 +1202,25 @@ impl DisplayWithEngines for TyExpressionVariant {
             TyExpressionVariant::StorageAccess(access) => {
                 format!("storage field {} access", access.storage_field_name())
             }
-            TyExpressionVariant::IntrinsicFunction(kind) => engines.help_out(kind).to_string(),
+            TyExpressionVariant::IntrinsicFunction(kind) => format!("{:?}", engines.help_out(kind)),
             TyExpressionVariant::AbiName(n) => format!("ABI name {n}"),
             TyExpressionVariant::EnumTag { exp } => {
-                format!("({} as tag)", engines.help_out(exp.return_type))
+                format!("({:?} as tag)", engines.help_out(exp.return_type))
             }
-            TyExpressionVariant::UnsafeDowncast { exp, variant } => {
+            TyExpressionVariant::UnsafeDowncast {
+                exp,
+                variant,
+                call_path_decl,
+            } => {
                 format!(
-                    "({} as {})",
+                    "({:?} as {}::{})",
                     engines.help_out(exp.return_type),
+                    engines.help_out(call_path_decl),
                     variant.name
                 )
             }
             TyExpressionVariant::WhileLoop { condition, .. } => {
-                format!("while loop on {}", engines.help_out(&**condition))
+                format!("while loop on {:?}", engines.help_out(&**condition))
             }
             TyExpressionVariant::Break => "break".to_string(),
             TyExpressionVariant::Continue => "continue".to_string(),
@@ -809,18 +1240,8 @@ impl DisplayWithEngines for TyExpressionVariant {
                 }
                 format!("reassignment to {place}")
             }
-            TyExpressionVariant::StorageReassignment(storage_reassignment) => {
-                let place: String = {
-                    storage_reassignment
-                        .fields
-                        .iter()
-                        .map(|field| field.name.as_str())
-                        .collect()
-                };
-                format!("storage reassignment to {place}")
-            }
             TyExpressionVariant::Return(exp) => {
-                format!("return {}", engines.help_out(&**exp))
+                format!("return {:?}", engines.help_out(&**exp))
             }
         };
         write!(f, "{s}")
@@ -842,6 +1263,9 @@ impl TyExpressionVariant {
     /// _only_ for explicit returns.
     pub(crate) fn gather_return_statements(&self) -> Vec<&TyExpression> {
         match self {
+            TyExpressionVariant::MatchExp { desugared, .. } => {
+                desugared.expression.gather_return_statements()
+            }
             TyExpressionVariant::IfExp {
                 condition,
                 then,
@@ -871,9 +1295,6 @@ impl TyExpressionVariant {
             TyExpressionVariant::Reassignment(reassignment) => {
                 reassignment.rhs.gather_return_statements()
             }
-            TyExpressionVariant::StorageReassignment(storage_reassignment) => {
-                storage_reassignment.rhs.gather_return_statements()
-            }
             TyExpressionVariant::LazyOperator { lhs, rhs, .. } => [lhs, rhs]
                 .into_iter()
                 .flat_map(|expr| expr.gather_return_statements())
@@ -882,7 +1303,10 @@ impl TyExpressionVariant {
                 .iter()
                 .flat_map(|expr| expr.gather_return_statements())
                 .collect(),
-            TyExpressionVariant::Array { contents } => contents
+            TyExpressionVariant::Array {
+                elem_type: _,
+                contents,
+            } => contents
                 .iter()
                 .flat_map(|expr| expr.gather_return_statements())
                 .collect(),
@@ -938,6 +1362,7 @@ impl TyExpressionVariant {
             TyExpressionVariant::Literal(_)
             | TyExpressionVariant::FunctionParameter { .. }
             | TyExpressionVariant::AsmExpression { .. }
+            | TyExpressionVariant::ConstantExpression { .. }
             | TyExpressionVariant::VariableExpression { .. }
             | TyExpressionVariant::AbiName(_)
             | TyExpressionVariant::StorageAccess { .. }

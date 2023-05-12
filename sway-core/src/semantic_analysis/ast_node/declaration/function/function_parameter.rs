@@ -13,7 +13,6 @@ impl ty::TyFunctionParameter {
     pub(crate) fn type_check(
         mut ctx: TypeCheckContext,
         parameter: FunctionParameter,
-        is_from_method: bool,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -26,16 +25,13 @@ impl ty::TyFunctionParameter {
             is_reference,
             is_mutable,
             mutability_span,
-            type_info,
-            type_span,
+            mut type_argument,
         } = parameter;
 
-        let initial_type_id = type_engine.insert(decl_engine, type_info);
-
-        let type_id = check!(
+        type_argument.type_id = check!(
             ctx.resolve_type_with_self(
-                initial_type_id,
-                &type_span,
+                type_argument.type_id,
+                &type_argument.span,
                 EnforceTypeArguments::Yes,
                 None
             ),
@@ -44,15 +40,22 @@ impl ty::TyFunctionParameter {
             errors,
         );
 
-        if !is_from_method {
-            let mutability = ty::VariableMutability::new_from_ref_mut(is_reference, is_mutable);
-            if mutability == ty::VariableMutability::Mutable {
-                errors.push(CompileError::MutableParameterNotSupported {
-                    param_name: name.clone(),
-                    span: name.span(),
-                });
-                return err(warnings, errors);
-            }
+        check!(
+            type_argument
+                .type_id
+                .check_type_parameter_bounds(&ctx, &type_argument.span),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        let mutability = ty::VariableMutability::new_from_ref_mut(is_reference, is_mutable);
+        if mutability == ty::VariableMutability::Mutable {
+            errors.push(CompileError::MutableParameterNotSupported {
+                param_name: name.clone(),
+                span: name.span(),
+            });
+            return err(warnings, errors);
         }
 
         let typed_parameter = ty::TyFunctionParameter {
@@ -60,9 +63,7 @@ impl ty::TyFunctionParameter {
             is_reference,
             is_mutable,
             mutability_span,
-            type_id,
-            initial_type_id,
-            type_span,
+            type_argument,
         };
 
         insert_into_namespace(ctx, &typed_parameter);
@@ -71,7 +72,7 @@ impl ty::TyFunctionParameter {
     }
 
     pub(crate) fn type_check_interface_parameter(
-        ctx: TypeCheckContext,
+        mut ctx: TypeCheckContext,
         parameter: FunctionParameter,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
@@ -85,18 +86,13 @@ impl ty::TyFunctionParameter {
             is_reference,
             is_mutable,
             mutability_span,
-            type_info,
-            type_span,
+            mut type_argument,
         } = parameter;
 
-        let initial_type_id = type_engine.insert(decl_engine, type_info);
-
-        let type_id = check!(
-            ctx.namespace.resolve_type_with_self(
-                ctx.engines(),
-                initial_type_id,
-                type_engine.insert(decl_engine, TypeInfo::SelfType),
-                &type_span,
+        type_argument.type_id = check!(
+            ctx.resolve_type_with_self(
+                type_argument.type_id,
+                &type_argument.span,
                 EnforceTypeArguments::Yes,
                 None
             ),
@@ -110,9 +106,7 @@ impl ty::TyFunctionParameter {
             is_reference,
             is_mutable,
             mutability_span,
-            type_id,
-            initial_type_id,
-            type_span,
+            type_argument,
         };
 
         ok(typed_parameter, warnings, errors)
@@ -122,20 +116,19 @@ impl ty::TyFunctionParameter {
 fn insert_into_namespace(ctx: TypeCheckContext, typed_parameter: &ty::TyFunctionParameter) {
     ctx.namespace.insert_symbol(
         typed_parameter.name.clone(),
-        ty::TyDeclaration::VariableDeclaration(Box::new(ty::TyVariableDeclaration {
+        ty::TyDecl::VariableDecl(Box::new(ty::TyVariableDecl {
             name: typed_parameter.name.clone(),
             body: ty::TyExpression {
                 expression: ty::TyExpressionVariant::FunctionParameter,
-                return_type: typed_parameter.type_id,
+                return_type: typed_parameter.type_argument.type_id,
                 span: typed_parameter.name.span(),
             },
             mutability: ty::VariableMutability::new_from_ref_mut(
                 typed_parameter.is_reference,
                 typed_parameter.is_mutable,
             ),
-            return_type: typed_parameter.type_id,
-            type_ascription: typed_parameter.type_id,
-            type_ascription_span: Some(typed_parameter.type_span.clone()),
+            return_type: typed_parameter.type_argument.type_id,
+            type_ascription: typed_parameter.type_argument.clone(),
         })),
     );
 }

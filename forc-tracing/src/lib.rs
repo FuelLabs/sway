@@ -25,10 +25,6 @@ pub fn println_red_err(txt: &str) {
     println_std_err(txt, Colour::Red);
 }
 
-pub fn println_green_err(txt: &str) {
-    println_std_err(txt, Colour::Green);
-}
-
 fn println_std_out(txt: &str, color: Colour) {
     tracing::info!("{}", color.paint(txt));
 }

@@ -1,6 +1,9 @@
-use std::borrow::Cow;
+use std::{
+    borrow::Cow,
+    hash::{Hash, Hasher},
+};
 
-use sway_types::{state::StateIndex, Ident, Span, Spanned};
+use sway_types::{Ident, Span, Spanned};
 
 use crate::{decl_engine::*, engine_threading::*, language::ty::*, type_system::*};
 
@@ -17,10 +20,29 @@ pub struct TyReassignment {
 impl EqWithEngines for TyReassignment {}
 impl PartialEqWithEngines for TyReassignment {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        let type_engine = engines.te();
         self.lhs_base_name == other.lhs_base_name
-            && self.lhs_type == other.lhs_type
+            && type_engine
+                .get(self.lhs_type)
+                .eq(&type_engine.get(other.lhs_type), engines)
             && self.lhs_indices.eq(&other.lhs_indices, engines)
             && self.rhs.eq(&other.rhs, engines)
+    }
+}
+
+impl HashWithEngines for TyReassignment {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TyReassignment {
+            lhs_base_name,
+            lhs_type,
+            lhs_indices,
+            rhs,
+        } = self;
+        let type_engine = engines.te();
+        lhs_base_name.hash(state);
+        type_engine.get(*lhs_type).hash(state, engines);
+        lhs_indices.hash(state, engines);
+        rhs.hash(state, engines);
     }
 }
 
@@ -41,6 +63,13 @@ impl ReplaceSelfType for TyReassignment {
 impl ReplaceDecls for TyReassignment {
     fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
         self.rhs.replace_decls(decl_mapping, engines);
+    }
+}
+
+impl UpdateConstantExpression for TyReassignment {
+    fn update_constant_expression(&mut self, engines: Engines<'_>, implementing_type: &TyDecl) {
+        self.rhs
+            .update_constant_expression(engines, implementing_type)
     }
 }
 
@@ -92,6 +121,30 @@ impl PartialEqWithEngines for ProjectionKind {
     }
 }
 
+impl HashWithEngines for ProjectionKind {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        use ProjectionKind::*;
+        std::mem::discriminant(self).hash(state);
+        match self {
+            StructField { name } => name.hash(state),
+            TupleField {
+                index,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                index_span: _,
+            } => index.hash(state),
+            ArrayIndex {
+                index,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                index_span: _,
+            } => {
+                index.hash(state, engines);
+            }
+        }
+    }
+}
+
 impl Spanned for ProjectionKind {
     fn span(&self) -> Span {
         match self {
@@ -109,64 +162,5 @@ impl ProjectionKind {
             ProjectionKind::TupleField { index, .. } => Cow::Owned(index.to_string()),
             ProjectionKind::ArrayIndex { index, .. } => Cow::Owned(format!("{index:#?}")),
         }
-    }
-}
-
-/// Describes each field being drilled down into in storage and its type.
-#[derive(Clone, Debug)]
-pub struct TyStorageReassignment {
-    pub fields: Vec<TyStorageReassignDescriptor>,
-    pub(crate) ix: StateIndex,
-    pub rhs: TyExpression,
-}
-
-impl EqWithEngines for TyStorageReassignment {}
-impl PartialEqWithEngines for TyStorageReassignment {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        self.fields.eq(&other.fields, engines)
-            && self.ix == other.ix
-            && self.rhs.eq(&other.rhs, engines)
-    }
-}
-
-impl Spanned for TyStorageReassignment {
-    fn span(&self) -> Span {
-        self.fields
-            .iter()
-            .fold(self.fields[0].span.clone(), |acc, field| {
-                Span::join(acc, field.span.clone())
-            })
-    }
-}
-
-impl TyStorageReassignment {
-    pub fn names(&self) -> Vec<Ident> {
-        self.fields
-            .iter()
-            .map(|f| f.name.clone())
-            .collect::<Vec<_>>()
-    }
-}
-
-/// Describes a single subfield access in the sequence when reassigning to a subfield within
-/// storage.
-#[derive(Clone, Debug)]
-pub struct TyStorageReassignDescriptor {
-    pub name: Ident,
-    pub type_id: TypeId,
-    pub(crate) span: Span,
-}
-
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl EqWithEngines for TyStorageReassignDescriptor {}
-impl PartialEqWithEngines for TyStorageReassignDescriptor {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        let type_engine = engines.te();
-        self.name == other.name
-            && type_engine
-                .get(self.type_id)
-                .eq(&type_engine.get(other.type_id), engines)
     }
 }

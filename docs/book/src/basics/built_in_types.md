@@ -2,10 +2,15 @@
 
 Every value in Sway is of a certain type. Although deep down, all values are just ones and zeroes in the underlying virtual machine, Sway needs to know what those ones and zeroes actually mean. This is accomplished with _types_.
 
+<!-- This section should explain how Sway types are inferred -->
+<!-- sway_types:example:start -->
 Sway is a statically typed language. At compile time, the types of every value must be known. This does not mean you need to specify every single type: usually, the type can be reasonably inferred by the compiler.
+<!-- sway_types:example:end -->
 
 ## Primitive Types
 
+<!-- This section should list the primitive types in Sway -->
+<!-- prim_types:example:start -->
 Sway has the following primitive types:
 
 1. `u8` (8-bit unsigned integer)
@@ -17,6 +22,7 @@ Sway has the following primitive types:
 1. `b256` (256 bits (32 bytes), i.e. a hash)
 
 All other types in Sway are built up of these primitive types, or references to these primitive types. You may notice that there are no signed integers&mdash;this is by design. In the blockchain domain that Sway occupies, floating-point values and negative numbers have smaller utility, so their implementation has been left up to libraries for specific use cases.
+<!-- prim_types:example:end -->
 
 ## Numeric Types
 
@@ -33,11 +39,19 @@ Numbers can be declared with binary syntax, hexadecimal syntax, base-10 syntax, 
 0xfff_aaa   // underscore delineated hexadecimal
 ```
 
+<!-- This section should explain the default numeric type in Sway -->
+<!-- default_num:example:start -->
 The default numeric type is `u64`. The FuelVM's word size is 64 bits, and the cases where using a smaller numeric type saves space are minimal.
+<!-- default_num:example:end -->
 
 ## Boolean Type
 
-The boolean type (`bool`) has two potential values: `true` or `false`. Boolean values are typically used for conditional logic or validation, for example in `if` expressions. Booleans can be negated, or flipped, with the unary negation operator `!`. For example:
+<!-- This section should explain the `bool` type -->
+<!-- bool:example:start -->
+The boolean type (`bool`) has two potential values: `true` or `false`. Boolean values are typically used for conditional logic or validation, for example in `if` expressions. Booleans can be negated, or flipped, with the unary negation operator `!`.
+<!-- bool:example:end -->
+
+For example:
 
 ```sway
 fn returns_false() -> bool {
@@ -48,7 +62,12 @@ fn returns_false() -> bool {
 
 ## String Type
 
-In Sway, static-length strings are a primitive type. This means that when you declare a string, its size is a part of its type. This is necessary for the compiler to know how much memory to give for the storage of that data. The size of the string is denoted with square brackets. Let's take a look:
+<!-- This section should explain the string type in Sway -->
+<!-- str:example:start -->
+In Sway, static-length strings are a primitive type. This means that when you declare a string, its size is a part of its type. This is necessary for the compiler to know how much memory to give for the storage of that data. The size of the string is denoted with square brackets.
+<!-- str:example:end -->
+
+Let's take a look:
 
 ```sway
 let my_string: str[4] = "fuel";
@@ -62,7 +81,12 @@ _Compound types_ are types that group multiple values into one type. In Sway, we
 
 ## Tuple Types
 
-A tuple is a general-purpose static-length aggregation of types. In more plain terms, a tuple is a single type that consists of an aggregate of zero or more types. The internal types that make up a tuple, and the tuple's arity, define the tuple's type. Let's take a look at some examples.
+<!-- This section should explain what a tuple is -->
+<!-- tuple:example:start -->
+A tuple is a general-purpose static-length aggregation of types. In more plain terms, a tuple is a single type that consists of an aggregate of zero or more types. The internal types that make up a tuple, and the tuple's arity, define the tuple's type.
+<!-- tuple:example:end -->
+
+Let's take a look at some examples.
 
 ```sway
 let x: (u64, u64) = (0, 0);
@@ -75,7 +99,12 @@ let x: (u64, bool) = (42, true);
 assert(x.1);
 ```
 
-In this example, we have created a new tuple type, `(u64, bool)`, which is a composite of a `u64` and a `bool`. To access a value within a tuple, we use _tuple indexing_: `x.1` stands for the first (zero-indexed, so the `bool`) value of the tuple. Likewise, `x.0` would be the zeroth, `u64` value of the tuple. Tuple values can also be accessed via destructuring:
+In this example, we have created a new tuple type, `(u64, bool)`, which is a composite of a `u64` and a `bool`.
+
+<!-- This section should explain how to access a value in a tuple -->
+<!-- tuple_val:example:start -->
+To access a value within a tuple, we use _tuple indexing_: `x.1` stands for the first (zero-indexed, so the `bool`) value of the tuple. Likewise, `x.0` would be the zeroth, `u64` value of the tuple. Tuple values can also be accessed via destructuring.
+<!-- tuple_val:example:end -->
 
 ```sway
 struct Foo {}
@@ -94,7 +123,10 @@ let w: (u64) = (42,);  // type error
 
 ## Arrays
 
+<!-- This section should explain what an array is -->
+<!-- array:example:start -->
 An array is similar to a tuple, but an array's values must all be of the same type. Arrays can hold arbitrary types including non-primitive types.
+<!-- array:example:end -->
 
 An array is written as a comma-separated list inside square brackets:
 
@@ -102,9 +134,12 @@ An array is written as a comma-separated list inside square brackets:
 let x = [1, 2, 3, 4, 5];
 ```
 
+<!-- This section should explain arrays in depth -->
+<!-- array_details:example:start -->
 Arrays are allocated on the stack since their size is known. An array's size is _always_ static, i.e. it cannot change. An array of five elements cannot become an array of six elements.
 
 Arrays can be iterated over, unlike tuples. An array's type is written as the type the array contains followed by the number of elements, semicolon-separated and within square brackets, e.g. `[u64; 5]`. To access an element in an array, use the _array indexing syntax_, i.e. square brackets.
+<!-- array_details:example:end -->
 
 Array elements can also be mutated if the underlying array is declared as mutable:
 

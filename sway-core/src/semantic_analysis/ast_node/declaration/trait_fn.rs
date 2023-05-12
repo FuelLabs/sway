@@ -26,11 +26,10 @@ impl ty::TyTraitFn {
 
         let type_engine = ctx.type_engine;
         let decl_engine = ctx.decl_engine;
-        let engines = ctx.engines();
 
         // Create a namespace for the trait function.
         let mut fn_namespace = ctx.namespace.clone();
-        let mut fn_ctx = ctx.by_ref().scoped(&mut fn_namespace).with_purity(purity);
+        let mut ctx = ctx.by_ref().scoped(&mut fn_namespace).with_purity(purity);
 
         // TODO: when we add type parameters to trait fns, type check them here
 
@@ -38,7 +37,7 @@ impl ty::TyTraitFn {
         let mut typed_parameters = vec![];
         for param in parameters.into_iter() {
             typed_parameters.push(check!(
-                ty::TyFunctionParameter::type_check_interface_parameter(fn_ctx.by_ref(), param),
+                ty::TyFunctionParameter::type_check_interface_parameter(ctx.by_ref(), param),
                 continue,
                 warnings,
                 errors
@@ -47,7 +46,7 @@ impl ty::TyTraitFn {
 
         // Type check the return type.
         let return_type = check!(
-            fn_ctx.resolve_type_with_self(
+            ctx.resolve_type_with_self(
                 type_engine.insert(decl_engine, return_type),
                 &return_type_span,
                 EnforceTypeArguments::Yes,
@@ -67,19 +66,14 @@ impl ty::TyTraitFn {
             attributes,
         };
 
-        // Retrieve the implemented traits for the type of the return type and
-        // insert them in the broader namespace.
-        ctx.namespace
-            .insert_trait_implementation_for_type(engines, trait_fn.return_type);
-
         ok(trait_fn, warnings, errors)
     }
 
     /// This function is used in trait declarations to insert "placeholder"
     /// functions in the methods. This allows the methods to use functions
     /// declared in the interface surface.
-    pub(crate) fn to_dummy_func(&self, mode: Mode) -> ty::TyFunctionDeclaration {
-        ty::TyFunctionDeclaration {
+    pub(crate) fn to_dummy_func(&self, mode: Mode) -> ty::TyFunctionDecl {
+        ty::TyFunctionDecl {
             purity: self.purity,
             name: self.name.clone(),
             body: ty::TyCodeBlock { contents: vec![] },
@@ -87,12 +81,16 @@ impl ty::TyTraitFn {
             implementing_type: None,
             span: self.name.span(),
             attributes: self.attributes.clone(),
-            return_type: self.return_type,
-            initial_return_type: self.return_type,
-            return_type_span: self.return_type_span.clone(),
+            return_type: TypeArgument {
+                type_id: self.return_type,
+                initial_type_id: self.return_type,
+                span: self.return_type_span.clone(),
+                call_path_tree: None,
+            },
             visibility: Visibility::Public,
             type_parameters: vec![],
             is_contract_call: mode == Mode::ImplAbiFn,
+            where_clause: vec![],
         }
     }
 }

@@ -1,4 +1,4 @@
-library hashing;
+library;
 
 // ANCHOR: import_sha256
 use std::hash::sha256;

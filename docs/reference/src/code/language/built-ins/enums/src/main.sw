@@ -1,4 +1,4 @@
-library enums;
+library;
 
-dep basic_enum;
-dep enum_of_structs;
+mod basic_enum;
+mod enum_of_structs;

@@ -1,0 +1,9 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "trait_method"
+implicit-std = false
+
+[dependencies]
+trait_method_lib = { path = "../trait_method_lib" }

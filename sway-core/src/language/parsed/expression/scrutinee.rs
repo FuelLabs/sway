@@ -11,6 +11,10 @@ use sway_types::{ident::Ident, span::Span, Spanned};
 #[allow(clippy::enum_variant_names)]
 #[derive(Debug, Clone)]
 pub enum Scrutinee {
+    Or {
+        elems: Vec<Scrutinee>,
+        span: Span,
+    },
     CatchAll {
         span: Span,
     },
@@ -22,8 +26,9 @@ pub enum Scrutinee {
         name: Ident,
         span: Span,
     },
+    AmbiguousSingleIdent(Ident),
     StructScrutinee {
-        struct_name: Ident,
+        struct_name: CallPath,
         fields: Vec<StructScrutineeField>,
         span: Span,
     },
@@ -58,9 +63,11 @@ pub enum StructScrutineeField {
 impl Spanned for Scrutinee {
     fn span(&self) -> Span {
         match self {
+            Scrutinee::Or { span, .. } => span.clone(),
             Scrutinee::CatchAll { span } => span.clone(),
             Scrutinee::Literal { span, .. } => span.clone(),
             Scrutinee::Variable { span, .. } => span.clone(),
+            Scrutinee::AmbiguousSingleIdent(ident) => ident.span(),
             Scrutinee::StructScrutinee { span, .. } => span.clone(),
             Scrutinee::EnumScrutinee { span, .. } => span.clone(),
             Scrutinee::Tuple { span, .. } => span.clone(),
@@ -131,7 +138,7 @@ impl Scrutinee {
                 ..
             } => {
                 let name = vec![TypeInfo::Custom {
-                    name: struct_name.clone(),
+                    call_path: struct_name.clone(),
                     type_arguments: None,
                 }];
                 let fields = fields
@@ -151,18 +158,19 @@ impl Scrutinee {
             } => {
                 let enum_name = call_path.prefixes.last().unwrap_or(&call_path.suffix);
                 let name = vec![TypeInfo::Custom {
-                    name: enum_name.clone(),
+                    call_path: enum_name.clone().into(),
                     type_arguments: None,
                 }];
                 let value = value.gather_approximate_typeinfo_dependencies();
                 vec![name, value].concat()
             }
-            Scrutinee::Tuple { elems, .. } => elems
+            Scrutinee::Tuple { elems, .. } | Scrutinee::Or { elems, .. } => elems
                 .iter()
                 .flat_map(|scrutinee| scrutinee.gather_approximate_typeinfo_dependencies())
                 .collect::<Vec<TypeInfo>>(),
             Scrutinee::Literal { .. }
             | Scrutinee::CatchAll { .. }
+            | Scrutinee::AmbiguousSingleIdent(..)
             | Scrutinee::Variable { .. }
             | Scrutinee::Error { .. } => {
                 vec![]

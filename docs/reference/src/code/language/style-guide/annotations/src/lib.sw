@@ -1,4 +1,4 @@
-library annotations;
+library;
 
 // ANCHOR: type_annotation
 fn execute() {

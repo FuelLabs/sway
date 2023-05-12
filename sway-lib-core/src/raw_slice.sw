@@ -1,6 +1,4 @@
-library raw_slice;
-
-dep raw_ptr;
+library;
 
 use ::raw_ptr::*;
 
@@ -33,7 +31,7 @@ impl raw_slice {
     }
 
     /// Returns the number of elements in the slice when the elements are bytes.
-    pub fn len_bytes(self) -> u64 {
+    pub fn number_of_bytes(self) -> u64 {
         into_parts(self).1
     }
 }

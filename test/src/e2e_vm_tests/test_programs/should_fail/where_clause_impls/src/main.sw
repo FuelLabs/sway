@@ -33,7 +33,8 @@ struct MyPoint<T> {
     y: T,
 }
 
-impl<T> MyAdd for MyPoint<T> where T: MyAdd {
+// Missing where T: MyAdd
+impl<T> MyAdd for MyPoint<T> {
     fn my_add(a: MyPoint<T>, b: MyPoint<T>) -> MyPoint<T> {
         MyPoint {
             x: a.x.my_add(b.x),

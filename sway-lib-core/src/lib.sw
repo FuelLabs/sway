@@ -1,8 +1,9 @@
-library core;
+library;
 
-dep primitives;
-dep raw_ptr;
-dep raw_slice;
-dep ops;
-dep never;
-dep prelude;
+pub mod primitives;
+pub mod raw_ptr;
+pub mod raw_slice;
+pub mod ops;
+pub mod never;
+pub mod r#storage;
+pub mod prelude;

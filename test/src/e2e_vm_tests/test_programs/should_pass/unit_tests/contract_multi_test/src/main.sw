@@ -1,7 +1,5 @@
 contract;
 
-use std::logging::log;
-
 abi MyContract {
     fn test_function() -> bool;
 }
@@ -21,14 +19,14 @@ fn test_foo() {
 fn test_fail() {
     let caller = abi(MyContract, CONTRACT_ID);
     let result = caller.test_function {}();
-    assert(result == false)
+    assert(!result)
 }
 
 #[test]
 fn test_success() {
     let caller = abi(MyContract, CONTRACT_ID);
     let result = caller.test_function {}();
-    assert(result == true)
+    assert(result)
 }
 
 #[test]

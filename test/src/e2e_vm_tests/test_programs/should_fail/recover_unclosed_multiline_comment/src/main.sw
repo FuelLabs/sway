@@ -1,8 +1,8 @@
 contract;
 
-dep foo;
-dep bar;
-dep baz;
+mod foo;
+mod bar;
+mod baz;
 
 fn a() -> bool { 0 } // recovery witness
 

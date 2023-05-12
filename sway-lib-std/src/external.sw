@@ -1,4 +1,5 @@
-library external;
+//! Functions to work with external contracts.
+library;
 
 use ::constants::ZERO_B256;
 use ::contract_id::ContractId;

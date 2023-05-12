@@ -1,4 +1,4 @@
-library prelude;
+library;
 
 //! Defines the Sway core library prelude.
 //! The prelude consists of implicitly available items,
@@ -7,3 +7,5 @@ use ::primitives::*;
 use ::raw_ptr::*;
 use ::raw_slice::*;
 use ::never::*;
+use ::ops::*;
+use ::storage::*;

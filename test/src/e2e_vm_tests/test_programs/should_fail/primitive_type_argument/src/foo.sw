@@ -1,3 +1,3 @@
-library foo;
+library;
 
-dep bar/baz;
+mod bar;

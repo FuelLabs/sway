@@ -1,4 +1,4 @@
-library r#trait;
+library;
 
 pub trait Trait {
 }

@@ -1,10 +1,9 @@
-//! The `Bytes` type is used when a collection of tightly-packed arbitrary bytes is needed.
-library bytes;
+library;
 
 use ::{alloc::{alloc_bytes, realloc_bytes}, vec::Vec};
 use ::assert::assert;
 use ::intrinsics::size_of_val;
-use ::option::Option;
+use ::option::Option::{*, self};
 use ::convert::From;
 
 struct RawBytes {
@@ -50,6 +49,7 @@ impl RawBytes {
     }
 }
 
+/// A type used to represent raw bytes.
 pub struct Bytes {
     buf: RawBytes,
     len: u64,
@@ -154,13 +154,13 @@ impl Bytes {
     /// ```
     pub fn pop(ref mut self) -> Option<u8> {
         if self.len == 0 {
-            return Option::None;
+            return None;
         };
         // Decrement length.
         self.len -= 1;
         let target = self.buf.ptr().add_uint_offset(self.len);
 
-        Option::Some(target.read_byte())
+        Some(target.read_byte())
     }
 
     /// Returns `Some(byte)` at `index`, or `None` if `index` is out of
@@ -183,12 +183,12 @@ impl Bytes {
     pub fn get(self, index: u64) -> Option<u8> {
         // First check that index is within bounds.
         if self.len <= index {
-            return Option::None;
+            return None;
         };
 
         let item_ptr = self.buf.ptr().add_uint_offset(index);
 
-        Option::Some(item_ptr.read_byte())
+        Some(item_ptr.read_byte())
     }
 
     /// Updates an element at position `index` with a new element `value`.
@@ -416,7 +416,9 @@ impl Bytes {
     /// assert(bytes.is_empty());
     /// ```
     pub fn clear(ref mut self) {
+        self.buf.ptr = alloc_bytes(0);
         self.len = 0;
+        self.buf.cap = 0;
     }
 
     /// Returns `true` if the vector contains no elements.
@@ -551,47 +553,66 @@ impl Bytes {
         vec
     }
 
-    /// Splits a `Bytes` at the given index, modifying the original and returning the right-hand side `Bytes`.
+    /// Divides one Bytes into two at an index.
+    ///
+    /// The first will contain all indices from `[0, mid)` (excluding the index
+    /// `mid` itself) and the second will contain all indices from `[mid, len)`
+    /// (excluding the index `len` itself).
     ///
     /// ### Arguments
     ///
-    /// * index - The index to split the original Bytes at
+    /// * mid - Index at which the Bytes is to be split
+    ///
+    /// ### Reverts
+    ///
+    /// * if `mid > self.len`
     ///
     /// ### Examples
     ///
     /// ```sway
-    ///
     /// use std:bytes::Bytes;
     ///
     /// let (mut bytes, a, b, c) = setup();
     /// assert(bytes.len() == 3);
-    /// let index = 1;
-    /// let (first, second) = bytes.split(index);
-    /// assert(first.capacity() == index);
-    /// assert(second.capacity() == bytes.len() - index);
-    /// assert(first.len() == 1);
-    /// assert(second.len() == 2);
+    /// let mid = 1;
+    /// let (left, right) = bytes.split_at(mid);
+    /// assert(left.capacity() == mid);
+    /// assert(right.capacity() == bytes.len() - mid);
+    /// assert(left.len() == 1);
+    /// assert(right.len() == 2);
     /// ```
-    pub fn split(ref mut self, index: u64) -> Bytes {
-        assert(index != 0);
-        assert(index < self.len - 1);
-        let mut second = Bytes::with_capacity(self.len - index);
+    pub fn split_at(self, mid: u64) -> (Bytes, Bytes) {
+        assert(self.len >= mid);
 
-        let mut i = index;
-        while i < self.len {
-            second.push(self.get(i).unwrap());
-            i += 1;
+        let left_len = mid;
+        let right_len = self.len - mid;
+
+        let mut left_bytes = Self {
+            buf: RawBytes::with_capacity(left_len),
+            len: left_len,
+        };
+        let mut right_bytes = Self {
+            buf: RawBytes::with_capacity(right_len),
+            len: right_len,
         };
 
-        self.len = index;
-        second
+        if mid > 0 {
+            self.buf.ptr().copy_bytes_to(left_bytes.buf.ptr(), left_len);
+        };
+        if mid != self.len {
+            self.buf.ptr().add_uint_offset(mid).copy_bytes_to(right_bytes.buf.ptr(), right_len);
+        };
+
+        left_bytes.len = left_len;
+        right_bytes.len = right_len;
+        (left_bytes, right_bytes)
     }
 
-    /// Joins two `Bytes` into a single larger `Bytes`.
+    /// Moves all elements of `other` into `self`, leaving `other` empty.
     ///
     /// ### Arguments
     ///
-    /// * other - The Bytes to join to self.
+    /// * other - The Bytes to append to self.
     ///
     /// ### Examples
     ///
@@ -612,26 +633,57 @@ impl Bytes {
     /// bytes2.push(9u8);
     /// assert(bytes2.len() == 3);
     ///
-    /// let mut joined = bytes.join(bytes2);
-    /// assert(joined.len() == bytes.len() + bytes2.len());
-    /// assert(joined.capacity() == bytes.len() + bytes2.len());
+    /// let first_length = bytes.len();
+    /// let second_length = bytes2.len();
+    /// let first_cap = bytes.capacity();
+    /// let second_cap = bytes2.capacity();
+    /// bytes.append(bytes2);
+    /// assert(bytes.len() == first_length + second_length);
+    /// assert(bytes.capacity() == first_length + first_length);
     /// ```
-    pub fn join(ref mut self, other: self) -> Self {
-        let mut joined = Bytes::with_capacity(self.len + other.len);
+    pub fn append(ref mut self, ref mut other: self) {
+        if other.len == 0 {
+            return
+        };
+
+        // optimization for when starting with empty bytes and appending to it
+        if self.len == 0 {
+            self = other;
+            other.clear();
+            return;
+        };
+
+        let both_len = self.len + other.len;
+        let other_start = self.len;
+
+        // reallocate with combined capacity, write `other`, set buffer capacity
+        self.buf.ptr = realloc_bytes(self.buf.ptr(), self.buf.capacity(), both_len);
 
         let mut i = 0;
-        while i < self.len {
-            joined.push(self.get(i).unwrap());
-            i += 1;
-        };
-
-        i = 0;
         while i < other.len {
-            joined.push(other.get(i).unwrap());
+            let new_ptr = self.buf.ptr().add_uint_offset(other_start);
+            new_ptr.add_uint_offset(i).write_byte(other.buf.ptr.add_uint_offset(i).read_byte());
             i += 1;
-        };
+        }
 
-        joined
+        // set capacity and length
+        self.buf.cap = both_len;
+        self.len = both_len;
+
+        // clear `other`
+        other.clear();
+    }
+
+    // Should be remove and replace when https://github.com/FuelLabs/sway/pull/3882 is resovled
+    pub fn from_raw_slice(slice: raw_slice) -> Self {
+        let number_of_bytes = slice.number_of_bytes();
+        Self {
+            buf: RawBytes {
+                ptr: slice.ptr(),
+                cap: number_of_bytes,
+            },
+            len: number_of_bytes,
+        }
     }
 }
 
@@ -642,14 +694,14 @@ impl core::ops::Eq for Bytes {
         }
 
         asm(result, r2: self.buf.ptr, r3: other.buf.ptr, r4: self.len) {
-            meq result r2 r3 r4;
+            meq  result r2 r3 r4;
             result: bool
         }
     }
 }
 
 impl AsRawSlice for Bytes {
-    /// Returns a raw slice to all of the elements in the vector.
+    /// Returns a raw slice of all of the elements in the vector.
     fn as_raw_slice(self) -> raw_slice {
         asm(ptr: (self.buf.ptr(), self.len)) { ptr: raw_slice }
     }
@@ -874,7 +926,7 @@ fn test_swap() {
 
 #[test()]
 fn test_set() {
-    let (mut bytes, a, b, c) = setup();
+    let (mut bytes, a, _b, c) = setup();
     assert(bytes.len() == 3);
     let d = 11u8;
 
@@ -938,19 +990,43 @@ fn test_bytes_limits() {
 }
 
 #[test()]
-fn test_split() {
-    let (mut original, a, b, c) = setup();
+fn test_split_at() {
+    let (mut original, _a, _b, _c) = setup();
     assert(original.len() == 3);
     let index = 1;
-    let second = original.split(index);
+    let (left, right) = original.split_at(index);
     assert(original.capacity() == 4);
-    assert(second.capacity() == 2);
-    assert(original.len() == 1);
-    assert(second.len() == 2);
+    assert(right.capacity() == 2);
+    assert(left.len() == 1);
+    assert(right.len() == 2);
 }
 
 #[test()]
-fn test_join() {
+fn test_split_at_0() {
+    let (mut original, _a, _b, _c) = setup();
+    assert(original.len() == 3);
+    let index = 0;
+    let (left, right) = original.split_at(index);
+    assert(original.capacity() == 4);
+    assert(right.capacity() == 3);
+    assert(left.len() == 0);
+    assert(right.len() == 3);
+}
+
+#[test()]
+fn test_split_at_len() {
+    let (mut original, _a, _b, _c) = setup();
+    assert(original.len() == 3);
+    let index = 3;
+    let (left, right) = original.split_at(index);
+    assert(original.capacity() == 4);
+    assert(right.capacity() == 0);
+    assert(left.len() == 3);
+    assert(right.len() == 0);
+}
+
+#[test()]
+fn test_append() {
     let (mut bytes, a, b, c) = setup();
     assert(bytes.len() == 3);
     assert(bytes.get(0).unwrap() == a);
@@ -969,21 +1045,68 @@ fn test_join() {
     assert(bytes2.get(1).unwrap() == e);
     assert(bytes2.get(2).unwrap() == f);
 
-    let mut joined = bytes.join(bytes2);
-    assert(joined.len() == bytes.len() + bytes2.len());
-    assert(joined.capacity() == bytes.len() + bytes2.len());
+    let first_length = bytes.len();
+    let second_length = bytes2.len();
+    let _first_cap = bytes.capacity();
+    let _second_cap = bytes2.capacity();
+    bytes.append(bytes2);
+    assert(bytes.len() == first_length + second_length);
+    assert(bytes.capacity() == first_length + first_length);
     let values = [a, b, c, d, e, f];
     let mut i = 0;
     while i < 6 {
-        assert(joined.get(i).unwrap() == values[i]);
+        assert(bytes.get(i).unwrap() == values[i]);
         i += 1;
     };
 }
 
 #[test()]
-fn test_eq() {
+fn test_append_empty_bytes() {
+    // nothing is appended or modified when appending an empty bytes.
     let (mut bytes, a, b, c) = setup();
+    assert(bytes.len() == 3);
+    assert(bytes.get(0).unwrap() == a);
+    assert(bytes.get(1).unwrap() == b);
+    assert(bytes.get(2).unwrap() == c);
+
+    let mut bytes2 = Bytes::new();
+    assert(bytes2.len() == 0);
+    let first_length = bytes.len();
+    let first_cap = bytes.capacity();
+    bytes.append(bytes2);
+    assert(bytes.len() == first_length);
+    assert(bytes.capacity() == first_cap);
+}
+
+#[test()]
+fn test_append_to_empty_bytes() {
+    let mut bytes = Bytes::new();
+    assert(bytes.len() == 0);
     let (mut bytes2, a, b, c) = setup();
+    assert(bytes2.len() == 3);
+
+    let _first_length = bytes.len();
+    let _first_cap = bytes.capacity();
+    let second_length = bytes2.len();
+    let second_cap = bytes2.capacity();
+    bytes.append(bytes2);
+    assert(bytes.len() == second_length);
+    assert(bytes.capacity() == second_cap);
+    let values = [a, b, c];
+    let mut i = 0;
+    while i < 3 {
+        assert(bytes.get(i).unwrap() == values[i]);
+        i += 1;
+    };
+
+    assert(bytes2.len() == 0);
+    assert(bytes2.capacity() == 0);
+}
+
+#[test()]
+fn test_eq() {
+    let (mut bytes, _a, _b, _c) = setup();
+    let (mut bytes2, _a, _b, _c) = setup();
     assert(bytes == bytes2);
 
     let d = 5u8;
@@ -1008,7 +1131,7 @@ fn test_eq() {
 #[test()]
 fn test_sha256() {
     use ::hash::sha256;
-    let (mut bytes, a, b, c) = setup();
+    let (mut bytes, _a, _b, _c) = setup();
     bytes.push(0u8);
     bytes.push(0u8);
     bytes.push(0u8);
@@ -1022,7 +1145,7 @@ fn test_sha256() {
 #[test()]
 fn test_keccak256() {
     use ::hash::keccak256;
-    let (mut bytes, a, b, c) = setup();
+    let (mut bytes, _a, _b, _c) = setup();
     bytes.push(0u8);
     bytes.push(0u8);
     bytes.push(0u8);

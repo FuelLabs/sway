@@ -1,30 +1,24 @@
 use assert_matches::assert_matches;
 use fuels::{
     prelude::*,
-    programs::execution_script::ExecutableFuelCall,
-    tx::{ConsensusParameters, Receipt, Transaction},
+    tx::Receipt,
+    types::transaction_builders::{ScriptTransactionBuilder, TransactionBuilder},
 };
 
-async fn call_script(script_data: Vec<u8>) -> Result<Vec<Receipt>, fuels::prelude::Error> {
-    let bin = std::fs::read("test_projects/script_data/out/debug/script_data.bin");
-
+async fn call_script(script_data: Vec<u8>) -> Result<Vec<Receipt>> {
     let wallet = launch_provider_and_get_wallet().await;
 
-    let mut tx = Transaction::script(
-        0,
-        ConsensusParameters::DEFAULT.max_gas_per_tx,
-        0,
-        bin.unwrap(),
-        script_data,
-        vec![],
-        vec![],
-        vec![],
-    );
+    let mut tx =
+        ScriptTransactionBuilder::prepare_transfer(vec![], vec![], TxParameters::default())
+            .set_script(std::fs::read(
+                "test_projects/script_data/out/debug/script_data.bin",
+            )?)
+            .set_script_data(script_data)
+            .build()?;
 
-    wallet.sign_transaction(&mut tx).await.unwrap();
+    wallet.sign_transaction(&mut tx)?;
 
-    let script = ExecutableFuelCall::new(tx);
-    script.execute(&wallet.get_provider().unwrap()).await
+    wallet.provider().unwrap().send_transaction(&tx).await
 }
 
 #[tokio::test]

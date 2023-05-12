@@ -36,44 +36,44 @@ storage {
 impl CalledContract for Contract {
     #[storage(write)]
     fn set_value(new_value: u64) {
-        storage.value = new_value;
+        storage.value.write(new_value);
     }
 
     #[storage(write)]
     fn set_value_multiple(a: u64, b: u64) {
-        storage.value = a + b;
+        storage.value.write(a + b);
     }
 
     #[storage(write)]
     fn set_value_multiple_complex(a: MyStruct, b: str[4]) {
         //revert(999);
-        storage.value = a.b[1];
-        storage.value_str = b;
-        storage.value_bool = a.a;
+        storage.value.write(a.b[1]);
+        storage.value_str.write(b);
+        storage.value_bool.write(a.a);
     }
 
     #[storage(read)]
     fn get_value() -> u64 {
-        storage.value
+        storage.value.read()
     }
 
     #[storage(write)]
     fn set_b256_value(new_value: b256) {
-        storage.value_b256 = new_value;
+        storage.value_b256.write(new_value);
     }
 
     #[storage(read)]
     fn get_b256_value() -> b256 {
-        storage.value_b256
+        storage.value_b256.read()
     }
 
     #[storage(read)]
     fn get_str_value() -> str[4] {
-        storage.value_str
+        storage.value_str.read()
     }
 
     #[storage(read)]
     fn get_bool_value() -> bool {
-        storage.value_bool
+        storage.value_bool.read()
     }
 }

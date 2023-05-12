@@ -1,0 +1,5 @@
+category = "fail"
+
+# check: $()Nested packages are not supported, please consider seperating the nested package at
+# check: $() from the package at
+# check: $(), or if it makes sense consider creating a workspace.

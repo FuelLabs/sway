@@ -23,6 +23,15 @@ impl Format for Pattern {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         match self {
+            Self::Or {
+                lhs,
+                pipe_token: _,
+                rhs,
+            } => {
+                lhs.format(formatted_code, formatter)?;
+                formatted_code.push_str(" | ");
+                rhs.format(formatted_code, formatter)?;
+            }
             Self::Wildcard { underscore_token } => {
                 formatted_code.push_str(underscore_token.span().as_str())
             }
@@ -38,6 +47,9 @@ impl Format for Pattern {
                     write!(formatted_code, "{} ", mut_token.span().as_str())?;
                 }
                 name.format(formatted_code, formatter)?;
+            }
+            Self::AmbiguousSingleIdent(ident) => {
+                ident.format(formatted_code, formatter)?;
             }
             Self::Literal(lit) => lit.format(formatted_code, formatter)?,
             Self::Constant(path) => path.format(formatted_code, formatter)?,
@@ -263,6 +275,15 @@ impl LeafSpans for Pattern {
             Pattern::Wildcard { underscore_token } => {
                 collected_spans.push(ByteSpan::from(underscore_token.span()));
             }
+            Pattern::Or {
+                lhs,
+                pipe_token,
+                rhs,
+            } => {
+                collected_spans.append(&mut lhs.leaf_spans());
+                collected_spans.push(ByteSpan::from(pipe_token.span()));
+                collected_spans.append(&mut rhs.leaf_spans());
+            }
             Pattern::Var {
                 reference,
                 mutable,
@@ -275,6 +296,9 @@ impl LeafSpans for Pattern {
                     collected_spans.push(ByteSpan::from(mutable.span()));
                 }
                 collected_spans.push(ByteSpan::from(name.span()));
+            }
+            Pattern::AmbiguousSingleIdent(ident) => {
+                collected_spans.push(ByteSpan::from(ident.span()));
             }
             Pattern::Literal(literal) => {
                 collected_spans.append(&mut literal.leaf_spans());

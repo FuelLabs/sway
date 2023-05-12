@@ -1,6 +1,4 @@
-library lib_multi_test;
-
-use std::logging::log;
+library;
 
 fn pow2(x: u64) -> u64 {
     log(x);

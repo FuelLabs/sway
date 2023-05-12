@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()foo()
+# nextln: $()Could not find symbol "foo" in this scope.

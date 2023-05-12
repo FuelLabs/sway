@@ -15,122 +15,88 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   REGISTRY: ghcr.io
+  RUST_VERSION: 1.69.0
+  NIGHTLY_RUST_VERSION: nightly-2023-02-08
 
 jobs:
   build-sway-lib-core:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
-          toolchain: stable
-      - uses: Swatinem/rust-cache@v1
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
       - name: Install Forc
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --locked --debug --path ./forc
+        run: cargo install --locked --debug --path ./forc
       - name: Build sway-lib-core
         run: forc build --path sway-lib-core
 
   build-sway-lib-std:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
-          toolchain: stable
-      - uses: Swatinem/rust-cache@v1
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
       - name: Install Forc
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --locked --debug --path ./forc
+        run: cargo install --locked --debug --path ./forc
       - name: Build sway-lib-std
         run: forc build --path sway-lib-std
 
   build-sway-examples:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
-          toolchain: stable
-      - uses: Swatinem/rust-cache@v1
-      - name: Install Forc
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --locked --debug --path ./forc
-      - name: Install Forc fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --locked --debug --path ./forc-plugins/forc-fmt
-      - name: Build Sway examples
-        uses: actions-rs/cargo@v1
-        with:
-          command: run
-          args: --locked --bin examples-checker build --all-examples
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Build Sway examples workspace
+        run: cargo run --locked -p forc -- build --locked --path ./examples/Forc.toml
 
   forc-fmt-check-sway-examples:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
-          toolchain: stable
-      - uses: Swatinem/rust-cache@v1
-      - name: Install Forc
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --locked --debug --path ./forc
-      - name: Install Forc fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --locked --debug --path ./forc-plugins/forc-fmt
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
       - name: Check Sway examples formatting
-        uses: actions-rs/cargo@v1
-        with:
-          command: run
-          args: --locked --bin examples-checker fmt --all-examples
+        run: cargo run --locked -p forc-fmt -- --check --path ./examples
 
   build-mdbook:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
-          toolchain: stable
-      - uses: Swatinem/rust-cache@v1
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
       - name: Install Forc
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --locked --debug --path ./forc
+        run: cargo install --locked --debug --path ./forc
       - name: Install Forc plugins
         run: |
           cargo install --locked --debug --path ./forc-plugins/forc-fmt
           cargo install --locked --debug --path ./forc-plugins/forc-lsp
           cargo install --locked --debug --path ./forc-plugins/forc-client
+          cargo install --locked --debug --path ./forc-plugins/forc-doc
           cargo install --locked --debug --path ./forc-plugins/forc-tx
           cargo install --locked --debug forc-explore
       - name: Install mdbook-forc-documenter
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --locked --debug --path ./scripts/mdbook-forc-documenter
+        run: cargo install --locked --debug --path ./scripts/mdbook-forc-documenter
+
       - name: Run mdbook build
         uses: peaceiris/actions-mdbook@v1
         with:
-          mdbook-version: "0.4.15"
+          mdbook-version: "0.4.25"
       - name: Emit book logs to tmp.txt, fail if build logs contain 'ERROR'
         run: |
           MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs/book &> tmp.txt
@@ -154,20 +120,34 @@ jobs:
             rm tmp.txt && exit 0
           fi
 
+  build-forc-doc-sway-lib-std:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Install Forc
+        run: cargo install --locked --debug --path ./forc
+      - name: Install Forc plugins
+        run: |
+          cargo install --locked --debug --path ./forc-plugins/forc-doc
+      - name: Build sway-lib-std docs
+        run: forc doc --manifest-path ./sway-lib-std
+
   build-forc-test-project:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
-          toolchain: stable
-      - uses: Swatinem/rust-cache@v1
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
       - name: Install Forc
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --locked --debug --path ./forc
+        run: cargo install --locked --debug --path ./forc
       - name: Initialize test project
         run: forc new test-proj
       - name: Update project forc manifest to use local sway-lib-std
@@ -178,10 +158,7 @@ jobs:
       # - name: Run test project's test suite
       #   run: (cd test-proj && forc test)
       - name: Install cargo-generate
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: cargo-generate
+        run: cargo install cargo-generate
       - name: Generate Rust Integration Tests
         run: (cd test-proj && cargo generate --init --path ../templates/sway-test-rs --name test-proj)
       - name: Update project cargo manifest with workspace
@@ -195,41 +172,38 @@ jobs:
   cargo-build-workspace:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
-          toolchain: stable
-      - uses: Swatinem/rust-cache@v1
-      - uses: actions-rs/cargo@v1
-        name: Cargo Build Workspace
-        with:
-          command: build
-          args: --locked --workspace --all-features --all-targets
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+      - name: "Build Workspace"
+        run: cargo build --locked --workspace --all-features --all-targets
         env:
           RUSTFLAGS: "-D warnings"
 
   cargo-clippy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: stable
-      - uses: Swatinem/rust-cache@v1
+          toolchain: ${{ env.RUST_VERSION }}
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
       - name: Check Clippy Linter
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all-features --all-targets -- -D warnings
+        run: cargo clippy --all-features --all-targets -- -D warnings
 
   cargo-toml-fmt-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: stable
+          toolchain: ${{ env.RUST_VERSION }}
       - name: Install Cargo.toml linter
         uses: baptiste0928/cargo-install@v1
         with:
@@ -241,106 +215,147 @@ jobs:
   cargo-fmt-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: stable
+          toolchain: ${{ env.RUST_VERSION }}
+          components: rustfmt
       - name: Check Formatting
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+        run: cargo fmt --all -- --check
 
   cargo-run-e2e-test:
     runs-on: ubuntu-latest
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.15.1
+        image: ghcr.io/fuellabs/fuel-core:v0.17.8
         ports:
           - 4000:4000
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
-          toolchain: stable
-      - uses: Swatinem/rust-cache@v1
-      - name: Cargo Run E2E Tests
-        uses: actions-rs/cargo@v1
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Cargo Run E2E Tests (Fuel VM)
+        run: cargo run --locked --release --bin test -- --locked
+
+  cargo-run-e2e-test-evm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
-          command: run
-          args: --locked --release --bin test -- --locked
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Cargo Run E2E Tests (EVM)
+        run: cargo run --locked --release --bin test -- --target evm --locked
+
+  cargo-run-e2e-test-midenvm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Cargo Run E2E Tests (EVM)
+        run: cargo run --locked --release --bin test -- --target midenvm --locked
 
   # TODO: Remove this upon merging std tests with the rest of the E2E tests.
   cargo-test-lib-std:
-    runs-on: ubuntu-latest
+    runs-on: buildjet-4vcpu-ubuntu-2204
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
-          toolchain: stable
-      - uses: Swatinem/rust-cache@v1
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
       - name: Build All Tests
-        run: cd test/src/sdk-harness && bash build.sh --locked && cd ../../../
+        run: cargo run --locked -p forc -- build --locked --path ./test/src/sdk-harness
       - name: Cargo Test sway-lib-std
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
+        run: cargo test --locked --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
 
   forc-unit-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
-          toolchain: stable
-      - uses: Swatinem/rust-cache@v1
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
       - name: Install Forc
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --locked --debug --path ./forc
+        run: cargo install --locked --debug --path ./forc
       - name: Run Unit Tests
         run: forc build --path sway-lib-core && forc test --path sway-lib-core && forc build --path sway-lib-std && forc test --path sway-lib-std
+
+  forc-pkg-fuels-deps-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo-deps
+        run: cargo install cargo-deps
+
+      # We require this check to avoid cyclic dependencies between 'fuels' and 'forc-pkg'.
+      # Detailed explanation is found in the echo below.
+      - name: Check 'forc-pkg' dependencies for 'fuels' crates
+        run: |
+          deps=$(cargo deps --manifest-path forc-pkg/Cargo.toml)
+
+          case "$deps" in
+            *fuels*)
+              echo -e "\nFound dependency on a 'fuels' crate.
+          To avoid cyclic dependencies between 'fuels' and 'forc-pkg',
+          we want to avoid using 'fuels' crates in 'forc-pkg' since 'fuels-rs' depends on 'forc-pkg' for its integration tests.
+
+          To fix this, please remove any 'fuels' dependency from forc-pkg/Cargo.toml.
+
+          Detailed explanation here: https://github.com/FuelLabs/fuels-rs/issues/752#issuecomment-1386242106"
+              exit 1
+              ;;
+            *)
+              exit 0
+              ;;
+          esac
+
 
   cargo-test-workspace:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
-          toolchain: stable
-      - uses: Swatinem/rust-cache@v1
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
       - name: Run tests
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --locked
+        run: cargo test --locked
 
   cargo-unused-deps-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
           # `cargo-udeps` requires nightly to run
-          toolchain: nightly
-          default: true
-      - uses: Swatinem/rust-cache@v1
+          toolchain: ${{ env.NIGHTLY_RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
       - name: Install cargo-udeps
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --locked cargo-udeps
+        run: cargo install --locked cargo-udeps
       - name: Check Unused Deps
-        uses: actions-rs/cargo@v1
-        with:
-          command: udeps
-          args: --locked --all-targets
+        run: cargo udeps --locked --all-targets
 
   notify-slack-on-failure:
     needs:
@@ -353,6 +368,7 @@ jobs:
         cargo-clippy,
         cargo-fmt-check,
         cargo-run-e2e-test,
+        cargo-run-e2e-test-evm,
         cargo-test-lib-std,
         cargo-test-workspace,
         cargo-unused-deps-check,
@@ -372,34 +388,19 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
 
-  publish:
-    # Only do this job if publishing a release
-    needs:
-      [
-        build-forc-test-project,
-        build-sway-examples,
-        build-sway-lib-core,
-        build-sway-lib-std,
-        cargo-build-workspace,
-        cargo-clippy,
-        cargo-fmt-check,
-        cargo-run-e2e-test,
-        cargo-test-lib-std,
-        cargo-test-workspace,
-        cargo-unused-deps-check,
-      ]
+  # This job carries out some validation steps to prepare for a publish.
+  # This is a separate job because we want this to fail fast if something is invalid here.
+  pre-publish-check:
     if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: stable
-          override: true
+          toolchain: ${{ env.RUST_VERSION }}
 
       - name: Verify tag version
         run: |
@@ -424,8 +425,52 @@ jobs:
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-types/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-utils/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} swayfmt/Cargo.toml
+
+      - name: Notify if Job Fails
+        uses: ravsamhq/notify-slack-action@v2
+        if: always()
+        with:
+          status: ${{ job.status }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          notification_title: "{workflow} has {status_message}"
+          message_format: "{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>"
+          footer: ""
+          notify_when: "failure"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
+
+  publish:
+    # Only do this job if publishing a release
+    needs:
+      [
+        build-forc-test-project,
+        build-sway-examples,
+        build-sway-lib-core,
+        build-sway-lib-std,
+        cargo-build-workspace,
+        cargo-clippy,
+        cargo-fmt-check,
+        cargo-run-e2e-test,
+        cargo-run-e2e-test-evm,
+        cargo-test-lib-std,
+        cargo-test-workspace,
+        cargo-unused-deps-check,
+        pre-publish-check,
+      ]
+    if: github.event_name == 'release' && github.event.action == 'published'
+    runs-on: buildjet-4vcpu-ubuntu-2204
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
       - name: Publish crate
-        uses: katyo/publish-crates@v1
+        uses: katyo/publish-crates@v2
         with:
           publish-delay: 30000
           registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
@@ -454,6 +499,7 @@ jobs:
         cargo-clippy,
         cargo-fmt-check,
         cargo-run-e2e-test,
+        cargo-run-e2e-test-evm,
         cargo-test-lib-std,
         cargo-test-workspace,
         cargo-unused-deps-check,
@@ -466,7 +512,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Docker meta
         id: meta
@@ -528,7 +574,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Docker meta
         id: meta
@@ -603,17 +649,15 @@ jobs:
             svm_target_platform: macosx-aarch64
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
-          toolchain: stable
+          toolchain: ${{ env.RUST_VERSION }}
           target: ${{ matrix.job.target }}
-          override: true
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
           key: "${{ matrix.job.target }}"
@@ -628,6 +672,29 @@ jobs:
         run: |
           cross build --profile=release --target ${{ matrix.job.target }} --bins
 
+      - name: Strip release binaries x86_64-linux-gnu
+        if: matrix.job.target == 'x86_64-unknown-linux-gnu'
+        run: |
+          for BINARY in forc forc-fmt forc-lsp forc-deploy forc-run forc-doc forc-tx forc-submit; do
+            strip "target/${{ matrix.job.target }}/release/$BINARY"
+          done
+      - name: Strip release binaries aarch64-linux-gnu
+        if: matrix.job.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          for BINARY in forc forc-fmt forc-lsp forc-deploy forc-run forc-doc forc-tx forc-submit; do
+            docker run --rm -v \
+            "$PWD/target:/target:Z" \
+            ghcr.io/cross-rs/${{ matrix.job.target }}:main \
+            aarch64-linux-gnu-strip \
+            /target/${{ matrix.job.target }}/release/$BINARY
+          done
+      - name: Strip release binaries mac
+        if: matrix.job.os == 'macos-latest'
+        run: |
+          for BINARY in forc forc-fmt forc-lsp forc-deploy forc-run forc-doc forc-tx forc-submit; do
+            strip -x "target/${{ matrix.job.target }}/release/$BINARY"
+          done
+
       - name: Prep Assets
         id: prep_assets
         env:
@@ -638,7 +705,7 @@ jobs:
           ZIP_FILE_NAME=forc-binaries-${{ env.PLATFORM_NAME }}_${{ env.ARCH }}.tar.gz
           echo "ZIP_FILE_NAME=$ZIP_FILE_NAME" >> $GITHUB_ENV
           mkdir -pv ./forc-binaries
-          for BINARY in forc forc-fmt forc-lsp forc-deploy forc-run forc-doc forc-tx; do
+          for BINARY in forc forc-fmt forc-lsp forc-deploy forc-run forc-doc forc-tx forc-submit; do
             cp "target/${{ matrix.job.target }}/release/$BINARY" ./forc-binaries
           done
           tar -czvf $ZIP_FILE_NAME ./forc-binaries

@@ -1,6 +1,6 @@
-library inner;
+library;
 
-dep inner2;
+mod inner2;
 
 #[test]
 fn test_meaning_of_life_inner() {
@@ -10,5 +10,5 @@ fn test_meaning_of_life_inner() {
 
 #[test]
 fn log_test_inner() {
-    std::logging::log(1u16);
+    log(1u16);
 }

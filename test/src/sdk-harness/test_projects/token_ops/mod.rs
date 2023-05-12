@@ -1,7 +1,7 @@
 use fuels::{
     prelude::*,
     tx::AssetId,
-    types::core::{Bits256, Identity},
+    types::{Bits256, Identity},
 };
 use std::str::FromStr;
 
@@ -435,14 +435,13 @@ async fn can_send_message_output_without_data() {
     assert_eq!(Vec::<u8>::new(), message_receipt.data().unwrap());
 }
 
-async fn get_fuelcoin_instance(wallet: WalletUnlocked) -> (TestFuelCoinContract, ContractId) {
+async fn get_fuelcoin_instance(
+    wallet: WalletUnlocked,
+) -> (TestFuelCoinContract<WalletUnlocked>, ContractId) {
     let fuelcoin_id = Contract::deploy(
         "test_projects/token_ops/out/debug/token_ops.bin",
         &wallet,
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "test_projects/token_ops/out/debug/token_ops-storage_slots.json".to_string(),
-        )),
+        DeployConfiguration::default(),
     )
     .await
     .unwrap();
@@ -456,10 +455,7 @@ async fn get_balance_contract_id(wallet: WalletUnlocked) -> ContractId {
     let balance_id = Contract::deploy(
         "test_artifacts/balance_contract/out/debug/balance_contract.bin",
         &wallet,
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "test_projects/token_ops/out/debug/token_ops-storage_slots.json".to_string(),
-        )),
+        DeployConfiguration::default(),
     )
     .await
     .unwrap();

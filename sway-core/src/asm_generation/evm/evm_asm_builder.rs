@@ -10,16 +10,12 @@ use crate::{
     error::*,
     metadata::MetadataManager,
 };
-
+use etk_ops::london::*;
 use sway_error::error::CompileError;
 use sway_ir::{Context, *};
 use sway_types::Span;
 
 use etk_asm::{asm::Assembler, ops::*};
-
-mod ethabi {
-    pub use fuel_ethabi::*;
-}
 
 /// A smart contract is created by sending a transaction with an empty "to" field.
 /// When this is done, the Ethereum virtual machine (EVM) runs the bytecode which is
@@ -64,6 +60,9 @@ pub struct EvmAsmBuilder<'ir> {
 
     // Monotonically increasing unique identifier for label generation.
     label_idx: usize,
+
+    // In progress EVM asm section.
+    pub(super) cur_section: Option<EvmAsmSection>,
 }
 
 #[derive(Default, Debug)]
@@ -77,12 +76,12 @@ impl EvmAsmSection {
         Self::default()
     }
 
-    pub fn size(&self) -> u32 {
+    pub fn size(&self) -> usize {
         let mut asm = Assembler::new();
         if asm.push_all(self.ops.clone()).is_err() {
             panic!("Could not size EVM assembly section");
         }
-        asm.take().len() as u32
+        asm.take().len()
     }
 }
 
@@ -112,7 +111,7 @@ impl<'ir> AsmBuilder for EvmAsmBuilder<'ir> {
 #[allow(dead_code)]
 impl<'ir> EvmAsmBuilder<'ir> {
     pub fn new(program_kind: ProgramKind, context: &'ir Context) -> Self {
-        let mut b = EvmAsmBuilder {
+        Self {
             program_kind,
             sections: Vec::new(),
             func_label_map: HashMap::new(),
@@ -120,10 +119,8 @@ impl<'ir> EvmAsmBuilder<'ir> {
             context,
             md_mgr: MetadataManager::default(),
             label_idx: 0,
-        };
-        let s = b.generate_function();
-        b.sections.push(s);
-        b
+            cur_section: None,
+        }
     }
 
     pub fn finalize(&self) -> AsmBuilderResult {
@@ -138,8 +135,10 @@ impl<'ir> EvmAsmBuilder<'ir> {
             global_abi.append(&mut section.abi.clone());
 
             if it.peek().is_some() {
-                size += AbstractOp::Op(Op::Invalid).size().unwrap();
-                global_ops.push(AbstractOp::Op(Op::Invalid));
+                size += AbstractOp::Op(Op::Invalid(etk_ops::london::Invalid))
+                    .size()
+                    .unwrap();
+                global_ops.push(AbstractOp::Op(Op::Invalid(etk_ops::london::Invalid)));
             }
         }
 
@@ -161,8 +160,8 @@ impl<'ir> EvmAsmBuilder<'ir> {
     fn generate_constructor(
         &self,
         is_payable: bool,
-        data_size: u32,
-        data_offset: u32,
+        data_size: usize,
+        data_offset: usize,
     ) -> EvmAsmSection {
         // For more details and explanations see:
         // https://medium.com/@hayeah/diving-into-the-ethereum-vm-part-5-the-smart-contract-creation-process-cb7b6133b855.
@@ -186,24 +185,31 @@ impl<'ir> EvmAsmBuilder<'ir> {
             //   jumpdest
             //   pop
 
-            s.ops.push(AbstractOp::new(Op::CallValue).unwrap());
-            s.ops.push(AbstractOp::new(Op::Dup1).unwrap());
-            s.ops.push(AbstractOp::new(Op::IsZero).unwrap());
+            s.ops.push(AbstractOp::new(Op::CallValue(CallValue)));
+            s.ops.push(AbstractOp::new(Op::Dup1(Dup1)));
+            s.ops.push(AbstractOp::new(Op::IsZero(IsZero)));
             let tag_label = "tag_1";
+            s.ops.push(AbstractOp::new(Op::Push1(Push1(Imm::with_label(
+                tag_label,
+            )))));
+            s.ops.push(AbstractOp::new(Op::JumpI(JumpI)));
             s.ops
-                .push(AbstractOp::Op(Op::with_label(Op::Push1(()), tag_label)));
-            s.ops.push(AbstractOp::new(Op::JumpI).unwrap());
-            s.ops
-                .push(AbstractOp::with_immediate(Op::Push1(()), &[0x00]).unwrap());
-            s.ops.push(AbstractOp::new(Op::Dup1).unwrap());
-            s.ops.push(AbstractOp::new(Op::Revert).unwrap());
+                .push(AbstractOp::new(Op::Push1(Push1(Imm::with_expression(
+                    Expression::Terminal(0x00.into()),
+                )))));
+            s.ops.push(AbstractOp::new(Op::Dup1(Dup1)));
+            s.ops.push(AbstractOp::new(Op::Revert(Revert)));
 
             s.ops.push(AbstractOp::Label("tag_1".into()));
-            s.ops.push(AbstractOp::new(Op::JumpDest).unwrap());
-            s.ops.push(AbstractOp::Op(Op::Pop));
+            s.ops.push(AbstractOp::new(Op::JumpDest(JumpDest)));
+            s.ops.push(AbstractOp::Op(Op::Pop(Pop)));
         }
 
         self.copy_contract_code_to_memory(&mut s, data_size, data_offset);
+
+        s.abi.push(ethabi::operation::Operation::Constructor(
+            ethabi::Constructor { inputs: vec![] },
+        ));
 
         s
     }
@@ -211,8 +217,8 @@ impl<'ir> EvmAsmBuilder<'ir> {
     fn copy_contract_code_to_memory(
         &self,
         s: &mut EvmAsmSection,
-        data_size: u32,
-        data_offset: u32,
+        data_size: usize,
+        data_offset: usize,
     ) {
         // Copy contract code into memory, and return.
         //   push1 dataSize
@@ -225,42 +231,21 @@ impl<'ir> EvmAsmBuilder<'ir> {
         s.ops.push(AbstractOp::Push(Imm::from(Terminal::Number(
             data_size.into(),
         ))));
-        s.ops.push(AbstractOp::new(Op::Dup1).unwrap());
+        s.ops.push(AbstractOp::new(Op::Dup1(Dup1)));
         s.ops.push(AbstractOp::Push(Imm::from(Terminal::Number(
             data_offset.into(),
         ))));
         s.ops
-            .push(AbstractOp::with_immediate(Op::Push1(()), &[0x00]).unwrap());
-        s.ops.push(AbstractOp::Op(Op::CodeCopy));
-        s.ops
-            .push(AbstractOp::with_immediate(Op::Push1(()), &[0x00]).unwrap());
-        s.ops.push(AbstractOp::Op(Op::Return));
-    }
+            .push(AbstractOp::new(Op::Push1(Push1(Imm::with_expression(
+                Expression::Terminal(0x00.into()),
+            )))));
+        s.ops.push(AbstractOp::Op(Op::CodeCopy(CodeCopy)));
 
-    fn generate_function(&mut self) -> EvmAsmSection {
-        let mut s = EvmAsmSection::new();
-
-        // push1 0x80 # selector("conduct_auto(uint256,uint256,uint256)")
-        // push1 0x40
-        // mstore
-        // push1 0x00
-        // dup1
-        // revert
         s.ops
-            .push(AbstractOp::with_immediate(Op::Push1(()), &[0x80]).unwrap());
-        s.ops
-            .push(AbstractOp::with_immediate(Op::Push1(()), &[0x40]).unwrap());
-        s.ops.push(AbstractOp::new(Op::MStore).unwrap());
-        s.ops
-            .push(AbstractOp::with_immediate(Op::Push1(()), &[0x00]).unwrap());
-        s.ops.push(AbstractOp::new(Op::Dup1).unwrap());
-        s.ops.push(AbstractOp::new(Op::Revert).unwrap());
-
-        s.abi.push(ethabi::operation::Operation::Constructor(
-            ethabi::Constructor { inputs: vec![] },
-        ));
-
-        s
+            .push(AbstractOp::new(Op::Push1(Push1(Imm::with_expression(
+                Expression::Terminal(0x00.into()),
+            )))));
+        s.ops.push(AbstractOp::Op(Op::Return(Return)));
     }
 
     fn setup_free_memory_pointer(&self, s: &mut EvmAsmSection) {
@@ -276,11 +261,16 @@ impl<'ir> EvmAsmBuilder<'ir> {
         //   push1 0x80
         //   push1 0x40
         //   mstore
+
         s.ops
-            .push(AbstractOp::with_immediate(Op::Push1(()), &[0x80]).unwrap());
+            .push(AbstractOp::new(Op::Push1(Push1(Imm::with_expression(
+                Expression::Terminal(0x80.into()),
+            )))));
         s.ops
-            .push(AbstractOp::with_immediate(Op::Push1(()), &[0x40]).unwrap());
-        s.ops.push(AbstractOp::new(Op::MStore).unwrap());
+            .push(AbstractOp::new(Op::Push1(Push1(Imm::with_expression(
+                Expression::Terminal(0x40.into()),
+            )))));
+        s.ops.push(AbstractOp::new(Op::MStore(MStore)));
     }
 
     fn empty_span() -> Span {
@@ -303,7 +293,6 @@ impl<'ir> EvmAsmBuilder<'ir> {
         let mut errors = Vec::new();
         if let Some(instruction) = instr_val.get_instruction(self.context) {
             match instruction {
-                Instruction::AddrOf(arg) => self.compile_addr_of(instr_val, arg),
                 Instruction::AsmBlock(asm, args) => {
                     check!(
                         self.compile_asm_block(instr_val, asm, args),
@@ -318,9 +307,7 @@ impl<'ir> EvmAsmBuilder<'ir> {
                 }
                 Instruction::Branch(to_block) => self.compile_branch(to_block),
                 Instruction::Call(func, args) => self.compile_call(instr_val, func, args),
-                Instruction::CastPtr(val, ty, offs) => {
-                    self.compile_cast_ptr(instr_val, val, ty, *offs)
-                }
+                Instruction::CastPtr(val, ty) => self.compile_cast_ptr(instr_val, val, ty),
                 Instruction::Cmp(pred, lhs_value, rhs_value) => {
                     self.compile_cmp(instr_val, pred, lhs_value, rhs_value)
                 }
@@ -341,14 +328,6 @@ impl<'ir> EvmAsmBuilder<'ir> {
                     gas,
                     ..
                 } => self.compile_contract_call(instr_val, params, coins, asset_id, gas),
-                Instruction::ExtractElement {
-                    array,
-                    ty,
-                    index_val,
-                } => self.compile_extract_element(instr_val, array, ty, index_val),
-                Instruction::ExtractValue {
-                    aggregate, indices, ..
-                } => self.compile_extract_value(instr_val, aggregate, indices),
                 Instruction::FuelVm(fuel_vm_instr) => {
                     errors.push(CompileError::Internal(
                         "Invalid FuelVM IR instruction provided to the EVM code gen.",
@@ -357,19 +336,12 @@ impl<'ir> EvmAsmBuilder<'ir> {
                             .unwrap_or_else(Self::empty_span),
                     ));
                 }
-                Instruction::GetLocal(local_var) => self.compile_get_local(instr_val, local_var),
-                Instruction::InsertElement {
-                    array,
-                    ty,
-                    value,
-                    index_val,
-                } => self.compile_insert_element(instr_val, array, ty, value, index_val),
-                Instruction::InsertValue {
-                    aggregate,
-                    value,
+                Instruction::GetElemPtr {
+                    base,
+                    elem_ptr_ty,
                     indices,
-                    ..
-                } => self.compile_insert_value(instr_val, aggregate, value, indices),
+                } => self.compile_get_elem_ptr(instr_val, base, elem_ptr_ty, indices),
+                Instruction::GetLocal(local_var) => self.compile_get_local(instr_val, local_var),
                 Instruction::IntToPtr(val, _) => self.compile_int_to_ptr(instr_val, val),
                 Instruction::Load(src_val) => check!(
                     self.compile_load(instr_val, src_val),
@@ -377,12 +349,19 @@ impl<'ir> EvmAsmBuilder<'ir> {
                     warnings,
                     errors
                 ),
-                Instruction::MemCopy {
-                    dst_val,
-                    src_val,
+                Instruction::MemCopyBytes {
+                    dst_val_ptr,
+                    src_val_ptr,
                     byte_len,
-                } => self.compile_mem_copy(instr_val, dst_val, src_val, *byte_len),
+                } => self.compile_mem_copy_bytes(instr_val, dst_val_ptr, src_val_ptr, *byte_len),
+                Instruction::MemCopyVal {
+                    dst_val_ptr,
+                    src_val_ptr,
+                } => self.compile_mem_copy_val(instr_val, dst_val_ptr, src_val_ptr),
                 Instruction::Nop => (),
+                Instruction::PtrToInt(ptr_val, int_ty) => {
+                    self.compile_ptr_to_int(instr_val, ptr_val, int_ty)
+                }
                 Instruction::Ret(ret_val, ty) => {
                     if func_is_entry {
                         self.compile_ret_from_entry(instr_val, ret_val, ty)
@@ -391,7 +370,7 @@ impl<'ir> EvmAsmBuilder<'ir> {
                     }
                 }
                 Instruction::Store {
-                    dst_val,
+                    dst_val_ptr: dst_val,
                     stored_val,
                 } => check!(
                     self.compile_store(instr_val, dst_val, stored_val),
@@ -420,10 +399,6 @@ impl<'ir> EvmAsmBuilder<'ir> {
         todo!();
     }
 
-    fn compile_addr_of(&mut self, instr_val: &Value, arg: &Value) {
-        todo!();
-    }
-
     fn compile_bitcast(&mut self, instr_val: &Value, bitcast_val: &Value, to_type: &Type) {
         todo!();
     }
@@ -442,7 +417,7 @@ impl<'ir> EvmAsmBuilder<'ir> {
         todo!();
     }
 
-    fn compile_cast_ptr(&mut self, instr_val: &Value, val: &Value, ty: &Type, offs: u64) {
+    fn compile_cast_ptr(&mut self, instr_val: &Value, val: &Value, ty: &Type) {
         todo!();
     }
 
@@ -481,21 +456,17 @@ impl<'ir> EvmAsmBuilder<'ir> {
         todo!();
     }
 
-    fn compile_extract_element(
+    fn compile_get_storage_key(&mut self, instr_val: &Value) -> CompileResult<()> {
+        todo!();
+    }
+
+    fn compile_get_elem_ptr(
         &mut self,
         instr_val: &Value,
-        array: &Value,
-        ty: &Type,
-        index_val: &Value,
+        base: &Value,
+        elem_ptr_ty: &Type,
+        indices: &[Value],
     ) {
-        todo!();
-    }
-
-    fn compile_extract_value(&mut self, instr_val: &Value, aggregate_val: &Value, indices: &[u64]) {
-        todo!();
-    }
-
-    fn compile_get_storage_key(&mut self, instr_val: &Value) -> CompileResult<()> {
         todo!();
     }
 
@@ -507,27 +478,6 @@ impl<'ir> EvmAsmBuilder<'ir> {
         todo!();
     }
 
-    fn compile_insert_element(
-        &mut self,
-        instr_val: &Value,
-        array: &Value,
-        ty: &Type,
-        value: &Value,
-        index_val: &Value,
-    ) {
-        todo!();
-    }
-
-    fn compile_insert_value(
-        &mut self,
-        instr_val: &Value,
-        aggregate_val: &Value,
-        value: &Value,
-        indices: &[u64],
-    ) {
-        todo!();
-    }
-
     fn compile_int_to_ptr(&mut self, instr_val: &Value, int_to_ptr_val: &Value) {
         todo!();
     }
@@ -536,17 +486,30 @@ impl<'ir> EvmAsmBuilder<'ir> {
         todo!();
     }
 
-    fn compile_mem_copy(
+    fn compile_log(&mut self, instr_val: &Value, log_val: &Value, log_ty: &Type, log_id: &Value) {
+        todo!();
+    }
+
+    fn compile_mem_copy_bytes(
         &mut self,
         instr_val: &Value,
-        dst_val: &Value,
-        src_val: &Value,
+        dst_val_ptr: &Value,
+        src_val_ptr: &Value,
         byte_len: u64,
     ) {
         todo!();
     }
 
-    fn compile_log(&mut self, instr_val: &Value, log_val: &Value, log_ty: &Type, log_id: &Value) {
+    fn compile_mem_copy_val(
+        &mut self,
+        instr_val: &Value,
+        dst_val_ptr: &Value,
+        src_val_ptr: &Value,
+    ) {
+        todo!();
+    }
+
+    fn compile_ptr_to_int(&mut self, instr_val: &Value, ptr_val: &Value, int_ty: &Type) {
         todo!();
     }
 
@@ -555,7 +518,18 @@ impl<'ir> EvmAsmBuilder<'ir> {
     }
 
     fn compile_ret_from_entry(&mut self, instr_val: &Value, ret_val: &Value, ret_type: &Type) {
-        todo!();
+        if ret_type.is_unit(self.context) {
+            // Unit returns should always be zero, although because they can be omitted from
+            // functions, the register is sometimes uninitialized. Manually return zero in this
+            // case.
+            self.cur_section
+                .as_mut()
+                .unwrap()
+                .ops
+                .push(AbstractOp::Op(Op::Return(Return)));
+        } else {
+            todo!();
+        }
     }
 
     fn compile_revert(&mut self, instr_val: &Value, revert_val: &Value) {
@@ -615,6 +589,87 @@ impl<'ir> EvmAsmBuilder<'ir> {
     }
 
     pub fn compile_function(&mut self, function: Function) -> CompileResult<()> {
+        self.cur_section = Some(EvmAsmSection::new());
+
+        // push1 0x80
+        // push1 0x40
+        // mstore
+        self.cur_section
+            .as_mut()
+            .unwrap()
+            .ops
+            .push(AbstractOp::new(Op::Push1(Push1(Imm::with_expression(
+                Expression::Terminal(0x80.into()),
+            )))));
+        self.cur_section
+            .as_mut()
+            .unwrap()
+            .ops
+            .push(AbstractOp::new(Op::Push1(Push1(Imm::with_expression(
+                Expression::Terminal(0x40.into()),
+            )))));
+        self.cur_section
+            .as_mut()
+            .unwrap()
+            .ops
+            .push(AbstractOp::new(Op::MStore(MStore)));
+
+        //self.init_locals(function);
+        let func_is_entry = function.is_entry(self.context);
+
+        // Compile instructions.
+        let mut warnings = Vec::new();
+        let mut errors = Vec::new();
+        for block in function.block_iter(self.context) {
+            self.insert_block_label(block);
+            for instr_val in block.instruction_iter(self.context) {
+                check!(
+                    self.compile_instruction(&instr_val, func_is_entry),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+            }
+        }
+
+        // push1 0x00
+        // dup1
+        // revert
+        self.cur_section
+            .as_mut()
+            .unwrap()
+            .ops
+            .push(AbstractOp::new(Op::Push1(Push1(Imm::with_expression(
+                Expression::Terminal(0x00.into()),
+            )))));
+        self.cur_section
+            .as_mut()
+            .unwrap()
+            .ops
+            .push(AbstractOp::new(Op::Dup1(Dup1)));
+        self.cur_section
+            .as_mut()
+            .unwrap()
+            .ops
+            .push(AbstractOp::new(Op::Revert(Revert)));
+
+        // Generate the ABI.
+        #[allow(deprecated)]
+        self.cur_section
+            .as_mut()
+            .unwrap()
+            .abi
+            .push(ethabi::operation::Operation::Function(ethabi::Function {
+                name: function.get_name(self.context).to_string(),
+                inputs: vec![],
+                outputs: vec![],
+                constant: None,
+                state_mutability: ethabi::StateMutability::NonPayable,
+            }));
+
+        self.sections.push(self.cur_section.take().unwrap());
+        self.cur_section = None;
+
         ok((), vec![], vec![])
     }
 
@@ -624,5 +679,24 @@ impl<'ir> EvmAsmBuilder<'ir> {
 
     pub(super) fn compile_ret_from_call(&mut self, instr_val: &Value, ret_val: &Value) {
         todo!();
+    }
+
+    pub(super) fn insert_block_label(&mut self, block: Block) {
+        if &block.get_label(self.context) != "entry" {
+            let label = self.block_to_label(&block);
+            self.cur_section
+                .as_mut()
+                .unwrap()
+                .ops
+                .push(AbstractOp::Label(label.to_string()));
+        }
+    }
+
+    fn block_to_label(&mut self, block: &Block) -> Label {
+        self.block_label_map.get(block).cloned().unwrap_or_else(|| {
+            let label = self.get_label();
+            self.block_label_map.insert(*block, label);
+            label
+        })
     }
 }

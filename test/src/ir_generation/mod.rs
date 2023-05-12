@@ -7,8 +7,13 @@ use std::{
 use anyhow::Result;
 use colored::Colorize;
 use sway_core::{
-    compile_ir_to_asm, compile_to_ast, decl_engine::DeclEngine, inline_function_calls,
-    ir_generation::compile_program, namespace, BuildTarget, Engines, TypeEngine,
+    compile_ir_to_asm, compile_to_ast, decl_engine::DeclEngine, ir_generation::compile_program,
+    language::parsed::TreeType, namespace, BuildTarget, Engines, TypeEngine,
+};
+use sway_ir::{
+    create_inline_in_non_predicate_pass, create_inline_in_predicate_pass, register_known_passes,
+    PassGroup, PassManager, ARGDEMOTION_NAME, CONSTDEMOTION_NAME, DCE_NAME, MEMCPYOPT_NAME,
+    MISCDEMOTION_NAME, RETDEMOTION_NAME,
 };
 
 pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
@@ -46,9 +51,11 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
             let asm_checks_begin_offs = input.find("::check-asm::");
 
             let mut optimisation_inline = false;
+            let mut target_fuelvm = false;
 
             if let Some(first_line) = input.lines().next() {
-                optimisation_inline = first_line.contains("optimisation-inline")
+                optimisation_inline = first_line.contains("optimisation-inline");
+                target_fuelvm = first_line.contains("target-fuelvm");
             }
 
             let ir_checks_end_offs = match asm_checks_begin_offs {
@@ -104,10 +111,11 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                 ir_checker,
                 asm_checker,
                 optimisation_inline,
+                target_fuelvm,
             )
         })
         .for_each(
-            |(path, sway_str, ir_checker, opt_asm_checker, optimisation_inline)| {
+            |(path, sway_str, ir_checker, opt_asm_checker, optimisation_inline, target_fuelvm)| {
                 let test_file_name = path.file_name().unwrap().to_string_lossy().to_string();
                 tracing::info!("Testing {} ...", test_file_name.bold());
 
@@ -127,6 +135,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                     Arc::from(sway_str),
                     core_lib.clone(),
                     Some(&bld_cfg),
+                    "test_lib",
                 );
                 if !typed_res.errors.is_empty() {
                     panic!(
@@ -157,6 +166,35 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                     .unwrap_or_else(|err| {
                         panic!("IR verification failed for test {}:\n{err}", path.display());
                     });
+
+                // Perform Fuel target specific passes if requested.
+                if target_fuelvm {
+                    // Manually run the FuelVM target passes.  This will be encapsulated into an
+                    // official `PassGroup` eventually.
+                    let mut pass_mgr = PassManager::default();
+                    let mut pass_group = PassGroup::default();
+                    register_known_passes(&mut pass_mgr);
+                    pass_group.append_pass(CONSTDEMOTION_NAME);
+                    pass_group.append_pass(ARGDEMOTION_NAME);
+                    pass_group.append_pass(RETDEMOTION_NAME);
+                    pass_group.append_pass(MISCDEMOTION_NAME);
+                    pass_group.append_pass(MEMCPYOPT_NAME);
+                    pass_group.append_pass(DCE_NAME);
+                    if pass_mgr.run(&mut ir, &pass_group).is_err() {
+                        panic!(
+                            "Failed to compile test {}:\n{}",
+                            path.display(),
+                            typed_res
+                                .errors
+                                .iter()
+                                .map(|err| err.to_string())
+                                .collect::<Vec<_>>()
+                                .as_slice()
+                                .join("\n")
+                        );
+                    }
+                }
+
                 let ir_output = sway_ir::printer::to_string(&ir);
 
                 if ir_checker.is_none() {
@@ -180,15 +218,17 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                     _ => (),
                 };
 
-                // Now we're working with all functions in the module.
-                let all_functions = ir
-                    .module_iter()
-                    .flat_map(|module| module.function_iter(&ir))
-                    .collect::<Vec<_>>();
-
                 if optimisation_inline {
-                    let inline_res = inline_function_calls(&mut ir, &all_functions, &tree_type);
-                    if !inline_res.errors.is_empty() {
+                    let mut pass_mgr = PassManager::default();
+                    let mut pmgr_config = PassGroup::default();
+                    let inline = if matches!(tree_type, TreeType::Predicate) {
+                        pass_mgr.register(create_inline_in_predicate_pass())
+                    } else {
+                        pass_mgr.register(create_inline_in_non_predicate_pass())
+                    };
+                    pmgr_config.append_pass(inline);
+                    let inline_res = pass_mgr.run(&mut ir, &pmgr_config);
+                    if inline_res.is_err() {
                         panic!(
                             "Failed to compile test {}:\n{}",
                             path.display(),
@@ -243,7 +283,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
 
                 // Parse the IR again, and print it yet again to make sure that IR de/serialisation works.
                 let parsed_ir = sway_ir::parser::parse(&ir_output)
-                    .unwrap_or_else(|e| panic!("{}: {}", path.display(), e));
+                    .unwrap_or_else(|e| panic!("{}: {e}\n{ir_output}", path.display()));
                 let parsed_ir_output = sway_ir::printer::to_string(&parsed_ir);
                 if ir_output != parsed_ir_output {
                     tracing::error!("{}", prettydiff::diff_lines(&ir_output, &parsed_ir_output));
@@ -307,6 +347,7 @@ fn compile_core(build_target: BuildTarget, engines: Engines<'_>) -> namespace::M
         terse_mode: true,
         disable_tests: false,
         locked: false,
+        experimental_private_modules: true,
     };
 
     let res = forc::test::forc_check::check(check_cmd, engines)
