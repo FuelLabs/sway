@@ -40,6 +40,15 @@ impl ty::TyFunctionParameter {
             errors,
         );
 
+        check!(
+            type_argument
+                .type_id
+                .check_type_parameter_bounds(&ctx, &type_argument.span),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
         let mutability = ty::VariableMutability::new_from_ref_mut(is_reference, is_mutable);
         if mutability == ty::VariableMutability::Mutable {
             errors.push(CompileError::MutableParameterNotSupported {
