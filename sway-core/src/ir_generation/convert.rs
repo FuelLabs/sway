@@ -145,6 +145,8 @@ fn convert_resolved_type(
         }
         TypeInfo::RawUntypedPtr => Type::get_uint64(context),
         TypeInfo::RawUntypedSlice => Type::get_slice(context),
+        TypeInfo::Ptr(_) => Type::get_uint64(context),
+        TypeInfo::Slice(_) => Type::get_slice(context),
         TypeInfo::Alias { ty, .. } => {
             convert_resolved_typeid(type_engine, decl_engine, context, &ty.type_id, span)?
         }

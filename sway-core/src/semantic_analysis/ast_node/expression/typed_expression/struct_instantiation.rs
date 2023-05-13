@@ -130,6 +130,13 @@ pub(crate) fn struct_instantiation(
         }
     }
 
+    check!(
+        type_id.check_type_parameter_bounds(&ctx, &span),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::StructExpression {
             struct_ref,
