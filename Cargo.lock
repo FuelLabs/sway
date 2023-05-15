@@ -1789,6 +1789,7 @@ version = "0.38.0"
 dependencies = [
  "anyhow",
  "clap 4.2.4",
+ "colored",
  "comrak",
  "forc-pkg",
  "forc-util",
