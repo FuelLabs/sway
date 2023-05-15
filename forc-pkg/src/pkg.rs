@@ -2596,7 +2596,7 @@ pub fn check(
                 )
                 .unwrap(),
             );
-            lib_namespace_map.insert(node, namespace);
+            lib_namespace_map.insert(node, namespace.module().clone());
         }
 
         source_map.insert_dependency(manifest.dir());
