@@ -67,6 +67,7 @@ pub fn main() -> Result<()> {
     let doc_path = out_path.join(DOC_DIR_NAME);
     fs::create_dir_all(&doc_path)?;
 
+    // build core documentation
     let project_name = pkg_manifest.project_name();
     let forc_version = pkg_manifest
         .project
@@ -202,7 +203,7 @@ fn build_docs(
         forc_version,
     )?;
 
-    // write contents to outfile
+    // write file contents to doc folder
     write_content(rendered_docs, doc_path)?;
     println!("    {}", "Finished".bold().yellow());
 
