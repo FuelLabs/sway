@@ -222,7 +222,6 @@ fn build_deps(
             if let Dependency::Detailed(dep_details) = dep {
                 if let Some(path) = &dep_details.path {
                     let manifest_path = PathBuf::from(path).canonicalize()?;
-                    println!("{}", manifest_path.to_string_lossy());
                     let dep_manifest = ManifestFile::from_dir(&manifest_path)?;
                     let dep_pkg_manifest =
                         if let ManifestFile::Package(pkg_manifest) = &dep_manifest {
