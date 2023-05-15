@@ -88,12 +88,12 @@ storage {
 impl ReproAttempt for Contract {
     #[storage(read, write)]
     fn bytes_foo_store(bytes: Bytes) {
-        storage.struct_of_bytes.foo.store(bytes);
+        storage.struct_of_bytes.foo.write_slice(bytes);
     }
 
     #[storage(read)]
     fn bytes_foo_get() -> Option<Bytes> {
-        storage.struct_of_bytes.foo.load()
+        storage.struct_of_bytes.foo.read_slice()
     }
 
     #[storage(read)]
@@ -103,12 +103,12 @@ impl ReproAttempt for Contract {
 
     #[storage(read, write)]
     fn bytes_bar_store(bytes: Bytes) {
-        storage.struct_of_bytes.bar.store(bytes);
+        storage.struct_of_bytes.bar.write_slice(bytes);
     }
 
     #[storage(read)]
     fn bytes_bar_get() -> Option<Bytes> {
-        storage.struct_of_bytes.bar.load()
+        storage.struct_of_bytes.bar.read_slice()
     }
 
     #[storage(read)]
