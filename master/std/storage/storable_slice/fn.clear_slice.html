@@ -5,13 +5,13 @@ indicating whether all of the storage slots cleared were previously set.</p>
 <li><code>key</code> - The key of the first storage slot that will be cleared</li>
 </ul>
 <h3>Examples</h3>
-<pre><code class="language-sway">use std::{alloc::alloc_bytes, storage::{clear_slice, store_slice, get_slice}, constants::ZERO_B256};
+<pre><code class="language-sway">use std::{alloc::alloc_bytes, storage::{clear_slice, write_slice, read_slice}, constants::ZERO_B256};
 
 let slice = asm(ptr: (alloc_bytes(1), 1)) { ptr: raw_slice };
-store_slice(ZERO_B256, slice);
-assert(get_slice(ZERO_B256).is_some());
+write_slice(ZERO_B256, slice);
+assert(read_slice(ZERO_B256).is_some());
 let cleared = clear_slice(ZERO_B256);
 assert(cleared);
-assert(get_slice(ZERO_B256).is_none());
+assert(read_slice(ZERO_B256).is_none());
 </code></pre>
 </div></details></section></div></main><script src="../../assets/highlight.js"></script><script>hljs.highlightAll();</script></body></html>
