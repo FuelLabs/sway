@@ -23,6 +23,8 @@ mod cli;
 mod doc;
 mod render;
 
+pub(crate) const ASSETS_DIR_NAME: &str = "static.files";
+
 /// Information passed to the render phase to get TypeInfo, CallPath or visibility for type anchors.
 #[derive(Clone)]
 struct RenderPlan {
@@ -87,8 +89,7 @@ pub fn main() -> Result<()> {
     }
 
     // CSS, icons and logos
-    static ASSETS_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/src/assets");
-    const ASSETS_DIR_NAME: &str = "assets";
+    static ASSETS_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/src/static.files");
     let assets_path = doc_path.join(ASSETS_DIR_NAME);
     fs::create_dir_all(&assets_path)?;
     for file in ASSETS_DIR.files() {
@@ -97,7 +98,7 @@ pub fn main() -> Result<()> {
     }
     // Sway syntax highlighting file
     const SWAY_HJS_FILENAME: &str = "highlight.js";
-    let sway_hjs = std::include_bytes!("assets/highlight.js");
+    let sway_hjs = std::include_bytes!("static.files/highlight.js");
     fs::write(assets_path.join(SWAY_HJS_FILENAME), sway_hjs)?;
 
     // check if the user wants to open the doc in the browser
@@ -176,8 +177,9 @@ fn build_docs(
     };
 
     println!(
-        "    {} {project_name} documentation",
-        "Building".bold().yellow()
+        "    {} documentation for {project_name} ({})",
+        "Building".bold().yellow(),
+        manifest.dir().to_string_lossy()
     );
 
     let raw_docs = Documentation::from_ty_program(

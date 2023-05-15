@@ -1,7 +1,7 @@
 use crate::{
     doc::module::ModuleInfo,
     render::{constant::IDENTITY, link::DocLinks, sidebar::*, BlockTitle, DocStyle, Renderable},
-    RenderPlan,
+    RenderPlan, ASSETS_DIR_NAME,
 };
 use anyhow::Result;
 use horrorshow::{box_html, Raw, RenderBox};
@@ -46,12 +46,12 @@ impl Renderable for AllDocIndex {
                     content="List of all items in this project"
                 );
                 meta(name="keywords", content="sway, swaylang, sway-lang");
-                link(rel="icon", href="../assets/sway-logo.svg");
+                link(rel="icon", href=format!("../{ASSETS_DIR_NAME}/sway-logo.svg"));
                 title: "List of all items in this project";
-                link(rel="stylesheet", type="text/css", href="../assets/normalize.css");
-                link(rel="stylesheet", type="text/css", href="../assets/swaydoc.css", id="mainThemeStyle");
-                link(rel="stylesheet", type="text/css", href="../assets/ayu.css");
-                link(rel="stylesheet", href="../assets/ayu.min.css");
+                link(rel="stylesheet", type="text/css", href=format!("../{ASSETS_DIR_NAME}/normalize.css"));
+                link(rel="stylesheet", type="text/css", href=format!("../{ASSETS_DIR_NAME}/swaydoc.css"), id="mainThemeStyle");
+                link(rel="stylesheet", type="text/css", href=format!("../{ASSETS_DIR_NAME}/ayu.css"));
+                link(rel="stylesheet", href=format!("../{ASSETS_DIR_NAME}/ayu.min.css"));
             }
             body(class="swaydoc mod") {
                 : sidebar;
@@ -86,7 +86,7 @@ impl Renderable for AllDocIndex {
                         }
                     }
                 }
-                script(src="../assets/highlight.js");
+                script(src=format!("../{ASSETS_DIR_NAME}/highlight.js"));
                 script {
                     : "hljs.highlightAll();";
                 }
@@ -141,22 +141,22 @@ impl Renderable for ModuleIndex {
 
         let favicon = self
             .module_info
-            .to_html_shorthand_path_string("assets/sway-logo.svg");
+            .to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/sway-logo.svg"));
         let normalize = self
             .module_info
-            .to_html_shorthand_path_string("assets/normalize.css");
+            .to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/normalize.css"));
         let swaydoc = self
             .module_info
-            .to_html_shorthand_path_string("assets/swaydoc.css");
+            .to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/swaydoc.css"));
         let ayu = self
             .module_info
-            .to_html_shorthand_path_string("assets/ayu.css");
+            .to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/ayu.css"));
         let sway_hjs = self
             .module_info
-            .to_html_shorthand_path_string("assets/highlight.js");
+            .to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/highlight.js"));
         let ayu_hjs = self
             .module_info
-            .to_html_shorthand_path_string("assets/ayu.min.css");
+            .to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/ayu.min.css"));
         let mut rendered_module_anchors = self.module_info.get_anchors()?;
         rendered_module_anchors.pop();
 
