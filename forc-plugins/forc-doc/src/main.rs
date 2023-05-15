@@ -67,6 +67,9 @@ pub fn main() -> Result<()> {
     const DOC_DIR_NAME: &str = "doc";
     let out_path = default_output_directory(manifest.dir());
     let doc_path = out_path.join(DOC_DIR_NAME);
+    if doc_path.exists() {
+        std::fs::remove_dir_all(&doc_path)?;
+    }
     fs::create_dir_all(&doc_path)?;
 
     // build core documentation
