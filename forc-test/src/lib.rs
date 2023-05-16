@@ -384,10 +384,11 @@ impl<'a> PackageTests {
         }
     }
 
-    /// Run all tests for this package and collect their results.
+    /// Run all tests after applying the provided filter and collect their results.
     pub(crate) fn run_tests(
         &self,
         test_runners: &rayon::ThreadPool,
+        test_filter: Option<&str>,
     ) -> anyhow::Result<TestedPackage> {
         let pkg_with_tests = self.built_pkg_with_tests();
         let tests = test_runners.install(|| {
@@ -396,6 +397,14 @@ impl<'a> PackageTests {
                 .entries
                 .par_iter()
                 .filter_map(|entry| entry.kind.test().map(|test| (entry, test)))
+                .filter(|(entry, _)| {
+                    // If a test filter is specified, only the tests containing the filter phrase in
+                    // their name are going to be executed.
+                    match &test_filter {
+                        Some(filter) => entry.finalized.fn_name.contains(filter),
+                        None => true,
+                    }
+                })
                 .map(|(entry, test_entry)| {
                     let offset = u32::try_from(entry.finalized.imm)
                         .expect("test instruction offset out of range");
@@ -543,34 +552,56 @@ pub enum TestRunnerCount {
     Auto,
 }
 
+pub struct TestCount {
+    pub total: usize,
+    pub filtered: usize,
+}
+
 impl BuiltTests {
     /// The total number of tests.
-    pub fn test_count(&self) -> usize {
+    pub fn test_count(&self, test_filter: Option<&str>) -> TestCount {
         let pkgs: Vec<&PackageTests> = match self {
             BuiltTests::Package(pkg) => vec![pkg],
             BuiltTests::Workspace(workspace) => workspace.iter().collect(),
         };
-        pkgs.iter()
-            .map(|pkg| {
-                pkg.built_pkg_with_tests()
-                    .bytecode
-                    .entries
-                    .iter()
-                    .filter_map(|entry| entry.kind.test().map(|test| (entry, test)))
-                    .count()
-            })
-            .sum()
+        let mut num_total = 0;
+        let mut num_filtered = 0;
+        for (pkg_entry, _) in pkgs.iter().flat_map(|pkg| {
+            pkg.built_pkg_with_tests()
+                .bytecode
+                .entries
+                .iter()
+                .filter_map(|entry| entry.kind.test().map(|test| (entry, test)))
+        }) {
+            let filtered = match &test_filter {
+                Some(filter) => !pkg_entry.finalized.fn_name.contains(filter),
+                None => false,
+            };
+            if filtered {
+                num_filtered += 1;
+            }
+            num_total += 1;
+        }
+
+        TestCount {
+            total: num_total,
+            filtered: num_filtered,
+        }
     }
 
     /// Run all built tests, return the result.
-    pub fn run(self, test_runner_count: TestRunnerCount) -> anyhow::Result<Tested> {
+    pub fn run(
+        self,
+        test_runner_count: TestRunnerCount,
+        test_filter: Option<String>,
+    ) -> anyhow::Result<Tested> {
         let test_runners = match test_runner_count {
             TestRunnerCount::Manual(runner_count) => rayon::ThreadPoolBuilder::new()
                 .num_threads(runner_count)
                 .build(),
             TestRunnerCount::Auto => rayon::ThreadPoolBuilder::new().build(),
         }?;
-        run_tests(self, &test_runners)
+        run_tests(self, &test_runners, test_filter)
     }
 }
 
@@ -641,17 +672,23 @@ fn deployment_transaction(
     (contract_id, tx)
 }
 
-/// Build the given package and run its tests, returning the results.
-fn run_tests(built: BuiltTests, test_runners: &rayon::ThreadPool) -> anyhow::Result<Tested> {
+/// Build the given package and run its tests after applying the filter provided.
+///
+/// Returns the result of test execution.
+fn run_tests(
+    built: BuiltTests,
+    test_runners: &rayon::ThreadPool,
+    test_filter: Option<String>,
+) -> anyhow::Result<Tested> {
     match built {
         BuiltTests::Package(pkg) => {
-            let tested_pkg = pkg.run_tests(test_runners)?;
+            let tested_pkg = pkg.run_tests(test_runners, test_filter.as_deref())?;
             Ok(Tested::Package(Box::new(tested_pkg)))
         }
         BuiltTests::Workspace(workspace) => {
             let tested_pkgs = workspace
                 .into_iter()
-                .map(|pkg| pkg.run_tests(test_runners))
+                .map(|pkg| pkg.run_tests(test_runners, test_filter.as_deref()))
                 .collect::<anyhow::Result<Vec<TestedPackage>>>()?;
             Ok(Tested::Workspace(tested_pkgs))
         }

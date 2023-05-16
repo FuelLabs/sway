@@ -3,7 +3,7 @@ use ansi_term::Colour;
 use clap::Parser;
 use forc_pkg as pkg;
 use forc_test::{TestRunnerCount, TestedPackage};
-use forc_util::{forc_result_bail, format_log_receipts, ForcError, ForcResult};
+use forc_util::{format_log_receipts, ForcError, ForcResult};
 use tracing::info;
 
 /// Run the Sway unit tests for the current project.
@@ -49,21 +49,23 @@ pub struct TestPrintOpts {
 }
 
 pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
-    if let Some(ref _filter) = cmd.filter {
-        forc_result_bail!("unit test filter not yet supported");
-    }
-
     let test_runner_count = match cmd.test_threads {
         Some(runner_count) => TestRunnerCount::Manual(runner_count),
         None => TestRunnerCount::Auto,
     };
 
     let test_print_opts = cmd.test_print.clone();
+    let test_filter = cmd.filter.clone();
     let opts = opts_from_cmd(cmd);
     let built_tests = forc_test::build(opts)?;
     let start = std::time::Instant::now();
-    info!("   Running {} tests", built_tests.test_count());
-    let tested = built_tests.run(test_runner_count)?;
+    let test_count = built_tests.test_count(test_filter.as_deref());
+    info!(
+        "   Running {} tests, filtered {} tests",
+        test_count.total - test_count.filtered,
+        test_count.filtered
+    );
+    let tested = built_tests.run(test_runner_count, test_filter)?;
     let duration = start.elapsed();
 
     // Eventually we'll print this in a fancy manner, but this will do for testing.
