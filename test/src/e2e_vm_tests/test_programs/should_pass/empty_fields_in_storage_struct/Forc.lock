@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-C02956062CE96F8B'
+
+[[package]]
+name = 'empty_fields_in_storage_struct'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-C02956062CE96F8B'
+dependencies = ['core']

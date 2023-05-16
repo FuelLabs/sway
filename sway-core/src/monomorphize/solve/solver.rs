@@ -150,7 +150,9 @@ impl<'a> Solver<'a> {
             | TypeInfo::B256
             | TypeInfo::Contract
             | TypeInfo::RawUntypedPtr
-            | TypeInfo::RawUntypedSlice => {}
+            | TypeInfo::RawUntypedSlice
+            | TypeInfo::Ptr(..)
+            | TypeInfo::Slice(..) => {}
         }
 
         Ok(InstructionResult::from_instructions(instructions))

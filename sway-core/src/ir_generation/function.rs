@@ -2513,10 +2513,10 @@ impl<'eng> FnCompiler<'eng> {
             .add_metadatum(context, span_md_idx);
 
         // The type of a storage access is `StorageKey` which is a struct containing
-        // a `b256` and ` u64`.
+        // a `b256`, `u64` and `b256`.
         let b256_ty = Type::get_b256(context);
         let uint64_ty = Type::get_uint64(context);
-        let storage_key_aggregate = Type::new_struct(context, vec![b256_ty, uint64_ty]);
+        let storage_key_aggregate = Type::new_struct(context, vec![b256_ty, uint64_ty, b256_ty]);
 
         // Local variable holding the `StorageKey` struct
         let storage_key_local_name = self.lexical_map.insert_anon();
@@ -2555,6 +2555,19 @@ impl<'eng> FnCompiler<'eng> {
         self.current_block
             .ins(context)
             .store(gep_1_val, offset_within_slot_val)
+            .add_metadatum(context, span_md_idx);
+
+        // Store the field identifier as the third field in the `StorageKey` struct
+        let unique_field_id = get_storage_key(ix, indices); // use the indices to get a field id that is unique even for zero-sized values that live in the same slot
+        let field_id = convert_literal_to_value(context, &Literal::B256(unique_field_id.into()))
+            .add_metadatum(context, span_md_idx);
+        let gep_2_val =
+            self.current_block
+                .ins(context)
+                .get_elem_ptr_with_idx(storage_key, b256_ty, 2);
+        self.current_block
+            .ins(context)
+            .store(gep_2_val, field_id)
             .add_metadatum(context, span_md_idx);
 
         Ok(storage_key)

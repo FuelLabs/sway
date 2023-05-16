@@ -28,7 +28,7 @@ use sway_core::{
         parsed::{AstNode, ParseProgram},
         ty,
     },
-    BuildTarget, CompileResult, Engines, TypeEngine,
+    BuildTarget, CompileResult, Engines, Namespace, TypeEngine,
 };
 use sway_types::{Span, Spanned};
 use sway_utils::helpers::get_sway_files;
@@ -328,6 +328,13 @@ impl Session {
             ));
         }
         None
+    }
+
+    /// Returns the [Namespace] from the compiled program if it exists.
+    pub fn namespace(&self) -> Option<Namespace> {
+        let compiled_program = &*self.compiled_program.read();
+        let program = compiled_program.typed.clone()?;
+        Some(program.root.namespace)
     }
 
     pub fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {

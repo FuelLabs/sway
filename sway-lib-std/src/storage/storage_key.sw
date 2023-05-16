@@ -21,6 +21,7 @@ impl<T> StorageKey<T> {
     ///     let r: StorageKey<u64> = StorageKey {
     ///         slot: 0x0000000000000000000000000000000000000000000000000000000000000000,
     ///         offset: 2,
+    ///         field_id: 0x0000000000000000000000000000000000000000000000000000000000000000,
     ///     };
     ///
     ///     // Reads the third word from storage slot with key 0x000...0
@@ -49,6 +50,7 @@ impl<T> StorageKey<T> {
     ///     let r: StorageKey<u64> = StorageKey {
     ///         slot: 0x0000000000000000000000000000000000000000000000000000000000000000,
     ///         offset: 2,
+    ///         field_id: 0x0000000000000000000000000000000000000000000000000000000000000000,
     ///     };
     ///
     ///     // Reads the third word from storage slot with key 0x000...0
@@ -74,6 +76,7 @@ impl<T> StorageKey<T> {
     ///     let r: StorageKey<u64> = StorageKey {
     ///         slot: 0x0000000000000000000000000000000000000000000000000000000000000000,
     ///         offset: 2,
+    ///         field_id: 0x0000000000000000000000000000000000000000000000000000000000000000,
     ///     };
     ///     let x = r.write(42); // Writes 42 at the third word of storage slot with key 0x000...0
     /// }

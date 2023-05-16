@@ -1,9 +1,8 @@
 [project]
-name = "where_clause_adts"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
 license = "Apache-2.0"
-implicit-std = false
+name = "empty_fields_in_storage_struct"
 
 [dependencies]
-core = { path = "../../../../../../sway-lib-core" }
+std = { path = "../../../../../../sway-lib-std" }
