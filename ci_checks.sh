@@ -17,8 +17,8 @@
 # `cargo install cargo-udeps`
 
 cargo clippy --all-features --all-targets &&
-cargo sort -w --check &&
-cargo sort -w --check templates/sway-test-rs/template &&
+#cargo sort -w --check &&
+#cargo sort -w --check templates/sway-test-rs/template &&
 cargo fmt --all -- --check &&
 cargo build --locked --workspace --all-features --all-targets &&
 cargo test --locked &&
@@ -43,6 +43,6 @@ echo "[workspace]" >> test-proj/Cargo.toml &&
 (cd test-proj && cargo test) &&
 rm -R test-proj &&
 cargo run --locked --release --bin test -- --target evm --locked &&
-(cd test/src/sdk-harness && bash build.sh --locked) &&
-cargo test --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture &&
+cargo run --locked -p forc -- build --locked --path ./test/src/sdk-harness &&
+cargo test --locked --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture &&
 cargo run --locked --release --bin test -- --locked

@@ -135,8 +135,12 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
             self.add_witness(Witness::default());
 
             // Add input coin and output change
-            self.fund(address, Provider::new(client), signature_witness_index)
-                .await?;
+            self.fund(
+                address,
+                Provider::new(client, params),
+                signature_witness_index,
+            )
+            .await?;
         }
 
         let mut tx = self._finalize_without_signature();

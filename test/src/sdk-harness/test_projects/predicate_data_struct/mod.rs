@@ -65,13 +65,7 @@ async fn create_predicate(
     .build()
     .unwrap();
 
-    let params = wallet
-        .provider()
-        .unwrap()
-        .consensus_parameters()
-        .await
-        .unwrap();
-    wallet.sign_transaction(&mut tx, &params).unwrap();
+    wallet.sign_transaction(&mut tx).unwrap();
     wallet
         .provider()
         .unwrap()
@@ -118,12 +112,7 @@ async fn submit_to_predicate(
     let output_coin = Output::coin(receiver_address, total_amount_in_predicate, asset_id);
     let output_change = Output::change(predicate_address, 0, asset_id);
 
-    let params = wallet
-        .provider()
-        .unwrap()
-        .consensus_parameters()
-        .await
-        .unwrap();
+    let params = wallet.provider().unwrap().consensus_parameters().unwrap();
     let new_tx = ScriptTransactionBuilder::prepare_transfer(
         inputs,
         vec![output_coin, output_change],

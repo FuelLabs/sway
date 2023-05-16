@@ -16,13 +16,7 @@ async fn call_script(script_data: Vec<u8>) -> Result<Vec<Receipt>> {
             .set_script_data(script_data)
             .build()?;
 
-    let params = wallet
-        .provider()
-        .unwrap()
-        .consensus_parameters()
-        .await
-        .unwrap();
-    wallet.sign_transaction(&mut tx, &params)?;
+    wallet.sign_transaction(&mut tx)?;
 
     wallet.provider().unwrap().send_transaction(&tx).await
 }

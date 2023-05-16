@@ -21,7 +21,7 @@ macro_rules! testgen {
 
             abigen!(Contract(
                 name = "MyContract",
-                abi = $abi_path,
+                abi = $abi_path
             ));
 
             // Silences `super::*` warning; required for user-defined types.

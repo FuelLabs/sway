@@ -295,15 +295,7 @@ mod tx {
 
         let handler = contract_instance.methods().get_tx_witness_pointer(1);
         let mut tx = handler.build_tx().await.unwrap();
-        let params = wallet
-            .provider()
-            .unwrap()
-            .consensus_parameters()
-            .await
-            .unwrap();
-        deployment_wallet
-            .sign_transaction(&mut tx, &params)
-            .unwrap();
+        deployment_wallet.sign_transaction(&mut tx).unwrap();
 
         let receipts = wallet
             .provider()
@@ -412,12 +404,7 @@ mod tx {
         let handler = contract_instance.methods().get_tx_id();
         let tx = handler.build_tx().await.unwrap();
 
-        let params = wallet
-            .provider()
-            .unwrap()
-            .consensus_parameters()
-            .await
-            .unwrap();
+        let params = wallet.provider().unwrap().consensus_parameters().unwrap();
         let tx_id = tx.id(&params);
 
         let receipts = wallet
