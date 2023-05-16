@@ -3739,7 +3739,7 @@ ABI.</p>
 <p><strong>Description:</strong> Bitwise AND <code>lhs</code> and <code>rhs</code>.</p>
 <p><strong>Constraints:</strong> <code>T</code> is an integer type, i.e. <code>u8</code>, <code>u16</code>, <code>u32</code>, <code>u64</code>.</p>
 <hr />
-<pre><code class="language-sway">or&lt;T&gt;(lhs: T, rhs: T) -&gt; T
+<pre><code class="language-sway">__or&lt;T&gt;(lhs: T, rhs: T) -&gt; T
 </code></pre>
 <p><strong>Description:</strong> Bitwise OR <code>lhs</code> and <code>rhs</code>.</p>
 <p><strong>Constraints:</strong> <code>T</code> is an integer type, i.e. <code>u8</code>, <code>u16</code>, <code>u32</code>, <code>u64</code>.</p>
@@ -3747,6 +3747,21 @@ ABI.</p>
 <pre><code class="language-sway">__xor&lt;T&gt;(lhs: T, rhs: T) -&gt; T
 </code></pre>
 <p><strong>Description:</strong> Bitwise XOR <code>lhs</code> and <code>rhs</code>.</p>
+<p><strong>Constraints:</strong> <code>T</code> is an integer type, i.e. <code>u8</code>, <code>u16</code>, <code>u32</code>, <code>u64</code>.</p>
+<hr />
+<pre><code class="language-sway">__mod&lt;T&gt;(lhs: T, rhs: T) -&gt; T
+</code></pre>
+<p><strong>Description:</strong> Modulo of <code>lhs</code> by <code>rhs</code>.</p>
+<p><strong>Constraints:</strong> <code>T</code> is an integer type, i.e. <code>u8</code>, <code>u16</code>, <code>u32</code>, <code>u64</code>.</p>
+<hr />
+<pre><code class="language-sway">__rsh&lt;T&gt;(lhs: T, rhs: u64) -&gt; T
+</code></pre>
+<p><strong>Description:</strong> Logical right shift of <code>lhs</code> by <code>rhs</code>.</p>
+<p><strong>Constraints:</strong> <code>T</code> is an integer type, i.e. <code>u8</code>, <code>u16</code>, <code>u32</code>, <code>u64</code>.</p>
+<hr />
+<pre><code class="language-sway">__lsh&lt;T&gt;(lhs: T, rhs: u64) -&gt; T
+</code></pre>
+<p><strong>Description:</strong> Logical left shift of <code>lhs</code> by <code>rhs</code>.</p>
 <p><strong>Constraints:</strong> <code>T</code> is an integer type, i.e. <code>u8</code>, <code>u16</code>, <code>u32</code>, <code>u64</code>.</p>
 <hr />
 <pre><code class="language-sway">__revert(code: u64)
