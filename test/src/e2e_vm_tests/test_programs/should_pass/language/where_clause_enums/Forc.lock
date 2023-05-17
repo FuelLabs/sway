@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-ED0DDD2CE9D8AA45'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-ED0DDD2CE9D8AA45'
+dependencies = ['core']
+
+[[package]]
+name = 'where_clause_enums'
+source = 'member'
+dependencies = ['std']
