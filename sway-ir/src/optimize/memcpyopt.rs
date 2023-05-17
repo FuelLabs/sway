@@ -25,8 +25,8 @@ pub fn mem_copy_opt(
     function: Function,
 ) -> Result<bool, IrError> {
     let mut modified = false;
-    modified |= local_copy_prop(context, function)?;
     modified |= load_store_to_memcopy(context, function)?;
+    modified |= local_copy_prop(context, function)?;
 
     Ok(modified)
 }
@@ -62,188 +62,358 @@ fn get_symbol(context: &Context, val: Value) -> Option<Symbol> {
     }
 }
 
-struct InstInfo {
-    // The block in which an instruction is
-    block: Block,
-    // Relative (use only for comparison) position of instruction in `block`.
-    pos: usize,
+// Combine a series of GEPs into one.
+fn combine_indices(context: &Context, val: Value) -> Option<Vec<Value>> {
+    match &context.values[val.0].value {
+        ValueDatum::Instruction(Instruction::GetLocal(_)) => Some(vec![]),
+        ValueDatum::Instruction(Instruction::GetElemPtr {
+            base,
+            elem_ptr_ty: _,
+            indices,
+        }) => {
+            let mut base_indices = combine_indices(context, *base)?;
+            base_indices.append(&mut indices.clone());
+            Some(base_indices)
+        }
+        ValueDatum::Argument(_) => Some(vec![]),
+        _ => None,
+    }
 }
 
-/// Copy propagation of loads+store (i.e., a memory copy) requires
-/// a data-flow analysis. Until then, we do a safe approximation,
-/// restricting to when every related instruction is in the same block.
-fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, IrError> {
-    let mut loads_map = FxHashMap::<Symbol, Vec<Value>>::default();
-    let mut stores_map = FxHashMap::<Symbol, Vec<Value>>::default();
-    let mut instr_info_map = FxHashMap::<Value, InstInfo>::default();
-    let mut asm_uses = FxHashSet::<Symbol>::default();
+// Given a memory pointer instruction, compute the offset of indexed element
+fn get_memory_offset(context: &Context, val: Value) -> Option<u64> {
+    let sym = get_symbol(context, val)?;
+    sym.get_type(context)
+        .get_pointee_type(context)?
+        .get_indexed_offset(context, &combine_indices(context, val)?)
+}
 
-    for (pos, (block, inst)) in function.instruction_iter(context).enumerate() {
-        let info = || InstInfo { block, pos };
-        let inst_e = inst.get_instruction(context).unwrap();
-        match inst_e {
-            Instruction::Load(src_val_ptr) => {
-                if let Some(local) = get_symbol(context, *src_val_ptr) {
-                    loads_map
-                        .entry(local)
-                        .and_modify(|loads| loads.push(inst))
-                        .or_insert(vec![inst]);
-                    instr_info_map.insert(inst, info());
+// Can memory ranges [val1, val1+len1] and [val2, val2+len2] overlap?
+// Conservatively returns true if cannot statically determine.
+fn may_alias(context: &Context, val1: Value, len1: u64, val2: Value, len2: u64) -> bool {
+    let ((Some(sym1), Some(off1)), (Some(sym2), Some(off2))) =
+        ((get_symbol(context, val1), get_memory_offset(context, val1)),
+        (get_symbol(context, val2), get_memory_offset(context, val2))) else {
+        return true
+    };
+
+    if sym1 != sym2 {
+        return false;
+    }
+
+    // does off1 + len1 overlap with off2 + len2?
+    (off1 <= off2 && (off1 + len1 > off2)) || (off2 <= off1 && (off2 + len2 > off1))
+}
+// Are memory ranges [val1, val1+len1] and [val2, val2+len2] exactly the same?
+// Conservatively returns false if cannot statically determine.
+fn must_alias(context: &Context, val1: Value, len1: u64, val2: Value, len2: u64) -> bool {
+    let ((Some(sym1), Some(off1)), (Some(sym2), Some(off2))) =
+        ((get_symbol(context, val1), get_memory_offset(context, val1)),
+        (get_symbol(context, val2), get_memory_offset(context, val2))) else {
+        return false
+    };
+
+    if sym1 != sym2 {
+        return false;
+    }
+
+    // does off1 + len1 overlap with off2 + len2?
+    off1 == off2 && len1 == len2
+}
+
+fn pointee_size(context: &Context, ptr_val: Value) -> u64 {
+    ptr_val
+        .get_type(context)
+        .unwrap()
+        .get_pointee_type(context)
+        .expect("Expected arg to be a pointer")
+        .size_in_bytes(context)
+}
+
+/// Copy propagation of `memcpy`s within a block.
+fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, IrError> {
+    // Currently (as we scan a block) available `memcpy`s.
+    let mut available_copies: FxHashSet<Value>;
+    // Map a symbol to the available `memcpy`s of which its a source.
+    let mut src_to_copies: FxHashMap<Symbol, FxHashSet<Value>>;
+    // Map a symbol to the available `memcpy`s of which its a destination.
+    // (multiple memcpys for the same destination may be available when
+    // they are partial / field writes, and don't alias).
+    let mut dest_to_copies: FxHashMap<Symbol, FxHashSet<Value>>;
+
+    // If a value (symbol) is found to be defined, remove it from our tracking.
+    fn kill_defined_symbol(
+        context: &Context,
+        value: Value,
+        len: u64,
+        available_copies: &mut FxHashSet<Value>,
+        src_to_copies: &mut FxHashMap<Symbol, FxHashSet<Value>>,
+        dest_to_copies: &mut FxHashMap<Symbol, FxHashSet<Value>>,
+    ) {
+        let sym = get_symbol(context, value).expect("Expected value representing a symbol");
+        if let Some(copies) = src_to_copies.get_mut(&sym) {
+            for copy in &*copies {
+                let (src_ptr, copy_size) = match copy.get_instruction(context).unwrap() {
+                    Instruction::MemCopyBytes {
+                        dst_val_ptr: _,
+                        src_val_ptr,
+                        byte_len,
+                    } => (*src_val_ptr, *byte_len),
+                    Instruction::MemCopyVal {
+                        dst_val_ptr: _,
+                        src_val_ptr,
+                    } => (*src_val_ptr, pointee_size(context, *src_val_ptr)),
+                    _ => panic!("Unexpected copy instruction"),
+                };
+                if may_alias(context, value, len, src_ptr, copy_size) {
+                    available_copies.remove(&copy);
                 }
             }
-            Instruction::Store { dst_val_ptr, .. } => {
-                if let Some(local) = get_symbol(context, *dst_val_ptr) {
-                    stores_map
-                        .entry(local)
-                        .and_modify(|stores| stores.push(inst))
-                        .or_insert(vec![inst]);
-                    instr_info_map.insert(inst, info());
+            copies.retain(|copy| available_copies.contains(copy));
+        }
+        if let Some(copies) = dest_to_copies.get_mut(&sym) {
+            for copy in &*copies {
+                let (dest_ptr, copy_size) = match copy.get_instruction(context).unwrap() {
+                    Instruction::MemCopyBytes {
+                        dst_val_ptr,
+                        src_val_ptr: _,
+                        byte_len,
+                    } => (*dst_val_ptr, *byte_len),
+                    Instruction::MemCopyVal {
+                        dst_val_ptr,
+                        src_val_ptr: _,
+                    } => (*dst_val_ptr, pointee_size(context, *dst_val_ptr)),
+                    _ => panic!("Unexpected copy instruction"),
+                };
+                if may_alias(context, value, len, dest_ptr, copy_size) {
+                    available_copies.remove(copy);
                 }
             }
-            Instruction::AsmBlock(_, args) => {
-                for arg in args {
-                    if let Some(arg) = arg.initializer {
-                        if let Some(local) = get_symbol(context, arg) {
-                            asm_uses.insert(local);
+            copies.retain(|copy| available_copies.contains(copy));
+        }
+    }
+
+    fn gen_new_copy(
+        context: &Context,
+        copy_inst: Value,
+        dst_val_ptr: Value,
+        src_val_ptr: Value,
+        available_copies: &mut FxHashSet<Value>,
+        src_to_copies: &mut FxHashMap<Symbol, FxHashSet<Value>>,
+        dest_to_copies: &mut FxHashMap<Symbol, FxHashSet<Value>>,
+    ) {
+        if let Some(sym) = get_symbol(context, dst_val_ptr) {
+            dest_to_copies
+                .entry(sym)
+                .and_modify(|set| {
+                    set.insert(copy_inst);
+                })
+                .or_insert([copy_inst].into_iter().collect());
+        }
+        if let Some(sym) = get_symbol(context, src_val_ptr) {
+            src_to_copies
+                .entry(sym)
+                .and_modify(|set| {
+                    set.insert(copy_inst);
+                })
+                .or_insert([copy_inst].into_iter().collect());
+        }
+        available_copies.insert(copy_inst);
+    }
+
+    // Deconstruct a memcpy into (dst_val_ptr, src_val_ptr, copy_len).
+    fn deconstruct_memcpy(context: &Context, inst: Value) -> (Value, Value, u64) {
+        match inst.get_instruction(context).unwrap() {
+            Instruction::MemCopyBytes {
+                dst_val_ptr,
+                src_val_ptr,
+                byte_len,
+            } => (*dst_val_ptr, *src_val_ptr, *byte_len),
+            Instruction::MemCopyVal {
+                dst_val_ptr,
+                src_val_ptr,
+            } => (
+                *dst_val_ptr,
+                *src_val_ptr,
+                pointee_size(context, *dst_val_ptr),
+            ),
+            _ => unreachable!("Only memcpy instructions handled"),
+        }
+    }
+
+    let mut modified = false;
+    for block in function.block_iter(context) {
+        available_copies = FxHashSet::default();
+        src_to_copies = FxHashMap::default();
+        dest_to_copies = FxHashMap::default();
+
+        struct ReplGep {
+            base: Symbol,
+            elem_ptr_ty: Type,
+            indices: Vec<Value>,
+        }
+        enum Replacement {
+            OldGep(Value),
+            NewGep(ReplGep),
+        }
+        let mut replacements = vec![];
+
+        for inst in block.instruction_iter(context) {
+            match inst.get_instruction(context).unwrap() {
+                Instruction::Call(_, args) => {
+                    for arg in args {
+                        let Some(arg_sym) = get_symbol(context, *arg) else { continue; };
+                        let Some(arg_ty) = arg_sym.get_type(context).get_pointee_type(context) else { continue; };
+                        kill_defined_symbol(
+                            context,
+                            *arg,
+                            arg_ty.size_in_bytes(context),
+                            &mut available_copies,
+                            &mut src_to_copies,
+                            &mut dest_to_copies,
+                        );
+                    }
+                }
+                Instruction::IntToPtr(_, _) => {
+                    // The only safe thing we can do is to clear all information.
+                    available_copies.clear();
+                    src_to_copies.clear();
+                    dest_to_copies.clear();
+                }
+                Instruction::Load(src_val_ptr) => {
+                    // For every `memcpy` that src_val_ptr is a destination of,
+                    // check if we can do the load from the source of that memcpy.
+                    if let Some(src_sym) = get_symbol(context, *src_val_ptr) {
+                        for memcpy in dest_to_copies
+                            .get(&src_sym)
+                            .iter()
+                            .map(|set| set.iter())
+                            .flatten()
+                        {
+                            let (dst_ptr_memcpy, src_ptr_memcpy, copy_len) =
+                                deconstruct_memcpy(context, *memcpy);
+                            // If the location where we're loading from exactly matches the destination of
+                            // the memcpy, just load from the source pointer of the memcpy.
+                            if must_alias(
+                                context,
+                                *src_val_ptr,
+                                pointee_size(context, *src_val_ptr),
+                                dst_ptr_memcpy,
+                                copy_len,
+                            ) {
+                                // Replace src_val_ptr with src_ptr_memcpy.
+                                replacements.push((inst, Replacement::OldGep(src_ptr_memcpy)));
+                            } else {
+                                // if the memcpy copies the entire symbol, we could
+                                // insert a new GEP from the source of the memcpy.
+                                let dst_sym_size = pointee_size(context, dst_ptr_memcpy);
+                                let src_sym_size = pointee_size(context, src_ptr_memcpy);
+                                let is_full_sym_copy =
+                                    dst_sym_size == src_sym_size && src_sym_size == copy_len;
+                                if let (Some(memcpy_src_sym), true, Some(new_indices)) = (
+                                    get_symbol(context, src_ptr_memcpy),
+                                    is_full_sym_copy,
+                                    combine_indices(context, *src_val_ptr),
+                                ) {
+                                    replacements.push((
+                                        inst,
+                                        Replacement::NewGep(ReplGep {
+                                            base: memcpy_src_sym,
+                                            elem_ptr_ty: src_val_ptr.get_type(context).unwrap(),
+                                            indices: new_indices,
+                                        }),
+                                    ));
+                                }
+                            }
                         }
                     }
                 }
-            }
-            _ => (),
-        }
-    }
-
-    let mut to_delete = FxHashSet::<Value>::default();
-    let candidates: FxHashMap<Symbol, Symbol> = function
-        .instruction_iter(context)
-        .enumerate()
-        .filter_map(|(pos, (block, instr_val))| {
-            instr_val
-                .get_instruction(context)
-                .and_then(|instr| {
-                    // Is the instruction a Store?
-                    if let Instruction::Store {
+                Instruction::MemCopyBytes { .. } | Instruction::MemCopyVal { .. } => {
+                    let (dst_val_ptr, src_val_ptr, copy_len) = deconstruct_memcpy(context, inst);
+                    kill_defined_symbol(
+                        context,
                         dst_val_ptr,
-                        stored_val,
-                    } = instr
-                    {
-                        get_symbol(context, *dst_val_ptr).and_then(|dst_local| {
-                            stored_val
-                                .get_instruction(context)
-                                .map(|src_instr| (src_instr, stored_val, dst_local))
-                        })
-                    } else {
-                        None
-                    }
-                })
-                .and_then(|(src_instr, stored_val, dst_local)| {
-                    // Is the Store source a Load?
-                    if let Instruction::Load(src_val_ptr) = src_instr {
-                        get_symbol(context, *src_val_ptr)
-                            .map(|src_local| (stored_val, dst_local, src_local))
-                    } else {
-                        None
-                    }
-                })
-                .and_then(|(src_load, dst_local, src_local)| {
-                    let (temp_empty1, temp_empty2, temp_empty3) = (vec![], vec![], vec![]);
-                    let dst_local_stores = stores_map.get(&dst_local).unwrap_or(&temp_empty1);
-                    let src_local_stores = stores_map.get(&src_local).unwrap_or(&temp_empty2);
-                    let dst_local_loads = loads_map.get(&dst_local).unwrap_or(&temp_empty3);
-                    // This must be the only store of dst_local.
-                    if dst_local_stores.len() != 1 || dst_local_stores[0] != instr_val
-                        ||
-                        // All stores of src_local must be in the same block, prior to src_load.
-                        !src_local_stores.iter().all(|store_val|{
-                            let instr_info = instr_info_map.get(store_val).unwrap();
-                            let src_load_info = instr_info_map.get(src_load).unwrap();
-                            instr_info.block == block && instr_info.pos < src_load_info.pos
-                        })
-                        ||
-                        // All loads of dst_local must be after this instruction, in the same block.
-                        !dst_local_loads.iter().all(|load_val| {
-                            let instr_info = instr_info_map.get(load_val).unwrap();
-                            instr_info.block == block && instr_info.pos > pos
-                        })
-                        // We don't deal with ASM blocks.
-                        || asm_uses.contains(&dst_local)
-                        // We don't deal part copies.
-                        || dst_local.get_type(context) != src_local.get_type(context)
-                        // We don't replace the destination when it's an arg.
-                        || matches!(dst_local, Symbol::Arg(_))
-                    {
-                        None
-                    } else {
-                        to_delete.insert(instr_val);
-                        Some((dst_local, src_local))
-                    }
-                })
-        })
-        .collect();
-
-    // if we have A replaces B and B replaces C, then A must replace C also.
-    fn closure(candidates: &FxHashMap<Symbol, Symbol>, src_local: &Symbol) -> Option<Symbol> {
-        candidates
-            .get(src_local)
-            .map(|replace_with| closure(candidates, replace_with).unwrap_or(*replace_with))
-    }
-
-    // If the source is an Arg, we replace uses of destination with Arg.
-    // otherwise (`get_local`), we replace the local symbol in-place.
-    enum ReplaceWith {
-        InPlaceLocal(LocalVar),
-        Value(Value),
-    }
-
-    // Because we can't borrow context for both iterating and replacing, do it in 2 steps.
-    let replaces: Vec<_> = function
-        .instruction_iter(context)
-        .filter_map(|(_block, value)| match value.get_instruction(context) {
-            Some(Instruction::GetLocal(local)) => {
-                closure(&candidates, &Symbol::Local(*local)).map(|replace_with| {
-                    (
-                        value,
-                        match replace_with {
-                            Symbol::Local(local) => ReplaceWith::InPlaceLocal(local),
-                            Symbol::Arg(ba) => {
-                                ReplaceWith::Value(ba.block.get_arg(context, ba.idx).unwrap())
-                            }
-                        },
-                    )
-                })
-            }
-            _ => None,
-        })
-        .collect();
-
-    let mut value_replace = FxHashMap::<Value, Value>::default();
-    for (value, replace_with) in replaces.into_iter() {
-        match replace_with {
-            ReplaceWith::InPlaceLocal(replacement_var) => {
-                let Some(Instruction::GetLocal(redundant_var)) = value.get_instruction(context) else {
-                    panic!("earlier match now fails");
-                };
-                if redundant_var.is_mutable(context) {
-                    replacement_var.set_mutable(context, true);
+                        copy_len,
+                        &mut available_copies,
+                        &mut src_to_copies,
+                        &mut dest_to_copies,
+                    );
+                    gen_new_copy(
+                        context,
+                        inst,
+                        dst_val_ptr,
+                        src_val_ptr,
+                        &mut available_copies,
+                        &mut src_to_copies,
+                        &mut dest_to_copies,
+                    );
                 }
-                value.replace(
-                    context,
-                    ValueDatum::Instruction(Instruction::GetLocal(replacement_var)),
-                )
-            }
-            ReplaceWith::Value(replace_with) => {
-                value_replace.insert(value, replace_with);
+                Instruction::Store {
+                    dst_val_ptr,
+                    stored_val: _,
+                } => {
+                    kill_defined_symbol(
+                        context,
+                        *dst_val_ptr,
+                        pointee_size(context, *dst_val_ptr),
+                        &mut available_copies,
+                        &mut src_to_copies,
+                        &mut dest_to_copies,
+                    );
+                }
+                _ => (),
             }
         }
-    }
-    function.replace_values(context, &value_replace, None);
 
-    // Delete stores to the replaced local.
-    let blocks: Vec<Block> = function.block_iter(context).collect();
-    for block in blocks {
-        block.remove_instructions(context, |value| to_delete.contains(&value));
+        // If we have any NewGep replacements, insert those new GEPs into the block.
+        let mut new_insts = vec![];
+        let replacements = replacements
+            .into_iter()
+            .map(|(load_inst, replacement)| {
+                let replacement = match replacement {
+                    Replacement::OldGep(v) => v,
+                    Replacement::NewGep(ReplGep {
+                        base,
+                        elem_ptr_ty,
+                        indices,
+                    }) => {
+                        let base = match base {
+                            Symbol::Local(local) => {
+                                let base =
+                                    Value::new_instruction(context, Instruction::GetLocal(local));
+                                new_insts.push(base);
+                                base
+                            }
+                            Symbol::Arg(block_arg) => Value::new_argument(context, block_arg),
+                        };
+                        let v = Value::new_instruction(
+                            context,
+                            Instruction::GetElemPtr {
+                                base,
+                                elem_ptr_ty,
+                                indices,
+                            },
+                        );
+                        new_insts.push(v);
+                        v
+                    }
+                };
+                (load_inst, replacement)
+            })
+            .collect::<Vec<_>>();
+
+        modified |= !replacements.is_empty();
+
+        block.prepend_instructions(context, new_insts);
+
+        for replacement in &replacements {
+            let Some(Instruction::Load(ref mut src_val_ptr)) = replacement.0.get_instruction_mut(context) else
+        { panic!("Unexpected instruction type"); };
+            *src_val_ptr = replacement.1
+        }
     }
-    Ok(true)
+
+    Ok(modified)
 }
 
 // Is (an alias of) src_ptr clobbered on any path from load_val to store_val?
