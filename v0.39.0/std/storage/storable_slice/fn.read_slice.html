@@ -1,0 +1,17 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="swaydoc"><meta name="description" content="API documentation for the Sway `read_slice` function in `storable_slice`."><meta name="keywords" content="sway, swaylang, sway-lang, read_slice"><link rel="icon" href="../../assets/sway-logo.svg"><title>read_slice in storable_slice - Sway</title><link rel="stylesheet" type="text/css" href="../../assets/normalize.css"><link rel="stylesheet" type="text/css" href="../../assets/swaydoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../assets/ayu.css"><link rel="stylesheet" href="../../assets/ayu.min.css"></head><body class="swaydoc fn"><nav class="sidebar"><a class="sidebar-logo" href="../../index.html"><div class="logo-container"><img class="sway-logo" src="../../assets/sway-logo.svg" alt="logo"></div></a><h2 class="location">Function read_slice</h2><div class="sidebar-elems"><section><div class="block"><ul></ul></div></section></div></nav><main><div class="width-limiter"><section id="main-content" class="content"><div class="main-heading"><h1 class="fqn"><span class="in-band">Function <a class="mod" href="../../index.html">std</a><span>::</span><a class="mod" href="../index.html">storage</a><span>::</span><a class="mod" href="index.html">storable_slice</a><span>::</span><a class="fn" href="#">read_slice</a></span></h1></div><div class="docblock item-decl"><pre class="sway fn"><code>pub fn read_slice(key: b256) -&gt; Option&lt;raw_slice&gt; </code></pre></div><details class="swaydoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Load a raw_slice from storage.</p>
+<p>If no value was previously stored at <code>key</code>, <code>None</code> is returned. Otherwise,<br />
+<code>Some(value)</code> is returned, where <code>value</code> is the value stored at <code>key</code>.</p>
+<h3>Arguments</h3>
+<ul>
+<li><code>key</code> - The storage slot to load the value from.</li>
+</ul>
+<h3>Examples</h3>
+<pre><code class="language-sway">use std::{alloc::alloc_bytes, storage::{write_slice, read_slice}, constants::ZERO_B256};
+
+let slice = asm(ptr: (alloc_bytes(1), 1)) { ptr: raw_slice };
+assert(read_slice(ZERO_B256).is_none());
+write_slice(ZERO_B256, slice);
+let stored_slice = read_slice(ZERO_B256).unwrap();
+assert(slice == stored_slice);
+</code></pre>
+</div></details></section></div></main><script src="../../assets/highlight.js"></script><script>hljs.highlightAll();</script></body></html>

@@ -1,0 +1,44 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="swaydoc"><meta name="description" content="API documentation for the Sway `result` module in `std`."><meta name="keywords" content="sway, swaylang, sway-lang, result"><link rel="icon" href="../assets/sway-logo.svg"><title>result in std - Sway</title><link rel="stylesheet" type="text/css" href="../assets/normalize.css"><link rel="stylesheet" type="text/css" href="../assets/swaydoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../assets/ayu.css"><link rel="stylesheet" href="../assets/ayu.min.css"></head><body class="swaydoc mod"><nav class="sidebar"><a class="sidebar-logo" href="../index.html"><div class="logo-container"><img class="sway-logo" src="../assets/sway-logo.svg" alt="logo"></div></a><h2 class="location">Module result</h2><div class="sidebar-elems"><section><div class="block"><ul><li><a href="#enums">Enums</a></li></ul></div></section></div></nav><main><div class="width-limiter"><section id="main-content" class="content"><div class="main-heading"><h1 class="fqn"><span class="in-band">Module <a class="mod" href="../index.html">std</a><span>::</span><a class="mod" href="#">result</a></span></h1></div><details class="swaydoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Error handling with the <code>Result</code> type.</p>
+<p><code>Result&lt;T, E&gt;</code> <code>Result</code> is the type used for returning and propagating<br />
+errors. It is an enum with the variants, <code>Ok(T)</code>, representing<br />
+success and containing a value, and <code>Err(E)</code>, representing error<br />
+and containing an error value.</p>
+<p>Functions return <code>Result</code> whenever errors are expected and recoverable. In<br />
+the <code>std</code> crate, <code>Result</code> is most prominently used for <code>Identity</code><br />
+interactions and cryptographic operations.</p>
+<p>A simple function returning <code>Result</code> might be defined and used like so:</p>
+<pre><code class="language-sway">enum Version {
+    Version1,
+    Version2,
+}
+
+enum VersionError {
+    InvalidNumber,
+}
+
+fn parse_version(version_number: u8) -&gt; Result&lt;Version, VersionError&gt; {
+    match version_number {
+        1 =&gt; Ok(Version::Version1),
+        2 =&gt; Ok(Version::Version2),
+        _ =&gt; Err(VersionError::InvalidNumber),
+    }
+}
+</code></pre>
+<h3>Method overview</h3>
+<p>In addition to working with pattern matching, <code>Result</code> provides a variety<br />
+of methods.</p>
+<h3>Querying the variant</h3>
+<p>The <code>is_ok</code> and <code>is_err</code> methods return <code>true</code> if the <code>Result</code> is<br />
+<code>Ok</code> or <code>Err</code>, respectively.</p>
+<p><code>is_ok</code> : <code>Result::is_ok</code><br />
+<code>is_err</code>: <code>Result::is_err</code></p>
+<h3>Extracting the contained value</h3>
+<p>These methods exctract the contained value in a <code>Result&lt;T,E&gt;</code> when it is<br />
+the <code>Ok</code> variant. If the <code>Result</code> is <code>Err</code>:</p>
+<ul>
+<li><code>unwrap</code> reverts.</li>
+<li><code>unwrap_or</code> returns the default provided value.</li>
+</ul>
+<p><code>unwrap</code>   : <code>Result::unwrap</code><br />
+<code>unwrap_or</code>: <code>Result::unwrap_or</code></p>
+</div></details><h2 id="enums">Enums</h2><div class="item-table"><div class="item-row"><div class="item-left Enum-item"><a class="enum" href="enum.Result.html">Result</a></div><div class="item-right docblock-short"><p><code>Result</code> is a type that represents either success (<code>Ok</code>) or failure (<code>Err</code>).</p></div></div></div></section></div></main><script src="../assets/highlight.js"></script><script>hljs.highlightAll();</script></body></html>
