@@ -120,37 +120,25 @@ pub trait Mod {
 
 impl Mod for u64 {
     fn modulo(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            r#mod r3 r1 r2;
-            r3: u64
-        }
+        __mod(self, other)
     }
 }
 
 impl Mod for u32 {
     fn modulo(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            r#mod r3 r1 r2;
-            r3: u32
-        }
+        __mod(self, other)
     }
 }
 
 impl Mod for u16 {
     fn modulo(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            r#mod r3 r1 r2;
-            r3: u16
-        }
+        __mod(self, other)
     }
 }
 
 impl Mod for u8 {
     fn modulo(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            r#mod r3 r1 r2;
-            r3: u8
-        }
+        __mod(self, other)
     }
 }
 
@@ -485,61 +473,37 @@ pub trait Shift {
 
 impl Shift for u64 {
     fn lsh(self, other: u64) -> Self {
-        asm(r1: self, r2: other, r3) {
-            sll r3 r1 r2;
-            r3: u64
-        }
+        __lsh(self, other)
     }
     fn rsh(self, other: u64) -> Self {
-        asm(r1: self, r2: other, r3) {
-            srl r3 r1 r2;
-            r3: u64
-        }
+        __rsh(self, other)
     }
 }
 
 impl Shift for u32 {
     fn lsh(self, other: u64) -> Self {
-        asm(r1: self, r2: other, r3) {
-            sll r3 r1 r2;
-            r3: u32
-        }
+        __lsh(self, other)
     }
     fn rsh(self, other: u64) -> Self {
-        asm(r1: self, r2: other, r3) {
-            srl r3 r1 r2;
-            r3: u32
-        }
+        __rsh(self, other)
     }
 }
 
 impl Shift for u16 {
     fn lsh(self, other: u64) -> Self {
-        asm(r1: self, r2: other, r3) {
-            sll r3 r1 r2;
-            r3: u16
-        }
+        __lsh(self, other)
     }
     fn rsh(self, other: u64) -> Self {
-        asm(r1: self, r2: other, r3) {
-            srl r3 r1 r2;
-            r3: u16
-        }
+        __rsh(self, other)
     }
 }
 
 impl Shift for u8 {
     fn lsh(self, other: u64) -> Self {
-        asm(r1: self, r2: other, r3) {
-            sll r3 r1 r2;
-            r3: u8
-        }
+        __lsh(self, other)
     }
     fn rsh(self, other: u64) -> Self {
-        asm(r1: self, r2: other, r3) {
-            srl r3 r1 r2;
-            r3: u8
-        }
+        __rsh(self, other)
     }
 }
 
