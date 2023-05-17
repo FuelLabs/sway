@@ -162,6 +162,9 @@ mod ir_builder {
                 / "and" _ { BinaryOpKind::And }
                 / "or" _ { BinaryOpKind::Or }
                 / "xor" _ { BinaryOpKind::Xor }
+                / "mod" _ { BinaryOpKind::Mod }
+                / "rsh" _ { BinaryOpKind::Rsh }
+                / "lsh" _ { BinaryOpKind::Lsh }
 
             rule operation() -> IrAstOperation
                 = op_asm()

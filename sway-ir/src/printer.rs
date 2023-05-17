@@ -409,6 +409,9 @@ fn instruction_to_doc<'a>(
                     BinaryOpKind::And => "and",
                     BinaryOpKind::Or => "or",
                     BinaryOpKind::Xor => "xor",
+                    BinaryOpKind::Mod => "mod",
+                    BinaryOpKind::Rsh => "rsh",
+                    BinaryOpKind::Lsh => "lsh",
                 };
                 maybe_constant_to_doc(context, md_namer, namer, arg1)
                     .append(maybe_constant_to_doc(context, md_namer, namer, arg2))

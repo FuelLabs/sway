@@ -55,7 +55,10 @@ impl ty::TyIntrinsicFunctionKind {
             | Intrinsic::Div
             | Intrinsic::And
             | Intrinsic::Or
-            | Intrinsic::Xor => type_check_binary_op(ctx, kind, arguments, type_arguments, span),
+            | Intrinsic::Xor
+            | Intrinsic::Mod
+            | Intrinsic::Lsh
+            | Intrinsic::Rsh => type_check_binary_op(ctx, kind, arguments, type_arguments, span),
             Intrinsic::Revert => type_check_revert(ctx, kind, arguments, type_arguments, span),
             Intrinsic::PtrAdd | Intrinsic::PtrSub => {
                 type_check_ptr_ops(ctx, kind, arguments, type_arguments, span)

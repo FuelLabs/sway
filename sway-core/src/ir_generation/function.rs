@@ -760,7 +760,10 @@ impl<'eng> FnCompiler<'eng> {
             | Intrinsic::Div
             | Intrinsic::And
             | Intrinsic::Or
-            | Intrinsic::Xor => {
+            | Intrinsic::Xor
+            | Intrinsic::Mod
+            | Intrinsic::Rsh
+            | Intrinsic::Lsh => {
                 let op = match kind {
                     Intrinsic::Add => BinaryOpKind::Add,
                     Intrinsic::Sub => BinaryOpKind::Sub,
@@ -769,6 +772,9 @@ impl<'eng> FnCompiler<'eng> {
                     Intrinsic::And => BinaryOpKind::And,
                     Intrinsic::Or => BinaryOpKind::Or,
                     Intrinsic::Xor => BinaryOpKind::Xor,
+                    Intrinsic::Mod => BinaryOpKind::Mod,
+                    Intrinsic::Rsh => BinaryOpKind::Rsh,
+                    Intrinsic::Lsh => BinaryOpKind::Lsh,
                     _ => unreachable!(),
                 };
                 let lhs = &arguments[0];
