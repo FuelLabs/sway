@@ -32,7 +32,7 @@ pub fn mem_copy_opt(
 }
 
 #[derive(Eq, PartialEq, Copy, Clone, Hash)]
-enum Symbol {
+pub(crate) enum Symbol {
     Local(LocalVar),
     Arg(BlockArgument),
 }
@@ -53,7 +53,7 @@ impl Symbol {
     }
 }
 
-fn get_symbol(context: &Context, val: Value) -> Option<Symbol> {
+pub(crate) fn get_symbol(context: &Context, val: Value) -> Option<Symbol> {
     match context.values[val.0].value {
         ValueDatum::Instruction(Instruction::GetLocal(local)) => Some(Symbol::Local(local)),
         ValueDatum::Instruction(Instruction::GetElemPtr { base, .. }) => get_symbol(context, base),
@@ -267,6 +267,20 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
                         kill_defined_symbol(
                             context,
                             *arg,
+                            arg_ty.size_in_bytes(context),
+                            &mut available_copies,
+                            &mut src_to_copies,
+                            &mut dest_to_copies,
+                        );
+                    }
+                }
+                Instruction::AsmBlock(_, args) => {
+                    for arg in args {
+                        let Some(arg_sym) = arg.initializer.and_then(|arg| get_symbol(context, arg)) else { continue; };
+                        let Some(arg_ty) = arg_sym.get_type(context).get_pointee_type(context) else { continue; };
+                        kill_defined_symbol(
+                            context,
+                            arg.initializer.unwrap(),
                             arg_ty.size_in_bytes(context),
                             &mut available_copies,
                             &mut src_to_copies,

@@ -6,8 +6,8 @@
 //! This pass does not do CFG transformations. That is handled by simplify_cfg.
 
 use crate::{
-    AnalysisResults, Block, Context, Function, Instruction, IrError, LocalVar, Module, Pass,
-    PassMutability, ScopedPass, Value, ValueDatum,
+    get_symbol, AnalysisResults, Block, Context, FuelVmInstruction, Function, Instruction, IrError,
+    LocalVar, Module, Pass, PassMutability, ScopedPass, Symbol, Value, ValueDatum,
 };
 
 use std::collections::{HashMap, HashSet};
@@ -34,9 +34,124 @@ pub fn create_func_dce_pass() -> Pass {
     }
 }
 
-fn can_eliminate_instruction(context: &Context, val: Value) -> bool {
+fn can_eliminate_instruction(
+    context: &Context,
+    val: Value,
+    num_symbol_uses: &HashMap<Symbol, u32>,
+) -> bool {
     let inst = val.get_instruction(context).unwrap();
-    !inst.is_terminator() && !inst.may_have_side_effect()
+    (!inst.is_terminator() && !inst.may_have_side_effect())
+        || is_removable_store(context, val, num_symbol_uses)
+}
+
+fn get_loaded_symbols(context: &Context, val: Value) -> Vec<Symbol> {
+    match val.get_instruction(context).unwrap() {
+        Instruction::BinaryOp { .. }
+        | Instruction::BitCast(_, _)
+        | Instruction::Branch(_)
+        | Instruction::ConditionalBranch { .. }
+        | Instruction::ContractCall { .. }
+        | Instruction::Cmp(_, _, _)
+        | Instruction::Nop
+        | Instruction::PtrToInt(_, _)
+        | Instruction::CastPtr(_, _)
+        | Instruction::GetLocal(_)
+        | Instruction::GetElemPtr { .. }
+        | Instruction::IntToPtr(_, _) => vec![],
+        Instruction::Call(_, args) => args
+            .iter()
+            .filter_map(|val| get_symbol(context, *val))
+            .collect(),
+        Instruction::AsmBlock(_, args) => args
+            .iter()
+            .filter_map(|val| val.initializer.and_then(|val| get_symbol(context, val)))
+            .collect(),
+        Instruction::MemCopyBytes { src_val_ptr, .. }
+        | Instruction::MemCopyVal { src_val_ptr, .. }
+        | Instruction::Ret(src_val_ptr, _)
+        | Instruction::Load(src_val_ptr) => {
+            get_symbol(context, *src_val_ptr).iter().cloned().collect()
+        }
+        Instruction::Store { dst_val_ptr: _, .. } => vec![],
+        Instruction::FuelVm(vmop) => match vmop {
+            FuelVmInstruction::Gtf { .. }
+            | FuelVmInstruction::Log { .. }
+            | FuelVmInstruction::ReadRegister(_)
+            | FuelVmInstruction::Revert(_)
+            | FuelVmInstruction::Smo { .. }
+            | FuelVmInstruction::StateClear { .. } => vec![],
+            FuelVmInstruction::StateLoadQuadWord { load_val: _, .. } => vec![],
+            FuelVmInstruction::StateLoadWord(_) | FuelVmInstruction::StateStoreWord { .. } => {
+                vec![]
+            }
+            FuelVmInstruction::StateStoreQuadWord { stored_val, .. } => {
+                get_symbol(context, *stored_val).iter().cloned().collect()
+            }
+        },
+    }
+}
+
+fn get_stored_symbols(context: &Context, val: Value) -> Vec<Symbol> {
+    match val.get_instruction(context).unwrap() {
+        Instruction::BinaryOp { .. }
+        | Instruction::BitCast(_, _)
+        | Instruction::Branch(_)
+        | Instruction::ConditionalBranch { .. }
+        | Instruction::ContractCall { .. }
+        | Instruction::Cmp(_, _, _)
+        | Instruction::Nop
+        | Instruction::PtrToInt(_, _)
+        | Instruction::Ret(_, _)
+        | Instruction::CastPtr(_, _)
+        | Instruction::GetLocal(_)
+        | Instruction::GetElemPtr { .. }
+        | Instruction::IntToPtr(_, _) => vec![],
+        Instruction::Call(_, args) => args
+            .iter()
+            .filter_map(|val| get_symbol(context, *val))
+            .collect(),
+        Instruction::AsmBlock(_, args) => args
+            .iter()
+            .filter_map(|val| val.initializer.and_then(|val| get_symbol(context, val)))
+            .collect(),
+        Instruction::MemCopyBytes { dst_val_ptr, .. }
+        | Instruction::MemCopyVal { dst_val_ptr, .. }
+        | Instruction::Store { dst_val_ptr, .. } => {
+            get_symbol(context, *dst_val_ptr).iter().cloned().collect()
+        }
+        Instruction::Load(_) => vec![],
+        Instruction::FuelVm(vmop) => match vmop {
+            FuelVmInstruction::Gtf { .. }
+            | FuelVmInstruction::Log { .. }
+            | FuelVmInstruction::ReadRegister(_)
+            | FuelVmInstruction::Revert(_)
+            | FuelVmInstruction::Smo { .. }
+            | FuelVmInstruction::StateClear { .. } => vec![],
+            FuelVmInstruction::StateLoadQuadWord { load_val, .. } => {
+                get_symbol(context, *load_val).iter().cloned().collect()
+            }
+            FuelVmInstruction::StateLoadWord(_) | FuelVmInstruction::StateStoreWord { .. } => {
+                vec![]
+            }
+            FuelVmInstruction::StateStoreQuadWord { stored_val: _, .. } => vec![],
+        },
+    }
+}
+
+fn is_removable_store(
+    context: &Context,
+    val: Value,
+    num_symbol_uses: &HashMap<Symbol, u32>,
+) -> bool {
+    match val.get_instruction(context).unwrap() {
+        Instruction::MemCopyBytes { dst_val_ptr, .. }
+        | Instruction::MemCopyVal { dst_val_ptr, .. }
+        | Instruction::Store { dst_val_ptr, .. } => {
+            let sym = get_symbol(context, *dst_val_ptr).unwrap();
+            num_symbol_uses.get(&sym).map_or(0, |uses| *uses) == 0
+        }
+        _ => false,
+    }
 }
 
 /// Perform dead code (if any) elimination and return true if function modified.
@@ -48,9 +163,17 @@ pub fn dce(
     // Number of uses that an instruction has.
     let mut num_uses: HashMap<Value, (Block, u32)> = HashMap::new();
     let mut num_local_uses: HashMap<LocalVar, u32> = HashMap::new();
+    let mut num_symbol_uses: HashMap<Symbol, u32> = HashMap::new();
 
     // Go through each instruction and update use_count.
     for (block, inst) in function.instruction_iter(context) {
+        for sym in get_loaded_symbols(context, inst) {
+            num_symbol_uses
+                .entry(sym)
+                .and_modify(|count| *count += 1)
+                .or_insert(1);
+        }
+
         let inst = inst.get_instruction(context).unwrap();
         if let Instruction::GetLocal(local) = inst {
             num_local_uses
@@ -75,13 +198,16 @@ pub fn dce(
 
     let mut worklist = function
         .instruction_iter(context)
-        .filter(|(_block, inst)| num_uses.get(inst).is_none())
+        .filter(|(_block, inst)| {
+            num_uses.get(inst).is_none() || is_removable_store(context, *inst, &num_symbol_uses)
+        })
         .collect::<Vec<_>>();
 
     let mut modified = false;
     while !worklist.is_empty() {
         let (in_block, dead) = worklist.pop().unwrap();
-        if !can_eliminate_instruction(context, dead) {
+
+        if !can_eliminate_instruction(context, dead, &num_symbol_uses) {
             continue;
         }
         // Process dead's operands.
@@ -99,6 +225,9 @@ pub fn dce(
                 ValueDatum::Configurable(_) | ValueDatum::Constant(_) | ValueDatum::Argument(_) => {
                 }
             }
+        }
+        for sym in get_loaded_symbols(context, dead) {
+            *num_symbol_uses.get_mut(&sym).unwrap() -= 1;
         }
 
         in_block.remove_instruction(context, dead);
