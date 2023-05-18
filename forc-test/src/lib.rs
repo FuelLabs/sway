@@ -821,7 +821,7 @@ fn exec_test(
 mod tests {
     use std::path::PathBuf;
 
-    use crate::{build, BuiltTests, Opts, TestFilter, TestResult, TestedPackage};
+    use crate::{build, BuiltTests, Opts, TestFilter, TestResult};
 
     /// Name of the folder containing required data for tests to run, such as an example forc
     /// project.
