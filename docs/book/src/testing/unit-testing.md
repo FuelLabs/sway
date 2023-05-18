@@ -61,6 +61,15 @@ fn test_meaning_of_life() {
 }
 ```
 
+It is also possible to specify an expected revert code, like the following example.
+
+```sway
+#[test(should_revert = "18446744073709486084")]
+fn test_meaning_of_life() {
+    assert(6 * 6 == 42);
+}
+```
+
 Tests with `#[test(should_revert)]` considered to be passing if they are reverting.
 
 ## Calling Contracts
