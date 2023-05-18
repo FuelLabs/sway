@@ -35,6 +35,15 @@ pub struct TestDetails {
     pub line_number: usize,
 }
 
+/// The filter to be used to only run matching tests.
+pub struct TestFilter<'a> {
+    /// The phrase used for filtering, a `&str` searched/matched with test name.
+    pub filter_phrase: &'a str,
+    /// If set `true`, a complete "match" is required with test name for the test to be executed,
+    /// otherwise a test_name should "contain" the `filter_phrase`.
+    pub exact_match: bool,
+}
+
 /// The result of executing a single test within a single package.
 #[derive(Debug)]
 pub struct TestResult {
@@ -388,7 +397,7 @@ impl<'a> PackageTests {
     pub(crate) fn run_tests(
         &self,
         test_runners: &rayon::ThreadPool,
-        test_filter: Option<&str>,
+        test_filter: Option<&TestFilter>,
     ) -> anyhow::Result<TestedPackage> {
         let pkg_with_tests = self.built_pkg_with_tests();
         let tests = test_runners.install(|| {
@@ -401,7 +410,7 @@ impl<'a> PackageTests {
                     // If a test filter is specified, only the tests containing the filter phrase in
                     // their name are going to be executed.
                     match &test_filter {
-                        Some(filter) => entry.finalized.fn_name.contains(filter),
+                        Some(filter) => filter.filter(&entry.finalized.fn_name),
                         None => true,
                     }
                 })
@@ -557,15 +566,25 @@ pub struct TestCount {
     pub filtered: usize,
 }
 
+impl<'a> TestFilter<'a> {
+    fn filter(&self, fn_name: &str) -> bool {
+        if self.exact_match {
+            fn_name == self.filter_phrase
+        } else {
+            fn_name.contains(self.filter_phrase)
+        }
+    }
+}
+
 impl BuiltTests {
     /// The total number of tests.
-    pub fn test_count(&self, test_filter: Option<&str>) -> TestCount {
+    pub fn test_count(&self, test_filter: Option<&TestFilter>) -> TestCount {
         let pkgs: Vec<&PackageTests> = match self {
             BuiltTests::Package(pkg) => vec![pkg],
             BuiltTests::Workspace(workspace) => workspace.iter().collect(),
         };
         let mut num_total = 0;
-        let mut num_filtered = 0;
+        let mut num_ignored = 0;
         for (pkg_entry, _) in pkgs.iter().flat_map(|pkg| {
             pkg.built_pkg_with_tests()
                 .bytecode
@@ -573,19 +592,19 @@ impl BuiltTests {
                 .iter()
                 .filter_map(|entry| entry.kind.test().map(|test| (entry, test)))
         }) {
-            let filtered = match &test_filter {
-                Some(filter) => !pkg_entry.finalized.fn_name.contains(filter),
+            let ignored = match &test_filter {
+                Some(filter) => !filter.filter(&pkg_entry.finalized.fn_name),
                 None => false,
             };
-            if filtered {
-                num_filtered += 1;
+            if ignored {
+                num_ignored += 1;
             }
             num_total += 1;
         }
 
         TestCount {
             total: num_total,
-            filtered: num_filtered,
+            filtered: num_ignored,
         }
     }
 
@@ -593,7 +612,7 @@ impl BuiltTests {
     pub fn run(
         self,
         test_runner_count: TestRunnerCount,
-        test_filter: Option<String>,
+        test_filter: Option<TestFilter>,
     ) -> anyhow::Result<Tested> {
         let test_runners = match test_runner_count {
             TestRunnerCount::Manual(runner_count) => rayon::ThreadPoolBuilder::new()
@@ -678,17 +697,17 @@ fn deployment_transaction(
 fn run_tests(
     built: BuiltTests,
     test_runners: &rayon::ThreadPool,
-    test_filter: Option<String>,
+    test_filter: Option<TestFilter>,
 ) -> anyhow::Result<Tested> {
     match built {
         BuiltTests::Package(pkg) => {
-            let tested_pkg = pkg.run_tests(test_runners, test_filter.as_deref())?;
+            let tested_pkg = pkg.run_tests(test_runners, test_filter.as_ref())?;
             Ok(Tested::Package(Box::new(tested_pkg)))
         }
         BuiltTests::Workspace(workspace) => {
             let tested_pkgs = workspace
                 .into_iter()
-                .map(|pkg| pkg.run_tests(test_runners, test_filter.as_deref()))
+                .map(|pkg| pkg.run_tests(test_runners, test_filter.as_ref()))
                 .collect::<anyhow::Result<Vec<TestedPackage>>>()?;
             Ok(Tested::Workspace(tested_pkgs))
         }

@@ -2,7 +2,7 @@ use crate::cli;
 use ansi_term::Colour;
 use clap::Parser;
 use forc_pkg as pkg;
-use forc_test::{TestRunnerCount, TestedPackage};
+use forc_test::{TestFilter, TestRunnerCount, TestedPackage};
 use forc_util::{format_log_receipts, ForcError, ForcResult};
 use tracing::info;
 
@@ -32,6 +32,9 @@ pub struct Command {
     /// When specified, only tests containing the given string will be executed.
     pub filter: Option<String>,
     #[clap(long)]
+    /// When specified, only the test exactly matching the given string will be executed.
+    pub exact: bool,
+    #[clap(long)]
     /// Number of threads to utilize when running the tests. By default, this is the number of
     /// threads available in your system.
     pub test_threads: Option<usize>,
@@ -55,11 +58,15 @@ pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
     };
 
     let test_print_opts = cmd.test_print.clone();
-    let test_filter = cmd.filter.clone();
+    let test_filter_phrase = cmd.filter.clone();
+    let test_filter = test_filter_phrase.as_ref().map(|filter_phrase| TestFilter {
+        filter_phrase,
+        exact_match: cmd.exact,
+    });
     let opts = opts_from_cmd(cmd);
     let built_tests = forc_test::build(opts)?;
     let start = std::time::Instant::now();
-    let test_count = built_tests.test_count(test_filter.as_deref());
+    let test_count = built_tests.test_count(test_filter.as_ref());
     info!(
         "   Running {} tests, filtered {} tests",
         test_count.total - test_count.filtered,
