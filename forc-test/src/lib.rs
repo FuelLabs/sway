@@ -816,3 +816,127 @@ fn exec_test(
 
     (state, duration, receipts)
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use crate::{build, BuiltTests, Opts, TestFilter, TestResult, TestedPackage};
+
+    /// Name of the folder containing required data for tests to run, such as an example forc
+    /// project.
+    const TEST_DATA_FOLDER_NAME: &str = "test_data";
+    /// Name of the library package in the "CARGO_MANIFEST_DIR/TEST_DATA_FOLDER_NAME".
+    const TEST_LIBRARY_PACKAGE_NAME: &str = "test_library";
+
+    /// Build the tests in the test library located at
+    /// "CARGO_MANIFEST_DIR/TEST_DATA_FOLDER_NAME/TEST_LIBRARY_PACKAGE_NAME".
+    fn test_library_built_tests() -> anyhow::Result<BuiltTests> {
+        let cargo_manifest_dir = env!("CARGO_MANIFEST_DIR");
+        let library_package_dir = PathBuf::from(cargo_manifest_dir)
+            .join(TEST_DATA_FOLDER_NAME)
+            .join(TEST_LIBRARY_PACKAGE_NAME);
+        let library_package_dir_string = library_package_dir.to_string_lossy().to_string();
+        let build_options = Opts {
+            pkg: forc_pkg::PkgOpts {
+                path: Some(library_package_dir_string),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        build(build_options)
+    }
+
+    fn test_library_test_results(
+        test_filter: Option<TestFilter>,
+    ) -> anyhow::Result<Vec<TestResult>> {
+        let built_tests = test_library_built_tests()?;
+        let test_runner_count = crate::TestRunnerCount::Auto;
+        let tested = built_tests.run(test_runner_count, test_filter)?;
+        match tested {
+            crate::Tested::Package(tested_pkg) => Ok(tested_pkg.tests),
+            crate::Tested::Workspace(_) => {
+                unreachable!("test_library is a package, not a workspace.")
+            }
+        }
+    }
+
+    #[test]
+    fn test_filter_exact_match() {
+        let filter_phrase = "test_bam";
+        let test_filter = TestFilter {
+            filter_phrase,
+            exact_match: true,
+        };
+
+        let test_results = test_library_test_results(Some(test_filter)).unwrap();
+        let tested_package_test_count = test_results.len();
+
+        assert_eq!(tested_package_test_count, 1)
+    }
+
+    #[test]
+    fn test_filter_exact_match_all_ignored() {
+        let filter_phrase = "test_ba";
+        let test_filter = TestFilter {
+            filter_phrase,
+            exact_match: true,
+        };
+
+        let test_results = test_library_test_results(Some(test_filter)).unwrap();
+        let tested_package_test_count = test_results.len();
+
+        assert_eq!(tested_package_test_count, 0)
+    }
+
+    #[test]
+    fn test_filter_match_all_ignored() {
+        let filter_phrase = "this_test_does_not_exists";
+        let test_filter = TestFilter {
+            filter_phrase,
+            exact_match: false,
+        };
+
+        let test_results = test_library_test_results(Some(test_filter)).unwrap();
+        let tested_package_test_count = test_results.len();
+
+        assert_eq!(tested_package_test_count, 0)
+    }
+
+    #[test]
+    fn test_filter_one_match() {
+        let filter_phrase = "test_ba";
+        let test_filter = TestFilter {
+            filter_phrase,
+            exact_match: false,
+        };
+
+        let test_results = test_library_test_results(Some(test_filter)).unwrap();
+        let tested_package_test_count = test_results.len();
+
+        assert_eq!(tested_package_test_count, 1)
+    }
+
+    #[test]
+    fn test_filter_all_match() {
+        let filter_phrase = "test_b";
+        let test_filter = TestFilter {
+            filter_phrase,
+            exact_match: false,
+        };
+
+        let test_results = test_library_test_results(Some(test_filter)).unwrap();
+        let tested_package_test_count = test_results.len();
+
+        assert_eq!(tested_package_test_count, 2)
+    }
+
+    #[test]
+    fn test_no_filter() {
+        let test_filter = None;
+        let test_results = test_library_test_results(test_filter).unwrap();
+        let tested_package_test_count = test_results.len();
+
+        assert_eq!(tested_package_test_count, 2)
+    }
+}
