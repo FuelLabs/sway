@@ -186,6 +186,12 @@ fn test_meaning_of_life() {
     assert(6 * 6 == 42);
 }
 </code></pre>
+<p>It is also possible to specify an expected revert code, like the following example.</p>
+<pre><code class="language-sway">#[test(should_revert = &quot;18446744073709486084&quot;)]
+fn test_meaning_of_life() {
+    assert(6 * 6 == 42);
+}
+</code></pre>
 <p>Tests with <code>#[test(should_revert)]</code> considered to be passing if they are reverting.</p>
 <h2 id="calling-contracts"><a class="header" href="#calling-contracts">Calling Contracts</a></h2>
 <p>Unit tests can call contract functions an example for such calls can be seen below.</p>
