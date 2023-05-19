@@ -561,9 +561,10 @@ pub enum TestRunnerCount {
     Auto,
 }
 
+#[derive(Clone, Debug, Default)]
 pub struct TestCount {
     pub total: usize,
-    pub filtered: usize,
+    pub ignored: usize,
 }
 
 impl<'a> TestFilter<'a> {
@@ -583,29 +584,30 @@ impl BuiltTests {
             BuiltTests::Package(pkg) => vec![pkg],
             BuiltTests::Workspace(workspace) => workspace.iter().collect(),
         };
-        let mut num_total = 0;
-        let mut num_ignored = 0;
-        for (pkg_entry, _) in pkgs.iter().flat_map(|pkg| {
-            pkg.built_pkg_with_tests()
-                .bytecode
-                .entries
-                .iter()
-                .filter_map(|entry| entry.kind.test().map(|test| (entry, test)))
-        }) {
-            let ignored = match &test_filter {
-                Some(filter) => !filter.filter(&pkg_entry.finalized.fn_name),
-                None => false,
-            };
-            if ignored {
-                num_ignored += 1;
-            }
-            num_total += 1;
-        }
-
-        TestCount {
-            total: num_total,
-            filtered: num_ignored,
-        }
+        pkgs.iter()
+            .flat_map(|pkg| {
+                pkg.built_pkg_with_tests()
+                    .bytecode
+                    .entries
+                    .iter()
+                    .filter_map(|entry| entry.kind.test().map(|test| (entry, test)))
+            })
+            .fold(TestCount::default(), |acc, (pkg_entry, _)| {
+                let num_ignored = match &test_filter {
+                    Some(filter) => {
+                        if filter.filter(&pkg_entry.finalized.fn_name) {
+                            acc.ignored
+                        } else {
+                            acc.ignored + 1
+                        }
+                    }
+                    None => acc.ignored,
+                };
+                TestCount {
+                    total: acc.total + 1,
+                    ignored: num_ignored,
+                }
+            })
     }
 
     /// Run all built tests, return the result.
@@ -919,7 +921,7 @@ mod tests {
 
     #[test]
     fn test_filter_all_match() {
-        let filter_phrase = "test_b";
+        let filter_phrase = "est_b";
         let test_filter = TestFilter {
             filter_phrase,
             exact_match: false,

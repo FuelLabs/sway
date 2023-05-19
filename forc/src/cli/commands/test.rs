@@ -67,10 +67,14 @@ pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
     let built_tests = forc_test::build(opts)?;
     let start = std::time::Instant::now();
     let test_count = built_tests.test_count(test_filter.as_ref());
+    let num_tests_running = test_count.total - test_count.ignored;
+    let num_tests_ignored = test_count.ignored;
     info!(
-        "   Running {} tests, filtered {} tests",
-        test_count.total - test_count.filtered,
-        test_count.filtered
+        "   Running {} {}, filtered {} {}",
+        num_tests_running,
+        formatted_test_count_string(&num_tests_running),
+        num_tests_ignored,
+        formatted_test_count_string(&num_tests_ignored)
     );
     let tested = built_tests.run(test_runner_count, test_filter)?;
     let duration = start.elapsed();
@@ -209,5 +213,13 @@ fn opts_from_cmd(cmd: Command) -> forc_test::Opts {
         debug_outfile: cmd.build.output.debug_file,
         build_target: cmd.build.build_target,
         experimental_private_modules: cmd.build.profile.experimental_private_modules,
+    }
+}
+
+fn formatted_test_count_string(count: &usize) -> &str {
+    if *count == 1 {
+        "test"
+    } else {
+        "tests"
     }
 }
