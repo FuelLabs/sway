@@ -9,7 +9,10 @@ use colored::*;
 use forc_pkg as pkg;
 use forc_util::default_output_directory;
 use include_dir::{include_dir, Dir};
-use pkg::manifest::{Dependency, ManifestFile};
+use pkg::{
+    manifest::{Dependency, ManifestFile},
+    PackageManifestFile,
+};
 use std::{
     collections::BTreeMap,
     path::Path,
@@ -73,23 +76,7 @@ pub fn main() -> Result<()> {
     fs::create_dir_all(&doc_path)?;
 
     // build core documentation
-    let project_name = pkg_manifest.project_name();
-    let forc_version = pkg_manifest
-        .project
-        .forc_version
-        .as_ref()
-        .map(|ver| format!("Forc v{}.{}.{}", ver.major, ver.minor, ver.patch));
-    build_docs(
-        &manifest,
-        &doc_path,
-        &build_instructions,
-        project_name,
-        forc_version,
-    )?;
-
-    if !build_instructions.no_deps {
-        build_deps(&pkg_manifest.dependencies, &doc_path, &build_instructions)?;
-    }
+    build_docs(&manifest, pkg_manifest, &doc_path, &build_instructions)?;
 
     // CSS, icons and logos
     static ASSETS_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/src/static.files");
@@ -108,7 +95,9 @@ pub fn main() -> Result<()> {
     // if opening in the browser fails, attempt to open using a file explorer
     if build_instructions.open {
         const BROWSER_ENV_VAR: &str = "BROWSER";
-        let path = doc_path.join(project_name).join(INDEX_FILENAME);
+        let path = doc_path
+            .join(pkg_manifest.project_name())
+            .join(INDEX_FILENAME);
         let default_browser_opt = std::env::var_os(BROWSER_ENV_VAR);
         match default_browser_opt {
             Some(def_browser) => {
@@ -134,10 +123,9 @@ pub fn main() -> Result<()> {
 
 fn build_docs(
     manifest: &ManifestFile,
+    pkg_manifest: &PackageManifestFile,
     doc_path: &Path,
     build_instructions: &Command,
-    project_name: &str,
-    forc_version: Option<String>,
 ) -> Result<()> {
     let Command {
         document_private_items,
@@ -149,8 +137,9 @@ fn build_docs(
     } = *build_instructions;
 
     println!(
-        "   {} {project_name} ({})",
+        "   {} {} ({})",
         "Compiling".bold().yellow(),
+        pkg_manifest.project_name(),
         manifest.dir().to_string_lossy()
     );
 
@@ -180,21 +169,26 @@ fn build_docs(
     };
 
     println!(
-        "    {} documentation for {project_name} ({})",
+        "    {} documentation for {} ({})",
         "Building".bold().yellow(),
+        pkg_manifest.project_name(),
         manifest.dir().to_string_lossy()
     );
 
     let raw_docs = Documentation::from_ty_program(
         &decl_engine,
-        project_name,
+        pkg_manifest.project_name(),
         &typed_program,
         no_deps,
         document_private_items,
     )?;
     let root_attributes =
         (!typed_program.root.attributes.is_empty()).then_some(typed_program.root.attributes);
-    let program_kind = typed_program.kind;
+    let forc_version = pkg_manifest
+        .project
+        .forc_version
+        .as_ref()
+        .map(|ver| format!("Forc v{}.{}.{}", ver.major, ver.minor, ver.patch));
     // render docs to HTML
     let rendered_docs = RenderedDocumentation::from_raw_docs(
         raw_docs,
@@ -204,7 +198,7 @@ fn build_docs(
             Arc::from(decl_engine),
         ),
         root_attributes,
-        program_kind,
+        typed_program.kind,
         forc_version,
     )?;
 
@@ -212,11 +206,21 @@ fn build_docs(
     write_content(rendered_docs, doc_path)?;
     println!("    {}", "Finished".bold().yellow());
 
+    if !build_instructions.no_deps {
+        build_deps(
+            &pkg_manifest.dependencies,
+            manifest.dir(),
+            doc_path,
+            build_instructions,
+        )?;
+    }
+
     Ok(())
 }
 
 fn build_deps(
     dependencies: &Option<BTreeMap<String, Dependency>>,
+    manifest_dir: &Path,
     doc_path: &Path,
     build_instructions: &Command,
 ) -> Result<()> {
@@ -224,7 +228,7 @@ fn build_deps(
         for (dep_name, dep) in deps {
             if let Dependency::Detailed(dep_details) = dep {
                 if let Some(path) = &dep_details.path {
-                    let manifest_path = PathBuf::from(path).canonicalize()?;
+                    let manifest_path = manifest_dir.join(path).canonicalize()?;
                     let dep_manifest = ManifestFile::from_dir(&manifest_path)?;
                     let dep_pkg_manifest =
                         if let ManifestFile::Package(pkg_manifest) = &dep_manifest {
@@ -232,18 +236,11 @@ fn build_deps(
                         } else {
                             bail!("forc-doc does not support workspaces.")
                         };
-                    let project_name = dep_pkg_manifest.project_name();
-                    let forc_version = dep_pkg_manifest
-                        .project
-                        .forc_version
-                        .as_ref()
-                        .map(|ver| format!("Forc v{}.{}.{}", ver.major, ver.minor, ver.patch));
                     build_docs(
                         &dep_manifest,
+                        dep_pkg_manifest,
                         doc_path,
                         build_instructions,
-                        project_name,
-                        forc_version,
                     )?;
                 } else {
                     println!("a path variable was not set for {dep_name}, which is currently the only supported option.")
