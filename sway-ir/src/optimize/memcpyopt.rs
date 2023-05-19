@@ -398,7 +398,9 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
                                 new_insts.push(base);
                                 base
                             }
-                            Symbol::Arg(block_arg) => Value::new_argument(context, block_arg),
+                            Symbol::Arg(block_arg) => {
+                                block_arg.block.get_arg(context, block_arg.idx).unwrap()
+                            }
                         };
                         let v = Value::new_instruction(
                             context,
