@@ -8,12 +8,11 @@ use anyhow::Result;
 use colored::Colorize;
 use sway_core::{
     compile_ir_to_asm, compile_to_ast, decl_engine::DeclEngine, ir_generation::compile_program,
-    language::parsed::TreeType, namespace, BuildTarget, Engines, TypeEngine,
+    namespace, BuildTarget, Engines, TypeEngine,
 };
 use sway_ir::{
-    create_inline_in_non_predicate_pass, create_inline_in_predicate_pass, register_known_passes,
-    PassGroup, PassManager, ARGDEMOTION_NAME, CONSTDEMOTION_NAME, DCE_NAME, MEMCPYOPT_NAME,
-    MISCDEMOTION_NAME, RETDEMOTION_NAME,
+    create_inline_in_module_pass, register_known_passes, PassGroup, PassManager, ARGDEMOTION_NAME,
+    CONSTDEMOTION_NAME, DCE_NAME, MEMCPYOPT_NAME, MISCDEMOTION_NAME, RETDEMOTION_NAME,
 };
 
 pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
@@ -154,8 +153,6 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                     .value
                     .expect("there were no errors, so there should be a program");
 
-                let tree_type = typed_program.kind.tree_type();
-
                 // Compile to IR.
                 let include_tests = true;
                 let mut ir = compile_program(&typed_program, include_tests, engines)
@@ -221,11 +218,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                 if optimisation_inline {
                     let mut pass_mgr = PassManager::default();
                     let mut pmgr_config = PassGroup::default();
-                    let inline = if matches!(tree_type, TreeType::Predicate) {
-                        pass_mgr.register(create_inline_in_predicate_pass())
-                    } else {
-                        pass_mgr.register(create_inline_in_non_predicate_pass())
-                    };
+                    let inline = pass_mgr.register(create_inline_in_module_pass());
                     pmgr_config.append_pass(inline);
                     let inline_res = pass_mgr.run(&mut ir, &pmgr_config);
                     if inline_res.is_err() {

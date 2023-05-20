@@ -103,8 +103,6 @@ pub(crate) fn check_predicate_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> 
                     span: get_op_span(op),
                 });
             }
-            JMP(..) => invalid_opcode("JMP", &mut errors),
-            JNE(..) => invalid_opcode("JNE", &mut errors),
             LDC(..) => invalid_opcode("LDC", &mut errors),
             LOG(..) => invalid_opcode("LOG", &mut errors),
             LOGD(..) => invalid_opcode("LOGD", &mut errors),

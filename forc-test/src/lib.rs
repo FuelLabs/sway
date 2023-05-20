@@ -491,9 +491,10 @@ impl TestResult {
     /// Whether or not the test passed.
     pub fn passed(&self) -> bool {
         match &self.condition {
-            TestPassCondition::ShouldRevert => {
-                matches!(self.state, vm::state::ProgramState::Revert(_))
-            }
+            TestPassCondition::ShouldRevert(revert_code) => match revert_code {
+                Some(revert_code) => self.state == vm::state::ProgramState::Revert(*revert_code),
+                None => matches!(self.state, vm::state::ProgramState::Revert(_)),
+            },
             TestPassCondition::ShouldNotRevert => {
                 !matches!(self.state, vm::state::ProgramState::Revert(_))
             }
