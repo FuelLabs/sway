@@ -52,6 +52,21 @@ impl From<(u64, u64, u64, u64)> for U256 {
     }
 }
 
+impl From<u64> for U256 {
+    fn from(num: u64) -> U256 {
+        U256 {
+            a: 0,
+            b: 0,
+            c: 0,
+            d: num,
+        }
+    }
+
+    fn into(self) -> u64 {
+        self.as_u64().unwrap()
+    }
+}
+
 impl core::ops::Eq for U256 {
     /// Function for comparing 2 `U256`s for equality.
     fn eq(self, other: Self) -> bool {

@@ -32,6 +32,19 @@ impl From<(u64, u64)> for U128 {
     }
 }
 
+impl From<u64> for U128 {
+    fn from(num: u64) -> U128 {
+        U128 {
+            upper: 0,
+            lower: num,
+        }
+    }
+
+    fn into(self) -> u64 {
+        self.as_u64().unwrap()
+    }
+}
+
 impl core::ops::Eq for U128 {
     fn eq(self, other: Self) -> bool {
         self.lower == other.lower && self.upper == other.upper
