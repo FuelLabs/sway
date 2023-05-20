@@ -712,7 +712,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "sha2 0.10.6",
- "sha3 0.10.8",
+ "sha3",
  "thiserror",
 ]
 
@@ -1897,7 +1897,7 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
- "sha3 0.10.8",
+ "sha3",
  "thiserror",
  "uint",
 ]
@@ -1926,7 +1926,7 @@ dependencies = [
  "pest",
  "pest_derive",
  "rand",
- "sha3 0.10.8",
+ "sha3",
  "snafu",
 ]
 
@@ -2024,7 +2024,7 @@ dependencies = [
  "itertools",
  "rand",
  "serde",
- "sha3 0.10.8",
+ "sha3",
  "tai64",
  "thiserror",
 ]
@@ -2068,7 +2068,7 @@ dependencies = [
  "quote",
  "regex",
  "serde_json",
- "syn 2.0.15",
+ "syn 2.0.16",
 ]
 
 [[package]]
@@ -2099,7 +2099,7 @@ dependencies = [
  "rand",
  "regex",
  "serde_json",
- "syn 2.0.15",
+ "syn 2.0.16",
 ]
 
 [[package]]
@@ -2600,19 +2600,6 @@ dependencies = [
  "tokio",
  "tokio-rustls 0.22.0",
  "webpki 0.21.4",
-]
-
-[[package]]
-name = "hyper-rustls"
-version = "0.24.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0646026eb1b3eea4cd9ba47912ea5ce9cc07713d105b1a14698f4e6433d348b7"
-dependencies = [
- "http",
- "hyper",
- "rustls 0.21.1",
- "tokio",
- "tokio-rustls 0.24.0",
 ]
 
 [[package]]
@@ -4201,7 +4188,7 @@ dependencies = [
  "primitive-types",
  "revm_precompiles",
  "rlp",
- "sha3 0.10.8",
+ "sha3",
 ]
 
 [[package]]
@@ -4218,7 +4205,7 @@ dependencies = [
  "ripemd",
  "secp256k1 0.24.3",
  "sha2 0.10.6",
- "sha3 0.10.8",
+ "sha3",
  "substrate-bn",
 ]
 
@@ -4364,18 +4351,6 @@ dependencies = [
  "ring",
  "sct 0.6.1",
  "webpki 0.21.4",
-]
-
-[[package]]
-name = "rustls"
-version = "0.21.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c911ba11bc8433e811ce56fde130ccf32f5127cab0e0194e9c68c5a5b671791e"
-dependencies = [
- "log",
- "ring",
- "rustls-webpki",
- "sct 0.7.0",
 ]
 
 [[package]]
@@ -5542,16 +5517,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tokio-rustls"
-version = "0.24.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0d409377ff5b1e3ca6437aa86c1eb7d40c134bfec254e44c830defa92669db5"
-dependencies = [
- "rustls 0.21.1",
- "tokio",
-]
-
-[[package]]
 name = "tokio-util"
 version = "0.7.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6317,7 +6282,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3bd17ea728ff42185c54dfbabaafd0b442207df6b2cc60f74c607d8c01e9c4db"
 dependencies = [
  "blake3",
- "sha3 0.10.8",
+ "sha3",
  "winter-math",
  "winter-utils",
 ]
