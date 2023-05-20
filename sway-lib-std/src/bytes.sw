@@ -104,6 +104,33 @@ impl Bytes {
         }
     }
 
+
+    /// Constructs a new, `Bytes` with the contents of a struct.
+    ///
+    /// The `Bytes` will be created with the size of the struct.
+    ///
+    /// Note that this will only serialize stack data. Heap-based data such
+    /// as variable-length arrays & variable-length strings will not be serialized.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std::bytes::Bytes;
+    /// use std::u128::U128;
+    ///
+    /// let num = U128 { low: 0, high: 0 };
+    /// let bytes = Bytes::from_struct(num);
+    /// ```
+    fn from_struct<T>(val: T) -> Self {
+        let size = __size_of::<T>();
+        let result = Bytes {
+            buf: RawBytes::with_capacity(size),
+            len: size,
+        };
+        result.buf.ptr().write(val);
+        result
+    }
+
     /// Appends an element to the back of a `Bytes` collection.
     ///
     /// ### Examples
@@ -438,6 +465,28 @@ impl Bytes {
     /// ```
     pub fn is_empty(self) -> bool {
         self.len == 0
+    }
+
+    /// Creates a new struct of the provided type, and copies the contents of the Bytes into it.
+    ///
+    /// ### Reverts
+    ///
+    /// * If `element1_index` or `element2_index` is greater than or equal to the length of `Bytes`.
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std::bytes::Bytes;
+    /// use std::u128::U128;
+    ///
+    /// let num = U128 { low: 1, high: 2 };
+    /// let bytes = Bytes::from_struct(num);
+    /// let result_num = bytes.to_struct::<U128>();
+    /// assert(result_num == num);
+    /// ```
+    pub fn to_struct<T>() -> T {
+        let result_ptr = alloc::<T>(1);
+        self.buf.ptr().copy_to::<T>(result_ptr, 1);
+        result_ptr.read::<T>()
     }
 
     /// Returns the `SHA-2-256` hash of the elements.
@@ -1188,4 +1237,39 @@ fn test_into_b256() {
     let expected: b256 = 0x3333333333333333333333333333333333333333333333333333333333333333;
 
     assert(value == expected);
+}
+
+
+struct SubStruct {
+    num: u64,
+}
+
+struct TestStruct {
+    num: u64,
+    boolean: bool,
+    string: str[4],
+    sub_struct: SubStruct,
+}
+
+#[test]
+fn test_to_from_struct() {
+    let start = TestStruct {
+        num: 1,
+        boolean: true,
+        string: "test",
+        sub_struct: SubStruct {
+            num: 2,
+        },
+    };
+    let size = __size_of::<TestStruct>();
+
+    let bytes = Bytes::from_struct(start);
+    assert(bytes.len() == size);
+
+    let result: TestStruct = bytes.to_struct();
+    assert(result.num == 1);
+    assert(result.boolean);
+    assert(result.string == "test");
+    assert(result.sub_struct.num == 2);
+
 }
