@@ -17,8 +17,8 @@
 # `cargo install cargo-udeps`
 
 cargo clippy --all-features --all-targets &&
-#cargo sort -w --check &&
-#cargo sort -w --check templates/sway-test-rs/template &&
+cargo sort -w --check &&
+cargo sort -w --check templates/sway-test-rs/template &&
 cargo fmt --all -- --check &&
 cargo build --locked --workspace --all-features --all-targets &&
 cargo test --locked &&
@@ -32,6 +32,8 @@ cargo install --locked --debug forc-explore &&
 cargo install --locked --debug --path ./scripts/mdbook-forc-documenter &&
 forc build --path sway-lib-core &&
 forc test --path sway-lib-core &&
+forc build --path sway-lib-std &&
+forc test --path sway-lib-std &&
 cargo run --locked -p forc -- build --locked --path ./examples/Forc.toml &&
 cargo run --locked -p forc-fmt -- --check --path ./examples &&
 rm -Rf test-proj &&
