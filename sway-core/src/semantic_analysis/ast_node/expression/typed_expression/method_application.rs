@@ -270,6 +270,11 @@ pub(crate) fn type_check_method_application(
             is_absolute: false,
         },
         MethodName::FromTrait { call_path } => call_path,
+        MethodName::FromQualifiedPathRoot { method_name, .. } => CallPath {
+            prefixes: vec![],
+            suffix: method_name,
+            is_absolute: false,
+        },
     };
 
     // build the function selector
@@ -463,7 +468,9 @@ pub(crate) fn resolve_method_name(
                     &type_info_prefix,
                     method_name,
                     ctx.self_type(),
+                    ctx.type_annotation(),
                     &arguments,
+                    None,
                     engines,
                 ),
                 return err(warnings, errors),
@@ -490,7 +497,9 @@ pub(crate) fn resolve_method_name(
                     &module_path,
                     &call_path.suffix,
                     ctx.self_type(),
+                    ctx.type_annotation(),
                     &arguments,
+                    None,
                     engines,
                 ),
                 return err(warnings, errors),
@@ -517,8 +526,39 @@ pub(crate) fn resolve_method_name(
                     &module_path,
                     method_name,
                     ctx.self_type(),
+                    ctx.type_annotation(),
                     &arguments,
+                    None,
                     engines,
+                ),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+
+            (decl_ref, type_id)
+        }
+        MethodName::FromQualifiedPathRoot {
+            ty,
+            as_trait,
+            method_name,
+        } => {
+            // type check the call path
+            let type_id = ty.type_id;
+            let type_info_prefix = vec![];
+
+            // find the method
+            let decl_ref = check!(
+                ctx.namespace.find_method_for_type(
+                    type_id,
+                    &type_info_prefix,
+                    method_name,
+                    ctx.self_type(),
+                    ctx.type_annotation(),
+                    &arguments,
+                    Some(as_trait.clone()),
+                    engines,
+                    ctx.experimental_private_modules_enabled()
                 ),
                 return err(warnings, errors),
                 warnings,

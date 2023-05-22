@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-6A090211C259E511'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-6A090211C259E511'
+dependencies = ['core']
+
+[[package]]
+name = 'trait_method_ascription_disambiguate'
+source = 'member'
+dependencies = ['std']

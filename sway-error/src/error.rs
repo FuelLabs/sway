@@ -639,6 +639,19 @@ pub enum CompileError {
     ConfigurableInLibrary { span: Span },
     #[error("The name `{name}` is defined multiple times")]
     NameDefinedMultipleTimes { name: String, span: Span },
+    #[error("Multiple applicable items in scope. {}", {
+        let mut candidates = "".to_string();
+        for (index, as_trait) in as_traits.iter().enumerate() {
+            candidates = format!("{candidates}\n  Disambiguate the associated function for candidate #{index}\n    <{type_name} as {as_trait}>::{method_name}(");
+        }
+        candidates
+    })]
+    MultipleApplicableItemsInScope {
+        span: Span,
+        type_name: String,
+        method_name: String,
+        as_traits: Vec<String>,
+    },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -809,6 +822,7 @@ impl Spanned for CompileError {
             TraitImplPayabilityMismatch { span, .. } => span.clone(),
             ConfigurableInLibrary { span } => span.clone(),
             NameDefinedMultipleTimes { span, .. } => span.clone(),
+            MultipleApplicableItemsInScope { span, .. } => span.clone(),
         }
     }
 }

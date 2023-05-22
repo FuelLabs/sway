@@ -228,8 +228,15 @@ impl ty::TyExpression {
                 let AmbiguousPathExpression {
                     call_path_binding,
                     args,
+                    qualified_path_root,
                 } = *e;
-                Self::type_check_ambiguous_path(ctx.by_ref(), call_path_binding, span, args)
+                Self::type_check_ambiguous_path(
+                    ctx.by_ref(),
+                    call_path_binding,
+                    span,
+                    args,
+                    qualified_path_root,
+                )
             }
             ExpressionKind::DelineatedPath(delineated_path_expression) => {
                 let DelineatedPathExpression {
@@ -1036,8 +1043,41 @@ impl ty::TyExpression {
         }: TypeBinding<CallPath<AmbiguousSuffix>>,
         span: Span,
         args: Vec<Expression>,
+        qualified_path_root: Option<QualifiedPathRootTypes>,
     ) -> CompileResult<ty::TyExpression> {
         let decl_engine = ctx.decl_engine;
+
+        if let Some(QualifiedPathRootTypes { ty, as_trait }) = qualified_path_root {
+            if !prefixes.is_empty() || before.is_some() {
+                return err(
+                    vec![],
+                    vec![
+                        ConvertParseTreeError::UnexpectedCallPathPrefixAfterQualifiedRoot {
+                            span: path_span,
+                        }
+                        .into(),
+                    ],
+                );
+            }
+
+            let method_name_binding = TypeBinding {
+                inner: MethodName::FromQualifiedPathRoot {
+                    ty,
+                    as_trait,
+                    method_name: suffix,
+                },
+                type_arguments,
+                span: path_span,
+            };
+
+            return type_check_method_application(
+                ctx.by_ref(),
+                method_name_binding,
+                Vec::new(),
+                args,
+                span,
+            );
+        }
 
         // is it a singleton?
         let before = if let Some(b) = before {

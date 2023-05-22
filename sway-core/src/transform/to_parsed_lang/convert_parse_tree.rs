@@ -724,7 +724,7 @@ fn path_type_to_call_path_and_type_arguments(
     let call_path = CallPath {
         prefixes,
         suffix: suffix.name,
-        is_absolute: path_root_opt_to_bool(context, handler, root_opt)?,
+        is_absolute: path_root_opt_to_bool(context, handler, root_opt, true)?,
     };
 
     let ty_args = match suffix.generics_opt {
@@ -1334,7 +1334,7 @@ fn ty_to_call_path_tree(
         let call_path = CallPath {
             prefixes,
             suffix: suffix.name,
-            is_absolute: path_root_opt_to_bool(context, handler, root_opt)?,
+            is_absolute: path_root_opt_to_bool(context, handler, root_opt, true)?,
         };
 
         Ok(Some(CallPathTree {
@@ -1446,7 +1446,7 @@ fn path_type_to_call_path(
         prefix,
         mut suffix,
     } = path_type;
-    let is_absolute = path_root_opt_to_bool(context, handler, root_opt)?;
+    let is_absolute = path_root_opt_to_bool(context, handler, root_opt, true)?;
     let call_path = match suffix.pop() {
         Some((_double_colon_token, call_path_suffix)) => {
             let mut prefixes = vec![path_type_segment_to_ident(context, handler, prefix)?];
@@ -1610,7 +1610,7 @@ fn expr_func_app_to_expression_kind(
         }
     };
 
-    let is_absolute = path_root_opt_to_bool(context, handler, root_opt)?;
+    let is_absolute = path_root_opt_to_bool(context, handler, root_opt.clone(), false)?;
 
     let convert_ty_args = |context: &mut Context, generics_opt: Option<(_, GenericArgs)>| {
         Ok(match generics_opt {
@@ -1669,6 +1669,27 @@ fn expr_func_app_to_expression_kind(
         _ => {}
     }
 
+    let qualified_path_root = if let Some((
+        Some(AngleBrackets {
+            open_angle_bracket_token: _,
+            inner:
+                QualifiedPathRoot {
+                    ty,
+                    as_trait: Some((_, path_type)),
+                },
+            close_angle_bracket_token: _,
+        }),
+        _,
+    )) = root_opt
+    {
+        Some(QualifiedPathRootTypes {
+            ty: ty_to_type_argument(context, handler, engines, *ty)?,
+            as_trait: path_type_to_type_info(context, handler, engines, *path_type)?,
+        })
+    } else {
+        None
+    };
+
     // Only `foo(args)`? It could either be a function application or an enum variant.
     let last = match last {
         Some(last) => last,
@@ -1695,6 +1716,7 @@ fn expr_func_app_to_expression_kind(
                 AmbiguousPathExpression {
                     args: arguments,
                     call_path_binding,
+                    qualified_path_root,
                 },
             )));
         }
@@ -1726,6 +1748,7 @@ fn expr_func_app_to_expression_kind(
         AmbiguousPathExpression {
             args: arguments,
             call_path_binding,
+            qualified_path_root,
         },
     )))
 }
@@ -2459,7 +2482,7 @@ fn path_type_to_supertrait(
         prefix,
         mut suffix,
     } = path_type;
-    let is_absolute = path_root_opt_to_bool(context, handler, root_opt)?;
+    let is_absolute = path_root_opt_to_bool(context, handler, root_opt, true)?;
     let (prefixes, call_path_suffix) = match suffix.pop() {
         Some((_, call_path_suffix)) => {
             let mut prefixes = vec![path_type_segment_to_ident(context, handler, prefix)?];
@@ -2695,15 +2718,19 @@ fn path_root_opt_to_bool(
     _context: &mut Context,
     handler: &Handler,
     root_opt: Option<(Option<AngleBrackets<QualifiedPathRoot>>, DoubleColonToken)>,
+    throw_error_on_qualified_path_root: bool,
 ) -> Result<bool, ErrorEmitted> {
     Ok(match root_opt {
         None => false,
         Some((None, _)) => true,
         Some((Some(qualified_path_root), _)) => {
-            let error = ConvertParseTreeError::QualifiedPathRootsNotImplemented {
-                span: qualified_path_root.span(),
-            };
-            return Err(handler.emit_err(error.into()));
+            if throw_error_on_qualified_path_root {
+                let error = ConvertParseTreeError::QualifiedPathRootsNotImplemented {
+                    span: qualified_path_root.span(),
+                };
+                return Err(handler.emit_err(error.into()));
+            }
+            false
         }
     })
 }
@@ -2848,7 +2875,7 @@ fn path_expr_to_call_path_binding(
         mut suffix,
         ..
     } = path_expr;
-    let is_absolute = path_root_opt_to_bool(context, handler, root_opt)?;
+    let is_absolute = path_root_opt_to_bool(context, handler, root_opt, true)?;
     let (prefixes, suffix, span, regular_type_arguments, prefix_type_arguments) = match suffix.pop()
     {
         Some((_, call_path_suffix)) => {
@@ -2927,7 +2954,7 @@ fn path_expr_to_call_path(
         mut suffix,
         ..
     } = path_expr;
-    let is_absolute = path_root_opt_to_bool(context, handler, root_opt)?;
+    let is_absolute = path_root_opt_to_bool(context, handler, root_opt, true)?;
     let call_path = match suffix.pop() {
         Some((_double_colon_token, call_path_suffix)) => {
             let mut prefixes = vec![path_expr_segment_to_ident(context, handler, &prefix)?];
