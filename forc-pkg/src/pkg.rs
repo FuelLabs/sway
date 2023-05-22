@@ -2074,8 +2074,20 @@ fn is_contract_dependency(graph: &Graph, node: NodeIx) -> bool {
         .any(|e| matches!(e.weight().kind, DepKind::Contract { .. }))
 }
 
-/// Builds a project with given BuildOptions.
+/// Builds a project with given `BuildOptions` and default `Engines`.
 pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
+    let type_engine = TypeEngine::default();
+    let decl_engine = DeclEngine::default();
+
+    let engines = Engines::new(&type_engine, &decl_engine);
+    build_with_options_and_engines(build_options, engines)
+}
+
+/// Builds a project with given `BuildOptions` and provided `Engines`.
+pub fn build_with_options_and_engines(
+    build_options: BuildOpts,
+    engines: Engines<'_>,
+) -> Result<Built> {
     let BuildOpts {
         minify,
         binary_outfile,
@@ -2122,7 +2134,13 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
     // Build it!
     let mut built_workspace = Vec::new();
     let build_start = std::time::Instant::now();
-    let built_packages = build(&build_plan, *build_target, &build_profile, &outputs)?;
+    let built_packages = build(
+        &build_plan,
+        *build_target,
+        &build_profile,
+        &outputs,
+        engines,
+    )?;
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
 
     let finished = ansi_term::Colour::Green.bold().paint("Finished");
@@ -2221,6 +2239,7 @@ pub fn build(
     target: BuildTarget,
     profile: &BuildProfile,
     outputs: &HashSet<NodeIx>,
+    engines: Engines<'_>,
 ) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
     let mut built_packages = Vec::new();
 
@@ -2229,9 +2248,6 @@ pub fn build(
         .flat_map(|output_node| plan.node_deps(*output_node))
         .collect();
 
-    let type_engine = TypeEngine::default();
-    let decl_engine = DeclEngine::default();
-    let engines = Engines::new(&type_engine, &decl_engine);
     let include_tests = profile.include_tests;
 
     // This is the Contract ID of the current contract being compiled.
