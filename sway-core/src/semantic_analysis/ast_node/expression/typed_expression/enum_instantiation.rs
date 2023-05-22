@@ -62,7 +62,7 @@ pub(crate) fn instantiate_enum(
     ) {
         ([], ty) if ty.is_unit() => ok(
             ty::TyExpression {
-                return_type: type_engine.insert(decl_engine, TypeInfo::Enum(enum_ref.clone())),
+                return_type: type_engine.insert(engines, TypeInfo::Enum(enum_ref.clone())),
                 expression: ty::TyExpressionVariant::EnumInstantiation {
                     tag: enum_variant.tag,
                     contents: None,
@@ -81,7 +81,7 @@ pub(crate) fn instantiate_enum(
             let enum_ctx = ctx
                 .by_ref()
                 .with_help_text("Enum instantiator must match its declared variant type.")
-                .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
+                .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
             let typed_expr = check!(
                 ty::TyExpression::type_check(enum_ctx, single_expr.clone()),
                 return err(warnings, errors),
@@ -92,7 +92,7 @@ pub(crate) fn instantiate_enum(
             // unify the value of the argument with the variant
             check!(
                 CompileResult::from(type_engine.unify(
-                    decl_engine,
+                    engines,
                     typed_expr.return_type,
                     enum_variant.type_argument.type_id,
                     span,
@@ -107,7 +107,7 @@ pub(crate) fn instantiate_enum(
             // we now know that the instantiator type matches the declared type, via the above tpe
             // check
 
-            let type_id = type_engine.insert(decl_engine, TypeInfo::Enum(enum_ref.clone()));
+            let type_id = type_engine.insert(engines, TypeInfo::Enum(enum_ref.clone()));
 
             check!(
                 type_id.check_type_parameter_bounds(&ctx, &enum_variant_name.span()),

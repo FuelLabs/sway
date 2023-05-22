@@ -1,7 +1,7 @@
-///! Function argument demotion.
-///!
-///! This pass demotes 'by-value' function arg types to 'by-reference` pointer types, based on target
-///! specific parameters.
+/// Function argument demotion.
+///
+/// This pass demotes 'by-value' function arg types to 'by-reference` pointer types, based on target
+/// specific parameters.
 use crate::{
     AnalysisResults, Block, BlockArgument, Context, Function, Instruction, IrError, Pass,
     PassMutability, ScopedPass, Type, Value, ValueDatum,

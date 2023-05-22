@@ -14,7 +14,9 @@ use std::{
     sync::Arc,
     {fs, path::PathBuf},
 };
-use sway_core::{decl_engine::DeclEngine, BuildTarget, Engines, TypeEngine};
+use sway_core::{
+    decl_engine::DeclEngine, query_engine::QueryEngine, BuildTarget, Engines, TypeEngine,
+};
 
 mod cli;
 mod doc;
@@ -80,7 +82,8 @@ pub fn main() -> Result<()> {
         pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)?;
     let type_engine = TypeEngine::default();
     let decl_engine = DeclEngine::default();
-    let engines = Engines::new(&type_engine, &decl_engine);
+    let query_engine = QueryEngine::default();
+    let engines = Engines::new(&type_engine, &decl_engine, &query_engine);
     let tests_enabled = true;
     let typed_program = match pkg::check(
         &plan,
