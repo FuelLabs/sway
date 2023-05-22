@@ -66,7 +66,10 @@ impl Renderable for Sidebar {
             PathBuf::from(self.module_info.project_name())
                 .join(INDEX_FILENAME)
                 .to_str()
-                .unwrap(),
+                .ok_or_else(|| anyhow::anyhow!(
+                    "found invalid root file path for {}\nmake sure your project's name contains only valid unicode characters",
+                    self.module_info.project_name(),
+                ))?,
         );
         let logo_path_to_root = match style {
             DocStyle::AllDoc(_) | DocStyle::Item { .. } | DocStyle::ModuleIndex => root_path,
