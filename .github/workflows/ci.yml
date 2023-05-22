@@ -158,7 +158,7 @@ jobs:
       # - name: Run test project's test suite
       #   run: (cd test-proj && forc test)
       - name: Install cargo-generate
-        run: cargo install cargo-generate
+        run: cargo install --locked cargo-generate
       - name: Generate Rust Integration Tests
         run: (cd test-proj && cargo generate --init --path ../templates/sway-test-rs --name test-proj)
       - name: Update project cargo manifest with workspace

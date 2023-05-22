@@ -1605,6 +1605,7 @@ version = "0.39.0"
 dependencies = [
  "anyhow",
  "clap 4.2.7",
+ "colored",
  "comrak",
  "forc-pkg",
  "forc-util",
