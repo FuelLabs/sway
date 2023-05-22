@@ -1369,7 +1369,6 @@ impl ty::TyExpression {
                 &suffix,
                 ctx.self_type(),
                 ctx.engines(),
-                ctx.experimental_private_modules_enabled()
             ),
             return None,
             const_probe_warnings,

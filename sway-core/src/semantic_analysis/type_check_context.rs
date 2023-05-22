@@ -66,9 +66,6 @@ pub struct TypeCheckContext<'a> {
     /// disallowing functions from being defined inside of another function
     /// body).
     disallow_functions: bool,
-
-    /// Enable experimental module privacy rules
-    experimental_private_modules: bool,
 }
 
 impl<'a> TypeCheckContext<'a> {
@@ -99,7 +96,6 @@ impl<'a> TypeCheckContext<'a> {
             purity: Purity::default(),
             kind: TreeType::Contract,
             disallow_functions: false,
-            experimental_private_modules: false,
         }
     }
 
@@ -124,7 +120,6 @@ impl<'a> TypeCheckContext<'a> {
             decl_engine: self.decl_engine,
             query_engine: self.query_engine,
             disallow_functions: self.disallow_functions,
-            experimental_private_modules: self.experimental_private_modules,
         }
     }
 
@@ -142,7 +137,6 @@ impl<'a> TypeCheckContext<'a> {
             decl_engine: self.decl_engine,
             query_engine: self.query_engine,
             disallow_functions: self.disallow_functions,
-            experimental_private_modules: self.experimental_private_modules,
         }
     }
 
@@ -195,17 +189,6 @@ impl<'a> TypeCheckContext<'a> {
     /// Map this `TypeCheckContext` instance to a new one with the given module kind.
     pub(crate) fn with_kind(self, kind: TreeType) -> Self {
         Self { kind, ..self }
-    }
-
-    /// Map this `TypeCheckContext` instance to a new one with the given module kind.
-    pub(crate) fn with_experimental_private_modules(
-        self,
-        experimental_private_modules: bool,
-    ) -> Self {
-        Self {
-            experimental_private_modules,
-            ..self
-        }
     }
 
     /// Map this `TypeCheckContext` instance to a new one with the given purity.
@@ -263,10 +246,6 @@ impl<'a> TypeCheckContext<'a> {
         self.disallow_functions
     }
 
-    pub(crate) fn experimental_private_modules_enabled(&self) -> bool {
-        self.experimental_private_modules
-    }
-
     // Provide some convenience functions around the inner context.
 
     /// Short-hand for calling the `monomorphize` function in the type engine
@@ -289,7 +268,6 @@ impl<'a> TypeCheckContext<'a> {
             call_site_span,
             self.namespace,
             &mod_path,
-            self.experimental_private_modules,
         )
     }
 
@@ -309,7 +287,6 @@ impl<'a> TypeCheckContext<'a> {
             span,
             enforce_type_args,
             type_info_prefix,
-            self.experimental_private_modules,
         )
     }
 
@@ -320,13 +297,8 @@ impl<'a> TypeCheckContext<'a> {
         span: &Span,
         type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
-        self.namespace.resolve_type_without_self(
-            self.engines(),
-            type_id,
-            span,
-            type_info_prefix,
-            self.experimental_private_modules,
-        )
+        self.namespace
+            .resolve_type_without_self(self.engines(), type_id, span, type_info_prefix)
     }
 
     /// Short-hand around `type_system::unify_with_self`, where the `TypeCheckContext` provides the

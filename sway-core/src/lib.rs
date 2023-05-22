@@ -48,7 +48,7 @@ pub mod types;
 
 pub use error::CompileResult;
 use sway_error::error::CompileError;
-use sway_error::warning::{CompileWarning, Warning};
+use sway_error::warning::CompileWarning;
 use sway_types::{ident::Ident, span, Spanned};
 pub use type_system::*;
 
@@ -338,27 +338,12 @@ pub fn parsed_to_ast(
     build_config: Option<&BuildConfig>,
     package_name: &str,
 ) -> CompileResult<ty::TyProgram> {
-    let experimental_private_modules =
-        build_config.map_or(true, |b| b.experimental_private_modules);
     // Type check the program.
     let CompileResult {
         value: typed_program_opt,
         mut warnings,
         mut errors,
-    } = ty::TyProgram::type_check(
-        engines,
-        parse_program,
-        initial_namespace,
-        package_name,
-        experimental_private_modules,
-    );
-
-    if !experimental_private_modules {
-        warnings.push(CompileWarning {
-            span: parse_program.root.span.clone(),
-            warning_content: Warning::ModulePrivacyDisabled,
-        })
-    }
+    } = ty::TyProgram::type_check(engines, parse_program, initial_namespace, package_name);
 
     let mut typed_program = match typed_program_opt {
         Some(typed_program) => typed_program,
