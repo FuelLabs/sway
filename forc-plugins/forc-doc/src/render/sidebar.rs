@@ -1,3 +1,4 @@
+use crate::ASSETS_DIR_NAME;
 use std::path::PathBuf;
 
 use crate::{
@@ -43,7 +44,7 @@ impl Renderable for Sidebar {
     fn render(self, _render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
         let path_to_logo = self
             .module_info
-            .to_html_shorthand_path_string("assets/sway-logo.svg");
+            .to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/sway-logo.svg"));
         let style = self.style.clone();
         let version_opt = self.version_opt.clone();
         let location_with_prefix = match &style {

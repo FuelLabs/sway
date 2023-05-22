@@ -5,11 +5,17 @@ use crate::{
 use anyhow::{bail, Result};
 use clap::Parser;
 use cli::Command;
+use colored::*;
 use forc_pkg as pkg;
 use forc_util::default_output_directory;
 use include_dir::{include_dir, Dir};
-use pkg::manifest::ManifestFile;
+use pkg::{
+    manifest::{Dependency, ManifestFile},
+    PackageManifestFile,
+};
 use std::{
+    collections::BTreeMap,
+    path::Path,
     process::Command as Process,
     sync::Arc,
     {fs, path::PathBuf},
@@ -19,6 +25,8 @@ use sway_core::{decl_engine::DeclEngine, BuildTarget, Engines, TypeEngine};
 mod cli;
 mod doc;
 mod render;
+
+pub(crate) const ASSETS_DIR_NAME: &str = "static.files";
 
 /// Information passed to the render phase to get TypeInfo, CallPath or visibility for type anchors.
 #[derive(Clone)]
@@ -43,18 +51,10 @@ impl RenderPlan {
 
 /// Main method for `forc doc`.
 pub fn main() -> Result<()> {
-    let Command {
-        manifest_path,
-        document_private_items,
-        open: open_result,
-        offline,
-        silent,
-        locked,
-        no_deps,
-    } = Command::parse();
+    let build_instructions = Command::parse();
 
     // get manifest directory
-    let dir = if let Some(ref path) = manifest_path {
+    let dir = if let Some(ref path) = build_instructions.manifest_path {
         PathBuf::from(path)
     } else {
         std::env::current_dir()?
@@ -68,10 +68,80 @@ pub fn main() -> Result<()> {
 
     // create doc path
     const DOC_DIR_NAME: &str = "doc";
-    let project_name = &pkg_manifest.project.name;
     let out_path = default_output_directory(manifest.dir());
     let doc_path = out_path.join(DOC_DIR_NAME);
+    if doc_path.exists() {
+        std::fs::remove_dir_all(&doc_path)?;
+    }
     fs::create_dir_all(&doc_path)?;
+
+    // build core documentation
+    build_docs(&manifest, pkg_manifest, &doc_path, &build_instructions)?;
+
+    // CSS, icons and logos
+    static ASSETS_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/src/static.files");
+    let assets_path = doc_path.join(ASSETS_DIR_NAME);
+    fs::create_dir_all(&assets_path)?;
+    for file in ASSETS_DIR.files() {
+        let asset_path = assets_path.join(file.path());
+        fs::write(asset_path, file.contents())?;
+    }
+    // Sway syntax highlighting file
+    const SWAY_HJS_FILENAME: &str = "highlight.js";
+    let sway_hjs = std::include_bytes!("static.files/highlight.js");
+    fs::write(assets_path.join(SWAY_HJS_FILENAME), sway_hjs)?;
+
+    // check if the user wants to open the doc in the browser
+    // if opening in the browser fails, attempt to open using a file explorer
+    if build_instructions.open {
+        const BROWSER_ENV_VAR: &str = "BROWSER";
+        let path = doc_path
+            .join(pkg_manifest.project_name())
+            .join(INDEX_FILENAME);
+        let default_browser_opt = std::env::var_os(BROWSER_ENV_VAR);
+        match default_browser_opt {
+            Some(def_browser) => {
+                let browser = PathBuf::from(def_browser);
+                if let Err(e) = Process::new(&browser).arg(path).status() {
+                    bail!(
+                        "Couldn't open docs with {}: {}",
+                        browser.to_string_lossy(),
+                        e
+                    );
+                }
+            }
+            None => {
+                if let Err(e) = opener::open(&path) {
+                    bail!("Couldn't open docs: {}", e);
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn build_docs(
+    manifest: &ManifestFile,
+    pkg_manifest: &PackageManifestFile,
+    doc_path: &Path,
+    build_instructions: &Command,
+) -> Result<()> {
+    let Command {
+        document_private_items,
+        offline,
+        silent,
+        locked,
+        no_deps,
+        ..
+    } = *build_instructions;
+
+    println!(
+        "   {} {} ({})",
+        "Compiling".bold().yellow(),
+        pkg_manifest.project_name(),
+        manifest.dir().to_string_lossy()
+    );
 
     // compile the program and extract the docs
     let member_manifests = manifest.member_manifests()?;
@@ -97,22 +167,29 @@ pub fn main() -> Result<()> {
         Some(typed_program) => typed_program,
         _ => bail!("CompileResult returned None"),
     };
+
+    println!(
+        "    {} documentation for {} ({})",
+        "Building".bold().yellow(),
+        pkg_manifest.project_name(),
+        manifest.dir().to_string_lossy()
+    );
+
     let raw_docs = Documentation::from_ty_program(
         &decl_engine,
-        project_name,
+        pkg_manifest.project_name(),
         &typed_program,
         no_deps,
         document_private_items,
     )?;
     let root_attributes =
         (!typed_program.root.attributes.is_empty()).then_some(typed_program.root.attributes);
-    let program_kind = typed_program.kind;
-    // render docs to HTML
     let forc_version = pkg_manifest
         .project
         .forc_version
         .as_ref()
         .map(|ver| format!("Forc v{}.{}.{}", ver.major, ver.minor, ver.patch));
+    // render docs to HTML
     let rendered_docs = RenderedDocumentation::from_raw_docs(
         raw_docs,
         RenderPlan::new(
@@ -121,13 +198,65 @@ pub fn main() -> Result<()> {
             Arc::from(decl_engine),
         ),
         root_attributes,
-        program_kind,
+        typed_program.kind,
         forc_version,
     )?;
 
-    // write contents to outfile
+    // write file contents to doc folder
+    write_content(rendered_docs, doc_path)?;
+    println!("    {}", "Finished".bold().yellow());
+
+    if !build_instructions.no_deps {
+        build_deps(
+            &pkg_manifest.dependencies,
+            manifest.dir(),
+            doc_path,
+            build_instructions,
+        )?;
+    }
+
+    Ok(())
+}
+
+fn build_deps(
+    dependencies: &Option<BTreeMap<String, Dependency>>,
+    manifest_dir: &Path,
+    doc_path: &Path,
+    build_instructions: &Command,
+) -> Result<()> {
+    if let Some(deps) = dependencies {
+        for (dep_name, dep) in deps {
+            if let Dependency::Detailed(dep_details) = dep {
+                if let Some(path) = &dep_details.path {
+                    let manifest_path = manifest_dir.join(path).canonicalize()?;
+                    let dep_manifest = ManifestFile::from_dir(&manifest_path)?;
+                    let dep_pkg_manifest =
+                        if let ManifestFile::Package(pkg_manifest) = &dep_manifest {
+                            pkg_manifest
+                        } else {
+                            bail!("forc-doc does not support workspaces.")
+                        };
+                    build_docs(
+                        &dep_manifest,
+                        dep_pkg_manifest,
+                        doc_path,
+                        build_instructions,
+                    )?;
+                } else {
+                    println!("a path variable was not set for {dep_name}, which is currently the only supported option.")
+                }
+            } else {
+                println!("{dep_name} is a simple format dependency,\nsimple format dependencies don't specify a path to a manfiest file and are unsupported at this time.")
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn write_content(rendered_docs: RenderedDocumentation, doc_path: &Path) -> Result<()> {
     for doc in rendered_docs.0 {
-        let mut doc_path = doc_path.clone();
+        let mut doc_path = doc_path.to_path_buf();
         for prefix in doc.module_info.module_prefixes {
             doc_path.push(prefix)
         }
@@ -135,44 +264,6 @@ pub fn main() -> Result<()> {
         fs::create_dir_all(&doc_path)?;
         doc_path.push(doc.html_filename);
         fs::write(&doc_path, doc.file_contents.0.as_bytes())?;
-    }
-    // CSS, icons and logos
-    static ASSETS_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/src/assets");
-    const ASSETS_DIR_NAME: &str = "assets";
-    let assets_path = doc_path.join(ASSETS_DIR_NAME);
-    fs::create_dir_all(&assets_path)?;
-    for file in ASSETS_DIR.files() {
-        let asset_path = assets_path.join(file.path());
-        fs::write(asset_path, file.contents())?;
-    }
-    // Sway syntax highlighting file
-    const SWAY_HJS_FILENAME: &str = "highlight.js";
-    let sway_hjs = std::include_bytes!("assets/highlight.js");
-    fs::write(assets_path.join(SWAY_HJS_FILENAME), sway_hjs)?;
-
-    // check if the user wants to open the doc in the browser
-    // if opening in the browser fails, attempt to open using a file explorer
-    if open_result {
-        const BROWSER_ENV_VAR: &str = "BROWSER";
-        let path = doc_path.join(project_name).join(INDEX_FILENAME);
-        let default_browser_opt = std::env::var_os(BROWSER_ENV_VAR);
-        match default_browser_opt {
-            Some(def_browser) => {
-                let browser = PathBuf::from(def_browser);
-                if let Err(e) = Process::new(&browser).arg(path).status() {
-                    bail!(
-                        "Couldn't open docs with {}: {}",
-                        browser.to_string_lossy(),
-                        e
-                    );
-                }
-            }
-            None => {
-                if let Err(e) = opener::open(&path) {
-                    bail!("Couldn't open docs: {}", e);
-                }
-            }
-        }
     }
 
     Ok(())

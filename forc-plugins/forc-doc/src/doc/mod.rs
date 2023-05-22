@@ -21,7 +21,7 @@ impl Documentation {
         decl_engine: &DeclEngine,
         project_name: &str,
         typed_program: &TyProgram,
-        no_deps: bool,
+        _no_deps: bool,
         document_private_items: bool,
     ) -> Result<Documentation> {
         // the first module prefix will always be the project name
@@ -50,7 +50,7 @@ impl Documentation {
                 &mut impl_traits,
                 &module_prefix,
                 document_private_items,
-                no_deps,
+                _no_deps,
             )?;
         }
 
@@ -120,7 +120,7 @@ impl Documentation {
         impl_traits: &mut Vec<TyImplTrait>,
         module_info: &ModuleInfo,
         document_private_items: bool,
-        no_deps: bool,
+        _no_deps: bool,
     ) -> Result<()> {
         let mut module_info = module_info.to_owned();
         module_info
@@ -134,9 +134,6 @@ impl Documentation {
             impl_traits,
             document_private_items,
         )?;
-        // if !no_deps {
-        //     println!("dep: {:#?}", typed_submodule.module.namespace);
-        // }
 
         for (_, submodule) in &typed_submodule.module.submodules {
             Documentation::from_ty_submodule(
@@ -146,7 +143,7 @@ impl Documentation {
                 impl_traits,
                 &module_info,
                 document_private_items,
-                no_deps,
+                _no_deps,
             )?;
         }
 
