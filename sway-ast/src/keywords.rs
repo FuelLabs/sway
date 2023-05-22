@@ -82,6 +82,8 @@ define_keyword!(BreakToken, "break");
 define_keyword!(ContinueToken, "continue");
 define_keyword!(ConfigurableToken, "configurable");
 define_keyword!(TypeToken, "type");
+define_keyword!(PtrToken, "__ptr");
+define_keyword!(SliceToken, "__slice");
 
 /// The type is a keyword.
 pub trait Token: Spanned + Sized {

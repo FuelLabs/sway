@@ -13,7 +13,7 @@ use sway_types::{Ident, Span, Spanned};
 /// [ty::TyExpression].
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_enum(
-    ctx: TypeCheckContext,
+    mut ctx: TypeCheckContext,
     enum_ref: DeclRefEnum,
     enum_variant_name: Ident,
     args_opt: Option<Vec<Expression>>,
@@ -78,11 +78,12 @@ pub(crate) fn instantiate_enum(
             errors,
         ),
         ([single_expr], _) => {
-            let ctx = ctx
+            let enum_ctx = ctx
+                .by_ref()
                 .with_help_text("Enum instantiator must match its declared variant type.")
                 .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
             let typed_expr = check!(
-                ty::TyExpression::type_check(ctx, single_expr.clone()),
+                ty::TyExpression::type_check(enum_ctx, single_expr.clone()),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -106,9 +107,18 @@ pub(crate) fn instantiate_enum(
             // we now know that the instantiator type matches the declared type, via the above tpe
             // check
 
+            let type_id = type_engine.insert(decl_engine, TypeInfo::Enum(enum_ref.clone()));
+
+            check!(
+                type_id.check_type_parameter_bounds(&ctx, &enum_variant_name.span()),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+
             ok(
                 ty::TyExpression {
-                    return_type: type_engine.insert(decl_engine, TypeInfo::Enum(enum_ref.clone())),
+                    return_type: type_id,
                     expression: ty::TyExpressionVariant::EnumInstantiation {
                         tag: enum_variant.tag,
                         contents: Some(Box::new(typed_expr)),

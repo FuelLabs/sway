@@ -418,6 +418,14 @@ impl TypeSubstMap {
                     type_engine.insert(decl_engine, TypeInfo::Alias { name, ty })
                 })
             }
+            TypeInfo::Ptr(mut ty) => self.find_match(ty.type_id, engines).map(|type_id| {
+                ty.type_id = type_id;
+                type_engine.insert(decl_engine, TypeInfo::Ptr(ty))
+            }),
+            TypeInfo::Slice(mut ty) => self.find_match(ty.type_id, engines).map(|type_id| {
+                ty.type_id = type_id;
+                type_engine.insert(decl_engine, TypeInfo::Slice(ty))
+            }),
             TypeInfo::Unknown
             | TypeInfo::Str(..)
             | TypeInfo::UnsignedInteger(..)

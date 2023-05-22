@@ -16,7 +16,7 @@ use super::{
     items::{GlobImport, Items, SymbolMap},
     root::Root,
     trait_map::TraitMap,
-    ModuleName, Path,
+    ModuleName, Path, PathBuf,
 };
 
 use sway_ast::ItemConst;
@@ -56,6 +56,11 @@ pub struct Module {
     /// Indicates whether the module is external to the current package. External modules are
     /// imported in the `Forc.toml` file.
     pub is_external: bool,
+    /// An absolute path from the `root` that represents the module location.
+    ///
+    /// When this is the root module, this is equal to `[]`. When this is a
+    /// submodule of the root called "foo", this would be equal to `[foo]`.
+    pub mod_path: PathBuf,
 }
 
 impl Default for Module {
@@ -67,6 +72,7 @@ impl Default for Module {
             name: Default::default(),
             span: Default::default(),
             is_external: Default::default(),
+            mod_path: Default::default(),
         }
     }
 }
