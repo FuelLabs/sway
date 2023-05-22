@@ -70,7 +70,7 @@ impl RenderedDocumentation {
         forc_version: Option<String>,
     ) -> Result<RenderedDocumentation> {
         let mut rendered_docs: RenderedDocumentation = Default::default();
-        let root_module = match raw_docs.first() {
+        let root_module = match raw_docs.0.first() {
             Some(doc) => ModuleInfo::from_ty_module(
                 vec![doc.module_info.project_name().to_owned()],
                 root_attributes.map(|attrs_map| attrs_map.to_html_string()),
@@ -84,7 +84,7 @@ impl RenderedDocumentation {
         };
         let mut module_map: BTreeMap<ModulePrefixes, BTreeMap<BlockTitle, Vec<DocLink>>> =
             BTreeMap::new();
-        for doc in raw_docs {
+        for doc in raw_docs.0 {
             rendered_docs
                 .0
                 .push(RenderedDocument::from_doc(&doc, render_plan.clone())?);
