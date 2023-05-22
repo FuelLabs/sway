@@ -179,7 +179,6 @@ fn build_docs(
         &decl_engine,
         pkg_manifest.project_name(),
         &typed_program,
-        no_deps,
         document_private_items,
     )?;
     let root_attributes =
@@ -206,7 +205,7 @@ fn build_docs(
     write_content(rendered_docs, doc_path)?;
     println!("    {}", "Finished".bold().yellow());
 
-    if !build_instructions.no_deps {
+    if !no_deps {
         build_deps(
             &pkg_manifest.dependencies,
             manifest.dir(),
