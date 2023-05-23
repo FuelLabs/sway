@@ -33,7 +33,7 @@ pub struct Command {
     pub filter: Option<String>,
     #[clap(long)]
     /// When specified, only the test exactly matching the given string will be executed.
-    pub exact: bool,
+    pub filter_exact: bool,
     #[clap(long)]
     /// Number of threads to utilize when running the tests. By default, this is the number of
     /// threads available in your system.
@@ -61,7 +61,7 @@ pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
     let test_filter_phrase = cmd.filter.clone();
     let test_filter = test_filter_phrase.as_ref().map(|filter_phrase| TestFilter {
         filter_phrase,
-        exact_match: cmd.exact,
+        exact_match: cmd.filter_exact,
     });
     let opts = opts_from_cmd(cmd);
     let built_tests = forc_test::build(opts)?;
