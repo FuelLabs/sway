@@ -83,18 +83,6 @@ jobs:
       - name: Check Sway examples formatting
         run: cargo run --locked -p forc-fmt -- --check --path ./examples
 
-  forc-fmt-check-reference-examples:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-      - uses: Swatinem/rust-cache@v2
-      - name: Check Sway examples formatting
-        run: #formatter is broken so commenting out - cargo run --locked -p forc-fmt -- --check --path ./docs/reference/src/code
-
   build-mdbook:
     runs-on: ubuntu-latest
     steps:
