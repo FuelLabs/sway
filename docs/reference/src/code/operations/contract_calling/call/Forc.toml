@@ -5,4 +5,4 @@ license = "Apache-2.0"
 name = "call"
 
 [dependencies]
-interface = { path = "../interface" }
+contract_interface = { path = "../contract_interface" }

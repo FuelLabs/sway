@@ -27,13 +27,13 @@ impl Wallet for Contract {
     #[storage(read, write)]
     fn receive() {
         assert(msg_asset_id() == BASE_ASSET_ID);
-        storage.balance += msg_amount();
+        storage.balance.write(storage.balance.read() + msg_amount());
     }
 
     #[storage(read, write)]
     fn send(amount: u64, recipient: Identity) {
         assert(msg_sender().unwrap() == Identity::Address(OWNER));
-        storage.balance -= amount;
+        storage.balance.write(storage.balance.read() - amount);
         transfer(amount, BASE_ASSET_ID, recipient);
     }
 }
