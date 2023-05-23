@@ -96,7 +96,7 @@ impl ty::TyImplTrait {
         let mut ctx = ctx
             .with_self_type(implementing_for.type_id)
             .with_help_text("")
-            .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
 
         let impl_trait = match ctx
             .namespace
@@ -311,7 +311,7 @@ impl ty::TyImplTrait {
         let mut ctx = ctx
             .with_self_type(implementing_for.type_id)
             .with_help_text("")
-            .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
 
         // Insert implementing type decl as `Self` symbol.
         let self_decl: Option<ty::TyDecl> = match type_engine.get(implementing_for.type_id) {
@@ -634,14 +634,13 @@ fn type_check_impl_method(
     let mut errors = vec![];
 
     let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
     let engines = ctx.engines();
     let self_type = ctx.self_type();
 
     let mut ctx = ctx
         .by_ref()
         .with_help_text("")
-        .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
+        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
 
     let interface_name = || -> InterfaceName {
         if is_contract {
@@ -852,14 +851,13 @@ fn type_check_const_decl(
     let mut errors = vec![];
 
     let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
     let engines = ctx.engines();
     let self_type = ctx.self_type();
 
     let mut ctx = ctx
         .by_ref()
         .with_help_text("")
-        .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
+        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
 
     let interface_name = || -> InterfaceName {
         if is_contract {

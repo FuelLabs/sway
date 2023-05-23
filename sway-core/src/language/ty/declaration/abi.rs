@@ -68,12 +68,11 @@ impl HashWithEngines for TyAbiDecl {
 impl CreateTypeId for TyAbiDecl {
     fn create_type_id(&self, engines: Engines<'_>) -> TypeId {
         let type_engine = engines.te();
-        let decl_engine = engines.de();
         let ty = TypeInfo::ContractCaller {
             abi_name: AbiName::Known(self.name.clone().into()),
             address: None,
         };
-        type_engine.insert(decl_engine, ty)
+        type_engine.insert(engines, ty)
     }
 }
 

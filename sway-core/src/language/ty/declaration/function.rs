@@ -257,16 +257,12 @@ impl TyFunctionDecl {
         }
     }
 
-    pub fn to_fn_selector_value_untruncated(
-        &self,
-        type_engine: &TypeEngine,
-        decl_engine: &DeclEngine,
-    ) -> CompileResult<Vec<u8>> {
+    pub fn to_fn_selector_value_untruncated(&self, engines: Engines<'_>) -> CompileResult<Vec<u8>> {
         let mut errors = vec![];
         let mut warnings = vec![];
         let mut hasher = Sha256::new();
         let data = check!(
-            self.to_selector_name(type_engine, decl_engine),
+            self.to_selector_name(engines),
             return err(warnings, errors),
             warnings,
             errors
@@ -279,15 +275,11 @@ impl TyFunctionDecl {
     /// Converts a [TyFunctionDecl] into a value that is to be used in contract function
     /// selectors.
     /// Hashes the name and parameters using SHA256, and then truncates to four bytes.
-    pub fn to_fn_selector_value(
-        &self,
-        type_engine: &TypeEngine,
-        decl_engine: &DeclEngine,
-    ) -> CompileResult<[u8; 4]> {
+    pub fn to_fn_selector_value(&self, engines: Engines<'_>) -> CompileResult<[u8; 4]> {
         let mut errors = vec![];
         let mut warnings = vec![];
         let hash = check!(
-            self.to_fn_selector_value_untruncated(type_engine, decl_engine),
+            self.to_fn_selector_value_untruncated(engines),
             return err(warnings, errors),
             warnings,
             errors
@@ -298,21 +290,18 @@ impl TyFunctionDecl {
         ok(buf, warnings, errors)
     }
 
-    pub fn to_selector_name(
-        &self,
-        type_engine: &TypeEngine,
-        decl_engine: &DeclEngine,
-    ) -> CompileResult<String> {
+    pub fn to_selector_name(&self, engines: Engines<'_>) -> CompileResult<String> {
         let mut errors = vec![];
         let mut warnings = vec![];
         let named_params = self
             .parameters
             .iter()
             .map(|TyFunctionParameter { type_argument, .. }| {
-                type_engine
+                engines
+                    .te()
                     .to_typeinfo(type_argument.type_id, &type_argument.span)
                     .expect("unreachable I think?")
-                    .to_selector_name(type_engine, decl_engine, &type_argument.span)
+                    .to_selector_name(engines, &type_argument.span)
             })
             .filter_map(|name| name.ok(&mut warnings, &mut errors))
             .collect::<Vec<String>>();

@@ -468,9 +468,7 @@ fn item_fn_to_function_declaration(
     let return_type = match item_fn.fn_signature.return_type_opt {
         Some((_right_arrow, ty)) => ty_to_type_argument(context, handler, engines, ty)?,
         None => {
-            let type_id = engines
-                .te()
-                .insert(engines.de(), TypeInfo::Tuple(Vec::new()));
+            let type_id = engines.te().insert(engines, TypeInfo::Tuple(Vec::new()));
             TypeArgument {
                 type_id,
                 initial_type_id: type_id,
@@ -859,7 +857,7 @@ pub(crate) fn item_const_to_constant_declaration(
                     return Err(errors);
                 }
             }
-            engines.te().insert(engines.de(), TypeInfo::Unknown).into()
+            engines.te().insert(engines, TypeInfo::Unknown).into()
         }
     };
 
@@ -1043,7 +1041,6 @@ fn generic_params_opt_to_type_parameters_with_parent(
     where_clause_opt: Option<WhereClause>,
 ) -> Result<Vec<TypeParameter>, ErrorEmitted> {
     let type_engine = engines.te();
-    let decl_engine = engines.de();
 
     let trait_constraints = match where_clause_opt {
         Some(where_clause) => where_clause
@@ -1062,7 +1059,7 @@ fn generic_params_opt_to_type_parameters_with_parent(
             .into_iter()
             .map(|ident| {
                 let custom_type = type_engine.insert(
-                    decl_engine,
+                    engines,
                     TypeInfo::Custom {
                         call_path: ident.clone().into(),
                         type_arguments: None,
@@ -1196,7 +1193,7 @@ fn fn_args_to_function_parameters(
                 (Some(reference), None) => reference.span(),
                 (Some(reference), Some(mutable)) => Span::join(reference.span(), mutable.span()),
             };
-            let type_id = engines.te().insert(engines.de(), TypeInfo::SelfType);
+            let type_id = engines.te().insert(engines, TypeInfo::SelfType);
             let mut function_parameters = vec![FunctionParameter {
                 name: Ident::new(self_token.span()),
                 is_reference: ref_self.is_some(),
@@ -1356,11 +1353,10 @@ fn ty_to_type_argument(
     ty: Ty,
 ) -> Result<TypeArgument, ErrorEmitted> {
     let type_engine = engines.te();
-    let decl_engine = engines.de();
     let span = ty.span();
     let call_path_tree = ty_to_call_path_tree(context, handler, ty.clone())?;
     let initial_type_id =
-        type_engine.insert(decl_engine, ty_to_type_info(context, handler, engines, ty)?);
+        type_engine.insert(engines, ty_to_type_info(context, handler, engines, ty)?);
 
     let type_argument = TypeArgument {
         type_id: initial_type_id,
@@ -1880,7 +1876,7 @@ fn expr_to_expression(
                                 VariableDeclaration {
                                     type_ascription: {
                                         let type_id =
-                                            engines.te().insert(engines.de(), TypeInfo::Unknown);
+                                            engines.te().insert(engines, TypeInfo::Unknown);
                                         TypeArgument {
                                             type_id,
                                             initial_type_id: type_id,
@@ -3108,7 +3104,7 @@ fn statement_let_to_ast_nodes(
                 let type_ascription = match ty_opt {
                     Some(ty) => ty_to_type_argument(context, handler, engines, ty)?,
                     None => {
-                        let type_id = engines.te().insert(engines.de(), TypeInfo::Unknown);
+                        let type_id = engines.te().insert(engines, TypeInfo::Unknown);
                         TypeArgument {
                             type_id,
                             initial_type_id: type_id,
@@ -3160,7 +3156,7 @@ fn statement_let_to_ast_nodes(
                 let type_ascription = match &ty_opt {
                     Some(ty) => ty_to_type_argument(context, handler, engines, ty.clone())?,
                     None => {
-                        let type_id = engines.te().insert(engines.de(), TypeInfo::Unknown);
+                        let type_id = engines.te().insert(engines, TypeInfo::Unknown);
                         TypeArgument {
                             type_id,
                             initial_type_id: type_id,
@@ -3254,7 +3250,7 @@ fn statement_let_to_ast_nodes(
                 let type_ascription = match &ty_opt {
                     Some(ty) => ty_to_type_argument(context, handler, engines, ty.clone())?,
                     None => {
-                        let type_id = engines.te().insert(engines.de(), TypeInfo::Unknown);
+                        let type_id = engines.te().insert(engines, TypeInfo::Unknown);
                         TypeArgument {
                             type_id,
                             initial_type_id: type_id,
@@ -3282,7 +3278,7 @@ fn statement_let_to_ast_nodes(
                 // is properly sized to the pattern
                 let placeholders_type_ascription = {
                     let type_id = engines.te().insert(
-                        engines.de(),
+                        engines,
                         TypeInfo::Tuple(
                             pat_tuple
                                 .clone()
@@ -3290,7 +3286,7 @@ fn statement_let_to_ast_nodes(
                                 .into_iter()
                                 .map(|_| {
                                     let initial_type_id =
-                                        engines.te().insert(engines.de(), TypeInfo::Unknown);
+                                        engines.te().insert(engines, TypeInfo::Unknown);
                                     let dummy_type_param = TypeParameter {
                                         type_id: initial_type_id,
                                         initial_type_id,
@@ -3302,10 +3298,9 @@ fn statement_let_to_ast_nodes(
                                         trait_constraints_span: Span::dummy(),
                                         is_from_parent: false,
                                     };
-                                    let initial_type_id = engines.te().insert(
-                                        engines.de(),
-                                        TypeInfo::Placeholder(dummy_type_param),
-                                    );
+                                    let initial_type_id = engines
+                                        .te()
+                                        .insert(engines, TypeInfo::Placeholder(dummy_type_param));
                                     TypeArgument {
                                         type_id: initial_type_id,
                                         initial_type_id,
@@ -3580,12 +3575,11 @@ fn ty_to_type_parameter(
     ty: Ty,
 ) -> Result<TypeParameter, ErrorEmitted> {
     let type_engine = engines.te();
-    let decl_engine = engines.de();
 
     let name_ident = match ty {
         Ty::Path(path_type) => path_type_to_ident(context, handler, path_type)?,
         Ty::Infer { underscore_token } => {
-            let unknown_type = type_engine.insert(decl_engine, TypeInfo::Unknown);
+            let unknown_type = type_engine.insert(engines, TypeInfo::Unknown);
             return Ok(TypeParameter {
                 type_id: unknown_type,
                 initial_type_id: unknown_type,
@@ -3602,7 +3596,7 @@ fn ty_to_type_parameter(
         Ty::Slice { .. } => panic!("__slice types are not allowed in this position"),
     };
     let custom_type = type_engine.insert(
-        decl_engine,
+        engines,
         TypeInfo::Custom {
             call_path: name_ident.clone().into(),
             type_arguments: None,

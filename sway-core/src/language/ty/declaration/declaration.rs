@@ -819,7 +819,7 @@ impl TyDecl {
                 subst_list: _,
                 decl_span,
             }) => type_engine.insert(
-                decl_engine,
+                engines,
                 TypeInfo::Struct(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
             ),
             TyDecl::EnumDecl(EnumDecl {
@@ -828,13 +828,13 @@ impl TyDecl {
                 subst_list: _,
                 decl_span,
             }) => type_engine.insert(
-                decl_engine,
+                engines,
                 TypeInfo::Enum(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
             ),
             TyDecl::StorageDecl(StorageDecl { decl_id, .. }) => {
                 let storage_decl = decl_engine.get_storage(decl_id);
                 type_engine.insert(
-                    decl_engine,
+                    engines,
                     TypeInfo::Storage {
                         fields: storage_decl.fields_as_typed_struct_fields(),
                     },

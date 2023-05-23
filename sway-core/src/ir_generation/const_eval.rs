@@ -9,6 +9,7 @@ use crate::{
         CallPath,
     },
     metadata::MetadataManager,
+    query_engine::QueryEngine,
     semantic_analysis::*,
     TypeEngine,
 };
@@ -35,6 +36,7 @@ use sway_utils::mapped_stack::MappedStack;
 pub(crate) struct LookupEnv<'a> {
     pub(crate) type_engine: &'a TypeEngine,
     pub(crate) decl_engine: &'a DeclEngine,
+    pub(crate) query_engine: &'a QueryEngine,
     pub(crate) context: &'a mut Context,
     pub(crate) md_mgr: &'a mut MetadataManager,
     pub(crate) module: Module,
@@ -137,7 +139,7 @@ pub(crate) fn compile_const_decl(
                     }
 
                     let const_val = compile_constant_expression(
-                        Engines::new(env.type_engine, env.decl_engine),
+                        Engines::new(env.type_engine, env.decl_engine, env.query_engine),
                         env.context,
                         env.md_mgr,
                         env.module,
@@ -212,10 +214,11 @@ pub(crate) fn compile_constant_expression_to_constant(
     function_compiler: Option<&FnCompiler>,
     const_expr: &ty::TyExpression,
 ) -> Result<Constant, CompileError> {
-    let (type_engine, decl_engine) = engines.unwrap();
+    let (type_engine, decl_engine, query_engine) = engines.unwrap();
     let lookup = &mut LookupEnv {
         type_engine,
         decl_engine,
+        query_engine,
         context,
         md_mgr,
         module,
@@ -396,7 +399,7 @@ fn const_eval_typed_expr(
             if !element_typs.iter().all(|tid| {
                 lookup.type_engine.get(*tid).eq(
                     &elem_type_info,
-                    Engines::new(lookup.type_engine, lookup.decl_engine),
+                    Engines::new(lookup.type_engine, lookup.decl_engine, lookup.query_engine),
                 )
             }) {
                 // This shouldn't happen if the type checker did its job.
