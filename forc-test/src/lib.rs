@@ -35,6 +35,15 @@ pub struct TestDetails {
     pub line_number: usize,
 }
 
+/// The filter to be used to only run matching tests.
+pub struct TestFilter<'a> {
+    /// The phrase used for filtering, a `&str` searched/matched with test name.
+    pub filter_phrase: &'a str,
+    /// If set `true`, a complete "match" is required with test name for the test to be executed,
+    /// otherwise a test_name should "contain" the `filter_phrase`.
+    pub exact_match: bool,
+}
+
 /// The result of executing a single test within a single package.
 #[derive(Debug)]
 pub struct TestResult {
@@ -384,10 +393,11 @@ impl<'a> PackageTests {
         }
     }
 
-    /// Run all tests for this package and collect their results.
+    /// Run all tests after applying the provided filter and collect their results.
     pub(crate) fn run_tests(
         &self,
         test_runners: &rayon::ThreadPool,
+        test_filter: Option<&TestFilter>,
     ) -> anyhow::Result<TestedPackage> {
         let pkg_with_tests = self.built_pkg_with_tests();
         let tests = test_runners.install(|| {
@@ -396,6 +406,14 @@ impl<'a> PackageTests {
                 .entries
                 .par_iter()
                 .filter_map(|entry| entry.kind.test().map(|test| (entry, test)))
+                .filter(|(entry, _)| {
+                    // If a test filter is specified, only the tests containing the filter phrase in
+                    // their name are going to be executed.
+                    match &test_filter {
+                        Some(filter) => filter.filter(&entry.finalized.fn_name),
+                        None => true,
+                    }
+                })
                 .map(|(entry, test_entry)| {
                     let offset = u32::try_from(entry.finalized.imm)
                         .expect("test instruction offset out of range");
@@ -544,34 +562,68 @@ pub enum TestRunnerCount {
     Auto,
 }
 
+#[derive(Clone, Debug, Default)]
+pub struct TestCount {
+    pub total: usize,
+    pub ignored: usize,
+}
+
+impl<'a> TestFilter<'a> {
+    fn filter(&self, fn_name: &str) -> bool {
+        if self.exact_match {
+            fn_name == self.filter_phrase
+        } else {
+            fn_name.contains(self.filter_phrase)
+        }
+    }
+}
+
 impl BuiltTests {
     /// The total number of tests.
-    pub fn test_count(&self) -> usize {
+    pub fn test_count(&self, test_filter: Option<&TestFilter>) -> TestCount {
         let pkgs: Vec<&PackageTests> = match self {
             BuiltTests::Package(pkg) => vec![pkg],
             BuiltTests::Workspace(workspace) => workspace.iter().collect(),
         };
         pkgs.iter()
-            .map(|pkg| {
+            .flat_map(|pkg| {
                 pkg.built_pkg_with_tests()
                     .bytecode
                     .entries
                     .iter()
                     .filter_map(|entry| entry.kind.test().map(|test| (entry, test)))
-                    .count()
             })
-            .sum()
+            .fold(TestCount::default(), |acc, (pkg_entry, _)| {
+                let num_ignored = match &test_filter {
+                    Some(filter) => {
+                        if filter.filter(&pkg_entry.finalized.fn_name) {
+                            acc.ignored
+                        } else {
+                            acc.ignored + 1
+                        }
+                    }
+                    None => acc.ignored,
+                };
+                TestCount {
+                    total: acc.total + 1,
+                    ignored: num_ignored,
+                }
+            })
     }
 
     /// Run all built tests, return the result.
-    pub fn run(self, test_runner_count: TestRunnerCount) -> anyhow::Result<Tested> {
+    pub fn run(
+        self,
+        test_runner_count: TestRunnerCount,
+        test_filter: Option<TestFilter>,
+    ) -> anyhow::Result<Tested> {
         let test_runners = match test_runner_count {
             TestRunnerCount::Manual(runner_count) => rayon::ThreadPoolBuilder::new()
                 .num_threads(runner_count)
                 .build(),
             TestRunnerCount::Auto => rayon::ThreadPoolBuilder::new().build(),
         }?;
-        run_tests(self, &test_runners)
+        run_tests(self, &test_runners, test_filter)
     }
 }
 
@@ -642,17 +694,23 @@ fn deployment_transaction(
     (contract_id, tx)
 }
 
-/// Build the given package and run its tests, returning the results.
-fn run_tests(built: BuiltTests, test_runners: &rayon::ThreadPool) -> anyhow::Result<Tested> {
+/// Build the given package and run its tests after applying the filter provided.
+///
+/// Returns the result of test execution.
+fn run_tests(
+    built: BuiltTests,
+    test_runners: &rayon::ThreadPool,
+    test_filter: Option<TestFilter>,
+) -> anyhow::Result<Tested> {
     match built {
         BuiltTests::Package(pkg) => {
-            let tested_pkg = pkg.run_tests(test_runners)?;
+            let tested_pkg = pkg.run_tests(test_runners, test_filter.as_ref())?;
             Ok(Tested::Package(Box::new(tested_pkg)))
         }
         BuiltTests::Workspace(workspace) => {
             let tested_pkgs = workspace
                 .into_iter()
-                .map(|pkg| pkg.run_tests(test_runners))
+                .map(|pkg| pkg.run_tests(test_runners, test_filter.as_ref()))
                 .collect::<anyhow::Result<Vec<TestedPackage>>>()?;
             Ok(Tested::Workspace(tested_pkgs))
         }
@@ -760,4 +818,128 @@ fn exec_test(
     let receipts = transition.receipts().to_vec();
 
     (state, duration, receipts)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use crate::{build, BuiltTests, Opts, TestFilter, TestResult};
+
+    /// Name of the folder containing required data for tests to run, such as an example forc
+    /// project.
+    const TEST_DATA_FOLDER_NAME: &str = "test_data";
+    /// Name of the library package in the "CARGO_MANIFEST_DIR/TEST_DATA_FOLDER_NAME".
+    const TEST_LIBRARY_PACKAGE_NAME: &str = "test_library";
+
+    /// Build the tests in the test library located at
+    /// "CARGO_MANIFEST_DIR/TEST_DATA_FOLDER_NAME/TEST_LIBRARY_PACKAGE_NAME".
+    fn test_library_built_tests() -> anyhow::Result<BuiltTests> {
+        let cargo_manifest_dir = env!("CARGO_MANIFEST_DIR");
+        let library_package_dir = PathBuf::from(cargo_manifest_dir)
+            .join(TEST_DATA_FOLDER_NAME)
+            .join(TEST_LIBRARY_PACKAGE_NAME);
+        let library_package_dir_string = library_package_dir.to_string_lossy().to_string();
+        let build_options = Opts {
+            pkg: forc_pkg::PkgOpts {
+                path: Some(library_package_dir_string),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        build(build_options)
+    }
+
+    fn test_library_test_results(
+        test_filter: Option<TestFilter>,
+    ) -> anyhow::Result<Vec<TestResult>> {
+        let built_tests = test_library_built_tests()?;
+        let test_runner_count = crate::TestRunnerCount::Auto;
+        let tested = built_tests.run(test_runner_count, test_filter)?;
+        match tested {
+            crate::Tested::Package(tested_pkg) => Ok(tested_pkg.tests),
+            crate::Tested::Workspace(_) => {
+                unreachable!("test_library is a package, not a workspace.")
+            }
+        }
+    }
+
+    #[test]
+    fn test_filter_exact_match() {
+        let filter_phrase = "test_bam";
+        let test_filter = TestFilter {
+            filter_phrase,
+            exact_match: true,
+        };
+
+        let test_results = test_library_test_results(Some(test_filter)).unwrap();
+        let tested_package_test_count = test_results.len();
+
+        assert_eq!(tested_package_test_count, 1)
+    }
+
+    #[test]
+    fn test_filter_exact_match_all_ignored() {
+        let filter_phrase = "test_ba";
+        let test_filter = TestFilter {
+            filter_phrase,
+            exact_match: true,
+        };
+
+        let test_results = test_library_test_results(Some(test_filter)).unwrap();
+        let tested_package_test_count = test_results.len();
+
+        assert_eq!(tested_package_test_count, 0)
+    }
+
+    #[test]
+    fn test_filter_match_all_ignored() {
+        let filter_phrase = "this_test_does_not_exists";
+        let test_filter = TestFilter {
+            filter_phrase,
+            exact_match: false,
+        };
+
+        let test_results = test_library_test_results(Some(test_filter)).unwrap();
+        let tested_package_test_count = test_results.len();
+
+        assert_eq!(tested_package_test_count, 0)
+    }
+
+    #[test]
+    fn test_filter_one_match() {
+        let filter_phrase = "test_ba";
+        let test_filter = TestFilter {
+            filter_phrase,
+            exact_match: false,
+        };
+
+        let test_results = test_library_test_results(Some(test_filter)).unwrap();
+        let tested_package_test_count = test_results.len();
+
+        assert_eq!(tested_package_test_count, 1)
+    }
+
+    #[test]
+    fn test_filter_all_match() {
+        let filter_phrase = "est_b";
+        let test_filter = TestFilter {
+            filter_phrase,
+            exact_match: false,
+        };
+
+        let test_results = test_library_test_results(Some(test_filter)).unwrap();
+        let tested_package_test_count = test_results.len();
+
+        assert_eq!(tested_package_test_count, 2)
+    }
+
+    #[test]
+    fn test_no_filter() {
+        let test_filter = None;
+        let test_results = test_library_test_results(test_filter).unwrap();
+        let tested_package_test_count = test_results.len();
+
+        assert_eq!(tested_package_test_count, 2)
+    }
 }
