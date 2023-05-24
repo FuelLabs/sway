@@ -1,0 +1,27 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="swaydoc"><meta name="description" content="API documentation for the Sway `Never` enum in `never`."><meta name="keywords" content="sway, swaylang, sway-lang, Never"><link rel="icon" href="../../static.files/sway-logo.svg"><title>Never in never - Sway</title><link rel="stylesheet" type="text/css" href="../../static.files/normalize.css"><link rel="stylesheet" type="text/css" href="../../static.files/swaydoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../static.files/ayu.css"><link rel="stylesheet" href="../../static.files/ayu.min.css"></head><body class="swaydoc enum"><nav class="sidebar"><a class="sidebar-logo" href="../../core/index.html"><div class="logo-container"><img class="sway-logo" src="../../static.files/sway-logo.svg" alt="logo"></div></a><h2 class="location">Enum Never</h2><div class="sidebar-elems"><section><div class="block"><ul></ul></div></section></div></nav><main><div class="width-limiter"><section id="main-content" class="content"><div class="main-heading"><h1 class="fqn"><span class="in-band">Enum <a class="mod" href="../index.html">core</a><span>::</span><a class="mod" href="index.html">never</a><span>::</span><a class="enum" href="#">Never</a></span></h1></div><div class="docblock item-decl"><pre class="sway enum"><code>pub enum Never {}</code></pre></div><details class="swaydoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p><code>Never</code> represents the type of computations which never resolve to any value at all.</p>
+<p><code>break</code>, <code>continue</code> and <code>return</code> expressions also have type <code>Never</code>. For example we are allowed to<br />
+write:</p>
+<pre><code class="language-sway">let x: Never = {
+    return 123
+};
+</code></pre>
+<p>Although the <code>let</code> is pointless here, it illustrates the meaning of <code>Never</code>. Since <code>x</code> is never<br />
+assigned a value (because <code>return</code> returns from the entire function), <code>x</code> can be given type<br />
+<code>Never</code>. We could also replace <code>return 123</code> with a <code>revert()</code> or a never-ending <code>loop</code> and this code<br />
+would still be valid.</p>
+<p>A more realistic usage of <code>Never</code> is in this code:</p>
+<pre><code class="language-sway">let num: u32 = match get_a_number() {
+    Some(num) =&gt; num,
+    None =&gt; break,
+};
+</code></pre>
+<p>Both match arms must produce values of type [<code>u32</code>], but since <code>break</code> never produces a value<br />
+at all we know it can never produce a value which isn’t a [<code>u32</code>]. This illustrates another<br />
+behaviour of the <code>Never</code> type - expressions with type <code>Never</code> will coerce into any other type.</p>
+<p>Note that <code>Never</code> type coerces into any other type, another example of this would be:</p>
+<pre><code class="language-sway">let x: u32 = {
+    return 123
+};
+</code></pre>
+<p>Regardless of the type of <code>x</code>, the return block of type <code>Never</code> will always coerce into <code>x</code> type.</p>
+</div></details></section></div></main><script src="../../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>
