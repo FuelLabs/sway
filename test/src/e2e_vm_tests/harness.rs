@@ -269,7 +269,8 @@ pub(crate) async fn compile_and_run_unit_tests(
             },
             ..Default::default()
         })?;
-        let tested = built_tests.run(forc_test::TestRunnerCount::Auto)?;
+        let test_filter = None;
+        let tested = built_tests.run(forc_test::TestRunnerCount::Auto, test_filter)?;
 
         match tested {
             forc_test::Tested::Package(tested_pkg) => Ok(vec![*tested_pkg]),
