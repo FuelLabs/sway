@@ -363,15 +363,20 @@ impl TypeId {
         &self,
         ctx: &TypeCheckContext,
         span: &Span,
+        trait_constraints: Vec<TraitConstraint>,
     ) -> CompileResult<()> {
         let warnings = vec![];
         let mut errors = vec![];
         let engines = ctx.engines();
 
-        let structure_generics = engines
+        let mut structure_generics = engines
             .te()
             .get(*self)
             .extract_inner_types_with_trait_constraints(engines);
+
+        if !trait_constraints.is_empty() {
+            structure_generics.insert(*self, trait_constraints);
+        }
 
         for (structure_type_id, structure_trait_constraints) in &structure_generics {
             if structure_trait_constraints.is_empty() {

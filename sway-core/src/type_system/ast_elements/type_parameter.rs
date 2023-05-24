@@ -134,7 +134,6 @@ impl TypeParameter {
     pub(crate) fn type_check_type_params(
         mut ctx: TypeCheckContext,
         type_params: Vec<TypeParameter>,
-        disallow_trait_constraints: bool,
     ) -> CompileResult<Vec<TypeParameter>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -142,12 +141,6 @@ impl TypeParameter {
         let mut new_type_params: Vec<TypeParameter> = vec![];
 
         for type_param in type_params.into_iter() {
-            if disallow_trait_constraints && !type_param.trait_constraints.is_empty() {
-                let errors = vec![CompileError::WhereClauseNotYetSupported {
-                    span: type_param.trait_constraints_span,
-                }];
-                return err(vec![], errors);
-            }
             new_type_params.push(check!(
                 TypeParameter::type_check(ctx.by_ref(), type_param),
                 continue,

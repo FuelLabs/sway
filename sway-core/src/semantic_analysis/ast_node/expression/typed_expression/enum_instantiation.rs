@@ -110,7 +110,7 @@ pub(crate) fn instantiate_enum(
             let type_id = type_engine.insert(decl_engine, TypeInfo::Enum(enum_ref.clone()));
 
             check!(
-                type_id.check_type_parameter_bounds(&ctx, &enum_variant_name.span()),
+                type_id.check_type_parameter_bounds(&ctx, &enum_variant_name.span(), vec![]),
                 return err(warnings, errors),
                 warnings,
                 errors

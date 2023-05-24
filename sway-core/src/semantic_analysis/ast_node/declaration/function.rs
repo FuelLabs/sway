@@ -68,7 +68,7 @@ impl ty::TyFunctionDecl {
         // Type check the type parameters. This will also insert them into the
         // current namespace.
         let new_type_parameters = check!(
-            TypeParameter::type_check_type_params(ctx.by_ref(), type_parameters, false),
+            TypeParameter::type_check_type_params(ctx.by_ref(), type_parameters),
             return err(warnings, errors),
             warnings,
             errors
@@ -149,7 +149,7 @@ impl ty::TyFunctionDecl {
         check!(
             return_type
                 .type_id
-                .check_type_parameter_bounds(&ctx, &return_type.span),
+                .check_type_parameter_bounds(&ctx, &return_type.span, vec![]),
             return err(warnings, errors),
             warnings,
             errors

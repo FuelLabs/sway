@@ -44,7 +44,7 @@ impl ty::TyImplTrait {
         // Type check the type parameters. This will also insert them into the
         // current namespace.
         let new_impl_type_parameters = check!(
-            TypeParameter::type_check_type_params(ctx.by_ref(), impl_type_parameters, false),
+            TypeParameter::type_check_type_params(ctx.by_ref(), impl_type_parameters),
             return err(warnings, errors),
             warnings,
             errors
@@ -262,7 +262,7 @@ impl ty::TyImplTrait {
         // Type check the type parameters. This will also insert them into the
         // current namespace.
         let new_impl_type_parameters = check!(
-            TypeParameter::type_check_type_params(ctx.by_ref(), impl_type_parameters, false),
+            TypeParameter::type_check_type_params(ctx.by_ref(), impl_type_parameters),
             return err(warnings, errors),
             warnings,
             errors
@@ -300,9 +300,11 @@ impl ty::TyImplTrait {
         );
 
         check!(
-            implementing_for
-                .type_id
-                .check_type_parameter_bounds(&ctx, &implementing_for.span),
+            implementing_for.type_id.check_type_parameter_bounds(
+                &ctx,
+                &implementing_for.span,
+                vec![]
+            ),
             return err(warnings, errors),
             warnings,
             errors
@@ -420,6 +422,19 @@ fn type_check_trait_implementation(
         warnings,
         errors
     );
+
+    for (type_arg, type_param) in trait_type_arguments.iter().zip(trait_type_parameters) {
+        check!(
+            type_arg.type_id.check_type_parameter_bounds(
+                &ctx,
+                &type_arg.span(),
+                type_param.trait_constraints.clone()
+            ),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+    }
 
     // This map keeps track of the remaining functions in the interface surface
     // that still need to be implemented for the trait to be fully implemented.
