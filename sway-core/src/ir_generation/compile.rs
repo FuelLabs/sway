@@ -201,7 +201,7 @@ pub(crate) fn compile_constants(
     module: Module,
     module_ns: &namespace::Module,
 ) -> Result<(), CompileError> {
-    let (type_engine, decl_engine) = engines.unwrap();
+    let (type_engine, decl_engine, query_engine) = engines.unwrap();
     for decl_name in module_ns.get_all_declared_symbols() {
         if let Some(ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. })) =
             module_ns.symbols.get(decl_name)
@@ -212,6 +212,7 @@ pub(crate) fn compile_constants(
                 &mut LookupEnv {
                     type_engine,
                     decl_engine,
+                    query_engine,
                     context,
                     md_mgr,
                     module,
@@ -249,7 +250,7 @@ fn compile_declarations(
     namespace: &namespace::Module,
     declarations: &[ty::TyDecl],
 ) -> Result<(), CompileError> {
-    let (type_engine, decl_engine) = engines.unwrap();
+    let (type_engine, decl_engine, query_engine) = engines.unwrap();
     for declaration in declarations {
         match declaration {
             ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
@@ -259,6 +260,7 @@ fn compile_declarations(
                     &mut LookupEnv {
                         type_engine,
                         decl_engine,
+                        query_engine,
                         context,
                         md_mgr,
                         module,
@@ -534,11 +536,8 @@ fn compile_abi_method(
     messages_types_map: &HashMap<TypeId, MessageId>,
     engines: Engines<'_>,
 ) -> Result<Function, CompileError> {
-    let type_engine = engines.te();
-    let decl_engine = engines.de();
-
     // Use the error from .to_fn_selector_value() if possible, else make an CompileError::Internal.
-    let get_selector_result = ast_fn_decl.to_fn_selector_value(type_engine, decl_engine);
+    let get_selector_result = ast_fn_decl.to_fn_selector_value(engines);
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
     let selector = match get_selector_result.ok(&mut warnings, &mut errors) {

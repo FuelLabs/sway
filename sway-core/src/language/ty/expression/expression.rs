@@ -530,10 +530,9 @@ impl DeterministicallyAborts for TyExpression {
 impl TyExpression {
     pub(crate) fn error(span: Span, engines: Engines<'_>) -> TyExpression {
         let type_engine = engines.te();
-        let decl_engine = engines.de();
         TyExpression {
             expression: TyExpressionVariant::Tuple { fields: vec![] },
-            return_type: type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+            return_type: type_engine.insert(engines, TypeInfo::ErrorRecovery),
             span,
         }
     }

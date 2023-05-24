@@ -18,7 +18,6 @@ impl ty::TyConstantDecl {
         let mut warnings = vec![];
 
         let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
         let engines = ctx.engines();
 
         let ConstantDeclaration {
@@ -38,7 +37,7 @@ impl ty::TyConstantDecl {
                 EnforceTypeArguments::No,
                 None
             ),
-            type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+            type_engine.insert(engines, TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );
@@ -110,7 +109,6 @@ impl ty::TyConstantDecl {
     /// compile, preventing cascading namespace errors.
     pub(crate) fn error(engines: Engines<'_>, decl: parsed::ConstantDeclaration) -> TyConstantDecl {
         let type_engine = engines.te();
-        let decl_engine = engines.de();
         let parsed::ConstantDeclaration {
             name,
             span,
@@ -123,7 +121,7 @@ impl ty::TyConstantDecl {
             call_path,
             span,
             attributes: Default::default(),
-            return_type: type_engine.insert(decl_engine, TypeInfo::Unknown),
+            return_type: type_engine.insert(engines, TypeInfo::Unknown),
             type_ascription,
             is_configurable: false,
             value: None,

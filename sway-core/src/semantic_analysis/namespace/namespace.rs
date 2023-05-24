@@ -131,7 +131,7 @@ impl Namespace {
     ) -> CompileResult<TypeId> {
         let mod_path = self.mod_path.clone();
         engines.te().resolve_with_self(
-            engines.de(),
+            engines,
             type_id,
             self_type,
             span,
@@ -154,7 +154,7 @@ impl Namespace {
     ) -> CompileResult<TypeId> {
         let mod_path = self.mod_path.clone();
         engines.te().resolve(
-            engines.de(),
+            engines,
             type_id,
             span,
             EnforceTypeArguments::Yes,
@@ -180,7 +180,7 @@ impl Namespace {
         let mut errors = vec![];
 
         let type_engine = engines.te();
-        let decl_engine = engines.de();
+        let _decl_engine = engines.de();
 
         // If the type that we are looking for is the error recovery type, then
         // we want to return the error case without creating a new error
@@ -205,7 +205,7 @@ impl Namespace {
         // resolve the type
         let type_id = check!(
             type_engine.resolve(
-                decl_engine,
+                engines,
                 type_id,
                 &item_name.span(),
                 EnforceTypeArguments::No,
@@ -214,7 +214,7 @@ impl Namespace {
                 item_prefix,
                 experimental_private_modules,
             ),
-            type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+            type_engine.insert(engines, TypeInfo::ErrorRecovery),
             warnings,
             errors
         );

@@ -52,7 +52,8 @@ pub fn hover_data(
 
     let te = session.type_engine.read();
     let de = session.decl_engine.read();
-    let engines = Engines::new(&te, &de);
+    let qe = session.query_engine.read();
+    let engines = Engines::new(&te, &de, &qe);
     let (decl_ident, decl_token) = match token.declared_token_ident(engines) {
         Some(decl_ident) => {
             let decl_token = session

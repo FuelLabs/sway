@@ -128,7 +128,7 @@ impl ty::TyAstNode {
                 )),
                 AstNodeContent::Expression(expr) => {
                     let ctx = ctx
-                        .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown))
+                        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown))
                         .with_help_text("");
                     let inner = check!(
                         ty::TyExpression::type_check(ctx, expr.clone()),

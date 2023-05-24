@@ -2,7 +2,7 @@ use sway_error::handler::{ErrorEmitted, Handler};
 
 use crate::{
     decl_engine::*, engine_threading::*, language::ty, monomorphize::priv_prelude::*,
-    type_system::*,
+    query_engine::QueryEngine, type_system::*,
 };
 
 /// Contextual state tracked and accumulated throughout solving [Constraint]s.
@@ -13,6 +13,9 @@ pub(crate) struct Solver<'a> {
     /// The declaration engine holds declarations.
     decl_engine: &'a DeclEngine,
 
+    /// The query engine holds queries.
+    query_engine: &'a QueryEngine,
+
     /// The instructions returned by the [Solver].
     instructions: Vec<Instruction>,
 }
@@ -20,10 +23,11 @@ pub(crate) struct Solver<'a> {
 impl<'a> Solver<'a> {
     /// Creates a new [Solver].
     pub(crate) fn new(engines: Engines<'a>) -> Solver<'a> {
-        let (type_engine, decl_engine) = engines.unwrap();
+        let (type_engine, decl_engine, query_engine) = engines.unwrap();
         Solver {
             type_engine,
             decl_engine,
+            query_engine,
             instructions: vec![],
         }
     }
@@ -191,7 +195,7 @@ impl<'a> Solver<'a> {
     fn wrap_constraint(&self, constraint: Constraint) -> ConstraintWrapper {
         WithEngines {
             thing: constraint,
-            engines: Engines::new(self.type_engine, self.decl_engine),
+            engines: Engines::new(self.type_engine, self.decl_engine, self.query_engine),
         }
     }
 }

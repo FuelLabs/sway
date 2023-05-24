@@ -45,8 +45,9 @@ pub(crate) fn code_actions(
 
     let type_engine = session.type_engine.read();
     let decl_engine = session.decl_engine.read();
+    let query_engine = session.query_engine.read();
     let ctx = CodeActionContext {
-        engines: Engines::new(&type_engine, &decl_engine),
+        engines: Engines::new(&type_engine, &decl_engine, &query_engine),
         tokens: session.token_map(),
         token: &token.clone(),
         uri: &text_document.uri,

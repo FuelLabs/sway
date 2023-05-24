@@ -9,16 +9,23 @@ mod unify;
 pub use priv_prelude::*;
 
 #[cfg(test)]
-use crate::{decl_engine::DeclEngineInsert, language::ty::TyEnumDecl, transform::AttributesMap};
+use crate::{decl_engine::DeclEngine, query_engine::QueryEngine};
+#[cfg(test)]
+use crate::{language::ty::TyEnumDecl, transform::AttributesMap};
 
 #[cfg(test)]
 use sway_types::{integer_bits::IntegerBits, Span};
 
 #[test]
 fn generic_enum_resolution() {
-    use crate::{decl_engine::DeclEngine, language::ty, span::Span, transform, Ident};
+    use crate::{
+        decl_engine::DeclEngineInsert, language::ty, span::Span, transform, Engines, Ident,
+    };
+
     let type_engine = TypeEngine::default();
     let decl_engine = DeclEngine::default();
+    let query_engine = QueryEngine::default();
+    let engines = Engines::new(&type_engine, &decl_engine, &query_engine);
 
     let sp = Span::dummy();
     let generic_name = Ident::new_with_override("T".into(), sp.clone());
@@ -31,14 +38,14 @@ fn generic_enum_resolution() {
     }
     */
     let generic_type = type_engine.insert(
-        &decl_engine,
+        engines,
         TypeInfo::UnknownGeneric {
             name: generic_name.clone(),
             trait_constraints: VecSet(Vec::new()),
         },
     );
     let placeholder_type = type_engine.insert(
-        &decl_engine,
+        engines,
         TypeInfo::Placeholder(TypeParameter {
             type_id: generic_type,
             initial_type_id: generic_type,
@@ -77,14 +84,14 @@ fn generic_enum_resolution() {
         visibility: crate::language::Visibility::Public,
         attributes: AttributesMap::default(),
     });
-    let ty_1 = type_engine.insert(&decl_engine, TypeInfo::Enum(decl_ref_1));
+    let ty_1 = type_engine.insert(engines, TypeInfo::Enum(decl_ref_1));
 
     /*
     Result<bool> {
         a: bool
     }
     */
-    let boolean_type = type_engine.insert(&decl_engine, TypeInfo::Boolean);
+    let boolean_type = type_engine.insert(engines, TypeInfo::Boolean);
     let variant_types = vec![ty::TyEnumVariant {
         name: a_name,
         tag: 0,
@@ -113,10 +120,10 @@ fn generic_enum_resolution() {
         visibility: crate::language::Visibility::Public,
         attributes: AttributesMap::default(),
     });
-    let ty_2 = type_engine.insert(&decl_engine, TypeInfo::Enum(decl_ref_2));
+    let ty_2 = type_engine.insert(engines, TypeInfo::Enum(decl_ref_2));
 
     // Unify them together...
-    let (_, errors) = type_engine.unify(&decl_engine, ty_1, ty_2, &sp, "", None);
+    let (_, errors) = type_engine.unify(engines, ty_1, ty_2, &sp, "", None);
     assert!(errors.is_empty());
 
     if let TypeInfo::Enum(decl_ref_1) = type_engine.get(ty_1) {
@@ -134,16 +141,19 @@ fn generic_enum_resolution() {
 #[test]
 fn basic_numeric_unknown() {
     use crate::decl_engine::DeclEngine;
+    use crate::Engines;
     let type_engine = TypeEngine::default();
     let decl_engine = DeclEngine::default();
+    let query_engine = QueryEngine::default();
+    let engines = Engines::new(&type_engine, &decl_engine, &query_engine);
 
     let sp = Span::dummy();
     // numerics
-    let id = type_engine.insert(&decl_engine, TypeInfo::Numeric);
-    let id2 = type_engine.insert(&decl_engine, TypeInfo::UnsignedInteger(IntegerBits::Eight));
+    let id = type_engine.insert(engines, TypeInfo::Numeric);
+    let id2 = type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
-    let (_, errors) = type_engine.unify(&decl_engine, id, id2, &sp, "", None);
+    let (_, errors) = type_engine.unify(engines, id, id2, &sp, "", None);
     assert!(errors.is_empty());
 
     assert!(matches!(
@@ -155,16 +165,19 @@ fn basic_numeric_unknown() {
 #[test]
 fn unify_numerics() {
     use crate::decl_engine::DeclEngine;
+    use crate::Engines;
     let type_engine = TypeEngine::default();
     let decl_engine = DeclEngine::default();
+    let query_engine = QueryEngine::default();
+    let engines = Engines::new(&type_engine, &decl_engine, &query_engine);
     let sp = Span::dummy();
 
     // numerics
-    let id = type_engine.insert(&decl_engine, TypeInfo::Numeric);
-    let id2 = type_engine.insert(&decl_engine, TypeInfo::UnsignedInteger(IntegerBits::Eight));
+    let id = type_engine.insert(engines, TypeInfo::Numeric);
+    let id2 = type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
-    let (_, errors) = type_engine.unify(&decl_engine, id2, id, &sp, "", None);
+    let (_, errors) = type_engine.unify(engines, id2, id, &sp, "", None);
     assert!(errors.is_empty());
 
     assert!(matches!(
@@ -175,17 +188,20 @@ fn unify_numerics() {
 
 #[test]
 fn unify_numerics_2() {
-    use crate::decl_engine::DeclEngine;
+    use crate::{decl_engine::DeclEngine, Engines};
     let type_engine = TypeEngine::default();
     let decl_engine = DeclEngine::default();
+    let query_engine = QueryEngine::default();
+    let engines = Engines::new(&type_engine, &decl_engine, &query_engine);
+    let type_engine = engines.te();
     let sp = Span::dummy();
 
     // numerics
-    let id = type_engine.insert(&decl_engine, TypeInfo::Numeric);
-    let id2 = type_engine.insert(&decl_engine, TypeInfo::UnsignedInteger(IntegerBits::Eight));
+    let id = type_engine.insert(engines, TypeInfo::Numeric);
+    let id2 = type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
-    let (_, errors) = type_engine.unify(&decl_engine, id, id2, &sp, "", None);
+    let (_, errors) = type_engine.unify(engines, id, id2, &sp, "", None);
     assert!(errors.is_empty());
 
     assert!(matches!(

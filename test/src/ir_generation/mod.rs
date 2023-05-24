@@ -8,7 +8,7 @@ use anyhow::Result;
 use colored::Colorize;
 use sway_core::{
     compile_ir_to_asm, compile_to_ast, decl_engine::DeclEngine, ir_generation::compile_program,
-    namespace, BuildTarget, Engines, TypeEngine,
+    namespace, query_engine::QueryEngine, BuildTarget, Engines, TypeEngine,
 };
 use sway_ir::{
     create_inline_in_module_pass, register_known_passes, PassGroup, PassManager, ARGDEMOTION_NAME,
@@ -19,7 +19,8 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
     // Compile core library and reuse it when compiling tests.
     let type_engine = TypeEngine::default();
     let decl_engine = DeclEngine::default();
-    let engines = Engines::new(&type_engine, &decl_engine);
+    let query_engine = QueryEngine::default();
+    let engines = Engines::new(&type_engine, &decl_engine, &query_engine);
     let build_target = BuildTarget::default();
     let core_lib = compile_core(build_target, engines);
 
