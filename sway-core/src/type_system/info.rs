@@ -599,10 +599,11 @@ impl TypeInfo {
     /// maps a type to a name that is used when constructing function selectors
     pub(crate) fn to_selector_name(
         &self,
-        type_engine: &TypeEngine,
-        decl_engine: &DeclEngine,
+        engines: Engines<'_>,
         error_msg_span: &Span,
     ) -> CompileResult<String> {
+        let type_engine = engines.te();
+        let decl_engine = engines.de();
         use TypeInfo::*;
         let name = match self {
             Str(len) => format!("str[{}]", len.val()),
@@ -626,7 +627,7 @@ impl TypeInfo {
                             type_engine
                                 .to_typeinfo(field_type.type_id, error_msg_span)
                                 .expect("unreachable?")
-                                .to_selector_name(type_engine, decl_engine, error_msg_span)
+                                .to_selector_name(engines, error_msg_span)
                         })
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];
@@ -655,7 +656,7 @@ impl TypeInfo {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
-                            ty.to_selector_name(type_engine, decl_engine, error_msg_span)
+                            ty.to_selector_name(engines, error_msg_span)
                         })
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];
@@ -677,7 +678,7 @@ impl TypeInfo {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
-                            ty.to_selector_name(type_engine, decl_engine, error_msg_span)
+                            ty.to_selector_name(engines, error_msg_span)
                         })
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];
@@ -709,7 +710,7 @@ impl TypeInfo {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
-                            ty.to_selector_name(type_engine, decl_engine, error_msg_span)
+                            ty.to_selector_name(engines, error_msg_span)
                         })
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];
@@ -731,7 +732,7 @@ impl TypeInfo {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
-                            ty.to_selector_name(type_engine, decl_engine, error_msg_span)
+                            ty.to_selector_name(engines, error_msg_span)
                         })
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];
@@ -754,11 +755,9 @@ impl TypeInfo {
                 }
             }
             Array(elem_ty, length) => {
-                let name = type_engine.get(elem_ty.type_id).to_selector_name(
-                    type_engine,
-                    decl_engine,
-                    error_msg_span,
-                );
+                let name = type_engine
+                    .get(elem_ty.type_id)
+                    .to_selector_name(engines, error_msg_span);
                 let name = match name.value {
                     Some(name) => name,
                     None => return name,
@@ -768,11 +767,9 @@ impl TypeInfo {
             RawUntypedPtr => "rawptr".to_string(),
             RawUntypedSlice => "rawslice".to_string(),
             Alias { ty, .. } => {
-                let name = type_engine.get(ty.type_id).to_selector_name(
-                    type_engine,
-                    decl_engine,
-                    error_msg_span,
-                );
+                let name = type_engine
+                    .get(ty.type_id)
+                    .to_selector_name(engines, error_msg_span);
                 match name.value {
                     Some(name) => name,
                     None => return name,

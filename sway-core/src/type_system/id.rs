@@ -47,7 +47,7 @@ impl CollectTypesMetadata for TypeId {
             matches!(type_info, TypeInfo::UnknownGeneric { .. })
                 || matches!(type_info, TypeInfo::Placeholder(_))
         }
-        let engines = Engines::new(ctx.type_engine, ctx.decl_engine);
+        let engines = Engines::new(ctx.type_engine, ctx.decl_engine, ctx.query_engine);
         let possible = self.extract_any_including_self(engines, &filter_fn, vec![]);
         let mut res = vec![];
         for (type_id, _) in possible.into_iter() {
@@ -101,7 +101,7 @@ impl ReplaceSelfType for TypeId {
 
                     if need_to_create_new {
                         let new_decl_ref = decl_engine.insert(decl);
-                        Some(type_engine.insert(decl_engine, TypeInfo::Enum(new_decl_ref)))
+                        Some(type_engine.insert(engines, TypeInfo::Enum(new_decl_ref)))
                     } else {
                         None
                     }
@@ -128,7 +128,7 @@ impl ReplaceSelfType for TypeId {
 
                     if need_to_create_new {
                         let new_decl_ref = decl_engine.insert(decl);
-                        Some(type_engine.insert(decl_engine, TypeInfo::Struct(new_decl_ref)))
+                        Some(type_engine.insert(engines, TypeInfo::Struct(new_decl_ref)))
                     } else {
                         None
                     }
@@ -146,7 +146,7 @@ impl ReplaceSelfType for TypeId {
                         })
                         .collect::<Vec<_>>();
                     if need_to_create_new {
-                        Some(type_engine.insert(decl_engine, TypeInfo::Tuple(fields)))
+                        Some(type_engine.insert(engines, TypeInfo::Tuple(fields)))
                     } else {
                         None
                     }
@@ -171,7 +171,7 @@ impl ReplaceSelfType for TypeId {
                     });
                     if need_to_create_new {
                         Some(type_engine.insert(
-                            decl_engine,
+                            engines,
                             TypeInfo::Custom {
                                 call_path,
                                 type_arguments,
@@ -184,7 +184,7 @@ impl ReplaceSelfType for TypeId {
                 TypeInfo::Array(mut elem_ty, count) => helper(elem_ty.type_id, engines, self_type)
                     .map(|type_id| {
                         elem_ty.type_id = type_id;
-                        type_engine.insert(decl_engine, TypeInfo::Array(elem_ty, count))
+                        type_engine.insert(engines, TypeInfo::Array(elem_ty, count))
                     }),
                 TypeInfo::Storage { fields } => {
                     let mut need_to_create_new = false;
@@ -201,7 +201,7 @@ impl ReplaceSelfType for TypeId {
                         })
                         .collect::<Vec<_>>();
                     if need_to_create_new {
-                        Some(type_engine.insert(decl_engine, TypeInfo::Storage { fields }))
+                        Some(type_engine.insert(engines, TypeInfo::Storage { fields }))
                     } else {
                         None
                     }
@@ -209,16 +209,16 @@ impl ReplaceSelfType for TypeId {
                 TypeInfo::Alias { name, mut ty } => {
                     helper(ty.type_id, engines, self_type).map(|type_id| {
                         ty.type_id = type_id;
-                        type_engine.insert(decl_engine, TypeInfo::Alias { name, ty })
+                        type_engine.insert(engines, TypeInfo::Alias { name, ty })
                     })
                 }
                 TypeInfo::Ptr(mut ty) => helper(ty.type_id, engines, self_type).map(|type_id| {
                     ty.type_id = type_id;
-                    type_engine.insert(decl_engine, TypeInfo::Ptr(ty))
+                    type_engine.insert(engines, TypeInfo::Ptr(ty))
                 }),
                 TypeInfo::Slice(mut ty) => helper(ty.type_id, engines, self_type).map(|type_id| {
                     ty.type_id = type_id;
-                    type_engine.insert(decl_engine, TypeInfo::Slice(ty))
+                    type_engine.insert(engines, TypeInfo::Slice(ty))
                 }),
                 TypeInfo::Unknown
                 | TypeInfo::UnknownGeneric { .. }

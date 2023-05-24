@@ -15,6 +15,7 @@ pub mod ir_generation;
 pub mod language;
 mod metadata;
 mod monomorphize;
+pub mod query_engine;
 pub mod semantic_analysis;
 pub mod source_map;
 pub mod transform;
@@ -784,11 +785,11 @@ fn module_return_path_analysis(
 
 #[test]
 fn test_basic_prog() {
-    use crate::decl_engine::DeclEngine;
-
+    use crate::{decl_engine::DeclEngine, query_engine::QueryEngine, TypeEngine};
     let type_engine = TypeEngine::default();
     let decl_engine = DeclEngine::default();
-    let engines = Engines::new(&type_engine, &decl_engine);
+    let query_engine = QueryEngine::default();
+    let engines = Engines::new(&type_engine, &decl_engine, &query_engine);
     let prog = parse(
         r#"
         contract;
@@ -879,11 +880,11 @@ fn test_basic_prog() {
 }
 #[test]
 fn test_parenthesized() {
-    use crate::decl_engine::DeclEngine;
-
+    use crate::{decl_engine::DeclEngine, query_engine::QueryEngine, TypeEngine};
     let type_engine = TypeEngine::default();
     let decl_engine = DeclEngine::default();
-    let engines = Engines::new(&type_engine, &decl_engine);
+    let query_engine = QueryEngine::default();
+    let engines = Engines::new(&type_engine, &decl_engine, &query_engine);
     let prog = parse(
         r#"
         contract;
@@ -903,14 +904,12 @@ fn test_parenthesized() {
 
 #[test]
 fn test_unary_ordering() {
-    use crate::{
-        decl_engine::DeclEngine,
-        language::{self, parsed},
-    };
-
+    use crate::language::{self, parsed};
+    use crate::{decl_engine::DeclEngine, query_engine::QueryEngine, TypeEngine};
     let type_engine = TypeEngine::default();
     let decl_engine = DeclEngine::default();
-    let engines = Engines::new(&type_engine, &decl_engine);
+    let query_engine = QueryEngine::default();
+    let engines = Engines::new(&type_engine, &decl_engine, &query_engine);
     let prog = parse(
         r#"
     script;

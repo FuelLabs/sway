@@ -4,19 +4,25 @@ use std::{
     hash::{BuildHasher, Hash, Hasher},
 };
 
-use crate::{decl_engine::DeclEngine, type_system::TypeEngine};
+use crate::{decl_engine::DeclEngine, query_engine::QueryEngine, type_system::TypeEngine};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Engines<'a> {
     type_engine: &'a TypeEngine,
     decl_engine: &'a DeclEngine,
+    query_engine: &'a QueryEngine,
 }
 
 impl<'a> Engines<'a> {
-    pub fn new(type_engine: &'a TypeEngine, decl_engine: &'a DeclEngine) -> Engines<'a> {
+    pub fn new(
+        type_engine: &'a TypeEngine,
+        decl_engine: &'a DeclEngine,
+        query_engine: &'a QueryEngine,
+    ) -> Engines<'a> {
         Engines {
             type_engine,
             decl_engine,
+            query_engine,
         }
     }
 
@@ -28,8 +34,8 @@ impl<'a> Engines<'a> {
         self.decl_engine
     }
 
-    pub(crate) fn unwrap(self) -> (&'a TypeEngine, &'a DeclEngine) {
-        (self.type_engine, self.decl_engine)
+    pub(crate) fn unwrap(self) -> (&'a TypeEngine, &'a DeclEngine, &'a QueryEngine) {
+        (self.type_engine, self.decl_engine, self.query_engine)
     }
 
     /// Helps out some `thing: T` by adding `self` as context.

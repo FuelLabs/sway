@@ -41,6 +41,7 @@ use sway_core::{
         parsed::{ParseProgram, TreeType},
         ty, Visibility,
     },
+    query_engine::QueryEngine,
     semantic_analysis::namespace,
     source_map::SourceMap,
     transform::AttributeKind,
@@ -2231,7 +2232,8 @@ pub fn build(
 
     let type_engine = TypeEngine::default();
     let decl_engine = DeclEngine::default();
-    let engines = Engines::new(&type_engine, &decl_engine);
+    let query_engine = QueryEngine::default();
+    let engines = Engines::new(&type_engine, &decl_engine, &query_engine);
     let include_tests = profile.include_tests;
 
     // This is the Contract ID of the current contract being compiled.

@@ -163,7 +163,7 @@ impl TypeParameter {
         let mut errors = vec![];
 
         let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
+        let engines = ctx.engines();
 
         let TypeParameter {
             initial_type_id,
@@ -187,7 +187,7 @@ impl TypeParameter {
         // TODO: add check here to see if the type parameter has a valid name and does not have type parameters
 
         let type_id = type_engine.insert(
-            decl_engine,
+            engines,
             TypeInfo::UnknownGeneric {
                 name: name_ident.clone(),
                 trait_constraints: VecSet(trait_constraints.clone()),
@@ -215,7 +215,7 @@ impl TypeParameter {
                     }) => {
                         append!(
                             ctx.engines().te().unify(
-                                ctx.engines().de(),
+                                ctx.engines(),
                                 type_id,
                                 *sy_type_id,
                                 &trait_constraints_span,
