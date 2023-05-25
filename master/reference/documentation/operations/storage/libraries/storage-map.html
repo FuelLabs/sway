@@ -165,7 +165,7 @@ storage {
 <p>In this example we wrap the <a href="../../namespace/identity.html"><code>Identity</code></a> of the caller with their provided <code>id</code> into a <a href="../../../language/built-ins/tuples.html">tuple</a> and use that as the key.</p>
 <pre><code class="language-sway">#[storage(read)]
 fn reading_from_storage(id: u64) {
-    let user = storage.user.get((msg_sender().unwrap(), id)).unwrap_or(0);
+    let user = storage.user.get((msg_sender().unwrap(), id)).read();
 }
 </code></pre>
 <p>This contract method handles the returned <code>Option</code> by calling <code>unwrap_or</code> to set <code>user</code> to zero if the map <code>user</code> doesn't have an entry for the key.</p>
@@ -174,7 +174,7 @@ fn reading_from_storage(id: u64) {
 <p>In this example we retrieve the balance of the caller and then increment their balance by 1.</p>
 <pre><code class="language-sway">#[storage(read, write)]
 fn writing_to_storage() {
-    let balance = storage.balance.get(msg_sender().unwrap()).unwrap_or(0);
+    let balance = storage.balance.get(msg_sender().unwrap()).read();
     storage.balance.insert(msg_sender().unwrap(), balance + 1);
 }
 </code></pre>

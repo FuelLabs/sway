@@ -148,24 +148,24 @@
 <p>Storage can be manipulated directly through the use of <code>store()</code> &amp; <code>get()</code> functions. They utilize <a href="../../../language/generics/index.html">generics</a> to store and retrieve values.</p>
 <h2 id="declaration"><a class="header" href="#declaration">Declaration</a></h2>
 <p>To use <code>store()</code> &amp; <code>get()</code> we must import them however we are not required to declare a <code>storage</code> block.</p>
-<pre><code class="language-sway">use std::storage::{get, store};
+<pre><code class="language-sway">use std::storage::storage_api::{read, write};
 </code></pre>
 <h2 id="store"><a class="header" href="#store">Store</a></h2>
 <p>To store a generic value <code>T</code> we must provide a key of type <code>b256</code>.</p>
 <p>In this example we store some number of type <code>u64</code>.</p>
 <pre><code class="language-sway">#[storage(write)]
-fn write(key: b256, value: u64) {
-    // store(key, T) where T = generic type
-    store(key, value);
+fn store(key: b256, value: u64) {
+    // write(key, SLOT, T) where T = generic type
+    write(key, 0, value);
 }
 </code></pre>
 <h2 id="get"><a class="header" href="#get">Get</a></h2>
 <p>To retrieve a generic value <code>T</code> at the position of <code>key</code> we must specify the type that we are retrieving.</p>
 <p>In this example we retrieve some <code>u64</code> at the position of <code>key</code>.</p>
 <pre><code class="language-sway">#[storage(read)]
-fn read(key: b256) {
-    // get::&lt;T&gt;(key) where T = generic type
-    let value = get::&lt;u64&gt;(key);
+fn get(key: b256) {
+    // read::&lt;T&gt;(key, SLOT) where T = generic type
+    let value = read::&lt;u64&gt;(key, 0);
 }
 </code></pre>
 <p>The function <code>get</code> returns an <code>Option</code>; if the storage slots requested have not been set before, <code>get</code> will return <code>None</code>.</p>

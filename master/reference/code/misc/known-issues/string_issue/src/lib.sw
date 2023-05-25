@@ -6,7 +6,7 @@ fn single_quotes() {
     // let fuel = 'fuel';
     // ANCHOR_END: single_quotes
 }
-    
+
 fn indexing() {
     // ANCHOR: indexing
     let fuel = "fuel";

@@ -156,22 +156,22 @@
 <p>When dealing with a <a href="../../language/built-ins/index.html">built-in</a> type we can retrieve the variable without the use of any special methods.</p>
 <pre><code class="language-sway">#[storage(read)]
 fn read() {
-    let counter = storage.counter;
+    let counter = storage.counter.read();
 }
 </code></pre>
 <h2 id="writing-to-storage"><a class="header" href="#writing-to-storage">Writing to Storage</a></h2>
 <p>When dealing with a <a href="../../language/built-ins/index.html">built-in</a> type we can update the variable without the use of any special methods.</p>
 <pre><code class="language-sway">#[storage(write)]
 fn write() {
-    storage.counter += 1;
+    storage.counter.write(storage.counter.read() + 1);
 }
 </code></pre>
 <h2 id="read--write"><a class="header" href="#read--write">Read &amp; Write</a></h2>
 <p>We can read and write to storage by using both keywords in the attribute.</p>
 <pre><code class="language-sway">#[storage(read, write)]
 fn read_write() {
-    let counter = storage.counter;
-    storage.counter += 1;
+    let counter = storage.counter.read();
+    storage.counter.write(counter + 1);
 }
 </code></pre>
 

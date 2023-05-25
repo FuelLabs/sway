@@ -148,26 +148,21 @@
 <p>When looking at the <a href="let.html">let</a> variable we've seen that the value can be changed through the use of the <code>mut</code> keyword. We can take this a couple steps further through <a href="#reassignment">reassignment</a> and <a href="#variable-shadowing">variable shadowing</a>.</p>
 <h2 id="reassignment"><a class="header" href="#reassignment">Reassignment</a></h2>
 <p>We can redefine the type and value of a variable by instantiating a new version after the first declaration.</p>
-<pre><code class="language-sway">    // Set `foo` &amp; `bar` to take the value of `5` and the default `u64` type
+<pre><code class="language-sway">    // Set `foo` to take the value of `5` and the default `u64` type
     let foo = 5;
-    const bar = 5;
 
-    // Reassign `foo` &amp; `bar` to be a `str[4]` with the value of `Fuel`
+    // Reassign `foo` to be a `str[4]` with the value of `Fuel`
     let foo = &quot;Fuel&quot;;
-    const bar = &quot;Fuel&quot;;
 </code></pre>
 <h2 id="variable-shadowing"><a class="header" href="#variable-shadowing">Variable Shadowing</a></h2>
 <p>If we do not want to alter the original variable but we'd like to temporarily reuse the variable name then we can use block scope to constrain the variable.</p>
 <pre><code class="language-sway">    let foo = 5;
-    const bar = 5;
-    {
+     {
         let foo = 42;
-        const bar = 42;
     }
     assert(foo == 5);
-    assert(bar == 5);
 </code></pre>
-<p><code>foo</code> and <code>bar</code> defined inside the curly brackets <code>{ }</code> only exist inside the <code>{ .. }</code> scope; therefore, the original <code>foo</code> and <code>bar</code> variables with the value of <code>5</code> maintain their value.</p>
+<p><code>foo</code> is defined inside the curly brackets <code>{ }</code> and only exist inside the <code>{ .. }</code> scope; therefore, the original <code>foo</code> variable with the value of <code>5</code> maintains its value.</p>
 
                     </main>
 

@@ -186,7 +186,7 @@ enum Role {
         maximum_owners: 10,
         role: Role::FullAccess,
     },
-    encapsulated_declaration: Owner = ~Owner::default(),
+    encapsulated_declaration: Owner = Owner::default(),
 }
 </code></pre>
 <p>An explicit declaration is likely to be sufficient for most types however it may be preferable to encapsulate that functionality for complex types in order to keep the code concise.</p>

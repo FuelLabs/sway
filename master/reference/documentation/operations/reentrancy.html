@@ -165,9 +165,10 @@
 </code></pre>
 <h2 id="checks-effects-interactions-pattern"><a class="header" href="#checks-effects-interactions-pattern">Checks-Effects-Interactions Pattern</a></h2>
 <p>The pattern states that all state (storage) changes should be made before a call is made.</p>
-<pre><code class="language-sway">    fn withdraw() {}
+<pre><code class="language-sway">    fn withdraw() {
         // Step 1. Perform any state changes to update balance
         // Step 2. After all state changes make a call
+    }
 </code></pre>
 
                     </main>

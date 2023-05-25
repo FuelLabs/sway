@@ -798,26 +798,21 @@ fn main() -&gt; u64  {
 <p>When looking at the <a href="documentation/language/variables/let.html">let</a> variable we've seen that the value can be changed through the use of the <code>mut</code> keyword. We can take this a couple steps further through <a href="documentation/language/variables/variable-shadowing.html#reassignment">reassignment</a> and <a href="documentation/language/variables/variable-shadowing.html#variable-shadowing">variable shadowing</a>.</p>
 <h2 id="reassignment"><a class="header" href="#reassignment">Reassignment</a></h2>
 <p>We can redefine the type and value of a variable by instantiating a new version after the first declaration.</p>
-<pre><code class="language-sway">    // Set `foo` &amp; `bar` to take the value of `5` and the default `u64` type
+<pre><code class="language-sway">    // Set `foo` to take the value of `5` and the default `u64` type
     let foo = 5;
-    const bar = 5;
 
-    // Reassign `foo` &amp; `bar` to be a `str[4]` with the value of `Fuel`
+    // Reassign `foo` to be a `str[4]` with the value of `Fuel`
     let foo = &quot;Fuel&quot;;
-    const bar = &quot;Fuel&quot;;
 </code></pre>
 <h2 id="variable-shadowing"><a class="header" href="#variable-shadowing">Variable Shadowing</a></h2>
 <p>If we do not want to alter the original variable but we'd like to temporarily reuse the variable name then we can use block scope to constrain the variable.</p>
 <pre><code class="language-sway">    let foo = 5;
-    const bar = 5;
-    {
+     {
         let foo = 42;
-        const bar = 42;
     }
     assert(foo == 5);
-    assert(bar == 5);
 </code></pre>
-<p><code>foo</code> and <code>bar</code> defined inside the curly brackets <code>{ }</code> only exist inside the <code>{ .. }</code> scope; therefore, the original <code>foo</code> and <code>bar</code> variables with the value of <code>5</code> maintain their value.</p>
+<p><code>foo</code> is defined inside the curly brackets <code>{ }</code> and only exist inside the <code>{ .. }</code> scope; therefore, the original <code>foo</code> variable with the value of <code>5</code> maintains its value.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="comments"><a class="header" href="#comments">Comments</a></h1>
 <p>There are two kinds of comments in Sway.</p>
 <ul>
@@ -834,14 +829,13 @@ fn main() -&gt; u64  {
 <p>Comments can be placed on multiple lines by starting each line with <code>//</code> and they can be placed at the end of some code.</p>
 <pre><code class="language-sway">    // imagine that this line is twice as long
     // and it needed to be split onto multiple lines
-    let baz = 8;  // Eight is a good number
+    let baz = 8; // Eight is a good number
 </code></pre>
 <p>Similarly, the second form continues to the end of the line and it can also be placed at the end of some code.</p>
 <pre><code class="language-sway">    /*
         imagine that this line is twice as long
         and it needed to be split onto multiple lines
     */
-    let baz = 8;  /* Eight is a good number */
 </code></pre>
 <h2 id="documentation-comments"><a class="header" href="#documentation-comments">Documentation Comments</a></h2>
 <p>Documentation comments start with three forward slashes <code>///</code> and are placed on top of functions or above fields e.g. in a <a href="documentation/language/comments/../built-ins/structs.html">struct</a>.</p>
@@ -885,7 +879,7 @@ fn create_product(field1: u64, field2: bool) -&gt; Product {
 <li>An optional return type</li>
 </ul>
 <p>Here is a template that applies to the aforementioned functions.</p>
-<pre><code class="language-sway">fn my_function(my_parameter: u64 /* ... */) -&gt; u64 {
+<pre><code class="language-sway">fn my_function(my_parameter: u64 /* ... */ ) -&gt; u64 {
     // function code
     42
 }
@@ -900,8 +894,8 @@ fn create_product(field1: u64, field2: bool) -&gt; Product {
 </code></pre>
 <h2 id="usage"><a class="header" href="#usage">Usage</a></h2>
 <p>The following is a way to use the function defined above.</p>
-<pre><code class="language-sway">    let result_one = equals(5, 5);  // evaluates to `true`
-    let result_two = equals(5, 6);  // evaluates to `false`
+<pre><code class="language-sway">    let result_one = equals(5, 5); // evaluates to `true`
+    let result_two = equals(5, 6); // evaluates to `false`
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="methods"><a class="header" href="#methods">Methods</a></h1>
 <p>Methods are defined within the context of a <a href="documentation/language/functions/../built-ins/structs.html">struct</a> (or <a href="documentation/language/functions/../built-ins/enums.html">enum</a>) and either refer to the type or mutate it.</p>
@@ -928,8 +922,8 @@ fn create_product(field1: u64, field2: bool) -&gt; Product {
 <h2 id="usage-1"><a class="header" href="#usage-1">Usage</a></h2>
 <p>To call a method use the dot syntax: <code>&lt;variable name&gt;.&lt;method name&gt;()</code>.</p>
 <pre><code class="language-sway">    let mut foo = Foo { bar: 42 };
-    let result = foo.add_number(5);  // evaluates to `47`
-    foo.increment(5);  // `bar` inside `foo` has been changed from 42 to 47
+    let result = foo.add_number(5); // evaluates to `47`
+    foo.increment(5); // `bar` inside `foo` has been changed from 42 to 47
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="associated-functions"><a class="header" href="#associated-functions">Associated Functions</a></h1>
 <p>Associated functions are similar to methods in that they are also defined in the context of a <a href="documentation/language/functions/../built-ins/structs.html">struct</a> or <a href="documentation/language/functions/../built-ins/enums.html">enum</a>, but they do not use any of the data in the struct and as a result do not take <code>self</code> as a parameter.</p>
@@ -1502,7 +1496,7 @@ enum Role {
         maximum_owners: 10,
         role: Role::FullAccess,
     },
-    encapsulated_declaration: Owner = ~Owner::default(),
+    encapsulated_declaration: Owner = Owner::default(),
 }
 </code></pre>
 <p>An explicit declaration is likely to be sufficient for most types however it may be preferable to encapsulate that functionality for complex types in order to keep the code concise.</p>
@@ -1518,22 +1512,22 @@ enum Role {
 <p>When dealing with a <a href="documentation/operations/storage/../../language/built-ins/index.html">built-in</a> type we can retrieve the variable without the use of any special methods.</p>
 <pre><code class="language-sway">#[storage(read)]
 fn read() {
-    let counter = storage.counter;
+    let counter = storage.counter.read();
 }
 </code></pre>
 <h2 id="writing-to-storage-1"><a class="header" href="#writing-to-storage-1">Writing to Storage</a></h2>
 <p>When dealing with a <a href="documentation/operations/storage/../../language/built-ins/index.html">built-in</a> type we can update the variable without the use of any special methods.</p>
 <pre><code class="language-sway">#[storage(write)]
 fn write() {
-    storage.counter += 1;
+    storage.counter.write(storage.counter.read() + 1);
 }
 </code></pre>
 <h2 id="read--write"><a class="header" href="#read--write">Read &amp; Write</a></h2>
 <p>We can read and write to storage by using both keywords in the attribute.</p>
 <pre><code class="language-sway">#[storage(read, write)]
 fn read_write() {
-    let counter = storage.counter;
-    storage.counter += 1;
+    let counter = storage.counter.read();
+    storage.counter.write(counter + 1);
 }
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="libraries-1"><a class="header" href="#libraries-1">Libraries</a></h1>
@@ -1564,7 +1558,7 @@ storage {
 <p>In this example we wrap the <a href="documentation/operations/storage/libraries/../../namespace/identity.html"><code>Identity</code></a> of the caller with their provided <code>id</code> into a <a href="documentation/operations/storage/libraries/../../../language/built-ins/tuples.html">tuple</a> and use that as the key.</p>
 <pre><code class="language-sway">#[storage(read)]
 fn reading_from_storage(id: u64) {
-    let user = storage.user.get((msg_sender().unwrap(), id)).unwrap_or(0);
+    let user = storage.user.get((msg_sender().unwrap(), id)).read();
 }
 </code></pre>
 <p>This contract method handles the returned <code>Option</code> by calling <code>unwrap_or</code> to set <code>user</code> to zero if the map <code>user</code> doesn't have an entry for the key.</p>
@@ -1573,7 +1567,7 @@ fn reading_from_storage(id: u64) {
 <p>In this example we retrieve the balance of the caller and then increment their balance by 1.</p>
 <pre><code class="language-sway">#[storage(read, write)]
 fn writing_to_storage() {
-    let balance = storage.balance.get(msg_sender().unwrap()).unwrap_or(0);
+    let balance = storage.balance.get(msg_sender().unwrap()).read();
     storage.balance.insert(msg_sender().unwrap(), balance + 1);
 }
 </code></pre>
@@ -1583,7 +1577,7 @@ fn writing_to_storage() {
 <h2 id="declaration-6"><a class="header" href="#declaration-6">Declaration</a></h2>
 <p>To use a <code>StorageVec</code> we need to import it from the <a href="https://github.com/FuelLabs/sway/tree/master/sway-lib-std">standard library</a> and while we're at it we'll import the <code>msg_sender()</code> so that we can use it in the following section.</p>
 <p>After the import we initialize our <code>StorageVec</code> as described in the <a href="documentation/operations/storage/libraries/../init.html">initialization</a> section.</p>
-<pre><code class="language-sway">use std::storage::StorageVec;
+<pre><code class="language-sway">use std::storage::storage_vec::*;
 
 storage {
     // T = u64
@@ -1600,7 +1594,7 @@ storage {
 fn reading_from_storage(id: u64) {
     let balance = storage.balance.get(id).unwrap();
 
-    let (user, value) = storage.user.get(id).unwrap();
+    let (user, value) = storage.user.get(id).unwrap().read();
 }
 </code></pre>
 <h2 id="writing-to-storage-3"><a class="header" href="#writing-to-storage-3">Writing to Storage</a></h2>
@@ -1615,24 +1609,24 @@ fn writing_to_storage(id: u64) {
 <p>Storage can be manipulated directly through the use of <code>store()</code> &amp; <code>get()</code> functions. They utilize <a href="documentation/operations/storage/libraries/../../../language/generics/index.html">generics</a> to store and retrieve values.</p>
 <h2 id="declaration-7"><a class="header" href="#declaration-7">Declaration</a></h2>
 <p>To use <code>store()</code> &amp; <code>get()</code> we must import them however we are not required to declare a <code>storage</code> block.</p>
-<pre><code class="language-sway">use std::storage::{get, store};
+<pre><code class="language-sway">use std::storage::storage_api::{read, write};
 </code></pre>
 <h2 id="store"><a class="header" href="#store">Store</a></h2>
 <p>To store a generic value <code>T</code> we must provide a key of type <code>b256</code>.</p>
 <p>In this example we store some number of type <code>u64</code>.</p>
 <pre><code class="language-sway">#[storage(write)]
-fn write(key: b256, value: u64) {
-    // store(key, T) where T = generic type
-    store(key, value);
+fn store(key: b256, value: u64) {
+    // write(key, SLOT, T) where T = generic type
+    write(key, 0, value);
 }
 </code></pre>
 <h2 id="get"><a class="header" href="#get">Get</a></h2>
 <p>To retrieve a generic value <code>T</code> at the position of <code>key</code> we must specify the type that we are retrieving.</p>
 <p>In this example we retrieve some <code>u64</code> at the position of <code>key</code>.</p>
 <pre><code class="language-sway">#[storage(read)]
-fn read(key: b256) {
-    // get::&lt;T&gt;(key) where T = generic type
-    let value = get::&lt;u64&gt;(key);
+fn get(key: b256) {
+    // read::&lt;T&gt;(key, SLOT) where T = generic type
+    let value = read::&lt;u64&gt;(key, 0);
 }
 </code></pre>
 <p>The function <code>get</code> returns an <code>Option</code>; if the storage slots requested have not been set before, <code>get</code> will return <code>None</code>.</p>
@@ -1749,7 +1743,7 @@ fn read(key: b256) {
 <h2 id="example-7"><a class="header" href="#example-7">Example</a></h2>
 <p>We can implement access control by specifying that only the owner can call a function.</p>
 <p>In the following snippet we accomplish this by comparing the caller <code>msg_sender()</code> to the <code>OWNER</code>. If a regular user calls the function then it will revert otherwise it will continue to run when called by the <code>OWNER</code>.</p>
-<pre><code class="language-sway">const OWNER = Identity::Address(Address::from(ADMIN));
+<pre><code class="language-sway">const OWNER = Identity::Address(Address::from(0x0000000000000000000000000000000000000000000000000000000000000000));
 
 fn update() {
     require(msg_sender().unwrap() == OWNER, &quot;Owner Only&quot;);
@@ -1824,6 +1818,7 @@ fn update() {
 <pre><code class="language-sway">library;
 
 abi Vault {
+    #[payable]
     fn deposit();
     fn withdraw(amount: u64, asset: ContractId);
 }
@@ -1834,7 +1829,7 @@ abi Vault {
 <p>The following snippet uses a <a href="documentation/operations/../language/program-types/script.html"><code>script</code></a> to call our <code>Vault</code> contract.</p>
 <pre><code class="language-sway">script;
 
-use interface::Vault;
+use contract_interface::Vault;
 
 fn main(amount: u64, asset_id: ContractId, vault_id: b256) -&gt; bool {
     let caller = abi(Vault, vault_id);
@@ -1876,9 +1871,10 @@ fn main(amount: u64, asset_id: ContractId, vault_id: b256) -&gt; bool {
 </code></pre>
 <h2 id="checks-effects-interactions-pattern"><a class="header" href="#checks-effects-interactions-pattern">Checks-Effects-Interactions Pattern</a></h2>
 <p>The pattern states that all state (storage) changes should be made before a call is made.</p>
-<pre><code class="language-sway">    fn withdraw() {}
+<pre><code class="language-sway">    fn withdraw() {
         // Step 1. Perform any state changes to update balance
         // Step 2. After all state changes make a call
+    }
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="asset-operations"><a class="header" href="#asset-operations">Asset Operations</a></h1>
 <p>A common application of a smart contract is the creation of an asset / token i.e. a cryptocurrency.</p>
@@ -2079,17 +2075,17 @@ fn main(amount: u64, asset_id: ContractId, vault_id: b256) -&gt; bool {
 impl Counter for Contract {
     #[storage(read, write)]
     fn increment() {
-        storage.counter += 1;
+        storage.counter.write(storage.counter.read() + 1);
     }
 
     #[storage(read, write)]
     fn decrement() {
-        storage.counter -= 1;
+        storage.counter.write(storage.counter.read() - 1);
     }
 
     #[storage(read)]
     fn count() -&gt; u64 {
-        storage.counter
+        storage.counter.read()
     }
 }
 </code></pre>
@@ -2155,13 +2151,13 @@ impl Counter for Contract {
 <pre><code class="language-sway">impl Ownership for Contract {
     #[storage(read, write)]
     fn set_owner(owner: Option&lt;Identity&gt;) {
-        assert(storage.owner.is_none() || storage.owner.unwrap() == msg_sender().unwrap());
-        storage.owner = owner;
+        assert(storage.owner.read().is_none() || storage.owner.read().unwrap() == msg_sender().unwrap());
+        storage.owner.write(owner);
     }
 
     #[storage(read)]
     fn action() {
-        assert(storage.owner.unwrap() == msg_sender().unwrap());
+        assert(storage.owner.read().unwrap() == msg_sender().unwrap());
         // code
     }
 }
@@ -2197,13 +2193,13 @@ impl Wallet for Contract {
     #[storage(read, write)]
     fn receive() {
         assert(msg_asset_id() == BASE_ASSET_ID);
-        storage.balance += msg_amount();
+        storage.balance.write(storage.balance.read() + msg_amount());
     }
 
     #[storage(read, write)]
     fn send(amount: u64, recipient: Identity) {
         assert(msg_sender().unwrap() == Identity::Address(OWNER));
-        storage.balance -= amount;
+        storage.balance.write(storage.balance.read() - amount);
         transfer(amount, BASE_ASSET_ID, recipient);
     }
 }

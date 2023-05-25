@@ -158,6 +158,7 @@
 <pre><code class="language-sway">library;
 
 abi Vault {
+    #[payable]
     fn deposit();
     fn withdraw(amount: u64, asset: ContractId);
 }
@@ -168,7 +169,7 @@ abi Vault {
 <p>The following snippet uses a <a href="../language/program-types/script.html"><code>script</code></a> to call our <code>Vault</code> contract.</p>
 <pre><code class="language-sway">script;
 
-use interface::Vault;
+use contract_interface::Vault;
 
 fn main(amount: u64, asset_id: ContractId, vault_id: b256) -&gt; bool {
     let caller = abi(Vault, vault_id);

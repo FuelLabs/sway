@@ -150,7 +150,7 @@
 <h2 id="declaration"><a class="header" href="#declaration">Declaration</a></h2>
 <p>To use a <code>StorageVec</code> we need to import it from the <a href="https://github.com/FuelLabs/sway/tree/master/sway-lib-std">standard library</a> and while we're at it we'll import the <code>msg_sender()</code> so that we can use it in the following section.</p>
 <p>After the import we initialize our <code>StorageVec</code> as described in the <a href="../init.html">initialization</a> section.</p>
-<pre><code class="language-sway">use std::storage::StorageVec;
+<pre><code class="language-sway">use std::storage::storage_vec::*;
 
 storage {
     // T = u64
@@ -167,7 +167,7 @@ storage {
 fn reading_from_storage(id: u64) {
     let balance = storage.balance.get(id).unwrap();
 
-    let (user, value) = storage.user.get(id).unwrap();
+    let (user, value) = storage.user.get(id).unwrap().read();
 }
 </code></pre>
 <h2 id="writing-to-storage"><a class="header" href="#writing-to-storage">Writing to Storage</a></h2>

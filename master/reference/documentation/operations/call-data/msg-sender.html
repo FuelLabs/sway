@@ -150,7 +150,7 @@
 <h2 id="example"><a class="header" href="#example">Example</a></h2>
 <p>We can implement access control by specifying that only the owner can call a function.</p>
 <p>In the following snippet we accomplish this by comparing the caller <code>msg_sender()</code> to the <code>OWNER</code>. If a regular user calls the function then it will revert otherwise it will continue to run when called by the <code>OWNER</code>.</p>
-<pre><code class="language-sway">const OWNER = Identity::Address(Address::from(ADMIN));
+<pre><code class="language-sway">const OWNER = Identity::Address(Address::from(0x0000000000000000000000000000000000000000000000000000000000000000));
 
 fn update() {
     require(msg_sender().unwrap() == OWNER, &quot;Owner Only&quot;);

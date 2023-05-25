@@ -1,7 +1,7 @@
 [project]
 authors = ["Fuel Labs <contact@fuel.sh>"]
-entry = "main.sw"
+entry = "lib.sw"
 license = "Apache-2.0"
-name = "wallet"
+name = "enum-advanced"
 
 [dependencies]
