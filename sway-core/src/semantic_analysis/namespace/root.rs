@@ -54,7 +54,6 @@ impl Root {
         engines: Engines<'_>,
         mod_path: &Path,
         call_path: &CallPath,
-        experimental_private_modules: bool,
     ) -> CompileResult<&ty::TyDecl> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -71,23 +70,21 @@ impl Root {
             return ok(decl, warnings, errors);
         }
 
-        if experimental_private_modules {
-            // check the visibility of the call path elements
-            // we don't check the first prefix because direct children are always accessible
-            for prefix in iter_prefixes(&call_path.prefixes).skip(1) {
-                let module = check!(
-                    self.check_submodule(prefix),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                if module.visibility.is_private() {
-                    let prefix_last = prefix[prefix.len() - 1].clone();
-                    errors.push(CompileError::ImportPrivateModule {
-                        span: prefix_last.span(),
-                        name: prefix_last,
-                    });
-                }
+        // check the visibility of the call path elements
+        // we don't check the first prefix because direct children are always accessible
+        for prefix in iter_prefixes(&call_path.prefixes).skip(1) {
+            let module = check!(
+                self.check_submodule(prefix),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            if module.visibility.is_private() {
+                let prefix_last = prefix[prefix.len() - 1].clone();
+                errors.push(CompileError::ImportPrivateModule {
+                    span: prefix_last.span(),
+                    name: prefix_last,
+                });
             }
         }
 

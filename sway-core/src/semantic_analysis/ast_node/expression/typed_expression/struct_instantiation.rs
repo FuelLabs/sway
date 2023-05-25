@@ -131,7 +131,7 @@ pub(crate) fn struct_instantiation(
     }
 
     check!(
-        type_id.check_type_parameter_bounds(&ctx, &span),
+        type_id.check_type_parameter_bounds(&ctx, &span, vec![]),
         return err(warnings, errors),
         warnings,
         errors

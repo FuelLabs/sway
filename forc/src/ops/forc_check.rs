@@ -13,7 +13,6 @@ pub fn check(command: CheckCommand, engines: Engines<'_>) -> Result<CompileResul
         terse_mode,
         locked,
         disable_tests,
-        experimental_private_modules,
     } = command;
 
     let this_dir = if let Some(ref path) = path {
@@ -28,14 +27,7 @@ pub fn check(command: CheckCommand, engines: Engines<'_>) -> Result<CompileResul
         pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)?;
     let tests_enabled = !disable_tests;
 
-    let mut v = pkg::check(
-        &plan,
-        build_target,
-        terse_mode,
-        tests_enabled,
-        engines,
-        experimental_private_modules,
-    )?;
+    let mut v = pkg::check(&plan, build_target, terse_mode, tests_enabled, engines)?;
     let res = v
         .pop()
         .expect("there is guaranteed to be at least one elem in the vector")

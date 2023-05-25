@@ -161,7 +161,6 @@ fn build_docs(
         silent,
         tests_enabled,
         engines,
-        true,
     )?
     .pop()
     .and_then(|compilation| compilation.value)
