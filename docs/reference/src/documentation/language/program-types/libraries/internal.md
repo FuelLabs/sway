@@ -18,5 +18,5 @@ To be able to use our library `my_library.sw` in `lib.sw` there are two steps to
 2. Use the `use` keyword to selectively import various items from the library
 
 ```sway
-{{#include ../../../../code/language/program-types/libraries/internal/my_library/src/lib.sw}}
+{{#include ../../../../code/language/program-types/libraries/internal/my_lib/src/lib.sw}}
 ```

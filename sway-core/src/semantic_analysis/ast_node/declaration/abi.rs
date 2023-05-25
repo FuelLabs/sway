@@ -38,9 +38,8 @@ impl ty::TyAbiDecl {
 
         // A temporary namespace for checking within this scope.
         let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
         let mut abi_namespace = ctx.namespace.clone();
-        let self_type = type_engine.insert(decl_engine, TypeInfo::SelfType);
+        let self_type = type_engine.insert(ctx.engines(), TypeInfo::SelfType);
         let mut ctx = ctx
             .scoped(&mut abi_namespace)
             .with_mode(Mode::ImplAbiFn)

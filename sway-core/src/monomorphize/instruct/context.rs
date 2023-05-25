@@ -2,7 +2,10 @@ use std::sync::RwLock;
 
 use hashbrown::HashMap;
 
-use crate::{decl_engine::*, language::ty, monomorphize::priv_prelude::*, Engines, TypeEngine};
+use crate::{
+    decl_engine::*, language::ty, monomorphize::priv_prelude::*, query_engine::QueryEngine,
+    Engines, TypeEngine,
+};
 
 /// Contextual state tracked and accumulated throughout applying the
 /// monomorphization instructions.
@@ -12,6 +15,9 @@ pub(crate) struct InstructContext<'a> {
 
     /// The declaration engine holds declarations.
     pub(crate) decl_engine: &'a DeclEngine,
+
+    /// The query engine holds queries.
+    pub(crate) query_engine: &'a QueryEngine,
 
     /// All of the instructions, sorted.
     instructions: &'a RwLock<InstructionItems>,
@@ -30,10 +36,11 @@ impl<'a> InstructContext<'a> {
         engines: Engines<'a>,
         instructions: &'a RwLock<InstructionItems>,
     ) -> Self {
-        let (type_engine, decl_engine) = engines.unwrap();
+        let (type_engine, decl_engine, query_engine) = engines.unwrap();
         Self {
             type_engine,
             decl_engine,
+            query_engine,
             instructions,
         }
     }
@@ -44,6 +51,7 @@ impl<'a> InstructContext<'a> {
         InstructContext {
             type_engine: self.type_engine,
             decl_engine: self.decl_engine,
+            query_engine: self.query_engine,
             instructions: self.instructions,
         }
     }
@@ -53,6 +61,7 @@ impl<'a> InstructContext<'a> {
         InstructContext {
             type_engine: self.type_engine,
             decl_engine: self.decl_engine,
+            query_engine: self.query_engine,
             instructions: self.instructions,
         }
     }

@@ -17,8 +17,9 @@ impl Vault for Contract {
     }
     // ANCHOR_END: guard
     // ANCHOR: check
-    fn withdraw() {}
+    fn withdraw() {
         // Step 1. Perform any state changes to update balance
         // Step 2. After all state changes make a call
+    }
     // ANCHOR_END: check
 }

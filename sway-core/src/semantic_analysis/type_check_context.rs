@@ -3,6 +3,7 @@ use crate::{
     engine_threading::*,
     language::{parsed::TreeType, Purity, Visibility},
     namespace::Path,
+    query_engine::QueryEngine,
     semantic_analysis::{ast_node::Mode, Namespace},
     type_system::{
         EnforceTypeArguments, MonomorphizeHelper, SubstTypes, TypeArgument, TypeId, TypeInfo,
@@ -29,6 +30,9 @@ pub struct TypeCheckContext<'a> {
 
     /// The declaration engine holds declarations.
     pub(crate) decl_engine: &'a DeclEngine,
+
+    /// The query engine holds queries.
+    pub(crate) query_engine: &'a QueryEngine,
 
     // The following set of fields are intentionally private. When a `TypeCheckContext` is passed
     // into a new node during type checking, these fields should be updated using the `with_*`
@@ -62,9 +66,6 @@ pub struct TypeCheckContext<'a> {
     /// disallowing functions from being defined inside of another function
     /// body).
     disallow_functions: bool,
-
-    /// Enable experimental module privacy rules
-    experimental_private_modules: bool,
 }
 
 impl<'a> TypeCheckContext<'a> {
@@ -81,20 +82,20 @@ impl<'a> TypeCheckContext<'a> {
     }
 
     fn from_module_namespace(namespace: &'a mut Namespace, engines: Engines<'a>) -> Self {
-        let (type_engine, decl_engine) = engines.unwrap();
+        let (type_engine, decl_engine, query_engine) = engines.unwrap();
         Self {
             namespace,
             type_engine,
             decl_engine,
-            type_annotation: type_engine.insert(decl_engine, TypeInfo::Unknown),
+            query_engine,
+            type_annotation: type_engine.insert(engines, TypeInfo::Unknown),
             help_text: "",
             // TODO: Contract? Should this be passed in based on program kind (aka TreeType)?
-            self_type: type_engine.insert(decl_engine, TypeInfo::Contract),
+            self_type: type_engine.insert(engines, TypeInfo::Contract),
             mode: Mode::NonAbi,
             purity: Purity::default(),
             kind: TreeType::Contract,
             disallow_functions: false,
-            experimental_private_modules: false,
         }
     }
 
@@ -117,8 +118,8 @@ impl<'a> TypeCheckContext<'a> {
             kind: self.kind.clone(),
             type_engine: self.type_engine,
             decl_engine: self.decl_engine,
+            query_engine: self.query_engine,
             disallow_functions: self.disallow_functions,
-            experimental_private_modules: self.experimental_private_modules,
         }
     }
 
@@ -134,8 +135,8 @@ impl<'a> TypeCheckContext<'a> {
             kind: self.kind,
             type_engine: self.type_engine,
             decl_engine: self.decl_engine,
+            query_engine: self.query_engine,
             disallow_functions: self.disallow_functions,
-            experimental_private_modules: self.experimental_private_modules,
         }
     }
 
@@ -157,7 +158,7 @@ impl<'a> TypeCheckContext<'a> {
         let mut submod_ns = namespace.enter_submodule(mod_name, visibility, module_span);
         let submod_ctx = TypeCheckContext::from_module_namespace(
             &mut submod_ns,
-            Engines::new(self.type_engine, self.decl_engine),
+            Engines::new(self.type_engine, self.decl_engine, self.query_engine),
         );
         with_submod_ctx(submod_ctx)
     }
@@ -188,17 +189,6 @@ impl<'a> TypeCheckContext<'a> {
     /// Map this `TypeCheckContext` instance to a new one with the given module kind.
     pub(crate) fn with_kind(self, kind: TreeType) -> Self {
         Self { kind, ..self }
-    }
-
-    /// Map this `TypeCheckContext` instance to a new one with the given module kind.
-    pub(crate) fn with_experimental_private_modules(
-        self,
-        experimental_private_modules: bool,
-    ) -> Self {
-        Self {
-            experimental_private_modules,
-            ..self
-        }
     }
 
     /// Map this `TypeCheckContext` instance to a new one with the given purity.
@@ -256,10 +246,6 @@ impl<'a> TypeCheckContext<'a> {
         self.disallow_functions
     }
 
-    pub(crate) fn experimental_private_modules_enabled(&self) -> bool {
-        self.experimental_private_modules
-    }
-
     // Provide some convenience functions around the inner context.
 
     /// Short-hand for calling the `monomorphize` function in the type engine
@@ -275,14 +261,13 @@ impl<'a> TypeCheckContext<'a> {
     {
         let mod_path = self.namespace.mod_path.clone();
         self.type_engine.monomorphize(
-            self.decl_engine,
+            self.engines(),
             value,
             type_arguments,
             enforce_type_arguments,
             call_site_span,
             self.namespace,
             &mod_path,
-            self.experimental_private_modules,
         )
     }
 
@@ -302,7 +287,6 @@ impl<'a> TypeCheckContext<'a> {
             span,
             enforce_type_args,
             type_info_prefix,
-            self.experimental_private_modules,
         )
     }
 
@@ -313,13 +297,8 @@ impl<'a> TypeCheckContext<'a> {
         span: &Span,
         type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
-        self.namespace.resolve_type_without_self(
-            self.engines(),
-            type_id,
-            span,
-            type_info_prefix,
-            self.experimental_private_modules,
-        )
+        self.namespace
+            .resolve_type_without_self(self.engines(), type_id, span, type_info_prefix)
     }
 
     /// Short-hand around `type_system::unify_with_self`, where the `TypeCheckContext` provides the
@@ -330,7 +309,7 @@ impl<'a> TypeCheckContext<'a> {
         span: &Span,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
         self.type_engine.unify_with_self(
-            self.decl_engine,
+            self.engines(),
             ty,
             self.type_annotation(),
             self.self_type(),
@@ -342,6 +321,6 @@ impl<'a> TypeCheckContext<'a> {
 
     /// Get the engines needed for engine threading.
     pub(crate) fn engines(&self) -> Engines<'a> {
-        Engines::new(self.type_engine, self.decl_engine)
+        Engines::new(self.type_engine, self.decl_engine, self.query_engine)
     }
 }

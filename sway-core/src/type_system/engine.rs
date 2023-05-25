@@ -22,10 +22,9 @@ pub struct TypeEngine {
 impl TypeEngine {
     /// Inserts a [TypeInfo] into the [TypeEngine] and returns a [TypeId]
     /// referring to that [TypeInfo].
-    pub(crate) fn insert(&self, decl_engine: &DeclEngine, ty: TypeInfo) -> TypeId {
+    pub(crate) fn insert(&self, engines: Engines<'_>, ty: TypeInfo) -> TypeId {
         let mut id_map = self.id_map.write().unwrap();
 
-        let engines = Engines::new(self, decl_engine);
         let hash_builder = id_map.hasher().clone();
         let ty_hash = make_hasher(&hash_builder, engines)(&ty);
 
@@ -34,7 +33,7 @@ impl TypeEngine {
             .from_hash(ty_hash, |x| x.eq(&ty, engines));
         match raw_entry {
             RawEntryMut::Occupied(o) => return *o.get(),
-            RawEntryMut::Vacant(_) if ty.can_change(decl_engine) => {
+            RawEntryMut::Vacant(_) if ty.can_change(engines.de()) => {
                 TypeId::new(self.slab.insert(ty))
             }
             RawEntryMut::Vacant(v) => {
@@ -94,21 +93,19 @@ impl TypeEngine {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn monomorphize<T>(
         &self,
-        decl_engine: &DeclEngine,
+        engines: Engines<'_>,
         value: &mut T,
         type_arguments: &mut [TypeArgument],
         enforce_type_arguments: EnforceTypeArguments,
         call_site_span: &Span,
         namespace: &mut Namespace,
         mod_path: &Path,
-        experimental_private_modules: bool,
     ) -> CompileResult<()>
     where
         T: MonomorphizeHelper + SubstTypes,
     {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let engines = Engines::new(self, decl_engine);
         match (
             value.type_parameters().is_empty(),
             type_arguments.is_empty(),
@@ -156,16 +153,15 @@ impl TypeEngine {
                 for type_argument in type_arguments.iter_mut() {
                     type_argument.type_id = check!(
                         self.resolve(
-                            decl_engine,
+                            engines,
                             type_argument.type_id,
                             &type_argument.span,
                             enforce_type_arguments,
                             None,
                             namespace,
                             mod_path,
-                            experimental_private_modules,
                         ),
-                        self.insert(decl_engine, TypeInfo::ErrorRecovery),
+                        self.insert(engines, TypeInfo::ErrorRecovery),
                         warnings,
                         errors
                     );
@@ -193,7 +189,7 @@ impl TypeEngine {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn unify_with_self(
         &self,
-        decl_engine: &DeclEngine,
+        engines: Engines<'_>,
         mut received: TypeId,
         mut expected: TypeId,
         self_type: TypeId,
@@ -201,16 +197,9 @@ impl TypeEngine {
         help_text: &str,
         err_override: Option<CompileError>,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
-        received.replace_self_type(Engines::new(self, decl_engine), self_type);
-        expected.replace_self_type(Engines::new(self, decl_engine), self_type);
-        self.unify(
-            decl_engine,
-            received,
-            expected,
-            span,
-            help_text,
-            err_override,
-        )
+        received.replace_self_type(engines, self_type);
+        expected.replace_self_type(engines, self_type);
+        self.unify(engines, received, expected, span, help_text, err_override)
     }
 
     /// Make the types of `received` and `expected` equivalent (or produce an
@@ -222,14 +211,13 @@ impl TypeEngine {
     /// is not).
     pub(crate) fn unify(
         &self,
-        decl_engine: &DeclEngine,
+        engines: Engines<'_>,
         received: TypeId,
         expected: TypeId,
         span: &Span,
         help_text: &str,
         err_override: Option<CompileError>,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
-        let engines = Engines::new(self, decl_engine);
         if !UnifyCheck::new(engines).check(received, expected) {
             // create a "mismatched type" error unless the `err_override`
             // argument has been provided
@@ -277,18 +265,17 @@ impl TypeEngine {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn resolve(
         &self,
-        decl_engine: &DeclEngine,
+        engines: Engines<'_>,
         type_id: TypeId,
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
         type_info_prefix: Option<&Path>,
         namespace: &mut Namespace,
         mod_path: &Path,
-        experimental_private_modules: bool,
     ) -> CompileResult<TypeId> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let engines = Engines::new(self, decl_engine);
+        let decl_engine = engines.de();
         let module_path = type_info_prefix.unwrap_or(mod_path);
         let type_id = match self.get(type_id) {
             TypeInfo::Custom {
@@ -297,12 +284,7 @@ impl TypeEngine {
             } => {
                 match namespace
                     .root()
-                    .resolve_call_path_with_visibility_check(
-                        engines,
-                        module_path,
-                        &call_path,
-                        experimental_private_modules,
-                    )
+                    .resolve_call_path_with_visibility_check(engines, module_path, &call_path)
                     .ok(&mut warnings, &mut errors)
                     .cloned()
                 {
@@ -316,14 +298,13 @@ impl TypeEngine {
                         // monomorphize the copy, in place
                         check!(
                             self.monomorphize(
-                                decl_engine,
+                                engines,
                                 &mut new_copy,
                                 &mut type_arguments.unwrap_or_default(),
                                 enforce_type_arguments,
                                 span,
                                 namespace,
                                 mod_path,
-                                experimental_private_modules,
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -334,9 +315,7 @@ impl TypeEngine {
                         let new_decl_ref = decl_engine.insert(new_copy);
 
                         // create the type id from the copy
-                        let type_id = engines
-                            .te()
-                            .insert(decl_engine, TypeInfo::Struct(new_decl_ref));
+                        let type_id = engines.te().insert(engines, TypeInfo::Struct(new_decl_ref));
 
                         // take any trait methods that apply to this type and copy them to the new type
                         namespace.insert_trait_implementation_for_type(engines, type_id);
@@ -354,14 +333,13 @@ impl TypeEngine {
                         // monomorphize the copy, in place
                         check!(
                             self.monomorphize(
-                                decl_engine,
+                                engines,
                                 &mut new_copy,
                                 &mut type_arguments.unwrap_or_default(),
                                 enforce_type_arguments,
                                 span,
                                 namespace,
                                 mod_path,
-                                experimental_private_modules,
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -372,9 +350,7 @@ impl TypeEngine {
                         let new_decl_ref = decl_engine.insert(new_copy);
 
                         // create the type id from the copy
-                        let type_id = engines
-                            .te()
-                            .insert(decl_engine, TypeInfo::Enum(new_decl_ref));
+                        let type_id = engines.te().insert(engines, TypeInfo::Enum(new_decl_ref));
 
                         // take any trait methods that apply to this type and copy them to the new type
                         namespace.insert_trait_implementation_for_type(engines, type_id);
@@ -404,47 +380,45 @@ impl TypeEngine {
                             name: call_path.to_string(),
                             span: call_path.span(),
                         });
-                        self.insert(decl_engine, TypeInfo::ErrorRecovery)
+                        self.insert(engines, TypeInfo::ErrorRecovery)
                     }
                 }
             }
             TypeInfo::Array(mut elem_ty, n) => {
                 elem_ty.type_id = check!(
                     self.resolve(
-                        decl_engine,
+                        engines,
                         elem_ty.type_id,
                         span,
                         enforce_type_arguments,
                         None,
                         namespace,
                         mod_path,
-                        experimental_private_modules
                     ),
-                    self.insert(decl_engine, TypeInfo::ErrorRecovery),
+                    self.insert(engines, TypeInfo::ErrorRecovery),
                     warnings,
                     errors
                 );
-                self.insert(decl_engine, TypeInfo::Array(elem_ty, n))
+                self.insert(engines, TypeInfo::Array(elem_ty, n))
             }
             TypeInfo::Tuple(mut type_arguments) => {
                 for type_argument in type_arguments.iter_mut() {
                     type_argument.type_id = check!(
                         self.resolve(
-                            decl_engine,
+                            engines,
                             type_argument.type_id,
                             span,
                             enforce_type_arguments,
                             None,
                             namespace,
                             mod_path,
-                            experimental_private_modules
                         ),
-                        self.insert(decl_engine, TypeInfo::ErrorRecovery),
+                        self.insert(engines, TypeInfo::ErrorRecovery),
                         warnings,
                         errors
                     );
                 }
-                self.insert(decl_engine, TypeInfo::Tuple(type_arguments))
+                self.insert(engines, TypeInfo::Tuple(type_arguments))
             }
             _ => type_id,
         };
@@ -456,7 +430,7 @@ impl TypeEngine {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn resolve_with_self(
         &self,
-        decl_engine: &DeclEngine,
+        engines: Engines<'_>,
         mut type_id: TypeId,
         self_type: TypeId,
         span: &Span,
@@ -464,26 +438,23 @@ impl TypeEngine {
         type_info_prefix: Option<&Path>,
         namespace: &mut Namespace,
         mod_path: &Path,
-        experimental_private_modules: bool,
     ) -> CompileResult<TypeId> {
-        type_id.replace_self_type(Engines::new(self, decl_engine), self_type);
+        type_id.replace_self_type(engines, self_type);
         self.resolve(
-            decl_engine,
+            engines,
             type_id,
             span,
             enforce_type_arguments,
             type_info_prefix,
             namespace,
             mod_path,
-            experimental_private_modules,
         )
     }
 
     /// Pretty print method for printing the [TypeEngine]. This method is
     /// manually implemented to avoid implementation overhead regarding using
     /// [DisplayWithEngines].
-    pub fn pretty_print(&self, decl_engine: &DeclEngine) -> String {
-        let engines = Engines::new(self, decl_engine);
+    pub fn pretty_print(&self, _decl_engine: &DeclEngine, engines: Engines<'_>) -> String {
         let mut builder = String::new();
         self.slab.with_slice(|elems| {
             let list = elems

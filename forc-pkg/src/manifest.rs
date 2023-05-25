@@ -223,8 +223,6 @@ pub struct BuildProfile {
     pub json_abi_with_callpaths: bool,
     #[serde(default)]
     pub error_on_warnings: bool,
-    #[serde(default)]
-    pub experimental_private_modules: bool,
 }
 
 impl Dependency {
@@ -668,7 +666,6 @@ impl BuildProfile {
             include_tests: false,
             json_abi_with_callpaths: false,
             error_on_warnings: false,
-            experimental_private_modules: false,
         }
     }
 
@@ -685,7 +682,6 @@ impl BuildProfile {
             include_tests: false,
             json_abi_with_callpaths: false,
             error_on_warnings: false,
-            experimental_private_modules: false,
         }
     }
 }

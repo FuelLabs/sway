@@ -50,7 +50,8 @@ pub fn rename(
 
     let te = session.type_engine.read();
     let de = session.decl_engine.read();
-    let engines = Engines::new(&te, &de);
+    let qe = session.query_engine.read();
+    let engines = Engines::new(&te, &de, &qe);
 
     // If the token is a function, find the parent declaration
     // and collect idents for all methods of ABI Decl, Trait Decl, and Impl Trait
@@ -113,7 +114,8 @@ pub fn prepare_rename(
 
     let te = session.type_engine.read();
     let de = session.decl_engine.read();
-    let engines = Engines::new(&te, &de);
+    let qe = session.query_engine.read();
+    let engines = Engines::new(&te, &de, &qe);
 
     // Only let through tokens that are in the users workspace.
     // tokens that are external to the users workspace cannot be renamed.

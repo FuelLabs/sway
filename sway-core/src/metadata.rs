@@ -8,13 +8,13 @@ use sway_types::Span;
 
 use std::{collections::HashMap, path::PathBuf, rc::Rc, sync::Arc};
 
-///! IR metadata needs to be consistent between IR generation (converting Spans, etc. to metadata)
-///! and ASM generation (converting the metadata back again).  Here we consolidate all of
-///! `sway-core`s metadata needs into a single place to enable that consistency.
-///!
-///! The [`MetadataManager`] also does its best to reduce redundancy by caching certain common
-///! elements, such as source paths and storage attributes, and to avoid recreating the same
-///! indices repeatedly.
+/// IR metadata needs to be consistent between IR generation (converting Spans, etc. to metadata)
+/// and ASM generation (converting the metadata back again).  Here we consolidate all of
+/// `sway-core`s metadata needs into a single place to enable that consistency.
+///
+/// The [`MetadataManager`] also does its best to reduce redundancy by caching certain common
+/// elements, such as source paths and storage attributes, and to avoid recreating the same
+/// indices repeatedly.
 
 #[derive(Default)]
 pub(crate) struct MetadataManager {

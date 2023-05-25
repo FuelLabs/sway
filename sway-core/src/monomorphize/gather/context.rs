@@ -2,7 +2,8 @@ use hashbrown::{hash_map::RawEntryMut, HashMap};
 use std::sync::RwLock;
 
 use crate::{
-    decl_engine::*, engine_threading::*, monomorphize::priv_prelude::*, namespace, TypeEngine,
+    decl_engine::*, engine_threading::*, monomorphize::priv_prelude::*, namespace,
+    query_engine::QueryEngine, TypeEngine,
 };
 
 /// Contextual state tracked and accumulated throughout gathering the trait
@@ -16,6 +17,9 @@ pub(crate) struct GatherContext<'a> {
 
     /// The declaration engine holds declarations.
     pub(crate) decl_engine: &'a DeclEngine,
+
+    /// The query engine holds all queries.
+    pub(crate) query_engine: &'a QueryEngine,
 
     /// The list of constraints.
     /// NOTE: This only needs to be a [HashSet][hashbrown::HashSet], but there
@@ -39,11 +43,12 @@ impl<'a> GatherContext<'a> {
         engines: Engines<'a>,
         constraints: &'a RwLock<HashMap<Constraint, usize>>,
     ) -> Self {
-        let (type_engine, decl_engine) = engines.unwrap();
+        let (type_engine, decl_engine, query_engine) = engines.unwrap();
         Self {
             namespace,
             type_engine,
             decl_engine,
+            query_engine,
             constraints,
         }
     }
@@ -55,6 +60,7 @@ impl<'a> GatherContext<'a> {
             namespace: self.namespace,
             type_engine: self.type_engine,
             decl_engine: self.decl_engine,
+            query_engine: self.query_engine,
             constraints: self.constraints,
         }
     }
@@ -65,12 +71,13 @@ impl<'a> GatherContext<'a> {
             namespace,
             type_engine: self.type_engine,
             decl_engine: self.decl_engine,
+            query_engine: self.query_engine,
             constraints: self.constraints,
         }
     }
 
     pub(crate) fn add_constraint(&self, constraint: Constraint) {
-        let engines = Engines::new(self.type_engine, self.decl_engine);
+        let engines = Engines::new(self.type_engine, self.decl_engine, self.query_engine);
         let mut constraints = self.constraints.write().unwrap();
         let hash_builder = constraints.hasher().clone();
         let constraint_hash = make_hasher(&hash_builder, engines)(&constraint);

@@ -28,6 +28,7 @@ use sway_core::{
         parsed::{AstNode, ParseProgram},
         ty,
     },
+    query_engine::QueryEngine,
     BuildTarget, CompileResult, Engines, Namespace, TypeEngine,
 };
 use sway_types::{Span, Spanned};
@@ -60,6 +61,7 @@ pub struct Session {
     pub compiled_program: RwLock<CompiledProgram>,
     pub type_engine: RwLock<TypeEngine>,
     pub decl_engine: RwLock<DeclEngine>,
+    pub query_engine: RwLock<QueryEngine>,
     pub sync: SyncWorkspace,
     // Limit the number of threads that can wait to parse at the same time. One thread can be parsing
     // and one thread can be waiting to start parsing. All others will return the cached diagnostics.
@@ -77,6 +79,7 @@ impl Session {
             compiled_program: RwLock::new(Default::default()),
             type_engine: <_>::default(),
             decl_engine: <_>::default(),
+            query_engine: <_>::default(),
             sync: SyncWorkspace::new(),
             parse_permits: Arc::new(Semaphore::new(2)),
             diagnostics: Arc::new(RwLock::new(Diagnostics::default())),
@@ -163,6 +166,7 @@ impl Session {
 
         let new_type_engine = TypeEngine::default();
         let new_decl_engine = DeclEngine::default();
+        let new_query_engine = QueryEngine::default();
         let tests_enabled = true;
 
         let results = pkg::check(
@@ -170,18 +174,19 @@ impl Session {
             BuildTarget::default(),
             true,
             tests_enabled,
-            Engines::new(&new_type_engine, &new_decl_engine),
-            true,
+            Engines::new(&new_type_engine, &new_decl_engine, &new_query_engine),
         )
         .map_err(LanguageServerError::FailedToCompile)?;
 
         // Acquire locks for the engines before clearing anything.
         let mut type_engine = self.type_engine.write();
         let mut decl_engine = self.decl_engine.write();
+        let mut query_engine = self.query_engine.write();
 
         // Update the engines with the new data.
         *type_engine = new_type_engine;
         *decl_engine = new_decl_engine;
+        *query_engine = new_query_engine;
 
         // Clear other data stores.
         self.token_map.clear();
@@ -217,7 +222,7 @@ impl Session {
             // This operation is fast because we already have the compile results.
             let ctx = ParseContext::new(
                 &self.token_map,
-                Engines::new(&type_engine, &decl_engine),
+                Engines::new(&type_engine, &decl_engine, &query_engine),
                 &typed_program.root.namespace,
             );
 
@@ -263,7 +268,8 @@ impl Session {
         let (_, token) = self.token_map.token_at_position(url, position)?;
         let te = self.type_engine.read();
         let de = self.decl_engine.read();
-        let engines = Engines::new(&te, &de);
+        let qe = self.query_engine.read();
+        let engines = Engines::new(&te, &de, &qe);
 
         let mut token_ranges: Vec<_> = self
             .token_map
@@ -283,7 +289,8 @@ impl Session {
     ) -> Option<GotoDefinitionResponse> {
         let te = self.type_engine.read();
         let de = self.decl_engine.read();
-        let engines = Engines::new(&te, &de);
+        let qe = self.query_engine.read();
+        let engines = Engines::new(&te, &de, &qe);
         self.token_map
             .token_at_position(&uri, position)
             .and_then(|(_, token)| token.declared_token_ident(engines))
@@ -321,7 +328,11 @@ impl Session {
             let program = compiled_program.typed.clone()?;
             return Some(capabilities::completion::to_completion_items(
                 &program.root.namespace,
-                Engines::new(&self.type_engine.read(), &self.decl_engine.read()),
+                Engines::new(
+                    &self.type_engine.read(),
+                    &self.decl_engine.read(),
+                    &self.query_engine.read(),
+                ),
                 &ident_to_complete,
                 &fn_decl,
                 position,

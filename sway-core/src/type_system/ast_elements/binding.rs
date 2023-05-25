@@ -166,7 +166,7 @@ impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
         let mut errors = vec![];
 
         let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
+        let engines = ctx.engines();
 
         let (type_info, type_ident) = self.inner.suffix.clone();
         let type_info_span = type_ident.span();
@@ -191,12 +191,12 @@ impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
         // resolve the type of the type info object
         let type_id = check!(
             ctx.resolve_type_with_self(
-                type_engine.insert(decl_engine, type_info),
+                type_engine.insert(engines, type_info),
                 &type_info_span,
                 EnforceTypeArguments::No,
                 Some(&type_info_prefix)
             ),
-            type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+            type_engine.insert(engines, TypeInfo::ErrorRecovery),
             warnings,
             errors
         );
@@ -238,11 +238,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
         // Grab the declaration.
         let unknown_decl = check!(
             ctx.namespace
-                .resolve_call_path_with_visibility_check(
-                    engines,
-                    &self.inner,
-                    ctx.experimental_private_modules_enabled()
-                )
+                .resolve_call_path_with_visibility_check(engines, &self.inner)
                 .cloned(),
             return err(warnings, errors),
             warnings,
@@ -282,7 +278,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
                             EnforceTypeArguments::Yes,
                             None
                         ),
-                        type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+                        type_engine.insert(engines, TypeInfo::ErrorRecovery),
                         warnings,
                         errors,
                     );
@@ -315,11 +311,7 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
         // Grab the declaration.
         let unknown_decl = check!(
             ctx.namespace
-                .resolve_call_path_with_visibility_check(
-                    engines,
-                    &self.inner,
-                    ctx.experimental_private_modules_enabled()
-                )
+                .resolve_call_path_with_visibility_check(engines, &self.inner,)
                 .cloned(),
             return err(warnings, errors),
             warnings,
@@ -349,7 +341,7 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
         // Insert the new copy into the declaration engine.
         let new_struct_ref = ctx.decl_engine.insert(new_copy);
         // Take any trait items that apply to the old type and copy them to the new type.
-        let type_id = type_engine.insert(decl_engine, TypeInfo::Struct(new_struct_ref.clone()));
+        let type_id = type_engine.insert(engines, TypeInfo::Struct(new_struct_ref.clone()));
         ctx.namespace
             .insert_trait_implementation_for_type(engines, type_id);
         ok((new_struct_ref, Some(type_id), None), warnings, errors)
@@ -373,11 +365,7 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
         // Grab the declaration.
         let unknown_decl = check!(
             ctx.namespace
-                .resolve_call_path_with_visibility_check(
-                    engines,
-                    &self.inner,
-                    ctx.experimental_private_modules_enabled()
-                )
+                .resolve_call_path_with_visibility_check(engines, &self.inner,)
                 .cloned(),
             return err(warnings, errors),
             warnings,
@@ -417,7 +405,7 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
         // Insert the new copy into the declaration engine.
         let new_enum_ref = ctx.decl_engine.insert(new_copy);
         // Take any trait items that apply to the old type and copy them to the new type.
-        let type_id = type_engine.insert(decl_engine, TypeInfo::Enum(new_enum_ref.clone()));
+        let type_id = type_engine.insert(engines, TypeInfo::Enum(new_enum_ref.clone()));
         ctx.namespace
             .insert_trait_implementation_for_type(engines, type_id);
         ok(
@@ -445,11 +433,7 @@ impl TypeCheckTypeBinding<ty::TyConstantDecl> for TypeBinding<CallPath> {
         // Grab the declaration.
         let unknown_decl = check!(
             ctx.namespace
-                .resolve_call_path_with_visibility_check(
-                    engines,
-                    &self.inner,
-                    ctx.experimental_private_modules_enabled()
-                )
+                .resolve_call_path_with_visibility_check(engines, &self.inner,)
                 .cloned(),
             return err(warnings, errors),
             warnings,

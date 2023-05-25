@@ -40,7 +40,8 @@ pub(crate) fn inlay_hints(
 
     let type_engine = session.type_engine.read();
     let decl_engine = session.decl_engine.read();
-    let engines = Engines::new(&type_engine, &decl_engine);
+    let query_engine = session.query_engine.read();
+    let engines = Engines::new(&type_engine, &decl_engine, &query_engine);
 
     let hints: Vec<lsp_types::InlayHint> = session
         .token_map()

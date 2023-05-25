@@ -76,12 +76,12 @@ pub(crate) fn struct_instantiation(
     // resolve the type of the struct decl
     let type_id = check!(
         ctx.resolve_type_with_self(
-            type_engine.insert(decl_engine, type_info),
+            type_engine.insert(engines, type_info),
             &inner_span,
             EnforceTypeArguments::No,
             Some(&type_info_prefix)
         ),
-        type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+        type_engine.insert(engines, TypeInfo::ErrorRecovery),
         warnings,
         errors
     );
@@ -131,7 +131,7 @@ pub(crate) fn struct_instantiation(
     }
 
     check!(
-        type_id.check_type_parameter_bounds(&ctx, &span),
+        type_id.check_type_parameter_bounds(&ctx, &span, vec![]),
         return err(warnings, errors),
         warnings,
         errors
@@ -163,7 +163,7 @@ fn type_check_field_arguments(
     let mut errors = vec![];
 
     let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
+    let engines = ctx.engines();
 
     let mut typed_fields = vec![];
 
@@ -173,7 +173,7 @@ fn type_check_field_arguments(
                 let ctx = ctx
                     .by_ref()
                     .with_help_text("")
-                    .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
+                    .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
                 let value = check!(
                     ty::TyExpression::type_check(ctx, field.value.clone()),
                     continue,
@@ -196,7 +196,7 @@ fn type_check_field_arguments(
                     name: struct_field.name.clone(),
                     value: ty::TyExpression {
                         expression: ty::TyExpressionVariant::Tuple { fields: vec![] },
-                        return_type: type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+                        return_type: type_engine.insert(engines, TypeInfo::ErrorRecovery),
                         span: span.clone(),
                     },
                 });
@@ -218,13 +218,13 @@ fn unify_field_arguments_and_struct_fields(
     let mut errors = vec![];
 
     let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
+    let engines = ctx.engines();
 
     for struct_field in struct_fields.iter() {
         if let Some(typed_field) = typed_fields.iter().find(|x| x.name == struct_field.name) {
             check!(
                 CompileResult::from(type_engine.unify(
-                    decl_engine,
+                    engines,
                     typed_field.value.return_type,
                     struct_field.type_argument.type_id,
                     &typed_field.value.span,
