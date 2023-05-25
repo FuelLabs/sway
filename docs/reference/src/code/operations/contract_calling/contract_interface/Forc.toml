@@ -2,6 +2,6 @@
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "lib.sw"
 license = "Apache-2.0"
-name = "enums"
+name = "contract_interface"
 
 [dependencies]

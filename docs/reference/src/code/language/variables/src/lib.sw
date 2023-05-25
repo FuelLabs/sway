@@ -15,26 +15,21 @@ fn immutable() {
 
 fn reassignment() {
     // ANCHOR: reassignment
-    // Set `foo` & `bar` to take the value of `5` and the default `u64` type
+    // Set `foo` to take the value of `5` and the default `u64` type
     let foo = 5;
-    const bar = 5;
 
-    // Reassign `foo` & `bar` to be a `str[4]` with the value of `Fuel`
+    // Reassign `foo` to be a `str[4]` with the value of `Fuel`
     let foo = "Fuel";
-    const bar = "Fuel";
     // ANCHOR_END: reassignment
 }
 
 fn shadowing() {
     // ANCHOR: shadowing
     let foo = 5;
-    const bar = 5;
-    {
+     {
         let foo = 42;
-        const bar = 42;
     }
     assert(foo == 5);
-    assert(bar == 5);
     // ANCHOR_END: shadowing
 }
 

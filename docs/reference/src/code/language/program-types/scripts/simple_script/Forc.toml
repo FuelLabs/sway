@@ -1,7 +1,7 @@
 [project]
 authors = ["Fuel Labs <contact@fuel.sh>"]
-entry = "lib.sw"
+entry = "main.sw"
 license = "Apache-2.0"
-name = "arrays"
+name = "simple_script"
 
 [dependencies]
