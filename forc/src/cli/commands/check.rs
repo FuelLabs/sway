@@ -31,9 +31,6 @@ pub struct Command {
     /// Disable checking unit tests.
     #[clap(long = "disable-tests")]
     pub disable_tests: bool,
-    /// Enable the experimental module privacy enforcement.
-    #[clap(long)]
-    pub experimental_private_modules: bool,
 }
 
 pub(crate) fn exec(command: Command) -> ForcResult<()> {

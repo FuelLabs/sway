@@ -107,14 +107,9 @@ impl Namespace {
         &self,
         engines: Engines<'_>,
         call_path: &CallPath,
-        experimental_private_modules: bool,
     ) -> CompileResult<&ty::TyDecl> {
-        self.root.resolve_call_path_with_visibility_check(
-            engines,
-            &self.mod_path,
-            call_path,
-            experimental_private_modules,
-        )
+        self.root
+            .resolve_call_path_with_visibility_check(engines, &self.mod_path, call_path)
     }
 
     /// Short-hand for calling [Root::resolve_type_with_self] on `root` with the `mod_path`.
@@ -127,7 +122,6 @@ impl Namespace {
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
         type_info_prefix: Option<&Path>,
-        experimental_private_modules: bool,
     ) -> CompileResult<TypeId> {
         let mod_path = self.mod_path.clone();
         engines.te().resolve_with_self(
@@ -139,7 +133,6 @@ impl Namespace {
             type_info_prefix,
             self,
             &mod_path,
-            experimental_private_modules,
         )
     }
 
@@ -150,7 +143,6 @@ impl Namespace {
         type_id: TypeId,
         span: &Span,
         type_info_prefix: Option<&Path>,
-        experimental_private_modules: bool,
     ) -> CompileResult<TypeId> {
         let mod_path = self.mod_path.clone();
         engines.te().resolve(
@@ -161,7 +153,6 @@ impl Namespace {
             type_info_prefix,
             self,
             &mod_path,
-            experimental_private_modules,
         )
     }
 
@@ -174,7 +165,6 @@ impl Namespace {
         item_name: &Ident,
         self_type: TypeId,
         engines: Engines<'_>,
-        experimental_private_modules: bool,
     ) -> CompileResult<Vec<ty::TyTraitItem>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -212,7 +202,6 @@ impl Namespace {
                 None,
                 self,
                 item_prefix,
-                experimental_private_modules,
             ),
             type_engine.insert(engines, TypeInfo::ErrorRecovery),
             warnings,
@@ -269,7 +258,6 @@ impl Namespace {
         self_type: TypeId,
         args_buf: &VecDeque<ty::TyExpression>,
         engines: Engines<'_>,
-        experimental_private_modules: bool,
     ) -> CompileResult<DeclRefFunction> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -278,14 +266,7 @@ impl Namespace {
         let type_engine = engines.te();
 
         let matching_item_decl_refs = check!(
-            self.find_items_for_type(
-                type_id,
-                method_prefix,
-                method_name,
-                self_type,
-                engines,
-                experimental_private_modules
-            ),
+            self.find_items_for_type(type_id, method_prefix, method_name, self_type, engines,),
             return err(warnings, errors),
             warnings,
             errors
@@ -364,20 +345,12 @@ impl Namespace {
         item_name: &Ident,
         self_type: TypeId,
         engines: Engines<'_>,
-        experimental_private_modules: bool,
     ) -> CompileResult<DeclRefConstant> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
         let matching_item_decl_refs = check!(
-            self.find_items_for_type(
-                type_id,
-                &Vec::<Ident>::new(),
-                item_name,
-                self_type,
-                engines,
-                experimental_private_modules
-            ),
+            self.find_items_for_type(type_id, &Vec::<Ident>::new(), item_name, self_type, engines,),
             return err(warnings, errors),
             warnings,
             errors
@@ -399,14 +372,8 @@ impl Namespace {
     }
 
     /// Short-hand for performing a [Module::star_import] with `mod_path` as the destination.
-    pub(crate) fn star_import(
-        &mut self,
-        src: &Path,
-        engines: Engines<'_>,
-        experimental_private_modules: bool,
-    ) -> CompileResult<()> {
-        self.root
-            .star_import(src, &self.mod_path, engines, experimental_private_modules)
+    pub(crate) fn star_import(&mut self, src: &Path, engines: Engines<'_>) -> CompileResult<()> {
+        self.root.star_import(src, &self.mod_path, engines)
     }
 
     /// Short-hand for performing a [Module::variant_star_import] with `mod_path` as the destination.
@@ -415,15 +382,9 @@ impl Namespace {
         src: &Path,
         engines: Engines<'_>,
         enum_name: &Ident,
-        experimental_private_modules: bool,
     ) -> CompileResult<()> {
-        self.root.variant_star_import(
-            src,
-            &self.mod_path,
-            engines,
-            enum_name,
-            experimental_private_modules,
-        )
+        self.root
+            .variant_star_import(src, &self.mod_path, engines, enum_name)
     }
 
     /// Short-hand for performing a [Module::self_import] with `mod_path` as the destination.
@@ -432,15 +393,8 @@ impl Namespace {
         engines: Engines<'_>,
         src: &Path,
         alias: Option<Ident>,
-        experimental_private_modules: bool,
     ) -> CompileResult<()> {
-        self.root.self_import(
-            engines,
-            src,
-            &self.mod_path,
-            alias,
-            experimental_private_modules,
-        )
+        self.root.self_import(engines, src, &self.mod_path, alias)
     }
 
     /// Short-hand for performing a [Module::item_import] with `mod_path` as the destination.
@@ -450,16 +404,9 @@ impl Namespace {
         src: &Path,
         item: &Ident,
         alias: Option<Ident>,
-        experimental_private_modules: bool,
     ) -> CompileResult<()> {
-        self.root.item_import(
-            engines,
-            src,
-            item,
-            &self.mod_path,
-            alias,
-            experimental_private_modules,
-        )
+        self.root
+            .item_import(engines, src, item, &self.mod_path, alias)
     }
 
     /// Short-hand for performing a [Module::variant_import] with `mod_path` as the destination.
@@ -470,17 +417,9 @@ impl Namespace {
         enum_name: &Ident,
         variant_name: &Ident,
         alias: Option<Ident>,
-        experimental_private_modules: bool,
     ) -> CompileResult<()> {
-        self.root.variant_import(
-            engines,
-            src,
-            enum_name,
-            variant_name,
-            &self.mod_path,
-            alias,
-            experimental_private_modules,
-        )
+        self.root
+            .variant_import(engines, src, enum_name, variant_name, &self.mod_path, alias)
     }
 
     /// "Enter" the submodule at the given path by returning a new [SubmoduleNamespace].

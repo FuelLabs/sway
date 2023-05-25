@@ -175,7 +175,6 @@ impl Session {
             true,
             tests_enabled,
             Engines::new(&new_type_engine, &new_decl_engine, &new_query_engine),
-            true,
         )
         .map_err(LanguageServerError::FailedToCompile)?;
 
