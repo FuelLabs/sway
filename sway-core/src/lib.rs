@@ -40,8 +40,7 @@ use sway_ir::{
     MODULEPRINTER_NAME, RETDEMOTION_NAME,
 };
 use sway_types::constants::DOC_COMMENT_ATTRIBUTE_NAME;
-use sway_utils::PerformanceMetric;
-use sway_utils::{time_expr, PerformanceMetrics};
+use sway_utils::{time_expr, PerformanceMetric, PerformanceMetrics};
 use transform::{Attribute, AttributeArg, AttributeKind, AttributesMap};
 use types::*;
 
@@ -62,6 +61,7 @@ pub mod fuel_prelude {
 }
 
 pub use engine_threading::Engines;
+use sysinfo::{System, SystemExt};
 
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [lexed::LexedProgram] and [parsed::ParseProgram].
 ///
