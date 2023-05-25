@@ -46,6 +46,8 @@ pub struct BuildConfig {
     pub(crate) print_finalized_asm: bool,
     pub(crate) print_ir: bool,
     pub(crate) include_tests: bool,
+    pub time_phases: bool,
+    pub metrics_outfile: Option<String>,
 }
 
 impl BuildConfig {
@@ -88,6 +90,8 @@ impl BuildConfig {
             print_finalized_asm: false,
             print_ir: false,
             include_tests: false,
+            time_phases: false,
+            metrics_outfile: None,
         }
     }
 
@@ -122,6 +126,20 @@ impl BuildConfig {
     pub fn print_ir(self, a: bool) -> Self {
         Self {
             print_ir: a,
+            ..self
+        }
+    }
+
+    pub fn time_phases(self, a: bool) -> Self {
+        Self {
+            time_phases: a,
+            ..self
+        }
+    }
+
+    pub fn metrics(self, a: Option<String>) -> Self {
+        Self {
+            metrics_outfile: a,
             ..self
         }
     }

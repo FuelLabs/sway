@@ -5306,6 +5306,9 @@ dependencies = [
 [[package]]
 name = "sway-utils"
 version = "0.39.1"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "swayfmt"
@@ -5499,6 +5502,7 @@ dependencies = [
  "serde_json",
  "sway-core",
  "sway-ir",
+ "sway-utils",
  "textwrap 0.16.0",
  "tokio",
  "toml",

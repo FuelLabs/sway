@@ -40,6 +40,8 @@ use sway_ir::{
     MODULEPRINTER_NAME, RETDEMOTION_NAME,
 };
 use sway_types::constants::DOC_COMMENT_ATTRIBUTE_NAME;
+use sway_utils::PerformanceMetric;
+use sway_utils::{time_expr, PerformanceMetrics};
 use transform::{Attribute, AttributeArg, AttributeKind, AttributesMap};
 use types::*;
 
@@ -449,13 +451,21 @@ pub fn compile_to_ast(
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
     package_name: &str,
+    metrics: &mut PerformanceMetrics,
 ) -> CompileResult<ty::TyProgram> {
     // Parse the program to a concrete syntax tree (CST).
     let CompileResult {
         value: parse_program_opt,
         mut warnings,
         mut errors,
-    } = parse(input, engines, build_config);
+    } = time_expr!(
+        "parse the program to a concrete syntax tree (CST)",
+        "parse_cst",
+        parse(input, engines, build_config),
+        build_config,
+        metrics
+    );
+
     let (.., mut parse_program) = match parse_program_opt {
         Some(parse_program) => parse_program,
         None => return deduped_err(warnings, errors),
@@ -470,13 +480,20 @@ pub fn compile_to_ast(
     }
 
     // Type check (+ other static analysis) the CST to a typed AST.
-    let typed_res = parsed_to_ast(
-        engines,
-        &parse_program,
-        initial_namespace,
+    let typed_res = time_expr!(
+        "parse the concrete syntax tree (CST) to a typed AST",
+        "parse_ast",
+        parsed_to_ast(
+            engines,
+            &parse_program,
+            initial_namespace,
+            build_config,
+            package_name,
+        ),
         build_config,
-        package_name,
+        metrics
     );
+
     errors.extend(typed_res.errors);
     warnings.extend(typed_res.warnings);
     let typed_program = match typed_res.value {
@@ -500,6 +517,7 @@ pub fn compile_to_asm(
     initial_namespace: namespace::Module,
     build_config: BuildConfig,
     package_name: &str,
+    metrics: &mut PerformanceMetrics,
 ) -> CompileResult<CompiledAsm> {
     let ast_res = compile_to_ast(
         engines,
@@ -507,6 +525,7 @@ pub fn compile_to_asm(
         initial_namespace,
         Some(&build_config),
         package_name,
+        metrics,
     );
     ast_to_asm(engines, &ast_res, &build_config)
 }
@@ -642,6 +661,7 @@ pub fn compile_to_bytecode(
     build_config: BuildConfig,
     source_map: &mut SourceMap,
     package_name: &str,
+    metrics: &mut PerformanceMetrics,
 ) -> CompileResult<CompiledBytecode> {
     let asm_res = compile_to_asm(
         engines,
@@ -649,6 +669,7 @@ pub fn compile_to_bytecode(
         initial_namespace,
         build_config,
         package_name,
+        metrics,
     );
     asm_to_bytecode(asm_res, source_map)
 }
