@@ -320,7 +320,8 @@ impl Type {
                     } else {
                         assert!(
                             ty.is_array(context),
-                            "Expected aggregate type when indexing using GEP. Got {}", ty.as_string(context)
+                            "Expected aggregate type when indexing using GEP. Got {}",
+                            ty.as_string(context)
                         );
                         // size_of_element * idx-1 will be the offset of idx.
                         ty.get_array_elem_type(context).map(|elm_ty| {

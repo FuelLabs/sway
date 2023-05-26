@@ -241,191 +241,238 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
         }
     }
 
-    let mut modified = false;
-    for block in function.block_iter(context) {
-        available_copies = FxHashSet::default();
-        src_to_copies = FxHashMap::default();
-        dest_to_copies = FxHashMap::default();
+    struct ReplGep {
+        base: Symbol,
+        elem_ptr_ty: Type,
+        indices: Vec<Value>,
+    }
+    enum Replacement {
+        OldGep(Value),
+        NewGep(ReplGep),
+    }
 
-        struct ReplGep {
-            base: Symbol,
-            elem_ptr_ty: Type,
-            indices: Vec<Value>,
-        }
-        enum Replacement {
-            OldGep(Value),
-            NewGep(ReplGep),
-        }
-        let mut replacements = vec![];
-
-        for inst in block.instruction_iter(context) {
-            match inst.get_instruction(context).unwrap() {
-                Instruction::Call(_, args) => {
-                    for arg in args {
-                        let Some(arg_sym) = get_symbol(context, *arg) else { continue; };
-                        let Some(arg_ty) = arg_sym.get_type(context).get_pointee_type(context) else { continue; };
-                        kill_defined_symbol(
-                            context,
-                            *arg,
-                            arg_ty.size_in_bytes(context),
-                            &mut available_copies,
-                            &mut src_to_copies,
-                            &mut dest_to_copies,
+    fn process_load(
+        context: &Context,
+        inst: Value,
+        src_val_ptr: Value,
+        dest_to_copies: &mut FxHashMap<Symbol, FxHashSet<Value>>,
+        replacements: &mut FxHashMap<Value, Replacement>,
+    ) -> bool {
+        // For every `memcpy` that src_val_ptr is a destination of,
+        // check if we can do the load from the source of that memcpy.
+        if let Some(src_sym) = get_symbol(context, src_val_ptr) {
+            for memcpy in dest_to_copies
+                .get(&src_sym)
+                .iter()
+                .map(|set| set.iter())
+                .flatten()
+            {
+                let (dst_ptr_memcpy, src_ptr_memcpy, copy_len) =
+                    deconstruct_memcpy(context, *memcpy);
+                // If the location where we're loading from exactly matches the destination of
+                // the memcpy, just load from the source pointer of the memcpy.
+                if must_alias(
+                    context,
+                    src_val_ptr,
+                    pointee_size(context, src_val_ptr),
+                    dst_ptr_memcpy,
+                    copy_len,
+                ) {
+                    // Replace src_val_ptr with src_ptr_memcpy.
+                    replacements.insert(inst, Replacement::OldGep(src_ptr_memcpy));
+                    return true;
+                } else {
+                    // if the memcpy copies the entire symbol, we could
+                    // insert a new GEP from the source of the memcpy.
+                    let dst_sym_size = pointee_size(context, dst_ptr_memcpy);
+                    let src_sym_size = pointee_size(context, src_ptr_memcpy);
+                    let is_full_sym_copy = dst_sym_size == src_sym_size && src_sym_size == copy_len;
+                    if let (Some(memcpy_src_sym), true, Some(new_indices)) = (
+                        get_symbol(context, src_ptr_memcpy),
+                        is_full_sym_copy,
+                        combine_indices(context, src_val_ptr),
+                    ) {
+                        replacements.insert(
+                            inst,
+                            Replacement::NewGep(ReplGep {
+                                base: memcpy_src_sym,
+                                elem_ptr_ty: src_val_ptr.get_type(context).unwrap(),
+                                indices: new_indices,
+                            }),
                         );
+                        return true;
                     }
                 }
-                Instruction::AsmBlock(_, args) => {
-                    for arg in args {
-                        let Some(arg_sym) = arg.initializer.and_then(|arg| get_symbol(context, arg)) else { continue; };
-                        let Some(arg_ty) = arg_sym.get_type(context).get_pointee_type(context) else { continue; };
-                        kill_defined_symbol(
-                            context,
-                            arg.initializer.unwrap(),
-                            arg_ty.size_in_bytes(context),
-                            &mut available_copies,
-                            &mut src_to_copies,
-                            &mut dest_to_copies,
-                        );
-                    }
-                }
-                Instruction::IntToPtr(_, _) => {
-                    // The only safe thing we can do is to clear all information.
-                    available_copies.clear();
-                    src_to_copies.clear();
-                    dest_to_copies.clear();
-                }
-                Instruction::Load(src_val_ptr) => {
-                    // For every `memcpy` that src_val_ptr is a destination of,
-                    // check if we can do the load from the source of that memcpy.
-                    if let Some(src_sym) = get_symbol(context, *src_val_ptr) {
-                        for memcpy in dest_to_copies
-                            .get(&src_sym)
-                            .iter()
-                            .map(|set| set.iter())
-                            .flatten()
-                        {
-                            let (dst_ptr_memcpy, src_ptr_memcpy, copy_len) =
-                                deconstruct_memcpy(context, *memcpy);
-                            // If the location where we're loading from exactly matches the destination of
-                            // the memcpy, just load from the source pointer of the memcpy.
-                            if must_alias(
-                                context,
-                                *src_val_ptr,
-                                pointee_size(context, *src_val_ptr),
-                                dst_ptr_memcpy,
-                                copy_len,
-                            ) {
-                                // Replace src_val_ptr with src_ptr_memcpy.
-                                replacements.push((inst, Replacement::OldGep(src_ptr_memcpy)));
-                            } else {
-                                // if the memcpy copies the entire symbol, we could
-                                // insert a new GEP from the source of the memcpy.
-                                let dst_sym_size = pointee_size(context, dst_ptr_memcpy);
-                                let src_sym_size = pointee_size(context, src_ptr_memcpy);
-                                let is_full_sym_copy =
-                                    dst_sym_size == src_sym_size && src_sym_size == copy_len;
-                                if let (Some(memcpy_src_sym), true, Some(new_indices)) = (
-                                    get_symbol(context, src_ptr_memcpy),
-                                    is_full_sym_copy,
-                                    combine_indices(context, *src_val_ptr),
-                                ) {
-                                    replacements.push((
-                                        inst,
-                                        Replacement::NewGep(ReplGep {
-                                            base: memcpy_src_sym,
-                                            elem_ptr_ty: src_val_ptr.get_type(context).unwrap(),
-                                            indices: new_indices,
-                                        }),
-                                    ));
-                                }
-                            }
-                        }
-                    }
-                }
-                Instruction::MemCopyBytes { .. } | Instruction::MemCopyVal { .. } => {
-                    let (dst_val_ptr, src_val_ptr, copy_len) = deconstruct_memcpy(context, inst);
-                    kill_defined_symbol(
-                        context,
-                        dst_val_ptr,
-                        copy_len,
-                        &mut available_copies,
-                        &mut src_to_copies,
-                        &mut dest_to_copies,
-                    );
-                    gen_new_copy(
-                        context,
-                        inst,
-                        dst_val_ptr,
-                        src_val_ptr,
-                        &mut available_copies,
-                        &mut src_to_copies,
-                        &mut dest_to_copies,
-                    );
-                }
-                Instruction::Store {
-                    dst_val_ptr,
-                    stored_val: _,
-                } => {
-                    kill_defined_symbol(
-                        context,
-                        *dst_val_ptr,
-                        pointee_size(context, *dst_val_ptr),
-                        &mut available_copies,
-                        &mut src_to_copies,
-                        &mut dest_to_copies,
-                    );
-                }
-                _ => (),
             }
         }
+        false
+    }
 
-        // If we have any NewGep replacements, insert those new GEPs into the block.
-        let mut new_insts = vec![];
-        let replacements = replacements
-            .into_iter()
-            .map(|(load_inst, replacement)| {
-                let replacement = match replacement {
-                    Replacement::OldGep(v) => v,
-                    Replacement::NewGep(ReplGep {
-                        base,
-                        elem_ptr_ty,
-                        indices,
-                    }) => {
-                        let base = match base {
-                            Symbol::Local(local) => {
-                                let base =
-                                    Value::new_instruction(context, Instruction::GetLocal(local));
-                                new_insts.push(base);
-                                base
-                            }
-                            Symbol::Arg(block_arg) => {
-                                block_arg.block.get_arg(context, block_arg.idx).unwrap()
-                            }
-                        };
-                        let v = Value::new_instruction(
-                            context,
-                            Instruction::GetElemPtr {
-                                base,
-                                elem_ptr_ty,
-                                indices,
-                            },
-                        );
-                        new_insts.push(v);
-                        v
+    let mut modified = false;
+    for block in function.block_iter(context) {
+        loop {
+            dbg!(block.get_label(context));
+            available_copies = FxHashSet::default();
+            src_to_copies = FxHashMap::default();
+            dest_to_copies = FxHashMap::default();
+
+            // Replace the load/memcpy source pointer with something else.
+            let mut replacements = FxHashMap::default();
+
+            for inst in block.instruction_iter(context) {
+                match inst.get_instruction(context).unwrap() {
+                    Instruction::Call(_, args) => {
+                        for arg in args {
+                            let Some(arg_sym) = get_symbol(context, *arg) else { continue; };
+                            let Some(arg_ty) = arg_sym.get_type(context).get_pointee_type(context) else { continue; };
+                            kill_defined_symbol(
+                                context,
+                                *arg,
+                                arg_ty.size_in_bytes(context),
+                                &mut available_copies,
+                                &mut src_to_copies,
+                                &mut dest_to_copies,
+                            );
+                        }
                     }
-                };
-                (load_inst, replacement)
-            })
-            .collect::<Vec<_>>();
+                    Instruction::AsmBlock(_, args) => {
+                        for arg in args {
+                            let Some(arg_sym) = arg.initializer.and_then(|arg| get_symbol(context, arg)) else { continue; };
+                            let Some(arg_ty) = arg_sym.get_type(context).get_pointee_type(context) else { continue; };
+                            kill_defined_symbol(
+                                context,
+                                arg.initializer.unwrap(),
+                                arg_ty.size_in_bytes(context),
+                                &mut available_copies,
+                                &mut src_to_copies,
+                                &mut dest_to_copies,
+                            );
+                        }
+                    }
+                    Instruction::IntToPtr(_, _) => {
+                        // The only safe thing we can do is to clear all information.
+                        available_copies.clear();
+                        src_to_copies.clear();
+                        dest_to_copies.clear();
+                    }
+                    Instruction::Load(src_val_ptr) => {
+                        process_load(
+                            context,
+                            inst,
+                            *src_val_ptr,
+                            &mut dest_to_copies,
+                            &mut replacements,
+                        );
+                    }
+                    Instruction::MemCopyBytes { .. } | Instruction::MemCopyVal { .. } => {
+                        let (dst_val_ptr, src_val_ptr, copy_len) =
+                            deconstruct_memcpy(context, inst);
+                        kill_defined_symbol(
+                            context,
+                            dst_val_ptr,
+                            copy_len,
+                            &mut available_copies,
+                            &mut src_to_copies,
+                            &mut dest_to_copies,
+                        );
+                        // If this memcpy itself can be optimized, we do just that, and not "gen" a new one.
+                        if !process_load(
+                            context,
+                            inst,
+                            src_val_ptr,
+                            &mut dest_to_copies,
+                            &mut replacements,
+                        ) {
+                            gen_new_copy(
+                                context,
+                                inst,
+                                dst_val_ptr,
+                                src_val_ptr,
+                                &mut available_copies,
+                                &mut src_to_copies,
+                                &mut dest_to_copies,
+                            );
+                        }
+                    }
+                    Instruction::Store {
+                        dst_val_ptr,
+                        stored_val: _,
+                    } => {
+                        kill_defined_symbol(
+                            context,
+                            *dst_val_ptr,
+                            pointee_size(context, *dst_val_ptr),
+                            &mut available_copies,
+                            &mut src_to_copies,
+                            &mut dest_to_copies,
+                        );
+                    }
+                    _ => (),
+                }
+            }
 
-        modified |= !replacements.is_empty();
+            // If we have any NewGep replacements, insert those new GEPs into the block.
+            let mut new_insts = vec![];
+            let replacements = replacements
+                .into_iter()
+                .map(|(load_inst, replacement)| {
+                    let replacement = match replacement {
+                        Replacement::OldGep(v) => v,
+                        Replacement::NewGep(ReplGep {
+                            base,
+                            elem_ptr_ty,
+                            indices,
+                        }) => {
+                            let base = match base {
+                                Symbol::Local(local) => {
+                                    let base = Value::new_instruction(
+                                        context,
+                                        Instruction::GetLocal(local),
+                                    );
+                                    new_insts.push(base);
+                                    base
+                                }
+                                Symbol::Arg(block_arg) => {
+                                    block_arg.block.get_arg(context, block_arg.idx).unwrap()
+                                }
+                            };
+                            let v = Value::new_instruction(
+                                context,
+                                Instruction::GetElemPtr {
+                                    base,
+                                    elem_ptr_ty,
+                                    indices,
+                                },
+                            );
+                            new_insts.push(v);
+                            v
+                        }
+                    };
+                    (load_inst, replacement)
+                })
+                .collect::<Vec<_>>();
 
-        block.prepend_instructions(context, new_insts);
+            block.prepend_instructions(context, new_insts);
 
-        for replacement in &replacements {
-            let Some(Instruction::Load(ref mut src_val_ptr)) = replacement.0.get_instruction_mut(context) else
-        { panic!("Unexpected instruction type"); };
-            *src_val_ptr = replacement.1
+            for replacement in &replacements {
+                match replacement.0.get_instruction_mut(context) {
+                    Some(Instruction::Load(ref mut src_val_ptr))
+                    | Some(Instruction::MemCopyBytes {
+                        ref mut src_val_ptr,
+                        ..
+                    })
+                    | Some(Instruction::MemCopyVal {
+                        ref mut src_val_ptr,
+                        ..
+                    }) => *src_val_ptr = replacement.1,
+                    _ => panic!("Unexpected instruction type"),
+                }
+            }
+            if !replacements.is_empty() {
+                modified = true;
+            } else {
+                break;
+            }
         }
     }
 
