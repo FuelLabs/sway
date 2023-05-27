@@ -60,9 +60,8 @@ impl ReplaceSelfType for TyTypeAliasDecl {
 impl CreateTypeId for TyTypeAliasDecl {
     fn create_type_id(&self, engines: Engines<'_>) -> TypeId {
         let type_engine = engines.te();
-        let decl_engine = engines.de();
         type_engine.insert(
-            decl_engine,
+            engines,
             TypeInfo::Alias {
                 name: self.name.clone(),
                 ty: self.ty.clone(),

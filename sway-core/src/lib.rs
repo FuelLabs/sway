@@ -15,13 +15,13 @@ pub mod ir_generation;
 pub mod language;
 mod metadata;
 mod monomorphize;
+pub mod query_engine;
 pub mod semantic_analysis;
 pub mod source_map;
 pub mod transform;
 pub mod type_system;
 
 use crate::ir_generation::check_function_purity;
-use crate::language::parsed::TreeType;
 use crate::{error::*, source_map::SourceMap};
 pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
@@ -48,7 +48,7 @@ pub mod types;
 
 pub use error::CompileResult;
 use sway_error::error::CompileError;
-use sway_error::warning::{CompileWarning, Warning};
+use sway_error::warning::CompileWarning;
 use sway_types::{ident::Ident, span, Spanned};
 pub use type_system::*;
 
@@ -338,27 +338,12 @@ pub fn parsed_to_ast(
     build_config: Option<&BuildConfig>,
     package_name: &str,
 ) -> CompileResult<ty::TyProgram> {
-    let experimental_private_modules =
-        build_config.map_or(true, |b| b.experimental_private_modules);
     // Type check the program.
     let CompileResult {
         value: typed_program_opt,
         mut warnings,
         mut errors,
-    } = ty::TyProgram::type_check(
-        engines,
-        parse_program,
-        initial_namespace,
-        package_name,
-        experimental_private_modules,
-    );
-
-    if !experimental_private_modules {
-        warnings.push(CompileWarning {
-            span: parse_program.root.span.clone(),
-            warning_content: Warning::ModulePrivacyDisabled,
-        })
-    }
+    } = ty::TyProgram::type_check(engines, parse_program, initial_namespace, package_name);
 
     let mut typed_program = match typed_program_opt {
         Some(typed_program) => typed_program,
@@ -569,7 +554,6 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // errors and then hold as a runtime invariant that none of the types will be unresolved in the
     // IR phase.
 
-    let tree_type = program.kind.tree_type();
     let mut ir = match ir_generation::compile_program(program, build_config.include_tests, engines)
     {
         Ok(ir) => ir,
@@ -599,7 +583,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // Initialize the pass manager and register known passes.
     let mut pass_mgr = PassManager::default();
     register_known_passes(&mut pass_mgr);
-    let mut pass_group = create_o1_pass_group(matches!(tree_type, TreeType::Predicate));
+    let mut pass_group = create_o1_pass_group();
 
     // Target specific transforms should be moved into something more configured.
     if build_config.build_target == BuildTarget::Fuel {
@@ -786,11 +770,11 @@ fn module_return_path_analysis(
 
 #[test]
 fn test_basic_prog() {
-    use crate::decl_engine::DeclEngine;
-
+    use crate::{decl_engine::DeclEngine, query_engine::QueryEngine, TypeEngine};
     let type_engine = TypeEngine::default();
     let decl_engine = DeclEngine::default();
-    let engines = Engines::new(&type_engine, &decl_engine);
+    let query_engine = QueryEngine::default();
+    let engines = Engines::new(&type_engine, &decl_engine, &query_engine);
     let prog = parse(
         r#"
         contract;
@@ -881,11 +865,11 @@ fn test_basic_prog() {
 }
 #[test]
 fn test_parenthesized() {
-    use crate::decl_engine::DeclEngine;
-
+    use crate::{decl_engine::DeclEngine, query_engine::QueryEngine, TypeEngine};
     let type_engine = TypeEngine::default();
     let decl_engine = DeclEngine::default();
-    let engines = Engines::new(&type_engine, &decl_engine);
+    let query_engine = QueryEngine::default();
+    let engines = Engines::new(&type_engine, &decl_engine, &query_engine);
     let prog = parse(
         r#"
         contract;
@@ -905,14 +889,12 @@ fn test_parenthesized() {
 
 #[test]
 fn test_unary_ordering() {
-    use crate::{
-        decl_engine::DeclEngine,
-        language::{self, parsed},
-    };
-
+    use crate::language::{self, parsed};
+    use crate::{decl_engine::DeclEngine, query_engine::QueryEngine, TypeEngine};
     let type_engine = TypeEngine::default();
     let decl_engine = DeclEngine::default();
-    let engines = Engines::new(&type_engine, &decl_engine);
+    let query_engine = QueryEngine::default();
+    let engines = Engines::new(&type_engine, &decl_engine, &query_engine);
     let prog = parse(
         r#"
     script;

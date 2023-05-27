@@ -15,7 +15,7 @@ To perform a call there are three steps that we must take:
 Let's take the example of a `Vault` to demonstrate how a call can be performed.
 
 ```sway
-{{#include ../../code/operations/contract_calling/interface/src/lib.sw}}
+{{#include ../../code/operations/contract_calling/contract_interface/src/lib.sw}}
 ```
 
 ### Creating a Callable Type

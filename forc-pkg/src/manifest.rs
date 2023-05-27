@@ -669,8 +669,8 @@ impl BuildProfile {
             include_tests: false,
             json_abi_with_callpaths: false,
             error_on_warnings: false,
-            reverse_results: false,
             experimental_private_modules: false,
+            reverse_results: false,
         }
     }
 
@@ -687,8 +687,8 @@ impl BuildProfile {
             include_tests: false,
             json_abi_with_callpaths: false,
             error_on_warnings: false,
-            reverse_results: false,
             experimental_private_modules: false,
+            reverse_results: false,
         }
     }
 }

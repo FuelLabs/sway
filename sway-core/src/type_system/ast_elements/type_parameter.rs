@@ -134,7 +134,6 @@ impl TypeParameter {
     pub(crate) fn type_check_type_params(
         mut ctx: TypeCheckContext,
         type_params: Vec<TypeParameter>,
-        disallow_trait_constraints: bool,
     ) -> CompileResult<Vec<TypeParameter>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -142,12 +141,6 @@ impl TypeParameter {
         let mut new_type_params: Vec<TypeParameter> = vec![];
 
         for type_param in type_params.into_iter() {
-            if disallow_trait_constraints && !type_param.trait_constraints.is_empty() {
-                let errors = vec![CompileError::WhereClauseNotYetSupported {
-                    span: type_param.trait_constraints_span,
-                }];
-                return err(vec![], errors);
-            }
             new_type_params.push(check!(
                 TypeParameter::type_check(ctx.by_ref(), type_param),
                 continue,
@@ -170,7 +163,7 @@ impl TypeParameter {
         let mut errors = vec![];
 
         let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
+        let engines = ctx.engines();
 
         let TypeParameter {
             initial_type_id,
@@ -194,7 +187,7 @@ impl TypeParameter {
         // TODO: add check here to see if the type parameter has a valid name and does not have type parameters
 
         let type_id = type_engine.insert(
-            decl_engine,
+            engines,
             TypeInfo::UnknownGeneric {
                 name: name_ident.clone(),
                 trait_constraints: VecSet(trait_constraints.clone()),
@@ -222,7 +215,7 @@ impl TypeParameter {
                     }) => {
                         append!(
                             ctx.engines().te().unify(
-                                ctx.engines().de(),
+                                ctx.engines(),
                                 type_id,
                                 *sy_type_id,
                                 &trait_constraints_span,

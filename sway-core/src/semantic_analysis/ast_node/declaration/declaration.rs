@@ -35,7 +35,7 @@ impl ty::TyDecl {
                         EnforceTypeArguments::Yes,
                         None
                     ),
-                    type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+                    type_engine.insert(engines, TypeInfo::ErrorRecovery),
                     warnings,
                     errors
                 );
@@ -115,7 +115,7 @@ impl ty::TyDecl {
             parsed::Declaration::FunctionDeclaration(fn_decl) => {
                 let span = fn_decl.span.clone();
                 let mut ctx =
-                    ctx.with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
+                    ctx.with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
                 let fn_decl = check!(
                     ty::TyFunctionDecl::type_check(ctx.by_ref(), fn_decl, false, false),
                     return ok(ty::TyDecl::ErrorRecovery(span), warnings, errors),
@@ -359,7 +359,7 @@ impl ty::TyDecl {
                 // Resolve the type that the type alias replaces
                 let new_ty = check!(
                     ctx.resolve_type_with_self(ty.type_id, &span, EnforceTypeArguments::Yes, None),
-                    type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+                    type_engine.insert(engines, TypeInfo::ErrorRecovery),
                     warnings,
                     errors
                 );

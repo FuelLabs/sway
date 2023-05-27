@@ -100,7 +100,7 @@ impl CallPath {
     ///
     /// Paths to _external_ libraries such `std::lib1::lib2::my_obj` are considered full already
     /// and are left unchanged since `std` is a root of the package `std`.
-    pub fn to_fullpath(&self, namespace: &mut Namespace) -> CallPath {
+    pub fn to_fullpath(&self, namespace: &Namespace) -> CallPath {
         if self.is_absolute {
             return self.clone();
         }

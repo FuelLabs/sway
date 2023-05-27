@@ -18,7 +18,7 @@ impl ty::TyFunctionParameter {
         let mut errors = vec![];
 
         let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
+        let engines = ctx.engines();
 
         let FunctionParameter {
             name,
@@ -35,9 +35,18 @@ impl ty::TyFunctionParameter {
                 EnforceTypeArguments::Yes,
                 None
             ),
-            type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+            type_engine.insert(engines, TypeInfo::ErrorRecovery),
             warnings,
             errors,
+        );
+
+        check!(
+            type_argument
+                .type_id
+                .check_type_parameter_bounds(&ctx, &type_argument.span, vec![]),
+            return err(warnings, errors),
+            warnings,
+            errors
         );
 
         let mutability = ty::VariableMutability::new_from_ref_mut(is_reference, is_mutable);
@@ -70,7 +79,7 @@ impl ty::TyFunctionParameter {
         let mut errors = vec![];
 
         let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
+        let engines = ctx.engines();
 
         let FunctionParameter {
             name,
@@ -87,7 +96,7 @@ impl ty::TyFunctionParameter {
                 EnforceTypeArguments::Yes,
                 None
             ),
-            type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+            type_engine.insert(engines, TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );

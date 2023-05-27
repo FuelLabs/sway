@@ -307,6 +307,14 @@ pub enum CompileError {
         trait_name: String,
         span: Span,
     },
+    #[error(
+        "Expects trait constraint \"{param}: {trait_name}\" which is missing from type parameter \"{param}\"."
+    )]
+    TraitConstraintMissing {
+        param: String,
+        trait_name: String,
+        span: Span,
+    },
     #[error("The value \"{val}\" is too large to fit in this 6-bit immediate spot.")]
     Immediate06TooLarge { val: u64, span: Span },
     #[error("The value \"{val}\" is too large to fit in this 12-bit immediate spot.")]
@@ -556,8 +564,6 @@ pub enum CompileError {
     Lex { error: LexError },
     #[error("{}", error)]
     Parse { error: ParseError },
-    #[error("\"where\" clauses are not yet supported")]
-    WhereClauseNotYetSupported { span: Span },
     #[error("Could not evaluate initializer to a const declaration.")]
     NonConstantDeclValue { span: Span },
     #[error("Declaring storage in a {program_kind} is not allowed.")]
@@ -702,6 +708,7 @@ impl Spanned for CompileError {
             UnableToInferGeneric { span, .. } => span.clone(),
             UnconstrainedGenericParameter { span, .. } => span.clone(),
             TraitConstraintNotSatisfied { span, .. } => span.clone(),
+            TraitConstraintMissing { span, .. } => span.clone(),
             Immediate06TooLarge { span, .. } => span.clone(),
             Immediate12TooLarge { span, .. } => span.clone(),
             Immediate18TooLarge { span, .. } => span.clone(),
@@ -778,7 +785,6 @@ impl Spanned for CompileError {
             UnexpectedDeclaration { span, .. } => span.clone(),
             ContractAddressMustBeKnown { span, .. } => span.clone(),
             ConvertParseTree { error } => error.span(),
-            WhereClauseNotYetSupported { span, .. } => span.clone(),
             Lex { error } => error.span(),
             Parse { error } => error.span.clone(),
             EnumNotFound { span, .. } => span.clone(),

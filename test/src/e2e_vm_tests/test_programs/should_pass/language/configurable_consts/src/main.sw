@@ -32,6 +32,7 @@ configurable {
     C6: str[4] = "fuel",
     C7: [u64; 4] = [1, 2, 3, 4],
     C8: u64 = 0, // Unused - should not show up in the JSON file
+    C9: u64 =  10 + 9 - 8 * 7 / 6 << 5 >> 4 ^ 3 | 2 & 1,
 }
 
 #[inline(never)]
@@ -48,6 +49,7 @@ fn test_first_use() {
     assert(C7[1] == 2);
     assert(C7[2] == 3);
     assert(C7[3] == 4);
+    assert(C9 == 23);
 }
 
 #[inline(never)]
@@ -64,6 +66,7 @@ fn test_second_use() {
     assert(C7[1] == 2);
     assert(C7[2] == 3);
     assert(C7[3] == 4);
+    assert(C9 == 23);
 }
 
 #[inline(always)]
@@ -80,6 +83,7 @@ fn test_inline_use() {
     assert(C7[1] == 2);
     assert(C7[2] == 3);
     assert(C7[3] == 4);
+    assert(C9 == 23);
 }
 
 #[inline(never)]

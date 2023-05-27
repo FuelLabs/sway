@@ -218,7 +218,6 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
     println!("Compiling {} ...", file_name.bold());
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let build_opts = forc_pkg::BuildOpts {
-        experimental_private_modules: true,
         build_target: run_config.build_target,
         pkg: forc_pkg::PkgOpts {
             path: Some(format!(
@@ -269,7 +268,8 @@ pub(crate) async fn compile_and_run_unit_tests(
             },
             ..Default::default()
         })?;
-        let tested = built_tests.run(forc_test::TestRunnerCount::Auto)?;
+        let test_filter = None;
+        let tested = built_tests.run(forc_test::TestRunnerCount::Auto, test_filter)?;
 
         match tested {
             forc_test::Tested::Package(tested_pkg) => Ok(vec![*tested_pkg]),
