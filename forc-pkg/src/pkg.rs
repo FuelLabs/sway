@@ -41,6 +41,7 @@ use sway_core::{
         parsed::{ParseProgram, TreeType},
         ty, Visibility,
     },
+    query_engine::QueryEngine,
     semantic_analysis::namespace,
     source_map::SourceMap,
     transform::AttributeKind,
@@ -148,7 +149,7 @@ pub enum PkgEntryKind {
 /// The possible conditions for a test result to be considered "passing".
 #[derive(Debug, Clone)]
 pub enum TestPassCondition {
-    ShouldRevert,
+    ShouldRevert(Option<u64>),
     ShouldNotRevert,
 }
 
@@ -302,8 +303,6 @@ pub struct BuildOpts {
     pub tests: bool,
     /// The set of options to filter by member project kind.
     pub member_filter: MemberFilter,
-    /// Enable the experimental module privacy enforcement.
-    pub experimental_private_modules: bool,
 }
 
 /// The set of options to filter type of projects to build in a workspace.
@@ -1546,8 +1545,7 @@ pub fn sway_build_config(
     .print_finalized_asm(build_profile.print_finalized_asm)
     .print_intermediate_asm(build_profile.print_intermediate_asm)
     .print_ir(build_profile.print_ir)
-    .include_tests(build_profile.include_tests)
-    .experimental_private_modules(build_profile.experimental_private_modules);
+    .include_tests(build_profile.include_tests);
     Ok(build_config)
 }
 
@@ -1573,7 +1571,6 @@ pub fn dependency_namespace(
     node: NodeIx,
     engines: Engines<'_>,
     contract_id_value: Option<ContractIdConst>,
-    experimental_private_modules: bool,
 ) -> Result<namespace::Module, vec1::Vec1<CompileError>> {
     // TODO: Clean this up when config-time constants v1 are removed.
     let node_idx = &graph[node];
@@ -1639,7 +1636,6 @@ pub fn dependency_namespace(
         &[CORE, PRELUDE].map(|s| Ident::new_no_span(s.into())),
         &[],
         engines,
-        experimental_private_modules,
     );
 
     if has_std_dep(graph, node) {
@@ -1647,7 +1643,6 @@ pub fn dependency_namespace(
             &[STD, PRELUDE].map(|s| Ident::new_no_span(s.into())),
             &[],
             engines,
-            experimental_private_modules,
         );
     }
 
@@ -1949,18 +1944,35 @@ impl PkgTestEntry {
         let span = decl_ref.span();
         let test_function_decl = decl_engine.get_function(&decl_ref);
 
-        let test_args: HashSet<String> = test_function_decl
+        const FAILING_TEST_KEYWORD: &str = "should_revert";
+
+        let test_args: HashMap<String, Option<String>> = test_function_decl
             .attributes
             .get(&AttributeKind::Test)
             .expect("test declaration is missing test attribute")
             .iter()
-            .flat_map(|attr| attr.args.iter().map(|arg| arg.name.to_string()))
+            .flat_map(|attr| attr.args.iter())
+            .map(|arg| {
+                (
+                    arg.name.to_string(),
+                    arg.value
+                        .as_ref()
+                        .map(|val| val.span().as_str().to_string()),
+                )
+            })
             .collect();
 
         let pass_condition = if test_args.is_empty() {
             anyhow::Ok(TestPassCondition::ShouldNotRevert)
-        } else if test_args.get("should_revert").is_some() {
-            anyhow::Ok(TestPassCondition::ShouldRevert)
+        } else if let Some(args) = test_args.get(FAILING_TEST_KEYWORD) {
+            let expected_revert_code = args
+                .as_ref()
+                .map(|arg| {
+                    let arg_str = arg.replace('"', "");
+                    arg_str.parse::<u64>()
+                })
+                .transpose()?;
+            anyhow::Ok(TestPassCondition::ShouldRevert(expected_revert_code))
         } else {
             let test_name = &test_function_decl.name;
             bail!("Invalid test argument(s) for test: {test_name}.")
@@ -1994,7 +2006,6 @@ fn build_profile_from_opts(
         time_phases,
         tests,
         error_on_warnings,
-        experimental_private_modules,
         ..
     } = build_options;
     let mut selected_build_profile = BuildProfile::DEBUG;
@@ -2045,7 +2056,6 @@ fn build_profile_from_opts(
     profile.include_tests |= tests;
     profile.json_abi_with_callpaths |= pkg.json_abi_with_callpaths;
     profile.error_on_warnings |= error_on_warnings;
-    profile.experimental_private_modules |= experimental_private_modules;
 
     Ok((selected_build_profile.to_string(), profile))
 }
@@ -2214,7 +2224,8 @@ pub fn build(
 
     let type_engine = TypeEngine::default();
     let decl_engine = DeclEngine::default();
-    let engines = Engines::new(&type_engine, &decl_engine);
+    let query_engine = QueryEngine::default();
+    let engines = Engines::new(&type_engine, &decl_engine, &query_engine);
     let include_tests = profile.include_tests;
 
     // This is the Contract ID of the current contract being compiled.
@@ -2278,7 +2289,6 @@ pub fn build(
                 node,
                 engines,
                 None,
-                profile.experimental_private_modules,
             ) {
                 Ok(o) => o,
                 Err(errs) => return fail(&[], &errs),
@@ -2334,7 +2344,6 @@ pub fn build(
             node,
             engines,
             contract_id_value.clone(),
-            profile.experimental_private_modules,
         ) {
             Ok(o) => o,
             Err(errs) => return fail(&[], &errs),
@@ -2518,7 +2527,6 @@ pub fn check(
     terse_mode: bool,
     include_tests: bool,
     engines: Engines<'_>,
-    experimental_private_modules: bool,
 ) -> anyhow::Result<Vec<CompileResult<Programs>>> {
     let mut lib_namespace_map = Default::default();
     let mut source_map = SourceMap::new();
@@ -2536,7 +2544,6 @@ pub fn check(
             node,
             engines,
             None,
-            experimental_private_modules,
         )
         .expect("failed to create dependency namespace");
 
@@ -2579,7 +2586,7 @@ pub fn check(
                 )
                 .unwrap(),
             );
-            lib_namespace_map.insert(node, namespace);
+            lib_namespace_map.insert(node, namespace.module().clone());
         }
 
         source_map.insert_dependency(manifest.dir());

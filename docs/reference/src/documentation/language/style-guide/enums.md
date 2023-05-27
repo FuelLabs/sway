@@ -7,7 +7,7 @@
 The preferred way to use [enums](../built-ins/enums.md) is to use the individual (not nested) enums directly because they are easy to follow and the lines are short:
 
 ```sway
-{{#include ../../../code/language/style-guide/enums/src/lib.sw:use}}
+{{#include ../../../code/language/style-guide/enum_style/src/lib.sw:use}}
 ```
 
 ## Discouraged
@@ -15,7 +15,7 @@ The preferred way to use [enums](../built-ins/enums.md) is to use the individual
 If you wish to use the nested form of enums via the `Error` enum from the example above, then you can instantiate them into variables using the following syntax:
 
 ```sway
-{{#include ../../../code/language/style-guide/enums/src/lib.sw:avoid}}
+{{#include ../../../code/language/style-guide/enum_style/src/lib.sw:avoid}}
 ```
 
 Key points to note:

@@ -28,6 +28,6 @@ storage {
         maximum_owners: 10,
         role: Role::FullAccess,
     },
-    encapsulated_declaration: Owner = ~Owner::default(),
+    encapsulated_declaration: Owner = Owner::default(),
 }
 // ANCHOR_END: initialization

@@ -11,7 +11,7 @@ use sway_types::{integer_bits::IntegerBits, span::Span, Spanned};
 
 use std::{
     cmp::Ordering,
-    collections::{BTreeSet, HashSet},
+    collections::{BTreeSet, HashMap, HashSet},
     fmt,
     hash::{Hash, Hasher},
 };
@@ -599,10 +599,11 @@ impl TypeInfo {
     /// maps a type to a name that is used when constructing function selectors
     pub(crate) fn to_selector_name(
         &self,
-        type_engine: &TypeEngine,
-        decl_engine: &DeclEngine,
+        engines: Engines<'_>,
         error_msg_span: &Span,
     ) -> CompileResult<String> {
+        let type_engine = engines.te();
+        let decl_engine = engines.de();
         use TypeInfo::*;
         let name = match self {
             Str(len) => format!("str[{}]", len.val()),
@@ -626,7 +627,7 @@ impl TypeInfo {
                             type_engine
                                 .to_typeinfo(field_type.type_id, error_msg_span)
                                 .expect("unreachable?")
-                                .to_selector_name(type_engine, decl_engine, error_msg_span)
+                                .to_selector_name(engines, error_msg_span)
                         })
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];
@@ -655,7 +656,7 @@ impl TypeInfo {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
-                            ty.to_selector_name(type_engine, decl_engine, error_msg_span)
+                            ty.to_selector_name(engines, error_msg_span)
                         })
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];
@@ -677,7 +678,7 @@ impl TypeInfo {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
-                            ty.to_selector_name(type_engine, decl_engine, error_msg_span)
+                            ty.to_selector_name(engines, error_msg_span)
                         })
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];
@@ -709,7 +710,7 @@ impl TypeInfo {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
-                            ty.to_selector_name(type_engine, decl_engine, error_msg_span)
+                            ty.to_selector_name(engines, error_msg_span)
                         })
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];
@@ -731,7 +732,7 @@ impl TypeInfo {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
-                            ty.to_selector_name(type_engine, decl_engine, error_msg_span)
+                            ty.to_selector_name(engines, error_msg_span)
                         })
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];
@@ -754,11 +755,9 @@ impl TypeInfo {
                 }
             }
             Array(elem_ty, length) => {
-                let name = type_engine.get(elem_ty.type_id).to_selector_name(
-                    type_engine,
-                    decl_engine,
-                    error_msg_span,
-                );
+                let name = type_engine
+                    .get(elem_ty.type_id)
+                    .to_selector_name(engines, error_msg_span);
                 let name = match name.value {
                     Some(name) => name,
                     None => return name,
@@ -768,11 +767,9 @@ impl TypeInfo {
             RawUntypedPtr => "rawptr".to_string(),
             RawUntypedSlice => "rawslice".to_string(),
             Alias { ty, .. } => {
-                let name = type_engine.get(ty.type_id).to_selector_name(
-                    type_engine,
-                    decl_engine,
-                    error_msg_span,
-                );
+                let name = type_engine
+                    .get(ty.type_id)
+                    .to_selector_name(engines, error_msg_span);
                 match name.value {
                     Some(name) => name,
                     None => return name,
@@ -980,6 +977,19 @@ impl TypeInfo {
             true
         }
         self.extract_any(engines, &filter_fn)
+            .keys()
+            .cloned()
+            .collect()
+    }
+
+    pub(crate) fn extract_inner_types_with_trait_constraints(
+        &self,
+        engines: Engines<'_>,
+    ) -> HashMap<TypeId, Vec<TraitConstraint>> {
+        fn filter_fn(_type_info: &TypeInfo) -> bool {
+            true
+        }
+        self.extract_any(engines, &filter_fn)
     }
 
     /// Given a `TypeInfo` `self`, check to see if `self` is currently
@@ -1082,12 +1092,29 @@ impl TypeInfo {
         inner_types
     }
 
-    pub(crate) fn extract_any<F>(&self, engines: Engines<'_>, filter_fn: &F) -> BTreeSet<TypeId>
+    pub(crate) fn extract_any<F>(
+        &self,
+        engines: Engines<'_>,
+        filter_fn: &F,
+    ) -> HashMap<TypeId, Vec<TraitConstraint>>
     where
         F: Fn(&TypeInfo) -> bool,
     {
+        fn extend(
+            hashmap: &mut HashMap<TypeId, Vec<TraitConstraint>>,
+            hashmap_other: HashMap<TypeId, Vec<TraitConstraint>>,
+        ) {
+            for (type_id, trait_constraints) in hashmap_other {
+                if let Some(existing_trait_constraints) = hashmap.get_mut(&type_id) {
+                    existing_trait_constraints.extend(trait_constraints);
+                } else {
+                    hashmap.insert(type_id, trait_constraints);
+                }
+            }
+        }
+
         let decl_engine = engines.de();
-        let mut found: BTreeSet<TypeId> = BTreeSet::new();
+        let mut found: HashMap<TypeId, Vec<TraitConstraint>> = HashMap::new();
         match self {
             TypeInfo::Unknown
             | TypeInfo::Placeholder(_)
@@ -1105,42 +1132,56 @@ impl TypeInfo {
             TypeInfo::Enum(enum_ref) => {
                 let enum_decl = decl_engine.get_enum(enum_ref);
                 for type_param in enum_decl.type_parameters.iter() {
-                    found.extend(
-                        type_param
-                            .type_id
-                            .extract_any_including_self(engines, filter_fn),
+                    extend(
+                        &mut found,
+                        type_param.type_id.extract_any_including_self(
+                            engines,
+                            filter_fn,
+                            type_param.trait_constraints.clone(),
+                        ),
                     );
                 }
                 for variant in enum_decl.variants.iter() {
-                    found.extend(
-                        variant
-                            .type_argument
-                            .type_id
-                            .extract_any_including_self(engines, filter_fn),
+                    extend(
+                        &mut found,
+                        variant.type_argument.type_id.extract_any_including_self(
+                            engines,
+                            filter_fn,
+                            vec![],
+                        ),
                     );
                 }
             }
             TypeInfo::Struct(struct_ref) => {
                 let struct_decl = decl_engine.get_struct(struct_ref);
                 for type_param in struct_decl.type_parameters.iter() {
-                    found.extend(
-                        type_param
-                            .type_id
-                            .extract_any_including_self(engines, filter_fn),
+                    extend(
+                        &mut found,
+                        type_param.type_id.extract_any_including_self(
+                            engines,
+                            filter_fn,
+                            type_param.trait_constraints.clone(),
+                        ),
                     );
                 }
                 for field in struct_decl.fields.iter() {
-                    found.extend(
-                        field
-                            .type_argument
-                            .type_id
-                            .extract_any_including_self(engines, filter_fn),
+                    extend(
+                        &mut found,
+                        field.type_argument.type_id.extract_any_including_self(
+                            engines,
+                            filter_fn,
+                            vec![],
+                        ),
                     );
                 }
             }
             TypeInfo::Tuple(elems) => {
                 for elem in elems.iter() {
-                    found.extend(elem.type_id.extract_any_including_self(engines, filter_fn));
+                    extend(
+                        &mut found,
+                        elem.type_id
+                            .extract_any_including_self(engines, filter_fn, vec![]),
+                    );
                 }
             }
             TypeInfo::ContractCaller {
@@ -1148,10 +1189,11 @@ impl TypeInfo {
                 address,
             } => {
                 if let Some(address) = address {
-                    found.extend(
+                    extend(
+                        &mut found,
                         address
                             .return_type
-                            .extract_any_including_self(engines, filter_fn),
+                            .extract_any_including_self(engines, filter_fn, vec![]),
                     );
                 }
             }
@@ -1161,29 +1203,40 @@ impl TypeInfo {
             } => {
                 if let Some(type_arguments) = type_arguments {
                     for type_arg in type_arguments.iter() {
-                        found.extend(
+                        extend(
+                            &mut found,
                             type_arg
                                 .type_id
-                                .extract_any_including_self(engines, filter_fn),
+                                .extract_any_including_self(engines, filter_fn, vec![]),
                         );
                     }
                 }
             }
             TypeInfo::Array(ty, _) => {
-                found.extend(ty.type_id.extract_any_including_self(engines, filter_fn));
+                extend(
+                    &mut found,
+                    ty.type_id
+                        .extract_any_including_self(engines, filter_fn, vec![]),
+                );
             }
             TypeInfo::Storage { fields } => {
                 for field in fields.iter() {
-                    found.extend(
-                        field
-                            .type_argument
-                            .type_id
-                            .extract_any_including_self(engines, filter_fn),
+                    extend(
+                        &mut found,
+                        field.type_argument.type_id.extract_any_including_self(
+                            engines,
+                            filter_fn,
+                            vec![],
+                        ),
                     );
                 }
             }
             TypeInfo::Alias { name: _, ty } => {
-                found.extend(ty.type_id.extract_any_including_self(engines, filter_fn));
+                extend(
+                    &mut found,
+                    ty.type_id
+                        .extract_any_including_self(engines, filter_fn, vec![]),
+                );
             }
             TypeInfo::UnknownGeneric {
                 name: _,
@@ -1191,19 +1244,30 @@ impl TypeInfo {
             } => {
                 for trait_constraint in trait_constraints.iter() {
                     for type_arg in trait_constraint.type_arguments.iter() {
-                        found.extend(
-                            type_arg
-                                .type_id
-                                .extract_any_including_self(engines, filter_fn),
+                        extend(
+                            &mut found,
+                            type_arg.type_id.extract_any_including_self(
+                                engines,
+                                filter_fn,
+                                vec![trait_constraint.clone()],
+                            ),
                         );
                     }
                 }
             }
             TypeInfo::Ptr(ty) => {
-                found.extend(ty.type_id.extract_any_including_self(engines, filter_fn));
+                extend(
+                    &mut found,
+                    ty.type_id
+                        .extract_any_including_self(engines, filter_fn, vec![]),
+                );
             }
             TypeInfo::Slice(ty) => {
-                found.extend(ty.type_id.extract_any_including_self(engines, filter_fn));
+                extend(
+                    &mut found,
+                    ty.type_id
+                        .extract_any_including_self(engines, filter_fn, vec![]),
+                );
             }
         }
         found

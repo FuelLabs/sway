@@ -15,5 +15,5 @@ Some properties of a script include:
 The following example demonstrates a script which takes one argument and [returns](../functions/return.md) the [Boolean](../built-ins/boolean.md) value of `true`.
 
 ```sway
-{{#include ../../../code/language/program-types/scripts/simple/src/main.sw}}
+{{#include ../../../code/language/program-types/scripts/simple_script/src/main.sw}}
 ```

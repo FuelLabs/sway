@@ -58,6 +58,18 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Build Sway examples workspace
         run: cargo run --locked -p forc -- build --locked --path ./examples/Forc.toml
+  
+  build-reference-examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Build Sway examples workspace
+        run: cargo run --locked -p forc -- build --locked --path ./docs/reference/src/code/Forc.toml
 
   forc-fmt-check-sway-examples:
     runs-on: ubuntu-latest
@@ -158,7 +170,7 @@ jobs:
       # - name: Run test project's test suite
       #   run: (cd test-proj && forc test)
       - name: Install cargo-generate
-        run: cargo install cargo-generate
+        run: cargo install --locked cargo-generate
       - name: Generate Rust Integration Tests
         run: (cd test-proj && cargo generate --init --path ../templates/sway-test-rs --name test-proj)
       - name: Update project cargo manifest with workspace

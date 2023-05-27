@@ -17,6 +17,7 @@ use crate::{
         *,
     },
     metadata::MetadataManager,
+    query_engine::QueryEngine,
     type_system::*,
     types::*,
 };
@@ -60,6 +61,7 @@ use std::collections::HashMap;
 pub(crate) struct FnCompiler<'eng> {
     type_engine: &'eng TypeEngine,
     decl_engine: &'eng DeclEngine,
+    query_engine: &'eng QueryEngine,
     module: Module,
     pub(super) function: Function,
     pub(super) current_block: Block,
@@ -84,7 +86,7 @@ impl<'eng> FnCompiler<'eng> {
         logged_types_map: &HashMap<TypeId, LogId>,
         messages_types_map: &HashMap<TypeId, MessageId>,
     ) -> Self {
-        let (type_engine, decl_engine) = engines.unwrap();
+        let (type_engine, decl_engine, query_engine) = engines.unwrap();
         let lexical_map = LexicalMap::from_iter(
             function
                 .args_iter(context)
@@ -93,6 +95,7 @@ impl<'eng> FnCompiler<'eng> {
         FnCompiler {
             type_engine,
             decl_engine,
+            query_engine,
             module,
             function,
             current_block: function.get_entry_block(context),
@@ -494,7 +497,7 @@ impl<'eng> FnCompiler<'eng> {
             Ok(key_val)
         }
 
-        let engines = Engines::new(self.type_engine, self.decl_engine);
+        let engines = Engines::new(self.type_engine, self.decl_engine, self.query_engine);
 
         // We safely index into arguments and type_arguments arrays below
         // because the type-checker ensures that the arguments are all there.
@@ -760,7 +763,10 @@ impl<'eng> FnCompiler<'eng> {
             | Intrinsic::Div
             | Intrinsic::And
             | Intrinsic::Or
-            | Intrinsic::Xor => {
+            | Intrinsic::Xor
+            | Intrinsic::Mod
+            | Intrinsic::Rsh
+            | Intrinsic::Lsh => {
                 let op = match kind {
                     Intrinsic::Add => BinaryOpKind::Add,
                     Intrinsic::Sub => BinaryOpKind::Sub,
@@ -769,6 +775,9 @@ impl<'eng> FnCompiler<'eng> {
                     Intrinsic::And => BinaryOpKind::And,
                     Intrinsic::Or => BinaryOpKind::Or,
                     Intrinsic::Xor => BinaryOpKind::Xor,
+                    Intrinsic::Mod => BinaryOpKind::Mod,
+                    Intrinsic::Rsh => BinaryOpKind::Rsh,
+                    Intrinsic::Lsh => BinaryOpKind::Lsh,
                     _ => unreachable!(),
                 };
                 let lhs = &arguments[0];
@@ -1352,7 +1361,7 @@ impl<'eng> FnCompiler<'eng> {
                 };
                 let is_entry = false;
                 let new_func = compile_function(
-                    Engines::new(self.type_engine, self.decl_engine),
+                    Engines::new(self.type_engine, self.decl_engine, self.query_engine),
                     context,
                     md_mgr,
                     self.module,
@@ -1766,7 +1775,7 @@ impl<'eng> FnCompiler<'eng> {
         } = ast_const_decl;
         if let Some(value) = value {
             let const_expr_val = compile_constant_expression(
-                Engines::new(self.type_engine, self.decl_engine),
+                Engines::new(self.type_engine, self.decl_engine, self.query_engine),
                 context,
                 md_mgr,
                 self.module,
@@ -2031,7 +2040,7 @@ impl<'eng> FnCompiler<'eng> {
             value: ConstantValue::Uint(constant_value),
             ..
         }) = compile_constant_expression_to_constant(
-            Engines::new(self.type_engine, self.decl_engine),
+            Engines::new(self.type_engine, self.decl_engine, self.query_engine),
             context,
             md_mgr,
             self.module,
