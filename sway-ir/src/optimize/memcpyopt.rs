@@ -311,7 +311,6 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
     let mut modified = false;
     for block in function.block_iter(context) {
         loop {
-            dbg!(block.get_label(context));
             available_copies = FxHashSet::default();
             src_to_copies = FxHashMap::default();
             dest_to_copies = FxHashMap::default();

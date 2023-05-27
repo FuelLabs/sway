@@ -5,8 +5,10 @@
 //!   2. At the time of inspecting a definition, if it has no uses, it is removed.
 //! This pass does not do CFG transformations. That is handled by simplify_cfg.
 
+use rustc_hash::FxHashSet;
+
 use crate::{
-    get_symbol, AnalysisResults, Block, Context, FuelVmInstruction, Function, Instruction, IrError,
+    get_symbol, AnalysisResults, Context, FuelVmInstruction, Function, Instruction, IrError,
     LocalVar, Module, Pass, PassMutability, ScopedPass, Symbol, Value, ValueDatum,
 };
 
@@ -91,7 +93,7 @@ fn get_loaded_symbols(context: &Context, val: Value) -> Vec<Symbol> {
     }
 }
 
-fn get_stored_symbols(context: &Context, val: Value) -> Vec<Symbol> {
+fn _get_stored_symbols(context: &Context, val: Value) -> Vec<Symbol> {
     match val.get_instruction(context).unwrap() {
         Instruction::BinaryOp { .. }
         | Instruction::BitCast(_, _)
@@ -161,12 +163,12 @@ pub fn dce(
     function: Function,
 ) -> Result<bool, IrError> {
     // Number of uses that an instruction has.
-    let mut num_uses: HashMap<Value, (Block, u32)> = HashMap::new();
+    let mut num_uses: HashMap<Value, u32> = HashMap::new();
     let mut num_local_uses: HashMap<LocalVar, u32> = HashMap::new();
     let mut num_symbol_uses: HashMap<Symbol, u32> = HashMap::new();
 
     // Go through each instruction and update use_count.
-    for (block, inst) in function.instruction_iter(context) {
+    for (_block, inst) in function.instruction_iter(context) {
         for sym in get_loaded_symbols(context, inst) {
             num_symbol_uses
                 .entry(sym)
@@ -187,8 +189,8 @@ pub fn dce(
                 ValueDatum::Instruction(_) => {
                     num_uses
                         .entry(v)
-                        .and_modify(|(_block, count)| *count += 1)
-                        .or_insert((block, 1));
+                        .and_modify(|count| *count += 1)
+                        .or_insert(1);
                 }
                 ValueDatum::Configurable(_) | ValueDatum::Constant(_) | ValueDatum::Argument(_) => {
                 }
@@ -198,14 +200,16 @@ pub fn dce(
 
     let mut worklist = function
         .instruction_iter(context)
-        .filter(|(_block, inst)| {
-            num_uses.get(inst).is_none() || is_removable_store(context, *inst, &num_symbol_uses)
+        .filter_map(|(_block, inst)| {
+            (num_uses.get(&inst).is_none() || is_removable_store(context, inst, &num_symbol_uses))
+                .then_some(inst)
         })
         .collect::<Vec<_>>();
 
     let mut modified = false;
+    let mut cemetery = FxHashSet::default();
     while !worklist.is_empty() {
-        let (in_block, dead) = worklist.pop().unwrap();
+        let dead = worklist.pop().unwrap();
 
         if !can_eliminate_instruction(context, dead, &num_symbol_uses) {
             continue;
@@ -216,10 +220,10 @@ pub fn dce(
             // Reduce the use count of v. If it reaches 0, add it to the worklist.
             match context.values[v.0].value {
                 ValueDatum::Instruction(_) => {
-                    let (block, nu) = num_uses.get_mut(&v).unwrap();
+                    let nu = num_uses.get_mut(&v).unwrap();
                     *nu -= 1;
                     if *nu == 0 {
-                        worklist.push((*block, v));
+                        worklist.push(v);
                     }
                 }
                 ValueDatum::Configurable(_) | ValueDatum::Constant(_) | ValueDatum::Argument(_) => {
@@ -229,8 +233,7 @@ pub fn dce(
         for sym in get_loaded_symbols(context, dead) {
             *num_symbol_uses.get_mut(&sym).unwrap() -= 1;
         }
-
-        in_block.remove_instruction(context, dead);
+        cemetery.insert(dead);
 
         if let ValueDatum::Instruction(Instruction::GetLocal(local)) = context.values[dead.0].value
         {
@@ -238,6 +241,11 @@ pub fn dce(
             *count -= 1;
         }
         modified = true;
+    }
+
+    // Remove all dead instructions.
+    for block in function.block_iter(context) {
+        block.remove_instructions(context, |inst| cemetery.contains(&inst));
     }
 
     let local_removals: Vec<_> = function
