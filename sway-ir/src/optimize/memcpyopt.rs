@@ -284,23 +284,32 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
                 } else {
                     // if the memcpy copies the entire symbol, we could
                     // insert a new GEP from the source of the memcpy.
-                    let dst_sym_size = pointee_size(context, dst_ptr_memcpy);
-                    let src_sym_size = pointee_size(context, src_ptr_memcpy);
-                    let is_full_sym_copy = dst_sym_size == src_sym_size && src_sym_size == copy_len;
-                    if let (Some(memcpy_src_sym), true, Some(new_indices)) = (
+                    if let (Some(memcpy_src_sym), Some(memcpy_dst_sym), Some(new_indices)) = (
                         get_symbol(context, src_ptr_memcpy),
-                        is_full_sym_copy,
+                        get_symbol(context, dst_ptr_memcpy),
                         combine_indices(context, src_val_ptr),
                     ) {
-                        replacements.insert(
-                            inst,
-                            Replacement::NewGep(ReplGep {
-                                base: memcpy_src_sym,
-                                elem_ptr_ty: src_val_ptr.get_type(context).unwrap(),
-                                indices: new_indices,
-                            }),
-                        );
-                        return true;
+                        let memcpy_src_sym_type = memcpy_src_sym
+                            .get_type(context)
+                            .get_pointee_type(context)
+                            .unwrap();
+                        let memcpy_dst_sym_type = memcpy_dst_sym
+                            .get_type(context)
+                            .get_pointee_type(context)
+                            .unwrap();
+                        if memcpy_src_sym_type == memcpy_dst_sym_type
+                            && memcpy_dst_sym_type.size_in_bytes(context) == copy_len
+                        {
+                            replacements.insert(
+                                inst,
+                                Replacement::NewGep(ReplGep {
+                                    base: memcpy_src_sym,
+                                    elem_ptr_ty: src_val_ptr.get_type(context).unwrap(),
+                                    indices: new_indices,
+                                }),
+                            );
+                            return true;
+                        }
                     }
                 }
             }

@@ -93,7 +93,7 @@ fn get_loaded_symbols(context: &Context, val: Value) -> Vec<Symbol> {
     }
 }
 
-fn _get_stored_symbols(context: &Context, val: Value) -> Vec<Symbol> {
+fn get_stored_symbols(context: &Context, val: Value) -> Vec<Symbol> {
     match val.get_instruction(context).unwrap() {
         Instruction::BinaryOp { .. }
         | Instruction::BitCast(_, _)
@@ -166,6 +166,7 @@ pub fn dce(
     let mut num_uses: HashMap<Value, u32> = HashMap::new();
     let mut num_local_uses: HashMap<LocalVar, u32> = HashMap::new();
     let mut num_symbol_uses: HashMap<Symbol, u32> = HashMap::new();
+    let mut stores_of_sym: HashMap<Symbol, Vec<Value>> = HashMap::new();
 
     // Go through each instruction and update use_count.
     for (_block, inst) in function.instruction_iter(context) {
@@ -174,6 +175,12 @@ pub fn dce(
                 .entry(sym)
                 .and_modify(|count| *count += 1)
                 .or_insert(1);
+        }
+        for stored_sym in get_stored_symbols(context, inst) {
+            stores_of_sym
+                .entry(stored_sym)
+                .and_modify(|stores| stores.push(inst))
+                .or_insert(vec![inst]);
         }
 
         let inst = inst.get_instruction(context).unwrap();
@@ -211,7 +218,7 @@ pub fn dce(
     while !worklist.is_empty() {
         let dead = worklist.pop().unwrap();
 
-        if !can_eliminate_instruction(context, dead, &num_symbol_uses) {
+        if !can_eliminate_instruction(context, dead, &num_symbol_uses) || cemetery.contains(&dead) {
             continue;
         }
         // Process dead's operands.
@@ -231,7 +238,13 @@ pub fn dce(
             }
         }
         for sym in get_loaded_symbols(context, dead) {
-            *num_symbol_uses.get_mut(&sym).unwrap() -= 1;
+            let nu = num_symbol_uses.get_mut(&sym).unwrap();
+            *nu -= 1;
+            if *nu == 0 {
+                for store in stores_of_sym.get(&sym).unwrap_or(&vec![]) {
+                    worklist.push(*store);
+                }
+            }
         }
         cemetery.insert(dead);
 
