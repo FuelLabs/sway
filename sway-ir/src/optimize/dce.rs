@@ -8,7 +8,7 @@
 use rustc_hash::FxHashSet;
 
 use crate::{
-    get_symbol, AnalysisResults, Context, FuelVmInstruction, Function, Instruction, IrError,
+    get_symbols, AnalysisResults, Context, FuelVmInstruction, Function, Instruction, IrError,
     LocalVar, Module, Pass, PassMutability, ScopedPass, Symbol, Value, ValueDatum,
 };
 
@@ -62,17 +62,33 @@ fn get_loaded_symbols(context: &Context, val: Value) -> Vec<Symbol> {
         | Instruction::IntToPtr(_, _) => vec![],
         Instruction::Call(_, args) => args
             .iter()
-            .filter_map(|val| get_symbol(context, *val))
+            .map(|val| {
+                get_symbols(context, *val)
+                    .iter()
+                    .cloned()
+                    .collect::<Vec<_>>()
+            })
+            .flatten()
             .collect(),
         Instruction::AsmBlock(_, args) => args
             .iter()
-            .filter_map(|val| val.initializer.and_then(|val| get_symbol(context, val)))
+            .filter_map(|val| {
+                val.initializer.and_then(|val| {
+                    Some(
+                        get_symbols(context, val)
+                            .iter()
+                            .cloned()
+                            .collect::<Vec<_>>(),
+                    )
+                })
+            })
+            .flatten()
             .collect(),
         Instruction::MemCopyBytes { src_val_ptr, .. }
         | Instruction::MemCopyVal { src_val_ptr, .. }
         | Instruction::Ret(src_val_ptr, _)
         | Instruction::Load(src_val_ptr) => {
-            get_symbol(context, *src_val_ptr).iter().cloned().collect()
+            get_symbols(context, *src_val_ptr).iter().cloned().collect()
         }
         Instruction::Store { dst_val_ptr: _, .. } => vec![],
         Instruction::FuelVm(vmop) => match vmop {
@@ -87,7 +103,7 @@ fn get_loaded_symbols(context: &Context, val: Value) -> Vec<Symbol> {
                 vec![]
             }
             FuelVmInstruction::StateStoreQuadWord { stored_val, .. } => {
-                get_symbol(context, *stored_val).iter().cloned().collect()
+                get_symbols(context, *stored_val).iter().cloned().collect()
             }
         },
     }
@@ -110,16 +126,32 @@ fn get_stored_symbols(context: &Context, val: Value) -> Vec<Symbol> {
         | Instruction::IntToPtr(_, _) => vec![],
         Instruction::Call(_, args) => args
             .iter()
-            .filter_map(|val| get_symbol(context, *val))
+            .map(|val| {
+                get_symbols(context, *val)
+                    .iter()
+                    .cloned()
+                    .collect::<Vec<_>>()
+            })
+            .flatten()
             .collect(),
         Instruction::AsmBlock(_, args) => args
             .iter()
-            .filter_map(|val| val.initializer.and_then(|val| get_symbol(context, val)))
+            .filter_map(|val| {
+                val.initializer.and_then(|val| {
+                    Some(
+                        get_symbols(context, val)
+                            .iter()
+                            .cloned()
+                            .collect::<Vec<_>>(),
+                    )
+                })
+            })
+            .flatten()
             .collect(),
         Instruction::MemCopyBytes { dst_val_ptr, .. }
         | Instruction::MemCopyVal { dst_val_ptr, .. }
         | Instruction::Store { dst_val_ptr, .. } => {
-            get_symbol(context, *dst_val_ptr).iter().cloned().collect()
+            get_symbols(context, *dst_val_ptr).iter().cloned().collect()
         }
         Instruction::Load(_) => vec![],
         Instruction::FuelVm(vmop) => match vmop {
@@ -130,7 +162,7 @@ fn get_stored_symbols(context: &Context, val: Value) -> Vec<Symbol> {
             | FuelVmInstruction::Smo { .. }
             | FuelVmInstruction::StateClear { .. } => vec![],
             FuelVmInstruction::StateLoadQuadWord { load_val, .. } => {
-                get_symbol(context, *load_val).iter().cloned().collect()
+                get_symbols(context, *load_val).iter().cloned().collect()
             }
             FuelVmInstruction::StateLoadWord(_) | FuelVmInstruction::StateStoreWord { .. } => {
                 vec![]
@@ -149,8 +181,9 @@ fn is_removable_store(
         Instruction::MemCopyBytes { dst_val_ptr, .. }
         | Instruction::MemCopyVal { dst_val_ptr, .. }
         | Instruction::Store { dst_val_ptr, .. } => {
-            let sym = get_symbol(context, *dst_val_ptr).unwrap();
-            num_symbol_uses.get(&sym).map_or(0, |uses| *uses) == 0
+            let syms = get_symbols(context, *dst_val_ptr);
+            syms.iter()
+                .all(|sym| num_symbol_uses.get(&sym).map_or(0, |uses| *uses) == 0)
         }
         _ => false,
     }

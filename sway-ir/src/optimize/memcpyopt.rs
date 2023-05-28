@@ -54,13 +54,30 @@ impl Symbol {
     }
 }
 
-pub(crate) fn get_symbol(context: &Context, val: Value) -> Option<Symbol> {
+// A value may (indirectly) refer to one or more symbols.
+pub(crate) fn get_symbols(context: &Context, val: Value) -> Vec<Symbol> {
     match context.values[val.0].value {
-        ValueDatum::Instruction(Instruction::GetLocal(local)) => Some(Symbol::Local(local)),
-        ValueDatum::Instruction(Instruction::GetElemPtr { base, .. }) => get_symbol(context, base),
-        ValueDatum::Argument(b) => Some(Symbol::Arg(b)),
-        _ => None,
+        ValueDatum::Instruction(Instruction::GetLocal(local)) => vec![Symbol::Local(local)],
+        ValueDatum::Instruction(Instruction::GetElemPtr { base, .. }) => get_symbols(context, base),
+        ValueDatum::Argument(b) => {
+            if b.block.get_label(context) == "entry" {
+                vec![Symbol::Arg(b)]
+            } else {
+                b.block
+                    .pred_iter(context)
+                    .map(|pred| b.get_val_coming_from(context, pred).unwrap())
+                    .map(|v| get_symbols(context, v))
+                    .flatten()
+                    .collect()
+            }
+        }
+        _ => vec![],
     }
+}
+
+pub(crate) fn get_symbol(context: &Context, val: Value) -> Option<Symbol> {
+    let syms = get_symbols(context, val);
+    (syms.len() == 1).then(|| syms[0])
 }
 
 // Combine a series of GEPs into one.
@@ -81,45 +98,53 @@ fn combine_indices(context: &Context, val: Value) -> Option<Vec<Value>> {
     }
 }
 
-// Given a memory pointer instruction, compute the offset of indexed element
-fn get_memory_offset(context: &Context, val: Value) -> Option<u64> {
-    let sym = get_symbol(context, val)?;
-    sym.get_type(context)
-        .get_pointee_type(context)?
-        .get_indexed_offset(context, &combine_indices(context, val)?)
+// Given a memory pointer instruction, compute the offset of indexed element,
+// for each symbol that this may alias to.
+fn get_memory_offsets(context: &Context, val: Value) -> FxHashMap<Symbol, u64> {
+    get_symbols(context, val)
+        .into_iter()
+        .filter_map(|sym| {
+            let offset = sym
+                .get_type(context)
+                .get_pointee_type(context)?
+                .get_indexed_offset(context, &combine_indices(context, val)?)?;
+            Some((sym, offset))
+        })
+        .collect()
 }
 
 // Can memory ranges [val1, val1+len1] and [val2, val2+len2] overlap?
 // Conservatively returns true if cannot statically determine.
 fn may_alias(context: &Context, val1: Value, len1: u64, val2: Value, len2: u64) -> bool {
-    let ((Some(sym1), Some(off1)), (Some(sym2), Some(off2))) =
-        ((get_symbol(context, val1), get_memory_offset(context, val1)),
-        (get_symbol(context, val2), get_memory_offset(context, val2))) else {
-        return true
-    };
+    let mem_offsets_1 = get_memory_offsets(context, val1);
+    let mem_offsets_2 = get_memory_offsets(context, val2);
 
-    if sym1 != sym2 {
-        return false;
+    for (sym1, off1) in mem_offsets_1 {
+        if let Some(off2) = mem_offsets_2.get(&sym1) {
+            // does off1 + len1 overlap with off2 + len2?
+            if (off1 <= *off2 && (off1 + len1 > *off2)) || (*off2 <= off1 && (*off2 + len2 > off1))
+            {
+                return true;
+            }
+        }
     }
-
-    // does off1 + len1 overlap with off2 + len2?
-    (off1 <= off2 && (off1 + len1 > off2)) || (off2 <= off1 && (off2 + len2 > off1))
+    false
 }
 // Are memory ranges [val1, val1+len1] and [val2, val2+len2] exactly the same?
 // Conservatively returns false if cannot statically determine.
 fn must_alias(context: &Context, val1: Value, len1: u64, val2: Value, len2: u64) -> bool {
-    let ((Some(sym1), Some(off1)), (Some(sym2), Some(off2))) =
-        ((get_symbol(context, val1), get_memory_offset(context, val1)),
-        (get_symbol(context, val2), get_memory_offset(context, val2))) else {
-        return false
-    };
+    let mem_offsets_1 = get_memory_offsets(context, val1);
+    let mem_offsets_2 = get_memory_offsets(context, val2);
 
-    if sym1 != sym2 {
+    if mem_offsets_1.len() != 1 || mem_offsets_2.len() != 1 {
         return false;
     }
 
+    let (sym1, off1) = mem_offsets_1.iter().next().unwrap();
+    let (sym2, off2) = mem_offsets_2.iter().next().unwrap();
+
     // does off1 + len1 overlap with off2 + len2?
-    off1 == off2 && len1 == len2
+    sym1 == sym2 && off1 == off2 && len1 == len2
 }
 
 fn pointee_size(context: &Context, ptr_val: Value) -> u64 {
@@ -332,46 +357,37 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
         src_to_copies: &mut FxHashMap<Symbol, FxHashSet<Value>>,
         dest_to_copies: &mut FxHashMap<Symbol, FxHashSet<Value>>,
     ) {
-        let sym = get_symbol(context, value).expect("Expected value representing a symbol");
-        if let Some(copies) = src_to_copies.get_mut(&sym) {
-            for copy in &*copies {
-                let (src_ptr, copy_size) = match copy.get_instruction(context).unwrap() {
-                    Instruction::MemCopyBytes {
-                        dst_val_ptr: _,
-                        src_val_ptr,
-                        byte_len,
-                    } => (*src_val_ptr, *byte_len),
-                    Instruction::MemCopyVal {
-                        dst_val_ptr: _,
-                        src_val_ptr,
-                    } => (*src_val_ptr, pointee_size(context, *src_val_ptr)),
-                    _ => panic!("Unexpected copy instruction"),
-                };
-                if may_alias(context, value, len, src_ptr, copy_size) {
-                    available_copies.remove(&copy);
+        let syms = get_symbols(context, value);
+        for sym in syms {
+            if let Some(copies) = src_to_copies.get_mut(&sym) {
+                for copy in &*copies {
+                    let (_, src_ptr, copy_size) = deconstruct_memcpy(context, *copy);
+                    if may_alias(context, value, len, src_ptr, copy_size) {
+                        available_copies.remove(&copy);
+                    }
                 }
+                copies.retain(|copy| available_copies.contains(copy));
             }
-            copies.retain(|copy| available_copies.contains(copy));
-        }
-        if let Some(copies) = dest_to_copies.get_mut(&sym) {
-            for copy in &*copies {
-                let (dest_ptr, copy_size) = match copy.get_instruction(context).unwrap() {
-                    Instruction::MemCopyBytes {
-                        dst_val_ptr,
-                        src_val_ptr: _,
-                        byte_len,
-                    } => (*dst_val_ptr, *byte_len),
-                    Instruction::MemCopyVal {
-                        dst_val_ptr,
-                        src_val_ptr: _,
-                    } => (*dst_val_ptr, pointee_size(context, *dst_val_ptr)),
-                    _ => panic!("Unexpected copy instruction"),
-                };
-                if may_alias(context, value, len, dest_ptr, copy_size) {
-                    available_copies.remove(copy);
+            if let Some(copies) = dest_to_copies.get_mut(&sym) {
+                for copy in &*copies {
+                    let (dest_ptr, copy_size) = match copy.get_instruction(context).unwrap() {
+                        Instruction::MemCopyBytes {
+                            dst_val_ptr,
+                            src_val_ptr: _,
+                            byte_len,
+                        } => (*dst_val_ptr, *byte_len),
+                        Instruction::MemCopyVal {
+                            dst_val_ptr,
+                            src_val_ptr: _,
+                        } => (*dst_val_ptr, pointee_size(context, *dst_val_ptr)),
+                        _ => panic!("Unexpected copy instruction"),
+                    };
+                    if may_alias(context, value, len, dest_ptr, copy_size) {
+                        available_copies.remove(copy);
+                    }
                 }
+                copies.retain(|copy| available_copies.contains(copy));
             }
-            copies.retain(|copy| available_copies.contains(copy));
         }
     }
 
@@ -384,23 +400,24 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
         src_to_copies: &mut FxHashMap<Symbol, FxHashSet<Value>>,
         dest_to_copies: &mut FxHashMap<Symbol, FxHashSet<Value>>,
     ) {
-        if let Some(sym) = get_symbol(context, dst_val_ptr) {
+        if let (Some(dst_sym), Some(src_sym)) = (
+            get_symbol(context, dst_val_ptr),
+            get_symbol(context, src_val_ptr),
+        ) {
             dest_to_copies
-                .entry(sym)
+                .entry(dst_sym)
                 .and_modify(|set| {
                     set.insert(copy_inst);
                 })
                 .or_insert([copy_inst].into_iter().collect());
-        }
-        if let Some(sym) = get_symbol(context, src_val_ptr) {
             src_to_copies
-                .entry(sym)
+                .entry(src_sym)
                 .and_modify(|set| {
                     set.insert(copy_inst);
                 })
                 .or_insert([copy_inst].into_iter().collect());
+            available_copies.insert(copy_inst);
         }
-        available_copies.insert(copy_inst);
     }
 
     // Deconstruct a memcpy into (dst_val_ptr, src_val_ptr, copy_len).
@@ -509,35 +526,52 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
             // Replace the load/memcpy source pointer with something else.
             let mut replacements = FxHashMap::default();
 
+            fn kill_escape_args(
+                context: &Context,
+                args: &Vec<Value>,
+                available_copies: &mut FxHashSet<Value>,
+                src_to_copies: &mut FxHashMap<Symbol, FxHashSet<Value>>,
+                dest_to_copies: &mut FxHashMap<Symbol, FxHashSet<Value>>,
+            ) {
+                for arg in args {
+                    let max_size = get_symbols(context, *arg)
+                        .iter()
+                        .filter_map(|sym| {
+                            sym.get_type(context)
+                                .get_pointee_type(context)
+                                .map(|pt| pt.size_in_bytes(context))
+                        })
+                        .max()
+                        .unwrap_or(0);
+                    kill_defined_symbol(
+                        context,
+                        *arg,
+                        max_size,
+                        available_copies,
+                        src_to_copies,
+                        dest_to_copies,
+                    );
+                }
+            }
+
             for inst in block.instruction_iter(context) {
                 match inst.get_instruction(context).unwrap() {
-                    Instruction::Call(_, args) => {
-                        for arg in args {
-                            let Some(arg_sym) = get_symbol(context, *arg) else { continue; };
-                            let Some(arg_ty) = arg_sym.get_type(context).get_pointee_type(context) else { continue; };
-                            kill_defined_symbol(
-                                context,
-                                *arg,
-                                arg_ty.size_in_bytes(context),
-                                &mut available_copies,
-                                &mut src_to_copies,
-                                &mut dest_to_copies,
-                            );
-                        }
-                    }
+                    Instruction::Call(_, args) => kill_escape_args(
+                        context,
+                        args,
+                        &mut available_copies,
+                        &mut src_to_copies,
+                        &mut dest_to_copies,
+                    ),
                     Instruction::AsmBlock(_, args) => {
-                        for arg in args {
-                            let Some(arg_sym) = arg.initializer.and_then(|arg| get_symbol(context, arg)) else { continue; };
-                            let Some(arg_ty) = arg_sym.get_type(context).get_pointee_type(context) else { continue; };
-                            kill_defined_symbol(
-                                context,
-                                arg.initializer.unwrap(),
-                                arg_ty.size_in_bytes(context),
-                                &mut available_copies,
-                                &mut src_to_copies,
-                                &mut dest_to_copies,
-                            );
-                        }
+                        let args = args.iter().filter_map(|arg| arg.initializer).collect();
+                        kill_escape_args(
+                            context,
+                            &args,
+                            &mut available_copies,
+                            &mut src_to_copies,
+                            &mut dest_to_copies,
+                        );
                     }
                     Instruction::IntToPtr(_, _) => {
                         // The only safe thing we can do is to clear all information.
@@ -683,6 +717,8 @@ fn is_clobbered(
         .skip_while(|i| i != &store_val);
     assert!(iter.next().unwrap() == store_val);
 
+    let src_symbols = get_symbols(context, src_ptr);
+
     // Scan backwards till we encounter load_val, checking if
     // any store aliases with src_ptr.
     let mut worklist: Vec<(Block, Box<dyn Iterator<Item = Value>>)> =
@@ -701,7 +737,10 @@ fn is_clobbered(
                 stored_val: _,
             }) = inst.get_instruction(context)
             {
-                if get_symbol(context, *dst_val_ptr) == get_symbol(context, src_ptr) {
+                if get_symbols(context, *dst_val_ptr)
+                    .iter()
+                    .any(|sym| src_symbols.contains(sym))
+                {
                     return true;
                 }
             }
