@@ -56,23 +56,37 @@ impl Symbol {
 
 // A value may (indirectly) refer to one or more symbols.
 pub(crate) fn get_symbols(context: &Context, val: Value) -> Vec<Symbol> {
-    match context.values[val.0].value {
-        ValueDatum::Instruction(Instruction::GetLocal(local)) => vec![Symbol::Local(local)],
-        ValueDatum::Instruction(Instruction::GetElemPtr { base, .. }) => get_symbols(context, base),
-        ValueDatum::Argument(b) => {
-            if b.block.get_label(context) == "entry" {
-                vec![Symbol::Arg(b)]
-            } else {
-                b.block
-                    .pred_iter(context)
-                    .map(|pred| b.get_val_coming_from(context, pred).unwrap())
-                    .map(|v| get_symbols(context, v))
-                    .flatten()
-                    .collect()
-            }
+    let mut visited = FxHashSet::default();
+    fn get_symbols_rec(
+        context: &Context,
+        visited: &mut FxHashSet<Value>,
+        val: Value,
+    ) -> Vec<Symbol> {
+        if visited.contains(&val) {
+            return vec![];
         }
-        _ => vec![],
+        visited.insert(val);
+        match context.values[val.0].value {
+            ValueDatum::Instruction(Instruction::GetLocal(local)) => vec![Symbol::Local(local)],
+            ValueDatum::Instruction(Instruction::GetElemPtr { base, .. }) => {
+                get_symbols_rec(context, visited, base)
+            }
+            ValueDatum::Argument(b) => {
+                if b.block.get_label(context) == "entry" {
+                    vec![Symbol::Arg(b)]
+                } else {
+                    b.block
+                        .pred_iter(context)
+                        .map(|pred| b.get_val_coming_from(context, pred).unwrap())
+                        .map(|v| get_symbols_rec(context, visited, v))
+                        .flatten()
+                        .collect()
+                }
+            }
+            _ => vec![],
+        }
     }
+    get_symbols_rec(context, &mut visited, val)
 }
 
 pub(crate) fn get_symbol(context: &Context, val: Value) -> Option<Symbol> {
