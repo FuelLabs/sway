@@ -43,7 +43,7 @@ fn can_eliminate_instruction(
 ) -> bool {
     let inst = val.get_instruction(context).unwrap();
     (!inst.is_terminator() && !inst.may_have_side_effect())
-        || is_removable_store(context, val, num_symbol_uses)
+    || is_removable_store(context, val, num_symbol_uses)
 }
 
 fn get_loaded_symbols(context: &Context, val: Value) -> Vec<Symbol> {
@@ -54,11 +54,13 @@ fn get_loaded_symbols(context: &Context, val: Value) -> Vec<Symbol> {
         | Instruction::ConditionalBranch { .. }
         | Instruction::Cmp(_, _, _)
         | Instruction::Nop
-        | Instruction::PtrToInt(_, _)
         | Instruction::CastPtr(_, _)
         | Instruction::GetLocal(_)
         | Instruction::GetElemPtr { .. }
         | Instruction::IntToPtr(_, _) => vec![],
+        Instruction::PtrToInt(src_val_ptr, _) => {
+            get_symbols(context, *src_val_ptr).iter().cloned().collect()
+        }
         Instruction::ContractCall {
             params,
             coins,
