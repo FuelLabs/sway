@@ -50,7 +50,8 @@ use sway_core::{
 };
 use sway_error::{error::CompileError, warning::CompileWarning};
 use sway_types::{Ident, Span, Spanned};
-use sway_utils::constants;
+use sway_utils::{constants, time_expr, PerformanceData, PerformanceMetric};
+use sysinfo::{System, SystemExt};
 use tracing::{info, warn};
 
 type GraphIx = u32;
@@ -181,6 +182,7 @@ pub struct CompiledPackage {
     pub bytecode: BuiltPackageBytecode,
     pub namespace: namespace::Root,
     pub warnings: Vec<CompileWarning>,
+    pub metrics: PerformanceData,
 }
 
 /// Compiled contract dependency parts relevant to calculating a contract's ID.
@@ -298,6 +300,8 @@ pub struct BuildOpts {
     pub release: bool,
     /// Output the time elapsed over each part of the compilation process.
     pub time_phases: bool,
+    /// If set, outputs compilation metrics info in JSON format.
+    pub metrics_outfile: Option<String>,
     /// Warnings must be treated as compiler errors.
     pub error_on_warnings: bool,
     /// Include all test functions within the build.
@@ -1553,7 +1557,9 @@ pub fn sway_build_config(
     .print_finalized_asm(build_profile.print_finalized_asm)
     .print_intermediate_asm(build_profile.print_intermediate_asm)
     .print_ir(build_profile.print_ir)
-    .include_tests(build_profile.include_tests);
+    .include_tests(build_profile.include_tests)
+    .time_phases(build_profile.time_phases)
+    .metrics(build_profile.metrics_outfile.clone());
     Ok(build_config)
 }
 
@@ -1716,6 +1722,7 @@ pub fn compile_ast(
     engines: Engines<'_>,
     namespace: namespace::Module,
     package_name: &str,
+    metrics: &mut PerformanceData,
 ) -> Result<CompileResult<ty::TyProgram>> {
     let source = pkg.manifest_file.entry_string()?;
     let sway_build_config = sway_build_config(
@@ -1730,6 +1737,7 @@ pub fn compile_ast(
         namespace,
         Some(&sway_build_config),
         package_name,
+        metrics,
     );
     Ok(ast_res)
 }
@@ -1759,29 +1767,11 @@ pub fn compile(
     namespace: namespace::Module,
     source_map: &mut SourceMap,
 ) -> Result<CompiledPackage> {
-    // Time the given expression and print the result if `build_config.time_phases` is true.
-    macro_rules! time_expr {
-        ($description:expr, $expression:expr) => {{
-            if profile.time_phases {
-                let expr_start = std::time::Instant::now();
-                let output = { $expression };
-                println!(
-                    "  Time elapsed to {}: {:?}",
-                    $description,
-                    expr_start.elapsed()
-                );
-                output
-            } else {
-                $expression
-            }
-        }};
-    }
+    let mut metrics = PerformanceData::default();
 
     let entry_path = pkg.manifest_file.entry_path();
-    let sway_build_config = time_expr!(
-        "produce `sway_core::BuildConfig`",
-        sway_build_config(pkg.manifest_file.dir(), &entry_path, pkg.target, profile)?
-    );
+    let sway_build_config =
+        sway_build_config(pkg.manifest_file.dir(), &entry_path, pkg.target, profile)?;
     let terse_mode = profile.terse;
     let fail = |warnings, errors| {
         print_on_failure(terse_mode, warnings, errors);
@@ -1791,7 +1781,10 @@ pub fn compile(
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
     let ast_res = time_expr!(
         "compile to ast",
-        compile_ast(pkg, profile, engines, namespace, &pkg.name)?
+        "compile_to_ast",
+        compile_ast(pkg, profile, engines, namespace, &pkg.name, &mut metrics)?,
+        Some(sway_build_config.clone()),
+        metrics
     );
     let typed_program = match ast_res.value.as_ref() {
         None => return fail(&ast_res.warnings, &ast_res.errors),
@@ -1813,7 +1806,10 @@ pub fn compile(
 
     let asm_res = time_expr!(
         "compile ast to asm",
-        sway_core::ast_to_asm(engines, &ast_res, &sway_build_config)
+        "compile_ast_to_asm",
+        sway_core::ast_to_asm(engines, &ast_res, &sway_build_config),
+        Some(sway_build_config.clone()),
+        metrics
     );
 
     let mut program_abi = match pkg.target {
@@ -1821,6 +1817,7 @@ pub fn compile(
             let mut types = vec![];
             ProgramABI::Fuel(time_expr!(
                 "generate JSON ABI program",
+                "generate_json_abi",
                 fuel_json_abi::generate_json_abi_program(
                     &mut JsonAbiContext {
                         program: typed_program,
@@ -1829,7 +1826,9 @@ pub fn compile(
                     engines.te(),
                     engines.de(),
                     &mut types
-                )
+                ),
+                Some(sway_build_config.clone()),
+                metrics
             ))
         }
         BuildTarget::EVM => {
@@ -1845,7 +1844,10 @@ pub fn compile(
 
             let abi = time_expr!(
                 "generate JSON ABI program",
-                evm_json_abi::generate_json_abi_program(typed_program, &engines)
+                "generate_json_abi",
+                evm_json_abi::generate_json_abi_program(typed_program, &engines),
+                Some(sway_build_config.clone()),
+                metrics
             );
 
             ops.extend(abi.into_iter());
@@ -1868,7 +1870,10 @@ pub fn compile(
         .collect::<anyhow::Result<_>>()?;
     let bc_res = time_expr!(
         "compile asm to bytecode",
-        sway_core::asm_to_bytecode(asm_res, source_map)
+        "compile_asm_to_bytecode",
+        sway_core::asm_to_bytecode(asm_res, source_map),
+        Some(sway_build_config),
+        metrics
     );
 
     let errored =
@@ -1896,6 +1901,7 @@ pub fn compile(
         }
     }
 
+    metrics.bytecode_size = compiled.bytecode.len();
     let bytecode = BuiltPackageBytecode {
         bytes: compiled.bytecode,
         entries,
@@ -1908,6 +1914,7 @@ pub fn compile(
         bytecode,
         namespace,
         warnings: bc_res.warnings,
+        metrics,
     };
     Ok(compiled_package)
 }
@@ -2012,6 +2019,7 @@ fn build_profile_from_opts(
         build_profile,
         release,
         time_phases,
+        metrics_outfile,
         tests,
         error_on_warnings,
         ..
@@ -2061,6 +2069,9 @@ fn build_profile_from_opts(
     profile.print_intermediate_asm |= print.intermediate_asm;
     profile.terse |= pkg.terse;
     profile.time_phases |= time_phases;
+    if profile.metrics_outfile.is_none() {
+        profile.metrics_outfile = metrics_outfile.clone();
+    }
     profile.include_tests |= tests;
     profile.json_abi_with_callpaths |= pkg.json_abi_with_callpaths;
     profile.error_on_warnings |= error_on_warnings;
@@ -2301,6 +2312,7 @@ pub fn build(
                 Ok(o) => o,
                 Err(errs) => return fail(&[], &errs),
             };
+
             let compiled_without_tests = compile(
                 &descriptor,
                 &profile,
@@ -2308,6 +2320,13 @@ pub fn build(
                 dep_namespace,
                 &mut source_map,
             )?;
+
+            if let Some(outfile) = profile.metrics_outfile {
+                let path = Path::new(&outfile);
+                let metrics_json = serde_json::to_string(&compiled_without_tests.metrics)
+                    .expect("JSON serialization failed");
+                fs::write(path, metrics_json)?;
+            }
 
             // If this contract is built because:
             // 1) it is a contract dependency, or
@@ -2364,6 +2383,13 @@ pub fn build(
             dep_namespace,
             &mut source_map,
         )?;
+
+        if let Some(outfile) = profile.metrics_outfile {
+            let path = Path::new(&outfile);
+            let metrics_json =
+                serde_json::to_string(&compiled.metrics).expect("JSON serialization failed");
+            fs::write(path, metrics_json)?;
+        }
 
         if let TreeType::Library = compiled.tree_type {
             let mut namespace = namespace::Module::from(compiled.namespace);
