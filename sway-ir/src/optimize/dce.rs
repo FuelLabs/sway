@@ -103,25 +103,33 @@ fn get_loaded_symbols(context: &Context, val: Value) -> Vec<Symbol> {
         Instruction::MemCopyBytes { src_val_ptr, .. }
         | Instruction::MemCopyVal { src_val_ptr, .. }
         | Instruction::Ret(src_val_ptr, _)
-        | Instruction::Load(src_val_ptr) => {
-            get_symbols(context, *src_val_ptr).iter().cloned().collect()
-        }
+        | Instruction::Load(src_val_ptr)
+        | Instruction::FuelVm(FuelVmInstruction::Smo {
+            recipient_and_message: src_val_ptr,
+            ..
+        })
+        | Instruction::FuelVm(FuelVmInstruction::StateLoadWord(src_val_ptr))
+        | Instruction::FuelVm(FuelVmInstruction::StateStoreWord {
+            key: src_val_ptr, ..
+        })
+        | Instruction::FuelVm(FuelVmInstruction::StateLoadQuadWord {
+            key: src_val_ptr, ..
+        })
+        | Instruction::FuelVm(FuelVmInstruction::StateClear {
+            key: src_val_ptr, ..
+        }) => get_symbols(context, *src_val_ptr).iter().cloned().collect(),
+        Instruction::FuelVm(FuelVmInstruction::StateStoreQuadWord {
+            stored_val, key, ..
+        }) => get_symbols(context, *stored_val)
+            .iter()
+            .cloned()
+            .chain(get_symbols(context, *key).iter().cloned())
+            .collect(),
         Instruction::Store { dst_val_ptr: _, .. } => vec![],
-        Instruction::FuelVm(vmop) => match vmop {
-            FuelVmInstruction::Gtf { .. }
-            | FuelVmInstruction::Log { .. }
-            | FuelVmInstruction::ReadRegister(_)
-            | FuelVmInstruction::Revert(_)
-            | FuelVmInstruction::Smo { .. }
-            | FuelVmInstruction::StateClear { .. } => vec![],
-            FuelVmInstruction::StateLoadQuadWord { load_val: _, .. } => vec![],
-            FuelVmInstruction::StateLoadWord(_) | FuelVmInstruction::StateStoreWord { .. } => {
-                vec![]
-            }
-            FuelVmInstruction::StateStoreQuadWord { stored_val, .. } => {
-                get_symbols(context, *stored_val).iter().cloned().collect()
-            }
-        },
+        Instruction::FuelVm(FuelVmInstruction::Gtf { .. })
+        | Instruction::FuelVm(FuelVmInstruction::Log { .. })
+        | Instruction::FuelVm(FuelVmInstruction::ReadRegister(_))
+        | Instruction::FuelVm(FuelVmInstruction::Revert(_)) => vec![],
     }
 }
 
