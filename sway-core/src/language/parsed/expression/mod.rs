@@ -108,6 +108,7 @@ impl Spanned for AmbiguousSuffix {
 pub struct QualifiedPathRootTypes {
     pub ty: TypeArgument,
     pub as_trait: TypeInfo,
+    pub as_trait_span: Span,
 }
 
 #[derive(Debug, Clone)]

@@ -405,9 +405,8 @@ impl Parse for AmbiguousPathExpression {
         let AmbiguousPathExpression {
             call_path_binding,
             args,
-            qualified_path_root: _,
+            qualified_path_root,
         } = self;
-        // TODO: process qualified paths
         for ident in call_path_binding.inner.prefixes.iter().chain(
             call_path_binding
                 .inner
@@ -436,6 +435,15 @@ impl Parse for AmbiguousPathExpression {
                 type_arg.parse(ctx);
             });
         args.iter().for_each(|arg| arg.parse(ctx));
+
+        if let Some(qualified_path_root) = qualified_path_root {
+            qualified_path_root.ty.parse(ctx);
+            collect_type_info_token(
+                ctx,
+                &qualified_path_root.as_trait,
+                qualified_path_root.as_trait_span,
+            );
+        }
     }
 }
 
