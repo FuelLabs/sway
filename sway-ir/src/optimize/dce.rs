@@ -43,7 +43,7 @@ fn can_eliminate_instruction(
 ) -> bool {
     let inst = val.get_instruction(context).unwrap();
     (!inst.is_terminator() && !inst.may_have_side_effect())
-    || is_removable_store(context, val, num_symbol_uses)
+        || is_removable_store(context, val, num_symbol_uses)
 }
 
 fn get_loaded_symbols(context: &Context, val: Value) -> Vec<Symbol> {
