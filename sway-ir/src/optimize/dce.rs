@@ -52,7 +52,6 @@ fn get_loaded_symbols(context: &Context, val: Value) -> Vec<Symbol> {
         | Instruction::BitCast(_, _)
         | Instruction::Branch(_)
         | Instruction::ConditionalBranch { .. }
-        | Instruction::ContractCall { .. }
         | Instruction::Cmp(_, _, _)
         | Instruction::Nop
         | Instruction::PtrToInt(_, _)
@@ -60,6 +59,21 @@ fn get_loaded_symbols(context: &Context, val: Value) -> Vec<Symbol> {
         | Instruction::GetLocal(_)
         | Instruction::GetElemPtr { .. }
         | Instruction::IntToPtr(_, _) => vec![],
+        Instruction::ContractCall {
+            params,
+            coins,
+            asset_id,
+            ..
+        } => vec![*params, *coins, *asset_id]
+            .iter()
+            .map(|val| {
+                get_symbols(context, *val)
+                    .iter()
+                    .cloned()
+                    .collect::<Vec<_>>()
+            })
+            .flatten()
+            .collect(),
         Instruction::Call(_, args) => args
             .iter()
             .map(|val| {
@@ -115,7 +129,6 @@ fn get_stored_symbols(context: &Context, val: Value) -> Vec<Symbol> {
         | Instruction::BitCast(_, _)
         | Instruction::Branch(_)
         | Instruction::ConditionalBranch { .. }
-        | Instruction::ContractCall { .. }
         | Instruction::Cmp(_, _, _)
         | Instruction::Nop
         | Instruction::PtrToInt(_, _)
@@ -124,6 +137,7 @@ fn get_stored_symbols(context: &Context, val: Value) -> Vec<Symbol> {
         | Instruction::GetLocal(_)
         | Instruction::GetElemPtr { .. }
         | Instruction::IntToPtr(_, _) => vec![],
+        Instruction::ContractCall { params, .. } => get_symbols(context, *params),
         Instruction::Call(_, args) => args
             .iter()
             .map(|val| {
