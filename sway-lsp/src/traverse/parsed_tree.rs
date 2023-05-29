@@ -435,13 +435,12 @@ impl Parse for AmbiguousPathExpression {
                 type_arg.parse(ctx);
             });
         args.iter().for_each(|arg| arg.parse(ctx));
-
         if let Some(qualified_path_root) = qualified_path_root {
             qualified_path_root.ty.parse(ctx);
             collect_type_info_token(
                 ctx,
                 &qualified_path_root.as_trait,
-                qualified_path_root.as_trait_span,
+                Some(&qualified_path_root.as_trait_span),
             );
         }
     }

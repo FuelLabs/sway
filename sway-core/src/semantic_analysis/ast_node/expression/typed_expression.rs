@@ -1047,7 +1047,7 @@ impl ty::TyExpression {
     ) -> CompileResult<ty::TyExpression> {
         let decl_engine = ctx.decl_engine;
 
-        if let Some(QualifiedPathRootTypes { ty, as_trait }) = qualified_path_root {
+        if let Some(QualifiedPathRootTypes { ty, as_trait, .. }) = qualified_path_root {
             if !prefixes.is_empty() || before.is_some() {
                 return err(
                     vec![],
