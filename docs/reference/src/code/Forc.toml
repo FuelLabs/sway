@@ -48,3 +48,6 @@ members = [
   "operations/storage/storage_vec",
   "operations/storage/store_get",
 ]
+
+[patch.'https://github.com/fuellabs/sway']
+std = { path = "../../../../sway-lib-std/" }

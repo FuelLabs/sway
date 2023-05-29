@@ -183,11 +183,13 @@ impl Source {
         &self,
         dep_name: &str,
         manifest: &PackageManifestFile,
-    ) -> Result<Option<manifest::Dependency>> {
+    ) -> Result<Option<(manifest::Dependency, Option<PathBuf>)>> {
         if let Source::Git(git) = self {
-            if let Some(patches) = manifest.resolve_patch(&git.repo.to_string())? {
+            if let Some((patches, patch_workspace_src)) =
+                manifest.resolve_patch(&git.repo.to_string())?
+            {
                 if let Some(patch) = patches.get(dep_name) {
-                    return Ok(Some(patch.clone()));
+                    return Ok(Some((patch.clone(), patch_workspace_src)));
                 }
             }
         }
@@ -205,7 +207,10 @@ impl Source {
         members: &MemberManifestFiles,
     ) -> Result<Self> {
         match self.dep_patch(dep_name, manifest)? {
-            Some(patch) => Self::from_manifest_dep(manifest.dir(), &patch, members),
+            Some((patch, Some(workspace_patch_path))) => {
+                Self::from_manifest_dep(&workspace_patch_path, &patch, members)
+            }
+            Some((patch, None)) => Self::from_manifest_dep(manifest.dir(), &patch, members),
             None => Ok(self.clone()),
         }
     }

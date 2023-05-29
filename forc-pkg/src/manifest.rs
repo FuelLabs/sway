@@ -279,11 +279,18 @@ impl PackageManifestFile {
     ///
     /// If this package is a member of a workspace, patch is fetched from
     /// the workspace manifest file.
-    pub fn resolve_patch(&self, patch_name: &str) -> Result<Option<PatchMap>> {
+    pub fn resolve_patch(&self, patch_name: &str) -> Result<Option<(PatchMap, Option<PathBuf>)>> {
         Ok(self
             .resolve_patches()?
             .find(|(p_name, _)| patch_name == p_name.as_str())
-            .map(|(_, patch)| patch))
+            .map(|(_, patch)| {
+                let workspace_path = self
+                    .workspace()
+                    .ok()
+                    .flatten()
+                    .map(|workspace| workspace.dir().to_path_buf());
+                (patch, workspace_path)
+            }))
     }
 
     /// Read the manifest from the `Forc.toml` in the directory specified by the given `path` or
