@@ -40,9 +40,9 @@ fuel-types = "0.31.1"
 fuel-tx = "0.31.1"
 fuel-core-client = "0.18.1"
 fuel-vm = "0.31.1"
-fuels-core = "0.41"
-fuels-accounts = "0.41"
-fuels-types = "0.41"
+fuels-core = "0.42"
+fuels-accounts = "0.42"
+fuels-types = "0.42"
 
 [workspace.package]
 edition = "2021"
@@ -50,8 +50,3 @@ authors = ["Fuel Labs <contact@fuel.sh>"]
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/sway"
-
-[patch.crates-io]
-fuels-core = { git = "https://github.com/FuelLabs/fuels-rs", branch = "feature/fuel-core-0.18" }
-fuels-types = { git = "https://github.com/FuelLabs/fuels-rs", branch = "feature/fuel-core-0.18" }
-fuels-accounts = { git = "https://github.com/FuelLabs/fuels-rs", branch = "feature/fuel-core-0.18" }

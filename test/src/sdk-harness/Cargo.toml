@@ -12,7 +12,7 @@ fuel-core = { version = "0.18.1", default-features = false }
 fuel-core-client = { version = "0.18.1", default-features = false }
 fuel-types = "0.31.1"
 fuel-vm = "0.31.1"
-fuels = { version = "0.41", features = ["fuel-core-lib"] }
+fuels = { version = "0.42", features = ["fuel-core-lib"] }
 hex = "0.4.3"
 rand = "0.8"
 sha2 = "0.10"
@@ -26,6 +26,3 @@ name = "integration_tests"
 path = "test_projects/harness.rs"
 
 [workspace]
-
-[patch.crates-io]
-fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "feature/fuel-core-0.18" }
