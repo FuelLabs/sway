@@ -472,7 +472,10 @@ pub(crate) async fn hover_request<'a>(
     });
 
     if let HoverContents::Markup(markup_content) = hover_res.contents {
-        assert_eq!(hover_docs.documentation, markup_content.value);
+        hover_docs
+            .documentation
+            .iter()
+            .for_each(|text| assert!(markup_content.value.contains(text)));
     } else {
         panic!(
             "Expected HoverContents::Markup with input {:#?}, got {:?}",

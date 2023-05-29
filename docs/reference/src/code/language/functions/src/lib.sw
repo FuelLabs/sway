@@ -4,7 +4,7 @@ mod explicit;
 mod implicit;
 
 // ANCHOR: definition
-fn my_function(my_parameter: u64 /* ... */) -> u64 {
+fn my_function(my_parameter: u64 /* ... */ ) -> u64 {
     // function code
     42
 }
@@ -16,8 +16,8 @@ fn equals(first_parameter: u64, second_parameter: u64) -> bool {
 // ANCHOR_END: equals
 fn usage() {
     // ANCHOR: usage
-    let result_one = equals(5, 5);  // evaluates to `true`
-    let result_two = equals(5, 6);  // evaluates to `false`
+    let result_one = equals(5, 5); // evaluates to `true`
+    let result_two = equals(5, 6); // evaluates to `false`
     // ANCHOR_END: usage
 }
 
@@ -42,8 +42,8 @@ impl Foo {
 fn method_usage() {
     // ANCHOR: method_usage
     let mut foo = Foo { bar: 42 };
-    let result = foo.add_number(5);  // evaluates to `47`
-    foo.increment(5);  // `bar` inside `foo` has been changed from 42 to 47
+    let result = foo.add_number(5); // evaluates to `47`
+    foo.increment(5); // `bar` inside `foo` has been changed from 42 to 47
     // ANCHOR_END: method_usage
 }
 

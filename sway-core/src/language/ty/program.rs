@@ -176,9 +176,11 @@ impl TyProgram {
                             if !field
                                 .type_argument
                                 .type_id
-                                .extract_any_including_self(engines, &|type_info| {
-                                    matches!(type_info, TypeInfo::RawUntypedPtr)
-                                })
+                                .extract_any_including_self(
+                                    engines,
+                                    &|type_info| matches!(type_info, TypeInfo::RawUntypedPtr),
+                                    vec![],
+                                )
                                 .is_empty()
                             {
                                 errors.push(CompileError::TypeNotAllowedInContractStorage {

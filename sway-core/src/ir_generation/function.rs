@@ -17,6 +17,7 @@ use crate::{
         *,
     },
     metadata::MetadataManager,
+    query_engine::QueryEngine,
     type_system::*,
     types::*,
 };
@@ -60,6 +61,7 @@ use std::collections::HashMap;
 pub(crate) struct FnCompiler<'eng> {
     type_engine: &'eng TypeEngine,
     decl_engine: &'eng DeclEngine,
+    query_engine: &'eng QueryEngine,
     module: Module,
     pub(super) function: Function,
     pub(super) current_block: Block,
@@ -84,7 +86,7 @@ impl<'eng> FnCompiler<'eng> {
         logged_types_map: &HashMap<TypeId, LogId>,
         messages_types_map: &HashMap<TypeId, MessageId>,
     ) -> Self {
-        let (type_engine, decl_engine) = engines.unwrap();
+        let (type_engine, decl_engine, query_engine) = engines.unwrap();
         let lexical_map = LexicalMap::from_iter(
             function
                 .args_iter(context)
@@ -93,6 +95,7 @@ impl<'eng> FnCompiler<'eng> {
         FnCompiler {
             type_engine,
             decl_engine,
+            query_engine,
             module,
             function,
             current_block: function.get_entry_block(context),
@@ -494,7 +497,7 @@ impl<'eng> FnCompiler<'eng> {
             Ok(key_val)
         }
 
-        let engines = Engines::new(self.type_engine, self.decl_engine);
+        let engines = Engines::new(self.type_engine, self.decl_engine, self.query_engine);
 
         // We safely index into arguments and type_arguments arrays below
         // because the type-checker ensures that the arguments are all there.
@@ -760,7 +763,10 @@ impl<'eng> FnCompiler<'eng> {
             | Intrinsic::Div
             | Intrinsic::And
             | Intrinsic::Or
-            | Intrinsic::Xor => {
+            | Intrinsic::Xor
+            | Intrinsic::Mod
+            | Intrinsic::Rsh
+            | Intrinsic::Lsh => {
                 let op = match kind {
                     Intrinsic::Add => BinaryOpKind::Add,
                     Intrinsic::Sub => BinaryOpKind::Sub,
@@ -769,6 +775,9 @@ impl<'eng> FnCompiler<'eng> {
                     Intrinsic::And => BinaryOpKind::And,
                     Intrinsic::Or => BinaryOpKind::Or,
                     Intrinsic::Xor => BinaryOpKind::Xor,
+                    Intrinsic::Mod => BinaryOpKind::Mod,
+                    Intrinsic::Rsh => BinaryOpKind::Rsh,
+                    Intrinsic::Lsh => BinaryOpKind::Lsh,
                     _ => unreachable!(),
                 };
                 let lhs = &arguments[0];
@@ -1352,7 +1361,7 @@ impl<'eng> FnCompiler<'eng> {
                 };
                 let is_entry = false;
                 let new_func = compile_function(
-                    Engines::new(self.type_engine, self.decl_engine),
+                    Engines::new(self.type_engine, self.decl_engine, self.query_engine),
                     context,
                     md_mgr,
                     self.module,
@@ -1766,7 +1775,7 @@ impl<'eng> FnCompiler<'eng> {
         } = ast_const_decl;
         if let Some(value) = value {
             let const_expr_val = compile_constant_expression(
-                Engines::new(self.type_engine, self.decl_engine),
+                Engines::new(self.type_engine, self.decl_engine, self.query_engine),
                 context,
                 md_mgr,
                 self.module,
@@ -2031,7 +2040,7 @@ impl<'eng> FnCompiler<'eng> {
             value: ConstantValue::Uint(constant_value),
             ..
         }) = compile_constant_expression_to_constant(
-            Engines::new(self.type_engine, self.decl_engine),
+            Engines::new(self.type_engine, self.decl_engine, self.query_engine),
             context,
             md_mgr,
             self.module,
@@ -2531,10 +2540,10 @@ impl<'eng> FnCompiler<'eng> {
             .add_metadatum(context, span_md_idx);
 
         // The type of a storage access is `StorageKey` which is a struct containing
-        // a `b256` and ` u64`.
+        // a `b256`, `u64` and `b256`.
         let b256_ty = Type::get_b256(context);
         let uint64_ty = Type::get_uint64(context);
-        let storage_key_aggregate = Type::new_struct(context, vec![b256_ty, uint64_ty]);
+        let storage_key_aggregate = Type::new_struct(context, vec![b256_ty, uint64_ty, b256_ty]);
 
         // Local variable holding the `StorageKey` struct
         let storage_key_local_name = self.lexical_map.insert_anon();
@@ -2573,6 +2582,19 @@ impl<'eng> FnCompiler<'eng> {
         self.current_block
             .ins(context)
             .store(gep_1_val, offset_within_slot_val)
+            .add_metadatum(context, span_md_idx);
+
+        // Store the field identifier as the third field in the `StorageKey` struct
+        let unique_field_id = get_storage_key(ix, indices); // use the indices to get a field id that is unique even for zero-sized values that live in the same slot
+        let field_id = convert_literal_to_value(context, &Literal::B256(unique_field_id.into()))
+            .add_metadatum(context, span_md_idx);
+        let gep_2_val =
+            self.current_block
+                .ins(context)
+                .get_elem_ptr_with_idx(storage_key, b256_ty, 2);
+        self.current_block
+            .ins(context)
+            .store(gep_2_val, field_id)
             .add_metadatum(context, span_md_idx);
 
         Ok(storage_key)

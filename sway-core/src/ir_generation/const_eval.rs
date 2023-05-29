@@ -9,6 +9,7 @@ use crate::{
         CallPath,
     },
     metadata::MetadataManager,
+    query_engine::QueryEngine,
     semantic_analysis::*,
     TypeEngine,
 };
@@ -19,6 +20,7 @@ use super::{
     types::*,
 };
 
+use sway_ast::Intrinsic;
 use sway_error::error::CompileError;
 use sway_ir::{
     constant::{Constant, ConstantValue},
@@ -34,6 +36,7 @@ use sway_utils::mapped_stack::MappedStack;
 pub(crate) struct LookupEnv<'a> {
     pub(crate) type_engine: &'a TypeEngine,
     pub(crate) decl_engine: &'a DeclEngine,
+    pub(crate) query_engine: &'a QueryEngine,
     pub(crate) context: &'a mut Context,
     pub(crate) md_mgr: &'a mut MetadataManager,
     pub(crate) module: Module,
@@ -136,7 +139,7 @@ pub(crate) fn compile_const_decl(
                     }
 
                     let const_val = compile_constant_expression(
-                        Engines::new(env.type_engine, env.decl_engine),
+                        Engines::new(env.type_engine, env.decl_engine, env.query_engine),
                         env.context,
                         env.md_mgr,
                         env.module,
@@ -211,10 +214,11 @@ pub(crate) fn compile_constant_expression_to_constant(
     function_compiler: Option<&FnCompiler>,
     const_expr: &ty::TyExpression,
 ) -> Result<Constant, CompileError> {
-    let (type_engine, decl_engine) = engines.unwrap();
+    let (type_engine, decl_engine, query_engine) = engines.unwrap();
     let lookup = &mut LookupEnv {
         type_engine,
         decl_engine,
+        query_engine,
         context,
         md_mgr,
         module,
@@ -395,7 +399,7 @@ fn const_eval_typed_expr(
             if !element_typs.iter().all(|tid| {
                 lookup.type_engine.get(*tid).eq(
                     &elem_type_info,
-                    Engines::new(lookup.type_engine, lookup.decl_engine),
+                    Engines::new(lookup.type_engine, lookup.decl_engine, lookup.query_engine),
                 )
             }) {
                 // This shouldn't happen if the type checker did its job.
@@ -534,7 +538,8 @@ fn const_eval_intrinsic(
         | sway_ast::Intrinsic::Div
         | sway_ast::Intrinsic::And
         | sway_ast::Intrinsic::Or
-        | sway_ast::Intrinsic::Xor => {
+        | sway_ast::Intrinsic::Xor
+        | sway_ast::Intrinsic::Mod => {
             let ty = args[0].ty;
             assert!(
                 args.len() == 2 && ty.is_uint(lookup.context) && ty.eq(lookup.context, &args[1].ty)
@@ -545,13 +550,42 @@ fn const_eval_intrinsic(
             };
             // All arithmetic is done as if it were u64
             let result = match intrinsic.kind {
-                sway_ast::Intrinsic::Add => arg1.checked_add(*arg2),
-                sway_ast::Intrinsic::Sub => arg1.checked_sub(*arg2),
-                sway_ast::Intrinsic::Mul => arg1.checked_mul(*arg2),
-                sway_ast::Intrinsic::Div => arg1.checked_div(*arg2),
-                sway_ast::Intrinsic::And => Some(arg1.bitand(arg2)),
-                sway_ast::Intrinsic::Or => Some(arg1.bitor(*arg2)),
-                sway_ast::Intrinsic::Xor => Some(arg1.bitxor(*arg2)),
+                Intrinsic::Add => arg1.checked_add(*arg2),
+                Intrinsic::Sub => arg1.checked_sub(*arg2),
+                Intrinsic::Mul => arg1.checked_mul(*arg2),
+                Intrinsic::Div => arg1.checked_div(*arg2),
+                Intrinsic::And => Some(arg1.bitand(arg2)),
+                Intrinsic::Or => Some(arg1.bitor(*arg2)),
+                Intrinsic::Xor => Some(arg1.bitxor(*arg2)),
+                Intrinsic::Mod => arg1.checked_rem(*arg2),
+                _ => unreachable!(),
+            };
+            match result {
+                Some(sum) => Ok(Some(Constant {
+                    ty,
+                    value: ConstantValue::Uint(sum),
+                })),
+                None => Ok(None),
+            }
+        }
+        sway_ast::Intrinsic::Lsh | sway_ast::Intrinsic::Rsh => {
+            let ty = args[0].ty;
+            assert!(
+                args.len() == 2
+                    && ty.is_uint(lookup.context)
+                    && args[1].ty.is_uint64(lookup.context)
+            );
+            let (ConstantValue::Uint(arg1), ConstantValue::Uint(ref arg2)) = (&args[0].value, &args[1].value)
+            else {
+                panic!("Type checker allowed incorrect args to binary op");
+            };
+            let result = match intrinsic.kind {
+                Intrinsic::Lsh => u32::try_from(*arg2)
+                    .ok()
+                    .and_then(|arg2| arg1.checked_shl(arg2)),
+                Intrinsic::Rsh => u32::try_from(*arg2)
+                    .ok()
+                    .and_then(|arg2| arg1.checked_shr(arg2)),
                 _ => unreachable!(),
             };
             match result {

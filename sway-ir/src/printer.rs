@@ -409,6 +409,9 @@ fn instruction_to_doc<'a>(
                     BinaryOpKind::And => "and",
                     BinaryOpKind::Or => "or",
                     BinaryOpKind::Xor => "xor",
+                    BinaryOpKind::Mod => "mod",
+                    BinaryOpKind::Rsh => "rsh",
+                    BinaryOpKind::Lsh => "lsh",
                 };
                 maybe_constant_to_doc(context, md_namer, namer, arg1)
                     .append(maybe_constant_to_doc(context, md_namer, namer, arg2))
@@ -658,7 +661,8 @@ fn instruction_to_doc<'a>(
                 } => maybe_constant_to_doc(context, md_namer, namer, number_of_slots).append(
                     Doc::line(
                         Doc::text(format!(
-                            "state_load_quad_word {}, key {}, {}",
+                            "{} = state_load_quad_word {}, key {}, {}",
+                            namer.name(context, ins_value),
                             namer.name(context, load_val),
                             namer.name(context, key),
                             namer.name(context, number_of_slots),
@@ -681,7 +685,8 @@ fn instruction_to_doc<'a>(
                 } => maybe_constant_to_doc(context, md_namer, namer, number_of_slots).append(
                     Doc::line(
                         Doc::text(format!(
-                            "state_store_quad_word {}, key {}, {}",
+                            "{} = state_store_quad_word {}, key {}, {}",
+                            namer.name(context, ins_value),
                             namer.name(context, stored_val),
                             namer.name(context, key),
                             namer.name(context, number_of_slots),
@@ -692,7 +697,8 @@ fn instruction_to_doc<'a>(
                 FuelVmInstruction::StateStoreWord { stored_val, key } => {
                     maybe_constant_to_doc(context, md_namer, namer, stored_val).append(Doc::line(
                         Doc::text(format!(
-                            "state_store_word {}, key {}",
+                            "{} = state_store_word {}, key {}",
+                            namer.name(context, ins_value),
                             namer.name(context, stored_val),
                             namer.name(context, key),
                         ))

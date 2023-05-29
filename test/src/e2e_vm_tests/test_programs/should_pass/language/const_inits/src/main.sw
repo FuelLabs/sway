@@ -55,6 +55,7 @@ const MASK: u32 = 11;
 const MASK2: u32 = 8;
 const MASK3: u32 = 15;
 const FOO_MIDDLE: u32 = ((FOO & MASK) | MASK2) ^ MASK3;
+const OPS: u64 = 10 + 9 - 8 * 7 / 6 << 5 >> 4 ^ 3 | 2 & 1;
 
 const CARR1 = [X_SIZE - Y_SIZE + 1; 4];
 // This doesn't work because const-eval happens after type-checking,
@@ -117,6 +118,7 @@ fn main() -> u64 {
     assert(TRUEB != FALSEB);
     assert(TRUEB1 != FALSEB1);
     assert(FOO_MIDDLE == BAR);
+    assert(OPS == 23);
 
     1
 }

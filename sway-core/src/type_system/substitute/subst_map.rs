@@ -64,13 +64,12 @@ impl TypeSubstMap {
         type_parameters: &[TypeParameter],
     ) -> TypeSubstMap {
         let type_engine = engines.te();
-        let decl_engine = engines.de();
         let mapping = type_parameters
             .iter()
             .map(|x| {
                 (
                     x.type_id,
-                    type_engine.insert(decl_engine, TypeInfo::Placeholder(x.clone())),
+                    type_engine.insert(engines, TypeInfo::Placeholder(x.clone())),
                 )
             })
             .collect();
@@ -340,7 +339,7 @@ impl TypeSubstMap {
                 }
                 if need_to_create_new {
                     let new_decl_ref = decl_engine.insert(decl);
-                    Some(type_engine.insert(decl_engine, TypeInfo::Struct(new_decl_ref)))
+                    Some(type_engine.insert(engines, TypeInfo::Struct(new_decl_ref)))
                 } else {
                     None
                 }
@@ -364,7 +363,7 @@ impl TypeSubstMap {
                 }
                 if need_to_create_new {
                     let new_decl_ref = decl_engine.insert(decl);
-                    Some(type_engine.insert(decl_engine, TypeInfo::Enum(new_decl_ref)))
+                    Some(type_engine.insert(engines, TypeInfo::Enum(new_decl_ref)))
                 } else {
                     None
                 }
@@ -372,7 +371,7 @@ impl TypeSubstMap {
             TypeInfo::Array(mut elem_ty, count) => {
                 self.find_match(elem_ty.type_id, engines).map(|type_id| {
                     elem_ty.type_id = type_id;
-                    type_engine.insert(decl_engine, TypeInfo::Array(elem_ty, count))
+                    type_engine.insert(engines, TypeInfo::Array(elem_ty, count))
                 })
             }
             TypeInfo::Tuple(fields) => {
@@ -388,7 +387,7 @@ impl TypeSubstMap {
                     })
                     .collect::<Vec<_>>();
                 if need_to_create_new {
-                    Some(type_engine.insert(decl_engine, TypeInfo::Tuple(fields)))
+                    Some(type_engine.insert(engines, TypeInfo::Tuple(fields)))
                 } else {
                     None
                 }
@@ -407,7 +406,7 @@ impl TypeSubstMap {
                     })
                     .collect::<Vec<_>>();
                 if need_to_create_new {
-                    Some(type_engine.insert(decl_engine, TypeInfo::Storage { fields }))
+                    Some(type_engine.insert(engines, TypeInfo::Storage { fields }))
                 } else {
                     None
                 }
@@ -415,9 +414,17 @@ impl TypeSubstMap {
             TypeInfo::Alias { name, mut ty } => {
                 self.find_match(ty.type_id, engines).map(|type_id| {
                     ty.type_id = type_id;
-                    type_engine.insert(decl_engine, TypeInfo::Alias { name, ty })
+                    type_engine.insert(engines, TypeInfo::Alias { name, ty })
                 })
             }
+            TypeInfo::Ptr(mut ty) => self.find_match(ty.type_id, engines).map(|type_id| {
+                ty.type_id = type_id;
+                type_engine.insert(engines, TypeInfo::Ptr(ty))
+            }),
+            TypeInfo::Slice(mut ty) => self.find_match(ty.type_id, engines).map(|type_id| {
+                ty.type_id = type_id;
+                type_engine.insert(engines, TypeInfo::Slice(ty))
+            }),
             TypeInfo::Unknown
             | TypeInfo::Str(..)
             | TypeInfo::UnsignedInteger(..)

@@ -5,6 +5,7 @@ use crate::{
         token_map::TokenMapExt,
     },
     error::{LanguageServerError, RenameError},
+    utils::document::get_url_from_path,
 };
 use std::{collections::HashMap, sync::Arc};
 use sway_core::{language::ty, Engines};
@@ -49,7 +50,8 @@ pub fn rename(
 
     let te = session.type_engine.read();
     let de = session.decl_engine.read();
-    let engines = Engines::new(&te, &de);
+    let qe = session.query_engine.read();
+    let engines = Engines::new(&te, &de, &qe);
 
     // If the token is a function, find the parent declaration
     // and collect idents for all methods of ABI Decl, Trait Decl, and Impl Trait
@@ -77,7 +79,7 @@ pub fn rename(
             range.start.character -= RAW_IDENTIFIER.len() as u32;
         }
         if let Some(path) = ident.span().path() {
-            let url = session.sync.url_from_path(path).ok()?;
+            let url = get_url_from_path(path).ok()?;
             if let Some(url) = session.sync.to_workspace_url(url) {
                 let edit = TextEdit::new(range, new_name.clone());
                 return Some((url, vec![edit]));
@@ -112,7 +114,8 @@ pub fn prepare_rename(
 
     let te = session.type_engine.read();
     let de = session.decl_engine.read();
-    let engines = Engines::new(&te, &de);
+    let qe = session.query_engine.read();
+    let engines = Engines::new(&te, &de, &qe);
 
     // Only let through tokens that are in the users workspace.
     // tokens that are external to the users workspace cannot be renamed.

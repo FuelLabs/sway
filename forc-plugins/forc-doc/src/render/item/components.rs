@@ -4,7 +4,7 @@ use crate::{
         constant::IDENTITY, item::context::ItemContext, sidebar::*, title::DocBlockTitle, DocStyle,
         Renderable,
     },
-    RenderPlan,
+    RenderPlan, ASSETS_DIR_NAME,
 };
 use anyhow::Result;
 use horrorshow::{box_html, Raw, RenderBox};
@@ -28,11 +28,15 @@ impl Renderable for ItemHeader {
             item_name,
         } = self;
 
-        let favicon = module_info.to_html_shorthand_path_string("assets/sway-logo.svg");
-        let normalize = module_info.to_html_shorthand_path_string("assets/normalize.css");
-        let swaydoc = module_info.to_html_shorthand_path_string("assets/swaydoc.css");
-        let ayu = module_info.to_html_shorthand_path_string("assets/ayu.css");
-        let ayu_hjs = module_info.to_html_shorthand_path_string("assets/ayu.min.css");
+        let favicon =
+            module_info.to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/sway-logo.svg"));
+        let normalize =
+            module_info.to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/normalize.css"));
+        let swaydoc =
+            module_info.to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/swaydoc.css"));
+        let ayu = module_info.to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/ayu.css"));
+        let ayu_hjs =
+            module_info.to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/ayu.min.css"));
 
         Ok(box_html! {
             head {
@@ -104,9 +108,11 @@ impl Renderable for ItemBody {
         let decl_ty = ty_decl.doc_name();
         let block_title = ty_decl.as_block_title();
         let sidebar = sidebar.render(render_plan.clone())?;
-        let item_context = (item_context.context_opt.is_some())
-            .then(|| -> Result<Box<dyn RenderBox>> { item_context.render(render_plan.clone()) });
-        let sway_hjs = module_info.to_html_shorthand_path_string("assets/highlight.js");
+        let item_context = (item_context.context_opt.is_some()
+            || item_context.impl_traits.is_some())
+        .then(|| -> Result<Box<dyn RenderBox>> { item_context.render(render_plan.clone()) });
+        let sway_hjs =
+            module_info.to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/highlight.js"));
         let rendered_module_anchors = module_info.get_anchors()?;
 
         Ok(box_html! {

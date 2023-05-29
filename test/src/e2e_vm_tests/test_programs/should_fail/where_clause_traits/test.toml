@@ -1,0 +1,8 @@
+category = "fail"
+
+# check: $()impl MyTraitGeneric<S1> for u64 {
+# nextln:$()Trait "MyTrait" is not implemented for type "S1".
+
+# check: $()impl<T> MyTraitGeneric<T> for u32 {
+# nextln: $()Expects trait constraint "T: MyTrait" which is missing from type parameter "T".
+
