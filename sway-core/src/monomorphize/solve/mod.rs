@@ -11,5 +11,5 @@ use crate::{engine_threading::*, monomorphize::priv_prelude::*};
 
 /// Priority queue sorting the constraints.
 // https://dev.to/timclicks/creating-a-priority-queue-with-a-custom-sort-order-using-a-binary-heap-in-rust-3oab
-pub(crate) type ConstraintWrapper<'a> = WithEngines<'a, Constraint>;
-pub(crate) type ConstraintPQ<'a> = BinaryHeap<ConstraintWrapper<'a>>;
+pub(crate) type ConstraintWrapper = WithEngines<Constraint>;
+pub(crate) type ConstraintPQ = BinaryHeap<ConstraintWrapper>;

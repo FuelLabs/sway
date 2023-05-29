@@ -58,9 +58,9 @@ impl ty::TyMatchExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
-        let engines = ctx.engines();
+        let engines = &ctx.engines().clone();
+        let type_engine = engines.te();
+        let decl_engine = engines.de();
 
         // create the typed if expression object that we will be building on to
         let mut typed_if_exp: Option<ty::TyExpression> = None;

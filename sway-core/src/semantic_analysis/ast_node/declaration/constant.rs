@@ -17,8 +17,8 @@ impl ty::TyConstantDecl {
         let mut errors = vec![];
         let mut warnings = vec![];
 
-        let type_engine = ctx.type_engine;
-        let engines = ctx.engines();
+        let engines = &ctx.engines.clone();
+        let type_engine = engines.te();
 
         let ConstantDeclaration {
             name,
@@ -37,7 +37,7 @@ impl ty::TyConstantDecl {
                 EnforceTypeArguments::No,
                 None
             ),
-            type_engine.insert(engines, TypeInfo::ErrorRecovery),
+            type_engine.insert(&ctx.engines, TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );
@@ -65,7 +65,7 @@ impl ty::TyConstantDecl {
 
                 let value = check!(
                     result,
-                    ty::TyExpression::error(name.span(), engines),
+                    ty::TyExpression::error(name.span(), &ctx.engines),
                     warnings,
                     errors
                 );
@@ -107,8 +107,7 @@ impl ty::TyConstantDecl {
 
     /// Used to create a stubbed out constant when the constant fails to
     /// compile, preventing cascading namespace errors.
-    pub(crate) fn error(engines: Engines<'_>, decl: parsed::ConstantDeclaration) -> TyConstantDecl {
-        let type_engine = engines.te();
+    pub(crate) fn error(engines: &Engines, decl: parsed::ConstantDeclaration) -> TyConstantDecl {
         let parsed::ConstantDeclaration {
             name,
             span,
@@ -121,7 +120,7 @@ impl ty::TyConstantDecl {
             call_path,
             span,
             attributes: Default::default(),
-            return_type: type_engine.insert(engines, TypeInfo::Unknown),
+            return_type: engines.te().insert(engines, TypeInfo::Unknown),
             type_ascription,
             is_configurable: false,
             value: None,

@@ -2,22 +2,12 @@ use std::sync::RwLock;
 
 use hashbrown::HashMap;
 
-use crate::{
-    decl_engine::*, language::ty, monomorphize::priv_prelude::*, query_engine::QueryEngine,
-    Engines, TypeEngine,
-};
+use crate::{decl_engine::*, language::ty, monomorphize::priv_prelude::*, Engines};
 
 /// Contextual state tracked and accumulated throughout applying the
 /// monomorphization instructions.
 pub(crate) struct InstructContext<'a> {
-    /// The type engine storing types.
-    pub(crate) type_engine: &'a TypeEngine,
-
-    /// The declaration engine holds declarations.
-    pub(crate) decl_engine: &'a DeclEngine,
-
-    /// The query engine holds queries.
-    pub(crate) query_engine: &'a QueryEngine,
+    pub(crate) engines: Engines,
 
     /// All of the instructions, sorted.
     instructions: &'a RwLock<InstructionItems>,
@@ -25,22 +15,16 @@ pub(crate) struct InstructContext<'a> {
 
 impl<'a> InstructContext<'a> {
     /// Initialize a context at the top-level of a module with its namespace.
-    pub(crate) fn from_root(
-        engines: Engines<'a>,
-        instructions: &'a RwLock<InstructionItems>,
-    ) -> Self {
+    pub(crate) fn from_root(engines: &Engines, instructions: &'a RwLock<InstructionItems>) -> Self {
         Self::from_module_namespace(engines, instructions)
     }
 
     fn from_module_namespace(
-        engines: Engines<'a>,
+        engines: &Engines,
         instructions: &'a RwLock<InstructionItems>,
     ) -> Self {
-        let (type_engine, decl_engine, query_engine) = engines.unwrap();
         Self {
-            type_engine,
-            decl_engine,
-            query_engine,
+            engines: engines.clone(),
             instructions,
         }
     }
@@ -49,9 +33,7 @@ impl<'a> InstructContext<'a> {
     /// lifetime bound by `self`.
     pub(crate) fn by_ref(&mut self) -> InstructContext<'_> {
         InstructContext {
-            type_engine: self.type_engine,
-            decl_engine: self.decl_engine,
-            query_engine: self.query_engine,
+            engines: self.engines.clone(),
             instructions: self.instructions,
         }
     }
@@ -59,9 +41,7 @@ impl<'a> InstructContext<'a> {
     /// Scope the [InstructContext] with the given [Namespace].
     pub(crate) fn scoped(self) -> InstructContext<'a> {
         InstructContext {
-            type_engine: self.type_engine,
-            decl_engine: self.decl_engine,
-            query_engine: self.query_engine,
+            engines: self.engines.clone(),
             instructions: self.instructions,
         }
     }

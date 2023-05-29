@@ -47,12 +47,7 @@ pub fn rename(
             RenameError::UnableToRenameModule { path: new_name },
         ));
     }
-
-    let te = session.type_engine.read();
-    let de = session.decl_engine.read();
-    let qe = session.query_engine.read();
-    let engines = Engines::new(&te, &de, &qe);
-
+    let engines = &session.engines.read();
     // If the token is a function, find the parent declaration
     // and collect idents for all methods of ABI Decl, Trait Decl, and Impl Trait
     let map_of_changes: HashMap<Url, Vec<TextEdit>> = (if token.kind == SymbolKind::Function {
@@ -112,14 +107,11 @@ pub fn prepare_rename(
         .token_at_position(&url, position)
         .ok_or(RenameError::TokenNotFound)?;
 
-    let te = session.type_engine.read();
-    let de = session.decl_engine.read();
-    let qe = session.query_engine.read();
-    let engines = Engines::new(&te, &de, &qe);
+    let engines = session.engines.read();
 
     // Only let through tokens that are in the users workspace.
     // tokens that are external to the users workspace cannot be renamed.
-    let _ = is_token_in_workspace(&session, engines, &token)?;
+    let _ = is_token_in_workspace(&session, &engines, &token)?;
 
     // Make sure we don't allow renaming of tokens that
     // are keywords or intrinsics.
@@ -148,7 +140,7 @@ fn formatted_name(ident: &Ident) -> String {
 /// Checks if the token is in the users workspace.
 fn is_token_in_workspace(
     session: &Arc<Session>,
-    engines: Engines<'_>,
+    engines: &Engines,
     token: &Token,
 ) -> Result<bool, LanguageServerError> {
     let decl_span = token
@@ -181,7 +173,7 @@ fn trait_interface_idents(interface_surface: &[ty::TyTraitInterfaceItem]) -> Vec
 /// Returns the `Ident`s of all methods found for an `AbiDecl`, `TraitDecl`, or `ImplTrait`.
 fn find_all_methods_for_decl(
     session: &Session,
-    engines: Engines<'_>,
+    engines: &Engines,
     url: &Url,
     position: Position,
 ) -> Result<Vec<Ident>, LanguageServerError> {

@@ -20,8 +20,8 @@ impl ty::TyScrutinee {
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let type_engine = ctx.type_engine;
         let engines = ctx.engines();
+        let type_engine = engines.te();
         match scrutinee {
             Scrutinee::Or { elems, span } => {
                 let type_id = type_engine.insert(engines, TypeInfo::Unknown);
@@ -113,8 +113,8 @@ fn type_check_variable(
     let warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
+    let type_engine = ctx.engines.te();
+    let decl_engine = ctx.engines.de();
 
     let typed_scrutinee = match ctx.namespace.resolve_symbol(&name).value {
         // If this variable is a constant, then we turn it into a [TyScrutinee::Constant](ty::TyScrutinee::Constant).
@@ -166,8 +166,9 @@ fn type_check_struct(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
+    let engines = &ctx.engines().clone();
+    let type_engine = engines.te();
+    let decl_engine = engines.de();
 
     // find the struct definition from the name
     let unknown_decl = check!(
@@ -254,7 +255,7 @@ fn type_check_struct(
 
     let struct_ref = decl_engine.insert(struct_decl);
     let typed_scrutinee = ty::TyScrutinee {
-        type_id: type_engine.insert(ctx.engines(), TypeInfo::Struct(struct_ref.clone())),
+        type_id: type_engine.insert(engines, TypeInfo::Struct(struct_ref.clone())),
         span,
         variant: ty::TyScrutineeVariant::StructScrutinee {
             struct_ref,
@@ -279,9 +280,9 @@ fn type_check_enum(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
-    let engines = ctx.engines();
+    let engines = &ctx.engines().clone();
+    let type_engine = engines.te();
+    let decl_engine = engines.de();
 
     let mut prefixes = call_path.prefixes.clone();
     let (callsite_span, mut enum_decl, call_path_decl) = match prefixes.pop() {
@@ -388,8 +389,8 @@ fn type_check_tuple(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
-    let engines = ctx.engines();
+    let engines = &ctx.engines().clone();
+    let type_engine = engines.te();
 
     let mut typed_elems = vec![];
     for elem in elems.into_iter() {

@@ -335,7 +335,7 @@ impl Parse for ty::TyExpression {
 
                         if let Some(struct_decl) = &ctx
                             .tokens
-                            .struct_declaration_of_type_id(ctx.engines, &self.return_type)
+                            .struct_declaration_of_type_id(&ctx.engines, &self.return_type)
                         {
                             struct_decl.fields.iter().for_each(|decl_field| {
                                 if decl_field.name == field.name {
@@ -1057,7 +1057,7 @@ impl Parse for ty::TyReassignment {
                     token.typed = Some(TypedAstToken::TypedReassignment(self.clone()));
                     if let Some(struct_decl) = &ctx
                         .tokens
-                        .struct_declaration_of_type_id(ctx.engines, &self.lhs_type)
+                        .struct_declaration_of_type_id(&ctx.engines, &self.lhs_type)
                     {
                         struct_decl.fields.iter().for_each(|decl_field| {
                             if &decl_field.name == name {

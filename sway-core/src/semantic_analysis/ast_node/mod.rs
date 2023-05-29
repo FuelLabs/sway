@@ -23,9 +23,9 @@ impl ty::TyAstNode {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
-        let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
-        let engines = ctx.engines();
+        let engines = &ctx.engines().clone();
+        let type_engine = engines.te();
+        let decl_engine = engines.de();
 
         let node = ty::TyAstNode {
             content: match node.content.clone() {

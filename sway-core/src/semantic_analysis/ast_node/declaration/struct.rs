@@ -68,7 +68,9 @@ impl ty::TyStructField {
     pub(crate) fn type_check(mut ctx: TypeCheckContext, field: StructField) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let type_engine = ctx.type_engine;
+
+        let engines = &ctx.engines.clone();
+        let type_engine = engines.te();
 
         let mut type_argument = field.type_argument;
         type_argument.type_id = check!(
@@ -78,7 +80,7 @@ impl ty::TyStructField {
                 EnforceTypeArguments::Yes,
                 None
             ),
-            type_engine.insert(ctx.engines(), TypeInfo::ErrorRecovery),
+            type_engine.insert(engines, TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );

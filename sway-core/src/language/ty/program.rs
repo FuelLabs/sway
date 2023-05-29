@@ -25,7 +25,7 @@ pub struct TyProgram {
 impl TyProgram {
     /// Validate the root module given the expected program kind.
     pub fn validate_root(
-        engines: Engines<'_>,
+        engines: &Engines,
         root: &TyModule,
         kind: parsed::TreeType,
         package_name: &str,
@@ -303,7 +303,8 @@ impl CollectTypesMetadata for TyProgram {
     ) -> CompileResult<Vec<TypeMetadata>> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let decl_engine = ctx.decl_engine;
+        let engines = &ctx.engines.clone();
+        let decl_engine = engines.de();
         let mut metadata = vec![];
 
         // First, look into all entry points that are not unit tests.

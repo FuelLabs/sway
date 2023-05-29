@@ -51,7 +51,7 @@ impl Root {
     /// and the symbol's own visibility
     pub(crate) fn resolve_call_path_with_visibility_check(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         mod_path: &Path,
         call_path: &CallPath,
     ) -> CompileResult<&ty::TyDecl> {

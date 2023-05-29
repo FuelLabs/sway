@@ -16,9 +16,9 @@ pub(crate) fn instantiate_if_expression(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
     let engines = ctx.engines();
+    let type_engine = engines.te();
+    let decl_engine = engines.de();
 
     // if the branch aborts, then its return type doesn't matter.
     let then_deterministically_aborts = then.deterministically_aborts(decl_engine, true);

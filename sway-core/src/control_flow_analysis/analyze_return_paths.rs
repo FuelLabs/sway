@@ -14,9 +14,9 @@ use petgraph::prelude::NodeIndex;
 use sway_error::error::CompileError;
 use sway_types::{ident::Ident, span::Span, IdentUnique};
 
-impl<'cfg> ControlFlowGraph<'cfg> {
-    pub(crate) fn construct_return_path_graph<'eng: 'cfg>(
-        engines: Engines<'eng>,
+impl ControlFlowGraph {
+    pub(crate) fn construct_return_path_graph(
+        engines: &Engines,
         module_nodes: &[ty::TyAstNode],
     ) -> Result<Self, CompileError> {
         let mut graph = ControlFlowGraph::default();
@@ -37,7 +37,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
     /// and the functions namespace and validating that all paths leading to the function exit node
     /// return the same type. Additionally, if a function has a return type, all paths must indeed
     /// lead to the function exit node.
-    pub(crate) fn analyze_return_paths(&self, engines: Engines<'_>) -> Vec<CompileError> {
+    pub(crate) fn analyze_return_paths(&self, engines: &Engines) -> Vec<CompileError> {
         let mut errors = vec![];
         for (
             (name, _sig),
@@ -62,7 +62,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
 
     fn ensure_all_paths_reach_exit(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         entry_point: EntryPoint,
         exit_point: ExitPoint,
         function_name: &IdentUnique,
@@ -125,10 +125,10 @@ enum NodeConnection {
     Return(NodeIndex),
 }
 
-fn connect_node<'eng: 'cfg, 'cfg>(
-    engines: Engines<'eng>,
+fn connect_node(
+    engines: &Engines,
     node: &ty::TyAstNode,
-    graph: &mut ControlFlowGraph<'cfg>,
+    graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],
 ) -> Result<NodeConnection, CompileError> {
     match &node.content {
@@ -172,11 +172,11 @@ fn connect_node<'eng: 'cfg, 'cfg>(
     }
 }
 
-fn connect_declaration<'eng: 'cfg, 'cfg>(
-    engines: Engines<'eng>,
+fn connect_declaration(
+    engines: &Engines,
     node: &ty::TyAstNode,
     decl: &ty::TyDecl,
-    graph: &mut ControlFlowGraph<'cfg>,
+    graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],
 ) -> Result<Vec<NodeIndex>, CompileError> {
     let decl_engine = engines.de();
@@ -226,10 +226,10 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
 /// that the declaration was indeed at some point implemented.
 /// Additionally, we insert the trait's methods into the method namespace in order to
 /// track which exact methods are dead code.
-fn connect_impl_trait<'eng: 'cfg, 'cfg>(
-    engines: Engines<'eng>,
+fn connect_impl_trait(
+    engines: &Engines,
     trait_name: &CallPath,
-    graph: &mut ControlFlowGraph<'cfg>,
+    graph: &mut ControlFlowGraph,
     items: &[TyImplItem],
     entry_node: NodeIndex,
 ) -> Result<(), CompileError> {
@@ -244,7 +244,6 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
                     span: fn_decl.span.clone(),
                     method_name: fn_decl.name.clone(),
                     method_decl_ref: method_decl_ref.clone(),
-                    engines,
                 });
                 graph.add_edge(entry_node, fn_decl_entry_node, "".into());
                 // connect the impl declaration node to the functions themselves, as all trait functions are
@@ -275,10 +274,10 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
 /// When connecting a function declaration, we are inserting a new root node into the graph that
 /// has no entry points, since it is just a declaration.
 /// When something eventually calls it, it gets connected to the declaration.
-fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
-    engines: Engines<'eng>,
+fn connect_typed_fn_decl(
+    engines: &Engines,
     fn_decl: &ty::TyFunctionDecl,
-    graph: &mut ControlFlowGraph<'cfg>,
+    graph: &mut ControlFlowGraph,
     entry_node: NodeIndex,
 ) -> Result<(), CompileError> {
     let type_engine = engines.te();
@@ -302,10 +301,10 @@ fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
 
 type ReturnStatementNodes = Vec<NodeIndex>;
 
-fn depth_first_insertion_code_block<'eng: 'cfg, 'cfg>(
-    engines: Engines<'eng>,
+fn depth_first_insertion_code_block(
+    engines: &Engines,
     node_content: &ty::TyCodeBlock,
-    graph: &mut ControlFlowGraph<'cfg>,
+    graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],
 ) -> Result<ReturnStatementNodes, CompileError> {
     let mut leaves = leaves.to_vec();

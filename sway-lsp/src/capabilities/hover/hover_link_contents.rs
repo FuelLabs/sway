@@ -23,20 +23,20 @@ pub struct RelatedType {
 }
 
 #[derive(Debug, Clone)]
-pub struct HoverLinkContents<'a> {
+pub struct HoverLinkContents {
     pub related_types: Vec<RelatedType>,
     pub implementations: Vec<Span>,
     session: Arc<Session>,
-    engines: Engines<'a>,
+    engines: Engines,
 }
 
-impl<'a> HoverLinkContents<'a> {
-    pub fn new(session: Arc<Session>, engines: Engines<'a>) -> Self {
+impl HoverLinkContents {
+    pub fn new(session: Arc<Session>, engines: &Engines) -> Self {
         Self {
             related_types: Vec::new(),
             implementations: Vec::new(),
             session,
-            engines,
+            engines: engines.clone(),
         }
     }
 
@@ -91,7 +91,7 @@ impl<'a> HoverLinkContents<'a> {
     /// Adds implementations of the given type to the list of implementations using the [TyDecl].
     pub fn add_implementations_for_decl(&mut self, ty_decl: &TyDecl) {
         if let Some(namespace) = self.session.namespace() {
-            let impl_spans = namespace.get_impl_spans_for_decl(self.engines, ty_decl);
+            let impl_spans = namespace.get_impl_spans_for_decl(&self.engines, ty_decl);
             self.add_implementations(&ty_decl.span(), impl_spans);
         }
     }
@@ -99,7 +99,7 @@ impl<'a> HoverLinkContents<'a> {
     /// Adds implementations of the given type to the list of implementations using the [TypeId].
     pub fn add_implementations_for_type(&mut self, decl_span: &Span, type_id: &TypeId) {
         if let Some(namespace) = self.session.namespace() {
-            let impl_spans = namespace.get_impl_spans_for_type(self.engines, type_id);
+            let impl_spans = namespace.get_impl_spans_for_type(&self.engines, type_id);
             self.add_implementations(decl_span, impl_spans);
         }
     }

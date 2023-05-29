@@ -24,8 +24,8 @@ impl ty::TyTraitFn {
             attributes,
         } = trait_fn;
 
-        let type_engine = ctx.type_engine;
-        let engines = ctx.engines();
+        let engines = &ctx.engines().clone();
+        let type_engine = engines.te();
 
         // Create a namespace for the trait function.
         let mut fn_namespace = ctx.namespace.clone();

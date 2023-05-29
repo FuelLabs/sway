@@ -24,6 +24,8 @@ impl ty::TyImplTrait {
         let mut errors = vec![];
         let mut warnings = vec![];
 
+        let engines = &ctx.engines.clone();
+
         let ImplTrait {
             impl_type_parameters,
             trait_name,
@@ -32,10 +34,6 @@ impl ty::TyImplTrait {
             items,
             block_span,
         } = impl_trait;
-
-        let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
-        let engines = ctx.engines();
 
         // create a namespace for the impl
         let mut impl_namespace = ctx.namespace.clone();
@@ -71,7 +69,8 @@ impl ty::TyImplTrait {
 
         // check to see if this type is supported in impl blocks
         check!(
-            type_engine
+            ctx.engines
+                .te()
                 .get(implementing_for.type_id)
                 .expect_is_supported_in_impl_blocks_self(&implementing_for.span),
             return err(warnings, errors),
@@ -82,7 +81,7 @@ impl ty::TyImplTrait {
         // check for unconstrained type parameters
         check!(
             check_for_unconstrained_type_parameters(
-                engines,
+                &ctx.engines,
                 &new_impl_type_parameters,
                 &trait_type_arguments,
                 implementing_for.type_id,
@@ -96,7 +95,7 @@ impl ty::TyImplTrait {
         let mut ctx = ctx
             .with_self_type(implementing_for.type_id)
             .with_help_text("")
-            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+            .with_type_annotation(engines.te().insert(engines, TypeInfo::Unknown));
 
         let impl_trait = match ctx
             .namespace
@@ -105,7 +104,7 @@ impl ty::TyImplTrait {
             .cloned()
         {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
-                let mut trait_decl = decl_engine.get_trait(&decl_id);
+                let mut trait_decl = engines.de().get_trait(&decl_id);
 
                 // monomorphize the trait declaration
                 check!(
@@ -167,15 +166,17 @@ impl ty::TyImplTrait {
                 // in contract ABIs yet (or ever?) due to the complexity of communicating
                 // the ABI layout in the descriptor file.
 
-                let abi = decl_engine.get_abi(&decl_id);
+                let abi = ctx.engines.de().get_abi(&decl_id);
 
-                if !type_engine
+                if !ctx
+                    .engines
+                    .te()
                     .get(implementing_for.type_id)
-                    .eq(&TypeInfo::Contract, engines)
+                    .eq(&TypeInfo::Contract, &ctx.engines)
                 {
                     errors.push(CompileError::ImplAbiForNonContract {
                         span: implementing_for.span(),
-                        ty: engines.help_out(implementing_for.type_id).to_string(),
+                        ty: ctx.engines.help_out(implementing_for.type_id).to_string(),
                     });
                 }
 
@@ -241,9 +242,9 @@ impl ty::TyImplTrait {
             block_span,
         } = impl_self;
 
-        let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
-        let engines = ctx.engines();
+        let engines = &ctx.engines().clone();
+        let type_engine = engines.te();
+        let decl_engine = engines.de();
 
         // create the namespace for the impl
         let mut impl_namespace = ctx.namespace.clone();
@@ -400,8 +401,8 @@ fn type_check_trait_implementation(
     let mut errors = vec![];
     let mut warnings = vec![];
 
-    let decl_engine = ctx.decl_engine;
-    let engines = ctx.engines();
+    let engines = &ctx.engines().clone();
+    let decl_engine = engines.de();
     let self_type = ctx.self_type();
 
     // Check to see if the type that we are implementing for implements the
@@ -648,8 +649,8 @@ fn type_check_impl_method(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
-    let engines = ctx.engines();
+    let engines = &ctx.engines().clone();
+    let type_engine = engines.te();
     let self_type = ctx.self_type();
 
     let mut ctx = ctx
@@ -865,8 +866,8 @@ fn type_check_const_decl(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
-    let engines = ctx.engines();
+    let engines = &ctx.engines().clone();
+    let type_engine = engines.te();
     let self_type = ctx.self_type();
 
     let mut ctx = ctx
@@ -980,7 +981,7 @@ fn type_check_const_decl(
 /// }
 /// ```
 fn check_for_unconstrained_type_parameters(
-    engines: Engines<'_>,
+    engines: &Engines,
     type_parameters: &[TypeParameter],
     trait_type_arguments: &[TypeArgument],
     self_type: TypeId,
@@ -1038,7 +1039,8 @@ fn handle_supertraits(
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
 
-    let decl_engine = ctx.decl_engine;
+    let engines = &ctx.engines.clone();
+    let decl_engine = engines.de();
 
     let mut interface_surface_item_ids: InterfaceItemMap = BTreeMap::new();
     let mut impld_item_refs: ItemMap = BTreeMap::new();

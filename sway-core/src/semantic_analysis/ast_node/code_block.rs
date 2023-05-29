@@ -12,8 +12,9 @@ impl ty::TyCodeBlock {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
-        let decl_engine = ctx.decl_engine;
-        let engines = ctx.engines();
+        let engines = &ctx.engines.clone();
+        let type_engine = engines.te();
+        let decl_engine = engines.de();
 
         // Create a temp namespace for checking within the code block scope.
         let mut code_block_namespace = ctx.namespace.clone();
@@ -79,15 +80,15 @@ impl ty::TyCodeBlock {
                         decl_span,
                     })) = never_decl_opt
                     {
-                        return ctx.engines().te().insert(
+                        return type_engine.insert(
                             engines,
                             TypeInfo::Enum(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
                         );
                     }
 
-                    ctx.type_engine.insert(engines, TypeInfo::Unknown)
+                    type_engine.insert(engines, TypeInfo::Unknown)
                 } else {
-                    ctx.type_engine.insert(engines, TypeInfo::Tuple(Vec::new()))
+                    type_engine.insert(engines, TypeInfo::Tuple(Vec::new()))
                 }
             });
 

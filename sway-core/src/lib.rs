@@ -78,7 +78,7 @@ use sysinfo::{System, SystemExt};
 /// Panics if the parser panics.
 pub fn parse(
     input: Arc<str>,
-    engines: Engines<'_>,
+    engines: &Engines,
     config: Option<&BuildConfig>,
 ) -> CompileResult<(lexed::LexedProgram, parsed::ParseProgram)> {
     CompileResult::with_handler(|h| match config {
@@ -167,7 +167,7 @@ fn module_attrs_to_map(
 /// When no `BuildConfig` is given, we're assumed to be parsing in-memory with no submodules.
 fn parse_in_memory(
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     src: Arc<str>,
 ) -> Result<(lexed::LexedProgram, parsed::ParseProgram), ErrorEmitted> {
     let module = sway_parse::parse_file(handler, src, None)?;
@@ -204,7 +204,7 @@ struct Submodules {
 /// Parse all dependencies `deps` as submodules.
 fn parse_submodules(
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     module_name: Option<&str>,
     module: &sway_ast::Module,
     module_dir: &Path,
@@ -270,7 +270,7 @@ fn parse_submodules(
 /// parse this module including all of its submodules.
 fn parse_module_tree(
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     src: Arc<str>,
     path: Arc<PathBuf>,
     module_name: Option<&str>,
@@ -334,7 +334,7 @@ fn module_path(
 pub struct CompiledAsm(pub FinalizedAsm);
 
 pub fn parsed_to_ast(
-    engines: Engines<'_>,
+    engines: &Engines,
     parse_program: &parsed::ParseProgram,
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
@@ -446,7 +446,7 @@ pub fn parsed_to_ast(
 }
 
 pub fn compile_to_ast(
-    engines: Engines<'_>,
+    engines: &Engines,
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
@@ -512,7 +512,7 @@ pub fn compile_to_ast(
 /// try compiling to a `CompiledAsm`,
 /// containing the asm in opcode form (not raw bytes/bytecode).
 pub fn compile_to_asm(
-    engines: Engines<'_>,
+    engines: &Engines,
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: BuildConfig,
@@ -534,7 +534,7 @@ pub fn compile_to_asm(
 /// try compiling to a `CompiledAsm`,
 /// containing the asm in opcode form (not raw bytes/bytecode).
 pub fn ast_to_asm(
-    engines: Engines<'_>,
+    engines: &Engines,
     ast_res: &CompileResult<ty::TyProgram>,
     build_config: &BuildConfig,
 ) -> CompileResult<CompiledAsm> {
@@ -555,7 +555,7 @@ pub fn ast_to_asm(
 }
 
 pub(crate) fn compile_ast_to_ir_to_asm(
-    engines: Engines<'_>,
+    engines: &Engines,
     program: &ty::TyProgram,
     build_config: &BuildConfig,
 ) -> CompileResult<FinalizedAsm> {
@@ -655,7 +655,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
 
 /// Given input Sway source code, compile to [CompiledBytecode], containing the asm in bytecode form.
 pub fn compile_to_bytecode(
-    engines: Engines<'_>,
+    engines: &Engines,
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: BuildConfig,
@@ -700,7 +700,7 @@ pub fn asm_to_bytecode(
 /// Given a [ty::TyProgram], which is type-checked Sway source, construct a graph to analyze
 /// control flow and determine if it is valid.
 fn perform_control_flow_analysis(
-    engines: Engines<'_>,
+    engines: &Engines,
     program: &ty::TyProgram,
     print_graph: Option<String>,
     print_graph_url_format: Option<String>,
@@ -722,10 +722,10 @@ fn perform_control_flow_analysis(
 /// code.
 ///
 /// Returns the graph that was used for analysis.
-fn dead_code_analysis<'a>(
-    engines: Engines<'a>,
+fn dead_code_analysis(
+    engines: &Engines,
     program: &ty::TyProgram,
-) -> CompileResult<ControlFlowGraph<'a>> {
+) -> CompileResult<ControlFlowGraph> {
     let decl_engine = engines.de();
     let mut dead_code_graph = Default::default();
     let tree_type = program.kind.tree_type();
@@ -739,10 +739,10 @@ fn dead_code_analysis<'a>(
 
 /// Recursively collect modules into the given `ControlFlowGraph` ready for dead code analysis.
 fn module_dead_code_analysis<'eng: 'cfg, 'cfg>(
-    engines: Engines<'eng>,
+    engines: &Engines,
     module: &ty::TyModule,
     tree_type: &parsed::TreeType,
-    graph: &mut ControlFlowGraph<'cfg>,
+    graph: &mut ControlFlowGraph,
 ) -> CompileResult<()> {
     let init_res = ok((), vec![], vec![]);
     let submodules_res = module
@@ -768,14 +768,14 @@ fn module_dead_code_analysis<'eng: 'cfg, 'cfg>(
     res
 }
 
-fn return_path_analysis(engines: Engines<'_>, program: &ty::TyProgram) -> Vec<CompileError> {
+fn return_path_analysis(engines: &Engines, program: &ty::TyProgram) -> Vec<CompileError> {
     let mut errors = vec![];
     module_return_path_analysis(engines, &program.root, &mut errors);
     errors
 }
 
 fn module_return_path_analysis(
-    engines: Engines<'_>,
+    engines: &Engines,
     module: &ty::TyModule,
     errors: &mut Vec<CompileError>,
 ) {
@@ -791,11 +791,7 @@ fn module_return_path_analysis(
 
 #[test]
 fn test_basic_prog() {
-    use crate::{decl_engine::DeclEngine, query_engine::QueryEngine, TypeEngine};
-    let type_engine = TypeEngine::default();
-    let decl_engine = DeclEngine::default();
-    let query_engine = QueryEngine::default();
-    let engines = Engines::new(&type_engine, &decl_engine, &query_engine);
+    let engines = Engines::default();
     let prog = parse(
         r#"
         contract;
@@ -877,7 +873,7 @@ fn test_basic_prog() {
     }
     "#
         .into(),
-        engines,
+        &engines,
         None,
     );
     let mut warnings: Vec<CompileWarning> = Vec::new();
@@ -886,11 +882,7 @@ fn test_basic_prog() {
 }
 #[test]
 fn test_parenthesized() {
-    use crate::{decl_engine::DeclEngine, query_engine::QueryEngine, TypeEngine};
-    let type_engine = TypeEngine::default();
-    let decl_engine = DeclEngine::default();
-    let query_engine = QueryEngine::default();
-    let engines = Engines::new(&type_engine, &decl_engine, &query_engine);
+    let engines = Engines::default();
     let prog = parse(
         r#"
         contract;
@@ -900,7 +892,7 @@ fn test_parenthesized() {
         }
     "#
         .into(),
-        engines,
+        &engines,
         None,
     );
     let mut warnings: Vec<CompileWarning> = Vec::new();
@@ -911,11 +903,7 @@ fn test_parenthesized() {
 #[test]
 fn test_unary_ordering() {
     use crate::language::{self, parsed};
-    use crate::{decl_engine::DeclEngine, query_engine::QueryEngine, TypeEngine};
-    let type_engine = TypeEngine::default();
-    let decl_engine = DeclEngine::default();
-    let query_engine = QueryEngine::default();
-    let engines = Engines::new(&type_engine, &decl_engine, &query_engine);
+    let engines = Engines::default();
     let prog = parse(
         r#"
     script;
@@ -925,7 +913,7 @@ fn test_unary_ordering() {
         !a && b;
     }"#
         .into(),
-        engines,
+        &engines,
         None,
     );
     let mut warnings: Vec<CompileWarning> = Vec::new();

@@ -15,7 +15,7 @@ pub trait TokenMapExt: Sized {
     fn all_references_of_token<'s>(
         self,
         token_to_match: &'s Token,
-        engines: Engines<'s>,
+        engines: &Engines,
     ) -> AllReferencesOfToken<'s, Self>;
 }
 
@@ -27,11 +27,11 @@ where
     fn all_references_of_token<'s>(
         self,
         token_to_match: &'s Token,
-        engines: Engines<'s>,
+        engines: &Engines,
     ) -> AllReferencesOfToken<'s, Self> {
         AllReferencesOfToken {
             token_to_match,
-            engines,
+            engines: engines.clone(),
             iter: self,
         }
     }
@@ -40,7 +40,7 @@ where
 /// A custom iterator that returns all references of a given token.
 pub struct AllReferencesOfToken<'s, I> {
     token_to_match: &'s Token,
-    engines: Engines<'s>,
+    engines: Engines,
     iter: I,
 }
 
@@ -52,8 +52,8 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         for (ident, token) in self.iter.by_ref() {
-            let decl_span_to_match = self.token_to_match.declared_token_span(self.engines);
-            let is_same_type = decl_span_to_match == token.declared_token_span(self.engines);
+            let decl_span_to_match = self.token_to_match.declared_token_span(&self.engines);
+            let is_same_type = decl_span_to_match == token.declared_token_span(&self.engines);
             let is_decl_of_token = Some(&ident.span()) == decl_span_to_match.as_ref();
 
             if decl_span_to_match.is_some() && is_same_type || is_decl_of_token {

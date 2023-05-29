@@ -11,14 +11,16 @@ use crate::{engine_threading::*, type_system::priv_prelude::*};
 /// "occurs check: a check for whether the same variable occurs on both
 /// sides and, if it does, decline to unify"
 /// https://papl.cs.brown.edu/2016/Type_Inference.html
-pub(super) struct OccursCheck<'a> {
-    engines: Engines<'a>,
+pub(super) struct OccursCheck {
+    engines: Engines,
 }
 
-impl<'a> OccursCheck<'a> {
+impl OccursCheck {
     /// Creates a new [OccursCheck].
-    pub(super) fn new(engines: Engines<'a>) -> OccursCheck<'a> {
-        OccursCheck { engines }
+    pub(super) fn new(engines: &Engines) -> OccursCheck {
+        OccursCheck {
+            engines: engines.clone(),
+        }
     }
 
     /// Checks whether `generic` occurs in `other` and returns true if so.
@@ -31,7 +33,7 @@ impl<'a> OccursCheck<'a> {
     /// case the occurs check would return `false`, as this is a valid
     /// unification.
     pub(super) fn check(&self, generic: TypeInfo, other: &TypeInfo) -> bool {
-        let other_generics = other.extract_nested_generics(self.engines);
+        let other_generics = other.extract_nested_generics(&self.engines);
         other_generics.contains(&self.engines.help_out(generic))
     }
 }

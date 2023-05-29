@@ -21,7 +21,7 @@ impl<'a, 'b> InstructContext<'a, 'b> {
     /// Initialize a context at the top-level of a module with its namespace.
     pub(crate) fn from_root(
         root_namespace: &'a mut InstructNamespace<'b>,
-        engines: Engines<'a>,
+        engines: &Engines,
         instructions: &'a [Instruction],
     ) -> Self {
         Self::from_module_namespace(root_namespace, engines, instructions)
@@ -29,7 +29,7 @@ impl<'a, 'b> InstructContext<'a, 'b> {
 
     fn from_module_namespace(
         namespace: &'a mut InstructNamespace<'b>,
-        engines: Engines<'a>,
+        engines: &Engines,
         instructions: &'a [Instruction],
     ) -> Self {
         let (type_engine, decl_engine) = engines.unwrap();

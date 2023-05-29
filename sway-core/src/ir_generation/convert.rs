@@ -1,8 +1,7 @@
 use crate::{
-    decl_engine::DeclEngine,
     language::Literal,
     type_system::{TypeId, TypeInfo},
-    TypeEngine,
+    Engines,
 };
 
 use super::types::{create_tagged_union_type, create_tuple_aggregate};
@@ -50,8 +49,7 @@ pub(super) fn convert_literal_to_constant(
 }
 
 pub(super) fn convert_resolved_typeid(
-    type_engine: &TypeEngine,
-    decl_engine: &DeclEngine,
+    engines: &Engines,
     context: &mut Context,
     ast_type: &TypeId,
     span: &Span,
@@ -59,10 +57,10 @@ pub(super) fn convert_resolved_typeid(
     // There's probably a better way to convert TypeError to String, but... we'll use something
     // other than String eventually?  IrError?
     convert_resolved_type(
-        type_engine,
-        decl_engine,
+        engines,
         context,
-        &type_engine
+        &engines
+            .te()
             .to_typeinfo(*ast_type, span)
             .map_err(|ty_err| CompileError::InternalOwned(format!("{ty_err:?}"), span.clone()))?,
         span,
@@ -70,19 +68,17 @@ pub(super) fn convert_resolved_typeid(
 }
 
 pub(super) fn convert_resolved_typeid_no_span(
-    type_engine: &TypeEngine,
-    decl_engine: &DeclEngine,
+    engines: &Engines,
     context: &mut Context,
     ast_type: &TypeId,
 ) -> Result<Type, CompileError> {
     let msg = "unknown source location";
     let span = crate::span::Span::from_string(msg.to_string());
-    convert_resolved_typeid(type_engine, decl_engine, context, ast_type, &span)
+    convert_resolved_typeid(engines, context, ast_type, &span)
 }
 
 fn convert_resolved_type(
-    type_engine: &TypeEngine,
-    decl_engine: &DeclEngine,
+    engines: &Engines,
     context: &mut Context,
     ast_type: &TypeInfo,
     span: &Span,
@@ -97,6 +93,8 @@ fn convert_resolved_type(
         }};
     }
 
+    let decl_engine = engines.de();
+
     Ok(match ast_type {
         // All integers are `u64`, see comment in convert_literal_to_value() above.
         TypeInfo::UnsignedInteger(_) => Type::get_uint64(context),
@@ -105,10 +103,10 @@ fn convert_resolved_type(
         TypeInfo::B256 => Type::get_b256(context),
         TypeInfo::Str(n) => Type::new_string(context, n.val() as u64),
         TypeInfo::Struct(decl_ref) => super::types::get_struct_for_types(
-            type_engine,
-            decl_engine,
+            engines,
             context,
-            decl_engine
+            engines
+                .de()
                 .get_struct(decl_ref)
                 .fields
                 .iter()
@@ -116,20 +114,11 @@ fn convert_resolved_type(
                 .collect::<Vec<_>>()
                 .as_slice(),
         )?,
-        TypeInfo::Enum(decl_ref) => create_tagged_union_type(
-            type_engine,
-            decl_engine,
-            context,
-            &decl_engine.get_enum(decl_ref).variants,
-        )?,
+        TypeInfo::Enum(decl_ref) => {
+            create_tagged_union_type(engines, context, &decl_engine.get_enum(decl_ref).variants)?
+        }
         TypeInfo::Array(elem_type, length) => {
-            let elem_type = convert_resolved_typeid(
-                type_engine,
-                decl_engine,
-                context,
-                &elem_type.type_id,
-                span,
-            )?;
+            let elem_type = convert_resolved_typeid(engines, context, &elem_type.type_id, span)?;
             Type::new_array(context, elem_type, length.val() as u64)
         }
         TypeInfo::Tuple(fields) => {
@@ -140,16 +129,14 @@ fn convert_resolved_type(
                 Type::get_unit(context)
             } else {
                 let new_fields = fields.iter().map(|x| x.type_id).collect();
-                create_tuple_aggregate(type_engine, decl_engine, context, new_fields)?
+                create_tuple_aggregate(engines, context, new_fields)?
             }
         }
         TypeInfo::RawUntypedPtr => Type::get_uint64(context),
         TypeInfo::RawUntypedSlice => Type::get_slice(context),
         TypeInfo::Ptr(_) => Type::get_uint64(context),
         TypeInfo::Slice(_) => Type::get_slice(context),
-        TypeInfo::Alias { ty, .. } => {
-            convert_resolved_typeid(type_engine, decl_engine, context, &ty.type_id, span)?
-        }
+        TypeInfo::Alias { ty, .. } => convert_resolved_typeid(engines, context, &ty.type_id, span)?,
 
         // Unsupported types which shouldn't exist in the AST after type checking and
         // monomorphisation.

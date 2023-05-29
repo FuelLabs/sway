@@ -625,17 +625,19 @@ impl Backend {
                         }
                         "typed" => {
                             Ok(program.typed.as_ref().and_then(|typed_program| {
+                                let engines = session.engines.read();
+                                let decl_engine = engines.de();
                                 // Initialize the string with the AST from the root
                                 let mut formatted_ast = debug::print_decl_engine_types(
                                     &typed_program.root.all_nodes,
-                                    &session.decl_engine.read(),
+                                    decl_engine,
                                 );
                                 for (ident, submodule) in &typed_program.root.submodules {
                                     if path_is_submodule(ident, &path) {
                                         // overwrite the root AST with the submodule AST
                                         formatted_ast = debug::print_decl_engine_types(
                                             &submodule.module.all_nodes,
-                                            &session.decl_engine.read(),
+                                            decl_engine,
                                         );
                                     }
                                 }

@@ -24,9 +24,9 @@ pub(crate) fn instantiate_enum(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
-    let engines = ctx.engines();
+    let engines = &ctx.engines().clone();
+    let type_engine = engines.te();
+    let decl_engine = engines.de();
 
     let enum_decl = decl_engine.get_enum(&enum_ref);
     let enum_variant = check!(

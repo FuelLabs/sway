@@ -21,7 +21,7 @@ impl<'a> CodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
         let existing_impl_decl = ctx
             .tokens
             .iter()
-            .all_references_of_token(ctx.token, ctx.engines)
+            .all_references_of_token(ctx.token, &ctx.engines)
             .find_map(|(_, token)| {
                 if let Some(TypedAstToken::TypedDeclaration(ty::TyDecl::ImplTrait(
                     ty::ImplTrait { decl_id, .. },

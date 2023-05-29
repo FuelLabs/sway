@@ -8,15 +8,15 @@ pub(crate) mod typed_tree;
 
 pub struct ParseContext<'a> {
     tokens: &'a TokenMap,
-    engines: Engines<'a>,
+    engines: Engines,
     namespace: &'a Module,
 }
 
 impl<'a> ParseContext<'a> {
-    pub fn new(tokens: &'a TokenMap, engines: Engines<'a>, namespace: &'a Module) -> Self {
+    pub fn new(tokens: &'a TokenMap, engines: &Engines, namespace: &'a Module) -> Self {
         Self {
             tokens,
-            engines,
+            engines: engines.clone(),
             namespace,
         }
     }

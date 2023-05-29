@@ -7,7 +7,6 @@ use super::{
 };
 use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
-    decl_engine::DeclEngine,
     engine_threading::*,
     ir_generation::const_eval::{
         compile_constant_expression, compile_constant_expression_to_constant,
@@ -17,7 +16,6 @@ use crate::{
         *,
     },
     metadata::MetadataManager,
-    query_engine::QueryEngine,
     type_system::*,
     types::*,
 };
@@ -58,10 +56,8 @@ use std::collections::HashMap;
 /// forced into a value if that is desired.  All the temporary values are manipulated with simple
 /// loads and stores, rather than anything more complicated like mem_copys.
 
-pub(crate) struct FnCompiler<'eng> {
-    type_engine: &'eng TypeEngine,
-    decl_engine: &'eng DeclEngine,
-    query_engine: &'eng QueryEngine,
+pub(crate) struct FnCompiler {
+    engines: Engines,
     module: Module,
     pub(super) function: Function,
     pub(super) current_block: Block,
@@ -76,26 +72,23 @@ pub(crate) struct FnCompiler<'eng> {
     messages_types_map: HashMap<TypeId, MessageId>,
 }
 
-impl<'eng> FnCompiler<'eng> {
+impl FnCompiler {
     #[allow(clippy::too_many_arguments)]
     pub(super) fn new(
-        engines: Engines<'eng>,
+        engines: &Engines,
         context: &mut Context,
         module: Module,
         function: Function,
         logged_types_map: &HashMap<TypeId, LogId>,
         messages_types_map: &HashMap<TypeId, MessageId>,
     ) -> Self {
-        let (type_engine, decl_engine, query_engine) = engines.unwrap();
         let lexical_map = LexicalMap::from_iter(
             function
                 .args_iter(context)
                 .map(|(name, _value)| name.clone()),
         );
         FnCompiler {
-            type_engine,
-            decl_engine,
-            query_engine,
+            engines: engines.clone(),
             module,
             function,
             current_block: function.get_entry_block(context),
@@ -154,6 +147,8 @@ impl<'eng> FnCompiler<'eng> {
             })
         };
 
+        let decl_engine = self.engines.de();
+
         let span_md_idx = md_mgr.span_to_md(context, &ast_node.span);
         match &ast_node.content {
             ty::TyAstNodeContent::Declaration(td) => match td {
@@ -161,19 +156,13 @@ impl<'eng> FnCompiler<'eng> {
                     self.compile_var_decl(context, md_mgr, tvd, span_md_idx)
                 }
                 ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
-                    let tcd = self.decl_engine.get_constant(decl_id);
+                    let tcd = decl_engine.get_constant(decl_id);
                     self.compile_const_decl(context, md_mgr, &tcd, span_md_idx, false)?;
                     Ok(None)
                 }
                 ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
-                    let ted = self.decl_engine.get_enum(decl_id);
-                    create_tagged_union_type(
-                        self.type_engine,
-                        self.decl_engine,
-                        context,
-                        &ted.variants,
-                    )
-                    .map(|_| ())?;
+                    let ted = decl_engine.get_enum(decl_id);
+                    create_tagged_union_type(&self.engines, context, &ted.variants).map(|_| ())?;
                     Ok(None)
                 }
                 ty::TyDecl::TypeAliasDecl { .. } => Err(CompileError::UnexpectedDeclaration {
@@ -266,6 +255,7 @@ impl<'eng> FnCompiler<'eng> {
         ast_expr: &ty::TyExpression,
     ) -> Result<Value, CompileError> {
         let span_md_idx = md_mgr.span_to_md(context, &ast_expr.span);
+        let decl_engine = self.engines.de();
         match &ast_expr.expression {
             ty::TyExpressionVariant::Literal(l) => {
                 Ok(convert_literal_to_value(context, l).add_metadatum(context, span_md_idx))
@@ -291,7 +281,7 @@ impl<'eng> FnCompiler<'eng> {
                         span_md_idx,
                     )
                 } else {
-                    let function_decl = self.decl_engine.get_function(fn_ref);
+                    let function_decl = decl_engine.get_function(fn_ref);
                     self.compile_fn_call(context, md_mgr, arguments, &function_decl, span_md_idx)
                 }
             }
@@ -373,7 +363,7 @@ impl<'eng> FnCompiler<'eng> {
                 contents,
                 ..
             } => {
-                let enum_decl = self.decl_engine.get_enum(enum_ref);
+                let enum_decl = decl_engine.get_enum(enum_ref);
                 self.compile_enum_expr(context, md_mgr, &enum_decl, *tag, contents.as_deref())
             }
             ty::TyExpressionVariant::Tuple { fields } => {
@@ -497,21 +487,14 @@ impl<'eng> FnCompiler<'eng> {
             Ok(key_val)
         }
 
-        let engines = Engines::new(self.type_engine, self.decl_engine, self.query_engine);
-
         // We safely index into arguments and type_arguments arrays below
         // because the type-checker ensures that the arguments are all there.
         match kind {
             Intrinsic::SizeOfVal => {
                 let exp = &arguments[0];
                 // Compile the expression in case of side-effects but ignore its value.
-                let ir_type = convert_resolved_typeid(
-                    self.type_engine,
-                    self.decl_engine,
-                    context,
-                    &exp.return_type,
-                    &exp.span,
-                )?;
+                let ir_type =
+                    convert_resolved_typeid(&self.engines, context, &exp.return_type, &exp.span)?;
                 self.compile_expression_to_value(context, md_mgr, exp)?;
                 Ok(Constant::get_uint(
                     context,
@@ -521,13 +504,8 @@ impl<'eng> FnCompiler<'eng> {
             }
             Intrinsic::SizeOfType => {
                 let targ = type_arguments[0].clone();
-                let ir_type = convert_resolved_typeid(
-                    self.type_engine,
-                    self.decl_engine,
-                    context,
-                    &targ.type_id,
-                    &targ.span,
-                )?;
+                let ir_type =
+                    convert_resolved_typeid(&self.engines, context, &targ.type_id, &targ.span)?;
                 Ok(Constant::get_uint(
                     context,
                     64,
@@ -536,7 +514,7 @@ impl<'eng> FnCompiler<'eng> {
             }
             Intrinsic::IsReferenceType => {
                 let targ = type_arguments[0].clone();
-                let val = !self.type_engine.get_unaliased(targ.type_id).is_copy_type();
+                let val = !self.engines.te().get_unaliased(targ.type_id).is_copy_type();
                 Ok(Constant::get_bool(context, val))
             }
             Intrinsic::Eq | Intrinsic::Gt | Intrinsic::Lt => {
@@ -562,7 +540,7 @@ impl<'eng> FnCompiler<'eng> {
                 // The tx field ID has to be a compile-time constant because it becomes an
                 // immediate
                 let tx_field_id_constant = compile_constant_expression_to_constant(
-                    engines,
+                    &self.engines,
                     context,
                     md_mgr,
                     self.module,
@@ -584,8 +562,7 @@ impl<'eng> FnCompiler<'eng> {
                 // Get the target type from the type argument provided
                 let target_type = &type_arguments[0];
                 let target_ir_type = convert_resolved_typeid(
-                    self.type_engine,
-                    self.decl_engine,
+                    &self.engines,
                     context,
                     &target_type.type_id,
                     &target_type.span,
@@ -603,7 +580,8 @@ impl<'eng> FnCompiler<'eng> {
                 // Reinterpret the result of the `gtf` instruction (which is always `u64`) as type
                 // `T`. This requires an `int_to_ptr` instruction if `T` is a reference type.
                 if self
-                    .type_engine
+                    .engines
+                    .te()
                     .get_unaliased(target_type.type_id)
                     .is_copy_type()
                 {
@@ -658,7 +636,7 @@ impl<'eng> FnCompiler<'eng> {
                 let val_exp = &arguments[1];
                 // Validate that the val_exp is of the right type. We couldn't do it
                 // earlier during type checking as the type arguments may not have been resolved.
-                let val_ty = self.type_engine.get_unaliased(val_exp.return_type);
+                let val_ty = self.engines.te().get_unaliased(val_exp.return_type);
                 if !val_ty.is_copy_type() {
                     return Err(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
@@ -682,8 +660,8 @@ impl<'eng> FnCompiler<'eng> {
                 let number_of_slots_exp = arguments[2].clone();
                 // Validate that the val_exp is of the right type. We couldn't do it
                 // earlier during type checking as the type arguments may not have been resolved.
-                let val_ty = self.type_engine.get_unaliased(val_exp.return_type);
-                if !val_ty.eq(&TypeInfo::RawUntypedPtr, engines) {
+                let val_ty = self.engines.te().get_unaliased(val_exp.return_type);
+                if !val_ty.eq(&TypeInfo::RawUntypedPtr, &self.engines) {
                     return Err(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
                         span,
@@ -809,13 +787,8 @@ impl<'eng> FnCompiler<'eng> {
                 };
 
                 let len = type_arguments[0].clone();
-                let ir_type = convert_resolved_typeid(
-                    self.type_engine,
-                    self.decl_engine,
-                    context,
-                    &len.type_id,
-                    &len.span,
-                )?;
+                let ir_type =
+                    convert_resolved_typeid(&self.engines, context, &len.type_id, &len.span)?;
                 let len_value =
                     Constant::get_uint(context, 64, ir_type_size_in_bytes(context, &ir_type));
 
@@ -1071,7 +1044,8 @@ impl<'eng> FnCompiler<'eng> {
                 // The single arg doesn't need to be put into a struct.
                 let arg0 = compiled_args[0];
                 if self
-                    .type_engine
+                    .engines
+                    .te()
                     .get_unaliased(ast_args[0].1.return_type)
                     .is_copy_type()
                 {
@@ -1273,14 +1247,11 @@ impl<'eng> FnCompiler<'eng> {
         };
 
         // Convert the return type.  If it's a reference type then make it a pointer.
-        let return_type = convert_resolved_typeid_no_span(
-            self.type_engine,
-            self.decl_engine,
-            context,
-            &ast_return_type,
-        )?;
+        let return_type =
+            convert_resolved_typeid_no_span(&self.engines, context, &ast_return_type)?;
         let ret_is_copy_type = self
-            .type_engine
+            .engines
+            .te()
             .get_unaliased(ast_return_type)
             .is_copy_type();
         let return_type = if ret_is_copy_type {
@@ -1361,7 +1332,7 @@ impl<'eng> FnCompiler<'eng> {
                 };
                 let is_entry = false;
                 let new_func = compile_function(
-                    Engines::new(self.type_engine, self.decl_engine, self.query_engine),
+                    &self.engines,
                     context,
                     md_mgr,
                     self.module,
@@ -1455,13 +1426,8 @@ impl<'eng> FnCompiler<'eng> {
             )
             .add_metadatum(context, cond_span_md_idx);
 
-        let return_type = convert_resolved_typeid_no_span(
-            self.type_engine,
-            self.decl_engine,
-            context,
-            &return_type,
-        )
-        .unwrap_or_else(|_| Type::get_unit(context));
+        let return_type = convert_resolved_typeid_no_span(&self.engines, context, &return_type)
+            .unwrap_or_else(|_| Type::get_unit(context));
         let merge_block = self.function.create_block(context, None);
         // Add a single argument to merge_block that merges true_value and false_value.
         // Rely on the type of the ast node when creating that argument
@@ -1489,21 +1455,16 @@ impl<'eng> FnCompiler<'eng> {
         variant: &ty::TyEnumVariant,
     ) -> Result<Value, CompileError> {
         // Retrieve the type info for the enum.
-        let enum_type = match convert_resolved_typeid(
-            self.type_engine,
-            self.decl_engine,
-            context,
-            &exp.return_type,
-            &exp.span,
-        )? {
-            ty if ty.is_struct(context) => ty,
-            _ => {
-                return Err(CompileError::Internal(
-                    "Enum type for `unsafe downcast` is not an enum.",
-                    exp.span.clone(),
-                ));
-            }
-        };
+        let enum_type =
+            match convert_resolved_typeid(&self.engines, context, &exp.return_type, &exp.span)? {
+                ty if ty.is_struct(context) => ty,
+                _ => {
+                    return Err(CompileError::Internal(
+                        "Enum type for `unsafe downcast` is not an enum.",
+                        exp.span.clone(),
+                    ));
+                }
+            };
 
         // Compile the struct expression.
         let compiled_value = self.compile_expression_to_ptr(context, md_mgr, exp)?;
@@ -1710,24 +1671,19 @@ impl<'eng> FnCompiler<'eng> {
         // Nothing to do for an abi cast declarations. The address specified in them is already
         // provided in each contract call node in the AST.
         if matches!(
-            &self.type_engine.get_unaliased(body.return_type),
+            &self.engines.te().get_unaliased(body.return_type),
             TypeInfo::ContractCaller { .. }
         ) {
             return Ok(None);
         }
 
         // Grab this before we move body into compilation.
-        let return_type = convert_resolved_typeid(
-            self.type_engine,
-            self.decl_engine,
-            context,
-            &body.return_type,
-            &body.span,
-        )?;
+        let return_type =
+            convert_resolved_typeid(&self.engines, context, &body.return_type, &body.span)?;
 
         // We must compile the RHS before checking for shadowing, as it will still be in the
         // previous scope.
-        let body_deterministically_aborts = body.deterministically_aborts(self.decl_engine, false);
+        let body_deterministically_aborts = body.deterministically_aborts(self.engines.de(), false);
         let init_val = self.compile_expression_to_value(context, md_mgr, body)?;
         if init_val.is_diverging(context) || body_deterministically_aborts {
             return Ok(Some(init_val));
@@ -1775,7 +1731,7 @@ impl<'eng> FnCompiler<'eng> {
         } = ast_const_decl;
         if let Some(value) = value {
             let const_expr_val = compile_constant_expression(
-                Engines::new(self.type_engine, self.decl_engine, self.query_engine),
+                &self.engines,
                 context,
                 md_mgr,
                 self.module,
@@ -1794,8 +1750,7 @@ impl<'eng> FnCompiler<'eng> {
                     .insert(call_path.suffix.as_str().to_owned());
 
                 let return_type = convert_resolved_typeid(
-                    self.type_engine,
-                    self.decl_engine,
+                    &self.engines,
                     context,
                     &value.return_type,
                     &value.span,
@@ -1885,7 +1840,7 @@ impl<'eng> FnCompiler<'eng> {
                 .lhs_indices
                 .iter()
                 .scan(ast_reassignment.lhs_type, |cur_type_id, idx_kind| {
-                    let cur_type_info = self.type_engine.get_unaliased(*cur_type_id);
+                    let cur_type_info = self.engines.te().get_unaliased(*cur_type_id);
                     Some(match (idx_kind, cur_type_info) {
                         (
                             ProjectionKind::StructField { name: idx_name },
@@ -1896,7 +1851,7 @@ impl<'eng> FnCompiler<'eng> {
                                 call_path: struct_call_path,
                                 fields: struct_fields,
                                 ..
-                            } = self.decl_engine.get_struct(&decl_ref);
+                            } = self.engines.de().get_struct(&decl_ref);
 
                             // Search for the index to the field name we're after, and its type
                             // id.
@@ -1969,12 +1924,7 @@ impl<'eng> FnCompiler<'eng> {
         contents: &[ty::TyExpression],
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
-        let elem_type = convert_resolved_typeid_no_span(
-            self.type_engine,
-            self.decl_engine,
-            context,
-            elem_type,
-        )?;
+        let elem_type = convert_resolved_typeid_no_span(&self.engines, context, elem_type)?;
 
         let array_type = Type::new_array(context, elem_type, contents.len() as u64);
 
@@ -2040,7 +1990,7 @@ impl<'eng> FnCompiler<'eng> {
             value: ConstantValue::Uint(constant_value),
             ..
         }) = compile_constant_expression_to_constant(
-            Engines::new(self.type_engine, self.decl_engine, self.query_engine),
+            &self.engines,
             context,
             md_mgr,
             self.module,
@@ -2103,8 +2053,7 @@ impl<'eng> FnCompiler<'eng> {
             insert_values.push(insert_val);
 
             field_types.push(convert_resolved_typeid_no_span(
-                self.type_engine,
-                self.decl_engine,
+                &self.engines,
                 context,
                 &struct_field.value.return_type,
             )?);
@@ -2157,7 +2106,7 @@ impl<'eng> FnCompiler<'eng> {
         let struct_val = self.compile_expression_to_ptr(context, md_mgr, ast_struct_expr)?;
 
         // Get the struct type info, with field names.
-        let TypeInfo::Struct(decl_ref) = self.type_engine.get_unaliased(struct_type_id) else {
+        let TypeInfo::Struct(decl_ref) = self.engines.te().get_unaliased(struct_type_id) else {
             return Err(CompileError::Internal(
                 "Unknown struct in field expression.",
                 ast_field.span.clone(),
@@ -2167,7 +2116,7 @@ impl<'eng> FnCompiler<'eng> {
             call_path: struct_call_path,
             fields: struct_fields,
             ..
-        } = self.decl_engine.get_struct(&decl_ref);
+        } = self.engines.de().get_struct(&decl_ref);
 
         // Search for the index to the field name we're after, and its type id.
         let (field_idx, field_type_id) = struct_fields
@@ -2186,13 +2135,8 @@ impl<'eng> FnCompiler<'eng> {
                 )
             })?;
 
-        let field_type = convert_resolved_typeid(
-            self.type_engine,
-            self.decl_engine,
-            context,
-            &field_type_id,
-            &ast_field.span,
-        )?;
+        let field_type =
+            convert_resolved_typeid(&self.engines, context, &field_type_id, &ast_field.span)?;
 
         Ok(self
             .current_block
@@ -2216,12 +2160,7 @@ impl<'eng> FnCompiler<'eng> {
         // we could potentially use the wrong aggregate with the same name, different module...
         // dunno.
         let span_md_idx = md_mgr.span_to_md(context, &enum_decl.span);
-        let enum_type = create_tagged_union_type(
-            self.type_engine,
-            self.decl_engine,
-            context,
-            &enum_decl.variants,
-        )?;
+        let enum_type = create_tagged_union_type(&self.engines, context, &enum_decl.variants)?;
         let tag_value =
             Constant::get_uint(context, 64, tag as u64).add_metadatum(context, span_md_idx);
 
@@ -2292,8 +2231,7 @@ impl<'eng> FnCompiler<'eng> {
             let mut init_types = Vec::with_capacity(fields.len());
             for field_expr in fields {
                 let init_type = convert_resolved_typeid_no_span(
-                    self.type_engine,
-                    self.decl_engine,
+                    &self.engines,
                     context,
                     &field_expr.return_type,
                 )?;
@@ -2349,13 +2287,7 @@ impl<'eng> FnCompiler<'eng> {
         span: Span,
     ) -> Result<Value, CompileError> {
         let tuple_value = self.compile_expression_to_ptr(context, md_mgr, tuple)?;
-        let tuple_type = convert_resolved_typeid(
-            self.type_engine,
-            self.decl_engine,
-            context,
-            &tuple_type,
-            &span,
-        )?;
+        let tuple_type = convert_resolved_typeid(&self.engines, context, &tuple_type, &span)?;
         tuple_type
             .get_field_type(context, idx as u64)
             .map(|field_type| {
@@ -2384,20 +2316,10 @@ impl<'eng> FnCompiler<'eng> {
         // if the storage field type is not a struct.
         // FIXME: shouldn't have to extract the first field like this.
         let base_type = fields[0].type_id;
-        let field_idcs = get_indices_for_struct_access(
-            self.type_engine,
-            self.decl_engine,
-            base_type,
-            &fields[1..],
-        )?;
+        let field_idcs = get_indices_for_struct_access(&self.engines, base_type, &fields[1..])?;
 
         // Get the IR type of the storage variable
-        let base_type = convert_resolved_typeid_no_span(
-            self.type_engine,
-            self.decl_engine,
-            context,
-            &base_type,
-        )?;
+        let base_type = convert_resolved_typeid_no_span(&self.engines, context, &base_type)?;
 
         // Do the actual work. This is a recursive function because we want to drill down
         // to load each primitive type in the storage field in its own storage slot.
@@ -2437,7 +2359,8 @@ impl<'eng> FnCompiler<'eng> {
                                         .get_type(context)
                                         .map_or(false, |ty| ty.is_ptr(context))
                                         && self
-                                            .type_engine
+                                            .engines
+                                            .te()
                                             .get_unaliased(init_expr.return_type)
                                             .is_copy_type()
                                     {
@@ -2475,12 +2398,7 @@ impl<'eng> FnCompiler<'eng> {
         let returns = returns
             .as_ref()
             .map(|(_, asm_reg_span)| Ident::new(asm_reg_span.clone()));
-        let return_type = convert_resolved_typeid_no_span(
-            self.type_engine,
-            self.decl_engine,
-            context,
-            &return_type,
-        )?;
+        let return_type = convert_resolved_typeid_no_span(&self.engines, context, &return_type)?;
         Ok(self
             .current_block
             .ins(context)

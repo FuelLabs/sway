@@ -119,8 +119,8 @@ pub(crate) fn matcher(
         span,
     } = scrutinee;
 
-    let type_engine = ctx.type_engine;
     let engines = ctx.engines();
+    let type_engine = engines.te();
 
     // unify the type of the scrutinee with the type of the expression
     check!(

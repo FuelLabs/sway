@@ -8,10 +8,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use crate::{
-    decl_engine::DeclEngine, query_engine::QueryEngine, type_system::TypeId, CompileResult,
-    Engines, TypeEngine,
-};
+use crate::{type_system::TypeId, CompileResult, Engines};
 use sway_types::{Ident, Span};
 
 /// If any types contained by this node are unresolved or have yet to be inferred, throw an
@@ -61,7 +58,7 @@ pub enum TypeMetadata {
 }
 
 // A simple context that only contains a single counter for now but may expand in the future.
-pub struct CollectTypesMetadataContext<'cx> {
+pub struct CollectTypesMetadataContext {
     // Consume this and update it via the methods implemented for CollectTypesMetadataContext to
     // obtain a unique ID for a given log instance.
     log_id_counter: usize,
@@ -71,12 +68,10 @@ pub struct CollectTypesMetadataContext<'cx> {
     message_id_counter: usize,
 
     call_site_spans: Vec<Arc<Mutex<HashMap<TypeId, Span>>>>,
-    pub(crate) type_engine: &'cx TypeEngine,
-    pub(crate) decl_engine: &'cx DeclEngine,
-    pub(crate) query_engine: &'cx QueryEngine,
+    pub(crate) engines: Engines,
 }
 
-impl<'cx> CollectTypesMetadataContext<'cx> {
+impl CollectTypesMetadataContext {
     pub fn log_id_counter(&self) -> usize {
         self.log_id_counter
     }
@@ -121,12 +116,9 @@ impl<'cx> CollectTypesMetadataContext<'cx> {
         None
     }
 
-    pub fn new(engines: Engines<'cx>) -> Self {
-        let (type_engine, decl_engine, query_engine) = engines.unwrap();
+    pub fn new(engines: &Engines) -> Self {
         let mut ctx = Self {
-            type_engine,
-            decl_engine,
-            query_engine,
+            engines: engines.clone(),
             log_id_counter: 0,
             message_id_counter: 0,
             call_site_spans: vec![],

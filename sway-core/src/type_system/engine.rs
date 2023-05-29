@@ -22,7 +22,7 @@ pub struct TypeEngine {
 impl TypeEngine {
     /// Inserts a [TypeInfo] into the [TypeEngine] and returns a [TypeId]
     /// referring to that [TypeInfo].
-    pub(crate) fn insert(&self, engines: Engines<'_>, ty: TypeInfo) -> TypeId {
+    pub(crate) fn insert(&self, engines: &Engines, ty: TypeInfo) -> TypeId {
         let mut id_map = self.id_map.write().unwrap();
 
         let hash_builder = id_map.hasher().clone();
@@ -93,7 +93,7 @@ impl TypeEngine {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn monomorphize<T>(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         value: &mut T,
         type_arguments: &mut [TypeArgument],
         enforce_type_arguments: EnforceTypeArguments,
@@ -189,7 +189,7 @@ impl TypeEngine {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn unify_with_self(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         mut received: TypeId,
         mut expected: TypeId,
         self_type: TypeId,
@@ -211,7 +211,7 @@ impl TypeEngine {
     /// is not).
     pub(crate) fn unify(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         received: TypeId,
         expected: TypeId,
         span: &Span,
@@ -265,7 +265,7 @@ impl TypeEngine {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn resolve(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         type_id: TypeId,
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
@@ -430,7 +430,7 @@ impl TypeEngine {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn resolve_with_self(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         mut type_id: TypeId,
         self_type: TypeId,
         span: &Span,
@@ -454,7 +454,7 @@ impl TypeEngine {
     /// Pretty print method for printing the [TypeEngine]. This method is
     /// manually implemented to avoid implementation overhead regarding using
     /// [DisplayWithEngines].
-    pub fn pretty_print(&self, _decl_engine: &DeclEngine, engines: Engines<'_>) -> String {
+    pub fn pretty_print(&self, _decl_engine: &DeclEngine, engines: &Engines) -> String {
         let mut builder = String::new();
         self.slab.with_slice(|elems| {
             let list = elems

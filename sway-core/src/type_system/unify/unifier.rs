@@ -11,16 +11,16 @@ use crate::{engine_threading::*, language::ty, type_system::priv_prelude::*};
 use super::occurs_check::OccursCheck;
 
 /// Helper struct to aid in type unification.
-pub(crate) struct Unifier<'a> {
-    engines: Engines<'a>,
+pub(crate) struct Unifier {
+    engines: Engines,
     help_text: String,
 }
 
-impl<'a> Unifier<'a> {
+impl Unifier {
     /// Creates a new [Unifier].
-    pub(crate) fn new(engines: Engines<'a>, help_text: &str) -> Unifier<'a> {
+    pub(crate) fn new(engines: &Engines, help_text: &str) -> Unifier {
         Unifier {
-            engines,
+            engines: engines.clone(),
             help_text: help_text.to_string(),
         }
     }
@@ -38,7 +38,7 @@ impl<'a> Unifier<'a> {
             received,
             received_type_info,
             expected_type_info,
-            self.engines,
+            &self.engines,
         ) {
             None => (vec![], vec![]),
             Some(_) => self.unify(received, expected, span),
@@ -58,7 +58,7 @@ impl<'a> Unifier<'a> {
             expected,
             expected_type_info,
             received_type_info,
-            self.engines,
+            &self.engines,
         ) {
             None => (vec![], vec![]),
             Some(_) => self.unify(received, expected, span),
@@ -197,7 +197,7 @@ impl<'a> Unifier<'a> {
                 )
             }
             (ref r @ TypeInfo::ContractCaller { .. }, ref e @ TypeInfo::ContractCaller { .. })
-                if r.eq(e, self.engines) =>
+                if r.eq(e, &self.engines) =>
             {
                 // if they are the same, then it's ok
                 (vec![], vec![])
@@ -236,7 +236,7 @@ impl<'a> Unifier<'a> {
                     name: en,
                     trait_constraints: etc,
                 },
-            ) if rn.as_str() == en.as_str() && rtc.eq(&etc, self.engines) => (vec![], vec![]),
+            ) if rn.as_str() == en.as_str() && rtc.eq(&etc, &self.engines) => (vec![], vec![]),
             (r @ UnknownGeneric { .. }, e) if !self.occurs_check(r.clone(), &e) => {
                 self.replace_received_with_expected(received, expected, &r, e, span)
             }
@@ -261,7 +261,7 @@ impl<'a> Unifier<'a> {
     }
 
     fn occurs_check(&self, generic: TypeInfo, other: &TypeInfo) -> bool {
-        OccursCheck::new(self.engines).check(generic, other)
+        OccursCheck::new(&self.engines).check(generic, other)
     }
 
     fn unify_strs(
@@ -430,7 +430,7 @@ impl<'a> Unifier<'a> {
 
     fn assign_args<T>(&self, r: T, e: T) -> (String, String)
     where
-        WithEngines<'a, T>: fmt::Debug,
+        WithEngines<T>: fmt::Debug,
     {
         let r = format!("{:?}", self.engines.with_thing(r));
         let e = format!("{:?}", self.engines.with_thing(e));

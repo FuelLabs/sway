@@ -51,7 +51,7 @@ impl<T> core::ops::Deref for VecSet<T> {
 }
 
 impl<T: PartialEqWithEngines> VecSet<T> {
-    pub fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    pub fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.0.len() <= other.0.len()
             && self
                 .0
@@ -61,7 +61,7 @@ impl<T: PartialEqWithEngines> VecSet<T> {
 }
 
 impl<T: PartialEqWithEngines> PartialEqWithEngines for VecSet<T> {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.eq(other, engines) && other.eq(self, engines)
     }
 }
@@ -154,7 +154,7 @@ pub enum TypeInfo {
 }
 
 impl HashWithEngines for TypeInfo {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         self.discriminant_value().hash(state);
         match self {
             TypeInfo::Str(len) => {
@@ -232,7 +232,7 @@ impl HashWithEngines for TypeInfo {
 
 impl EqWithEngines for TypeInfo {}
 impl PartialEqWithEngines for TypeInfo {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         let type_engine = engines.te();
         match (self, other) {
             (
@@ -329,7 +329,7 @@ impl PartialEqWithEngines for TypeInfo {
 }
 
 impl OrdWithEngines for TypeInfo {
-    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
+    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
         let type_engine = engines.te();
         let decl_engine = engines.de();
         match (self, other) {
@@ -420,7 +420,7 @@ impl OrdWithEngines for TypeInfo {
 }
 
 impl DisplayWithEngines for TypeInfo {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         use TypeInfo::*;
         let s = match self {
             Unknown => "{unknown}".into(),
@@ -485,7 +485,7 @@ impl DisplayWithEngines for TypeInfo {
 }
 
 impl DebugWithEngines for TypeInfo {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         use TypeInfo::*;
         let s = match self {
             Unknown => "unknown".into(),
@@ -599,7 +599,7 @@ impl TypeInfo {
     /// maps a type to a name that is used when constructing function selectors
     pub(crate) fn to_selector_name(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         error_msg_span: &Span,
     ) -> CompileResult<String> {
         let type_engine = engines.te();
@@ -972,7 +972,7 @@ impl TypeInfo {
 
     /// Given a `TypeInfo` `self`, analyze `self` and return all inner
     /// `TypeId`'s of `self`, not including `self`.
-    pub(crate) fn extract_inner_types(&self, engines: Engines<'_>) -> BTreeSet<TypeId> {
+    pub(crate) fn extract_inner_types(&self, engines: &Engines) -> BTreeSet<TypeId> {
         fn filter_fn(_type_info: &TypeInfo) -> bool {
             true
         }
@@ -984,7 +984,7 @@ impl TypeInfo {
 
     pub(crate) fn extract_inner_types_with_trait_constraints(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
     ) -> HashMap<TypeId, Vec<TraitConstraint>> {
         fn filter_fn(_type_info: &TypeInfo) -> bool {
             true
@@ -1081,7 +1081,7 @@ impl TypeInfo {
 
     /// Given a `TypeInfo` `self`, analyze `self` and return all nested
     /// `TypeInfo`'s found in `self`, including `self`.
-    pub(crate) fn extract_nested_types(self, engines: Engines<'_>) -> Vec<TypeInfo> {
+    pub(crate) fn extract_nested_types(self, engines: &Engines) -> Vec<TypeInfo> {
         let type_engine = engines.te();
         let mut inner_types: Vec<TypeInfo> = self
             .extract_inner_types(engines)
@@ -1094,7 +1094,7 @@ impl TypeInfo {
 
     pub(crate) fn extract_any<F>(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         filter_fn: &F,
     ) -> HashMap<TypeId, Vec<TraitConstraint>>
     where
@@ -1273,10 +1273,10 @@ impl TypeInfo {
         found
     }
 
-    pub(crate) fn extract_nested_generics<'a>(
+    pub(crate) fn extract_nested_generics(
         &self,
-        engines: Engines<'a>,
-    ) -> HashSet<WithEngines<'a, TypeInfo>> {
+        engines: &Engines,
+    ) -> HashSet<WithEngines<TypeInfo>> {
         let nested_types = self.clone().extract_nested_types(engines);
         HashSet::from_iter(
             nested_types
@@ -1361,7 +1361,7 @@ impl TypeInfo {
     /// constraints---if the trait constraints of `other` are a subset of the
     /// trait constraints of `self`, then we know that `other` has unique
     /// methods.
-    pub(crate) fn is_subset_of(&self, other: &TypeInfo, engines: Engines<'_>) -> bool {
+    pub(crate) fn is_subset_of(&self, other: &TypeInfo, engines: &Engines) -> bool {
         // handle the generics cases
         match (self, other) {
             (
@@ -1389,15 +1389,11 @@ impl TypeInfo {
     /// Given two `TypeInfo`'s `self` and `other`, checks to see if `self` is
     /// unidirectionally a subset of `other`, excluding consideration of generic
     /// types (like in the `is_subset_of` method).
-    pub(crate) fn is_subset_of_for_item_import(
-        &self,
-        other: &TypeInfo,
-        engines: Engines<'_>,
-    ) -> bool {
+    pub(crate) fn is_subset_of_for_item_import(&self, other: &TypeInfo, engines: &Engines) -> bool {
         self.is_subset_inner(other, engines)
     }
 
-    fn is_subset_inner(&self, other: &TypeInfo, engines: Engines<'_>) -> bool {
+    fn is_subset_inner(&self, other: &TypeInfo, engines: &Engines) -> bool {
         let type_engine = engines.te();
         let decl_engine = engines.de();
         match (self, other) {
@@ -1516,7 +1512,7 @@ impl TypeInfo {
     /// 3) in the case where a `subfield` does not exist on `self`
     pub(crate) fn apply_subfields(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         subfields: &[Ident],
         span: &Span,
     ) -> CompileResult<ty::TyStructField> {
@@ -1655,7 +1651,7 @@ impl TypeInfo {
     /// type, transitively.
     pub(crate) fn expect_tuple(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         debug_string: impl Into<String>,
         debug_span: &Span,
     ) -> CompileResult<Vec<TypeArgument>> {
@@ -1700,7 +1696,7 @@ impl TypeInfo {
     /// transitively.
     pub(crate) fn expect_enum(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         debug_string: impl Into<String>,
         debug_span: &Span,
     ) -> CompileResult<DeclRefEnum> {
@@ -1746,7 +1742,7 @@ impl TypeInfo {
     #[allow(dead_code)]
     pub(crate) fn expect_struct(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         debug_span: &Span,
     ) -> CompileResult<DeclRefStruct> {
         let warnings = vec![];
@@ -1837,7 +1833,7 @@ impl TypeInfo {
 ///
 /// `left` is a subset of `right`.
 ///
-fn types_are_subset_of(engines: Engines<'_>, left: &[TypeInfo], right: &[TypeInfo]) -> bool {
+fn types_are_subset_of(engines: &Engines, left: &[TypeInfo], right: &[TypeInfo]) -> bool {
     // invariant 1. `left` and and `right` are of the same length _n_
     if left.len() != right.len() {
         return false;
@@ -1880,7 +1876,7 @@ fn types_are_subset_of(engines: Engines<'_>, left: &[TypeInfo], right: &[TypeInf
 }
 
 fn print_inner_types(
-    engines: Engines<'_>,
+    engines: &Engines,
     name: String,
     inner_types: impl Iterator<Item = TypeId>,
 ) -> String {
@@ -1899,7 +1895,7 @@ fn print_inner_types(
 }
 
 fn print_inner_types_debug(
-    engines: Engines<'_>,
+    engines: &Engines,
     name: String,
     inner_types: impl Iterator<Item = TypeId>,
 ) -> String {

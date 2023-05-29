@@ -2,14 +2,16 @@ use crate::{engine_threading::*, type_system::priv_prelude::*};
 use sway_types::Spanned;
 
 /// Helper struct to aid in type coercion.
-pub(crate) struct UnifyCheck<'a> {
-    engines: Engines<'a>,
+pub(crate) struct UnifyCheck {
+    engines: Engines,
 }
 
-impl<'a> UnifyCheck<'a> {
+impl UnifyCheck {
     /// Creates a new [UnifyCheck].
-    pub(crate) fn new(engines: Engines<'a>) -> UnifyCheck<'a> {
-        UnifyCheck { engines }
+    pub(crate) fn new(engines: &Engines) -> UnifyCheck {
+        UnifyCheck {
+            engines: engines.clone(),
+        }
     }
 
     /// Given two [TypeId]'s `left` and `right`, check to see if `left` can be
@@ -121,7 +123,7 @@ impl<'a> UnifyCheck<'a> {
             ) => {
                 // TODO: this requirement on the trait constraints should be
                 // loosened to match the description above
-                ln == rn && rtc.eq(&ltc, self.engines)
+                ln == rn && rtc.eq(&ltc, &self.engines)
             }
             // any type can be coerced into generic
             (_, UnknownGeneric { .. }) => true,
@@ -249,7 +251,7 @@ impl<'a> UnifyCheck<'a> {
                     address: ref ea,
                 },
             ) => {
-                r.eq(e, self.engines)
+                r.eq(e, &self.engines)
                     || (ran == ean && ra.is_none())
                     || matches!(ran, AbiName::Deferred)
                     || (ran == ean && ea.is_none())
@@ -260,7 +262,7 @@ impl<'a> UnifyCheck<'a> {
             (ErrorRecovery, _) => true,
             (_, ErrorRecovery) => true,
 
-            (a, b) => a.eq(&b, self.engines),
+            (a, b) => a.eq(&b, &self.engines),
         }
     }
 
@@ -367,7 +369,7 @@ impl<'a> UnifyCheck<'a> {
                 if matches!(a, Placeholder(_)) || matches!(b, Placeholder(_)) {
                     continue;
                 }
-                if a.eq(b, self.engines) {
+                if a.eq(b, &self.engines) {
                     // if a and b are the same type
                     constraints.push((i, j));
                 }
@@ -379,7 +381,7 @@ impl<'a> UnifyCheck<'a> {
             if matches!(a, Placeholder(_)) || matches!(b, Placeholder(_)) {
                 continue;
             }
-            if !a.eq(b, self.engines) {
+            if !a.eq(b, &self.engines) {
                 return false;
             }
         }

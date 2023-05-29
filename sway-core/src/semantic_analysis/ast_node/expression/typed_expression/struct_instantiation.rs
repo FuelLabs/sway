@@ -18,9 +18,9 @@ pub(crate) fn struct_instantiation(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
-    let engines = ctx.engines();
+    let engines = &ctx.engines().clone();
+    let type_engine = engines.te();
+    let decl_engine = engines.de();
 
     // We need the call_path_binding to have types that point to proper definitions so the LSP can
     // look for them, but its types haven't been resolved yet.
@@ -162,8 +162,8 @@ fn type_check_field_arguments(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
-    let engines = ctx.engines();
+    let engines = &ctx.engines().clone();
+    let type_engine = engines.te();
 
     let mut typed_fields = vec![];
 
@@ -217,8 +217,8 @@ fn unify_field_arguments_and_struct_fields(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
     let engines = ctx.engines();
+    let type_engine = engines.te();
 
     for struct_field in struct_fields.iter() {
         if let Some(typed_field) = typed_fields.iter().find(|x| x.name == struct_field.name) {

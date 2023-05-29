@@ -27,15 +27,15 @@ pub type ExitPoint = NodeIndex;
 /// A graph that can be used to model the control flow of a Sway program.
 /// This graph is used as the basis for all of the algorithms in the control flow analysis portion
 /// of the compiler.
-pub struct ControlFlowGraph<'cfg> {
-    pub(crate) graph: Graph<'cfg>,
+pub struct ControlFlowGraph {
+    pub(crate) graph: Graph,
     pub(crate) entry_points: Vec<NodeIndex>,
     pub(crate) pending_entry_points_edges: Vec<(NodeIndex, ControlFlowGraphEdge)>,
     pub(crate) namespace: ControlFlowNamespace,
     pub(crate) decls: HashMap<IdentUnique, NodeIndex>,
 }
 
-pub type Graph<'cfg> = petgraph::Graph<ControlFlowGraphNode<'cfg>, ControlFlowGraphEdge>;
+pub type Graph = petgraph::Graph<ControlFlowGraphNode, ControlFlowGraphEdge>;
 
 #[derive(Clone)]
 pub struct ControlFlowGraphEdge(String);
@@ -54,7 +54,7 @@ impl std::convert::From<&str> for ControlFlowGraphEdge {
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Clone)]
-pub enum ControlFlowGraphNode<'cfg> {
+pub enum ControlFlowGraphNode {
     OrganizationalDominator(String),
     #[allow(clippy::large_enum_variant)]
     ProgramNode {
@@ -70,7 +70,6 @@ pub enum ControlFlowGraphNode<'cfg> {
         span: Span,
         method_name: Ident,
         method_decl_ref: DeclRefFunction,
-        engines: Engines<'cfg>,
     },
     StructField {
         struct_decl_id: DeclId<ty::TyStructDecl>,
@@ -87,7 +86,7 @@ pub enum ControlFlowGraphNode<'cfg> {
     },
 }
 
-impl<'cfg> GetDeclIdent for ControlFlowGraphNode<'cfg> {
+impl GetDeclIdent for ControlFlowGraphNode {
     fn get_decl_ident(&self) -> Option<Ident> {
         match self {
             ControlFlowGraphNode::OrganizationalDominator(_) => None,
@@ -105,7 +104,7 @@ impl<'cfg> GetDeclIdent for ControlFlowGraphNode<'cfg> {
     }
 }
 
-impl<'cfg> std::convert::From<&ty::TyStorageField> for ControlFlowGraphNode<'cfg> {
+impl std::convert::From<&ty::TyStorageField> for ControlFlowGraphNode {
     fn from(other: &ty::TyStorageField) -> Self {
         ControlFlowGraphNode::StorageField {
             field_name: other.name.clone(),
@@ -113,20 +112,20 @@ impl<'cfg> std::convert::From<&ty::TyStorageField> for ControlFlowGraphNode<'cfg
     }
 }
 
-impl<'cfg> std::convert::From<String> for ControlFlowGraphNode<'cfg> {
+impl std::convert::From<String> for ControlFlowGraphNode {
     fn from(other: String) -> Self {
         ControlFlowGraphNode::OrganizationalDominator(other)
     }
 }
 
-impl<'cfg> std::convert::From<&str> for ControlFlowGraphNode<'cfg> {
+impl std::convert::From<&str> for ControlFlowGraphNode {
     fn from(other: &str) -> Self {
         other.to_string().into()
     }
 }
 
-impl<'cfg> DebugWithEngines for ControlFlowGraphNode<'cfg> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, engines: Engines<'_>) -> std::fmt::Result {
+impl DebugWithEngines for ControlFlowGraphNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, engines: &Engines) -> std::fmt::Result {
         let text = match self {
             ControlFlowGraphNode::OrganizationalDominator(s) => s.to_string(),
             ControlFlowGraphNode::ProgramNode { node, .. } => {
@@ -138,7 +137,6 @@ impl<'cfg> DebugWithEngines for ControlFlowGraphNode<'cfg> {
             ControlFlowGraphNode::MethodDeclaration {
                 method_name,
                 method_decl_ref,
-                engines,
                 ..
             } => {
                 let decl_engines = engines.de();
@@ -169,11 +167,11 @@ impl<'cfg> DebugWithEngines for ControlFlowGraphNode<'cfg> {
     }
 }
 
-impl<'cfg> ControlFlowGraph<'cfg> {
+impl ControlFlowGraph {
     pub(crate) fn add_edge_from_entry(&mut self, to: NodeIndex, label: ControlFlowGraphEdge) {
         self.pending_entry_points_edges.push((to, label));
     }
-    pub(crate) fn add_node<'eng: 'cfg>(&mut self, node: ControlFlowGraphNode<'cfg>) -> NodeIndex {
+    pub(crate) fn add_node(&mut self, node: ControlFlowGraphNode) -> NodeIndex {
         let ident_opt = node.get_decl_ident();
         let node_index = self.graph.add_node(node);
         if let Some(ident) = ident_opt {
@@ -210,7 +208,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
     /// Prints out GraphViz DOT format for this graph.
     pub(crate) fn visualize(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         print_graph: Option<String>,
         print_graph_url_format: Option<String>,
     ) {
@@ -265,12 +263,12 @@ impl<'cfg> ControlFlowGraph<'cfg> {
     }
 }
 
-impl<'cfg> ControlFlowGraphNode<'cfg> {
+impl ControlFlowGraphNode {
     pub(crate) fn from_enum_variant(
         enum_decl_id: DeclId<ty::TyEnumDecl>,
         other_name: BaseIdent,
         is_public: bool,
-    ) -> ControlFlowGraphNode<'cfg> {
+    ) -> ControlFlowGraphNode {
         ControlFlowGraphNode::EnumVariant {
             enum_decl_id,
             variant_name: other_name,
@@ -281,14 +279,14 @@ impl<'cfg> ControlFlowGraphNode<'cfg> {
     pub(crate) fn from_node_with_parent(
         node: &ty::TyAstNode,
         parent_node: Option<NodeIndex>,
-    ) -> ControlFlowGraphNode<'cfg> {
+    ) -> ControlFlowGraphNode {
         ControlFlowGraphNode::ProgramNode {
             node: node.clone(),
             parent_node,
         }
     }
 
-    pub(crate) fn from_node(node: &ty::TyAstNode) -> ControlFlowGraphNode<'cfg> {
+    pub(crate) fn from_node(node: &ty::TyAstNode) -> ControlFlowGraphNode {
         ControlFlowGraphNode::ProgramNode {
             node: node.clone(),
             parent_node: None,

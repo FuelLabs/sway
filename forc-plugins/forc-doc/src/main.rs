@@ -17,12 +17,9 @@ use std::{
     collections::BTreeMap,
     path::Path,
     process::Command as Process,
-    sync::Arc,
     {fs, path::PathBuf},
 };
-use sway_core::{
-    decl_engine::DeclEngine, query_engine::QueryEngine, BuildTarget, Engines, TypeEngine,
-};
+use sway_core::{BuildTarget, Engines};
 
 mod cli;
 mod doc;
@@ -34,19 +31,13 @@ pub(crate) const ASSETS_DIR_NAME: &str = "static.files";
 #[derive(Clone)]
 struct RenderPlan {
     document_private_items: bool,
-    type_engine: Arc<TypeEngine>,
-    decl_engine: Arc<DeclEngine>,
+    engines: Engines,
 }
 impl RenderPlan {
-    fn new(
-        document_private_items: bool,
-        type_engine: Arc<TypeEngine>,
-        decl_engine: Arc<DeclEngine>,
-    ) -> RenderPlan {
+    fn new(document_private_items: bool, engines: &Engines) -> RenderPlan {
         Self {
             document_private_items,
-            type_engine,
-            decl_engine,
+            engines: engines.clone(),
         }
     }
 }
@@ -150,17 +141,14 @@ fn build_docs(
     let lock_path = manifest.lock_path()?;
     let plan =
         pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)?;
-    let type_engine = TypeEngine::default();
-    let decl_engine = DeclEngine::default();
-    let query_engine = QueryEngine::default();
-    let engines = Engines::new(&type_engine, &decl_engine, &query_engine);
+    let engines = Engines::default();
     let tests_enabled = true;
     let typed_program = match pkg::check(
         &plan,
         BuildTarget::default(),
         silent,
         tests_enabled,
-        engines,
+        &engines,
     )?
     .pop()
     .and_then(|compilation| compilation.value)
@@ -178,7 +166,7 @@ fn build_docs(
     );
 
     let raw_docs = Documentation::from_ty_program(
-        &decl_engine,
+        engines.de(),
         pkg_manifest.project_name(),
         &typed_program,
         document_private_items,
@@ -193,11 +181,7 @@ fn build_docs(
     // render docs to HTML
     let rendered_docs = RenderedDocumentation::from_raw_docs(
         raw_docs,
-        RenderPlan::new(
-            document_private_items,
-            Arc::from(type_engine),
-            Arc::from(decl_engine),
-        ),
+        RenderPlan::new(document_private_items, &engines),
         root_attributes,
         typed_program.kind,
         forc_version,
