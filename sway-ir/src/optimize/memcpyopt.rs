@@ -78,8 +78,7 @@ pub(crate) fn get_symbols(context: &Context, val: Value) -> Vec<Symbol> {
                     b.block
                         .pred_iter(context)
                         .map(|pred| b.get_val_coming_from(context, pred).unwrap())
-                        .map(|v| get_symbols_rec(context, visited, v))
-                        .flatten()
+                        .flat_map(|v| get_symbols_rec(context, visited, v))
                         .collect()
                 }
             }
@@ -377,7 +376,7 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
                 for copy in &*copies {
                     let (_, src_ptr, copy_size) = deconstruct_memcpy(context, *copy);
                     if may_alias(context, value, len, src_ptr, copy_size) {
-                        available_copies.remove(&copy);
+                        available_copies.remove(copy);
                     }
                 }
                 copies.retain(|copy| available_copies.contains(copy));
@@ -477,8 +476,7 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
             for memcpy in dest_to_copies
                 .get(&src_sym)
                 .iter()
-                .map(|set| set.iter())
-                .flatten()
+                .flat_map(|set| set.iter())
             {
                 let (dst_ptr_memcpy, src_ptr_memcpy, copy_len) =
                     deconstruct_memcpy(context, *memcpy);
