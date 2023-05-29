@@ -4,8 +4,9 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
-    AnalysisResults, Block, BlockArgument, Context, Function, Instruction, IrError, LocalVar, Pass,
-    PassMutability, ScopedPass, Type, Value, ValueDatum,
+    get_symbol, get_symbols, AnalysisResults, Block, Context, EscapedSymbols, Function,
+    Instruction, IrError, LocalVar, Pass, PassMutability, ScopedPass, Symbol, Type, Value,
+    ValueDatum, ESCAPED_SYMBOLS_NAME,
 };
 
 pub const MEMCPYOPT_NAME: &str = "memcpyopt";
@@ -14,83 +15,22 @@ pub fn create_memcpyopt_pass() -> Pass {
     Pass {
         name: MEMCPYOPT_NAME,
         descr: "Memcopy optimization.",
-        deps: vec![],
+        deps: vec![ESCAPED_SYMBOLS_NAME],
         runner: ScopedPass::FunctionPass(PassMutability::Transform(mem_copy_opt)),
     }
 }
 
 pub fn mem_copy_opt(
     context: &mut Context,
-    _analyses: &AnalysisResults,
+    analyses: &AnalysisResults,
     function: Function,
 ) -> Result<bool, IrError> {
     let mut modified = false;
     modified |= local_copy_prop_prememcpy(context, function)?;
     modified |= load_store_to_memcopy(context, function)?;
-    modified |= local_copy_prop(context, function)?;
+    modified |= local_copy_prop(context, analyses, function)?;
 
     Ok(modified)
-}
-
-#[derive(Eq, PartialEq, Copy, Clone, Hash)]
-pub(crate) enum Symbol {
-    Local(LocalVar),
-    Arg(BlockArgument),
-}
-
-impl Symbol {
-    pub fn get_type(&self, context: &Context) -> Type {
-        match self {
-            Symbol::Local(l) => l.get_type(context),
-            Symbol::Arg(ba) => ba.ty,
-        }
-    }
-
-    pub fn _get_name(&self, context: &Context, function: Function) -> String {
-        match self {
-            Symbol::Local(l) => function.lookup_local_name(context, l).unwrap().clone(),
-            Symbol::Arg(ba) => format!("{}[{}]", ba.block.get_label(context), ba.idx),
-        }
-    }
-}
-
-// A value may (indirectly) refer to one or more symbols.
-pub(crate) fn get_symbols(context: &Context, val: Value) -> Vec<Symbol> {
-    let mut visited = FxHashSet::default();
-    fn get_symbols_rec(
-        context: &Context,
-        visited: &mut FxHashSet<Value>,
-        val: Value,
-    ) -> Vec<Symbol> {
-        if visited.contains(&val) {
-            return vec![];
-        }
-        visited.insert(val);
-        match context.values[val.0].value {
-            ValueDatum::Instruction(Instruction::GetLocal(local)) => vec![Symbol::Local(local)],
-            ValueDatum::Instruction(Instruction::GetElemPtr { base, .. }) => {
-                get_symbols_rec(context, visited, base)
-            }
-            ValueDatum::Argument(b) => {
-                if b.block.get_label(context) == "entry" {
-                    vec![Symbol::Arg(b)]
-                } else {
-                    b.block
-                        .pred_iter(context)
-                        .map(|pred| b.get_val_coming_from(context, pred).unwrap())
-                        .flat_map(|v| get_symbols_rec(context, visited, v))
-                        .collect()
-                }
-            }
-            _ => vec![],
-        }
-    }
-    get_symbols_rec(context, &mut visited, val)
-}
-
-pub(crate) fn get_symbol(context: &Context, val: Value) -> Option<Symbol> {
-    let syms = get_symbols(context, val);
-    (syms.len() == 1).then(|| syms[0])
 }
 
 // Combine a series of GEPs into one.
@@ -351,7 +291,13 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
 }
 
 /// Copy propagation of `memcpy`s within a block.
-fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, IrError> {
+fn local_copy_prop(
+    context: &mut Context,
+    analyses: &AnalysisResults,
+    function: Function,
+) -> Result<bool, IrError> {
+    let escaped_symbols: &EscapedSymbols = analyses.get_analysis_result(function);
+
     // Currently (as we scan a block) available `memcpy`s.
     let mut available_copies: FxHashSet<Value>;
     // Map a symbol to the available `memcpy`s of which its a source.
@@ -404,8 +350,10 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn gen_new_copy(
         context: &Context,
+        escaped_symbols: &EscapedSymbols,
         copy_inst: Value,
         dst_val_ptr: Value,
         src_val_ptr: Value,
@@ -417,6 +365,9 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
             get_symbol(context, dst_val_ptr),
             get_symbol(context, src_val_ptr),
         ) {
+            if escaped_symbols.contains(&dst_sym) || escaped_symbols.contains(&src_sym) {
+                return;
+            }
             dest_to_copies
                 .entry(dst_sym)
                 .and_modify(|set| {
@@ -465,6 +416,7 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
 
     fn process_load(
         context: &Context,
+        escaped_symbols: &EscapedSymbols,
         inst: Value,
         src_val_ptr: Value,
         dest_to_copies: &mut FxHashMap<Symbol, FxHashSet<Value>>,
@@ -473,6 +425,9 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
         // For every `memcpy` that src_val_ptr is a destination of,
         // check if we can do the load from the source of that memcpy.
         if let Some(src_sym) = get_symbol(context, src_val_ptr) {
+            if escaped_symbols.contains(&src_sym) {
+                return false;
+            }
             for memcpy in dest_to_copies
                 .get(&src_sym)
                 .iter()
@@ -600,6 +555,7 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
                     Instruction::Load(src_val_ptr) => {
                         process_load(
                             context,
+                            escaped_symbols,
                             inst,
                             *src_val_ptr,
                             &mut dest_to_copies,
@@ -620,6 +576,7 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
                         // If this memcpy itself can be optimized, we do just that, and not "gen" a new one.
                         if !process_load(
                             context,
+                            escaped_symbols,
                             inst,
                             src_val_ptr,
                             &mut dest_to_copies,
@@ -627,6 +584,7 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
                         ) {
                             gen_new_copy(
                                 context,
+                                escaped_symbols,
                                 inst,
                                 dst_val_ptr,
                                 src_val_ptr,

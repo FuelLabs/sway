@@ -8,8 +8,9 @@
 use rustc_hash::FxHashSet;
 
 use crate::{
-    get_symbols, AnalysisResults, Context, FuelVmInstruction, Function, Instruction, IrError,
-    LocalVar, Module, Pass, PassMutability, ScopedPass, Symbol, Value, ValueDatum,
+    get_symbols, AnalysisResults, Context, EscapedSymbols, FuelVmInstruction, Function,
+    Instruction, IrError, LocalVar, Module, Pass, PassMutability, ScopedPass, Symbol, Value,
+    ValueDatum, ESCAPED_SYMBOLS_NAME,
 };
 
 use std::collections::{HashMap, HashSet};
@@ -21,7 +22,7 @@ pub fn create_dce_pass() -> Pass {
         name: DCE_NAME,
         descr: "Dead code elimination.",
         runner: ScopedPass::FunctionPass(PassMutability::Transform(dce)),
-        deps: vec![],
+        deps: vec![ESCAPED_SYMBOLS_NAME],
     }
 }
 
@@ -40,10 +41,11 @@ fn can_eliminate_instruction(
     context: &Context,
     val: Value,
     num_symbol_uses: &HashMap<Symbol, u32>,
+    escaped_symbols: &EscapedSymbols,
 ) -> bool {
     let inst = val.get_instruction(context).unwrap();
     (!inst.is_terminator() && !inst.may_have_side_effect())
-        || is_removable_store(context, val, num_symbol_uses)
+        || is_removable_store(context, val, num_symbol_uses, escaped_symbols)
 }
 
 fn get_loaded_symbols(context: &Context, val: Value) -> Vec<Symbol> {
@@ -58,9 +60,7 @@ fn get_loaded_symbols(context: &Context, val: Value) -> Vec<Symbol> {
         | Instruction::GetLocal(_)
         | Instruction::GetElemPtr { .. }
         | Instruction::IntToPtr(_, _) => vec![],
-        Instruction::PtrToInt(src_val_ptr, _) => {
-            get_symbols(context, *src_val_ptr).to_vec()
-        }
+        Instruction::PtrToInt(src_val_ptr, _) => get_symbols(context, *src_val_ptr).to_vec(),
         Instruction::ContractCall {
             params,
             coins,
@@ -68,20 +68,17 @@ fn get_loaded_symbols(context: &Context, val: Value) -> Vec<Symbol> {
             ..
         } => vec![*params, *coins, *asset_id]
             .iter()
-            .flat_map(|val| {
-                get_symbols(context, *val).to_vec()
-            })
+            .flat_map(|val| get_symbols(context, *val).to_vec())
             .collect(),
         Instruction::Call(_, args) => args
             .iter()
-            .flat_map(|val| {
-                get_symbols(context, *val).to_vec()
-            })
+            .flat_map(|val| get_symbols(context, *val).to_vec())
             .collect(),
         Instruction::AsmBlock(_, args) => args
             .iter()
             .filter_map(|val| {
-                val.initializer.map(|val| get_symbols(context, val).to_vec())
+                val.initializer
+                    .map(|val| get_symbols(context, val).to_vec())
             })
             .flatten()
             .collect(),
@@ -89,6 +86,10 @@ fn get_loaded_symbols(context: &Context, val: Value) -> Vec<Symbol> {
         | Instruction::MemCopyVal { src_val_ptr, .. }
         | Instruction::Ret(src_val_ptr, _)
         | Instruction::Load(src_val_ptr)
+        | Instruction::FuelVm(FuelVmInstruction::Log {
+            log_val: src_val_ptr,
+            ..
+        })
         | Instruction::FuelVm(FuelVmInstruction::Smo {
             recipient_and_message: src_val_ptr,
             ..
@@ -112,7 +113,6 @@ fn get_loaded_symbols(context: &Context, val: Value) -> Vec<Symbol> {
             .collect(),
         Instruction::Store { dst_val_ptr: _, .. } => vec![],
         Instruction::FuelVm(FuelVmInstruction::Gtf { .. })
-        | Instruction::FuelVm(FuelVmInstruction::Log { .. })
         | Instruction::FuelVm(FuelVmInstruction::ReadRegister(_))
         | Instruction::FuelVm(FuelVmInstruction::Revert(_)) => vec![],
     }
@@ -135,22 +135,19 @@ fn get_stored_symbols(context: &Context, val: Value) -> Vec<Symbol> {
         Instruction::ContractCall { params, .. } => get_symbols(context, *params),
         Instruction::Call(_, args) => args
             .iter()
-            .flat_map(|val| {
-                get_symbols(context, *val).to_vec()
-            })
+            .flat_map(|val| get_symbols(context, *val).to_vec())
             .collect(),
         Instruction::AsmBlock(_, args) => args
             .iter()
             .filter_map(|val| {
-                val.initializer.map(|val| get_symbols(context, val).to_vec())
+                val.initializer
+                    .map(|val| get_symbols(context, val).to_vec())
             })
             .flatten()
             .collect(),
         Instruction::MemCopyBytes { dst_val_ptr, .. }
         | Instruction::MemCopyVal { dst_val_ptr, .. }
-        | Instruction::Store { dst_val_ptr, .. } => {
-            get_symbols(context, *dst_val_ptr).to_vec()
-        }
+        | Instruction::Store { dst_val_ptr, .. } => get_symbols(context, *dst_val_ptr).to_vec(),
         Instruction::Load(_) => vec![],
         Instruction::FuelVm(vmop) => match vmop {
             FuelVmInstruction::Gtf { .. }
@@ -174,14 +171,17 @@ fn is_removable_store(
     context: &Context,
     val: Value,
     num_symbol_uses: &HashMap<Symbol, u32>,
+    escaped_symbols: &EscapedSymbols,
 ) -> bool {
     match val.get_instruction(context).unwrap() {
         Instruction::MemCopyBytes { dst_val_ptr, .. }
         | Instruction::MemCopyVal { dst_val_ptr, .. }
         | Instruction::Store { dst_val_ptr, .. } => {
             let syms = get_symbols(context, *dst_val_ptr);
-            syms.iter()
-                .all(|sym| num_symbol_uses.get(sym).map_or(0, |uses| *uses) == 0)
+            syms.iter().all(|sym| {
+                !escaped_symbols.contains(sym)
+                    && num_symbol_uses.get(sym).map_or(0, |uses| *uses) == 0
+            })
         }
         _ => false,
     }
@@ -190,9 +190,11 @@ fn is_removable_store(
 /// Perform dead code (if any) elimination and return true if function modified.
 pub fn dce(
     context: &mut Context,
-    _: &AnalysisResults,
+    analyses: &AnalysisResults,
     function: Function,
 ) -> Result<bool, IrError> {
+    let escaped_symbols: &EscapedSymbols = analyses.get_analysis_result(function);
+
     // Number of uses that an instruction has.
     let mut num_uses: HashMap<Value, u32> = HashMap::new();
     let mut num_local_uses: HashMap<LocalVar, u32> = HashMap::new();
@@ -239,8 +241,9 @@ pub fn dce(
     let mut worklist = function
         .instruction_iter(context)
         .filter_map(|(_block, inst)| {
-            (num_uses.get(&inst).is_none() || is_removable_store(context, inst, &num_symbol_uses))
-                .then_some(inst)
+            (num_uses.get(&inst).is_none()
+                || is_removable_store(context, inst, &num_symbol_uses, escaped_symbols))
+            .then_some(inst)
         })
         .collect::<Vec<_>>();
 
@@ -249,7 +252,9 @@ pub fn dce(
     while !worklist.is_empty() {
         let dead = worklist.pop().unwrap();
 
-        if !can_eliminate_instruction(context, dead, &num_symbol_uses) || cemetery.contains(&dead) {
+        if !can_eliminate_instruction(context, dead, &num_symbol_uses, escaped_symbols)
+            || cemetery.contains(&dead)
+        {
             continue;
         }
         // Process dead's operands.
