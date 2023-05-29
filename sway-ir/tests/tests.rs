@@ -2,10 +2,10 @@ use std::path::PathBuf;
 
 use sway_ir::{
     create_arg_demotion_pass, create_const_combine_pass, create_const_demotion_pass,
-    create_dce_pass, create_dom_fronts_pass, create_dominators_pass, create_mem2reg_pass,
-    create_memcpyopt_pass, create_misc_demotion_pass, create_postorder_pass,
+    create_dce_pass, create_dom_fronts_pass, create_dominators_pass, create_escaped_symbols_pass,
+    create_mem2reg_pass, create_memcpyopt_pass, create_misc_demotion_pass, create_postorder_pass,
     create_ret_demotion_pass, create_simplify_cfg_pass, optimize as opt, Context, PassGroup,
-    PassManager, create_escaped_symbols_pass,
+    PassManager,
 };
 
 // -------------------------------------------------------------------------------------------------
