@@ -71,7 +71,7 @@ dependencies = ['std']
 
 [[package]]
 name = 'core'
-source = 'path+from-root-B313E39BF6A5D375'
+source = 'path+from-root-0F28276288D2432C'
 
 [[package]]
 name = 'counter'
@@ -162,21 +162,8 @@ source = 'member'
 dependencies = ['std']
 
 [[package]]
-name = 're_entrency'
-source = 'member'
-dependencies = [
-    'reentrancy',
-    'std',
-]
-
-[[package]]
 name = 'reading_writing_to_storage'
 source = 'member'
-dependencies = ['std']
-
-[[package]]
-name = 'reentrancy'
-source = 'git+https://github.com/FuelLabs/sway-libs?tag=v0.10.0#0444499cf24b383eda96ad24c93e3b8bc31ab1b9'
 dependencies = ['std']
 
 [[package]]
@@ -191,7 +178,7 @@ dependencies = ['std']
 
 [[package]]
 name = 'std'
-source = 'git+https://github.com/fuellabs/sway?tag=v0.39.1#e3065657c907225a8fdfe2d2210a7a3bd2b55c73'
+source = 'path+from-root-0F28276288D2432C'
 dependencies = ['core']
 
 [[package]]
