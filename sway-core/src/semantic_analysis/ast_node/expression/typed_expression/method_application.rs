@@ -557,8 +557,7 @@ pub(crate) fn resolve_method_name(
                     ctx.type_annotation(),
                     &arguments,
                     Some(as_trait.clone()),
-                    engines,
-                    ctx.experimental_private_modules_enabled()
+                    engines
                 ),
                 return err(warnings, errors),
                 warnings,

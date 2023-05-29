@@ -342,11 +342,7 @@ impl Namespace {
                                         {
                                             let p1_type_id = check!(
                                                 self.resolve_type_without_self(
-                                                    engines,
-                                                    p1.type_id,
-                                                    &p1.span,
-                                                    None,
-                                                    experimental_private_modules,
+                                                    engines, p1.type_id, &p1.span, None
                                                 ),
                                                 return err(warnings, errors),
                                                 warnings,
@@ -354,11 +350,7 @@ impl Namespace {
                                             );
                                             let p2_type_id = check!(
                                                 self.resolve_type_without_self(
-                                                    engines,
-                                                    p2.type_id,
-                                                    &p2.span,
-                                                    None,
-                                                    experimental_private_modules,
+                                                    engines, p2.type_id, &p2.span, None
                                                 ),
                                                 return err(warnings, errors),
                                                 warnings,
