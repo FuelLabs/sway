@@ -404,7 +404,7 @@ mod tx {
         let handler = contract_instance.methods().get_tx_id();
         let tx = handler.build_tx().await.unwrap();
 
-        let params = wallet.provider().unwrap().consensus_parameters().unwrap();
+        let params = wallet.provider().unwrap().consensus_parameters();
         let tx_id = tx.id(&params);
 
         let receipts = wallet

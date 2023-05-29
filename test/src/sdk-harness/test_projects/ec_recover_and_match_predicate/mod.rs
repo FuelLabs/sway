@@ -82,8 +82,9 @@ async fn ec_recover_and_match_predicate_test() -> Result<()> {
     let code_path =
         "test_projects/ec_recover_and_match_predicate/out/debug/ec_recover_and_match_predicate.bin";
 
-    let predicate =
-        Predicate::load_from_with_provider(code_path, provider.clone())?.with_data(predicate_data);
+    let predicate = Predicate::load_from(code_path)?
+        .with_data(predicate_data)
+        .with_provider(provider.clone());
 
     let amount_to_predicate = 1000;
     let asset_id = AssetId::default();

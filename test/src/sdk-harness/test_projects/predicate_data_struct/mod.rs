@@ -112,7 +112,7 @@ async fn submit_to_predicate(
     let output_coin = Output::coin(receiver_address, total_amount_in_predicate, asset_id);
     let output_change = Output::change(predicate_address, 0, asset_id);
 
-    let params = wallet.provider().unwrap().consensus_parameters().unwrap();
+    let params = wallet.provider().unwrap().consensus_parameters();
     let new_tx = ScriptTransactionBuilder::prepare_transfer(
         inputs,
         vec![output_coin, output_change],
