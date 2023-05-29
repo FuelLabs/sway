@@ -470,6 +470,10 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
                     deconstruct_memcpy(context, *memcpy);
                 // If the location where we're loading from exactly matches the destination of
                 // the memcpy, just load from the source pointer of the memcpy.
+                // TODO: In both the arms below, we check that the pointer type
+                // matches. This isn't really needed as the copy happens and the
+                // data we want is safe to access. But we just don't know how to
+                // generate the right GEP always. So that's left for another day.
                 if must_alias(
                     context,
                     src_val_ptr,
@@ -478,8 +482,10 @@ fn local_copy_prop(context: &mut Context, function: Function) -> Result<bool, Ir
                     copy_len,
                 ) {
                     // Replace src_val_ptr with src_ptr_memcpy.
-                    replacements.insert(inst, Replacement::OldGep(src_ptr_memcpy));
-                    return true;
+                    if src_val_ptr.get_type(context) == src_ptr_memcpy.get_type(context) {
+                        replacements.insert(inst, Replacement::OldGep(src_ptr_memcpy));
+                        return true;
+                    }
                 } else {
                     // if the memcpy copies the entire symbol, we could
                     // insert a new GEP from the source of the memcpy.

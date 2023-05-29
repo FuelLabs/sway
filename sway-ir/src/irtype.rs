@@ -323,13 +323,13 @@ impl Type {
                             "Expected aggregate type when indexing using GEP. Got {}",
                             ty.as_string(context)
                         );
-                        // size_of_element * idx-1 will be the offset of idx.
+                        // size_of_element * idx will be the offset of idx.
                         ty.get_array_elem_type(context).map(|elm_ty| {
                             let prev_idxs_offset = ty
                                 .get_array_elem_type(context)
                                 .unwrap()
                                 .size_in_bytes(context)
-                                * (idx - 1);
+                                * idx;
                             (elm_ty, accum_offset + prev_idxs_offset)
                         })
                     }
