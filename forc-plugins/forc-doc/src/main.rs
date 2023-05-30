@@ -11,7 +11,7 @@ use forc_util::default_output_directory;
 use include_dir::{include_dir, Dir};
 use pkg::{
     manifest::{Dependency, ManifestFile},
-    PackageManifestFile,
+    BuildPlan, PackageManifestFile,
 };
 use std::{
     collections::BTreeMap,
@@ -77,8 +77,44 @@ pub fn main() -> Result<()> {
     }
     fs::create_dir_all(&doc_path)?;
 
-    // build core documentation
-    build_docs(&manifest, pkg_manifest, &doc_path, &build_instructions)?;
+    let member_manifests = manifest.member_manifests()?;
+    let lock_path = manifest.lock_path()?;
+    let plan = pkg::BuildPlan::from_lock_and_manifests(
+        &lock_path,
+        &member_manifests,
+        build_instructions.locked,
+        build_instructions.offline,
+    )?;
+
+    if !build_instructions.no_deps {
+        let order = plan.compilation_order();
+        let graph = plan.graph();
+        let manifest_map = plan.manifest_map();
+
+        for node in order {
+            let id = &graph[*node].id();
+
+            if let Some(pkg_manifest_file) = manifest_map.get(id) {
+                let manifest_file = ManifestFile::from_dir(pkg_manifest_file.path())?;
+
+                build_docs(
+                    &manifest_file,
+                    pkg_manifest_file,
+                    &doc_path,
+                    &build_instructions,
+                    &plan,
+                )?;
+            }
+        }
+    } else {
+        build_docs(
+            &manifest,
+            pkg_manifest,
+            &doc_path,
+            &build_instructions,
+            &plan,
+        )?;
+    }
 
     // CSS, icons and logos
     static ASSETS_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/src/static.files");
@@ -128,6 +164,7 @@ fn build_docs(
     pkg_manifest: &PackageManifestFile,
     doc_path: &Path,
     build_instructions: &Command,
+    plan: &BuildPlan,
 ) -> Result<()> {
     let Command {
         document_private_items,
@@ -145,30 +182,20 @@ fn build_docs(
         manifest.dir().to_string_lossy()
     );
 
-    // compile the program and extract the docs
-    let member_manifests = manifest.member_manifests()?;
-    let lock_path = manifest.lock_path()?;
-    let plan =
-        pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)?;
     let type_engine = TypeEngine::default();
     let decl_engine = DeclEngine::default();
     let query_engine = QueryEngine::default();
     let engines = Engines::new(&type_engine, &decl_engine, &query_engine);
     let tests_enabled = true;
-    let typed_program = match pkg::check(
-        &plan,
-        BuildTarget::default(),
-        silent,
-        tests_enabled,
-        engines,
-    )?
-    .pop()
-    .and_then(|compilation| compilation.value)
-    .and_then(|programs| programs.typed)
-    {
-        Some(typed_program) => typed_program,
-        _ => bail!("CompileResult returned None"),
-    };
+    let typed_program =
+        match pkg::check(plan, BuildTarget::default(), silent, tests_enabled, engines)?
+            .pop()
+            .and_then(|compilation| compilation.value)
+            .and_then(|programs| programs.typed)
+        {
+            Some(typed_program) => typed_program,
+            _ => bail!("CompileResult returned None"),
+        };
 
     println!(
         "    {} documentation for {} ({})",
@@ -206,51 +233,6 @@ fn build_docs(
     // write file contents to doc folder
     write_content(rendered_docs, doc_path)?;
     println!("    {}", "Finished".bold().yellow());
-
-    if !no_deps {
-        build_deps(
-            &pkg_manifest.dependencies,
-            manifest.dir(),
-            doc_path,
-            build_instructions,
-        )?;
-    }
-
-    Ok(())
-}
-
-fn build_deps(
-    dependencies: &Option<BTreeMap<String, Dependency>>,
-    manifest_dir: &Path,
-    doc_path: &Path,
-    build_instructions: &Command,
-) -> Result<()> {
-    if let Some(deps) = dependencies {
-        for (dep_name, dep) in deps {
-            if let Dependency::Detailed(dep_details) = dep {
-                if let Some(path) = &dep_details.path {
-                    let manifest_path = manifest_dir.join(path).canonicalize()?;
-                    let dep_manifest = ManifestFile::from_dir(&manifest_path)?;
-                    let dep_pkg_manifest =
-                        if let ManifestFile::Package(pkg_manifest) = &dep_manifest {
-                            pkg_manifest
-                        } else {
-                            bail!("forc-doc does not support workspaces.")
-                        };
-                    build_docs(
-                        &dep_manifest,
-                        dep_pkg_manifest,
-                        doc_path,
-                        build_instructions,
-                    )?;
-                } else {
-                    println!("a path variable was not set for {dep_name}, which is currently the only supported option.")
-                }
-            } else {
-                println!("{dep_name} is a simple format dependency,\nsimple format dependencies don't specify a path to a manfiest file and are unsupported at this time.")
-            }
-        }
-    }
 
     Ok(())
 }
