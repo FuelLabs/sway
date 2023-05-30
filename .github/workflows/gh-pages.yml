@@ -70,8 +70,13 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+<<<<<<< HEAD
           publish_dir: ./sway-lib-std/out/doc
           destination_dir: master
+=======
+          publish_dir: ./sway-lib-std/out/doc/std
+          destination_dir: master/std
+>>>>>>> master
         if: github.ref == 'refs/heads/master'
 
       - name: Create master book redirect file

@@ -85,6 +85,9 @@ pub struct Print {
     /// Output the time elapsed over each part of the compilation process.
     #[clap(long)]
     pub time_phases: bool,
+    /// Output compilation metrics into file.
+    #[clap(long)]
+    pub metrics_outfile: Option<String>,
 }
 
 /// Package-related options.
