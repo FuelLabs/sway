@@ -36,6 +36,7 @@ forc build --path sway-lib-std &&
 forc test --path sway-lib-std &&
 cargo run --locked -p forc -- build --locked --path ./examples/Forc.toml &&
 cargo run --locked -p forc-fmt -- --check --path ./examples/Forc.toml &&
+cargo run --locked -p forc -- build --path ./docs/reference/src/code/Forc.toml &&
 rm -Rf test-proj &&
 forc new test-proj &&
 echo "std = { path = \"../sway-lib-std/\" }" >> test-proj/Forc.toml &&
