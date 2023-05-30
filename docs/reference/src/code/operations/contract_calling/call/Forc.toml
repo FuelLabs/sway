@@ -6,3 +6,4 @@ name = "call"
 
 [dependencies]
 contract_interface = { path = "../contract_interface" }
+std = { path = "../../../../../../../sway-lib-std" }

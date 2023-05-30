@@ -202,6 +202,7 @@ fn opts_from_cmd(cmd: Command) -> forc_test::Opts {
             ir: cmd.build.print.ir,
         },
         time_phases: cmd.build.print.time_phases,
+        metrics_outfile: cmd.build.print.metrics_outfile,
         minify: pkg::MinifyOpts {
             json_abi: cmd.build.minify.json_abi,
             json_storage_slots: cmd.build.minify.json_storage_slots,

@@ -9,3 +9,4 @@ OWNER_ADDRESS = { type = "b256", value = "0x8900c5bec4ca97d4febf9ceb4754a60d782a
 
 [dependencies]
 interface = { path = "../interface" }
+std = { path = "../../../../../../../../sway-lib-std" }

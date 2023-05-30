@@ -160,6 +160,8 @@ pub struct Opts {
     pub error_on_warnings: bool,
     /// Output the time elapsed over each part of the compilation process.
     pub time_phases: bool,
+    /// Output compilation metrics into file.
+    pub metrics_outfile: Option<String>,
 }
 
 /// The set of options provided for controlling logs printed for each test.
@@ -496,6 +498,7 @@ impl Opts {
             release: self.release,
             error_on_warnings: self.error_on_warnings,
             time_phases: self.time_phases,
+            metrics_outfile: self.metrics_outfile,
             tests: true,
             member_filter: Default::default(),
         }
