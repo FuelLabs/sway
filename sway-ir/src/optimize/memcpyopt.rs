@@ -491,6 +491,13 @@ fn local_copy_prop(
 
     let mut modified = false;
     for block in function.block_iter(context) {
+        // A `memcpy` itself has a `load`, so we can `process_load` on it.
+        // If now, we've marked the source of this `memcpy` for optimization,
+        // it itself cannot be "generated" as a new candidate `memcpy`.
+        // This is the reason we run a loop on the block till there's no more
+        // optimization possible. We could track just the changes and do it
+        // all in one go, but that would complicate the algorithm. So I've
+        // marked this as a TODO for now (#4600).
         loop {
             available_copies = FxHashSet::default();
             src_to_copies = FxHashMap::default();
