@@ -118,14 +118,12 @@ pub enum FuelVmInstruction {
     /// Revert VM execution.
     Revert(Value),
     /// - Sends a message to an output via the `smo` FuelVM instruction. The first operand must be
-    /// a struct with the first field being a `B256` representing the recipient. The rest of the
-    /// struct is the message data being sent.
-    /// - Assumes the existence of an `OutputMessage` at `output_index`
-    /// - `message_size`, `output_index`, and `coins` must be of type `U64`.
+    /// a `B256` representing the recipient. The second operand is the message data being sent.
+    /// - `message_size` and `coins` must be of type `U64`.
     Smo {
-        recipient_and_message: Value,
+        recipient: Value,
+        message: Value,
         message_size: Value,
-        output_index: Value,
         coins: Value,
     },
     /// Clears `number_of_slots` storage slots (`b256` each) starting at key `key`.
@@ -355,11 +353,11 @@ impl Instruction {
                 FuelVmInstruction::ReadRegister(_) => vec![],
                 FuelVmInstruction::Revert(v) => vec![*v],
                 FuelVmInstruction::Smo {
-                    recipient_and_message,
+                    recipient,
+                    message,
                     message_size,
-                    output_index,
                     coins,
-                } => vec![*recipient_and_message, *message_size, *output_index, *coins],
+                } => vec![*recipient, *message, *message_size, *coins],
                 FuelVmInstruction::StateClear {
                     key,
                     number_of_slots,
@@ -479,14 +477,14 @@ impl Instruction {
                 FuelVmInstruction::ReadRegister { .. } => (),
                 FuelVmInstruction::Revert(revert_val) => replace(revert_val),
                 FuelVmInstruction::Smo {
-                    recipient_and_message,
+                    recipient,
+                    message,
                     message_size,
-                    output_index,
                     coins,
                 } => {
-                    replace(recipient_and_message);
+                    replace(recipient);
+                    replace(message);
                     replace(message_size);
-                    replace(output_index);
                     replace(coins);
                 }
                 FuelVmInstruction::StateClear {
@@ -536,9 +534,11 @@ impl Instruction {
             | Instruction::FuelVm(FuelVmInstruction::StateLoadQuadWord { .. })
             | Instruction::FuelVm(FuelVmInstruction::StateStoreQuadWord { .. })
             | Instruction::FuelVm(FuelVmInstruction::StateStoreWord { .. })
+            | Instruction::FuelVm(FuelVmInstruction::Revert(..))
             | Instruction::MemCopyBytes { .. }
             | Instruction::MemCopyVal { .. }
-            | Instruction::Store { .. } => true,
+            | Instruction::Store { .. }
+            | Instruction::Ret(..) => true,
 
             Instruction::BinaryOp { .. }
             | Instruction::BitCast(..)
@@ -548,15 +548,13 @@ impl Instruction {
             | Instruction::ConditionalBranch { .. }
             | Instruction::FuelVm(FuelVmInstruction::Gtf { .. })
             | Instruction::FuelVm(FuelVmInstruction::ReadRegister(_))
-            | Instruction::FuelVm(FuelVmInstruction::Revert(..))
             | Instruction::FuelVm(FuelVmInstruction::StateLoadWord(_))
             | Instruction::GetElemPtr { .. }
             | Instruction::GetLocal(_)
             | Instruction::IntToPtr(..)
             | Instruction::Load(_)
             | Instruction::Nop
-            | Instruction::PtrToInt(..)
-            | Instruction::Ret(..) => false,
+            | Instruction::PtrToInt(..) => false,
         }
     }
 
@@ -859,19 +857,13 @@ impl<'a> InstructionInserter<'a> {
         revert_val
     }
 
-    pub fn smo(
-        self,
-        recipient_and_message: Value,
-        message_size: Value,
-        output_index: Value,
-        coins: Value,
-    ) -> Value {
+    pub fn smo(self, recipient: Value, message: Value, message_size: Value, coins: Value) -> Value {
         make_instruction!(
             self,
             Instruction::FuelVm(FuelVmInstruction::Smo {
-                recipient_and_message,
+                recipient,
+                message,
                 message_size,
-                output_index,
                 coins,
             })
         )

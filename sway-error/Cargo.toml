@@ -1,6 +1,6 @@
 [package]
 name = "sway-error"
-version = "0.39.1"
+version = "0.40.0"
 description = "Sway's error handling"
 authors.workspace = true
 edition.workspace = true
@@ -12,6 +12,6 @@ repository.workspace = true
 extension-trait = "1.0.1"
 num-bigint = "0.4.3"
 num-traits = "0.2.14"
-sway-ast = { version = "0.39.1", path = "../sway-ast" }
-sway-types = { version = "0.39.1", path = "../sway-types" }
+sway-ast = { version = "0.40.0", path = "../sway-ast" }
+sway-types = { version = "0.40.0", path = "../sway-types" }
 thiserror = "1.0"

@@ -1230,17 +1230,12 @@ mod ir_builder {
                         .ins(context)
                         .revert(*val_map.get(&ret_val_name).unwrap())
                         .add_metadatum(context, opt_metadata),
-                    IrAstOperation::Smo(
-                        recipient_and_message,
-                        message_size,
-                        output_index,
-                        coins,
-                    ) => block
+                    IrAstOperation::Smo(recipient, message, message_size, coins) => block
                         .ins(context)
                         .smo(
-                            *val_map.get(&recipient_and_message).unwrap(),
+                            *val_map.get(&recipient).unwrap(),
+                            *val_map.get(&message).unwrap(),
                             *val_map.get(&message_size).unwrap(),
-                            *val_map.get(&output_index).unwrap(),
                             *val_map.get(&coins).unwrap(),
                         )
                         .add_metadatum(context, opt_metadata),
