@@ -10,10 +10,7 @@ use crate::{
     CompileResult, Ident,
 };
 
-use super::{
-    module::Module, root::Root, submodule_namespace::SubmoduleNamespace,
-    trait_map::are_equal_minus_dynamic_types, Path, PathBuf,
-};
+use super::{module::Module, root::Root, submodule_namespace::SubmoduleNamespace, Path, PathBuf};
 
 use sway_error::error::CompileError;
 use sway_types::{span::Span, Spanned};
@@ -270,6 +267,8 @@ impl Namespace {
         let decl_engine = engines.de();
         let type_engine = engines.te();
 
+        let unify_check = UnifyCheck::non_dynamic_equality(engines);
+
         let matching_item_decl_refs = check!(
             self.find_items_for_type(type_id, method_prefix, method_name, self_type, engines,),
             return err(warnings, errors),
@@ -294,19 +293,13 @@ impl Namespace {
             for decl_ref in matching_method_decl_refs.clone().into_iter() {
                 let method = decl_engine.get_function(&decl_ref);
                 if method.parameters.len() == args_buf.len()
-                    && !method.parameters.iter().zip(args_buf.iter()).any(|(p, a)| {
-                        !are_equal_minus_dynamic_types(
-                            engines,
-                            p.type_argument.type_id,
-                            a.return_type,
-                        )
-                    })
+                    && method
+                        .parameters
+                        .iter()
+                        .zip(args_buf.iter())
+                        .all(|(p, a)| unify_check.check(p.type_argument.type_id, a.return_type))
                     && (matches!(type_engine.get(annotation_type), TypeInfo::Unknown)
-                        || are_equal_minus_dynamic_types(
-                            engines,
-                            annotation_type,
-                            method.return_type.type_id,
-                        ))
+                        || unify_check.check(annotation_type, method.return_type.type_id))
                 {
                     maybe_method_decl_refs.push(decl_ref);
                 }
@@ -356,9 +349,7 @@ impl Namespace {
                                                 warnings,
                                                 errors
                                             );
-                                            if !are_equal_minus_dynamic_types(
-                                                engines, p1_type_id, p2_type_id,
-                                            ) {
+                                            if !unify_check.check(p1_type_id, p2_type_id) {
                                                 params_equal = false;
                                                 break;
                                             }
