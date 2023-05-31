@@ -90,10 +90,6 @@ fn get_loaded_symbols(context: &Context, val: Value) -> Vec<Symbol> {
             log_val: src_val_ptr,
             ..
         })
-        | Instruction::FuelVm(FuelVmInstruction::Smo {
-            recipient_and_message: src_val_ptr,
-            ..
-        })
         | Instruction::FuelVm(FuelVmInstruction::StateLoadWord(src_val_ptr))
         | Instruction::FuelVm(FuelVmInstruction::StateStoreWord {
             key: src_val_ptr, ..
@@ -105,11 +101,18 @@ fn get_loaded_symbols(context: &Context, val: Value) -> Vec<Symbol> {
             key: src_val_ptr, ..
         }) => get_symbols(context, *src_val_ptr).to_vec(),
         Instruction::FuelVm(FuelVmInstruction::StateStoreQuadWord {
-            stored_val, key, ..
-        }) => get_symbols(context, *stored_val)
+            stored_val: memopd1,
+            key: memopd2,
+            ..
+        })
+        | Instruction::FuelVm(FuelVmInstruction::Smo {
+            recipient: memopd1,
+            message: memopd2,
+            ..
+        }) => get_symbols(context, *memopd1)
             .iter()
             .cloned()
-            .chain(get_symbols(context, *key).iter().cloned())
+            .chain(get_symbols(context, *memopd2).iter().cloned())
             .collect(),
         Instruction::Store { dst_val_ptr: _, .. } => vec![],
         Instruction::FuelVm(FuelVmInstruction::Gtf { .. })

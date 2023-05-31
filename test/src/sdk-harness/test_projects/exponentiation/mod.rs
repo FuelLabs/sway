@@ -1,5 +1,5 @@
 use fuels::prelude::*;
-use fuels::tx::ContractId;
+use fuels::types::ContractId;
 
 abigen!(Contract(
     name = "TestPowContract",
@@ -103,11 +103,12 @@ async fn overflowing_pow_u8_panics_max() {
 async fn get_pow_test_instance(
     wallet: WalletUnlocked,
 ) -> (TestPowContract<WalletUnlocked>, ContractId) {
-    let pow_id = Contract::deploy(
+    let pow_id = Contract::load_from(
         "test_artifacts/pow/out/debug/pow.bin",
-        &wallet,
-        DeployConfiguration::default(),
+        LoadConfiguration::default(),
     )
+    .unwrap()
+    .deploy(&wallet, TxParameters::default())
     .await
     .unwrap();
 

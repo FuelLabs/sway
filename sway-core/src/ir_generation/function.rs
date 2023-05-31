@@ -836,7 +836,14 @@ impl<'eng> FnCompiler<'eng> {
             Intrinsic::Smo => {
                 let span_md_idx = md_mgr.span_to_md(context, &span);
 
-                /* First operand: recipient + message data */
+                /* First operand: recipient */
+                let recipient_value =
+                    self.compile_expression_to_value(context, md_mgr, &arguments[0])?;
+                let recipient_md_idx = md_mgr.span_to_md(context, &span);
+                let recipient_var =
+                    store_key_in_local_mem(self, context, recipient_value, recipient_md_idx)?;
+
+                /* Second operand: message data */
                 // Step 1: compile the user data and get its type
                 let user_message =
                     self.compile_expression_to_value(context, md_mgr, &arguments[1])?;
@@ -848,23 +855,20 @@ impl<'eng> FnCompiler<'eng> {
                 })?;
 
                 // Step 2: build a struct with two fields:
-                // - The first field is a `b256` that contains the `recipient`
-                // - The second field is a `u64` that contains the message ID
-                // - The third field contains the actual user data
-                let b256_ty = Type::get_b256(context);
+                // - The first field is a `u64` that contains the message ID
+                // - The second field contains the actual user data
                 let u64_ty = Type::get_uint64(context);
-                let field_types = [b256_ty, u64_ty, user_message_type];
-                let recipient_and_message_aggregate =
-                    Type::new_struct(context, field_types.to_vec());
+                let field_types = [u64_ty, user_message_type];
+                let message_aggregate = Type::new_struct(context, field_types.to_vec());
 
-                // Step 3: construct a local pointer for the recipient and message data struct
-                let recipient_and_message_aggregate_local_name = self.lexical_map.insert_anon();
-                let recipient_and_message_ptr = self
+                // Step 3: construct a local pointer for the message aggregate struct
+                let message_aggregate_local_name = self.lexical_map.insert_anon();
+                let message_ptr = self
                     .function
                     .new_local_var(
                         context,
-                        recipient_and_message_aggregate_local_name,
-                        recipient_and_message_aggregate,
+                        message_aggregate_local_name,
+                        message_aggregate,
                         None,
                         false,
                     )
@@ -873,26 +877,14 @@ impl<'eng> FnCompiler<'eng> {
                     })?;
 
                 // Step 4: Convert the local variable into a value via `get_local`.
-                let recipient_and_message = self
+                let message = self
                     .current_block
                     .ins(context)
-                    .get_local(recipient_and_message_ptr)
+                    .get_local(message_ptr)
                     .add_metadatum(context, span_md_idx);
 
-                // Step 5: compile the `recipient` and insert it as the first field of the struct
-                let recipient = self.compile_expression_to_value(context, md_mgr, &arguments[0])?;
-                let gep_val = self.current_block.ins(context).get_elem_ptr_with_idx(
-                    recipient_and_message,
-                    b256_ty,
-                    0,
-                );
-                self.current_block
-                    .ins(context)
-                    .store(gep_val, recipient)
-                    .add_metadatum(context, span_md_idx);
-
-                // Step 6: Grab the message ID from `messages_types_map` and insert it as the
-                // second field of the struct
+                // Step 5: Grab the message ID from `messages_types_map` and insert it as the
+                // first field of the struct
                 let message_id_val = self
                     .messages_types_map
                     .get(&arguments[1].return_type)
@@ -903,21 +895,20 @@ impl<'eng> FnCompiler<'eng> {
                             span.clone(),
                         )
                     })?;
-                let gep_val = self.current_block.ins(context).get_elem_ptr_with_idx(
-                    recipient_and_message,
-                    u64_ty,
-                    1,
-                );
+                let gep_val = self
+                    .current_block
+                    .ins(context)
+                    .get_elem_ptr_with_idx(message, u64_ty, 0);
                 self.current_block
                     .ins(context)
                     .store(gep_val, message_id_val)
                     .add_metadatum(context, span_md_idx);
 
-                // Step 7: Insert the user message data as the third field of the struct
+                // Step 6: Insert the user message data as the second field of the struct
                 let gep_val = self.current_block.ins(context).get_elem_ptr_with_idx(
-                    recipient_and_message,
+                    message,
                     user_message_type,
-                    2,
+                    1,
                 );
                 let user_message_size = 8 + ir_type_size_in_bytes(context, &user_message_type);
                 self.current_block
@@ -925,25 +916,16 @@ impl<'eng> FnCompiler<'eng> {
                     .store(gep_val, user_message)
                     .add_metadatum(context, span_md_idx);
 
-                /* Second operand: the size of the message data */
+                /* Third operand: the size of the message data */
                 let user_message_size_val = Constant::get_uint(context, 64, user_message_size);
 
-                /* Third operand: the output index */
-                let output_index =
-                    self.compile_expression_to_value(context, md_mgr, &arguments[2])?;
-
                 /* Fourth operand: the amount of coins to send */
-                let coins = self.compile_expression_to_value(context, md_mgr, &arguments[3])?;
+                let coins = self.compile_expression_to_value(context, md_mgr, &arguments[2])?;
 
                 Ok(self
                     .current_block
                     .ins(context)
-                    .smo(
-                        recipient_and_message,
-                        user_message_size_val,
-                        output_index,
-                        coins,
-                    )
+                    .smo(recipient_var, message, user_message_size_val, coins)
                     .add_metadatum(context, span_md_idx))
             }
         }

@@ -209,16 +209,11 @@ impl<'a> InstructionVerifier<'a> {
                         FuelVmInstruction::ReadRegister(_) => (),
                         FuelVmInstruction::Revert(val) => self.verify_revert(val)?,
                         FuelVmInstruction::Smo {
-                            recipient_and_message,
+                            recipient,
+                            message,
                             message_size,
-                            output_index,
                             coins,
-                        } => self.verify_smo(
-                            recipient_and_message,
-                            message_size,
-                            output_index,
-                            coins,
-                        )?,
+                        } => self.verify_smo(recipient, message, message_size, coins)?,
                         FuelVmInstruction::StateClear {
                             key,
                             number_of_slots,
@@ -688,21 +683,26 @@ impl<'a> InstructionVerifier<'a> {
 
     fn verify_smo(
         &self,
-        recipient_and_message: &Value,
+        recipient: &Value,
+        message: &Value,
         message_size: &Value,
-        output_index: &Value,
         coins: &Value,
     ) -> Result<(), IrError> {
-        // Check that the first operand is a struct with the first field being a `b256`
-        // representing the recipient address
-        let struct_ty = self.get_ptr_type(recipient_and_message, IrError::VerifySmoNonPointer)?;
+        // Check that the first operand is a `b256` representing the recipient address.
+        let recipient = self.get_ptr_type(recipient, IrError::VerifySmoRecipientNonPointer)?;
+        if !recipient.is_b256(self.context) {
+            return Err(IrError::VerifySmoRecipientBadType);
+        }
+
+        // Check that the second operand is a struct with two fields
+        let struct_ty = self.get_ptr_type(message, IrError::VerifySmoMessageNonPointer)?;
 
         if !struct_ty.is_struct(self.context) {
-            return Err(IrError::VerifySmoBadRecipientAndMessageType);
+            return Err(IrError::VerifySmoBadMessageType);
         }
         let fields = struct_ty.get_field_types(self.context);
-        if fields.is_empty() || !fields[0].is_b256(self.context) {
-            return Err(IrError::VerifySmoRecipientBadType);
+        if fields.len() != 2 {
+            return Err(IrError::VerifySmoBadMessageType);
         }
 
         // Check that the second operand is a `u64` representing the message size.
@@ -713,15 +713,7 @@ impl<'a> InstructionVerifier<'a> {
             return Err(IrError::VerifySmoMessageSize);
         }
 
-        // Check that the third operand is a `u64` representing the output index.
-        if !output_index
-            .get_type(self.context)
-            .is(Type::is_uint64, self.context)
-        {
-            return Err(IrError::VerifySmoOutputIndex);
-        }
-
-        // Check that the fourth operand is a `u64` representing the amount of coins being sent.
+        // Check that the third operand is a `u64` representing the amount of coins being sent.
         if !coins
             .get_type(self.context)
             .is(Type::is_uint64, self.context)
