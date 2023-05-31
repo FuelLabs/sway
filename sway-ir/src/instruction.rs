@@ -534,9 +534,11 @@ impl Instruction {
             | Instruction::FuelVm(FuelVmInstruction::StateLoadQuadWord { .. })
             | Instruction::FuelVm(FuelVmInstruction::StateStoreQuadWord { .. })
             | Instruction::FuelVm(FuelVmInstruction::StateStoreWord { .. })
+            | Instruction::FuelVm(FuelVmInstruction::Revert(..))
             | Instruction::MemCopyBytes { .. }
             | Instruction::MemCopyVal { .. }
-            | Instruction::Store { .. } => true,
+            | Instruction::Store { .. }
+            | Instruction::Ret(..) => true,
 
             Instruction::BinaryOp { .. }
             | Instruction::BitCast(..)
@@ -546,15 +548,13 @@ impl Instruction {
             | Instruction::ConditionalBranch { .. }
             | Instruction::FuelVm(FuelVmInstruction::Gtf { .. })
             | Instruction::FuelVm(FuelVmInstruction::ReadRegister(_))
-            | Instruction::FuelVm(FuelVmInstruction::Revert(..))
             | Instruction::FuelVm(FuelVmInstruction::StateLoadWord(_))
             | Instruction::GetElemPtr { .. }
             | Instruction::GetLocal(_)
             | Instruction::IntToPtr(..)
             | Instruction::Load(_)
             | Instruction::Nop
-            | Instruction::PtrToInt(..)
-            | Instruction::Ret(..) => false,
+            | Instruction::PtrToInt(..) => false,
         }
     }
 
