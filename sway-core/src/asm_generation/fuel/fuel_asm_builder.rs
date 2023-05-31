@@ -198,17 +198,11 @@ impl<'ir> FuelAsmBuilder<'ir> {
                         self.compile_revert(instr_val, revert_val)
                     }
                     FuelVmInstruction::Smo {
-                        recipient_and_message,
+                        recipient,
+                        message,
                         message_size,
-                        output_index,
                         coins,
-                    } => self.compile_smo(
-                        instr_val,
-                        recipient_and_message,
-                        message_size,
-                        output_index,
-                        coins,
-                    ),
+                    } => self.compile_smo(instr_val, recipient, message, message_size, coins),
                     FuelVmInstruction::StateClear {
                         key,
                         number_of_slots,
@@ -1164,23 +1158,23 @@ impl<'ir> FuelAsmBuilder<'ir> {
     fn compile_smo(
         &mut self,
         instr_val: &Value,
-        recipient_and_message: &Value,
+        recipient: &Value,
+        message: &Value,
         message_size: &Value,
-        output_index: &Value,
         coins: &Value,
     ) -> Result<(), CompileError> {
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
-        let recipient_and_message_reg = self.value_to_register(recipient_and_message)?;
+        let recipient_reg = self.value_to_register(recipient)?;
+        let message_reg = self.value_to_register(message)?;
         let message_size_reg = self.value_to_register(message_size)?;
-        let output_index_reg = self.value_to_register(output_index)?;
         let coins_reg = self.value_to_register(coins)?;
 
         self.cur_bytecode.push(Op {
             owning_span,
             opcode: Either::Left(VirtualOp::SMO(
-                recipient_and_message_reg,
+                recipient_reg,
+                message_reg,
                 message_size_reg,
-                output_index_reg,
                 coins_reg,
             )),
             comment: "".into(),

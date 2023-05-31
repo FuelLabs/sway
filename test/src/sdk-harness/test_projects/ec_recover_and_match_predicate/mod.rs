@@ -78,7 +78,7 @@ async fn ec_recover_and_match_predicate_test() -> Result<()> {
 
     let signatures = [signature1, signature2, signature3];
 
-    let predicate_data = TestPredicate::encode_data(signatures);
+    let predicate_data = TestPredicateEncoder::encode_data(signatures);
     let code_path =
         "test_projects/ec_recover_and_match_predicate/out/debug/ec_recover_and_match_predicate.bin";
 

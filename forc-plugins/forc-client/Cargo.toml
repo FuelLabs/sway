@@ -23,8 +23,8 @@ fuel-core-client = { workspace = true, default-features = false }
 fuel-crypto = { workspace = true }
 fuel-tx = { workspace = true, features = ["builder"] }
 fuel-vm = { workspace = true }
+fuels-accounts = { workspace = true }
 fuels-core = { workspace = true }
-fuels-signers = { workspace = true }
 fuels-types = { workspace = true }
 futures = "0.3"
 hex = "0.4.3"
