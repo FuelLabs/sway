@@ -2,7 +2,10 @@ use crate::{
     decl_engine::{DeclRefConstant, DeclRefFunction},
     engine_threading::*,
     error::*,
-    language::{ty, CallPath, Visibility},
+    language::{
+        ty::{self},
+        CallPath, Visibility,
+    },
     type_system::*,
     CompileResult, Ident,
 };
@@ -15,7 +18,7 @@ use super::{
 use sway_error::error::CompileError;
 use sway_types::{span::Span, Spanned};
 
-use std::{cmp::Ordering, collections::VecDeque};
+use std::collections::{HashMap, VecDeque};
 
 /// The set of items that represent the namespace context passed throughout type checking.
 #[derive(Clone, Debug)]
@@ -256,7 +259,9 @@ impl Namespace {
         method_prefix: &Path,
         method_name: &Ident,
         self_type: TypeId,
+        annotation_type: TypeId,
         args_buf: &VecDeque<ty::TyExpression>,
+        as_trait: Option<TypeInfo>,
         engines: Engines<'_>,
     ) -> CompileResult<DeclRefFunction> {
         let mut warnings = vec![];
@@ -280,38 +285,174 @@ impl Namespace {
             })
             .collect::<Vec<_>>();
 
-        let matching_method_decl_ref = match matching_method_decl_refs.len().cmp(&1) {
-            Ordering::Equal => matching_method_decl_refs.get(0).cloned(),
-            Ordering::Greater => {
-                // Case where multiple methods exist with the same name
-                // This is the case of https://github.com/FuelLabs/sway/issues/3633
-                // where multiple generic trait impls use the same method name but with different parameter types
-                let mut maybe_method_decl_ref: Option<DeclRefFunction> = None;
-                for decl_ref in matching_method_decl_refs.clone().into_iter() {
-                    let method = decl_engine.get_function(&decl_ref);
-                    if method.parameters.len() == args_buf.len()
-                        && !method.parameters.iter().zip(args_buf.iter()).any(|(p, a)| {
-                            !are_equal_minus_dynamic_types(
-                                engines,
-                                p.type_argument.type_id,
-                                a.return_type,
-                            )
-                        })
-                    {
-                        maybe_method_decl_ref = Some(decl_ref);
-                        break;
-                    }
-                }
-                if let Some(matching_method_decl_ref) = maybe_method_decl_ref {
-                    // In case one or more methods match the parameter types we return the first match.
-                    Some(matching_method_decl_ref)
-                } else {
-                    // When we can't match any method with parameter types we still return the first method found
-                    // This was the behavior before introducing the parameter type matching
-                    matching_method_decl_refs.get(0).cloned()
+        let mut qualified_call_path = None;
+        let matching_method_decl_ref = {
+            // Case where multiple methods exist with the same name
+            // This is the case of https://github.com/FuelLabs/sway/issues/3633
+            // where multiple generic trait impls use the same method name but with different parameter types
+            let mut maybe_method_decl_refs: Vec<DeclRefFunction> = vec![];
+            for decl_ref in matching_method_decl_refs.clone().into_iter() {
+                let method = decl_engine.get_function(&decl_ref);
+                if method.parameters.len() == args_buf.len()
+                    && !method.parameters.iter().zip(args_buf.iter()).any(|(p, a)| {
+                        !are_equal_minus_dynamic_types(
+                            engines,
+                            p.type_argument.type_id,
+                            a.return_type,
+                        )
+                    })
+                    && (matches!(type_engine.get(annotation_type), TypeInfo::Unknown)
+                        || are_equal_minus_dynamic_types(
+                            engines,
+                            annotation_type,
+                            method.return_type.type_id,
+                        ))
+                {
+                    maybe_method_decl_refs.push(decl_ref);
                 }
             }
-            Ordering::Less => None,
+
+            if !maybe_method_decl_refs.is_empty() {
+                let mut trait_methods =
+                    HashMap::<(CallPath, Vec<WithEngines<TypeArgument>>), DeclRefFunction>::new();
+                let mut impl_self_method = None;
+                for method_ref in maybe_method_decl_refs.clone() {
+                    let method = decl_engine.get_function(&method_ref);
+                    if let Some(ty::TyDecl::ImplTrait(impl_trait)) =
+                        method.implementing_type.clone()
+                    {
+                        let trait_decl = decl_engine.get_impl_trait(&impl_trait.decl_id);
+                        if let Some(TypeInfo::Custom {
+                            call_path,
+                            type_arguments,
+                        }) = as_trait.clone()
+                        {
+                            qualified_call_path = Some(call_path.clone());
+                            // When `<S as Trait<T>>::method()` is used we only add methods to `trait_methods` that
+                            // originate from the qualified trait.
+                            if trait_decl.trait_name == call_path {
+                                let mut params_equal = true;
+                                if let Some(params) = type_arguments {
+                                    if params.len() != trait_decl.trait_type_arguments.len() {
+                                        params_equal = false;
+                                    } else {
+                                        for (p1, p2) in params
+                                            .iter()
+                                            .zip(trait_decl.trait_type_arguments.clone())
+                                        {
+                                            let p1_type_id = check!(
+                                                self.resolve_type_without_self(
+                                                    engines, p1.type_id, &p1.span, None
+                                                ),
+                                                return err(warnings, errors),
+                                                warnings,
+                                                errors
+                                            );
+                                            let p2_type_id = check!(
+                                                self.resolve_type_without_self(
+                                                    engines, p2.type_id, &p2.span, None
+                                                ),
+                                                return err(warnings, errors),
+                                                warnings,
+                                                errors
+                                            );
+                                            if !are_equal_minus_dynamic_types(
+                                                engines, p1_type_id, p2_type_id,
+                                            ) {
+                                                params_equal = false;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                                if params_equal {
+                                    trait_methods.insert(
+                                        (
+                                            trait_decl.trait_name,
+                                            trait_decl
+                                                .trait_type_arguments
+                                                .iter()
+                                                .cloned()
+                                                .map(|a| engines.help_out(a))
+                                                .collect::<Vec<_>>(),
+                                        ),
+                                        method_ref.clone(),
+                                    );
+                                }
+                            }
+                        } else {
+                            trait_methods.insert(
+                                (
+                                    trait_decl.trait_name,
+                                    trait_decl
+                                        .trait_type_arguments
+                                        .iter()
+                                        .cloned()
+                                        .map(|a| engines.help_out(a))
+                                        .collect::<Vec<_>>(),
+                                ),
+                                method_ref.clone(),
+                            );
+                        }
+                        if trait_decl.trait_decl_ref.is_none() {
+                            impl_self_method = Some(method_ref);
+                        }
+                    }
+                }
+
+                if trait_methods.len() == 1 {
+                    trait_methods.values().next().cloned()
+                } else if trait_methods.len() > 1 {
+                    if impl_self_method.is_some() {
+                        // In case we have trait methods and a impl self method we use the impl self method.
+                        impl_self_method
+                    } else {
+                        fn to_string(
+                            trait_name: CallPath,
+                            trait_type_args: Vec<WithEngines<TypeArgument>>,
+                        ) -> String {
+                            format!(
+                                "{}{}",
+                                trait_name.suffix,
+                                if trait_type_args.is_empty() {
+                                    String::new()
+                                } else {
+                                    format!(
+                                        "<{}>",
+                                        trait_type_args
+                                            .iter()
+                                            .map(|type_arg| type_arg.to_string())
+                                            .collect::<Vec<_>>()
+                                            .join(", ")
+                                    )
+                                }
+                            )
+                        }
+                        let mut trait_strings = trait_methods
+                            .keys()
+                            .map(|t| to_string(t.0.clone(), t.1.clone()))
+                            .collect::<Vec<String>>();
+                        // Sort so the output of the error is always the same.
+                        trait_strings.sort();
+                        errors.push(CompileError::MultipleApplicableItemsInScope {
+                            method_name: method_name.as_str().to_string(),
+                            type_name: engines.help_out(type_id).to_string(),
+                            as_traits: trait_strings,
+                            span: method_name.span(),
+                        });
+                        return err(warnings, errors);
+                    }
+                } else if qualified_call_path.is_some() {
+                    // When we use a qualified path the expected method should be in trait_methods.
+                    None
+                } else {
+                    maybe_method_decl_refs.get(0).cloned()
+                }
+            } else {
+                // When we can't match any method with parameter types we still return the first method found
+                // This was the behavior before introducing the parameter type matching
+                matching_method_decl_refs.get(0).cloned()
+            }
         };
 
         if let Some(method_decl_ref) = matching_method_decl_ref {
@@ -323,9 +464,14 @@ impl Namespace {
             .map(|x| type_engine.get(x.return_type))
             .eq(&Some(TypeInfo::ErrorRecovery), engines)
         {
+            let type_name = if let Some(call_path) = qualified_call_path {
+                format!("{} as {}", engines.help_out(type_id), call_path)
+            } else {
+                engines.help_out(type_id).to_string()
+            };
             errors.push(CompileError::MethodNotFound {
                 method_name: method_name.clone(),
-                type_name: engines.help_out(type_id).to_string(),
+                type_name,
                 span: method_name.span(),
             });
         }
