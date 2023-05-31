@@ -1,5 +1,5 @@
 use fuel_vm::consts::VM_MAX_RAM;
-use fuels::{prelude::*, tx::ContractId};
+use fuels::{prelude::*, types::ContractId};
 
 use sha2::{Digest, Sha256};
 
@@ -10,11 +10,12 @@ abigen!(Contract(
 
 async fn get_call_frames_instance() -> (CallFramesTestContract<WalletUnlocked>, ContractId) {
     let wallet = launch_provider_and_get_wallet().await;
-    let id = Contract::deploy(
+    let id = Contract::load_from(
         "test_projects/call_frames/out/debug/call_frames.bin",
-        &wallet,
-        DeployConfiguration::default(),
+        LoadConfiguration::default(),
     )
+    .unwrap()
+    .deploy(&wallet, TxParameters::default())
     .await
     .unwrap();
     let instance = CallFramesTestContract::new(id.clone(), wallet);

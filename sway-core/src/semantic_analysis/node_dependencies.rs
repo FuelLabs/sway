@@ -516,6 +516,7 @@ impl Dependencies {
                 let AmbiguousPathExpression {
                     call_path_binding,
                     args,
+                    qualified_path_root: _,
                 } = &**e;
                 let mut this = self;
                 if call_path_binding.inner.prefixes.is_empty() {

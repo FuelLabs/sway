@@ -1610,7 +1610,8 @@ fn expr_func_app_to_expression_kind(
         }
     };
 
-    let is_absolute = path_root_opt_to_bool(context, handler, root_opt)?;
+    let (is_absolute, qualified_path_root) =
+        path_root_opt_to_bool_and_qualified_path_root(context, handler, engines, root_opt)?;
 
     let convert_ty_args = |context: &mut Context, generics_opt: Option<(_, GenericArgs)>| {
         Ok(match generics_opt {
@@ -1695,6 +1696,7 @@ fn expr_func_app_to_expression_kind(
                 AmbiguousPathExpression {
                     args: arguments,
                     call_path_binding,
+                    qualified_path_root,
                 },
             )));
         }
@@ -1726,6 +1728,7 @@ fn expr_func_app_to_expression_kind(
         AmbiguousPathExpression {
             args: arguments,
             call_path_binding,
+            qualified_path_root,
         },
     )))
 }
@@ -2705,6 +2708,42 @@ fn path_root_opt_to_bool(
             };
             return Err(handler.emit_err(error.into()));
         }
+    })
+}
+
+fn path_root_opt_to_bool_and_qualified_path_root(
+    context: &mut Context,
+    handler: &Handler,
+    engines: Engines<'_>,
+    root_opt: Option<(Option<AngleBrackets<QualifiedPathRoot>>, DoubleColonToken)>,
+) -> Result<(bool, Option<QualifiedPathRootTypes>), ErrorEmitted> {
+    Ok(match root_opt {
+        None => (false, None),
+        Some((None, _)) => (true, None),
+        Some((
+            Some(AngleBrackets {
+                open_angle_bracket_token: _,
+                inner: QualifiedPathRoot { ty, as_trait },
+                close_angle_bracket_token: _,
+            }),
+            _,
+        )) => (
+            false,
+            if let Some((_, path_type)) = as_trait {
+                Some(QualifiedPathRootTypes {
+                    ty: ty_to_type_argument(context, handler, engines, *ty)?,
+                    as_trait: path_type_to_type_info(
+                        context,
+                        handler,
+                        engines,
+                        *path_type.clone(),
+                    )?,
+                    as_trait_span: path_type.span(),
+                })
+            } else {
+                None
+            },
+        ),
     })
 }
 
