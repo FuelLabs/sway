@@ -240,7 +240,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.17.8
+        image: ghcr.io/fuellabs/fuel-core:v0.18.1
         ports:
           - 4000:4000
     steps:
@@ -291,6 +291,36 @@ jobs:
         run: cargo run --locked -p forc -- build --locked --path ./test/src/sdk-harness
       - name: Cargo Test sway-lib-std
         run: cargo test --locked --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
+
+  forc-run-benchmarks:
+    runs-on: ubuntu-latest
+    permissions:
+        contents: write
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Install Forc
+        run: cargo install --locked --debug --path ./forc
+      - name: Run benchmarks
+        run: ./benchmark.sh
+      - name: Checkout benchmark data
+        uses: actions/checkout@v3
+        with:
+          repository: FuelLabs/sway-performance-data
+          path: performance-data
+          token: ${{ secrets.CI_ACCOUNT_PAT }}
+      - name: Prepare benchmarks data for commit
+        if: github.event_name == 'push'
+        run: ./benchmark.sh --prepare-for-commit
+      - uses: EndBug/add-and-commit@v9
+        with:
+          cwd: './performance-data'
+          message: 'Updated benchmark data'
+          default_author: github_actions
 
   forc-unit-tests:
     runs-on: ubuntu-latest

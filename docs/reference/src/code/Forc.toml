@@ -40,7 +40,7 @@ members = [
   "operations/hashing",
   "operations/logging",
   "operations/namespace",
-  "operations/re_entrency",
+# "operations/re_entrency", # Re-enable this once https://github.com/FuelLabs/sway/issues/4596 is fixed
   "operations/storage/empty_storage_init",
   "operations/storage/reading_writing_to_storage",
   "operations/storage/storage_init",

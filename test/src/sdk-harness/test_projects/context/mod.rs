@@ -1,5 +1,5 @@
 use fuel_vm::consts::VM_MAX_RAM;
-use fuels::{prelude::*, tx::ContractId};
+use fuels::{prelude::*, types::ContractId};
 
 abigen!(
     Contract(
@@ -23,18 +23,20 @@ async fn get_contracts() -> (
     ContractId,
 ) {
     let wallet = launch_provider_and_get_wallet().await;
-    let id_1 = Contract::deploy(
+    let id_1 = Contract::load_from(
         "test_projects/context/out/debug/context.bin",
-        &wallet,
-        DeployConfiguration::default(),
+        LoadConfiguration::default(),
     )
+    .unwrap()
+    .deploy(&wallet, TxParameters::default())
     .await
     .unwrap();
-    let id_2 = Contract::deploy(
+    let id_2 = Contract::load_from(
         "test_artifacts/context_caller_contract/out/debug/context_caller_contract.bin",
-        &wallet,
-        DeployConfiguration::default(),
+        LoadConfiguration::default(),
     )
+    .unwrap()
+    .deploy(&wallet, TxParameters::default())
     .await
     .unwrap();
 

@@ -1,12 +1,12 @@
 use fuel_vm::fuel_asm::{op, RegId};
+use fuel_vm::fuel_tx;
+use fuel_vm::fuel_tx::{Address, AssetId, Output};
 use fuels::{
     core::abi_encoder::ABIEncoder,
     prelude::*,
     test_helpers::Config,
-    tx::{Address, AssetId, Contract, Output},
     types::{
         input::Input,
-        resource::Resource,
         transaction_builders::{ScriptTransactionBuilder, TransactionBuilder},
         unresolved_bytes::UnresolvedBytes,
         Token,
@@ -18,17 +18,15 @@ async fn setup() -> (Vec<u8>, Address, WalletUnlocked, u64, AssetId) {
     let predicate_code =
         std::fs::read("test_projects/predicate_data_simple/out/debug/predicate_data_simple.bin")
             .unwrap();
-    let predicate_address = (*Contract::root_from_code(&predicate_code)).into();
+    let config = Config {
+        utxo_validation: true,
+        ..Config::local_node()
+    };
+    let predicate_address =
+        fuel_tx::Input::predicate_owner(&predicate_code, &config.chain_conf.transaction_parameters);
 
-    let wallets = launch_custom_provider_and_get_wallets(
-        WalletsConfig::default(),
-        Some(Config {
-            utxo_validation: true,
-            ..Config::local_node()
-        }),
-        None,
-    )
-    .await;
+    let wallets =
+        launch_custom_provider_and_get_wallets(WalletsConfig::default(), Some(config), None).await;
 
     (
         predicate_code,
@@ -103,29 +101,19 @@ async fn submit_to_predicate(
     let mut inputs = vec![];
     let mut total_amount_in_predicate = 0;
 
-    for resource in utxo_predicate_hash {
-        match &resource {
-            Resource::Coin(coin) => {
-                inputs.push(Input::resource_predicate(
-                    resource.clone(),
-                    predicate_code.to_vec(),
-                    predicate_data.clone(),
-                ));
-                total_amount_in_predicate += coin.amount;
-            }
-            Resource::Message(_) => {}
-        }
+    for coin in utxo_predicate_hash {
+        inputs.push(Input::resource_predicate(
+            coin.clone(),
+            predicate_code.to_vec(),
+            predicate_data.clone(),
+        ));
+        total_amount_in_predicate += coin.amount();
     }
 
     let output_coin = Output::coin(receiver_address, total_amount_in_predicate, asset_id);
     let output_change = Output::change(predicate_address, 0, asset_id);
 
-    let params = wallet
-        .provider()
-        .unwrap()
-        .consensus_parameters()
-        .await
-        .unwrap();
+    let params = wallet.provider().unwrap().consensus_parameters();
     let new_tx = ScriptTransactionBuilder::prepare_transfer(
         inputs,
         vec![output_coin, output_change],

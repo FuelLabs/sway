@@ -12,11 +12,12 @@ abigen!(Contract(
 //    -  Return a result
 async fn deploy_test_registers_instance() -> TestRegistersContract<WalletUnlocked> {
     let wallet = launch_provider_and_get_wallet().await;
-    let id = Contract::deploy(
+    let id = Contract::load_from(
         "test_projects/registers/out/debug/registers.bin",
-        &wallet,
-        DeployConfiguration::default(),
+        LoadConfiguration::default(),
     )
+    .unwrap()
+    .deploy(&wallet, TxParameters::default())
     .await
     .unwrap();
 

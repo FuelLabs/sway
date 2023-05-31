@@ -1,6 +1,6 @@
 [package]
 name = "sway-utils"
-version = "0.39.1"
+version = "0.40.0"
 description = "Sway common utils."
 authors.workspace = true
 edition.workspace = true
@@ -9,3 +9,4 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+serde = { version = "1.0", features = ["derive"] }

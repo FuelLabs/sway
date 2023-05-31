@@ -5,3 +5,4 @@ license = "Apache-2.0"
 name = "my_lib"
 
 [dependencies]
+std = { path = "../../../../../../../../../sway-lib-std" }

@@ -8,11 +8,12 @@ abigen!(Contract(
 
 async fn get_vec_in_abi_instance() -> (VecInAbiTestContract<WalletUnlocked>, ContractId) {
     let wallet = launch_provider_and_get_wallet().await;
-    let id = Contract::deploy(
+    let id = Contract::load_from(
         "test_projects/vec_in_abi/out/debug/vec_in_abi.bin",
-        &wallet,
-        DeployConfiguration::default(),
+        LoadConfiguration::default(),
     )
+    .unwrap()
+    .deploy(&wallet, TxParameters::default())
     .await
     .unwrap();
     let instance = VecInAbiTestContract::new(id.clone(), wallet);
