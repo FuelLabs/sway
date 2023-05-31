@@ -22,17 +22,13 @@ pub const GTF_OUTPUT_COIN_AMOUNT = 0x203;
 // pub const GTF_OUTPUT_CONTRACT_INPUT_INDEX = 0x205;
 // pub const GTF_OUTPUT_CONTRACT_BALANCE_ROOT = 0x206;
 // pub const GTF_OUTPUT_CONTRACT_STATE_ROOT = 0x207;
-// pub const GTF_OUTPUT_MESSAGE_RECIPIENT = 0x208;
-pub const GTF_OUTPUT_MESSAGE_AMOUNT = 0x209;
-
-// pub const GTF_OUTPUT_CONTRACT_CREATED_CONTRACT_ID = 0x20A;
-// pub const GTF_OUTPUT_CONTRACT_CREATED_STATE_ROOT = 0x20B;
+// pub const GTF_OUTPUT_CONTRACT_CREATED_CONTRACT_ID = 0x208;
+// pub const GTF_OUTPUT_CONTRACT_CREATED_STATE_ROOT = 0x209;
 
 /// The output type for a transaction.
 pub enum Output {
     Coin: (),
     Contract: (),
-    Message: (),
     Change: (),
     Variable: (),
 }
@@ -42,9 +38,8 @@ pub fn output_type(index: u64) -> Output {
     match __gtf::<u8>(index, GTF_OUTPUT_TYPE) {
         0u8 => Output::Coin,
         1u8 => Output::Contract,
-        2u8 => Output::Message,
-        3u8 => Output::Change,
-        4u8 => Output::Variable,
+        2u8 => Output::Change,
+        3u8 => Output::Variable,
         _ => revert(0),
     }
 }
@@ -69,12 +64,11 @@ pub fn output_count() -> u64 {
 
 /// Get the amount of coins to send for the output at `index`.
 /// This method is only meaningful if the `Output` type has the `amount` field,
-/// specifically: `Output::Coin`, `Output::Message`, `Output::Change` & `Output::Variable`.
+/// specifically: `Output::Coin`, `Output::Change` & `Output::Variable`.
 pub fn output_amount(index: u64) -> u64 {
     match output_type(index) {
         Output::Coin => __gtf::<u64>(index, GTF_OUTPUT_COIN_AMOUNT),
         Output::Contract => revert(0),
-        Output::Message => __gtf::<u64>(index, GTF_OUTPUT_MESSAGE_AMOUNT),
         // For now, output changes are always guaranteed to have an amount of
         // zero since they're only set after execution terminates.
         // use `__gtf` when GTF_OUTPUT_CHANGE_AMOUNT is available.

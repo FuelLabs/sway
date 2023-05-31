@@ -22,13 +22,25 @@ async fn get_messages_contract_instance() -> (
 
     let wallets = launch_custom_provider_and_get_wallets(config, None, None).await;
 
-    let messages_contract_id = Contract::deploy(
+    let messages_contract_id = Contract::load_from(
         "test_projects/messages/out/debug/messages.bin",
-        &wallets[0],
-        DeployConfiguration::default(),
+        LoadConfiguration::default(),
     )
+    .unwrap()
+    .deploy(&wallets[0], TxParameters::default())
     .await
     .unwrap();
+
+    // Send tokens to the contract to be able withdraw via `smo`.
+    wallets[0]
+        .force_transfer_to_contract(
+            &messages_contract_id,
+            amount_per_coin >> 1,
+            AssetId::BASE,
+            TxParameters::default(),
+        )
+        .await
+        .unwrap();
 
     let messages_instance =
         TestMessagesContract::new(messages_contract_id.clone(), wallets[0].clone());
@@ -50,7 +62,6 @@ async fn can_send_bool_message() {
     let call_response = messages_instance
         .methods()
         .send_typed_message_bool(Bits256(*recipient_address), message, amount)
-        .append_message_outputs(1)
         .call()
         .await
         .unwrap();
@@ -81,7 +92,6 @@ async fn can_send_u8_message() {
     let call_response = messages_instance
         .methods()
         .send_typed_message_u8(Bits256(*recipient_address), message, amount)
-        .append_message_outputs(1)
         .call()
         .await
         .unwrap();
@@ -112,7 +122,6 @@ async fn can_send_u16_message() {
     let call_response = messages_instance
         .methods()
         .send_typed_message_u16(Bits256(*recipient_address), message, amount)
-        .append_message_outputs(1)
         .call()
         .await
         .unwrap();
@@ -143,7 +152,6 @@ async fn can_send_u32_message() {
     let call_response = messages_instance
         .methods()
         .send_typed_message_u32(Bits256(*recipient_address), message, amount)
-        .append_message_outputs(1)
         .call()
         .await
         .unwrap();
@@ -174,7 +182,6 @@ async fn can_send_u64_message() {
     let call_response = messages_instance
         .methods()
         .send_typed_message_u64(Bits256(*recipient_address), message, amount)
-        .append_message_outputs(1)
         .call()
         .await
         .unwrap();
@@ -205,7 +212,6 @@ async fn can_send_b256_message() {
     let call_response = messages_instance
         .methods()
         .send_typed_message_b256(Bits256(*recipient_address), Bits256(message), amount)
-        .append_message_outputs(1)
         .call()
         .await
         .unwrap();
@@ -236,7 +242,6 @@ async fn can_send_struct_message() {
     let call_response = messages_instance
         .methods()
         .send_typed_message_struct(Bits256(*recipient_address), message, amount)
-        .append_message_outputs(1)
         .call()
         .await
         .unwrap();
@@ -270,7 +275,6 @@ async fn can_send_enum_message() {
     let call_response = messages_instance
         .methods()
         .send_typed_message_enum(Bits256(*recipient_address), message, amount)
-        .append_message_outputs(1)
         .call()
         .await
         .unwrap();
@@ -307,7 +311,6 @@ async fn can_send_array_message() {
     let call_response = messages_instance
         .methods()
         .send_typed_message_array(Bits256(*recipient_address), message, amount)
-        .append_message_outputs(1)
         .call()
         .await
         .unwrap();
@@ -346,7 +349,6 @@ async fn can_send_string_message() {
             message.try_into().unwrap(),
             amount,
         )
-        .append_message_outputs(1)
         .call()
         .await
         .unwrap();

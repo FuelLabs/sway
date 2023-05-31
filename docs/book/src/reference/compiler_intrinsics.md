@@ -259,10 +259,10 @@ __ptr_sub(ptr: raw_ptr, offset: u64)
 ___
 
 ```sway
-__smo<T>(recipient: b256, data: T, output_index: u64, coins: u64)
+__smo<T>(recipient: b256, data: T, coins: u64)
 ```
 
-**Description:** Sends a message `data` of arbitrary type `T` and `coins` amount of the base asset to address `recipient`. This intrinsic assumes that an OutputMessage is available at index `output_index`.
+**Description:** Sends a message `data` of arbitrary type `T` and `coins` amount of the base asset to address `recipient`.
 
 **Constraints:** None.
 

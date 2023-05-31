@@ -1,6 +1,6 @@
+use fuel_vm::fuel_tx::{Bytes32, ContractId, Output, TxPointer, UtxoId};
 use fuels::{
     prelude::*,
-    tx::{Bytes32, ContractId, Output, TxPointer, UtxoId},
     types::{input::Input, Bits256, SizedAsciiString},
 };
 
@@ -79,11 +79,12 @@ async fn get_contract_instance() -> (TestContract<WalletUnlocked>, ContractId, W
     .await;
     let wallet = wallets.pop().unwrap();
 
-    let id = Contract::deploy(
+    let id = Contract::load_from(
         "test_artifacts/low_level_callee_contract/out/debug/test_contract.bin",
-        &wallet,
-        DeployConfiguration::default(),
+        LoadConfiguration::default(),
     )
+    .unwrap()
+    .deploy(&wallet, TxParameters::default())
     .await
     .unwrap();
 
