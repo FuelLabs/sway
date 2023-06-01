@@ -8,6 +8,9 @@ mod instructions;
 mod priv_prelude;
 mod solve;
 mod state_graphs;
+mod collect;
+mod state_graph;
+mod mono_item;
 
 use std::sync::RwLock;
 
