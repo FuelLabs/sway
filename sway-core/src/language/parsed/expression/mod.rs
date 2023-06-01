@@ -1,6 +1,7 @@
 use crate::{
     language::{parsed::CodeBlock, *},
     type_system::TypeBinding,
+    TypeArgument, TypeInfo,
 };
 use sway_types::{ident::Ident, Span, Spanned};
 
@@ -104,7 +105,15 @@ impl Spanned for AmbiguousSuffix {
 }
 
 #[derive(Debug, Clone)]
+pub struct QualifiedPathRootTypes {
+    pub ty: TypeArgument,
+    pub as_trait: TypeInfo,
+    pub as_trait_span: Span,
+}
+
+#[derive(Debug, Clone)]
 pub struct AmbiguousPathExpression {
+    pub qualified_path_root: Option<QualifiedPathRootTypes>,
     pub call_path_binding: TypeBinding<CallPath<AmbiguousSuffix>>,
     pub args: Vec<Expression>,
 }

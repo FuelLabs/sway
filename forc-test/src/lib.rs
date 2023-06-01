@@ -681,16 +681,17 @@ fn deployment_transaction(
     let secret_key = rng.gen();
     let utxo_id = rng.gen();
     let amount = 1;
-    let maturity = 1;
+    let maturity = 1u32.into();
     let asset_id = rng.gen();
     let tx_pointer = rng.gen();
-    let block_height = (u32::MAX >> 1) as u64;
+    let block_height = (u32::MAX >> 1).into();
 
     let tx = tx::TransactionBuilder::create(bytecode.as_slice().into(), salt, storage_slots)
+        .with_params(params)
         .add_unsigned_coin_input(secret_key, utxo_id, amount, asset_id, tx_pointer, maturity)
         .add_output(tx::Output::contract_created(contract_id, state_root))
         .maturity(maturity)
-        .finalize_checked(block_height, &params, &GasCosts::default());
+        .finalize_checked(block_height, &GasCosts::default());
     (contract_id, tx)
 }
 
@@ -777,27 +778,34 @@ fn exec_test(
     let secret_key = rng.gen();
     let utxo_id = rng.gen();
     let amount = 1;
-    let maturity = 1;
+    let maturity = 1.into();
     let asset_id = rng.gen();
     let tx_pointer = rng.gen();
-    let block_height = (u32::MAX >> 1) as u64;
+    let block_height = (u32::MAX >> 1).into();
 
     let params = tx::ConsensusParameters::default();
     let mut tx = tx::TransactionBuilder::script(bytecode, script_input_data)
-        .add_unsigned_coin_input(secret_key, utxo_id, amount, asset_id, tx_pointer, 0)
+        .add_unsigned_coin_input(
+            secret_key,
+            utxo_id,
+            amount,
+            asset_id,
+            tx_pointer,
+            0u32.into(),
+        )
         .gas_limit(tx::ConsensusParameters::DEFAULT.max_gas_per_tx)
         .maturity(maturity)
         .clone();
     let mut output_index = 1;
     // Insert contract ids into tx input
     for contract_id in test_setup.contract_ids() {
-        tx.add_input(tx::Input::Contract {
-            utxo_id: tx::UtxoId::new(tx::Bytes32::zeroed(), 0),
-            balance_root: tx::Bytes32::zeroed(),
-            state_root: tx::Bytes32::zeroed(),
-            tx_pointer: tx::TxPointer::new(0, 0),
+        tx.add_input(tx::Input::contract(
+            tx::UtxoId::new(tx::Bytes32::zeroed(), 0),
+            tx::Bytes32::zeroed(),
+            tx::Bytes32::zeroed(),
+            tx::TxPointer::new(0u32.into(), 0),
             contract_id,
-        })
+        ))
         .add_output(tx::Output::Contract {
             input_index: output_index,
             balance_root: fuel_tx::Bytes32::zeroed(),
@@ -805,7 +813,7 @@ fn exec_test(
         });
         output_index += 1;
     }
-    let tx = tx.finalize_checked(block_height, &params, &GasCosts::default());
+    let tx = tx.finalize_checked(block_height, &GasCosts::default());
 
     let mut interpreter =
         vm::interpreter::Interpreter::with_storage(storage, params, GasCosts::default());

@@ -5,9 +5,11 @@ script;
 const SOME_TX_FIELD = 0x42;
 const SOME_OTHER_TX_FIELD = 0x77;
 
-fn main() {
+fn main() -> (u64, b256) {
     let field1 = __gtf::<u64>(1, SOME_TX_FIELD);
     let field2 = __gtf::<b256>(2, SOME_OTHER_TX_FIELD);
+
+    (field1, field2)
 }
 
 // ::check-ir::

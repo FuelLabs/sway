@@ -240,7 +240,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.17.8
+        image: ghcr.io/fuellabs/fuel-core:v0.18.1
         ports:
           - 4000:4000
     steps:
@@ -308,6 +308,13 @@ jobs:
       - name: Run benchmarks
         run: ./benchmark.sh
       - name: Checkout benchmark data
+        if: github.event_name != 'push'
+        uses: actions/checkout@v3
+        with:
+          repository: FuelLabs/sway-performance-data
+          path: performance-data
+      - name: Checkout benchmark data
+        if: github.event_name == 'push'
         uses: actions/checkout@v3
         with:
           repository: FuelLabs/sway-performance-data

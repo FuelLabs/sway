@@ -15,11 +15,12 @@ async fn run_methods_test() {
 }
 
 async fn get_methods_instance(wallet: WalletUnlocked) -> MethodsContract<WalletUnlocked> {
-    let id = Contract::deploy(
+    let id = Contract::load_from(
         "test_artifacts/methods_contract/out/debug/methods_contract.bin",
-        &wallet,
-        DeployConfiguration::default(),
+        LoadConfiguration::default(),
     )
+    .unwrap()
+    .deploy(&wallet, TxParameters::default())
     .await
     .unwrap();
     MethodsContract::new(id.clone(), wallet)
