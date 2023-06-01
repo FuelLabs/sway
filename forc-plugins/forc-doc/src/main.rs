@@ -100,7 +100,7 @@ pub fn main() -> Result<()> {
     let decl_engine = DeclEngine::default();
     let query_engine = QueryEngine::default();
     let engines = Engines::new(&type_engine, &decl_engine, &query_engine);
-    let tests_enabled = true;
+    let tests_enabled = build_instructions.document_private_items;
     let mut compile_results = pkg::check(
         &plan,
         BuildTarget::default(),
@@ -113,18 +113,13 @@ pub fn main() -> Result<()> {
         let order = plan.compilation_order();
         let graph = plan.graph();
         let manifest_map = plan.manifest_map();
-        compile_results.reverse();
 
-        for node in order {
+        for (node, compile_result) in order.iter().zip(compile_results) {
             let id = &graph[*node].id();
 
             if let Some(pkg_manifest_file) = manifest_map.get(id) {
                 let manifest_file = ManifestFile::from_dir(pkg_manifest_file.path())?;
-                let ty_program = match compile_results
-                    .pop()
-                    .and_then(|compilation| compilation.value)
-                    .and_then(|programs| programs.typed)
-                {
+                let ty_program = match compile_result.value.and_then(|programs| programs.typed) {
                     Some(ty_program) => ty_program,
                     _ => bail!("CompileResult returned None"),
                 };
