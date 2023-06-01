@@ -1,7 +1,7 @@
 use std::ops::{BitAnd, BitOr, BitXor};
 
 use crate::{
-    asm_generation::from_ir::ir_type_size_in_bytes,
+    asm_generation::from_ir::{ir_type_size_in_bytes, ir_type_size_without_padding_in_bytes},
     engine_threading::*,
     language::{
         ty::{self, TyConstantDecl, TyIntrinsicFunctionKind},
@@ -616,6 +616,23 @@ fn const_eval_intrinsic(
             Ok(Some(Constant {
                 ty: Type::get_uint64(lookup.context),
                 value: ConstantValue::Uint(ir_type_size_in_bytes(lookup.context, &ir_type)),
+            }))
+        }
+        sway_ast::Intrinsic::SizeWithoutPaddingOfType => {
+            let targ = &intrinsic.type_arguments[0];
+            let ir_type = convert_resolved_typeid(
+                lookup.engines.te(),
+                lookup.engines.de(),
+                lookup.context,
+                &targ.type_id,
+                &targ.span,
+            )?;
+            Ok(Some(Constant {
+                ty: Type::get_uint64(lookup.context),
+                value: ConstantValue::Uint(ir_type_size_without_padding_in_bytes(
+                    lookup.context,
+                    &ir_type,
+                )),
             }))
         }
         sway_ast::Intrinsic::Eq => {

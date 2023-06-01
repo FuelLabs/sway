@@ -6,7 +6,7 @@ use super::{
     types::*,
 };
 use crate::{
-    asm_generation::from_ir::ir_type_size_in_bytes,
+    asm_generation::from_ir::{ir_type_size_in_bytes, ir_type_size_without_padding_in_bytes},
     engine_threading::*,
     ir_generation::const_eval::{
         compile_constant_expression, compile_constant_expression_to_constant,
@@ -525,6 +525,36 @@ impl<'eng> FnCompiler<'eng> {
                     context,
                     64,
                     ir_type_size_in_bytes(context, &ir_type),
+                ))
+            }
+            Intrinsic::SizeWithoutPaddingOfType => {
+                let targ = type_arguments[0].clone();
+                let ir_type = convert_resolved_typeid(
+                    engines.te(),
+                    engines.de(),
+                    context,
+                    &targ.type_id,
+                    &targ.span,
+                )?;
+                Ok(Constant::get_uint(
+                    context,
+                    64,
+                    ir_type_size_without_padding_in_bytes(context, &ir_type),
+                ))
+            }
+            Intrinsic::SizeWithoutPaddingOfType => {
+                let targ = type_arguments[0].clone();
+                let ir_type = convert_resolved_typeid(
+                    engines.te(),
+                    engines.de(),
+                    context,
+                    &targ.type_id,
+                    &targ.span,
+                )?;
+                Ok(Constant::get_uint(
+                    context,
+                    64,
+                    ir_type_size_without_padding_in_bytes(context, &ir_type),
                 ))
             }
             Intrinsic::IsReferenceType => {

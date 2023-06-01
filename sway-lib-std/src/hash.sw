@@ -14,7 +14,7 @@ pub fn sha256<T>(param: T) -> b256 {
             hash: b256 // Return
         }
     } else {
-        let size = __size_of::<T>();
+        let size = __size_without_padding_of::<T>();
         asm(hash: result_buffer, ptr: param, bytes: size) {
             s256 hash ptr bytes; // Hash the next "size" number of bytes starting from "ptr" into "hash"
             hash: b256 // Return
@@ -35,7 +35,7 @@ pub fn keccak256<T>(param: T) -> b256 {
             hash: b256 // Return
         }
     } else {
-        let size = __size_of::<T>();
+        let size = __size_without_padding_of::<T>();
         asm(hash: result_buffer, ptr: param, bytes: size) {
             k256 hash ptr bytes; // Hash the next "size" number of bytes starting from "ptr" into "hash"
             hash: b256 // Return
