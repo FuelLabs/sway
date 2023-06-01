@@ -13,7 +13,6 @@ use pkg::{manifest::ManifestFile, PackageManifestFile};
 use std::{
     path::Path,
     process::Command as Process,
-    sync::Arc,
     {fs, path::PathBuf},
 };
 use sway_core::{
@@ -31,14 +30,14 @@ pub(crate) const ASSETS_DIR_NAME: &str = "static.files";
 #[derive(Clone)]
 struct RenderPlan<'te, 'de> {
     document_private_items: bool,
-    type_engine: Arc<&'te TypeEngine>,
-    decl_engine: Arc<&'de DeclEngine>,
+    type_engine: &'te TypeEngine,
+    decl_engine: &'de DeclEngine,
 }
 impl<'te, 'de> RenderPlan<'te, 'de> {
     fn new(
         document_private_items: bool,
-        type_engine: Arc<&'te TypeEngine>,
-        decl_engine: Arc<&'de DeclEngine>,
+        type_engine: &'te TypeEngine,
+        decl_engine: &'de DeclEngine,
     ) -> RenderPlan<'te, 'de> {
         Self {
             document_private_items,
@@ -154,7 +153,7 @@ pub fn main() -> Result<()> {
             type_engine: &type_engine,
             decl_engine: &decl_engine,
             manifest: &manifest,
-            pkg_manifest: &*pkg_manifest,
+            pkg_manifest,
         };
         build_docs(program_info, &doc_path, &build_instructions)?;
     }
@@ -227,7 +226,7 @@ fn build_docs(
     );
 
     let raw_docs = Documentation::from_ty_program(
-        &decl_engine,
+        decl_engine,
         pkg_manifest.project_name(),
         &ty_program,
         document_private_items,
@@ -242,11 +241,7 @@ fn build_docs(
     // render docs to HTML
     let rendered_docs = RenderedDocumentation::from_raw_docs(
         raw_docs,
-        RenderPlan::new(
-            document_private_items,
-            Arc::from(type_engine),
-            Arc::from(decl_engine),
-        ),
+        RenderPlan::new(document_private_items, type_engine, decl_engine),
         root_attributes,
         ty_program.kind,
         forc_version,
