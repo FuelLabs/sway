@@ -9,19 +9,16 @@ use colored::*;
 use forc_pkg as pkg;
 use forc_util::default_output_directory;
 use include_dir::{include_dir, Dir};
-use pkg::{
-    manifest::{Dependency, ManifestFile},
-    BuildPlan, PackageManifestFile,
-};
+use pkg::{manifest::ManifestFile, PackageManifestFile};
 use std::{
-    collections::BTreeMap,
     path::Path,
     process::Command as Process,
     sync::Arc,
     {fs, path::PathBuf},
 };
 use sway_core::{
-    decl_engine::DeclEngine, query_engine::QueryEngine, BuildTarget, Engines, TypeEngine,
+    decl_engine::DeclEngine, language::ty::TyProgram, query_engine::QueryEngine, BuildTarget,
+    Engines, TypeEngine,
 };
 
 mod cli;
@@ -32,23 +29,30 @@ pub(crate) const ASSETS_DIR_NAME: &str = "static.files";
 
 /// Information passed to the render phase to get TypeInfo, CallPath or visibility for type anchors.
 #[derive(Clone)]
-struct RenderPlan {
+struct RenderPlan<'te, 'de> {
     document_private_items: bool,
-    type_engine: Arc<TypeEngine>,
-    decl_engine: Arc<DeclEngine>,
+    type_engine: Arc<&'te TypeEngine>,
+    decl_engine: Arc<&'de DeclEngine>,
 }
-impl RenderPlan {
+impl<'te, 'de> RenderPlan<'te, 'de> {
     fn new(
         document_private_items: bool,
-        type_engine: Arc<TypeEngine>,
-        decl_engine: Arc<DeclEngine>,
-    ) -> RenderPlan {
+        type_engine: Arc<&'te TypeEngine>,
+        decl_engine: Arc<&'de DeclEngine>,
+    ) -> RenderPlan<'te, 'de> {
         Self {
             document_private_items,
             type_engine,
             decl_engine,
         }
     }
+}
+struct ProgramInfo<'a> {
+    ty_program: TyProgram,
+    type_engine: &'a TypeEngine,
+    decl_engine: &'a DeclEngine,
+    manifest: &'a ManifestFile,
+    pkg_manifest: &'a PackageManifestFile,
 }
 
 /// Main method for `forc doc`.
@@ -77,6 +81,13 @@ pub fn main() -> Result<()> {
     }
     fs::create_dir_all(&doc_path)?;
 
+    println!(
+        "   {} {} ({})",
+        "Compiling".bold().yellow(),
+        pkg_manifest.project_name(),
+        manifest.dir().to_string_lossy()
+    );
+
     let member_manifests = manifest.member_manifests()?;
     let lock_path = manifest.lock_path()?;
     let plan = pkg::BuildPlan::from_lock_and_manifests(
@@ -86,34 +97,66 @@ pub fn main() -> Result<()> {
         build_instructions.offline,
     )?;
 
+    let type_engine = TypeEngine::default();
+    let decl_engine = DeclEngine::default();
+    let query_engine = QueryEngine::default();
+    let engines = Engines::new(&type_engine, &decl_engine, &query_engine);
+    let tests_enabled = true;
+    let mut compile_results = pkg::check(
+        &plan,
+        BuildTarget::default(),
+        build_instructions.silent,
+        tests_enabled,
+        engines,
+    )?;
+
     if !build_instructions.no_deps {
         let order = plan.compilation_order();
         let graph = plan.graph();
         let manifest_map = plan.manifest_map();
+        compile_results.reverse();
 
         for node in order {
             let id = &graph[*node].id();
 
             if let Some(pkg_manifest_file) = manifest_map.get(id) {
                 let manifest_file = ManifestFile::from_dir(pkg_manifest_file.path())?;
+                let ty_program = match compile_results
+                    .pop()
+                    .and_then(|compilation| compilation.value)
+                    .and_then(|programs| programs.typed)
+                {
+                    Some(ty_program) => ty_program,
+                    _ => bail!("CompileResult returned None"),
+                };
+                let program_info = ProgramInfo {
+                    ty_program,
+                    type_engine: &type_engine,
+                    decl_engine: &decl_engine,
+                    manifest: &manifest_file,
+                    pkg_manifest: pkg_manifest_file,
+                };
 
-                build_docs(
-                    &manifest_file,
-                    pkg_manifest_file,
-                    &doc_path,
-                    &build_instructions,
-                    &plan,
-                )?;
+                build_docs(program_info, &doc_path, &build_instructions)?;
             }
         }
     } else {
-        build_docs(
-            &manifest,
-            pkg_manifest,
-            &doc_path,
-            &build_instructions,
-            &plan,
-        )?;
+        let ty_program = match compile_results
+            .pop()
+            .and_then(|compilation| compilation.value)
+            .and_then(|programs| programs.typed)
+        {
+            Some(ty_program) => ty_program,
+            _ => bail!("CompileResult returned None"),
+        };
+        let program_info = ProgramInfo {
+            ty_program,
+            type_engine: &type_engine,
+            decl_engine: &decl_engine,
+            manifest: &manifest,
+            pkg_manifest: &*pkg_manifest,
+        };
+        build_docs(program_info, &doc_path, &build_instructions)?;
     }
 
     // CSS, icons and logos
@@ -160,42 +203,21 @@ pub fn main() -> Result<()> {
 }
 
 fn build_docs(
-    manifest: &ManifestFile,
-    pkg_manifest: &PackageManifestFile,
+    program_info: ProgramInfo,
     doc_path: &Path,
     build_instructions: &Command,
-    plan: &BuildPlan,
 ) -> Result<()> {
     let Command {
         document_private_items,
-        offline,
-        silent,
-        locked,
-        no_deps,
         ..
     } = *build_instructions;
-
-    println!(
-        "   {} {} ({})",
-        "Compiling".bold().yellow(),
-        pkg_manifest.project_name(),
-        manifest.dir().to_string_lossy()
-    );
-
-    let type_engine = TypeEngine::default();
-    let decl_engine = DeclEngine::default();
-    let query_engine = QueryEngine::default();
-    let engines = Engines::new(&type_engine, &decl_engine, &query_engine);
-    let tests_enabled = true;
-    let typed_program =
-        match pkg::check(plan, BuildTarget::default(), silent, tests_enabled, engines)?
-            .pop()
-            .and_then(|compilation| compilation.value)
-            .and_then(|programs| programs.typed)
-        {
-            Some(typed_program) => typed_program,
-            _ => bail!("CompileResult returned None"),
-        };
+    let ProgramInfo {
+        ty_program,
+        type_engine,
+        decl_engine,
+        manifest,
+        pkg_manifest,
+    } = program_info;
 
     println!(
         "    {} documentation for {} ({})",
@@ -207,11 +229,11 @@ fn build_docs(
     let raw_docs = Documentation::from_ty_program(
         &decl_engine,
         pkg_manifest.project_name(),
-        &typed_program,
+        &ty_program,
         document_private_items,
     )?;
     let root_attributes =
-        (!typed_program.root.attributes.is_empty()).then_some(typed_program.root.attributes);
+        (!ty_program.root.attributes.is_empty()).then_some(ty_program.root.attributes);
     let forc_version = pkg_manifest
         .project
         .forc_version
@@ -226,7 +248,7 @@ fn build_docs(
             Arc::from(decl_engine),
         ),
         root_attributes,
-        typed_program.kind,
+        ty_program.kind,
         forc_version,
     )?;
 
