@@ -32,3 +32,10 @@ fn example() {
     let baz: bool = true;
     // ANCHOR_END: example
 }
+
+abi MyContract {
+    // ANCHOR: payable
+    #[payable]
+    fn deposit();
+    // ANCHOR_END: payable
+}
