@@ -28,17 +28,17 @@ pub(crate) const ASSETS_DIR_NAME: &str = "static.files";
 
 /// Information passed to the render phase to get TypeInfo, CallPath or visibility for type anchors.
 #[derive(Clone)]
-struct RenderPlan<'te, 'de> {
+struct RenderPlan<'e> {
     document_private_items: bool,
-    type_engine: &'te TypeEngine,
-    decl_engine: &'de DeclEngine,
+    type_engine: &'e TypeEngine,
+    decl_engine: &'e DeclEngine,
 }
-impl<'te, 'de> RenderPlan<'te, 'de> {
+impl<'e> RenderPlan<'e> {
     fn new(
         document_private_items: bool,
-        type_engine: &'te TypeEngine,
-        decl_engine: &'de DeclEngine,
-    ) -> RenderPlan<'te, 'de> {
+        type_engine: &'e TypeEngine,
+        decl_engine: &'e DeclEngine,
+    ) -> RenderPlan<'e> {
         Self {
             document_private_items,
             type_engine,
@@ -121,7 +121,10 @@ pub fn main() -> Result<()> {
                 let manifest_file = ManifestFile::from_dir(pkg_manifest_file.path())?;
                 let ty_program = match compile_result.value.and_then(|programs| programs.typed) {
                     Some(ty_program) => ty_program,
-                    _ => bail!("CompileResult returned None"),
+                    _ => bail!(
+                        "documentation could not be built from manifest located at '{}'",
+                        pkg_manifest_file.path().display()
+                    ),
                 };
                 let program_info = ProgramInfo {
                     ty_program,
@@ -141,7 +144,10 @@ pub fn main() -> Result<()> {
             .and_then(|programs| programs.typed)
         {
             Some(ty_program) => ty_program,
-            _ => bail!("CompileResult returned None"),
+            _ => bail!(
+                "documentation could not be built from manifest located at '{}'",
+                pkg_manifest.path().display()
+            ),
         };
         let program_info = ProgramInfo {
             ty_program,
