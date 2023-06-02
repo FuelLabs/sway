@@ -39,3 +39,8 @@ abi MyContract {
     fn deposit();
     // ANCHOR_END: payable
 }
+
+// ANCHOR: allow_deadcode_annotation
+#[allow(dead_code)]
+fn unused_function() {}
+// ANCHOR_END: allow_deadcode_annotation
