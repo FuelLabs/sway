@@ -149,7 +149,7 @@ impl DeclEngine {
     #[allow(clippy::map_entry)]
     pub(crate) fn find_all_parents<'a, T>(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         index: &'a T,
     ) -> Vec<AssociatedItemDeclId>
     where

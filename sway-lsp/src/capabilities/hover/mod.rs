@@ -11,10 +11,7 @@ use crate::{
 };
 use std::sync::Arc;
 use sway_core::{
-    language::{
-        ty::{self},
-        Visibility,
-    },
+    language::{ty, Visibility},
     Engines, TypeId,
 };
 
@@ -50,10 +47,8 @@ pub fn hover_data(
         });
     }
 
-    let te = session.type_engine.read();
-    let de = session.decl_engine.read();
-    let engines = Engines::new(&te, &de);
-    let (decl_ident, decl_token) = match token.declared_token_ident(engines) {
+    let engines = session.engines.read();
+    let (decl_ident, decl_token) = match token.declared_token_ident(&engines) {
         Some(decl_ident) => {
             let decl_token = session
                 .token_map()
@@ -67,7 +62,7 @@ pub fn hover_data(
         None => (ident, token),
     };
 
-    let contents = hover_format(session.clone(), engines, &decl_token, &decl_ident);
+    let contents = hover_format(session.clone(), &engines, &decl_token, &decl_ident);
     Some(lsp_types::Hover {
         contents,
         range: Some(range),
@@ -126,7 +121,7 @@ fn markup_content(markup: Markup) -> lsp_types::MarkupContent {
 
 fn hover_format(
     session: Arc<Session>,
-    engines: Engines<'_>,
+    engines: &Engines,
     token: &Token,
     ident: &Ident,
 ) -> lsp_types::HoverContents {
@@ -160,6 +155,7 @@ fn hover_format(
                 }
                 ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
                     let struct_decl = decl_engine.get_struct(decl_id);
+                    hover_link_contents.add_implementations_for_decl(decl);
                     Some(format_visibility_hover(
                         struct_decl.visibility,
                         decl.friendly_type_name(),
@@ -168,6 +164,7 @@ fn hover_format(
                 }
                 ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. }) => {
                     let trait_decl = decl_engine.get_trait(decl_id);
+                    hover_link_contents.add_implementations_for_trait(&trait_decl);
                     Some(format_visibility_hover(
                         trait_decl.visibility,
                         decl.friendly_type_name(),
@@ -176,6 +173,7 @@ fn hover_format(
                 }
                 ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
                     let enum_decl = decl_engine.get_enum(decl_id);
+                    hover_link_contents.add_implementations_for_decl(decl);
                     Some(format_visibility_hover(
                         enum_decl.visibility,
                         decl.friendly_type_name(),
@@ -183,6 +181,7 @@ fn hover_format(
                     ))
                 }
                 ty::TyDecl::AbiDecl(ty::AbiDecl { .. }) => {
+                    hover_link_contents.add_implementations_for_decl(decl);
                     Some(format!("{} {}", decl.friendly_type_name(), &token_name))
                 }
                 _ => None,
@@ -198,10 +197,16 @@ fn hover_format(
                     &param.type_argument.type_id,
                 ))
             }
-            TypedAstToken::TypedStructField(field) => Some(format_name_with_type(
-                field.name.as_str(),
-                &field.type_argument.type_id,
-            )),
+            TypedAstToken::TypedStructField(field) => {
+                hover_link_contents.add_implementations_for_type(
+                    &field.type_argument.span(),
+                    &field.type_argument.type_id,
+                );
+                Some(format_name_with_type(
+                    field.name.as_str(),
+                    &field.type_argument.type_id,
+                ))
+            }
             TypedAstToken::TypedExpression(expr) => match expr.expression {
                 ty::TyExpressionVariant::Literal { .. } => {
                     Some(format!("{}", engines.help_out(expr.return_type)))

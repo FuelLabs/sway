@@ -7,11 +7,7 @@ use crate::{
 
 /// Contextual state tracked and accumulated throughout solving [Constraint]s.
 pub(crate) struct Solver<'a> {
-    /// The type engine storing types.
-    type_engine: &'a TypeEngine,
-
-    /// The declaration engine holds declarations.
-    decl_engine: &'a DeclEngine,
+    engines: &'a Engines,
 
     /// The instructions returned by the [Solver].
     instructions: Vec<Instruction>,
@@ -19,11 +15,9 @@ pub(crate) struct Solver<'a> {
 
 impl<'a> Solver<'a> {
     /// Creates a new [Solver].
-    pub(crate) fn new(engines: Engines<'a>) -> Solver<'a> {
-        let (type_engine, decl_engine) = engines.unwrap();
+    pub(crate) fn new(engines: &'a Engines) -> Solver<'a> {
         Solver {
-            type_engine,
-            decl_engine,
+            engines,
             instructions: vec![],
         }
     }
@@ -114,7 +108,7 @@ impl<'a> Solver<'a> {
     fn helper_ty_use(&self, type_id: TypeId) -> Result<InstructionResult, ErrorEmitted> {
         let mut instructions = vec![];
 
-        match self.type_engine.get(type_id) {
+        match self.engines.te().get(type_id) {
             TypeInfo::Unknown => todo!(),
             TypeInfo::UnknownGeneric { .. } => todo!(),
             TypeInfo::Placeholder(_) => todo!(),
@@ -191,7 +185,7 @@ impl<'a> Solver<'a> {
     fn wrap_constraint(&self, constraint: Constraint) -> ConstraintWrapper {
         WithEngines {
             thing: constraint,
-            engines: Engines::new(self.type_engine, self.decl_engine),
+            engines: self.engines,
         }
     }
 }

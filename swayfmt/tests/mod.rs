@@ -21,6 +21,18 @@ fn check(unformatted: &str, expected: &str) {
 }
 
 #[test]
+fn conserve_pub_mod() {
+    check(
+        r#"contract;
+pub mod foo;
+"#,
+        r#"contract;
+pub mod foo;
+"#,
+    )
+}
+
+#[test]
 fn const_spacing() {
     check(
         r#"contract;
@@ -1528,6 +1540,51 @@ use ::utils::numbers::*;
 
 //     return aggregated;
 // }
+"#,
+    );
+}
+
+#[test]
+fn temporarily_commented_out_fn_with_doc_comments() {
+    check(
+        r#"contract;
+
+abi MyContract {
+    /// Doc comment
+    /* 
+        Some comment
+    */
+    fn test_function() -> bool;
+}
+
+impl MyContract for Contract {
+    /// This is documentation for a commented out function
+    // fn commented_out_function() {
+    //}
+
+    fn test_function() -> bool {
+        true
+    }
+}"#,
+        r#"contract;
+
+abi MyContract {
+    /// Doc comment
+    /* 
+        Some comment
+    */
+    fn test_function() -> bool;
+}
+
+impl MyContract for Contract {
+    /// This is documentation for a commented out function
+    // fn commented_out_function() {
+    //}
+
+    fn test_function() -> bool {
+        true
+    }
+}
 "#,
     );
 }

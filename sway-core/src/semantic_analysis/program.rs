@@ -16,16 +16,14 @@ impl ty::TyProgram {
     /// The given `initial_namespace` acts as an initial state for each module within this program.
     /// It should contain a submodule for each library package dependency.
     pub fn type_check(
-        engines: Engines<'_>,
+        engines: &Engines,
         parsed: &ParseProgram,
         initial_namespace: namespace::Module,
         package_name: &str,
-        experimental_private_modules: bool,
     ) -> CompileResult<Self> {
         let mut namespace = Namespace::init_root(initial_namespace);
-        let ctx = TypeCheckContext::from_root(&mut namespace, engines)
-            .with_kind(parsed.kind.clone())
-            .with_experimental_private_modules(experimental_private_modules);
+        let ctx =
+            TypeCheckContext::from_root(&mut namespace, engines).with_kind(parsed.kind.clone());
         let ParseProgram { root, kind } = parsed;
         let mod_res = ty::TyModule::type_check(ctx, root);
         mod_res.flat_map(|root| {
@@ -44,7 +42,7 @@ impl ty::TyProgram {
 
     pub(crate) fn get_typed_program_with_initialized_storage_slots(
         self,
-        engines: Engines<'_>,
+        engines: &Engines,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         module: Module,

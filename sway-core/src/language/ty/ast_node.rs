@@ -27,13 +27,13 @@ pub struct TyAstNode {
 
 impl EqWithEngines for TyAstNode {}
 impl PartialEqWithEngines for TyAstNode {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.content.eq(&other.content, engines)
     }
 }
 
 impl HashWithEngines for TyAstNode {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TyAstNode {
             content,
             // the span is not hashed because it isn't relevant/a reliable
@@ -45,7 +45,7 @@ impl HashWithEngines for TyAstNode {
 }
 
 impl DebugWithEngines for TyAstNode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         use TyAstNodeContent::*;
         match &self.content {
             Declaration(typed_decl) => DebugWithEngines::fmt(typed_decl, f, engines),
@@ -57,7 +57,7 @@ impl DebugWithEngines for TyAstNode {
 }
 
 impl SubstTypes for TyAstNode {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         match self.content {
             TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
                 exp.subst(type_mapping, engines)
@@ -70,7 +70,7 @@ impl SubstTypes for TyAstNode {
 }
 
 impl ReplaceSelfType for TyAstNode {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         match self.content {
             TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
                 exp.replace_self_type(engines, self_type)
@@ -87,7 +87,7 @@ impl ReplaceSelfType for TyAstNode {
 }
 
 impl ReplaceDecls for TyAstNode {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: &Engines) {
         match self.content {
             TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
                 exp.replace_decls(decl_mapping, engines)
@@ -100,7 +100,7 @@ impl ReplaceDecls for TyAstNode {
 }
 
 impl UpdateConstantExpression for TyAstNode {
-    fn update_constant_expression(&mut self, engines: Engines<'_>, implementing_type: &TyDecl) {
+    fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
         match self.content {
             TyAstNodeContent::ImplicitReturnExpression(ref mut expr) => {
                 expr.update_constant_expression(engines, implementing_type)
@@ -317,7 +317,7 @@ pub enum TyAstNodeContent {
 
 impl EqWithEngines for TyAstNodeContent {}
 impl PartialEqWithEngines for TyAstNodeContent {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         match (self, other) {
             (Self::Declaration(x), Self::Declaration(y)) => x.eq(y, engines),
             (Self::Expression(x), Self::Expression(y)) => x.eq(y, engines),
@@ -331,7 +331,7 @@ impl PartialEqWithEngines for TyAstNodeContent {
 }
 
 impl HashWithEngines for TyAstNodeContent {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         use TyAstNodeContent::*;
         std::mem::discriminant(self).hash(state);
         match self {

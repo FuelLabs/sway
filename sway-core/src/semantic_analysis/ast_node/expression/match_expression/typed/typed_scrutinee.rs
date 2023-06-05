@@ -20,11 +20,11 @@ impl ty::TyScrutinee {
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
+        let type_engine = ctx.engines.te();
+        let engines = ctx.engines();
         match scrutinee {
             Scrutinee::Or { elems, span } => {
-                let type_id = type_engine.insert(decl_engine, TypeInfo::Unknown);
+                let type_id = type_engine.insert(engines, TypeInfo::Unknown);
 
                 let mut typed_elems = Vec::with_capacity(elems.len());
                 for scrutinee in elems {
@@ -43,7 +43,7 @@ impl ty::TyScrutinee {
                 ok(typed_scrutinee, warnings, errors)
             }
             Scrutinee::CatchAll { span } => {
-                let type_id = type_engine.insert(decl_engine, TypeInfo::Unknown);
+                let type_id = type_engine.insert(engines, TypeInfo::Unknown);
                 let dummy_type_param = TypeParameter {
                     type_id,
                     initial_type_id: type_id,
@@ -54,8 +54,7 @@ impl ty::TyScrutinee {
                 };
                 let typed_scrutinee = ty::TyScrutinee {
                     variant: ty::TyScrutineeVariant::CatchAll,
-                    type_id: type_engine
-                        .insert(decl_engine, TypeInfo::Placeholder(dummy_type_param)),
+                    type_id: type_engine.insert(engines, TypeInfo::Placeholder(dummy_type_param)),
                     span,
                 };
                 ok(typed_scrutinee, warnings, errors)
@@ -63,7 +62,7 @@ impl ty::TyScrutinee {
             Scrutinee::Literal { value, span } => {
                 let typed_scrutinee = ty::TyScrutinee {
                     variant: ty::TyScrutineeVariant::Literal(value.clone()),
-                    type_id: type_engine.insert(decl_engine, value.to_typeinfo()),
+                    type_id: type_engine.insert(engines, value.to_typeinfo()),
                     span,
                 };
                 ok(typed_scrutinee, warnings, errors)
@@ -114,8 +113,8 @@ fn type_check_variable(
     let warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
+    let type_engine = ctx.engines.te();
+    let decl_engine = ctx.engines.de();
 
     let typed_scrutinee = match ctx.namespace.resolve_symbol(&name).value {
         // If this variable is a constant, then we turn it into a [TyScrutinee::Constant](ty::TyScrutinee::Constant).
@@ -150,7 +149,7 @@ fn type_check_variable(
         // Variable isn't a constant, so so we turn it into a [ty::TyScrutinee::Variable].
         _ => ty::TyScrutinee {
             variant: ty::TyScrutineeVariant::Variable(name),
-            type_id: type_engine.insert(decl_engine, TypeInfo::Unknown),
+            type_id: type_engine.insert(ctx.engines(), TypeInfo::Unknown),
             span,
         },
     };
@@ -167,8 +166,8 @@ fn type_check_struct(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
+    let type_engine = ctx.engines.te();
+    let decl_engine = ctx.engines.de();
 
     // find the struct definition from the name
     let unknown_decl = check!(
@@ -255,7 +254,7 @@ fn type_check_struct(
 
     let struct_ref = decl_engine.insert(struct_decl);
     let typed_scrutinee = ty::TyScrutinee {
-        type_id: type_engine.insert(decl_engine, TypeInfo::Struct(struct_ref.clone())),
+        type_id: type_engine.insert(ctx.engines(), TypeInfo::Struct(struct_ref.clone())),
         span,
         variant: ty::TyScrutineeVariant::StructScrutinee {
             struct_ref,
@@ -280,8 +279,9 @@ fn type_check_enum(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
+    let type_engine = ctx.engines.te();
+    let decl_engine = ctx.engines.de();
+    let engines = ctx.engines();
 
     let mut prefixes = call_path.prefixes.clone();
     let (callsite_span, mut enum_decl, call_path_decl) = match prefixes.pop() {
@@ -373,7 +373,7 @@ fn type_check_enum(
             value: Box::new(typed_value),
             instantiation_call_path: call_path,
         },
-        type_id: type_engine.insert(decl_engine, TypeInfo::Enum(enum_ref)),
+        type_id: type_engine.insert(engines, TypeInfo::Enum(enum_ref)),
         span,
     };
 
@@ -388,8 +388,8 @@ fn type_check_tuple(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
+    let type_engine = ctx.engines.te();
+    let engines = ctx.engines();
 
     let mut typed_elems = vec![];
     for elem in elems.into_iter() {
@@ -401,7 +401,7 @@ fn type_check_tuple(
         ));
     }
     let type_id = type_engine.insert(
-        decl_engine,
+        engines,
         TypeInfo::Tuple(
             typed_elems
                 .iter()

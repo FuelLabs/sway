@@ -23,7 +23,7 @@ pub struct TraitConstraint {
 }
 
 impl HashWithEngines for TraitConstraint {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         self.trait_name.hash(state);
         self.type_arguments.hash(state, engines);
     }
@@ -31,14 +31,14 @@ impl HashWithEngines for TraitConstraint {
 
 impl EqWithEngines for TraitConstraint {}
 impl PartialEqWithEngines for TraitConstraint {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.trait_name == other.trait_name
             && self.type_arguments.eq(&other.type_arguments, engines)
     }
 }
 
 impl OrdWithEngines for TraitConstraint {
-    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
+    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
         let TraitConstraint {
             trait_name: ltn,
             type_arguments: lta,
@@ -58,7 +58,7 @@ impl Spanned for TraitConstraint {
 }
 
 impl SubstTypes for TraitConstraint {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         self.type_arguments
             .iter_mut()
             .for_each(|x| x.subst(type_mapping, engines));
@@ -66,7 +66,7 @@ impl SubstTypes for TraitConstraint {
 }
 
 impl ReplaceSelfType for TraitConstraint {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         self.type_arguments
             .iter_mut()
             .for_each(|x| x.replace_self_type(engines, self_type));
@@ -111,8 +111,6 @@ impl TraitConstraint {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let decl_engine = ctx.decl_engine;
-
         // Right now we don't have the ability to support defining a type for a
         // trait constraint using a callpath directly, so we check to see if the
         // user has done this and we disallow it.
@@ -153,7 +151,9 @@ impl TraitConstraint {
         for type_argument in self.type_arguments.iter_mut() {
             type_argument.type_id = check!(
                 ctx.resolve_type_without_self(type_argument.type_id, &type_argument.span, None),
-                ctx.type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+                ctx.engines
+                    .te()
+                    .insert(ctx.engines(), TypeInfo::ErrorRecovery),
                 warnings,
                 errors
             );
@@ -174,7 +174,7 @@ impl TraitConstraint {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let decl_engine = ctx.decl_engine;
+        let decl_engine = ctx.engines.de();
 
         let TraitConstraint {
             trait_name,

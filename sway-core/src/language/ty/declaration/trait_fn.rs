@@ -33,7 +33,7 @@ impl Spanned for TyTraitFn {
 
 impl EqWithEngines for TyTraitFn {}
 impl PartialEqWithEngines for TyTraitFn {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         let type_engine = engines.te();
         self.name == other.name
             && self.purity == other.purity
@@ -46,7 +46,7 @@ impl PartialEqWithEngines for TyTraitFn {
 }
 
 impl HashWithEngines for TyTraitFn {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TyTraitFn {
             name,
             purity,
@@ -66,7 +66,7 @@ impl HashWithEngines for TyTraitFn {
 }
 
 impl SubstTypes for TyTraitFn {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         self.parameters
             .iter_mut()
             .for_each(|x| x.subst(type_mapping, engines));
@@ -75,7 +75,7 @@ impl SubstTypes for TyTraitFn {
 }
 
 impl ReplaceSelfType for TyTraitFn {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         self.parameters
             .iter_mut()
             .for_each(|x| x.replace_self_type(engines, self_type));

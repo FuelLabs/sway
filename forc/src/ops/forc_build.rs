@@ -27,6 +27,7 @@ fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
             ir: cmd.build.print.ir,
         },
         time_phases: cmd.build.print.time_phases,
+        metrics_outfile: cmd.build.print.metrics_outfile,
         minify: pkg::MinifyOpts {
             json_abi: cmd.build.minify.json_abi,
             json_storage_slots: cmd.build.minify.json_storage_slots,
@@ -39,6 +40,5 @@ fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
         build_target: cmd.build.build_target,
         tests: cmd.tests,
         member_filter: Default::default(),
-        experimental_private_modules: cmd.build.profile.experimental_private_modules,
     }
 }

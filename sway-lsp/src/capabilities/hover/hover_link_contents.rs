@@ -3,7 +3,13 @@ use crate::{
     utils::document::get_url_from_span,
 };
 use std::sync::Arc;
-use sway_core::{language::CallPath, Engines, TypeId, TypeInfo};
+use sway_core::{
+    language::{
+        ty::{TyDecl, TyTraitDecl},
+        CallPath,
+    },
+    Engines, TypeId, TypeInfo,
+};
 
 use sway_types::{Span, Spanned};
 use tower_lsp::lsp_types::{Range, Url};
@@ -21,11 +27,11 @@ pub struct HoverLinkContents<'a> {
     pub related_types: Vec<RelatedType>,
     pub implementations: Vec<Span>,
     session: Arc<Session>,
-    engines: Engines<'a>,
+    engines: &'a Engines,
 }
 
 impl<'a> HoverLinkContents<'a> {
-    pub fn new(session: Arc<Session>, engines: Engines<'a>) -> Self {
+    pub fn new(session: Arc<Session>, engines: &'a Engines) -> Self {
         Self {
             related_types: Vec::new(),
             implementations: Vec::new(),
@@ -71,5 +77,44 @@ impl<'a> HoverLinkContents<'a> {
                 callpath,
             });
         };
+    }
+
+    /// Adds all implementations of the given [TyTraitDecl] to the list of implementations.
+    pub fn add_implementations_for_trait(&mut self, trait_decl: &TyTraitDecl) {
+        if let Some(namespace) = self.session.namespace() {
+            let call_path = CallPath::from(trait_decl.name.clone()).to_fullpath(&namespace);
+            let impl_spans = namespace.get_impl_spans_for_trait_name(&call_path);
+            self.add_implementations(&trait_decl.span(), impl_spans);
+        }
+    }
+
+    /// Adds implementations of the given type to the list of implementations using the [TyDecl].
+    pub fn add_implementations_for_decl(&mut self, ty_decl: &TyDecl) {
+        if let Some(namespace) = self.session.namespace() {
+            let impl_spans = namespace.get_impl_spans_for_decl(self.engines, ty_decl);
+            self.add_implementations(&ty_decl.span(), impl_spans);
+        }
+    }
+
+    /// Adds implementations of the given type to the list of implementations using the [TypeId].
+    pub fn add_implementations_for_type(&mut self, decl_span: &Span, type_id: &TypeId) {
+        if let Some(namespace) = self.session.namespace() {
+            let impl_spans = namespace.get_impl_spans_for_type(self.engines, type_id);
+            self.add_implementations(decl_span, impl_spans);
+        }
+    }
+
+    /// Adds implementations to the list of implementation spans, with the declaration span first.
+    /// Ensure that all paths are converted to workspace paths before adding them.
+    fn add_implementations(&mut self, decl_span: &Span, mut impl_spans: Vec<Span>) {
+        let mut all_spans = vec![decl_span.clone()];
+        all_spans.append(&mut impl_spans);
+        all_spans.dedup();
+        all_spans.iter().for_each(|span| {
+            let span_result = self.session.sync.temp_to_workspace_span(span);
+            if let Ok(span) = span_result {
+                self.implementations.push(span);
+            }
+        });
     }
 }

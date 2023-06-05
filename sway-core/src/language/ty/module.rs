@@ -12,7 +12,7 @@ use crate::{
 pub struct TyModule {
     pub span: Span,
     pub submodules: Vec<(ModName, TySubmodule)>,
-    pub namespace: namespace::Module,
+    pub namespace: namespace::Namespace,
     pub all_nodes: Vec<TyAstNode>,
     pub attributes: transform::AttributesMap,
 }

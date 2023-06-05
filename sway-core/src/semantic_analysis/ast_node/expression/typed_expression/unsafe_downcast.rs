@@ -7,31 +7,26 @@ use crate::{
 };
 // currently the unsafe downcast expr is only used for enums, so this method is specialized for enums
 pub(crate) fn instantiate_unsafe_downcast(
-    engines: Engines<'_>,
+    engines: &Engines,
     exp: &ty::TyExpression,
     variant: ty::TyEnumVariant,
     call_path_decl: ty::TyDecl,
     span: Span,
 ) -> (MatchReqMap, ty::TyExpression) {
     let type_engine = engines.te();
-    let decl_engine = engines.de();
     let match_req_map = vec![vec![(
         ty::TyExpression {
             expression: ty::TyExpressionVariant::EnumTag {
                 exp: Box::new(exp.clone()),
             },
-            return_type: type_engine.insert(
-                decl_engine,
-                TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-            ),
+            return_type: type_engine
+                .insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
             span: exp.span.clone(),
         },
         ty::TyExpression {
             expression: ty::TyExpressionVariant::Literal(Literal::U64(variant.tag as u64)),
-            return_type: type_engine.insert(
-                decl_engine,
-                TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-            ),
+            return_type: type_engine
+                .insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
             span: exp.span.clone(),
         },
     )]];

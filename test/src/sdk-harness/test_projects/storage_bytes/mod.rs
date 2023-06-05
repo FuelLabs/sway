@@ -7,11 +7,12 @@ abigen!(Contract(
 
 async fn setup() -> TestStorageBytesContract<WalletUnlocked> {
     let wallet = launch_provider_and_get_wallet().await;
-    let id = Contract::deploy(
+    let id = Contract::load_from(
         "test_projects/storage_bytes/out/debug/storage_bytes.bin",
-        &wallet,
-        DeployConfiguration::default(),
+        LoadConfiguration::default(),
     )
+    .unwrap()
+    .deploy(&wallet, TxParameters::default())
     .await
     .unwrap();
 
