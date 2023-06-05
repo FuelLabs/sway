@@ -108,7 +108,7 @@ where
     pub(crate) fn subst_types_and_insert_new(
         &self,
         type_mapping: &TypeSubstMap,
-        engines: Engines<'_>,
+        engines: &Engines,
     ) -> Self {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(&self.id);
@@ -123,7 +123,7 @@ where
 {
     pub(crate) fn replace_self_type_and_insert_new(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         self_type: TypeId,
     ) -> Self {
         let decl_engine = engines.de();
@@ -157,7 +157,7 @@ where
     pub(crate) fn subst_types_and_insert_new_with_parent(
         &self,
         type_mapping: &TypeSubstMap,
-        engines: Engines<'_>,
+        engines: &Engines,
     ) -> Self {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(&self.id);
@@ -175,7 +175,7 @@ where
 {
     pub(crate) fn replace_self_type_and_insert_new_with_parent(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         self_type: TypeId,
     ) -> Self {
         let decl_engine = engines.de();
@@ -195,7 +195,7 @@ where
     pub(crate) fn replace_decls_and_insert_new_with_parent(
         &self,
         decl_mapping: &DeclMapping,
-        engines: Engines<'_>,
+        engines: &Engines,
     ) -> Self {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(&self.id);
@@ -217,7 +217,7 @@ where
     DeclEngine: DeclEngineIndex<T>,
     T: Named + Spanned + PartialEqWithEngines,
 {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         let decl_engine = engines.de();
         let DeclRef {
             name: ln,
@@ -246,7 +246,7 @@ where
     DeclEngine: DeclEngineIndex<T>,
     T: Named + Spanned + HashWithEngines,
 {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let decl_engine = engines.de();
         let DeclRef {
             name,
@@ -264,7 +264,7 @@ where
 
 impl EqWithEngines for DeclRefMixedInterface {}
 impl PartialEqWithEngines for DeclRefMixedInterface {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         let decl_engine = engines.de();
         match (&self.id, &other.id) {
             (InterfaceDeclId::Abi(self_id), InterfaceDeclId::Abi(other_id)) => {
@@ -283,7 +283,7 @@ impl PartialEqWithEngines for DeclRefMixedInterface {
 }
 
 impl HashWithEngines for DeclRefMixedInterface {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         match self.id {
             InterfaceDeclId::Abi(id) => {
                 state.write_u8(0);
@@ -312,7 +312,7 @@ where
     DeclEngine: DeclEngineIndex<T>,
     T: Named + Spanned + SubstTypes,
 {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(&self.id);
         decl.subst(type_mapping, engines);
@@ -325,7 +325,7 @@ where
     DeclEngine: DeclEngineIndex<T>,
     T: Named + Spanned + ReplaceSelfType,
 {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(&self.id);
         decl.replace_self_type(engines, self_type);
@@ -334,7 +334,7 @@ where
 }
 
 impl ReplaceDecls for DeclRefFunction {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: &Engines) {
         let decl_engine = engines.de();
         if let Some(new_decl_ref) = decl_mapping.find_match(self.id.into()) {
             if let AssociatedItemDeclId::Function(new_decl_ref) = new_decl_ref {
@@ -355,7 +355,7 @@ impl ReplaceDecls for DeclRefFunction {
 }
 
 impl ReplaceFunctionImplementingType for DeclRefFunction {
-    fn replace_implementing_type(&mut self, engines: Engines<'_>, implementing_type: ty::TyDecl) {
+    fn replace_implementing_type(&mut self, engines: &Engines, implementing_type: ty::TyDecl) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(&self.id);
         decl.set_implementing_type(implementing_type);

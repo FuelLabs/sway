@@ -18,8 +18,8 @@ pub(crate) fn struct_instantiation(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
+    let type_engine = ctx.engines.te();
+    let decl_engine = ctx.engines.de();
     let engines = ctx.engines();
 
     // We need the call_path_binding to have types that point to proper definitions so the LSP can
@@ -162,7 +162,7 @@ fn type_check_field_arguments(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
+    let type_engine = ctx.engines.te();
     let engines = ctx.engines();
 
     let mut typed_fields = vec![];
@@ -217,7 +217,7 @@ fn unify_field_arguments_and_struct_fields(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
+    let type_engine = ctx.engines.te();
     let engines = ctx.engines();
 
     for struct_field in struct_fields.iter() {

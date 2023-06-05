@@ -21,13 +21,13 @@ use std::{
 pub struct TypeId(usize);
 
 impl DisplayWithEngines for TypeId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         write!(f, "{}", engines.help_out(engines.te().get(*self)))
     }
 }
 
 impl DebugWithEngines for TypeId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         write!(f, "{:?}", engines.help_out(engines.te().get(*self)))
     }
 }
@@ -47,11 +47,11 @@ impl CollectTypesMetadata for TypeId {
             matches!(type_info, TypeInfo::UnknownGeneric { .. })
                 || matches!(type_info, TypeInfo::Placeholder(_))
         }
-        let engines = Engines::new(ctx.type_engine, ctx.decl_engine, ctx.query_engine);
+        let engines = ctx.engines;
         let possible = self.extract_any_including_self(engines, &filter_fn, vec![]);
         let mut res = vec![];
         for (type_id, _) in possible.into_iter() {
-            match ctx.type_engine.get(type_id) {
+            match ctx.engines.te().get(type_id) {
                 TypeInfo::UnknownGeneric { name, .. } => {
                     res.push(TypeMetadata::UnresolvedType(
                         name,
@@ -72,8 +72,8 @@ impl CollectTypesMetadata for TypeId {
 }
 
 impl ReplaceSelfType for TypeId {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        fn helper(type_id: TypeId, engines: Engines<'_>, self_type: TypeId) -> Option<TypeId> {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
+        fn helper(type_id: TypeId, engines: &Engines, self_type: TypeId) -> Option<TypeId> {
             let type_engine = engines.te();
             let decl_engine = engines.de();
             match type_engine.get(type_id) {
@@ -243,7 +243,7 @@ impl ReplaceSelfType for TypeId {
 }
 
 impl SubstTypes for TypeId {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         let type_engine = engines.te();
         if let Some(matching_id) = type_mapping.find_match(*self, engines) {
             if !matches!(type_engine.get(matching_id), TypeInfo::ErrorRecovery) {
@@ -256,7 +256,7 @@ impl SubstTypes for TypeId {
 impl UnconstrainedTypeParameters for TypeId {
     fn type_parameter_is_unconstrained(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         type_parameter: &TypeParameter,
     ) -> bool {
         let type_engine = engines.te();
@@ -323,7 +323,7 @@ impl TypeId {
 
     pub(crate) fn extract_any_including_self<F>(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         filter_fn: &F,
         trait_constraints: Vec<TraitConstraint>,
     ) -> HashMap<TypeId, Vec<TraitConstraint>>

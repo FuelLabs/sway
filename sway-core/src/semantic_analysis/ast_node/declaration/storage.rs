@@ -15,7 +15,7 @@ use sway_types::state::StateIndex;
 impl ty::TyStorageDecl {
     pub(crate) fn get_initialized_storage_slots(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         module: Module,
@@ -48,7 +48,7 @@ impl ty::TyStorageDecl {
 impl ty::TyStorageField {
     pub(crate) fn get_initialized_storage_slots(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         module: Module,
