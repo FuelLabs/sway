@@ -302,6 +302,8 @@ impl u16 {
 
             and r1 input off;
             sw output r1 i1;
+
+            output: [u8; 2]
         }
     }
 
@@ -403,6 +405,12 @@ impl b256 {
         asm(r1: result) {
             r1: b256
         }
+    }
+}
+
+fn assert(condition: bool) {
+    if !condition {
+        __revert(0)
     }
 }
 
