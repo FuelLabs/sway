@@ -37,7 +37,7 @@ impl ty::TyAbiDecl {
         // from itself. This is by design.
 
         // A temporary namespace for checking within this scope.
-        let type_engine = ctx.type_engine;
+        let type_engine = ctx.engines.te();
         let mut abi_namespace = ctx.namespace.clone();
         let self_type = type_engine.insert(ctx.engines(), TypeInfo::SelfType);
         let mut ctx = ctx
@@ -77,7 +77,7 @@ impl ty::TyAbiDecl {
                         }
                     }
                     new_interface_surface.push(ty::TyTraitInterfaceItem::TraitFn(
-                        ctx.decl_engine.insert(method.clone()),
+                        ctx.engines.de().insert(method.clone()),
                     ));
                     method.name.clone()
                 }
@@ -88,7 +88,7 @@ impl ty::TyAbiDecl {
                         warnings,
                         errors
                     );
-                    let decl_ref = ctx.decl_engine.insert(const_decl.clone());
+                    let decl_ref = ctx.engines.de().insert(const_decl.clone());
                     new_interface_surface
                         .push(ty::TyTraitInterfaceItem::Constant(decl_ref.clone()));
 
@@ -136,7 +136,7 @@ impl ty::TyAbiDecl {
                     })
                 }
             }
-            new_items.push(TyTraitItem::Fn(ctx.decl_engine.insert(method)));
+            new_items.push(TyTraitItem::Fn(ctx.engines.de().insert(method)));
         }
 
         // Compared to regular traits, we do not insert recursively methods of ABI supertraits
@@ -158,7 +158,7 @@ impl ty::TyAbiDecl {
         ctx: TypeCheckContext,
         type_id: TypeId,
     ) {
-        let decl_engine = ctx.decl_engine;
+        let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
         let ty::TyAbiDecl {
@@ -175,9 +175,10 @@ impl ty::TyAbiDecl {
                     let mut method = decl_engine.get_trait_fn(decl_ref);
                     method.replace_self_type(engines, type_id);
                     all_items.push(TyImplItem::Fn(
-                        ctx.decl_engine
+                        ctx.engines
+                            .de()
                             .insert(method.to_dummy_func(Mode::ImplAbiFn))
-                            .with_parent(ctx.decl_engine, (*decl_ref.id()).into()),
+                            .with_parent(ctx.engines.de(), (*decl_ref.id()).into()),
                     ));
                 }
                 ty::TyTraitInterfaceItem::Constant(decl_ref) => {
@@ -201,15 +202,16 @@ impl ty::TyAbiDecl {
                     let mut method = decl_engine.get_function(decl_ref);
                     method.replace_self_type(engines, type_id);
                     all_items.push(TyImplItem::Fn(
-                        ctx.decl_engine
+                        ctx.engines
+                            .de()
                             .insert(method)
-                            .with_parent(ctx.decl_engine, (*decl_ref.id()).into()),
+                            .with_parent(ctx.engines.de(), (*decl_ref.id()).into()),
                     ));
                 }
                 ty::TyTraitItem::Constant(decl_ref) => {
                     let mut const_decl = decl_engine.get_constant(decl_ref);
                     const_decl.replace_self_type(engines, type_id);
-                    all_items.push(TyImplItem::Constant(ctx.decl_engine.insert(const_decl)));
+                    all_items.push(TyImplItem::Constant(ctx.engines.de().insert(const_decl)));
                 }
             }
         }

@@ -42,11 +42,10 @@ use sway_core::{
         parsed::{ParseProgram, TreeType},
         ty, Visibility,
     },
-    query_engine::QueryEngine,
     semantic_analysis::namespace,
     source_map::SourceMap,
     transform::AttributeKind,
-    BuildTarget, CompileResult, Engines, FinalizedEntry, TypeEngine,
+    BuildTarget, CompileResult, Engines, FinalizedEntry,
 };
 use sway_error::{error::CompileError, warning::CompileWarning};
 use sway_types::{Ident, Span, Spanned};
@@ -1583,7 +1582,7 @@ pub fn dependency_namespace(
     compiled_contract_deps: &CompiledContractDeps,
     graph: &Graph,
     node: NodeIx,
-    engines: Engines<'_>,
+    engines: &Engines,
     contract_id_value: Option<ContractIdConst>,
 ) -> Result<namespace::Module, vec1::Vec1<CompileError>> {
     // TODO: Clean this up when config-time constants v1 are removed.
@@ -1719,7 +1718,7 @@ fn find_core_dep(graph: &Graph, node: NodeIx) -> Option<NodeIx> {
 pub fn compile_ast(
     pkg: &PackageDescriptor,
     build_profile: &BuildProfile,
-    engines: Engines<'_>,
+    engines: &Engines,
     namespace: namespace::Module,
     package_name: &str,
     metrics: &mut PerformanceData,
@@ -1763,7 +1762,7 @@ pub fn compile_ast(
 pub fn compile(
     pkg: &PackageDescriptor,
     profile: &BuildProfile,
-    engines: Engines<'_>,
+    engines: &Engines,
     namespace: namespace::Module,
     source_map: &mut SourceMap,
 ) -> Result<CompiledPackage> {
@@ -1845,7 +1844,7 @@ pub fn compile(
             let abi = time_expr!(
                 "generate JSON ABI program",
                 "generate_json_abi",
-                evm_json_abi::generate_json_abi_program(typed_program, &engines),
+                evm_json_abi::generate_json_abi_program(typed_program, engines),
                 Some(sway_build_config.clone()),
                 metrics
             );
@@ -2241,10 +2240,7 @@ pub fn build(
         .flat_map(|output_node| plan.node_deps(*output_node))
         .collect();
 
-    let type_engine = TypeEngine::default();
-    let decl_engine = DeclEngine::default();
-    let query_engine = QueryEngine::default();
-    let engines = Engines::new(&type_engine, &decl_engine, &query_engine);
+    let engines = Engines::default();
     let include_tests = profile.include_tests;
 
     // This is the Contract ID of the current contract being compiled.
@@ -2306,7 +2302,7 @@ pub fn build(
                 &compiled_contract_deps,
                 plan.graph(),
                 node,
-                engines,
+                &engines,
                 None,
             ) {
                 Ok(o) => o,
@@ -2316,7 +2312,7 @@ pub fn build(
             let compiled_without_tests = compile(
                 &descriptor,
                 &profile,
-                engines,
+                &engines,
                 dep_namespace,
                 &mut source_map,
             )?;
@@ -2369,7 +2365,7 @@ pub fn build(
             &compiled_contract_deps,
             plan.graph(),
             node,
-            engines,
+            &engines,
             contract_id_value.clone(),
         ) {
             Ok(o) => o,
@@ -2379,7 +2375,7 @@ pub fn build(
         let mut compiled = compile(
             &descriptor,
             &profile,
-            engines,
+            &engines,
             dep_namespace,
             &mut source_map,
         )?;
@@ -2560,7 +2556,7 @@ pub fn check(
     build_target: BuildTarget,
     terse_mode: bool,
     include_tests: bool,
-    engines: Engines<'_>,
+    engines: &Engines,
 ) -> anyhow::Result<Vec<CompileResult<Programs>>> {
     let mut lib_namespace_map = Default::default();
     let mut source_map = SourceMap::new();
@@ -2642,7 +2638,7 @@ pub fn parse(
     build_target: BuildTarget,
     terse_mode: bool,
     include_tests: bool,
-    engines: Engines<'_>,
+    engines: &Engines,
 ) -> anyhow::Result<CompileResult<(LexedProgram, ParseProgram)>> {
     let profile = BuildProfile {
         terse: terse_mode,

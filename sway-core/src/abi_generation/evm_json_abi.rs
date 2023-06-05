@@ -7,7 +7,7 @@ use crate::{
     Engines, TypeArgument, TypeEngine, TypeId, TypeInfo,
 };
 
-pub fn generate_json_abi_program(program: &TyProgram, engines: &Engines<'_>) -> EvmAbiResult {
+pub fn generate_json_abi_program(program: &TyProgram, engines: &Engines) -> EvmAbiResult {
     let type_engine = engines.te();
     let decl_engine = engines.de();
     match &program.kind {

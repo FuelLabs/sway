@@ -67,7 +67,7 @@ impl ty::TyEnumVariant {
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let type_engine = ctx.type_engine;
+        let type_engine = ctx.engines.te();
         let engines = ctx.engines();
         let mut type_argument = variant.type_argument;
         type_argument.type_id = check!(

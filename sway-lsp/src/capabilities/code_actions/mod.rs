@@ -27,7 +27,7 @@ pub(crate) const TAB: &str = "    ";
 
 #[derive(Clone)]
 pub(crate) struct CodeActionContext<'a> {
-    engines: Engines<'a>,
+    engines: &'a Engines,
     tokens: &'a TokenMap,
     token: &'a Token,
     uri: &'a Url,
@@ -43,11 +43,9 @@ pub(crate) fn code_actions(
         .token_map()
         .token_at_position(temp_uri, range.start)?;
 
-    let type_engine = session.type_engine.read();
-    let decl_engine = session.decl_engine.read();
-    let query_engine = session.query_engine.read();
+    let engines = session.engines.read();
     let ctx = CodeActionContext {
-        engines: Engines::new(&type_engine, &decl_engine, &query_engine),
+        engines: &engines,
         tokens: session.token_map(),
         token: &token.clone(),
         uri: &text_document.uri,

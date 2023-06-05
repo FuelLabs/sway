@@ -18,7 +18,7 @@ use crate::{language::ty, Engines};
 pub fn compile_program(
     program: &ty::TyProgram,
     include_tests: bool,
-    engines: Engines<'_>,
+    engines: &Engines,
 ) -> Result<Context, CompileError> {
     let declaration_engine = engines.de();
 
