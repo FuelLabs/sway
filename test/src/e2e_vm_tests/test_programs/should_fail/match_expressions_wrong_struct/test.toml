@@ -18,4 +18,4 @@ category = "fail"
 # nextln: $()found:    u64.
 
 # check: Bar(x) => x,
-# nextln: $()Enum with name "Bar" could not be found in this scope. Perhaps you need to import it?
+# nextln: $()Could not find symbol "Bar" in this scope.

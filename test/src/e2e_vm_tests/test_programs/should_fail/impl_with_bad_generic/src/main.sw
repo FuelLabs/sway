@@ -27,6 +27,6 @@ impl<T> Option<T> {
 fn main() {
     (S{}).f(true);
     let a = Option::Some(5u64);
-    let b = OtherOption::Some(Option::None(()));
+    let b = OtherOption::Some(None(()));
     let c = a.return_false(b);
 }

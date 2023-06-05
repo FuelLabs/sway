@@ -28,7 +28,7 @@ impl Spanned for TypeArgument {
 }
 
 impl HashWithEngines for TypeArgument {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TypeArgument {
             type_id,
             // these fields are not hashed because they aren't relevant/a
@@ -44,7 +44,7 @@ impl HashWithEngines for TypeArgument {
 
 impl EqWithEngines for TypeArgument {}
 impl PartialEqWithEngines for TypeArgument {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         let type_engine = engines.te();
         type_engine
             .get(self.type_id)
@@ -53,7 +53,7 @@ impl PartialEqWithEngines for TypeArgument {
 }
 
 impl OrdWithEngines for TypeArgument {
-    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
+    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
         let TypeArgument {
             type_id: lti,
             // these fields are not compared because they aren't relevant/a
@@ -75,8 +75,14 @@ impl OrdWithEngines for TypeArgument {
 }
 
 impl DisplayWithEngines for TypeArgument {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         write!(f, "{}", engines.help_out(engines.te().get(self.type_id)))
+    }
+}
+
+impl DebugWithEngines for TypeArgument {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        write!(f, "{:?}", engines.help_out(engines.te().get(self.type_id)))
     }
 }
 
@@ -92,13 +98,13 @@ impl From<&TypeParameter> for TypeArgument {
 }
 
 impl ReplaceSelfType for TypeArgument {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         self.type_id.replace_self_type(engines, self_type);
     }
 }
 
 impl SubstTypes for TypeArgument {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         self.type_id.subst(type_mapping, engines);
     }
 }

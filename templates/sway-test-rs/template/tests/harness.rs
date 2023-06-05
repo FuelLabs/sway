@@ -1,4 +1,4 @@
-use fuels::{prelude::*, tx::ContractId};
+use fuels::{prelude::*, types::ContractId};
 
 // Load abi from json
 abigen!(Contract(
@@ -6,7 +6,7 @@ abigen!(Contract(
     abi = "out/debug/{{project-name}}-abi.json"
 ));
 
-async fn get_contract_instance() -> (MyContract, ContractId) {
+async fn get_contract_instance() -> (MyContract<WalletUnlocked>, ContractId) {
     // Launch a local network and deploy the contract
     let mut wallets = launch_custom_provider_and_get_wallets(
         WalletsConfig::new(
@@ -20,14 +20,12 @@ async fn get_contract_instance() -> (MyContract, ContractId) {
     .await;
     let wallet = wallets.pop().unwrap();
 
-    let id = Contract::deploy(
+    let id = Contract::load_from(
         "./out/debug/{{project-name}}.bin",
-        &wallet,
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "./out/debug/{{project-name}}-storage_slots.json".to_string(),
-        )),
+        LoadConfiguration::default(),
     )
+    .unwrap()
+    .deploy(&wallet, TxParameters::default())
     .await
     .unwrap();
 

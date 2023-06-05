@@ -4,6 +4,7 @@ use sway_ast::submodule::Submodule;
 
 impl Parse for Submodule {
     fn parse(parser: &mut Parser) -> ParseResult<Submodule> {
+        let visibility = parser.take();
         let mod_token = parser.parse()?;
         let name = parser.parse()?;
         let semicolon_token = parser.parse()?;
@@ -11,6 +12,7 @@ impl Parse for Submodule {
             mod_token,
             name,
             semicolon_token,
+            visibility,
         })
     }
 }

@@ -55,6 +55,8 @@ pub enum ConvertParseTreeError {
     StructPatternsNotSupportedHere { span: Span },
     #[error("wildcard patterns not supported in this position")]
     WildcardPatternsNotSupportedHere { span: Span },
+    #[error("or patterns not supported in this position")]
+    OrPatternsNotSupportedHere { span: Span },
     #[error("tuple patterns not supported in this position")]
     TuplePatternsNotSupportedHere { span: Span },
     #[error("ref patterns not supported in this position")]
@@ -109,6 +111,18 @@ pub enum ConvertParseTreeError {
     DerefExprNotYetSupported { span: Span },
     #[error("Constant requires expression.")]
     ConstantRequiresExpression { span: Span },
+    #[error("Constant requires type ascription.")]
+    ConstantRequiresTypeAscription { span: Span },
+    #[error("Invalid value \"{value}\"")]
+    InvalidCfgTargetArgValue { span: Span, value: String },
+    #[error("Expected a value for the target argument")]
+    ExpectedCfgTargetArgValue { span: Span },
+    #[error("Invalid value \"{value}\"")]
+    InvalidCfgProgramTypeArgValue { span: Span, value: String },
+    #[error("Expected a value for the program_type argument")]
+    ExpectedCfgProgramTypeArgValue { span: Span },
+    #[error("Unexpected call path segments between qualified root and method name.")]
+    UnexpectedCallPathPrefixAfterQualifiedRoot { span: Span },
 }
 
 impl Spanned for ConvertParseTreeError {
@@ -140,6 +154,7 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::ConstructorPatternsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::StructPatternsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::WildcardPatternsNotSupportedHere { span } => span.clone(),
+            ConvertParseTreeError::OrPatternsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::TuplePatternsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::RefPatternsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::ConstructorPatternOneArg { span } => span.clone(),
@@ -167,6 +182,14 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::RefExprNotYetSupported { span } => span.clone(),
             ConvertParseTreeError::DerefExprNotYetSupported { span } => span.clone(),
             ConvertParseTreeError::ConstantRequiresExpression { span } => span.clone(),
+            ConvertParseTreeError::ConstantRequiresTypeAscription { span } => span.clone(),
+            ConvertParseTreeError::InvalidCfgTargetArgValue { span, .. } => span.clone(),
+            ConvertParseTreeError::ExpectedCfgTargetArgValue { span } => span.clone(),
+            ConvertParseTreeError::InvalidCfgProgramTypeArgValue { span, .. } => span.clone(),
+            ConvertParseTreeError::ExpectedCfgProgramTypeArgValue { span } => span.clone(),
+            ConvertParseTreeError::UnexpectedCallPathPrefixAfterQualifiedRoot { span } => {
+                span.clone()
+            }
         }
     }
 }

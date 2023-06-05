@@ -8,20 +8,19 @@ use sway_types::Span;
 
 use std::{collections::HashMap, path::PathBuf, rc::Rc, sync::Arc};
 
-///! IR metadata needs to be consistent between IR generation (converting Spans, etc. to metadata)
-///! and ASM generation (converting the metadata back again).  Here we consolidate all of
-///! `sway-core`s metadata needs into a single place to enable that consistency.
-///!
-///! The [`MetadataManager`] also does its best to reduce redundancy by caching certain common
-///! elements, such as source paths and storage attributes, and to avoid recreating the same
-///! indices repeatedly.
+/// IR metadata needs to be consistent between IR generation (converting Spans, etc. to metadata)
+/// and ASM generation (converting the metadata back again).  Here we consolidate all of
+/// `sway-core`s metadata needs into a single place to enable that consistency.
+///
+/// The [`MetadataManager`] also does its best to reduce redundancy by caching certain common
+/// elements, such as source paths and storage attributes, and to avoid recreating the same
+/// indices repeatedly.
 
 #[derive(Default)]
 pub(crate) struct MetadataManager {
     md_span_cache: HashMap<MetadataIndex, Span>,
     md_file_loc_cache: HashMap<MetadataIndex, (Arc<PathBuf>, Arc<str>)>,
     md_storage_op_cache: HashMap<MetadataIndex, StorageOperation>,
-    md_storage_key_cache: HashMap<MetadataIndex, u64>,
     md_inline_cache: HashMap<MetadataIndex, Inline>,
     md_test_decl_index_cache: HashMap<MetadataIndex, DeclId<TyFunctionDecl>>,
     md_config_const_name_cache: HashMap<MetadataIndex, Rc<str>>,
@@ -29,7 +28,6 @@ pub(crate) struct MetadataManager {
     span_md_cache: HashMap<Span, MetadataIndex>,
     file_loc_md_cache: HashMap<*const PathBuf, MetadataIndex>,
     storage_op_md_cache: HashMap<Purity, MetadataIndex>,
-    storage_key_md_cache: HashMap<u64, MetadataIndex>,
     inline_md_cache: HashMap<Inline, MetadataIndex>,
     test_decl_index_md_cache: HashMap<DeclId<TyFunctionDecl>, MetadataIndex>,
     config_const_name_md_cache: HashMap<Rc<str>, MetadataIndex>,
@@ -122,28 +120,6 @@ impl MetadataManager {
         })
     }
 
-    pub(crate) fn md_to_storage_key(
-        &mut self,
-        context: &Context,
-        md_idx: Option<MetadataIndex>,
-    ) -> Option<u64> {
-        Self::for_each_md_idx(context, md_idx, |md_idx| {
-            self.md_storage_key_cache.get(&md_idx).copied().or_else(|| {
-                // Create a new storage key and save it in the cache.
-                md_idx
-                    .get_content(context)
-                    .unwrap_struct("state_index", 1)
-                    .and_then(|fields| {
-                        let key = fields[0].unwrap_integer()?;
-
-                        self.md_storage_key_cache.insert(md_idx, key);
-
-                        Some(key)
-                    })
-            })
-        })
-    }
-
     /// Gets Inline information from metadata index.
     /// TODO: We temporarily allow this because we need this
     /// in the sway-ir inliner, but cannot access it. So the code
@@ -230,10 +206,6 @@ impl MetadataManager {
         self.md_to_span(context, value.get_metadata(context))
     }
 
-    pub(crate) fn val_to_storage_key(&mut self, context: &Context, value: Value) -> Option<u64> {
-        self.md_to_storage_key(context, value.get_metadata(context))
-    }
-
     pub(crate) fn span_to_md(
         &mut self,
         context: &mut Context,
@@ -275,28 +247,6 @@ impl MetadataManager {
                     vec![Metadatum::Integer(decl_index.inner() as u64)],
                 );
                 self.test_decl_index_md_cache.insert(decl_index, md_idx);
-
-                Some(md_idx)
-            })
-    }
-
-    pub(crate) fn storage_key_to_md(
-        &mut self,
-        context: &mut Context,
-        storage_key: u64,
-    ) -> Option<MetadataIndex> {
-        self.storage_key_md_cache
-            .get(&storage_key)
-            .copied()
-            .or_else(|| {
-                // Create new metadatum.
-                let md_idx = MetadataIndex::new_struct(
-                    context,
-                    "state_index",
-                    vec![Metadatum::Integer(storage_key)],
-                );
-
-                self.storage_key_md_cache.insert(storage_key, md_idx);
 
                 Some(md_idx)
             })

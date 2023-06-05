@@ -1,0 +1,9 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "arg_demotion_inline"
+
+[dependencies]
+core = { path = "../../../../../../../sway-lib-core" }
+std = { path = "../../../../../../../sway-lib-std" }

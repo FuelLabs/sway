@@ -40,28 +40,28 @@ fn test_vector_swap_u8() {
     assert(vector.is_empty() == false);
 
     match vector.get(0) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val == number0)
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
 
     match vector.get(1) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val == number1)
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
 
     match vector.get(2) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val == number2)
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
@@ -73,28 +73,28 @@ fn test_vector_swap_u8() {
     assert(vector.is_empty() == false);
 
     match vector.get(0) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val == number2)
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
 
     match vector.get(1) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val == number1)
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
 
     match vector.get(2) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val == number0)
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
@@ -116,28 +116,28 @@ fn test_vector_swap_b256() {
     assert(vector.is_empty() == false);
 
     match vector.get(0) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val == b0)
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
 
     match vector.get(1) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val == b1)
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
 
     match vector.get(2) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val == b2)
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
@@ -148,28 +148,28 @@ fn test_vector_swap_b256() {
     assert(vector.is_empty() == false);
 
     match vector.get(0) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val == b2)
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
 
     match vector.get(1) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val == b1)
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
 
     match vector.get(2) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val == b0)
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
@@ -204,31 +204,31 @@ fn test_vector_swap_struct() {
     assert(vector.is_empty() == false);
 
     match vector.get(0) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val.x == number0);
             assert(val.y == b0);
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
 
     match vector.get(1) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val.x == number1);
             assert(val.y == b1);
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
 
     match vector.get(2) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val.x == number2);
             assert(val.y == b2);
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
@@ -240,31 +240,31 @@ fn test_vector_swap_struct() {
     assert(vector.is_empty() == false);
 
     match vector.get(0) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val.x == number2);
             assert(val.y == b2);
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
 
     match vector.get(1) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val.x == number1);
             assert(val.y == b1);
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
 
     match vector.get(2) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val.x == number0);
             assert(val.y == b0);
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
@@ -285,7 +285,7 @@ fn test_vector_swap_enum() {
     assert(vector.is_empty() == false);
 
     match vector.get(0) {
-        Option::Some(val) => {
+        Some(val) => {
             match val {
                 SimpleEnum::A(b) => {
                     assert(b == b0)
@@ -295,13 +295,13 @@ fn test_vector_swap_enum() {
                 },
             }
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
 
     match vector.get(1) {
-        Option::Some(val) => {
+        Some(val) => {
             match val {
                 SimpleEnum::A(b) => {
                     assert(b == b1)
@@ -311,13 +311,13 @@ fn test_vector_swap_enum() {
                 },
             }
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
 
     match vector.get(2) {
-        Option::Some(val) => {
+        Some(val) => {
             match val {
                 SimpleEnum::B => {},
                 _ => {
@@ -325,7 +325,7 @@ fn test_vector_swap_enum() {
                 },
             }
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
@@ -337,7 +337,7 @@ fn test_vector_swap_enum() {
     assert(vector.is_empty() == false);
 
     match vector.get(0) {
-        Option::Some(val) => {
+        Some(val) => {
             match val {
                 SimpleEnum::B => {},
                 _ => {
@@ -345,13 +345,13 @@ fn test_vector_swap_enum() {
                 },
             }
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
 
     match vector.get(1) {
-        Option::Some(val) => {
+        Some(val) => {
             match val {
                 SimpleEnum::A(b) => {
                     assert(b == b1)
@@ -361,13 +361,13 @@ fn test_vector_swap_enum() {
                 },
             }
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
 
     match vector.get(2) {
-        Option::Some(val) => {
+        Some(val) => {
             match val {
                 SimpleEnum::A(b) => {
                     assert(b == b0)
@@ -377,7 +377,7 @@ fn test_vector_swap_enum() {
                 },
             }
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
@@ -403,31 +403,31 @@ fn test_vector_swap_tuple() {
     assert(vector.is_empty() == false);
 
     match vector.get(0) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val.0 == number0);
             assert(val.1 == b0);
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
 
     match vector.get(1) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val.0 == number1);
             assert(val.1 == b1);
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
 
     match vector.get(2) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val.0 == number2);
             assert(val.1 == b2);
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
@@ -439,31 +439,31 @@ fn test_vector_swap_tuple() {
     assert(vector.is_empty() == false);
 
     match vector.get(0) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val.0 == number2);
             assert(val.1 == b2);
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
 
     match vector.get(1) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val.0 == number1);
             assert(val.1 == b1);
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
 
     match vector.get(2) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val.0 == number0);
             assert(val.1 == b0);
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
@@ -485,28 +485,28 @@ fn test_vector_swap_string() {
     assert(vector.is_empty() == false);
 
     match vector.get(0) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(sha256(val) == sha256(s0));
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
 
     match vector.get(1) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(sha256(val) == sha256(s1));
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
 
     match vector.get(2) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(sha256(val) == sha256(s2));
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
@@ -518,28 +518,28 @@ fn test_vector_swap_string() {
     assert(vector.is_empty() == false);
 
     match vector.get(0) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(sha256(val) == sha256(s2));
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
 
     match vector.get(1) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(sha256(val) == sha256(s1));
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
 
     match vector.get(2) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(sha256(val) == sha256(s0));
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
@@ -561,34 +561,34 @@ fn test_vector_swap_array() {
     assert(vector.is_empty() == false);
 
     match vector.get(0) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val[0] == a0[0]);
             assert(val[1] == a0[1]);
             assert(val[2] == a0[2]);
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
 
     match vector.get(1) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val[0] == a1[0]);
             assert(val[1] == a1[1]);
             assert(val[2] == a1[2]);
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
 
     match vector.get(2) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val[0] == a2[0]);
             assert(val[1] == a2[1]);
             assert(val[2] == a2[2]);
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
@@ -600,34 +600,34 @@ fn test_vector_swap_array() {
     assert(vector.is_empty() == false);
 
     match vector.get(0) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val[0] == a2[0]);
             assert(val[1] == a2[1]);
             assert(val[2] == a2[2]);
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
 
     match vector.get(1) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val[0] == a1[0]);
             assert(val[1] == a1[1]);
             assert(val[2] == a1[2]);
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
 
     match vector.get(2) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val[0] == a0[0]);
             assert(val[1] == a0[1]);
             assert(val[2] == a0[2]);
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
@@ -649,28 +649,28 @@ fn test_vector_swap_same_indexes_noop() {
     assert(vector.is_empty() == false);
 
     match vector.get(0) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val == number0)
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
 
     match vector.get(1) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val == number1)
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
 
     match vector.get(2) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val == number2)
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
@@ -682,28 +682,28 @@ fn test_vector_swap_same_indexes_noop() {
     assert(vector.is_empty() == false);
 
     match vector.get(0) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val == number0)
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
 
     match vector.get(1) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val == number1)
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }
 
     match vector.get(2) {
-        Option::Some(val) => {
+        Some(val) => {
             assert(val == number2)
         },
-        Option::None => {
+        None => {
             revert(0)
         },
     }

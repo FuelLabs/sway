@@ -39,15 +39,15 @@ abi MyContract {
 
 impl MyContract for Contract {
     fn complex_function(
-        arg1: MyStruct<[b256; 3], u8>,
-        arg2: [MyStruct<u64, bool>; 4],
-        arg3: (str[5], bool),
-        arg4: MyOtherStruct,
+        _arg1: MyStruct<[b256; 3], u8>,
+        _arg2: [MyStruct<u64, bool>; 4],
+        _arg3: (str[5], bool),
+        _arg4: MyOtherStruct,
     ) -> str[6] {
         "fuel42"
     }
-    fn take_generic_array(arg: MyArrayStruct<u8, u16>) -> u64 {
+    fn take_generic_array(_arg: MyArrayStruct<u8, u16>) -> u64 {
         0
     }
-    fn take_generic_struct_containing_tuple(arg: MyStructWithTuple<SomeGenericStruct<u64>, u16, u32>) {}
+    fn take_generic_struct_containing_tuple(_arg: MyStructWithTuple<SomeGenericStruct<u64>, u16, u32>) {}
 }

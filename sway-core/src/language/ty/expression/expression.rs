@@ -20,7 +20,7 @@ pub struct TyExpression {
 
 impl EqWithEngines for TyExpression {}
 impl PartialEqWithEngines for TyExpression {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         let type_engine = engines.te();
         self.expression.eq(&other.expression, engines)
             && type_engine
@@ -30,7 +30,7 @@ impl PartialEqWithEngines for TyExpression {
 }
 
 impl HashWithEngines for TyExpression {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TyExpression {
             expression,
             return_type,
@@ -45,30 +45,48 @@ impl HashWithEngines for TyExpression {
 }
 
 impl SubstTypes for TyExpression {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         self.return_type.subst(type_mapping, engines);
         self.expression.subst(type_mapping, engines);
     }
 }
 
 impl ReplaceSelfType for TyExpression {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         self.return_type.replace_self_type(engines, self_type);
         self.expression.replace_self_type(engines, self_type);
     }
 }
 
 impl ReplaceDecls for TyExpression {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: &Engines) {
         self.expression.replace_decls(decl_mapping, engines);
     }
 }
 
+impl UpdateConstantExpression for TyExpression {
+    fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
+        self.expression
+            .update_constant_expression(engines, implementing_type)
+    }
+}
+
 impl DisplayWithEngines for TyExpression {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         write!(
             f,
             "{} ({})",
+            engines.help_out(&self.expression),
+            engines.help_out(self.return_type)
+        )
+    }
+}
+
+impl DebugWithEngines for TyExpression {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        write!(
+            f,
+            "{:?} ({:?})",
             engines.help_out(&self.expression),
             engines.help_out(self.return_type)
         )
@@ -83,7 +101,7 @@ impl CollectTypesMetadata for TyExpression {
         use TyExpressionVariant::*;
         let mut warnings = vec![];
         let mut errors = vec![];
-        let decl_engine = ctx.decl_engine;
+        let decl_engine = ctx.engines.de();
         let mut res = check!(
             self.return_type.collect_types_metadata(ctx),
             return err(warnings, errors),
@@ -154,7 +172,7 @@ impl CollectTypesMetadata for TyExpression {
                 for type_parameter in struct_decl.type_parameters {
                     ctx.call_site_insert(type_parameter.type_id, instantiation_span.clone());
                 }
-                if let TypeInfo::Struct(decl_ref) = ctx.type_engine.get(self.return_type) {
+                if let TypeInfo::Struct(decl_ref) = ctx.engines.te().get(self.return_type) {
                     let decl = decl_engine.get_struct(&decl_ref);
                     for type_parameter in decl.type_parameters {
                         ctx.call_site_insert(type_parameter.type_id, instantiation_span.clone());
@@ -183,7 +201,10 @@ impl CollectTypesMetadata for TyExpression {
                     errors
                 ));
             }
-            Array { contents } => {
+            Array {
+                elem_type: _,
+                contents,
+            } => {
                 for content in contents.iter() {
                     res.append(&mut check!(
                         content.collect_types_metadata(ctx),
@@ -344,7 +365,11 @@ impl CollectTypesMetadata for TyExpression {
                     errors
                 ));
             }
-            UnsafeDowncast { exp, variant } => {
+            UnsafeDowncast {
+                exp,
+                variant,
+                call_path_decl: _,
+            } => {
                 res.append(&mut check!(
                     exp.collect_types_metadata(ctx),
                     return err(warnings, errors),
@@ -384,6 +409,7 @@ impl CollectTypesMetadata for TyExpression {
             // variable expressions don't ever have return types themselves, they're stored in
             // `TyExpression::return_type`. Variable expressions are just names of variables.
             VariableExpression { .. }
+            | ConstantExpression { .. }
             | StorageAccess { .. }
             | Literal(_)
             | AbiName(_)
@@ -393,22 +419,6 @@ impl CollectTypesMetadata for TyExpression {
             Reassignment(reassignment) => {
                 res.append(&mut check!(
                     reassignment.rhs.collect_types_metadata(ctx),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
-            }
-            StorageReassignment(storage_reassignment) => {
-                for field in storage_reassignment.fields.iter() {
-                    res.append(&mut check!(
-                        field.type_id.collect_types_metadata(ctx),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
-                }
-                res.append(&mut check!(
-                    storage_reassignment.rhs.collect_types_metadata(ctx),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -460,6 +470,7 @@ impl DeterministicallyAborts for TyExpression {
             | Literal(_)
             | StorageAccess { .. }
             | VariableExpression { .. }
+            | ConstantExpression { .. }
             | FunctionParameter
             | TupleElemAccess { .. } => false,
             IntrinsicFunction(kind) => kind.deterministically_aborts(decl_engine, check_call_body),
@@ -503,9 +514,6 @@ impl DeterministicallyAborts for TyExpression {
             Reassignment(reassignment) => reassignment
                 .rhs
                 .deterministically_aborts(decl_engine, check_call_body),
-            StorageReassignment(storage_reassignment) => storage_reassignment
-                .rhs
-                .deterministically_aborts(decl_engine, check_call_body),
             // TODO: Is this correct?
             // I'm not sure what this function is supposed to do exactly. It's called
             // "deterministically_aborts" which I thought meant it checks for an abort/panic, but
@@ -520,12 +528,11 @@ impl DeterministicallyAborts for TyExpression {
 }
 
 impl TyExpression {
-    pub(crate) fn error(span: Span, engines: Engines<'_>) -> TyExpression {
+    pub(crate) fn error(span: Span, engines: &Engines) -> TyExpression {
         let type_engine = engines.te();
-        let decl_engine = engines.de();
         TyExpression {
             expression: TyExpressionVariant::Tuple { fields: vec![] },
-            return_type: type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+            return_type: type_engine.insert(engines, TypeInfo::ErrorRecovery),
             span,
         }
     }

@@ -1,6 +1,6 @@
 use fuels::{
     prelude::*,
-    tx::ContractId,
+    types::ContractId,
     types::{Bits256, EvmAddress},
 };
 
@@ -9,16 +9,14 @@ abigen!(Contract(
     abi = "test_projects/evm/out/debug/evm-abi.json"
 ));
 
-async fn get_evm_test_instance() -> (EvmTestContract, ContractId) {
+async fn get_evm_test_instance() -> (EvmTestContract<WalletUnlocked>, ContractId) {
     let wallet = launch_provider_and_get_wallet().await;
-    let id = Contract::deploy(
+    let id = Contract::load_from(
         "test_projects/evm/out/debug/evm.bin",
-        &wallet,
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "test_projects/evm/out/debug/evm-storage_slots.json".to_string(),
-        )),
+        LoadConfiguration::default(),
     )
+    .unwrap()
+    .deploy(&wallet, TxParameters::default())
     .await
     .unwrap();
     let instance = EvmTestContract::new(id.clone(), wallet);

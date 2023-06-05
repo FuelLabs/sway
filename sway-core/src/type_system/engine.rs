@@ -16,17 +16,15 @@ use sway_types::{span::Span, Ident, Spanned};
 #[derive(Debug, Default)]
 pub struct TypeEngine {
     pub(super) slab: ConcurrentSlab<TypeInfo>,
-    storage_only_types: ConcurrentSlab<TypeInfo>,
     id_map: RwLock<HashMap<TypeInfo, TypeId>>,
 }
 
 impl TypeEngine {
     /// Inserts a [TypeInfo] into the [TypeEngine] and returns a [TypeId]
     /// referring to that [TypeInfo].
-    pub(crate) fn insert(&self, decl_engine: &DeclEngine, ty: TypeInfo) -> TypeId {
+    pub(crate) fn insert(&self, engines: &Engines, ty: TypeInfo) -> TypeId {
         let mut id_map = self.id_map.write().unwrap();
 
-        let engines = Engines::new(self, decl_engine);
         let hash_builder = id_map.hasher().clone();
         let ty_hash = make_hasher(&hash_builder, engines)(&ty);
 
@@ -35,7 +33,7 @@ impl TypeEngine {
             .from_hash(ty_hash, |x| x.eq(&ty, engines));
         match raw_entry {
             RawEntryMut::Occupied(o) => return *o.get(),
-            RawEntryMut::Vacant(_) if ty.can_change(decl_engine) => {
+            RawEntryMut::Vacant(_) if ty.can_change(engines.de()) => {
                 TypeId::new(self.slab.insert(ty))
             }
             RawEntryMut::Vacant(v) => {
@@ -51,19 +49,15 @@ impl TypeEngine {
         self.slab.get(id.index())
     }
 
-    /// Denotes the given [TypeId] as being used with storage.
-    pub(crate) fn set_type_as_storage_only(&self, id: TypeId) {
-        self.storage_only_types.insert(self.get(id));
-    }
-
-    /// Checks if the given [TypeInfo] is a storage only type.
-    pub(crate) fn is_type_info_storage_only(
-        &self,
-        decl_engine: &DeclEngine,
-        ti: &TypeInfo,
-    ) -> bool {
-        self.storage_only_types
-            .exists(|x| ti.is_subset_of(x, Engines::new(self, decl_engine)))
+    /// Performs a lookup of `id` into the [TypeEngine] recursing when finding a
+    /// [TypeInfo::Alias].
+    pub fn get_unaliased(&self, id: TypeId) -> TypeInfo {
+        // A slight infinite loop concern if we somehow have self-referential aliases, but that
+        // shouldn't be possible.
+        match self.slab.get(id.index()) {
+            TypeInfo::Alias { ty, .. } => self.get_unaliased(ty.type_id),
+            ty_info => ty_info,
+        }
     }
 
     /// Given a `value` of type `T` that is able to be monomorphized and a set
@@ -99,7 +93,7 @@ impl TypeEngine {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn monomorphize<T>(
         &self,
-        decl_engine: &DeclEngine,
+        engines: &Engines,
         value: &mut T,
         type_arguments: &mut [TypeArgument],
         enforce_type_arguments: EnforceTypeArguments,
@@ -112,7 +106,6 @@ impl TypeEngine {
     {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let engines = Engines::new(self, decl_engine);
         match (
             value.type_parameters().is_empty(),
             type_arguments.is_empty(),
@@ -160,15 +153,15 @@ impl TypeEngine {
                 for type_argument in type_arguments.iter_mut() {
                     type_argument.type_id = check!(
                         self.resolve(
-                            decl_engine,
+                            engines,
                             type_argument.type_id,
                             &type_argument.span,
                             enforce_type_arguments,
                             None,
                             namespace,
-                            mod_path
+                            mod_path,
                         ),
-                        self.insert(decl_engine, TypeInfo::ErrorRecovery),
+                        self.insert(engines, TypeInfo::ErrorRecovery),
                         warnings,
                         errors
                     );
@@ -196,7 +189,7 @@ impl TypeEngine {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn unify_with_self(
         &self,
-        decl_engine: &DeclEngine,
+        engines: &Engines,
         mut received: TypeId,
         mut expected: TypeId,
         self_type: TypeId,
@@ -204,16 +197,9 @@ impl TypeEngine {
         help_text: &str,
         err_override: Option<CompileError>,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
-        received.replace_self_type(Engines::new(self, decl_engine), self_type);
-        expected.replace_self_type(Engines::new(self, decl_engine), self_type);
-        self.unify(
-            decl_engine,
-            received,
-            expected,
-            span,
-            help_text,
-            err_override,
-        )
+        received.replace_self_type(engines, self_type);
+        expected.replace_self_type(engines, self_type);
+        self.unify(engines, received, expected, span, help_text, err_override)
     }
 
     /// Make the types of `received` and `expected` equivalent (or produce an
@@ -225,15 +211,14 @@ impl TypeEngine {
     /// is not).
     pub(crate) fn unify(
         &self,
-        decl_engine: &DeclEngine,
+        engines: &Engines,
         received: TypeId,
         expected: TypeId,
         span: &Span,
         help_text: &str,
         err_override: Option<CompileError>,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
-        let engines = Engines::new(self, decl_engine);
-        if !UnifyCheck::new(engines).check(received, expected) {
+        if !UnifyCheck::coercion(engines).check(received, expected) {
             // create a "mismatched type" error unless the `err_override`
             // argument has been provided
             let mut errors = vec![];
@@ -280,7 +265,7 @@ impl TypeEngine {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn resolve(
         &self,
-        decl_engine: &DeclEngine,
+        engines: &Engines,
         type_id: TypeId,
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
@@ -290,7 +275,7 @@ impl TypeEngine {
     ) -> CompileResult<TypeId> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let engines = Engines::new(self, decl_engine);
+        let decl_engine = engines.de();
         let module_path = type_info_prefix.unwrap_or(mod_path);
         let type_id = match self.get(type_id) {
             TypeInfo::Custom {
@@ -303,23 +288,23 @@ impl TypeEngine {
                     .ok(&mut warnings, &mut errors)
                     .cloned()
                 {
-                    Some(ty::TyDecl::StructDecl {
+                    Some(ty::TyDecl::StructDecl(ty::StructDecl {
                         decl_id: original_id,
                         ..
-                    }) => {
+                    })) => {
                         // get the copy from the declaration engine
                         let mut new_copy = decl_engine.get_struct(&original_id);
 
                         // monomorphize the copy, in place
                         check!(
                             self.monomorphize(
-                                decl_engine,
+                                engines,
                                 &mut new_copy,
                                 &mut type_arguments.unwrap_or_default(),
                                 enforce_type_arguments,
                                 span,
                                 namespace,
-                                mod_path
+                                mod_path,
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -330,9 +315,7 @@ impl TypeEngine {
                         let new_decl_ref = decl_engine.insert(new_copy);
 
                         // create the type id from the copy
-                        let type_id = engines
-                            .te()
-                            .insert(decl_engine, TypeInfo::Struct(new_decl_ref));
+                        let type_id = engines.te().insert(engines, TypeInfo::Struct(new_decl_ref));
 
                         // take any trait methods that apply to this type and copy them to the new type
                         namespace.insert_trait_implementation_for_type(engines, type_id);
@@ -340,23 +323,23 @@ impl TypeEngine {
                         // return the id
                         type_id
                     }
-                    Some(ty::TyDecl::EnumDecl {
+                    Some(ty::TyDecl::EnumDecl(ty::EnumDecl {
                         decl_id: original_id,
                         ..
-                    }) => {
+                    })) => {
                         // get the copy from the declaration engine
                         let mut new_copy = decl_engine.get_enum(&original_id);
 
                         // monomorphize the copy, in place
                         check!(
                             self.monomorphize(
-                                decl_engine,
+                                engines,
                                 &mut new_copy,
                                 &mut type_arguments.unwrap_or_default(),
                                 enforce_type_arguments,
                                 span,
                                 namespace,
-                                mod_path
+                                mod_path,
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -367,9 +350,7 @@ impl TypeEngine {
                         let new_decl_ref = decl_engine.insert(new_copy);
 
                         // create the type id from the copy
-                        let type_id = engines
-                            .te()
-                            .insert(decl_engine, TypeInfo::Enum(new_decl_ref));
+                        let type_id = engines.te().insert(engines, TypeInfo::Enum(new_decl_ref));
 
                         // take any trait methods that apply to this type and copy them to the new type
                         namespace.insert_trait_implementation_for_type(engines, type_id);
@@ -377,10 +358,10 @@ impl TypeEngine {
                         // return the id
                         type_id
                     }
-                    Some(ty::TyDecl::TypeAliasDecl {
+                    Some(ty::TyDecl::TypeAliasDecl(ty::TypeAliasDecl {
                         decl_id: original_id,
                         ..
-                    }) => {
+                    })) => {
                         let new_copy = decl_engine.get_type_alias(&original_id);
 
                         // TODO: monomorphize the copy, in place, when generic type aliases are
@@ -391,51 +372,53 @@ impl TypeEngine {
 
                         type_id
                     }
-                    Some(ty::TyDecl::GenericTypeForFunctionScope { type_id, .. }) => type_id,
+                    Some(ty::TyDecl::GenericTypeForFunctionScope(
+                        ty::GenericTypeForFunctionScope { type_id, .. },
+                    )) => type_id,
                     _ => {
                         errors.push(CompileError::UnknownTypeName {
                             name: call_path.to_string(),
                             span: call_path.span(),
                         });
-                        self.insert(decl_engine, TypeInfo::ErrorRecovery)
+                        self.insert(engines, TypeInfo::ErrorRecovery)
                     }
                 }
             }
             TypeInfo::Array(mut elem_ty, n) => {
                 elem_ty.type_id = check!(
                     self.resolve(
-                        decl_engine,
+                        engines,
                         elem_ty.type_id,
                         span,
                         enforce_type_arguments,
                         None,
                         namespace,
-                        mod_path
+                        mod_path,
                     ),
-                    self.insert(decl_engine, TypeInfo::ErrorRecovery),
+                    self.insert(engines, TypeInfo::ErrorRecovery),
                     warnings,
                     errors
                 );
-                self.insert(decl_engine, TypeInfo::Array(elem_ty, n))
+                self.insert(engines, TypeInfo::Array(elem_ty, n))
             }
             TypeInfo::Tuple(mut type_arguments) => {
                 for type_argument in type_arguments.iter_mut() {
                     type_argument.type_id = check!(
                         self.resolve(
-                            decl_engine,
+                            engines,
                             type_argument.type_id,
                             span,
                             enforce_type_arguments,
                             None,
                             namespace,
-                            mod_path
+                            mod_path,
                         ),
-                        self.insert(decl_engine, TypeInfo::ErrorRecovery),
+                        self.insert(engines, TypeInfo::ErrorRecovery),
                         warnings,
                         errors
                     );
                 }
-                self.insert(decl_engine, TypeInfo::Tuple(type_arguments))
+                self.insert(engines, TypeInfo::Tuple(type_arguments))
             }
             _ => type_id,
         };
@@ -447,7 +430,7 @@ impl TypeEngine {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn resolve_with_self(
         &self,
-        decl_engine: &DeclEngine,
+        engines: &Engines,
         mut type_id: TypeId,
         self_type: TypeId,
         span: &Span,
@@ -456,9 +439,9 @@ impl TypeEngine {
         namespace: &mut Namespace,
         mod_path: &Path,
     ) -> CompileResult<TypeId> {
-        type_id.replace_self_type(Engines::new(self, decl_engine), self_type);
+        type_id.replace_self_type(engines, self_type);
         self.resolve(
-            decl_engine,
+            engines,
             type_id,
             span,
             enforce_type_arguments,
@@ -471,11 +454,12 @@ impl TypeEngine {
     /// Pretty print method for printing the [TypeEngine]. This method is
     /// manually implemented to avoid implementation overhead regarding using
     /// [DisplayWithEngines].
-    pub fn pretty_print(&self, decl_engine: &DeclEngine) -> String {
-        let engines = Engines::new(self, decl_engine);
+    pub fn pretty_print(&self, _decl_engine: &DeclEngine, engines: &Engines) -> String {
         let mut builder = String::new();
         self.slab.with_slice(|elems| {
-            let list = elems.iter().map(|type_info| engines.help_out(type_info));
+            let list = elems
+                .iter()
+                .map(|type_info| format!("{:?}", engines.help_out(type_info)));
             let list = ListDisplay { list };
             write!(builder, "TypeEngine {{\n{list}\n}}").unwrap();
         });

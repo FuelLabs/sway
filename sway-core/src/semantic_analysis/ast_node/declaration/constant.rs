@@ -17,8 +17,7 @@ impl ty::TyConstantDecl {
         let mut errors = vec![];
         let mut warnings = vec![];
 
-        let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
+        let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
         let ConstantDeclaration {
@@ -38,7 +37,7 @@ impl ty::TyConstantDecl {
                 EnforceTypeArguments::No,
                 None
             ),
-            type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+            type_engine.insert(engines, TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );
@@ -82,7 +81,10 @@ impl ty::TyConstantDecl {
         // conflict with the type of `expression` (i.e. passes the type checking above).
         let return_type = match type_engine.get(type_ascription.type_id) {
             TypeInfo::UnsignedInteger(_) => type_ascription.type_id,
-            _ => value.as_ref().unwrap().return_type,
+            _ => match &value {
+                Some(value) => value.return_type,
+                None => type_ascription.type_id,
+            },
         };
 
         let mut call_path: CallPath = name.into();
@@ -105,9 +107,8 @@ impl ty::TyConstantDecl {
 
     /// Used to create a stubbed out constant when the constant fails to
     /// compile, preventing cascading namespace errors.
-    pub(crate) fn error(engines: Engines<'_>, decl: parsed::ConstantDeclaration) -> TyConstantDecl {
+    pub(crate) fn error(engines: &Engines, decl: parsed::ConstantDeclaration) -> TyConstantDecl {
         let type_engine = engines.te();
-        let decl_engine = engines.de();
         let parsed::ConstantDeclaration {
             name,
             span,
@@ -120,7 +121,7 @@ impl ty::TyConstantDecl {
             call_path,
             span,
             attributes: Default::default(),
-            return_type: type_engine.insert(decl_engine, TypeInfo::Unknown),
+            return_type: type_engine.insert(engines, TypeInfo::Unknown),
             type_ascription,
             is_configurable: false,
             value: None,

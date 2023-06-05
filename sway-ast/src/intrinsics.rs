@@ -2,7 +2,6 @@ use std::fmt;
 
 #[derive(Eq, PartialEq, Debug, Clone, Hash)]
 pub enum Intrinsic {
-    GetStorageKey,
     IsReferenceType,
     SizeOfType,
     SizeOfVal,
@@ -24,6 +23,9 @@ pub enum Intrinsic {
     And,
     Or,
     Xor,
+    Lsh,
+    Rsh,
+    Mod,
     Revert,
     PtrAdd,
     PtrSub,
@@ -33,7 +35,6 @@ pub enum Intrinsic {
 impl fmt::Display for Intrinsic {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let s = match self {
-            Intrinsic::GetStorageKey => "get_storage_key",
             Intrinsic::IsReferenceType => "is_reference_type",
             Intrinsic::SizeOfType => "size_of",
             Intrinsic::SizeOfVal => "size_of_val",
@@ -55,6 +56,9 @@ impl fmt::Display for Intrinsic {
             Intrinsic::And => "and",
             Intrinsic::Or => "or",
             Intrinsic::Xor => "xor",
+            Intrinsic::Lsh => "lsh",
+            Intrinsic::Rsh => "rsh",
+            Intrinsic::Mod => "mod",
             Intrinsic::Revert => "revert",
             Intrinsic::PtrAdd => "ptr_add",
             Intrinsic::PtrSub => "ptr_sub",
@@ -68,7 +72,6 @@ impl Intrinsic {
     pub fn try_from_str(raw: &str) -> Option<Intrinsic> {
         use Intrinsic::*;
         Some(match raw {
-            "__get_storage_key" => GetStorageKey,
             "__is_reference_type" => IsReferenceType,
             "__size_of" => SizeOfType,
             "__size_of_val" => SizeOfVal,
@@ -90,6 +93,9 @@ impl Intrinsic {
             "__and" => And,
             "__or" => Or,
             "__xor" => Xor,
+            "__lsh" => Lsh,
+            "__rsh" => Rsh,
+            "__mod" => Mod,
             "__revert" => Revert,
             "__ptr_add" => PtrAdd,
             "__ptr_sub" => PtrSub,

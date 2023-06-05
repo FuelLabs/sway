@@ -16,7 +16,7 @@ impl ty::TyProgram {
     /// The given `initial_namespace` acts as an initial state for each module within this program.
     /// It should contain a submodule for each library package dependency.
     pub fn type_check(
-        engines: Engines<'_>,
+        engines: &Engines,
         parsed: &ParseProgram,
         initial_namespace: namespace::Module,
         package_name: &str,
@@ -42,7 +42,7 @@ impl ty::TyProgram {
 
     pub(crate) fn get_typed_program_with_initialized_storage_slots(
         self,
-        engines: Engines<'_>,
+        engines: &Engines,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         module: Module,
@@ -59,14 +59,14 @@ impl ty::TyProgram {
 
                 // Expecting at most a single storage declaration
                 match storage_decl {
-                    Some(ty::TyDecl::StorageDecl {
+                    Some(ty::TyDecl::StorageDecl(ty::StorageDecl {
                         decl_id,
                         decl_span: _,
                         ..
-                    }) => {
+                    })) => {
                         let decl = decl_engine.get_storage(decl_id);
                         let mut storage_slots = check!(
-                            decl.get_initialized_storage_slots(engines, context, md_mgr, module),
+                            decl.get_initialized_storage_slots(engines, context, md_mgr, module,),
                             return err(warnings, errors),
                             warnings,
                             errors,

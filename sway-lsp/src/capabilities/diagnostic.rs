@@ -4,7 +4,7 @@ use sway_error::warning::CompileWarning;
 use sway_error::{error::CompileError, warning::Warning};
 use sway_types::{LineCol, Spanned};
 
-#[derive(Debug)]
+#[derive(Debug, Default, Clone)]
 pub struct Diagnostics {
     pub warnings: Vec<Diagnostic>,
     pub errors: Vec<Diagnostic>,

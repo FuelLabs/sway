@@ -70,11 +70,6 @@ where
         let inner = self.inner.read().unwrap();
         inner[index].clone()
     }
-
-    pub fn exists<F: Fn(&T) -> bool>(&self, f: F) -> bool {
-        let inner = self.inner.read().unwrap();
-        inner.iter().any(f)
-    }
 }
 
 impl ConcurrentSlab<TypeInfo> {
@@ -83,7 +78,7 @@ impl ConcurrentSlab<TypeInfo> {
         index: TypeId,
         prev_value: &TypeInfo,
         new_value: TypeInfo,
-        engines: Engines<'_>,
+        engines: &Engines,
     ) -> Option<TypeInfo> {
         let index = index.index();
         // The comparison below ends up calling functions in the slab, which

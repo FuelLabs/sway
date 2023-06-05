@@ -1,11 +1,10 @@
 contract;
 
 // ANCHOR: identity
-use std::auth::msg_sender;
-
 storage {
-    owner: Option<Identity> = Option::None,
+    owner: Option<Identity> = None,
 }
+
 // ANCHOR_END: identity
 // ANCHOR: abi
 abi Ownership {
@@ -20,13 +19,13 @@ abi Ownership {
 impl Ownership for Contract {
     #[storage(read, write)]
     fn set_owner(owner: Option<Identity>) {
-        assert(storage.owner.is_none() || storage.owner.unwrap() == msg_sender().unwrap());
-        storage.owner = owner;
+        assert(storage.owner.read().is_none() || storage.owner.read().unwrap() == msg_sender().unwrap());
+        storage.owner.write(owner);
     }
 
     #[storage(read)]
     fn action() {
-        assert(storage.owner.unwrap() == msg_sender().unwrap());
+        assert(storage.owner.read().unwrap() == msg_sender().unwrap());
         // code
     }
 }

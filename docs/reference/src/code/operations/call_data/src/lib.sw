@@ -1,9 +1,5 @@
 library;
 
-// ANCHOR: import_sender
-use std::auth::msg_sender;
-// ANCHOR_END: import_sender
-
 // ANCHOR: import_asset
 use std::{call_frames::msg_asset_id, constants::BASE_ASSET_ID};
 // ANCHOR_END: import_asset
@@ -13,7 +9,7 @@ use std::context::msg_amount;
 // ANCHOR_END: import_amount
 
 // ANCHOR: access_control
-const OWNER = Identity::Address(Address::from(ADMIN));
+const OWNER = Identity::Address(Address::from(0x0000000000000000000000000000000000000000000000000000000000000000));
 
 fn update() {
     require(msg_sender().unwrap() == OWNER, "Owner Only");

@@ -35,6 +35,9 @@ pub(crate) fn gather_from_exp_inner(
             gather_from_exp(ctx.by_ref(), handler, lhs)?;
             gather_from_exp(ctx.by_ref(), handler, rhs)?;
         }
+        ty::TyExpressionVariant::ConstantExpression { .. } => {
+            // NOTE: may need to do something here later
+        }
         ty::TyExpressionVariant::VariableExpression { .. } => {
             // NOTE: may need to do something here later
         }
@@ -43,7 +46,10 @@ pub(crate) fn gather_from_exp_inner(
                 .iter()
                 .try_for_each(|field| gather_from_exp(ctx.by_ref(), handler, field))?;
         }
-        ty::TyExpressionVariant::Array { contents: _ } => {
+        ty::TyExpressionVariant::Array {
+            contents: _,
+            elem_type: _,
+        } => {
             todo!();
             // contents
             //     .iter()
@@ -79,7 +85,6 @@ pub(crate) fn gather_from_exp_inner(
         ty::TyExpressionVariant::UnsafeDowncast { .. } => todo!(),
         ty::TyExpressionVariant::WhileLoop { .. } => todo!(),
         ty::TyExpressionVariant::Reassignment(_) => todo!(),
-        ty::TyExpressionVariant::StorageReassignment(_) => todo!(),
         ty::TyExpressionVariant::Return(exp) => {
             gather_from_exp(ctx.by_ref(), handler, exp)?;
         }

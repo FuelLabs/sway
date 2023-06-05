@@ -4,7 +4,7 @@ use sway_error::{
     type_error::TypeError,
     warning::{CompileWarning, Warning},
 };
-use sway_types::{integer_bits::IntegerBits, Ident, Span, Spanned};
+use sway_types::{integer_bits::IntegerBits, Ident, Span};
 
 use crate::{engine_threading::*, language::ty, type_system::priv_prelude::*};
 
@@ -12,13 +12,13 @@ use super::occurs_check::OccursCheck;
 
 /// Helper struct to aid in type unification.
 pub(crate) struct Unifier<'a> {
-    engines: Engines<'a>,
+    engines: &'a Engines,
     help_text: String,
 }
 
 impl<'a> Unifier<'a> {
     /// Creates a new [Unifier].
-    pub(crate) fn new(engines: Engines<'a>, help_text: &str) -> Unifier<'a> {
+    pub(crate) fn new(engines: &'a Engines, help_text: &str) -> Unifier<'a> {
         Unifier {
             engines,
             help_text: help_text.to_string(),
@@ -348,17 +348,13 @@ impl<'a> Unifier<'a> {
         if rn == en && rfs.len() == efs.len() && rtps.len() == etps.len() {
             rfs.iter().zip(efs.iter()).for_each(|(rf, ef)| {
                 append!(
-                    self.unify(rf.type_argument.type_id, ef.type_argument.type_id, &rf.span),
+                    self.unify(rf.type_argument.type_id, ef.type_argument.type_id, span),
                     warnings,
                     errors
                 );
             });
             rtps.iter().zip(etps.iter()).for_each(|(rtp, etp)| {
-                append!(
-                    self.unify(rtp.type_id, etp.type_id, &rtp.name_ident.span()),
-                    warnings,
-                    errors
-                );
+                append!(self.unify(rtp.type_id, etp.type_id, span), warnings, errors);
             });
         } else {
             let (received, expected) = self.assign_args(received, expected);
@@ -387,17 +383,13 @@ impl<'a> Unifier<'a> {
         if rn == en && rvs.len() == evs.len() && rtps.len() == etps.len() {
             rvs.iter().zip(evs.iter()).for_each(|(rv, ev)| {
                 append!(
-                    self.unify(rv.type_argument.type_id, ev.type_argument.type_id, &rv.span),
+                    self.unify(rv.type_argument.type_id, ev.type_argument.type_id, span),
                     warnings,
                     errors
                 );
             });
             rtps.iter().zip(etps.iter()).for_each(|(rtp, etp)| {
-                append!(
-                    self.unify(rtp.type_id, etp.type_id, &rtp.name_ident.span()),
-                    warnings,
-                    errors
-                );
+                append!(self.unify(rtp.type_id, etp.type_id, span), warnings, errors);
             });
         } else {
             let (received, expected) = self.assign_args(received, expected);
@@ -438,10 +430,10 @@ impl<'a> Unifier<'a> {
 
     fn assign_args<T>(&self, r: T, e: T) -> (String, String)
     where
-        WithEngines<'a, T>: fmt::Display,
+        WithEngines<'a, T>: fmt::Debug,
     {
-        let r = self.engines.with_thing(r).to_string();
-        let e = self.engines.with_thing(e).to_string();
+        let r = format!("{:?}", self.engines.help_out(r));
+        let e = format!("{:?}", self.engines.help_out(e));
         (r, e)
     }
 }

@@ -1,7 +1,7 @@
 use crate::ops::forc_check;
-use anyhow::Result;
 use clap::Parser;
-use sway_core::{decl_engine::DeclEngine, BuildTarget, Engines, TypeEngine};
+use forc_util::{forc_result_bail, ForcResult};
+use sway_core::{BuildTarget, Engines};
 
 /// Check the current or target project and all of its dependencies for errors.
 ///
@@ -31,13 +31,11 @@ pub struct Command {
     pub disable_tests: bool,
 }
 
-pub(crate) fn exec(command: Command) -> Result<()> {
-    let type_engine = TypeEngine::default();
-    let decl_engine = DeclEngine::default();
-    let engines = Engines::new(&type_engine, &decl_engine);
-    let res = forc_check::check(command, engines)?;
+pub(crate) fn exec(command: Command) -> ForcResult<()> {
+    let engines = Engines::default();
+    let res = forc_check::check(command, &engines)?;
     if !res.is_ok() {
-        anyhow::bail!("unable to type check");
+        forc_result_bail!("unable to type check");
     }
     Ok(())
 }

@@ -25,8 +25,9 @@ impl ty::TyMatchBranch {
             span: branch_span,
         } = branch;
 
-        let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
+        let type_engine = ctx.engines.te();
+        let decl_engine = ctx.engines.de();
+        let engines = ctx.engines();
 
         // type check the scrutinee
         let typed_scrutinee = check!(
@@ -73,7 +74,7 @@ impl ty::TyMatchBranch {
         let typed_result = {
             let ctx = ctx
                 .by_ref()
-                .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
+                .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
             check!(
                 ty::TyExpression::type_check(ctx, result),
                 return err(warnings, errors),
@@ -128,7 +129,7 @@ impl ty::TyMatchBranch {
 
         // return!
         let typed_branch = ty::TyMatchBranch {
-            conditions: match_req_map,
+            cnf: match_req_map,
             result: new_result,
             span: branch_span,
         };

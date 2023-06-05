@@ -1,6 +1,6 @@
 pub use crate::error::DocumentError;
 use crate::{
-    capabilities::{self, diagnostic::Diagnostics},
+    capabilities,
     config::{Config, Warnings},
     core::{session::Session, sync},
     error::{DirectoryError, LanguageServerError},
@@ -19,6 +19,7 @@ use std::{
     sync::Arc,
 };
 use sway_types::{Ident, Spanned};
+use tokio::task;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{jsonrpc, Client, LanguageServer};
 use tracing::metadata::LevelFilter;
@@ -62,33 +63,55 @@ impl Backend {
     }
 
     async fn parse_project(&self, uri: Url, workspace_uri: Url, session: Arc<Session>) {
-        // pass in the temp Url into parse_project, we can now get the updated AST's back.
-        let diagnostics = match session.parse_project(&uri) {
-            Ok(diagnostics) => diagnostics,
-            Err(err) => {
-                tracing::error!("{}", err.to_string().as_str());
-                if let LanguageServerError::FailedToParse { diagnostics } = err {
-                    diagnostics
-                } else {
-                    Diagnostics {
-                        warnings: vec![],
-                        errors: vec![],
-                    }
-                }
-            }
-        };
-        self.publish_diagnostics(&uri, &workspace_uri, session, diagnostics)
-            .await;
+        let should_publish = run_blocking_parse_project(uri.clone(), session.clone()).await;
+        if should_publish {
+            self.publish_diagnostics(&uri, &workspace_uri, session)
+                .await;
+        }
     }
+}
+
+/// Runs parse_project in a blocking thread, because parsing is not async.
+async fn run_blocking_parse_project(uri: Url, session: Arc<Session>) -> bool {
+    task::spawn_blocking(move || match session.parse_project(&uri) {
+        Ok(should_publish) => should_publish,
+        Err(err) => {
+            tracing::error!("{}", err);
+            matches!(err, LanguageServerError::FailedToParse)
+        }
+    })
+    .await
+    .unwrap_or_default()
 }
 
 /// Returns the capabilities of the server to the client,
 /// indicating its support for various language server protocol features.
 pub fn capabilities() -> ServerCapabilities {
     ServerCapabilities {
-        text_document_sync: Some(TextDocumentSyncCapability::Kind(
-            TextDocumentSyncKind::INCREMENTAL,
-        )),
+        code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
+        code_lens_provider: Some(CodeLensOptions {
+            resolve_provider: Some(false),
+        }),
+        completion_provider: Some(CompletionOptions {
+            trigger_characters: Some(vec![".".to_string()]),
+            ..Default::default()
+        }),
+        definition_provider: Some(OneOf::Left(true)),
+        document_formatting_provider: Some(OneOf::Left(true)),
+        document_highlight_provider: Some(OneOf::Left(true)),
+        document_symbol_provider: Some(OneOf::Left(true)),
+        execute_command_provider: Some(ExecuteCommandOptions {
+            commands: vec![],
+            ..Default::default()
+        }),
+        hover_provider: Some(HoverProviderCapability::Simple(true)),
+        inlay_hint_provider: Some(OneOf::Left(true)),
+        rename_provider: Some(OneOf::Right(RenameOptions {
+            prepare_provider: Some(true),
+            work_done_progress_options: WorkDoneProgressOptions {
+                work_done_progress: Some(true),
+            },
+        })),
         semantic_tokens_provider: Some(
             SemanticTokensOptions {
                 legend: SemanticTokensLegend {
@@ -101,19 +124,9 @@ pub fn capabilities() -> ServerCapabilities {
             }
             .into(),
         ),
-        document_symbol_provider: Some(OneOf::Left(true)),
-        completion_provider: Some(CompletionOptions {
-            trigger_characters: Some(vec![".".to_string()]),
-            ..Default::default()
-        }),
-        document_formatting_provider: Some(OneOf::Left(true)),
-        definition_provider: Some(OneOf::Left(true)),
-        inlay_hint_provider: Some(OneOf::Left(true)),
-        code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
-        code_lens_provider: Some(CodeLensOptions {
-            resolve_provider: Some(false),
-        }),
-        hover_provider: Some(HoverProviderCapability::Simple(true)),
+        text_document_sync: Some(TextDocumentSyncCapability::Kind(
+            TextDocumentSyncKind::INCREMENTAL,
+        )),
         ..ServerCapabilities::default()
     }
 }
@@ -150,13 +163,7 @@ impl Backend {
         Ok(session)
     }
 
-    async fn publish_diagnostics(
-        &self,
-        uri: &Url,
-        workspace_uri: &Url,
-        session: Arc<Session>,
-        diagnostics: Diagnostics,
-    ) {
+    async fn publish_diagnostics(&self, uri: &Url, workspace_uri: &Url, session: Arc<Session>) {
         let diagnostics_res = {
             let mut diagnostics_to_publish = vec![];
             let config = &self.config.read();
@@ -173,6 +180,7 @@ impl Backend {
                 }
                 Warnings::Default => {}
             }
+            let diagnostics = session.wait_for_parsing();
             if config.diagnostic.show_warnings {
                 diagnostics_to_publish.extend(diagnostics.warnings);
             }
@@ -259,7 +267,7 @@ impl LanguageServer for Backend {
                 // update this file with the new changes and write to disk
                 match session.write_changes_to_file(&uri, params.content_changes) {
                     Ok(_) => {
-                        self.parse_project(uri, params.text_document.uri.clone(), session.clone())
+                        self.parse_project(uri, params.text_document.uri.clone(), session)
                             .await;
                     }
                     Err(err) => tracing::error!("{}", err.to_string()),
@@ -406,9 +414,12 @@ impl LanguageServer for Backend {
         params: SemanticTokensParams,
     ) -> jsonrpc::Result<Option<SemanticTokensResult>> {
         match self.get_uri_and_session(&params.text_document.uri) {
-            Ok((uri, session)) => Ok(capabilities::semantic_tokens::semantic_tokens_full(
-                session, &uri,
-            )),
+            Ok((uri, session)) => {
+                let _ = session.wait_for_parsing();
+                Ok(capabilities::semantic_tokens::semantic_tokens_full(
+                    session, &uri,
+                ))
+            }
             Err(err) => {
                 tracing::error!("{}", err.to_string());
                 Ok(None)
@@ -467,9 +478,13 @@ impl LanguageServer for Backend {
             Ok((uri, session)) => {
                 let new_name = params.new_name;
                 let position = params.text_document_position.position;
-                Ok(capabilities::rename::rename(
-                    session, new_name, uri, position,
-                ))
+                match capabilities::rename::rename(session, new_name, uri, position) {
+                    Ok(res) => Ok(Some(res)),
+                    Err(err) => {
+                        tracing::error!("{}", err.to_string());
+                        Ok(None)
+                    }
+                }
             }
             Err(err) => {
                 tracing::error!("{}", err.to_string());
@@ -484,8 +499,13 @@ impl LanguageServer for Backend {
     ) -> jsonrpc::Result<Option<PrepareRenameResponse>> {
         match self.get_uri_and_session(&params.text_document.uri) {
             Ok((uri, session)) => {
-                let position = params.position;
-                Ok(capabilities::rename::prepare_rename(session, uri, position))
+                match capabilities::rename::prepare_rename(session, uri, params.position) {
+                    Ok(res) => Ok(Some(res)),
+                    Err(err) => {
+                        tracing::error!("{}", err.to_string());
+                        Ok(None)
+                    }
+                }
             }
             Err(err) => {
                 tracing::error!("{}", err.to_string());
@@ -511,6 +531,7 @@ impl Backend {
     ) -> jsonrpc::Result<Option<Vec<InlayHint>>> {
         match self.get_uri_and_session(&params.text_document.uri) {
             Ok((uri, session)) => {
+                let _ = session.wait_for_parsing();
                 let config = &self.config.read().inlay_hints;
                 Ok(capabilities::inlay_hints::inlay_hints(
                     session,
@@ -607,14 +628,14 @@ impl Backend {
                                 // Initialize the string with the AST from the root
                                 let mut formatted_ast = debug::print_decl_engine_types(
                                     &typed_program.root.all_nodes,
-                                    &session.decl_engine.read(),
+                                    session.engines.read().de(),
                                 );
                                 for (ident, submodule) in &typed_program.root.submodules {
                                     if path_is_submodule(ident, &path) {
                                         // overwrite the root AST with the submodule AST
                                         formatted_ast = debug::print_decl_engine_types(
                                             &submodule.module.all_nodes,
-                                            &session.decl_engine.read(),
+                                            session.engines.read().de(),
                                         );
                                     }
                                 }

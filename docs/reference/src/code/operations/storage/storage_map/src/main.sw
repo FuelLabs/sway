@@ -1,7 +1,6 @@
 contract;
 
 // ANCHOR: initialization
-use std::chain::auth::msg_sender;
 
 storage {
     // k = Identity, v = u64
@@ -13,13 +12,13 @@ storage {
 // ANCHOR: reading_from_storage
 #[storage(read)]
 fn reading_from_storage(id: u64) {
-    let user = storage.user.get((msg_sender().unwrap(), id)).unwrap_or(0);
+    let user = storage.user.get((msg_sender().unwrap(), id)).read();
 }
 // ANCHOR_END: reading_from_storage
 // ANCHOR: writing_to_storage
 #[storage(read, write)]
 fn writing_to_storage() {
-    let balance = storage.balance.get(msg_sender().unwrap()).unwrap_or(0);
+    let balance = storage.balance.get(msg_sender().unwrap()).read();
     storage.balance.insert(msg_sender().unwrap(), balance + 1);
 }
 // ANCHOR_END: writing_to_storage

@@ -2,7 +2,7 @@ use super::{EntryPoint, ExitPoint};
 use crate::{
     language::{
         parsed::TreeType,
-        ty::{self, TyFunctionDecl, TyFunctionSig},
+        ty::{self, TyConstantDecl, TyFunctionDecl, TyFunctionSig},
         CallPath,
     },
     type_system::TypeInfo,
@@ -10,7 +10,7 @@ use crate::{
 };
 use petgraph::prelude::NodeIndex;
 use std::collections::HashMap;
-use sway_types::IdentUnique;
+use sway_types::{IdentUnique, Named};
 
 #[derive(Default, Clone)]
 /// Represents a single entry in the [ControlFlowNamespace]'s function namespace. Contains various
@@ -58,6 +58,7 @@ pub struct ControlFlowNamespace {
     pub(crate) const_namespace: HashMap<Ident, NodeIndex>,
     pub(crate) storage: HashMap<Ident, NodeIndex>,
     pub(crate) code_blocks: Vec<ControlFlowCodeBlock>,
+    pub(crate) alias: HashMap<IdentUnique, NodeIndex>,
 }
 
 #[derive(Default, Clone)]
@@ -81,10 +82,26 @@ impl ControlFlowNamespace {
         self.function_namespace
             .insert((ident, TyFunctionSig::from_fn_decl(fn_decl)), entry);
     }
-    pub(crate) fn get_constant(&self, ident: &Ident) -> Option<&NodeIndex> {
+    pub(crate) fn get_constant(&self, const_decl: &TyConstantDecl) -> Option<&NodeIndex> {
+        self.const_namespace.get(&const_decl.name().clone())
+    }
+    #[allow(dead_code)]
+    pub(crate) fn insert_constant(
+        &mut self,
+        const_decl: TyConstantDecl,
+        declaration_node: NodeIndex,
+    ) {
+        self.const_namespace
+            .insert(const_decl.name().clone(), declaration_node);
+    }
+    pub(crate) fn get_global_constant(&self, ident: &Ident) -> Option<&NodeIndex> {
         self.const_namespace.get(ident)
     }
-    pub(crate) fn insert_constant(&mut self, const_name: Ident, declaration_node: NodeIndex) {
+    pub(crate) fn insert_global_constant(
+        &mut self,
+        const_name: Ident,
+        declaration_node: NodeIndex,
+    ) {
         self.const_namespace.insert(const_name, declaration_node);
     }
     pub(crate) fn insert_enum(&mut self, enum_name: Ident, enum_decl_index: NodeIndex) {
@@ -223,5 +240,12 @@ impl ControlFlowNamespace {
             }
         }
         None
+    }
+
+    pub(crate) fn insert_alias(&mut self, name: Ident, entry: NodeIndex) {
+        self.alias.insert(name.into(), entry);
+    }
+    pub(crate) fn get_alias(&self, name: &Ident) -> Option<&NodeIndex> {
+        self.alias.get(&name.into())
     }
 }

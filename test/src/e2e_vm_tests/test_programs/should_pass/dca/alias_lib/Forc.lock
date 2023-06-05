@@ -1,0 +1,8 @@
+[[package]]
+name = 'alias_type_lib'
+source = 'member'
+dependencies = ['core']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-5F57D06DD087B69A'

@@ -11,23 +11,24 @@ pub(crate) fn gather_from_decl(
         ty::TyDecl::VariableDecl(decl) => {
             gather_from_exp(ctx, handler, &decl.body)?;
         }
-        ty::TyDecl::ConstantDecl { .. } => todo!(),
-        ty::TyDecl::FunctionDecl {
+        ty::TyDecl::ConstantDecl(_) => todo!(),
+        ty::TyDecl::FunctionDecl(ty::FunctionDecl {
             decl_id,
             subst_list,
             ..
-        } => {
+        }) => {
             gather_from_fn_decl(ctx, handler, decl_id, subst_list.inner())?;
         }
-        ty::TyDecl::TraitDecl { .. } => todo!(),
-        ty::TyDecl::StructDecl { .. } => todo!(),
-        ty::TyDecl::EnumDecl { .. } => todo!(),
-        ty::TyDecl::ImplTrait { .. } => todo!(),
-        ty::TyDecl::AbiDecl { .. } => todo!(),
-        ty::TyDecl::GenericTypeForFunctionScope { .. } => todo!(),
-        ty::TyDecl::StorageDecl { .. } => todo!(),
+        ty::TyDecl::TraitDecl(_) => todo!(),
+        ty::TyDecl::StructDecl(_) => todo!(),
+        ty::TyDecl::EnumDecl(_) => todo!(),
+        ty::TyDecl::EnumVariantDecl(_) => todo!(),
+        ty::TyDecl::ImplTrait(_) => todo!(),
+        ty::TyDecl::AbiDecl(_) => todo!(),
+        ty::TyDecl::GenericTypeForFunctionScope(_) => todo!(),
+        ty::TyDecl::StorageDecl(_) => todo!(),
         ty::TyDecl::ErrorRecovery(_) => {}
-        ty::TyDecl::TypeAliasDecl { .. } => todo!(),
+        ty::TyDecl::TypeAliasDecl(_) => todo!(),
     }
 
     Ok(())
@@ -39,7 +40,7 @@ fn gather_from_fn_decl(
     decl_id: &DeclId<ty::TyFunctionDecl>,
     subst_list: &SubstList,
 ) -> Result<(), ErrorEmitted> {
-    let decl = ctx.decl_engine.get_function(decl_id);
+    let decl = ctx.engines.de().get_function(decl_id);
 
     if !subst_list.is_empty() {
         unimplemented!("{}", decl.name);

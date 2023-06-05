@@ -95,7 +95,6 @@ impl MyContract for Contract {
 
         expected
     }
-
     fn enum_w_generic(arg1: EnumWGeneric<u64>) -> EnumWGeneric<u64> {
         match arg1 {
             EnumWGeneric::b(value) => {

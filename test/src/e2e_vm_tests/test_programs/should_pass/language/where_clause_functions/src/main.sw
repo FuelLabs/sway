@@ -42,7 +42,7 @@ fn add_points<T>(a: MyPoint<T>, b: MyPoint<T>) -> MyPoint<T> where T: MyAdd {
     }
 }
 
-fn add_points2<T, F>(a: MyPoint<T>, b: MyPoint<F>) -> MyPoint<F> where T: MyAdd, F: MyAdd {
+fn add_points2<T, F>(_a: MyPoint<T>, b: MyPoint<F>) -> MyPoint<F> where T: MyAdd, F: MyAdd {
     MyPoint {
         x: b.x.my_add(b.x),
         y: b.y.my_add(b.y),
@@ -84,7 +84,7 @@ fn mul_points<T>(a: MyPoint<T>, b: MyPoint<T>) -> MyPoint<T> where T: MyMul {
     }
 }
 
-fn mul_points2<T, F>(a: MyPoint<T>, b: MyPoint<F>) -> MyPoint<F> where T: MyMul, F: MyMul {
+fn mul_points2<T, F>(_a: MyPoint<T>, b: MyPoint<F>) -> MyPoint<F> where T: MyMul, F: MyMul {
     MyPoint {
         x: b.x.my_mul(b.x),
         y: b.y.my_mul(b.y),
@@ -98,7 +98,7 @@ fn do_math<T>(a: MyPoint<T>, b: MyPoint<T>) -> MyPoint<T> where T: MyAdd + MyMul
     }
 }
 
-fn do_math2<T, F>(a: MyPoint<T>, b: MyPoint<F>) -> MyPoint<F> where T: MyAdd + MyMul, F: MyMul + MyAdd {
+fn do_math2<T, F>(_a: MyPoint<T>, b: MyPoint<F>) -> MyPoint<F> where T: MyAdd + MyMul, F: MyMul + MyAdd {
     MyPoint {
         x: b.x.my_add(b.x),
         y: b.y.my_mul(b.y),
@@ -140,16 +140,16 @@ enum MyOption<T> {
 impl<T> MyOption<T> {
     pub fn ok_or<E>(self, err: E) -> Result<T, E> {
         match self {
-            MyOption::Some(v) => Result::Ok(v),
-            MyOption::None => Result::Err(err),
+            MyOption::Some(v) => Ok(v),
+            MyOption::None => Err(err),
         }
     }
 }
 
 fn test_ok_or<T, E>(val: T, default: E) where T: Eq, E: Eq {
     match MyOption::Some(val).ok_or(default) {
-        Result::Ok(inner) => assert(val == inner),
-        Result::Err(_) => revert(0),
+        Ok(inner) => assert(val == inner),
+        Err(_) => revert(0),
     }
 }
 

@@ -31,7 +31,8 @@ impl Parse for ItemKind {
 
         let mut visibility = parser.take();
 
-        let kind = if let Some(item) = parser.guarded_parse::<ModToken, Submodule>()? {
+        let kind = if let Some(mut item) = parser.guarded_parse::<ModToken, Submodule>()? {
+            item.visibility = visibility.take();
             ItemKind::Submodule(item)
         } else if let Some(mut item) = parser.guarded_parse::<UseToken, ItemUse>()? {
             item.visibility = visibility.take();

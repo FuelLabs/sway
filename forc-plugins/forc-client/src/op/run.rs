@@ -1,7 +1,7 @@
 use crate::{
     cmd,
     util::{
-        pkg::built_pkgs_with_manifest,
+        pkg::built_pkgs,
         tx::{TransactionBuilderExt, TX_SUBMIT_TIMEOUT_MS},
     },
 };
@@ -9,8 +9,7 @@ use anyhow::{anyhow, bail, Context, Result};
 use forc_pkg::{self as pkg, fuel_core_not_running, PackageManifestFile};
 use forc_util::format_log_receipts;
 use fuel_core_client::client::FuelClient;
-use fuel_tx::{ContractId, Transaction, TransactionBuilder, UniqueIdentifier};
-use futures::TryFutureExt;
+use fuel_tx::{ContractId, Transaction, TransactionBuilder};
 use pkg::BuiltPackage;
 use std::time::Duration;
 use std::{path::PathBuf, str::FromStr};
@@ -37,13 +36,15 @@ pub async fn run(command: cmd::Run) -> Result<Vec<RanScript>> {
         std::env::current_dir().map_err(|e| anyhow!("{:?}", e))?
     };
     let build_opts = build_opts_from_cmd(&command);
-    let built_pkgs_with_manifest = built_pkgs_with_manifest(&curr_dir, build_opts)?;
-    for (member_manifest, built_pkg) in built_pkgs_with_manifest {
-        if member_manifest
+    let built_pkgs_with_manifest = built_pkgs(&curr_dir, build_opts)?;
+    for built in built_pkgs_with_manifest {
+        if built
+            .descriptor
+            .manifest_file
             .check_program_type(vec![TreeType::Script])
             .is_ok()
         {
-            let pkg_receipts = run_pkg(&command, &member_manifest, &built_pkg).await?;
+            let pkg_receipts = run_pkg(&command, &built.descriptor.manifest_file, &built).await?;
             receipts.push(pkg_receipts);
         }
     }
@@ -79,8 +80,7 @@ pub async fn run_pkg(
     let tx = TransactionBuilder::script(compiled.bytecode.bytes.clone(), script_data)
         .gas_limit(command.gas.limit)
         .gas_price(command.gas.price)
-        // TODO: Spec says maturity should be u32, but fuel-tx expects u64.
-        .maturity(u64::from(command.maturity.maturity))
+        .maturity(command.maturity.maturity.into())
         .add_contracts(contract_ids)
         .finalize_signed(client.clone(), command.unsigned, command.signing_key)
         .await?;
@@ -108,7 +108,7 @@ async fn try_send_tx(
             send_tx(&client, tx, pretty_print, simulate),
         )
         .await
-        .with_context(|| format!("timeout waiting for {} to be included in a block", tx.id()))?,
+        .with_context(|| format!("timeout waiting for {:?} to be included in a block", tx))?,
         Err(_) => Err(fuel_core_not_running(node_url)),
     }
 }
@@ -119,18 +119,17 @@ async fn send_tx(
     pretty_print: bool,
     simulate: bool,
 ) -> Result<Vec<fuel_tx::Receipt>> {
-    let id = format!("{:#x}", tx.id());
+    use fuels_accounts::provider::ClientExt;
     let outputs = {
         if !simulate {
-            client
-                .submit_and_await_commit(tx)
-                .and_then(|_| client.receipts(id.as_str()))
-                .await
+            let (_, receipts) = client.submit_and_await_commit_with_receipts(tx).await?;
+            if let Some(receipts) = receipts {
+                Ok(receipts)
+            } else {
+                bail!("The `receipts` during `send_tx` is empty")
+            }
         } else {
-            client
-                .dry_run(tx)
-                .and_then(|_| client.receipts(id.as_str()))
-                .await
+            client.dry_run(tx).await
         }
     };
 
@@ -155,7 +154,8 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
         },
         print: pkg::PrintOpts {
             ast: cmd.print.ast,
-            dca_graph: cmd.print.dca_graph,
+            dca_graph: cmd.print.dca_graph.clone(),
+            dca_graph_url_format: cmd.print.dca_graph_url_format.clone(),
             finalized_asm: cmd.print.finalized_asm,
             intermediate_asm: cmd.print.intermediate_asm,
             ir: cmd.print.ir,
@@ -169,6 +169,7 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
         release: cmd.build_profile.release,
         error_on_warnings: cmd.build_profile.error_on_warnings,
         time_phases: cmd.print.time_phases,
+        metrics_outfile: cmd.print.metrics_outfile.clone(),
         binary_outfile: cmd.build_output.bin_file.clone(),
         debug_outfile: cmd.build_output.debug_file.clone(),
         tests: false,

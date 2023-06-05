@@ -74,36 +74,6 @@ impl Matrix {
         ok((self.rows.len(), n), warnings, errors)
     }
 
-    /// Reports if the `Matrix` is equivalent to a vector (aka a single
-    /// `PatStack`).
-    pub(crate) fn is_a_vector(&self) -> bool {
-        self.rows.len() == 1
-    }
-
-    /// Checks to see if the `Matrix` is a vector, and if it is, returns the
-    /// single `PatStack` from its elements.
-    pub(crate) fn unwrap_vector(&self, span: &Span) -> CompileResult<PatStack> {
-        let warnings = vec![];
-        let mut errors = vec![];
-        if !self.is_a_vector() {
-            errors.push(CompileError::Internal(
-                "found invalid matrix size",
-                span.clone(),
-            ));
-            return err(warnings, errors);
-        }
-        match self.rows.first() {
-            Some(first) => ok(first.clone(), warnings, errors),
-            None => {
-                errors.push(CompileError::Internal(
-                    "found invalid matrix size",
-                    span.clone(),
-                ));
-                err(warnings, errors)
-            }
-        }
-    }
-
     /// Computes Σ, where Σ is a `PatStack` containing the first element of
     /// every row of the `Matrix`.
     pub(crate) fn compute_sigma(&self, span: &Span) -> CompileResult<PatStack> {

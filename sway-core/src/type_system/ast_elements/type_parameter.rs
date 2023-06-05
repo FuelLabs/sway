@@ -24,10 +24,11 @@ pub struct TypeParameter {
     pub name_ident: Ident,
     pub(crate) trait_constraints: Vec<TraitConstraint>,
     pub(crate) trait_constraints_span: Span,
+    pub(crate) is_from_parent: bool,
 }
 
 impl HashWithEngines for TypeParameter {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TypeParameter {
             type_id,
             name_ident,
@@ -36,6 +37,7 @@ impl HashWithEngines for TypeParameter {
             // reliable source of obj v. obj distinction
             trait_constraints_span: _,
             initial_type_id: _,
+            is_from_parent: _,
         } = self;
         let type_engine = engines.te();
         type_engine.get(*type_id).hash(state, engines);
@@ -46,7 +48,7 @@ impl HashWithEngines for TypeParameter {
 
 impl EqWithEngines for TypeParameter {}
 impl PartialEqWithEngines for TypeParameter {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         let type_engine = engines.te();
         type_engine
             .get(self.type_id)
@@ -57,7 +59,7 @@ impl PartialEqWithEngines for TypeParameter {
 }
 
 impl OrdWithEngines for TypeParameter {
-    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
+    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
         let TypeParameter {
             type_id: lti,
             name_ident: ln,
@@ -66,6 +68,7 @@ impl OrdWithEngines for TypeParameter {
             // reliable source of obj v. obj distinction
             trait_constraints_span: _,
             initial_type_id: _,
+            is_from_parent: _,
         } = self;
         let TypeParameter {
             type_id: rti,
@@ -75,6 +78,7 @@ impl OrdWithEngines for TypeParameter {
             // reliable source of obj v. obj distinction
             trait_constraints_span: _,
             initial_type_id: _,
+            is_from_parent: _,
         } = other;
         ln.cmp(rn)
             .then_with(|| engines.te().get(*lti).cmp(&engines.te().get(*rti), engines))
@@ -83,7 +87,7 @@ impl OrdWithEngines for TypeParameter {
 }
 
 impl SubstTypes for TypeParameter {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         self.type_id.subst(type_mapping, engines);
         self.trait_constraints
             .iter_mut()
@@ -92,7 +96,7 @@ impl SubstTypes for TypeParameter {
 }
 
 impl ReplaceSelfType for TypeParameter {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         self.type_id.replace_self_type(engines, self_type);
         self.trait_constraints
             .iter_mut()
@@ -106,9 +110,14 @@ impl Spanned for TypeParameter {
     }
 }
 
-impl DisplayWithEngines for TypeParameter {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
-        write!(f, "{}: {}", self.name_ident, engines.help_out(self.type_id))
+impl DebugWithEngines for TypeParameter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        write!(
+            f,
+            "{}: {:?}",
+            self.name_ident,
+            engines.help_out(self.type_id)
+        )
     }
 }
 
@@ -125,7 +134,6 @@ impl TypeParameter {
     pub(crate) fn type_check_type_params(
         mut ctx: TypeCheckContext,
         type_params: Vec<TypeParameter>,
-        disallow_trait_constraints: bool,
     ) -> CompileResult<Vec<TypeParameter>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -133,12 +141,6 @@ impl TypeParameter {
         let mut new_type_params: Vec<TypeParameter> = vec![];
 
         for type_param in type_params.into_iter() {
-            if disallow_trait_constraints && !type_param.trait_constraints.is_empty() {
-                let errors = vec![CompileError::WhereClauseNotYetSupported {
-                    span: type_param.trait_constraints_span,
-                }];
-                return err(vec![], errors);
-            }
             new_type_params.push(check!(
                 TypeParameter::type_check(ctx.by_ref(), type_param),
                 continue,
@@ -160,14 +162,15 @@ impl TypeParameter {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
+        let type_engine = ctx.engines.te();
+        let engines = ctx.engines();
 
         let TypeParameter {
             initial_type_id,
             name_ident,
             mut trait_constraints,
             trait_constraints_span,
+            is_from_parent,
             ..
         } = type_parameter;
 
@@ -184,7 +187,7 @@ impl TypeParameter {
         // TODO: add check here to see if the type parameter has a valid name and does not have type parameters
 
         let type_id = type_engine.insert(
-            decl_engine,
+            engines,
             TypeInfo::UnknownGeneric {
                 name: name_ident.clone(),
                 trait_constraints: VecSet(trait_constraints.clone()),
@@ -201,15 +204,46 @@ impl TypeParameter {
             );
         }
 
-        // Insert the type parameter into the namespace as a dummy type
-        // declaration.
-        let type_parameter_decl = ty::TyDecl::GenericTypeForFunctionScope {
-            name: name_ident.clone(),
-            type_id,
-        };
-        ctx.namespace
-            .insert_symbol(name_ident.clone(), type_parameter_decl)
-            .ok(&mut warnings, &mut errors);
+        // When type parameter is from parent then it was already inserted.
+        // Instead of inserting a type with same name we unify them.
+        if is_from_parent {
+            if let Some(sy) = ctx.namespace.symbols.get(&name_ident) {
+                match sy {
+                    ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
+                        type_id: sy_type_id,
+                        ..
+                    }) => {
+                        append!(
+                            ctx.engines().te().unify(
+                                ctx.engines(),
+                                type_id,
+                                *sy_type_id,
+                                &trait_constraints_span,
+                                "",
+                                None
+                            ),
+                            warnings,
+                            errors
+                        );
+                    }
+                    _ => errors.push(CompileError::Internal(
+                        "Unexpected TyDeclaration for TypeParameter.",
+                        name_ident.span(),
+                    )),
+                }
+            }
+        } else {
+            // Insert the type parameter into the namespace as a dummy type
+            // declaration.
+            let type_parameter_decl =
+                ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
+                    name: name_ident.clone(),
+                    type_id,
+                });
+            ctx.namespace
+                .insert_symbol(name_ident.clone(), type_parameter_decl)
+                .ok(&mut warnings, &mut errors);
+        }
 
         let type_parameter = TypeParameter {
             name_ident,
@@ -217,6 +251,7 @@ impl TypeParameter {
             initial_type_id,
             trait_constraints,
             trait_constraints_span,
+            is_from_parent,
         };
         ok(type_parameter, warnings, errors)
     }
@@ -296,7 +331,7 @@ fn handle_trait(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let decl_engine = ctx.decl_engine;
+    let decl_engine = ctx.engines.de();
 
     let mut interface_item_refs: InterfaceItemMap = BTreeMap::new();
     let mut item_refs: ItemMap = BTreeMap::new();
@@ -308,7 +343,7 @@ fn handle_trait(
         .ok(&mut warnings, &mut errors)
         .cloned()
     {
-        Some(ty::TyDecl::TraitDecl { decl_id, .. }) => {
+        Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
             let trait_decl = decl_engine.get_trait(&decl_id);
 
             let (trait_interface_item_refs, trait_item_refs, trait_impld_item_refs) = trait_decl

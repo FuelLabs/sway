@@ -7,7 +7,6 @@ use abi::IdentityExample;
 use errors::MyError;
 
 use std::{
-    auth::msg_sender,
     constants::{
         BASE_ASSET_ID,
         ZERO_B256,
@@ -55,7 +54,7 @@ impl IdentityExample for Contract {
     fn access_control_with_identity() {
         // ANCHOR: access_control_with_identity
         let sender = msg_sender().unwrap();
-        require(sender == storage.owner, MyError::UnauthorizedUser(sender));
+        require(sender == storage.owner.read(), MyError::UnauthorizedUser(sender));
         // ANCHOR_END: access_control_with_identity
     }
 }

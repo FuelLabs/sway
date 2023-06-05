@@ -1,6 +1,6 @@
 contract;
 
-use std::storage::StorageVec;
+use std::storage::storage_vec::*;
 
 abi MyContract {
     #[storage(read, write)]
@@ -69,7 +69,7 @@ impl MyContract for Contract {
 
     #[storage(read)]
     fn get(index: u64) -> str[4] {
-        storage.my_vec.get(index).unwrap()
+        storage.my_vec.get(index).unwrap().read()
     }
 
     #[storage(read, write)]
@@ -114,12 +114,12 @@ impl MyContract for Contract {
 
     #[storage(read)]
     fn first() -> str[4] {
-        storage.my_vec.first().unwrap()
+        storage.my_vec.first().unwrap().read()
     }
 
     #[storage(read)]
     fn last() -> str[4] {
-        storage.my_vec.last().unwrap()
+        storage.my_vec.last().unwrap().read()
     }
 
     #[storage(read, write)]

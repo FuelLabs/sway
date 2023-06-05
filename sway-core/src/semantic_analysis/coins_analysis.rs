@@ -14,6 +14,10 @@ pub fn possibly_nonzero_u64_expression(
         Literal(crate::language::Literal::U64(value)) => *value != 0,
         // not a u64 literal, hence we return true to be on the safe side
         Literal(_) => true,
+        ConstantExpression { const_decl, .. } => match &const_decl.value {
+            Some(expr) => possibly_nonzero_u64_expression(namespace, decl_engine, expr),
+            None => false,
+        },
         VariableExpression { name, .. } => {
             match namespace.resolve_symbol(name).value {
                 Some(ty_decl) => {
@@ -21,7 +25,7 @@ pub fn possibly_nonzero_u64_expression(
                         ty::TyDecl::VariableDecl(var_decl) => {
                             possibly_nonzero_u64_expression(namespace, decl_engine, &var_decl.body)
                         }
-                        ty::TyDecl::ConstantDecl { decl_id, .. } => {
+                        ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
                             let const_decl = decl_engine.get_constant(decl_id);
                             match const_decl.value {
                                 Some(value) => {
@@ -71,7 +75,6 @@ pub fn possibly_nonzero_u64_expression(
         | Break
         | Continue
         | Reassignment(_)
-        | Return(_)
-        | StorageReassignment(_) => true,
+        | Return(_) => true,
     }
 }

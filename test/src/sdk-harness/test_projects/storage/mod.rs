@@ -8,16 +8,14 @@ abigen!(Contract(
     abi = "test_projects/storage/out/debug/storage-abi.json",
 ));
 
-async fn get_test_storage_instance() -> TestStorageContract {
+async fn get_test_storage_instance() -> TestStorageContract<WalletUnlocked> {
     let wallet = launch_provider_and_get_wallet().await;
-    let id = Contract::deploy(
+    let id = Contract::load_from(
         "test_projects/storage/out/debug/storage.bin",
-        &wallet,
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "test_projects/storage/out/debug/storage-storage_slots.json".to_string(),
-        )),
+        LoadConfiguration::default(),
     )
+    .unwrap()
+    .deploy(&wallet, TxParameters::default())
     .await
     .unwrap();
 
@@ -33,12 +31,6 @@ async fn can_store_and_get_bool() {
     instance.methods().store_bool(b).call().await.unwrap();
     let result = instance.methods().get_bool().call().await.unwrap();
     assert_eq!(result.value, Some(b));
-
-    // Test clear
-    let result = instance.methods().clear_bool().call().await.unwrap();
-    assert_eq!(result.value, true);
-    let result = instance.methods().get_bool().call().await.unwrap();
-    assert_eq!(result.value, None);
 }
 
 #[tokio::test]
@@ -50,12 +42,6 @@ async fn can_store_and_get_u8() {
     instance.methods().store_u8(n).call().await.unwrap();
     let result = instance.methods().get_u8().call().await.unwrap();
     assert_eq!(result.value, Some(n));
-
-    // Test clear
-    let result = instance.methods().clear_u8().call().await.unwrap();
-    assert_eq!(result.value, true);
-    let result = instance.methods().get_u8().call().await.unwrap();
-    assert_eq!(result.value, None);
 }
 
 #[tokio::test]
@@ -67,12 +53,6 @@ async fn can_store_and_get_u16() {
     instance.methods().store_u16(n).call().await.unwrap();
     let result = instance.methods().get_u16().call().await.unwrap();
     assert_eq!(result.value, Some(n));
-
-    // Test clear
-    let result = instance.methods().clear_u16().call().await.unwrap();
-    assert_eq!(result.value, true);
-    let result = instance.methods().get_u16().call().await.unwrap();
-    assert_eq!(result.value, None);
 }
 
 #[tokio::test]
@@ -84,12 +64,6 @@ async fn can_store_and_get_u32() {
     instance.methods().store_u32(n).call().await.unwrap();
     let result = instance.methods().get_u32().call().await.unwrap();
     assert_eq!(result.value, Some(n));
-
-    // Test clear
-    let result = instance.methods().clear_u32().call().await.unwrap();
-    assert_eq!(result.value, true);
-    let result = instance.methods().get_u32().call().await.unwrap();
-    assert_eq!(result.value, None);
 }
 
 #[tokio::test]
@@ -101,12 +75,6 @@ async fn can_store_and_get_u64() {
     instance.methods().store_u64(n).call().await.unwrap();
     let result = instance.methods().get_u64().call().await.unwrap();
     assert_eq!(result.value, Some(n));
-
-    // Test clear
-    let result = instance.methods().clear_u64().call().await.unwrap();
-    assert_eq!(result.value, true);
-    let result = instance.methods().get_u64().call().await.unwrap();
-    assert_eq!(result.value, None);
 }
 
 #[tokio::test]
@@ -118,12 +86,6 @@ async fn can_store_b256() {
     instance.methods().store_b256(n).call().await.unwrap();
     let result = instance.methods().get_b256().call().await.unwrap();
     assert_eq!(result.value, Some(n));
-
-    // Test clear
-    let result = instance.methods().clear_b256().call().await.unwrap();
-    assert_eq!(result.value, true);
-    let result = instance.methods().get_b256().call().await.unwrap();
-    assert_eq!(result.value, None);
 }
 
 #[tokio::test]
@@ -140,17 +102,6 @@ async fn can_store_small_struct() {
         .unwrap();
     let result = instance.methods().get_small_struct().call().await.unwrap();
     assert_eq!(result.value, Some(s));
-
-    // Test clear
-    let result = instance
-        .methods()
-        .clear_small_struct()
-        .call()
-        .await
-        .unwrap();
-    assert_eq!(result.value, true);
-    let result = instance.methods().get_small_struct().call().await.unwrap();
-    assert_eq!(result.value, None);
 }
 
 #[tokio::test]
@@ -167,17 +118,6 @@ async fn can_store_medium_struct() {
         .unwrap();
     let result = instance.methods().get_medium_struct().call().await.unwrap();
     assert_eq!(result.value, Some(s));
-
-    // Test clear
-    let result = instance
-        .methods()
-        .clear_medium_struct()
-        .call()
-        .await
-        .unwrap();
-    assert_eq!(result.value, true);
-    let result = instance.methods().get_medium_struct().call().await.unwrap();
-    assert_eq!(result.value, None);
 }
 
 #[tokio::test]
@@ -198,17 +138,6 @@ async fn can_store_large_struct() {
         .unwrap();
     let result = instance.methods().get_large_struct().call().await.unwrap();
     assert_eq!(result.value, Some(s));
-
-    // Test clear
-    let result = instance
-        .methods()
-        .clear_large_struct()
-        .call()
-        .await
-        .unwrap();
-    assert_eq!(result.value, true);
-    let result = instance.methods().get_large_struct().call().await.unwrap();
-    assert_eq!(result.value, None);
 }
 
 #[tokio::test]
@@ -232,21 +161,6 @@ async fn can_store_very_large_struct() {
         .await
         .unwrap();
     assert_eq!(result.value, Some(s));
-
-    let result = instance
-        .methods()
-        .clear_very_large_struct()
-        .call()
-        .await
-        .unwrap();
-    assert_eq!(result.value, true);
-    let result = instance
-        .methods()
-        .get_very_large_struct()
-        .call()
-        .await
-        .unwrap();
-    assert_eq!(result.value, None);
 }
 
 #[tokio::test]
@@ -283,12 +197,6 @@ async fn can_store_enum() {
         .unwrap();
     let result = instance.methods().get_enum().call().await.unwrap();
     assert_eq!(result.value, Some(e3));
-
-    // Test clear
-    let result = instance.methods().clear_enum().call().await.unwrap();
-    assert_eq!(result.value, true);
-    let result = instance.methods().get_enum().call().await.unwrap();
-    assert_eq!(result.value, None);
 }
 
 #[tokio::test]
@@ -305,12 +213,6 @@ async fn can_store_tuple() {
         .unwrap();
     let result = instance.methods().get_tuple().call().await.unwrap();
     assert_eq!(result.value, Some(t));
-
-    // Test clear
-    let result = instance.methods().clear_tuple().call().await.unwrap();
-    assert_eq!(result.value, true);
-    let result = instance.methods().get_tuple().call().await.unwrap();
-    assert_eq!(result.value, None);
 }
 
 #[tokio::test]
@@ -327,12 +229,6 @@ async fn can_store_string() {
         .unwrap();
     let result = instance.methods().get_string().call().await.unwrap();
     assert_eq!(result.value, Some(SizedAsciiString::try_from(s).unwrap()));
-
-    // Test clear
-    let result = instance.methods().clear_string().call().await.unwrap();
-    assert_eq!(result.value, true);
-    let result = instance.methods().get_string().call().await.unwrap();
-    assert_eq!(result.value, None);
 }
 
 #[tokio::test]
@@ -344,12 +240,6 @@ async fn can_store_array() {
     instance.methods().store_array().call().await.unwrap();
     let result = instance.methods().get_array().call().await.unwrap();
     assert_eq!(result.value, Some(a));
-
-    // Test clear
-    let result = instance.methods().clear_array().call().await.unwrap();
-    assert_eq!(result.value, true);
-    let result = instance.methods().get_array().call().await.unwrap();
-    assert_eq!(result.value, None);
 }
 
 #[tokio::test]

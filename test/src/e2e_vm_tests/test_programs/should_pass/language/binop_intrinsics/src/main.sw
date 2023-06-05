@@ -45,5 +45,17 @@ fn main() -> u64 {
   assert(__xor(15, (__or(8, __and(5, 11)))) == 6);
   assert(__gt(2, 1) && __lt(1, 2));
 
+  assert(__mod(0, 3) == 0);
+  assert(__mod(1, 3) == 1);
+  assert(__mod(2, 3) == 2);
+  assert(__mod(3, 3) == 0);
+  assert(__mod(4, 3) == 1);
+  assert(__mod(5, 3) == 2);
+  assert(__mod(6, 3) == 0);
+
+  assert(__lsh(2, 3) == 16);
+  assert(__rsh(16, 3) == 2);
+  assert(__rsh(1, 1) == 0);
+
   2
 }

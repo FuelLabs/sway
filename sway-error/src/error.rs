@@ -243,6 +243,8 @@ pub enum CompileError {
     SymbolNotFound { name: Ident, span: Span },
     #[error("Symbol \"{name}\" is private.")]
     ImportPrivateSymbol { name: Ident, span: Span },
+    #[error("Module \"{name}\" is private.")]
+    ImportPrivateModule { name: Ident, span: Span },
     #[error(
         "Because this if expression's value is used, an \"else\" branch is required and it must \
          return type \"{r#type}\""
@@ -302,6 +304,14 @@ pub enum CompileError {
     #[error("Trait \"{trait_name}\" is not implemented for type \"{ty}\".")]
     TraitConstraintNotSatisfied {
         ty: String,
+        trait_name: String,
+        span: Span,
+    },
+    #[error(
+        "Expects trait constraint \"{param}: {trait_name}\" which is missing from type parameter \"{param}\"."
+    )]
+    TraitConstraintMissing {
+        param: String,
         trait_name: String,
         span: Span,
     },
@@ -435,8 +445,6 @@ pub enum CompileError {
     ContractStorageFromExternalContext { span: Span },
     #[error("The {opcode} opcode cannot be used in a predicate.")]
     InvalidOpcodeFromPredicate { opcode: String, span: Span },
-    #[error("The {opcode} opcode cannot jump backwards in a predicate.")]
-    InvalidBackwardJumpFromPredicate { opcode: String, span: Span },
     #[error("Array index out of bounds; the length is {count} but the index is {index}.")]
     ArrayOutOfBounds { index: u64, count: u64, span: Span },
     #[error("Tuple index out of bounds; the arity is {count} but the index is {index}.")]
@@ -461,6 +469,8 @@ pub enum CompileError {
         missing_fields: Vec<String>,
         span: Span,
     },
+    #[error("Variable \"{var}\" is not bound in all patterns")]
+    MatchVariableNotBoundInAllPatterns { var: Ident, span: Span },
     #[error(
         "Storage attribute access mismatch. Try giving the surrounding function more access by \
         adding \"#[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]\" to the function declaration."
@@ -554,8 +564,6 @@ pub enum CompileError {
     Lex { error: LexError },
     #[error("{}", error)]
     Parse { error: ParseError },
-    #[error("\"where\" clauses are not yet supported")]
-    WhereClauseNotYetSupported { span: Span },
     #[error("Could not evaluate initializer to a const declaration.")]
     NonConstantDeclValue { span: Span },
     #[error("Declaring storage in a {program_kind} is not allowed.")]
@@ -594,8 +602,6 @@ pub enum CompileError {
     TypeNotAllowedInContractStorage { ty: String, span: Span },
     #[error("ref mut parameter not allowed for main()")]
     RefMutableNotAllowedInMain { param_name: Ident, span: Span },
-    #[error("Returning a `raw_ptr` from `main()` is not allowed.")]
-    PointerReturnNotAllowedInMain { span: Span },
     #[error(
         "Returning a type containing `raw_slice` from `main()` is not allowed. \
             Consider converting it into a flat `raw_slice` first."
@@ -610,8 +616,8 @@ pub enum CompileError {
     DisallowedControlFlowInstruction { name: String, span: Span },
     #[error("Calling private library method {name} is not allowed.")]
     CallingPrivateLibraryMethod { name: String, span: Span },
-    #[error("Using \"while\" in a predicate is not allowed.")]
-    DisallowedWhileInPredicate { span: Span },
+    #[error("Using intrinsic \"{intrinsic}\" in a predicate is not allowed.")]
+    DisallowedIntrinsicInPredicate { intrinsic: String, span: Span },
     #[error("Possibly non-zero amount of coins transferred to non-payable contract method \"{fn_name}\".")]
     CoinsPassedToNonPayableMethod { fn_name: Ident, span: Span },
     #[error(
@@ -633,6 +639,19 @@ pub enum CompileError {
     ConfigurableInLibrary { span: Span },
     #[error("The name `{name}` is defined multiple times")]
     NameDefinedMultipleTimes { name: String, span: Span },
+    #[error("Multiple applicable items in scope. {}", {
+        let mut candidates = "".to_string();
+        for (index, as_trait) in as_traits.iter().enumerate() {
+            candidates = format!("{candidates}\n  Disambiguate the associated function for candidate #{index}\n    <{type_name} as {as_trait}>::{method_name}(");
+        }
+        candidates
+    })]
+    MultipleApplicableItemsInScope {
+        span: Span,
+        type_name: String,
+        method_name: String,
+        as_traits: Vec<String>,
+    },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -688,6 +707,7 @@ impl Spanned for CompileError {
             FieldNotFound { span, .. } => span.clone(),
             SymbolNotFound { span, .. } => span.clone(),
             ImportPrivateSymbol { span, .. } => span.clone(),
+            ImportPrivateModule { span, .. } => span.clone(),
             NoElseBranch { span, .. } => span.clone(),
             NotAType { span, .. } => span.clone(),
             MissingEnumInstantiator { span, .. } => span.clone(),
@@ -701,6 +721,7 @@ impl Spanned for CompileError {
             UnableToInferGeneric { span, .. } => span.clone(),
             UnconstrainedGenericParameter { span, .. } => span.clone(),
             TraitConstraintNotSatisfied { span, .. } => span.clone(),
+            TraitConstraintMissing { span, .. } => span.clone(),
             Immediate06TooLarge { span, .. } => span.clone(),
             Immediate12TooLarge { span, .. } => span.clone(),
             Immediate18TooLarge { span, .. } => span.clone(),
@@ -738,12 +759,12 @@ impl Spanned for CompileError {
             BurnFromExternalContext { span, .. } => span.clone(),
             ContractStorageFromExternalContext { span, .. } => span.clone(),
             InvalidOpcodeFromPredicate { span, .. } => span.clone(),
-            InvalidBackwardJumpFromPredicate { span, .. } => span.clone(),
             ArrayOutOfBounds { span, .. } => span.clone(),
             ShadowsOtherSymbol { name } => name.span(),
             GenericShadowsGeneric { name } => name.span(),
             MatchExpressionNonExhaustive { span, .. } => span.clone(),
             MatchStructPatternMissingFields { span, .. } => span.clone(),
+            MatchVariableNotBoundInAllPatterns { span, .. } => span.clone(),
             NotAnEnum { span, .. } => span.clone(),
             StorageAccessMismatch { span, .. } => span.clone(),
             TraitDeclPureImplImpure { span, .. } => span.clone(),
@@ -777,7 +798,6 @@ impl Spanned for CompileError {
             UnexpectedDeclaration { span, .. } => span.clone(),
             ContractAddressMustBeKnown { span, .. } => span.clone(),
             ConvertParseTree { error } => error.span(),
-            WhereClauseNotYetSupported { span, .. } => span.clone(),
             Lex { error } => error.span(),
             Parse { error } => error.span.clone(),
             EnumNotFound { span, .. } => span.clone(),
@@ -793,16 +813,16 @@ impl Spanned for CompileError {
             ContractIdValueNotALiteral { span } => span.clone(),
             TypeNotAllowedInContractStorage { span, .. } => span.clone(),
             RefMutableNotAllowedInMain { span, .. } => span.clone(),
-            PointerReturnNotAllowedInMain { span } => span.clone(),
             NestedSliceReturnNotAllowedInMain { span } => span.clone(),
             InitializedRegisterReassignment { span, .. } => span.clone(),
             DisallowedControlFlowInstruction { span, .. } => span.clone(),
             CallingPrivateLibraryMethod { span, .. } => span.clone(),
-            DisallowedWhileInPredicate { span } => span.clone(),
+            DisallowedIntrinsicInPredicate { span, .. } => span.clone(),
             CoinsPassedToNonPayableMethod { span, .. } => span.clone(),
             TraitImplPayabilityMismatch { span, .. } => span.clone(),
             ConfigurableInLibrary { span } => span.clone(),
             NameDefinedMultipleTimes { span, .. } => span.clone(),
+            MultipleApplicableItemsInScope { span, .. } => span.clone(),
         }
     }
 }

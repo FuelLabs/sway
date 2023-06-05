@@ -2,8 +2,8 @@ script;
 use basic_storage_abi::{BasicStorage, Quad};
 
 fn main() -> u64 {
-    let addr = abi(BasicStorage, 0x8a8effaea73f7ab95bd1656a33b6c0cc36c70c907ab7387fd0b9860efc756a5e);
-    let key = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+    let addr = abi(BasicStorage, 0xa837c1b6bcd9f68bd9164909345f0c52ac223adbae050796551f58ddf0700c27);
+    let key = 0x0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
     let value = 4242;
 
     /* Simple test using `store` and `get` from `std::storage */

@@ -21,6 +21,18 @@ fn check(unformatted: &str, expected: &str) {
 }
 
 #[test]
+fn conserve_pub_mod() {
+    check(
+        r#"contract;
+pub mod foo;
+"#,
+        r#"contract;
+pub mod foo;
+"#,
+    )
+}
+
+#[test]
 fn const_spacing() {
     check(
         r#"contract;
@@ -1481,6 +1493,96 @@ impl ABIsupertrait for Contract {
 impl MyAbi for Contract {
     fn bar() {
         Self::foo() // supertrait method usage
+    }
+}
+"#,
+    );
+}
+
+#[test]
+fn test_comments_after_deps() {
+    check(
+        r#"library;
+
+use std::{u256::U256, vec::*};
+use ::utils::vec::sort;
+use ::utils::numbers::*;
+
+// pub fn aggregate_results(results: Vec<Vec<U256>>) -> Vec<U256> {
+//     let mut aggregated = Vec::new();
+
+//     let mut i = 0;
+//     while (i < results.len) {
+//         let values = results.get(i).unwrap();
+//         aggregated.push(aggregate_values(values));
+
+//         i += 1;
+//     }
+
+//     return aggregated;
+// }"#,
+        r#"library;
+
+use std::{u256::U256, vec::*};
+use ::utils::vec::sort;
+use ::utils::numbers::*;
+
+// pub fn aggregate_results(results: Vec<Vec<U256>>) -> Vec<U256> {
+//     let mut aggregated = Vec::new();
+
+//     let mut i = 0;
+//     while (i < results.len) {
+//         let values = results.get(i).unwrap();
+//         aggregated.push(aggregate_values(values));
+
+//         i += 1;
+//     }
+
+//     return aggregated;
+// }
+"#,
+    );
+}
+
+#[test]
+fn temporarily_commented_out_fn_with_doc_comments() {
+    check(
+        r#"contract;
+
+abi MyContract {
+    /// Doc comment
+    /* 
+        Some comment
+    */
+    fn test_function() -> bool;
+}
+
+impl MyContract for Contract {
+    /// This is documentation for a commented out function
+    // fn commented_out_function() {
+    //}
+
+    fn test_function() -> bool {
+        true
+    }
+}"#,
+        r#"contract;
+
+abi MyContract {
+    /// Doc comment
+    /* 
+        Some comment
+    */
+    fn test_function() -> bool;
+}
+
+impl MyContract for Contract {
+    /// This is documentation for a commented out function
+    // fn commented_out_function() {
+    //}
+
+    fn test_function() -> bool {
+        true
     }
 }
 "#,

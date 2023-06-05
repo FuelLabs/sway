@@ -18,7 +18,7 @@ pub(crate) struct ConstructorFactory {
 }
 
 impl ConstructorFactory {
-    pub(crate) fn new(engines: Engines<'_>, type_id: TypeId) -> Self {
+    pub(crate) fn new(engines: &Engines, type_id: TypeId) -> Self {
         let possible_types = engines.te().get(type_id).extract_nested_types(engines);
         ConstructorFactory { possible_types }
     }
@@ -62,7 +62,7 @@ impl ConstructorFactory {
     /// ```
     pub(crate) fn create_pattern_not_present(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         sigma: PatStack,
         span: &Span,
     ) -> CompileResult<Pattern> {
@@ -320,12 +320,22 @@ impl ConstructorFactory {
                 )
             }
             Pattern::Tuple(elems) => Pattern::Tuple(PatStack::fill_wildcards(elems.len())),
-            Pattern::Or(_) => {
-                errors.push(CompileError::Unimplemented(
-                    "or patterns are not supported",
-                    span.clone(),
-                ));
-                return err(warnings, errors);
+            Pattern::Or(elems) => {
+                let mut pat_stack = PatStack::empty();
+                for pat in elems.into_iter() {
+                    pat_stack.push(check!(
+                        self.create_pattern_not_present(engines, PatStack::from_pattern(pat), span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
+                check!(
+                    Pattern::from_pat_stack(pat_stack, span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
             }
         };
         ok(pat, warnings, errors)
@@ -385,19 +395,34 @@ impl ConstructorFactory {
     /// from the "`Tuple` with 2 sub-patterns" type.
     pub(crate) fn is_complete_signature(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         pat_stack: &PatStack,
         span: &Span,
     ) -> CompileResult<bool> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
+        // flatten or patterns
+        let pat_stack = check!(
+            pat_stack.clone().serialize_multi_patterns(span),
+            return err(warnings, errors),
+            warnings,
+            errors
+        )
+        .into_iter()
+        .fold(PatStack::empty(), |mut acc, mut pats| {
+            acc.append(&mut pats);
+            acc
+        });
+
         if pat_stack.is_empty() {
             return ok(false, warnings, errors);
         }
         if pat_stack.contains(&Pattern::Wildcard) {
             return ok(true, warnings, errors);
         }
-        let (first, rest) = check!(
+
+        let (first, mut rest) = check!(
             pat_stack.split_first(span),
             return err(warnings, errors),
             warnings,
@@ -568,12 +593,18 @@ impl ConstructorFactory {
                 ));
                 err(warnings, errors)
             }
-            Pattern::Or(_) => {
-                errors.push(CompileError::Unimplemented(
-                    "or patterns are not supported",
-                    span.clone(),
-                ));
-                err(warnings, errors)
+            Pattern::Or(mut elems) => {
+                elems.append(&mut rest);
+                ok(
+                    check!(
+                        self.is_complete_signature(engines, &elems, span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ),
+                    warnings,
+                    errors,
+                )
             }
         }
     }

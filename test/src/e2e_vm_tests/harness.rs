@@ -140,20 +140,28 @@ pub(crate) fn runs_in_vm(
             let storage = MemoryStorage::default();
 
             let rng = &mut StdRng::seed_from_u64(2322u64);
-            let maturity = 1;
+            let maturity = 1.into();
             let script_data = script_data.unwrap_or_default();
-            let block_height = (u32::MAX >> 1) as u64;
-            let params = &ConsensusParameters {
+            let block_height = (u32::MAX >> 1).into();
+            let params = ConsensusParameters {
                 // The default max length is 1MB which isn't enough for the bigger tests.
                 max_script_length: 64 * 1024 * 1024,
                 ..ConsensusParameters::DEFAULT
             };
 
             let tx = TransactionBuilder::script(script.bytecode.bytes, script_data)
-                .add_unsigned_coin_input(rng.gen(), rng.gen(), 1, Default::default(), rng.gen(), 0)
+                .with_params(params)
+                .add_unsigned_coin_input(
+                    rng.gen(),
+                    rng.gen(),
+                    1,
+                    Default::default(),
+                    rng.gen(),
+                    0u32.into(),
+                )
                 .gas_limit(fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx)
                 .maturity(maturity)
-                .finalize_checked(block_height as Word, params, &GasCosts::default());
+                .finalize_checked(block_height, &GasCosts::default());
 
             let mut i = Interpreter::with_storage(storage, Default::default(), GasCosts::default());
             let transition = i.transact(tx)?;
@@ -268,7 +276,8 @@ pub(crate) async fn compile_and_run_unit_tests(
             },
             ..Default::default()
         })?;
-        let tested = built_tests.run()?;
+        let test_filter = None;
+        let tested = built_tests.run(forc_test::TestRunnerCount::Auto, test_filter)?;
 
         match tested {
             forc_test::Tested::Package(tested_pkg) => Ok(vec![*tested_pkg]),

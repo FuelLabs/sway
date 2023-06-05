@@ -2,7 +2,10 @@ use crate::{
     decl_engine::*,
     engine_threading::Engines,
     error::*,
-    language::ty::{self, TyStorageDecl},
+    language::{
+        ty::{self, TyDecl, TyStorageDecl},
+        CallPath,
+    },
     namespace::*,
     type_system::*,
 };
@@ -53,7 +56,7 @@ impl Items {
 
     pub fn apply_storage_load(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         fields: Vec<Ident>,
         storage_fields: &[ty::TyStorageField],
     ) -> CompileResult<(ty::TyStorageAccess, TypeId)> {
@@ -153,25 +156,38 @@ impl Items {
 
     pub(crate) fn insert_trait_implementation_for_type(
         &mut self,
-        engines: Engines<'_>,
+        engines: &Engines,
         type_id: TypeId,
     ) {
         self.implemented_traits.insert_for_type(engines, type_id);
     }
 
-    pub fn get_items_for_type(
-        &self,
-        engines: Engines<'_>,
-        type_id: TypeId,
-    ) -> Vec<ty::TyTraitItem> {
+    pub fn get_items_for_type(&self, engines: &Engines, type_id: TypeId) -> Vec<ty::TyTraitItem> {
         self.implemented_traits.get_items_for_type(engines, type_id)
     }
 
-    pub fn get_methods_for_type(
-        &self,
-        engines: Engines<'_>,
-        type_id: TypeId,
-    ) -> Vec<DeclRefFunction> {
+    pub fn get_impl_spans_for_decl(&self, engines: &Engines, ty_decl: &TyDecl) -> Vec<Span> {
+        ty_decl
+            .return_type(engines)
+            .value
+            .map(|type_id| {
+                self.implemented_traits
+                    .get_impl_spans_for_type(engines, &type_id)
+            })
+            .unwrap_or_default()
+    }
+
+    pub fn get_impl_spans_for_type(&self, engines: &Engines, type_id: &TypeId) -> Vec<Span> {
+        self.implemented_traits
+            .get_impl_spans_for_type(engines, type_id)
+    }
+
+    pub fn get_impl_spans_for_trait_name(&self, trait_name: &CallPath) -> Vec<Span> {
+        self.implemented_traits
+            .get_impl_spans_for_trait_name(trait_name)
+    }
+
+    pub fn get_methods_for_type(&self, engines: &Engines, type_id: TypeId) -> Vec<DeclRefFunction> {
         self.get_items_for_type(engines, type_id)
             .into_iter()
             .filter_map(|item| match item {
@@ -212,7 +228,7 @@ impl Items {
     /// the second is the [ResolvedType] of its parent, for control-flow analysis.
     pub(crate) fn find_subfield_type(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         base_name: &Ident,
         projections: &[ty::ProjectionKind],
     ) -> CompileResult<(TypeId, TypeId)> {

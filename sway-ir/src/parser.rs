@@ -34,7 +34,8 @@ mod ir_builder {
                 }
 
             rule script_or_predicate() -> IrAstModule
-                = kind:module_kind() "{" _ configs:init_config()* _ fn_decls:fn_decl()* "}" _ metadata:metadata_decls() {
+                = kind:module_kind() "{" _ configs:init_config()* _ fn_decls:fn_decl()* "}" _
+                  metadata:metadata_decls() {
                     IrAstModule {
                         kind,
                         configs,
@@ -48,7 +49,9 @@ mod ir_builder {
                 / "predicate" _ { Kind::Predicate }
 
             rule contract() -> IrAstModule
-                = "contract" _ "{" _ configs:init_config()* fn_decls:fn_decl()* "}" _ metadata:metadata_decls() {
+                = "contract" _ "{" _
+                  configs:init_config()* fn_decls:fn_decl()* "}" _
+                  metadata:metadata_decls() {
                     IrAstModule {
                         kind: crate::module::Kind::Contract,
                         configs,
@@ -102,17 +105,14 @@ mod ir_builder {
                     string_to_hex::<4>(s)
                 }
 
-            rule block_arg() -> (IrAstTy, String, bool, Option<MdIdxRef>)
-                = br:by_ref()? name:id() mdi:metadata_idx()? ":" _ ty:ast_ty() {
-                    (ty, name, br.is_some(), mdi)
+            rule block_arg() -> (IrAstTy, String, Option<MdIdxRef>)
+                = name:id() mdi:metadata_idx()? ":" _ ty:ast_ty() {
+                    (ty, name, mdi)
                 }
 
-            rule by_ref() -> ()
-                = "inout" _
-
-            rule fn_local() -> (IrAstTy, String, Option<IrAstOperation>)
-                = "local" _ ty:ast_ty() name:id() init:fn_local_init()? {
-                    (ty, name, init)
+            rule fn_local() -> (IrAstTy, String, Option<IrAstOperation>, bool)
+                = "local" _ m:("mut" _)? ty:ast_ty() name:id() init:fn_local_init()? {
+                    (ty, name, init, m.is_some())
                 }
 
             rule fn_local_init() -> IrAstOperation
@@ -162,10 +162,12 @@ mod ir_builder {
                 / "and" _ { BinaryOpKind::And }
                 / "or" _ { BinaryOpKind::Or }
                 / "xor" _ { BinaryOpKind::Xor }
+                / "mod" _ { BinaryOpKind::Mod }
+                / "rsh" _ { BinaryOpKind::Rsh }
+                / "lsh" _ { BinaryOpKind::Lsh }
 
             rule operation() -> IrAstOperation
-                = op_addr_of()
-                / op_asm()
+                = op_asm()
                 / op_branch()
                 / op_bitcast()
                 / op_binary()
@@ -175,18 +177,16 @@ mod ir_builder {
                 / op_cmp()
                 / op_const()
                 / op_contract_call()
-                / op_extract_element()
-                / op_extract_value()
-                / op_get_storage_key()
+                / op_get_elem_ptr()
                 / op_get_local()
                 / op_gtf()
-                / op_insert_element()
-                / op_insert_value()
                 / op_int_to_ptr()
                 / op_load()
                 / op_log()
-                / op_mem_copy()
+                / op_mem_copy_bytes()
+                / op_mem_copy_val()
                 / op_nop()
+                / op_ptr_to_int()
                 / op_read_register()
                 / op_ret()
                 / op_revert()
@@ -196,11 +196,6 @@ mod ir_builder {
                 / op_state_store_quad_word()
                 / op_state_store_word()
                 / op_store()
-
-            rule op_addr_of() -> IrAstOperation
-                = "addr_of" _ val:id() {
-                    IrAstOperation::AddrOf(val)
-                }
 
             rule op_asm() -> IrAstOperation
                 = "asm" _ "(" _ args:(asm_arg() ** comma()) ")" _ ret:asm_ret()? meta_idx:comma_metadata_idx()? "{" _
@@ -236,8 +231,8 @@ mod ir_builder {
                 }
 
             rule op_cast_ptr() -> IrAstOperation
-                = "cast_ptr" _ val:id() comma() ty:ast_ty() comma() offs:decimal() {
-                    IrAstOperation::CastPtr(val, ty, offs)
+                = "cast_ptr" _ val:id() "to" _ ty:ast_ty() {
+                    IrAstOperation::CastPtr(val, ty)
                 }
 
             rule op_cbr() -> IrAstOperation
@@ -264,39 +259,19 @@ mod ir_builder {
                     IrAstOperation::ContractCall(ty, name, params, coins, asset_id, gas)
             }
 
-            rule op_extract_element() -> IrAstOperation
-                = "extract_element" _ name:id() comma() ty:ast_ty() comma() idx:id() {
-                    IrAstOperation::ExtractElement(name, ty, idx)
-                }
-
-            rule op_extract_value() -> IrAstOperation
-                = "extract_value" _ name:id() comma() ty:ast_ty() comma() idcs:(decimal() ++ comma()) {
-                    IrAstOperation::ExtractValue(name, ty, idcs)
-                }
-
-            rule op_get_storage_key() -> IrAstOperation
-                = "get_storage_key" _ {
-                    IrAstOperation::GetStorageKey()
-                }
+            rule op_get_elem_ptr() -> IrAstOperation
+                = "get_elem_ptr" _ base:id() comma() ty:ast_ty() comma() idcs:(id() ++ comma()) {
+                    IrAstOperation::GetElemPtr(base, ty, idcs)
+            }
 
             rule op_get_local() -> IrAstOperation
-                = "get_local" _ ast_ty() name:id() {
+                = "get_local" _ ast_ty() comma() name:id() {
                     IrAstOperation::GetLocal(name)
                 }
 
             rule op_gtf() -> IrAstOperation
                 = "gtf" _ index:id() comma() tx_field_id:decimal()  {
                     IrAstOperation::Gtf(index, tx_field_id)
-                }
-
-            rule op_insert_element() -> IrAstOperation
-                = "insert_element" _ name:id() comma() ty:ast_ty() comma() val:id() comma() idx:id() {
-                    IrAstOperation::InsertElement(name, ty, val, idx)
-                }
-
-            rule op_insert_value() -> IrAstOperation
-                = "insert_value" _ aval:id() comma() ty:ast_ty() comma() ival:id() comma() idcs:(decimal() ++ comma()) {
-                    IrAstOperation::InsertValue(aval, ty, ival, idcs)
                 }
 
             rule op_int_to_ptr() -> IrAstOperation
@@ -314,14 +289,24 @@ mod ir_builder {
                     IrAstOperation::Log(log_ty, log_val, log_id)
                 }
 
-            rule op_mem_copy() -> IrAstOperation
-                = "mem_copy" _ dst_name:id() comma() src_name:id() comma() len:decimal() {
-                    IrAstOperation::MemCopy(dst_name, src_name, len)
+            rule op_mem_copy_bytes() -> IrAstOperation
+                = "mem_copy_bytes" _ dst_name:id() comma() src_name:id() comma() len:decimal() {
+                    IrAstOperation::MemCopyBytes(dst_name, src_name, len)
+                }
+
+            rule op_mem_copy_val() -> IrAstOperation
+                = "mem_copy_val" _ dst_name:id() comma() src_name:id() {
+                    IrAstOperation::MemCopyVal(dst_name, src_name)
                 }
 
             rule op_nop() -> IrAstOperation
                 = "nop" _ {
                     IrAstOperation::Nop
+                }
+
+            rule op_ptr_to_int() -> IrAstOperation
+                = "ptr_to_int" _ val:id() "to" _ ty:ast_ty() {
+                    IrAstOperation::PtrToInt(val, ty)
                 }
 
             rule op_read_register() -> IrAstOperation
@@ -500,6 +485,7 @@ mod ir_builder {
                 / array_ty()
                 / struct_ty()
                 / union_ty()
+                / "ptr" _ ty:ast_ty() { IrAstTy::Ptr(Box::new(ty)) }
 
             rule array_ty() -> IrAstTy
                 = "[" _ ty:ast_ty() ";" _ c:decimal() "]" _ {
@@ -639,11 +625,11 @@ mod ir_builder {
     #[derive(Debug)]
     struct IrAstFnDecl {
         name: String,
-        args: Vec<(IrAstTy, String, bool, Option<MdIdxRef>)>,
+        args: Vec<(IrAstTy, String, Option<MdIdxRef>)>,
         ret_type: IrAstTy,
         is_public: bool,
         metadata: Option<MdIdxRef>,
-        locals: Vec<(IrAstTy, String, Option<IrAstOperation>)>,
+        locals: Vec<(IrAstTy, String, Option<IrAstOperation>, bool)>,
         blocks: Vec<IrAstBlock>,
         selector: Option<[u8; 4]>,
         is_entry: bool,
@@ -652,7 +638,7 @@ mod ir_builder {
     #[derive(Debug)]
     struct IrAstBlock {
         label: String,
-        args: Vec<(IrAstTy, String, bool, Option<MdIdxRef>)>,
+        args: Vec<(IrAstTy, String, Option<MdIdxRef>)>,
         instructions: Vec<IrAstInstruction>,
     }
 
@@ -665,7 +651,6 @@ mod ir_builder {
 
     #[derive(Debug)]
     enum IrAstOperation {
-        AddrOf(String),
         Asm(
             Vec<(Ident, Option<IrAstAsmArgInit>)>,
             IrAstTy,
@@ -677,23 +662,21 @@ mod ir_builder {
         BinaryOp(BinaryOpKind, String, String),
         Br(String, Vec<String>),
         Call(String, Vec<String>),
-        CastPtr(String, IrAstTy, u64),
+        CastPtr(String, IrAstTy),
         Cbr(String, String, Vec<String>, String, Vec<String>),
         Cmp(Predicate, String, String),
         Const(IrAstTy, IrAstConst),
         ContractCall(IrAstTy, String, String, String, String, String),
-        ExtractElement(String, IrAstTy, String),
-        ExtractValue(String, IrAstTy, Vec<u64>),
-        GetStorageKey(),
+        GetElemPtr(String, IrAstTy, Vec<String>),
         GetLocal(String),
         Gtf(String, u64),
-        InsertElement(String, IrAstTy, String, String),
-        InsertValue(String, IrAstTy, String, Vec<u64>),
         IntToPtr(String, IrAstTy),
         Load(String),
         Log(IrAstTy, String, String),
-        MemCopy(String, String, u64),
+        MemCopyBytes(String, String, u64),
+        MemCopyVal(String, String),
         Nop,
+        PtrToInt(String, IrAstTy),
         ReadRegister(String),
         Ret(IrAstTy, String),
         Revert(String),
@@ -809,6 +792,7 @@ mod ir_builder {
         Array(Box<IrAstTy>, u64),
         Union(Vec<IrAstTy>),
         Struct(Vec<IrAstTy>),
+        Ptr(Box<IrAstTy>),
     }
 
     impl IrAstTy {
@@ -830,6 +814,10 @@ mod ir_builder {
                 IrAstTy::Struct(tys) => {
                     let tys = tys.iter().map(|ty| ty.to_ir_type(context)).collect();
                     Type::new_struct(context, tys)
+                }
+                IrAstTy::Ptr(ty) => {
+                    let inner_ty = ty.to_ir_type(context);
+                    Type::new_ptr(context, inner_ty)
                 }
             }
         }
@@ -893,16 +881,11 @@ mod ir_builder {
             let convert_md_idx = |opt_md_idx: &Option<MdIdxRef>| {
                 opt_md_idx.map(|mdi| self.md_map.get(&mdi).copied().unwrap())
             };
-            let args: Vec<(String, Type, bool, Option<MetadataIndex>)> = fn_decl
+            let args: Vec<(String, Type, Option<MetadataIndex>)> = fn_decl
                 .args
                 .iter()
-                .map(|(ty, name, by_ref, md_idx)| {
-                    (
-                        name.into(),
-                        ty.to_ir_type(context),
-                        *by_ref,
-                        convert_md_idx(md_idx),
-                    )
+                .map(|(ty, name, md_idx)| {
+                    (name.into(), ty.to_ir_type(context), convert_md_idx(md_idx))
                 })
                 .collect();
             let ret_type = fn_decl.ret_type.to_ir_type(context);
@@ -922,7 +905,7 @@ mod ir_builder {
             // config variables as they are globally available
             let mut arg_map = self.configs_map.clone();
             let mut local_map = HashMap::<String, LocalVar>::new();
-            for (ty, name, initializer) in fn_decl.locals {
+            for (ty, name, initializer, mutable) in fn_decl.locals {
                 let initializer = initializer.map(|const_init| {
                     if let IrAstOperation::Const(val_ty, val) = const_init {
                         val.value.as_constant(context, val_ty)
@@ -933,36 +916,37 @@ mod ir_builder {
                 let ty = ty.to_ir_type(context);
                 local_map.insert(
                     name.clone(),
-                    func.new_local_var(context, name, ty, initializer)?,
+                    func.new_local_var(context, name, ty, initializer, mutable)?,
                 );
             }
 
             // The entry block is already created, we don't want to recreate it.
-            let named_blocks = HashMap::from_iter(fn_decl.blocks.iter().map(|block| {
-                (
-                    block.label.clone(),
-                    if block.label == "entry" {
-                        func.get_entry_block(context)
-                    } else {
-                        let irblock = func.create_block(context, Some(block.label.clone()));
-                        for (idx, (arg_ty, _, by_ref, md)) in block.args.iter().enumerate() {
-                            let ty = arg_ty.to_ir_type(context);
-                            let arg = Value::new_argument(
-                                context,
-                                BlockArgument {
-                                    block: irblock,
-                                    idx,
-                                    ty,
-                                    by_ref: *by_ref,
-                                },
-                            )
-                            .add_metadatum(context, convert_md_idx(md));
-                            irblock.add_arg(context, arg);
-                        }
-                        irblock
-                    },
-                )
-            }));
+            let named_blocks =
+                HashMap::from_iter(fn_decl.blocks.iter().scan(true, |is_entry, block| {
+                    Some((
+                        block.label.clone(),
+                        if *is_entry {
+                            *is_entry = false;
+                            func.get_entry_block(context)
+                        } else {
+                            let irblock = func.create_block(context, Some(block.label.clone()));
+                            for (idx, (arg_ty, _, md)) in block.args.iter().enumerate() {
+                                let ty = arg_ty.to_ir_type(context);
+                                let arg = Value::new_argument(
+                                    context,
+                                    BlockArgument {
+                                        block: irblock,
+                                        idx,
+                                        ty,
+                                    },
+                                )
+                                .add_metadatum(context, convert_md_idx(md));
+                                irblock.add_arg(context, arg);
+                            }
+                            irblock
+                        },
+                    ))
+                }));
 
             for block in fn_decl.blocks {
                 for (idx, arg) in block.args.iter().enumerate() {
@@ -997,10 +981,6 @@ mod ir_builder {
                     .map(|mdi| self.md_map.get(&mdi).unwrap())
                     .copied();
                 let ins_val = match ins.op {
-                    IrAstOperation::AddrOf(val) => block
-                        .ins(context)
-                        .addr_of(*val_map.get(&val).unwrap())
-                        .add_metadatum(context, opt_metadata),
                     IrAstOperation::Asm(args, return_type, return_name, ops, meta_idx) => {
                         let args = args
                             .into_iter()
@@ -1090,11 +1070,11 @@ mod ir_builder {
                         self.unresolved_calls.push(PendingCall { call_val, callee });
                         call_val
                     }
-                    IrAstOperation::CastPtr(val, ty, offs) => {
+                    IrAstOperation::CastPtr(val, ty) => {
                         let ir_ty = ty.to_ir_type(context);
                         block
                             .ins(context)
-                            .cast_ptr(*val_map.get(&val).unwrap(), ir_ty, offs)
+                            .cast_ptr(*val_map.get(&val).unwrap(), ir_ty)
                             .add_metadatum(context, opt_metadata)
                     }
                     IrAstOperation::Cbr(
@@ -1152,28 +1132,20 @@ mod ir_builder {
                             )
                             .add_metadatum(context, opt_metadata)
                     }
-                    IrAstOperation::ExtractElement(aval, ty, idx) => {
-                        let ir_ty = ty.to_ir_type(context);
+                    IrAstOperation::GetElemPtr(base, elem_ty, idcs) => {
+                        let ir_elem_ty = elem_ty
+                            .to_ir_type(context)
+                            .get_pointee_type(context)
+                            .unwrap();
                         block
                             .ins(context)
-                            .extract_element(
-                                *val_map.get(&aval).unwrap(),
-                                ir_ty,
-                                *val_map.get(&idx).unwrap(),
+                            .get_elem_ptr(
+                                *val_map.get(&base).unwrap(),
+                                ir_elem_ty,
+                                idcs.iter().map(|idx| *val_map.get(idx).unwrap()).collect(),
                             )
                             .add_metadatum(context, opt_metadata)
                     }
-                    IrAstOperation::ExtractValue(val, ty, idcs) => {
-                        let ir_ty = ty.to_ir_type(context);
-                        block
-                            .ins(context)
-                            .extract_value(*val_map.get(&val).unwrap(), ir_ty, idcs)
-                            .add_metadatum(context, opt_metadata)
-                    }
-                    IrAstOperation::GetStorageKey() => block
-                        .ins(context)
-                        .get_storage_key()
-                        .add_metadatum(context, opt_metadata),
                     IrAstOperation::GetLocal(local_name) => block
                         .ins(context)
                         .get_local(*local_map.get(&local_name).unwrap())
@@ -1182,30 +1154,6 @@ mod ir_builder {
                         .ins(context)
                         .gtf(*val_map.get(&index).unwrap(), tx_field_id)
                         .add_metadatum(context, opt_metadata),
-                    IrAstOperation::InsertElement(aval, ty, val, idx) => {
-                        let ir_ty = ty.to_ir_type(context);
-                        block
-                            .ins(context)
-                            .insert_element(
-                                *val_map.get(&aval).unwrap(),
-                                ir_ty,
-                                *val_map.get(&val).unwrap(),
-                                *val_map.get(&idx).unwrap(),
-                            )
-                            .add_metadatum(context, opt_metadata)
-                    }
-                    IrAstOperation::InsertValue(aval, ty, ival, idcs) => {
-                        let ir_ty = ty.to_ir_type(context);
-                        block
-                            .ins(context)
-                            .insert_value(
-                                *val_map.get(&aval).unwrap(),
-                                ir_ty,
-                                *val_map.get(&ival).unwrap(),
-                                idcs,
-                            )
-                            .add_metadatum(context, opt_metadata)
-                    }
                     IrAstOperation::IntToPtr(val, ty) => {
                         let to_ty = ty.to_ir_type(context);
                         block
@@ -1228,15 +1176,29 @@ mod ir_builder {
                             )
                             .add_metadatum(context, opt_metadata)
                     }
-                    IrAstOperation::MemCopy(dst_name, src_name, len) => block
+                    IrAstOperation::MemCopyBytes(dst_name, src_name, len) => block
                         .ins(context)
-                        .mem_copy(
+                        .mem_copy_bytes(
                             *val_map.get(&dst_name).unwrap(),
                             *val_map.get(&src_name).unwrap(),
                             len,
                         )
                         .add_metadatum(context, opt_metadata),
+                    IrAstOperation::MemCopyVal(dst_name, src_name) => block
+                        .ins(context)
+                        .mem_copy_val(
+                            *val_map.get(&dst_name).unwrap(),
+                            *val_map.get(&src_name).unwrap(),
+                        )
+                        .add_metadatum(context, opt_metadata),
                     IrAstOperation::Nop => block.ins(context).nop(),
+                    IrAstOperation::PtrToInt(val, ty) => {
+                        let to_ty = ty.to_ir_type(context);
+                        block
+                            .ins(context)
+                            .ptr_to_int(*val_map.get(&val).unwrap(), to_ty)
+                            .add_metadatum(context, opt_metadata)
+                    }
                     IrAstOperation::ReadRegister(reg_name) => block
                         .ins(context)
                         .read_register(match reg_name.as_str() {
@@ -1268,17 +1230,12 @@ mod ir_builder {
                         .ins(context)
                         .revert(*val_map.get(&ret_val_name).unwrap())
                         .add_metadatum(context, opt_metadata),
-                    IrAstOperation::Smo(
-                        recipient_and_message,
-                        message_size,
-                        output_index,
-                        coins,
-                    ) => block
+                    IrAstOperation::Smo(recipient, message, message_size, coins) => block
                         .ins(context)
                         .smo(
-                            *val_map.get(&recipient_and_message).unwrap(),
+                            *val_map.get(&recipient).unwrap(),
+                            *val_map.get(&message).unwrap(),
                             *val_map.get(&message_size).unwrap(),
-                            *val_map.get(&output_index).unwrap(),
                             *val_map.get(&coins).unwrap(),
                         )
                         .add_metadatum(context, opt_metadata),

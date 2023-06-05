@@ -837,6 +837,12 @@ impl TypeInfo {
             Storage { .. } => "contract storage".into(),
             RawUntypedPtr => "raw untyped ptr".into(),
             RawUntypedSlice => "raw untyped slice".into(),
+            Ptr(ty) => {
+                format!("__ptr {}", ty.json_abi_str(ctx, type_engine, decl_engine))
+            }
+            Slice(ty) => {
+                format!("__slice {}", ty.json_abi_str(ctx, type_engine, decl_engine))
+            }
             Alias { ty, .. } => ty.json_abi_str(ctx, type_engine, decl_engine),
         }
     }

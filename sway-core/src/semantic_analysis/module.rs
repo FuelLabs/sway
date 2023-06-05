@@ -41,7 +41,7 @@ impl ty::TyModule {
             typed_nodes_res.map(|all_nodes| Self {
                 span: span.clone(),
                 submodules,
-                namespace: ctx.namespace.module().clone(),
+                namespace: ctx.namespace.clone(),
                 all_nodes,
                 attributes: attributes.clone(),
             })
@@ -72,8 +72,9 @@ impl ty::TySubmodule {
         let ParseSubmodule {
             module,
             mod_name_span,
+            visibility,
         } = submodule;
-        parent_ctx.enter_submodule(mod_name, module.span.clone(), |submod_ctx| {
+        parent_ctx.enter_submodule(mod_name, *visibility, module.span.clone(), |submod_ctx| {
             let module_res = ty::TyModule::type_check(submod_ctx, module);
             module_res.map(|module| ty::TySubmodule {
                 module,

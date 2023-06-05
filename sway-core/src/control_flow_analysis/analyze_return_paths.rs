@@ -16,7 +16,7 @@ use sway_types::{ident::Ident, span::Span, IdentUnique};
 
 impl<'cfg> ControlFlowGraph<'cfg> {
     pub(crate) fn construct_return_path_graph<'eng: 'cfg>(
-        engines: Engines<'eng>,
+        engines: &'eng Engines,
         module_nodes: &[ty::TyAstNode],
     ) -> Result<Self, CompileError> {
         let mut graph = ControlFlowGraph::default();
@@ -37,7 +37,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
     /// and the functions namespace and validating that all paths leading to the function exit node
     /// return the same type. Additionally, if a function has a return type, all paths must indeed
     /// lead to the function exit node.
-    pub(crate) fn analyze_return_paths(&self, engines: Engines<'_>) -> Vec<CompileError> {
+    pub(crate) fn analyze_return_paths(&self, engines: &Engines) -> Vec<CompileError> {
         let mut errors = vec![];
         for (
             (name, _sig),
@@ -62,7 +62,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
 
     fn ensure_all_paths_reach_exit(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         entry_point: EntryPoint,
         exit_point: ExitPoint,
         function_name: &IdentUnique,
@@ -126,7 +126,7 @@ enum NodeConnection {
 }
 
 fn connect_node<'eng: 'cfg, 'cfg>(
-    engines: Engines<'eng>,
+    engines: &'eng Engines,
     node: &ty::TyAstNode,
     graph: &mut ControlFlowGraph<'cfg>,
     leaves: &[NodeIndex],
@@ -173,30 +173,30 @@ fn connect_node<'eng: 'cfg, 'cfg>(
 }
 
 fn connect_declaration<'eng: 'cfg, 'cfg>(
-    engines: Engines<'eng>,
+    engines: &'eng Engines,
     node: &ty::TyAstNode,
     decl: &ty::TyDecl,
     graph: &mut ControlFlowGraph<'cfg>,
     leaves: &[NodeIndex],
 ) -> Result<Vec<NodeIndex>, CompileError> {
-    use ty::TyDecl::*;
     let decl_engine = engines.de();
     match decl {
-        TraitDecl { .. }
-        | AbiDecl { .. }
-        | StructDecl { .. }
-        | EnumDecl { .. }
-        | StorageDecl { .. }
-        | TypeAliasDecl { .. }
-        | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),
-        VariableDecl(_) | ConstantDecl { .. } => {
+        ty::TyDecl::TraitDecl(_)
+        | ty::TyDecl::AbiDecl(_)
+        | ty::TyDecl::StructDecl(_)
+        | ty::TyDecl::EnumDecl(_)
+        | ty::TyDecl::EnumVariantDecl(_)
+        | ty::TyDecl::StorageDecl(_)
+        | ty::TyDecl::TypeAliasDecl(_)
+        | ty::TyDecl::GenericTypeForFunctionScope(_) => Ok(leaves.to_vec()),
+        ty::TyDecl::VariableDecl(_) | ty::TyDecl::ConstantDecl(_) => {
             let entry_node = graph.add_node(ControlFlowGraphNode::from_node(node));
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
             }
             Ok(vec![entry_node])
         }
-        FunctionDecl { decl_id, .. } => {
+        ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. }) => {
             let fn_decl = decl_engine.get_function(decl_id);
             let entry_node = graph.add_node(ControlFlowGraphNode::from_node(node));
             for leaf in leaves {
@@ -205,7 +205,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             connect_typed_fn_decl(engines, &fn_decl, graph, entry_node)?;
             Ok(leaves.to_vec())
         }
-        ImplTrait { decl_id, .. } => {
+        ty::TyDecl::ImplTrait(ty::ImplTrait { decl_id, .. }) => {
             let ty::TyImplTrait {
                 trait_name, items, ..
             } = decl_engine.get_impl_trait(decl_id);
@@ -217,7 +217,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             connect_impl_trait(engines, &trait_name, graph, &items, entry_node)?;
             Ok(leaves.to_vec())
         }
-        ErrorRecovery(_) => Ok(leaves.to_vec()),
+        ty::TyDecl::ErrorRecovery(_) => Ok(leaves.to_vec()),
     }
 }
 
@@ -227,7 +227,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
 /// Additionally, we insert the trait's methods into the method namespace in order to
 /// track which exact methods are dead code.
 fn connect_impl_trait<'eng: 'cfg, 'cfg>(
-    engines: Engines<'eng>,
+    engines: &'eng Engines,
     trait_name: &CallPath,
     graph: &mut ControlFlowGraph<'cfg>,
     items: &[TyImplItem],
@@ -276,7 +276,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
 /// has no entry points, since it is just a declaration.
 /// When something eventually calls it, it gets connected to the declaration.
 fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
-    engines: Engines<'eng>,
+    engines: &'eng Engines,
     fn_decl: &ty::TyFunctionDecl,
     graph: &mut ControlFlowGraph<'cfg>,
     entry_node: NodeIndex,
@@ -303,7 +303,7 @@ fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
 type ReturnStatementNodes = Vec<NodeIndex>;
 
 fn depth_first_insertion_code_block<'eng: 'cfg, 'cfg>(
-    engines: Engines<'eng>,
+    engines: &'eng Engines,
     node_content: &ty::TyCodeBlock,
     graph: &mut ControlFlowGraph<'cfg>,
     leaves: &[NodeIndex],

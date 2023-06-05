@@ -1,11 +1,13 @@
+//! Helper functions to verify signatures.
 library;
 
 use ::address::Address;
 use ::b512::B512;
 use ::registers::error;
 use ::hash::sha256;
-use ::result::Result;
+use ::result::Result::{self, *};
 
+/// The error type used when the `ec_recover` function fails.
 pub enum EcRecoverError {
     UnrecoverablePublicKey: (),
 }
@@ -20,9 +22,9 @@ pub fn ec_recover(signature: B512, msg_hash: b256) -> Result<B512, EcRecoverErro
     };
     // check the $err register to see if the `ecr` opcode succeeded
     if was_error == 1 {
-        Result::Err(EcRecoverError::UnrecoverablePublicKey)
+        Err(EcRecoverError::UnrecoverablePublicKey)
     } else {
-        Result::Ok(public_key)
+        Ok(public_key)
     }
 }
 
@@ -31,12 +33,12 @@ pub fn ec_recover(signature: B512, msg_hash: b256) -> Result<B512, EcRecoverErro
 pub fn ec_recover_address(signature: B512, msg_hash: b256) -> Result<Address, EcRecoverError> {
     let pub_key_result = ec_recover(signature, msg_hash);
 
-    if let Result::Err(e) = pub_key_result {
+    if let Err(e) = pub_key_result {
         // propagate the error if it exists
-        Result::Err(e)
+        Err(e)
     } else {
         let pub_key = pub_key_result.unwrap();
         let address = sha256(((pub_key.bytes)[0], (pub_key.bytes)[1]));
-        Result::Ok(Address::from(address))
+        Ok(Address::from(address))
     }
 }

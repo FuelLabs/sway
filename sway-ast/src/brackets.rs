@@ -9,7 +9,7 @@ macro_rules! define_brackets (
         }
 
         impl<T> $ty_name<T> {
-            pub fn new<'a>(inner: T, span: Span) -> $ty_name<T> {
+            pub fn new(inner: T, span: Span) -> $ty_name<T> {
                 $ty_name {
                     inner,
                     span,

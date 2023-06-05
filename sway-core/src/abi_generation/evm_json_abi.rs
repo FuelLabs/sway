@@ -7,7 +7,7 @@ use crate::{
     Engines, TypeArgument, TypeEngine, TypeId, TypeInfo,
 };
 
-pub fn generate_json_abi_program(program: &TyProgram, engines: &Engines<'_>) -> EvmAbiResult {
+pub fn generate_json_abi_program(program: &TyProgram, engines: &Engines) -> EvmAbiResult {
     let type_engine = engines.te();
     let decl_engine = engines.de();
     match &program.kind {
@@ -130,6 +130,18 @@ pub fn json_abi_str(
         Storage { .. } => "contract storage".into(),
         RawUntypedPtr => "raw untyped ptr".into(),
         RawUntypedSlice => "raw untyped slice".into(),
+        Ptr(ty) => {
+            format!(
+                "__ptr {}",
+                json_abi_str_type_arg(ty, type_engine, decl_engine)
+            )
+        }
+        Slice(ty) => {
+            format!(
+                "__slice {}",
+                json_abi_str_type_arg(ty, type_engine, decl_engine)
+            )
+        }
         Alias { ty, .. } => json_abi_str_type_arg(ty, type_engine, decl_engine),
     }
 }

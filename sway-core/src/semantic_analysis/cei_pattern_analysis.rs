@@ -69,7 +69,7 @@ enum CEIAnalysisState {
     LookingForEffect,
 }
 
-pub(crate) fn analyze_program(engines: Engines<'_>, prog: &ty::TyProgram) -> Vec<CompileWarning> {
+pub(crate) fn analyze_program(engines: &Engines, prog: &ty::TyProgram) -> Vec<CompileWarning> {
     match &prog.kind {
         // Libraries, scripts, or predicates can't access storage
         // so we don't analyze these
@@ -80,7 +80,7 @@ pub(crate) fn analyze_program(engines: Engines<'_>, prog: &ty::TyProgram) -> Vec
     }
 }
 
-fn analyze_contract(engines: Engines<'_>, ast_nodes: &[ty::TyAstNode]) -> Vec<CompileWarning> {
+fn analyze_contract(engines: &Engines, ast_nodes: &[ty::TyAstNode]) -> Vec<CompileWarning> {
     let decl_engine = engines.de();
     let mut warnings: Vec<CompileWarning> = vec![];
     for fn_decl in contract_entry_points(decl_engine, ast_nodes) {
@@ -98,10 +98,10 @@ fn contract_entry_points(
     ast_nodes
         .iter()
         .flat_map(|ast_node| match &ast_node.content {
-            Declaration(ty::TyDecl::FunctionDecl { decl_id, .. }) => {
+            Declaration(ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. })) => {
                 decl_id_to_fn_decls(decl_engine, decl_id)
             }
-            Declaration(ty::TyDecl::ImplTrait { decl_id, .. }) => {
+            Declaration(ty::TyDecl::ImplTrait(ty::ImplTrait { decl_id, .. })) => {
                 impl_trait_methods(decl_engine, decl_id)
             }
             _ => vec![],
@@ -135,7 +135,7 @@ fn impl_trait_methods(
 // This is the main part of the analysis algorithm:
 // we are looking for various effects after contract interaction
 fn analyze_code_block(
-    engines: Engines<'_>,
+    engines: &Engines,
     codeblock: &ty::TyCodeBlock,
     block_name: &Ident,
     warnings: &mut Vec<CompileWarning>,
@@ -168,7 +168,7 @@ fn analyze_code_block(
 }
 
 fn analyze_code_block_entry(
-    engines: Engines<'_>,
+    engines: &Engines,
     entry: &ty::TyAstNode,
     block_name: &Ident,
     warnings: &mut Vec<CompileWarning>,
@@ -186,7 +186,7 @@ fn analyze_code_block_entry(
 }
 
 fn analyze_codeblock_decl(
-    engines: Engines<'_>,
+    engines: &Engines,
     decl: &ty::TyDecl,
     block_name: &Ident,
     warnings: &mut Vec<CompileWarning>,
@@ -200,7 +200,7 @@ fn analyze_codeblock_decl(
 }
 
 fn analyze_expression(
-    engines: Engines<'_>,
+    engines: &Engines,
     expr: &ty::TyExpression,
     block_name: &Ident,
     warnings: &mut Vec<CompileWarning>,
@@ -210,6 +210,7 @@ fn analyze_expression(
     match &expr.expression {
         // base cases: no warnings can be emitted
         Literal(_)
+        | ConstantExpression { .. }
         | VariableExpression { .. }
         | FunctionParameter
         | StorageAccess(_)
@@ -217,20 +218,6 @@ fn analyze_expression(
         | Continue
         | AbiName(_) => effects_of_expression(engines, expr),
         Reassignment(reassgn) => analyze_expression(engines, &reassgn.rhs, block_name, warnings),
-        StorageReassignment(reassgn) => {
-            let storage_effs = HashSet::from([Effect::StorageWrite]);
-            let rhs_effs = analyze_expression(engines, &reassgn.rhs, block_name, warnings);
-            if rhs_effs.contains(&Effect::Interaction) {
-                warn_after_interaction(
-                    &storage_effs,
-                    &reassgn.rhs.span,
-                    &expr.span,
-                    block_name,
-                    warnings,
-                )
-            };
-            set_union(storage_effs, rhs_effs)
-        }
         CodeBlock(codeblock) => analyze_code_block(engines, codeblock, block_name, warnings),
         LazyOperator {
             lhs: left,
@@ -296,7 +283,11 @@ fn analyze_expression(
             }
             set_union(intr_effs, args_effs)
         }
-        Tuple { fields: exprs } | Array { contents: exprs } => {
+        Tuple { fields: exprs }
+        | Array {
+            elem_type: _,
+            contents: exprs,
+        } => {
             // assuming left-to-right fields/elements evaluation
             analyze_expressions(engines, exprs.iter().collect(), block_name, warnings)
         }
@@ -368,7 +359,7 @@ fn analyze_expression(
 }
 
 fn analyze_two_expressions(
-    engines: Engines<'_>,
+    engines: &Engines,
     first: &ty::TyExpression,
     second: &ty::TyExpression,
     block_name: &Ident,
@@ -392,7 +383,7 @@ fn analyze_two_expressions(
 // TODO: analyze_expressions, analyze_codeblock and analyze_asm_block (see below) are very similar in structure
 //       looks like the algorithm implementation should be generalized
 fn analyze_expressions(
-    engines: Engines<'_>,
+    engines: &Engines,
     expressions: Vec<&ty::TyExpression>,
     block_name: &Ident,
     warnings: &mut Vec<CompileWarning>,
@@ -476,7 +467,7 @@ fn warn_after_interaction(
     }
 }
 
-fn effects_of_codeblock_entry(engines: Engines<'_>, ast_node: &ty::TyAstNode) -> HashSet<Effect> {
+fn effects_of_codeblock_entry(engines: &Engines, ast_node: &ty::TyAstNode) -> HashSet<Effect> {
     match &ast_node.content {
         ty::TyAstNodeContent::Declaration(decl) => effects_of_codeblock_decl(engines, decl),
         ty::TyAstNodeContent::Expression(expr)
@@ -487,7 +478,7 @@ fn effects_of_codeblock_entry(engines: Engines<'_>, ast_node: &ty::TyAstNode) ->
     }
 }
 
-fn effects_of_codeblock_decl(engines: Engines<'_>, decl: &ty::TyDecl) -> HashSet<Effect> {
+fn effects_of_codeblock_decl(engines: &Engines, decl: &ty::TyDecl) -> HashSet<Effect> {
     use crate::ty::TyDecl::*;
     match decl {
         VariableDecl(var_decl) => effects_of_expression(engines, &var_decl.body),
@@ -496,12 +487,13 @@ fn effects_of_codeblock_decl(engines: Engines<'_>, decl: &ty::TyDecl) -> HashSet
     }
 }
 
-fn effects_of_expression(engines: Engines<'_>, expr: &ty::TyExpression) -> HashSet<Effect> {
+fn effects_of_expression(engines: &Engines, expr: &ty::TyExpression) -> HashSet<Effect> {
     use crate::ty::TyExpressionVariant::*;
     let type_engine = engines.te();
     let decl_engine = engines.de();
     match &expr.expression {
         Literal(_)
+        | ConstantExpression { .. }
         | VariableExpression { .. }
         | FunctionParameter
         | Break
@@ -527,11 +519,6 @@ fn effects_of_expression(engines: Engines<'_>, expr: &ty::TyExpression) -> HashS
             }
             _ => HashSet::from([Effect::StorageRead]),
         },
-        StorageReassignment(storage_reassign) => {
-            let mut effs = HashSet::from([Effect::StorageWrite]);
-            effs.extend(effects_of_expression(engines, &storage_reassign.rhs));
-            effs
-        }
         LazyOperator { lhs, rhs, .. }
         | ArrayIndex {
             prefix: lhs,
@@ -542,9 +529,11 @@ fn effects_of_expression(engines: Engines<'_>, expr: &ty::TyExpression) -> HashS
             effs.extend(rhs_effs);
             effs
         }
-        Tuple { fields: exprs } | Array { contents: exprs } => {
-            effects_of_expressions(engines, exprs)
-        }
+        Tuple { fields: exprs }
+        | Array {
+            elem_type: _,
+            contents: exprs,
+        } => effects_of_expressions(engines, exprs),
         StructExpression { fields, .. } => effects_of_struct_expressions(engines, fields),
         CodeBlock(codeblock) => effects_of_codeblock(engines, codeblock),
         MatchExp { desugared, .. } => effects_of_expression(engines, desugared),
@@ -615,7 +604,7 @@ fn effects_of_intrinsic(intr: &sway_ast::Intrinsic) -> HashSet<Effect> {
         StateLoadWord | StateLoadQuad => HashSet::from([Effect::StorageRead]),
         Smo => HashSet::from([Effect::OutputMessage]),
         Revert | IsReferenceType | SizeOfType | SizeOfVal | Eq | Gt | Lt | Gtf | AddrOf | Log
-        | Add | Sub | Mul | Div | And | Or | Xor | PtrAdd | PtrSub | GetStorageKey => {
+        | Add | Sub | Mul | Div | And | Or | Xor | Mod | Rsh | Lsh | PtrAdd | PtrSub => {
             HashSet::new()
         }
     }
@@ -651,18 +640,18 @@ where
         .fold(HashSet::new(), |set, e| set_union(to_set(e), set))
 }
 
-fn effects_of_codeblock(engines: Engines<'_>, codeblock: &ty::TyCodeBlock) -> HashSet<Effect> {
+fn effects_of_codeblock(engines: &Engines, codeblock: &ty::TyCodeBlock) -> HashSet<Effect> {
     map_hashsets_union(&codeblock.contents, |entry| {
         effects_of_codeblock_entry(engines, entry)
     })
 }
 
-fn effects_of_expressions(engines: Engines<'_>, exprs: &[ty::TyExpression]) -> HashSet<Effect> {
+fn effects_of_expressions(engines: &Engines, exprs: &[ty::TyExpression]) -> HashSet<Effect> {
     map_hashsets_union(exprs, |e| effects_of_expression(engines, e))
 }
 
 fn effects_of_struct_expressions(
-    engines: Engines<'_>,
+    engines: &Engines,
     struct_exprs: &[ty::TyStructExpressionField],
 ) -> HashSet<Effect> {
     map_hashsets_union(struct_exprs, |se| effects_of_expression(engines, &se.value))
@@ -673,7 +662,7 @@ fn effects_of_asm_ops(asm_ops: &[AsmOp]) -> HashSet<Effect> {
 }
 
 fn effects_of_register_initializers(
-    engines: Engines<'_>,
+    engines: &Engines,
     initializers: &[ty::TyAsmRegisterDeclaration],
 ) -> HashSet<Effect> {
     map_hashsets_union(initializers, |asm_reg_decl| {

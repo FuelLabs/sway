@@ -29,7 +29,7 @@ pub struct DeclEngine {
     enum_slab: ConcurrentSlab<TyEnumDecl>,
     type_alias_slab: ConcurrentSlab<TyTypeAliasDecl>,
 
-    parents: RwLock<HashMap<FunctionalDeclId, Vec<FunctionalDeclId>>>,
+    parents: RwLock<HashMap<AssociatedItemDeclId, Vec<AssociatedItemDeclId>>>,
 }
 
 pub trait DeclEngineGet<I, U> {
@@ -149,17 +149,17 @@ impl DeclEngine {
     #[allow(clippy::map_entry)]
     pub(crate) fn find_all_parents<'a, T>(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         index: &'a T,
-    ) -> Vec<FunctionalDeclId>
+    ) -> Vec<AssociatedItemDeclId>
     where
-        FunctionalDeclId: From<&'a T>,
+        AssociatedItemDeclId: From<&'a T>,
     {
-        let index: FunctionalDeclId = FunctionalDeclId::from(index);
+        let index: AssociatedItemDeclId = AssociatedItemDeclId::from(index);
         let parents = self.parents.read().unwrap();
-        let mut acc_parents: HashMap<FunctionalDeclId, FunctionalDeclId> = HashMap::new();
-        let mut already_checked: HashSet<FunctionalDeclId> = HashSet::new();
-        let mut left_to_check: VecDeque<FunctionalDeclId> = VecDeque::from([index]);
+        let mut acc_parents: HashMap<AssociatedItemDeclId, AssociatedItemDeclId> = HashMap::new();
+        let mut already_checked: HashSet<AssociatedItemDeclId> = HashSet::new();
+        let mut left_to_check: VecDeque<AssociatedItemDeclId> = VecDeque::from([index]);
         while let Some(curr) = left_to_check.pop_front() {
             if !already_checked.insert(curr.clone()) {
                 continue;
@@ -171,12 +171,12 @@ impl DeclEngine {
                     }
                     if !left_to_check.iter().any(|x| match (x, curr_parent) {
                         (
-                            FunctionalDeclId::TraitFn(x_id),
-                            FunctionalDeclId::TraitFn(curr_parent_id),
+                            AssociatedItemDeclId::TraitFn(x_id),
+                            AssociatedItemDeclId::TraitFn(curr_parent_id),
                         ) => self.get(x_id).eq(&self.get(curr_parent_id), engines),
                         (
-                            FunctionalDeclId::Function(x_id),
-                            FunctionalDeclId::Function(curr_parent_id),
+                            AssociatedItemDeclId::Function(x_id),
+                            AssociatedItemDeclId::Function(curr_parent_id),
                         ) => self.get(x_id).eq(&self.get(curr_parent_id), engines),
                         _ => false,
                     }) {
@@ -188,9 +188,12 @@ impl DeclEngine {
         acc_parents.values().cloned().collect()
     }
 
-    pub(crate) fn register_parent<I>(&self, index: FunctionalDeclId, parent: FunctionalDeclId)
-    where
-        FunctionalDeclId: From<DeclId<I>>,
+    pub(crate) fn register_parent<I>(
+        &self,
+        index: AssociatedItemDeclId,
+        parent: AssociatedItemDeclId,
+    ) where
+        AssociatedItemDeclId: From<DeclId<I>>,
     {
         let mut parents = self.parents.write().unwrap();
         parents

@@ -27,13 +27,13 @@ pub struct TyAstNode {
 
 impl EqWithEngines for TyAstNode {}
 impl PartialEqWithEngines for TyAstNode {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.content.eq(&other.content, engines)
     }
 }
 
 impl HashWithEngines for TyAstNode {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TyAstNode {
             content,
             // the span is not hashed because it isn't relevant/a reliable
@@ -44,20 +44,20 @@ impl HashWithEngines for TyAstNode {
     }
 }
 
-impl DisplayWithEngines for TyAstNode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+impl DebugWithEngines for TyAstNode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         use TyAstNodeContent::*;
         match &self.content {
-            Declaration(typed_decl) => DisplayWithEngines::fmt(typed_decl, f, engines),
-            Expression(exp) => DisplayWithEngines::fmt(exp, f, engines),
-            ImplicitReturnExpression(exp) => write!(f, "return {}", engines.help_out(exp)),
+            Declaration(typed_decl) => DebugWithEngines::fmt(typed_decl, f, engines),
+            Expression(exp) => DebugWithEngines::fmt(exp, f, engines),
+            ImplicitReturnExpression(exp) => write!(f, "return {:?}", engines.help_out(exp)),
             SideEffect(_) => f.write_str(""),
         }
     }
 }
 
 impl SubstTypes for TyAstNode {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         match self.content {
             TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
                 exp.subst(type_mapping, engines)
@@ -70,7 +70,7 @@ impl SubstTypes for TyAstNode {
 }
 
 impl ReplaceSelfType for TyAstNode {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         match self.content {
             TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
                 exp.replace_self_type(engines, self_type)
@@ -87,13 +87,28 @@ impl ReplaceSelfType for TyAstNode {
 }
 
 impl ReplaceDecls for TyAstNode {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: &Engines) {
         match self.content {
             TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
                 exp.replace_decls(decl_mapping, engines)
             }
             TyAstNodeContent::Declaration(_) => {}
             TyAstNodeContent::Expression(ref mut expr) => expr.replace_decls(decl_mapping, engines),
+            TyAstNodeContent::SideEffect(_) => (),
+        }
+    }
+}
+
+impl UpdateConstantExpression for TyAstNode {
+    fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
+        match self.content {
+            TyAstNodeContent::ImplicitReturnExpression(ref mut expr) => {
+                expr.update_constant_expression(engines, implementing_type)
+            }
+            TyAstNodeContent::Declaration(_) => {}
+            TyAstNodeContent::Expression(ref mut expr) => {
+                expr.update_constant_expression(engines, implementing_type)
+            }
             TyAstNodeContent::SideEffect(_) => (),
         }
     }
@@ -159,7 +174,10 @@ impl TyAstNode {
         match &self {
             TyAstNode {
                 span: _,
-                content: TyAstNodeContent::Declaration(TyDecl::FunctionDecl { decl_id, .. }),
+                content:
+                    TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl {
+                        decl_id, ..
+                    })),
                 ..
             } => {
                 let TyFunctionDecl {
@@ -176,7 +194,10 @@ impl TyAstNode {
         match &self {
             TyAstNode {
                 span: _,
-                content: TyAstNodeContent::Declaration(TyDecl::FunctionDecl { decl_id, .. }),
+                content:
+                    TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl {
+                        decl_id, ..
+                    })),
                 ..
             } => {
                 let TyFunctionDecl { attributes, .. } = decl_engine.get_function(decl_id);
@@ -193,7 +214,11 @@ impl TyAstNode {
                 match self {
                     TyAstNode {
                         span: _,
-                        content: TyAstNodeContent::Declaration(TyDecl::FunctionDecl { decl_id, .. }),
+                        content:
+                            TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl {
+                                decl_id,
+                                ..
+                            })),
                         ..
                     } => {
                         let decl = decl_engine.get_function(decl_id);
@@ -205,11 +230,11 @@ impl TyAstNode {
             TreeType::Contract | TreeType::Library { .. } => match self {
                 TyAstNode {
                     content:
-                        TyAstNodeContent::Declaration(TyDecl::FunctionDecl {
+                        TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl {
                             decl_id,
                             decl_span: _,
                             ..
-                        }),
+                        })),
                     ..
                 } => {
                     let decl = decl_engine.get_function(decl_id);
@@ -217,15 +242,18 @@ impl TyAstNode {
                 }
                 TyAstNode {
                     content:
-                        TyAstNodeContent::Declaration(TyDecl::TraitDecl {
+                        TyAstNodeContent::Declaration(TyDecl::TraitDecl(TraitDecl {
                             decl_id,
                             decl_span: _,
                             ..
-                        }),
+                        })),
                     ..
                 } => decl_engine.get_trait(decl_id).visibility.is_public(),
                 TyAstNode {
-                    content: TyAstNodeContent::Declaration(TyDecl::StructDecl { decl_id, .. }),
+                    content:
+                        TyAstNodeContent::Declaration(TyDecl::StructDecl(StructDecl {
+                            decl_id, ..
+                        })),
                     ..
                 } => {
                     let struct_decl = decl_engine.get_struct(decl_id);
@@ -237,14 +265,25 @@ impl TyAstNode {
                 } => true,
                 TyAstNode {
                     content:
-                        TyAstNodeContent::Declaration(TyDecl::ConstantDecl {
+                        TyAstNodeContent::Declaration(TyDecl::ConstantDecl(ConstantDecl {
                             decl_id,
                             decl_span: _,
                             ..
-                        }),
+                        })),
                     ..
                 } => {
                     let decl = decl_engine.get_constant(decl_id);
+                    decl.visibility.is_public()
+                }
+                TyAstNode {
+                    content:
+                        TyAstNodeContent::Declaration(TyDecl::TypeAliasDecl(TypeAliasDecl {
+                            decl_id,
+                            ..
+                        })),
+                    ..
+                } => {
+                    let decl = decl_engine.get_type_alias(decl_id);
                     decl.visibility.is_public()
                 }
                 _ => false,
@@ -278,7 +317,7 @@ pub enum TyAstNodeContent {
 
 impl EqWithEngines for TyAstNodeContent {}
 impl PartialEqWithEngines for TyAstNodeContent {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         match (self, other) {
             (Self::Declaration(x), Self::Declaration(y)) => x.eq(y, engines),
             (Self::Expression(x), Self::Expression(y)) => x.eq(y, engines),
@@ -292,7 +331,7 @@ impl PartialEqWithEngines for TyAstNodeContent {
 }
 
 impl HashWithEngines for TyAstNodeContent {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         use TyAstNodeContent::*;
         std::mem::discriminant(self).hash(state);
         match self {

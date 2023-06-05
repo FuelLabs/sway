@@ -13,18 +13,19 @@ use sway_types::{Ident, Span, Spanned};
 /// [ty::TyExpression].
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_enum(
-    ctx: TypeCheckContext,
+    mut ctx: TypeCheckContext,
     enum_ref: DeclRefEnum,
     enum_variant_name: Ident,
     args_opt: Option<Vec<Expression>>,
     call_path_binding: TypeBinding<CallPath>,
+    call_path_decl: ty::TyDecl,
     span: &Span,
 ) -> CompileResult<ty::TyExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
+    let type_engine = ctx.engines.te();
+    let decl_engine = ctx.engines.de();
     let engines = ctx.engines();
 
     let enum_decl = decl_engine.get_enum(&enum_ref);
@@ -61,7 +62,7 @@ pub(crate) fn instantiate_enum(
     ) {
         ([], ty) if ty.is_unit() => ok(
             ty::TyExpression {
-                return_type: type_engine.insert(decl_engine, TypeInfo::Enum(enum_ref.clone())),
+                return_type: type_engine.insert(engines, TypeInfo::Enum(enum_ref.clone())),
                 expression: ty::TyExpressionVariant::EnumInstantiation {
                     tag: enum_variant.tag,
                     contents: None,
@@ -69,6 +70,7 @@ pub(crate) fn instantiate_enum(
                     variant_name: enum_variant.name,
                     variant_instantiation_span: enum_variant_name.span(),
                     call_path_binding,
+                    call_path_decl,
                 },
                 span: enum_variant_name.span(),
             },
@@ -76,11 +78,12 @@ pub(crate) fn instantiate_enum(
             errors,
         ),
         ([single_expr], _) => {
-            let ctx = ctx
+            let enum_ctx = ctx
+                .by_ref()
                 .with_help_text("Enum instantiator must match its declared variant type.")
-                .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
+                .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
             let typed_expr = check!(
-                ty::TyExpression::type_check(ctx, single_expr.clone()),
+                ty::TyExpression::type_check(enum_ctx, single_expr.clone()),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -89,7 +92,7 @@ pub(crate) fn instantiate_enum(
             // unify the value of the argument with the variant
             check!(
                 CompileResult::from(type_engine.unify(
-                    decl_engine,
+                    engines,
                     typed_expr.return_type,
                     enum_variant.type_argument.type_id,
                     span,
@@ -104,9 +107,18 @@ pub(crate) fn instantiate_enum(
             // we now know that the instantiator type matches the declared type, via the above tpe
             // check
 
+            let type_id = type_engine.insert(engines, TypeInfo::Enum(enum_ref.clone()));
+
+            check!(
+                type_id.check_type_parameter_bounds(&ctx, &enum_variant_name.span(), vec![]),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+
             ok(
                 ty::TyExpression {
-                    return_type: type_engine.insert(decl_engine, TypeInfo::Enum(enum_ref.clone())),
+                    return_type: type_id,
                     expression: ty::TyExpressionVariant::EnumInstantiation {
                         tag: enum_variant.tag,
                         contents: Some(Box::new(typed_expr)),
@@ -114,6 +126,7 @@ pub(crate) fn instantiate_enum(
                         variant_name: enum_variant.name,
                         variant_instantiation_span: enum_variant_name.span(),
                         call_path_binding,
+                        call_path_decl,
                     },
                     span: enum_variant_name.span(),
                 },
