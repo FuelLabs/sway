@@ -1,8 +1,10 @@
 use serde::Serialize;
 
+use crate::SourceId;
+
 use {
     lazy_static::lazy_static,
-    std::{borrow::Cow, cmp, fmt, path::PathBuf, sync::Arc},
+    std::{cmp, fmt, hash::Hash, sync::Arc},
 };
 
 lazy_static! {
@@ -66,7 +68,7 @@ impl Position {
 }
 
 /// Represents a span of the source code in a specific file.
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Ord, PartialOrd)]
 pub struct Span {
     // The original source code.
     src: Arc<str>,
@@ -75,8 +77,24 @@ pub struct Span {
     // The byte position in the string of the end of the span.
     end: usize,
     // A reference counted pointer to the file from which this span originated.
-    path: Option<Arc<PathBuf>>,
+    source_id: Option<SourceId>,
 }
+
+impl Hash for Span {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.start.hash(state);
+        self.end.hash(state);
+        self.source_id.hash(state);
+    }
+}
+
+impl PartialEq for Span {
+    fn eq(&self, other: &Self) -> bool {
+        self.start == other.start && self.end == other.end && self.source_id == other.source_id
+    }
+}
+
+impl Eq for Span {}
 
 impl Serialize for Span {
     // Serialize a tuple two fields: `start` and `end`.
@@ -104,18 +122,13 @@ impl Span {
         DUMMY_SPAN.clone()
     }
 
-    pub fn new(
-        src: Arc<str>,
-        start: usize,
-        end: usize,
-        path: Option<Arc<PathBuf>>,
-    ) -> Option<Span> {
+    pub fn new(src: Arc<str>, start: usize, end: usize, source: Option<SourceId>) -> Option<Span> {
         let _ = src.get(start..end)?;
         Some(Span {
             src,
             start,
             end,
-            path,
+            source_id: source,
         })
     }
 
@@ -136,12 +149,8 @@ impl Span {
         self.end
     }
 
-    pub fn path(&self) -> Option<&Arc<PathBuf>> {
-        self.path.as_ref()
-    }
-
-    pub fn path_str(&self) -> Option<Cow<'_, str>> {
-        self.path.as_deref().map(|path| path.to_string_lossy())
+    pub fn source_id(&self) -> Option<&SourceId> {
+        self.source_id.as_ref()
     }
 
     pub fn start_pos(&self) -> Position {
@@ -177,7 +186,7 @@ impl Span {
             src: self.src,
             start: self.start + start_delta,
             end: self.end - end_delta,
-            path: self.path,
+            source_id: self.source_id,
         }
     }
 
@@ -185,7 +194,7 @@ impl Span {
     /// only be used on spans that are actually next to each other.
     pub fn join(s1: Span, s2: Span) -> Span {
         assert!(
-            Arc::ptr_eq(&s1.src, &s2.src) && s1.path == s2.path,
+            Arc::ptr_eq(&s1.src, &s2.src) && s1.source_id == s2.source_id,
             "Spans from different files cannot be joined.",
         );
 
@@ -193,7 +202,7 @@ impl Span {
             src: s1.src,
             start: cmp::min(s1.start, s2.start),
             end: cmp::max(s1.end, s2.end),
-            path: s1.path,
+            source_id: s1.source_id,
         }
     }
 
@@ -218,7 +227,7 @@ impl fmt::Debug for Span {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("Span")
             .field("src (ptr)", &self.src.as_ptr())
-            .field("path", &self.path)
+            .field("source_id", &self.source_id)
             .field("start", &self.start)
             .field("end", &self.end)
             .field("as_str()", &self.as_str())

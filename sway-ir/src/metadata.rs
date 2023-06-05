@@ -1,3 +1,5 @@
+use sway_types::SourceId;
+
 /// Associated metadata attached mostly to values.
 ///
 /// Each value (instruction, function argument or constant) has associated metadata which helps
@@ -16,6 +18,7 @@ pub enum Metadatum {
     Integer(u64),
     Index(MetadataIndex),
     String(String),
+    SourceId(SourceId),
     Struct(String, Vec<Metadatum>),
     List(Vec<MetadataIndex>),
 }
@@ -67,6 +70,10 @@ impl MetadataIndex {
         MetadataIndex(context.metadata.insert(Metadatum::Index(idx)))
     }
 
+    pub fn new_source_id(context: &mut Context, id: SourceId) -> Self {
+        MetadataIndex(context.metadata.insert(Metadatum::SourceId(id)))
+    }
+
     pub fn new_string<S: Into<String>>(context: &mut Context, s: S) -> Self {
         MetadataIndex(context.metadata.insert(Metadatum::String(s.into())))
     }
@@ -112,6 +119,14 @@ impl Metadatum {
     pub fn unwrap_string(&self) -> Option<&str> {
         if let Metadatum::String(s) = self {
             Some(s)
+        } else {
+            None
+        }
+    }
+
+    pub fn unwrap_source_id(&self) -> Option<&SourceId> {
+        if let Metadatum::SourceId(id) = self {
+            Some(id)
         } else {
             None
         }

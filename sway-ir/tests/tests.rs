@@ -7,11 +7,13 @@ use sway_ir::{
     create_ret_demotion_pass, create_simplify_cfg_pass, optimize as opt, Context, PassGroup,
     PassManager,
 };
+use sway_types::SourceEngine;
 
 // -------------------------------------------------------------------------------------------------
 // Utility for finding test files and running FileCheck.  See actual pass invocations below.
 
 fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
+    let source_engine = SourceEngine::default();
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let dir: PathBuf = format!("{manifest_dir}/tests/{sub_dir}").into();
     for entry in std::fs::read_dir(dir).unwrap() {
@@ -20,7 +22,7 @@ fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
         let input_bytes = std::fs::read(&path).unwrap();
         let input = String::from_utf8_lossy(&input_bytes);
 
-        let mut ir = sway_ir::parser::parse(&input).unwrap_or_else(|parse_err| {
+        let mut ir = sway_ir::parser::parse(&input, &source_engine).unwrap_or_else(|parse_err| {
             println!("{}: {parse_err}", path.display());
             panic!()
         });

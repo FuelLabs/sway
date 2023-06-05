@@ -32,7 +32,7 @@ use sway_core::{
         fuel_json_abi::{self, JsonAbiContext},
     },
     asm_generation::ProgramABI,
-    decl_engine::{DeclEngine, DeclRefFunction},
+    decl_engine::DeclRefFunction,
     fuel_prelude::{
         fuel_crypto,
         fuel_tx::{self, Contract, ContractId, StorageSlot},
@@ -159,6 +159,7 @@ pub enum TestPassCondition {
 pub struct PkgTestEntry {
     pub pass_condition: TestPassCondition,
     pub span: Span,
+    pub file_path: Arc<PathBuf>,
 }
 
 /// The result of successfully compiling a workspace.
@@ -1773,7 +1774,7 @@ pub fn compile(
         sway_build_config(pkg.manifest_file.dir(), &entry_path, pkg.target, profile)?;
     let terse_mode = profile.terse;
     let fail = |warnings, errors| {
-        print_on_failure(terse_mode, warnings, errors);
+        print_on_failure(engines.se(), terse_mode, warnings, errors);
         bail!("Failed to compile {}", pkg.name);
     };
 
@@ -1862,15 +1863,14 @@ pub fn compile(
         .as_ref()
         .map(|asm| asm.0.entries.clone())
         .unwrap_or_default();
-    let decl_engine = engines.de();
     let entries = entries
         .iter()
-        .map(|finalized_entry| PkgEntry::from_finalized_entry(finalized_entry, decl_engine))
+        .map(|finalized_entry| PkgEntry::from_finalized_entry(finalized_entry, engines))
         .collect::<anyhow::Result<_>>()?;
     let bc_res = time_expr!(
         "compile asm to bytecode",
         "compile_asm_to_bytecode",
-        sway_core::asm_to_bytecode(asm_res, source_map),
+        sway_core::asm_to_bytecode(asm_res, source_map, engines.se()),
         Some(sway_build_config),
         metrics
     );
@@ -1883,7 +1883,13 @@ pub fn compile(
         _ => return fail(&bc_res.warnings, &bc_res.errors),
     };
 
-    print_warnings(terse_mode, &pkg.name, &bc_res.warnings, &tree_type);
+    print_warnings(
+        engines.se(),
+        terse_mode,
+        &pkg.name,
+        &bc_res.warnings,
+        &tree_type,
+    );
 
     // TODO: This should probably be in `fuel_abi_json::generate_json_abi_program`?
     // If ABI requires knowing config offsets, they should be inputs to ABI gen.
@@ -1924,13 +1930,10 @@ impl PkgEntry {
         self.kind.test().is_some()
     }
 
-    fn from_finalized_entry(
-        finalized_entry: &FinalizedEntry,
-        decl_engine: &DeclEngine,
-    ) -> Result<Self> {
+    fn from_finalized_entry(finalized_entry: &FinalizedEntry, engines: &Engines) -> Result<Self> {
         let pkg_entry_kind = match &finalized_entry.test_decl_ref {
             Some(test_decl_ref) => {
-                let pkg_test_entry = PkgTestEntry::from_decl(test_decl_ref.clone(), decl_engine)?;
+                let pkg_test_entry = PkgTestEntry::from_decl(test_decl_ref.clone(), engines)?;
                 PkgEntryKind::Test(pkg_test_entry)
             }
             None => PkgEntryKind::Main,
@@ -1954,9 +1957,9 @@ impl PkgEntryKind {
 }
 
 impl PkgTestEntry {
-    fn from_decl(decl_ref: DeclRefFunction, decl_engine: &DeclEngine) -> Result<Self> {
+    fn from_decl(decl_ref: DeclRefFunction, engines: &Engines) -> Result<Self> {
         let span = decl_ref.span();
-        let test_function_decl = decl_engine.get_function(&decl_ref);
+        let test_function_decl = engines.de().get_function(&decl_ref);
 
         const FAILING_TEST_KEYWORD: &str = "should_revert";
 
@@ -1992,9 +1995,16 @@ impl PkgTestEntry {
             bail!("Invalid test argument(s) for test: {test_name}.")
         }?;
 
+        let file_path = Arc::new(
+            engines.se().get_path(
+                span.source_id()
+                    .ok_or_else(|| anyhow::anyhow!("Missing span for test function"))?,
+            ),
+        );
         Ok(Self {
             pass_condition,
             span,
+            file_path,
         })
     }
 }
@@ -2273,7 +2283,7 @@ pub fn build(
         };
 
         let fail = |warnings, errors| {
-            print_on_failure(profile.terse, warnings, errors);
+            print_on_failure(engines.se(), profile.terse, warnings, errors);
             bail!("Failed to compile {}", pkg.name);
         };
 
@@ -2612,7 +2622,7 @@ pub fn check(
                     manifest.entry_string()?,
                     0,
                     0,
-                    Some(manifest.entry_path().into()),
+                    Some(engines.se().get_source_id(&manifest.entry_path())),
                 )
                 .unwrap(),
             );

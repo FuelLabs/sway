@@ -1,10 +1,15 @@
 //! A parser for the printed IR, useful mostly for testing.
 
+use sway_types::SourceEngine;
+
 use crate::{context::Context, error::IrError};
 
 // -------------------------------------------------------------------------------------------------
 /// Parse a string produced by [`crate::printer::to_string`] into a new [`Context`].
-pub fn parse(input: &str) -> Result<Context, IrError> {
+pub fn parse<'eng>(
+    input: &str,
+    source_engine: &'eng SourceEngine,
+) -> Result<Context<'eng>, IrError> {
     let irmod = ir_builder::parser::ir_descrs(input).map_err(|err| {
         let found = if input.len() - err.location.offset <= 20 {
             &input[err.location.offset..]
@@ -13,13 +18,13 @@ pub fn parse(input: &str) -> Result<Context, IrError> {
         };
         IrError::ParseFailure(err.to_string(), found.into())
     })?;
-    ir_builder::build_context(irmod)?.verify()
+    ir_builder::build_context(irmod, source_engine)?.verify()
 }
 
 // -------------------------------------------------------------------------------------------------
 
 mod ir_builder {
-    use sway_types::{ident::Ident, span::Span};
+    use sway_types::{ident::Ident, span::Span, SourceEngine};
 
     type MdIdxRef = u64;
 
@@ -841,8 +846,11 @@ mod ir_builder {
 
     use std::{collections::HashMap, iter::FromIterator};
 
-    pub(super) fn build_context(ir_ast_mod: IrAstModule) -> Result<Context, IrError> {
-        let mut ctx = Context::default();
+    pub(super) fn build_context(
+        ir_ast_mod: IrAstModule,
+        source_engine: &SourceEngine,
+    ) -> Result<Context, IrError> {
+        let mut ctx = Context::new(source_engine);
         let md_map = build_metadata_map(&mut ctx, ir_ast_mod.metadata);
         let mut module = Module::new(&mut ctx, ir_ast_mod.kind);
         let mut builder = IrBuilder {

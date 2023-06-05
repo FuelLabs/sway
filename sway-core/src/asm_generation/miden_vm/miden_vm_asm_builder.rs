@@ -62,7 +62,7 @@ pub type ProcedureMap = HashMap<ProcedureName, Procedure>;
 /// MidenVM Asm is built in the following way:
 /// Function bodies are abstracted into [Procedures]
 /// Arguments to functions are evaluated before the exec.proc is issued
-pub struct MidenVMAsmBuilder<'ir> {
+pub struct MidenVMAsmBuilder<'ir, 'eng> {
     procedure_map: ProcedureMap,
     buf: Vec<MidenAsmOp>,
     #[allow(dead_code)]
@@ -73,7 +73,7 @@ pub struct MidenVMAsmBuilder<'ir> {
     active_procedure: Option<ProcedureName>,
 
     // IR context we're compiling.
-    context: &'ir Context,
+    context: &'ir Context<'eng>,
 
     // Metadata manager for converting metadata to Spans, etc.
     md_mgr: MetadataManager,
@@ -85,7 +85,7 @@ pub struct MidenVMAsmBuilder<'ir> {
     stack_manager: StackManager,
 }
 
-impl std::fmt::Debug for MidenVMAsmBuilder<'_> {
+impl std::fmt::Debug for MidenVMAsmBuilder<'_, '_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let ops = self
             .buf
@@ -114,7 +114,7 @@ pub struct MidenVMAsmBuilderResult {
 
 pub type MidenVMAbiResult = ();
 
-impl<'ir> AsmBuilder for MidenVMAsmBuilder<'ir> {
+impl<'ir, 'eng> AsmBuilder for MidenVMAsmBuilder<'ir, 'eng> {
     fn compile_function(&mut self, function: Function) -> CompileResult<()> {
         self.compile_function(function)
     }
@@ -134,8 +134,8 @@ impl<'ir> AsmBuilder for MidenVMAsmBuilder<'ir> {
 
 #[allow(unused_variables)]
 #[allow(dead_code)]
-impl<'ir> MidenVMAsmBuilder<'ir> {
-    pub fn new(program_kind: ProgramKind, context: &'ir Context) -> Self {
+impl<'ir, 'eng> MidenVMAsmBuilder<'ir, 'eng> {
+    pub fn new(program_kind: ProgramKind, context: &'ir Context<'eng>) -> Self {
         MidenVMAsmBuilder {
             procedure_map: Default::default(),
             buf: Default::default(),
