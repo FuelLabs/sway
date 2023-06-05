@@ -9,19 +9,15 @@ use colored::*;
 use forc_pkg as pkg;
 use forc_util::default_output_directory;
 use include_dir::{include_dir, Dir};
-use pkg::{
-    manifest::{Dependency, ManifestFile},
-    PackageManifestFile,
-};
+use pkg::{manifest::ManifestFile, PackageManifestFile};
 use std::{
-    collections::BTreeMap,
     path::Path,
     process::Command as Process,
-    sync::Arc,
     {fs, path::PathBuf},
 };
 use sway_core::{
-    decl_engine::DeclEngine, query_engine::QueryEngine, BuildTarget, Engines, TypeEngine,
+    decl_engine::DeclEngine, language::ty::TyProgram, query_engine::QueryEngine, BuildTarget,
+    Engines, TypeEngine,
 };
 
 mod cli;
@@ -32,23 +28,30 @@ pub(crate) const ASSETS_DIR_NAME: &str = "static.files";
 
 /// Information passed to the render phase to get TypeInfo, CallPath or visibility for type anchors.
 #[derive(Clone)]
-struct RenderPlan {
+struct RenderPlan<'e> {
     document_private_items: bool,
-    type_engine: Arc<TypeEngine>,
-    decl_engine: Arc<DeclEngine>,
+    type_engine: &'e TypeEngine,
+    decl_engine: &'e DeclEngine,
 }
-impl RenderPlan {
+impl<'e> RenderPlan<'e> {
     fn new(
         document_private_items: bool,
-        type_engine: Arc<TypeEngine>,
-        decl_engine: Arc<DeclEngine>,
-    ) -> RenderPlan {
+        type_engine: &'e TypeEngine,
+        decl_engine: &'e DeclEngine,
+    ) -> RenderPlan<'e> {
         Self {
             document_private_items,
             type_engine,
             decl_engine,
         }
     }
+}
+struct ProgramInfo<'a> {
+    ty_program: TyProgram,
+    type_engine: &'a TypeEngine,
+    decl_engine: &'a DeclEngine,
+    manifest: &'a ManifestFile,
+    pkg_manifest: &'a PackageManifestFile,
 }
 
 /// Main method for `forc doc`.
@@ -77,8 +80,84 @@ pub fn main() -> Result<()> {
     }
     fs::create_dir_all(&doc_path)?;
 
-    // build core documentation
-    build_docs(&manifest, pkg_manifest, &doc_path, &build_instructions)?;
+    println!(
+        "   {} {} ({})",
+        "Compiling".bold().yellow(),
+        pkg_manifest.project_name(),
+        manifest.dir().to_string_lossy()
+    );
+
+    let member_manifests = manifest.member_manifests()?;
+    let lock_path = manifest.lock_path()?;
+    let plan = pkg::BuildPlan::from_lock_and_manifests(
+        &lock_path,
+        &member_manifests,
+        build_instructions.locked,
+        build_instructions.offline,
+    )?;
+
+    let type_engine = TypeEngine::default();
+    let decl_engine = DeclEngine::default();
+    let query_engine = QueryEngine::default();
+    let engines = Engines::new(&type_engine, &decl_engine, &query_engine);
+    let tests_enabled = build_instructions.document_private_items;
+    let mut compile_results = pkg::check(
+        &plan,
+        BuildTarget::default(),
+        build_instructions.silent,
+        tests_enabled,
+        engines,
+    )?;
+
+    if !build_instructions.no_deps {
+        let order = plan.compilation_order();
+        let graph = plan.graph();
+        let manifest_map = plan.manifest_map();
+
+        for (node, compile_result) in order.iter().zip(compile_results) {
+            let id = &graph[*node].id();
+
+            if let Some(pkg_manifest_file) = manifest_map.get(id) {
+                let manifest_file = ManifestFile::from_dir(pkg_manifest_file.path())?;
+                let ty_program = match compile_result.value.and_then(|programs| programs.typed) {
+                    Some(ty_program) => ty_program,
+                    _ => bail!(
+                        "documentation could not be built from manifest located at '{}'",
+                        pkg_manifest_file.path().display()
+                    ),
+                };
+                let program_info = ProgramInfo {
+                    ty_program,
+                    type_engine: &type_engine,
+                    decl_engine: &decl_engine,
+                    manifest: &manifest_file,
+                    pkg_manifest: pkg_manifest_file,
+                };
+
+                build_docs(program_info, &doc_path, &build_instructions)?;
+            }
+        }
+    } else {
+        let ty_program = match compile_results
+            .pop()
+            .and_then(|compilation| compilation.value)
+            .and_then(|programs| programs.typed)
+        {
+            Some(ty_program) => ty_program,
+            _ => bail!(
+                "documentation could not be built from manifest located at '{}'",
+                pkg_manifest.path().display()
+            ),
+        };
+        let program_info = ProgramInfo {
+            ty_program,
+            type_engine: &type_engine,
+            decl_engine: &decl_engine,
+            manifest: &manifest,
+            pkg_manifest,
+        };
+        build_docs(program_info, &doc_path, &build_instructions)?;
+    }
 
     // CSS, icons and logos
     static ASSETS_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/src/static.files");
@@ -124,51 +203,21 @@ pub fn main() -> Result<()> {
 }
 
 fn build_docs(
-    manifest: &ManifestFile,
-    pkg_manifest: &PackageManifestFile,
+    program_info: ProgramInfo,
     doc_path: &Path,
     build_instructions: &Command,
 ) -> Result<()> {
     let Command {
         document_private_items,
-        offline,
-        silent,
-        locked,
-        no_deps,
         ..
     } = *build_instructions;
-
-    println!(
-        "   {} {} ({})",
-        "Compiling".bold().yellow(),
-        pkg_manifest.project_name(),
-        manifest.dir().to_string_lossy()
-    );
-
-    // compile the program and extract the docs
-    let member_manifests = manifest.member_manifests()?;
-    let lock_path = manifest.lock_path()?;
-    let plan =
-        pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)?;
-    let type_engine = TypeEngine::default();
-    let decl_engine = DeclEngine::default();
-    let query_engine = QueryEngine::default();
-    let engines = Engines::new(&type_engine, &decl_engine, &query_engine);
-    let tests_enabled = true;
-    let typed_program = match pkg::check(
-        &plan,
-        BuildTarget::default(),
-        silent,
-        tests_enabled,
-        engines,
-    )?
-    .pop()
-    .and_then(|compilation| compilation.value)
-    .and_then(|programs| programs.typed)
-    {
-        Some(typed_program) => typed_program,
-        _ => bail!("CompileResult returned None"),
-    };
+    let ProgramInfo {
+        ty_program,
+        type_engine,
+        decl_engine,
+        manifest,
+        pkg_manifest,
+    } = program_info;
 
     println!(
         "    {} documentation for {} ({})",
@@ -178,13 +227,13 @@ fn build_docs(
     );
 
     let raw_docs = Documentation::from_ty_program(
-        &decl_engine,
+        decl_engine,
         pkg_manifest.project_name(),
-        &typed_program,
+        &ty_program,
         document_private_items,
     )?;
     let root_attributes =
-        (!typed_program.root.attributes.is_empty()).then_some(typed_program.root.attributes);
+        (!ty_program.root.attributes.is_empty()).then_some(ty_program.root.attributes);
     let forc_version = pkg_manifest
         .project
         .forc_version
@@ -193,64 +242,15 @@ fn build_docs(
     // render docs to HTML
     let rendered_docs = RenderedDocumentation::from_raw_docs(
         raw_docs,
-        RenderPlan::new(
-            document_private_items,
-            Arc::from(type_engine),
-            Arc::from(decl_engine),
-        ),
+        RenderPlan::new(document_private_items, type_engine, decl_engine),
         root_attributes,
-        typed_program.kind,
+        ty_program.kind,
         forc_version,
     )?;
 
     // write file contents to doc folder
     write_content(rendered_docs, doc_path)?;
     println!("    {}", "Finished".bold().yellow());
-
-    if !no_deps {
-        build_deps(
-            &pkg_manifest.dependencies,
-            manifest.dir(),
-            doc_path,
-            build_instructions,
-        )?;
-    }
-
-    Ok(())
-}
-
-fn build_deps(
-    dependencies: &Option<BTreeMap<String, Dependency>>,
-    manifest_dir: &Path,
-    doc_path: &Path,
-    build_instructions: &Command,
-) -> Result<()> {
-    if let Some(deps) = dependencies {
-        for (dep_name, dep) in deps {
-            if let Dependency::Detailed(dep_details) = dep {
-                if let Some(path) = &dep_details.path {
-                    let manifest_path = manifest_dir.join(path).canonicalize()?;
-                    let dep_manifest = ManifestFile::from_dir(&manifest_path)?;
-                    let dep_pkg_manifest =
-                        if let ManifestFile::Package(pkg_manifest) = &dep_manifest {
-                            pkg_manifest
-                        } else {
-                            bail!("forc-doc does not support workspaces.")
-                        };
-                    build_docs(
-                        &dep_manifest,
-                        dep_pkg_manifest,
-                        doc_path,
-                        build_instructions,
-                    )?;
-                } else {
-                    println!("a path variable was not set for {dep_name}, which is currently the only supported option.")
-                }
-            } else {
-                println!("{dep_name} is a simple format dependency,\nsimple format dependencies don't specify a path to a manfiest file and are unsupported at this time.")
-            }
-        }
-    }
 
     Ok(())
 }
