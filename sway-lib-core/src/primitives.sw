@@ -1,14 +1,5 @@
 library;
 
-const OFF: u64 = 0xFF;
-const I: u64 = 8;
-const J: u64 = 16;
-const K: u64 = 24;
-const L: u64 = 32;
-const M: u64 = 40;
-const N: u64 = 48;
-const O: u64 = 56;
-
 impl u64 {
     /// The smallest value that can be represented by this integer type.
     pub fn min() -> u64 {
@@ -29,7 +20,7 @@ impl u64 {
     pub fn to_le_bytes(self) -> [u8; 8] {
         let output = [0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8];
 
-        asm(input: self, off: OFF, i: I, j: J, k: K, l: L, m: M, n: N, n: N, o: O, output: output, r1) {
+        asm(input: self, off: 0xFF, i: 0x8, j: 0x10, k: 0x18, l: 0x20, m: 0x28, n: 0x30, o: 0x38, output: output, r1) {
             and  r1 input off;
             sw  output r1 i0;
 
@@ -75,7 +66,7 @@ impl u64 {
         let g = bytes[6];
         let h = bytes[7];
 
-        asm(a: a, b: b, c: c, d: d, e: e, f: f, g: g, h: h, i: I, j: J, k: K, l: L, m: M, n: N, n: N, o: O, r1, r2, r3) {
+        asm(a: a, b: b, c: c, d: d, e: e, f: f, g: g, h: h, i: 0x8, j: 0x10, k: 0x18, l: 0x20, m: 0x28, n: 0x30, o: 0x38, r1, r2, r3) {
             sll  r1 h o;
             sll  r2 g n;
             or   r3 r1 r2;
@@ -98,7 +89,7 @@ impl u64 {
     pub fn to_be_bytes(self) -> [u8; 8] {
         let output = [0; 8];
 
-        asm(input: self, off: OFF, i: I, j: J, k: K, l: L, m: M, n: N, n: N, o: O, output: output, r1) {
+        asm(input: self, off: 0xFF, i: 0x8, j: 0x10, k: 0x18, l: 0x20, m: 0x28, n: 0x30, o: 0x38, output: output, r1) {
             and  r1 input off;
             sw  output r1 i7;
 
@@ -144,7 +135,7 @@ impl u64 {
         let g = bytes[6];
         let h = bytes[7];
 
-        asm(a: a, b: b, c: c, d: d, e: e, f: f, g: g, h: h, i: I, j: J, k: K, l: L, m: M, n: N, n: N, o: O, r1, r2, r3) {
+        asm(a: a, b: b, c: c, d: d, e: e, f: f, g: g, h: h, i: 0x8, j: 0x10, k: 0x18, l: 0x20, m: 0x28, n: 0x30, o: 0x38, r1, r2, r3) {
             sll  r1 a o;
             sll  r2 b n;
             or   r3 r1 r2;
@@ -185,7 +176,7 @@ impl u32 {
     pub fn to_le_bytes(self) -> [u8; 4] {
         let output = [0_u8, 0_u8, 0_u8, 0_u8];
 
-        asm(input: self, off: OFF, i: I, j: J, k: K, output: output, r1) {
+        asm(input: self, off: 0xFF, i: 0x8, j: 0x10, k: 0x18, output: output, r1) {
             and  r1 input off;
             sw   output r1 i0;
 
@@ -206,7 +197,7 @@ impl u32 {
     }
 
     pub fn from_le_bytes(bytes: [u8; 4]) -> u32 {
-        asm(a: bytes[0], b: bytes[1], c: bytes[2], d: bytes[3], i: I, j: J, k: K, r1, r2, r3) {
+        asm(a: bytes[0], b: bytes[1], c: bytes[2], d: bytes[3], i: 0x8, j: 0x10, k: 0x18, r1, r2, r3) {
             sll  r1 c j;
             sll  r2 d k;
             or   r3 r1 r2;
@@ -220,7 +211,7 @@ impl u32 {
     pub fn to_be_bytes(self) -> [u8; 4] {
         let output = [0_u8, 0_u8, 0_u8, 0_u8];
 
-        asm(input: self, off: OFF, i: I, j: J, k: K, output: output, r1) {
+        asm(input: self, off: 0xFF, i: 0x8, j: 0x10, k: 0x18, output: output, r1) {
             srl  r1 input k;
             and  r1 r1 off;
             sw   output r1 i0;
@@ -241,7 +232,7 @@ impl u32 {
     }
 
     pub fn from_be_bytes(bytes: [u8; 4]) -> u32 {
-        asm(a: bytes[0], b: bytes[1], c: bytes[2], d: bytes[3], i: I, j: J, k: K, r1, r2, r3) {
+        asm(a: bytes[0], b: bytes[1], c: bytes[2], d: bytes[3], i: 0x8, j: 0x10, k: 0x18, r1, r2, r3) {
             sll  r1 a k;
             sll  r2 b j;
             or   r3 r1 r2;
@@ -273,7 +264,7 @@ impl u16 {
     pub fn to_le_bytes(self) -> [u8; 2] {
         let output = [0_u8, 0_u8];
 
-        asm(input: self, off: OFF, i: I, output: output, r1) {
+        asm(input: self, off: 0xFF, i: 0x8, output: output, r1) {
             and  r1 input off;
             sw   output r1 i0;
 
@@ -286,7 +277,7 @@ impl u16 {
     }
 
     pub fn from_le_bytes(bytes: [u8; 2]) -> u16 {
-        asm(a: bytes[0], b: bytes[1], i: I, r1) {
+        asm(a: bytes[0], b: bytes[1], i: 0x8, r1) {
             sll  r1 b i;
             or   r1 a r1;
             r1: u16
@@ -296,7 +287,7 @@ impl u16 {
     pub fn to_be_bytes(self) -> [u8; 2] {
         let output = [0_u8, 0_u8];
 
-        asm(input: self, off: OFF, i: I, output: output, r1) {
+        asm(input: self, off: 0xFF, i: 0x8, output: output, r1) {
             srl r1 input i;
             sw output r1 i0;
 
@@ -308,7 +299,7 @@ impl u16 {
     }
 
     pub fn from_be_bytes(bytes: [u8; 2]) -> u16 {
-        asm(a: bytes[0], b: bytes[1], i: I, r1) {
+        asm(a: bytes[0], b: bytes[1], i: 0x8, r1) {
             sll  r1 a i;
             or   r1 r1 b;
             r1: u16
