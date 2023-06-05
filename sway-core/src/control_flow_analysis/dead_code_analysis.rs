@@ -267,7 +267,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
     }
 
     pub(crate) fn append_module_to_dead_code_graph<'eng: 'cfg>(
-        engines: Engines<'eng>,
+        engines: &'eng Engines,
         module_nodes: &[ty::TyAstNode],
         tree_type: &TreeType,
         graph: &mut ControlFlowGraph<'cfg>,
@@ -334,7 +334,7 @@ struct NodeConnectionOptions {
 }
 
 fn connect_node<'eng: 'cfg, 'cfg>(
-    engines: Engines<'eng>,
+    engines: &'eng Engines,
     node: &ty::TyAstNode,
     graph: &mut ControlFlowGraph<'cfg>,
     leaves: &[NodeIndex],
@@ -428,7 +428,7 @@ fn connect_node<'eng: 'cfg, 'cfg>(
 
 #[allow(clippy::too_many_arguments)]
 fn connect_declaration<'eng: 'cfg, 'cfg>(
-    engines: Engines<'eng>,
+    engines: &'eng Engines,
     decl: &ty::TyDecl,
     graph: &mut ControlFlowGraph<'cfg>,
     entry_node: NodeIndex,
@@ -625,7 +625,7 @@ fn connect_struct_declaration<'eng: 'cfg, 'cfg>(
 /// track which exact methods are dead code.
 #[allow(clippy::too_many_arguments)]
 fn connect_impl_trait<'eng: 'cfg, 'cfg>(
-    engines: Engines<'eng>,
+    engines: &'eng Engines,
     trait_name: &CallPath,
     graph: &mut ControlFlowGraph<'cfg>,
     items: &[TyImplItem],
@@ -760,7 +760,7 @@ fn connect_trait_declaration(
 
 /// See [connect_trait_declaration] for implementation details.
 fn connect_abi_declaration(
-    engines: Engines<'_>,
+    engines: &Engines,
     decl: &ty::TyAbiDecl,
     graph: &mut ControlFlowGraph,
     entry_node: NodeIndex,
@@ -900,7 +900,7 @@ fn connect_enum_declaration<'eng: 'cfg, 'cfg>(
 /// When something eventually calls it, it gets connected to the declaration.
 #[allow(clippy::too_many_arguments)]
 fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
-    engines: Engines<'eng>,
+    engines: &'eng Engines,
     fn_decl: &ty::TyFunctionDecl,
     graph: &mut ControlFlowGraph<'cfg>,
     entry_node: NodeIndex,
@@ -979,7 +979,7 @@ fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
 // corresponding struct/enum declaration to the function entry node, thus
 // making sure they are considered used by the DCA pass.
 fn connect_fn_params_struct_enums<'eng: 'cfg, 'cfg>(
-    engines: Engines<'eng>,
+    engines: &'eng Engines,
     fn_decl: &ty::TyFunctionDecl,
     graph: &mut ControlFlowGraph<'cfg>,
     fn_decl_entry_node: NodeIndex,
@@ -1019,7 +1019,7 @@ fn connect_fn_params_struct_enums<'eng: 'cfg, 'cfg>(
 }
 
 fn depth_first_insertion_code_block<'eng: 'cfg, 'cfg>(
-    engines: Engines<'eng>,
+    engines: &'eng Engines,
     node_content: &ty::TyCodeBlock,
     graph: &mut ControlFlowGraph<'cfg>,
     leaves: &[NodeIndex],
@@ -1041,7 +1041,7 @@ fn depth_first_insertion_code_block<'eng: 'cfg, 'cfg>(
 }
 
 fn get_trait_fn_node_index<'a>(
-    engines: Engines<'_>,
+    engines: &Engines,
     function_decl_ref: DeclRefFunction,
     expression_span: Span,
     graph: &'a ControlFlowGraph,
@@ -1088,7 +1088,7 @@ fn get_trait_fn_node_index<'a>(
 /// note the main expression node has already been inserted
 #[allow(clippy::too_many_arguments)]
 fn connect_expression<'eng: 'cfg, 'cfg>(
-    engines: Engines<'eng>,
+    engines: &'eng Engines,
     expr_variant: &ty::TyExpressionVariant,
     graph: &mut ControlFlowGraph<'cfg>,
     leaves: &[NodeIndex],
@@ -1837,7 +1837,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
 }
 
 fn connect_intrinsic_function<'eng: 'cfg, 'cfg>(
-    engines: Engines<'eng>,
+    engines: &'eng Engines,
     ty::TyIntrinsicFunctionKind {
         kind, arguments, ..
     }: &ty::TyIntrinsicFunctionKind,
@@ -1873,7 +1873,7 @@ fn connect_intrinsic_function<'eng: 'cfg, 'cfg>(
 }
 
 fn connect_code_block<'eng: 'cfg, 'cfg>(
-    engines: Engines<'eng>,
+    engines: &'eng Engines,
     block: &ty::TyCodeBlock,
     graph: &mut ControlFlowGraph<'cfg>,
     leaves: &[NodeIndex],
@@ -1908,7 +1908,7 @@ fn connect_code_block<'eng: 'cfg, 'cfg>(
 
 #[allow(clippy::too_many_arguments)]
 fn connect_enum_instantiation<'eng: 'cfg, 'cfg>(
-    engines: Engines<'eng>,
+    engines: &'eng Engines,
     enum_decl: &ty::TyEnumDecl,
     contents: &Option<Box<ty::TyExpression>>,
     variant_name: &Ident,
@@ -2115,7 +2115,7 @@ fn connect_storage_declaration<'eng: 'cfg, 'cfg>(
 }
 
 fn connect_type_alias_declaration<'eng: 'cfg, 'cfg>(
-    engines: Engines<'eng>,
+    engines: &'eng Engines,
     decl: &ty::TyTypeAliasDecl,
     graph: &mut ControlFlowGraph<'cfg>,
     entry_node: NodeIndex,
@@ -2131,7 +2131,7 @@ fn connect_type_alias_declaration<'eng: 'cfg, 'cfg>(
 }
 
 fn connect_type_id<'eng: 'cfg, 'cfg>(
-    engines: Engines<'eng>,
+    engines: &'eng Engines,
     type_id: TypeId,
     graph: &mut ControlFlowGraph<'cfg>,
     entry_node: NodeIndex,
@@ -2173,7 +2173,7 @@ fn connect_type_id<'eng: 'cfg, 'cfg>(
 }
 
 fn connect_call_path_decl<'eng: 'cfg, 'cfg>(
-    engines: Engines<'eng>,
+    engines: &'eng Engines,
     call_path_decl: &ty::TyDecl,
     graph: &mut ControlFlowGraph<'cfg>,
     leaves: &[NodeIndex],

@@ -17,7 +17,7 @@ impl ty::TyFunctionParameter {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let type_engine = ctx.type_engine;
+        let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
         let FunctionParameter {
@@ -78,7 +78,7 @@ impl ty::TyFunctionParameter {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let type_engine = ctx.type_engine;
+        let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
         let FunctionParameter {

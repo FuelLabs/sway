@@ -53,7 +53,7 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let decl_engine = ctx.decl_engine;
+        let decl_engine = ctx.engines.de();
 
         let call_path = CallPath {
             prefixes: vec![
@@ -113,7 +113,7 @@ impl ty::TyExpression {
     }
 
     pub(crate) fn type_check(mut ctx: TypeCheckContext, expr: Expression) -> CompileResult<Self> {
-        let type_engine = ctx.type_engine;
+        let type_engine = ctx.engines.te();
         let engines = ctx.engines();
         let expr_span = expr.span();
         let span = expr_span.clone();
@@ -381,7 +381,7 @@ impl ty::TyExpression {
     }
 
     fn type_check_literal(
-        engines: Engines<'_>,
+        engines: &Engines,
         lit: Literal,
         span: Span,
     ) -> CompileResult<ty::TyExpression> {
@@ -413,7 +413,7 @@ impl ty::TyExpression {
         let warnings = vec![];
         let mut errors = vec![];
 
-        let decl_engine = ctx.decl_engine;
+        let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
         let exp = match ctx.namespace.resolve_symbol(&name).value {
@@ -536,7 +536,7 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let type_engine = ctx.type_engine;
+        let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
         let (typed_block, block_return_type) = check!(
@@ -576,7 +576,7 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let type_engine = ctx.type_engine;
+        let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
         let condition = {
@@ -633,7 +633,7 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let type_engine = ctx.type_engine;
+        let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
         // type check the value
@@ -729,7 +729,7 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let type_engine = ctx.type_engine;
+        let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
         // Various checks that we can catch early to check that the assembly is valid. For now,
@@ -805,7 +805,7 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let type_engine = ctx.type_engine;
+        let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
         let ctx = ctx
@@ -834,7 +834,7 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let type_engine = ctx.type_engine;
+        let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
         let field_type_opt = match type_engine.get(ctx.type_annotation()) {
@@ -882,7 +882,8 @@ impl ty::TyExpression {
                 fields: typed_fields,
             },
             return_type: ctx
-                .type_engine
+                .engines
+                .te()
                 .insert(engines, TypeInfo::Tuple(typed_field_types)),
             span,
         };
@@ -900,9 +901,8 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
-        let query_engine = ctx.query_engine;
+        let type_engine = ctx.engines.te();
+        let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
         if !ctx.namespace.has_storage_declared() {
@@ -919,11 +919,8 @@ impl ty::TyExpression {
 
         // Do all namespace checking here!
         let (storage_access, mut access_type) = check!(
-            ctx.namespace.apply_storage_load(
-                Engines::new(type_engine, decl_engine, query_engine),
-                checkee,
-                &storage_fields,
-            ),
+            ctx.namespace
+                .apply_storage_load(ctx.engines, checkee, &storage_fields,),
             return err(warnings, errors),
             warnings,
             errors
@@ -1008,7 +1005,7 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let type_engine = ctx.type_engine;
+        let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
         let ctx = ctx
@@ -1045,7 +1042,7 @@ impl ty::TyExpression {
         args: Vec<Expression>,
         qualified_path_root: Option<QualifiedPathRootTypes>,
     ) -> CompileResult<ty::TyExpression> {
-        let decl_engine = ctx.decl_engine;
+        let decl_engine = ctx.engines.de();
 
         if let Some(QualifiedPathRootTypes { ty, as_trait, .. }) = qualified_path_root {
             if !prefixes.is_empty() || before.is_some() {
@@ -1428,8 +1425,8 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
+        let type_engine = ctx.engines.te();
+        let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
         // TODO use lib-std's Address type instead of b256
@@ -1588,7 +1585,7 @@ impl ty::TyExpression {
         contents: Vec<Expression>,
         span: Span,
     ) -> CompileResult<Self> {
-        let type_engine = ctx.type_engine;
+        let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
         if contents.is_empty() {
@@ -1689,7 +1686,7 @@ impl ty::TyExpression {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
-        let type_engine = ctx.type_engine;
+        let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
         let prefix_te = {
@@ -1791,7 +1788,7 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let type_engine = ctx.type_engine;
+        let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
         let typed_condition = {
@@ -1839,7 +1836,7 @@ impl ty::TyExpression {
         let mut errors = vec![];
         let mut warnings = vec![];
 
-        let type_engine = ctx.type_engine;
+        let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
         let mut ctx = ctx
@@ -1957,7 +1954,7 @@ impl ty::TyExpression {
     ) -> CompileResult<ty::TyExpression> {
         let mut errors = vec![];
 
-        let type_engine = ctx.type_engine;
+        let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
         // Parse and resolve a Numeric(span) based on new_type.
@@ -2046,11 +2043,11 @@ impl ty::TyExpression {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{decl_engine::DeclEngine, query_engine::QueryEngine, Engines};
+    use crate::Engines;
     use sway_error::type_error::TypeError;
 
     fn do_type_check(
-        engines: Engines<'_>,
+        engines: &Engines,
         expr: Expression,
         type_annotation: TypeId,
     ) -> CompileResult<ty::TyExpression> {
@@ -2061,21 +2058,18 @@ mod tests {
     }
 
     fn do_type_check_for_boolx2(expr: Expression) -> CompileResult<ty::TyExpression> {
-        let type_engine = TypeEngine::default();
-        let decl_engine = DeclEngine::default();
-        let query_engine = QueryEngine::default();
-        let engines = Engines::new(&type_engine, &decl_engine, &query_engine);
+        let engines = Engines::default();
         do_type_check(
-            engines,
+            &engines,
             expr,
-            type_engine.insert(
-                engines,
+            engines.te().insert(
+                &engines,
                 TypeInfo::Array(
                     TypeArgument {
-                        type_id: type_engine.insert(engines, TypeInfo::Boolean),
+                        type_id: engines.te().insert(&engines, TypeInfo::Boolean),
                         span: Span::dummy(),
                         call_path_tree: None,
-                        initial_type_id: type_engine.insert(engines, TypeInfo::Boolean),
+                        initial_type_id: engines.te().insert(&engines, TypeInfo::Boolean),
                     },
                     Length::new(2, Span::dummy()),
                 ),
@@ -2197,21 +2191,18 @@ mod tests {
             span: Span::dummy(),
         };
 
-        let type_engine = TypeEngine::default();
-        let decl_engine = DeclEngine::default();
-        let query_engine = QueryEngine::default();
-        let engines = Engines::new(&type_engine, &decl_engine, &query_engine);
+        let engines = Engines::default();
         let comp_res = do_type_check(
-            engines,
+            &engines,
             expr,
-            type_engine.insert(
-                engines,
+            engines.te().insert(
+                &engines,
                 TypeInfo::Array(
                     TypeArgument {
-                        type_id: type_engine.insert(engines, TypeInfo::Boolean),
+                        type_id: engines.te().insert(&engines, TypeInfo::Boolean),
                         span: Span::dummy(),
                         call_path_tree: None,
-                        initial_type_id: type_engine.insert(engines, TypeInfo::Boolean),
+                        initial_type_id: engines.te().insert(&engines, TypeInfo::Boolean),
                     },
                     Length::new(0, Span::dummy()),
                 ),

@@ -18,7 +18,7 @@ pub(crate) fn insert_supertraits_into_namespace(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let decl_engine = ctx.decl_engine;
+    let decl_engine = ctx.engines.de();
 
     for supertrait in supertraits.iter() {
         // Right now we don't have the ability to support defining a supertrait

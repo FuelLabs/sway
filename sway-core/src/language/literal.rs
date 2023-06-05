@@ -100,7 +100,7 @@ impl fmt::Display for Literal {
 impl Literal {
     #[allow(clippy::wildcard_in_or_patterns)]
     pub(crate) fn handle_parse_int_error(
-        engines: Engines<'_>,
+        engines: &Engines,
         e: ParseIntError,
         ty: TypeInfo,
         span: sway_types::Span,
