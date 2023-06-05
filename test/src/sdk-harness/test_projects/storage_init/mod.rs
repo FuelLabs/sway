@@ -7,15 +7,17 @@ abigen!(Contract(
 
 async fn test_storage_init_instance() -> TestStorageInitContract<WalletUnlocked> {
     let wallet = launch_provider_and_get_wallet().await;
-    let id = Contract::deploy(
+    let id = Contract::load_from(
         "test_projects/storage_init/out/debug/storage_init.bin",
-        &wallet,
-        DeployConfiguration::default().set_storage_configuration(
-            StorageConfiguration::default().set_storage_path(
-                "test_projects/storage_init/out/debug/storage_init-storage_slots.json".to_string(),
-            ),
+        LoadConfiguration::default().set_storage_configuration(
+            StorageConfiguration::load_from(
+                "test_projects/storage_init/out/debug/storage_init-storage_slots.json",
+            )
+            .unwrap(),
         ),
     )
+    .unwrap()
+    .deploy(&wallet, TxParameters::default())
     .await
     .unwrap();
 

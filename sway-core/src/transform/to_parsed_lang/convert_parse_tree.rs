@@ -46,7 +46,7 @@ use std::{
 pub fn convert_parse_tree(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     module: Module,
 ) -> Result<(TreeType, ParseTree), ErrorEmitted> {
     let tree_type = convert_module_kind(&module.kind);
@@ -68,7 +68,7 @@ pub fn convert_module_kind(kind: &ModuleKind) -> TreeType {
 pub fn module_to_sway_parse_tree(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     module: Module,
 ) -> Result<ParseTree, ErrorEmitted> {
     let span = module.span();
@@ -98,7 +98,7 @@ fn ast_node_is_test_fn(node: &AstNode) -> bool {
 fn item_to_ast_nodes(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     item: Item,
     is_root: bool,
     prev_item: Option<Annotated<ItemKind>>,
@@ -322,7 +322,7 @@ fn emit_all(handler: &Handler, errors: Vec<ConvertParseTreeError>) -> Option<Err
 fn item_struct_to_struct_declaration(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     item_struct: ItemStruct,
     attributes: AttributesMap,
 ) -> Result<StructDeclaration, ErrorEmitted> {
@@ -390,7 +390,7 @@ fn item_struct_to_struct_declaration(
 fn item_enum_to_enum_declaration(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     item_enum: ItemEnum,
     attributes: AttributesMap,
 ) -> Result<EnumDeclaration, ErrorEmitted> {
@@ -459,7 +459,7 @@ fn item_enum_to_enum_declaration(
 fn item_fn_to_function_declaration(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     item_fn: ItemFn,
     attributes: AttributesMap,
     parent_generic_params_opt: Option<GenericParams>,
@@ -468,9 +468,7 @@ fn item_fn_to_function_declaration(
     let return_type = match item_fn.fn_signature.return_type_opt {
         Some((_right_arrow, ty)) => ty_to_type_argument(context, handler, engines, ty)?,
         None => {
-            let type_id = engines
-                .te()
-                .insert(engines.de(), TypeInfo::Tuple(Vec::new()));
+            let type_id = engines.te().insert(engines, TypeInfo::Tuple(Vec::new()));
             TypeArgument {
                 type_id,
                 initial_type_id: type_id,
@@ -549,7 +547,7 @@ fn get_attributed_purity(
 fn where_clause_to_trait_constraints(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     where_clause: WhereClause,
 ) -> Result<Vec<(Ident, Vec<TraitConstraint>)>, ErrorEmitted> {
     where_clause
@@ -567,7 +565,7 @@ fn where_clause_to_trait_constraints(
 fn item_trait_to_trait_declaration(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     item_trait: ItemTrait,
     attributes: AttributesMap,
 ) -> Result<TraitDeclaration, ErrorEmitted> {
@@ -643,7 +641,7 @@ fn item_trait_to_trait_declaration(
 fn item_impl_to_declaration(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     item_impl: ItemImpl,
 ) -> Result<Declaration, ErrorEmitted> {
     let block_span = item_impl.span();
@@ -717,7 +715,7 @@ fn item_impl_to_declaration(
 fn path_type_to_call_path_and_type_arguments(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     path_type: PathType,
 ) -> Result<(CallPath, Vec<TypeArgument>), ErrorEmitted> {
     let root_opt = path_type.root_opt.clone();
@@ -742,7 +740,7 @@ fn path_type_to_call_path_and_type_arguments(
 fn item_abi_to_abi_declaration(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     item_abi: ItemAbi,
     attributes: AttributesMap,
 ) -> Result<AbiDeclaration, ErrorEmitted> {
@@ -829,7 +827,7 @@ fn item_abi_to_abi_declaration(
 pub(crate) fn item_const_to_constant_declaration(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     item_const: ItemConst,
     attributes: AttributesMap,
     require_expression: bool,
@@ -859,7 +857,7 @@ pub(crate) fn item_const_to_constant_declaration(
                     return Err(errors);
                 }
             }
-            engines.te().insert(engines.de(), TypeInfo::Unknown).into()
+            engines.te().insert(engines, TypeInfo::Unknown).into()
         }
     };
 
@@ -877,7 +875,7 @@ pub(crate) fn item_const_to_constant_declaration(
 fn item_storage_to_storage_declaration(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     item_storage: ItemStorage,
     attributes: AttributesMap,
 ) -> Result<StorageDeclaration, ErrorEmitted> {
@@ -930,7 +928,7 @@ fn item_storage_to_storage_declaration(
 fn item_configurable_to_constant_declarations(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     item_configurable: ItemConfigurable,
     _attributes: AttributesMap,
 ) -> Result<Vec<ConstantDeclaration>, ErrorEmitted> {
@@ -986,7 +984,7 @@ fn item_configurable_to_constant_declarations(
 fn item_type_alias_to_type_alias_declaration(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     item_type_alias: ItemTypeAlias,
     attributes: AttributesMap,
 ) -> Result<TypeAliasDeclaration, ErrorEmitted> {
@@ -1003,7 +1001,7 @@ fn item_type_alias_to_type_alias_declaration(
 fn type_field_to_struct_field(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     type_field: TypeField,
     attributes: AttributesMap,
 ) -> Result<StructField, ErrorEmitted> {
@@ -1020,7 +1018,7 @@ fn type_field_to_struct_field(
 fn generic_params_opt_to_type_parameters(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     generic_params_opt: Option<GenericParams>,
     where_clause_opt: Option<WhereClause>,
 ) -> Result<Vec<TypeParameter>, ErrorEmitted> {
@@ -1037,13 +1035,12 @@ fn generic_params_opt_to_type_parameters(
 fn generic_params_opt_to_type_parameters_with_parent(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     generic_params_opt: Option<GenericParams>,
     parent_generic_params_opt: Option<GenericParams>,
     where_clause_opt: Option<WhereClause>,
 ) -> Result<Vec<TypeParameter>, ErrorEmitted> {
     let type_engine = engines.te();
-    let decl_engine = engines.de();
 
     let trait_constraints = match where_clause_opt {
         Some(where_clause) => where_clause
@@ -1062,7 +1059,7 @@ fn generic_params_opt_to_type_parameters_with_parent(
             .into_iter()
             .map(|ident| {
                 let custom_type = type_engine.insert(
-                    decl_engine,
+                    engines,
                     TypeInfo::Custom {
                         call_path: ident.clone().into(),
                         type_arguments: None,
@@ -1130,7 +1127,7 @@ fn pub_token_opt_to_visibility(pub_token_opt: Option<PubToken>) -> Visibility {
 fn type_field_to_enum_variant(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     type_field: TypeField,
     attributes: AttributesMap,
     tag: usize,
@@ -1150,7 +1147,7 @@ fn type_field_to_enum_variant(
 fn braced_code_block_contents_to_code_block(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     braced_code_block_contents: Braces<CodeBlockContents>,
 ) -> Result<CodeBlock, ErrorEmitted> {
     let whole_block_span = braced_code_block_contents.span();
@@ -1176,7 +1173,7 @@ fn braced_code_block_contents_to_code_block(
 fn fn_args_to_function_parameters(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     fn_args: FnArgs,
 ) -> Result<Vec<FunctionParameter>, ErrorEmitted> {
     let function_parameters = match fn_args {
@@ -1196,7 +1193,7 @@ fn fn_args_to_function_parameters(
                 (Some(reference), None) => reference.span(),
                 (Some(reference), Some(mutable)) => Span::join(reference.span(), mutable.span()),
             };
-            let type_id = engines.te().insert(engines.de(), TypeInfo::SelfType);
+            let type_id = engines.te().insert(engines, TypeInfo::SelfType);
             let mut function_parameters = vec![FunctionParameter {
                 name: Ident::new(self_token.span()),
                 is_reference: ref_self.is_some(),
@@ -1255,7 +1252,7 @@ pub(crate) fn type_name_to_type_info_opt(name: &Ident) -> Option<TypeInfo> {
 fn ty_to_type_info(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     ty: Ty,
 ) -> Result<TypeInfo, ErrorEmitted> {
     let type_info = match ty {
@@ -1352,15 +1349,14 @@ fn ty_to_call_path_tree(
 fn ty_to_type_argument(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     ty: Ty,
 ) -> Result<TypeArgument, ErrorEmitted> {
     let type_engine = engines.te();
-    let decl_engine = engines.de();
     let span = ty.span();
     let call_path_tree = ty_to_call_path_tree(context, handler, ty.clone())?;
     let initial_type_id =
-        type_engine.insert(decl_engine, ty_to_type_info(context, handler, engines, ty)?);
+        type_engine.insert(engines, ty_to_type_info(context, handler, engines, ty)?);
 
     let type_argument = TypeArgument {
         type_id: initial_type_id,
@@ -1374,7 +1370,7 @@ fn ty_to_type_argument(
 fn fn_signature_to_trait_fn(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     fn_signature: FnSignature,
     attributes: AttributesMap,
 ) -> Result<TraitFn, ErrorEmitted> {
@@ -1404,7 +1400,7 @@ fn fn_signature_to_trait_fn(
 fn traits_to_trait_constraints(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     traits: Traits,
 ) -> Result<Vec<TraitConstraint>, ErrorEmitted> {
     let mut parsed_traits = vec![path_type_to_call_path_and_type_arguments(
@@ -1476,7 +1472,7 @@ fn path_type_to_call_path(
 fn expr_to_ast_node(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     expr: Expr,
     is_statement: bool,
 ) -> Result<AstNode, ErrorEmitted> {
@@ -1501,7 +1497,7 @@ fn expr_to_ast_node(
 fn abi_cast_args_to_abi_cast_expression(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     args: Parens<AbiCastArgs>,
 ) -> Result<Box<AbiCastExpression>, ErrorEmitted> {
     let AbiCastArgs { name, address, .. } = args.into_inner();
@@ -1513,7 +1509,7 @@ fn abi_cast_args_to_abi_cast_expression(
 fn struct_path_and_fields_to_struct_expression(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     path: PathExpr,
     fields: Braces<Punctuated<ExprStructField, CommaToken>>,
 ) -> Result<Box<StructExpression>, ErrorEmitted> {
@@ -1541,7 +1537,7 @@ fn struct_path_and_fields_to_struct_expression(
 fn method_call_fields_to_method_application_expression(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     target: Box<Expr>,
     path_seg: PathExprSegment,
     contract_args_opt: Option<Braces<Punctuated<ExprStructField, CommaToken>>>,
@@ -1589,7 +1585,7 @@ fn method_call_fields_to_method_application_expression(
 fn expr_func_app_to_expression_kind(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     func: Box<Expr>,
     args: Parens<Punctuated<Expr, CommaToken>>,
 ) -> Result<ExpressionKind, ErrorEmitted> {
@@ -1614,7 +1610,8 @@ fn expr_func_app_to_expression_kind(
         }
     };
 
-    let is_absolute = path_root_opt_to_bool(context, handler, root_opt)?;
+    let (is_absolute, qualified_path_root) =
+        path_root_opt_to_bool_and_qualified_path_root(context, handler, engines, root_opt)?;
 
     let convert_ty_args = |context: &mut Context, generics_opt: Option<(_, GenericArgs)>| {
         Ok(match generics_opt {
@@ -1699,6 +1696,7 @@ fn expr_func_app_to_expression_kind(
                 AmbiguousPathExpression {
                     args: arguments,
                     call_path_binding,
+                    qualified_path_root,
                 },
             )));
         }
@@ -1730,6 +1728,7 @@ fn expr_func_app_to_expression_kind(
         AmbiguousPathExpression {
             args: arguments,
             call_path_binding,
+            qualified_path_root,
         },
     )))
 }
@@ -1737,7 +1736,7 @@ fn expr_func_app_to_expression_kind(
 fn expr_to_expression(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     expr: Expr,
 ) -> Result<Expression, ErrorEmitted> {
     let span = expr.span();
@@ -1880,7 +1879,7 @@ fn expr_to_expression(
                                 VariableDeclaration {
                                     type_ascription: {
                                         let type_id =
-                                            engines.te().insert(engines.de(), TypeInfo::Unknown);
+                                            engines.te().insert(engines, TypeInfo::Unknown);
                                         TypeArgument {
                                             type_id,
                                             initial_type_id: type_id,
@@ -2283,7 +2282,7 @@ fn op_call(
 fn storage_field_to_storage_field(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     storage_field: sway_ast::StorageField,
     attributes: AttributesMap,
 ) -> Result<StorageField, ErrorEmitted> {
@@ -2301,7 +2300,7 @@ fn storage_field_to_storage_field(
 fn configurable_field_to_constant_declaration(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     configurable_field: sway_ast::ConfigurableField,
     attributes: AttributesMap,
 ) -> Result<ConstantDeclaration, ErrorEmitted> {
@@ -2326,7 +2325,7 @@ fn configurable_field_to_constant_declaration(
 fn statement_to_ast_nodes(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     statement: Statement,
 ) -> Result<Vec<AstNode>, ErrorEmitted> {
     let ast_nodes = match statement {
@@ -2356,7 +2355,7 @@ fn statement_to_ast_nodes(
 fn fn_arg_to_function_parameter(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     fn_arg: FnArg,
 ) -> Result<FunctionParameter, ErrorEmitted> {
     let pat_span = fn_arg.pattern.span();
@@ -2519,7 +2518,7 @@ fn path_type_segment_to_ident(
 fn path_expr_segment_to_ident_or_type_argument(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     PathExprSegment { name, generics_opt }: PathExprSegment,
 ) -> Result<(Ident, Vec<TypeArgument>), ErrorEmitted> {
     let type_args = match generics_opt {
@@ -2546,7 +2545,7 @@ fn path_expr_segment_to_ident(
 fn path_expr_to_expression(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     path_expr: PathExpr,
 ) -> Result<Expression, ErrorEmitted> {
     let span = path_expr.span();
@@ -2578,7 +2577,7 @@ fn path_expr_to_expression(
 fn braced_code_block_contents_to_expression(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     braced_code_block_contents: Braces<CodeBlockContents>,
 ) -> Result<Expression, ErrorEmitted> {
     let span = braced_code_block_contents.span();
@@ -2597,7 +2596,7 @@ fn braced_code_block_contents_to_expression(
 fn if_expr_to_expression(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     if_expr: IfExpr,
 ) -> Result<Expression, ErrorEmitted> {
     let span = if_expr.span();
@@ -2709,6 +2708,42 @@ fn path_root_opt_to_bool(
             };
             return Err(handler.emit_err(error.into()));
         }
+    })
+}
+
+fn path_root_opt_to_bool_and_qualified_path_root(
+    context: &mut Context,
+    handler: &Handler,
+    engines: &Engines,
+    root_opt: Option<(Option<AngleBrackets<QualifiedPathRoot>>, DoubleColonToken)>,
+) -> Result<(bool, Option<QualifiedPathRootTypes>), ErrorEmitted> {
+    Ok(match root_opt {
+        None => (false, None),
+        Some((None, _)) => (true, None),
+        Some((
+            Some(AngleBrackets {
+                open_angle_bracket_token: _,
+                inner: QualifiedPathRoot { ty, as_trait },
+                close_angle_bracket_token: _,
+            }),
+            _,
+        )) => (
+            false,
+            if let Some((_, path_type)) = as_trait {
+                Some(QualifiedPathRootTypes {
+                    ty: ty_to_type_argument(context, handler, engines, *ty)?,
+                    as_trait: path_type_to_type_info(
+                        context,
+                        handler,
+                        engines,
+                        *path_type.clone(),
+                    )?,
+                    as_trait_span: path_type.span(),
+                })
+            } else {
+                None
+            },
+        ),
     })
 }
 
@@ -2843,7 +2878,7 @@ fn literal_to_literal(
 fn path_expr_to_call_path_binding(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     path_expr: PathExpr,
 ) -> Result<TypeBinding<CallPath>, ErrorEmitted> {
     let PathExpr {
@@ -2957,7 +2992,7 @@ fn path_expr_to_call_path(
 fn expr_struct_field_to_struct_expression_field(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     expr_struct_field: ExprStructField,
 ) -> Result<StructExpressionField, ErrorEmitted> {
     let span = expr_struct_field.span();
@@ -2978,7 +3013,7 @@ fn expr_struct_field_to_struct_expression_field(
 fn expr_tuple_descriptor_to_expressions(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     expr_tuple_descriptor: ExprTupleDescriptor,
 ) -> Result<Vec<Expression>, ErrorEmitted> {
     let expressions = match expr_tuple_descriptor {
@@ -2997,7 +3032,7 @@ fn expr_tuple_descriptor_to_expressions(
 fn asm_block_to_asm_expression(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     asm_block: AsmBlock,
 ) -> Result<Box<AsmExpression>, ErrorEmitted> {
     let whole_block_span = asm_block.span();
@@ -3050,7 +3085,7 @@ fn asm_block_to_asm_expression(
 fn match_branch_to_match_branch(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     match_branch: sway_ast::MatchBranch,
 ) -> Result<MatchBranch, ErrorEmitted> {
     let span = match_branch.span();
@@ -3077,13 +3112,13 @@ fn match_branch_to_match_branch(
 fn statement_let_to_ast_nodes(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     statement_let: StatementLet,
 ) -> Result<Vec<AstNode>, ErrorEmitted> {
     fn unfold(
         context: &mut Context,
         handler: &Handler,
-        engines: Engines<'_>,
+        engines: &Engines,
         pattern: Pattern,
         ty_opt: Option<Ty>,
         expression: Expression,
@@ -3108,7 +3143,7 @@ fn statement_let_to_ast_nodes(
                 let type_ascription = match ty_opt {
                     Some(ty) => ty_to_type_argument(context, handler, engines, ty)?,
                     None => {
-                        let type_id = engines.te().insert(engines.de(), TypeInfo::Unknown);
+                        let type_id = engines.te().insert(engines, TypeInfo::Unknown);
                         TypeArgument {
                             type_id,
                             initial_type_id: type_id,
@@ -3160,7 +3195,7 @@ fn statement_let_to_ast_nodes(
                 let type_ascription = match &ty_opt {
                     Some(ty) => ty_to_type_argument(context, handler, engines, ty.clone())?,
                     None => {
-                        let type_id = engines.te().insert(engines.de(), TypeInfo::Unknown);
+                        let type_id = engines.te().insert(engines, TypeInfo::Unknown);
                         TypeArgument {
                             type_id,
                             initial_type_id: type_id,
@@ -3254,7 +3289,7 @@ fn statement_let_to_ast_nodes(
                 let type_ascription = match &ty_opt {
                     Some(ty) => ty_to_type_argument(context, handler, engines, ty.clone())?,
                     None => {
-                        let type_id = engines.te().insert(engines.de(), TypeInfo::Unknown);
+                        let type_id = engines.te().insert(engines, TypeInfo::Unknown);
                         TypeArgument {
                             type_id,
                             initial_type_id: type_id,
@@ -3282,7 +3317,7 @@ fn statement_let_to_ast_nodes(
                 // is properly sized to the pattern
                 let placeholders_type_ascription = {
                     let type_id = engines.te().insert(
-                        engines.de(),
+                        engines,
                         TypeInfo::Tuple(
                             pat_tuple
                                 .clone()
@@ -3290,7 +3325,7 @@ fn statement_let_to_ast_nodes(
                                 .into_iter()
                                 .map(|_| {
                                     let initial_type_id =
-                                        engines.te().insert(engines.de(), TypeInfo::Unknown);
+                                        engines.te().insert(engines, TypeInfo::Unknown);
                                     let dummy_type_param = TypeParameter {
                                         type_id: initial_type_id,
                                         initial_type_id,
@@ -3302,10 +3337,9 @@ fn statement_let_to_ast_nodes(
                                         trait_constraints_span: Span::dummy(),
                                         is_from_parent: false,
                                     };
-                                    let initial_type_id = engines.te().insert(
-                                        engines.de(),
-                                        TypeInfo::Placeholder(dummy_type_param),
-                                    );
+                                    let initial_type_id = engines
+                                        .te()
+                                        .insert(engines, TypeInfo::Placeholder(dummy_type_param));
                                     TypeArgument {
                                         type_id: initial_type_id,
                                         initial_type_id,
@@ -3409,7 +3443,7 @@ fn submodule_to_include_statement(dependency: &Submodule) -> IncludeStatement {
 fn generic_args_to_type_parameters(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     generic_args: GenericArgs,
 ) -> Result<Vec<TypeParameter>, ErrorEmitted> {
     generic_args
@@ -3423,7 +3457,7 @@ fn generic_args_to_type_parameters(
 fn asm_register_declaration_to_asm_register_declaration(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     asm_register_declaration: sway_ast::AsmRegisterDeclaration,
 ) -> Result<AsmRegisterDeclaration, ErrorEmitted> {
     Ok(AsmRegisterDeclaration {
@@ -3576,16 +3610,15 @@ fn pattern_to_scrutinee(
 fn ty_to_type_parameter(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     ty: Ty,
 ) -> Result<TypeParameter, ErrorEmitted> {
     let type_engine = engines.te();
-    let decl_engine = engines.de();
 
     let name_ident = match ty {
         Ty::Path(path_type) => path_type_to_ident(context, handler, path_type)?,
         Ty::Infer { underscore_token } => {
-            let unknown_type = type_engine.insert(decl_engine, TypeInfo::Unknown);
+            let unknown_type = type_engine.insert(engines, TypeInfo::Unknown);
             return Ok(TypeParameter {
                 type_id: unknown_type,
                 initial_type_id: unknown_type,
@@ -3602,7 +3635,7 @@ fn ty_to_type_parameter(
         Ty::Slice { .. } => panic!("__slice types are not allowed in this position"),
     };
     let custom_type = type_engine.insert(
-        decl_engine,
+        engines,
         TypeInfo::Custom {
             call_path: name_ident.clone().into(),
             type_arguments: None,
@@ -3683,7 +3716,7 @@ fn pattern_struct_field_to_struct_scrutinee_field(
 fn assignable_to_expression(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     assignable: Assignable,
 ) -> Result<Expression, ErrorEmitted> {
     let span = assignable.span();
@@ -3776,7 +3809,7 @@ fn assignable_to_expression(
 fn assignable_to_reassignment_target(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     assignable: Assignable,
 ) -> Result<ReassignmentTarget, ErrorEmitted> {
     let mut idents = Vec::new();
@@ -3799,7 +3832,7 @@ fn assignable_to_reassignment_target(
 fn generic_args_to_type_arguments(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     generic_args: GenericArgs,
 ) -> Result<Vec<TypeArgument>, ErrorEmitted> {
     generic_args
@@ -3813,7 +3846,7 @@ fn generic_args_to_type_arguments(
 fn ty_tuple_descriptor_to_type_arguments(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     ty_tuple_descriptor: TyTupleDescriptor,
 ) -> Result<Vec<TypeArgument>, ErrorEmitted> {
     let type_arguments = match ty_tuple_descriptor {
@@ -3832,7 +3865,7 @@ fn ty_tuple_descriptor_to_type_arguments(
 fn path_type_to_type_info(
     context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     path_type: PathType,
 ) -> Result<TypeInfo, ErrorEmitted> {
     let span = path_type.span();
@@ -4045,7 +4078,7 @@ fn item_attrs_to_map(
 fn error_if_self_param_is_not_allowed(
     _context: &mut Context,
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     parameters: &[FunctionParameter],
     fn_kind: &str,
 ) -> Result<(), ErrorEmitted> {

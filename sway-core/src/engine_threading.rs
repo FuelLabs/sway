@@ -4,44 +4,42 @@ use std::{
     hash::{BuildHasher, Hash, Hasher},
 };
 
-use crate::{decl_engine::DeclEngine, type_system::TypeEngine};
+use crate::{decl_engine::DeclEngine, query_engine::QueryEngine, type_system::TypeEngine};
 
-#[derive(Debug, Clone, Copy)]
-pub struct Engines<'a> {
-    type_engine: &'a TypeEngine,
-    decl_engine: &'a DeclEngine,
+#[derive(Debug, Default)]
+pub struct Engines {
+    type_engine: TypeEngine,
+    decl_engine: DeclEngine,
+    query_engine: QueryEngine,
 }
 
-impl<'a> Engines<'a> {
-    pub fn new(type_engine: &'a TypeEngine, decl_engine: &'a DeclEngine) -> Engines<'a> {
+impl Engines {
+    pub fn new(
+        type_engine: TypeEngine,
+        decl_engine: DeclEngine,
+        query_engine: QueryEngine,
+    ) -> Engines {
         Engines {
             type_engine,
             decl_engine,
+            query_engine,
         }
     }
 
     pub fn te(&self) -> &TypeEngine {
-        self.type_engine
+        &self.type_engine
     }
 
     pub fn de(&self) -> &DeclEngine {
-        self.decl_engine
+        &self.decl_engine
     }
 
-    pub(crate) fn unwrap(self) -> (&'a TypeEngine, &'a DeclEngine) {
-        (self.type_engine, self.decl_engine)
+    pub fn qe(&self) -> &QueryEngine {
+        &self.query_engine
     }
 
     /// Helps out some `thing: T` by adding `self` as context.
     pub fn help_out<T>(&self, thing: T) -> WithEngines<'_, T> {
-        WithEngines {
-            thing,
-            engines: *self,
-        }
-    }
-
-    /// Helps out some `thing: T` by adding `self` as context.
-    pub fn with_thing<T>(self, thing: T) -> WithEngines<'a, T> {
         WithEngines {
             thing,
             engines: self,
@@ -52,11 +50,11 @@ impl<'a> Engines<'a> {
 #[derive(Clone, Copy)]
 pub struct WithEngines<'a, T> {
     pub thing: T,
-    pub engines: Engines<'a>,
+    pub engines: &'a Engines,
 }
 
 impl<'a, T> WithEngines<'a, T> {
-    pub fn new(thing: T, engines: Engines<'a>) -> Self {
+    pub fn new(thing: T, engines: &'a Engines) -> Self {
         WithEngines { thing, engines }
     }
 }
@@ -108,37 +106,37 @@ where
 }
 
 pub(crate) trait DisplayWithEngines {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result;
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result;
 }
 
 impl<T: DisplayWithEngines> DisplayWithEngines for &T {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         (*self).fmt(f, engines)
     }
 }
 
 pub(crate) trait DebugWithEngines {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result;
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result;
 }
 
 impl<T: DebugWithEngines> DebugWithEngines for &T {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         (*self).fmt(f, engines)
     }
 }
 
 pub trait HashWithEngines {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>);
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines);
 }
 
 impl<T: HashWithEngines + ?Sized> HashWithEngines for &T {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         (*self).hash(state, engines)
     }
 }
 
 impl<T: HashWithEngines> HashWithEngines for Option<T> {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         match self {
             None => state.write_u8(0),
             Some(x) => x.hash(state, engines),
@@ -147,7 +145,7 @@ impl<T: HashWithEngines> HashWithEngines for Option<T> {
 }
 
 impl<T: HashWithEngines> HashWithEngines for [T] {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         for x in self {
             x.hash(state, engines)
         }
@@ -157,27 +155,27 @@ impl<T: HashWithEngines> HashWithEngines for [T] {
 pub trait EqWithEngines: PartialEqWithEngines {}
 
 pub trait PartialEqWithEngines {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool;
+    fn eq(&self, other: &Self, engines: &Engines) -> bool;
 }
 
 pub trait OrdWithEngines {
-    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering;
+    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering;
 }
 
 impl<T: EqWithEngines + ?Sized> EqWithEngines for &T {}
 impl<T: PartialEqWithEngines + ?Sized> PartialEqWithEngines for &T {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         (*self).eq(*other, engines)
     }
 }
 impl<T: OrdWithEngines + ?Sized> OrdWithEngines for &T {
-    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
+    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
         (*self).cmp(*other, engines)
     }
 }
 
 impl<T: OrdWithEngines> OrdWithEngines for Option<T> {
-    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
+    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
         match (self, other) {
             (Some(x), Some(y)) => x.cmp(y, engines),
             (Some(_), None) => Ordering::Less,
@@ -189,7 +187,7 @@ impl<T: OrdWithEngines> OrdWithEngines for Option<T> {
 
 impl<T: EqWithEngines> EqWithEngines for Option<T> {}
 impl<T: PartialEqWithEngines> PartialEqWithEngines for Option<T> {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         match (self, other) {
             (None, None) => true,
             (Some(x), Some(y)) => x.eq(y, engines),
@@ -200,12 +198,12 @@ impl<T: PartialEqWithEngines> PartialEqWithEngines for Option<T> {
 
 impl<T: EqWithEngines> EqWithEngines for [T] {}
 impl<T: PartialEqWithEngines> PartialEqWithEngines for [T] {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.len() == other.len() && self.iter().zip(other.iter()).all(|(x, y)| x.eq(y, engines))
     }
 }
 impl<T: OrdWithEngines> OrdWithEngines for [T] {
-    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
+    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
         self.iter()
             .zip(other.iter())
             .map(|(x, y)| x.cmp(y, engines))
@@ -216,7 +214,7 @@ impl<T: OrdWithEngines> OrdWithEngines for [T] {
 
 pub(crate) fn make_hasher<'a: 'b, 'b, K>(
     hash_builder: &'a impl BuildHasher,
-    engines: Engines<'b>,
+    engines: &'b Engines,
 ) -> impl Fn(&K) -> u64 + 'b
 where
     K: HashWithEngines + ?Sized,

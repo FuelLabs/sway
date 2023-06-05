@@ -25,7 +25,7 @@ pub struct TyProgram {
 impl TyProgram {
     /// Validate the root module given the expected program kind.
     pub fn validate_root(
-        engines: Engines<'_>,
+        engines: &Engines,
         root: &TyModule,
         kind: parsed::TreeType,
         package_name: &str,
@@ -176,9 +176,11 @@ impl TyProgram {
                             if !field
                                 .type_argument
                                 .type_id
-                                .extract_any_including_self(engines, &|type_info| {
-                                    matches!(type_info, TypeInfo::RawUntypedPtr)
-                                })
+                                .extract_any_including_self(
+                                    engines,
+                                    &|type_info| matches!(type_info, TypeInfo::RawUntypedPtr),
+                                    vec![],
+                                )
                                 .is_empty()
                             {
                                 errors.push(CompileError::TypeNotAllowedInContractStorage {
@@ -301,7 +303,7 @@ impl CollectTypesMetadata for TyProgram {
     ) -> CompileResult<Vec<TypeMetadata>> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let decl_engine = ctx.decl_engine;
+        let decl_engine = ctx.engines.de();
         let mut metadata = vec![];
 
         // First, look into all entry points that are not unit tests.

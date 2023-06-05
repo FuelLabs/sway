@@ -19,7 +19,7 @@ pub struct TyReassignment {
 
 impl EqWithEngines for TyReassignment {}
 impl PartialEqWithEngines for TyReassignment {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         let type_engine = engines.te();
         self.lhs_base_name == other.lhs_base_name
             && type_engine
@@ -31,7 +31,7 @@ impl PartialEqWithEngines for TyReassignment {
 }
 
 impl HashWithEngines for TyReassignment {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TyReassignment {
             lhs_base_name,
             lhs_type,
@@ -47,27 +47,27 @@ impl HashWithEngines for TyReassignment {
 }
 
 impl SubstTypes for TyReassignment {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         self.rhs.subst(type_mapping, engines);
         self.lhs_type.subst(type_mapping, engines);
     }
 }
 
 impl ReplaceSelfType for TyReassignment {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         self.rhs.replace_self_type(engines, self_type);
         self.lhs_type.replace_self_type(engines, self_type);
     }
 }
 
 impl ReplaceDecls for TyReassignment {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: &Engines) {
         self.rhs.replace_decls(decl_mapping, engines);
     }
 }
 
 impl UpdateConstantExpression for TyReassignment {
-    fn update_constant_expression(&mut self, engines: Engines<'_>, implementing_type: &TyDecl) {
+    fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
         self.rhs
             .update_constant_expression(engines, implementing_type)
     }
@@ -90,7 +90,7 @@ pub enum ProjectionKind {
 
 impl EqWithEngines for ProjectionKind {}
 impl PartialEqWithEngines for ProjectionKind {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         match (self, other) {
             (
                 ProjectionKind::StructField { name: l_name },
@@ -122,7 +122,7 @@ impl PartialEqWithEngines for ProjectionKind {
 }
 
 impl HashWithEngines for ProjectionKind {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         use ProjectionKind::*;
         std::mem::discriminant(self).hash(state);
         match self {

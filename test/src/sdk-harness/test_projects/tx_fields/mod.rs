@@ -1,8 +1,10 @@
 use fuel_vm::fuel_crypto::Hasher;
+use fuel_vm::fuel_tx::{
+    field::*, Bytes32, ConsensusParameters, ContractId, Input as TxInput, TxPointer, UtxoId,
+};
 use fuels::{
     accounts::{predicate::Predicate, Account},
     prelude::*,
-    tx::{field::*, Bytes32, ConsensusParameters, ContractId, Input as TxInput, TxPointer, UtxoId},
 };
 use std::str::FromStr;
 
@@ -46,7 +48,7 @@ async fn get_contracts() -> (
         },
         wallet.address(),
         DEFAULT_COIN_AMOUNT,
-        69,
+        69.into(),
         MESSAGE_DATA.to_vec(),
     );
 
@@ -55,11 +57,12 @@ async fn get_contracts() -> (
     wallet.set_provider(provider.clone());
     deployment_wallet.set_provider(provider);
 
-    let contract_id = Contract::deploy(
+    let contract_id = Contract::load_from(
         "test_artifacts/tx_contract/out/debug/tx_contract.bin",
-        &deployment_wallet,
-        DeployConfiguration::default(),
+        LoadConfiguration::default(),
     )
+    .unwrap()
+    .deploy(&wallet, TxParameters::default())
     .await
     .unwrap();
 
@@ -70,7 +73,6 @@ async fn get_contracts() -> (
 
 async fn generate_predicate_inputs(
     amount: u64,
-    data: Vec<u8>,
     wallet: &WalletUnlocked,
 ) -> (Vec<u8>, TxInput, TxInput) {
     let predicate =
@@ -100,36 +102,27 @@ async fn generate_predicate_inputs(
         .get_coins(&predicate_root, AssetId::default())
         .await
         .unwrap()[0];
-    let predicate_coin = TxInput::CoinPredicate {
-        utxo_id: UtxoId::from(predicate_coin.utxo_id.clone()),
-        owner: Address::from(predicate_coin.owner.clone()),
-        amount: predicate_coin.amount.clone().into(),
-        asset_id: AssetId::from(predicate_coin.asset_id.clone()),
-        tx_pointer: TxPointer::default(),
-        maturity: 0,
-        predicate: predicate_code.clone(),
-        predicate_data: vec![],
-    };
+    let predicate_coin = TxInput::coin_predicate(
+        UtxoId::from(predicate_coin.utxo_id.clone()),
+        Address::from(predicate_coin.owner.clone()),
+        predicate_coin.amount.clone().into(),
+        AssetId::from(predicate_coin.asset_id.clone()),
+        TxPointer::default(),
+        0u32.into(),
+        predicate_code.clone(),
+        vec![],
+    );
     let predicate_address: Address = predicate.address().into();
     let message = &wallet.get_messages().await.unwrap()[0];
-    let message_id = TxInput::compute_message_id(
-        &message.sender.clone().into(),
-        &predicate_address,
-        message.nonce.clone(),
-        message.amount,
-        &data,
-    );
 
-    let predicate_message = TxInput::MessagePredicate {
-        message_id: message_id,
-        sender: message.sender.clone().into(),
-        recipient: predicate_address.clone().into(),
-        amount: message.amount,
-        nonce: message.nonce.clone(),
-        data: data.clone(),
-        predicate: predicate_code.clone(),
-        predicate_data: vec![],
-    };
+    let predicate_message = TxInput::message_coin_predicate(
+        message.sender.clone().into(),
+        predicate_address.clone().into(),
+        message.amount,
+        message.nonce.clone(),
+        predicate_code.clone(),
+        vec![],
+    );
 
     (predicate_code, predicate_coin, predicate_message)
 }
@@ -137,23 +130,14 @@ async fn generate_predicate_inputs(
 async fn add_message_input(tx: &mut ScriptTransaction, wallet: WalletUnlocked) {
     let message = &wallet.get_messages().await.unwrap()[0];
 
-    let message_id = TxInput::compute_message_id(
-        &message.sender.clone().into(),
-        &message.recipient.clone().into(),
-        message.nonce.clone().into(),
+    let message_input = TxInput::message_data_signed(
+        message.sender.clone().into(),
+        message.recipient.clone().into(),
         message.amount,
-        &message.data,
+        message.nonce,
+        0,
+        message.data.clone(),
     );
-
-    let message_input = TxInput::MessageSigned {
-        message_id: message_id,
-        sender: message.sender.clone().into(),
-        recipient: message.recipient.clone().into(),
-        amount: message.amount,
-        nonce: message.nonce,
-        witness_index: 0,
-        data: message.data.clone(),
-    };
 
     tx.tx.inputs_mut().push(message_input);
 }
@@ -419,7 +403,9 @@ mod tx {
 
         let handler = contract_instance.methods().get_tx_id();
         let tx = handler.build_tx().await.unwrap();
-        let tx_id = tx.id();
+
+        let params = wallet.provider().unwrap().consensus_parameters();
+        let tx_id = tx.id(&params);
 
         let receipts = wallet
             .provider()
@@ -527,7 +513,7 @@ mod inputs {
         async fn can_get_input_coin_predicate() {
             let (contract_instance, _, wallet, _) = get_contracts().await;
             let (predicate_bytecode, predicate_coin, _) =
-                generate_predicate_inputs(100, vec![], &wallet).await;
+                generate_predicate_inputs(100, &wallet).await;
             let predicate_bytes: Vec<u8> = predicate_bytecode.try_into().unwrap();
 
             // Add predicate coin to inputs and call contract
@@ -550,28 +536,6 @@ mod inputs {
 
         mod message {
             use super::*;
-
-            #[tokio::test]
-            async fn can_get_input_message_msg_id() -> Result<()> {
-                let (contract_instance, _, wallet, _) = get_contracts().await;
-
-                let handler = contract_instance.methods().get_input_message_msg_id(2);
-                let mut tx = handler.build_tx().await.unwrap();
-                add_message_input(&mut tx, wallet.clone()).await;
-
-                let messages = wallet.get_messages().await?;
-                let message_id: [u8; 32] = *messages[0].message_id();
-
-                let receipts = wallet
-                    .provider()
-                    .unwrap()
-                    .send_transaction(&tx)
-                    .await
-                    .unwrap();
-
-                assert_eq!(receipts[1].data().unwrap(), message_id);
-                Ok(())
-            }
 
             #[tokio::test]
             async fn can_get_input_message_sender() -> Result<()> {
@@ -624,8 +588,9 @@ mod inputs {
                     .send_transaction(&tx)
                     .await
                     .unwrap();
-                let nonce: u64 = messages[0].nonce.clone().into();
-                assert_eq!(receipts[1].val().unwrap(), nonce);
+                let nonce = *messages[0].nonce.clone();
+                let val = receipts[1].data().unwrap();
+                assert_eq!(val, &nonce);
                 Ok(())
             }
 
@@ -663,7 +628,7 @@ mod inputs {
             async fn can_get_input_message_predicate_length() {
                 let (contract_instance, _, wallet, _) = get_contracts().await;
                 let (predicate_bytecode, _, predicate_message) =
-                    generate_predicate_inputs(100, vec![], &wallet).await;
+                    generate_predicate_inputs(100, &wallet).await;
                 let handler = contract_instance.methods().get_input_predicate_length(2);
                 let mut tx = handler.build_tx().await.unwrap();
                 tx.tx.inputs_mut().push(predicate_message);
@@ -680,10 +645,8 @@ mod inputs {
 
             #[tokio::test]
             async fn can_get_input_message_predicate_data_length() {
-                let predicate_data = vec![];
                 let (contract_instance, _, wallet, _) = get_contracts().await;
-                let (_, _, predicate_message) =
-                    generate_predicate_inputs(100, predicate_data.clone(), &wallet).await;
+                let (_, _, predicate_message) = generate_predicate_inputs(100, &wallet).await;
                 let handler = contract_instance
                     .methods()
                     .get_input_predicate_data_length(1);
@@ -696,7 +659,7 @@ mod inputs {
                     .send_transaction(&tx)
                     .await
                     .unwrap();
-                assert_eq!(receipts[1].val().unwrap(), predicate_data.len() as u64);
+                assert_eq!(receipts[1].val().unwrap(), 0);
             }
 
             #[tokio::test]
@@ -724,7 +687,7 @@ mod inputs {
             async fn can_get_input_message_predicate() {
                 let (contract_instance, _, wallet, _) = get_contracts().await;
                 let (predicate_bytecode, _, predicate_message) =
-                    generate_predicate_inputs(100, vec![], &wallet).await;
+                    generate_predicate_inputs(100, &wallet).await;
                 let predicate_bytes: Vec<u8> = predicate_bytecode.try_into().unwrap();
                 let handler = contract_instance
                     .methods()

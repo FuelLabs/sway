@@ -1,7 +1,7 @@
 use crate::ops::forc_check;
 use clap::Parser;
 use forc_util::{forc_result_bail, ForcResult};
-use sway_core::{decl_engine::DeclEngine, BuildTarget, Engines, TypeEngine};
+use sway_core::{BuildTarget, Engines};
 
 /// Check the current or target project and all of its dependencies for errors.
 ///
@@ -29,16 +29,11 @@ pub struct Command {
     /// Disable checking unit tests.
     #[clap(long = "disable-tests")]
     pub disable_tests: bool,
-    /// Enable the experimental module privacy enforcement.
-    #[clap(long)]
-    pub experimental_private_modules: bool,
 }
 
 pub(crate) fn exec(command: Command) -> ForcResult<()> {
-    let type_engine = TypeEngine::default();
-    let decl_engine = DeclEngine::default();
-    let engines = Engines::new(&type_engine, &decl_engine);
-    let res = forc_check::check(command, engines)?;
+    let engines = Engines::default();
+    let res = forc_check::check(command, &engines)?;
     if !res.is_ok() {
         forc_result_bail!("unable to type check");
     }

@@ -16,7 +16,7 @@ use super::{
     items::{GlobImport, Items, SymbolMap},
     root::Root,
     trait_map::TraitMap,
-    ModuleName, Path,
+    ModuleName, Path, PathBuf,
 };
 
 use sway_ast::ItemConst;
@@ -56,6 +56,11 @@ pub struct Module {
     /// Indicates whether the module is external to the current package. External modules are
     /// imported in the `Forc.toml` file.
     pub is_external: bool,
+    /// An absolute path from the `root` that represents the module location.
+    ///
+    /// When this is the root module, this is equal to `[]`. When this is a
+    /// submodule of the root called "foo", this would be equal to `[foo]`.
+    pub mod_path: PathBuf,
 }
 
 impl Default for Module {
@@ -67,6 +72,7 @@ impl Default for Module {
             name: Default::default(),
             span: Default::default(),
             is_external: Default::default(),
+            mod_path: Default::default(),
         }
     }
 }
@@ -78,7 +84,7 @@ impl Module {
     /// This will eventually be refactored out of `sway-core` in favor of creating temporary package dependencies for providing these
     /// `CONTRACT_ID`-containing modules: https://github.com/FuelLabs/sway/issues/3077
     pub fn default_with_contract_id(
-        engines: Engines<'_>,
+        engines: &Engines,
         name: Option<Ident>,
         contract_id_value: String,
     ) -> Result<Self, vec1::Vec1<CompileError>> {
@@ -96,7 +102,7 @@ impl Module {
 
     fn default_with_contract_id_inner(
         handler: &Handler,
-        engines: Engines<'_>,
+        engines: &Engines,
         ns_name: Option<Ident>,
         contract_id_value: String,
     ) -> Result<Self, ErrorEmitted> {
@@ -229,14 +235,13 @@ impl Module {
         &mut self,
         src: &Path,
         dst: &Path,
-        engines: Engines<'_>,
-        experimental_private_modules: bool,
+        engines: &Engines,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
         check!(
-            self.check_module_privacy(src, dst, experimental_private_modules),
+            self.check_module_privacy(src, dst),
             return err(warnings, errors),
             warnings,
             errors
@@ -254,9 +259,7 @@ impl Module {
         let implemented_traits = src_ns.implemented_traits.clone();
         let mut symbols_and_decls = vec![];
         for (symbol, decl) in src_ns.symbols.iter() {
-            if is_ancestor(src, dst, experimental_private_modules)
-                || decl.visibility(decl_engine).is_public()
-            {
+            if is_ancestor(src, dst) || decl.visibility(decl_engine).is_public() {
                 symbols_and_decls.push((symbol.clone(), decl.clone()));
             }
         }
@@ -285,14 +288,13 @@ impl Module {
         &mut self,
         src: &Path,
         dst: &Path,
-        engines: Engines<'_>,
-        experimental_private_modules: bool,
+        engines: &Engines,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
         check!(
-            self.check_module_privacy(src, dst, experimental_private_modules),
+            self.check_module_privacy(src, dst),
             return err(warnings, errors),
             warnings,
             errors
@@ -315,9 +317,7 @@ impl Module {
             .map(|(symbol, (_, _, decl))| (symbol.clone(), decl.clone()))
             .collect::<Vec<_>>();
         for (symbol, decl) in src_ns.symbols.iter() {
-            if is_ancestor(src, dst, experimental_private_modules)
-                || decl.visibility(decl_engine).is_public()
-            {
+            if is_ancestor(src, dst) || decl.visibility(decl_engine).is_public() {
                 symbols_and_decls.push((symbol.clone(), decl.clone()));
             }
         }
@@ -368,21 +368,13 @@ impl Module {
     /// import.
     pub(crate) fn self_import(
         &mut self,
-        engines: Engines<'_>,
+        engines: &Engines,
         src: &Path,
         dst: &Path,
         alias: Option<Ident>,
-        experimental_private_modules: bool,
     ) -> CompileResult<()> {
         let (last_item, src) = src.split_last().expect("guaranteed by grammar");
-        self.item_import(
-            engines,
-            src,
-            last_item,
-            dst,
-            alias,
-            experimental_private_modules,
-        )
+        self.item_import(engines, src, last_item, dst, alias)
     }
 
     /// Pull a single `item` from the given `src` module and import it into the `dst` module.
@@ -390,18 +382,17 @@ impl Module {
     /// Paths are assumed to be relative to `self`.
     pub(crate) fn item_import(
         &mut self,
-        engines: Engines<'_>,
+        engines: &Engines,
         src: &Path,
         item: &Ident,
         dst: &Path,
         alias: Option<Ident>,
-        experimental_private_modules: bool,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
         check!(
-            self.check_module_privacy(src, dst, experimental_private_modules),
+            self.check_module_privacy(src, dst),
             return err(warnings, errors),
             warnings,
             errors
@@ -418,9 +409,7 @@ impl Module {
         let mut impls_to_insert = TraitMap::default();
         match src_ns.symbols.get(item).cloned() {
             Some(decl) => {
-                if !decl.visibility(decl_engine).is_public()
-                    && !is_ancestor(src, dst, experimental_private_modules)
-                {
+                if !decl.visibility(decl_engine).is_public() && !is_ancestor(src, dst) {
                     errors.push(CompileError::ImportPrivateSymbol {
                         name: item.clone(),
                         span: item.span(),
@@ -478,19 +467,18 @@ impl Module {
     #[allow(clippy::too_many_arguments)] // TODO: remove lint bypass once private modules are no longer experimental
     pub(crate) fn variant_import(
         &mut self,
-        engines: Engines<'_>,
+        engines: &Engines,
         src: &Path,
         enum_name: &Ident,
         variant_name: &Ident,
         dst: &Path,
         alias: Option<Ident>,
-        experimental_private_modules: bool,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
         check!(
-            self.check_module_privacy(src, dst, experimental_private_modules),
+            self.check_module_privacy(src, dst),
             return err(warnings, errors),
             warnings,
             errors
@@ -506,9 +494,7 @@ impl Module {
         );
         match src_ns.symbols.get(enum_name).cloned() {
             Some(decl) => {
-                if !decl.visibility(decl_engine).is_public()
-                    && !is_ancestor(src, dst, experimental_private_modules)
-                {
+                if !decl.visibility(decl_engine).is_public() && !is_ancestor(src, dst) {
                     errors.push(CompileError::ImportPrivateSymbol {
                         name: enum_name.clone(),
                         span: enum_name.span(),
@@ -594,15 +580,14 @@ impl Module {
         &mut self,
         src: &Path,
         dst: &Path,
-        engines: Engines<'_>,
+        engines: &Engines,
         enum_name: &Ident,
-        experimental_private_modules: bool,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
         check!(
-            self.check_module_privacy(src, dst, experimental_private_modules),
+            self.check_module_privacy(src, dst),
             return err(warnings, errors),
             warnings,
             errors
@@ -618,9 +603,7 @@ impl Module {
         );
         match src_ns.symbols.get(enum_name).cloned() {
             Some(decl) => {
-                if !decl.visibility(decl_engine).is_public()
-                    && !is_ancestor(src, dst, experimental_private_modules)
-                {
+                if !decl.visibility(decl_engine).is_public() && !is_ancestor(src, dst) {
                     errors.push(CompileError::ImportPrivateSymbol {
                         name: enum_name.clone(),
                         span: enum_name.span(),
@@ -678,33 +661,26 @@ impl Module {
         ok((), warnings, errors)
     }
 
-    fn check_module_privacy(
-        &self,
-        src: &Path,
-        dst: &Path,
-        experimental_private_modules: bool,
-    ) -> CompileResult<()> {
+    fn check_module_privacy(&self, src: &Path, dst: &Path) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        if experimental_private_modules {
-            // you are always allowed to access your ancestor's symbols
-            if !is_ancestor(src, dst, experimental_private_modules) {
-                // we don't check the first prefix because direct children are always accessible
-                for prefix in iter_prefixes(src).skip(1) {
-                    let module = check!(
-                        self.check_submodule(prefix),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    if module.visibility.is_private() {
-                        let prefix_last = prefix[prefix.len() - 1].clone();
-                        errors.push(CompileError::ImportPrivateModule {
-                            span: prefix_last.span(),
-                            name: prefix_last,
-                        });
-                    }
+        // you are always allowed to access your ancestor's symbols
+        if !is_ancestor(src, dst) {
+            // we don't check the first prefix because direct children are always accessible
+            for prefix in iter_prefixes(src).skip(1) {
+                let module = check!(
+                    self.check_submodule(prefix),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                if module.visibility.is_private() {
+                    let prefix_last = prefix[prefix.len() - 1].clone();
+                    errors.push(CompileError::ImportPrivateModule {
+                        span: prefix_last.span(),
+                        name: prefix_last,
+                    });
                 }
             }
         }
@@ -763,8 +739,6 @@ fn module_not_found(path: &[Ident]) -> CompileError {
     }
 }
 
-fn is_ancestor(src: &Path, dst: &Path, experimental_private_modules: bool) -> bool {
-    experimental_private_modules
-        && dst.len() >= src.len()
-        && src.iter().zip(dst).all(|(src, dst)| src == dst)
+fn is_ancestor(src: &Path, dst: &Path) -> bool {
+    dst.len() >= src.len() && src.iter().zip(dst).all(|(src, dst)| src == dst)
 }

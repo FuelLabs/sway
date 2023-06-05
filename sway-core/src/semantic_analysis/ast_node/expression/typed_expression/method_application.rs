@@ -23,8 +23,8 @@ pub(crate) fn type_check_method_application(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
+    let type_engine = ctx.engines.te();
+    let decl_engine = ctx.engines.de();
     let engines = ctx.engines();
 
     // type check the function arguments
@@ -33,7 +33,7 @@ pub(crate) fn type_check_method_application(
         let ctx = ctx
             .by_ref()
             .with_help_text("")
-            .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
         args_buf.push_back(check!(
             ty::TyExpression::type_check(ctx, arg.clone()),
             ty::TyExpression::error(span.clone(), engines),
@@ -103,7 +103,7 @@ pub(crate) fn type_check_method_application(
                 | constants::CONTRACT_CALL_COINS_PARAMETER_NAME
                 | constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME => {
                     let type_annotation = type_engine.insert(
-                        decl_engine,
+                        engines,
                         if param.name.span().as_str()
                             != constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME
                         {
@@ -270,6 +270,11 @@ pub(crate) fn type_check_method_application(
             is_absolute: false,
         },
         MethodName::FromTrait { call_path } => call_path,
+        MethodName::FromQualifiedPathRoot { method_name, .. } => CallPath {
+            prefixes: vec![],
+            suffix: method_name,
+            is_absolute: false,
+        },
     };
 
     // build the function selector
@@ -297,7 +302,7 @@ pub(crate) fn type_check_method_application(
             return err(warnings, errors);
         };
         let func_selector = check!(
-            method.to_fn_selector_value(type_engine, decl_engine),
+            method.to_fn_selector_value(engines),
             [0; 4],
             warnings,
             errors
@@ -384,8 +389,7 @@ fn unify_arguments_and_parameters(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
+    let type_engine = ctx.engines.te();
     let engines = ctx.engines();
     let mut typed_arguments_and_names = vec![];
 
@@ -393,7 +397,7 @@ fn unify_arguments_and_parameters(
         // unify the type of the argument with the type of the param
         check!(
             CompileResult::from(type_engine.unify_with_self(
-                decl_engine,
+                engines,
                 arg.return_type,
                 param.type_argument.type_id,
                 ctx.self_type(),
@@ -428,8 +432,8 @@ pub(crate) fn resolve_method_name(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
+    let type_engine = ctx.engines.te();
+    let decl_engine = ctx.engines.de();
     let engines = ctx.engines();
 
     // retrieve the function declaration using the components of the method name
@@ -441,7 +445,7 @@ pub(crate) fn resolve_method_name(
             // type check the call path
             let type_id = check!(
                 call_path_binding.type_check_with_type_info(&mut ctx),
-                type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+                type_engine.insert(engines, TypeInfo::ErrorRecovery),
                 warnings,
                 errors
             );
@@ -464,9 +468,10 @@ pub(crate) fn resolve_method_name(
                     &type_info_prefix,
                     method_name,
                     ctx.self_type(),
+                    ctx.type_annotation(),
                     &arguments,
+                    None,
                     engines,
-                    ctx.experimental_private_modules_enabled()
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -483,7 +488,7 @@ pub(crate) fn resolve_method_name(
             let type_id = arguments
                 .get(0)
                 .map(|x| x.return_type)
-                .unwrap_or_else(|| type_engine.insert(decl_engine, TypeInfo::Unknown));
+                .unwrap_or_else(|| type_engine.insert(engines, TypeInfo::Unknown));
 
             // find the method
             let decl_ref = check!(
@@ -492,9 +497,10 @@ pub(crate) fn resolve_method_name(
                     &module_path,
                     &call_path.suffix,
                     ctx.self_type(),
+                    ctx.type_annotation(),
                     &arguments,
+                    None,
                     engines,
-                    ctx.experimental_private_modules_enabled(),
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -511,7 +517,7 @@ pub(crate) fn resolve_method_name(
             let type_id = arguments
                 .get(0)
                 .map(|x| x.return_type)
-                .unwrap_or_else(|| type_engine.insert(decl_engine, TypeInfo::Unknown));
+                .unwrap_or_else(|| type_engine.insert(engines, TypeInfo::Unknown));
 
             // find the method
             let decl_ref = check!(
@@ -520,9 +526,38 @@ pub(crate) fn resolve_method_name(
                     &module_path,
                     method_name,
                     ctx.self_type(),
+                    ctx.type_annotation(),
                     &arguments,
+                    None,
                     engines,
-                    ctx.experimental_private_modules_enabled(),
+                ),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+
+            (decl_ref, type_id)
+        }
+        MethodName::FromQualifiedPathRoot {
+            ty,
+            as_trait,
+            method_name,
+        } => {
+            // type check the call path
+            let type_id = ty.type_id;
+            let type_info_prefix = vec![];
+
+            // find the method
+            let decl_ref = check!(
+                ctx.namespace.find_method_for_type(
+                    type_id,
+                    &type_info_prefix,
+                    method_name,
+                    ctx.self_type(),
+                    ctx.type_annotation(),
+                    &arguments,
+                    Some(as_trait.clone()),
+                    engines
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -556,9 +591,10 @@ pub(crate) fn resolve_method_name(
     }
 
     let decl_ref = ctx
-        .decl_engine
+        .engines
+        .de()
         .insert(func_decl)
-        .with_parent(ctx.decl_engine, (*decl_ref.id()).into());
+        .with_parent(ctx.engines.de(), (*decl_ref.id()).into());
 
     ok((decl_ref, type_id), warnings, errors)
 }

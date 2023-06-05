@@ -11,7 +11,7 @@ use sway_types::{integer_bits::IntegerBits, span::Span, Spanned};
 
 use std::{
     cmp::Ordering,
-    collections::{BTreeSet, HashSet},
+    collections::{BTreeSet, HashMap, HashSet},
     fmt,
     hash::{Hash, Hasher},
 };
@@ -51,7 +51,7 @@ impl<T> core::ops::Deref for VecSet<T> {
 }
 
 impl<T: PartialEqWithEngines> VecSet<T> {
-    pub fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    pub fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.0.len() <= other.0.len()
             && self
                 .0
@@ -61,7 +61,7 @@ impl<T: PartialEqWithEngines> VecSet<T> {
 }
 
 impl<T: PartialEqWithEngines> PartialEqWithEngines for VecSet<T> {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.eq(other, engines) && other.eq(self, engines)
     }
 }
@@ -154,7 +154,7 @@ pub enum TypeInfo {
 }
 
 impl HashWithEngines for TypeInfo {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         self.discriminant_value().hash(state);
         match self {
             TypeInfo::Str(len) => {
@@ -232,7 +232,7 @@ impl HashWithEngines for TypeInfo {
 
 impl EqWithEngines for TypeInfo {}
 impl PartialEqWithEngines for TypeInfo {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         let type_engine = engines.te();
         match (self, other) {
             (
@@ -329,7 +329,7 @@ impl PartialEqWithEngines for TypeInfo {
 }
 
 impl OrdWithEngines for TypeInfo {
-    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
+    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
         let type_engine = engines.te();
         let decl_engine = engines.de();
         match (self, other) {
@@ -420,7 +420,7 @@ impl OrdWithEngines for TypeInfo {
 }
 
 impl DisplayWithEngines for TypeInfo {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         use TypeInfo::*;
         let s = match self {
             Unknown => "{unknown}".into(),
@@ -485,7 +485,7 @@ impl DisplayWithEngines for TypeInfo {
 }
 
 impl DebugWithEngines for TypeInfo {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         use TypeInfo::*;
         let s = match self {
             Unknown => "unknown".into(),
@@ -599,10 +599,11 @@ impl TypeInfo {
     /// maps a type to a name that is used when constructing function selectors
     pub(crate) fn to_selector_name(
         &self,
-        type_engine: &TypeEngine,
-        decl_engine: &DeclEngine,
+        engines: &Engines,
         error_msg_span: &Span,
     ) -> CompileResult<String> {
+        let type_engine = engines.te();
+        let decl_engine = engines.de();
         use TypeInfo::*;
         let name = match self {
             Str(len) => format!("str[{}]", len.val()),
@@ -626,7 +627,7 @@ impl TypeInfo {
                             type_engine
                                 .to_typeinfo(field_type.type_id, error_msg_span)
                                 .expect("unreachable?")
-                                .to_selector_name(type_engine, decl_engine, error_msg_span)
+                                .to_selector_name(engines, error_msg_span)
                         })
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];
@@ -655,7 +656,7 @@ impl TypeInfo {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
-                            ty.to_selector_name(type_engine, decl_engine, error_msg_span)
+                            ty.to_selector_name(engines, error_msg_span)
                         })
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];
@@ -677,7 +678,7 @@ impl TypeInfo {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
-                            ty.to_selector_name(type_engine, decl_engine, error_msg_span)
+                            ty.to_selector_name(engines, error_msg_span)
                         })
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];
@@ -709,7 +710,7 @@ impl TypeInfo {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
-                            ty.to_selector_name(type_engine, decl_engine, error_msg_span)
+                            ty.to_selector_name(engines, error_msg_span)
                         })
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];
@@ -731,7 +732,7 @@ impl TypeInfo {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
-                            ty.to_selector_name(type_engine, decl_engine, error_msg_span)
+                            ty.to_selector_name(engines, error_msg_span)
                         })
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];
@@ -754,11 +755,9 @@ impl TypeInfo {
                 }
             }
             Array(elem_ty, length) => {
-                let name = type_engine.get(elem_ty.type_id).to_selector_name(
-                    type_engine,
-                    decl_engine,
-                    error_msg_span,
-                );
+                let name = type_engine
+                    .get(elem_ty.type_id)
+                    .to_selector_name(engines, error_msg_span);
                 let name = match name.value {
                     Some(name) => name,
                     None => return name,
@@ -768,11 +767,9 @@ impl TypeInfo {
             RawUntypedPtr => "rawptr".to_string(),
             RawUntypedSlice => "rawslice".to_string(),
             Alias { ty, .. } => {
-                let name = type_engine.get(ty.type_id).to_selector_name(
-                    type_engine,
-                    decl_engine,
-                    error_msg_span,
-                );
+                let name = type_engine
+                    .get(ty.type_id)
+                    .to_selector_name(engines, error_msg_span);
                 match name.value {
                     Some(name) => name,
                     None => return name,
@@ -975,7 +972,20 @@ impl TypeInfo {
 
     /// Given a `TypeInfo` `self`, analyze `self` and return all inner
     /// `TypeId`'s of `self`, not including `self`.
-    pub(crate) fn extract_inner_types(&self, engines: Engines<'_>) -> BTreeSet<TypeId> {
+    pub(crate) fn extract_inner_types(&self, engines: &Engines) -> BTreeSet<TypeId> {
+        fn filter_fn(_type_info: &TypeInfo) -> bool {
+            true
+        }
+        self.extract_any(engines, &filter_fn)
+            .keys()
+            .cloned()
+            .collect()
+    }
+
+    pub(crate) fn extract_inner_types_with_trait_constraints(
+        &self,
+        engines: &Engines,
+    ) -> HashMap<TypeId, Vec<TraitConstraint>> {
         fn filter_fn(_type_info: &TypeInfo) -> bool {
             true
         }
@@ -1071,7 +1081,7 @@ impl TypeInfo {
 
     /// Given a `TypeInfo` `self`, analyze `self` and return all nested
     /// `TypeInfo`'s found in `self`, including `self`.
-    pub(crate) fn extract_nested_types(self, engines: Engines<'_>) -> Vec<TypeInfo> {
+    pub(crate) fn extract_nested_types(self, engines: &Engines) -> Vec<TypeInfo> {
         let type_engine = engines.te();
         let mut inner_types: Vec<TypeInfo> = self
             .extract_inner_types(engines)
@@ -1082,12 +1092,29 @@ impl TypeInfo {
         inner_types
     }
 
-    pub(crate) fn extract_any<F>(&self, engines: Engines<'_>, filter_fn: &F) -> BTreeSet<TypeId>
+    pub(crate) fn extract_any<F>(
+        &self,
+        engines: &Engines,
+        filter_fn: &F,
+    ) -> HashMap<TypeId, Vec<TraitConstraint>>
     where
         F: Fn(&TypeInfo) -> bool,
     {
+        fn extend(
+            hashmap: &mut HashMap<TypeId, Vec<TraitConstraint>>,
+            hashmap_other: HashMap<TypeId, Vec<TraitConstraint>>,
+        ) {
+            for (type_id, trait_constraints) in hashmap_other {
+                if let Some(existing_trait_constraints) = hashmap.get_mut(&type_id) {
+                    existing_trait_constraints.extend(trait_constraints);
+                } else {
+                    hashmap.insert(type_id, trait_constraints);
+                }
+            }
+        }
+
         let decl_engine = engines.de();
-        let mut found: BTreeSet<TypeId> = BTreeSet::new();
+        let mut found: HashMap<TypeId, Vec<TraitConstraint>> = HashMap::new();
         match self {
             TypeInfo::Unknown
             | TypeInfo::Placeholder(_)
@@ -1105,42 +1132,56 @@ impl TypeInfo {
             TypeInfo::Enum(enum_ref) => {
                 let enum_decl = decl_engine.get_enum(enum_ref);
                 for type_param in enum_decl.type_parameters.iter() {
-                    found.extend(
-                        type_param
-                            .type_id
-                            .extract_any_including_self(engines, filter_fn),
+                    extend(
+                        &mut found,
+                        type_param.type_id.extract_any_including_self(
+                            engines,
+                            filter_fn,
+                            type_param.trait_constraints.clone(),
+                        ),
                     );
                 }
                 for variant in enum_decl.variants.iter() {
-                    found.extend(
-                        variant
-                            .type_argument
-                            .type_id
-                            .extract_any_including_self(engines, filter_fn),
+                    extend(
+                        &mut found,
+                        variant.type_argument.type_id.extract_any_including_self(
+                            engines,
+                            filter_fn,
+                            vec![],
+                        ),
                     );
                 }
             }
             TypeInfo::Struct(struct_ref) => {
                 let struct_decl = decl_engine.get_struct(struct_ref);
                 for type_param in struct_decl.type_parameters.iter() {
-                    found.extend(
-                        type_param
-                            .type_id
-                            .extract_any_including_self(engines, filter_fn),
+                    extend(
+                        &mut found,
+                        type_param.type_id.extract_any_including_self(
+                            engines,
+                            filter_fn,
+                            type_param.trait_constraints.clone(),
+                        ),
                     );
                 }
                 for field in struct_decl.fields.iter() {
-                    found.extend(
-                        field
-                            .type_argument
-                            .type_id
-                            .extract_any_including_self(engines, filter_fn),
+                    extend(
+                        &mut found,
+                        field.type_argument.type_id.extract_any_including_self(
+                            engines,
+                            filter_fn,
+                            vec![],
+                        ),
                     );
                 }
             }
             TypeInfo::Tuple(elems) => {
                 for elem in elems.iter() {
-                    found.extend(elem.type_id.extract_any_including_self(engines, filter_fn));
+                    extend(
+                        &mut found,
+                        elem.type_id
+                            .extract_any_including_self(engines, filter_fn, vec![]),
+                    );
                 }
             }
             TypeInfo::ContractCaller {
@@ -1148,10 +1189,11 @@ impl TypeInfo {
                 address,
             } => {
                 if let Some(address) = address {
-                    found.extend(
+                    extend(
+                        &mut found,
                         address
                             .return_type
-                            .extract_any_including_self(engines, filter_fn),
+                            .extract_any_including_self(engines, filter_fn, vec![]),
                     );
                 }
             }
@@ -1161,29 +1203,40 @@ impl TypeInfo {
             } => {
                 if let Some(type_arguments) = type_arguments {
                     for type_arg in type_arguments.iter() {
-                        found.extend(
+                        extend(
+                            &mut found,
                             type_arg
                                 .type_id
-                                .extract_any_including_self(engines, filter_fn),
+                                .extract_any_including_self(engines, filter_fn, vec![]),
                         );
                     }
                 }
             }
             TypeInfo::Array(ty, _) => {
-                found.extend(ty.type_id.extract_any_including_self(engines, filter_fn));
+                extend(
+                    &mut found,
+                    ty.type_id
+                        .extract_any_including_self(engines, filter_fn, vec![]),
+                );
             }
             TypeInfo::Storage { fields } => {
                 for field in fields.iter() {
-                    found.extend(
-                        field
-                            .type_argument
-                            .type_id
-                            .extract_any_including_self(engines, filter_fn),
+                    extend(
+                        &mut found,
+                        field.type_argument.type_id.extract_any_including_self(
+                            engines,
+                            filter_fn,
+                            vec![],
+                        ),
                     );
                 }
             }
             TypeInfo::Alias { name: _, ty } => {
-                found.extend(ty.type_id.extract_any_including_self(engines, filter_fn));
+                extend(
+                    &mut found,
+                    ty.type_id
+                        .extract_any_including_self(engines, filter_fn, vec![]),
+                );
             }
             TypeInfo::UnknownGeneric {
                 name: _,
@@ -1191,19 +1244,30 @@ impl TypeInfo {
             } => {
                 for trait_constraint in trait_constraints.iter() {
                     for type_arg in trait_constraint.type_arguments.iter() {
-                        found.extend(
-                            type_arg
-                                .type_id
-                                .extract_any_including_self(engines, filter_fn),
+                        extend(
+                            &mut found,
+                            type_arg.type_id.extract_any_including_self(
+                                engines,
+                                filter_fn,
+                                vec![trait_constraint.clone()],
+                            ),
                         );
                     }
                 }
             }
             TypeInfo::Ptr(ty) => {
-                found.extend(ty.type_id.extract_any_including_self(engines, filter_fn));
+                extend(
+                    &mut found,
+                    ty.type_id
+                        .extract_any_including_self(engines, filter_fn, vec![]),
+                );
             }
             TypeInfo::Slice(ty) => {
-                found.extend(ty.type_id.extract_any_including_self(engines, filter_fn));
+                extend(
+                    &mut found,
+                    ty.type_id
+                        .extract_any_including_self(engines, filter_fn, vec![]),
+                );
             }
         }
         found
@@ -1211,7 +1275,7 @@ impl TypeInfo {
 
     pub(crate) fn extract_nested_generics<'a>(
         &self,
-        engines: Engines<'a>,
+        engines: &'a Engines,
     ) -> HashSet<WithEngines<'a, TypeInfo>> {
         let nested_types = self.clone().extract_nested_types(engines);
         HashSet::from_iter(
@@ -1220,223 +1284,6 @@ impl TypeInfo {
                 .filter(|x| matches!(x, TypeInfo::UnknownGeneric { .. }))
                 .map(|thing| WithEngines::new(thing, engines)),
         )
-    }
-
-    /// Given two `TypeInfo`'s `self` and `other`, check to see if `self` is
-    /// unidirectionally a subset of `other`.
-    ///
-    /// `self` is a subset of `other` if it can be generalized over `other`.
-    /// For example, the generic `T` is a subset of the generic `F` because
-    /// anything of the type `T` could also be of the type `F` (minus any
-    /// external context that may make this statement untrue).
-    ///
-    /// Given:
-    ///
-    /// ```ignore
-    /// struct Data<T, F> {
-    ///   x: T,
-    ///   y: F,
-    /// }
-    /// ```
-    ///
-    /// the type `Data<T, F>` is a subset of any generic type.
-    ///
-    /// Given:
-    ///
-    /// ```ignore
-    /// struct Data<T, F> {
-    ///   x: T,
-    ///   y: F,
-    /// }
-    ///
-    /// impl<T> Data<T, T> { }
-    /// ```
-    ///
-    /// the type `Data<T, T>` is a subset of `Data<T, F>`, but _`Data<T, F>` is
-    /// not a subset of `Data<T, T>`_.
-    ///
-    /// Given:
-    ///
-    /// ```ignore
-    /// struct Data<T, F> {
-    ///   x: T,
-    ///   y: F,
-    /// }
-    ///
-    /// impl<T> Data<T, T> { }
-    ///
-    /// fn dummy() {
-    ///     // the type of foo is Data<bool, u64>
-    ///     let foo = Data {
-    ///         x: true,
-    ///         y: 1u64
-    ///     };
-    ///     // the type of bar is Data<u8, u8>
-    ///     let bar = Data {
-    ///         x: 0u8,
-    ///         y: 0u8
-    ///     };
-    /// }
-    /// ```
-    ///
-    /// then:
-    ///
-    /// | type:             | is subset of:                                | is not a subset of: |
-    /// |-------------------|----------------------------------------------|---------------------|
-    /// | `Data<T, T>`      | `Data<T, F>`, any generic type               |                     |
-    /// | `Data<T, F>`      | any generic type                             | `Data<T, T>`        |
-    /// | `Data<bool, u64>` | `Data<T, F>`, any generic type               | `Data<T, T>`        |
-    /// | `Data<u8, u8>`    | `Data<T, T>`, `Data<T, F>`, any generic type |                     |
-    ///
-    /// For generic types with trait constraints, the generic type `self` is a
-    /// subset of the generic type `other` when the trait constraints of
-    /// `other` are a subset of the trait constraints of `self`. This is a bit
-    /// unintuitive, but you can think of it this way---a generic type `self`
-    /// can be generalized over `other` when `other` has no methods
-    /// that `self` doesn't have. These methods are coming from the trait
-    /// constraints---if the trait constraints of `other` are a subset of the
-    /// trait constraints of `self`, then we know that `other` has unique
-    /// methods.
-    pub(crate) fn is_subset_of(&self, other: &TypeInfo, engines: Engines<'_>) -> bool {
-        // handle the generics cases
-        match (self, other) {
-            (
-                Self::UnknownGeneric {
-                    trait_constraints: ltc,
-                    ..
-                },
-                Self::UnknownGeneric {
-                    trait_constraints: rtc,
-                    ..
-                },
-            ) => {
-                return rtc.eq(ltc, engines);
-            }
-            // any type is the subset of a generic
-            (_, Self::UnknownGeneric { .. }) => {
-                return true;
-            }
-            _ => {}
-        }
-
-        self.is_subset_inner(other, engines)
-    }
-
-    /// Given two `TypeInfo`'s `self` and `other`, checks to see if `self` is
-    /// unidirectionally a subset of `other`, excluding consideration of generic
-    /// types (like in the `is_subset_of` method).
-    pub(crate) fn is_subset_of_for_item_import(
-        &self,
-        other: &TypeInfo,
-        engines: Engines<'_>,
-    ) -> bool {
-        self.is_subset_inner(other, engines)
-    }
-
-    fn is_subset_inner(&self, other: &TypeInfo, engines: Engines<'_>) -> bool {
-        let type_engine = engines.te();
-        let decl_engine = engines.de();
-        match (self, other) {
-            (Self::Array(l0, l1), Self::Array(r0, r1)) => {
-                type_engine
-                    .get(l0.type_id)
-                    .is_subset_of(&type_engine.get(r0.type_id), engines)
-                    && l1.val() == r1.val()
-            }
-            (
-                Self::Custom {
-                    call_path: l_name,
-                    type_arguments: l_type_args,
-                },
-                Self::Custom {
-                    call_path: r_name,
-                    type_arguments: r_type_args,
-                },
-            ) => {
-                let l_types = l_type_args
-                    .as_ref()
-                    .unwrap_or(&vec![])
-                    .iter()
-                    .map(|x| type_engine.get(x.type_id))
-                    .collect::<Vec<_>>();
-                let r_types = r_type_args
-                    .as_ref()
-                    .unwrap_or(&vec![])
-                    .iter()
-                    .map(|x| type_engine.get(x.type_id))
-                    .collect::<Vec<_>>();
-                l_name.suffix == r_name.suffix && types_are_subset_of(engines, &l_types, &r_types)
-            }
-            (Self::Enum(l_decl_ref), Self::Enum(r_decl_ref)) => {
-                let l_decl = decl_engine.get_enum(l_decl_ref);
-                let r_decl = decl_engine.get_enum(r_decl_ref);
-                let l_names = l_decl
-                    .variants
-                    .iter()
-                    .map(|x| x.name.clone())
-                    .collect::<Vec<_>>();
-                let r_names = r_decl
-                    .variants
-                    .iter()
-                    .map(|x| x.name.clone())
-                    .collect::<Vec<_>>();
-                let l_types = l_decl
-                    .type_parameters
-                    .iter()
-                    .map(|x| type_engine.get(x.type_id))
-                    .collect::<Vec<_>>();
-                let r_types = r_decl
-                    .type_parameters
-                    .iter()
-                    .map(|x| type_engine.get(x.type_id))
-                    .collect::<Vec<_>>();
-                l_decl_ref.name().clone() == r_decl_ref.name().clone()
-                    && l_names == r_names
-                    && types_are_subset_of(engines, &l_types, &r_types)
-            }
-            (Self::Struct(l_decl_ref), Self::Struct(r_decl_ref)) => {
-                let l_decl = decl_engine.get_struct(l_decl_ref);
-                let r_decl = decl_engine.get_struct(r_decl_ref);
-                let l_names = l_decl
-                    .fields
-                    .iter()
-                    .map(|x| x.name.clone())
-                    .collect::<Vec<_>>();
-                let r_names = r_decl
-                    .fields
-                    .iter()
-                    .map(|x| x.name.clone())
-                    .collect::<Vec<_>>();
-                let l_types = l_decl
-                    .type_parameters
-                    .iter()
-                    .map(|x| type_engine.get(x.type_id))
-                    .collect::<Vec<_>>();
-                let r_types = r_decl
-                    .type_parameters
-                    .iter()
-                    .map(|x| type_engine.get(x.type_id))
-                    .collect::<Vec<_>>();
-                l_decl_ref.name().clone() == r_decl_ref.name().clone()
-                    && l_names == r_names
-                    && types_are_subset_of(engines, &l_types, &r_types)
-            }
-            (Self::Tuple(l_types), Self::Tuple(r_types)) => {
-                let l_types = l_types
-                    .iter()
-                    .map(|x| type_engine.get(x.type_id))
-                    .collect::<Vec<_>>();
-                let r_types = r_types
-                    .iter()
-                    .map(|x| type_engine.get(x.type_id))
-                    .collect::<Vec<_>>();
-                types_are_subset_of(engines, &l_types, &r_types)
-            }
-            (Self::Alias { ty: l_ty, .. }, Self::Alias { ty: r_ty, .. }) => type_engine
-                .get(l_ty.type_id)
-                .is_subset_of(&type_engine.get(r_ty.type_id), engines),
-            (a, b) => a.eq(b, engines),
-        }
     }
 
     /// Given a `TypeInfo` `self` and a list of `Ident`'s `subfields`,
@@ -1452,7 +1299,7 @@ impl TypeInfo {
     /// 3) in the case where a `subfield` does not exist on `self`
     pub(crate) fn apply_subfields(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         subfields: &[Ident],
         span: &Span,
     ) -> CompileResult<ty::TyStructField> {
@@ -1591,7 +1438,7 @@ impl TypeInfo {
     /// type, transitively.
     pub(crate) fn expect_tuple(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         debug_string: impl Into<String>,
         debug_span: &Span,
     ) -> CompileResult<Vec<TypeArgument>> {
@@ -1636,7 +1483,7 @@ impl TypeInfo {
     /// transitively.
     pub(crate) fn expect_enum(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         debug_string: impl Into<String>,
         debug_span: &Span,
     ) -> CompileResult<DeclRefEnum> {
@@ -1682,7 +1529,7 @@ impl TypeInfo {
     #[allow(dead_code)]
     pub(crate) fn expect_struct(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         debug_span: &Span,
     ) -> CompileResult<DeclRefStruct> {
         let warnings = vec![];
@@ -1708,115 +1555,8 @@ impl TypeInfo {
     }
 }
 
-/// Given two lists of `TypeInfo`'s `left` and `right`, check to see if
-/// `left` is a subset of `right`.
-///
-/// `left` is a subset of `right` if the following invariants are true:
-/// 1. `left` and and `right` are of the same length _n_
-/// 2. For every _i_ in [0, n), `left`ᵢ is a subset of `right`ᵢ
-/// 3. The elements of `left` satisfy the trait constraints of `right`
-///
-/// A property that falls of out these constraints are that if `left` and
-/// `right` are empty, then `left` is a subset of `right`.
-///
-/// Given:
-///
-/// ```ignore
-/// left:   [T]
-/// right:  [T, F]
-/// ```
-///
-/// `left` is not a subset of `right` because it violates invariant #1.
-///
-/// Given:
-///
-/// ```ignore
-/// left:   [T, F]
-/// right:  [bool, F]
-/// ```
-///
-/// `left` is not a subset of `right` because it violates invariant #2.
-///
-/// Given:
-///
-/// ```ignore
-/// left:   [T, F]
-/// right:  [T, T]
-/// ```
-///
-/// `left` is not a subset of `right` because it violates invariant #3.
-///
-/// Given:
-///
-/// ```ignore
-/// left:   [T, T]
-/// right:  [T, F]
-/// ```
-///
-/// `left` is a subset of `right`.
-///
-/// Given:
-///
-/// ```ignore
-/// left:   [bool, T]
-/// right:  [T, F]
-/// ```
-///
-/// `left` is a subset of `right`.
-///
-/// Given:
-///
-/// ```ignore
-/// left:   [Data<T, T>, Data<T, F>]
-/// right:  [Data<T, F>, Data<T, F>]
-/// ```
-///
-/// `left` is a subset of `right`.
-///
-fn types_are_subset_of(engines: Engines<'_>, left: &[TypeInfo], right: &[TypeInfo]) -> bool {
-    // invariant 1. `left` and and `right` are of the same length _n_
-    if left.len() != right.len() {
-        return false;
-    }
-
-    // if `left` and `right` are empty, `left` is inherently a subset of `right`
-    if left.is_empty() && right.is_empty() {
-        return true;
-    }
-
-    // invariant 2. For every _i_ in [0, n), `left`ᵢ is a subset of `right`ᵢ
-    for (l, r) in left.iter().zip(right.iter()) {
-        if !l.is_subset_of(r, engines) {
-            return false;
-        }
-    }
-
-    // invariant 3. The elements of `left` satisfy the constraints of `right`
-    let mut constraints = vec![];
-    for i in 0..(right.len() - 1) {
-        for j in (i + 1)..right.len() {
-            let a = right.get(i).unwrap();
-            let b = right.get(j).unwrap();
-            if a.eq(b, engines) {
-                // if a and b are the same type
-                constraints.push((i, j));
-            }
-        }
-    }
-    for (i, j) in constraints.into_iter() {
-        let a = left.get(i).unwrap();
-        let b = left.get(j).unwrap();
-        if !a.eq(b, engines) {
-            return false;
-        }
-    }
-
-    // if all of the invariants are met, then `self` is a subset of `other`!
-    true
-}
-
 fn print_inner_types(
-    engines: Engines<'_>,
+    engines: &Engines,
     name: String,
     inner_types: impl Iterator<Item = TypeId>,
 ) -> String {
@@ -1835,7 +1575,7 @@ fn print_inner_types(
 }
 
 fn print_inner_types_debug(
-    engines: Engines<'_>,
+    engines: &Engines,
     name: String,
     inner_types: impl Iterator<Item = TypeId>,
 ) -> String {

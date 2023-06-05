@@ -1,10 +1,6 @@
 use crate::core::token::{self, Token, TypedAstToken};
 use dashmap::DashMap;
-use sway_core::{
-    language::ty::{self},
-    type_system::TypeId,
-    Engines,
-};
+use sway_core::{language::ty, type_system::TypeId, Engines};
 use sway_types::{Ident, Span, Spanned};
 use tower_lsp::lsp_types::{Position, Url};
 
@@ -150,7 +146,7 @@ impl TokenMap {
     /// For example, we can then use the `return_type` field which is a [TypeId] to retrieve the declaration Token.
     pub fn declaration_of_type_id(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         type_id: &TypeId,
     ) -> Option<ty::TyDecl> {
         token::ident_of_type_id(engines, type_id)
@@ -167,7 +163,7 @@ impl TokenMap {
     /// within the TokenMap.
     pub fn struct_declaration_of_type_id(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         type_id: &TypeId,
     ) -> Option<ty::TyStructDecl> {
         self.declaration_of_type_id(engines, type_id)

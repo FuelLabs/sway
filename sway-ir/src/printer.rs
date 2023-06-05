@@ -409,6 +409,9 @@ fn instruction_to_doc<'a>(
                     BinaryOpKind::And => "and",
                     BinaryOpKind::Or => "or",
                     BinaryOpKind::Xor => "xor",
+                    BinaryOpKind::Mod => "mod",
+                    BinaryOpKind::Rsh => "rsh",
+                    BinaryOpKind::Lsh => "lsh",
                 };
                 maybe_constant_to_doc(context, md_namer, namer, arg1)
                     .append(maybe_constant_to_doc(context, md_namer, namer, arg2))
@@ -610,30 +613,25 @@ fn instruction_to_doc<'a>(
                             .append(md_namer.md_idx_to_doc(context, metadata)),
                     )),
                 FuelVmInstruction::Smo {
-                    recipient_and_message,
+                    recipient,
+                    message,
                     message_size,
-                    output_index,
                     coins,
-                } => maybe_constant_to_doc(context, md_namer, namer, recipient_and_message)
+                } => maybe_constant_to_doc(context, md_namer, namer, recipient)
+                    .append(maybe_constant_to_doc(context, md_namer, namer, message))
                     .append(maybe_constant_to_doc(
                         context,
                         md_namer,
                         namer,
                         message_size,
                     ))
-                    .append(maybe_constant_to_doc(
-                        context,
-                        md_namer,
-                        namer,
-                        output_index,
-                    ))
                     .append(maybe_constant_to_doc(context, md_namer, namer, coins))
                     .append(Doc::line(
                         Doc::text(format!(
                             "smo {}, {}, {}, {}",
-                            namer.name(context, recipient_and_message),
+                            namer.name(context, recipient),
+                            namer.name(context, message),
                             namer.name(context, message_size),
-                            namer.name(context, output_index),
                             namer.name(context, coins),
                         ))
                         .append(md_namer.md_idx_to_doc(context, metadata)),
@@ -658,7 +656,8 @@ fn instruction_to_doc<'a>(
                 } => maybe_constant_to_doc(context, md_namer, namer, number_of_slots).append(
                     Doc::line(
                         Doc::text(format!(
-                            "state_load_quad_word {}, key {}, {}",
+                            "{} = state_load_quad_word {}, key {}, {}",
+                            namer.name(context, ins_value),
                             namer.name(context, load_val),
                             namer.name(context, key),
                             namer.name(context, number_of_slots),
@@ -681,7 +680,8 @@ fn instruction_to_doc<'a>(
                 } => maybe_constant_to_doc(context, md_namer, namer, number_of_slots).append(
                     Doc::line(
                         Doc::text(format!(
-                            "state_store_quad_word {}, key {}, {}",
+                            "{} = state_store_quad_word {}, key {}, {}",
+                            namer.name(context, ins_value),
                             namer.name(context, stored_val),
                             namer.name(context, key),
                             namer.name(context, number_of_slots),
@@ -692,7 +692,8 @@ fn instruction_to_doc<'a>(
                 FuelVmInstruction::StateStoreWord { stored_val, key } => {
                     maybe_constant_to_doc(context, md_namer, namer, stored_val).append(Doc::line(
                         Doc::text(format!(
-                            "state_store_word {}, key {}",
+                            "{} = state_store_word {}, key {}",
+                            namer.name(context, ins_value),
                             namer.name(context, stored_val),
                             namer.name(context, key),
                         ))

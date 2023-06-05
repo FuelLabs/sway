@@ -26,9 +26,9 @@ use sway_core::{
     language::{
         lexed::LexedProgram,
         parsed::{AstNode, ParseProgram},
-        ty::{self},
+        ty,
     },
-    BuildTarget, CompileResult, Engines, TypeEngine,
+    BuildTarget, CompileResult, Engines, Namespace,
 };
 use sway_types::{Span, Spanned};
 use sway_utils::helpers::get_sway_files;
@@ -58,8 +58,7 @@ pub struct Session {
     pub documents: Documents,
     pub runnables: DashMap<Span, Box<dyn Runnable>>,
     pub compiled_program: RwLock<CompiledProgram>,
-    pub type_engine: RwLock<TypeEngine>,
-    pub decl_engine: RwLock<DeclEngine>,
+    pub engines: RwLock<Engines>,
     pub sync: SyncWorkspace,
     // Limit the number of threads that can wait to parse at the same time. One thread can be parsing
     // and one thread can be waiting to start parsing. All others will return the cached diagnostics.
@@ -75,8 +74,7 @@ impl Session {
             documents: DashMap::new(),
             runnables: DashMap::new(),
             compiled_program: RwLock::new(Default::default()),
-            type_engine: <_>::default(),
-            decl_engine: <_>::default(),
+            engines: <_>::default(),
             sync: SyncWorkspace::new(),
             parse_permits: Arc::new(Semaphore::new(2)),
             diagnostics: Arc::new(RwLock::new(Diagnostics::default())),
@@ -161,8 +159,7 @@ impl Session {
             pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)
                 .map_err(LanguageServerError::BuildPlanFailed)?;
 
-        let new_type_engine = TypeEngine::default();
-        let new_decl_engine = DeclEngine::default();
+        let new_engines = Engines::default();
         let tests_enabled = true;
 
         let results = pkg::check(
@@ -170,18 +167,15 @@ impl Session {
             BuildTarget::default(),
             true,
             tests_enabled,
-            Engines::new(&new_type_engine, &new_decl_engine),
-            true,
+            &new_engines,
         )
         .map_err(LanguageServerError::FailedToCompile)?;
 
         // Acquire locks for the engines before clearing anything.
-        let mut type_engine = self.type_engine.write();
-        let mut decl_engine = self.decl_engine.write();
+        let mut engines = self.engines.write();
 
         // Update the engines with the new data.
-        *type_engine = new_type_engine;
-        *decl_engine = new_decl_engine;
+        *engines = new_engines;
 
         // Clear other data stores.
         self.token_map.clear();
@@ -215,11 +209,7 @@ impl Session {
 
             // Create context with write guards to make readers wait until the update to token_map is complete.
             // This operation is fast because we already have the compile results.
-            let ctx = ParseContext::new(
-                &self.token_map,
-                Engines::new(&type_engine, &decl_engine),
-                &typed_program.root.namespace,
-            );
+            let ctx = ParseContext::new(&self.token_map, &engines, &typed_program.root.namespace);
 
             // The final element in the results is the main program.
             if i == results_len - 1 {
@@ -232,7 +222,7 @@ impl Session {
                 self.parse_ast_to_tokens(&parsed, &ctx, |an, _ctx| parsed_tree.traverse_node(an));
 
                 // Finally, create runnables and populate our token_map with typed ast nodes.
-                self.create_runnables(typed_program, &decl_engine);
+                self.create_runnables(typed_program, engines.de());
 
                 let typed_tree = TypedTree::new(&ctx);
                 typed_tree.collect_module_spans(typed_program);
@@ -261,14 +251,12 @@ impl Session {
 
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
         let (_, token) = self.token_map.token_at_position(url, position)?;
-        let te = self.type_engine.read();
-        let de = self.decl_engine.read();
-        let engines = Engines::new(&te, &de);
+        let engines = self.engines.read();
 
         let mut token_ranges: Vec<_> = self
             .token_map
             .tokens_for_file(url)
-            .all_references_of_token(&token, engines)
+            .all_references_of_token(&token, &engines)
             .map(|(ident, _)| get_range_from_span(&ident.span()))
             .collect();
 
@@ -281,12 +269,10 @@ impl Session {
         uri: Url,
         position: Position,
     ) -> Option<GotoDefinitionResponse> {
-        let te = self.type_engine.read();
-        let de = self.decl_engine.read();
-        let engines = Engines::new(&te, &de);
+        let engines = self.engines.read();
         self.token_map
             .token_at_position(&uri, position)
-            .and_then(|(_, token)| token.declared_token_ident(engines))
+            .and_then(|(_, token)| token.declared_token_ident(&engines))
             .and_then(|decl_ident| {
                 let range = get_range_from_span(&decl_ident.span());
                 decl_ident.span().path().and_then(|path| {
@@ -321,13 +307,20 @@ impl Session {
             let program = compiled_program.typed.clone()?;
             return Some(capabilities::completion::to_completion_items(
                 &program.root.namespace,
-                Engines::new(&self.type_engine.read(), &self.decl_engine.read()),
+                &self.engines.read(),
                 &ident_to_complete,
                 &fn_decl,
                 position,
             ));
         }
         None
+    }
+
+    /// Returns the [Namespace] from the compiled program if it exists.
+    pub fn namespace(&self) -> Option<Namespace> {
+        let compiled_program = &*self.compiled_program.read();
+        let program = compiled_program.typed.clone()?;
+        Some(program.root.namespace)
     }
 
     pub fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {

@@ -183,7 +183,7 @@ __and<T>(lhs: T, rhs: T) -> T
 ___
 
 ```sway
-or<T>(lhs: T, rhs: T) -> T
+__or<T>(lhs: T, rhs: T) -> T
 ```
 
 **Description:** Bitwise OR `lhs` and `rhs`.
@@ -197,6 +197,33 @@ __xor<T>(lhs: T, rhs: T) -> T
 ```
 
 **Description:** Bitwise XOR `lhs` and `rhs`.
+
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+___
+
+```sway
+__mod<T>(lhs: T, rhs: T) -> T
+```
+
+**Description:** Modulo of `lhs` by `rhs`.
+
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+___
+
+```sway
+__rsh<T>(lhs: T, rhs: u64) -> T
+```
+
+**Description:** Logical right shift of `lhs` by `rhs`.
+
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+___
+
+```sway
+__lsh<T>(lhs: T, rhs: u64) -> T
+```
+
+**Description:** Logical left shift of `lhs` by `rhs`.
 
 **Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
 ___
@@ -232,10 +259,10 @@ __ptr_sub(ptr: raw_ptr, offset: u64)
 ___
 
 ```sway
-__smo<T>(recipient: b256, data: T, output_index: u64, coins: u64)
+__smo<T>(recipient: b256, data: T, coins: u64)
 ```
 
-**Description:** Sends a message `data` of arbitrary type `T` and `coins` amount of the base asset to address `recipient`. This intrinsic assumes that an OutputMessage is available at index `output_index`.
+**Description:** Sends a message `data` of arbitrary type `T` and `coins` amount of the base asset to address `recipient`.
 
 **Constraints:** None.
 

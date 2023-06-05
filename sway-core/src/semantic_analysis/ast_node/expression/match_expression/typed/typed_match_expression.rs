@@ -58,8 +58,9 @@ impl ty::TyMatchExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
+        let type_engine = ctx.engines.te();
+        let decl_engine = ctx.engines.de();
+        let engines = ctx.engines();
 
         // create the typed if expression object that we will be building on to
         let mut typed_if_exp: Option<ty::TyExpression> = None;
@@ -90,7 +91,7 @@ impl ty::TyMatchExpression {
                                 LazyOp::Or,
                                 new_condition,
                                 inner_condition,
-                                type_engine.insert(decl_engine, TypeInfo::Boolean),
+                                type_engine.insert(engines, TypeInfo::Boolean),
                                 joined_span,
                             )
                         }
@@ -107,7 +108,7 @@ impl ty::TyMatchExpression {
                             LazyOp::And,
                             new_condition,
                             inner_condition,
-                            type_engine.insert(decl_engine, TypeInfo::Boolean),
+                            type_engine.insert(engines, TypeInfo::Boolean),
                             joined_span,
                         ))
                     }
@@ -141,7 +142,7 @@ impl ty::TyMatchExpression {
                     let ctx = ctx.by_ref().with_type_annotation(self.return_type_id);
                     let conditional = ty::TyExpression {
                         expression: ty::TyExpressionVariant::Literal(Literal::Boolean(true)),
-                        return_type: type_engine.insert(decl_engine, TypeInfo::Boolean),
+                        return_type: type_engine.insert(engines, TypeInfo::Boolean),
                         span: result_span.clone(),
                     };
                     check!(
@@ -196,7 +197,7 @@ impl ty::TyMatchExpression {
                 {
                     let condition = ty::TyExpression {
                         expression: ty::TyExpressionVariant::Literal(Literal::Boolean(true)),
-                        return_type: type_engine.insert(decl_engine, TypeInfo::Boolean),
+                        return_type: type_engine.insert(engines, TypeInfo::Boolean),
                         span: self.span.clone(),
                     };
                     let then_exp = ty::TyExpression {

@@ -32,25 +32,14 @@ pub fn create_inline_in_main_pass() -> Pass {
     }
 }
 
-pub const INLINE_PREDICATE_NAME: &str = "inline_predicate_module";
+pub const INLINE_MODULE_NAME: &str = "inline_module";
 
-pub fn create_inline_in_predicate_pass() -> Pass {
+pub fn create_inline_in_module_pass() -> Pass {
     Pass {
-        name: INLINE_PREDICATE_NAME,
-        descr: "inline function calls in a predicate module.",
+        name: INLINE_MODULE_NAME,
+        descr: "inline function calls in a module.",
         deps: vec![],
-        runner: ScopedPass::ModulePass(PassMutability::Transform(inline_in_predicate_module)),
-    }
-}
-
-pub const INLINE_NONPREDICATE_NAME: &str = "inline_non_predicate_module";
-
-pub fn create_inline_in_non_predicate_pass() -> Pass {
-    Pass {
-        name: INLINE_NONPREDICATE_NAME,
-        descr: "inline function calls in a non-predicate module.",
-        deps: vec![],
-        runner: ScopedPass::ModulePass(PassMutability::Transform(inline_in_non_predicate_module)),
+        runner: ScopedPass::ModulePass(PassMutability::Transform(inline_in_module)),
     }
 }
 
@@ -99,31 +88,7 @@ fn metadata_to_inline(context: &Context, md_idx: Option<MetadataIndex>) -> Optio
     })
 }
 
-/// Inline function calls based on two conditions:
-/// 1. The program we're compiling is a "predicate". Predicates cannot jump backwards which means
-///    that supporting function calls (i.e. without inlining) is not possible. This is a protocol
-///    restriction and not a heuristic.
-/// 2. If the program is not a "predicate" then, we rely on some heuristic which is described below
-///    in the `inline_heuristc` closure in `inline_in_non_predicate_module`.
-pub fn inline_in_predicate_module(
-    context: &mut Context,
-    _: &AnalysisResults,
-    module: Module,
-) -> Result<bool, IrError> {
-    let cg =
-        call_graph::build_call_graph(context, &module.function_iter(context).collect::<Vec<_>>());
-
-    let functions = call_graph::callee_first_order(&cg);
-
-    let mut modified = false;
-
-    for function in functions {
-        modified |= inline_all_function_calls(context, &function)?;
-    }
-    Ok(modified)
-}
-
-pub fn inline_in_non_predicate_module(
+pub fn inline_in_module(
     context: &mut Context,
     _: &AnalysisResults,
     module: Module,
@@ -581,14 +546,14 @@ fn inline_instruction(
                 FuelVmInstruction::ReadRegister(reg) => new_block.ins(context).read_register(reg),
                 FuelVmInstruction::Revert(val) => new_block.ins(context).revert(map_value(val)),
                 FuelVmInstruction::Smo {
-                    recipient_and_message,
+                    recipient,
+                    message,
                     message_size,
-                    output_index,
                     coins,
                 } => new_block.ins(context).smo(
-                    map_value(recipient_and_message),
+                    map_value(recipient),
+                    map_value(message),
                     map_value(message_size),
-                    map_value(output_index),
                     map_value(coins),
                 ),
                 FuelVmInstruction::StateClear {

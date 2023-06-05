@@ -63,6 +63,7 @@ fn build_opts_from_cmd(cmd: &ContractIdCommand) -> pkg::BuildOpts {
             ir: cmd.print.ir,
         },
         time_phases: cmd.print.time_phases,
+        metrics_outfile: cmd.print.metrics_outfile.clone(),
         minify: pkg::MinifyOpts {
             json_abi: cmd.minify.json_abi,
             json_storage_slots: cmd.minify.json_storage_slots,
@@ -75,6 +76,5 @@ fn build_opts_from_cmd(cmd: &ContractIdCommand) -> pkg::BuildOpts {
         build_target: BuildTarget::default(),
         tests: false,
         member_filter: pkg::MemberFilter::only_contracts(),
-        experimental_private_modules: cmd.build_profile.experimental_private_modules,
     }
 }

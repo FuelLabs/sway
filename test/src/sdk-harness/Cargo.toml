@@ -8,11 +8,11 @@ publish = false
 
 [dependencies]
 assert_matches = "1.5.0"
-fuel-core = { version = "0.17", default-features = false }
-fuel-core-client = { version = "0.17", default-features = false }
-fuel-types = "0.26"
-fuel-vm = "0.26"
-fuels = { version = "0.39", features = ["fuel-core-lib"] }
+fuel-core = { version = "0.18.1", default-features = false }
+fuel-core-client = { version = "0.18.1", default-features = false }
+fuel-types = "0.31.1"
+fuel-vm = "0.31.1"
+fuels = { version = "0.42", features = ["fuel-core-lib"] }
 hex = "0.4.3"
 rand = "0.8"
 sha2 = "0.10"

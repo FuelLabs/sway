@@ -15,13 +15,13 @@ pub mod ir_generation;
 pub mod language;
 mod metadata;
 mod monomorphize;
+pub mod query_engine;
 pub mod semantic_analysis;
 pub mod source_map;
 pub mod transform;
 pub mod type_system;
 
 use crate::ir_generation::check_function_purity;
-use crate::language::parsed::TreeType;
 use crate::{error::*, source_map::SourceMap};
 pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
@@ -40,6 +40,7 @@ use sway_ir::{
     MODULEPRINTER_NAME, RETDEMOTION_NAME,
 };
 use sway_types::constants::DOC_COMMENT_ATTRIBUTE_NAME;
+use sway_utils::{time_expr, PerformanceData, PerformanceMetric};
 use transform::{Attribute, AttributeArg, AttributeKind, AttributesMap};
 use types::*;
 
@@ -48,7 +49,7 @@ pub mod types;
 
 pub use error::CompileResult;
 use sway_error::error::CompileError;
-use sway_error::warning::{CompileWarning, Warning};
+use sway_error::warning::CompileWarning;
 use sway_types::{ident::Ident, span, Spanned};
 pub use type_system::*;
 
@@ -60,6 +61,7 @@ pub mod fuel_prelude {
 }
 
 pub use engine_threading::Engines;
+use sysinfo::{System, SystemExt};
 
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [lexed::LexedProgram] and [parsed::ParseProgram].
 ///
@@ -76,7 +78,7 @@ pub use engine_threading::Engines;
 /// Panics if the parser panics.
 pub fn parse(
     input: Arc<str>,
-    engines: Engines<'_>,
+    engines: &Engines,
     config: Option<&BuildConfig>,
 ) -> CompileResult<(lexed::LexedProgram, parsed::ParseProgram)> {
     CompileResult::with_handler(|h| match config {
@@ -165,7 +167,7 @@ fn module_attrs_to_map(
 /// When no `BuildConfig` is given, we're assumed to be parsing in-memory with no submodules.
 fn parse_in_memory(
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     src: Arc<str>,
 ) -> Result<(lexed::LexedProgram, parsed::ParseProgram), ErrorEmitted> {
     let module = sway_parse::parse_file(handler, src, None)?;
@@ -202,7 +204,7 @@ struct Submodules {
 /// Parse all dependencies `deps` as submodules.
 fn parse_submodules(
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     module_name: Option<&str>,
     module: &sway_ast::Module,
     module_dir: &Path,
@@ -268,7 +270,7 @@ fn parse_submodules(
 /// parse this module including all of its submodules.
 fn parse_module_tree(
     handler: &Handler,
-    engines: Engines<'_>,
+    engines: &Engines,
     src: Arc<str>,
     path: Arc<PathBuf>,
     module_name: Option<&str>,
@@ -332,33 +334,18 @@ fn module_path(
 pub struct CompiledAsm(pub FinalizedAsm);
 
 pub fn parsed_to_ast(
-    engines: Engines<'_>,
+    engines: &Engines,
     parse_program: &parsed::ParseProgram,
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
     package_name: &str,
 ) -> CompileResult<ty::TyProgram> {
-    let experimental_private_modules =
-        build_config.map_or(true, |b| b.experimental_private_modules);
     // Type check the program.
     let CompileResult {
         value: typed_program_opt,
         mut warnings,
         mut errors,
-    } = ty::TyProgram::type_check(
-        engines,
-        parse_program,
-        initial_namespace,
-        package_name,
-        experimental_private_modules,
-    );
-
-    if !experimental_private_modules {
-        warnings.push(CompileWarning {
-            span: parse_program.root.span.clone(),
-            warning_content: Warning::ModulePrivacyDisabled,
-        })
-    }
+    } = ty::TyProgram::type_check(engines, parse_program, initial_namespace, package_name);
 
     let mut typed_program = match typed_program_opt {
         Some(typed_program) => typed_program,
@@ -459,18 +446,26 @@ pub fn parsed_to_ast(
 }
 
 pub fn compile_to_ast(
-    engines: Engines<'_>,
+    engines: &Engines,
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
     package_name: &str,
+    metrics: &mut PerformanceData,
 ) -> CompileResult<ty::TyProgram> {
     // Parse the program to a concrete syntax tree (CST).
     let CompileResult {
         value: parse_program_opt,
         mut warnings,
         mut errors,
-    } = parse(input, engines, build_config);
+    } = time_expr!(
+        "parse the program to a concrete syntax tree (CST)",
+        "parse_cst",
+        parse(input, engines, build_config),
+        build_config,
+        metrics
+    );
+
     let (.., mut parse_program) = match parse_program_opt {
         Some(parse_program) => parse_program,
         None => return deduped_err(warnings, errors),
@@ -485,13 +480,20 @@ pub fn compile_to_ast(
     }
 
     // Type check (+ other static analysis) the CST to a typed AST.
-    let typed_res = parsed_to_ast(
-        engines,
-        &parse_program,
-        initial_namespace,
+    let typed_res = time_expr!(
+        "parse the concrete syntax tree (CST) to a typed AST",
+        "parse_ast",
+        parsed_to_ast(
+            engines,
+            &parse_program,
+            initial_namespace,
+            build_config,
+            package_name,
+        ),
         build_config,
-        package_name,
+        metrics
     );
+
     errors.extend(typed_res.errors);
     warnings.extend(typed_res.warnings);
     let typed_program = match typed_res.value {
@@ -510,11 +512,12 @@ pub fn compile_to_ast(
 /// try compiling to a `CompiledAsm`,
 /// containing the asm in opcode form (not raw bytes/bytecode).
 pub fn compile_to_asm(
-    engines: Engines<'_>,
+    engines: &Engines,
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: BuildConfig,
     package_name: &str,
+    metrics: &mut PerformanceData,
 ) -> CompileResult<CompiledAsm> {
     let ast_res = compile_to_ast(
         engines,
@@ -522,6 +525,7 @@ pub fn compile_to_asm(
         initial_namespace,
         Some(&build_config),
         package_name,
+        metrics,
     );
     ast_to_asm(engines, &ast_res, &build_config)
 }
@@ -530,7 +534,7 @@ pub fn compile_to_asm(
 /// try compiling to a `CompiledAsm`,
 /// containing the asm in opcode form (not raw bytes/bytecode).
 pub fn ast_to_asm(
-    engines: Engines<'_>,
+    engines: &Engines,
     ast_res: &CompileResult<ty::TyProgram>,
     build_config: &BuildConfig,
 ) -> CompileResult<CompiledAsm> {
@@ -551,7 +555,7 @@ pub fn ast_to_asm(
 }
 
 pub(crate) fn compile_ast_to_ir_to_asm(
-    engines: Engines<'_>,
+    engines: &Engines,
     program: &ty::TyProgram,
     build_config: &BuildConfig,
 ) -> CompileResult<FinalizedAsm> {
@@ -569,7 +573,6 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // errors and then hold as a runtime invariant that none of the types will be unresolved in the
     // IR phase.
 
-    let tree_type = program.kind.tree_type();
     let mut ir = match ir_generation::compile_program(program, build_config.include_tests, engines)
     {
         Ok(ir) => ir,
@@ -599,7 +602,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // Initialize the pass manager and register known passes.
     let mut pass_mgr = PassManager::default();
     register_known_passes(&mut pass_mgr);
-    let mut pass_group = create_o1_pass_group(matches!(tree_type, TreeType::Predicate));
+    let mut pass_group = create_o1_pass_group();
 
     // Target specific transforms should be moved into something more configured.
     if build_config.build_target == BuildTarget::Fuel {
@@ -652,12 +655,13 @@ pub(crate) fn compile_ast_to_ir_to_asm(
 
 /// Given input Sway source code, compile to [CompiledBytecode], containing the asm in bytecode form.
 pub fn compile_to_bytecode(
-    engines: Engines<'_>,
+    engines: &Engines,
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: BuildConfig,
     source_map: &mut SourceMap,
     package_name: &str,
+    metrics: &mut PerformanceData,
 ) -> CompileResult<CompiledBytecode> {
     let asm_res = compile_to_asm(
         engines,
@@ -665,6 +669,7 @@ pub fn compile_to_bytecode(
         initial_namespace,
         build_config,
         package_name,
+        metrics,
     );
     asm_to_bytecode(asm_res, source_map)
 }
@@ -695,7 +700,7 @@ pub fn asm_to_bytecode(
 /// Given a [ty::TyProgram], which is type-checked Sway source, construct a graph to analyze
 /// control flow and determine if it is valid.
 fn perform_control_flow_analysis(
-    engines: Engines<'_>,
+    engines: &Engines,
     program: &ty::TyProgram,
     print_graph: Option<String>,
     print_graph_url_format: Option<String>,
@@ -718,7 +723,7 @@ fn perform_control_flow_analysis(
 ///
 /// Returns the graph that was used for analysis.
 fn dead_code_analysis<'a>(
-    engines: Engines<'a>,
+    engines: &'a Engines,
     program: &ty::TyProgram,
 ) -> CompileResult<ControlFlowGraph<'a>> {
     let decl_engine = engines.de();
@@ -734,7 +739,7 @@ fn dead_code_analysis<'a>(
 
 /// Recursively collect modules into the given `ControlFlowGraph` ready for dead code analysis.
 fn module_dead_code_analysis<'eng: 'cfg, 'cfg>(
-    engines: Engines<'eng>,
+    engines: &'eng Engines,
     module: &ty::TyModule,
     tree_type: &parsed::TreeType,
     graph: &mut ControlFlowGraph<'cfg>,
@@ -763,14 +768,14 @@ fn module_dead_code_analysis<'eng: 'cfg, 'cfg>(
     res
 }
 
-fn return_path_analysis(engines: Engines<'_>, program: &ty::TyProgram) -> Vec<CompileError> {
+fn return_path_analysis(engines: &Engines, program: &ty::TyProgram) -> Vec<CompileError> {
     let mut errors = vec![];
     module_return_path_analysis(engines, &program.root, &mut errors);
     errors
 }
 
 fn module_return_path_analysis(
-    engines: Engines<'_>,
+    engines: &Engines,
     module: &ty::TyModule,
     errors: &mut Vec<CompileError>,
 ) {
@@ -786,11 +791,7 @@ fn module_return_path_analysis(
 
 #[test]
 fn test_basic_prog() {
-    use crate::decl_engine::DeclEngine;
-
-    let type_engine = TypeEngine::default();
-    let decl_engine = DeclEngine::default();
-    let engines = Engines::new(&type_engine, &decl_engine);
+    let engines = Engines::default();
     let prog = parse(
         r#"
         contract;
@@ -872,7 +873,7 @@ fn test_basic_prog() {
     }
     "#
         .into(),
-        engines,
+        &engines,
         None,
     );
     let mut warnings: Vec<CompileWarning> = Vec::new();
@@ -881,11 +882,7 @@ fn test_basic_prog() {
 }
 #[test]
 fn test_parenthesized() {
-    use crate::decl_engine::DeclEngine;
-
-    let type_engine = TypeEngine::default();
-    let decl_engine = DeclEngine::default();
-    let engines = Engines::new(&type_engine, &decl_engine);
+    let engines = Engines::default();
     let prog = parse(
         r#"
         contract;
@@ -895,7 +892,7 @@ fn test_parenthesized() {
         }
     "#
         .into(),
-        engines,
+        &engines,
         None,
     );
     let mut warnings: Vec<CompileWarning> = Vec::new();
@@ -905,14 +902,8 @@ fn test_parenthesized() {
 
 #[test]
 fn test_unary_ordering() {
-    use crate::{
-        decl_engine::DeclEngine,
-        language::{self, parsed},
-    };
-
-    let type_engine = TypeEngine::default();
-    let decl_engine = DeclEngine::default();
-    let engines = Engines::new(&type_engine, &decl_engine);
+    use crate::language::{self, parsed};
+    let engines = Engines::default();
     let prog = parse(
         r#"
     script;
@@ -922,7 +913,7 @@ fn test_unary_ordering() {
         !a && b;
     }"#
         .into(),
-        engines,
+        &engines,
         None,
     );
     let mut warnings: Vec<CompileWarning> = Vec::new();

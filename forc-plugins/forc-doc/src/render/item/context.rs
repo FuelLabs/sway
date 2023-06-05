@@ -52,7 +52,7 @@ impl Renderable for Context {
                 for field in fields {
                     let struct_field_id = format!("structfield.{}", field.name.as_str());
                     let type_anchor = render_type_anchor(
-                        render_plan.type_engine.get(field.type_argument.type_id),
+                        render_plan.engines.te().get(field.type_argument.type_id),
                         &render_plan,
                         &self.module_info,
                     );
@@ -80,7 +80,7 @@ impl Renderable for Context {
                 for field in fields {
                     let storage_field_id = format!("storagefield.{}", field.name.as_str());
                     let type_anchor = render_type_anchor(
-                        render_plan.type_engine.get(field.type_argument.type_id),
+                        render_plan.engines.te().get(field.type_argument.type_id),
                         &render_plan,
                         &self.module_info,
                     );
@@ -108,7 +108,7 @@ impl Renderable for Context {
                 for variant in variants {
                     let enum_variant_id = format!("variant.{}", variant.name.as_str());
                     let type_anchor = render_type_anchor(
-                        render_plan.type_engine.get(variant.type_argument.type_id),
+                        render_plan.engines.te().get(variant.type_argument.type_id),
                         &render_plan,
                         &self.module_info,
                     );
@@ -449,7 +449,7 @@ impl Renderable for TyTraitItem {
             TyTraitItem::Fn(item_fn) => item_fn,
             TyTraitItem::Constant(_) => unimplemented!("Constant Trait items not yet implemented"),
         };
-        let method = render_plan.decl_engine.get_function(item.id());
+        let method = render_plan.engines.de().get_function(item.id());
         let attributes = method.attributes.to_html_string();
 
         let mut fn_sig = format!("fn {}(", method.name.as_str());
