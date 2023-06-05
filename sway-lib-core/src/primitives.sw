@@ -29,7 +29,7 @@ impl u64 {
     pub fn to_le_bytes(self) -> [u8; 8] {
         let output = [0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8];
 
-        asm(input: self, off: OFF, i: I, j: J, k: K, l: L, m: M, n: N, n: N, output: output, r1) {
+        asm(input: self, off: OFF, i: I, j: J, k: K, l: L, m: M, n: N, n: N, o: O, output: output, r1) {
             and  r1 input off;
             sw  output r1 i0;
 
@@ -75,7 +75,7 @@ impl u64 {
         let g = bytes[6];
         let h = bytes[7];
 
-        asm(a: a, b: b, c: c, d: d, e: e, f: f, g: g, h: h, i: I, j: J, k: K, l: L, m: M, n: N, n: N, r1, r2, r3) {
+        asm(a: a, b: b, c: c, d: d, e: e, f: f, g: g, h: h, i: I, j: J, k: K, l: L, m: M, n: N, n: N, o: O, r1, r2, r3) {
             sll  r1 h o;
             sll  r2 g n;
             or   r3 r1 r2;
@@ -98,7 +98,7 @@ impl u64 {
     pub fn to_be_bytes(self) -> [u8; 8] {
         let output = [0; 8];
 
-        asm(input: self, off: OFF, i: I, j: J, k: K, l: L, m: M, n: N, n: N, output: output, r1) {
+        asm(input: self, off: OFF, i: I, j: J, k: K, l: L, m: M, n: N, n: N, o: O, output: output, r1) {
             and  r1 input off;
             sw  output r1 i7;
 
@@ -144,7 +144,7 @@ impl u64 {
         let g = bytes[6];
         let h = bytes[7];
 
-        asm(a: a, b: b, c: c, d: d, e: e, f: f, g: g, h: h, i: I, j: J, k: K, l: L, m: M, n: N, n: N, o: O r1, r2, r3) {
+        asm(a: a, b: b, c: c, d: d, e: e, f: f, g: g, h: h, i: I, j: J, k: K, l: L, m: M, n: N, n: N, o: O, r1, r2, r3) {
             sll  r1 a o;
             sll  r2 b n;
             or   r3 r1 r2;
