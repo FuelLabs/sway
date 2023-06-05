@@ -56,6 +56,7 @@
   - [Types](./documentation/language/annotations/type.md)
   - [Attributes](./documentation/language/annotations/attributes/index.md)
     - [Storage](./documentation/language/annotations/attributes/storage.md)
+    - [Payable](./documentation/language/annotations/attributes/payable.md)
     - [Test](./documentation/language/annotations/attributes/test.md)
 - [Traits](./documentation/language/traits/index.md)
 - [Generics](./documentation/language/generics/index.md)
