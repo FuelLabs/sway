@@ -262,10 +262,10 @@ impl u16 {
 impl b256 {
     pub fn to_le_bytes(self) -> [u8; 32] {
         let (a, b, c, d): (u64, u64, u64, u64) = asm(r1: self) {r1: (u64, u64, u64, u64)};
-        let a_bytes = a.to_le_bytes();
-        let b_bytes = b.to_le_bytes();
-        let c_bytes = c.to_le_bytes();
-        let d_bytes = d.to_le_bytes();
+        let a = a.to_le_bytes();
+        let b = b.to_le_bytes();
+        let c = c.to_le_bytes();
+        let d = d.to_le_bytes();
 
         let output = [a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7],
                       b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7],
@@ -290,10 +290,10 @@ impl b256 {
 
     pub fn to_be_bytes(self) -> [u8; 32] {
         let (a, b, c, d): (u64, u64, u64, u64) = asm(r1: self) {r1: (u64, u64, u64, u64)};
-        let a_bytes = a.to_be_bytes();
-        let b_bytes = b.to_be_bytes();
-        let c_bytes = c.to_be_bytes();
-        let d_bytes = d.to_be_bytes();
+        let a = a.to_be_bytes();
+        let b = b.to_be_bytes();
+        let c = c.to_be_bytes();
+        let d = d.to_be_bytes();
 
         let output = [a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7],
                       b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7],
