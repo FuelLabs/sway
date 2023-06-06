@@ -482,7 +482,20 @@ pub(crate) fn resolve_method_name(
         }
         MethodName::FromTrait { call_path } => {
             // find the module that the symbol is in
-            let module_path = ctx.namespace.find_module_path(&call_path.prefixes);
+            let module_path = if !call_path.is_absolute {
+                ctx.namespace.find_module_path(&call_path.prefixes)
+            } else {
+                let mut module_path = call_path.prefixes.clone();
+                if let (Some(root_mod), Some(root_name)) = (
+                    module_path.get(0).cloned(),
+                    ctx.namespace.root().name.clone(),
+                ) {
+                    if root_mod.as_str() == root_name.as_str() {
+                        module_path.remove(0);
+                    }
+                }
+                module_path
+            };
 
             // find the type of the first argument
             let type_id = arguments
