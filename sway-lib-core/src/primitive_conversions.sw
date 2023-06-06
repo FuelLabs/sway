@@ -262,10 +262,10 @@ impl u16 {
 impl b256 {
     pub fn to_le_bytes(self) -> [u8; 32] {
         let (a, b, c, d): (u64, u64, u64, u64) = asm(r1: self) {r1: (u64, u64, u64, u64)};
-        let a = a.to_le_bytes();
-        let b = b.to_le_bytes();
-        let c = c.to_le_bytes();
-        let d = d.to_le_bytes();
+        let d = a.to_le_bytes();
+        let c = b.to_le_bytes();
+        let b = c.to_le_bytes();
+        let a = d.to_le_bytes();
 
         let output = [a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7],
                       b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7],
@@ -281,7 +281,7 @@ impl b256 {
         let c = u64::from_le_bytes([bytes[16], bytes[17], bytes[18], bytes[19], bytes[20], bytes[21], bytes[22], bytes[23]]);
         let d = u64::from_le_bytes([bytes[24], bytes[25], bytes[26], bytes[27], bytes[28], bytes[29], bytes[30], bytes[31]]);
 
-        let result = (a, b, c, d);
+        let result = (d, c, b, a);
 
         asm(r1: result) {
             r1: b256
