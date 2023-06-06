@@ -443,10 +443,10 @@ fn test_u16_from_be_bytes() {
 
 #[test]
 fn test_b256_from_le_bytes() {
-    let bytes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
-                 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-                 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
-                 31, 32];
+    let bytes = [32, 31, 30, 29, 28, 27, 26, 25, 24, 23,
+                 22, 21, 20, 19, 18, 17, 16, 15, 14, 13,
+                 12, 11, 10, 9, 8, 7, 6, 5, 4, 3,
+                 2, 1];
 
     let x = b256::from_le_bytes(bytes);
 
@@ -459,46 +459,20 @@ fn test_b256_to_le_bytes() {
 
     let bytes = x.to_le_bytes();
 
-    assert(bytes[0] == 1);
-    assert(bytes[1] == 2);
-    assert(bytes[2] == 3);
-    assert(bytes[3] == 4);
-    assert(bytes[4] == 5);
-    assert(bytes[5] == 6);
-    assert(bytes[6] == 7);
-    assert(bytes[7] == 8);
-    assert(bytes[8] == 9);
-    assert(bytes[9] == 10);
-    assert(bytes[10] == 11);
-    assert(bytes[11] == 12);
-    assert(bytes[12] == 13);
-    assert(bytes[13] == 14);
-    assert(bytes[14] == 15);
-    assert(bytes[15] == 16);
-    assert(bytes[16] == 17);
-    assert(bytes[17] == 18);
-    assert(bytes[18] == 19);
-    assert(bytes[19] == 20);
-    assert(bytes[20] == 21);
-    assert(bytes[21] == 22);
-    assert(bytes[22] == 23);
-    assert(bytes[23] == 24);
-    assert(bytes[24] == 25);
-    assert(bytes[25] == 26);
-    assert(bytes[26] == 27);
-    assert(bytes[27] == 28);
-    assert(bytes[28] == 29);
-    assert(bytes[29] == 30);
-    assert(bytes[30] == 31);
-    assert(bytes[31] == 32);
+    let mut i = 0;
+    while i < 32 {
+        assert(bytes[i] == 32 - i);
+        i += 1;
+    }
+
 }
 
 #[test]
 fn test_b256_from_be_bytes() {
-    let bytes = [32, 31, 30, 29, 28, 27, 26, 25, 24, 23,
-                 22, 21, 20, 19, 18, 17, 16, 15, 14, 13,
-                 12, 11, 10, 9, 8, 7, 6, 5, 4, 3,
-                 2, 1];
+    let bytes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+                 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+                 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
+                 31, 32];
 
     let x = b256::from_be_bytes(bytes);
 
@@ -511,36 +485,9 @@ fn test_b256_to_be_bytes() {
 
     let bytes = x.to_be_bytes();
 
-    assert(bytes[0] == 1);
-    assert(bytes[1] == 2);
-    assert(bytes[2] == 3);
-    assert(bytes[3] == 4);
-    assert(bytes[4] == 5);
-    assert(bytes[5] == 6);
-    assert(bytes[6] == 7);
-    assert(bytes[7] == 8);
-    assert(bytes[8] == 9);
-    assert(bytes[9] == 10);
-    assert(bytes[10] == 11);
-    assert(bytes[11] == 12);
-    assert(bytes[12] == 13);
-    assert(bytes[13] == 14);
-    assert(bytes[14] == 15);
-    assert(bytes[15] == 16);
-    assert(bytes[16] == 17);
-    assert(bytes[17] == 18);
-    assert(bytes[18] == 19);
-    assert(bytes[19] == 20);
-    assert(bytes[20] == 21);
-    assert(bytes[21] == 22);
-    assert(bytes[22] == 23);
-    assert(bytes[23] == 24);
-    assert(bytes[24] == 25);
-    assert(bytes[25] == 26);
-    assert(bytes[26] == 27);
-    assert(bytes[27] == 28);
-    assert(bytes[28] == 29);
-    assert(bytes[29] == 30);
-    assert(bytes[30] == 31);
-    assert(bytes[31] == 32);
+    let mut i = 0;
+    while i < 32 {
+        assert(bytes[i] == i + 1);
+        i += 1;
+    }
 }
