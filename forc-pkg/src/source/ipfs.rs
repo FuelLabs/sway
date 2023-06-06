@@ -77,8 +77,16 @@ impl source::Fetch for Pinned {
                 let ipfs_client = ipfs_client();
                 let dest = cache_dir();
                 futures::executor::block_on(async {
+                    info!(
+                        "   {} for local IPFS node",
+                        ansi_term::Color::Green.bold().paint("Checking")
+                    );
                     if cid.fetch_with_client(&ipfs_client, &dest).await.is_err() {
-                        warn!("   Couldn't fetch from local ipfs node. Falling back to {PUBLIC_GATEWAY}.");
+                        warn!(
+                            "   {} from {}. Note: This can take several minutes.",
+                            ansi_term::Color::Green.bold().paint("Fetching"),
+                            PUBLIC_GATEWAY
+                        );
                         cid.fetch_with_public_gateway(&dest).await
                     } else {
                         Ok(())
@@ -138,7 +146,6 @@ impl Cid {
 
     /// Using a public gateway, fetches the content described by this cid.
     async fn fetch_with_public_gateway(&self, dst: &Path) -> Result<()> {
-        info!("   Fetching from public gateway, this might take some time.");
         let client = reqwest::Client::new();
         // We request the content to be served to us in tar format by the public gateway.
         let fetch_url = format!(
