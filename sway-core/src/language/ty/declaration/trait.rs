@@ -52,7 +52,7 @@ impl Spanned for TyTraitDecl {
 
 impl EqWithEngines for TyTraitDecl {}
 impl PartialEqWithEngines for TyTraitDecl {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.name == other.name
             && self.type_parameters.eq(&other.type_parameters, engines)
             && self.interface_surface.eq(&other.interface_surface, engines)
@@ -63,7 +63,7 @@ impl PartialEqWithEngines for TyTraitDecl {
 }
 
 impl HashWithEngines for TyTraitDecl {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TyTraitDecl {
             name,
             type_parameters,
@@ -87,7 +87,7 @@ impl HashWithEngines for TyTraitDecl {
 
 impl EqWithEngines for TyTraitInterfaceItem {}
 impl PartialEqWithEngines for TyTraitInterfaceItem {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         match (self, other) {
             (TyTraitInterfaceItem::TraitFn(id), TyTraitInterfaceItem::TraitFn(other_id)) => {
                 id.eq(other_id, engines)
@@ -102,7 +102,7 @@ impl PartialEqWithEngines for TyTraitInterfaceItem {
 
 impl EqWithEngines for TyTraitItem {}
 impl PartialEqWithEngines for TyTraitItem {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         match (self, other) {
             (TyTraitItem::Fn(id), TyTraitItem::Fn(other_id)) => id.eq(other_id, engines),
             (TyTraitItem::Constant(id), TyTraitItem::Constant(other_id)) => {
@@ -114,7 +114,7 @@ impl PartialEqWithEngines for TyTraitItem {
 }
 
 impl HashWithEngines for TyTraitInterfaceItem {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         match self {
             TyTraitInterfaceItem::TraitFn(fn_decl) => fn_decl.hash(state, engines),
             TyTraitInterfaceItem::Constant(const_decl) => const_decl.hash(state, engines),
@@ -123,7 +123,7 @@ impl HashWithEngines for TyTraitInterfaceItem {
 }
 
 impl HashWithEngines for TyTraitItem {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         match self {
             TyTraitItem::Fn(fn_decl) => fn_decl.hash(state, engines),
             TyTraitItem::Constant(const_decl) => const_decl.hash(state, engines),
@@ -132,7 +132,7 @@ impl HashWithEngines for TyTraitItem {
 }
 
 impl SubstTypes for TyTraitDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         self.type_parameters
             .iter_mut()
             .for_each(|x| x.subst(type_mapping, engines));
@@ -170,7 +170,7 @@ impl SubstTypes for TyTraitDecl {
 }
 
 impl SubstTypes for TyTraitItem {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         match self {
             TyTraitItem::Fn(fn_decl) => fn_decl.subst(type_mapping, engines),
             TyTraitItem::Constant(const_decl) => const_decl.subst(type_mapping, engines),
@@ -179,7 +179,7 @@ impl SubstTypes for TyTraitItem {
 }
 
 impl ReplaceSelfType for TyTraitDecl {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         self.type_parameters
             .iter_mut()
             .for_each(|x| x.replace_self_type(engines, self_type));
@@ -217,7 +217,7 @@ impl ReplaceSelfType for TyTraitDecl {
 }
 
 impl ReplaceSelfType for TyTraitInterfaceItem {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         match self {
             TyTraitInterfaceItem::TraitFn(fn_decl) => fn_decl.replace_self_type(engines, self_type),
             TyTraitInterfaceItem::Constant(const_decl) => {
@@ -228,7 +228,7 @@ impl ReplaceSelfType for TyTraitInterfaceItem {
 }
 
 impl ReplaceSelfType for TyTraitItem {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         match self {
             TyTraitItem::Fn(fn_decl) => fn_decl.replace_self_type(engines, self_type),
             TyTraitItem::Constant(const_decl) => const_decl.replace_self_type(engines, self_type),
@@ -237,7 +237,7 @@ impl ReplaceSelfType for TyTraitItem {
 }
 
 impl ReplaceFunctionImplementingType for TyTraitItem {
-    fn replace_implementing_type(&mut self, engines: Engines<'_>, implementing_type: TyDecl) {
+    fn replace_implementing_type(&mut self, engines: &Engines, implementing_type: TyDecl) {
         match self {
             TyTraitItem::Fn(decl_ref) => {
                 decl_ref.replace_implementing_type(engines, implementing_type)

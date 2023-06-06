@@ -23,8 +23,8 @@ pub(crate) fn type_check_method_application(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
+    let type_engine = ctx.engines.te();
+    let decl_engine = ctx.engines.de();
     let engines = ctx.engines();
 
     // type check the function arguments
@@ -389,7 +389,7 @@ fn unify_arguments_and_parameters(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
+    let type_engine = ctx.engines.te();
     let engines = ctx.engines();
     let mut typed_arguments_and_names = vec![];
 
@@ -432,8 +432,8 @@ pub(crate) fn resolve_method_name(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
+    let type_engine = ctx.engines.te();
+    let decl_engine = ctx.engines.de();
     let engines = ctx.engines();
 
     // retrieve the function declaration using the components of the method name
@@ -591,9 +591,10 @@ pub(crate) fn resolve_method_name(
     }
 
     let decl_ref = ctx
-        .decl_engine
+        .engines
+        .de()
         .insert(func_decl)
-        .with_parent(ctx.decl_engine, (*decl_ref.id()).into());
+        .with_parent(ctx.engines.de(), (*decl_ref.id()).into());
 
     ok((decl_ref, type_id), warnings, errors)
 }

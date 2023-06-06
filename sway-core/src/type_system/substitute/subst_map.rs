@@ -16,7 +16,7 @@ pub struct TypeSubstMap {
 }
 
 impl DebugWithEngines for TypeSubstMap {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         write!(
             f,
             "TypeSubstMap {{ {} }}",
@@ -60,7 +60,7 @@ impl TypeSubstMap {
     /// the [TypeId]s from `type_parameters` and the [DestinationType]s are the
     /// new [TypeId]s created from a transformation upon `type_parameters`.
     pub(crate) fn from_type_parameters(
-        engines: Engines<'_>,
+        engines: &Engines,
         type_parameters: &[TypeParameter],
     ) -> TypeSubstMap {
         let type_engine = engines.te();
@@ -313,7 +313,7 @@ impl TypeSubstMap {
     ///     finds a match in a recursive call to `find_match`
     ///
     /// A match cannot be found in any other circumstance.
-    pub(crate) fn find_match(&self, type_id: TypeId, engines: Engines<'_>) -> Option<TypeId> {
+    pub(crate) fn find_match(&self, type_id: TypeId, engines: &Engines) -> Option<TypeId> {
         let type_engine = engines.te();
         let decl_engine = engines.de();
         let type_info = type_engine.get(type_id);
@@ -442,7 +442,7 @@ impl TypeSubstMap {
 }
 
 fn iter_for_match(
-    engines: Engines<'_>,
+    engines: &Engines,
     type_mapping: &TypeSubstMap,
     type_info: &TypeInfo,
 ) -> Option<TypeId> {

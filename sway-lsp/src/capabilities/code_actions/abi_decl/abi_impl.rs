@@ -9,7 +9,7 @@ use crate::capabilities::code_actions::{
 };
 
 pub(crate) struct AbiImplCodeAction<'a> {
-    engines: Engines<'a>,
+    engines: &'a Engines,
     decl: &'a TyAbiDecl,
     uri: &'a Url,
 }

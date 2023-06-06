@@ -28,7 +28,7 @@ impl Instruction {
 
 impl EqWithEngines for Instruction {}
 impl PartialEqWithEngines for Instruction {
-    fn eq(&self, other: &Self, _engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, _engines: &Engines) -> bool {
         use Instruction::*;
         match (self, other) {
             (Type(_, _), Type(_, _)) => todo!(),
@@ -43,7 +43,7 @@ impl PartialEqWithEngines for Instruction {
 }
 
 impl HashWithEngines for Instruction {
-    fn hash<H: Hasher>(&self, _state: &mut H, _engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, _state: &mut H, _engines: &Engines) {
         use Instruction::*;
         match self {
             Type(_, _) => todo!(),
@@ -57,7 +57,7 @@ impl HashWithEngines for Instruction {
 }
 
 impl OrdWithEngines for Instruction {
-    fn cmp(&self, other: &Self, _engines: Engines<'_>) -> Ordering {
+    fn cmp(&self, other: &Self, _engines: &Engines) -> Ordering {
         use Instruction::*;
         match (self, other) {
             (Type(_, _), Type(_, _)) => todo!(),

@@ -84,7 +84,7 @@ impl Module {
     /// This will eventually be refactored out of `sway-core` in favor of creating temporary package dependencies for providing these
     /// `CONTRACT_ID`-containing modules: https://github.com/FuelLabs/sway/issues/3077
     pub fn default_with_contract_id(
-        engines: Engines<'_>,
+        engines: &Engines,
         name: Option<Ident>,
         contract_id_value: String,
     ) -> Result<Self, vec1::Vec1<CompileError>> {
@@ -102,7 +102,7 @@ impl Module {
 
     fn default_with_contract_id_inner(
         handler: &Handler,
-        engines: Engines<'_>,
+        engines: &Engines,
         ns_name: Option<Ident>,
         contract_id_value: String,
     ) -> Result<Self, ErrorEmitted> {
@@ -235,7 +235,7 @@ impl Module {
         &mut self,
         src: &Path,
         dst: &Path,
-        engines: Engines<'_>,
+        engines: &Engines,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -288,7 +288,7 @@ impl Module {
         &mut self,
         src: &Path,
         dst: &Path,
-        engines: Engines<'_>,
+        engines: &Engines,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -368,7 +368,7 @@ impl Module {
     /// import.
     pub(crate) fn self_import(
         &mut self,
-        engines: Engines<'_>,
+        engines: &Engines,
         src: &Path,
         dst: &Path,
         alias: Option<Ident>,
@@ -382,7 +382,7 @@ impl Module {
     /// Paths are assumed to be relative to `self`.
     pub(crate) fn item_import(
         &mut self,
-        engines: Engines<'_>,
+        engines: &Engines,
         src: &Path,
         item: &Ident,
         dst: &Path,
@@ -467,7 +467,7 @@ impl Module {
     #[allow(clippy::too_many_arguments)] // TODO: remove lint bypass once private modules are no longer experimental
     pub(crate) fn variant_import(
         &mut self,
-        engines: Engines<'_>,
+        engines: &Engines,
         src: &Path,
         enum_name: &Ident,
         variant_name: &Ident,
@@ -580,7 +580,7 @@ impl Module {
         &mut self,
         src: &Path,
         dst: &Path,
-        engines: Engines<'_>,
+        engines: &Engines,
         enum_name: &Ident,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
