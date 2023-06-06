@@ -167,31 +167,31 @@ enum UnifyCheckMode {
 
 /// Helper struct to aid in type coercion.
 pub(crate) struct UnifyCheck<'a> {
-    engines: Engines<'a>,
+    engines: &'a Engines,
     mode: UnifyCheckMode,
 }
 
 impl<'a> UnifyCheck<'a> {
-    pub(crate) fn coercion(engines: Engines<'a>) -> Self {
+    pub(crate) fn coercion(engines: &'a Engines) -> Self {
         Self {
             engines,
             mode: UnifyCheckMode::Coercion,
         }
     }
-    pub(crate) fn constraint_subset(engines: Engines<'a>) -> Self {
+    pub(crate) fn constraint_subset(engines: &'a Engines) -> Self {
         Self {
             engines,
             mode: UnifyCheckMode::ConstraintSubset,
         }
     }
-    pub(crate) fn non_generic_constraint_subset(engines: Engines<'a>) -> Self {
+    pub(crate) fn non_generic_constraint_subset(engines: &'a Engines) -> Self {
         Self {
             engines,
             mode: UnifyCheckMode::NonGenericConstraintSubset,
         }
     }
 
-    pub(crate) fn non_dynamic_equality(engines: Engines<'a>) -> Self {
+    pub(crate) fn non_dynamic_equality(engines: &'a Engines) -> Self {
         Self {
             engines,
             mode: UnifyCheckMode::NonDynamicEquality,

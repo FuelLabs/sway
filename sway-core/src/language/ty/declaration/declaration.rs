@@ -116,7 +116,7 @@ pub struct TypeAliasDecl {
 
 impl EqWithEngines for TyDecl {}
 impl PartialEqWithEngines for TyDecl {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         let decl_engine = engines.de();
         let type_engine = engines.te();
         match (self, other) {
@@ -230,7 +230,7 @@ impl PartialEqWithEngines for TyDecl {
 }
 
 impl HashWithEngines for TyDecl {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let decl_engine = engines.de();
         let type_engine = engines.te();
         std::mem::discriminant(self).hash(state);
@@ -283,7 +283,7 @@ impl HashWithEngines for TyDecl {
 }
 
 impl SubstTypes for TyDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         match self {
             TyDecl::VariableDecl(ref mut var_decl) => var_decl.subst(type_mapping, engines),
             TyDecl::FunctionDecl(FunctionDecl {
@@ -332,7 +332,7 @@ impl SubstTypes for TyDecl {
 }
 
 impl ReplaceSelfType for TyDecl {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         match self {
             TyDecl::VariableDecl(ref mut var_decl) => {
                 var_decl.replace_self_type(engines, self_type)
@@ -409,7 +409,7 @@ impl Spanned for TyDecl {
 }
 
 impl DisplayWithEngines for TyDecl {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> std::fmt::Result {
         let type_engine = engines.te();
         write!(
             f,
@@ -454,7 +454,7 @@ impl DisplayWithEngines for TyDecl {
 }
 
 impl DebugWithEngines for TyDecl {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> std::fmt::Result {
         let type_engine = engines.te();
         write!(
             f,
@@ -506,7 +506,7 @@ impl CollectTypesMetadata for TyDecl {
     ) -> CompileResult<Vec<TypeMetadata>> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let decl_engine = ctx.decl_engine;
+        let decl_engine = ctx.engines.de();
         let metadata = match self {
             TyDecl::VariableDecl(decl) => {
                 let mut body = check!(
@@ -590,7 +590,7 @@ impl TyDecl {
     /// Retrieves the declaration as a `DeclRef<DeclId<TyEnumDecl>>`.
     ///
     /// Returns an error if `self` is not the [TyDecl][EnumDecl] variant.
-    pub(crate) fn to_enum_ref(&self, engines: Engines) -> CompileResult<DeclRefEnum> {
+    pub(crate) fn to_enum_ref(&self, engines: &Engines) -> CompileResult<DeclRefEnum> {
         match self {
             TyDecl::EnumDecl(EnumDecl {
                 name,
@@ -620,7 +620,7 @@ impl TyDecl {
     /// Retrieves the declaration as a `DeclRef<DeclId<TyStructDecl>>`.
     ///
     /// Returns an error if `self` is not the [TyDecl][StructDecl] variant.
-    pub(crate) fn to_struct_ref(&self, engines: Engines) -> CompileResult<DeclRefStruct> {
+    pub(crate) fn to_struct_ref(&self, engines: &Engines) -> CompileResult<DeclRefStruct> {
         match self {
             TyDecl::StructDecl(StructDecl {
                 name,
@@ -802,7 +802,7 @@ impl TyDecl {
         }
     }
 
-    pub(crate) fn return_type(&self, engines: Engines<'_>) -> CompileResult<TypeId> {
+    pub(crate) fn return_type(&self, engines: &Engines) -> CompileResult<TypeId> {
         let warnings = vec![];
         let mut errors = vec![];
         let type_engine = engines.te();

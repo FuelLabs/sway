@@ -7,7 +7,7 @@ use crate::{
 };
 // currently the unsafe downcast expr is only used for enums, so this method is specialized for enums
 pub(crate) fn instantiate_unsafe_downcast(
-    engines: Engines<'_>,
+    engines: &Engines,
     exp: &ty::TyExpression,
     variant: ty::TyEnumVariant,
     call_path_decl: ty::TyDecl,

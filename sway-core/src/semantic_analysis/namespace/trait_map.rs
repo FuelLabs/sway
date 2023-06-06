@@ -24,12 +24,12 @@ struct TraitSuffix {
     args: Vec<TypeArgument>,
 }
 impl PartialEqWithEngines for TraitSuffix {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.name == other.name && self.args.eq(&other.args, engines)
     }
 }
 impl OrdWithEngines for TraitSuffix {
-    fn cmp(&self, other: &Self, engines: Engines<'_>) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self, engines: &Engines) -> std::cmp::Ordering {
         self.name
             .cmp(&other.name)
             .then_with(|| self.args.cmp(&other.args, engines))
@@ -37,14 +37,14 @@ impl OrdWithEngines for TraitSuffix {
 }
 
 impl<T: PartialEqWithEngines> PartialEqWithEngines for CallPath<T> {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.prefixes == other.prefixes
             && self.suffix.eq(&other.suffix, engines)
             && self.is_absolute == other.is_absolute
     }
 }
 impl<T: OrdWithEngines> OrdWithEngines for CallPath<T> {
-    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
+    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
         self.prefixes
             .cmp(&other.prefixes)
             .then_with(|| self.suffix.cmp(&other.suffix, engines))
@@ -61,7 +61,7 @@ struct TraitKey {
 }
 
 impl OrdWithEngines for TraitKey {
-    fn cmp(&self, other: &Self, engines: Engines<'_>) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self, engines: &Engines) -> std::cmp::Ordering {
         self.name
             .cmp(&other.name, engines)
             .then_with(|| self.type_id.cmp(&other.type_id))
@@ -113,7 +113,7 @@ impl TraitMap {
         items: &[TyImplItem],
         impl_span: &Span,
         is_impl_self: bool,
-        engines: Engines<'_>,
+        engines: &Engines,
     ) -> CompileResult<()> {
         let warnings = vec![];
         let mut errors = vec![];
@@ -256,7 +256,7 @@ impl TraitMap {
         impl_span: Span,
         type_id: TypeId,
         trait_methods: TraitItems,
-        engines: Engines<'_>,
+        engines: &Engines,
     ) {
         let key = TraitKey {
             name: trait_name,
@@ -359,13 +359,13 @@ impl TraitMap {
     /// re-insert them under `type_id`. Moreover, the impl block for
     /// `Data<T, T>` needs to be able to call methods that are defined in the
     /// impl block of `Data<T, F>`
-    pub(crate) fn insert_for_type(&mut self, engines: Engines<'_>, type_id: TypeId) {
+    pub(crate) fn insert_for_type(&mut self, engines: &Engines, type_id: TypeId) {
         self.extend(self.filter_by_type(type_id, engines), engines);
     }
 
     /// Given [TraitMap]s `self` and `other`, extend `self` with `other`,
     /// extending existing entries when possible.
-    pub(crate) fn extend(&mut self, other: TraitMap, engines: Engines<'_>) {
+    pub(crate) fn extend(&mut self, other: TraitMap, engines: &Engines) {
         for oe in other.trait_impls.into_iter() {
             let pos = self
                 .trait_impls
@@ -488,7 +488,7 @@ impl TraitMap {
     /// have `Data<T, T>: get_first(self) -> T` and
     /// `Data<T, T>: get_second(self) -> T`, and we can create a new [TraitMap]
     /// with those entries for `Data<T, T>`.
-    pub(crate) fn filter_by_type(&self, type_id: TypeId, engines: Engines<'_>) -> TraitMap {
+    pub(crate) fn filter_by_type(&self, type_id: TypeId, engines: &Engines) -> TraitMap {
         let type_engine = engines.te();
 
         let unify_checker = UnifyCheck::constraint_subset(engines);
@@ -562,7 +562,7 @@ impl TraitMap {
     pub(crate) fn filter_by_type_item_import(
         &self,
         type_id: TypeId,
-        engines: Engines<'_>,
+        engines: &Engines,
     ) -> TraitMap {
         let type_engine = engines.te();
 
@@ -591,7 +591,7 @@ impl TraitMap {
 
     fn filter_by_type_inner(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         mut all_types: Vec<TypeId>,
         decider: impl Fn(TypeId, TypeId) -> bool,
     ) -> TraitMap {
@@ -676,7 +676,7 @@ impl TraitMap {
     ///     entries that qualify as hits are equivalents of `type_id`
     pub(crate) fn get_items_for_type(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         type_id: TypeId,
     ) -> Vec<ty::TyTraitItem> {
         let type_engine = engines.te();
@@ -713,11 +713,7 @@ impl TraitMap {
     /// - this method does not translate types from the found entries to the
     ///     `type_id` (like in `filter_by_type()`). This is because the only
     ///     entries that qualify as hits are equivalents of `type_id`
-    pub(crate) fn get_impl_spans_for_type(
-        &self,
-        engines: Engines<'_>,
-        type_id: &TypeId,
-    ) -> Vec<Span> {
+    pub(crate) fn get_impl_spans_for_type(&self, engines: &Engines, type_id: &TypeId) -> Vec<Span> {
         let type_engine = engines.te();
         let unify_check = UnifyCheck::non_dynamic_equality(engines);
 
@@ -768,7 +764,7 @@ impl TraitMap {
     ///     entries that qualify as hits are equivalents of `type_id`
     pub(crate) fn get_items_for_type_and_trait_name(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         type_id: TypeId,
         trait_name: &CallPath,
     ) -> Vec<ty::TyTraitItem> {
@@ -798,7 +794,7 @@ impl TraitMap {
 
     pub(crate) fn get_trait_names_for_type(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         type_id: TypeId,
     ) -> Vec<CallPath> {
         let type_engine = engines.te();
@@ -830,7 +826,7 @@ impl TraitMap {
         type_id: TypeId,
         constraints: &[TraitConstraint],
         access_span: &Span,
-        engines: Engines<'_>,
+        engines: &Engines,
     ) -> CompileResult<()> {
         let warnings = vec![];
         let mut errors = vec![];

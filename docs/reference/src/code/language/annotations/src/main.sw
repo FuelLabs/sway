@@ -44,3 +44,29 @@ abi MyContract {
 #[allow(dead_code)]
 fn unused_function() {}
 // ANCHOR_END: allow_deadcode_annotation
+
+// ANCHOR: success_test
+#[test]
+fn equal() {
+    assert_eq(1 + 1, 2);
+}
+// ANCHOR_END: success_test
+
+// ANCHOR: revert_test
+#[test(should_revert)]
+fn unequal() {
+    assert_eq(1 + 1, 3);
+}
+// ANCHOR_END: revert_test
+
+// ANCHOR: revert_code_test
+#[test(should_revert = "18446744073709486084")]
+fn assert_revert_code() {
+    assert(1 + 1 == 3);
+}
+
+#[test(should_revert = "42")]
+fn custom_revert_code() {
+    revert(42);
+}
+// ANCHOR_END: revert_code_test

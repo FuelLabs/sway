@@ -5,7 +5,7 @@ use pkg::manifest::ManifestFile;
 use std::path::PathBuf;
 use sway_core::{language::ty, CompileResult, Engines};
 
-pub fn check(command: CheckCommand, engines: Engines<'_>) -> Result<CompileResult<ty::TyProgram>> {
+pub fn check(command: CheckCommand, engines: &Engines) -> Result<CompileResult<ty::TyProgram>> {
     let CheckCommand {
         build_target,
         path,
