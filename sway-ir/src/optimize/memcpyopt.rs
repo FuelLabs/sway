@@ -618,11 +618,19 @@ fn local_copy_prop(
                 }
             }
 
+            if replacements.is_empty() {
+                break;
+            } else {
+                modified = true;
+            }
+
             // If we have any NewGep replacements, insert those new GEPs into the block.
+            // Since the new instructions need to be just before the value load that they're
+            // going to be used in, we copy all the instructions into a new vec
+            // and just replace the contents of the basic block.
             let mut new_insts = vec![];
-            let replacements = replacements
-                .into_iter()
-                .map(|(load_inst, replacement)| {
+            for inst in block.instruction_iter(context) {
+                if let Some(replacement) = replacements.remove(&inst) {
                     let replacement = match replacement {
                         Replacement::OldGep(v) => v,
                         Replacement::NewGep(ReplGep {
@@ -655,31 +663,24 @@ fn local_copy_prop(
                             v
                         }
                     };
-                    (load_inst, replacement)
-                })
-                .collect::<Vec<_>>();
-
-            block.prepend_instructions(context, new_insts);
-
-            for replacement in &replacements {
-                match replacement.0.get_instruction_mut(context) {
-                    Some(Instruction::Load(ref mut src_val_ptr))
-                    | Some(Instruction::MemCopyBytes {
-                        ref mut src_val_ptr,
-                        ..
-                    })
-                    | Some(Instruction::MemCopyVal {
-                        ref mut src_val_ptr,
-                        ..
-                    }) => *src_val_ptr = replacement.1,
-                    _ => panic!("Unexpected instruction type"),
+                    match inst.get_instruction_mut(context) {
+                        Some(Instruction::Load(ref mut src_val_ptr))
+                        | Some(Instruction::MemCopyBytes {
+                            ref mut src_val_ptr,
+                            ..
+                        })
+                        | Some(Instruction::MemCopyVal {
+                            ref mut src_val_ptr,
+                            ..
+                        }) => *src_val_ptr = replacement,
+                        _ => panic!("Unexpected instruction type"),
+                    }
                 }
+                new_insts.push(inst);
             }
-            if !replacements.is_empty() {
-                modified = true;
-            } else {
-                break;
-            }
+
+            // Replace the basic block contents with what we just built.
+            let _ = std::mem::replace(&mut (context.blocks[block.0].instructions), new_insts);
         }
     }
 

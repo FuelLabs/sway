@@ -59,6 +59,7 @@
     - [Payable](./documentation/language/annotations/attributes/payable.md)
     - [Test](./documentation/language/annotations/attributes/test.md)
     - [Allow](./documentation/language/annotations/attributes/allow.md)
+    - [Inline](./documentation/language/annotations/attributes/inline.md)
 - [Traits](./documentation/language/traits/index.md)
 - [Generics](./documentation/language/generics/index.md)
 - [Style Guide](./documentation/language/style-guide/index.md)
