@@ -6,7 +6,7 @@ abi MyContract {
 
 impl MyContract for Contract {
     fn test_function() -> bool {
-        let res = alive();
+        let _res = alive();
         true
     }
 }

@@ -1,6 +1,6 @@
 category = "fail"
 
-# check: let b = foo::baz::ExampleStruct::<bool> { a_field: 5u64 };
+# check: let _b = foo::bar::ExampleStruct::<bool> { a_field: 5u64 };
 # nextln: $()Mismatched types.
 # nextln: $()expected: bool
 # nextln: $()found:    u64.

@@ -24,8 +24,8 @@ impl ty::TyTraitFn {
             attributes,
         } = trait_fn;
 
-        let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
+        let type_engine = ctx.engines.te();
+        let engines = ctx.engines();
 
         // Create a namespace for the trait function.
         let mut fn_namespace = ctx.namespace.clone();
@@ -47,12 +47,12 @@ impl ty::TyTraitFn {
         // Type check the return type.
         let return_type = check!(
             ctx.resolve_type_with_self(
-                type_engine.insert(decl_engine, return_type),
+                type_engine.insert(engines, return_type),
                 &return_type_span,
                 EnforceTypeArguments::Yes,
                 None
             ),
-            type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+            type_engine.insert(engines, TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );
@@ -72,8 +72,8 @@ impl ty::TyTraitFn {
     /// This function is used in trait declarations to insert "placeholder"
     /// functions in the methods. This allows the methods to use functions
     /// declared in the interface surface.
-    pub(crate) fn to_dummy_func(&self, mode: Mode) -> ty::TyFunctionDeclaration {
-        ty::TyFunctionDeclaration {
+    pub(crate) fn to_dummy_func(&self, mode: Mode) -> ty::TyFunctionDecl {
+        ty::TyFunctionDecl {
             purity: self.purity,
             name: self.name.clone(),
             body: ty::TyCodeBlock { contents: vec![] },

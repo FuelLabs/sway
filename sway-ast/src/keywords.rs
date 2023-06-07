@@ -17,7 +17,7 @@ pub trait Keyword: Spanned + Sized {
 
 macro_rules! define_keyword (
     ($ty_name:ident, $keyword:literal) => {
-        #[derive(Clone, Debug)]
+        #[derive(Clone, Debug, Serialize)]
         pub struct $ty_name {
             span: Span,
         }
@@ -52,7 +52,7 @@ define_keyword!(ScriptToken, "script");
 define_keyword!(ContractToken, "contract");
 define_keyword!(PredicateToken, "predicate");
 define_keyword!(LibraryToken, "library");
-define_keyword!(DepToken, "dep");
+define_keyword!(ModToken, "mod");
 define_keyword!(PubToken, "pub");
 define_keyword!(UseToken, "use");
 define_keyword!(AsToken, "as");
@@ -84,6 +84,9 @@ define_keyword!(FalseToken, "false");
 define_keyword!(BreakToken, "break");
 define_keyword!(ContinueToken, "continue");
 define_keyword!(ConfigurableToken, "configurable");
+define_keyword!(TypeToken, "type");
+define_keyword!(PtrToken, "__ptr");
+define_keyword!(SliceToken, "__slice");
 
 /// The type is a keyword.
 pub trait Token: Spanned + Sized {
@@ -102,7 +105,7 @@ pub trait Token: Spanned + Sized {
 
 macro_rules! define_token (
     ($ty_name:ident, $description:literal, [$($punct_kinds:ident),*], [$($not_followed_by:ident),*]) => {
-        #[derive(Clone, Debug)]
+        #[derive(Clone, Debug, Serialize)]
         pub struct $ty_name {
             span: Span,
         }
@@ -243,7 +246,7 @@ pub trait OpenDelimiterToken: Spanned + Sized {
 }
 macro_rules! define_opening_delimiter_token (
     ($ty_name:ident, $description:literal, [$($delimiter_kind:ident)*]) => {
-        #[derive(Clone, Debug)]
+        #[derive(Clone, Debug, Serialize)]
         pub struct $ty_name {
             pub(crate) span: Span,
         }
@@ -291,7 +294,7 @@ pub trait CloseDelimiterToken: Spanned + Sized {
 }
 macro_rules! define_closing_delimiter_token (
     ($ty_name:ident, $description:literal, [$($delimiter_kind:ident)*]) => {
-        #[derive(Clone, Debug)]
+        #[derive(Clone, Debug, Serialize)]
         pub struct $ty_name {
             pub(crate) span: Span,
         }

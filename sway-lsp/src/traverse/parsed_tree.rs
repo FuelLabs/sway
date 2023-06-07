@@ -1,5 +1,4 @@
 #![allow(dead_code)]
-use std::iter;
 
 use crate::{
     core::{
@@ -25,8 +24,8 @@ use sway_core::{
             Scrutinee, StorageAccessExpression, StorageDeclaration, StorageField,
             StructDeclaration, StructExpression, StructExpressionField, StructField,
             StructScrutineeField, SubfieldExpression, Supertrait, TraitDeclaration, TraitFn,
-            TraitItem, TreeType, TupleIndexExpression, UseStatement, VariableDeclaration,
-            WhileLoopExpression,
+            TraitItem, TupleIndexExpression, TypeAliasDeclaration, UseStatement,
+            VariableDeclaration, WhileLoopExpression,
         },
         CallPathTree, Literal,
     },
@@ -50,38 +49,31 @@ impl<'a> ParsedTree<'a> {
         node.parse(self.ctx);
     }
 
-    /// Collects the library name and the module name from the dep statement
+    /// Collects module names from the mod statements
     pub fn collect_module_spans(&self, parse_program: &ParseProgram) {
-        if let TreeType::Library { name } = &parse_program.kind {
-            self.ctx.tokens.insert(
-                to_ident_key(name),
-                Token::from_parsed(AstToken::LibraryName(name.clone()), SymbolKind::Module),
-            );
-        }
         self.collect_parse_module(&parse_program.root);
     }
 
     fn collect_parse_module(&self, parse_module: &ParseModule) {
+        self.ctx.tokens.insert(
+            to_ident_key(&Ident::new(parse_module.span.clone())),
+            Token::from_parsed(
+                AstToken::LibrarySpan(parse_module.span.clone()),
+                SymbolKind::Module,
+            ),
+        );
         for (
             _,
             ParseSubmodule {
-                library_name,
                 module,
-                dependency_path_span,
+                mod_name_span,
                 ..
             },
         ) in &parse_module.submodules
         {
             self.ctx.tokens.insert(
-                to_ident_key(&Ident::new(dependency_path_span.clone())),
+                to_ident_key(&Ident::new(mod_name_span.clone())),
                 Token::from_parsed(AstToken::IncludeStatement, SymbolKind::Module),
-            );
-            self.ctx.tokens.insert(
-                to_ident_key(library_name),
-                Token::from_parsed(
-                    AstToken::LibraryName(library_name.clone()),
-                    SymbolKind::Module,
-                ),
             );
             self.collect_parse_module(module);
         }
@@ -133,6 +125,7 @@ impl Parse for Declaration {
             Declaration::AbiDeclaration(decl) => decl.parse(ctx),
             Declaration::ConstantDeclaration(decl) => decl.parse(ctx),
             Declaration::StorageDeclaration(decl) => decl.parse(ctx),
+            Declaration::TypeAliasDeclaration(decl) => decl.parse(ctx),
         }
     }
 }
@@ -172,8 +165,16 @@ impl Parse for UseStatement {
 impl Parse for Expression {
     fn parse(&self, ctx: &ParseContext) {
         match &self.kind {
-            ExpressionKind::Error(_part_spans) => {
-                // FIXME(Centril): Left for @JoshuaBatty to use.
+            ExpressionKind::Error(part_spans) => {
+                for span in part_spans.iter() {
+                    ctx.tokens.insert(
+                        to_ident_key(&Ident::new(span.clone())),
+                        Token::from_parsed(
+                            AstToken::ErrorRecovery(span.clone()),
+                            SymbolKind::Unknown,
+                        ),
+                    );
+                }
             }
             ExpressionKind::Literal(value) => {
                 let symbol_kind = literal_to_symbol_kind(value);
@@ -195,6 +196,8 @@ impl Parse for Expression {
                 {
                     let symbol_kind = if name.as_str().contains(DESTRUCTURE_PREFIX) {
                         SymbolKind::Struct
+                    } else if name.as_str() == "self" {
+                        SymbolKind::SelfKeyword
                     } else {
                         SymbolKind::Variable
                     };
@@ -270,6 +273,12 @@ impl Parse for Expression {
                     Token::from_parsed(AstToken::Expression(self.clone()), SymbolKind::Field),
                 );
             }
+            ExpressionKind::AmbiguousVariableExpression(ident) => {
+                ctx.tokens.insert(
+                    to_ident_key(ident),
+                    Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Unknown),
+                );
+            }
             ExpressionKind::AmbiguousPathExpression(path_expr) => {
                 path_expr.parse(ctx);
             }
@@ -319,14 +328,6 @@ impl Parse for ReassignmentExpression {
             ReassignmentTarget::VariableExpression(exp) => {
                 exp.parse(ctx);
             }
-            ReassignmentTarget::StorageField(idents) => {
-                for ident in idents {
-                    ctx.tokens.insert(
-                        to_ident_key(ident),
-                        Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Field),
-                    );
-                }
-            }
         }
     }
 }
@@ -337,7 +338,7 @@ impl Parse for IntrinsicFunctionExpression {
             to_ident_key(&self.name),
             Token::from_parsed(
                 AstToken::Intrinsic(self.kind_binding.inner.clone()),
-                SymbolKind::Function,
+                SymbolKind::Intrinsic,
             ),
         );
         self.arguments.iter().for_each(|arg| arg.parse(ctx));
@@ -404,13 +405,16 @@ impl Parse for AmbiguousPathExpression {
         let AmbiguousPathExpression {
             call_path_binding,
             args,
+            qualified_path_root,
         } = self;
-        for ident in call_path_binding
-            .inner
-            .prefixes
-            .iter()
-            .chain(iter::once(&call_path_binding.inner.suffix.before.inner))
-        {
+        for ident in call_path_binding.inner.prefixes.iter().chain(
+            call_path_binding
+                .inner
+                .suffix
+                .before
+                .iter()
+                .map(|before| &before.inner),
+        ) {
             ctx.tokens.insert(
                 to_ident_key(ident),
                 Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Enum),
@@ -431,6 +435,14 @@ impl Parse for AmbiguousPathExpression {
                 type_arg.parse(ctx);
             });
         args.iter().for_each(|arg| arg.parse(ctx));
+        if let Some(qualified_path_root) = qualified_path_root {
+            qualified_path_root.ty.parse(ctx);
+            collect_type_info_token(
+                ctx,
+                &qualified_path_root.as_trait,
+                Some(&qualified_path_root.as_trait_span),
+            );
+        }
     }
 }
 
@@ -448,7 +460,7 @@ impl Parse for MethodApplicationExpression {
         } = &self.method_name_binding.inner
         {
             let (type_info, ident) = &call_path_binding.inner.suffix;
-            collect_type_info_token(ctx, type_info, Some(ident.span()));
+            collect_type_info_token(ctx, type_info, Some(&ident.span()));
         }
         self.method_name_binding
             .type_arguments
@@ -523,7 +535,11 @@ impl Parse for Scrutinee {
                 ctx.tokens.insert(to_ident_key(&call_path.suffix), token);
                 value.parse(ctx);
             }
-            Scrutinee::Tuple { elems, .. } => {
+            Scrutinee::AmbiguousSingleIdent(ident) => {
+                let token = Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Unknown);
+                ctx.tokens.insert(to_ident_key(ident), token);
+            }
+            Scrutinee::Tuple { elems, .. } | Scrutinee::Or { elems, .. } => {
                 elems.iter().for_each(|elem| elem.parse(ctx));
             }
             Scrutinee::Error { .. } => {
@@ -644,8 +660,13 @@ impl Parse for VariableDeclaration {
             // We want to use the span from variable.name to construct a
             // new Ident as the name_override_opt can be set to one of the
             // const prefixes and not the actual token name.
+            let ident = if self.name.is_raw_ident() {
+                Ident::new_with_raw(self.name.span(), true)
+            } else {
+                Ident::new(self.name.span())
+            };
             ctx.tokens.insert(
-                to_ident_key(&Ident::new(self.name.span())),
+                to_ident_key(&ident),
                 Token::from_parsed(
                     AstToken::Declaration(Declaration::VariableDeclaration(self.clone())),
                     symbol_kind,
@@ -695,6 +716,7 @@ impl Parse for TraitDeclaration {
         );
         self.interface_surface.iter().for_each(|item| match item {
             TraitItem::TraitFn(trait_fn) => trait_fn.parse(ctx),
+            TraitItem::Constant(const_decl) => const_decl.parse(ctx),
         });
         self.methods.iter().for_each(|func_dec| {
             func_dec.parse(ctx);
@@ -764,6 +786,7 @@ impl Parse for ImplTrait {
         });
         self.items.iter().for_each(|item| match item {
             ImplItem::Fn(fn_decl) => fn_decl.parse(ctx),
+            ImplItem::Constant(const_decl) => const_decl.parse(ctx),
         });
     }
 }
@@ -793,6 +816,7 @@ impl Parse for ImplSelf {
         });
         self.items.iter().for_each(|item| match item {
             ImplItem::Fn(fn_decl) => fn_decl.parse(ctx),
+            ImplItem::Constant(const_decl) => const_decl.parse(ctx),
         });
     }
 }
@@ -808,6 +832,7 @@ impl Parse for AbiDeclaration {
         );
         self.interface_surface.iter().for_each(|item| match item {
             TraitItem::TraitFn(trait_fn) => trait_fn.parse(ctx),
+            TraitItem::Constant(const_decl) => const_decl.parse(ctx),
         });
         self.supertraits.iter().for_each(|supertrait| {
             supertrait.parse(ctx);
@@ -872,7 +897,7 @@ impl Parse for TraitFn {
         self.parameters.iter().for_each(|param| {
             param.parse(ctx);
         });
-        collect_type_info_token(ctx, &self.return_type, Some(self.return_type_span.clone()));
+        collect_type_info_token(ctx, &self.return_type, Some(&self.return_type_span));
         self.attributes.parse(ctx);
     }
 }
@@ -963,7 +988,7 @@ impl Parse for TypeArgument {
                 }
             }
             _ => {
-                let symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), &type_info);
+                let symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), &type_info, None);
                 if let Some(tree) = &self.call_path_tree {
                     let token =
                         Token::from_parsed(AstToken::TypeArgument(self.clone()), symbol_kind);
@@ -974,8 +999,22 @@ impl Parse for TypeArgument {
     }
 }
 
-fn collect_type_info_token(ctx: &ParseContext, type_info: &TypeInfo, type_span: Option<Span>) {
-    let symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), type_info);
+impl Parse for TypeAliasDeclaration {
+    fn parse(&self, ctx: &ParseContext) {
+        ctx.tokens.insert(
+            to_ident_key(&self.name),
+            Token::from_parsed(
+                AstToken::Declaration(Declaration::TypeAliasDeclaration(self.clone())),
+                SymbolKind::TypeAlias,
+            ),
+        );
+        self.ty.parse(ctx);
+        self.attributes.parse(ctx);
+    }
+}
+
+fn collect_type_info_token(ctx: &ParseContext, type_info: &TypeInfo, type_span: Option<&Span>) {
+    let symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), type_info, type_span);
     match type_info {
         TypeInfo::Str(length) => {
             let ident = Ident::new(length.span());
@@ -1013,7 +1052,7 @@ fn collect_type_info_token(ctx: &ParseContext, type_info: &TypeInfo, type_span: 
         }
         _ => {
             if let Some(type_span) = type_span {
-                let ident = Ident::new(type_span);
+                let ident = Ident::new(type_span.clone());
                 ctx.tokens.insert(
                     to_ident_key(&ident),
                     Token::from_parsed(AstToken::Ident(ident.clone()), symbol_kind),

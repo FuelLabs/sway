@@ -47,7 +47,7 @@ To read a value stored in a vector at a particular index, you can use the `get` 
 {{#include ../../../../examples/storage_vec/src/main.sw:storage_vec_get}}
 ```
 
-Note three details here. First, we use the index value of `2` to get the third element because vectors are indexed by number, starting at zero. Second, we get the third element by using the `get` method with the index passed as an argument, which gives us an `Option<T>`. Third, the ABI function calling `get` only requires the annotation `#[storage(read)]` as one might expect because `get` does not write to storage.
+Note three details here. First, we use the index value of `2` to get the third element because vectors are indexed by number, starting at zero. Second, we get the third element by using the `get` method with the index passed as an argument, which gives us an `Option<StorageKey<T>>`. Third, the ABI function calling `get` only requires the annotation `#[storage(read)]` as one might expect because `get` does not write to storage.
 
 When the `get` method is passed an index that is outside the vector, it returns `None` without panicking. This is particularly useful if accessing an element beyond the range of the vector may happen occasionally under normal circumstances. Your code will then have logic to handle having either `Some(element)` or `None`. For example, the index could be coming as a contract method argument. If the argument passed is too large, the method `get` will return a `None` value, and the contract method may then decide to revert when that happens or return a meaningful error that tells the user how many items are in the current vector and give them another chance to pass a valid value.
 
@@ -59,7 +59,7 @@ To access each element in a vector in turn, we would iterate through all of the 
 {{#include ../../../../examples/storage_vec/src/main.sw:storage_vec_iterate}}
 ```
 
-Again, this is quite similar to iterating over the elements of a `Vec<T>` where we use the method `len` to return the length of the vector. We also call the method `unwrap` to extract the `Option` returned by `get`. We know that `unwrap` will not fail (i.e. will not cause a revert) because each index `i` passed to `get` is known to be smaller than the length of the vector.
+Again, this is quite similar to iterating over the elements of a `Vec<T>` where we use the method `len` to return the length of the vector. We also call the method `unwrap` to extract the `Option` returned by `get` followed by a call to `read()` to actually read the stored value. We know that `unwrap` will not fail (i.e. will not cause a revert) because each index `i` passed to `get` is known to be smaller than the length of the vector.
 
 ## Using an Enum to store Multiple Types
 
@@ -82,3 +82,17 @@ We can now push different enum variants to the storage vector as follows:
 ```
 
 Now that we’ve discussed some of the most common ways to use storage vectors, be sure to review the API documentation for all the many useful methods defined on `StorageVec<T>` by the standard library. For now, these can be found in the [source code for `StorageVec<T>`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/storage.sw). For example, in addition to `push`, a `pop` method removes and returns the last element, a `remove` method removes and returns the element at some chosen index within the vector, an `insert` method inserts an element at some chosen index within the vector, etc.
+
+## Nested Storage Vecs
+
+It is possible to nest storage vectors as follows:
+
+```sway
+{{#include ../../../../examples/storage_vec/src/main.sw:storage_vec_nested}}
+```
+
+The nested vector can then be accessed as follows:
+
+```sway
+{{#include ../../../../examples/storage_vec/src/main.sw:access_nested_vec}}
+```

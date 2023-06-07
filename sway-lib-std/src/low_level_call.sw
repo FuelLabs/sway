@@ -1,4 +1,5 @@
-library low_level_call;
+//! Utilities to help with low level calls.
+library;
 
 use ::assert::assert;
 use ::bytes::Bytes;
@@ -7,6 +8,7 @@ use ::option::Option;
 use ::revert::require;
 use ::vec::Vec;
 
+/// A struct representing the call parameters of a function call.
 pub struct CallParams {
     coins: u64,
     asset_id: ContractId,

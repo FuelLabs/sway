@@ -43,6 +43,18 @@ impl Parse for Ty {
         if let Some(underscore_token) = parser.take() {
             return Ok(Ty::Infer { underscore_token });
         }
+        if let Some(ptr_token) = parser.take() {
+            let ty = SquareBrackets::parse_all_inner(parser, |mut parser| {
+                parser.emit_error(ParseErrorKind::UnexpectedTokenAfterPtrType)
+            })?;
+            return Ok(Ty::Ptr { ptr_token, ty });
+        }
+        if let Some(slice_token) = parser.take() {
+            let ty = SquareBrackets::parse_all_inner(parser, |mut parser| {
+                parser.emit_error(ParseErrorKind::UnexpectedTokenAfterSliceType)
+            })?;
+            return Ok(Ty::Slice { slice_token, ty });
+        }
         if parser.peek::<OpenAngleBracketToken>().is_some()
             || parser.peek::<DoubleColonToken>().is_some()
             || parser.peek::<Ident>().is_some()
@@ -69,5 +81,32 @@ impl Parse for TyArrayDescriptor {
                 return Err(parser.emit_error(ParseErrorKind::UnexpectedTokenAfterArrayTypeLength))
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils::parse;
+    use assert_matches::*;
+
+    #[test]
+    fn parse_ptr() {
+        let item = parse::<Ty>(
+            r#"
+            __ptr[T]
+            "#,
+        );
+        assert_matches!(item, Ty::Ptr { .. });
+    }
+
+    #[test]
+    fn parse_slice() {
+        let item = parse::<Ty>(
+            r#"
+            __slice[T]
+            "#,
+        );
+        assert_matches!(item, Ty::Slice { .. });
     }
 }

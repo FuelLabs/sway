@@ -1,11 +1,12 @@
 use crate::priv_prelude::*;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub enum ItemTraitItem {
     Fn(FnSignature),
+    Const(ItemConst),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct ItemTrait {
     pub visibility: Option<PubToken>,
     pub trait_token: TraitToken,
@@ -35,11 +36,12 @@ impl Spanned for ItemTraitItem {
     fn span(&self) -> Span {
         match self {
             ItemTraitItem::Fn(fn_decl) => fn_decl.span(),
+            ItemTraitItem::Const(const_decl) => const_decl.span(),
         }
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct Traits {
     pub prefix: PathType,
     pub suffixes: Vec<(AddToken, PathType)>,

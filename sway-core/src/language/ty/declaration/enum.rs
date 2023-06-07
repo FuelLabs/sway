@@ -15,7 +15,7 @@ use crate::{
 };
 
 #[derive(Clone, Debug)]
-pub struct TyEnumDeclaration {
+pub struct TyEnumDecl {
     pub call_path: CallPath,
     pub type_parameters: Vec<TypeParameter>,
     pub attributes: transform::AttributesMap,
@@ -24,15 +24,15 @@ pub struct TyEnumDeclaration {
     pub visibility: Visibility,
 }
 
-impl Named for TyEnumDeclaration {
+impl Named for TyEnumDecl {
     fn name(&self) -> &Ident {
         &self.call_path.suffix
     }
 }
 
-impl EqWithEngines for TyEnumDeclaration {}
-impl PartialEqWithEngines for TyEnumDeclaration {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+impl EqWithEngines for TyEnumDecl {}
+impl PartialEqWithEngines for TyEnumDecl {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.call_path.suffix == other.call_path.suffix
             && self.type_parameters.eq(&other.type_parameters, engines)
             && self.variants.eq(&other.variants, engines)
@@ -40,9 +40,9 @@ impl PartialEqWithEngines for TyEnumDeclaration {
     }
 }
 
-impl HashWithEngines for TyEnumDeclaration {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let TyEnumDeclaration {
+impl HashWithEngines for TyEnumDecl {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+        let TyEnumDecl {
             call_path,
             type_parameters,
             variants,
@@ -59,8 +59,8 @@ impl HashWithEngines for TyEnumDeclaration {
     }
 }
 
-impl SubstTypes for TyEnumDeclaration {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+impl SubstTypes for TyEnumDecl {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         self.variants
             .iter_mut()
             .for_each(|x| x.subst(type_mapping, engines));
@@ -70,8 +70,8 @@ impl SubstTypes for TyEnumDeclaration {
     }
 }
 
-impl ReplaceSelfType for TyEnumDeclaration {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+impl ReplaceSelfType for TyEnumDecl {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         self.variants
             .iter_mut()
             .for_each(|x| x.replace_self_type(engines, self_type));
@@ -81,13 +81,13 @@ impl ReplaceSelfType for TyEnumDeclaration {
     }
 }
 
-impl Spanned for TyEnumDeclaration {
+impl Spanned for TyEnumDecl {
     fn span(&self) -> Span {
         self.span.clone()
     }
 }
 
-impl MonomorphizeHelper for TyEnumDeclaration {
+impl MonomorphizeHelper for TyEnumDecl {
     fn type_parameters(&self) -> &[TypeParameter] {
         &self.type_parameters
     }
@@ -97,7 +97,7 @@ impl MonomorphizeHelper for TyEnumDeclaration {
     }
 }
 
-impl TyEnumDeclaration {
+impl TyEnumDecl {
     pub(crate) fn expect_variant_from_name(
         &self,
         variant_name: &Ident,
@@ -132,7 +132,7 @@ pub struct TyEnumVariant {
 }
 
 impl HashWithEngines for TyEnumVariant {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         self.name.hash(state);
         self.type_argument.hash(state, engines);
         self.tag.hash(state);
@@ -141,7 +141,7 @@ impl HashWithEngines for TyEnumVariant {
 
 impl EqWithEngines for TyEnumVariant {}
 impl PartialEqWithEngines for TyEnumVariant {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.name == other.name
             && self.type_argument.eq(&other.type_argument, engines)
             && self.tag == other.tag
@@ -149,7 +149,7 @@ impl PartialEqWithEngines for TyEnumVariant {
 }
 
 impl OrdWithEngines for TyEnumVariant {
-    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
+    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
         let TyEnumVariant {
             name: ln,
             type_argument: lta,
@@ -175,13 +175,13 @@ impl OrdWithEngines for TyEnumVariant {
 }
 
 impl SubstTypes for TyEnumVariant {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         self.type_argument.subst_inner(type_mapping, engines);
     }
 }
 
 impl ReplaceSelfType for TyEnumVariant {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         self.type_argument.replace_self_type(engines, self_type);
     }
 }

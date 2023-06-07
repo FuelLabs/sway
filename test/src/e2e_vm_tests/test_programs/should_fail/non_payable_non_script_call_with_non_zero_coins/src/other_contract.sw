@@ -1,4 +1,4 @@
-library other_contract;
+library;
 
 abi OtherContract {
     fn non_payable_method();

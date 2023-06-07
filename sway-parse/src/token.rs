@@ -159,7 +159,6 @@ pub fn lex_commented(
                         .filter(|&c| c == '\n')
                         .count()
                         > 0;
-
                     // We found a comment at the start of file, which should be accounted for as a Newlined comment.
                     let start_of_file_found = search_end == 0 && index == 0;
 
@@ -188,7 +187,7 @@ pub fn lex_commented(
                     continue;
                 }
                 Some((_, '*')) => {
-                    if let Some(token) = lex_multiline_comment(&mut l, index) {
+                    if let Some(token) = lex_block_comment(&mut l, index) {
                         token_trees.push(token);
                     }
                     continue;
@@ -399,7 +398,7 @@ fn lex_line_comment(
     }
 }
 
-fn lex_multiline_comment(l: &mut Lexer<'_>, index: usize) -> Option<CommentedTokenTree> {
+fn lex_block_comment(l: &mut Lexer<'_>, index: usize) -> Option<CommentedTokenTree> {
     // Lexing a multi-line comment.
     let _ = l.stream.next();
     let mut unclosed_indices = vec![index];
@@ -410,6 +409,9 @@ fn lex_multiline_comment(l: &mut Lexer<'_>, index: usize) -> Option<CommentedTok
         error(l.handler, LexError { kind, span });
         None
     };
+
+    // We first start by assuming that block comments are inlined.
+    let mut comment_kind = CommentKind::Inlined;
 
     loop {
         match l.stream.next() {
@@ -425,13 +427,7 @@ fn lex_multiline_comment(l: &mut Lexer<'_>, index: usize) -> Option<CommentedTok
                         // We could represent them as several ones, but that's unnecessary.
                         let end = slash_ix + '/'.len_utf8();
                         let span = span(l, start, end);
-                        return Some(
-                            Comment {
-                                span,
-                                comment_kind: CommentKind::Newlined,
-                            }
-                            .into(),
-                        );
+                        return Some(Comment { span, comment_kind }.into());
                     }
                 }
                 Some(_) => {}
@@ -442,6 +438,13 @@ fn lex_multiline_comment(l: &mut Lexer<'_>, index: usize) -> Option<CommentedTok
                 Some((_, '*')) => unclosed_indices.push(next_index),
                 Some(_) => {}
             },
+            Some((_, '\n')) => {
+                // If we find a newline character while lexing, this means that the block comment is multiline.
+                // Example:
+                // /* this is a
+                //    multilined block comment */
+                comment_kind = CommentKind::Multilined;
+            }
             Some(_) => {}
         }
     }
@@ -724,7 +727,7 @@ fn lex_int_ty_opt(l: &mut Lexer<'_>) -> Result<Option<(LitIntType, Span)>> {
 }
 
 /// Interpret the given `suffix` string as a `LitIntType`.
-fn parse_int_suffix(suffix: &str) -> Option<LitIntType> {
+pub fn parse_int_suffix(suffix: &str) -> Option<LitIntType> {
     Some(match suffix {
         "u8" => LitIntType::U8,
         "u16" => LitIntType::U16,

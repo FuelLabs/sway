@@ -1,38 +1,37 @@
-use sway_core::language::ty::{TyDeclaration, TyImplTrait, TyStructDeclaration, TyStructField};
+use sway_core::language::ty::{self, TyImplTrait, TyStructDecl, TyStructField};
 use sway_types::Spanned;
 use tower_lsp::lsp_types::{CodeActionDisabled, Position, Range, Url};
 
 use crate::{
     capabilities::code_actions::{CodeAction, CodeActionContext, CODE_ACTION_NEW_TITLE},
-    core::token::TypedAstToken,
+    core::{token::TypedAstToken, token_map::TokenMapExt},
 };
 
 pub(crate) struct StructNewCodeAction<'a> {
-    decl: &'a TyStructDeclaration,
+    decl: &'a TyStructDecl,
     uri: &'a Url,
     existing_impl_decl: Option<TyImplTrait>,
 }
 
-impl<'a> CodeAction<'a, TyStructDeclaration> for StructNewCodeAction<'a> {
-    fn new(ctx: CodeActionContext<'a>, decl: &'a TyStructDeclaration) -> Self {
+impl<'a> CodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
+    fn new(ctx: CodeActionContext<'a>, decl: &'a TyStructDecl) -> Self {
         // Before the other functions are called, we need to determine if the new function
         // should be generated in a new impl block, an existing impl block, or not at all.
-        // First, find the first impl block for this struct if it exists.
+        // Find the first impl block for this struct if it exists.
         let existing_impl_decl = ctx
             .tokens
-            .all_references_of_token(ctx.token, ctx.engines.te(), ctx.engines.de())
+            .iter()
+            .all_references_of_token(ctx.token, ctx.engines)
             .find_map(|(_, token)| {
-                if let Some(TypedAstToken::TypedDeclaration(TyDeclaration::ImplTrait {
-                    decl_id,
-                    ..
-                })) = token.typed
+                if let Some(TypedAstToken::TypedDeclaration(ty::TyDecl::ImplTrait(
+                    ty::ImplTrait { decl_id, .. },
+                ))) = token.typed
                 {
                     Some(ctx.engines.de().get_impl_trait(&decl_id))
                 } else {
                     None
                 }
             });
-
         Self {
             decl,
             uri: ctx.uri,
@@ -96,7 +95,7 @@ impl<'a> CodeAction<'a, TyStructDeclaration> for StructNewCodeAction<'a> {
         self.decl.call_path.suffix.to_string()
     }
 
-    fn decl(&self) -> &TyStructDeclaration {
+    fn decl(&self) -> &TyStructDecl {
         self.decl
     }
 
@@ -115,6 +114,7 @@ impl<'a> CodeAction<'a, TyStructDeclaration> for StructNewCodeAction<'a> {
                 sway_core::language::ty::TyTraitItem::Fn(fn_decl) => {
                     fn_decl.span().as_str().contains("fn new")
                 }
+                sway_core::language::ty::TyTraitItem::Constant(_) => false,
             })
         {
             Some(CodeActionDisabled {

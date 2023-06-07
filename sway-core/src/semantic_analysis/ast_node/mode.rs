@@ -1,11 +1,6 @@
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Default)]
 pub enum Mode {
     ImplAbiFn,
+    #[default]
     NonAbi,
-}
-
-impl Default for Mode {
-    fn default() -> Self {
-        Mode::NonAbi
-    }
 }

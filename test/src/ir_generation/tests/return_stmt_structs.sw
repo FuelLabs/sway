@@ -23,8 +23,14 @@ fn main() {
     fn_explicit_ret_struct();
 }
 
-// check: fn $ID(inout __ret_value $MD: { u64 }) -> { u64 }
-// check:mem_copy __ret_value, $VAL, 8
+// check: fn $ID() -> { u64 }
+// check: $VAL = get_local ptr { u64 }, s
+// check: $(ptr_val=$VAL) = get_local ptr { u64 }, s
+// check: $(ret_val=$VAL) = load $ptr_val
+// check: ret { u64 } $ret_val
 
-// check: fn $ID(inout __ret_value $MD: { u64 }) -> { u64 }
-// check:mem_copy __ret_value, $VAL, 8
+// check: fn $ID() -> { u64 }
+// check: $VAL = get_local ptr { u64 }, s
+// check: $(ptr_val=$VAL) = get_local ptr { u64 }, s
+// check: $(ret_val=$VAL) = load $ptr_val
+// check: ret { u64 } $ret_val

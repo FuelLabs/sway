@@ -6,7 +6,7 @@
 # - `cargo run --locked --release --bin test -- --locked`
 #
 # You can install `fuel-core` node by:
-# `cargo install fuel-core-bin --git https://github.com/FuelLabs/fuel-core --tag v0.16.1 --locked`
+# `cargo install fuel-core-bin --git https://github.com/FuelLabs/fuel-core --tag v0.18.1 --locked`
 #
 # And run it with:
 # `fuel-core run --db-type in-memory`
@@ -35,7 +35,8 @@ forc test --path sway-lib-core &&
 forc build --path sway-lib-std &&
 forc test --path sway-lib-std &&
 cargo run --locked -p forc -- build --locked --path ./examples/Forc.toml &&
-cargo run --locked -p forc-fmt -- --check --path ./examples/Forc.toml &&
+cargo run --locked -p forc-fmt -- --check --path ./examples &&
+cargo run --locked -p forc -- build --path ./docs/reference/src/code/Forc.toml &&
 rm -Rf test-proj &&
 forc new test-proj &&
 echo "std = { path = \"../sway-lib-std/\" }" >> test-proj/Forc.toml &&
@@ -45,6 +46,6 @@ echo "[workspace]" >> test-proj/Cargo.toml &&
 (cd test-proj && cargo test) &&
 rm -R test-proj &&
 cargo run --locked --release --bin test -- --target evm --locked &&
-(cd test/src/sdk-harness && bash build.sh --locked) &&
-cargo test --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture &&
+cargo run --locked -p forc -- build --locked --path ./test/src/sdk-harness &&
+cargo test --locked --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture &&
 cargo run --locked --release --bin test -- --locked

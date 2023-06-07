@@ -78,6 +78,12 @@ pub enum ParseErrorKind {
     UnexpectedClass,
     #[error("Field projections, e.g., `foo.bar` cannot have type arguments.")]
     FieldProjectionWithGenericArgs,
+    #[error("Unexpected token after __ptr type.")]
+    UnexpectedTokenAfterPtrType,
+    #[error("Unexpected token after __slice type.")]
+    UnexpectedTokenAfterSliceType,
+    #[error("Expected a path type.")]
+    ExpectedPathType,
 }
 
 #[derive(Debug, Error, Clone, PartialEq, Eq, Hash)]

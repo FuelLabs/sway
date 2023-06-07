@@ -21,6 +21,18 @@ fn check(unformatted: &str, expected: &str) {
 }
 
 #[test]
+fn conserve_pub_mod() {
+    check(
+        r#"contract;
+pub mod foo;
+"#,
+        r#"contract;
+pub mod foo;
+"#,
+    )
+}
+
+#[test]
 fn const_spacing() {
     check(
         r#"contract;
@@ -172,7 +184,7 @@ enum TestTy {
     ],
     PathType     : root::
 example::
-    type,
+    some_type,
     TupleNil: (),
     Tuple: (   u64,
         u32
@@ -184,7 +196,7 @@ enum TestTy {
     Infer: _,
     Array: [u8; 40],
     String: str[4],
-    PathType: root::example::type,
+    PathType: root::example::some_type,
     TupleNil: (),
     Tuple: (u64, u32),
 }
@@ -353,14 +365,14 @@ where
 #[test]
 fn trait_and_super_trait() {
     check(
-        r#"library traits;
+        r#"library;
 
 trait Person{ fn name( self )->String;fn age( self )->usize; }
 trait Student:Person {fn university(self) -> String;}
 trait Programmer {fn fav_language(self) -> String;}
 trait CompSciStudent: Programmer+Student {fn git_username(self) -> String;}
 trait TraitWithGenerics<T> where T: String {fn from(b: T) -> Self;}"#,
-        r#"library traits;
+        r#"library;
 
 trait Person {
     fn name(self) -> String;
@@ -494,7 +506,6 @@ pub struct Foo { // Here is a comment
 
 
     bazzz:u64
-
              //  ________ ___  ___  _______   ___               ___       ________  ________  ________
              // |\  _____\\  \|\  \|\  ___ \ |\  \             |\  \     |\   __  \|\   __  \|\   ____\
              // \ \  \__/\ \  \\\  \ \   __/|\ \  \            \ \  \    \ \  \|\  \ \  \|\ /\ \  \___|_
@@ -504,24 +515,23 @@ pub struct Foo { // Here is a comment
              //     \|__|    \|_______|\|_______|\|_______|        \|_______|\|__|\|__|\|_______|\_________\
              //                                                                                  \|_________|
 }
-// This is a comment
 "#,
         r#"contract;
 // This is a comment, for this one to be placed correctly we need to have Module visitor implemented
 pub struct Foo { // Here is a comment
+
     // Trying some ASCII art
     baz: u64,
     bazzz: u64,
-             //  ________ ___  ___  _______   ___               ___       ________  ________  ________
-             // |\  _____\\  \|\  \|\  ___ \ |\  \             |\  \     |\   __  \|\   __  \|\   ____\
-             // \ \  \__/\ \  \\\  \ \   __/|\ \  \            \ \  \    \ \  \|\  \ \  \|\ /\ \  \___|_
-             //  \ \   __\\ \  \\\  \ \  \_|/_\ \  \            \ \  \    \ \   __  \ \   __  \ \_____  \
-             //   \ \  \_| \ \  \\\  \ \  \_|\ \ \  \____        \ \  \____\ \  \ \  \ \  \|\  \|____|\  \
-             //    \ \__\   \ \_______\ \_______\ \_______\       \ \_______\ \__\ \__\ \_______\____\_\  \
-             //     \|__|    \|_______|\|_______|\|_______|        \|_______|\|__|\|__|\|_______|\_________\
-             //                                                                                  \|_________|
+    //  ________ ___  ___  _______   ___               ___       ________  ________  ________
+    // |\  _____\\  \|\  \|\  ___ \ |\  \             |\  \     |\   __  \|\   __  \|\   ____\
+    // \ \  \__/\ \  \\\  \ \   __/|\ \  \            \ \  \    \ \  \|\  \ \  \|\ /\ \  \___|_
+    //  \ \   __\\ \  \\\  \ \  \_|/_\ \  \            \ \  \    \ \   __  \ \   __  \ \_____  \
+    //   \ \  \_| \ \  \\\  \ \  \_|\ \ \  \____        \ \  \____\ \  \ \  \ \  \|\  \|____|\  \
+    //    \ \__\   \ \_______\ \_______\ \_______\       \ \_______\ \__\ \__\ \_______\____\_\  \
+    //     \|__|    \|_______|\|_______|\|_______|        \|_______|\|__|\|__|\|_______|\_________\
+    //                                                                                  \|_________|
 }
-// This is a comment
 "#,
     );
 }
@@ -575,6 +585,9 @@ fn comments_empty_fns() {
 
 fn single_comment_same_line() { /* a comment */ }
 
+fn single_comment_same_line_trailing() {  // a comment
+}
+
 fn single_comment() -> bool {
     // TODO: This is a TODO
 }
@@ -586,8 +599,9 @@ fn multiline_comments() {
 }"#,
         r#"contract;
 
-fn single_comment_same_line() {
-    /* a comment */
+fn single_comment_same_line() { /* a comment */ }
+
+fn single_comment_same_line_trailing() { // a comment
 }
 
 fn single_comment() -> bool {
@@ -624,9 +638,9 @@ pub enum Bazz { // Here is a comment
 pub enum Bazz { // Here is a comment
     // Trying some ASCII art
     baz: (),
-    bazzz: (),//-----
-              //--D--
-              //-----
+    bazzz: (), //-----
+    //--D--
+    //-----
 }
 "#,
     );
@@ -1009,10 +1023,10 @@ fn comments_before_module_kind() {
     check(
         r#"// something about module kind
 // something else about module kind
-library test_module_kind_with_comments;"#,
+library;"#,
         r#"// something about module kind
 // something else about module kind
-library test_module_kind_with_comments;
+library;
 "#,
     );
 }
@@ -1024,17 +1038,17 @@ fn newline_before_comments() {
 
 // something about module kind
 // something else about module kind
-library test_module_kind_with_comments;"#,
+library;"#,
         r#"// something about module kind
 // something else about module kind
-library test_module_kind_with_comments;
+library;
 "#,
     );
 }
 #[test]
 fn destructure_structs() {
     check(
-        r#"library test_destructure_structs;
+        r#"library;
 
 struct Point {
     x: u64,
@@ -1059,7 +1073,7 @@ fn struct_destructuring() {
     } = tuple_in_struct;
 }
 "#,
-        r#"library test_destructure_structs;
+        r#"library;
 
 struct Point {
     x: u64,
@@ -1092,7 +1106,7 @@ fn struct_destructuring() {
 #[test]
 fn multiline_collections() {
     check(
-        r#"library test_multiline_collections;
+        r#"library;
 fn func_with_multiline_collections() {
     let x = (
         "hello",
@@ -1100,7 +1114,7 @@ fn func_with_multiline_collections() {
     );
 }
 "#,
-        r#"library test_multiline_collections;
+        r#"library;
 fn func_with_multiline_collections() {
     let x = ("hello", "world");
 }
@@ -1154,14 +1168,14 @@ fn main() {
 #[test]
 fn parameterless_attributes() {
     check(
-        r#"library my_lib;
+        r#"library;
 
 abi MyContract {
     #[test]
     fn foo();
 }
 "#,
-        r#"library my_lib;
+        r#"library;
 
 abi MyContract {
     #[test]
@@ -1249,12 +1263,12 @@ fn main() {
 #[test]
 fn multiple_comma_separated_attributes() {
     check(
-        r#"library my_lib;
+        r#"library;
 
 #[test, inline(always), storage(read, write), payable]
 fn foo() {}
 "#,
-        r#"library my_lib;
+        r#"library;
 
 #[test, inline(always), storage(read, write), payable]
 fn foo() {}
@@ -1265,14 +1279,14 @@ fn foo() {}
 #[test]
 fn stack_of_comma_separated_attributes1() {
     check(
-        r#"library my_lib;
+        r#"library;
 
 /// this is a doc comment
 #[storage(read, write), payable]
 #[test, inline(always)]
 fn foo() {}
 "#,
-        r#"library my_lib;
+        r#"library;
 
 /// this is a doc comment
 #[storage(read, write), payable]
@@ -1285,7 +1299,7 @@ fn foo() {}
 #[test]
 fn stack_of_comma_separated_attributes2() {
     check(
-        r#"library my_lib;
+        r#"library;
 
 /// this is a doc comment
 #[storage(read, write)]
@@ -1294,7 +1308,7 @@ fn stack_of_comma_separated_attributes2() {
 #[inline(always)]
 fn foo() {}
 "#,
-        r#"library my_lib;
+        r#"library;
 
 /// this is a doc comment
 #[storage(read, write)]
@@ -1381,7 +1395,7 @@ impl MyContract for Contract {
 #[test]
 fn asm_block() {
     check(
-        r#"library my_lib;
+        r#"library;
 
 fn foo() {
     asm(r1: self, r2: other, r3, r4) {
@@ -1391,7 +1405,7 @@ fn foo() {
     }
 }
 "#,
-        r#"library my_lib;
+        r#"library;
 
 fn foo() {
     asm(r1: self, r2: other, r3, r4) {
@@ -1479,6 +1493,96 @@ impl ABIsupertrait for Contract {
 impl MyAbi for Contract {
     fn bar() {
         Self::foo() // supertrait method usage
+    }
+}
+"#,
+    );
+}
+
+#[test]
+fn test_comments_after_deps() {
+    check(
+        r#"library;
+
+use std::{u256::U256, vec::*};
+use ::utils::vec::sort;
+use ::utils::numbers::*;
+
+// pub fn aggregate_results(results: Vec<Vec<U256>>) -> Vec<U256> {
+//     let mut aggregated = Vec::new();
+
+//     let mut i = 0;
+//     while (i < results.len) {
+//         let values = results.get(i).unwrap();
+//         aggregated.push(aggregate_values(values));
+
+//         i += 1;
+//     }
+
+//     return aggregated;
+// }"#,
+        r#"library;
+
+use std::{u256::U256, vec::*};
+use ::utils::vec::sort;
+use ::utils::numbers::*;
+
+// pub fn aggregate_results(results: Vec<Vec<U256>>) -> Vec<U256> {
+//     let mut aggregated = Vec::new();
+
+//     let mut i = 0;
+//     while (i < results.len) {
+//         let values = results.get(i).unwrap();
+//         aggregated.push(aggregate_values(values));
+
+//         i += 1;
+//     }
+
+//     return aggregated;
+// }
+"#,
+    );
+}
+
+#[test]
+fn temporarily_commented_out_fn_with_doc_comments() {
+    check(
+        r#"contract;
+
+abi MyContract {
+    /// Doc comment
+    /* 
+        Some comment
+    */
+    fn test_function() -> bool;
+}
+
+impl MyContract for Contract {
+    /// This is documentation for a commented out function
+    // fn commented_out_function() {
+    //}
+
+    fn test_function() -> bool {
+        true
+    }
+}"#,
+        r#"contract;
+
+abi MyContract {
+    /// Doc comment
+    /* 
+        Some comment
+    */
+    fn test_function() -> bool;
+}
+
+impl MyContract for Contract {
+    /// This is documentation for a commented out function
+    // fn commented_out_function() {
+    //}
+
+    fn test_function() -> bool {
+        true
     }
 }
 "#,

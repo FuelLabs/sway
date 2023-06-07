@@ -1,4 +1,4 @@
-library utils;
+library;
 
 pub fn vec_from(vals: [u32; 3]) -> Vec<u32> {
     let mut vec = Vec::new();
@@ -9,7 +9,7 @@ pub fn vec_from(vals: [u32; 3]) -> Vec<u32> {
 }
 
 pub fn get_an_option<T>() -> Option<T> {
-    Option::None
+    None
 }
 
 pub fn assert_eq<T>(v1: T, v2: T) where T: Eq {
@@ -23,7 +23,7 @@ pub trait TryFrom<T> {
 }
 
 impl TryFrom<u64> for u64 {
-    fn try_from(b: u64) -> Option<Self> {
-        Option::Some(42)
+    fn try_from(_b: u64) -> Option<Self> {
+        Some(42)
     }
 }

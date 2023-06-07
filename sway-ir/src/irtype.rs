@@ -9,7 +9,7 @@
 //! [`Aggregate`] is an abstract collection of [`Type`]s used for structs, unions and arrays,
 //! though see below for future improvements around splitting arrays into a different construct.
 
-use crate::{context::Context, pretty::DebugWithContext};
+use crate::{context::Context, pretty::DebugWithContext, Constant, ConstantValue, Value};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, DebugWithContext)]
 pub struct Type(pub generational_arena::Index);
@@ -18,13 +18,14 @@ pub struct Type(pub generational_arena::Index);
 pub enum TypeContent {
     Unit,
     Bool,
-    Uint(u8),
+    Uint(u8), // XXX u256 is not unreasonable and can't fit in a `u8`.
     B256,
     String(u64),
     Array(Type, u64),
     Union(Vec<Type>),
     Struct(Vec<Type>),
     Slice,
+    Pointer(Type),
 }
 
 impl Type {
@@ -120,7 +121,12 @@ impl Type {
         Self::get_or_create_unique_type(context, TypeContent::Struct(fields))
     }
 
-    /// Get pointer type
+    /// New pointer type
+    pub fn new_ptr(context: &mut Context, to_ty: Type) -> Type {
+        Self::get_or_create_unique_type(context, TypeContent::Pointer(to_ty))
+    }
+
+    /// Get slice type
     pub fn get_slice(context: &mut Context) -> Type {
         Self::get_type(context, &TypeContent::Slice).expect("create_basic_types not called")
     }
@@ -151,6 +157,7 @@ impl Type {
                 format!("{{ {} }}", sep_types_str(agg, ", "))
             }
             TypeContent::Slice => "slice".into(),
+            TypeContent::Pointer(ty) => format!("ptr {}", ty.as_string(context)),
         }
     }
 
@@ -174,8 +181,9 @@ impl Type {
             // Unions are special.  We say unions are equivalent to any of their variant types.
             (_, TypeContent::Union(_)) => other.eq(context, self),
             (TypeContent::Union(l), _) => l.iter().any(|field_ty| other.eq(context, field_ty)),
-
             (TypeContent::Slice, TypeContent::Slice) => true,
+            (TypeContent::Pointer(l), TypeContent::Pointer(r)) => l.eq(context, r),
+
             _ => false,
         }
     }
@@ -240,9 +248,28 @@ impl Type {
         matches!(*self.get_content(context), TypeContent::Struct(_))
     }
 
+    /// Is aggregate type: struct, union or array.
+    pub fn is_aggregate(&self, context: &Context) -> bool {
+        self.is_struct(context) || self.is_union(context) || self.is_array(context)
+    }
+
     /// Returns true if this is a slice type.
     pub fn is_slice(&self, context: &Context) -> bool {
         matches!(*self.get_content(context), TypeContent::Slice)
+    }
+
+    /// Returns true if this is a pointer type.
+    pub fn is_ptr(&self, context: &Context) -> bool {
+        matches!(*self.get_content(context), TypeContent::Pointer(_))
+    }
+
+    /// Get pointed to type iff self is a Pointer.
+    pub fn get_pointee_type(&self, context: &Context) -> Option<Type> {
+        if let TypeContent::Pointer(to_ty) = self.get_content(context) {
+            Some(*to_ty)
+        } else {
+            None
+        }
     }
 
     /// Get width of an integer type.
@@ -254,7 +281,7 @@ impl Type {
         }
     }
 
-    /// What's the type of the struct value indexed by indices.
+    /// What's the type of the struct/array value indexed by indices.
     pub fn get_indexed_type(&self, context: &Context, indices: &[u64]) -> Option<Type> {
         if indices.is_empty() {
             return None;
@@ -268,9 +295,53 @@ impl Type {
         })
     }
 
+    /// What's the offset of the indexed element?
+    /// It may not always be possible to determine statically.
+    pub fn get_indexed_offset(&self, context: &Context, indices: &[Value]) -> Option<u64> {
+        indices
+            .iter()
+            .fold(Some((*self, 0)), |ty, idx| {
+                let Some(Constant {
+                    value: ConstantValue::Uint(idx),
+                    ty: _,
+                }) = idx.get_constant(context) else { return None; };
+                ty.and_then(|(ty, accum_offset)| {
+                    if ty.is_struct(context) {
+                        // Sum up all sizes of all previous fields.
+                        let prev_idxs_offset = (0..(*idx)).try_fold(0, |accum, pre_idx| {
+                            ty.get_field_type(context, pre_idx)
+                                .map(|field_ty| field_ty.size_in_bytes(context) + accum)
+                        })?;
+                        ty.get_field_type(context, *idx)
+                            .map(|field_ty| (field_ty, accum_offset + prev_idxs_offset))
+                    } else if ty.is_union(context) {
+                        ty.get_field_type(context, *idx)
+                            .map(|field_ty| (field_ty, accum_offset))
+                    } else {
+                        assert!(
+                            ty.is_array(context),
+                            "Expected aggregate type when indexing using GEP. Got {}",
+                            ty.as_string(context)
+                        );
+                        // size_of_element * idx will be the offset of idx.
+                        ty.get_array_elem_type(context).map(|elm_ty| {
+                            let prev_idxs_offset = ty
+                                .get_array_elem_type(context)
+                                .unwrap()
+                                .size_in_bytes(context)
+                                * idx;
+                            (elm_ty, accum_offset + prev_idxs_offset)
+                        })
+                    }
+                })
+            })
+            .map(|pair| pair.1)
+    }
+
     pub fn get_field_type(&self, context: &Context, idx: u64) -> Option<Type> {
-        if let TypeContent::Struct(agg) | TypeContent::Union(agg) = self.get_content(context) {
-            agg.get(idx as usize).cloned()
+        if let TypeContent::Struct(fields) | TypeContent::Union(fields) = self.get_content(context)
+        {
+            fields.get(idx as usize).cloned()
         } else {
             // Trying to index a non-aggregate.
             None
@@ -311,6 +382,42 @@ impl Type {
             _ => vec![],
         }
     }
+
+    pub fn size_in_bytes(&self, context: &Context) -> u64 {
+        match self.get_content(context) {
+            TypeContent::Unit
+            | TypeContent::Bool
+            | TypeContent::Uint(_)
+            | TypeContent::Pointer(_) => 8,
+            TypeContent::Slice => 16,
+            TypeContent::B256 => 32,
+            TypeContent::String(n) => super::size_bytes_round_up_to_word_alignment!(*n),
+            TypeContent::Array(el_ty, cnt) => cnt * el_ty.size_in_bytes(context),
+            TypeContent::Struct(field_tys) => {
+                // Sum up all the field sizes.
+                field_tys
+                    .iter()
+                    .map(|field_ty| field_ty.size_in_bytes(context))
+                    .sum()
+            }
+            TypeContent::Union(field_tys) => {
+                // Find the max size for field sizes.
+                field_tys
+                    .iter()
+                    .map(|field_ty| field_ty.size_in_bytes(context))
+                    .max()
+                    .unwrap_or(0)
+            }
+        }
+    }
+}
+
+// This is a mouthful...
+#[macro_export]
+macro_rules! size_bytes_round_up_to_word_alignment {
+    ($bytes_expr: expr) => {
+        ($bytes_expr + 7) - (($bytes_expr + 7) % 8)
+    };
 }
 
 /// A helper to check if an Option<Type> value is of a particular Type.

@@ -1,6 +1,6 @@
 contract;
 
-use std::storage::StorageVec;
+use std::storage::storage_vec::*;
 
 enum TestEnum {
     A: bool,
@@ -37,6 +37,24 @@ abi MyContract {
 
     #[storage(write)]
     fn clear();
+
+    #[storage(read, write)]
+    fn swap(index_0: u64, index_1: u64);
+
+    #[storage(read)]
+    fn first() -> TestEnum;
+
+    #[storage(read)]
+    fn last() -> TestEnum;
+
+    #[storage(read, write)]
+    fn reverse();
+
+    #[storage(read, write)]
+    fn fill(value: TestEnum);
+
+    #[storage(read, write)]
+    fn resize(new_len: u64, value: TestEnum);
 }
 
 storage {
@@ -56,7 +74,7 @@ impl MyContract for Contract {
 
     #[storage(read)]
     fn get(index: u64) -> TestEnum {
-        storage.my_vec.get(index).unwrap()
+        storage.my_vec.get(index).unwrap().read()
     }
 
     #[storage(read, write)]
@@ -92,5 +110,35 @@ impl MyContract for Contract {
     #[storage(write)]
     fn clear() {
         storage.my_vec.clear();
+    }
+
+    #[storage(read, write)]
+    fn swap(index_0: u64, index_1: u64) {
+        storage.my_vec.swap(index_0, index_1);
+    }
+
+    #[storage(read)]
+    fn first() -> TestEnum {
+        storage.my_vec.first().unwrap().read()
+    }
+
+    #[storage(read)]
+    fn last() -> TestEnum {
+        storage.my_vec.last().unwrap().read()
+    }
+
+    #[storage(read, write)]
+    fn reverse() {
+        storage.my_vec.reverse();
+    }
+
+    #[storage(read, write)]
+    fn fill(value: TestEnum) {
+        storage.my_vec.fill(value);
+    }
+
+    #[storage(read, write)]
+    fn resize(new_len: u64, value: TestEnum) {
+        storage.my_vec.resize(new_len, value);
     }
 }

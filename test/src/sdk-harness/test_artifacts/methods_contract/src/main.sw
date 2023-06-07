@@ -2,8 +2,6 @@ contract;
 
 use methods_abi::MethodsContract;
 
-use std::auth::*;
-
 fn bogus() -> Identity {
     let sender = msg_sender();
     sender.unwrap()
@@ -19,7 +17,7 @@ struct MyStruct {
 
 storage {
     stored_struct: MyStruct = MyStruct {
-        int_option: Option::None,
+        int_option: None,
     },
 }
 
@@ -28,10 +26,10 @@ impl MethodsContract for Contract {
     fn test_function() -> bool {
         let identity = bogus();
         let identity2 = bogus2();
-        storage.stored_struct = MyStruct {
-            int_option: Option::Some(99u64),
-        };
-        let stored_struct = storage.stored_struct;
+        storage.stored_struct.write(MyStruct {
+            int_option: Some(99u64),
+        });
+        let stored_struct = storage.stored_struct.read();
         let stored_option_in_struct = stored_struct.int_option;
         require(stored_option_in_struct.is_some(), "Error");
         true

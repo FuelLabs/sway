@@ -1,5 +1,5 @@
 use crate::core::token_map::TokenMap;
-use sway_core::Engines;
+use sway_core::{namespace::Module, Engines};
 
 pub(crate) mod dependency;
 pub(crate) mod lexed_tree;
@@ -8,12 +8,17 @@ pub(crate) mod typed_tree;
 
 pub struct ParseContext<'a> {
     tokens: &'a TokenMap,
-    engines: Engines<'a>,
+    engines: &'a Engines,
+    namespace: &'a Module,
 }
 
 impl<'a> ParseContext<'a> {
-    pub fn new(tokens: &'a TokenMap, engines: Engines<'a>) -> Self {
-        Self { tokens, engines }
+    pub fn new(tokens: &'a TokenMap, engines: &'a Engines, namespace: &'a Module) -> Self {
+        Self {
+            tokens,
+            engines,
+            namespace,
+        }
     }
 }
 

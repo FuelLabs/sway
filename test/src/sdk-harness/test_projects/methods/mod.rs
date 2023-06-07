@@ -14,16 +14,13 @@ async fn run_methods_test() {
     assert_eq!(result.value, true);
 }
 
-async fn get_methods_instance(wallet: WalletUnlocked) -> MethodsContract {
-    let id = Contract::deploy(
+async fn get_methods_instance(wallet: WalletUnlocked) -> MethodsContract<WalletUnlocked> {
+    let id = Contract::load_from(
         "test_artifacts/methods_contract/out/debug/methods_contract.bin",
-        &wallet,
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "test_artifacts/methods_contract/out/debug/methods_contract-storage_slots.json"
-                .to_string(),
-        )),
+        LoadConfiguration::default(),
     )
+    .unwrap()
+    .deploy(&wallet, TxParameters::default())
     .await
     .unwrap();
     MethodsContract::new(id.clone(), wallet)

@@ -1,7 +1,7 @@
 use crate::{Parse, ParseBracket, ParseResult, Parser};
 
 use sway_ast::attribute::Annotated;
-use sway_ast::keywords::{FnToken, OpenAngleBracketToken, OpenCurlyBraceToken, WhereToken};
+use sway_ast::keywords::{ConstToken, FnToken, OpenAngleBracketToken, WhereToken};
 use sway_ast::{Braces, ItemFn, ItemTrait, ItemTraitItem, PubToken, Traits};
 use sway_error::parser_error::ParseErrorKind;
 
@@ -10,6 +10,9 @@ impl Parse for ItemTraitItem {
         if parser.peek::<PubToken>().is_some() || parser.peek::<FnToken>().is_some() {
             let fn_decl = parser.parse()?;
             Ok(ItemTraitItem::Fn(fn_decl))
+        } else if let Some(_const_keyword) = parser.peek::<ConstToken>() {
+            let const_decl = parser.parse()?;
+            Ok(ItemTraitItem::Const(const_decl))
         } else {
             Err(parser.emit_error(ParseErrorKind::ExpectedAnItem))
         }
@@ -33,7 +36,6 @@ impl Parse for ItemTrait {
 
         let trait_items: Braces<Vec<(Annotated<ItemTraitItem>, _)>> = parser.parse()?;
         for (annotated, _) in trait_items.get().iter() {
-            #[allow(irrefutable_let_patterns)]
             if let ItemTraitItem::Fn(fn_sig) = &annotated.value {
                 parser.ban_visibility_qualifier(&fn_sig.visibility)?;
             }

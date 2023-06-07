@@ -3,11 +3,11 @@ use sway_types::integer_bits::IntegerBits;
 use crate::{
     asm_generation::EvmAbiResult,
     decl_engine::DeclEngine,
-    language::ty::{TyFunctionDeclaration, TyProgram, TyProgramKind},
+    language::ty::{TyFunctionDecl, TyProgram, TyProgramKind},
     Engines, TypeArgument, TypeEngine, TypeId, TypeInfo,
 };
 
-pub fn generate_json_abi_program(program: &TyProgram, engines: &Engines<'_>) -> EvmAbiResult {
+pub fn generate_json_abi_program(program: &TyProgram, engines: &Engines) -> EvmAbiResult {
     let type_engine = engines.te();
     let decl_engine = engines.de();
     match &program.kind {
@@ -85,7 +85,8 @@ pub fn json_abi_str(
     match type_info {
         Unknown => "unknown".into(),
         UnknownGeneric { name, .. } => name.to_string(),
-        TypeInfo::Placeholder(_) => "_".to_string(),
+        Placeholder(_) => "_".to_string(),
+        TypeParam(n) => format!("typeparam({n})"),
         Str(x) => format!("str[{}]", x.val()),
         UnsignedInteger(x) => match x {
             IntegerBits::Eight => "uint8",
@@ -129,6 +130,19 @@ pub fn json_abi_str(
         Storage { .. } => "contract storage".into(),
         RawUntypedPtr => "raw untyped ptr".into(),
         RawUntypedSlice => "raw untyped slice".into(),
+        Ptr(ty) => {
+            format!(
+                "__ptr {}",
+                json_abi_str_type_arg(ty, type_engine, decl_engine)
+            )
+        }
+        Slice(ty) => {
+            format!(
+                "__slice {}",
+                json_abi_str_type_arg(ty, type_engine, decl_engine)
+            )
+        }
+        Alias { ty, .. } => json_abi_str_type_arg(ty, type_engine, decl_engine),
     }
 }
 
@@ -181,7 +195,7 @@ pub fn json_abi_param_type(
 }
 
 pub(self) fn generate_json_abi_function(
-    fn_decl: &TyFunctionDeclaration,
+    fn_decl: &TyFunctionDecl,
     type_engine: &TypeEngine,
     decl_engine: &DeclEngine,
 ) -> ethabi::operation::Operation {

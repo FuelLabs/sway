@@ -1,0 +1,8 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-0C306348E3D846F3'
+
+[[package]]
+name = 'impl_traits'
+source = 'member'
+dependencies = ['core']

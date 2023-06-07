@@ -1,0 +1,9 @@
+category = "fail"
+
+# mutable (non-ref) primitive parameters are not supported yet...
+
+# check: foo(mut self) {}
+# check: $()This parameter was declared as mutable, which is not supported yet, did you mean to use ref mut?
+
+# check: fn bar(self, mut data: u64) {}
+# check: $()This parameter was declared as mutable, which is not supported yet, did you mean to use ref mut?

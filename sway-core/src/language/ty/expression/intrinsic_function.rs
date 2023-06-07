@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     decl_engine::DeclEngine, engine_threading::*, error::*, language::ty::*, type_system::*,
-    types::DeterministicallyAborts,
+    types::*,
 };
 use itertools::Itertools;
 use sway_ast::Intrinsic;
@@ -21,7 +21,7 @@ pub struct TyIntrinsicFunctionKind {
 
 impl EqWithEngines for TyIntrinsicFunctionKind {}
 impl PartialEqWithEngines for TyIntrinsicFunctionKind {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.kind == other.kind
             && self.arguments.eq(&other.arguments, engines)
             && self.type_arguments.eq(&other.type_arguments, engines)
@@ -29,7 +29,7 @@ impl PartialEqWithEngines for TyIntrinsicFunctionKind {
 }
 
 impl HashWithEngines for TyIntrinsicFunctionKind {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TyIntrinsicFunctionKind {
             kind,
             arguments,
@@ -45,7 +45,7 @@ impl HashWithEngines for TyIntrinsicFunctionKind {
 }
 
 impl SubstTypes for TyIntrinsicFunctionKind {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         for arg in &mut self.arguments {
             arg.subst(type_mapping, engines);
         }
@@ -56,7 +56,7 @@ impl SubstTypes for TyIntrinsicFunctionKind {
 }
 
 impl ReplaceSelfType for TyIntrinsicFunctionKind {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         for arg in &mut self.arguments {
             arg.replace_self_type(engines, self_type);
         }
@@ -66,17 +66,17 @@ impl ReplaceSelfType for TyIntrinsicFunctionKind {
     }
 }
 
-impl DisplayWithEngines for TyIntrinsicFunctionKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+impl DebugWithEngines for TyIntrinsicFunctionKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         let targs = self
             .type_arguments
             .iter()
-            .map(|targ| engines.help_out(targ.type_id))
+            .map(|targ| format!("{:?}", engines.help_out(targ.type_id)))
             .join(", ");
         let args = self
             .arguments
             .iter()
-            .map(|e| format!("{}", engines.help_out(e)))
+            .map(|e| format!("{:?}", engines.help_out(e)))
             .join(", ");
 
         write!(f, "{}::<{}>::({})", self.kind, targs, args)

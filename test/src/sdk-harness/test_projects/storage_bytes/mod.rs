@@ -5,16 +5,14 @@ abigen!(Contract(
     abi = "test_projects/storage_bytes/out/debug/storage_bytes-abi.json",
 ));
 
-async fn setup() -> TestStorageBytesContract {
+async fn setup() -> TestStorageBytesContract<WalletUnlocked> {
     let wallet = launch_provider_and_get_wallet().await;
-    let id = Contract::deploy(
+    let id = Contract::load_from(
         "test_projects/storage_bytes/out/debug/storage_bytes.bin",
-        &wallet,
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "test_projects/storage_bytes/out/debug/storage_bytes-storage_slots.json".to_string(),
-        )),
+        LoadConfiguration::default(),
     )
+    .unwrap()
+    .deploy(&wallet, TxParameters::default())
     .await
     .unwrap();
 
@@ -149,7 +147,7 @@ async fn stores_long_string_as_bytes() {
 
     assert_eq!(instance.methods().len().call().await.unwrap().value, 0);
 
-    let tx_params = TxParameters::new(None, Some(12_000_000), None);
+    let tx_params = TxParameters::default().set_gas_limit(12_000_000);
     instance
         .methods()
         .store_bytes(input.clone().as_bytes().into())
@@ -163,7 +161,7 @@ async fn stores_long_string_as_bytes() {
         input.clone().as_bytes().len() as u64
     );
 
-    let tx_params = TxParameters::new(None, Some(12_000_000), None);
+    let tx_params = TxParameters::default().set_gas_limit(12_000_000);
     instance
         .methods()
         .assert_stored_bytes(input.as_bytes().into())
@@ -217,4 +215,35 @@ async fn stores_string_twice() {
         .call()
         .await
         .unwrap();
+}
+
+#[tokio::test]
+async fn clears_bytes() {
+    let instance = setup().await;
+
+    let input = String::from("Fuel is blazingly fast!");
+
+    instance
+        .methods()
+        .store_bytes(input.clone().as_bytes().into())
+        .call()
+        .await
+        .unwrap();
+
+    assert_eq!(
+        instance.methods().len().call().await.unwrap().value,
+        input.as_bytes().len() as u64
+    );
+
+    assert!(
+        instance
+            .methods()
+            .clear_stored_bytes()
+            .call()
+            .await
+            .unwrap()
+            .value
+    );
+
+    assert_eq!(instance.methods().len().call().await.unwrap().value, 0);
 }

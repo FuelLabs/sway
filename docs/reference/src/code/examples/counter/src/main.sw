@@ -20,17 +20,17 @@ storage {
 impl Counter for Contract {
     #[storage(read, write)]
     fn increment() {
-        storage.counter += 1;
+        storage.counter.write(storage.counter.read() + 1);
     }
 
     #[storage(read, write)]
     fn decrement() {
-        storage.counter -= 1;
+        storage.counter.write(storage.counter.read() - 1);
     }
 
     #[storage(read)]
     fn count() -> u64 {
-        storage.counter
+        storage.counter.read()
     }
 }
 // ANCHOR_END: counter

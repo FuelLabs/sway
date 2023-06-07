@@ -1,5 +1,5 @@
 use crate::{
-    comments::write_comments,
+    comments::{rewrite_with_comments, write_comments},
     config::items::ItemBraceStyle,
     formatter::*,
     utils::{
@@ -17,6 +17,7 @@ impl Format for ItemAbi {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        let start_len = formatted_code.len();
         // `abi name`
         write!(formatted_code, "{} ", self.abi_token.span().as_str())?;
         self.name.format(formatted_code, formatter)?;
@@ -31,33 +32,8 @@ impl Format for ItemAbi {
 
         let abi_items = self.abi_items.get();
 
-        // add pre item comments
-        let end = if let Some(first_abi_item) = abi_items.first() {
-            let item = &first_abi_item.0;
-            if let Some(first_attr) = item.attribute_list.first() {
-                // if there are existing abi items, we want to write comments until before the first attr
-                first_attr.span().start()
-            } else {
-                // otherwise, write until before the item
-                item.value.span().start()
-            }
-        } else {
-            // if there are no abi_items, write until closing brace
-            self.span().end()
-        };
-
-        write_comments(formatted_code, self.name.span().end()..end, formatter)?;
-
-        let mut prev_end = None;
         // abi_items
-        for (annotated, semicolon) in self.abi_items.get().iter() {
-            if let Some(end) = prev_end {
-                write_comments(
-                    formatted_code,
-                    end..annotated.value.span().start(),
-                    formatter,
-                )?;
-            }
+        for (annotated, semicolon) in abi_items.iter() {
             // add indent + format item
             write!(
                 formatted_code,
@@ -70,37 +46,16 @@ impl Format for ItemAbi {
                 "{}",
                 semicolon.ident().as_str() // SemicolonToken
             )?;
-
-            prev_end = Some(annotated.value.span().end());
         }
 
-        let last_abi_item = abi_items.last();
-        let start = if let Some(last_abi_item) = last_abi_item {
-            // If there are ABI items and attributes:
-            // we start from the hash token of the last attribute.
-            if let Some(last_attr) = last_abi_item.0.attribute_list.last() {
-                last_attr.span().start()
-            }
-            // If there are ABI items but no attributes:
-            // we start from the last item.
-            else {
-                let span = match &last_abi_item.0.value {
-                    sway_ast::ItemTraitItem::Fn(fn_decl) => fn_decl.span(),
-                };
-                span.end()
-            }
+        if abi_items.is_empty() {
+            write_comments(
+                formatted_code,
+                self.abi_items.span().start()..self.abi_items.span().end(),
+                formatter,
+            )?;
         }
-        // If there are no ABI items:
-        // we write ALL comments in the span here.
-        else {
-            self.span().start()
-        };
 
-        write_comments(
-            formatted_code,
-            start..self.abi_items.span().end(),
-            formatter,
-        )?;
         Self::close_curly_brace(formatted_code, formatter)?;
 
         // abi_defs_opt
@@ -119,6 +74,14 @@ impl Format for ItemAbi {
 
             Self::close_curly_brace(formatted_code, formatter)?;
         }
+
+        rewrite_with_comments::<ItemAbi>(
+            formatter,
+            self.span(),
+            self.leaf_spans(),
+            formatted_code,
+            start_len,
+        )?;
 
         Ok(())
     }

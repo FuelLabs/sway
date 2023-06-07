@@ -1,6 +1,6 @@
 use crate::{priv_prelude::*, token::OpeningDelimiter};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct Braces<T> {
     pub open_token: OpenCurlyBraceToken,
     pub inner: T,
@@ -22,7 +22,7 @@ impl<T> Spanned for Braces<T> {
         Span::join(self.open_token.span(), self.close_token.span())
     }
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct Parens<T> {
     pub open_token: OpenParenthesisToken,
     pub inner: T,
@@ -56,7 +56,7 @@ impl<T> Spanned for Parens<T> {
         Span::join(self.open_token.span(), self.close_token.span())
     }
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct SquareBrackets<T> {
     pub open_token: OpenSquareBracketToken,
     pub inner: T,
@@ -91,7 +91,7 @@ impl<T> Spanned for SquareBrackets<T> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct AngleBrackets<T> {
     pub open_angle_bracket_token: OpenAngleBracketToken,
     pub inner: T,

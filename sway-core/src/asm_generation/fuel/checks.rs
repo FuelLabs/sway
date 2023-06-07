@@ -81,15 +81,9 @@ pub(crate) fn check_predicate_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> 
     use AllocatedOpcode::*;
     let mut errors = vec![];
 
-    for (op, opcode_addr) in ops.iter().zip(0u32..) {
+    for op in ops.iter() {
         let invalid_opcode = |name_str: &str, errors: &mut Vec<CompileError>| {
             errors.push(CompileError::InvalidOpcodeFromPredicate {
-                opcode: name_str.to_string(),
-                span: get_op_span(op),
-            });
-        };
-        let invalid_backward_jump = |name_str: &str, errors: &mut Vec<CompileError>| {
-            errors.push(CompileError::InvalidBackwardJumpFromPredicate {
                 opcode: name_str.to_string(),
                 span: get_op_span(op),
             });
@@ -109,13 +103,6 @@ pub(crate) fn check_predicate_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> 
                     span: get_op_span(op),
                 });
             }
-            JI(imm) if imm.value <= opcode_addr => invalid_backward_jump("JI", &mut errors),
-            JMP(..) => invalid_opcode("JMP", &mut errors),
-            JNE(..) => invalid_opcode("JNE", &mut errors),
-            JNEI(_, _, imm) if u32::from(imm.value) <= opcode_addr => {
-                invalid_backward_jump("JNEI", &mut errors)
-            }
-            JNZI(_, imm) if imm.value <= opcode_addr => invalid_backward_jump("JNZI", &mut errors),
             LDC(..) => invalid_opcode("LDC", &mut errors),
             LOG(..) => invalid_opcode("LOG", &mut errors),
             LOGD(..) => invalid_opcode("LOGD", &mut errors),

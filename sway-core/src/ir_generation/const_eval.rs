@@ -1,10 +1,23 @@
+use std::ops::{BitAnd, BitOr, BitXor};
+
 use crate::{
-    decl_engine::DeclEngine, engine_threading::*, language::ty, metadata::MetadataManager,
-    semantic_analysis::*, TypeEngine,
+    asm_generation::from_ir::ir_type_size_in_bytes,
+    engine_threading::*,
+    language::{
+        ty::{self, TyConstantDecl, TyIntrinsicFunctionKind},
+        CallPath,
+    },
+    metadata::MetadataManager,
+    semantic_analysis::*,
 };
 
-use super::{convert::convert_literal_to_constant, function::FnCompiler, types::*};
+use super::{
+    convert::{convert_literal_to_constant, convert_resolved_typeid},
+    function::FnCompiler,
+    types::*,
+};
 
+use sway_ast::Intrinsic;
 use sway_error::error::CompileError;
 use sway_ir::{
     constant::{Constant, ConstantValue},
@@ -12,33 +25,37 @@ use sway_ir::{
     metadata::combine as md_combine,
     module::Module,
     value::Value,
-    Instruction,
+    Instruction, Type,
 };
-use sway_types::{
-    ident::{BaseIdent, Ident},
-    span::Spanned,
-};
+use sway_types::{ident::Ident, span::Spanned};
 use sway_utils::mapped_stack::MappedStack;
 
 pub(crate) struct LookupEnv<'a> {
-    pub(crate) type_engine: &'a TypeEngine,
-    pub(crate) decl_engine: &'a DeclEngine,
+    pub(crate) engines: &'a Engines,
     pub(crate) context: &'a mut Context,
     pub(crate) md_mgr: &'a mut MetadataManager,
     pub(crate) module: Module,
     pub(crate) module_ns: Option<&'a namespace::Module>,
     pub(crate) function_compiler: Option<&'a FnCompiler<'a>>,
-    pub(crate) lookup: fn(&mut LookupEnv, &Ident) -> Result<Option<Value>, CompileError>,
+    #[allow(clippy::type_complexity)]
+    pub(crate) lookup: fn(
+        &mut LookupEnv,
+        &CallPath,
+        &Option<TyConstantDecl>,
+    ) -> Result<Option<Value>, CompileError>,
 }
 
 pub(crate) fn compile_const_decl(
     env: &mut LookupEnv,
-    name: &Ident,
+    call_path: &CallPath,
+    const_decl: &Option<TyConstantDecl>,
 ) -> Result<Option<Value>, CompileError> {
     // Check if it's a processed local constant.
     if let Some(fn_compiler) = env.function_compiler {
         let mut found_local = false;
-        if let Some(local_var) = fn_compiler.get_function_var(env.context, name.as_str()) {
+        if let Some(local_var) =
+            fn_compiler.get_function_var(env.context, call_path.suffix.as_str())
+        {
             found_local = true;
             if let Some(constant) = local_var.get_initializer(env.context) {
                 return Ok(Some(Value::new_constant(env.context, constant.clone())));
@@ -48,7 +65,7 @@ pub(crate) fn compile_const_decl(
             let mut stored_const_opt: Option<&Constant> = None;
             for ins in fn_compiler.current_block.instruction_iter(env.context) {
                 if let Some(Instruction::Store {
-                    dst_val,
+                    dst_val_ptr: dst_val,
                     stored_val,
                 }) = ins.get_instruction(env.context)
                 {
@@ -66,7 +83,7 @@ pub(crate) fn compile_const_decl(
             }
         }
 
-        if let Some(value) = fn_compiler.get_function_arg(env.context, name.as_str()) {
+        if let Some(value) = fn_compiler.get_function_arg(env.context, call_path.suffix.as_str()) {
             found_local = true;
             if value.get_constant(env.context).is_some() {
                 return Ok(Some(value));
@@ -80,56 +97,69 @@ pub(crate) fn compile_const_decl(
 
     // Check if it's a processed global constant.
     match (
-        env.module.get_global_constant(env.context, name.as_str()),
         env.module
-            .get_global_configurable(env.context, name.as_str()),
+            .get_global_constant(env.context, &call_path.as_vec_string()),
+        env.module
+            .get_global_configurable(env.context, &call_path.as_vec_string()),
         env.module_ns,
     ) {
         (Some(const_val), _, _) => Ok(Some(const_val)),
         (_, Some(config_val), _) => Ok(Some(config_val)),
         (None, None, Some(module_ns)) => {
             // See if we it's a global const and whether we can compile it *now*.
-            let decl = module_ns.check_symbol(name)?;
-            let decl_name_value = match decl {
-                ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
-                    let ty::TyConstantDeclaration {
-                        name,
+            let decl = module_ns.check_symbol(&call_path.suffix);
+            let const_decl = match const_decl {
+                Some(decl) => Some(decl),
+                None => None,
+            };
+            let const_decl = match decl {
+                Ok(decl) => match decl {
+                    ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
+                        Some(env.engines.de().get_constant(decl_id))
+                    }
+                    _otherwise => const_decl.cloned(),
+                },
+                Err(_) => const_decl.cloned(),
+            };
+            match const_decl {
+                Some(const_decl) => {
+                    let ty::TyConstantDecl {
+                        call_path,
                         value,
                         is_configurable,
                         ..
-                    } = env.decl_engine.get_constant(decl_id);
-                    Some((name, value, is_configurable))
-                }
-                _otherwise => None,
-            };
-            if let Some((name, Some(value), is_configurable)) = decl_name_value {
-                let const_val = compile_constant_expression(
-                    Engines::new(env.type_engine, env.decl_engine),
-                    env.context,
-                    env.md_mgr,
-                    env.module,
-                    env.module_ns,
-                    env.function_compiler,
-                    &name,
-                    &value,
-                    is_configurable,
-                )?;
-                if !is_configurable {
-                    env.module.add_global_constant(
+                    } = const_decl;
+                    if value.is_none() {
+                        return Ok(None);
+                    }
+
+                    let const_val = compile_constant_expression(
+                        env.engines,
                         env.context,
-                        name.as_str().to_owned(),
-                        const_val,
-                    );
-                } else {
-                    env.module.add_global_configurable(
-                        env.context,
-                        name.as_str().to_owned(),
-                        const_val,
-                    );
+                        env.md_mgr,
+                        env.module,
+                        env.module_ns,
+                        env.function_compiler,
+                        &call_path,
+                        &value.unwrap(),
+                        is_configurable,
+                    )?;
+                    if !is_configurable {
+                        env.module.add_global_constant(
+                            env.context,
+                            call_path.as_vec_string().to_vec(),
+                            const_val,
+                        );
+                    } else {
+                        env.module.add_global_configurable(
+                            env.context,
+                            call_path.as_vec_string().to_vec(),
+                            const_val,
+                        );
+                    }
+                    Ok(Some(const_val))
                 }
-                Ok(Some(const_val))
-            } else {
-                Ok(None)
+                None => Ok(None),
             }
         }
         _ => Ok(None),
@@ -138,13 +168,13 @@ pub(crate) fn compile_const_decl(
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_constant_expression(
-    engines: Engines<'_>,
+    engines: &Engines,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
     module_ns: Option<&namespace::Module>,
     function_compiler: Option<&FnCompiler>,
-    name: &BaseIdent,
+    call_path: &CallPath,
     const_expr: &ty::TyExpression,
     is_configurable: bool,
 ) -> Result<Value, CompileError> {
@@ -163,7 +193,7 @@ pub(super) fn compile_constant_expression(
         Ok(Value::new_constant(context, constant_evaluated).add_metadatum(context, span_id_idx))
     } else {
         let config_const_name =
-            md_mgr.config_const_name_to_md(context, &std::rc::Rc::from(name.as_str()));
+            md_mgr.config_const_name_to_md(context, &std::rc::Rc::from(call_path.suffix.as_str()));
         let metadata = md_combine(context, &span_id_idx, &config_const_name);
         Ok(Value::new_configurable(context, constant_evaluated).add_metadatum(context, metadata))
     }
@@ -171,7 +201,7 @@ pub(super) fn compile_constant_expression(
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn compile_constant_expression_to_constant(
-    engines: Engines<'_>,
+    engines: &Engines,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -179,10 +209,8 @@ pub(crate) fn compile_constant_expression_to_constant(
     function_compiler: Option<&FnCompiler>,
     const_expr: &ty::TyExpression,
 ) -> Result<Constant, CompileError> {
-    let (type_engine, decl_engine) = engines.unwrap();
     let lookup = &mut LookupEnv {
-        type_engine,
-        decl_engine,
+        engines,
         context,
         md_mgr,
         module,
@@ -218,9 +246,7 @@ fn const_eval_typed_expr(
     Ok(match &expr.expression {
         ty::TyExpressionVariant::Literal(l) => Some(convert_literal_to_constant(lookup.context, l)),
         ty::TyExpressionVariant::FunctionApplication {
-            arguments,
-            function_decl_ref,
-            ..
+            arguments, fn_ref, ..
         } => {
             let mut actuals_const: Vec<_> = vec![];
             for arg in arguments {
@@ -241,7 +267,7 @@ fn const_eval_typed_expr(
             }
 
             // TODO: Handle more than one statement in the block.
-            let function_decl = lookup.decl_engine.get_function(function_decl_ref);
+            let function_decl = lookup.engines.de().get_function(fn_ref);
             if function_decl.body.contents.len() > 1 {
                 return Ok(None);
             }
@@ -256,12 +282,34 @@ fn const_eval_typed_expr(
             }
             res
         }
-        ty::TyExpressionVariant::VariableExpression { name, .. } => match known_consts.get(name) {
-            // 1. Check if name is in known_consts.
+        ty::TyExpressionVariant::ConstantExpression { const_decl, .. } => {
+            let call_path = &const_decl.call_path;
+            let name = &call_path.suffix;
+
+            match known_consts.get(name) {
+                // 1. Check if name/call_path is in known_consts.
+                Some(cvs) => Some(cvs.clone()),
+                None => {
+                    // 2. Check if name is a global constant.
+                    (lookup.lookup)(lookup, call_path, &Some(*const_decl.clone()))
+                        .ok()
+                        .flatten()
+                        .and_then(|v| v.get_constant_or_configurable(lookup.context).cloned())
+                }
+            }
+        }
+        ty::TyExpressionVariant::VariableExpression {
+            name, call_path, ..
+        } => match known_consts.get(name) {
+            // 1. Check if name/call_path is in known_consts.
             Some(cvs) => Some(cvs.clone()),
             None => {
+                let call_path = match call_path {
+                    Some(call_path) => call_path.clone(),
+                    None => CallPath::from(name.clone()),
+                };
                 // 2. Check if name is a global constant.
-                (lookup.lookup)(lookup, name)
+                (lookup.lookup)(lookup, &call_path, &None)
                     .ok()
                     .flatten()
                     .and_then(|v| v.get_constant(lookup.context).cloned())
@@ -282,9 +330,9 @@ fn const_eval_typed_expr(
                 // We couldn't evaluate all fields to a constant.
                 return Ok(None);
             }
-            get_aggregate_for_types(
-                lookup.type_engine,
-                lookup.decl_engine,
+            get_struct_for_types(
+                lookup.engines.te(),
+                lookup.engines.de(),
                 lookup.context,
                 &field_typs,
             )
@@ -310,8 +358,8 @@ fn const_eval_typed_expr(
                 return Ok(None);
             }
             create_tuple_aggregate(
-                lookup.type_engine,
-                lookup.decl_engine,
+                lookup.engines.te(),
+                lookup.engines.de(),
                 lookup.context,
                 field_typs,
             )
@@ -323,7 +371,10 @@ fn const_eval_typed_expr(
                 ))
             })
         }
-        ty::TyExpressionVariant::Array { contents } => {
+        ty::TyExpressionVariant::Array {
+            elem_type,
+            contents,
+        } => {
             let (mut element_typs, mut element_vals): (Vec<_>, Vec<_>) = (vec![], vec![]);
             for value in contents {
                 let eval_expr_opt = const_eval_typed_expr(lookup, known_consts, value)?;
@@ -336,22 +387,22 @@ fn const_eval_typed_expr(
                 // We couldn't evaluate all fields to a constant or cannot determine element type.
                 return Ok(None);
             }
-            let mut element_iter = element_typs.iter();
-            let element_type_id = *element_iter.next().unwrap();
-            if !element_iter.all(|tid| {
-                lookup.type_engine.get(*tid).eq(
-                    &lookup.type_engine.get(element_type_id),
-                    Engines::new(lookup.type_engine, lookup.decl_engine),
-                )
+            let elem_type_info = lookup.engines.te().get(*elem_type);
+            if !element_typs.iter().all(|tid| {
+                lookup
+                    .engines
+                    .te()
+                    .get(*tid)
+                    .eq(&elem_type_info, lookup.engines)
             }) {
                 // This shouldn't happen if the type checker did its job.
                 return Ok(None);
             }
             create_array_aggregate(
-                lookup.type_engine,
-                lookup.decl_engine,
+                lookup.engines.te(),
+                lookup.engines.de(),
                 lookup.context,
-                element_type_id,
+                *elem_type,
                 element_typs.len().try_into().unwrap(),
             )
             .map_or(None, |array_ty| {
@@ -363,14 +414,15 @@ fn const_eval_typed_expr(
             })
         }
         ty::TyExpressionVariant::EnumInstantiation {
-            enum_decl,
+            enum_ref,
             tag,
             contents,
             ..
         } => {
-            let aggregate = create_enum_aggregate(
-                lookup.type_engine,
-                lookup.decl_engine,
+            let enum_decl = lookup.engines.de().get_enum(enum_ref);
+            let aggregate = create_tagged_union_type(
+                lookup.engines.te(),
+                lookup.engines.de(),
                 lookup.context,
                 &enum_decl.variants,
             );
@@ -409,8 +461,8 @@ fn const_eval_typed_expr(
                     name: field_to_access.name.clone(),
                 };
                 get_struct_name_field_index_and_type(
-                    lookup.type_engine,
-                    lookup.decl_engine,
+                    lookup.engines.te(),
+                    lookup.engines.de(),
                     *resolved_type_of_parent,
                     field_kind,
                 )
@@ -436,11 +488,12 @@ fn const_eval_typed_expr(
         ty::TyExpressionVariant::MatchExp { desugared, .. } => {
             const_eval_typed_expr(lookup, known_consts, desugared)?
         }
+        ty::TyExpressionVariant::IntrinsicFunction(kind) => {
+            const_eval_intrinsic(lookup, known_consts, kind)?
+        }
         ty::TyExpressionVariant::ArrayIndex { .. }
-        | ty::TyExpressionVariant::IntrinsicFunction(_)
         | ty::TyExpressionVariant::CodeBlock(_)
         | ty::TyExpressionVariant::Reassignment(_)
-        | ty::TyExpressionVariant::StorageReassignment(_)
         | ty::TyExpressionVariant::FunctionParameter
         | ty::TyExpressionVariant::IfExp { .. }
         | ty::TyExpressionVariant::AsmExpression { .. }
@@ -454,6 +507,158 @@ fn const_eval_typed_expr(
         | ty::TyExpressionVariant::Continue
         | ty::TyExpressionVariant::WhileLoop { .. } => None,
     })
+}
+
+fn const_eval_intrinsic(
+    lookup: &mut LookupEnv,
+    known_consts: &mut MappedStack<Ident, Constant>,
+    intrinsic: &TyIntrinsicFunctionKind,
+) -> Result<Option<Constant>, CompileError> {
+    let args = intrinsic
+        .arguments
+        .iter()
+        .filter_map(|arg| const_eval_typed_expr(lookup, known_consts, arg).transpose())
+        .collect::<Result<Vec<_>, CompileError>>()?;
+
+    if args.len() != intrinsic.arguments.len() {
+        // We couldn't const-eval all arguments.
+        return Ok(None);
+    }
+    match intrinsic.kind {
+        sway_ast::Intrinsic::Add
+        | sway_ast::Intrinsic::Sub
+        | sway_ast::Intrinsic::Mul
+        | sway_ast::Intrinsic::Div
+        | sway_ast::Intrinsic::And
+        | sway_ast::Intrinsic::Or
+        | sway_ast::Intrinsic::Xor
+        | sway_ast::Intrinsic::Mod => {
+            let ty = args[0].ty;
+            assert!(
+                args.len() == 2 && ty.is_uint(lookup.context) && ty.eq(lookup.context, &args[1].ty)
+            );
+            let (ConstantValue::Uint(arg1), ConstantValue::Uint(ref arg2)) = (&args[0].value, &args[1].value)
+            else {
+                panic!("Type checker allowed incorrect args to binary op");
+            };
+            // All arithmetic is done as if it were u64
+            let result = match intrinsic.kind {
+                Intrinsic::Add => arg1.checked_add(*arg2),
+                Intrinsic::Sub => arg1.checked_sub(*arg2),
+                Intrinsic::Mul => arg1.checked_mul(*arg2),
+                Intrinsic::Div => arg1.checked_div(*arg2),
+                Intrinsic::And => Some(arg1.bitand(arg2)),
+                Intrinsic::Or => Some(arg1.bitor(*arg2)),
+                Intrinsic::Xor => Some(arg1.bitxor(*arg2)),
+                Intrinsic::Mod => arg1.checked_rem(*arg2),
+                _ => unreachable!(),
+            };
+            match result {
+                Some(sum) => Ok(Some(Constant {
+                    ty,
+                    value: ConstantValue::Uint(sum),
+                })),
+                None => Ok(None),
+            }
+        }
+        sway_ast::Intrinsic::Lsh | sway_ast::Intrinsic::Rsh => {
+            let ty = args[0].ty;
+            assert!(
+                args.len() == 2
+                    && ty.is_uint(lookup.context)
+                    && args[1].ty.is_uint64(lookup.context)
+            );
+            let (ConstantValue::Uint(arg1), ConstantValue::Uint(ref arg2)) = (&args[0].value, &args[1].value)
+            else {
+                panic!("Type checker allowed incorrect args to binary op");
+            };
+            let result = match intrinsic.kind {
+                Intrinsic::Lsh => u32::try_from(*arg2)
+                    .ok()
+                    .and_then(|arg2| arg1.checked_shl(arg2)),
+                Intrinsic::Rsh => u32::try_from(*arg2)
+                    .ok()
+                    .and_then(|arg2| arg1.checked_shr(arg2)),
+                _ => unreachable!(),
+            };
+            match result {
+                Some(sum) => Ok(Some(Constant {
+                    ty,
+                    value: ConstantValue::Uint(sum),
+                })),
+                None => Ok(None),
+            }
+        }
+        sway_ast::Intrinsic::SizeOfType => {
+            let targ = &intrinsic.type_arguments[0];
+            let ir_type = convert_resolved_typeid(
+                lookup.engines.te(),
+                lookup.engines.de(),
+                lookup.context,
+                &targ.type_id,
+                &targ.span,
+            )?;
+            Ok(Some(Constant {
+                ty: Type::get_uint64(lookup.context),
+                value: ConstantValue::Uint(ir_type_size_in_bytes(lookup.context, &ir_type)),
+            }))
+        }
+        sway_ast::Intrinsic::SizeOfVal => {
+            let val = &intrinsic.arguments[0];
+            let type_id = val.return_type;
+            let ir_type = convert_resolved_typeid(
+                lookup.engines.te(),
+                lookup.engines.de(),
+                lookup.context,
+                &type_id,
+                &val.span,
+            )?;
+            Ok(Some(Constant {
+                ty: Type::get_uint64(lookup.context),
+                value: ConstantValue::Uint(ir_type_size_in_bytes(lookup.context, &ir_type)),
+            }))
+        }
+        sway_ast::Intrinsic::Eq => {
+            assert!(args.len() == 2);
+            Ok(Some(Constant {
+                ty: Type::get_bool(lookup.context),
+                value: ConstantValue::Bool(args[0].eq(lookup.context, &args[1])),
+            }))
+        }
+        sway_ast::Intrinsic::Gt => {
+            let (ConstantValue::Uint(val1), ConstantValue::Uint(val2)) = (&args[0].value, &args[1].value)
+                else {
+                    unreachable!("Type checker allowed non integer value for GreaterThan")
+                };
+            Ok(Some(Constant {
+                ty: Type::get_bool(lookup.context),
+                value: ConstantValue::Bool(val1 > val2),
+            }))
+        }
+        sway_ast::Intrinsic::Lt => {
+            let (ConstantValue::Uint(val1), ConstantValue::Uint(val2)) = (&args[0].value, &args[1].value)
+                else {
+                    unreachable!("Type checker allowed non integer value for LessThan")
+                };
+            Ok(Some(Constant {
+                ty: Type::get_bool(lookup.context),
+                value: ConstantValue::Bool(val1 < val2),
+            }))
+        }
+        sway_ast::Intrinsic::AddrOf => Ok(None),
+        sway_ast::Intrinsic::PtrAdd => Ok(None),
+        sway_ast::Intrinsic::PtrSub => Ok(None),
+        sway_ast::Intrinsic::IsReferenceType
+        | sway_ast::Intrinsic::Gtf
+        | sway_ast::Intrinsic::StateClear
+        | sway_ast::Intrinsic::StateLoadWord
+        | sway_ast::Intrinsic::StateStoreWord
+        | sway_ast::Intrinsic::StateLoadQuad
+        | sway_ast::Intrinsic::StateStoreQuad
+        | sway_ast::Intrinsic::Log
+        | sway_ast::Intrinsic::Revert
+        | sway_ast::Intrinsic::Smo => Ok(None),
+    }
 }
 
 fn const_eval_typed_ast_node(

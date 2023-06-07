@@ -3,7 +3,6 @@ pub use {
         assignable::Assignable,
         attribute::{Annotated, Attribute, AttributeDecl},
         brackets::{AngleBrackets, Braces, Parens, SquareBrackets},
-        dependency::Dependency,
         expr::{
             asm::{AsmBlock, AsmImmediate},
             op_code::Instruction,
@@ -21,6 +20,7 @@ pub use {
             item_storage::ItemStorage,
             item_struct::ItemStruct,
             item_trait::{ItemTrait, Traits},
+            item_type_alias::ItemTypeAlias,
             item_use::ItemUse,
             FnSignature, Item, ItemKind, TypeField,
         },
@@ -36,6 +36,7 @@ pub use {
     },
     extension_trait::extension_trait,
     num_bigint::BigUint,
+    serde::{Serialize, Serializer},
     std::{
         fmt, marker::PhantomData, mem, ops::ControlFlow, path::PathBuf, str::FromStr, sync::Arc,
     },

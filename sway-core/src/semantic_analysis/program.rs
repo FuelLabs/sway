@@ -16,18 +16,18 @@ impl ty::TyProgram {
     /// The given `initial_namespace` acts as an initial state for each module within this program.
     /// It should contain a submodule for each library package dependency.
     pub fn type_check(
-        engines: Engines<'_>,
+        engines: &Engines,
         parsed: &ParseProgram,
         initial_namespace: namespace::Module,
+        package_name: &str,
     ) -> CompileResult<Self> {
         let mut namespace = Namespace::init_root(initial_namespace);
         let ctx =
             TypeCheckContext::from_root(&mut namespace, engines).with_kind(parsed.kind.clone());
         let ParseProgram { root, kind } = parsed;
-        let mod_span = root.tree.span.clone();
         let mod_res = ty::TyModule::type_check(ctx, root);
         mod_res.flat_map(|root| {
-            let res = Self::validate_root(engines, &root, kind.clone(), mod_span);
+            let res = Self::validate_root(engines, &root, kind.clone(), package_name);
             res.map(|(kind, declarations, configurables)| Self {
                 kind,
                 root,
@@ -42,7 +42,7 @@ impl ty::TyProgram {
 
     pub(crate) fn get_typed_program_with_initialized_storage_slots(
         self,
-        engines: Engines<'_>,
+        engines: &Engines,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         module: Module,
@@ -55,18 +55,18 @@ impl ty::TyProgram {
                 let storage_decl = self
                     .declarations
                     .iter()
-                    .find(|decl| matches!(decl, ty::TyDeclaration::StorageDeclaration { .. }));
+                    .find(|decl| matches!(decl, ty::TyDecl::StorageDecl { .. }));
 
                 // Expecting at most a single storage declaration
                 match storage_decl {
-                    Some(ty::TyDeclaration::StorageDeclaration {
+                    Some(ty::TyDecl::StorageDecl(ty::StorageDecl {
                         decl_id,
                         decl_span: _,
                         ..
-                    }) => {
+                    })) => {
                         let decl = decl_engine.get_storage(decl_id);
                         let mut storage_slots = check!(
-                            decl.get_initialized_storage_slots(engines, context, md_mgr, module),
+                            decl.get_initialized_storage_slots(engines, context, md_mgr, module,),
                             return err(warnings, errors),
                             warnings,
                             errors,

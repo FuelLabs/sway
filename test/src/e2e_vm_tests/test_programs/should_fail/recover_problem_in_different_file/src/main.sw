@@ -1,8 +1,8 @@
 script;
 
-dep foo;
-dep bar;
-dep baz;
-dep no_such_file;
+mod foo;
+mod bar;
+mod baz;
+mod no_such_file;
 
 fn main() {}

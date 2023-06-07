@@ -1,4 +1,5 @@
 use crate::{
+    comments::rewrite_with_comments,
     config::{items::ItemBraceStyle, user_def::FieldAlignment},
     formatter::{
         shape::{ExprKind, LineStyle},
@@ -27,6 +28,9 @@ impl Format for ItemStorage {
                 .shape
                 .with_code_line_from(LineStyle::Multiline, ExprKind::default()),
             |formatter| -> Result<(), FormatterError> {
+                // Required for comment formatting
+                let start_len = formatted_code.len();
+
                 // Add storage token
                 write!(formatted_code, "{}", self.storage_token.span().as_str())?;
                 let fields = self.fields.get();
@@ -110,8 +114,17 @@ impl Format for ItemStorage {
                     }
                     FieldAlignment::Off => fields.format(formatted_code, formatter)?,
                 }
+
                 // Handle closing brace
                 Self::close_curly_brace(formatted_code, formatter)?;
+
+                rewrite_with_comments::<ItemStorage>(
+                    formatter,
+                    self.span(),
+                    self.leaf_spans(),
+                    formatted_code,
+                    start_len,
+                )?;
 
                 Ok(())
             },

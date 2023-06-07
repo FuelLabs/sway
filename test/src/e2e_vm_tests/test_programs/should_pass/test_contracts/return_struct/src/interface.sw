@@ -1,8 +1,6 @@
-library interface;
+library;
 
-dep data_structures;
-
-use data_structures::MyStruct;
+use ::data_structures::MyStruct;
 
 abi MyContract {
     #[storage(read)]

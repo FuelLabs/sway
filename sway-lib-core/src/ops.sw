@@ -1,4 +1,4 @@
-library ops;
+library;
 
 use ::primitives::*;
 
@@ -120,37 +120,25 @@ pub trait Mod {
 
 impl Mod for u64 {
     fn modulo(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            mod r3 r1 r2;
-            r3: u64
-        }
+        __mod(self, other)
     }
 }
 
 impl Mod for u32 {
     fn modulo(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            mod r3 r1 r2;
-            r3: u32
-        }
+        __mod(self, other)
     }
 }
 
 impl Mod for u16 {
     fn modulo(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            mod r3 r1 r2;
-            r3: u16
-        }
+        __mod(self, other)
     }
 }
 
 impl Mod for u8 {
     fn modulo(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            mod r3 r1 r2;
-            r3: u8
-        }
+        __mod(self, other)
     }
 }
 
@@ -226,61 +214,37 @@ pub trait Ord {
 
 impl Ord for u64 {
     fn gt(self, other: Self) -> bool {
-        asm(r1: self, r2: other, r3) {
-            gt r3 r1 r2;
-            r3: bool
-        }
+        __gt(self, other)
     }
     fn lt(self, other: Self) -> bool {
-        asm(r1: self, r2: other, r3) {
-            lt r3 r1 r2;
-            r3: bool
-        }
+        __lt(self, other)
     }
 }
 
 impl Ord for u32 {
     fn gt(self, other: Self) -> bool {
-        asm(r1: self, r2: other, r3) {
-            gt r3 r1 r2;
-            r3: bool
-        }
+        __gt(self, other)
     }
     fn lt(self, other: Self) -> bool {
-        asm(r1: self, r2: other, r3) {
-            lt r3 r1 r2;
-            r3: bool
-        }
+        __lt(self, other)
     }
 }
 
 impl Ord for u16 {
     fn gt(self, other: Self) -> bool {
-        asm(r1: self, r2: other, r3) {
-            gt r3 r1 r2;
-            r3: bool
-        }
+        __gt(self, other)
     }
     fn lt(self, other: Self) -> bool {
-        asm(r1: self, r2: other, r3) {
-            lt r3 r1 r2;
-            r3: bool
-        }
+        __lt(self, other)
     }
 }
 
 impl Ord for u8 {
     fn gt(self, other: Self) -> bool {
-        asm(r1: self, r2: other, r3) {
-            gt r3 r1 r2;
-            r3: bool
-        }
+        __gt(self, other)
     }
     fn lt(self, other: Self) -> bool {
-        asm(r1: self, r2: other, r3) {
-            lt r3 r1 r2;
-            r3: bool
-        }
+        __lt(self, other)
     }
 }
 
@@ -326,37 +290,25 @@ pub trait BitwiseAnd {
 
 impl BitwiseAnd for u64 {
     fn binary_and(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            and r3 r1 r2;
-            r3: u64
-        }
+        __and(self, other)
     }
 }
 
 impl BitwiseAnd for u32 {
     fn binary_and(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            and r3 r1 r2;
-            r3: u32
-        }
+        __and(self, other)
     }
 }
 
 impl BitwiseAnd for u16 {
     fn binary_and(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            and r3 r1 r2;
-            r3: u16
-        }
+        __and(self, other)
     }
 }
 
 impl BitwiseAnd for u8 {
     fn binary_and(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            and r3 r1 r2;
-            r3: u8
-        }
+        __and(self, other)
     }
 }
 
@@ -366,37 +318,25 @@ pub trait BitwiseOr {
 
 impl BitwiseOr for u64 {
     fn binary_or(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            or r3 r1 r2;
-            r3: u64
-        }
+        __or(self, other)
     }
 }
 
 impl BitwiseOr for u32 {
     fn binary_or(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            or r3 r1 r2;
-            r3: u32
-        }
+        __or(self, other)
     }
 }
 
 impl BitwiseOr for u16 {
     fn binary_or(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            or r3 r1 r2;
-            r3: u16
-        }
+        __or(self, other)
     }
 }
 
 impl BitwiseOr for u8 {
     fn binary_or(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            or r3 r1 r2;
-            r3: u8
-        }
+        __or(self, other)
     }
 }
 
@@ -406,37 +346,25 @@ pub trait BitwiseXor {
 
 impl BitwiseXor for u64 {
     fn binary_xor(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            xor r3 r1 r2;
-            r3: u64
-        }
+        __xor(self, other)
     }
 }
 
 impl BitwiseXor for u32 {
     fn binary_xor(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            xor r3 r1 r2;
-            r3: u32
-        }
+        __xor(self, other)
     }
 }
 
 impl BitwiseXor for u16 {
     fn binary_xor(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            xor r3 r1 r2;
-            r3: u16
-        }
+        __xor(self, other)
     }
 }
 
 impl BitwiseXor for u8 {
     fn binary_xor(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            xor r3 r1 r2;
-            r3: u8
-        }
+        __xor(self, other)
     }
 }
 
@@ -545,61 +473,37 @@ pub trait Shift {
 
 impl Shift for u64 {
     fn lsh(self, other: u64) -> Self {
-        asm(r1: self, r2: other, r3) {
-            sll r3 r1 r2;
-            r3: u64
-        }
+        __lsh(self, other)
     }
     fn rsh(self, other: u64) -> Self {
-        asm(r1: self, r2: other, r3) {
-            srl r3 r1 r2;
-            r3: u64
-        }
+        __rsh(self, other)
     }
 }
 
 impl Shift for u32 {
     fn lsh(self, other: u64) -> Self {
-        asm(r1: self, r2: other, r3) {
-            sll r3 r1 r2;
-            r3: u32
-        }
+        __lsh(self, other)
     }
     fn rsh(self, other: u64) -> Self {
-        asm(r1: self, r2: other, r3) {
-            srl r3 r1 r2;
-            r3: u32
-        }
+        __rsh(self, other)
     }
 }
 
 impl Shift for u16 {
     fn lsh(self, other: u64) -> Self {
-        asm(r1: self, r2: other, r3) {
-            sll r3 r1 r2;
-            r3: u16
-        }
+        __lsh(self, other)
     }
     fn rsh(self, other: u64) -> Self {
-        asm(r1: self, r2: other, r3) {
-            srl r3 r1 r2;
-            r3: u16
-        }
+        __rsh(self, other)
     }
 }
 
 impl Shift for u8 {
     fn lsh(self, other: u64) -> Self {
-        asm(r1: self, r2: other, r3) {
-            sll r3 r1 r2;
-            r3: u8
-        }
+        __lsh(self, other)
     }
     fn rsh(self, other: u64) -> Self {
-        asm(r1: self, r2: other, r3) {
-            srl r3 r1 r2;
-            r3: u8
-        }
+        __rsh(self, other)
     }
 }
 
@@ -692,12 +596,12 @@ fn rsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
 
 /// Build a single b256 value from a tuple of 4 u64 values.
 fn compose(words: (u64, u64, u64, u64)) -> b256 {
-    asm(r1: __addr_of(words)) { r1: b256 }
+    asm(r1: words) { r1: b256 }
 }
 
 /// Get a tuple of 4 u64 values from a single b256 value.
 fn decompose(val: b256) -> (u64, u64, u64, u64) {
-    asm(r1: __addr_of(val)) { r1: (u64, u64, u64, u64) }
+    asm(r1: val) { r1: (u64, u64, u64, u64) }
 }
 
 #[test]

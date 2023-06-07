@@ -1,14 +1,34 @@
 use std::{path::PathBuf, sync::Arc};
 
 use serde::{Deserialize, Serialize};
+use strum::EnumString;
 
 #[derive(
-    Clone, Copy, Debug, Default, Eq, PartialEq, Hash, Serialize, Deserialize, clap::ValueEnum,
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    Eq,
+    PartialEq,
+    Hash,
+    Serialize,
+    Deserialize,
+    clap::ValueEnum,
+    EnumString,
 )]
 pub enum BuildTarget {
     #[default]
+    #[serde(rename = "fuel")]
+    #[clap(name = "fuel")]
+    #[strum(serialize = "fuel")]
     Fuel,
+    #[serde(rename = "evm")]
+    #[clap(name = "evm")]
+    #[strum(serialize = "evm")]
     EVM,
+    #[serde(rename = "midenvm")]
+    #[clap(name = "midenvm")]
+    #[strum(serialize = "midenvm")]
     MidenVM,
 }
 
@@ -20,11 +40,14 @@ pub struct BuildConfig {
     // The canonical file path to the root module.
     // E.g. `/home/user/project/src/main.sw`.
     pub(crate) canonical_root_module: Arc<PathBuf>,
-    pub(crate) print_dca_graph: bool,
+    pub(crate) print_dca_graph: Option<String>,
+    pub(crate) print_dca_graph_url_format: Option<String>,
     pub(crate) print_intermediate_asm: bool,
     pub(crate) print_finalized_asm: bool,
     pub(crate) print_ir: bool,
     pub(crate) include_tests: bool,
+    pub time_phases: bool,
+    pub metrics_outfile: Option<String>,
 }
 
 impl BuildConfig {
@@ -61,17 +84,27 @@ impl BuildConfig {
         Self {
             build_target,
             canonical_root_module: Arc::new(canonical_root_module),
-            print_dca_graph: false,
+            print_dca_graph: None,
+            print_dca_graph_url_format: None,
             print_intermediate_asm: false,
             print_finalized_asm: false,
             print_ir: false,
             include_tests: false,
+            time_phases: false,
+            metrics_outfile: None,
         }
     }
 
-    pub fn print_dca_graph(self, a: bool) -> Self {
+    pub fn print_dca_graph(self, a: Option<String>) -> Self {
         Self {
             print_dca_graph: a,
+            ..self
+        }
+    }
+
+    pub fn print_dca_graph_url_format(self, a: Option<String>) -> Self {
+        Self {
+            print_dca_graph_url_format: a,
             ..self
         }
     }
@@ -93,6 +126,20 @@ impl BuildConfig {
     pub fn print_ir(self, a: bool) -> Self {
         Self {
             print_ir: a,
+            ..self
+        }
+    }
+
+    pub fn time_phases(self, a: bool) -> Self {
+        Self {
+            time_phases: a,
+            ..self
+        }
+    }
+
+    pub fn metrics(self, a: Option<String>) -> Self {
+        Self {
+            metrics_outfile: a,
             ..self
         }
     }

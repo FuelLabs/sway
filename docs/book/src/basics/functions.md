@@ -21,7 +21,12 @@ fn main() {
 
 ## Mutable Parameters
 
-We can make a function parameter mutable by adding `ref mut` before the parameter name. This allows mutating the argument passed into the function when the function is called. For example:
+<!-- This section should explain how/when to use `ref mut` -->
+<!-- ref_mut:example:start -->
+We can make a function parameter mutable by adding `ref mut` before the parameter name. This allows mutating the argument passed into the function when the function is called.
+<!-- ref_mut:example:end -->
+
+For example:
 
 ```sway
 {{#include ../../../../examples/ref_mut_params/src/main.sw:increment}}

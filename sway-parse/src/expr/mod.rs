@@ -1,14 +1,13 @@
 use crate::{Parse, ParseBracket, ParseResult, ParseToEnd, Parser, ParserConsumed, Peek};
 
-use core::ops::ControlFlow;
 use sway_ast::brackets::{Braces, Parens, SquareBrackets};
-use sway_ast::expr::{ReassignmentOp, ReassignmentOpVariant};
+use sway_ast::expr::{LoopControlFlow, ReassignmentOp, ReassignmentOpVariant};
 use sway_ast::keywords::{
     AbiToken, AddEqToken, AsmToken, CloseAngleBracketToken, CloseSquareBracketToken, CommaToken,
     ConfigurableToken, ConstToken, DivEqToken, DoubleColonToken, EnumToken, EqToken, FalseToken,
     FnToken, IfToken, ImplToken, LetToken, OpenAngleBracketToken, OpenCurlyBraceToken, PubToken,
     SemicolonToken, ShlEqToken, ShrEqToken, StarEqToken, StorageToken, StructToken, SubEqToken,
-    Token, TraitToken, TrueToken, UseToken,
+    Token, TraitToken, TrueToken, TypeToken, UseToken,
 };
 use sway_ast::literal::{LitBool, LitBoolType};
 use sway_ast::punctuated::Punctuated;
@@ -48,8 +47,8 @@ impl Parse for IfExpr {
         let else_opt = match parser.take() {
             Some(else_token) => {
                 let else_body = match parser.guarded_parse::<IfToken, _>()? {
-                    Some(if_expr) => ControlFlow::Continue(Box::new(if_expr)),
-                    None => ControlFlow::Break(parser.parse()?),
+                    Some(if_expr) => LoopControlFlow::Continue(Box::new(if_expr)),
+                    None => LoopControlFlow::Break(parser.parse()?),
                 };
                 Some((else_token, else_body))
             }
@@ -162,6 +161,7 @@ fn parse_stmt(parser: &mut Parser) -> ParseResult<StmtOrTail> {
         || parser.peek::<ImplToken>().is_some()
         || parser.peek::<(AbiToken, Ident)>().is_some()
         || parser.peek::<ConstToken>().is_some()
+        || parser.peek::<TypeToken>().is_some()
         || matches!(
             parser.peek::<(StorageToken, OpenCurlyBraceToken)>(),
             Some((_, OpenCurlyBraceToken))

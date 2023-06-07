@@ -1,15 +1,14 @@
 use crate::cli::BuildCommand;
-use anyhow::Result;
 use forc_pkg as pkg;
+use forc_util::ForcResult;
 
-pub fn build(cmd: BuildCommand) -> Result<pkg::Built> {
+pub fn build(cmd: BuildCommand) -> ForcResult<pkg::Built> {
     let opts = opts_from_cmd(cmd);
     let built = pkg::build_with_options(opts)?;
     Ok(built)
 }
 
 fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
-    let const_inject_map = std::collections::HashMap::new();
     pkg::BuildOpts {
         pkg: pkg::PkgOpts {
             path: cmd.build.pkg.path,
@@ -22,11 +21,13 @@ fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
         print: pkg::PrintOpts {
             ast: cmd.build.print.ast,
             dca_graph: cmd.build.print.dca_graph,
+            dca_graph_url_format: cmd.build.print.dca_graph_url_format,
             finalized_asm: cmd.build.print.finalized_asm,
             intermediate_asm: cmd.build.print.intermediate_asm,
             ir: cmd.build.print.ir,
         },
         time_phases: cmd.build.print.time_phases,
+        metrics_outfile: cmd.build.print.metrics_outfile,
         minify: pkg::MinifyOpts {
             json_abi: cmd.build.minify.json_abi,
             json_storage_slots: cmd.build.minify.json_storage_slots,
@@ -38,7 +39,6 @@ fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
         debug_outfile: cmd.build.output.debug_file,
         build_target: cmd.build.build_target,
         tests: cmd.tests,
-        const_inject_map,
         member_filter: Default::default(),
     }
 }

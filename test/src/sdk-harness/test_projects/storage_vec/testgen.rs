@@ -21,7 +21,7 @@ macro_rules! testgen {
 
             abigen!(Contract(
                 name = "MyContract",
-                abi = $abi_path,
+                abi = $abi_path
             ));
 
             // Silences `super::*` warning; required for user-defined types.
@@ -29,25 +29,28 @@ macro_rules! testgen {
             pub mod setup {
                 use super::*;
 
-                pub async fn get_contract_instance() -> MyContract {
+                pub async fn get_contract_instance() -> MyContract<WalletUnlocked> {
                     let wallet = launch_provider_and_get_wallet().await;
-
-                    let id = Contract::deploy(
+                    let id = Contract::load_from(
                         &format!(
                             "test_artifacts/storage_vec/svec_{}/out/debug/svec_{}.bin",
                             $type_label,
                             $type_label,
                         ),
-                        &wallet,
-                        TxParameters::new(None, Some(100_000_000), None),
-                        StorageConfiguration::with_storage_path(Some(
-                            format!(
+                        LoadConfiguration::default()
+                        .set_storage_configuration(StorageConfiguration::load_from(
+                            &format!(
                                 "test_artifacts/storage_vec/svec_{}/out/debug/svec_{}-storage_slots.json",
                                 $type_label,
                                 $type_label,
-                            ),
-                        )),
-                    ).await.unwrap();
+                            )
+                        )
+                        .unwrap()),
+                    )
+                    .unwrap()
+                    .deploy(&wallet, TxParameters::default().set_gas_limit(100_000_000))
+                    .await
+                    .unwrap();
 
                     MyContract::new(id.clone(), wallet)
                 }
@@ -58,97 +61,153 @@ macro_rules! testgen {
             pub mod wrappers {
                 use super::*;
 
-                pub async fn push(instance: &MyContract, value: $type_declaration) {
+                pub async fn push(instance: &MyContract<WalletUnlocked>, value: $type_declaration) {
                     instance.methods()
                         .push(value)
-                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .tx_params(TxParameters::default().set_gas_limit(100_000_000))
                         .call()
                         .await
                         .unwrap();
                 }
 
-                pub async fn pop(instance: &MyContract) -> $type_declaration {
+                pub async fn pop(instance: &MyContract<WalletUnlocked>) -> $type_declaration {
                     instance.methods()
                         .pop()
-                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .tx_params(TxParameters::default().set_gas_limit(100_000_000))
                         .call()
                         .await
                         .unwrap()
                         .value
                 }
 
-                pub async fn get(instance: &MyContract, index: u64) -> $type_declaration {
+                pub async fn get(instance: &MyContract<WalletUnlocked>, index: u64) -> $type_declaration {
                     instance.methods()
                         .get(index)
-                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .tx_params(TxParameters::default().set_gas_limit(100_000_000))
                         .call()
                         .await
                         .unwrap()
                         .value
                 }
 
-                pub async fn remove(instance: &MyContract, index: u64) -> $type_declaration {
+                pub async fn remove(instance: &MyContract<WalletUnlocked>, index: u64) -> $type_declaration {
                     instance.methods()
                         .remove(index)
-                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .tx_params(TxParameters::default().set_gas_limit(100_000_000))
                         .call()
                         .await
                         .unwrap()
                         .value
                 }
 
-                pub async fn swap_remove(instance: &MyContract, index: u64) -> $type_declaration {
+                pub async fn swap_remove(instance: &MyContract<WalletUnlocked>, index: u64) -> $type_declaration {
                     instance.methods()
                         .swap_remove(index)
-                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .tx_params(TxParameters::default().set_gas_limit(100_000_000))
                         .call()
                         .await
                         .unwrap()
                         .value
                 }
 
-                pub async fn set(instance: &MyContract, index: u64, value: $type_declaration) {
+                pub async fn set(instance: &MyContract<WalletUnlocked>, index: u64, value: $type_declaration) {
                     instance.methods()
                         .set(index, value)
-                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .tx_params(TxParameters::default().set_gas_limit(100_000_000))
                         .call()
                         .await
                         .unwrap();
                 }
 
-                pub async fn insert(instance: &MyContract, index: u64, value: $type_declaration) {
+                pub async fn insert(instance: &MyContract<WalletUnlocked>, index: u64, value: $type_declaration) {
                     instance.methods()
                         .insert(index, value)
-                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .tx_params(TxParameters::default().set_gas_limit(100_000_000))
                         .call()
                         .await
                         .unwrap();
                 }
 
-                pub async fn len(instance: &MyContract) -> u64 {
+                pub async fn len(instance: &MyContract<WalletUnlocked>) -> u64 {
                     instance.methods()
                         .len()
-                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .tx_params(TxParameters::default().set_gas_limit(100_000_000))
                         .call()
                         .await
                         .unwrap()
                         .value
                 }
 
-                pub async fn is_empty(instance: &MyContract) -> bool {
+                pub async fn is_empty(instance: &MyContract<WalletUnlocked>) -> bool {
                     instance.methods()
                         .is_empty()
-                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .tx_params(TxParameters::default().set_gas_limit(100_000_000))
                         .call()
                         .await
                         .unwrap()
                         .value
                 }
 
-                pub async fn clear(instance: &MyContract) {
+                pub async fn clear(instance: &MyContract<WalletUnlocked>) {
                     instance.methods()
                         .clear()
-                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .tx_params(TxParameters::default().set_gas_limit(100_000_000))
+                        .call()
+                        .await
+                        .unwrap();
+                }
+
+                pub async fn swap(instance: &MyContract<WalletUnlocked>, index_0: u64, index_1: u64) {
+                    instance.methods()
+                        .swap(index_0, index_1)
+                        .tx_params(TxParameters::default().set_gas_limit(100_000_000))
+                        .call()
+                        .await
+                        .unwrap();
+                }
+
+                pub async fn first(instance: &MyContract<WalletUnlocked>) -> $type_declaration {
+                    instance.methods()
+                        .first()
+                        .tx_params(TxParameters::default().set_gas_limit(100_000_000))
+                        .call()
+                        .await
+                        .unwrap()
+                        .value
+                }
+
+                pub async fn last(instance: &MyContract<WalletUnlocked>) -> $type_declaration {
+                    instance.methods()
+                        .last()
+                        .tx_params(TxParameters::default().set_gas_limit(100_000_000))
+                        .call()
+                        .await
+                        .unwrap()
+                        .value
+                }
+
+                pub async fn reverse(instance: &MyContract<WalletUnlocked>) {
+                    instance.methods()
+                        .reverse()
+                        .tx_params(TxParameters::default().set_gas_limit(100_000_000))
+                        .call()
+                        .await
+                        .unwrap();
+                }
+
+                pub async fn fill(instance: &MyContract<WalletUnlocked>, value: $type_declaration) {
+                    instance.methods()
+                        .fill(value)
+                        .tx_params(TxParameters::default().set_gas_limit(100_000_000))
+                        .call()
+                        .await
+                        .unwrap();
+                }
+
+                pub async fn resize(instance: &MyContract<WalletUnlocked>, new_len: u64, value: $type_declaration) {
+                    instance.methods()
+                        .resize(new_len, value)
+                        .tx_params(TxParameters::default().set_gas_limit(100_000_000))
                         .call()
                         .await
                         .unwrap();
@@ -181,6 +240,7 @@ macro_rules! testgen {
                     push(&instance, $arg0).await;
 
                     assert_eq!(len(&instance).await, 1);
+                    assert_eq!(get(&instance, 0).await, $arg0);
                     assert_eq!(pop(&instance).await, $arg0);
                     assert_eq!(len(&instance).await, 0);
                 }
@@ -203,6 +263,12 @@ macro_rules! testgen {
                     push(&instance, $arg2).await;
                     push(&instance, $arg3).await;
 
+                    assert_eq!(len(&instance).await, 4);
+                    assert_eq!(get(&instance, 0).await, $arg0);
+                    assert_eq!(get(&instance, 1).await, $arg1);
+                    assert_eq!(get(&instance, 2).await, $arg2);
+                    assert_eq!(get(&instance, 3).await, $arg3);
+
                     assert_eq!(remove(&instance, 2).await, $arg2);
 
                     assert_eq!(len(&instance).await, 3);
@@ -220,6 +286,12 @@ macro_rules! testgen {
                     push(&instance, $arg2).await;
                     push(&instance, $arg3).await;
 
+                    assert_eq!(len(&instance).await, 4);
+                    assert_eq!(get(&instance, 0).await, $arg0);
+                    assert_eq!(get(&instance, 1).await, $arg1);
+                    assert_eq!(get(&instance, 2).await, $arg2);
+                    assert_eq!(get(&instance, 3).await, $arg3);
+
                     assert_eq!(swap_remove(&instance, 1).await, $arg1);
 
                     assert_eq!(len(&instance).await, 3);
@@ -236,6 +308,12 @@ macro_rules! testgen {
                     push(&instance, $arg1).await;
                     push(&instance, $arg2).await;
                     push(&instance, $arg3).await;
+
+                    assert_eq!(len(&instance).await, 4);
+                    assert_eq!(get(&instance, 0).await, $arg0);
+                    assert_eq!(get(&instance, 1).await, $arg1);
+                    assert_eq!(get(&instance, 2).await, $arg2);
+                    assert_eq!(get(&instance, 3).await, $arg3);
 
                     set(&instance, 0, $arg3).await;
                     set(&instance, 1, $arg2).await;
@@ -260,6 +338,12 @@ macro_rules! testgen {
                     push(&instance, $arg1).await;
                     push(&instance, $arg2).await;
                     push(&instance, $arg3).await;
+
+                    assert_eq!(len(&instance).await, 4);
+                    assert_eq!(get(&instance, 0).await, $arg0);
+                    assert_eq!(get(&instance, 1).await, $arg1);
+                    assert_eq!(get(&instance, 2).await, $arg2);
+                    assert_eq!(get(&instance, 3).await, $arg3);
 
                     insert(&instance, 1, $arg4).await;
 
@@ -307,6 +391,8 @@ macro_rules! testgen {
 
                     push(&instance, $arg0).await;
 
+                    assert!(!is_empty(&instance).await);
+
                     clear(&instance).await;
 
                     assert!(is_empty(&instance).await);
@@ -316,9 +402,194 @@ macro_rules! testgen {
                     push(&instance, $arg2).await;
                     push(&instance, $arg3).await;
 
+                    assert!(!is_empty(&instance).await);
+
                     clear(&instance).await;
 
                     assert!(is_empty(&instance).await);
+                }
+
+                #[tokio::test]
+                async fn can_swap() {
+                    let instance = get_contract_instance().await;
+
+                    push(&instance, $arg0).await;
+                    push(&instance, $arg1).await;
+                    push(&instance, $arg2).await;
+                    push(&instance, $arg3).await;
+
+                    assert_eq!(len(&instance).await, 4);
+                    assert_eq!(get(&instance, 0).await, $arg0);
+                    assert_eq!(get(&instance, 1).await, $arg1);
+                    assert_eq!(get(&instance, 2).await, $arg2);
+                    assert_eq!(get(&instance, 3).await, $arg3);
+                    swap(&instance, 0, 3).await;
+                    swap(&instance, 1, 2).await;
+
+                    assert_eq!(get(&instance, 0).await, $arg3);
+                    assert_eq!(get(&instance, 1).await, $arg2);
+                    assert_eq!(get(&instance, 2).await, $arg1);
+                    assert_eq!(get(&instance, 3).await, $arg0);
+                }
+
+                #[tokio::test]
+                async fn can_get_first() {
+                    let instance = get_contract_instance().await;
+
+                    push(&instance, $arg0).await;
+                    push(&instance, $arg1).await;
+
+                    assert_eq!(len(&instance).await, 2);
+                    assert_eq!(get(&instance, 0).await, $arg0);
+                    assert_eq!(get(&instance, 1).await, $arg1);
+
+                    assert_eq!(first(&instance).await, $arg0);
+                }
+
+                #[tokio::test]
+                async fn can_get_last() {
+                    let instance = get_contract_instance().await;
+
+                    push(&instance, $arg0).await;
+                    push(&instance, $arg1).await;
+
+                    assert_eq!(len(&instance).await, 2);
+                    assert_eq!(get(&instance, 0).await, $arg0);
+                    assert_eq!(get(&instance, 1).await, $arg1);
+                    assert_eq!(last(&instance).await, $arg1);
+                }
+
+                #[tokio::test]
+                async fn can_reverse_even_len() {
+                    let instance = get_contract_instance().await;
+
+                    push(&instance, $arg0).await;
+                    push(&instance, $arg1).await;
+                    push(&instance, $arg2).await;
+                    push(&instance, $arg3).await;
+
+                    assert_eq!(len(&instance).await, 4);
+                    assert_eq!(get(&instance, 0).await, $arg0);
+                    assert_eq!(get(&instance, 1).await, $arg1);
+                    assert_eq!(get(&instance, 2).await, $arg2);
+                    assert_eq!(get(&instance, 3).await, $arg3);
+
+                    reverse(&instance).await;
+
+                    assert_eq!(len(&instance).await, 4);
+                    assert_eq!(get(&instance, 0).await, $arg3);
+                    assert_eq!(get(&instance, 1).await, $arg2);
+                    assert_eq!(get(&instance, 2).await, $arg1);
+                    assert_eq!(get(&instance, 3).await, $arg0);
+
+                    reverse(&instance).await;
+
+                    assert_eq!(len(&instance).await, 4);
+                    assert_eq!(get(&instance, 0).await, $arg0);
+                    assert_eq!(get(&instance, 1).await, $arg1);
+                    assert_eq!(get(&instance, 2).await, $arg2);
+                    assert_eq!(get(&instance, 3).await, $arg3);
+                }
+
+                #[tokio::test]
+                async fn can_reverse_odd_len() {
+                    let instance = get_contract_instance().await;
+
+                    push(&instance, $arg0).await;
+                    push(&instance, $arg1).await;
+                    push(&instance, $arg2).await;
+
+                    assert_eq!(len(&instance).await, 3);
+                    assert_eq!(get(&instance, 0).await, $arg0);
+                    assert_eq!(get(&instance, 1).await, $arg1);
+                    assert_eq!(get(&instance, 2).await, $arg2);
+
+                    reverse(&instance).await;
+
+                    assert_eq!(len(&instance).await, 3);
+
+                    assert_eq!(get(&instance, 0).await, $arg2);
+                    assert_eq!(get(&instance, 1).await, $arg1);
+                    assert_eq!(get(&instance, 2).await, $arg0);
+
+                    reverse(&instance).await;
+
+                    assert_eq!(len(&instance).await, 3);
+                    assert_eq!(get(&instance, 0).await, $arg0);
+                    assert_eq!(get(&instance, 1).await, $arg1);
+                    assert_eq!(get(&instance, 2).await, $arg2);
+                }
+
+                #[tokio::test]
+                async fn can_fill() {
+                    let instance = get_contract_instance().await;
+
+                    push(&instance, $arg0).await;
+                    push(&instance, $arg1).await;
+                    push(&instance, $arg2).await;
+                    push(&instance, $arg3).await;
+
+                    assert_eq!(len(&instance).await, 4);
+                    assert_eq!(get(&instance, 0).await, $arg0);
+                    assert_eq!(get(&instance, 1).await, $arg1);
+                    assert_eq!(get(&instance, 2).await, $arg2);
+                    assert_eq!(get(&instance, 3).await, $arg3);
+
+                    fill(&instance, $arg4).await;
+
+                    assert_eq!(len(&instance).await, 4);
+                    assert_eq!(get(&instance, 0).await, $arg4);
+                    assert_eq!(get(&instance, 1).await, $arg4);
+                    assert_eq!(get(&instance, 2).await, $arg4);
+                    assert_eq!(get(&instance, 3).await, $arg4);
+                }
+
+                #[tokio::test]
+                async fn can_resize_up() {
+                    let instance = get_contract_instance().await;
+
+                    push(&instance, $arg0).await;
+                    push(&instance, $arg1).await;
+                    push(&instance, $arg2).await;
+                    push(&instance, $arg3).await;
+
+                    assert_eq!(len(&instance).await, 4);
+                    assert_eq!(get(&instance, 0).await, $arg0);
+                    assert_eq!(get(&instance, 1).await, $arg1);
+                    assert_eq!(get(&instance, 2).await, $arg2);
+                    assert_eq!(get(&instance, 3).await, $arg3);
+
+                    resize(&instance, 6, $arg4).await;
+
+                    assert_eq!(len(&instance).await, 6);
+                    assert_eq!(get(&instance, 0).await, $arg0);
+                    assert_eq!(get(&instance, 1).await, $arg1);
+                    assert_eq!(get(&instance, 2).await, $arg2);
+                    assert_eq!(get(&instance, 3).await, $arg3);
+                    assert_eq!(get(&instance, 4).await, $arg4);
+                    assert_eq!(get(&instance, 5).await, $arg4);
+                }
+
+                #[tokio::test]
+                async fn can_resize_down() {
+                    let instance = get_contract_instance().await;
+
+                    push(&instance, $arg0).await;
+                    push(&instance, $arg1).await;
+                    push(&instance, $arg2).await;
+                    push(&instance, $arg3).await;
+
+                    assert_eq!(len(&instance).await, 4);
+                    assert_eq!(get(&instance, 0).await, $arg0);
+                    assert_eq!(get(&instance, 1).await, $arg1);
+                    assert_eq!(get(&instance, 2).await, $arg2);
+                    assert_eq!(get(&instance, 3).await, $arg3);
+
+                    resize(&instance, 2, $arg4).await;
+
+                    assert_eq!(len(&instance).await, 2);
+                    assert_eq!(get(&instance, 0).await, $arg0);
+                    assert_eq!(get(&instance, 1).await, $arg1);
                 }
             }
 
@@ -377,6 +648,31 @@ macro_rules! testgen {
                     let instance = get_contract_instance().await;
 
                     insert(&instance, 1, $arg1).await;
+                }
+
+                #[tokio::test]
+                #[should_panic(expected = "revert_id: 0")]
+                async fn cant_get_first() {
+                    let instance = get_contract_instance().await;
+
+                    let _ = first(&instance).await;
+                }
+
+                #[tokio::test]
+                #[should_panic(expected = "revert_id: 0")]
+                async fn cant_get_last() {
+                    let instance = get_contract_instance().await;
+
+                    let _ = last(&instance).await;
+                }
+
+
+                #[tokio::test]
+                #[should_panic(expected = "revert_id: 18446744073709486084")]
+                async fn cant_swap() {
+                    let instance = get_contract_instance().await;
+
+                    let _ = swap(&instance, 0, 1).await;
                 }
             }
 

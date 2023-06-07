@@ -198,7 +198,7 @@ use super::{
 /// exhaustive if the imaginary additional wildcard pattern has an empty
 /// `WitnessReport`.
 pub(crate) fn check_match_expression_usefulness(
-    engines: Engines<'_>,
+    engines: &Engines,
     type_id: TypeId,
     scrutinees: Vec<ty::TyScrutinee>,
     span: Span,
@@ -223,12 +223,7 @@ pub(crate) fn check_match_expression_usefulness(
         return ok((witness_report, arms_reachability), warnings, errors);
     }
 
-    let factory = check!(
-        ConstructorFactory::new(engines, type_id, &span),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    let factory = ConstructorFactory::new(engines, type_id);
     for scrutinee in scrutinees.into_iter() {
         let pat = check!(
             Pattern::from_scrutinee(scrutinee.clone()),
@@ -275,7 +270,7 @@ pub(crate) fn check_match_expression_usefulness(
 /// pattern, or-pattern, or constructed pattern we do something different. Each
 /// case returns a witness report that we propagate through the recursive steps.
 fn is_useful(
-    engines: Engines<'_>,
+    engines: &Engines,
     factory: &ConstructorFactory,
     p: &Matrix,
     q: &PatStack,
@@ -362,7 +357,7 @@ fn is_useful(
 ///     5. Add this new pattern to the resulting witness report
 ///     6. Return the witness report
 fn is_useful_wildcard(
-    engines: Engines<'_>,
+    engines: &Engines,
     factory: &ConstructorFactory,
     p: &Matrix,
     q: &PatStack,
@@ -410,20 +405,22 @@ fn is_useful_wildcard(
                 warnings,
                 errors
             );
-            let s_c_k_q = check!(
-                s_c_k_q.unwrap_vector(span),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
 
-            //     3.3. Recursively compute U(S(cₖ, P), S(cₖ, q))
-            let wr = check!(
-                is_useful(engines, factory, &s_c_k_p, &s_c_k_q, span),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
+            // *S(cₖ, q)* may have multiple rows in the case of a or pattern
+            // in that case we define: *U(P,((r1∣r2) q2...qn)) = U(P,(r1 q2...qn)) ∨ U(P,(r2 q2...qn))*
+
+            let mut wr = WitnessReport::NoWitnesses;
+
+            for s_c_k_q in s_c_k_q.rows() {
+                //     3.3. Recursively compute U(S(cₖ, P), S(cₖ, q))
+                let new_wr = check!(
+                    is_useful(engines, factory, &s_c_k_p, s_c_k_q, span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                wr = WitnessReport::join_witness_reports(wr, new_wr);
+            }
 
             //     3.4. If the recursive call to (3.3) returns a non-empty witness report,
             //        create a new pattern from *cₖ* and the witness report and a create a
@@ -551,7 +548,7 @@ fn is_useful_wildcard(
 /// 2. Extract the specialized `Matrix` *S(c, q)*
 /// 3. Recursively compute *U(S(c, P), S(c, q))*
 fn is_useful_constructed(
-    engines: Engines<'_>,
+    engines: &Engines,
     factory: &ConstructorFactory,
     p: &Matrix,
     q: &PatStack,
@@ -576,15 +573,22 @@ fn is_useful_constructed(
         warnings,
         errors
     );
-    let s_c_q = check!(
-        s_c_q.unwrap_vector(span),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
 
-    // 3. Recursively compute *U(S(c, P), S(c, q))*
-    is_useful(engines, factory, &s_c_p, &s_c_q, span)
+    // *S(c, q)* may have multiple rows in the case of a or pattern
+    // in that case we define: *U(P,((r1∣r2) q2...qn)) = U(P,(r1 q2...qn)) ∨ U(P,(r2 q2...qn))*
+    let mut witness_report = WitnessReport::NoWitnesses;
+    for s_c_q in s_c_q.rows() {
+        // 3. Recursively compute *U(S(c, P), S(c, q))*
+        let wr = check!(
+            is_useful(engines, factory, &s_c_p, s_c_q, span),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        witness_report = WitnessReport::join_witness_reports(witness_report, wr);
+    }
+    ok(witness_report, warnings, errors)
 }
 
 /// Computes a witness report from *U(P, q)* when *q* is an or-pattern
@@ -599,7 +603,7 @@ fn is_useful_constructed(
 /// 2. Compute the witnesses from *U(P, q')*
 /// 3. Aggregate the witnesses from every *U(P, q')*
 fn is_useful_or(
-    engines: Engines<'_>,
+    engines: &Engines,
     factory: &ConstructorFactory,
     p: &Matrix,
     q: &PatStack,
@@ -760,6 +764,22 @@ fn compute_specialized_matrix(
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut s_c_p = Matrix::empty();
+
+    if let Pattern::Or(cpats) = c {
+        for cpat in cpats.iter() {
+            let mut rows = check!(
+                compute_specialized_matrix(cpat, p, q, span),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )
+            .into_rows();
+
+            s_c_p.append(&mut rows);
+        }
+        return ok(s_c_p, warnings, errors);
+    }
+
     for p_i in p.rows().iter() {
         s_c_p.append(&mut check!(
             compute_specialized_matrix_row(c, p_i, q, span),
@@ -777,13 +797,6 @@ fn compute_specialized_matrix(
     if m > 0 && n != (c.a() + q.len() - 1) {
         errors.push(CompileError::Internal(
             "S(c,P) matrix is misshapen",
-            span.clone(),
-        ));
-        return err(warnings, errors);
-    }
-    if p.is_a_vector() && m > 1 {
-        errors.push(CompileError::Internal(
-            "S(c,p) must be a vector",
             span.clone(),
         ));
         return err(warnings, errors);

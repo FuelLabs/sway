@@ -9,6 +9,8 @@ use either::Either;
 use petgraph::graph::{node_index, NodeIndex};
 use rustc_hash::FxHashSet;
 use std::collections::{BTreeSet, HashMap};
+use sway_error::error::CompileError;
+use sway_types::span::Span;
 
 pub type InterferenceGraph =
     petgraph::stable_graph::StableGraph<Option<VirtualRegister>, (), petgraph::Undirected>;
@@ -438,7 +440,7 @@ pub(crate) fn color_interference_graph(
 ///
 pub(crate) fn assign_registers(
     stack: &mut Vec<(VirtualRegister, BTreeSet<VirtualRegister>)>,
-) -> RegisterPool {
+) -> Result<RegisterPool, CompileError> {
     let mut pool = RegisterPool::init();
     while let Some((reg, neighbors)) = stack.pop() {
         if matches!(reg, VirtualRegister::Virtual(_)) {
@@ -453,14 +455,15 @@ pub(crate) fn assign_registers(
                 used_by.insert(reg.clone());
             } else {
                 // Error out for now if no available register is found
-                unimplemented!(
+                return Err(CompileError::Internal(
                     "The allocator cannot resolve a register mapping for this program. \
-                     This is a temporary artifact of the extremely early stage version \
-                     of this language. Try to lower the number of variables you use."
-                );
+                     This is a temporary artifact of the early stage version of this \
+                     compiler.  Using #[inline(never)] on some functions may help.",
+                    Span::dummy(),
+                ));
             }
         }
     }
 
-    pool
+    Ok(pool)
 }

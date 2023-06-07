@@ -2,6 +2,7 @@
 
 A tool for formatting Sway code according to style guidelines.
 
-## Installation
+## Quickstart
 
-To use `swayfmt` you'll need to install the [`forc-fmt`](../forc-plugins/forc-fmt/) plugin that will run the formatter. You can install the complete Fuel toolchain with [`fuelup`](https://github.com/FuelLabs/fuelup), or for `swayfmt` only, see [`CONTRIBUTING`](./CONTRIBUTING.md).
+- To use `swayfmt`, install the [forc-fmt](../forc-plugins/forc-fmt/) plugin using [fuelup](https://github.com/FuelLabs/fuelup).
+- To contribute to `swayfmt`, see [CONTRIBUTING](./CONTRIBUTING.md).

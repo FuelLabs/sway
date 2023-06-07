@@ -1,5 +1,5 @@
 use sway_core::{
-    language::ty::{self, TyAbiDeclaration, TyFunctionParameter, TyTraitFn},
+    language::ty::{self, TyAbiDecl, TyFunctionParameter, TyTraitFn},
     Engines,
 };
 use tower_lsp::lsp_types::Url;
@@ -9,13 +9,13 @@ use crate::capabilities::code_actions::{
 };
 
 pub(crate) struct AbiImplCodeAction<'a> {
-    engines: Engines<'a>,
-    decl: &'a TyAbiDeclaration,
+    engines: &'a Engines,
+    decl: &'a TyAbiDecl,
     uri: &'a Url,
 }
 
-impl<'a> CodeAction<'a, TyAbiDeclaration> for AbiImplCodeAction<'a> {
-    fn new(ctx: CodeActionContext<'a>, decl: &'a TyAbiDeclaration) -> Self {
+impl<'a> CodeAction<'a, TyAbiDecl> for AbiImplCodeAction<'a> {
+    fn new(ctx: CodeActionContext<'a>, decl: &'a TyAbiDecl) -> Self {
         Self {
             engines: ctx.engines,
             decl,
@@ -39,7 +39,7 @@ impl<'a> CodeAction<'a, TyAbiDeclaration> for AbiImplCodeAction<'a> {
         self.decl.name.to_string()
     }
 
-    fn decl(&self) -> &TyAbiDeclaration {
+    fn decl(&self) -> &TyAbiDecl {
         self.decl
     }
 
@@ -78,6 +78,7 @@ impl AbiImplCodeAction<'_> {
                                 None,
                             )
                         }
+                        ty::TyTraitInterfaceItem::Constant(_) => unreachable!(),
                     }
                 })
                 .collect::<Vec<String>>()

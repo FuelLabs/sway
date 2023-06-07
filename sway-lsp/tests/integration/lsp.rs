@@ -2,11 +2,12 @@
 //! The methods are used to build and send requests and notifications to the LSP service
 //! and assert the expected responses.
 
-use crate::{GotoDefinition, HoverDocumentation};
+use crate::{GotoDefinition, HoverDocumentation, Rename};
 use assert_json_diff::assert_json_eq;
 use serde_json::json;
 use std::{borrow::Cow, path::Path};
 use sway_lsp::server::{self, Backend};
+use sway_lsp_test_utils::extract_result_array;
 use tower::{Service, ServiceExt};
 use tower_lsp::{
     jsonrpc::{Id, Request, Response},
@@ -215,7 +216,20 @@ pub(crate) async fn highlight_request(service: &mut LspService<Backend>, uri: &U
     let response = call_request(service, highlight.clone()).await;
     let expected = Response::from_ok(
         1.into(),
-        json!([{
+        json!([
+            {
+                "range": {
+                    "end": {
+                        "character": 10,
+                        "line": 10
+                    },
+                    "start": {
+                        "character": 4,
+                        "line": 10
+                    }
+                }
+            },
+            {
                 "range": {
                     "end": {
                         "character": 41,
@@ -226,7 +240,7 @@ pub(crate) async fn highlight_request(service: &mut LspService<Backend>, uri: &U
                         "line": 45
                     }
                 }
-            }
+            },
         ]),
     );
     assert_json_eq!(expected, response.ok().unwrap());
@@ -241,16 +255,7 @@ pub(crate) async fn code_lens_request(service: &mut LspService<Backend>, uri: &U
     });
     let code_lens = build_request_with_id("textDocument/codeLens", params, 1);
     let response = call_request(service, code_lens.clone()).await;
-    let actual_results = response
-        .unwrap()
-        .unwrap()
-        .into_parts()
-        .1
-        .ok()
-        .unwrap()
-        .as_array()
-        .unwrap()
-        .clone();
+    let actual_results = extract_result_array(response);
     let expected_results = vec![
         json!({
           "command": {
@@ -320,6 +325,63 @@ pub(crate) async fn code_lens_request(service: &mut LspService<Backend>, uri: &U
         );
     }
     code_lens
+}
+
+pub(crate) async fn completion_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+    let params = json!({
+        "textDocument": {
+          "uri": uri
+        },
+        "position": {
+          "line": 19,
+          "character": 8
+        },
+        "context": {
+          "triggerKind": 2,
+          "triggerCharacter": "."
+        }
+    });
+    let completion = build_request_with_id("textDocument/completion", params, 1);
+    let response = call_request(service, completion.clone()).await;
+    let actual_results = extract_result_array(response);
+    let expected_results = vec![
+        json!({
+          "kind": 5,
+          "label": "a",
+          "labelDetails": {
+            "description": "bool"
+          }
+        }),
+        json!({
+          "kind": 2,
+          "label": "get(…)",
+          "labelDetails": {
+            "description": "fn(self, MyStruct) -> MyStruct"
+          },
+          "textEdit": {
+            "newText": "get(foo)",
+            "range": {
+              "end": {
+                "character": 8,
+                "line": 19
+              },
+              "start": {
+                "character": 8,
+                "line": 19
+              }
+            }
+          }
+        }),
+    ];
+
+    assert_eq!(actual_results.len(), expected_results.len());
+    for expected in expected_results.iter() {
+        assert!(
+            actual_results.contains(expected),
+            "Expected {actual_results:?} to contain {expected:?}"
+        );
+    }
+    completion
 }
 
 pub(crate) async fn definition_check<'a>(
@@ -410,7 +472,10 @@ pub(crate) async fn hover_request<'a>(
     });
 
     if let HoverContents::Markup(markup_content) = hover_res.contents {
-        assert_eq!(hover_docs.documentation, markup_content.value);
+        hover_docs
+            .documentation
+            .iter()
+            .for_each(|text| assert!(markup_content.value.contains(text)));
     } else {
         panic!(
             "Expected HoverContents::Markup with input {:#?}, got {:?}",
@@ -419,4 +484,53 @@ pub(crate) async fn hover_request<'a>(
         );
     }
     hover
+}
+
+pub(crate) async fn prepare_rename_request<'a>(
+    service: &mut LspService<Backend>,
+    rename: &'a Rename<'a>,
+    ids: &mut impl Iterator<Item = i64>,
+) -> Option<PrepareRenameResponse> {
+    let params = json!({
+        "textDocument": {
+            "uri": rename.req_uri,
+        },
+        "position": {
+            "line": rename.req_line,
+            "character": rename.req_char
+        }
+    });
+    let rename = build_request_with_id("textDocument/prepareRename", params, ids.next().unwrap());
+    let response = call_request(service, rename.clone())
+        .await
+        .unwrap()
+        .unwrap();
+    let value = response.result().unwrap().clone();
+    let prepare_rename_res: Option<PrepareRenameResponse> = serde_json::from_value(value).unwrap();
+    prepare_rename_res
+}
+
+pub(crate) async fn rename_request<'a>(
+    service: &mut LspService<Backend>,
+    rename: &'a Rename<'a>,
+    ids: &mut impl Iterator<Item = i64>,
+) -> WorkspaceEdit {
+    let params = json!({
+        "textDocument": {
+            "uri": rename.req_uri,
+        },
+        "position": {
+            "line": rename.req_line,
+            "character": rename.req_char
+        },
+        "newName": rename.new_name
+    });
+    let rename = build_request_with_id("textDocument/rename", params, ids.next().unwrap());
+    let response = call_request(service, rename.clone())
+        .await
+        .unwrap()
+        .unwrap();
+    let value = response.result().unwrap().clone();
+    let worspace_edit: Option<WorkspaceEdit> = serde_json::from_value(value).unwrap();
+    worspace_edit.unwrap()
 }

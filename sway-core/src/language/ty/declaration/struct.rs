@@ -15,7 +15,7 @@ use crate::{
 };
 
 #[derive(Clone, Debug)]
-pub struct TyStructDeclaration {
+pub struct TyStructDecl {
     pub call_path: CallPath,
     pub fields: Vec<TyStructField>,
     pub type_parameters: Vec<TypeParameter>,
@@ -24,15 +24,15 @@ pub struct TyStructDeclaration {
     pub attributes: transform::AttributesMap,
 }
 
-impl Named for TyStructDeclaration {
+impl Named for TyStructDecl {
     fn name(&self) -> &Ident {
         &self.call_path.suffix
     }
 }
 
-impl EqWithEngines for TyStructDeclaration {}
-impl PartialEqWithEngines for TyStructDeclaration {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+impl EqWithEngines for TyStructDecl {}
+impl PartialEqWithEngines for TyStructDecl {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.call_path.suffix == other.call_path.suffix
             && self.fields.eq(&other.fields, engines)
             && self.type_parameters.eq(&other.type_parameters, engines)
@@ -40,9 +40,9 @@ impl PartialEqWithEngines for TyStructDeclaration {
     }
 }
 
-impl HashWithEngines for TyStructDeclaration {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let TyStructDeclaration {
+impl HashWithEngines for TyStructDecl {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+        let TyStructDecl {
             call_path,
             fields,
             type_parameters,
@@ -59,8 +59,8 @@ impl HashWithEngines for TyStructDeclaration {
     }
 }
 
-impl SubstTypes for TyStructDeclaration {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+impl SubstTypes for TyStructDecl {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         self.fields
             .iter_mut()
             .for_each(|x| x.subst(type_mapping, engines));
@@ -70,8 +70,8 @@ impl SubstTypes for TyStructDeclaration {
     }
 }
 
-impl ReplaceSelfType for TyStructDeclaration {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+impl ReplaceSelfType for TyStructDecl {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         self.fields
             .iter_mut()
             .for_each(|x| x.replace_self_type(engines, self_type));
@@ -81,13 +81,13 @@ impl ReplaceSelfType for TyStructDeclaration {
     }
 }
 
-impl Spanned for TyStructDeclaration {
+impl Spanned for TyStructDecl {
     fn span(&self) -> Span {
         self.span.clone()
     }
 }
 
-impl MonomorphizeHelper for TyStructDeclaration {
+impl MonomorphizeHelper for TyStructDecl {
     fn type_parameters(&self) -> &[TypeParameter] {
         &self.type_parameters
     }
@@ -97,7 +97,7 @@ impl MonomorphizeHelper for TyStructDeclaration {
     }
 }
 
-impl TyStructDeclaration {
+impl TyStructDecl {
     pub(crate) fn expect_field(&self, field_to_access: &Ident) -> CompileResult<&TyStructField> {
         let warnings = vec![];
         let mut errors = vec![];
@@ -134,7 +134,7 @@ pub struct TyStructField {
 }
 
 impl HashWithEngines for TyStructField {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TyStructField {
             name,
             type_argument,
@@ -150,13 +150,13 @@ impl HashWithEngines for TyStructField {
 
 impl EqWithEngines for TyStructField {}
 impl PartialEqWithEngines for TyStructField {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.name == other.name && self.type_argument.eq(&other.type_argument, engines)
     }
 }
 
 impl OrdWithEngines for TyStructField {
-    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
+    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
         let TyStructField {
             name: ln,
             type_argument: lta,
@@ -178,13 +178,13 @@ impl OrdWithEngines for TyStructField {
 }
 
 impl SubstTypes for TyStructField {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         self.type_argument.subst_inner(type_mapping, engines);
     }
 }
 
 impl ReplaceSelfType for TyStructField {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         self.type_argument.replace_self_type(engines, self_type);
     }
 }

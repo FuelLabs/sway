@@ -12,10 +12,10 @@ use sway_error::error::CompileError;
 use sway_ir::{Context, Module};
 use sway_types::state::StateIndex;
 
-impl ty::TyStorageDeclaration {
+impl ty::TyStorageDecl {
     pub(crate) fn get_initialized_storage_slots(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         module: Module,
@@ -48,7 +48,7 @@ impl ty::TyStorageDeclaration {
 impl ty::TyStorageField {
     pub(crate) fn get_initialized_storage_slots(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         module: Module,

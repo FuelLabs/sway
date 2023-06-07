@@ -1,5 +1,5 @@
-library lib_a;
+library;
 
-dep inner_lib;
+pub mod inner_lib;
 
 use inner_lib::*;

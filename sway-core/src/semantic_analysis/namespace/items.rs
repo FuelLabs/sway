@@ -1,5 +1,13 @@
 use crate::{
-    decl_engine::*, engine_threading::Engines, error::*, language::ty, namespace::*, type_system::*,
+    decl_engine::*,
+    engine_threading::Engines,
+    error::*,
+    language::{
+        ty::{self, TyDecl, TyStorageDecl},
+        CallPath,
+    },
+    namespace::*,
+    type_system::*,
 };
 
 use super::TraitMap;
@@ -16,8 +24,8 @@ pub(crate) enum GlobImport {
     No,
 }
 
-pub(super) type SymbolMap = im::OrdMap<Ident, ty::TyDeclaration>;
-pub(super) type UseSynonyms = im::HashMap<Ident, (Vec<Ident>, GlobImport, ty::TyDeclaration)>;
+pub(super) type SymbolMap = im::OrdMap<Ident, ty::TyDecl>;
+pub(super) type UseSynonyms = im::HashMap<Ident, (Vec<Ident>, GlobImport, ty::TyDecl)>;
 pub(super) type UseAliases = im::HashMap<String, Ident>;
 
 /// The set of items that exist within some lexical scope via declaration or importing.
@@ -48,7 +56,7 @@ impl Items {
 
     pub fn apply_storage_load(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         fields: Vec<Ident>,
         storage_fields: &[ty::TyStorageField],
     ) -> CompileResult<(ty::TyStorageAccess, TypeId)> {
@@ -58,7 +66,7 @@ impl Items {
         let decl_engine = engines.de();
         match self.declared_storage {
             Some(ref decl_ref) => {
-                let storage = decl_engine.get_storage(&decl_ref.id);
+                let storage = decl_engine.get_storage(&decl_ref.id().clone());
                 storage.apply_storage_load(type_engine, decl_engine, fields, storage_fields)
             }
             None => {
@@ -87,37 +95,35 @@ impl Items {
         self.symbols().keys()
     }
 
-    pub(crate) fn insert_symbol(
-        &mut self,
-        name: Ident,
-        item: ty::TyDeclaration,
-    ) -> CompileResult<()> {
+    pub(crate) fn insert_symbol(&mut self, name: Ident, item: ty::TyDecl) -> CompileResult<()> {
         let mut errors = vec![];
 
         let append_shadowing_error =
-            |decl: &ty::TyDeclaration, item: &ty::TyDeclaration, errors: &mut Vec<CompileError>| {
-                use ty::TyDeclaration::*;
+            |decl: &ty::TyDecl, item: &ty::TyDecl, errors: &mut Vec<CompileError>| {
+                use ty::TyDecl::*;
                 match (decl, &item) {
                 // variable shadowing a constant
                 // constant shadowing a constant
                 (
-                    ConstantDeclaration { .. },
-                    VariableDeclaration { .. } | ConstantDeclaration { .. },
+                    ConstantDecl { .. },
+                    VariableDecl { .. } | ConstantDecl { .. },
                 )
                 // constant shadowing a variable
-                | (VariableDeclaration { .. }, ConstantDeclaration { .. })
-                // type shadowing another type
+                | (VariableDecl { .. }, ConstantDecl { .. })
+                // type or type alias shadowing another type or type alias
                 // trait/abi shadowing another trait/abi
-                // type shadowing a trait/abi or vice versa
+                // type or type alias shadowing a trait/abi, or vice versa
                 | (
-                    StructDeclaration { .. }
-                    | EnumDeclaration { .. }
-                    | TraitDeclaration { .. }
-                    | AbiDeclaration { .. },
-                    StructDeclaration { .. }
-                    | EnumDeclaration { .. }
-                    | TraitDeclaration { .. }
-                    | AbiDeclaration { .. },
+                    StructDecl { .. }
+                    | EnumDecl { .. }
+                    | TypeAliasDecl { .. }
+                    | TraitDecl { .. }
+                    | AbiDecl { .. },
+                    StructDecl { .. }
+                    | EnumDecl { .. }
+                    | TypeAliasDecl { .. }
+                    | TraitDecl { .. }
+                    | AbiDecl { .. },
                 ) => errors.push(CompileError::NameDefinedMultipleTimes { name: name.to_string(), span: name.span() }),
                 // Generic parameter shadowing another generic parameter
                 (GenericTypeForFunctionScope { .. }, GenericTypeForFunctionScope { .. }) => {
@@ -139,7 +145,7 @@ impl Items {
         ok((), vec![], errors)
     }
 
-    pub(crate) fn check_symbol(&self, name: &Ident) -> Result<&ty::TyDeclaration, CompileError> {
+    pub(crate) fn check_symbol(&self, name: &Ident) -> Result<&ty::TyDecl, CompileError> {
         self.symbols
             .get(name)
             .ok_or_else(|| CompileError::SymbolNotFound {
@@ -150,23 +156,55 @@ impl Items {
 
     pub(crate) fn insert_trait_implementation_for_type(
         &mut self,
-        engines: Engines<'_>,
+        engines: &Engines,
         type_id: TypeId,
     ) {
         self.implemented_traits.insert_for_type(engines, type_id);
     }
 
-    pub(crate) fn get_methods_for_type(
-        &self,
-        engines: Engines<'_>,
-        type_id: TypeId,
-    ) -> Vec<DeclRefFunction> {
+    pub fn get_items_for_type(&self, engines: &Engines, type_id: TypeId) -> Vec<ty::TyTraitItem> {
+        self.implemented_traits.get_items_for_type(engines, type_id)
+    }
+
+    pub fn get_impl_spans_for_decl(&self, engines: &Engines, ty_decl: &TyDecl) -> Vec<Span> {
+        ty_decl
+            .return_type(engines)
+            .value
+            .map(|type_id| {
+                self.implemented_traits
+                    .get_impl_spans_for_type(engines, &type_id)
+            })
+            .unwrap_or_default()
+    }
+
+    pub fn get_impl_spans_for_type(&self, engines: &Engines, type_id: &TypeId) -> Vec<Span> {
         self.implemented_traits
-            .get_methods_for_type(engines, type_id)
+            .get_impl_spans_for_type(engines, type_id)
+    }
+
+    pub fn get_impl_spans_for_trait_name(&self, trait_name: &CallPath) -> Vec<Span> {
+        self.implemented_traits
+            .get_impl_spans_for_trait_name(trait_name)
+    }
+
+    pub fn get_methods_for_type(&self, engines: &Engines, type_id: TypeId) -> Vec<DeclRefFunction> {
+        self.get_items_for_type(engines, type_id)
+            .into_iter()
+            .filter_map(|item| match item {
+                ty::TyTraitItem::Fn(decl_ref) => Some(decl_ref),
+                ty::TyTraitItem::Constant(_decl_ref) => None,
+            })
+            .collect::<Vec<_>>()
     }
 
     pub(crate) fn has_storage_declared(&self) -> bool {
         self.declared_storage.is_some()
+    }
+
+    pub fn get_declared_storage(&self, decl_engine: &DeclEngine) -> Option<TyStorageDecl> {
+        self.declared_storage
+            .as_ref()
+            .map(|decl_ref| decl_engine.get_storage(decl_ref))
     }
 
     pub(crate) fn get_storage_field_descriptors(
@@ -175,11 +213,8 @@ impl Items {
     ) -> CompileResult<Vec<ty::TyStorageField>> {
         let warnings = vec![];
         let mut errors = vec![];
-        match self.declared_storage {
-            Some(ref decl_ref) => {
-                let storage = decl_engine.get_storage(decl_ref);
-                ok(storage.fields, warnings, errors)
-            }
+        match self.get_declared_storage(decl_engine) {
+            Some(storage) => ok(storage.fields, warnings, errors),
             None => {
                 let msg = "unknown source location";
                 let span = Span::new(Arc::from(msg), 0, msg.len(), None).unwrap();
@@ -193,7 +228,7 @@ impl Items {
     /// the second is the [ResolvedType] of its parent, for control-flow analysis.
     pub(crate) fn find_subfield_type(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         base_name: &Ident,
         projections: &[ty::ProjectionKind],
     ) -> CompileResult<(TypeId, TypeId)> {

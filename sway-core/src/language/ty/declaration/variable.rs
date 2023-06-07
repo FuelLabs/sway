@@ -5,7 +5,7 @@ use sway_types::Ident;
 use crate::{engine_threading::*, language::ty::*, type_system::*};
 
 #[derive(Clone, Debug)]
-pub struct TyVariableDeclaration {
+pub struct TyVariableDecl {
     pub name: Ident,
     pub body: TyExpression,
     pub mutability: VariableMutability,
@@ -13,9 +13,9 @@ pub struct TyVariableDeclaration {
     pub type_ascription: TypeArgument,
 }
 
-impl EqWithEngines for TyVariableDeclaration {}
-impl PartialEqWithEngines for TyVariableDeclaration {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+impl EqWithEngines for TyVariableDecl {}
+impl PartialEqWithEngines for TyVariableDecl {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         let type_engine = engines.te();
         self.name == other.name
             && self.body.eq(&other.body, engines)
@@ -27,9 +27,9 @@ impl PartialEqWithEngines for TyVariableDeclaration {
     }
 }
 
-impl HashWithEngines for TyVariableDeclaration {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let TyVariableDeclaration {
+impl HashWithEngines for TyVariableDecl {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+        let TyVariableDecl {
             name,
             body,
             mutability,
@@ -45,16 +45,16 @@ impl HashWithEngines for TyVariableDeclaration {
     }
 }
 
-impl SubstTypes for TyVariableDeclaration {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+impl SubstTypes for TyVariableDecl {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         self.return_type.subst(type_mapping, engines);
         self.type_ascription.subst(type_mapping, engines);
         self.body.subst(type_mapping, engines)
     }
 }
 
-impl ReplaceSelfType for TyVariableDeclaration {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+impl ReplaceSelfType for TyVariableDecl {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         self.return_type.replace_self_type(engines, self_type);
         self.type_ascription.replace_self_type(engines, self_type);
         self.body.replace_self_type(engines, self_type)

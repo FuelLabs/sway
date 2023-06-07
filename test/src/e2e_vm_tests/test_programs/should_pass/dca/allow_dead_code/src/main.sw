@@ -40,7 +40,10 @@ impl B {
   }
 }
 
+#[allow(dead_code)]
+type Alias1 = B;
+
 fn main() {
   let b = B { i: 43, u: 43 };
-  let i = b.a();
+  let _i = b.a();
 }

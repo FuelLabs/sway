@@ -10,7 +10,7 @@ pub use crate::error::DocumentError;
 use serde_json::Value;
 use std::{collections::HashMap, sync::Arc};
 use sway_core::{
-    language::ty::TyDeclaration,
+    language::ty,
     transform::{AttributeKind, AttributesMap},
     Engines, TypeParameter,
 };
@@ -27,7 +27,7 @@ pub(crate) const TAB: &str = "    ";
 
 #[derive(Clone)]
 pub(crate) struct CodeActionContext<'a> {
-    engines: Engines<'a>,
+    engines: &'a Engines,
     tokens: &'a TokenMap,
     token: &'a Token,
     uri: &'a Url,
@@ -42,18 +42,22 @@ pub(crate) fn code_actions(
     let (_, token) = session
         .token_map()
         .token_at_position(temp_uri, range.start)?;
-    let type_engine = session.type_engine.read();
-    let decl_engine = session.decl_engine.read();
+
+    let engines = session.engines.read();
     let ctx = CodeActionContext {
-        engines: Engines::new(&type_engine, &decl_engine),
+        engines: &engines,
         tokens: session.token_map(),
         token: &token.clone(),
         uri: &text_document.uri,
     };
     token.typed.and_then(|typed_token| match typed_token {
         TypedAstToken::TypedDeclaration(decl) => match decl {
-            TyDeclaration::AbiDeclaration { decl_id, .. } => abi_decl::code_actions(&decl_id, ctx),
-            TyDeclaration::StructDeclaration(decl_ref) => struct_decl::code_actions(&decl_ref, ctx),
+            ty::TyDecl::AbiDecl(ty::AbiDecl { decl_id, .. }) => {
+                abi_decl::code_actions(&decl_id, ctx)
+            }
+            ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
+                struct_decl::code_actions(&decl_id, ctx)
+            }
             _ => None,
         },
         _ => None,

@@ -1,11 +1,11 @@
 script;
 
 fn foo<T>(value: T) -> Option<T> {
-    Option::Some(value)
+    Some(value)
 }
 
 fn bar<V>(value: V) -> Option<V> {
-    Option::Some::<V>(foo::<V>(value))
+    Some::<V>(foo::<V>(value))
 }
 
 fn main() {

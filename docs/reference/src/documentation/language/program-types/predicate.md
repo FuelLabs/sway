@@ -1,6 +1,6 @@
 # Predicates
 
-A predicate is an executable that represents a UTXO spending condition, such as a multisig predicate, which has restrictions on the VM instructions that can be used (e.g. no jumps).
+A predicate is an executable that represents a UTXO spending condition, such as a multisig predicate, which has restrictions on the VM instructions that can be used .
 
 It does not need to be deployed to a blockchain because it only exists during a transaction. That being said, the predicate root is on chain as the owner of one or more UTXOs.
 
@@ -25,5 +25,5 @@ Predicates may introspect the transaction spending their coins (inputs, outputs,
 Similar to a [script](script.md), a predicate consists of a single `main()` function which can take any number of arguments but must return a [Boolean](../built-ins/boolean.md). In order for the predicate to be valid, the returned [Boolean]((../built-ins/boolean.md)) value must be `true`.
 
 ```sway
-{{#include ../../../code/language/program-types/predicates/simple/src/main.sw}}
+{{#include ../../../code/language/program-types/predicates/simple_predicate/src/main.sw}}
 ```

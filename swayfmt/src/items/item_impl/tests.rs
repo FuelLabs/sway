@@ -47,7 +47,7 @@ fmt_test_item!(  normal_with_generics
         Option::Some::<T>(value)
     }
     fn none() -> Self {
-        Option::None::<T>(())
+        None::<T>(())
     }
     fn to_result(self) -> Result<T> {
         if let Option::Some(value) = self {
@@ -63,7 +63,7 @@ fmt_test_item!(  normal_with_generics
                     Option::Some::<T>(value)
                 }
                 fn none() -> Self {
-                    Option::None::<T>(())
+                    None::<T>(())
                 }
                 fn to_result(self) -> Result<T> {
                     if let Option::Some(value) = self {
@@ -73,4 +73,20 @@ fmt_test_item!(  normal_with_generics
                     }
                 }
             }"
+);
+
+fmt_test_item!(    impl_empty_fn_args
+"impl TestContract for Contract {
+    fn return_configurables() -> (u8, bool, [u32; 3], str[4], StructWithGeneric<u8>, EnumWithGeneric<bool>) {
+        (U8, BOOL, ARRAY, STR_4, STRUCT, ENUM)
+    }
+}",
+            intermediate_whitespace
+            "impl TestContract for Contract {
+    fn return_configurables(    ) -> ( u8, bool, [u32; 3], str[4], StructWithGeneric<u8>, EnumWithGeneric<bool> 
+    ) {
+        ( U8, BOOL,  ARRAY, STR_4 , STRUCT, ENUM )
+    }
+}
+"
 );

@@ -113,7 +113,7 @@
       "logId": 12,
       "loggedType": {
         "name": "",
-        "type": 8,
+        "type": 9,
         "typeArguments": []
       }
     },
@@ -121,7 +121,7 @@
       "logId": 13,
       "loggedType": {
         "name": "",
-        "type": 8,
+        "type": 9,
         "typeArguments": []
       }
     },
@@ -225,11 +225,11 @@
         },
         {
           "name": "ContractId",
-          "type": 8,
+          "type": 9,
           "typeArguments": null
         }
       ],
-      "type": "enum Identity",
+      "type": "enum std::identity::Identity",
       "typeId": 3,
       "typeParameters": null
     },
@@ -247,7 +247,7 @@
           "typeArguments": null
         }
       ],
-      "type": "struct Address",
+      "type": "struct std::address::Address",
       "typeId": 5,
       "typeParameters": null
     },
@@ -259,7 +259,7 @@
           "typeArguments": null
         }
       ],
-      "type": "struct B512",
+      "type": "struct std::b512::B512",
       "typeId": 6,
       "typeParameters": null
     },
@@ -267,7 +267,7 @@
       "components": [
         {
           "name": "buf",
-          "type": 9,
+          "type": 8,
           "typeArguments": null
         },
         {
@@ -276,20 +276,8 @@
           "typeArguments": null
         }
       ],
-      "type": "struct Bytes",
+      "type": "struct std::bytes::Bytes",
       "typeId": 7,
-      "typeParameters": null
-    },
-    {
-      "components": [
-        {
-          "name": "value",
-          "type": 1,
-          "typeArguments": null
-        }
-      ],
-      "type": "struct ContractId",
-      "typeId": 8,
       "typeParameters": null
     },
     {
@@ -305,7 +293,19 @@
           "typeArguments": null
         }
       ],
-      "type": "struct RawBytes",
+      "type": "struct std::bytes::RawBytes",
+      "typeId": 8,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "value",
+          "type": 1,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct std::contract_id::ContractId",
       "typeId": 9,
       "typeParameters": null
     },

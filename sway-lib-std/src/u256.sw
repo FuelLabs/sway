@@ -1,8 +1,9 @@
-library u256;
+//! A 256-bit unsigned integer type.
+library;
 
 use ::assert::assert;
 use ::convert::From;
-use ::result::Result;
+use ::result::Result::{self, *};
 use ::u128::U128;
 
 /// Left shift a `u64` and preserve the overflow amount if any.
@@ -30,6 +31,7 @@ pub struct U256 {
     d: u64,
 }
 
+/// The error type used for `u256` type errors.
 pub enum U256Error {
     LossOfPrecision: (),
 }
@@ -99,9 +101,9 @@ impl U256 {
     /// ```
     pub fn as_u64(self) -> Result<u64, U256Error> {
         if self.a == 0 && self.b == 0 && self.c == 0 {
-            Result::Ok(self.d)
+            Ok(self.d)
         } else {
-            Result::Err(U256Error::LossOfPrecision)
+            Err(U256Error::LossOfPrecision)
         }
     }
 
@@ -125,9 +127,9 @@ impl U256 {
     /// ```
     pub fn as_u128(self) -> Result<U128, U256Error> {
         if self.a == 0 && self.b == 0 {
-            Result::Ok(U128::from((self.c, self.d)))
+            Ok(U128::from((self.c, self.d)))
         } else {
-            Result::Err(U256Error::LossOfPrecision)
+            Err(U256Error::LossOfPrecision)
         }
     }
 
@@ -212,12 +214,32 @@ impl U256 {
 
 impl core::ops::Ord for U256 {
     fn gt(self, other: Self) -> bool {
-        self.a > other.a || (self.a == other.a && self.b > other.b || (self.b == other.b && self.c > other.c || (self.c == other.c && self.d > other.d)))
-    }
+        self.a > other.a ||
+                (self.a == other.a && (self.b > other.b ||
+                                      (self.b == other.b && (self.c > other.c ||
+                                                            (self.c == other.c && self.d > other.d)))) )
+        }
 
     fn lt(self, other: Self) -> bool {
-        self.a < other.a || (self.a == other.a && self.b < other.b || (self.b == other.b && self.c < other.c || (self.c == other.c && self.d < other.d)))
+        self.a < other.a ||
+                (self.a == other.a && (self.b < other.b ||
+                                      (self.b == other.b && (self.c < other.c ||
+                                                            (self.c == other.c && self.d < other.d)))) )
     }
+}
+
+#[test]
+fn test_u256_ord() {
+    assert(U256::from((0, 0, 0, 1)) < U256::from((0, u64::max(), 0, 0)));
+    assert(!(U256::from((0, 0, 0, 1)) > U256::from((0, u64::max(), 0, 0))));
+
+    assert(U256::from((0, u64::max(), 0, 0)) > U256::from((0, 0, 0, 1)));
+    assert(!(U256::from((0, u64::max(), 0, 0)) < U256::from((0, 0, 0, 1))));
+
+    assert(U256::max() > U256::from((0, 0, u64::max(), u64::max())));
+    assert(!(U256::max() < U256::from((0, 0, u64::max(), u64::max()))));
+    assert(U256::from((0, 0, u64::max(), u64::max())) < U256::max());
+    assert(!(U256::from((0, 0, u64::max(), u64::max())) > U256::max()));
 }
 
 impl core::ops::BitwiseAnd for U256 {
@@ -370,7 +392,9 @@ impl core::ops::Subtract for U256 {
         if self == other {
             return Self::min();
         } else if other == Self::min() {
-            return self;
+            // Manually clone `self`. Otherwise, we may have a `MemoryOverflow`
+            // issue with code that looks like: `x = x - other`
+            return U256::from((self.a, self.b, self.c, self.d));
         }
         // If trying to subtract a larger number, panic.
         assert(self > other);
@@ -449,15 +473,23 @@ impl core::ops::Multiply for U256 {
                 // `other.b * 2 ^ (64 * 2) * self.b * 2 ^ (62 ^ 2) > 2 ^ (64 * 4)`
                 assert(other.b == 0);
                 let result_b_d = self.b.overflowing_mul(other.d);
-                let result_c_c = self.c.overflowing_mul(other.c);
                 let result_c_d = self.c.overflowing_mul(other.d);
                 let result_d_c = self.d.overflowing_mul(other.c);
                 let result_d_d = self.d.overflowing_mul(other.d);
 
+                let (overflow_of_c_to_b_1, mut c) = result_d_d.upper.overflowing_add(result_c_d.lower).into();
+                let (mut overflow_of_c_to_b_2, c) = c.overflowing_add(result_d_c.lower).into();
+
+                let (overflow_of_b_to_a_0, overflow_of_c_to_b_2) = overflow_of_c_to_b_1.overflowing_add(overflow_of_c_to_b_2).into();
+
+                let (overflow_of_b_to_a_1, mut b) = result_b_d.lower.overflowing_add(result_c_d.upper).into();
+                let (overflow_of_b_to_a_2, b) = b.overflowing_add(result_d_c.upper).into();
+                let (overflow_of_b_to_a_3, b) = b.overflowing_add(overflow_of_c_to_b_2).into();
+
                 U256::from((
-                    self.b * other.c + result_b_d.upper,
-                    result_b_d.lower + result_c_d.upper + result_d_c.upper,
-                    result_d_d.upper + result_c_d.lower + result_d_c.lower,
+                    self.b * other.c + result_b_d.upper + overflow_of_b_to_a_3 + overflow_of_b_to_a_2 + overflow_of_b_to_a_1 + overflow_of_b_to_a_0,
+                    b,
+                    c,
                     result_d_d.lower,
                 ))
             } else if other.b != 0 {
@@ -466,27 +498,47 @@ impl core::ops::Multiply for U256 {
                 // `other.b * 2 ^ (64 * 2) * self.b * 2 ^ (62 ^ 2) > 2 ^ (64 * 4)`.
                 assert(self.b == 0);
                 let result_b_d = other.b.overflowing_mul(self.d);
-                let result_c_c = other.c.overflowing_mul(self.c);
                 let result_c_d = other.c.overflowing_mul(self.d);
                 let result_d_c = other.d.overflowing_mul(self.c);
                 let result_d_d = other.d.overflowing_mul(self.d);
 
+                let (overflow_of_c_to_b_1, mut c) = result_d_d.upper.overflowing_add(result_c_d.lower).into();
+                let (mut overflow_of_c_to_b_2, c) = c.overflowing_add(result_d_c.lower).into();
+
+                let (overflow_of_b_to_a_0, overflow_of_c_to_b_2) = overflow_of_c_to_b_1.overflowing_add(overflow_of_c_to_b_2).into();
+
+                let (overflow_of_b_to_a_1, mut b) = result_b_d.lower.overflowing_add(result_c_d.upper).into();
+                let (overflow_of_b_to_a_2, b) = b.overflowing_add(result_d_c.upper).into();
+                let (overflow_of_b_to_a_3, b) = b.overflowing_add(overflow_of_c_to_b_2).into();
+
                 U256::from((
-                    other.b * self.c + result_b_d.upper,
-                    result_b_d.lower + result_c_d.upper + result_d_c.upper,
-                    result_d_d.upper + result_c_d.lower + result_d_c.lower,
+                    other.b * self.c + result_b_d.upper + overflow_of_b_to_a_3 + overflow_of_b_to_a_2 + overflow_of_b_to_a_1 + overflow_of_b_to_a_0,
+                    b,
+                    c,
                     result_d_d.lower,
                 ))
             } else {
+                // note, that `self.a`, `self.b`, `other.a`, `other.b` are all equal to 0
                 let result_c_c = other.c.overflowing_mul(self.c);
                 let result_c_d = self.c.overflowing_mul(other.d);
                 let result_d_c = self.d.overflowing_mul(other.c);
                 let result_d_d = self.d.overflowing_mul(other.d);
 
+                let (overflow_of_c_to_b_1, mut c) = result_d_d.upper.overflowing_add(result_c_d.lower).into();
+
+                let (mut overflow_of_c_to_b_2, c) = c.overflowing_add(result_d_c.lower).into();
+
+                let (overflow_of_b_to_a_0, overflow_of_c_to_b_2) = overflow_of_c_to_b_1.overflowing_add(overflow_of_c_to_b_2).into();
+
+                let (overflow_of_b_to_a_1, mut b) = result_c_c.lower.overflowing_add(result_c_d.upper).into();
+                let (overflow_of_b_to_a_2, b) = b.overflowing_add(result_d_c.upper).into();
+                let (overflow_of_b_to_a_3, b) = b.overflowing_add(overflow_of_c_to_b_2).into();
+
                 U256::from((
-                    result_c_c.upper,
-                    result_c_c.lower + result_c_d.upper + result_d_c.upper,
-                    result_d_d.upper + result_c_d.lower + result_d_c.lower,
+                    // as overflow for a means overflow for the whole number, we are adding as is, not using `overflowing_add`
+                    result_c_c.upper + overflow_of_b_to_a_3 + overflow_of_b_to_a_2 + overflow_of_b_to_a_1 + overflow_of_b_to_a_0,
+                    b,
+                    c,
                     result_d_d.lower,
                 ))
             }
@@ -520,7 +572,7 @@ impl core::ops::Divide for U256 {
             quotient <<= 1;
             remainder <<= 1;
 
-            let m = self & (one << i);
+            let _m = self & (one << i);
             remainder.d = remainder.d | (self >> i).d & 1;
             // TODO use >= once OrdEq can be implemented.
             if remainder > divisor || remainder == divisor {

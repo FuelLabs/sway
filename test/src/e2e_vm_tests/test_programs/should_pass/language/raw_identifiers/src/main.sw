@@ -9,7 +9,7 @@ fn main() -> u64 {
     let mut r#contract = 0;
     let mut r#predicate = 0;
     let mut r#library = 0;
-    let mut r#dep = 0;
+    let mut r#mod = 0;
     let mut r#pub = 0;
     let mut r#use = 0;
     let mut r#as = 0;
@@ -39,7 +39,7 @@ fn main() -> u64 {
     let mut r#false = 0;
 
     let e = SomeEnum::B(false);
-    let v = match e {
+    let _v = match e {
         SomeEnum::B(true) => {
             1
         },

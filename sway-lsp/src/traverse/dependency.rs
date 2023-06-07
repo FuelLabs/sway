@@ -36,12 +36,12 @@ pub fn collect_typed_declaration(node: &ty::TyAstNode, ctx: &ParseContext) {
         let typed_token = TypedAstToken::TypedDeclaration(declaration.clone());
 
         let ident = match declaration {
-            ty::TyDeclaration::VariableDeclaration(variable) => variable.name.clone(),
-            ty::TyDeclaration::StructDeclaration(decl_ref) => decl_ref.name.clone(),
-            ty::TyDeclaration::EnumDeclaration(decl_ref) => decl_ref.name.clone(),
-            ty::TyDeclaration::TraitDeclaration { name, .. }
-            | ty::TyDeclaration::FunctionDeclaration { name, .. }
-            | ty::TyDeclaration::ConstantDeclaration { name, .. } => name.clone(),
+            ty::TyDecl::VariableDecl(variable) => variable.name.clone(),
+            ty::TyDecl::StructDecl(ty::StructDecl { name, .. })
+            | ty::TyDecl::EnumDecl(ty::EnumDecl { name, .. })
+            | ty::TyDecl::TraitDecl(ty::TraitDecl { name, .. })
+            | ty::TyDecl::FunctionDecl(ty::FunctionDecl { name, .. })
+            | ty::TyDecl::ConstantDecl(ty::ConstantDecl { name, .. }) => name.clone(),
             _ => return,
         };
         let ident = token::to_ident_key(&ident);

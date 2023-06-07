@@ -1,4 +1,7 @@
-use crate::error::{DirectoryError, DocumentError, LanguageServerError};
+use crate::{
+    error::{DirectoryError, DocumentError, LanguageServerError},
+    utils::document::{get_path_from_url, get_url_from_path, get_url_from_span},
+};
 use dashmap::DashMap;
 use forc_pkg::{manifest::Dependency, PackageManifestFile};
 use notify::RecursiveMode;
@@ -11,6 +14,7 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
+use sway_types::Span;
 use tempfile::Builder;
 use tower_lsp::lsp_types::Url;
 
@@ -96,7 +100,7 @@ impl SyncWorkspace {
 
     /// Check if the current path is part of the users workspace.
     /// Returns false if the path is from a dependancy
-    pub(crate) fn is_path_in_workspace(&self, uri: &Url) -> bool {
+    pub(crate) fn is_path_in_temp_workspace(&self, uri: &Url) -> bool {
         uri.as_ref().contains(SyncWorkspace::LSP_TEMP_PREFIX)
     }
 
@@ -105,15 +109,39 @@ impl SyncWorkspace {
         self.convert_url(uri, self.temp_dir()?, self.manifest_dir()?)
     }
 
-    /// Convert the Url path from the temp folder to point to the same file in the users workspace
+    /// Convert the [Url] path from the temp folder to point to the same file in the users workspace.
     pub(crate) fn temp_to_workspace_url(&self, uri: &Url) -> Result<Url, DirectoryError> {
         self.convert_url(uri, self.manifest_dir()?, self.temp_dir()?)
+    }
+
+    /// If it is a path to a temp directory, convert the path in the [Span] to the same file in the user's
+    /// workspace. Otherwise, return the span as-is.
+    pub(crate) fn temp_to_workspace_span(&self, span: &Span) -> Result<Span, DirectoryError> {
+        let url = get_url_from_span(span)?;
+        if self.is_path_in_temp_workspace(&url) {
+            let converted_url = self.convert_url(&url, self.manifest_dir()?, self.temp_dir()?)?;
+            let converted_path = get_path_from_url(&converted_url)?;
+            let converted_span = Span::new(
+                span.src().clone(),
+                span.start(),
+                span.end(),
+                Some(converted_path.clone().into()),
+            );
+            match converted_span {
+                Some(span) => Ok(span),
+                None => Err(DirectoryError::SpanFromPathFailed {
+                    path: converted_path.to_string_lossy().to_string(),
+                }),
+            }
+        } else {
+            Ok(span.clone())
+        }
     }
 
     /// If path is part of the users workspace, then convert URL from temp to workspace dir.
     /// Otherwise, pass through if it points to a dependency path
     pub(crate) fn to_workspace_url(&self, url: Url) -> Option<Url> {
-        if self.is_path_in_workspace(&url) {
+        if self.is_path_in_temp_workspace(&url) {
             Some(self.temp_to_workspace_url(&url).ok()?)
         } else {
             Some(url)
@@ -198,13 +226,7 @@ impl SyncWorkspace {
                 .strip_prefix(to)
                 .map_err(DirectoryError::StripPrefixError)?,
         );
-        self.url_from_path(&path)
-    }
-
-    fn url_from_path(&self, path: &PathBuf) -> Result<Url, DirectoryError> {
-        Url::from_file_path(path).map_err(|_| DirectoryError::UrlFromPathFailed {
-            path: path.to_string_lossy().to_string(),
-        })
+        get_url_from_path(&path)
     }
 }
 

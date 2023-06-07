@@ -1,4 +1,5 @@
 use crate::{
+    comments::rewrite_with_comments,
     config::items::ItemBraceStyle,
     formatter::*,
     utils::{
@@ -19,6 +20,9 @@ impl Format for ItemImpl {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        // Required for comment formatting
+        let start_len = formatted_code.len();
+
         write!(formatted_code, "{}", self.impl_token.span().as_str())?;
         if let Some(generic_params) = &self.generic_params_opt {
             generic_params.format(formatted_code, formatter)?;
@@ -47,6 +51,14 @@ impl Format for ItemImpl {
         }
         Self::close_curly_brace(formatted_code, formatter)?;
 
+        rewrite_with_comments::<ItemImpl>(
+            formatter,
+            self.span(),
+            self.leaf_spans(),
+            formatted_code,
+            start_len,
+        )?;
+
         Ok(())
     }
 }
@@ -59,6 +71,7 @@ impl Format for ItemImplItem {
     ) -> Result<(), FormatterError> {
         match self {
             ItemImplItem::Fn(fn_decl) => fn_decl.format(formatted_code, formatter),
+            ItemImplItem::Const(const_decl) => const_decl.format(formatted_code, formatter),
         }
     }
 }
@@ -114,6 +127,7 @@ impl LeafSpans for ItemImplItem {
         let mut collected_spans = vec![];
         match self {
             ItemImplItem::Fn(fn_decl) => collected_spans.append(&mut fn_decl.leaf_spans()),
+            ItemImplItem::Const(const_decl) => collected_spans.append(&mut const_decl.leaf_spans()),
         }
         collected_spans
     }

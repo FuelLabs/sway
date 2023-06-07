@@ -1,0 +1,67 @@
+script {
+    entry fn main() -> () {
+        local b256 dada = const b256 0xdadadadadadadadadadadadadadadadadadadadadadadadadadadadadadadada
+        local b256 twobee = const b256 0x2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b
+
+        entry():
+        v0 = get_local ptr b256, twobee
+        v1 = load v0
+        v2 = get_local ptr b256, dada
+        v3 = load v2
+        v4 = call bar()
+        v5 = const u64 33
+        v6 = call foo(v1, v5)
+        v7 = const u64 44
+        v8 = call foo(v3, v7)
+        v9 = const unit ()
+        ret () v9
+    }
+
+    fn bar() -> () {
+        local b256 fafa = const b256 0xfafafafafafafafafafafafafafafafafafafafafafafafafafafafafafafafa
+        local b256 feve = const b256 0x5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e
+
+        entry():
+        v0 = get_local ptr b256, feve
+        v1 = load v0
+        v2 = get_local ptr b256, fafa
+        v3 = load v2
+        v4 = const u64 11
+        v5 = call foo(v1, v4)
+        v6 = const u64 22
+        v7 = call foo(v3, v6)
+        v8 = const unit ()
+        ret () v8
+    }
+
+    fn foo(x: b256, y: u64) -> () {
+        entry(x: b256, y: u64):
+        v0 = const u64 3
+        log u64 y, v0
+        v1 = const unit ()
+        ret () v1
+    }
+}
+
+// regex: ID=[[:alpha:]_0-9]+
+
+// check: fn main
+// check: local b256 $(tmp_arg0=$ID)
+// check: local b256 $(tmp_arg1=$ID)
+
+// check: $(tmp_arg0_ptr=$ID) = get_local ptr b256, $tmp_arg0
+// check: call foo($tmp_arg0_ptr, $ID)
+
+// check: $(tmp_arg1_ptr=$ID) = get_local ptr b256, $tmp_arg1
+// check: call foo($tmp_arg1_ptr, $ID)
+
+// check: fn bar
+// check: local b256 $(tmp_arg0=$ID)
+// check: local b256 $(tmp_arg1=$ID)
+
+// check: $(tmp_arg0_ptr=$ID) = get_local ptr b256, $tmp_arg0
+// check: call foo($tmp_arg0_ptr, $ID)
+
+// check: $(tmp_arg1_ptr=$ID) = get_local ptr b256, $tmp_arg1
+// check: call foo($tmp_arg1_ptr, $ID)
+

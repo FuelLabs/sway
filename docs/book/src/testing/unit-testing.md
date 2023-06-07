@@ -1,8 +1,13 @@
 # Unit Testing
 
+<!-- This section should explain unit testing in Sway -->
+<!-- unit_test:example:start -->
 Forc provides built-in support for building and executing tests for a package.
 
-Tests are written as free functions with the `#[test]` attribute. For example:
+Tests are written as free functions with the `#[test]` attribute.
+<!-- unit_test:example:end -->
+
+For example:
 
 ```sway
 #[test]
@@ -14,6 +19,8 @@ fn test_meaning_of_life() {
 Each test function is ran as if it were the entry point for a
 [script](../sway-program-types/scripts.md). Tests "pass" if they return
 successfully, and "fail" if they revert or vice versa while [testing failure](#testing-failure).
+
+If the project has failing tests `forc test` will exit with exit status `101`.
 
 ## Building and Running Tests
 
@@ -40,10 +47,24 @@ the options available for `forc test`.
 
 ## Testing Failure
 
-Forc supports testing failing cases for test functions declared with `#[test(should_revert)]`. For example:
+<!-- This section should explain support for failing unit tests in Sway -->
+<!-- unit_test_fail:example:start -->
+Forc supports testing failing cases for test functions declared with `#[test(should_revert)]`.
+<!-- unit_test_fail:example:end -->
+
+For example:
 
 ```sway
 #[test(should_revert)]
+fn test_meaning_of_life() {
+    assert(6 * 6 == 42);
+}
+```
+
+It is also possible to specify an expected revert code, like the following example.
+
+```sway
+#[test(should_revert = "18446744073709486084")]
 fn test_meaning_of_life() {
     assert(6 * 6 == 42);
 }
@@ -91,4 +112,32 @@ fn test_fail() {
 }
 ```
 
+<!-- This section should explain how the `CONTRACT_ID` variable works in Sway unit tests -->
+<!-- contract_id:example:start -->
 > **Note:** When running `forc test`, your contract will be built twice: first *without* unit tests in order to determine the contract's ID, then a second time *with* unit tests with the `CONTRACT_ID` provided to their namespace. This `CONTRACT_ID` can be used with the `abi` cast to enable contract calls within unit tests.
+<!-- contract_id:example:end -->
+
+Unit tests can call methods of external contracts if those contracts are added as contract dependencies, i.e. in the the [`contract-dependencies`](../forc/manifest_reference.md#the-contract-dependencies-section) section of the manifest file. An example of such calls is shown below:
+
+```sway
+{{#include ../../../../examples/multi_contract_calls/caller/src/main.sw:multi_contract_calls}}
+```
+
+Example `Forc.toml` for contract above:
+
+```toml
+{{#include ../../../../examples/multi_contract_calls/caller/Forc.toml:multi_contract_call_toml}}
+```
+
+## Running Tests in Parallel or Serially
+
+<!-- This section should explain how unit tests do not share storage -->
+<!-- storage:example:start -->
+By default, all unit tests in your project are run in parallel. Note that this does not lead to any data races in storage because each unit test has its own storage space that is not shared by any other unit test.
+<!-- storage:example:end -->
+
+By default, `forc test` will use all the available threads in your system. To request that a specific number of threads be used, the flag `--test-threads <val>` can be provided to `forc test`.
+
+```console
+forc test --test-threads 1
+```

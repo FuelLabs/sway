@@ -18,7 +18,7 @@ use crate::{
     type_system::*,
 };
 
-impl ty::TyTraitDeclaration {
+impl ty::TyTraitDecl {
     pub(crate) fn type_check(
         ctx: TypeCheckContext,
         trait_decl: TraitDeclaration,
@@ -44,19 +44,19 @@ impl ty::TyTraitDeclaration {
             })
         }
 
-        let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
+        let type_engine = ctx.engines.te();
+        let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
         // A temporary namespace for checking within the trait's scope.
-        let self_type = type_engine.insert(decl_engine, TypeInfo::SelfType);
+        let self_type = type_engine.insert(engines, TypeInfo::SelfType);
         let mut trait_namespace = ctx.namespace.clone();
         let mut ctx = ctx.scoped(&mut trait_namespace).with_self_type(self_type);
 
         // Type check the type parameters. This will also insert them into the
         // current namespace.
         let new_type_parameters = check!(
-            TypeParameter::type_check_type_params(ctx.by_ref(), type_parameters, true),
+            TypeParameter::type_check_type_params(ctx.by_ref(), type_parameters),
             return err(warnings, errors),
             warnings,
             errors
@@ -90,10 +90,38 @@ impl ty::TyTraitDeclaration {
                     dummy_interface_surface.push(ty::TyImplItem::Fn(
                         decl_engine
                             .insert(method.to_dummy_func(Mode::NonAbi))
-                            .with_parent(decl_engine, decl_ref.id.into()),
+                            .with_parent(decl_engine, (*decl_ref.id()).into()),
                     ));
                     new_interface_surface.push(ty::TyTraitInterfaceItem::TraitFn(decl_ref));
                     method.name.clone()
+                }
+                TraitItem::Constant(const_decl) => {
+                    let const_decl = check!(
+                        ty::TyConstantDecl::type_check(ctx.by_ref(), const_decl.clone(),),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    let decl_ref = ctx.engines.de().insert(const_decl.clone());
+                    new_interface_surface
+                        .push(ty::TyTraitInterfaceItem::Constant(decl_ref.clone()));
+
+                    let const_name = const_decl.call_path.suffix.clone();
+                    check!(
+                        ctx.namespace.insert_symbol(
+                            const_name.clone(),
+                            ty::TyDecl::ConstantDecl(ty::ConstantDecl {
+                                name: const_name.clone(),
+                                decl_id: *decl_ref.id(),
+                                decl_span: const_decl.span.clone()
+                            })
+                        ),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+
+                    const_name
                 }
             };
 
@@ -126,19 +154,19 @@ impl ty::TyTraitDeclaration {
             errors
         );
 
-        // type check the items
+        // Type check the items.
         let mut new_items = vec![];
         for method in methods.into_iter() {
             let method = check!(
-                ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone(), true, false),
-                ty::TyFunctionDeclaration::error(method),
+                ty::TyFunctionDecl::type_check(ctx.by_ref(), method.clone(), true, false,),
+                ty::TyFunctionDecl::error(method),
                 warnings,
                 errors
             );
             new_items.push(ty::TyTraitItem::Fn(decl_engine.insert(method)));
         }
 
-        let typed_trait_decl = ty::TyTraitDeclaration {
+        let typed_trait_decl = ty::TyTraitDecl {
             name,
             type_parameters: new_type_parameters,
             interface_surface: new_interface_surface,
@@ -161,7 +189,7 @@ impl ty::TyTraitDeclaration {
         let mut interface_surface_item_refs: InterfaceItemMap = BTreeMap::new();
         let mut impld_item_refs: ItemMap = BTreeMap::new();
 
-        let ty::TyTraitDeclaration {
+        let ty::TyTraitDecl {
             interface_surface, ..
         } = self;
 
@@ -171,7 +199,10 @@ impl ty::TyTraitDeclaration {
         for item in interface_surface.iter() {
             match item {
                 ty::TyTraitInterfaceItem::TraitFn(decl_ref) => {
-                    interface_surface_item_refs.insert(decl_ref.name.clone(), item.clone());
+                    interface_surface_item_refs.insert(decl_ref.name().clone(), item.clone());
+                }
+                ty::TyTraitInterfaceItem::Constant(decl_ref) => {
+                    interface_surface_item_refs.insert(decl_ref.name().clone(), item.clone());
                 }
             }
         }
@@ -182,11 +213,14 @@ impl ty::TyTraitDeclaration {
             .get_items_for_type_and_trait_name(engines, type_id, call_path)
             .into_iter()
         {
-            #[allow(clippy::infallible_destructuring_match)]
-            let decl_ref = match &item {
-                ty::TyTraitItem::Fn(decl_ref) => decl_ref,
+            match &item {
+                ty::TyTraitItem::Fn(decl_ref) => {
+                    impld_item_refs.insert(decl_ref.name().clone(), item.clone());
+                }
+                ty::TyTraitItem::Constant(decl_ref) => {
+                    impld_item_refs.insert(decl_ref.name().clone(), item.clone());
+                }
             };
-            impld_item_refs.insert(decl_ref.name.clone(), item.clone());
         }
 
         (interface_surface_item_refs, impld_item_refs)
@@ -205,21 +239,24 @@ impl ty::TyTraitDeclaration {
         let mut item_refs: ItemMap = BTreeMap::new();
         let mut impld_item_refs: ItemMap = BTreeMap::new();
 
-        let ty::TyTraitDeclaration {
+        let ty::TyTraitDecl {
             interface_surface,
             items,
             type_parameters,
             ..
         } = self;
 
-        let decl_engine = ctx.decl_engine;
+        let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
         // Retrieve the interface surface for this trait.
         for item in interface_surface.iter() {
             match item {
                 ty::TyTraitInterfaceItem::TraitFn(decl_ref) => {
-                    interface_surface_item_refs.insert(decl_ref.name.clone(), item.clone());
+                    interface_surface_item_refs.insert(decl_ref.name().clone(), item.clone());
+                }
+                ty::TyTraitInterfaceItem::Constant(decl_ref) => {
+                    interface_surface_item_refs.insert(decl_ref.name().clone(), item.clone());
                 }
             }
         }
@@ -228,7 +265,10 @@ impl ty::TyTraitDeclaration {
         for item in items.iter() {
             match item {
                 ty::TyTraitItem::Fn(decl_ref) => {
-                    item_refs.insert(decl_ref.name.clone(), item.clone());
+                    item_refs.insert(decl_ref.name().clone(), item.clone());
+                }
+                ty::TyTraitItem::Constant(decl_ref) => {
+                    item_refs.insert(decl_ref.name().clone(), item.clone());
                 }
             }
         }
@@ -258,8 +298,16 @@ impl ty::TyTraitDeclaration {
                         TyTraitItem::Fn(
                             decl_engine
                                 .insert(method)
-                                .with_parent(decl_engine, decl_ref.id.into()),
+                                .with_parent(decl_engine, (*decl_ref.id()).into()),
                         ),
+                    );
+                }
+                ty::TyTraitItem::Constant(decl_ref) => {
+                    let mut const_decl = decl_engine.get_constant(&decl_ref);
+                    const_decl.subst(&type_mapping, engines);
+                    impld_item_refs.insert(
+                        const_decl.call_path.suffix.clone(),
+                        TyTraitItem::Constant(decl_engine.insert(const_decl)),
                     );
                 }
             }
@@ -275,10 +323,10 @@ impl ty::TyTraitDeclaration {
         type_arguments: &[TypeArgument],
         type_id: TypeId,
     ) {
-        let decl_engine = ctx.decl_engine;
+        let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
-        let ty::TyTraitDeclaration {
+        let ty::TyTraitDecl {
             interface_surface,
             items,
             type_parameters,
@@ -308,10 +356,24 @@ impl ty::TyTraitDeclaration {
                     method.replace_self_type(engines, type_id);
                     method.subst(&type_mapping, engines);
                     all_items.push(TyImplItem::Fn(
-                        ctx.decl_engine
+                        ctx.engines
+                            .de()
                             .insert(method.to_dummy_func(Mode::NonAbi))
-                            .with_parent(ctx.decl_engine, decl_ref.id.into()),
+                            .with_parent(ctx.engines.de(), (*decl_ref.id()).into()),
                     ));
+                }
+                ty::TyTraitInterfaceItem::Constant(decl_ref) => {
+                    let const_decl = decl_engine.get_constant(decl_ref);
+                    let const_name = const_decl.call_path.suffix.clone();
+                    all_items.push(TyImplItem::Constant(decl_ref.clone()));
+                    ctx.namespace.insert_symbol(
+                        const_name.clone(),
+                        ty::TyDecl::ConstantDecl(ty::ConstantDecl {
+                            name: const_name,
+                            decl_id: *decl_ref.id(),
+                            decl_span: const_decl.span.clone(),
+                        }),
+                    );
                 }
             }
         }
@@ -322,10 +384,17 @@ impl ty::TyTraitDeclaration {
                     method.replace_self_type(engines, type_id);
                     method.subst(&type_mapping, engines);
                     all_items.push(TyImplItem::Fn(
-                        ctx.decl_engine
+                        ctx.engines
+                            .de()
                             .insert(method)
-                            .with_parent(ctx.decl_engine, decl_ref.id.into()),
+                            .with_parent(ctx.engines.de(), (*decl_ref.id()).into()),
                     ));
+                }
+                ty::TyTraitItem::Constant(decl_ref) => {
+                    let mut const_decl = decl_engine.get_constant(decl_ref);
+                    const_decl.replace_self_type(engines, type_id);
+                    const_decl.subst(&type_mapping, engines);
+                    all_items.push(TyImplItem::Constant(ctx.engines.de().insert(const_decl)));
                 }
             }
         }

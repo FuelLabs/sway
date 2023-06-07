@@ -6,16 +6,14 @@ abigen!(Contract(
     abi = "test_projects/result_in_abi/out/debug/result_in_abi-abi.json"
 ));
 
-async fn get_result_in_abi_instance() -> (ResultInAbiTestContract, ContractId) {
+async fn get_result_in_abi_instance() -> (ResultInAbiTestContract<WalletUnlocked>, ContractId) {
     let wallet = launch_provider_and_get_wallet().await;
-    let id = Contract::deploy(
+    let id = Contract::load_from(
         "test_projects/result_in_abi/out/debug/result_in_abi.bin",
-        &wallet,
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "test_projects/result_in_abi/out/debug/result_in_abi-storage_slots.json".to_string(),
-        )),
+        LoadConfiguration::default(),
     )
+    .unwrap()
+    .deploy(&wallet, TxParameters::default())
     .await
     .unwrap();
     let instance = ResultInAbiTestContract::new(id.clone(), wallet);

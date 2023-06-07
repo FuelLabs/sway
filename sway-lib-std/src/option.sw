@@ -1,4 +1,4 @@
-//! Optional values.
+//! A type for optional values.
 //!
 //! Type `Option` represents an optional value: every `Option`
 //! is either `Some` and contains a value, or `None`, and
@@ -17,9 +17,9 @@
 //! ```
 //! fn divide(numerator: u64, denominator: u64) -> Option<u64> {
 //!     if denominator == 0 {
-//!         Option::None
+//!         None
 //!     } else {
-//!         Option::Some(numerator / denominator)
+//!         Some(numerator / denominator)
 //!     }
 //! }
 //!
@@ -30,9 +30,9 @@
 //!     // Pattern match to retrieve the value
 //!     match result {
 //!         // The division was valid
-//!         Option::Some(x) => std::logging::log(x),
+//!         Some(x) => std::logging::log(x),
 //!         // The division was invalid
-//!         Option::None    => std::logging::log("Cannot divide by 0"),
+//!         None    => std::logging::log("Cannot divide by 0"),
 //!     }
 //! }
 //! ```
@@ -72,13 +72,13 @@
 //! `Ok(v)`  : `Result::Ok`
 //! `Some(v)`: `Option::Some`
 //! `ok_or`  : `Option::ok_or`
-library option;
+library;
 
 use ::result::Result;
 use ::revert::revert;
 
 // ANCHOR: docs_option
-/// `Option` is a type that represents an optional value.
+/// A type that represents an optional value, either `Some(val)` or `None`.
 pub enum Option<T> {
     /// No value.
     None: (),
@@ -97,10 +97,10 @@ impl<T> Option<T> {
     /// ### Examples
     ///
     /// ```
-    /// let x: Option<u32> = Option::Some(2);
+    /// let x: Option<u32> = Some(2);
     /// assert(x.is_some());
     ///
-    /// let x: Option<u32> = Option::None;
+    /// let x: Option<u32> = None;
     /// assert(!x.is_some());
     /// ```
     pub fn is_some(self) -> bool {
@@ -115,10 +115,10 @@ impl<T> Option<T> {
     /// ### Examples
     ///
     /// ```
-    /// let x: Option<u32> = Option::Some(2);
+    /// let x: Option<u32> = Some(2);
     /// assert(!x.is_none());
     ///
-    /// let x: Option<u32> = Option::None;
+    /// let x: Option<u32> = None;
     /// assert(x.is_none());
     /// ```
     pub fn is_none(self) -> bool {
@@ -145,12 +145,12 @@ impl<T> Option<T> {
     /// ### Examples
     ///
     /// ```
-    /// let x = Option::Some(42);
+    /// let x = Some(42);
     /// assert(x.unwrap() == 42);
     /// ```
     ///
     /// ```
-    /// let x: Option<u64> = Option::None;
+    /// let x: Option<u64> = None;
     /// assert(x.unwrap() == 42); // fails
     /// ```
     pub fn unwrap(self) -> T {
@@ -167,8 +167,8 @@ impl<T> Option<T> {
     /// ### Examples
     ///
     /// ```
-    /// assert(Option::Some(42).unwrap_or(69) == 42);
-    /// assert(Option::None::<u64>().unwrap_or(69) == 69);
+    /// assert(Some(42).unwrap_or(69) == 42);
+    /// assert(None::<u64>().unwrap_or(69) == 69);
     /// ```
     pub fn unwrap_or(self, default: T) -> T {
         match self {
@@ -190,13 +190,13 @@ impl<T> Option<T> {
     /// ### Examples
     ///
     /// ```
-    /// let x = Option::Some(42);
+    /// let x = Some(42);
     /// match x.ok_or(0) {
     ///     Result::Ok(inner) => assert(inner == 42),
     ///     Result::Err => revert(0),
     /// }
     ///
-    /// let x:Option<u64> = Option::None;
+    /// let x:Option<u64> = None;
     /// match x.ok_or(0) {
     ///     Result::Ok(_) => revert(0),
     ///     Result::Err(e) => assert(e == 0),

@@ -1,7 +1,9 @@
-use fuel_vm::fuel_types::Bytes64;
+use fuel_vm::{
+    fuel_crypto::{Message, PublicKey, SecretKey, Signature},
+    fuel_types::Bytes64,
+};
 use fuels::{
     prelude::*,
-    signers::fuel_crypto::{Message, PublicKey, SecretKey, Signature},
     tx::Bytes32,
     types::{Bits256, EvmAddress},
 };
@@ -29,7 +31,13 @@ fn clear_12_bytes(bytes: [u8; 32]) -> [u8; 32] {
     bytes
 }
 
-async fn setup_env() -> Result<(EvmEcRecoverContract, PublicKey, Message, Bytes64, [u8; 32])> {
+async fn setup_env() -> Result<(
+    EvmEcRecoverContract<WalletUnlocked>,
+    PublicKey,
+    Message,
+    Bytes64,
+    [u8; 32],
+)> {
     let mut rng = StdRng::seed_from_u64(1000);
     let msg_bytes: Bytes32 = rng.gen();
     let private_key = SecretKey::random(&mut rng);
@@ -39,7 +47,7 @@ async fn setup_env() -> Result<(EvmEcRecoverContract, PublicKey, Message, Bytes6
     let pub_key_hash = keccak_hash(*public_key);
     let evm_address = clear_12_bytes(*pub_key_hash);
 
-    let msg = unsafe { Message::from_bytes_unchecked(*msg_bytes) };
+    let msg = Message::from_bytes(*msg_bytes);
     let sig = Signature::sign(&private_key, &msg);
     let sig_bytes: Bytes64 = Bytes64::from(sig);
     let mut wallet = WalletUnlocked::new_from_private_key(private_key, None);
@@ -56,13 +64,14 @@ async fn setup_env() -> Result<(EvmEcRecoverContract, PublicKey, Message, Bytes6
     let (provider, _socket_addr) = setup_test_provider(coins.clone(), vec![], None, None).await;
     wallet.set_provider(provider);
 
-    let contract_id = Contract::deploy(
+    let contract_id = Contract::load_from(
         "test_projects/evm_ec_recover/out/debug/evm_ec_recover.bin",
-        &wallet,
-        TxParameters::default(),
-        StorageConfiguration::default(),
+        LoadConfiguration::default(),
     )
-    .await?;
+    .unwrap()
+    .deploy(&wallet, TxParameters::default())
+    .await
+    .unwrap();
 
     let contract_instance = EvmEcRecoverContract::new(contract_id, wallet.clone());
 

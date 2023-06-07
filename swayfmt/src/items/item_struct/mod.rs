@@ -1,5 +1,5 @@
 use crate::{
-    comments::write_comments,
+    comments::{rewrite_with_comments, write_comments},
     config::{items::ItemBraceStyle, user_def::FieldAlignment},
     formatter::{
         shape::{ExprKind, LineStyle},
@@ -28,6 +28,8 @@ impl Format for ItemStruct {
                 .shape
                 .with_code_line_from(LineStyle::Multiline, ExprKind::default()),
             |formatter| -> Result<(), FormatterError> {
+                // Required for comment formatting
+                let start_len = formatted_code.len();
                 // If there is a visibility token add it to the formatted_code with a ` ` after it.
                 if let Some(visibility) = &self.visibility {
                     write!(formatted_code, "{} ", visibility.span().as_str())?;
@@ -119,6 +121,13 @@ impl Format for ItemStruct {
                 // Handle closing brace
                 Self::close_curly_brace(formatted_code, formatter)?;
 
+                rewrite_with_comments::<ItemStruct>(
+                    formatter,
+                    self.span(),
+                    self.leaf_spans(),
+                    formatted_code,
+                    start_len,
+                )?;
                 Ok(())
             },
         )?;

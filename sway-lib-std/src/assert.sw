@@ -1,4 +1,5 @@
-library assert;
+//! Functions to assert a given condition.
+library;
 
 use ::logging::log;
 use ::revert::revert;
@@ -32,8 +33,6 @@ pub fn assert(condition: bool) {
     }
 }
 
-// NOTE: temporarily disabled until https://github.com/FuelLabs/sway/issues/3946 is fixed
-/*
 /// Asserts that the given values `v1` & `v2` will always be equal during runtime.
 ///
 /// ### Arguments
@@ -60,4 +59,4 @@ pub fn assert_eq<T>(v1: T, v2: T) where T: Eq {
         log(v2);
         revert(FAILED_ASSERT_EQ_SIGNAL);
     }
-}*/
+}

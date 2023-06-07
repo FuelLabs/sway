@@ -1,0 +1,12 @@
+category = "compile"
+
+# check: $()struct MyStruct1 {}
+# nextln: $()This struct is never used.
+
+# check: $()type Alias1 = MyStruct1;
+# nextln: $()This declaration is never used.
+
+# check: $()type Alias2 = Alias1;
+# nextln: $()This declaration is never used.
+
+expected_warnings = 3

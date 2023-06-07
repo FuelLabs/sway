@@ -1,19 +1,14 @@
 use crate::language::Visibility;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
 pub enum VariableMutability {
     // mutable
     Mutable,
     // referenceable + mutable
     RefMutable,
     // immutable
+    #[default]
     Immutable,
-}
-
-impl Default for VariableMutability {
-    fn default() -> Self {
-        VariableMutability::Immutable
-    }
 }
 
 impl VariableMutability {

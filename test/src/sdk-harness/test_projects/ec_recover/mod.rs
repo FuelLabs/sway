@@ -1,10 +1,9 @@
-use fuel_vm::fuel_types::Bytes64;
-use fuels::{
-    prelude::*,
-    signers::fuel_crypto::{Message, PublicKey, SecretKey, Signature},
-    tx::Bytes32,
-    types::Bits256,
+use fuel_vm::{
+    fuel_crypto::{Message, PublicKey, SecretKey, Signature},
+    fuel_tx::Bytes64,
+    fuel_types::Bytes32,
 };
+use fuels::{prelude::*, types::Bits256};
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
 abigen!(Contract(
@@ -13,7 +12,7 @@ abigen!(Contract(
 ));
 
 async fn setup_env() -> Result<(
-    EcRecoverContract,
+    EcRecoverContract<WalletUnlocked>,
     SecretKey,
     PublicKey,
     WalletUnlocked,
@@ -24,7 +23,7 @@ async fn setup_env() -> Result<(
     let msg_bytes: Bytes32 = rng.gen();
     let private_key = SecretKey::random(&mut rng);
     let public_key = PublicKey::from(&private_key);
-    let msg = unsafe { Message::from_bytes_unchecked(*msg_bytes) };
+    let msg = Message::from_bytes(*msg_bytes);
     let sig = Signature::sign(&private_key, &msg);
     let sig_bytes: Bytes64 = Bytes64::from(sig);
     let mut wallet = WalletUnlocked::new_from_private_key(private_key, None);
@@ -41,13 +40,14 @@ async fn setup_env() -> Result<(
     let (provider, _socket_addr) = setup_test_provider(coins.clone(), vec![], None, None).await;
     wallet.set_provider(provider);
 
-    let contract_id = Contract::deploy(
+    let contract_id = Contract::load_from(
         "test_projects/ec_recover/out/debug/ec_recover.bin",
-        &wallet,
-        TxParameters::default(),
-        StorageConfiguration::default(),
+        LoadConfiguration::default(),
     )
-    .await?;
+    .unwrap()
+    .deploy(&wallet, TxParameters::default())
+    .await
+    .unwrap();
 
     let contract_instance = EcRecoverContract::new(contract_id, wallet.clone());
 

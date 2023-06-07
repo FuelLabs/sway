@@ -25,8 +25,9 @@ impl ty::TyMatchBranch {
             span: branch_span,
         } = branch;
 
-        let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
+        let type_engine = ctx.engines.te();
+        let decl_engine = ctx.engines.de();
+        let engines = ctx.engines();
 
         // type check the scrutinee
         let typed_scrutinee = check!(
@@ -55,14 +56,13 @@ impl ty::TyMatchBranch {
             let type_ascription = right_decl.return_type.into();
             let return_type = right_decl.return_type;
             let span = left_decl.span().clone();
-            let var_decl =
-                ty::TyDeclaration::VariableDeclaration(Box::new(ty::TyVariableDeclaration {
-                    name: left_decl.clone(),
-                    body: right_decl,
-                    mutability: ty::VariableMutability::Immutable,
-                    return_type,
-                    type_ascription,
-                }));
+            let var_decl = ty::TyDecl::VariableDecl(Box::new(ty::TyVariableDecl {
+                name: left_decl.clone(),
+                body: right_decl,
+                mutability: ty::VariableMutability::Immutable,
+                return_type,
+                type_ascription,
+            }));
             ctx.namespace.insert_symbol(left_decl, var_decl.clone());
             code_block_contents.push(ty::TyAstNode {
                 content: ty::TyAstNodeContent::Declaration(var_decl),
@@ -74,7 +74,7 @@ impl ty::TyMatchBranch {
         let typed_result = {
             let ctx = ctx
                 .by_ref()
-                .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
+                .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
             check!(
                 ty::TyExpression::type_check(ctx, result),
                 return err(warnings, errors),
@@ -129,7 +129,7 @@ impl ty::TyMatchBranch {
 
         // return!
         let typed_branch = ty::TyMatchBranch {
-            conditions: match_req_map,
+            cnf: match_req_map,
             result: new_result,
             span: branch_span,
         };

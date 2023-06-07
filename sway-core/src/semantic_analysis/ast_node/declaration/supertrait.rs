@@ -18,7 +18,7 @@ pub(crate) fn insert_supertraits_into_namespace(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let decl_engine = ctx.decl_engine;
+    let decl_engine = ctx.engines.de();
 
     for supertrait in supertraits.iter() {
         // Right now we don't have the ability to support defining a supertrait
@@ -39,7 +39,7 @@ pub(crate) fn insert_supertraits_into_namespace(
             .ok(&mut warnings, &mut errors)
             .cloned()
         {
-            Some(ty::TyDeclaration::TraitDeclaration { decl_id, .. }) => {
+            Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
                 let mut trait_decl = decl_engine.get_trait(&decl_id);
 
                 // Right now we don't parse type arguments for supertraits, so
@@ -90,11 +90,9 @@ pub(crate) fn insert_supertraits_into_namespace(
                     errors
                 );
             }
-            Some(ty::TyDeclaration::AbiDeclaration { .. }) => {
-                errors.push(CompileError::AbiAsSupertrait {
-                    span: supertrait.name.span().clone(),
-                })
-            }
+            Some(ty::TyDecl::AbiDecl { .. }) => errors.push(CompileError::AbiAsSupertrait {
+                span: supertrait.name.span().clone(),
+            }),
             _ => errors.push(CompileError::TraitNotFound {
                 name: supertrait.name.to_string(),
                 span: supertrait.name.span(),

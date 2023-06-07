@@ -5,7 +5,7 @@ use crate::{
     type_system::*,
 };
 
-impl ty::TyStructDeclaration {
+impl ty::TyStructDecl {
     pub(crate) fn type_check(
         ctx: TypeCheckContext,
         decl: StructDeclaration,
@@ -30,7 +30,7 @@ impl ty::TyStructDeclaration {
         // Type check the type parameters. This will also insert them into the
         // current namespace.
         let new_type_parameters = check!(
-            TypeParameter::type_check_type_params(ctx.by_ref(), type_parameters, true),
+            TypeParameter::type_check_type_params(ctx.by_ref(), type_parameters),
             return err(warnings, errors),
             warnings,
             errors
@@ -51,7 +51,7 @@ impl ty::TyStructDeclaration {
         path = path.to_fullpath(ctx.namespace);
 
         // create the struct decl
-        let decl = ty::TyStructDeclaration {
+        let decl = ty::TyStructDecl {
             call_path: path,
             type_parameters: new_type_parameters,
             fields: new_fields,
@@ -68,8 +68,7 @@ impl ty::TyStructField {
     pub(crate) fn type_check(mut ctx: TypeCheckContext, field: StructField) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
+        let type_engine = ctx.engines.te();
 
         let mut type_argument = field.type_argument;
         type_argument.type_id = check!(
@@ -79,7 +78,7 @@ impl ty::TyStructField {
                 EnforceTypeArguments::Yes,
                 None
             ),
-            type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+            type_engine.insert(ctx.engines(), TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );

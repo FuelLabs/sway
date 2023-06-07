@@ -1,18 +1,34 @@
-use super::*;
+use sway_error::error::CompileError;
+use sway_types::{BaseIdent, Span};
+
 use crate::{
-    decl_engine::{DeclEngine, DeclEngineIndex},
+    decl_engine::{DeclEngine, DeclEngineInsert},
     engine_threading::*,
+    error::*,
+    language::CallPath,
+    semantic_analysis::TypeCheckContext,
+    type_system::priv_prelude::*,
+    types::*,
 };
 
-use std::fmt;
+use std::{
+    collections::{BTreeSet, HashMap},
+    fmt,
+};
 
 /// A identifier to uniquely refer to our type terms
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd, Debug)]
 pub struct TypeId(usize);
 
 impl DisplayWithEngines for TypeId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         write!(f, "{}", engines.help_out(engines.te().get(*self)))
+    }
+}
+
+impl DebugWithEngines for TypeId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        write!(f, "{:?}", engines.help_out(engines.te().get(*self)))
     }
 }
 
@@ -27,61 +43,41 @@ impl CollectTypesMetadata for TypeId {
         &self,
         ctx: &mut CollectTypesMetadataContext,
     ) -> CompileResult<Vec<TypeMetadata>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+        fn filter_fn(type_info: &TypeInfo) -> bool {
+            matches!(type_info, TypeInfo::UnknownGeneric { .. })
+                || matches!(type_info, TypeInfo::Placeholder(_))
+        }
+        let engines = ctx.engines;
+        let possible = self.extract_any_including_self(engines, &filter_fn, vec![]);
         let mut res = vec![];
-        match ctx.type_engine.get(*self) {
-            TypeInfo::UnknownGeneric {
-                name,
-                trait_constraints,
-            } => {
-                res.push(TypeMetadata::UnresolvedType(name, ctx.call_site_get(self)));
-                for trait_constraint in trait_constraints.iter() {
-                    res.extend(check!(
-                        trait_constraint.collect_types_metadata(ctx),
-                        continue,
-                        warnings,
-                        errors
+        for (type_id, _) in possible.into_iter() {
+            match ctx.engines.te().get(type_id) {
+                TypeInfo::UnknownGeneric { name, .. } => {
+                    res.push(TypeMetadata::UnresolvedType(
+                        name,
+                        ctx.call_site_get(&type_id),
                     ));
                 }
-            }
-            TypeInfo::Placeholder(type_param) => {
-                res.push(TypeMetadata::UnresolvedType(
-                    type_param.name_ident,
-                    ctx.call_site_get(self),
-                ));
-            }
-            _ => {}
-        }
-        if let TypeInfo::UnknownGeneric {
-            name,
-            trait_constraints,
-        } = ctx.type_engine.get(*self)
-        {
-            res.push(TypeMetadata::UnresolvedType(name, ctx.call_site_get(self)));
-            for trait_constraint in trait_constraints.iter() {
-                res.extend(check!(
-                    trait_constraint.collect_types_metadata(ctx),
-                    continue,
-                    warnings,
-                    errors
-                ));
+                TypeInfo::Placeholder(type_param) => {
+                    res.push(TypeMetadata::UnresolvedType(
+                        type_param.name_ident,
+                        ctx.call_site_get(self),
+                    ));
+                }
+                _ => {}
             }
         }
-        if errors.is_empty() {
-            ok(res, warnings, errors)
-        } else {
-            err(warnings, errors)
-        }
+        ok(res, vec![], vec![])
     }
 }
 
 impl ReplaceSelfType for TypeId {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        fn helper(type_id: TypeId, engines: Engines<'_>, self_type: TypeId) -> Option<TypeId> {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
+        fn helper(type_id: TypeId, engines: &Engines, self_type: TypeId) -> Option<TypeId> {
             let type_engine = engines.te();
             let decl_engine = engines.de();
             match type_engine.get(type_id) {
+                TypeInfo::TypeParam(_) => None,
                 TypeInfo::SelfType => Some(self_type),
                 TypeInfo::Enum(decl_ref) => {
                     let mut decl = decl_engine.get_enum(&decl_ref);
@@ -105,7 +101,7 @@ impl ReplaceSelfType for TypeId {
 
                     if need_to_create_new {
                         let new_decl_ref = decl_engine.insert(decl);
-                        Some(type_engine.insert(decl_engine, TypeInfo::Enum(new_decl_ref)))
+                        Some(type_engine.insert(engines, TypeInfo::Enum(new_decl_ref)))
                     } else {
                         None
                     }
@@ -132,7 +128,7 @@ impl ReplaceSelfType for TypeId {
 
                     if need_to_create_new {
                         let new_decl_ref = decl_engine.insert(decl);
-                        Some(type_engine.insert(decl_engine, TypeInfo::Struct(new_decl_ref)))
+                        Some(type_engine.insert(engines, TypeInfo::Struct(new_decl_ref)))
                     } else {
                         None
                     }
@@ -150,7 +146,7 @@ impl ReplaceSelfType for TypeId {
                         })
                         .collect::<Vec<_>>();
                     if need_to_create_new {
-                        Some(type_engine.insert(decl_engine, TypeInfo::Tuple(fields)))
+                        Some(type_engine.insert(engines, TypeInfo::Tuple(fields)))
                     } else {
                         None
                     }
@@ -175,7 +171,7 @@ impl ReplaceSelfType for TypeId {
                     });
                     if need_to_create_new {
                         Some(type_engine.insert(
-                            decl_engine,
+                            engines,
                             TypeInfo::Custom {
                                 call_path,
                                 type_arguments,
@@ -188,7 +184,7 @@ impl ReplaceSelfType for TypeId {
                 TypeInfo::Array(mut elem_ty, count) => helper(elem_ty.type_id, engines, self_type)
                     .map(|type_id| {
                         elem_ty.type_id = type_id;
-                        type_engine.insert(decl_engine, TypeInfo::Array(elem_ty, count))
+                        type_engine.insert(engines, TypeInfo::Array(elem_ty, count))
                     }),
                 TypeInfo::Storage { fields } => {
                     let mut need_to_create_new = false;
@@ -205,11 +201,25 @@ impl ReplaceSelfType for TypeId {
                         })
                         .collect::<Vec<_>>();
                     if need_to_create_new {
-                        Some(type_engine.insert(decl_engine, TypeInfo::Storage { fields }))
+                        Some(type_engine.insert(engines, TypeInfo::Storage { fields }))
                     } else {
                         None
                     }
                 }
+                TypeInfo::Alias { name, mut ty } => {
+                    helper(ty.type_id, engines, self_type).map(|type_id| {
+                        ty.type_id = type_id;
+                        type_engine.insert(engines, TypeInfo::Alias { name, ty })
+                    })
+                }
+                TypeInfo::Ptr(mut ty) => helper(ty.type_id, engines, self_type).map(|type_id| {
+                    ty.type_id = type_id;
+                    type_engine.insert(engines, TypeInfo::Ptr(ty))
+                }),
+                TypeInfo::Slice(mut ty) => helper(ty.type_id, engines, self_type).map(|type_id| {
+                    ty.type_id = type_id;
+                    type_engine.insert(engines, TypeInfo::Slice(ty))
+                }),
                 TypeInfo::Unknown
                 | TypeInfo::UnknownGeneric { .. }
                 | TypeInfo::Str(_)
@@ -233,9 +243,12 @@ impl ReplaceSelfType for TypeId {
 }
 
 impl SubstTypes for TypeId {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+        let type_engine = engines.te();
         if let Some(matching_id) = type_mapping.find_match(*self, engines) {
-            *self = matching_id;
+            if !matches!(type_engine.get(matching_id), TypeInfo::ErrorRecovery) {
+                *self = matching_id;
+            }
         }
     }
 }
@@ -243,13 +256,16 @@ impl SubstTypes for TypeId {
 impl UnconstrainedTypeParameters for TypeId {
     fn type_parameter_is_unconstrained(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         type_parameter: &TypeParameter,
     ) -> bool {
         let type_engine = engines.te();
-        type_engine
-            .get(*self)
-            .type_parameter_is_unconstrained(engines, type_parameter)
+        let mut all_types: BTreeSet<TypeId> = type_engine.get(*self).extract_inner_types(engines);
+        all_types.insert(*self);
+        let type_parameter_info = type_engine.get(type_parameter.type_id);
+        all_types
+            .iter()
+            .any(|type_id| type_engine.get(*type_id).eq(&type_parameter_info, engines))
     }
 }
 
@@ -297,8 +313,122 @@ impl TypeId {
             (TypeInfo::Custom { call_path, .. }, TypeInfo::Struct(decl_ref)) => {
                 call_path.suffix != decl_engine.get_struct(&decl_ref).call_path.suffix
             }
+            (TypeInfo::Custom { call_path, .. }, TypeInfo::Alias { name, .. }) => {
+                call_path.suffix != name
+            }
             (TypeInfo::Custom { .. }, _) => true,
             _ => false,
+        }
+    }
+
+    pub(crate) fn extract_any_including_self<F>(
+        &self,
+        engines: &Engines,
+        filter_fn: &F,
+        trait_constraints: Vec<TraitConstraint>,
+    ) -> HashMap<TypeId, Vec<TraitConstraint>>
+    where
+        F: Fn(&TypeInfo) -> bool,
+    {
+        let type_engine = engines.te();
+        let type_info = type_engine.get(*self);
+        let mut found = type_info.extract_any(engines, filter_fn);
+        if filter_fn(&type_info) {
+            found.insert(*self, trait_constraints);
+        }
+        found
+    }
+
+    /// `check_type_parameter_bounds` does two types of checks. Lets use the example below for demonstrating the two checks:
+    /// ```ignore
+    /// enum MyEnum<T> where T: MyAdd {
+    ///   X: T,
+    /// }
+    /// ```
+    /// The enum above has a constraint where `T` should implement the trait `MyAdd`.
+    ///
+    /// If `check_type_parameter_bounds` is called on type `MyEnum<u64>` and `u64`
+    /// does not implement the trait `MyAdd` then the error `CompileError::TraitConstraintNotSatisfied`
+    /// is thrown.
+    ///
+    /// The second type of check performed results in an error for the example below.
+    /// ```ignore
+    /// fn add2<G>(e: MyEnum<G>) -> G {
+    /// }
+    /// ```
+    /// If `check_type_parameter_bounds` is called on type `MyEnum<G>` and the type parameter `G`
+    /// does not have the trait constraint `where G: MyAdd` then the error `CompileError::TraitConstraintMissing`
+    /// is thrown.
+    pub(crate) fn check_type_parameter_bounds(
+        &self,
+        ctx: &TypeCheckContext,
+        span: &Span,
+        trait_constraints: Vec<TraitConstraint>,
+    ) -> CompileResult<()> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        let engines = ctx.engines();
+
+        let mut structure_generics = engines
+            .te()
+            .get(*self)
+            .extract_inner_types_with_trait_constraints(engines);
+
+        if !trait_constraints.is_empty() {
+            structure_generics.insert(*self, trait_constraints);
+        }
+
+        for (structure_type_id, structure_trait_constraints) in &structure_generics {
+            if structure_trait_constraints.is_empty() {
+                continue;
+            }
+
+            let structure_type_info = engines.te().get(*structure_type_id);
+            let structure_type_info_with_engines = engines.help_out(structure_type_info.clone());
+            if let TypeInfo::UnknownGeneric {
+                trait_constraints, ..
+            } = &structure_type_info
+            {
+                let mut generic_trait_constraints_trait_names: Vec<CallPath<BaseIdent>> = vec![];
+                for trait_constraint in trait_constraints.iter() {
+                    generic_trait_constraints_trait_names.push(trait_constraint.trait_name.clone());
+                }
+                for structure_trait_constraint in structure_trait_constraints {
+                    if !generic_trait_constraints_trait_names
+                        .contains(&structure_trait_constraint.trait_name)
+                    {
+                        errors.push(CompileError::TraitConstraintMissing {
+                            param: structure_type_info_with_engines.to_string(),
+                            trait_name: structure_trait_constraint.trait_name.suffix.to_string(),
+                            span: span.clone(),
+                        });
+                    }
+                }
+            } else {
+                let generic_trait_constraints_trait_names = ctx
+                    .namespace
+                    .implemented_traits
+                    .get_trait_names_for_type(engines, *structure_type_id);
+                for structure_trait_constraint in structure_trait_constraints {
+                    if !generic_trait_constraints_trait_names.contains(
+                        &structure_trait_constraint
+                            .trait_name
+                            .to_fullpath(ctx.namespace),
+                    ) {
+                        errors.push(CompileError::TraitConstraintNotSatisfied {
+                            ty: structure_type_info_with_engines.to_string(),
+                            trait_name: structure_trait_constraint.trait_name.suffix.to_string(),
+                            span: span.clone(),
+                        });
+                    }
+                }
+            }
+        }
+
+        if errors.is_empty() {
+            ok((), warnings, errors)
+        } else {
+            err(warnings, errors)
         }
     }
 }

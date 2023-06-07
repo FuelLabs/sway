@@ -6,7 +6,7 @@ use crate::{
     },
 };
 use std::sync::Arc;
-use sway_core::{language::ty::TyDeclaration, type_system::TypeInfo, Engines};
+use sway_core::{language::ty::TyDecl, type_system::TypeInfo};
 use sway_types::Spanned;
 use tower_lsp::lsp_types::{self, Range, Url};
 
@@ -38,16 +38,15 @@ pub(crate) fn inlay_hints(
         return None;
     }
 
-    let type_engine = session.type_engine.read();
-    let decl_engine = session.decl_engine.read();
-    let engines = Engines::new(&type_engine, &decl_engine);
+    let engines = session.engines.read();
+    let type_engine = engines.te();
 
     let hints: Vec<lsp_types::InlayHint> = session
         .token_map()
         .tokens_for_file(uri)
         .filter_map(|(_, token)| {
             token.typed.as_ref().and_then(|t| match t {
-                TypedAstToken::TypedDeclaration(TyDeclaration::VariableDeclaration(var_decl)) => {
+                TypedAstToken::TypedDeclaration(TyDecl::VariableDecl(var_decl)) => {
                     match var_decl.type_ascription.call_path_tree {
                         Some(_) => None,
                         None => {

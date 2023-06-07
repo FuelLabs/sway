@@ -1,0 +1,25 @@
+category = "fail"
+
+# check: $()impl<T> Option<MyEnum<T>> {
+# nextln:$()Expects trait constraint "T: MyAdd" which is missing from type parameter "T".
+
+# check: $()impl<T> MyEnum<Option<T>> {
+# nextln: $()Trait "MyAdd" is not implemented for type "Option<T>".
+
+# check: $()fn add2<G>(v: G, p: MyEnum<G>) -> G {
+# nextln: $()Expects trait constraint "G: MyAdd" which is missing from type parameter "G".
+
+# check: $()fn add1<T>(e: MyEnum<T>, v: T) -> T {
+# nextln: $()Expects trait constraint "T: MyAdd" which is missing from type parameter "T".
+
+# check: $()MyEnum::X(v)
+# nextln: $()Expects trait constraint "T: MyAdd" which is missing from type parameter "T".
+
+# check: $()fn add2<T>(v: T) -> MyEnum<T> {
+# nextln: $()Expects trait constraint "T: MyAdd" which is missing from type parameter "T".
+
+# check: $()let p = MyEnum::X(v);
+# nextln: $()Expects trait constraint "T: MyAdd" which is missing from type parameter "T".
+
+# check: $()let bar = MyEnum::X(3u64);
+# nextln: $()Trait "MyAdd" is not implemented for type "u64".

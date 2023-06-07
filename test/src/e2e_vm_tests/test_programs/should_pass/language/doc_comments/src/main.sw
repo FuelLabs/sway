@@ -42,7 +42,7 @@ storage {
 impl FooABI for Contract {
     /// The main function that does all the things!
     fn main() -> u64 {
-        let mut data = Data {
+        let mut _data = Data {
             value: NumberOrString::Number(20),
             address: 1337,
         };

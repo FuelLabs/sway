@@ -43,8 +43,8 @@ impl<'a, 'e> Parser<'a, 'e> {
                 };
                 Span::new(
                     self.full_span.src().clone(),
-                    self.full_span.end() - trim_offset,
-                    self.full_span.end() - trim_offset + 1,
+                    self.full_span.end().saturating_sub(trim_offset),
+                    (self.full_span.end() + 1).saturating_sub(trim_offset),
                     self.full_span.path().cloned(),
                 )
             }

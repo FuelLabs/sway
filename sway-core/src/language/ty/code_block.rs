@@ -12,20 +12,20 @@ pub struct TyCodeBlock {
 
 impl EqWithEngines for TyCodeBlock {}
 impl PartialEqWithEngines for TyCodeBlock {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.contents.eq(&other.contents, engines)
     }
 }
 
 impl HashWithEngines for TyCodeBlock {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TyCodeBlock { contents } = self;
         contents.hash(state, engines);
     }
 }
 
 impl SubstTypes for TyCodeBlock {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         self.contents
             .iter_mut()
             .for_each(|x| x.subst(type_mapping, engines));
@@ -33,7 +33,7 @@ impl SubstTypes for TyCodeBlock {
 }
 
 impl ReplaceSelfType for TyCodeBlock {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         self.contents
             .iter_mut()
             .for_each(|x| x.replace_self_type(engines, self_type));
@@ -41,10 +41,18 @@ impl ReplaceSelfType for TyCodeBlock {
 }
 
 impl ReplaceDecls for TyCodeBlock {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: &Engines) {
         self.contents
             .iter_mut()
             .for_each(|x| x.replace_decls(decl_mapping, engines));
+    }
+}
+
+impl UpdateConstantExpression for TyCodeBlock {
+    fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
+        self.contents
+            .iter_mut()
+            .for_each(|x| x.update_constant_expression(engines, implementing_type));
     }
 }
 

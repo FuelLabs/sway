@@ -6,16 +6,16 @@ enum MyContractError {
 
 fn divide(numerator: u64, denominator: u64) -> Result<u64, MyContractError> {
     if (denominator == 0) {
-        return Result::Err(MyContractError::DivisionByZero);
+        return Err(MyContractError::DivisionByZero);
     } else {
-        Result::Ok(numerator / denominator)
+        Ok(numerator / denominator)
     }
 }
 
 fn main() -> Result<u64, str[4]> {
     let result = divide(20, 2);
     match result {
-        Result::Ok(value) => Result::Ok(value),
-        Result::Err(MyContractError::DivisionByZero) => Result::Err("Fail"),
+        Ok(value) => Ok(value),
+        Err(MyContractError::DivisionByZero) => Err("Fail"),
     }
 }

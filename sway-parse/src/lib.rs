@@ -1,6 +1,5 @@
 mod attribute;
 mod brackets;
-mod dependency;
 mod expr;
 mod generics;
 mod item;
@@ -13,6 +12,9 @@ mod path;
 mod pattern;
 mod priv_prelude;
 mod punctuated;
+mod submodule;
+#[cfg(test)]
+mod test_utils;
 mod token;
 mod ty;
 mod where_clause;
@@ -22,7 +24,7 @@ pub use crate::{
     keywords::RESERVED_KEYWORDS,
     parse::Parse,
     parser::Parser,
-    token::{lex, lex_commented},
+    token::{lex, lex_commented, parse_int_suffix},
 };
 
 use sway_ast::{

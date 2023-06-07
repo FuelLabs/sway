@@ -1,6 +1,6 @@
 script;
 
-dep bar;
+mod bar;
 
 // This test should fail to compile because the import statement below is missing
 // use ::bar::Bar;

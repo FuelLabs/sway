@@ -1,25 +1,37 @@
+// target-fuelvm
+
 script;
 
 fn main() {
     let recipient = 0x0000000000000000000000000000000000000000000000000000000000000000;
     let data = 5;
-    let output_index = 4;
     let coins = 8;
-    __smo(recipient, data, output_index, coins);
+    __smo(recipient, data, coins);
 }
 
 // ::check-ir::
 
-// check: $(v10=$VAL) = get_local { b256, u64, u64 }
-// check: $(v13=$VAL) = insert_value $v10, { b256, u64, u64 }, $VAL, 0
-// check: $(v15=$VAL) = insert_value $v13, { b256, u64, u64 }, $VAL, 1
-// check: $(v16=$VAL) = insert_value $v15, { b256, u64, u64 }, $VAL, 2
-// check: $(v17=$VAL) = get_local u64
-// check: $(v18=$VAL) = load $v17
-// check: $(v19=$VAL) = get_local u64
-// check: $(v20=$VAL) = load $v19
-// check: $(v21=$VAL) = const u64 16
-// check: smo $v16, $v21, $v18, $v20
+// Match the first one where data is initialised.
+// check: $(recip_ptr=$VAL) = get_local ptr b256, __const
+
+// Match the second one where we read data as a mem_copy_val later on
+// check: $(data_ptr=$VAL) = get_local ptr u64, data
+
+// check: $(temp_ptr=$VAL) = get_local ptr { u64, u64 }, $(=__anon_\d+)
+
+// check: $(idx_0=$VAL) = const u64 0
+// check: $(field_0_ptr=$VAL) = get_elem_ptr $temp_ptr, ptr u64, $idx_0
+// check: $(zero=$VAL) = const u64 0
+// check: store $zero to $field_0_ptr
+
+// check: $(idx_1=$VAL) = const u64 1
+// check: $(field_1_ptr=$VAL) = get_elem_ptr $temp_ptr, ptr u64, $idx_1
+// check: mem_copy_val $field_1_ptr, $data_ptr
+
+// check: $(coins_ptr=$VAL) = get_local ptr u64, coins
+// check: $(coins=$VAL) = load $coins_ptr
+// check: $(sixtn=$VAL) = const u64 16
+// check: smo $recip_ptr, $temp_ptr, $sixtn, $coins
 
 // ::check-asm::
 

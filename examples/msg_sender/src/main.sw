@@ -1,7 +1,5 @@
 contract;
 
-use std::auth::msg_sender;
-
 abi MyOwnedContract {
     fn receive(field_1: u64) -> bool;
 }

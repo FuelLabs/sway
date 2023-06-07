@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::{DeclEngineIndex, DeclRefFunction, ReplaceDecls},
+    decl_engine::{DeclEngineInsert, DeclRefFunction, ReplaceDecls},
     error::*,
     language::{ty, *},
     semantic_analysis::{ast_node::*, TypeCheckContext},
@@ -19,7 +19,7 @@ pub(crate) fn instantiate_function_application(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let decl_engine = ctx.decl_engine;
+    let decl_engine = ctx.engines.de();
     let engines = ctx.engines();
 
     let mut function_decl = decl_engine.get_function(&function_decl_ref);
@@ -90,17 +90,17 @@ pub(crate) fn instantiate_function_application(
     let return_type = function_decl.return_type.clone();
     let new_decl_ref = decl_engine
         .insert(function_decl)
-        .with_parent(decl_engine, function_decl_ref.id.into());
+        .with_parent(decl_engine, (*function_decl_ref.id()).into());
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {
             call_path: call_path_binding.inner.clone(),
             contract_call_params: HashMap::new(),
             arguments: typed_arguments_with_names,
-            function_decl_ref: new_decl_ref,
-            self_state_idx: None,
+            fn_ref: new_decl_ref,
             selector: None,
             type_binding: Some(call_path_binding.strip_inner()),
+            call_path_typeid: None,
         },
         return_type: return_type.type_id,
         span,
@@ -117,8 +117,7 @@ fn type_check_arguments(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
+    let type_engine = ctx.engines.te();
     let engines = ctx.engines();
 
     let typed_arguments = arguments
@@ -127,7 +126,7 @@ fn type_check_arguments(
             let ctx = ctx
                 .by_ref()
                 .with_help_text("")
-                .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
+                .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
             check!(
                 ty::TyExpression::type_check(ctx, arg.clone()),
                 ty::TyExpression::error(arg.span(), engines),
@@ -154,15 +153,15 @@ fn unify_arguments_and_parameters(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
+    let type_engine = ctx.engines.te();
+    let engines = ctx.engines();
     let mut typed_arguments_and_names = vec![];
 
     for (arg, param) in typed_arguments.into_iter().zip(parameters.iter()) {
         // unify the type of the argument with the type of the param
         check!(
             CompileResult::from(type_engine.unify(
-                decl_engine,
+                engines,
                 arg.return_type,
                 param.type_argument.type_id,
                 &arg.span,
@@ -197,7 +196,7 @@ fn unify_arguments_and_parameters(
 
 pub(crate) fn check_function_arguments_arity(
     arguments_len: usize,
-    function_decl: &ty::TyFunctionDeclaration,
+    function_decl: &ty::TyFunctionDecl,
     call_path: &CallPath,
     is_method_call_syntax_used: bool,
 ) -> CompileResult<()> {

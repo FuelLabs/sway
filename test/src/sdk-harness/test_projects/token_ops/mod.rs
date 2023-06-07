@@ -1,6 +1,6 @@
 use fuels::{
     prelude::*,
-    tx::AssetId,
+    types::AssetId,
     types::{Bits256, Identity},
 };
 use std::str::FromStr;
@@ -377,7 +377,6 @@ async fn can_send_message_output_with_data() {
     let call_response = fuelcoin_instance
         .methods()
         .send_message(Bits256(*recipient_address), vec![100, 75, 50], amount)
-        .append_message_outputs(1)
         .call()
         .await
         .unwrap();
@@ -417,7 +416,6 @@ async fn can_send_message_output_without_data() {
     let call_response = fuelcoin_instance
         .methods()
         .send_message(Bits256(*recipient_address), Vec::<u64>::new(), amount)
-        .append_message_outputs(1)
         .call()
         .await
         .unwrap();
@@ -435,32 +433,34 @@ async fn can_send_message_output_without_data() {
     assert_eq!(Vec::<u8>::new(), message_receipt.data().unwrap());
 }
 
-async fn get_fuelcoin_instance(wallet: WalletUnlocked) -> (TestFuelCoinContract, ContractId) {
-    let fuelcoin_id = Contract::deploy(
+async fn get_fuelcoin_instance(
+    wallet: WalletUnlocked,
+) -> (TestFuelCoinContract<WalletUnlocked>, ContractId) {
+    let fuelcoin_id = Contract::load_from(
         "test_projects/token_ops/out/debug/token_ops.bin",
-        &wallet,
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "test_projects/token_ops/out/debug/token_ops-storage_slots.json".to_string(),
-        )),
+        LoadConfiguration::default(),
     )
+    .unwrap()
+    .deploy(&wallet, TxParameters::default())
     .await
     .unwrap();
 
+    wallet
+        .force_transfer_to_contract(&fuelcoin_id, 1000, AssetId::BASE, TxParameters::default())
+        .await
+        .unwrap();
     let fuelcoin_instance = TestFuelCoinContract::new(fuelcoin_id.clone(), wallet);
 
     (fuelcoin_instance, fuelcoin_id.into())
 }
 
 async fn get_balance_contract_id(wallet: WalletUnlocked) -> ContractId {
-    let balance_id = Contract::deploy(
+    let balance_id = Contract::load_from(
         "test_artifacts/balance_contract/out/debug/balance_contract.bin",
-        &wallet,
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "test_projects/token_ops/out/debug/token_ops-storage_slots.json".to_string(),
-        )),
+        LoadConfiguration::default(),
     )
+    .unwrap()
+    .deploy(&wallet, TxParameters::default())
     .await
     .unwrap();
 

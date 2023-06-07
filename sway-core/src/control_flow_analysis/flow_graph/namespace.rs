@@ -1,7 +1,8 @@
 use super::{EntryPoint, ExitPoint};
 use crate::{
     language::{
-        ty::{self, TyFunctionDeclaration, TyFunctionSig},
+        parsed::TreeType,
+        ty::{self, TyConstantDecl, TyFunctionDecl, TyFunctionSig},
         CallPath,
     },
     type_system::TypeInfo,
@@ -9,7 +10,7 @@ use crate::{
 };
 use petgraph::prelude::NodeIndex;
 use std::collections::HashMap;
-use sway_types::IdentUnique;
+use sway_types::{IdentUnique, Named};
 
 #[derive(Default, Clone)]
 /// Represents a single entry in the [ControlFlowNamespace]'s function namespace. Contains various
@@ -27,6 +28,17 @@ pub(crate) struct StructNamespaceEntry {
     pub(crate) fields: HashMap<String, NodeIndex>,
 }
 
+#[derive(Clone, Debug)]
+pub(crate) struct TraitNamespaceEntry {
+    pub(crate) trait_idx: NodeIndex,
+    pub(crate) module_tree_type: TreeType,
+}
+
+#[derive(Default, Clone)]
+pub(crate) struct VariableNamespaceEntry {
+    pub(crate) variable_decl_ix: NodeIndex,
+}
+
 #[derive(Default, Clone)]
 /// This namespace holds mappings from various declarations to their indexes in the graph. This is
 /// used for connecting those vertices when the declarations are instantiated.
@@ -37,7 +49,7 @@ pub(crate) struct StructNamespaceEntry {
 pub struct ControlFlowNamespace {
     pub(crate) function_namespace: HashMap<(IdentUnique, TyFunctionSig), FunctionNamespaceEntry>,
     pub(crate) enum_namespace: HashMap<IdentUnique, (NodeIndex, HashMap<Ident, NodeIndex>)>,
-    pub(crate) trait_namespace: HashMap<CallPath, NodeIndex>,
+    pub(crate) trait_namespace: HashMap<CallPath, TraitNamespaceEntry>,
     /// This is a mapping from trait name to method names and their node indexes
     pub(crate) trait_method_namespace: HashMap<CallPath, HashMap<Ident, NodeIndex>>,
     /// This is a mapping from struct name to field names and their node indexes
@@ -45,20 +57,24 @@ pub struct ControlFlowNamespace {
     pub(crate) struct_namespace: HashMap<String, StructNamespaceEntry>,
     pub(crate) const_namespace: HashMap<Ident, NodeIndex>,
     pub(crate) storage: HashMap<Ident, NodeIndex>,
+    pub(crate) code_blocks: Vec<ControlFlowCodeBlock>,
+    pub(crate) alias: HashMap<IdentUnique, NodeIndex>,
+}
+
+#[derive(Default, Clone)]
+pub struct ControlFlowCodeBlock {
+    pub(crate) variables: HashMap<Ident, VariableNamespaceEntry>,
 }
 
 impl ControlFlowNamespace {
-    pub(crate) fn get_function(
-        &self,
-        fn_decl: &TyFunctionDeclaration,
-    ) -> Option<&FunctionNamespaceEntry> {
+    pub(crate) fn get_function(&self, fn_decl: &TyFunctionDecl) -> Option<&FunctionNamespaceEntry> {
         let ident: IdentUnique = fn_decl.name.clone().into();
         self.function_namespace
             .get(&(ident, TyFunctionSig::from_fn_decl(fn_decl)))
     }
     pub(crate) fn insert_function(
         &mut self,
-        fn_decl: &ty::TyFunctionDeclaration,
+        fn_decl: &ty::TyFunctionDecl,
         entry: FunctionNamespaceEntry,
     ) {
         let ident = &fn_decl.name;
@@ -66,10 +82,26 @@ impl ControlFlowNamespace {
         self.function_namespace
             .insert((ident, TyFunctionSig::from_fn_decl(fn_decl)), entry);
     }
-    pub(crate) fn get_constant(&self, ident: &Ident) -> Option<&NodeIndex> {
+    pub(crate) fn get_constant(&self, const_decl: &TyConstantDecl) -> Option<&NodeIndex> {
+        self.const_namespace.get(&const_decl.name().clone())
+    }
+    #[allow(dead_code)]
+    pub(crate) fn insert_constant(
+        &mut self,
+        const_decl: TyConstantDecl,
+        declaration_node: NodeIndex,
+    ) {
+        self.const_namespace
+            .insert(const_decl.name().clone(), declaration_node);
+    }
+    pub(crate) fn get_global_constant(&self, ident: &Ident) -> Option<&NodeIndex> {
         self.const_namespace.get(ident)
     }
-    pub(crate) fn insert_constant(&mut self, const_name: Ident, declaration_node: NodeIndex) {
+    pub(crate) fn insert_global_constant(
+        &mut self,
+        const_name: Ident,
+        declaration_node: NodeIndex,
+    ) {
         self.const_namespace.insert(const_name, declaration_node);
     }
     pub(crate) fn insert_enum(&mut self, enum_name: Ident, enum_decl_index: NodeIndex) {
@@ -110,11 +142,11 @@ impl ControlFlowNamespace {
         Some((*enum_ix, *enum_decl.get(variant_name)?))
     }
 
-    pub(crate) fn add_trait(&mut self, trait_name: CallPath, trait_idx: NodeIndex) {
-        self.trait_namespace.insert(trait_name, trait_idx);
+    pub(crate) fn add_trait(&mut self, trait_name: CallPath, trait_entry: TraitNamespaceEntry) {
+        self.trait_namespace.insert(trait_name, trait_entry);
     }
 
-    pub(crate) fn find_trait(&self, name: &CallPath) -> Option<&NodeIndex> {
+    pub(crate) fn find_trait(&self, name: &CallPath) -> Option<&TraitNamespaceEntry> {
         self.trait_namespace.get(name)
     }
 
@@ -187,5 +219,33 @@ impl ControlFlowNamespace {
             .get(struct_name)?
             .fields
             .get(field_name)
+    }
+    pub(crate) fn push_code_block(&mut self) {
+        self.code_blocks.push(ControlFlowCodeBlock {
+            variables: HashMap::<Ident, VariableNamespaceEntry>::new(),
+        });
+    }
+    pub(crate) fn pop_code_block(&mut self) {
+        self.code_blocks.pop();
+    }
+    pub(crate) fn insert_variable(&mut self, name: Ident, entry: VariableNamespaceEntry) {
+        if let Some(code_block) = self.code_blocks.last_mut() {
+            code_block.variables.insert(name, entry);
+        }
+    }
+    pub(crate) fn get_variable(&mut self, name: &Ident) -> Option<VariableNamespaceEntry> {
+        for code_block in self.code_blocks.iter().rev() {
+            if let Some(entry) = code_block.variables.get(name).cloned() {
+                return Some(entry);
+            }
+        }
+        None
+    }
+
+    pub(crate) fn insert_alias(&mut self, name: Ident, entry: NodeIndex) {
+        self.alias.insert(name.into(), entry);
+    }
+    pub(crate) fn get_alias(&self, name: &Ident) -> Option<&NodeIndex> {
+        self.alias.get(&name.into())
     }
 }

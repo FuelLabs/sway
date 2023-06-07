@@ -14,7 +14,7 @@ use crate::{
 };
 use sway_types::{style::is_snake_case, Spanned};
 
-impl ty::TyFunctionDeclaration {
+impl ty::TyFunctionDecl {
     pub fn type_check(
         mut ctx: TypeCheckContext,
         fn_decl: FunctionDeclaration,
@@ -37,8 +37,8 @@ impl ty::TyFunctionDeclaration {
             where_clause,
         } = fn_decl;
 
-        let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
+        let type_engine = ctx.engines.te();
+        let engines = ctx.engines();
 
         // If functions aren't allowed in this location, return an error.
         if ctx.functions_disallowed() {
@@ -68,7 +68,7 @@ impl ty::TyFunctionDeclaration {
         // Type check the type parameters. This will also insert them into the
         // current namespace.
         let new_type_parameters = check!(
-            TypeParameter::type_check_type_params(ctx.by_ref(), type_parameters, false),
+            TypeParameter::type_check_type_params(ctx.by_ref(), type_parameters),
             return err(warnings, errors),
             warnings,
             errors
@@ -78,7 +78,7 @@ impl ty::TyFunctionDeclaration {
         let mut new_parameters = vec![];
         for parameter in parameters.into_iter() {
             new_parameters.push(check!(
-                ty::TyFunctionParameter::type_check(ctx.by_ref(), parameter, is_method),
+                ty::TyFunctionParameter::type_check(ctx.by_ref(), parameter),
                 continue,
                 warnings,
                 errors
@@ -96,7 +96,7 @@ impl ty::TyFunctionDeclaration {
                 EnforceTypeArguments::Yes,
                 None
             ),
-            type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+            type_engine.insert(engines, TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );
@@ -115,7 +115,7 @@ impl ty::TyFunctionDeclaration {
                 ty::TyCodeBlock::type_check(ctx, body),
                 (
                     ty::TyCodeBlock { contents: vec![] },
-                    type_engine.insert(decl_engine, TypeInfo::ErrorRecovery)
+                    type_engine.insert(engines, TypeInfo::ErrorRecovery)
                 ),
                 warnings,
                 errors
@@ -146,7 +146,16 @@ impl ty::TyFunctionDeclaration {
             (visibility, ctx.mode() == Mode::ImplAbiFn)
         };
 
-        let function_decl = ty::TyFunctionDeclaration {
+        check!(
+            return_type
+                .type_id
+                .check_type_parameter_bounds(&ctx, &return_type.span, vec![]),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        let function_decl = ty::TyFunctionDecl {
             name,
             body,
             parameters: new_parameters,
@@ -175,13 +184,12 @@ fn unify_return_statements(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
+    let type_engine = ctx.engines.te();
 
     for stmt in return_statements.iter() {
         check!(
             CompileResult::from(type_engine.unify_with_self(
-                decl_engine,
+                ctx.engines(),
                 stmt.return_type,
                 return_type,
                 ctx.self_type(),
@@ -204,15 +212,14 @@ fn unify_return_statements(
 
 #[test]
 fn test_function_selector_behavior() {
-    use crate::{decl_engine::DeclEngine, language::Visibility};
+    use crate::language::Visibility;
+    use crate::Engines;
     use sway_types::{integer_bits::IntegerBits, Ident, Span};
 
-    let type_engine = TypeEngine::default();
-    let decl_engine = DeclEngine::default();
-
-    let decl = ty::TyFunctionDeclaration {
+    let engines = Engines::default();
+    let decl = ty::TyFunctionDecl {
         purity: Default::default(),
-        name: Ident::new_no_span("foo"),
+        name: Ident::new_no_span("foo".into()),
         implementing_type: None,
         body: ty::TyCodeBlock { contents: vec![] },
         parameters: vec![],
@@ -225,40 +232,41 @@ fn test_function_selector_behavior() {
         where_clause: vec![],
     };
 
-    let selector_text = match decl.to_selector_name(&type_engine, &decl_engine).value {
+    let selector_text = match decl.to_selector_name(&engines).value {
         Some(value) => value,
         _ => panic!("test failure"),
     };
 
     assert_eq!(selector_text, "foo()".to_string());
 
-    let decl = ty::TyFunctionDeclaration {
+    let decl = ty::TyFunctionDecl {
         purity: Default::default(),
-        name: Ident::new_with_override("bar", Span::dummy()),
+        name: Ident::new_with_override("bar".into(), Span::dummy()),
         implementing_type: None,
         body: ty::TyCodeBlock { contents: vec![] },
         parameters: vec![
             ty::TyFunctionParameter {
-                name: Ident::new_no_span("foo"),
+                name: Ident::new_no_span("foo".into()),
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
-                type_argument: type_engine
-                    .insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy())))
+                type_argument: engines
+                    .te()
+                    .insert(&engines, TypeInfo::Str(Length::new(5, Span::dummy())))
                     .into(),
             },
             ty::TyFunctionParameter {
-                name: Ident::new_no_span("baz"),
+                name: Ident::new_no_span("baz".into()),
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
                 type_argument: TypeArgument {
-                    type_id: type_engine.insert(
-                        &decl_engine,
-                        TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
-                    ),
-                    initial_type_id: type_engine
-                        .insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy()))),
+                    type_id: engines
+                        .te()
+                        .insert(&engines, TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
+                    initial_type_id: engines
+                        .te()
+                        .insert(&engines, TypeInfo::Str(Length::new(5, Span::dummy()))),
                     span: Span::dummy(),
                     call_path_tree: None,
                 },
@@ -273,7 +281,7 @@ fn test_function_selector_behavior() {
         where_clause: vec![],
     };
 
-    let selector_text = match decl.to_selector_name(&type_engine, &decl_engine).value {
+    let selector_text = match decl.to_selector_name(&engines).value {
         Some(value) => value,
         _ => panic!("test failure"),
     };

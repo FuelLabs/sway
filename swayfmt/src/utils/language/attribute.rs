@@ -1,5 +1,4 @@
 use crate::{
-    comments::write_comments,
     formatter::*,
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
@@ -19,54 +18,45 @@ impl<T: Format + Spanned> Format for Annotated<T> {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let mut attr_end = None;
         // format each `Attribute`
         for attr in &self.attribute_list {
-            // Write trailing comments after the end of the previous attribute
-            if let Some(end) = attr_end {
-                write_comments(formatted_code, end..attr.span().start(), formatter).and_then(
-                    |w| {
-                        if w {
-                            write!(
-                                formatted_code,
-                                "{}",
-                                &formatter.shape.indent.to_string(&formatter.config)?,
-                            )?;
-                        };
-
-                        Ok(())
-                    },
-                )?;
-            };
             attr.format(formatted_code, formatter)?;
+
             write!(
                 formatted_code,
                 "{}",
                 &formatter.shape.indent.to_string(&formatter.config)?,
             )?;
-            attr_end = Some(attr.span().end());
         }
-
-        // Write trailing comments after the end of the last attribute
-        if let Some(end) = attr_end {
-            write_comments(formatted_code, end..self.value.span().start(), formatter).and_then(
-                |w| {
-                    if w {
-                        write!(
-                            formatted_code,
-                            "{}",
-                            &formatter.shape.indent.to_string(&formatter.config)?,
-                        )?;
-                    };
-
-                    Ok(())
-                },
-            )?;
-        };
         // format `ItemKind`
         self.value.format(formatted_code, formatter)?;
 
         Ok(())
+    }
+}
+
+impl Format for AttributeArg {
+    fn format(
+        &self,
+        formatted_code: &mut FormattedCode,
+        _formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        write!(formatted_code, "{}", self.name.span().as_str())?;
+        if let Some(value) = &self.value {
+            write!(formatted_code, " = {}", value.span().as_str())?;
+        }
+
+        Ok(())
+    }
+}
+impl LeafSpans for AttributeArg {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = Vec::new();
+        collected_spans.push(ByteSpan::from(self.name.span()));
+        if let Some(value) = &self.value {
+            collected_spans.push(ByteSpan::from(value.span()));
+        }
+        collected_spans
     }
 }
 
@@ -90,12 +80,16 @@ impl Format for AttributeDecl {
                 .map(|args| args.inner.final_value_opt.as_ref())
             {
                 match self.hash_kind {
-                    AttributeHashKind::Inner(_) => {
-                        writeln!(formatted_code, "//!{}", doc_comment.as_str().trim_end())?
-                    }
-                    AttributeHashKind::Outer(_) => {
-                        writeln!(formatted_code, "///{}", doc_comment.as_str().trim_end())?
-                    }
+                    AttributeHashKind::Inner(_) => writeln!(
+                        formatted_code,
+                        "//!{}",
+                        doc_comment.name.as_str().trim_end()
+                    )?,
+                    AttributeHashKind::Outer(_) => writeln!(
+                        formatted_code,
+                        "///{}",
+                        doc_comment.name.as_str().trim_end()
+                    )?,
                 }
             }
             return Ok(());

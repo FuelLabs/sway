@@ -2,7 +2,7 @@ use crate::{
     decl_engine::DeclEngine,
     language::ty,
     type_system::{TypeId, TypeInfo},
-    TypeEngine,
+    TypeArgument, TypeEngine,
 };
 
 use super::convert::convert_resolved_typeid_no_span;
@@ -11,7 +11,7 @@ use sway_error::error::CompileError;
 use sway_ir::{Context, Type};
 use sway_types::span::Spanned;
 
-pub(super) fn create_enum_aggregate(
+pub(super) fn create_tagged_union_type(
     type_engine: &TypeEngine,
     decl_engine: &DeclEngine,
     context: &mut Context,
@@ -69,7 +69,7 @@ pub(super) fn create_array_aggregate(
     Ok(Type::new_array(context, element_type, count))
 }
 
-pub(super) fn get_aggregate_for_types(
+pub(super) fn get_struct_for_types(
     type_engine: &TypeEngine,
     decl_engine: &DeclEngine,
     context: &mut Context,
@@ -91,7 +91,7 @@ pub(super) fn get_struct_name_field_index_and_type(
     let ty_info = type_engine
         .to_typeinfo(field_type, &field_kind.span())
         .ok()?;
-    match (ty_info, field_kind) {
+    match (ty_info, &field_kind) {
         (TypeInfo::Struct(decl_ref), ty::ProjectionKind::StructField { name: field_name }) => {
             let decl = decl_engine.get_struct(&decl_ref);
             Some((
@@ -99,10 +99,17 @@ pub(super) fn get_struct_name_field_index_and_type(
                 decl.fields
                     .iter()
                     .enumerate()
-                    .find(|(_, field)| field.name == field_name)
+                    .find(|(_, field)| field.name == field_name.clone())
                     .map(|(idx, field)| (idx as u64, field.type_argument.type_id)),
             ))
         }
+        (
+            TypeInfo::Alias {
+                ty: TypeArgument { type_id, .. },
+                ..
+            },
+            _,
+        ) => get_struct_name_field_index_and_type(type_engine, decl_engine, type_id, field_kind),
         _otherwise => None,
     }
 }
@@ -135,9 +142,7 @@ impl TypedNamedField for ty::ProjectionKind {
 }
 
 use ty::TyStorageAccessDescriptor;
-use ty::TyStorageReassignDescriptor;
 impl_typed_named_field_for!(TyStorageAccessDescriptor);
-impl_typed_named_field_for!(TyStorageReassignDescriptor);
 
 pub(super) fn get_indices_for_struct_access(
     type_engine: &TypeEngine,

@@ -2,6 +2,7 @@ use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
+    decl_engine::DeclRefStruct,
     error::*,
     language::{parsed::*, ty, CallPath},
     semantic_analysis::TypeCheckContext,
@@ -17,14 +18,15 @@ pub(crate) fn struct_instantiation(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
+    let type_engine = ctx.engines.te();
+    let decl_engine = ctx.engines.de();
     let engines = ctx.engines();
 
     // We need the call_path_binding to have types that point to proper definitions so the LSP can
     // look for them, but its types haven't been resolved yet.
     // To that end we do a dummy type check which has the side effect of resolving the types.
-    let _ = TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref());
+    let _: CompileResult<(DeclRefStruct, _, _)> =
+        TypeBinding::type_check(&mut call_path_binding, ctx.by_ref());
 
     let TypeBinding {
         inner: CallPath {
@@ -74,24 +76,25 @@ pub(crate) fn struct_instantiation(
     // resolve the type of the struct decl
     let type_id = check!(
         ctx.resolve_type_with_self(
-            type_engine.insert(decl_engine, type_info),
+            type_engine.insert(engines, type_info),
             &inner_span,
             EnforceTypeArguments::No,
             Some(&type_info_prefix)
         ),
-        type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+        type_engine.insert(engines, TypeInfo::ErrorRecovery),
         warnings,
         errors
     );
 
     // extract the struct name and fields from the type info
     let type_info = type_engine.get(type_id);
-    let struct_decl = decl_engine.get_struct(&check!(
+    let struct_ref = check!(
         type_info.expect_struct(engines, &span),
         return err(warnings, errors),
         warnings,
         errors
-    ));
+    );
+    let struct_decl = decl_engine.get_struct(&struct_ref);
     let struct_name = struct_decl.call_path.suffix;
     let struct_fields = struct_decl.fields;
     let mut struct_fields = struct_fields;
@@ -127,11 +130,18 @@ pub(crate) fn struct_instantiation(
         }
     }
 
+    check!(
+        type_id.check_type_parameter_bounds(&ctx, &span, vec![]),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::StructExpression {
-            struct_name,
+            struct_ref,
             fields: typed_fields,
-            span: inner_span,
+            instantiation_span: inner_span,
             call_path_binding,
         },
         return_type: type_id,
@@ -152,8 +162,8 @@ fn type_check_field_arguments(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
+    let type_engine = ctx.engines.te();
+    let engines = ctx.engines();
 
     let mut typed_fields = vec![];
 
@@ -163,7 +173,7 @@ fn type_check_field_arguments(
                 let ctx = ctx
                     .by_ref()
                     .with_help_text("")
-                    .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
+                    .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
                 let value = check!(
                     ty::TyExpression::type_check(ctx, field.value.clone()),
                     continue,
@@ -186,7 +196,7 @@ fn type_check_field_arguments(
                     name: struct_field.name.clone(),
                     value: ty::TyExpression {
                         expression: ty::TyExpressionVariant::Tuple { fields: vec![] },
-                        return_type: type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+                        return_type: type_engine.insert(engines, TypeInfo::ErrorRecovery),
                         span: span.clone(),
                     },
                 });
@@ -207,14 +217,14 @@ fn unify_field_arguments_and_struct_fields(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
+    let type_engine = ctx.engines.te();
+    let engines = ctx.engines();
 
     for struct_field in struct_fields.iter() {
         if let Some(typed_field) = typed_fields.iter().find(|x| x.name == struct_field.name) {
             check!(
-                CompileResult::from(type_engine.unify_adt(
-                    decl_engine,
+                CompileResult::from(type_engine.unify(
+                    engines,
                     typed_field.value.return_type,
                     struct_field.type_argument.type_id,
                     &typed_field.value.span,

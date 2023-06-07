@@ -1,5 +1,5 @@
 //! Traits for conversions between types.
-library convert;
+library;
 
 use ::option::Option;
 
@@ -11,7 +11,7 @@ pub trait From<T> {
 
 // TODO: return a Result when https://github.com/FuelLabs/sway/issues/610 is resolved
 /// Used to attempt to do value-to-value conversions.
-/// Returns Option::None if the conversion can't be performed in a lossless manner.
+/// Returns None if the conversion can't be performed in a lossless manner.
 pub trait TryFrom<T> {
     fn try_from(b: T) -> Option<Self>;
 }

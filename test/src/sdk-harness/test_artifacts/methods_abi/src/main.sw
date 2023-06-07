@@ -1,4 +1,4 @@
-library methods_abi;
+library;
 
 abi MethodsContract {
     #[storage(read, write)]
