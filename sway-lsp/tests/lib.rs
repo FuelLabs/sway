@@ -1751,6 +1751,11 @@ lsp_capability_test!(
     doc_comments_dir().join("src/main.sw")
 );
 lsp_capability_test!(
+    code_action_function,
+    code_actions::code_action_function_request,
+    test_fixtures_dir().join("tokens/consts/src/main.sw")
+);
+lsp_capability_test!(
     code_action_struct,
     code_actions::code_action_struct_request,
     doc_comments_dir().join("src/main.sw")

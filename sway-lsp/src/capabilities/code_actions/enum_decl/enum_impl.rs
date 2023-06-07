@@ -2,22 +2,22 @@ use crate::capabilities::code_actions::{
     common::generate_impl::{GenerateImplCodeAction, TAB},
     CodeAction, CodeActionContext, CODE_ACTION_IMPL_TITLE,
 };
-use sway_core::language::ty::TyStructDecl;
+use sway_core::language::ty::TyEnumDecl;
 use tower_lsp::lsp_types::{Range, Url};
 
-pub(crate) struct StructImplCodeAction<'a> {
-    decl: &'a TyStructDecl,
+pub(crate) struct EnumImplCodeAction<'a> {
+    decl: &'a TyEnumDecl,
     uri: &'a Url,
 }
 
-impl<'a> GenerateImplCodeAction<'a, TyStructDecl> for StructImplCodeAction<'a> {
+impl<'a> GenerateImplCodeAction<'a, TyEnumDecl> for EnumImplCodeAction<'a> {
     fn decl_name(&self) -> String {
         self.decl.call_path.suffix.to_string()
     }
 }
 
-impl<'a> CodeAction<'a, TyStructDecl> for StructImplCodeAction<'a> {
-    fn new(ctx: CodeActionContext<'a>, decl: &'a TyStructDecl) -> Self {
+impl<'a> CodeAction<'a, TyEnumDecl> for EnumImplCodeAction<'a> {
+    fn new(ctx: CodeActionContext<'a>, decl: &'a TyEnumDecl) -> Self {
         Self { decl, uri: ctx.uri }
     }
 
@@ -37,7 +37,7 @@ impl<'a> CodeAction<'a, TyStructDecl> for StructImplCodeAction<'a> {
         self.range_after()
     }
 
-    fn decl(&self) -> &TyStructDecl {
+    fn decl(&self) -> &TyEnumDecl {
         self.decl
     }
 

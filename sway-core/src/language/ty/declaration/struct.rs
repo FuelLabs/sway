@@ -125,6 +125,12 @@ impl TyStructDecl {
     }
 }
 
+impl Spanned for TyStructField {
+    fn span(&self) -> Span {
+        self.span.clone()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct TyStructField {
     pub name: Ident,

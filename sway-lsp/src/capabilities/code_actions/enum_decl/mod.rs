@@ -1,7 +1,7 @@
-pub(crate) mod struct_impl;
-pub(crate) mod struct_new;
+pub(crate) mod doc_comment;
+pub(crate) mod enum_impl;
 
-use self::{struct_impl::StructImplCodeAction, struct_new::StructNewCodeAction};
+use self::enum_impl::EnumImplCodeAction;
 use crate::capabilities::code_actions::{CodeAction, CodeActionContext};
 use sway_core::{decl_engine::id::DeclId, language::ty};
 use tower_lsp::lsp_types::CodeActionOrCommand;
@@ -9,13 +9,12 @@ use tower_lsp::lsp_types::CodeActionOrCommand;
 use super::common::generate_doc::BasicDocCommentCodeAction;
 
 pub(crate) fn code_actions(
-    decl_id: &DeclId<ty::TyStructDecl>,
+    decl_id: &DeclId<ty::TyEnumDecl>,
     ctx: CodeActionContext,
 ) -> Option<Vec<CodeActionOrCommand>> {
-    let decl = ctx.engines.de().get_struct(decl_id);
+    let decl = ctx.engines.de().get_enum(decl_id);
     Some(vec![
-        StructImplCodeAction::new(ctx.clone(), &decl).code_action(),
-        StructNewCodeAction::new(ctx.clone(), &decl).code_action(),
+        EnumImplCodeAction::new(ctx.clone(), &decl).code_action(),
         BasicDocCommentCodeAction::new(ctx, &decl).code_action(),
     ])
 }
