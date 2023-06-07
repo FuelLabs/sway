@@ -63,7 +63,7 @@
 - [Traits](./documentation/language/traits/index.md)
 - [Generics](./documentation/language/generics/index.md)
 - [Style Guide](./documentation/language/style-guide/index.md)
-  - [Letter Casing](./documentation/language/style-guide/letter-casing.md)
+  - [Naming Convention](./documentation/language/style-guide/name-convention.md)
   - [Type Annotations](./documentation/language/style-guide/annotations.md)
   - [Struct Shorthand](./documentation/language/style-guide/structs.md)
   - [Enums](./documentation/language/style-guide/enums.md)
