@@ -17,7 +17,7 @@ impl ty::TyConstantDecl {
         let mut errors = vec![];
         let mut warnings = vec![];
 
-        let type_engine = ctx.type_engine;
+        let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
         let ConstantDeclaration {
@@ -107,7 +107,7 @@ impl ty::TyConstantDecl {
 
     /// Used to create a stubbed out constant when the constant fails to
     /// compile, preventing cascading namespace errors.
-    pub(crate) fn error(engines: Engines<'_>, decl: parsed::ConstantDeclaration) -> TyConstantDecl {
+    pub(crate) fn error(engines: &Engines, decl: parsed::ConstantDeclaration) -> TyConstantDecl {
         let type_engine = engines.te();
         let parsed::ConstantDeclaration {
             name,

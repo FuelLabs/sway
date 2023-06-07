@@ -173,7 +173,7 @@ following:
 <!--TODO add test here once examples are tested-->
 
 ```rust,ignore
-use fuels::{prelude::*, tx::ContractId};
+use fuels::{prelude::*, types::ContractId};
 
 // Load abi from json
 abigen!(TestContract, "out/debug/my-fuel-project-abi.json");
@@ -191,14 +191,17 @@ async fn get_contract_instance() -> (TestContract, ContractId) {
     .await;
     let wallet = wallets.pop().unwrap();
 
-    let id = Contract::deploy(
+    let id = Contract::load_from(
         "./out/debug/my-fuel-project.bin",
-        &wallet,
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "./out/debug/my-fuel-project-storage_slots.json".to_string(),
-        )),
+        LoadConfiguration::default().set_storage_configuration(
+            StorageConfiguration::load_from(
+                "./out/debug/my-fuel-project-storage_slots.json",
+            )
+            .unwrap(),
+        ),
     )
+    .unwrap()
+    .deploy(&wallet, TxParameters::default())
     .await
     .unwrap();
 

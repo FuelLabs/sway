@@ -10,11 +10,12 @@ abigen!(Contract(
 async fn get_block_instance() -> (BlockTestContract<WalletUnlocked>, ContractId, Provider) {
     let wallet = launch_provider_and_get_wallet().await;
     let provider = wallet.provider().unwrap();
-    let id = Contract::deploy(
+    let id = Contract::load_from(
         "test_projects/block/out/debug/block.bin",
-        &wallet,
-        DeployConfiguration::default(),
+        LoadConfiguration::default(),
     )
+    .unwrap()
+    .deploy(&wallet, TxParameters::default())
     .await
     .unwrap();
     let instance = BlockTestContract::new(id.clone(), wallet.clone());
@@ -37,7 +38,7 @@ async fn can_get_block_height() {
 
 #[tokio::test]
 async fn can_get_header_hash_of_block() {
-    let (instance, _id, provider) = get_block_instance().await;
+    let (instance, _id, _) = get_block_instance().await;
     let block_1 = instance.methods().get_block_height().call().await.unwrap();
     let _block_2 = instance.methods().get_block_height().call().await.unwrap();
     let result = instance

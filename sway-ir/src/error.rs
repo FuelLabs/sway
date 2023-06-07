@@ -50,11 +50,11 @@ pub enum IrError {
     VerifyPtrToIntToNonInteger(String),
     VerifyReturnMismatchedTypes(String),
     VerifyRevertCodeBadType,
-    VerifySmoBadRecipientAndMessageType,
+    VerifySmoBadMessageType,
     VerifySmoCoins,
     VerifySmoMessageSize,
-    VerifySmoNonPointer(String),
-    VerifySmoOutputIndex,
+    VerifySmoRecipientNonPointer(String),
+    VerifySmoMessageNonPointer(String),
     VerifySmoRecipientBadType,
     VerifyStateAccessNumOfSlots,
     VerifyStateAccessQuadNonPointer(String),
@@ -333,14 +333,13 @@ impl fmt::Display for IrError {
             IrError::VerifySmoRecipientBadType => {
                 write!(
                     f,
-                    "Verification failed: \
-                    the struct first arg struct of `smo` must have a `b256` as its first field."
+                    "Verification failed: the `smo` must have a `b256` as its first argument."
                 )
             }
-            IrError::VerifySmoBadRecipientAndMessageType => {
+            IrError::VerifySmoBadMessageType => {
                 write!(
                     f,
-                    "Verification failed: the first arg of of `smo` must be a struct."
+                    "Verification failed: the second arg of of `smo` must be a struct."
                 )
             }
             IrError::VerifySmoMessageSize => {
@@ -349,16 +348,16 @@ impl fmt::Display for IrError {
                     "Verification failed: smo message size must be an integer."
                 )
             }
-            IrError::VerifySmoNonPointer(ty) => {
+            IrError::VerifySmoRecipientNonPointer(ty) => {
                 write!(
                     f,
                     "Verification failed: the first arg of `smo` cannot be a non-pointer of {ty}."
                 )
             }
-            IrError::VerifySmoOutputIndex => {
+            IrError::VerifySmoMessageNonPointer(ty) => {
                 write!(
                     f,
-                    "Verification failed: smo output index value must be an integer."
+                    "Verification failed: the second arg of `smo` cannot be a non-pointer of {ty}."
                 )
             }
             IrError::VerifySmoCoins => {

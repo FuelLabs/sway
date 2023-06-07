@@ -1,0 +1,14 @@
+category = "fail"
+
+# check: $()<S as MyTrait>::asd::method();
+# nextln: $()Unexpected call path segments between qualified root and method name.
+
+# check: $()<S as S2>::method();
+# nextln: $()No method named "method" found for type "S as S2".
+
+# check: $()S::method(); // ambiguous method call here
+# nextln: $()Multiple applicable items in scope.
+# nextln: $()Disambiguate the associated function for candidate #0
+# nextln: $()<S as MySuperTrait>::method(
+# nextln: $()Disambiguate the associated function for candidate #1
+# nextln: $()<S as MyTrait>::method(

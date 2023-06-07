@@ -10,11 +10,12 @@ abigen!(Contract(
 
 async fn get_type_aliases_instance() -> (TypeAliasesTestContract<WalletUnlocked>, ContractId) {
     let wallet = launch_provider_and_get_wallet().await;
-    let id = Contract::deploy(
+    let id = Contract::load_from(
         "test_projects/type_aliases/out/debug/type_aliases.bin",
-        &wallet,
-        DeployConfiguration::default(),
+        LoadConfiguration::default(),
     )
+    .unwrap()
+    .deploy(&wallet, TxParameters::default())
     .await
     .unwrap();
     let instance = TypeAliasesTestContract::new(id.clone(), wallet);

@@ -28,7 +28,7 @@ pub struct TypeParameter {
 }
 
 impl HashWithEngines for TypeParameter {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TypeParameter {
             type_id,
             name_ident,
@@ -48,7 +48,7 @@ impl HashWithEngines for TypeParameter {
 
 impl EqWithEngines for TypeParameter {}
 impl PartialEqWithEngines for TypeParameter {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         let type_engine = engines.te();
         type_engine
             .get(self.type_id)
@@ -59,7 +59,7 @@ impl PartialEqWithEngines for TypeParameter {
 }
 
 impl OrdWithEngines for TypeParameter {
-    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
+    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
         let TypeParameter {
             type_id: lti,
             name_ident: ln,
@@ -87,7 +87,7 @@ impl OrdWithEngines for TypeParameter {
 }
 
 impl SubstTypes for TypeParameter {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         self.type_id.subst(type_mapping, engines);
         self.trait_constraints
             .iter_mut()
@@ -96,7 +96,7 @@ impl SubstTypes for TypeParameter {
 }
 
 impl ReplaceSelfType for TypeParameter {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         self.type_id.replace_self_type(engines, self_type);
         self.trait_constraints
             .iter_mut()
@@ -111,7 +111,7 @@ impl Spanned for TypeParameter {
 }
 
 impl DebugWithEngines for TypeParameter {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         write!(
             f,
             "{}: {:?}",
@@ -162,7 +162,7 @@ impl TypeParameter {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let type_engine = ctx.type_engine;
+        let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
         let TypeParameter {
@@ -331,7 +331,7 @@ fn handle_trait(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let decl_engine = ctx.decl_engine;
+    let decl_engine = ctx.engines.de();
 
     let mut interface_item_refs: InterfaceItemMap = BTreeMap::new();
     let mut item_refs: ItemMap = BTreeMap::new();

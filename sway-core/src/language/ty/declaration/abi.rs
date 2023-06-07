@@ -21,7 +21,7 @@ pub struct TyAbiDecl {
 
 impl EqWithEngines for TyAbiDecl {}
 impl PartialEqWithEngines for TyAbiDecl {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         let TyAbiDecl {
             name: ln,
             interface_surface: lis,
@@ -47,7 +47,7 @@ impl PartialEqWithEngines for TyAbiDecl {
 }
 
 impl HashWithEngines for TyAbiDecl {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TyAbiDecl {
             name,
             interface_surface,
@@ -66,7 +66,7 @@ impl HashWithEngines for TyAbiDecl {
 }
 
 impl CreateTypeId for TyAbiDecl {
-    fn create_type_id(&self, engines: Engines<'_>) -> TypeId {
+    fn create_type_id(&self, engines: &Engines) -> TypeId {
         let type_engine = engines.te();
         let ty = TypeInfo::ContractCaller {
             abi_name: AbiName::Known(self.name.clone().into()),
