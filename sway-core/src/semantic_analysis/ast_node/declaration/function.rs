@@ -37,7 +37,7 @@ impl ty::TyFunctionDecl {
             where_clause,
         } = fn_decl;
 
-        let type_engine = ctx.type_engine;
+        let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
         // If functions aren't allowed in this location, return an error.
@@ -184,7 +184,7 @@ fn unify_return_statements(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
+    let type_engine = ctx.engines.te();
 
     for stmt in return_statements.iter() {
         check!(
@@ -213,13 +213,10 @@ fn unify_return_statements(
 #[test]
 fn test_function_selector_behavior() {
     use crate::language::Visibility;
-    use crate::{decl_engine::DeclEngine, query_engine::QueryEngine, Engines};
+    use crate::Engines;
     use sway_types::{integer_bits::IntegerBits, Ident, Span};
 
-    let type_engine = TypeEngine::default();
-    let decl_engine = DeclEngine::default();
-    let query_engine = QueryEngine::default();
-    let engines = Engines::new(&type_engine, &decl_engine, &query_engine);
+    let engines = Engines::default();
     let decl = ty::TyFunctionDecl {
         purity: Default::default(),
         name: Ident::new_no_span("foo".into()),
@@ -235,7 +232,7 @@ fn test_function_selector_behavior() {
         where_clause: vec![],
     };
 
-    let selector_text = match decl.to_selector_name(engines).value {
+    let selector_text = match decl.to_selector_name(&engines).value {
         Some(value) => value,
         _ => panic!("test failure"),
     };
@@ -253,8 +250,9 @@ fn test_function_selector_behavior() {
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
-                type_argument: type_engine
-                    .insert(engines, TypeInfo::Str(Length::new(5, Span::dummy())))
+                type_argument: engines
+                    .te()
+                    .insert(&engines, TypeInfo::Str(Length::new(5, Span::dummy())))
                     .into(),
             },
             ty::TyFunctionParameter {
@@ -263,10 +261,12 @@ fn test_function_selector_behavior() {
                 is_mutable: false,
                 mutability_span: Span::dummy(),
                 type_argument: TypeArgument {
-                    type_id: type_engine
-                        .insert(engines, TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
-                    initial_type_id: type_engine
-                        .insert(engines, TypeInfo::Str(Length::new(5, Span::dummy()))),
+                    type_id: engines
+                        .te()
+                        .insert(&engines, TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
+                    initial_type_id: engines
+                        .te()
+                        .insert(&engines, TypeInfo::Str(Length::new(5, Span::dummy()))),
                     span: Span::dummy(),
                     call_path_tree: None,
                 },
@@ -281,7 +281,7 @@ fn test_function_selector_behavior() {
         where_clause: vec![],
     };
 
-    let selector_text = match decl.to_selector_name(engines).value {
+    let selector_text = match decl.to_selector_name(&engines).value {
         Some(value) => value,
         _ => panic!("test failure"),
     };

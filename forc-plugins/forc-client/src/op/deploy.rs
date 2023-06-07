@@ -181,8 +181,7 @@ pub async fn deploy_pkg(
     let tx = TransactionBuilder::create(bytecode.as_slice().into(), salt, storage_slots.clone())
         .gas_limit(command.gas.limit)
         .gas_price(command.gas.price)
-        // TODO: Spec says maturity should be u32, but fuel-tx wants u64.
-        .maturity(u64::from(command.maturity.maturity))
+        .maturity(command.maturity.maturity.into())
         .add_output(Output::contract_created(contract_id, state_root))
         .finalize_signed(client.clone(), command.unsigned, command.signing_key)
         .await?;
@@ -244,6 +243,7 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::BuildOpts {
             reverse_order: cmd.print.reverse_order,
         },
         time_phases: cmd.print.time_phases,
+        metrics_outfile: cmd.print.metrics_outfile.clone(),
         minify: pkg::MinifyOpts {
             json_abi: cmd.minify.json_abi,
             json_storage_slots: cmd.minify.json_storage_slots,

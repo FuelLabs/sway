@@ -1,4 +1,4 @@
-use fuels::{prelude::*, tx::ContractId};
+use fuels::{prelude::*, types::ContractId};
 
 abigen!(
     Contract(
@@ -61,19 +61,21 @@ async fn get_contracts() -> (
 ) {
     let wallet = launch_provider_and_get_wallet().await;
 
-    let id_1 = Contract::deploy(
+    let id_1 = Contract::load_from(
         "test_artifacts/auth_testing_contract/out/debug/auth_testing_contract.bin",
-        &wallet,
-        DeployConfiguration::default(),
+        LoadConfiguration::default(),
     )
+    .unwrap()
+    .deploy(&wallet, TxParameters::default())
     .await
     .unwrap();
 
-    let id_2 = Contract::deploy(
+    let id_2 = Contract::load_from(
         "test_artifacts/auth_caller_contract/out/debug/auth_caller_contract.bin",
-        &wallet,
-        DeployConfiguration::default(),
+        LoadConfiguration::default(),
     )
+    .unwrap()
+    .deploy(&wallet, TxParameters::default())
     .await
     .unwrap();
 

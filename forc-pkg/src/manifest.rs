@@ -218,6 +218,8 @@ pub struct BuildProfile {
     #[serde(default)]
     pub time_phases: bool,
     #[serde(default)]
+    pub metrics_outfile: Option<String>,
+    #[serde(default)]
     pub include_tests: bool,
     #[serde(default)]
     pub json_abi_with_callpaths: bool,
@@ -665,6 +667,7 @@ impl BuildProfile {
             print_intermediate_asm: false,
             terse: false,
             time_phases: false,
+            metrics_outfile: None,
             include_tests: false,
             json_abi_with_callpaths: false,
             error_on_warnings: false,
@@ -682,6 +685,7 @@ impl BuildProfile {
             print_intermediate_asm: false,
             terse: false,
             time_phases: false,
+            metrics_outfile: None,
             include_tests: false,
             json_abi_with_callpaths: false,
             error_on_warnings: false,

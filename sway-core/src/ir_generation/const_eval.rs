@@ -2,16 +2,13 @@ use std::ops::{BitAnd, BitOr, BitXor};
 
 use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
-    decl_engine::DeclEngine,
     engine_threading::*,
     language::{
         ty::{self, TyConstantDecl, TyIntrinsicFunctionKind},
         CallPath,
     },
     metadata::MetadataManager,
-    query_engine::QueryEngine,
     semantic_analysis::*,
-    TypeEngine,
 };
 
 use super::{
@@ -34,9 +31,7 @@ use sway_types::{ident::Ident, span::Spanned};
 use sway_utils::mapped_stack::MappedStack;
 
 pub(crate) struct LookupEnv<'a> {
-    pub(crate) type_engine: &'a TypeEngine,
-    pub(crate) decl_engine: &'a DeclEngine,
-    pub(crate) query_engine: &'a QueryEngine,
+    pub(crate) engines: &'a Engines,
     pub(crate) context: &'a mut Context,
     pub(crate) md_mgr: &'a mut MetadataManager,
     pub(crate) module: Module,
@@ -120,7 +115,7 @@ pub(crate) fn compile_const_decl(
             let const_decl = match decl {
                 Ok(decl) => match decl {
                     ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
-                        Some(env.decl_engine.get_constant(decl_id))
+                        Some(env.engines.de().get_constant(decl_id))
                     }
                     _otherwise => const_decl.cloned(),
                 },
@@ -139,7 +134,7 @@ pub(crate) fn compile_const_decl(
                     }
 
                     let const_val = compile_constant_expression(
-                        Engines::new(env.type_engine, env.decl_engine, env.query_engine),
+                        env.engines,
                         env.context,
                         env.md_mgr,
                         env.module,
@@ -173,7 +168,7 @@ pub(crate) fn compile_const_decl(
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_constant_expression(
-    engines: Engines<'_>,
+    engines: &Engines,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -206,7 +201,7 @@ pub(super) fn compile_constant_expression(
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn compile_constant_expression_to_constant(
-    engines: Engines<'_>,
+    engines: &Engines,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -214,11 +209,8 @@ pub(crate) fn compile_constant_expression_to_constant(
     function_compiler: Option<&FnCompiler>,
     const_expr: &ty::TyExpression,
 ) -> Result<Constant, CompileError> {
-    let (type_engine, decl_engine, query_engine) = engines.unwrap();
     let lookup = &mut LookupEnv {
-        type_engine,
-        decl_engine,
-        query_engine,
+        engines,
         context,
         md_mgr,
         module,
@@ -275,7 +267,7 @@ fn const_eval_typed_expr(
             }
 
             // TODO: Handle more than one statement in the block.
-            let function_decl = lookup.decl_engine.get_function(fn_ref);
+            let function_decl = lookup.engines.de().get_function(fn_ref);
             if function_decl.body.contents.len() > 1 {
                 return Ok(None);
             }
@@ -339,8 +331,8 @@ fn const_eval_typed_expr(
                 return Ok(None);
             }
             get_struct_for_types(
-                lookup.type_engine,
-                lookup.decl_engine,
+                lookup.engines.te(),
+                lookup.engines.de(),
                 lookup.context,
                 &field_typs,
             )
@@ -366,8 +358,8 @@ fn const_eval_typed_expr(
                 return Ok(None);
             }
             create_tuple_aggregate(
-                lookup.type_engine,
-                lookup.decl_engine,
+                lookup.engines.te(),
+                lookup.engines.de(),
                 lookup.context,
                 field_typs,
             )
@@ -395,19 +387,20 @@ fn const_eval_typed_expr(
                 // We couldn't evaluate all fields to a constant or cannot determine element type.
                 return Ok(None);
             }
-            let elem_type_info = lookup.type_engine.get(*elem_type);
+            let elem_type_info = lookup.engines.te().get(*elem_type);
             if !element_typs.iter().all(|tid| {
-                lookup.type_engine.get(*tid).eq(
-                    &elem_type_info,
-                    Engines::new(lookup.type_engine, lookup.decl_engine, lookup.query_engine),
-                )
+                lookup
+                    .engines
+                    .te()
+                    .get(*tid)
+                    .eq(&elem_type_info, lookup.engines)
             }) {
                 // This shouldn't happen if the type checker did its job.
                 return Ok(None);
             }
             create_array_aggregate(
-                lookup.type_engine,
-                lookup.decl_engine,
+                lookup.engines.te(),
+                lookup.engines.de(),
                 lookup.context,
                 *elem_type,
                 element_typs.len().try_into().unwrap(),
@@ -426,10 +419,10 @@ fn const_eval_typed_expr(
             contents,
             ..
         } => {
-            let enum_decl = lookup.decl_engine.get_enum(enum_ref);
+            let enum_decl = lookup.engines.de().get_enum(enum_ref);
             let aggregate = create_tagged_union_type(
-                lookup.type_engine,
-                lookup.decl_engine,
+                lookup.engines.te(),
+                lookup.engines.de(),
                 lookup.context,
                 &enum_decl.variants,
             );
@@ -468,8 +461,8 @@ fn const_eval_typed_expr(
                     name: field_to_access.name.clone(),
                 };
                 get_struct_name_field_index_and_type(
-                    lookup.type_engine,
-                    lookup.decl_engine,
+                    lookup.engines.te(),
+                    lookup.engines.de(),
                     *resolved_type_of_parent,
                     field_kind,
                 )
@@ -599,8 +592,8 @@ fn const_eval_intrinsic(
         sway_ast::Intrinsic::SizeOfType => {
             let targ = &intrinsic.type_arguments[0];
             let ir_type = convert_resolved_typeid(
-                lookup.type_engine,
-                lookup.decl_engine,
+                lookup.engines.te(),
+                lookup.engines.de(),
                 lookup.context,
                 &targ.type_id,
                 &targ.span,
@@ -614,8 +607,8 @@ fn const_eval_intrinsic(
             let val = &intrinsic.arguments[0];
             let type_id = val.return_type;
             let ir_type = convert_resolved_typeid(
-                lookup.type_engine,
-                lookup.decl_engine,
+                lookup.engines.te(),
+                lookup.engines.de(),
                 lookup.context,
                 &type_id,
                 &val.span,

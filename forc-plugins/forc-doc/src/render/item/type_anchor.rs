@@ -22,7 +22,7 @@ pub(crate) fn render_type_anchor(
     match type_info {
         TypeInfo::Array(ty_arg, len) => {
             let inner = render_type_anchor(
-                render_plan.type_engine.get(ty_arg.type_id),
+                render_plan.engines.te().get(ty_arg.type_id),
                 render_plan,
                 current_module_info,
             )?;
@@ -36,7 +36,7 @@ pub(crate) fn render_type_anchor(
             let mut rendered_args: Vec<_> = Vec::new();
             for ty_arg in ty_args {
                 rendered_args.push(render_type_anchor(
-                    render_plan.type_engine.get(ty_arg.type_id),
+                    render_plan.engines.te().get(ty_arg.type_id),
                     render_plan,
                     current_module_info,
                 )?)
@@ -50,7 +50,7 @@ pub(crate) fn render_type_anchor(
             })
         }
         TypeInfo::Enum(decl_ref) => {
-            let enum_decl = render_plan.decl_engine.get_enum(&decl_ref);
+            let enum_decl = render_plan.engines.de().get_enum(&decl_ref);
             if !render_plan.document_private_items && enum_decl.visibility.is_private() {
                 Ok(box_html! {
                     : decl_ref.name().clone().as_str();
@@ -67,7 +67,7 @@ pub(crate) fn render_type_anchor(
             }
         }
         TypeInfo::Struct(decl_ref) => {
-            let struct_decl = render_plan.decl_engine.get_struct(&decl_ref);
+            let struct_decl = render_plan.engines.de().get_struct(&decl_ref);
             if !render_plan.document_private_items && struct_decl.visibility.is_private() {
                 Ok(box_html! {
                     : decl_ref.name().clone().as_str();

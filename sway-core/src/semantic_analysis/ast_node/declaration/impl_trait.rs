@@ -33,8 +33,8 @@ impl ty::TyImplTrait {
             block_span,
         } = impl_trait;
 
-        let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
+        let type_engine = ctx.engines.te();
+        let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
         // create a namespace for the impl
@@ -241,8 +241,8 @@ impl ty::TyImplTrait {
             block_span,
         } = impl_self;
 
-        let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
+        let type_engine = ctx.engines.te();
+        let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
         // create the namespace for the impl
@@ -400,7 +400,7 @@ fn type_check_trait_implementation(
     let mut errors = vec![];
     let mut warnings = vec![];
 
-    let decl_engine = ctx.decl_engine;
+    let decl_engine = ctx.engines.de();
     let engines = ctx.engines();
     let self_type = ctx.self_type();
 
@@ -648,7 +648,7 @@ fn type_check_impl_method(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
+    let type_engine = ctx.engines.te();
     let engines = ctx.engines();
     let self_type = ctx.self_type();
 
@@ -865,7 +865,7 @@ fn type_check_const_decl(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
+    let type_engine = ctx.engines.te();
     let engines = ctx.engines();
     let self_type = ctx.self_type();
 
@@ -980,7 +980,7 @@ fn type_check_const_decl(
 /// }
 /// ```
 fn check_for_unconstrained_type_parameters(
-    engines: Engines<'_>,
+    engines: &Engines,
     type_parameters: &[TypeParameter],
     trait_type_arguments: &[TypeArgument],
     self_type: TypeId,
@@ -1038,7 +1038,7 @@ fn handle_supertraits(
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
 
-    let decl_engine = ctx.decl_engine;
+    let decl_engine = ctx.engines.de();
 
     let mut interface_surface_item_ids: InterfaceItemMap = BTreeMap::new();
     let mut impld_item_refs: ItemMap = BTreeMap::new();

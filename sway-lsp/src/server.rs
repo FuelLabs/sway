@@ -628,14 +628,14 @@ impl Backend {
                                 // Initialize the string with the AST from the root
                                 let mut formatted_ast = debug::print_decl_engine_types(
                                     &typed_program.root.all_nodes,
-                                    &session.decl_engine.read(),
+                                    session.engines.read().de(),
                                 );
                                 for (ident, submodule) in &typed_program.root.submodules {
                                     if path_is_submodule(ident, &path) {
                                         // overwrite the root AST with the submodule AST
                                         formatted_ast = debug::print_decl_engine_types(
                                             &submodule.module.all_nodes,
-                                            &session.decl_engine.read(),
+                                            session.engines.read().de(),
                                         );
                                     }
                                 }

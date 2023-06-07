@@ -88,6 +88,9 @@ pub struct Print {
     /// Output build errors and warnings in reverse order.
     #[clap(long)]
     pub reverse_order: bool,
+    /// Output compilation metrics into file.
+    #[clap(long)]
+    pub metrics_outfile: Option<String>,
 }
 
 /// Package-related options.

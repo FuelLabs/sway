@@ -7,22 +7,20 @@ use std::{
 use anyhow::Result;
 use colored::Colorize;
 use sway_core::{
-    compile_ir_to_asm, compile_to_ast, decl_engine::DeclEngine, ir_generation::compile_program,
-    namespace, query_engine::QueryEngine, BuildTarget, Engines, TypeEngine,
+    compile_ir_to_asm, compile_to_ast, ir_generation::compile_program, namespace, BuildTarget,
+    Engines,
 };
 use sway_ir::{
     create_inline_in_module_pass, register_known_passes, PassGroup, PassManager, ARGDEMOTION_NAME,
     CONSTDEMOTION_NAME, DCE_NAME, MEMCPYOPT_NAME, MISCDEMOTION_NAME, RETDEMOTION_NAME,
 };
+use sway_utils::PerformanceData;
 
 pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
     // Compile core library and reuse it when compiling tests.
-    let type_engine = TypeEngine::default();
-    let decl_engine = DeclEngine::default();
-    let query_engine = QueryEngine::default();
-    let engines = Engines::new(&type_engine, &decl_engine, &query_engine);
+    let engines = Engines::default();
     let build_target = BuildTarget::default();
-    let core_lib = compile_core(build_target, engines);
+    let core_lib = compile_core(build_target, &engines);
 
     // Find all the tests.
     let all_tests = discover_test_files();
@@ -129,13 +127,15 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                 // Include unit tests in the build.
                 let bld_cfg = bld_cfg.include_tests(true);
 
+                let mut metrics = PerformanceData::default();
                 let sway_str = String::from_utf8_lossy(&sway_str);
                 let typed_res = compile_to_ast(
-                    engines,
+                    &engines,
                     Arc::from(sway_str),
                     core_lib.clone(),
                     Some(&bld_cfg),
                     "test_lib",
+                    &mut metrics,
                 );
                 if !typed_res.errors.is_empty() {
                     panic!(
@@ -156,7 +156,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
 
                 // Compile to IR.
                 let include_tests = true;
-                let mut ir = compile_program(&typed_program, include_tests, engines)
+                let mut ir = compile_program(&typed_program, include_tests, &engines)
                     .unwrap_or_else(|e| {
                         panic!("Failed to compile test {}:\n{e}", path.display());
                     })
@@ -330,7 +330,7 @@ fn discover_test_files() -> Vec<PathBuf> {
     test_files
 }
 
-fn compile_core(build_target: BuildTarget, engines: Engines<'_>) -> namespace::Module {
+fn compile_core(build_target: BuildTarget, engines: &Engines) -> namespace::Module {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let libcore_root_dir = format!("{manifest_dir}/../sway-lib-core");
 

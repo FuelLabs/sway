@@ -32,6 +32,7 @@ fn build_opts_from_cmd(cmd: PredicateRootCommand) -> pkg::BuildOpts {
             reverse_order: cmd.print.reverse_order,
         },
         time_phases: cmd.print.time_phases,
+        metrics_outfile: cmd.print.metrics_outfile,
         minify: pkg::MinifyOpts {
             json_abi: cmd.minify.json_abi,
             json_storage_slots: cmd.minify.json_storage_slots,

@@ -9,7 +9,7 @@
 //! [`Aggregate`] is an abstract collection of [`Type`]s used for structs, unions and arrays,
 //! though see below for future improvements around splitting arrays into a different construct.
 
-use crate::{context::Context, pretty::DebugWithContext};
+use crate::{context::Context, pretty::DebugWithContext, Constant, ConstantValue, Value};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, DebugWithContext)]
 pub struct Type(pub generational_arena::Index);
@@ -281,7 +281,7 @@ impl Type {
         }
     }
 
-    /// What's the type of the struct value indexed by indices.
+    /// What's the type of the struct/array value indexed by indices.
     pub fn get_indexed_type(&self, context: &Context, indices: &[u64]) -> Option<Type> {
         if indices.is_empty() {
             return None;
@@ -293,6 +293,49 @@ impl Type {
                     .or_else(|| ty.get_array_elem_type(context))
             })
         })
+    }
+
+    /// What's the offset of the indexed element?
+    /// It may not always be possible to determine statically.
+    pub fn get_indexed_offset(&self, context: &Context, indices: &[Value]) -> Option<u64> {
+        indices
+            .iter()
+            .fold(Some((*self, 0)), |ty, idx| {
+                let Some(Constant {
+                    value: ConstantValue::Uint(idx),
+                    ty: _,
+                }) = idx.get_constant(context) else { return None; };
+                ty.and_then(|(ty, accum_offset)| {
+                    if ty.is_struct(context) {
+                        // Sum up all sizes of all previous fields.
+                        let prev_idxs_offset = (0..(*idx)).try_fold(0, |accum, pre_idx| {
+                            ty.get_field_type(context, pre_idx)
+                                .map(|field_ty| field_ty.size_in_bytes(context) + accum)
+                        })?;
+                        ty.get_field_type(context, *idx)
+                            .map(|field_ty| (field_ty, accum_offset + prev_idxs_offset))
+                    } else if ty.is_union(context) {
+                        ty.get_field_type(context, *idx)
+                            .map(|field_ty| (field_ty, accum_offset))
+                    } else {
+                        assert!(
+                            ty.is_array(context),
+                            "Expected aggregate type when indexing using GEP. Got {}",
+                            ty.as_string(context)
+                        );
+                        // size_of_element * idx will be the offset of idx.
+                        ty.get_array_elem_type(context).map(|elm_ty| {
+                            let prev_idxs_offset = ty
+                                .get_array_elem_type(context)
+                                .unwrap()
+                                .size_in_bytes(context)
+                                * idx;
+                            (elm_ty, accum_offset + prev_idxs_offset)
+                        })
+                    }
+                })
+            })
+            .map(|pair| pair.1)
     }
 
     pub fn get_field_type(&self, context: &Context, idx: u64) -> Option<Type> {
@@ -339,6 +382,42 @@ impl Type {
             _ => vec![],
         }
     }
+
+    pub fn size_in_bytes(&self, context: &Context) -> u64 {
+        match self.get_content(context) {
+            TypeContent::Unit
+            | TypeContent::Bool
+            | TypeContent::Uint(_)
+            | TypeContent::Pointer(_) => 8,
+            TypeContent::Slice => 16,
+            TypeContent::B256 => 32,
+            TypeContent::String(n) => super::size_bytes_round_up_to_word_alignment!(*n),
+            TypeContent::Array(el_ty, cnt) => cnt * el_ty.size_in_bytes(context),
+            TypeContent::Struct(field_tys) => {
+                // Sum up all the field sizes.
+                field_tys
+                    .iter()
+                    .map(|field_ty| field_ty.size_in_bytes(context))
+                    .sum()
+            }
+            TypeContent::Union(field_tys) => {
+                // Find the max size for field sizes.
+                field_tys
+                    .iter()
+                    .map(|field_ty| field_ty.size_in_bytes(context))
+                    .max()
+                    .unwrap_or(0)
+            }
+        }
+    }
+}
+
+// This is a mouthful...
+#[macro_export]
+macro_rules! size_bytes_round_up_to_word_alignment {
+    ($bytes_expr: expr) => {
+        ($bytes_expr + 7) - (($bytes_expr + 7) % 8)
+    };
 }
 
 /// A helper to check if an Option<Type> value is of a particular Type.
