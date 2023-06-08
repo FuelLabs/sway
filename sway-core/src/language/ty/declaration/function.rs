@@ -45,7 +45,7 @@ impl Named for TyFunctionDecl {
 
 impl EqWithEngines for TyFunctionDecl {}
 impl PartialEqWithEngines for TyFunctionDecl {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.name == other.name
             && self.body.eq(&other.body, engines)
             && self.parameters.eq(&other.parameters, engines)
@@ -58,7 +58,7 @@ impl PartialEqWithEngines for TyFunctionDecl {
 }
 
 impl HashWithEngines for TyFunctionDecl {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TyFunctionDecl {
             name,
             body,
@@ -87,7 +87,7 @@ impl HashWithEngines for TyFunctionDecl {
 }
 
 impl SubstTypes for TyFunctionDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         self.type_parameters
             .iter_mut()
             .for_each(|x| x.subst(type_mapping, engines));
@@ -100,7 +100,7 @@ impl SubstTypes for TyFunctionDecl {
 }
 
 impl ReplaceSelfType for TyFunctionDecl {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         self.type_parameters
             .iter_mut()
             .for_each(|x| x.replace_self_type(engines, self_type));
@@ -113,7 +113,7 @@ impl ReplaceSelfType for TyFunctionDecl {
 }
 
 impl ReplaceDecls for TyFunctionDecl {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: &Engines) {
         self.body.replace_decls(decl_mapping, engines);
     }
 }
@@ -137,7 +137,7 @@ impl MonomorphizeHelper for TyFunctionDecl {
 impl UnconstrainedTypeParameters for TyFunctionDecl {
     fn type_parameter_is_unconstrained(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         type_parameter: &TypeParameter,
     ) -> bool {
         let type_engine = engines.te();
@@ -257,7 +257,7 @@ impl TyFunctionDecl {
         }
     }
 
-    pub fn to_fn_selector_value_untruncated(&self, engines: Engines<'_>) -> CompileResult<Vec<u8>> {
+    pub fn to_fn_selector_value_untruncated(&self, engines: &Engines) -> CompileResult<Vec<u8>> {
         let mut errors = vec![];
         let mut warnings = vec![];
         let mut hasher = Sha256::new();
@@ -275,7 +275,7 @@ impl TyFunctionDecl {
     /// Converts a [TyFunctionDecl] into a value that is to be used in contract function
     /// selectors.
     /// Hashes the name and parameters using SHA256, and then truncates to four bytes.
-    pub fn to_fn_selector_value(&self, engines: Engines<'_>) -> CompileResult<[u8; 4]> {
+    pub fn to_fn_selector_value(&self, engines: &Engines) -> CompileResult<[u8; 4]> {
         let mut errors = vec![];
         let mut warnings = vec![];
         let hash = check!(
@@ -290,7 +290,7 @@ impl TyFunctionDecl {
         ok(buf, warnings, errors)
     }
 
-    pub fn to_selector_name(&self, engines: Engines<'_>) -> CompileResult<String> {
+    pub fn to_selector_name(&self, engines: &Engines) -> CompileResult<String> {
         let mut errors = vec![];
         let mut warnings = vec![];
         let named_params = self
@@ -359,7 +359,7 @@ pub struct TyFunctionParameter {
 
 impl EqWithEngines for TyFunctionParameter {}
 impl PartialEqWithEngines for TyFunctionParameter {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.name == other.name
             && self.type_argument.eq(&other.type_argument, engines)
             && self.is_reference == other.is_reference
@@ -368,7 +368,7 @@ impl PartialEqWithEngines for TyFunctionParameter {
 }
 
 impl HashWithEngines for TyFunctionParameter {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TyFunctionParameter {
             name,
             is_reference,
@@ -386,13 +386,13 @@ impl HashWithEngines for TyFunctionParameter {
 }
 
 impl SubstTypes for TyFunctionParameter {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         self.type_argument.type_id.subst(type_mapping, engines);
     }
 }
 
 impl ReplaceSelfType for TyFunctionParameter {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         self.type_argument
             .type_id
             .replace_self_type(engines, self_type);

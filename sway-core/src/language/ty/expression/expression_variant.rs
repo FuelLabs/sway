@@ -140,7 +140,7 @@ pub enum TyExpressionVariant {
 
 impl EqWithEngines for TyExpressionVariant {}
 impl PartialEqWithEngines for TyExpressionVariant {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         let type_engine = engines.te();
         match (self, other) {
             (Self::Literal(l0), Self::Literal(r0)) => l0 == r0,
@@ -400,7 +400,7 @@ impl PartialEqWithEngines for TyExpressionVariant {
 }
 
 impl HashWithEngines for TyExpressionVariant {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let type_engine = engines.te();
         std::mem::discriminant(self).hash(state);
         match self {
@@ -598,7 +598,7 @@ impl HashWithEngines for TyExpressionVariant {
 }
 
 impl SubstTypes for TyExpressionVariant {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         use TyExpressionVariant::*;
         match self {
             Literal(..) => (),
@@ -742,7 +742,7 @@ impl SubstTypes for TyExpressionVariant {
 }
 
 impl ReplaceSelfType for TyExpressionVariant {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         use TyExpressionVariant::*;
         match self {
             Literal(..) => (),
@@ -880,7 +880,7 @@ impl ReplaceSelfType for TyExpressionVariant {
 }
 
 impl ReplaceDecls for TyExpressionVariant {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: &Engines) {
         use TyExpressionVariant::*;
         match self {
             Literal(..) => (),
@@ -987,7 +987,7 @@ impl ReplaceDecls for TyExpressionVariant {
 }
 
 impl UpdateConstantExpression for TyExpressionVariant {
-    fn update_constant_expression(&mut self, engines: Engines<'_>, implementing_type: &TyDecl) {
+    fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
         use TyExpressionVariant::*;
         match self {
             Literal(..) => (),
@@ -1117,14 +1117,14 @@ fn find_const_decl_from_impl(
 }
 
 impl DisplayWithEngines for TyExpressionVariant {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         // TODO: Implement user-friendly display strings if needed.
         DebugWithEngines::fmt(self, f, engines)
     }
 }
 
 impl DebugWithEngines for TyExpressionVariant {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         let s = match self {
             TyExpressionVariant::Literal(lit) => format!("literal {lit}"),
             TyExpressionVariant::FunctionApplication {

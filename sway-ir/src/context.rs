@@ -8,6 +8,7 @@
 
 use generational_arena::Arena;
 use rustc_hash::FxHashMap;
+use sway_types::SourceEngine;
 
 use crate::{
     asm::AsmBlockContent, block::BlockContent, function::FunctionContent,
@@ -19,7 +20,9 @@ use crate::{
 ///
 /// Every module, function, block and value is stored here.  Some aggregate metadata is also
 /// managed by the context.
-pub struct Context {
+pub struct Context<'eng> {
+    pub source_engine: &'eng SourceEngine,
+
     pub(crate) modules: Arena<ModuleContent>,
     pub(crate) functions: Arena<FunctionContent>,
     pub(crate) blocks: Arena<BlockContent>,
@@ -35,9 +38,10 @@ pub struct Context {
     next_unique_sym_tag: u64,
 }
 
-impl Default for Context {
-    fn default() -> Self {
+impl<'eng> Context<'eng> {
+    pub fn new(source_engine: &'eng SourceEngine) -> Self {
         let mut def = Self {
+            source_engine,
             modules: Default::default(),
             functions: Default::default(),
             blocks: Default::default(),
@@ -53,9 +57,11 @@ impl Default for Context {
         Type::create_basic_types(&mut def);
         def
     }
-}
 
-impl Context {
+    pub fn source_engine(&self) -> &'eng SourceEngine {
+        self.source_engine
+    }
+
     /// Return an interator for every module in this context.
     pub fn module_iter(&self) -> ModuleIterator {
         ModuleIterator::new(self)
@@ -78,13 +84,13 @@ impl Context {
 
 use std::fmt::{Display, Error, Formatter};
 
-impl Display for Context {
+impl Display for Context<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         write!(f, "{}", crate::printer::to_string(self))
     }
 }
 
-impl From<Context> for String {
+impl From<Context<'_>> for String {
     fn from(context: Context) -> Self {
         crate::printer::to_string(&context)
     }

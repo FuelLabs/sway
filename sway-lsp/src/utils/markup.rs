@@ -9,7 +9,7 @@ use crate::{
 };
 use serde_json::{json, Value};
 use std::fmt::{self};
-use sway_types::Span;
+use sway_types::{SourceEngine, Span};
 use urlencoding::encode;
 
 const GO_TO_COMMAND: &str = "sway.goToLocation";
@@ -68,6 +68,7 @@ impl Markup {
     /// or nothing if there are no related types or implementations.
     pub fn maybe_add_links(
         self,
+        source_engine: &SourceEngine,
         related_types: Vec<RelatedType>,
         implementations: Vec<Span>,
     ) -> Self {
@@ -90,7 +91,7 @@ impl Markup {
             let locations = implementations
                 .iter()
                 .flat_map(|span| {
-                    if let Ok(uri) = get_url_from_span(span) {
+                    if let Ok(uri) = get_url_from_span(source_engine, span) {
                         let range = get_range_from_span(span);
                         Some(json!({ "uri": uri, "range": range }))
                     } else {

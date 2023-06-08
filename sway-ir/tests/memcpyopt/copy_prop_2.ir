@@ -1,0 +1,23 @@
+script {
+    entry fn main() -> u64 {
+        local { u64, u64, u64, u64 } __anon_468
+        local { u64, u64, u64, u64 } __anon_0
+
+        entry():
+        v13 = get_local ptr { u64, u64, u64, u64 }, __anon_0
+        v25 = get_local ptr { u64, u64, u64, u64 }, __anon_468
+        mem_copy_val v25, v13
+        v26 = const u64 0
+        v27 = get_elem_ptr v25, ptr u64, v26
+        v0 = load v27
+        ret u64 v0
+    }
+}
+
+// regex: VAL=v\d+
+
+// check: mem_copy_val $VAL, $VAL
+// The optimization should introduce a GEP into __anon_0
+// check: $(local=$VAL) = get_local ptr { u64, u64, u64, u64 }, __anon_0
+// check: $(gep=$VAL) = get_elem_ptr $local, ptr u64, $VAL
+// check: $VAL = load $gep

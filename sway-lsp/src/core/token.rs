@@ -162,7 +162,7 @@ impl Token {
     }
 
     /// Return the [Ident] of the declaration of the provided token.
-    pub fn declared_token_ident(&self, engines: Engines<'_>) -> Option<Ident> {
+    pub fn declared_token_ident(&self, engines: &Engines) -> Option<Ident> {
         self.type_def.as_ref().and_then(|type_def| match type_def {
             TypeDefinition::TypeId(type_id) => ident_of_type_id(engines, type_id),
             TypeDefinition::Ident(ident) => Some(ident.clone()),
@@ -172,7 +172,7 @@ impl Token {
     /// Return the [Span] of the declaration of the provided token. This is useful for
     /// performaing == comparisons on spans. We need to do this instead of comparing
     /// the [Ident] because the [PartialEq] implementation is only comparing the name.
-    pub fn declared_token_span(&self, engines: Engines<'_>) -> Option<Span> {
+    pub fn declared_token_span(&self, engines: &Engines) -> Option<Span> {
         self.type_def.as_ref().and_then(|type_def| match type_def {
             TypeDefinition::TypeId(type_id) => Some(ident_of_type_id(engines, type_id)?.span()),
             TypeDefinition::Ident(ident) => Some(ident.span()),
@@ -197,7 +197,7 @@ pub fn to_ident_key(ident: &Ident) -> (Ident, Span) {
 }
 
 /// Use the [TypeId] to look up the associated [TypeInfo] and return the [Ident] if one is found.
-pub fn ident_of_type_id(engines: Engines<'_>, type_id: &TypeId) -> Option<Ident> {
+pub fn ident_of_type_id(engines: &Engines, type_id: &TypeId) -> Option<Ident> {
     match engines.te().get(*type_id) {
         TypeInfo::UnknownGeneric { name, .. } => Some(name),
         TypeInfo::Enum(decl_ref) => Some(engines.de().get_enum(&decl_ref).call_path.suffix),

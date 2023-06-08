@@ -12,7 +12,7 @@ impl ty::TyCodeBlock {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
-        let decl_engine = ctx.decl_engine;
+        let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
         // Create a temp namespace for checking within the code block scope.
@@ -85,9 +85,11 @@ impl ty::TyCodeBlock {
                         );
                     }
 
-                    ctx.type_engine.insert(engines, TypeInfo::Unknown)
+                    ctx.engines.te().insert(engines, TypeInfo::Unknown)
                 } else {
-                    ctx.type_engine.insert(engines, TypeInfo::Tuple(Vec::new()))
+                    ctx.engines
+                        .te()
+                        .insert(engines, TypeInfo::Tuple(Vec::new()))
                 }
             });
 

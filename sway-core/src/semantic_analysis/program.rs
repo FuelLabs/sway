@@ -16,7 +16,7 @@ impl ty::TyProgram {
     /// The given `initial_namespace` acts as an initial state for each module within this program.
     /// It should contain a submodule for each library package dependency.
     pub fn type_check(
-        engines: Engines<'_>,
+        engines: &Engines,
         parsed: &ParseProgram,
         initial_namespace: namespace::Module,
         package_name: &str,
@@ -42,7 +42,7 @@ impl ty::TyProgram {
 
     pub(crate) fn get_typed_program_with_initialized_storage_slots(
         self,
-        engines: Engines<'_>,
+        engines: &Engines,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         module: Module,

@@ -19,7 +19,7 @@ pub(crate) fn instantiate_function_application(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let decl_engine = ctx.decl_engine;
+    let decl_engine = ctx.engines.de();
     let engines = ctx.engines();
 
     let mut function_decl = decl_engine.get_function(&function_decl_ref);
@@ -117,7 +117,7 @@ fn type_check_arguments(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
+    let type_engine = ctx.engines.te();
     let engines = ctx.engines();
 
     let typed_arguments = arguments
@@ -153,7 +153,7 @@ fn unify_arguments_and_parameters(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
+    let type_engine = ctx.engines.te();
     let engines = ctx.engines();
     let mut typed_arguments_and_names = vec![];
 

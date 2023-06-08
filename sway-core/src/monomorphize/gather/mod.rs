@@ -16,7 +16,7 @@ use crate::{language::ty, monomorphize::priv_prelude::*, Engines};
 
 /// Gathers [Constraint]s from a typed AST.
 pub(super) fn gather_constraints(
-    engines: Engines<'_>,
+    engines: &Engines,
     handler: &Handler,
     module: &ty::TyModule,
 ) -> Result<impl IntoIterator<Item = Constraint>, ErrorEmitted> {

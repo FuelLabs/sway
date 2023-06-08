@@ -4,7 +4,7 @@ use crate::{
 };
 
 use sway_ir::{Context, MetadataIndex, Metadatum, Value};
-use sway_types::Span;
+use sway_types::{SourceId, Span};
 
 use std::{collections::HashMap, path::PathBuf, rc::Rc, sync::Arc};
 
@@ -26,7 +26,7 @@ pub(crate) struct MetadataManager {
     md_config_const_name_cache: HashMap<MetadataIndex, Rc<str>>,
 
     span_md_cache: HashMap<Span, MetadataIndex>,
-    file_loc_md_cache: HashMap<*const PathBuf, MetadataIndex>,
+    file_loc_md_cache: HashMap<SourceId, MetadataIndex>,
     storage_op_md_cache: HashMap<Purity, MetadataIndex>,
     inline_md_cache: HashMap<Inline, MetadataIndex>,
     test_decl_index_md_cache: HashMap<DeclId<TyFunctionDecl>, MetadataIndex>,
@@ -56,7 +56,9 @@ impl MetadataManager {
                         let (path, src) = self.md_to_file_location(context, &fields[0])?;
                         let start = fields[1].unwrap_integer()?;
                         let end = fields[2].unwrap_integer()?;
-                        let span = Span::new(src, start as usize, end as usize, Some(path))?;
+                        let source_engine = context.source_engine();
+                        let source_id = source_engine.get_source_id(&path);
+                        let span = Span::new(src, start as usize, end as usize, Some(source_id))?;
 
                         self.md_span_cache.insert(md_idx, span.clone());
 
@@ -164,9 +166,9 @@ impl MetadataManager {
                 // Create a new file location (path and src) and save it in the cache.
                 md_idx
                     .get_content(context)
-                    .unwrap_string()
-                    .and_then(|path_buf_str| {
-                        let path_buf = PathBuf::from(path_buf_str);
+                    .unwrap_source_id()
+                    .and_then(|source_id| {
+                        let path_buf = context.source_engine.get_path(source_id);
                         let src = std::fs::read_to_string(&path_buf).ok()?;
                         let path_and_src = (Arc::new(path_buf), Arc::from(src));
 
@@ -212,9 +214,9 @@ impl MetadataManager {
         span: &Span,
     ) -> Option<MetadataIndex> {
         self.span_md_cache.get(span).copied().or_else(|| {
-            span.path().and_then(|path_buf| {
+            span.source_id().and_then(|source_id| {
                 // Create new metadata.
-                let file_location_md_idx = self.file_location_to_md(context, path_buf)?;
+                let file_location_md_idx = self.file_location_to_md(context, *source_id)?;
                 let md_idx = MetadataIndex::new_struct(
                     context,
                     "span",
@@ -314,18 +316,14 @@ impl MetadataManager {
     fn file_location_to_md(
         &mut self,
         context: &mut Context,
-        path: &Arc<PathBuf>,
+        source_id: SourceId,
     ) -> Option<MetadataIndex> {
-        self.file_loc_md_cache
-            .get(&Arc::as_ptr(path))
-            .copied()
-            .or_else(|| {
-                let md_idx = MetadataIndex::new_string(context, path.to_string_lossy());
+        self.file_loc_md_cache.get(&source_id).copied().or_else(|| {
+            let md_idx = MetadataIndex::new_source_id(context, source_id);
+            self.file_loc_md_cache.insert(source_id, md_idx);
 
-                self.file_loc_md_cache.insert(Arc::as_ptr(path), md_idx);
-
-                Some(md_idx)
-            })
+            Some(md_idx)
+        })
     }
 
     pub(crate) fn config_const_name_to_md(

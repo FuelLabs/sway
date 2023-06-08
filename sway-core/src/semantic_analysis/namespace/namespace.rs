@@ -105,7 +105,7 @@ impl Namespace {
     /// Short-hand for calling [Root::resolve_call_path_with_visibility_check] on `root` with the `mod_path`.
     pub(crate) fn resolve_call_path_with_visibility_check(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         call_path: &CallPath,
     ) -> CompileResult<&ty::TyDecl> {
         self.root
@@ -116,7 +116,7 @@ impl Namespace {
     #[allow(clippy::too_many_arguments)] // TODO: remove lint bypass once private modules are no longer experimental
     pub(crate) fn resolve_type_with_self(
         &mut self,
-        engines: Engines<'_>,
+        engines: &Engines,
         type_id: TypeId,
         self_type: TypeId,
         span: &Span,
@@ -139,7 +139,7 @@ impl Namespace {
     /// Short-hand for calling [Root::resolve_type_without_self] on `root` and with the `mod_path`.
     pub(crate) fn resolve_type_without_self(
         &mut self,
-        engines: Engines<'_>,
+        engines: &Engines,
         type_id: TypeId,
         span: &Span,
         type_info_prefix: Option<&Path>,
@@ -164,7 +164,7 @@ impl Namespace {
         item_prefix: &Path,
         item_name: &Ident,
         self_type: TypeId,
-        engines: Engines<'_>,
+        engines: &Engines,
     ) -> CompileResult<Vec<ty::TyTraitItem>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -259,7 +259,7 @@ impl Namespace {
         annotation_type: TypeId,
         args_buf: &VecDeque<ty::TyExpression>,
         as_trait: Option<TypeInfo>,
-        engines: Engines<'_>,
+        engines: &Engines,
     ) -> CompileResult<DeclRefFunction> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -481,7 +481,7 @@ impl Namespace {
         type_id: TypeId,
         item_name: &Ident,
         self_type: TypeId,
-        engines: Engines<'_>,
+        engines: &Engines,
     ) -> CompileResult<DeclRefConstant> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -509,7 +509,7 @@ impl Namespace {
     }
 
     /// Short-hand for performing a [Module::star_import] with `mod_path` as the destination.
-    pub(crate) fn star_import(&mut self, src: &Path, engines: Engines<'_>) -> CompileResult<()> {
+    pub(crate) fn star_import(&mut self, src: &Path, engines: &Engines) -> CompileResult<()> {
         self.root.star_import(src, &self.mod_path, engines)
     }
 
@@ -517,7 +517,7 @@ impl Namespace {
     pub(crate) fn variant_star_import(
         &mut self,
         src: &Path,
-        engines: Engines<'_>,
+        engines: &Engines,
         enum_name: &Ident,
     ) -> CompileResult<()> {
         self.root
@@ -527,7 +527,7 @@ impl Namespace {
     /// Short-hand for performing a [Module::self_import] with `mod_path` as the destination.
     pub(crate) fn self_import(
         &mut self,
-        engines: Engines<'_>,
+        engines: &Engines,
         src: &Path,
         alias: Option<Ident>,
     ) -> CompileResult<()> {
@@ -537,7 +537,7 @@ impl Namespace {
     /// Short-hand for performing a [Module::item_import] with `mod_path` as the destination.
     pub(crate) fn item_import(
         &mut self,
-        engines: Engines<'_>,
+        engines: &Engines,
         src: &Path,
         item: &Ident,
         alias: Option<Ident>,
@@ -549,7 +549,7 @@ impl Namespace {
     /// Short-hand for performing a [Module::variant_import] with `mod_path` as the destination.
     pub(crate) fn variant_import(
         &mut self,
-        engines: Engines<'_>,
+        engines: &Engines,
         src: &Path,
         enum_name: &Ident,
         variant_name: &Ident,
@@ -599,7 +599,7 @@ impl Namespace {
         items: &[ty::TyImplItem],
         impl_span: &Span,
         is_impl_self: bool,
-        engines: Engines<'_>,
+        engines: &Engines,
     ) -> CompileResult<()> {
         // Use trait name with full path, improves consistency between
         // this inserting and getting in `get_methods_for_type_and_trait_name`.
@@ -618,7 +618,7 @@ impl Namespace {
 
     pub(crate) fn get_items_for_type_and_trait_name(
         &mut self,
-        engines: Engines<'_>,
+        engines: &Engines,
         type_id: TypeId,
         trait_name: &CallPath,
     ) -> Vec<ty::TyTraitItem> {

@@ -23,8 +23,8 @@ pub(crate) fn type_check_method_application(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
+    let type_engine = ctx.engines.te();
+    let decl_engine = ctx.engines.de();
     let engines = ctx.engines();
 
     // type check the function arguments
@@ -52,7 +52,7 @@ pub(crate) fn type_check_method_application(
     let mut method = decl_engine.get_function(&decl_ref);
 
     // check the method visibility
-    if span.path() != method.span.path() && method.visibility.is_private() {
+    if span.source_id() != method.span.source_id() && method.visibility.is_private() {
         errors.push(CompileError::CallingPrivateLibraryMethod {
             name: method.name.as_str().to_string(),
             span,
@@ -389,7 +389,7 @@ fn unify_arguments_and_parameters(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
+    let type_engine = ctx.engines.te();
     let engines = ctx.engines();
     let mut typed_arguments_and_names = vec![];
 
@@ -432,8 +432,8 @@ pub(crate) fn resolve_method_name(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
+    let type_engine = ctx.engines.te();
+    let decl_engine = ctx.engines.de();
     let engines = ctx.engines();
 
     // retrieve the function declaration using the components of the method name
@@ -482,7 +482,20 @@ pub(crate) fn resolve_method_name(
         }
         MethodName::FromTrait { call_path } => {
             // find the module that the symbol is in
-            let module_path = ctx.namespace.find_module_path(&call_path.prefixes);
+            let module_path = if !call_path.is_absolute {
+                ctx.namespace.find_module_path(&call_path.prefixes)
+            } else {
+                let mut module_path = call_path.prefixes.clone();
+                if let (Some(root_mod), Some(root_name)) = (
+                    module_path.get(0).cloned(),
+                    ctx.namespace.root().name.clone(),
+                ) {
+                    if root_mod.as_str() == root_name.as_str() {
+                        module_path.remove(0);
+                    }
+                }
+                module_path
+            };
 
             // find the type of the first argument
             let type_id = arguments
@@ -591,9 +604,10 @@ pub(crate) fn resolve_method_name(
     }
 
     let decl_ref = ctx
-        .decl_engine
+        .engines
+        .de()
         .insert(func_decl)
-        .with_parent(ctx.decl_engine, (*decl_ref.id()).into());
+        .with_parent(ctx.engines.de(), (*decl_ref.id()).into());
 
     ok((decl_ref, type_id), warnings, errors)
 }
