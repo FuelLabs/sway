@@ -40,6 +40,7 @@ use sway_ir::{
     MODULEPRINTER_NAME, RETDEMOTION_NAME,
 };
 use sway_types::constants::DOC_COMMENT_ATTRIBUTE_NAME;
+use sway_types::SourceEngine;
 use sway_utils::{time_expr, PerformanceData, PerformanceMetric};
 use transform::{Attribute, AttributeArg, AttributeKind, AttributesMap};
 use types::*;
@@ -239,7 +240,8 @@ fn parse_submodules(
             build_target,
         ) {
             if !matches!(kind, parsed::TreeType::Library) {
-                let span = span::Span::new(submod_str, 0, 0, Some(submod_path)).unwrap();
+                let source_id = engines.se().get_source_id(submod_path.as_ref());
+                let span = span::Span::new(submod_str, 0, 0, Some(source_id)).unwrap();
                 handler.emit_err(CompileError::ImportMustBeLibrary { span });
                 return;
             }
@@ -278,7 +280,8 @@ fn parse_module_tree(
 ) -> Result<(parsed::TreeType, lexed::LexedModule, parsed::ParseModule), ErrorEmitted> {
     // Parse this module first.
     let module_dir = path.parent().expect("module file has no parent directory");
-    let module = sway_parse::parse_file(handler, src.clone(), Some(path.clone()))?;
+    let source_id = engines.se().get_source_id(&path.clone());
+    let module = sway_parse::parse_file(handler, src.clone(), Some(source_id))?;
 
     // Parse all submodules before converting to the `ParseTree`.
     // This always recovers on parse errors for the file itself by skipping that file.
@@ -304,8 +307,9 @@ fn parse_module_tree(
         tree: module.value,
         submodules: submodules.lexed,
     };
+    let source_id = engines.se().get_source_id(&path.clone());
     let parsed = parsed::ParseModule {
-        span: span::Span::new(src, 0, 0, Some(path)).unwrap(),
+        span: span::Span::new(src, 0, 0, Some(source_id)).unwrap(),
         tree,
         submodules: submodules.parsed,
         attributes,
@@ -393,7 +397,7 @@ pub fn parsed_to_ast(
     warnings.extend(cfa_res.warnings);
 
     // Evaluate const declarations, to allow storage slots initializion with consts.
-    let mut ctx = Context::default();
+    let mut ctx = Context::new(engines.se());
     let mut md_mgr = MetadataManager::default();
     let module = Module::new(&mut ctx, Kind::Contract);
     if let Err(e) = ir_generation::compile::compile_constants(
@@ -671,7 +675,7 @@ pub fn compile_to_bytecode(
         package_name,
         metrics,
     );
-    asm_to_bytecode(asm_res, source_map)
+    asm_to_bytecode(asm_res, source_map, engines.se())
 }
 
 /// Given the assembly (opcodes), compile to [CompiledBytecode], containing the asm in bytecode form.
@@ -682,11 +686,12 @@ pub fn asm_to_bytecode(
         mut errors,
     }: CompileResult<CompiledAsm>,
     source_map: &mut SourceMap,
+    source_engine: &SourceEngine,
 ) -> CompileResult<CompiledBytecode> {
     match value {
         Some(CompiledAsm(mut asm)) => {
             let compiled_bytecode = check!(
-                asm.to_bytecode_mut(source_map),
+                asm.to_bytecode_mut(source_map, source_engine),
                 return err(warnings, errors),
                 warnings,
                 errors,

@@ -35,10 +35,11 @@ pub fn rename(
         ));
     }
 
+    let engines = session.engines.read();
     // Get the token at the current cursor position
     let (_, token) = session
         .token_map()
-        .token_at_position(&url, position)
+        .token_at_position(engines.se(), &url, position)
         .ok_or(RenameError::TokenNotFound)?;
 
     // We don't currently allow renaming of module names.
@@ -75,8 +76,9 @@ pub fn rename(
             // taking the r# tokens into account.
             range.start.character -= RAW_IDENTIFIER.len() as u32;
         }
-        if let Some(path) = ident.span().path() {
-            let url = get_url_from_path(path).ok()?;
+        if let Some(source_id) = ident.span().source_id() {
+            let path = engines.se().get_path(source_id);
+            let url = get_url_from_path(&path).ok()?;
             if let Some(url) = session.sync.to_workspace_url(url) {
                 let edit = TextEdit::new(range, new_name.clone());
                 return Some((url, vec![edit]));
@@ -104,9 +106,10 @@ pub fn prepare_rename(
     url: Url,
     position: Position,
 ) -> Result<PrepareRenameResponse, LanguageServerError> {
+    let engines = session.engines.read();
     let (ident, token) = session
         .token_map()
-        .token_at_position(&url, position)
+        .token_at_position(engines.se(), &url, position)
         .ok_or(RenameError::TokenNotFound)?;
 
     let engines = session.engines.read();
@@ -151,7 +154,8 @@ fn is_token_in_workspace(
 
     // Check the span of the tokens defintions to determine if it's in the users workspace.
     let temp_path = &session.sync.temp_dir()?;
-    if let Some(path) = decl_span.path() {
+    if let Some(id) = decl_span.source_id() {
+        let path = engines.se().get_path(id);
         if !path.starts_with(temp_path) {
             return Err(LanguageServerError::RenameError(
                 RenameError::TokenNotPartOfWorkspace,
@@ -182,7 +186,7 @@ fn find_all_methods_for_decl(
     // Find the parent declaration
     let (_, decl_token) = session
         .token_map()
-        .parent_decl_at_position(url, position)
+        .parent_decl_at_position(engines.se(), url, position)
         .ok_or(RenameError::TokenNotFound)?;
 
     let idents = session

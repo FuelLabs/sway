@@ -619,8 +619,8 @@ impl DoubleEndedIterator for InstructionIterator {
 }
 
 /// Provide a context for appending new [`Instruction`]s to a [`Block`].
-pub struct InstructionInserter<'a> {
-    context: &'a mut Context,
+pub struct InstructionInserter<'a, 'eng> {
+    context: &'a mut Context<'eng>,
     block: Block,
 }
 
@@ -634,9 +634,9 @@ macro_rules! make_instruction {
     }};
 }
 
-impl<'a> InstructionInserter<'a> {
+impl<'a, 'eng> InstructionInserter<'a, 'eng> {
     /// Return a new [`InstructionInserter`] context for `block`.
-    pub fn new(context: &'a mut Context, block: Block) -> InstructionInserter<'a> {
+    pub fn new(context: &'a mut Context<'eng>, block: Block) -> InstructionInserter<'a, 'eng> {
         InstructionInserter { context, block }
     }
 

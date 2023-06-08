@@ -12,6 +12,7 @@ use crate::source_map::SourceMap;
 use etk_asm::asm::Assembler;
 use sway_error::error::CompileError;
 use sway_types::span::Span;
+use sway_types::SourceEngine;
 
 use either::Either;
 use std::{collections::BTreeMap, fmt};
@@ -51,10 +52,11 @@ impl FinalizedAsm {
     pub(crate) fn to_bytecode_mut(
         &mut self,
         source_map: &mut SourceMap,
+        source_engine: &SourceEngine,
     ) -> CompileResult<CompiledBytecode> {
         match &self.program_section {
             InstructionSet::Fuel { ops } => {
-                to_bytecode_mut(ops, &mut self.data_section, source_map)
+                to_bytecode_mut(ops, &mut self.data_section, source_map, source_engine)
             }
             InstructionSet::Evm { ops } => {
                 let mut assembler = Assembler::new();
@@ -105,6 +107,7 @@ fn to_bytecode_mut(
     ops: &Vec<AllocatedOp>,
     data_section: &mut DataSection,
     source_map: &mut SourceMap,
+    source_engine: &SourceEngine,
 ) -> CompileResult<CompiledBytecode> {
     let mut errors = vec![];
 
@@ -154,7 +157,7 @@ fn to_bytecode_mut(
                 }
                 for op in ops {
                     if let Some(span) = &span {
-                        source_map.insert(half_word_ix, span);
+                        source_map.insert(source_engine, half_word_ix, span);
                     }
                     let read_range_upper_bound =
                         core::cmp::min(half_word_ix * 4 + std::mem::size_of_val(&op), buf.len());

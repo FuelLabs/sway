@@ -276,7 +276,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                 }
 
                 // Parse the IR again, and print it yet again to make sure that IR de/serialisation works.
-                let parsed_ir = sway_ir::parser::parse(&ir_output)
+                let parsed_ir = sway_ir::parser::parse(&ir_output, engines.se())
                     .unwrap_or_else(|e| panic!("{}: {e}\n{ir_output}", path.display()));
                 let parsed_ir_output = sway_ir::printer::to_string(&parsed_ir);
                 if ir_output != parsed_ir_output {

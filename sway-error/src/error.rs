@@ -4,10 +4,8 @@ use crate::parser_error::ParseError;
 use crate::type_error::TypeError;
 
 use core::fmt;
-use std::path::PathBuf;
-use std::sync::Arc;
 use sway_types::constants::STORAGE_PURITY_ATTRIBUTE_NAME;
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, SourceId, Span, Spanned};
 use thiserror::Error;
 
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
@@ -828,8 +826,8 @@ impl Spanned for CompileError {
 }
 
 impl CompileError {
-    pub fn path(&self) -> Option<Arc<PathBuf>> {
-        self.span().path().cloned()
+    pub fn source_id(&self) -> Option<SourceId> {
+        self.span().source_id().cloned()
     }
 }
 
