@@ -2,15 +2,12 @@ use crate::{
     config::OnEnterConfig,
     core::{document::TextDocument, session::Session},
 };
-use std::sync::Arc;
-use tower_lsp::{
-    lsp_types::{
-        DidChangeTextDocumentParams, DocumentChanges, OneOf,
-        OptionalVersionedTextDocumentIdentifier, Position, Range, TextDocumentEdit, TextEdit, Url,
-        WorkspaceEdit,
-    },
-    Client,
+use lsp_types::{
+    DidChangeTextDocumentParams, DocumentChanges, OneOf, OptionalVersionedTextDocumentIdentifier,
+    Position, Range, TextDocumentEdit, TextEdit, Url, WorkspaceEdit,
 };
+use std::sync::Arc;
+use tower_lsp::Client;
 
 const NEWLINE: &str = "\n";
 const COMMENT_START: &str = "//";
@@ -18,7 +15,7 @@ const DOC_COMMENT_START: &str = "///";
 
 /// If the change was an enter keypress or pasting multiple lines in a comment, it prefixes the line(s)
 /// with the appropriate comment start pattern (// or ///).
-pub(crate) async fn on_enter(
+pub(crate) fn on_enter(
     config: &OnEnterConfig,
     client: &Client,
     session: &Arc<Session>,
@@ -99,10 +96,10 @@ fn get_comment_workspace_edit(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sway_lsp_test_utils::get_absolute_path;
-    use tower_lsp::lsp_types::{
+    use lsp_types::{
         AnnotatedTextEdit, TextDocumentContentChangeEvent, VersionedTextDocumentIdentifier,
     };
+    use sway_lsp_test_utils::get_absolute_path;
 
     fn assert_text_edit(
         actual: &OneOf<TextEdit, AnnotatedTextEdit>,

@@ -1,8 +1,7 @@
 #![allow(dead_code)]
-use ropey::Rope;
-use tower_lsp::lsp_types::{Position, Range, TextDocumentContentChangeEvent};
-
 use crate::error::DocumentError;
+use lsp_types::{Position, Range, TextDocumentContentChangeEvent};
+use ropey::Rope;
 
 #[derive(Debug, Clone)]
 pub struct TextDocument {

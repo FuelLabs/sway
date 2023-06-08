@@ -1,11 +1,10 @@
+use crate::capabilities::code_actions::{
+    CodeAction, CodeActionContext, CODE_ACTION_IMPL_TITLE, CONTRACT,
+};
+use lsp_types::Url;
 use sway_core::{
     language::ty::{self, TyAbiDecl, TyFunctionParameter, TyTraitFn},
     Engines,
-};
-use tower_lsp::lsp_types::Url;
-
-use crate::capabilities::code_actions::{
-    CodeAction, CodeActionContext, CODE_ACTION_IMPL_TITLE, CONTRACT,
 };
 
 pub(crate) struct AbiImplCodeAction<'a> {

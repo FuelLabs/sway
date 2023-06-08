@@ -1,5 +1,5 @@
+use lsp_types::Url;
 use sway_core::language::ty::TyStructDecl;
-use tower_lsp::lsp_types::Url;
 
 use crate::capabilities::code_actions::{
     CodeAction, CodeActionContext, CODE_ACTION_IMPL_TITLE, TAB,

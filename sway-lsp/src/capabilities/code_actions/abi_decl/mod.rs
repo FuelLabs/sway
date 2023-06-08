@@ -1,10 +1,9 @@
 pub(crate) mod abi_impl;
 
+use lsp_types::CodeActionOrCommand;
 use sway_core::{decl_engine::id::DeclId, language::ty::TyAbiDecl};
-use tower_lsp::lsp_types::CodeActionOrCommand;
 
 use self::abi_impl::AbiImplCodeAction;
-
 use super::{CodeAction, CodeActionContext};
 
 pub(crate) fn code_actions(

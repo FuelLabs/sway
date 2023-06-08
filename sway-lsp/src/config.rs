@@ -18,6 +18,12 @@ pub struct Config {
     trace: TraceConfig,
 }
 
+impl Config {
+    pub fn main_loop_num_threads(&self) -> usize {
+        num_cpus::get_physical().try_into().unwrap_or(1)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Default)]
 struct TraceConfig {}
 

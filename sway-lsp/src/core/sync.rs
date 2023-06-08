@@ -4,6 +4,7 @@ use crate::{
 };
 use dashmap::DashMap;
 use forc_pkg::{manifest::Dependency, PackageManifestFile};
+use lsp_types::Url;
 use notify::RecursiveMode;
 use notify_debouncer_mini::new_debouncer;
 use parking_lot::RwLock;
@@ -16,7 +17,6 @@ use std::{
 };
 use sway_types::Span;
 use tempfile::Builder;
-use tower_lsp::lsp_types::Url;
 
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub enum Directory {

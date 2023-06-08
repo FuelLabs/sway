@@ -1,7 +1,7 @@
 use crate::error::DirectoryError;
+use lsp_types::Url;
 use std::path::PathBuf;
 use sway_types::Span;
-use tower_lsp::lsp_types::Url;
 
 /// Create a [Url] from a [PathBuf].
 pub fn get_url_from_path(path: &PathBuf) -> Result<Url, DirectoryError> {

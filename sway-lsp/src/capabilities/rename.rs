@@ -7,10 +7,10 @@ use crate::{
     error::{LanguageServerError, RenameError},
     utils::document::get_url_from_path,
 };
+use lsp_types::{Position, PrepareRenameResponse, TextEdit, Url, WorkspaceEdit};
 use std::{collections::HashMap, sync::Arc};
 use sway_core::{language::ty, Engines};
 use sway_types::{Ident, Spanned};
-use tower_lsp::lsp_types::{Position, PrepareRenameResponse, TextEdit, Url, WorkspaceEdit};
 
 const RAW_IDENTIFIER: &str = "r#";
 

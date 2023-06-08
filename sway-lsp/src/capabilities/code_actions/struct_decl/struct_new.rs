@@ -1,6 +1,6 @@
+use lsp_types::{CodeActionDisabled, Position, Range, Url};
 use sway_core::language::ty::{self, TyImplTrait, TyStructDecl, TyStructField};
 use sway_types::Spanned;
-use tower_lsp::lsp_types::{CodeActionDisabled, Position, Range, Url};
 
 use crate::{
     capabilities::code_actions::{CodeAction, CodeActionContext, CODE_ACTION_NEW_TITLE},

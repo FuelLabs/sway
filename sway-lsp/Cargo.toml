@@ -10,9 +10,13 @@ repository.workspace = true
 
 [dependencies]
 anyhow = "1.0.41"
+crossbeam-channel = "0.5.5"
 dashmap = "5.4"
 forc-pkg = { version = "0.40.1", path = "../forc-pkg" }
 forc-tracing = { version = "0.40.1", path = "../forc-tracing" }
+lsp-server = "0.7.0"
+lsp-types = { version = "=0.94", features = ["proposed"] }
+
 notify = "5.0.0"
 notify-debouncer-mini = { version = "0.2.0" }
 parking_lot = "0.12.1"
@@ -36,6 +40,10 @@ toml_edit = "0.19"
 tower-lsp = { version = "0.18", features = ["proposed"] }
 tracing = "0.1"
 urlencoding = "2.1.2"
+
+# ra_ap_stdx = "0.0.149"
+num_cpus = "1.15.0"
+stdx = { git = "https://github.com/JoshuaBatty/rust-analyzer-stdx" }
 
 [dev-dependencies]
 assert-json-diff = "2.0"
