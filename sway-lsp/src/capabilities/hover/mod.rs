@@ -27,7 +27,10 @@ pub fn hover_data(
     url: Url,
     position: Position,
 ) -> Option<lsp_types::Hover> {
-    let (ident, token) = session.token_map().token_at_position(&url, position)?;
+    let engines = session.engines.read();
+    let (ident, token) = session
+        .token_map()
+        .token_at_position(engines.se(), &url, position)?;
     let range = get_range_from_span(&ident.span());
 
     // check if our token is a keyword
@@ -220,6 +223,7 @@ fn hover_format(
         .maybe_add_sway_block(sway_block)
         .text(&doc_comment)
         .maybe_add_links(
+            engines.se(),
             hover_link_contents.related_types,
             hover_link_contents.implementations,
         );

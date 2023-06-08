@@ -2760,7 +2760,7 @@ fn literal_to_literal(
                 full_span.src().clone(),
                 full_span.start() + 1,
                 full_span.end() - 1,
-                full_span.path().cloned(),
+                full_span.source_id().cloned(),
             )
             .unwrap();
             Literal::String(inner_span)

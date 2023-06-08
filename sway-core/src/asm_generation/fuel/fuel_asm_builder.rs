@@ -23,7 +23,7 @@ use sway_types::{span::Span, Spanned};
 use either::Either;
 use std::collections::HashMap;
 
-pub struct FuelAsmBuilder<'ir> {
+pub struct FuelAsmBuilder<'ir, 'eng> {
     pub(super) program_kind: ProgramKind,
 
     // Data section is used by the rest of code gen to layout const memory.
@@ -52,7 +52,7 @@ pub struct FuelAsmBuilder<'ir> {
     pub(super) locals_ctxs: Vec<(u64, VirtualRegister)>,
 
     // IR context we're compiling.
-    pub(super) context: &'ir Context,
+    pub(super) context: &'ir Context<'eng>,
 
     // Metadata manager for converting metadata to Spans, etc.
     pub(super) md_mgr: MetadataManager,
@@ -78,7 +78,7 @@ pub type FuelAsmBuilderResult = (
     Vec<AbstractInstructionSet>,
 );
 
-impl<'ir> AsmBuilder for FuelAsmBuilder<'ir> {
+impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
     fn func_to_labels(&mut self, func: &Function) -> (Label, Label) {
         self.func_to_labels(func)
     }
@@ -92,12 +92,12 @@ impl<'ir> AsmBuilder for FuelAsmBuilder<'ir> {
     }
 }
 
-impl<'ir> FuelAsmBuilder<'ir> {
+impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
     pub fn new(
         program_kind: ProgramKind,
         data_section: DataSection,
         reg_seqr: RegisterSequencer,
-        context: &'ir Context,
+        context: &'ir Context<'eng>,
     ) -> Self {
         FuelAsmBuilder {
             program_kind,
