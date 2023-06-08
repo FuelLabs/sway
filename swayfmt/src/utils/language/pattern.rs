@@ -6,14 +6,11 @@ use crate::{
     },
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
-        {CurlyBrace, Parenthesis},
+        CurlyBrace,
     },
 };
 use std::fmt::Write;
-use sway_ast::{
-    token::Delimiters, Braces, CommaToken, ExprTupleDescriptor, PathExpr, Pattern,
-    PatternStructField, Punctuated,
-};
+use sway_ast::{Braces, CommaToken, PathExpr, Pattern, PatternStructField, Punctuated};
 use sway_types::Spanned;
 
 impl Format for Pattern {
@@ -59,9 +56,9 @@ impl Format for Pattern {
                     formatter.shape.with_default_code_line(),
                     |formatter| -> Result<(), FormatterError> {
                         path.format(formatted_code, formatter)?;
-                        Self::open_parenthesis(formatted_code, formatter)?;
+                        write!(formatted_code, "{}", args.open_token.span().as_str())?;
                         args.get().format(formatted_code, formatter)?;
-                        Self::close_parenthesis(formatted_code, formatter)?;
+                        write!(formatted_code, "{}", args.close_token.span().as_str())?;
                         Ok(())
                     },
                 )?;
@@ -119,9 +116,9 @@ impl Format for Pattern {
                             .shape
                             .get_line_style(None, Some(body_width), &formatter.config);
 
-                        ExprTupleDescriptor::open_parenthesis(formatted_code, formatter)?;
+                        write!(formatted_code, "{}", args.open_token.span().as_str())?;
                         tuple_descriptor.format(formatted_code, formatter)?;
-                        ExprTupleDescriptor::close_parenthesis(formatted_code, formatter)?;
+                        write!(formatted_code, "{}", args.close_token.span().as_str())?;
 
                         Ok(())
                     },
@@ -133,25 +130,9 @@ impl Format for Pattern {
     }
 }
 
-// Currently these just push their respective chars, we may need to change this
-impl Parenthesis for Pattern {
-    fn open_parenthesis(
-        line: &mut FormattedCode,
-        _formatter: &mut Formatter,
-    ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiters::Parenthesis.as_open_char())?;
-        Ok(())
-    }
-    fn close_parenthesis(
-        line: &mut FormattedCode,
-        _formatter: &mut Formatter,
-    ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiters::Parenthesis.as_close_char())?;
-        Ok(())
-    }
-}
-impl CurlyBrace for Pattern {
+impl CurlyBrace for Braces<Punctuated<PatternStructField, CommaToken>> {
     fn open_curly_brace(
+        &self,
         line: &mut String,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
@@ -159,12 +140,12 @@ impl CurlyBrace for Pattern {
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add openning brace to the next line.
-                write!(line, "\n{}", Delimiters::Brace.as_open_char())?;
+                write!(line, "\n{}", self.open_token.span().as_str())?;
                 formatter.shape.block_indent(&formatter.config);
             }
             _ => {
                 // Add opening brace to the same line
-                write!(line, " {}", Delimiters::Brace.as_open_char())?;
+                write!(line, " {}", self.open_token.span().as_str())?;
                 formatter.shape.block_indent(&formatter.config);
             }
         }
@@ -172,18 +153,19 @@ impl CurlyBrace for Pattern {
         Ok(())
     }
     fn close_curly_brace(
+        &self,
         line: &mut String,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         // Unindent by one block
         formatter.shape.block_unindent(&formatter.config);
         match formatter.shape.code_line.line_style {
-            LineStyle::Inline => write!(line, "{}", Delimiters::Brace.as_close_char())?,
+            LineStyle::Inline => write!(line, "{}", self.close_token.span().as_str())?,
             _ => write!(
                 line,
                 "{}{}",
                 formatter.shape.indent.to_string(&formatter.config)?,
-                Delimiters::Brace.as_close_char()
+                self.close_token.span().as_str()
             )?,
         }
 
@@ -256,14 +238,14 @@ fn format_pattern_struct(
     formatter: &mut Formatter,
 ) -> Result<(), FormatterError> {
     path.format(formatted_code, formatter)?;
-    Pattern::open_curly_brace(formatted_code, formatter)?;
-    let fields = &fields.get();
+    fields.open_curly_brace(formatted_code, formatter)?;
+    let inner = fields.get();
     match formatter.shape.code_line.line_style {
-        LineStyle::Inline => fields.format(formatted_code, formatter)?,
+        LineStyle::Inline => inner.format(formatted_code, formatter)?,
         // TODO: add field alignment
-        _ => fields.format(formatted_code, formatter)?,
+        _ => inner.format(formatted_code, formatter)?,
     }
-    Pattern::close_curly_brace(formatted_code, formatter)?;
+    fields.close_curly_brace(formatted_code, formatter)?;
 
     Ok(())
 }

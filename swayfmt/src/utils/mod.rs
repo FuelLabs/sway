@@ -9,6 +9,7 @@ pub(crate) trait CurlyBrace {
     /// Handles brace open scenerio. Checks the config for the placement of the brace.
     /// Modifies the current shape of the formatter.
     fn open_curly_brace(
+        &self,
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError>;
@@ -16,6 +17,7 @@ pub(crate) trait CurlyBrace {
     /// Handles brace close scenerio.
     /// Currently it simply pushes a `}` and modifies the shape.
     fn close_curly_brace(
+        &self,
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError>;
@@ -23,11 +25,13 @@ pub(crate) trait CurlyBrace {
 
 pub(crate) trait SquareBracket {
     fn open_square_bracket(
+        &self,
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError>;
 
     fn close_square_bracket(
+        &self,
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError>;
@@ -37,12 +41,14 @@ pub(crate) trait Parenthesis {
     /// Handles open parenthesis scenarios, checking the config for placement
     /// and modifying the shape of the formatter where necessary.
     fn open_parenthesis(
+        &self,
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError>;
 
     /// Handles the closing parenthesis scenario.
     fn close_parenthesis(
+        &self,
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError>;

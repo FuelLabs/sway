@@ -7,8 +7,9 @@ use crate::{
 };
 use std::fmt::Write;
 use sway_ast::{
-    attribute::{Annotated, Attribute, AttributeDecl, AttributeHashKind},
-    token::{Delimiters, PunctKind},
+    attribute::{Annotated, Attribute, AttributeArg, AttributeDecl, AttributeHashKind},
+    token::PunctKind,
+    CommaToken, Parens, Punctuated,
 };
 use sway_types::{constants::DOC_COMMENT_ATTRIBUTE_NAME, Spanned};
 
@@ -103,7 +104,7 @@ impl Format for AttributeDecl {
         };
         write!(formatted_code, "{}", hash_type_token_span?.as_str())?;
         // `[`
-        Self::open_square_bracket(formatted_code, formatter)?;
+        self.open_square_bracket(formatted_code, formatter)?;
         let mut regular_attrs = regular_attrs.iter().peekable();
         while let Some(attr) = regular_attrs.next() {
             formatter.with_shape(
@@ -113,11 +114,11 @@ impl Format for AttributeDecl {
                     write!(formatted_code, "{}", attr.name.span().as_str())?;
                     if let Some(args) = &attr.args {
                         // `(`
-                        Self::open_parenthesis(formatted_code, formatter)?;
+                        args.open_parenthesis(formatted_code, formatter)?;
                         // format and add args e.g. `read, write`
                         args.get().format(formatted_code, formatter)?;
                         // ')'
-                        Self::close_parenthesis(formatted_code, formatter)?;
+                        args.close_parenthesis(formatted_code, formatter)?;
                     };
                     Ok(())
                 },
@@ -128,41 +129,45 @@ impl Format for AttributeDecl {
             }
         }
         // `]\n`
-        Self::close_square_bracket(formatted_code, formatter)?;
+        self.close_square_bracket(formatted_code, formatter)?;
         Ok(())
     }
 }
 
 impl SquareBracket for AttributeDecl {
     fn open_square_bracket(
+        &self,
         line: &mut String,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiters::Bracket.as_open_char())?;
+        write!(line, "{}", self.attribute.open_token.span().as_str())?;
         Ok(())
     }
     fn close_square_bracket(
+        &self,
         line: &mut String,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        writeln!(line, "{}", Delimiters::Bracket.as_close_char())?;
+        writeln!(line, "{}", self.attribute.open_token.span().as_str())?;
         Ok(())
     }
 }
 
-impl Parenthesis for AttributeDecl {
+impl Parenthesis for Parens<Punctuated<AttributeArg, CommaToken>> {
     fn open_parenthesis(
+        &self,
         line: &mut String,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiters::Parenthesis.as_open_char())?;
+        write!(line, "{}", self.open_token.span().as_str())?;
         Ok(())
     }
     fn close_parenthesis(
+        &self,
         line: &mut String,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiters::Parenthesis.as_close_char())?;
+        write!(line, "{}", self.close_token.span().as_str())?;
         Ok(())
     }
 }

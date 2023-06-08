@@ -6,8 +6,7 @@ use std::fmt::Write;
 use sway_ast::{
     brackets::SquareBrackets,
     expr::Expr,
-    keywords::{StrToken, Token, UnderscoreToken},
-    token::Delimiters,
+    keywords::{PtrToken, SliceToken, StrToken, Token, UnderscoreToken},
     ty::{Ty, TyArrayDescriptor, TyTupleDescriptor},
 };
 use sway_types::Spanned;
@@ -20,9 +19,17 @@ impl Format for Ty {
     ) -> Result<(), FormatterError> {
         match self {
             Self::Array(arr_descriptor) => {
-                write!(formatted_code, "{}", Delimiters::Bracket.as_open_char())?;
+                write!(
+                    formatted_code,
+                    "{}",
+                    arr_descriptor.open_token.span().as_str()
+                )?;
                 arr_descriptor.get().format(formatted_code, formatter)?;
-                write!(formatted_code, "{}", Delimiters::Bracket.as_close_char())?;
+                write!(
+                    formatted_code,
+                    "{}",
+                    arr_descriptor.close_token.span().as_str()
+                )?;
                 Ok(())
             }
             Self::Infer { underscore_token } => format_infer(formatted_code, underscore_token),
@@ -31,12 +38,16 @@ impl Format for Ty {
                 format_str(formatted_code, str_token.clone(), length.clone())
             }
             Self::Tuple(tup_descriptor) => {
-                write!(formatted_code, "{}", Delimiters::Parenthesis.as_open_char())?;
+                write!(
+                    formatted_code,
+                    "{}",
+                    tup_descriptor.open_token.span().as_str()
+                )?;
                 tup_descriptor.get().format(formatted_code, formatter)?;
                 write!(
                     formatted_code,
                     "{}",
-                    Delimiters::Parenthesis.as_close_char()
+                    tup_descriptor.close_token.span().as_str()
                 )?;
                 Ok(())
             }
@@ -81,9 +92,9 @@ fn format_str(
         formatted_code,
         "{}{}{}{}",
         str_token.span().as_str(),
-        Delimiters::Bracket.as_open_char(),
+        length.open_token.span().as_str(),
         length.into_inner().span().as_str(),
-        Delimiters::Bracket.as_close_char()
+        length.close_token.span().as_str()
     )?;
     Ok(())
 }
