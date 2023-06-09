@@ -41,9 +41,10 @@ pub(crate) fn on_enter(
 
     // Apply any edits.
     if let Some(edit) = workspace_edit {
-        if let Err(err) = client.apply_edit(edit).await {
-            tracing::error!("on_enter failed to apply edit: {}", err);
-        }
+        // TODO: Put me back in
+        // if let Err(err) = client.apply_edit(edit).await {
+        //     tracing::error!("on_enter failed to apply edit: {}", err);
+        // }
     }
 }
 

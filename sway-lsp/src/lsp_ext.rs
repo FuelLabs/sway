@@ -7,7 +7,7 @@ pub enum ShowAst {}
 
 impl Request for ShowAst {
     type Params = ShowAstParams;
-    type Result = String;
+    type Result = Option<TextDocumentIdentifier>;
     const METHOD: &'static str = "sway/show_ast";
 }
 

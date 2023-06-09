@@ -48,8 +48,9 @@ pub(crate) fn handle_did_change_text_document(
         .get_uri_and_session(&params.text_document.uri)
     {
         Ok((uri, session)) => {
+            // TODO: Put me back.
             // handle on_enter capabilities if they are enabled
-            capabilities::on_enter(&config, &self.client, &session, &uri.clone(), &params);
+            // capabilities::on_enter(&config, &self.client, &session, &uri.clone(), &params);
 
             // update this file with the new changes and write to disk
             match session.write_changes_to_file(&uri, params.content_changes) {

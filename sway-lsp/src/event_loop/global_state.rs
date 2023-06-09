@@ -57,7 +57,7 @@ pub(crate) struct GlobalStateSnapshot {
 
 impl std::panic::UnwindSafe for GlobalStateSnapshot {}
 
-struct Sessions(DashMap<PathBuf, Arc<Session>>);
+pub(crate) struct Sessions(DashMap<PathBuf, Arc<Session>>);
 
 impl Sessions {
     fn init(&self, uri: &Url) -> Result<(), LanguageServerError> {
@@ -120,7 +120,7 @@ impl GlobalState {
             let handle = TaskPool::new_with_threads(sender, config.main_loop_num_threads());
             Handle { handle, receiver }
         };
-        let sessions = Arc::new(DashMap::new());
+        let sessions = Arc::new(Sessions(DashMap::new()));
         let config = Arc::new(config);
         let keyword_docs = Arc::new(KeywordDocs::new());
         GlobalState {
@@ -243,30 +243,37 @@ impl GlobalState {
             diagnostics_to_publish
         };
 
+        // TODO: Put me back
         // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
         // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
-        self.client
-            .publish_diagnostics(workspace_uri.clone(), diagnostics_res, None)
-            .await;
+        // self.client
+        //     .publish_diagnostics(workspace_uri.clone(), diagnostics_res, None)
+        //     .await;
     }
 
     pub(crate) fn parse_project(&self, uri: Url, workspace_uri: Url, session: Arc<Session>) {
-        let should_publish = run_blocking_parse_project(uri.clone(), session.clone()).await;
-        if should_publish {
-            self.publish_diagnostics(&uri, &workspace_uri, session);
+        match session.parse_project(&uri) {
+            Ok(should_publish) => {
+                if should_publish {
+                    self.publish_diagnostics(&uri, &workspace_uri, session);
+                }
+            }
+            Err(err) => {
+                tracing::error!("{}", err);
+            }
         }
     }
 }
 
-/// Runs parse_project in a blocking thread, because parsing is not async.
-async fn run_blocking_parse_project(uri: Url, session: Arc<Session>) -> bool {
-    task::spawn_blocking(move || match session.parse_project(&uri) {
-        Ok(should_publish) => should_publish,
-        Err(err) => {
-            tracing::error!("{}", err);
-            matches!(err, LanguageServerError::FailedToParse)
-        }
-    })
-    .await
-    .unwrap_or_default()
-}
+// /// Runs parse_project in a blocking thread, because parsing is not async.
+// async fn run_blocking_parse_project(uri: Url, session: Arc<Session>) -> bool {
+//     task::spawn_blocking(move || match session.parse_project(&uri) {
+//         Ok(should_publish) => should_publish,
+//         Err(err) => {
+//             tracing::error!("{}", err);
+//             matches!(err, LanguageServerError::FailedToParse)
+//         }
+//     })
+//     .await
+//     .unwrap_or_default()
+// }

@@ -14,21 +14,21 @@ mod handlers {
 mod traverse;
 pub mod utils;
 
-use crate::{
-    config::Config,
-    event_loop::{main_loop, Result},
-};
+use crate::{config::Config, event_loop::main_loop};
 use forc_tracing::{init_tracing_subscriber, TracingSubscriberOptions, TracingWriterMode};
 use lsp_server::Connection;
 use lsp_types::*;
 use tracing::metadata::LevelFilter;
 
-pub fn start() -> Result<()> {
+pub fn start() {
     tracing::info!("Initializing the Sway Language Server");
 
     let (connection, io_threads) = Connection::stdio();
 
-    let (initialize_id, initialize_params) = connection.initialize_start()?;
+    let (initialize_id, initialize_params) = connection.initialize_start().unwrap_or_else(|err| {
+        panic!("failed to initialize sway-lsp: {:?}", err);
+    });
+
     tracing::info!("InitializeParams: {}", initialize_params);
     let lsp_types::InitializeParams {
         initialization_options,
@@ -37,7 +37,9 @@ pub fn start() -> Result<()> {
     } = event_loop::from_json::<lsp_types::InitializeParams>(
         "InitializeParams",
         &initialize_params,
-    )?;
+    ).unwrap_or_else(|err| {
+        panic!("failed to destialize initialization params: {:?}", err);
+    });
 
     let mut config: Config = Default::default();
     if let Some(initialization_options) = &initialization_options {
@@ -62,8 +64,12 @@ pub fn start() -> Result<()> {
         ..InitializeResult::default()
     };
     let initialize_result = serde_json::to_value(initialize_result).unwrap();
-    connection.initialize_finish(initialize_id, initialize_result)?;
-    tracing::info!("Sway Language Server Initialized");
+
+    if let Err(err) = connection.initialize_finish(initialize_id, initialize_result) {
+        tracing::error!("{}", err.to_string().as_str());
+    } else {
+        tracing::info!("Sway Language Server Initialized");
+    }
 
     if let Some(client_info) = client_info {
         tracing::info!(
@@ -73,11 +79,16 @@ pub fn start() -> Result<()> {
         );
     }
 
-    main_loop::run(config, connection)?;
+    // Run the main loop
+    if let Err(err) = main_loop::run(config, connection) {
+        tracing::error!("{}", err.to_string().as_str());
+    }
 
-    io_threads.join()?;
+    if let Err(err) = io_threads.join() {
+        tracing::error!("IoThreads join error {}", err.to_string().as_str());
+    }
+
     tracing::info!("server did shut down");
-    Ok(())
 }
 
 /// Returns the capabilities of the server to the client,
