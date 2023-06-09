@@ -1,14 +1,12 @@
 use crate::{
-    decl_engine::DeclEngine,
     engine_threading::*,
     language::{parsed::TreeType, Purity, Visibility},
     namespace::Path,
-    query_engine::QueryEngine,
     semantic_analysis::{ast_node::Mode, Namespace},
     type_system::{
         EnforceTypeArguments, MonomorphizeHelper, SubstTypes, TypeArgument, TypeId, TypeInfo,
     },
-    CompileResult, CompileWarning, TypeEngine,
+    CompileResult, CompileWarning,
 };
 use sway_error::error::CompileError;
 use sway_types::{span::Span, Ident};
@@ -25,14 +23,7 @@ pub struct TypeCheckContext<'a> {
     ///   updated upon entering/exiting submodules via the `enter_submodule` method.
     pub(crate) namespace: &'a mut Namespace,
 
-    /// The type engine storing types.
-    pub(crate) type_engine: &'a TypeEngine,
-
-    /// The declaration engine holds declarations.
-    pub(crate) decl_engine: &'a DeclEngine,
-
-    /// The query engine holds queries.
-    pub(crate) query_engine: &'a QueryEngine,
+    pub(crate) engines: &'a Engines,
 
     // The following set of fields are intentionally private. When a `TypeCheckContext` is passed
     // into a new node during type checking, these fields should be updated using the `with_*`
@@ -77,21 +68,18 @@ impl<'a> TypeCheckContext<'a> {
     /// - mode: NoneAbi
     /// - help_text: ""
     /// - purity: Pure
-    pub fn from_root(root_namespace: &'a mut Namespace, engines: Engines<'a>) -> Self {
+    pub fn from_root(root_namespace: &'a mut Namespace, engines: &'a Engines) -> Self {
         Self::from_module_namespace(root_namespace, engines)
     }
 
-    fn from_module_namespace(namespace: &'a mut Namespace, engines: Engines<'a>) -> Self {
-        let (type_engine, decl_engine, query_engine) = engines.unwrap();
+    fn from_module_namespace(namespace: &'a mut Namespace, engines: &'a Engines) -> Self {
         Self {
             namespace,
-            type_engine,
-            decl_engine,
-            query_engine,
-            type_annotation: type_engine.insert(engines, TypeInfo::Unknown),
+            engines,
+            type_annotation: engines.te().insert(engines, TypeInfo::Unknown),
             help_text: "",
             // TODO: Contract? Should this be passed in based on program kind (aka TreeType)?
-            self_type: type_engine.insert(engines, TypeInfo::Contract),
+            self_type: engines.te().insert(engines, TypeInfo::Contract),
             mode: Mode::NonAbi,
             purity: Purity::default(),
             kind: TreeType::Contract,
@@ -116,9 +104,7 @@ impl<'a> TypeCheckContext<'a> {
             help_text: self.help_text,
             purity: self.purity,
             kind: self.kind.clone(),
-            type_engine: self.type_engine,
-            decl_engine: self.decl_engine,
-            query_engine: self.query_engine,
+            engines: self.engines,
             disallow_functions: self.disallow_functions,
         }
     }
@@ -133,9 +119,7 @@ impl<'a> TypeCheckContext<'a> {
             help_text: self.help_text,
             purity: self.purity,
             kind: self.kind,
-            type_engine: self.type_engine,
-            decl_engine: self.decl_engine,
-            query_engine: self.query_engine,
+            engines: self.engines,
             disallow_functions: self.disallow_functions,
         }
     }
@@ -156,10 +140,7 @@ impl<'a> TypeCheckContext<'a> {
         // engine here once they're added.
         let Self { namespace, .. } = self;
         let mut submod_ns = namespace.enter_submodule(mod_name, visibility, module_span);
-        let submod_ctx = TypeCheckContext::from_module_namespace(
-            &mut submod_ns,
-            Engines::new(self.type_engine, self.decl_engine, self.query_engine),
-        );
+        let submod_ctx = TypeCheckContext::from_module_namespace(&mut submod_ns, self.engines);
         with_submod_ctx(submod_ctx)
     }
 
@@ -260,7 +241,7 @@ impl<'a> TypeCheckContext<'a> {
         T: MonomorphizeHelper + SubstTypes,
     {
         let mod_path = self.namespace.mod_path.clone();
-        self.type_engine.monomorphize(
+        self.engines.te().monomorphize(
             self.engines(),
             value,
             type_arguments,
@@ -308,7 +289,7 @@ impl<'a> TypeCheckContext<'a> {
         ty: TypeId,
         span: &Span,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
-        self.type_engine.unify_with_self(
+        self.engines.te().unify_with_self(
             self.engines(),
             ty,
             self.type_annotation(),
@@ -320,7 +301,7 @@ impl<'a> TypeCheckContext<'a> {
     }
 
     /// Get the engines needed for engine threading.
-    pub(crate) fn engines(&self) -> Engines<'a> {
-        Engines::new(self.type_engine, self.decl_engine, self.query_engine)
+    pub(crate) fn engines(&self) -> &'a Engines {
+        self.engines
     }
 }

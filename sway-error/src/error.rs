@@ -4,10 +4,8 @@ use crate::parser_error::ParseError;
 use crate::type_error::TypeError;
 
 use core::fmt;
-use std::path::PathBuf;
-use std::sync::Arc;
 use sway_types::constants::STORAGE_PURITY_ATTRIBUTE_NAME;
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, SourceId, Span, Spanned};
 use thiserror::Error;
 
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
@@ -639,6 +637,19 @@ pub enum CompileError {
     ConfigurableInLibrary { span: Span },
     #[error("The name `{name}` is defined multiple times")]
     NameDefinedMultipleTimes { name: String, span: Span },
+    #[error("Multiple applicable items in scope. {}", {
+        let mut candidates = "".to_string();
+        for (index, as_trait) in as_traits.iter().enumerate() {
+            candidates = format!("{candidates}\n  Disambiguate the associated function for candidate #{index}\n    <{type_name} as {as_trait}>::{method_name}(");
+        }
+        candidates
+    })]
+    MultipleApplicableItemsInScope {
+        span: Span,
+        type_name: String,
+        method_name: String,
+        as_traits: Vec<String>,
+    },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -809,13 +820,14 @@ impl Spanned for CompileError {
             TraitImplPayabilityMismatch { span, .. } => span.clone(),
             ConfigurableInLibrary { span } => span.clone(),
             NameDefinedMultipleTimes { span, .. } => span.clone(),
+            MultipleApplicableItemsInScope { span, .. } => span.clone(),
         }
     }
 }
 
 impl CompileError {
-    pub fn path(&self) -> Option<Arc<PathBuf>> {
-        self.span().path().cloned()
+    pub fn source_id(&self) -> Option<SourceId> {
+        self.span().source_id().cloned()
     }
 }
 

@@ -11,7 +11,7 @@ use crate::{engine_threading::*, language::ty, CompileResult};
 
 use priv_prelude::*;
 
-pub(super) fn monomorphize(engines: Engines<'_>, module: &mut ty::TyModule) -> CompileResult<()> {
+pub(super) fn monomorphize(engines: &Engines, module: &mut ty::TyModule) -> CompileResult<()> {
     CompileResult::with_handler(|h| {
         // Gather the constraints from the typed AST.
         let constraints = gather_constraints(engines, h, module)?;

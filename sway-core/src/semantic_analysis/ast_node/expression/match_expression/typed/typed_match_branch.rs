@@ -25,8 +25,8 @@ impl ty::TyMatchBranch {
             span: branch_span,
         } = branch;
 
-        let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
+        let type_engine = ctx.engines.te();
+        let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
         // type check the scrutinee

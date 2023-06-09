@@ -40,7 +40,7 @@ use etk_asm::{asm::Assembler, ops::*};
 /// to store the correct code on the blockchain but also any logic that is contained in
 /// a (potential) constructor of the contract.
 
-pub struct EvmAsmBuilder<'ir> {
+pub struct EvmAsmBuilder<'ir, 'eng> {
     #[allow(dead_code)]
     program_kind: ProgramKind,
 
@@ -53,7 +53,7 @@ pub struct EvmAsmBuilder<'ir> {
     pub(super) block_label_map: HashMap<Block, Label>,
 
     // IR context we're compiling.
-    context: &'ir Context,
+    context: &'ir Context<'eng>,
 
     // Metadata manager for converting metadata to Spans, etc.
     md_mgr: MetadataManager,
@@ -93,7 +93,7 @@ pub struct EvmAsmBuilderResult {
 
 pub type EvmAbiResult = Vec<ethabi::operation::Operation>;
 
-impl<'ir> AsmBuilder for EvmAsmBuilder<'ir> {
+impl<'ir, 'eng> AsmBuilder for EvmAsmBuilder<'ir, 'eng> {
     fn func_to_labels(&mut self, func: &Function) -> (Label, Label) {
         self.func_to_labels(func)
     }
@@ -109,8 +109,8 @@ impl<'ir> AsmBuilder for EvmAsmBuilder<'ir> {
 
 #[allow(unused_variables)]
 #[allow(dead_code)]
-impl<'ir> EvmAsmBuilder<'ir> {
-    pub fn new(program_kind: ProgramKind, context: &'ir Context) -> Self {
+impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
+    pub fn new(program_kind: ProgramKind, context: &'ir Context<'eng>) -> Self {
         Self {
             program_kind,
             sections: Vec::new(),

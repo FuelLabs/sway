@@ -33,24 +33,25 @@ use sway_ast::{
     Module, ModuleKind,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
+use sway_types::SourceId;
 
-use std::{path::PathBuf, sync::Arc};
+use std::sync::Arc;
 
 pub fn parse_file(
     handler: &Handler,
     src: Arc<str>,
-    path: Option<Arc<PathBuf>>,
+    source_id: Option<SourceId>,
 ) -> Result<Annotated<Module>, ErrorEmitted> {
-    let ts = lex(handler, &src, 0, src.len(), path)?;
+    let ts = lex(handler, &src, 0, src.len(), source_id)?;
     Parser::new(handler, &ts).parse_to_end().map(|(m, _)| m)
 }
 
 pub fn parse_module_kind(
     handler: &Handler,
     src: Arc<str>,
-    path: Option<Arc<PathBuf>>,
+    source_id: Option<SourceId>,
 ) -> Result<ModuleKind, ErrorEmitted> {
-    let ts = lex(handler, &src, 0, src.len(), path)?;
+    let ts = lex(handler, &src, 0, src.len(), source_id)?;
     let mut parser = Parser::new(handler, &ts);
     while let Some(DocComment {
         doc_style: DocStyle::Inner,

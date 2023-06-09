@@ -7,8 +7,8 @@ use std::{
 use anyhow::Result;
 use colored::Colorize;
 use sway_core::{
-    compile_ir_to_asm, compile_to_ast, decl_engine::DeclEngine, ir_generation::compile_program,
-    namespace, query_engine::QueryEngine, BuildTarget, Engines, TypeEngine,
+    compile_ir_to_asm, compile_to_ast, ir_generation::compile_program, namespace, BuildTarget,
+    Engines,
 };
 use sway_ir::{
     create_inline_in_module_pass, register_known_passes, PassGroup, PassManager, ARGDEMOTION_NAME,
@@ -18,12 +18,9 @@ use sway_utils::PerformanceData;
 
 pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
     // Compile core library and reuse it when compiling tests.
-    let type_engine = TypeEngine::default();
-    let decl_engine = DeclEngine::default();
-    let query_engine = QueryEngine::default();
-    let engines = Engines::new(&type_engine, &decl_engine, &query_engine);
+    let engines = Engines::default();
     let build_target = BuildTarget::default();
-    let core_lib = compile_core(build_target, engines);
+    let core_lib = compile_core(build_target, &engines);
 
     // Find all the tests.
     let all_tests = discover_test_files();
@@ -133,7 +130,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                 let mut metrics = PerformanceData::default();
                 let sway_str = String::from_utf8_lossy(&sway_str);
                 let typed_res = compile_to_ast(
-                    engines,
+                    &engines,
                     Arc::from(sway_str),
                     core_lib.clone(),
                     Some(&bld_cfg),
@@ -159,7 +156,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
 
                 // Compile to IR.
                 let include_tests = true;
-                let mut ir = compile_program(&typed_program, include_tests, engines)
+                let mut ir = compile_program(&typed_program, include_tests, &engines)
                     .unwrap_or_else(|e| {
                         panic!("Failed to compile test {}:\n{e}", path.display());
                     })
@@ -279,7 +276,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                 }
 
                 // Parse the IR again, and print it yet again to make sure that IR de/serialisation works.
-                let parsed_ir = sway_ir::parser::parse(&ir_output)
+                let parsed_ir = sway_ir::parser::parse(&ir_output, engines.se())
                     .unwrap_or_else(|e| panic!("{}: {e}\n{ir_output}", path.display()));
                 let parsed_ir_output = sway_ir::printer::to_string(&parsed_ir);
                 if ir_output != parsed_ir_output {
@@ -333,7 +330,7 @@ fn discover_test_files() -> Vec<PathBuf> {
     test_files
 }
 
-fn compile_core(build_target: BuildTarget, engines: Engines<'_>) -> namespace::Module {
+fn compile_core(build_target: BuildTarget, engines: &Engines) -> namespace::Module {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let libcore_root_dir = format!("{manifest_dir}/../sway-lib-core");
 

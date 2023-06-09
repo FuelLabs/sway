@@ -11,7 +11,7 @@ use tower_lsp::lsp_types::{
 
 pub(crate) fn to_completion_items(
     namespace: &Items,
-    engines: Engines<'_>,
+    engines: &Engines,
     ident_to_complete: &Ident,
     fn_decl: &TyFunctionDecl,
     position: Position,
@@ -23,7 +23,7 @@ pub(crate) fn to_completion_items(
 
 /// Gathers the given [TypeId] struct's fields and methods and builds completion items.
 fn completion_items_for_type_id(
-    engines: Engines<'_>,
+    engines: &Engines,
     namespace: &Items,
     type_id: TypeId,
     position: Position,
@@ -92,7 +92,7 @@ fn completion_items_for_type_id(
 
 /// Returns the [String] of the shortened function signature to display in the completion item's label details.
 fn fn_signature_string(
-    engines: Engines,
+    engines: &Engines,
     fn_decl: &TyFunctionDecl,
     parent_type_id: &TypeId,
 ) -> String {
@@ -117,7 +117,7 @@ fn fn_signature_string(
 
 /// Given a [String] representing a type, replaces `Self` with the display name of the type.
 fn replace_self_with_type_str(
-    engines: Engines,
+    engines: &Engines,
     type_str: String,
     parent_type_id: &TypeId,
 ) -> String {
@@ -132,7 +132,7 @@ fn replace_self_with_type_str(
 /// [TyFunctionDecl]. For example, given `a.b.c`, it will return the type ID of `c`
 /// if it can resolve `a` in the given function.
 fn type_id_of_raw_ident(
-    engines: Engines,
+    engines: &Engines,
     namespace: &Items,
     ident: &Ident,
     fn_decl: &TyFunctionDecl,

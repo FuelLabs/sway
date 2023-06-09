@@ -14,7 +14,7 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
-use sway_types::Span;
+use sway_types::{SourceEngine, Span};
 use tempfile::Builder;
 use tower_lsp::lsp_types::Url;
 
@@ -116,16 +116,21 @@ impl SyncWorkspace {
 
     /// If it is a path to a temp directory, convert the path in the [Span] to the same file in the user's
     /// workspace. Otherwise, return the span as-is.
-    pub(crate) fn temp_to_workspace_span(&self, span: &Span) -> Result<Span, DirectoryError> {
-        let url = get_url_from_span(span)?;
+    pub(crate) fn temp_to_workspace_span(
+        &self,
+        source_engine: &SourceEngine,
+        span: &Span,
+    ) -> Result<Span, DirectoryError> {
+        let url = get_url_from_span(source_engine, span)?;
         if self.is_path_in_temp_workspace(&url) {
             let converted_url = self.convert_url(&url, self.manifest_dir()?, self.temp_dir()?)?;
             let converted_path = get_path_from_url(&converted_url)?;
+            let source_id = source_engine.get_source_id(&converted_path);
             let converted_span = Span::new(
                 span.src().clone(),
                 span.start(),
                 span.end(),
-                Some(converted_path.clone().into()),
+                Some(source_id),
             );
             match converted_span {
                 Some(span) => Ok(span),

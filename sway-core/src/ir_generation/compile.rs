@@ -22,7 +22,7 @@ use std::collections::HashMap;
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_script(
-    engines: Engines<'_>,
+    engines: &Engines,
     context: &mut Context,
     main_function: &ty::TyFunctionDecl,
     namespace: &namespace::Module,
@@ -68,7 +68,7 @@ pub(super) fn compile_script(
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_predicate(
-    engines: Engines<'_>,
+    engines: &Engines,
     context: &mut Context,
     main_function: &ty::TyFunctionDecl,
     namespace: &namespace::Module,
@@ -121,7 +121,7 @@ pub(super) fn compile_contract(
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     test_fns: &[(ty::TyFunctionDecl, DeclRefFunction)],
-    engines: Engines<'_>,
+    engines: &Engines,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Contract);
     let mut md_mgr = MetadataManager::default();
@@ -161,7 +161,7 @@ pub(super) fn compile_contract(
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_library(
-    engines: Engines<'_>,
+    engines: &Engines,
     context: &mut Context,
     namespace: &namespace::Module,
     declarations: &[ty::TyDecl],
@@ -195,13 +195,12 @@ pub(super) fn compile_library(
 }
 
 pub(crate) fn compile_constants(
-    engines: Engines<'_>,
+    engines: &Engines,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
     module_ns: &namespace::Module,
 ) -> Result<(), CompileError> {
-    let (type_engine, decl_engine, query_engine) = engines.unwrap();
     for decl_name in module_ns.get_all_declared_symbols() {
         if let Some(ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. })) =
             module_ns.symbols.get(decl_name)
@@ -210,9 +209,7 @@ pub(crate) fn compile_constants(
             let call_path = const_decl.call_path.clone();
             compile_const_decl(
                 &mut LookupEnv {
-                    type_engine,
-                    decl_engine,
-                    query_engine,
+                    engines,
                     context,
                     md_mgr,
                     module,
@@ -243,24 +240,21 @@ pub(crate) fn compile_constants(
 // they are monomorphised only at the instantation site.  We must ignore the generic declarations
 // altogether anyway.
 fn compile_declarations(
-    engines: Engines<'_>,
+    engines: &Engines,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
     namespace: &namespace::Module,
     declarations: &[ty::TyDecl],
 ) -> Result<(), CompileError> {
-    let (type_engine, decl_engine, query_engine) = engines.unwrap();
     for declaration in declarations {
         match declaration {
             ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
-                let decl = decl_engine.get_constant(decl_id);
+                let decl = engines.de().get_constant(decl_id);
                 let call_path = decl.call_path.clone();
                 compile_const_decl(
                     &mut LookupEnv {
-                        type_engine,
-                        decl_engine,
-                        query_engine,
+                        engines,
                         context,
                         md_mgr,
                         module,
@@ -308,7 +302,7 @@ fn compile_declarations(
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_function(
-    engines: Engines<'_>,
+    engines: &Engines,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -341,7 +335,7 @@ pub(super) fn compile_function(
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_entry_function(
-    engines: Engines<'_>,
+    engines: &Engines,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -367,7 +361,7 @@ pub(super) fn compile_entry_function(
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_tests(
-    engines: Engines<'_>,
+    engines: &Engines,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -394,7 +388,7 @@ pub(super) fn compile_tests(
 
 #[allow(clippy::too_many_arguments)]
 fn compile_fn(
-    engines: Engines<'_>,
+    engines: &Engines,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -534,7 +528,7 @@ fn compile_abi_method(
     ast_fn_decl: &ty::TyFunctionDecl,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    engines: Engines<'_>,
+    engines: &Engines,
 ) -> Result<Function, CompileError> {
     // Use the error from .to_fn_selector_value() if possible, else make an CompileError::Internal.
     let get_selector_result = ast_fn_decl.to_fn_selector_value(engines);

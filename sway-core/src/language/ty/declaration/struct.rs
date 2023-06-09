@@ -32,7 +32,7 @@ impl Named for TyStructDecl {
 
 impl EqWithEngines for TyStructDecl {}
 impl PartialEqWithEngines for TyStructDecl {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.call_path.suffix == other.call_path.suffix
             && self.fields.eq(&other.fields, engines)
             && self.type_parameters.eq(&other.type_parameters, engines)
@@ -41,7 +41,7 @@ impl PartialEqWithEngines for TyStructDecl {
 }
 
 impl HashWithEngines for TyStructDecl {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TyStructDecl {
             call_path,
             fields,
@@ -60,7 +60,7 @@ impl HashWithEngines for TyStructDecl {
 }
 
 impl SubstTypes for TyStructDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         self.fields
             .iter_mut()
             .for_each(|x| x.subst(type_mapping, engines));
@@ -71,7 +71,7 @@ impl SubstTypes for TyStructDecl {
 }
 
 impl ReplaceSelfType for TyStructDecl {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         self.fields
             .iter_mut()
             .for_each(|x| x.replace_self_type(engines, self_type));
@@ -134,7 +134,7 @@ pub struct TyStructField {
 }
 
 impl HashWithEngines for TyStructField {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TyStructField {
             name,
             type_argument,
@@ -150,13 +150,13 @@ impl HashWithEngines for TyStructField {
 
 impl EqWithEngines for TyStructField {}
 impl PartialEqWithEngines for TyStructField {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.name == other.name && self.type_argument.eq(&other.type_argument, engines)
     }
 }
 
 impl OrdWithEngines for TyStructField {
-    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
+    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
         let TyStructField {
             name: ln,
             type_argument: lta,
@@ -178,13 +178,13 @@ impl OrdWithEngines for TyStructField {
 }
 
 impl SubstTypes for TyStructField {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         self.type_argument.subst_inner(type_mapping, engines);
     }
 }
 
 impl ReplaceSelfType for TyStructField {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         self.type_argument.replace_self_type(engines, self_type);
     }
 }

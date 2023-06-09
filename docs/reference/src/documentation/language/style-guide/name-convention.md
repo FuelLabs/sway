@@ -1,6 +1,6 @@
-# Letter Casing
+# Naming Convention
 
-> TODO: intro
+A naming convention is a set of rules used to standardize how code is written.
 
 ## CapitalCase
 

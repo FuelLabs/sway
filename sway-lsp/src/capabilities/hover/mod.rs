@@ -11,10 +11,7 @@ use crate::{
 };
 use std::sync::Arc;
 use sway_core::{
-    language::{
-        ty::{self},
-        Visibility,
-    },
+    language::{ty, Visibility},
     Engines, TypeId,
 };
 
@@ -30,7 +27,10 @@ pub fn hover_data(
     url: Url,
     position: Position,
 ) -> Option<lsp_types::Hover> {
-    let (ident, token) = session.token_map().token_at_position(&url, position)?;
+    let engines = session.engines.read();
+    let (ident, token) = session
+        .token_map()
+        .token_at_position(engines.se(), &url, position)?;
     let range = get_range_from_span(&ident.span());
 
     // check if our token is a keyword
@@ -50,11 +50,8 @@ pub fn hover_data(
         });
     }
 
-    let te = session.type_engine.read();
-    let de = session.decl_engine.read();
-    let qe = session.query_engine.read();
-    let engines = Engines::new(&te, &de, &qe);
-    let (decl_ident, decl_token) = match token.declared_token_ident(engines) {
+    let engines = session.engines.read();
+    let (decl_ident, decl_token) = match token.declared_token_ident(&engines) {
         Some(decl_ident) => {
             let decl_token = session
                 .token_map()
@@ -68,7 +65,7 @@ pub fn hover_data(
         None => (ident, token),
     };
 
-    let contents = hover_format(session.clone(), engines, &decl_token, &decl_ident);
+    let contents = hover_format(session.clone(), &engines, &decl_token, &decl_ident);
     Some(lsp_types::Hover {
         contents,
         range: Some(range),
@@ -127,7 +124,7 @@ fn markup_content(markup: Markup) -> lsp_types::MarkupContent {
 
 fn hover_format(
     session: Arc<Session>,
-    engines: Engines<'_>,
+    engines: &Engines,
     token: &Token,
     ident: &Ident,
 ) -> lsp_types::HoverContents {
@@ -226,6 +223,7 @@ fn hover_format(
         .maybe_add_sway_block(sway_block)
         .text(&doc_comment)
         .maybe_add_links(
+            engines.se(),
             hover_link_contents.related_types,
             hover_link_contents.implementations,
         );
