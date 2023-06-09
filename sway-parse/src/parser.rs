@@ -119,14 +119,22 @@ impl<'a, 'e> Parser<'a, 'e> {
                             full_span: token_stream.span(),
                             handler: self.handler,
                         };
+                        println!("success");
                         Some(parser)
                     } else {
+                        println!("hello");
                         None
                     }
                 }
-                None => None,
+                None => {
+                    println!("hello2");
+                    None
+                }
             },
-            _ => None,
+            _ => {
+                println!("hello3");
+                None
+            }
         }
     }
 

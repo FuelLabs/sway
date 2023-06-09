@@ -245,7 +245,7 @@ pub fn lex_commented(
                     error(l.handler, LexError { kind, span });
                 }
                 Some((parent, open_index, open_delimiter)) => {
-                    if open_delimiter.as_char() != close_delimiter.as_char() {
+                    if open_delimiter.get_closing_delimiter() != close_delimiter {
                         // Recover on e.g., a `{ )` mismatch by having `)` interpreted as `}`.
                         let kind = LexErrorKind::MismatchedDelimiters {
                             open_position: open_index,
@@ -341,6 +341,7 @@ fn lex_close_delimiter(
             full_span,
         },
         delimiters,
+        // NOTES: does span_until include the opening delimiter?
         span: span_until(l, open_index),
     };
     parent.push(CommentedTokenTree::Tree(group.into()));

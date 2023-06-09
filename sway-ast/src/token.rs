@@ -66,6 +66,17 @@ impl PunctKind {
     }
 }
 
+// NOTES: Would this type make more sense as
+// pub struct GenericGroup<T> {
+//     pub open_delimiter: OpeningDelimiter,
+//     pub token_stream: T,
+//     pub close_delimiter: ClosingDelimiter,
+//     pub span: Span,
+// }
+// ?
+// this pattern is the same for the delimiter groups: [Parens], [Braces], etc.
+// the delimiters field here is only ever used in the `enter_delimited` method to match the opening delimiter
+// and get the next parser
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub struct GenericGroup<T> {
     pub delimiters: Delimiters,

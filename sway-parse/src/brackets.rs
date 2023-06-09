@@ -51,9 +51,10 @@ macro_rules! impl_brackets (
             where
                 T: Parse
             {
-                if let Some(mut parser)
-                    = parser.enter_delimited($ty_name::<T>::as_opening_delimiter())
-                {
+                println!("try_parse");
+                // if let Some(mut parser)
+                //     = parser.enter_delimited($open_kind)
+                // {
                     if parser.peek::<$open_token>().is_some() {
                         let open_token = parser.parse()?;
                         let inner = parser.parse()?;
@@ -69,8 +70,8 @@ macro_rules! impl_brackets (
                         return Ok(None)
                     }
                     return Ok(None)
-                }
-                Ok(None)
+                // }
+                // Ok(None)
             }
 
             fn parse_all_inner(
@@ -80,9 +81,9 @@ macro_rules! impl_brackets (
             where
                 T: Parse
             {
-
+                println!("parse_all_inner");
                 if let Some(mut parser)
-                    = parser.enter_delimited($ty_name::<T>::as_opening_delimiter())
+                    = parser.enter_delimited($open_kind)
                 {
                     if parser.peek::<$open_token>().is_some() {
                         let open_token = parser.parse()?;
@@ -114,8 +115,9 @@ macro_rules! impl_brackets (
             where
                 T: Parse
             {
+                println!("try_parse_all_inner");
                 if let Some(mut parser)
-                    = parser.enter_delimited($ty_name::<T>::as_opening_delimiter())
+                    = parser.enter_delimited($open_kind)
                 {
                     if parser.peek::<$open_token>().is_some() {
                         let open_token = parser.parse()?;
@@ -149,9 +151,10 @@ macro_rules! impl_brackets (
                 parser: &mut Parser,
             ) -> ParseResult<$ty_name<T>>
             {
-                if let Some(mut parser)
-                    = parser.enter_delimited($ty_name::<T>::as_opening_delimiter())
-                {
+                println!("parse");
+                // if let Some(mut parser)
+                //     = parser.enter_delimited($open_kind)
+                // {
                     if parser.peek::<$open_token>().is_some() {
                         let open_token = parser.parse()?;
                         let inner = parser.parse()?;
@@ -166,8 +169,8 @@ macro_rules! impl_brackets (
                         return Err(parser.emit_error(ParseErrorKind::ExpectedClosingDelimiter { kinds: vec![$close_kind] }))
                     }
                     return Err(parser.emit_error(ParseErrorKind::ExpectedOpeningDelimiter { kinds: vec![$open_kind] }))
-                }
-                Err(parser.emit_error(ParseErrorKind::ExpectedOpeningDelimiter { kinds: vec![$open_kind] }))
+                // }
+                // Err(parser.emit_error(ParseErrorKind::ExpectedOpeningDelimiter { kinds: vec![$open_kind] }))
             }
         }
     };
