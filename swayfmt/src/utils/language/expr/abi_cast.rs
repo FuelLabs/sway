@@ -2,7 +2,7 @@ use crate::{
     formatter::*,
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
-        Parenthesis,
+        FormatParenthesis,
     },
 };
 use std::fmt::Write;
@@ -25,7 +25,7 @@ impl Format for AbiCastArgs {
     }
 }
 
-impl Parenthesis for AbiCastArgs {
+impl FormatParenthesis for AbiCastArgs {
     fn open_parenthesis(
         line: &mut FormattedCode,
         _formatter: &mut Formatter,

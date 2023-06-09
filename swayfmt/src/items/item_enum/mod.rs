@@ -7,13 +7,12 @@ use crate::{
     },
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
-        CurlyBrace,
+        FormatCurlyBrace,
     },
 };
 use std::fmt::Write;
 use sway_ast::{
-    token::{Delimiters, PunctKind},
-    ItemEnum,
+    attribute::Annotated, token::PunctKind, Braces, CommaToken, ItemEnum, Punctuated, TypeField,
 };
 use sway_types::Spanned;
 
@@ -45,10 +44,9 @@ impl Format for ItemEnum {
                     generics.format(formatted_code, formatter)?;
                 }
 
-                let fields = self.fields.get();
-
                 // Handle openning brace
-                Self::open_curly_brace(formatted_code, formatter)?;
+                self.fields.open_curly_brace(formatted_code, formatter)?;
+                let fields = self.fields.get();
                 // Determine alignment tactic
                 match formatter.config.structures.field_alignment {
                     FieldAlignment::AlignFields(enum_variant_align_threshold) => {
@@ -120,7 +118,7 @@ impl Format for ItemEnum {
                     FieldAlignment::Off => fields.format(formatted_code, formatter)?,
                 }
                 // Handle closing brace
-                Self::close_curly_brace(formatted_code, formatter)?;
+                self.fields.close_curly_brace(formatted_code, formatter)?;
 
                 rewrite_with_comments::<ItemEnum>(
                     formatter,
@@ -138,13 +136,14 @@ impl Format for ItemEnum {
     }
 }
 
-impl CurlyBrace for ItemEnum {
+impl FormatCurlyBrace for Braces<Punctuated<Annotated<TypeField>, CommaToken>> {
     fn open_curly_brace(
+        &self,
         line: &mut String,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         let brace_style = formatter.config.items.item_brace_style;
-        let open_brace = Delimiters::Brace.as_open_char();
+        let open_brace = self.open_token.span().as_str();
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add openning brace to the next line.
@@ -161,6 +160,7 @@ impl CurlyBrace for ItemEnum {
         Ok(())
     }
     fn close_curly_brace(
+        &self,
         line: &mut String,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
@@ -170,7 +170,7 @@ impl CurlyBrace for ItemEnum {
             line,
             "{}{}",
             formatter.shape.indent.to_string(&formatter.config)?,
-            Delimiters::Brace.as_close_char()
+            self.close_token.span().as_str()
         )?;
 
         Ok(())

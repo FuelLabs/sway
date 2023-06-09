@@ -171,6 +171,7 @@ pub(crate) enum ExprKind {
     Collection,
     MethodChain,
     Conditional,
+    MatchBranchKind,
     Import,
     Undetermined,
 }

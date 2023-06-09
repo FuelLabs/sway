@@ -24,7 +24,7 @@ mod asm;
 pub mod op_code;
 
 impl Parse for AbiCastArgs {
-    fn parse(mut parser: &mut Parser) -> ParseResult<AbiCastArgs> {
+    fn parse(parser: &mut Parser) -> ParseResult<AbiCastArgs> {
         let name = parser.parse()?;
         let comma_token = parser.parse()?;
         let address = parser.parse()?;
@@ -738,7 +738,7 @@ impl Parse for ExprStructField {
 }
 
 impl Parse for ExprArrayDescriptor {
-    fn parse(mut parser: &mut Parser) -> ParseResult<ExprArrayDescriptor> {
+    fn parse(parser: &mut Parser) -> ParseResult<ExprArrayDescriptor> {
         if parser.is_empty() {
             let punctuated = Punctuated::empty();
             let descriptor = ExprArrayDescriptor::Sequence(punctuated);

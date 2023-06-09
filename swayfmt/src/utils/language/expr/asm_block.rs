@@ -3,7 +3,7 @@ use crate::{
     formatter::{shape::LineStyle, *},
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
-        CurlyBrace, Parenthesis,
+        FormatCurlyBrace, FormatParenthesis,
     },
 };
 use std::fmt::Write;
@@ -80,7 +80,7 @@ fn format_asm_block(
     Ok(())
 }
 
-impl Parenthesis for AsmBlock {
+impl FormatParenthesis for AsmBlock {
     fn open_parenthesis(
         line: &mut FormattedCode,
         _formatter: &mut Formatter,
@@ -97,7 +97,7 @@ impl Parenthesis for AsmBlock {
     }
 }
 
-impl CurlyBrace for AsmBlock {
+impl FormatCurlyBrace for AsmBlock {
     fn open_curly_brace(
         line: &mut FormattedCode,
         formatter: &mut Formatter,

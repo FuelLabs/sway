@@ -5,7 +5,7 @@ use crate::{
     },
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
-        CurlyBrace,
+        FormatCurlyBrace,
     },
 };
 use std::fmt::Write;
@@ -145,7 +145,7 @@ impl Format for UseTree {
     }
 }
 
-impl CurlyBrace for UseTree {
+impl FormatCurlyBrace for UseTree {
     fn open_curly_brace(
         line: &mut FormattedCode,
         formatter: &mut Formatter,

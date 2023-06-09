@@ -5,16 +5,15 @@ use crate::{
     },
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
-        {CurlyBrace, Parenthesis, SquareBracket},
+        {FormatCurlyBrace, FormatParenthesis, FormatSquareBracket},
     },
 };
 use std::fmt::Write;
 use sway_ast::{
-    brackets::Parens,
+    brackets::{Parens, SquareBrackets},
     keywords::{CommaToken, DotToken},
     punctuated::Punctuated,
-    token::Delimiters,
-    Braces, CodeBlockContents, Expr, ExprStructField, MatchBranch, PathExpr, PathExprSegment,
+    Braces, Expr, ExprStructField, PathExpr, PathExprSegment,
 };
 use sway_types::Spanned;
 
@@ -103,17 +102,17 @@ impl Format for Expr {
                 )?;
             }
             Self::Parens(expr) => {
-                Self::open_parenthesis(formatted_code, formatter)?;
+                expr.open_parenthesis(formatted_code, formatter)?;
                 expr.get().format(formatted_code, formatter)?;
-                Self::close_parenthesis(formatted_code, formatter)?;
+                expr.close_parenthesis(formatted_code, formatter)?;
             }
             Self::Block(code_block) => {
                 if !code_block.get().statements.is_empty()
                     || code_block.get().final_expr_opt.is_some()
                 {
-                    CodeBlockContents::open_curly_brace(formatted_code, formatter)?;
+                    code_block.open_curly_brace(formatted_code, formatter)?;
                     code_block.get().format(formatted_code, formatter)?;
-                    CodeBlockContents::close_curly_brace(formatted_code, formatter)?;
+                    code_block.close_curly_brace(formatted_code, formatter)?;
                 } else {
                     write!(formatted_code, "{{}}")?;
                 }
@@ -163,9 +162,9 @@ impl Format for Expr {
                 value.format(formatted_code, formatter)?;
                 write!(formatted_code, " ")?;
                 if !branches.get().is_empty() {
-                    MatchBranch::open_curly_brace(formatted_code, formatter)?;
-                    let branches = branches.get();
-                    for match_branch in branches.iter() {
+                    branches.open_curly_brace(formatted_code, formatter)?;
+                    let match_branches = branches.get();
+                    for match_branch in match_branches.iter() {
                         write!(
                             formatted_code,
                             "{}",
@@ -174,7 +173,7 @@ impl Format for Expr {
                         match_branch.format(formatted_code, formatter)?;
                         writeln!(formatted_code)?;
                     }
-                    MatchBranch::close_curly_brace(formatted_code, formatter)?;
+                    branches.close_curly_brace(formatted_code, formatter)?;
                 } else {
                     write!(formatted_code, "{{}}")?;
                 }
@@ -186,9 +185,9 @@ impl Format for Expr {
             } => {
                 write!(formatted_code, "{} ", while_token.span().as_str())?;
                 condition.format(formatted_code, formatter)?;
-                CodeBlockContents::open_curly_brace(formatted_code, formatter)?;
+                block.open_curly_brace(formatted_code, formatter)?;
                 block.get().format(formatted_code, formatter)?;
-                CodeBlockContents::close_curly_brace(formatted_code, formatter)?;
+                block.close_curly_brace(formatted_code, formatter)?;
             }
             Self::FuncApp { func, args } => {
                 formatter.with_shape(
@@ -203,9 +202,9 @@ impl Format for Expr {
                             )?;
                         }
                         func.format(formatted_code, formatter)?;
-                        Self::open_parenthesis(formatted_code, formatter)?;
+                        args.open_parenthesis(formatted_code, formatter)?;
                         args.get().format(formatted_code, formatter)?;
-                        Self::close_parenthesis(formatted_code, formatter)?;
+                        args.close_parenthesis(formatted_code, formatter)?;
 
                         Ok(())
                     },
@@ -213,9 +212,9 @@ impl Format for Expr {
             }
             Self::Index { target, arg } => {
                 target.format(formatted_code, formatter)?;
-                Self::open_square_bracket(formatted_code, formatter)?;
+                arg.open_square_bracket(formatted_code, formatter)?;
                 arg.get().format(formatted_code, formatter)?;
-                Self::close_square_bracket(formatted_code, formatter)?;
+                arg.close_square_bracket(formatted_code, formatter)?;
             }
             Self::MethodCall {
                 target,
@@ -570,36 +569,59 @@ impl Format for Expr {
     }
 }
 
-impl Parenthesis for Expr {
+impl FormatParenthesis for Parens<Box<Expr>> {
     fn open_parenthesis(
+        &self,
         line: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiters::Parenthesis.as_open_char())?;
+        write!(line, "{}", self.open_token.span().as_str())?;
         Ok(())
     }
     fn close_parenthesis(
+        &self,
         line: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiters::Parenthesis.as_close_char())?;
+        write!(line, "{}", self.close_token.span().as_str())?;
         Ok(())
     }
 }
 
-impl SquareBracket for Expr {
-    fn open_square_bracket(
+impl FormatParenthesis for Parens<Punctuated<Expr, CommaToken>> {
+    fn open_parenthesis(
+        &self,
         line: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiters::Bracket.as_open_char())?;
+        write!(line, "{}", self.open_token.span().as_str())?;
+        Ok(())
+    }
+    fn close_parenthesis(
+        &self,
+        line: &mut FormattedCode,
+        _formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        write!(line, "{}", self.close_token.span().as_str())?;
+        Ok(())
+    }
+}
+
+impl FormatSquareBracket for SquareBrackets<Box<Expr>> {
+    fn open_square_bracket(
+        &self,
+        line: &mut FormattedCode,
+        _formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        write!(line, "{}", self.open_token.span().as_str())?;
         Ok(())
     }
     fn close_square_bracket(
+        &self,
         line: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", Delimiters::Bracket.as_close_char())?;
+        write!(line, "{}", self.close_token.span().as_str())?;
         Ok(())
     }
 }
@@ -626,14 +648,14 @@ fn format_expr_struct(
     formatter: &mut Formatter,
 ) -> Result<(), FormatterError> {
     path.format(formatted_code, formatter)?;
-    ExprStructField::open_curly_brace(formatted_code, formatter)?;
-    let fields = &fields.get();
+    fields.open_curly_brace(formatted_code, formatter)?;
+    let inner = &fields.get();
     match formatter.shape.code_line.line_style {
-        LineStyle::Inline => fields.format(formatted_code, formatter)?,
+        LineStyle::Inline => inner.format(formatted_code, formatter)?,
         // TODO: add field alignment
-        _ => fields.format(formatted_code, formatter)?,
+        _ => inner.format(formatted_code, formatter)?,
     }
-    ExprStructField::close_curly_brace(formatted_code, formatter)?;
+    fields.close_curly_brace(formatted_code, formatter)?;
 
     Ok(())
 }
@@ -658,9 +680,9 @@ fn format_method_call(
     target.format(formatted_code, formatter)?;
     write!(formatted_code, "{}", dot_token.span().as_str())?;
     path_seg.format(formatted_code, formatter)?;
-    if let Some(contract_args) = &contract_args_opt {
-        ExprStructField::open_curly_brace(formatted_code, formatter)?;
-        let contract_args = &contract_args.get();
+    if let Some(wrapped_args) = &contract_args_opt {
+        wrapped_args.open_curly_brace(formatted_code, formatter)?;
+        let contract_args = &wrapped_args.get();
         match formatter.shape.code_line.line_style {
             LineStyle::Inline => {
                 contract_args.format(formatted_code, formatter)?;
@@ -669,14 +691,14 @@ fn format_method_call(
                 contract_args.format(formatted_code, formatter)?;
             }
         }
-        ExprStructField::close_curly_brace(formatted_code, formatter)?;
+        wrapped_args.close_curly_brace(formatted_code, formatter)?;
     }
     formatter.with_shape(
         formatter.shape.with_default_code_line(),
         |formatter| -> Result<(), FormatterError> {
-            Expr::open_parenthesis(formatted_code, formatter)?;
+            args.open_parenthesis(formatted_code, formatter)?;
             args.get().format(formatted_code, formatter)?;
-            Expr::close_parenthesis(formatted_code, formatter)?;
+            args.close_parenthesis(formatted_code, formatter)?;
 
             Ok(())
         },

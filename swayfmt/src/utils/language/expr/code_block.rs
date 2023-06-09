@@ -1,13 +1,17 @@
 use crate::{
     config::items::ItemBraceStyle,
-    formatter::{shape::LineStyle, *},
+    formatter::{
+        shape::{ExprKind, LineStyle},
+        *,
+    },
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
-        CurlyBrace,
+        FormatCurlyBrace,
     },
 };
 use std::fmt::Write;
-use sway_ast::{token::Delimiters, CodeBlockContents};
+use sway_ast::{Braces, CodeBlockContents};
+use sway_types::Spanned;
 
 impl Format for CodeBlockContents {
     fn format(
@@ -57,39 +61,80 @@ impl Format for CodeBlockContents {
     }
 }
 
-impl CurlyBrace for CodeBlockContents {
+impl FormatCurlyBrace for Braces<CodeBlockContents> {
     fn open_curly_brace(
+        &self,
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        formatter.shape.block_indent(&formatter.config);
-
+        let open_brace = self.open_token.span().as_str();
         let brace_style = formatter.config.items.item_brace_style;
-        match brace_style {
-            ItemBraceStyle::AlwaysNextLine => {
-                // Add openning brace to the next line.
-                write!(line, "\n{}", Delimiters::Brace.as_open_char())?;
+        if let ExprKind::Conditional = formatter.shape.code_line.expr_kind {
+            match formatter.shape.code_line.line_style {
+                LineStyle::Multiline => {
+                    formatter.shape.code_line.reset_width();
+                    write!(
+                        line,
+                        "\n{}{open_brace}",
+                        formatter.shape.indent.to_string(&formatter.config)?
+                    )?;
+                    formatter
+                        .shape
+                        .code_line
+                        .update_line_style(LineStyle::Normal);
+                }
+                _ => {
+                    write!(line, " {open_brace}")?;
+                }
             }
-            _ => {
-                // Add opening brace to the same line
-                write!(line, " {}", Delimiters::Brace.as_open_char())?;
+            formatter.shape.block_indent(&formatter.config);
+        } else {
+            formatter.shape.block_indent(&formatter.config);
+            match brace_style {
+                ItemBraceStyle::AlwaysNextLine => {
+                    // Add openning brace to the next line.
+                    write!(line, "\n{open_brace}")?;
+                }
+                _ => {
+                    // Add opening brace to the same line
+                    write!(line, " {open_brace}")?;
+                }
             }
         }
 
         Ok(())
     }
     fn close_curly_brace(
+        &self,
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        // Unindent by one block
-        formatter.shape.block_unindent(&formatter.config);
-        write!(
-            line,
-            "{}{}",
-            formatter.shape.indent.to_string(&formatter.config)?,
-            Delimiters::Brace.as_close_char()
-        )?;
+        let close_brace = self.close_token.span().as_str();
+        if let ExprKind::Conditional = formatter.shape.code_line.expr_kind {
+            formatter.shape.block_unindent(&formatter.config);
+            match formatter.shape.code_line.line_style {
+                LineStyle::Inline => {
+                    write!(line, "{close_brace}")?;
+                }
+                _ => {
+                    write!(
+                        line,
+                        "{}{close_brace}",
+                        formatter.shape.indent.to_string(&formatter.config)?,
+                    )?;
+                }
+            }
+        } else if let ExprKind::MatchBranchKind = formatter.shape.code_line.expr_kind {
+            write!(line, "{close_brace}")?;
+        } else {
+            formatter.shape.block_unindent(&formatter.config);
+            write!(
+                line,
+                "{}{close_brace}",
+                formatter.shape.indent.to_string(&formatter.config)?,
+            )?;
+        }
+
         Ok(())
     }
 }

@@ -2,12 +2,13 @@ use crate::{
     formatter::*,
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
-        {Parenthesis, SquareBracket},
+        {FormatParenthesis, FormatSquareBracket},
     },
 };
 use std::fmt::Write;
 use sway_ast::{
     attribute::{Annotated, Attribute, AttributeArg, AttributeDecl, AttributeHashKind},
+    brackets::SquareBrackets,
     token::PunctKind,
     CommaToken, Parens, Punctuated,
 };
@@ -104,7 +105,8 @@ impl Format for AttributeDecl {
         };
         write!(formatted_code, "{}", hash_type_token_span?.as_str())?;
         // `[`
-        self.open_square_bracket(formatted_code, formatter)?;
+        self.attribute
+            .open_square_bracket(formatted_code, formatter)?;
         let mut regular_attrs = regular_attrs.iter().peekable();
         while let Some(attr) = regular_attrs.next() {
             formatter.with_shape(
@@ -129,18 +131,19 @@ impl Format for AttributeDecl {
             }
         }
         // `]\n`
-        self.close_square_bracket(formatted_code, formatter)?;
+        self.attribute
+            .close_square_bracket(formatted_code, formatter)?;
         Ok(())
     }
 }
 
-impl SquareBracket for AttributeDecl {
+impl FormatSquareBracket for SquareBrackets<Punctuated<Attribute, CommaToken>> {
     fn open_square_bracket(
         &self,
         line: &mut String,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(line, "{}", self.attribute.open_token.span().as_str())?;
+        write!(line, "{}", self.open_token.span().as_str())?;
         Ok(())
     }
     fn close_square_bracket(
@@ -148,12 +151,12 @@ impl SquareBracket for AttributeDecl {
         line: &mut String,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        writeln!(line, "{}", self.attribute.open_token.span().as_str())?;
+        writeln!(line, "{}", self.open_token.span().as_str())?;
         Ok(())
     }
 }
 
-impl Parenthesis for Parens<Punctuated<AttributeArg, CommaToken>> {
+impl FormatParenthesis for Parens<Punctuated<AttributeArg, CommaToken>> {
     fn open_parenthesis(
         &self,
         line: &mut String,

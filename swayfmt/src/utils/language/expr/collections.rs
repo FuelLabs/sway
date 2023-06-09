@@ -2,7 +2,7 @@ use crate::{
     formatter::{shape::LineStyle, *},
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
-        {Parenthesis, SquareBracket},
+        {FormatParenthesis, FormatSquareBracket},
     },
 };
 use std::fmt::Write;
@@ -46,7 +46,7 @@ impl Format for ExprTupleDescriptor {
     }
 }
 
-impl Parenthesis for ExprTupleDescriptor {
+impl FormatParenthesis for ExprTupleDescriptor {
     fn open_parenthesis(
         line: &mut FormattedCode,
         formatter: &mut Formatter,
@@ -109,7 +109,7 @@ impl Format for ExprArrayDescriptor {
     }
 }
 
-impl SquareBracket for ExprArrayDescriptor {
+impl FormatSquareBracket for ExprArrayDescriptor {
     fn open_square_bracket(
         line: &mut FormattedCode,
         formatter: &mut Formatter,

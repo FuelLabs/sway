@@ -4,7 +4,7 @@ use crate::{
     formatter::*,
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
-        CurlyBrace,
+        FormatCurlyBrace,
     },
 };
 use std::fmt::Write;
@@ -87,7 +87,7 @@ impl Format for ItemAbi {
     }
 }
 
-impl CurlyBrace for ItemAbi {
+impl FormatCurlyBrace for ItemAbi {
     fn open_curly_brace(
         line: &mut String,
         formatter: &mut Formatter,

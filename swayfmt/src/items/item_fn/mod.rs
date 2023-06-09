@@ -7,7 +7,7 @@ use crate::{
     },
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
-        {CurlyBrace, Parenthesis},
+        {FormatCurlyBrace, FormatParenthesis},
     },
 };
 use std::fmt::Write;
@@ -75,7 +75,7 @@ impl Format for ItemFn {
     }
 }
 
-impl CurlyBrace for ItemFn {
+impl FormatCurlyBrace for ItemFn {
     fn open_curly_brace(
         line: &mut FormattedCode,
         formatter: &mut Formatter,
@@ -276,7 +276,7 @@ fn format_self(
     Ok(())
 }
 
-impl Parenthesis for FnSignature {
+impl FormatParenthesis for FnSignature {
     fn open_parenthesis(
         line: &mut FormattedCode,
         _formatter: &mut Formatter,

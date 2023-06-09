@@ -6,7 +6,7 @@ use crate::{
     },
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
-        CurlyBrace,
+        FormatCurlyBrace,
     },
 };
 use std::fmt::Write;
@@ -130,7 +130,7 @@ impl Format for Pattern {
     }
 }
 
-impl CurlyBrace for Braces<Punctuated<PatternStructField, CommaToken>> {
+impl FormatCurlyBrace for Braces<Punctuated<PatternStructField, CommaToken>> {
     fn open_curly_brace(
         &self,
         line: &mut String,
