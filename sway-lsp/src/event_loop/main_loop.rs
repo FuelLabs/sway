@@ -23,6 +23,7 @@ pub fn run(config: Config, connection: Connection) -> Result<()> {
 
 enum Event {
     Lsp(lsp_server::Message),
+    Task(Task),
 }
 
 #[derive(Debug)]
@@ -47,10 +48,18 @@ impl fmt::Debug for Event {
                     return debug_non_verbose(not, f);
                 }
             }
+            Event::Task(Task::Response(resp)) => {
+                return f
+                    .debug_struct("Response")
+                    .field("id", &resp.id)
+                    .field("error", &resp.error)
+                    .finish();
+            }
             _ => (),
         }
         match self {
             Event::Lsp(it) => fmt::Debug::fmt(it, f),
+            Event::Task(it) => fmt::Debug::fmt(it, f),
         }
     }
 }
@@ -81,6 +90,9 @@ impl GlobalState {
         select! {
             recv(inbox) -> msg =>
                 msg.ok().map(Event::Lsp),
+
+            recv(self.task_pool.receiver) -> task =>
+                Some(Event::Task(task.unwrap())),
         }
     }
 
@@ -102,6 +114,13 @@ impl GlobalState {
                 lsp_server::Message::Notification(not) => self.on_notification(not)?,
                 lsp_server::Message::Response(resp) => self.complete_request(resp),
             },
+            Event::Task(task) => {
+                self.handle_task(task);
+                // Coalesce multiple task events into one loop turn
+                while let Ok(task) = self.task_pool.receiver.try_recv() {
+                    self.handle_task(task);
+                }
+            }
         }
         Ok(())
     }
