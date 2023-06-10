@@ -1,15 +1,18 @@
 pub use sway_ir_macros::*;
 use {crate::Context, std::fmt};
 
-pub struct WithContext<'a, 'c, T: ?Sized> {
+pub struct WithContext<'a, 'c, 'eng, T: ?Sized> {
     thing: &'a T,
-    context: &'c Context,
+    context: &'c Context<'eng>,
 }
 
 pub trait DebugWithContext {
     fn fmt_with_context(&self, formatter: &mut fmt::Formatter, context: &Context) -> fmt::Result;
 
-    fn with_context<'a, 'c>(&'a self, context: &'c Context) -> WithContext<'a, 'c, Self> {
+    fn with_context<'a, 'c, 'eng>(
+        &'a self,
+        context: &'c Context<'eng>,
+    ) -> WithContext<'a, 'c, 'eng, Self> {
         WithContext {
             thing: self,
             context,
@@ -26,7 +29,7 @@ where
     }
 }
 
-impl<'a, 'c, T> fmt::Debug for WithContext<'a, 'c, T>
+impl<'a, 'c, 'eng, T> fmt::Debug for WithContext<'a, 'c, 'eng, T>
 where
     T: DebugWithContext,
 {

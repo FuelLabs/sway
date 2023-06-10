@@ -64,7 +64,7 @@ impl<'a> HoverLinkContents<'a> {
 
     /// Adds a single type to the list of related types.
     fn add_related_type(&mut self, name: String, span: &Span, callpath: CallPath) {
-        if let Ok(mut uri) = get_url_from_span(span) {
+        if let Ok(mut uri) = get_url_from_span(self.engines.se(), span) {
             let converted_url = self.session.sync.temp_to_workspace_url(&uri);
             if let Ok(url) = converted_url {
                 uri = url;
@@ -111,7 +111,10 @@ impl<'a> HoverLinkContents<'a> {
         all_spans.append(&mut impl_spans);
         all_spans.dedup();
         all_spans.iter().for_each(|span| {
-            let span_result = self.session.sync.temp_to_workspace_span(span);
+            let span_result = self
+                .session
+                .sync
+                .temp_to_workspace_span(self.engines.se(), span);
             if let Ok(span) = span_result {
                 self.implementations.push(span);
             }

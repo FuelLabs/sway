@@ -1,6 +1,6 @@
 use crate::error::DirectoryError;
 use std::path::PathBuf;
-use sway_types::Span;
+use sway_types::{SourceEngine, Span};
 use tower_lsp::lsp_types::Url;
 
 /// Create a [Url] from a [PathBuf].
@@ -19,9 +19,10 @@ pub fn get_path_from_url(url: &Url) -> Result<PathBuf, DirectoryError> {
 }
 
 /// Create a [Url] from a [Span].
-pub fn get_url_from_span(span: &Span) -> Result<Url, DirectoryError> {
-    if let Some(path) = span.path() {
-        get_url_from_path(path)
+pub fn get_url_from_span(source_engine: &SourceEngine, span: &Span) -> Result<Url, DirectoryError> {
+    if let Some(source_id) = span.source_id() {
+        let path = source_engine.get_path(source_id);
+        get_url_from_path(&path)
     } else {
         Err(DirectoryError::UrlFromSpanFailed {
             span: span.as_str().to_string(),

@@ -53,6 +53,8 @@ pub struct TestResult {
     pub duration: std::time::Duration,
     /// The span for the function declaring this test.
     pub span: Span,
+    /// The file path for the function declaring this test.
+    pub file_path: Arc<PathBuf>,
     /// The resulting state after executing the test function.
     pub state: vm::state::ProgramState,
     /// The required state of the VM for this test to pass.
@@ -442,9 +444,11 @@ impl<'a> PackageTests {
                         .collect();
 
                     let span = test_entry.span.clone();
+                    let file_path = test_entry.file_path.clone();
                     let condition = test_entry.pass_condition.clone();
                     Ok(TestResult {
                         name,
+                        file_path,
                         duration,
                         span,
                         state,
@@ -537,19 +541,14 @@ impl TestResult {
 
     /// Return `TestDetails` from the span of the function declaring this test.
     pub fn details(&self) -> anyhow::Result<TestDetails> {
-        let file_path = self
-            .span
-            .path()
-            .ok_or_else(|| anyhow::anyhow!("Missing span for test function"))?
-            .to_owned();
         let span_start = self.span.start();
-        let file_str = fs::read_to_string(&*file_path)?;
+        let file_str = fs::read_to_string(&*self.file_path)?;
         let line_number = file_str[..span_start]
             .chars()
             .filter(|&c| c == '\n')
             .count();
         Ok(TestDetails {
-            file_path,
+            file_path: self.file_path.clone(),
             line_number,
         })
     }

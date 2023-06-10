@@ -725,7 +725,7 @@ impl From<Root> for Module {
 fn module_not_found(path: &[Ident]) -> CompileError {
     CompileError::ModuleNotFound {
         span: path.iter().fold(path[0].span(), |acc, this_one| {
-            if acc.path() == this_one.span().path() {
+            if acc.source_id() == this_one.span().source_id() {
                 Span::join(acc, this_one.span())
             } else {
                 acc

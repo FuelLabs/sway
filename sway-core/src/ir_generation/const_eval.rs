@@ -30,9 +30,9 @@ use sway_ir::{
 use sway_types::{ident::Ident, span::Spanned};
 use sway_utils::mapped_stack::MappedStack;
 
-pub(crate) struct LookupEnv<'a> {
+pub(crate) struct LookupEnv<'a, 'eng> {
     pub(crate) engines: &'a Engines,
-    pub(crate) context: &'a mut Context,
+    pub(crate) context: &'a mut Context<'eng>,
     pub(crate) md_mgr: &'a mut MetadataManager,
     pub(crate) module: Module,
     pub(crate) module_ns: Option<&'a namespace::Module>,

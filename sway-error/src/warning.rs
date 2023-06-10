@@ -1,8 +1,6 @@
 use core::fmt;
-use std::path::PathBuf;
-use std::sync::Arc;
 
-use sway_types::{integer_bits::IntegerBits, Ident, Span, Spanned};
+use sway_types::{integer_bits::IntegerBits, Ident, SourceId, Span, Spanned};
 
 // TODO: since moving to using Idents instead of strings,
 // the warning_content will usually contain a duplicate of the span.
@@ -23,8 +21,8 @@ impl CompileWarning {
         self.warning_content.to_string()
     }
 
-    pub fn path(&self) -> Option<Arc<PathBuf>> {
-        self.span.path().cloned()
+    pub fn source_id(&self) -> Option<SourceId> {
+        self.span.source_id().cloned()
     }
 }
 

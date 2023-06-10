@@ -1,5 +1,3 @@
-# This test is making assumptions about how `$hp` is used with allocations.  It needs to be
-# re-enabled after the VM introduces the new `ALOC` behaviour.
-category = "disabled"
+category = "run"
 expected_result = { action = "return", value = 1 }
 validate_abi = true
