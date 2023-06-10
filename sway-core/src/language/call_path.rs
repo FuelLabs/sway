@@ -58,7 +58,7 @@ impl<T: Spanned> Spanned for CallPath<T> {
                 //LOC below should be removed when #21 goes in
                 .filter(|x| {
                     Arc::ptr_eq(x.src(), self.suffix.span().src())
-                        && x.path() == self.suffix.span().path()
+                        && x.source_id() == self.suffix.span().source_id()
                 })
                 .peekable();
             if prefixes_spans.peek().is_some() {

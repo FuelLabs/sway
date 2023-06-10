@@ -4,6 +4,8 @@ use std::{
     hash::{BuildHasher, Hash, Hasher},
 };
 
+use sway_types::SourceEngine;
+
 use crate::{decl_engine::DeclEngine, query_engine::QueryEngine, type_system::TypeEngine};
 
 #[derive(Debug, Default)]
@@ -11,6 +13,7 @@ pub struct Engines {
     type_engine: TypeEngine,
     decl_engine: DeclEngine,
     query_engine: QueryEngine,
+    source_engine: SourceEngine,
 }
 
 impl Engines {
@@ -18,11 +21,13 @@ impl Engines {
         type_engine: TypeEngine,
         decl_engine: DeclEngine,
         query_engine: QueryEngine,
+        source_engine: SourceEngine,
     ) -> Engines {
         Engines {
             type_engine,
             decl_engine,
             query_engine,
+            source_engine,
         }
     }
 
@@ -36,6 +41,10 @@ impl Engines {
 
     pub fn qe(&self) -> &QueryEngine {
         &self.query_engine
+    }
+
+    pub fn se(&self) -> &SourceEngine {
+        &self.source_engine
     }
 
     /// Helps out some `thing: T` by adding `self` as context.

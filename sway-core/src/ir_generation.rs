@@ -15,11 +15,11 @@ pub(crate) use purity::{check_function_purity, PurityEnv};
 
 use crate::{language::ty, Engines};
 
-pub fn compile_program(
+pub fn compile_program<'eng>(
     program: &ty::TyProgram,
     include_tests: bool,
-    engines: &Engines,
-) -> Result<Context, CompileError> {
+    engines: &'eng Engines,
+) -> Result<Context<'eng>, CompileError> {
     let declaration_engine = engines.de();
 
     let test_fns = match include_tests {
@@ -46,7 +46,7 @@ pub fn compile_program(
         .map(|(message_id, type_id)| (*type_id, *message_id))
         .collect();
 
-    let mut ctx = Context::default();
+    let mut ctx = Context::new(engines.se());
     ctx.program_kind = match kind {
         ty::TyProgramKind::Script { .. } => Kind::Script,
         ty::TyProgramKind::Predicate { .. } => Kind::Predicate,

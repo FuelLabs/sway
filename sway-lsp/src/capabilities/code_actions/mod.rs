@@ -39,11 +39,11 @@ pub(crate) fn code_actions(
     text_document: TextDocumentIdentifier,
     temp_uri: &Url,
 ) -> Option<CodeActionResponse> {
+    let engines = session.engines.read();
     let (_, token) = session
         .token_map()
-        .token_at_position(temp_uri, range.start)?;
+        .token_at_position(engines.se(), temp_uri, range.start)?;
 
-    let engines = session.engines.read();
     let ctx = CodeActionContext {
         engines: &engines,
         tokens: session.token_map(),

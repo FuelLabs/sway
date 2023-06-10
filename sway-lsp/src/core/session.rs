@@ -250,12 +250,14 @@ impl Session {
     }
 
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
-        let (_, token) = self.token_map.token_at_position(url, position)?;
+        let (_, token) =
+            self.token_map
+                .token_at_position(self.engines.read().se(), url, position)?;
         let engines = self.engines.read();
 
         let mut token_ranges: Vec<_> = self
             .token_map
-            .tokens_for_file(url)
+            .tokens_for_file(engines.se(), url)
             .all_references_of_token(&token, &engines)
             .map(|(ident, _)| get_range_from_span(&ident.span()))
             .collect();
@@ -271,13 +273,14 @@ impl Session {
     ) -> Option<GotoDefinitionResponse> {
         let engines = self.engines.read();
         self.token_map
-            .token_at_position(&uri, position)
+            .token_at_position(engines.se(), &uri, position)
             .and_then(|(_, token)| token.declared_token_ident(&engines))
             .and_then(|decl_ident| {
                 let range = get_range_from_span(&decl_ident.span());
-                decl_ident.span().path().and_then(|path| {
+                decl_ident.span().source_id().and_then(|source_id| {
+                    let path = engines.se().get_path(source_id);
                     // We use ok() here because we don't care about propagating the error from from_file_path
-                    Url::from_file_path(path.as_ref()).ok().and_then(|url| {
+                    Url::from_file_path(path).ok().and_then(|url| {
                         self.sync
                             .to_workspace_url(url)
                             .map(|url| GotoDefinitionResponse::Scalar(Location::new(url, range)))
@@ -296,10 +299,13 @@ impl Session {
             line: position.line,
             character: position.character - trigger_char.len() as u32 - 1,
         };
-        let (ident_to_complete, _) = self.token_map.token_at_position(uri, shifted_position)?;
-        let fn_tokens = self
-            .token_map
-            .tokens_at_position(uri, shifted_position, Some(true));
+        let engines = self.engines.read();
+        let (ident_to_complete, _) =
+            self.token_map
+                .token_at_position(engines.se(), uri, shifted_position)?;
+        let fn_tokens =
+            self.token_map
+                .tokens_at_position(engines.se(), uri, shifted_position, Some(true));
         let (_, fn_token) = fn_tokens.first()?;
         let compiled_program = &*self.compiled_program.read();
 
@@ -324,7 +330,8 @@ impl Session {
     }
 
     pub fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
-        let tokens = self.token_map.tokens_for_file(url);
+        let engines = self.engines.read();
+        let tokens = self.token_map.tokens_for_file(engines.se(), url);
         self.sync
             .to_workspace_url(url.clone())
             .map(|url| capabilities::document_symbol::to_symbol_information(tokens, url))

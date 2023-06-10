@@ -19,7 +19,7 @@ use sway_core::fuel_prelude::fuel_tx;
 use sway_core::language::parsed::TreeType;
 use sway_error::error::CompileError;
 use sway_error::warning::CompileWarning;
-use sway_types::{LineCol, Spanned};
+use sway_types::{LineCol, SourceEngine, Spanned};
 use sway_utils::constants;
 use tracing::error;
 
@@ -351,6 +351,7 @@ pub fn print_compiling(ty: Option<&TreeType>, name: &str, src: &dyn std::fmt::Di
 }
 
 pub fn print_warnings(
+    source_engine: &SourceEngine,
     terse_mode: bool,
     proj_name: &str,
     warnings: &[CompileWarning],
@@ -362,7 +363,9 @@ pub fn print_warnings(
     let type_str = program_type_str(tree_type);
 
     if !terse_mode {
-        warnings.iter().for_each(format_warning);
+        warnings
+            .iter()
+            .for_each(|w| format_warning(source_engine, w));
     }
 
     println_yellow_err(&format!(
@@ -411,11 +414,11 @@ pub fn print_on_failure(
     }
 }
 
-fn format_err(err: &CompileError) {
+fn format_err(source_engine: &SourceEngine, err: &CompileError) {
     let span = err.span();
     let input = span.input();
-    let path = err.path();
-    let path_str = path.as_ref().map(|path| path.to_string_lossy());
+    let path = err.source_id().map(|id| source_engine.get_path(&id));
+    let path_str = path.as_ref().map(|p| p.to_string_lossy());
     let mut start_pos = span.start();
     let mut end_pos = span.end();
 
@@ -465,11 +468,11 @@ fn format_err(err: &CompileError) {
     tracing::error!("{}\n____\n", DisplayList::from(snippet))
 }
 
-fn format_warning(err: &CompileWarning) {
+fn format_warning(source_engine: &SourceEngine, err: &CompileWarning) {
     let span = err.span();
     let input = span.input();
-    let path = err.path();
-    let path_str = path.as_ref().map(|path| path.to_string_lossy());
+    let path = err.source_id().map(|id| source_engine.get_path(&id));
+    let path_str = path.as_ref().map(|p| p.to_string_lossy());
 
     let friendly_str = maybe_uwuify(&err.to_friendly_warning_string());
     let mut start_pos = span.start();

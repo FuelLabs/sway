@@ -1,7 +1,7 @@
 use crate::core::token::{self, Token, TypedAstToken};
 use dashmap::DashMap;
 use sway_core::{language::ty, type_system::TypeId, Engines};
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, SourceEngine, Span, Spanned};
 use tower_lsp::lsp_types::{Position, Url};
 
 // Re-export the TokenMapExt trait.
@@ -32,10 +32,12 @@ impl TokenMap {
     /// Return an Iterator of tokens belonging to the provided [Url].
     pub fn tokens_for_file<'s>(
         &'s self,
+        source_engine: &'s SourceEngine,
         uri: &'s Url,
     ) -> impl 's + Iterator<Item = (Ident, Token)> {
         self.iter().flat_map(|(ident, token)| {
-            ident.span().path().and_then(|path| {
+            ident.span().source_id().and_then(|source_id| {
+                let path = source_engine.get_path(source_id);
                 if path.to_str() == Some(uri.path()) {
                     Some((ident.clone(), token.clone()))
                 } else {
@@ -65,8 +67,13 @@ impl TokenMap {
     /// Returns the first parent declaration found at the given cursor position.
     ///
     /// For example, if the cursor is inside a function body, this function returns the function declaration.
-    pub fn parent_decl_at_position(&self, uri: &Url, position: Position) -> Option<(Ident, Token)> {
-        self.tokens_at_position(uri, position, None)
+    pub fn parent_decl_at_position(
+        &self,
+        source_engine: &SourceEngine,
+        uri: &Url,
+        position: Position,
+    ) -> Option<(Ident, Token)> {
+        self.tokens_at_position(source_engine, uri, position, None)
             .iter()
             .find_map(|(ident, token)| {
                 if let Some(TypedAstToken::TypedDeclaration(_)) = token.typed {
@@ -78,8 +85,13 @@ impl TokenMap {
     }
 
     /// Returns the first collected tokens that is at the cursor position.
-    pub fn token_at_position(&self, uri: &Url, position: Position) -> Option<(Ident, Token)> {
-        let tokens = self.tokens_for_file(uri);
+    pub fn token_at_position(
+        &self,
+        source_engine: &SourceEngine,
+        uri: &Url,
+        position: Position,
+    ) -> Option<(Ident, Token)> {
+        let tokens = self.tokens_for_file(source_engine, uri);
         self.idents_at_position(position, tokens)
             .first()
             .and_then(|ident| {
@@ -101,11 +113,12 @@ impl TokenMap {
     /// of the function declaration (the function name).
     pub fn tokens_at_position(
         &self,
+        source_engine: &SourceEngine,
         uri: &Url,
         position: Position,
         functions_only: Option<bool>,
     ) -> Vec<(Ident, Token)> {
-        self.tokens_for_file(uri)
+        self.tokens_for_file(source_engine, uri)
             .filter_map(|(ident, token)| {
                 let span = match token.typed {
                     Some(TypedAstToken::TypedFunctionDeclaration(decl))

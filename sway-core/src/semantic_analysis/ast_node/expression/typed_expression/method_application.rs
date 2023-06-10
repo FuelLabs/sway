@@ -52,7 +52,7 @@ pub(crate) fn type_check_method_application(
     let mut method = decl_engine.get_function(&decl_ref);
 
     // check the method visibility
-    if span.path() != method.span.path() && method.visibility.is_private() {
+    if span.source_id() != method.span.source_id() && method.visibility.is_private() {
         errors.push(CompileError::CallingPrivateLibraryMethod {
             name: method.name.as_str().to_string(),
             span,

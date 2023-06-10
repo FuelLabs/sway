@@ -53,7 +53,7 @@ use sway_types::Ident;
 ///   - Restore the general purpose registers from the stack.
 ///   - Jump to the return address.
 
-impl<'ir> FuelAsmBuilder<'ir> {
+impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
     pub(super) fn compile_call(
         &mut self,
         instr_val: &Value,
