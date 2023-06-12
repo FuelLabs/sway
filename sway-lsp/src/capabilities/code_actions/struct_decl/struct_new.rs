@@ -1,16 +1,24 @@
+use crate::{
+    capabilities::code_actions::{
+        common::generate_impl::GenerateImplCodeAction, CodeAction, CodeActionContext,
+        CODE_ACTION_NEW_TITLE,
+    },
+    core::{token::TypedAstToken, token_map::TokenMapExt},
+};
 use sway_core::language::ty::{self, TyImplTrait, TyStructDecl, TyStructField};
 use sway_types::Spanned;
 use tower_lsp::lsp_types::{CodeActionDisabled, Position, Range, Url};
-
-use crate::{
-    capabilities::code_actions::{CodeAction, CodeActionContext, CODE_ACTION_NEW_TITLE},
-    core::{token::TypedAstToken, token_map::TokenMapExt},
-};
 
 pub(crate) struct StructNewCodeAction<'a> {
     decl: &'a TyStructDecl,
     uri: &'a Url,
     existing_impl_decl: Option<TyImplTrait>,
+}
+
+impl<'a> GenerateImplCodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
+    fn decl_name(&self) -> String {
+        self.decl.call_path.suffix.to_string()
+    }
 }
 
 impl<'a> CodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
@@ -89,10 +97,6 @@ impl<'a> CodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
 
     fn title(&self) -> String {
         CODE_ACTION_NEW_TITLE.to_string()
-    }
-
-    fn decl_name(&self) -> String {
-        self.decl.call_path.suffix.to_string()
     }
 
     fn decl(&self) -> &TyStructDecl {
