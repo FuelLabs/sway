@@ -1,6 +1,6 @@
 contract;
 
-use std::{bytes::Bytes, context::balance_of, message::send_message, token::*};
+use std::{bytes::Bytes, constants::ZERO_B256, context::balance_of, message::send_message, token::*};
 
 abi TestFuelCoin {
     fn mint_coins(mint_amount: u64);
@@ -17,38 +17,38 @@ abi TestFuelCoin {
 
 impl TestFuelCoin for Contract {
     fn mint_coins(mint_amount: u64) {
-        mint(mint_amount);
+        mint(mint_amount, ZERO_B256);
     }
 
     fn burn_coins(burn_amount: u64) {
-        burn(burn_amount);
+        burn(burn_amount, ZERO_B256);
     }
 
-    fn force_transfer_coins(coins: u64, asset_id: ContractId, target: ContractId) {
+    fn force_transfer_coins(coins: u64, asset_id: b256, target: ContractId) {
         force_transfer_to_contract(coins, asset_id, target);
     }
 
-    fn transfer_coins_to_address(coins: u64, asset_id: ContractId, to: Address) {
+    fn transfer_coins_to_address(coins: u64, asset_id: b256, to: Address) {
         transfer_to_address(coins, asset_id, to);
     }
 
-    fn get_balance(target: ContractId, asset_id: ContractId) -> u64 {
+    fn get_balance(target: ContractId, asset_id: b256) -> u64 {
         balance_of(target, asset_id)
     }
 
     fn mint_and_send_to_contract(amount: u64, to: ContractId) {
-        mint_to_contract(amount, to);
+        mint_to_contract(amount, to, ZERO_B256);
     }
 
     fn mint_and_send_to_address(amount: u64, to: Address) {
-        mint_to_address(amount, to);
+        mint_to_address(amount, to, ZERO_B256);
     }
 
     fn generic_mint_to(amount: u64, to: Identity) {
-        mint_to(amount, to);
+        mint_to(amount, to, ZERO_B256);
     }
 
-    fn generic_transfer(amount: u64, asset_id: ContractId, to: Identity) {
+    fn generic_transfer(amount: u64, asset_id: b256, to: Identity) {
         transfer(amount, asset_id, to)
     }
 

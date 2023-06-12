@@ -24,10 +24,13 @@ use std::token::transfer_to_address;
 // ANCHOR: force_transfer_to_contract_import
 use std::token::force_transfer_to_contract;
 // ANCHOR_END: force_transfer_to_contract_import
+
+use std::constants::ZERO_B256;
+
 fn minting() {
     // ANCHOR: mint
     let amount = 10;
-    mint(amount);
+    mint(amount, ZERO_B256);
     // ANCHOR_END: mint
 }
 
@@ -37,7 +40,7 @@ fn minting_to_address() {
     let address = 0x0000000000000000000000000000000000000000000000000000000000000001;
     let user = Address::from(address);
 
-    mint_to_address(amount, user);
+    mint_to_address(amount, user, ZERO_B256);
     // ANCHOR_END: mint_to_address
 }
 
@@ -47,7 +50,7 @@ fn minting_to_contract() {
     let address = 0x0000000000000000000000000000000000000000000000000000000000000001;
     let pool = ContractId::from(address);
 
-    mint_to_contract(amount, pool);
+    mint_to_contract(amount, pool, ZERO_B256);
     // ANCHOR_END: mint_to_contract
 }
 
@@ -58,15 +61,15 @@ fn minting_to() {
     let user = Identity::Address(Address::from(address));
     let pool = Identity::ContractId(ContractId::from(address));
 
-    mint_to(amount, user);
-    mint_to(amount, pool);
+    mint_to(amount, user, ZERO_B256);
+    mint_to(amount, pool, ZERO_B256);
     // ANCHOR_END: mint_to
 }
 
 fn burning() {
     // ANCHOR: burn
     let amount = 10;
-    burn(amount);
+    burn(amount, ZERO_B256);
     // ANCHOR_END: burn
 }
 
@@ -74,7 +77,7 @@ fn transferring_to_address() {
     // ANCHOR: transfer_to_address
     let amount = 10;
     let address = 0x0000000000000000000000000000000000000000000000000000000000000001;
-    let asset = ContractId::from(address);
+    let asset = ZERO_B256;
     let user = Address::from(address);
 
     transfer_to_address(amount, asset, user);
@@ -85,7 +88,7 @@ fn transferring_to_contract() {
     // ANCHOR: force_transfer_to_contract
     let amount = 10;
     let address = 0x0000000000000000000000000000000000000000000000000000000000000001;
-    let asset = ContractId::from(address);
+    let asset = ZERO_B256;
     let pool = ContractId::from(address);
 
     force_transfer_to_contract(amount, asset, pool);
@@ -96,7 +99,7 @@ fn transferring_to() {
     // ANCHOR: transfer
     let amount = 10;
     let address = 0x0000000000000000000000000000000000000000000000000000000000000001;
-    let asset = ContractId::from(address);
+    let asset = ZERO_B256;
     let user = Identity::Address(Address::from(address));
     let pool = Identity::ContractId(ContractId::from(address));
 
