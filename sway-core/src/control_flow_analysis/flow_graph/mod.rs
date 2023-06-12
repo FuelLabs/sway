@@ -236,7 +236,9 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                         let mut url = "".to_string();
                         if let Some(url_format) = print_graph_url_format.clone() {
                             if let Some(span) = node.span() {
-                                if let Some(path) = span.path_str() {
+                                if let Some(source_id) = span.source_id() {
+                                    let path = engines.se().get_path(source_id);
+                                    let path = path.to_string_lossy();
                                     let (line, col) = span.start_pos().line_col();
                                     let url_format = url_format
                                         .replace("{path}", path.to_string().as_str())

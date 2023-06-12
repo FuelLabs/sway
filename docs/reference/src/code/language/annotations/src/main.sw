@@ -40,6 +40,11 @@ abi MyContract {
     // ANCHOR_END: payable
 }
 
+// ANCHOR: allow_deadcode_annotation
+#[allow(dead_code)]
+fn unused_function() {}
+// ANCHOR_END: allow_deadcode_annotation
+
 // ANCHOR: success_test
 #[test]
 fn equal() {
@@ -65,3 +70,13 @@ fn custom_revert_code() {
     revert(42);
 }
 // ANCHOR_END: revert_code_test
+
+// ANCHOR: never_inline
+#[inline(never)]
+fn foo() {}
+// ANCHOR_END: never_inline
+
+// ANCHOR: always_inline
+#[inline(always)]
+fn bar() {}
+// ANCHOR_END: always_inline

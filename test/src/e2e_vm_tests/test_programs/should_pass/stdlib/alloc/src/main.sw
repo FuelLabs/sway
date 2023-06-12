@@ -18,7 +18,7 @@ fn sw(ptr: raw_ptr, val: u64) {
 
 fn heap_ptr() -> raw_ptr {
     asm(ptr) {
-        addi ptr hp i1;
+        move ptr hp;
         ptr: raw_ptr
     }
 }

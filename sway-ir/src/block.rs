@@ -92,7 +92,7 @@ impl Block {
     }
 
     /// Create a new [`InstructionInserter`] to more easily append instructions to this block.
-    pub fn ins<'a>(&self, context: &'a mut Context) -> InstructionInserter<'a> {
+    pub fn ins<'a, 'eng>(&self, context: &'a mut Context<'eng>) -> InstructionInserter<'a, 'eng> {
         InstructionInserter::new(context, *self)
     }
 
