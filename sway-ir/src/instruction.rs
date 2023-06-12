@@ -380,6 +380,26 @@ impl Instruction {
         }
     }
 
+    // Can this instruction read from storage?
+    pub fn may_storage_read(&self) -> bool {
+        matches!(
+            self,
+            Instruction::AsmBlock(..)
+                | Instruction::FuelVm(FuelVmInstruction::StateLoadWord(_))
+                | Instruction::FuelVm(FuelVmInstruction::StateLoadQuadWord { .. })
+        )
+    }
+
+    // Can this instruction write to storage?
+    pub fn may_storage_write(&self) -> bool {
+        matches!(
+            self,
+            Instruction::AsmBlock(..)
+                | Instruction::FuelVm(FuelVmInstruction::StateStoreWord { .. })
+                | Instruction::FuelVm(FuelVmInstruction::StateStoreQuadWord { .. })
+        )
+    }
+
     /// Replace `old_val` with `new_val` if it is referenced by this instruction's arguments.
     pub fn replace_values(&mut self, replace_map: &FxHashMap<Value, Value>) {
         let replace = |val: &mut Value| {

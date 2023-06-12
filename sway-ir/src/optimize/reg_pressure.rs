@@ -4,7 +4,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     get_loaded_symbols, get_stored_symbols, AnalysisResults, Context, EscapedSymbols, Function,
-    IrError, Pass, PassMutability, ScopedPass, Symbol, Value, ESCAPED_SYMBOLS_NAME,
+    Instruction, IrError, Pass, PassMutability, ScopedPass, Symbol, Value, ESCAPED_SYMBOLS_NAME,
 };
 
 pub const REG_PRESSURE_OPT_NAME: &str = "regpressure";
@@ -16,6 +16,14 @@ pub fn create_reg_pressure_pass() -> Pass {
         deps: vec![ESCAPED_SYMBOLS_NAME],
         runner: ScopedPass::FunctionPass(PassMutability::Transform(reg_pressure_opt)),
     }
+}
+
+fn is_a_barrier(inst: &Instruction) -> bool {
+    inst.may_storage_write()
+        || matches!(
+            inst,
+            Instruction::Call(..) | Instruction::ContractCall { .. } | Instruction::AsmBlock(..)
+        )
 }
 
 pub fn reg_pressure_opt(
@@ -38,6 +46,8 @@ pub fn reg_pressure_opt(
         let mut last_seen_store: FxHashMap<Symbol, Value> = FxHashMap::default();
         // In our reverse traversal, what're the loads of a symbol we've seen so far.
         let mut sym_loads: FxHashMap<Symbol, FxHashSet<Value>> = FxHashMap::default();
+        // The last barrier we've seen in our reverse traversal.
+        let mut last_seen_barrier = None;
 
         // Collect ordering dependences in the block.
         // NOTE: We're reverse traversing here.
@@ -97,6 +107,16 @@ pub fn reg_pressure_opt(
                         loads.insert(val);
                     })
                     .or_insert([val].into_iter().collect());
+            }
+
+            let is_barrier = is_a_barrier(inst);
+            if inst.may_storage_read() || is_barrier {
+                if let Some(last_barrier) = last_seen_barrier {
+                    set_order(val, last_barrier);
+                }
+            }
+            if is_barrier {
+                last_seen_barrier = Some(val);
             }
         }
 
