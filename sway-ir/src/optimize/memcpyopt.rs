@@ -4,9 +4,9 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
-    get_symbol, get_symbols, AnalysisResults, Block, Context, EscapedSymbols, Function,
-    Instruction, IrError, LocalVar, Pass, PassMutability, ScopedPass, Symbol, Type, Value,
-    ValueDatum, ESCAPED_SYMBOLS_NAME,
+    combine_indices, get_symbol, get_symbols, may_alias, must_alias, pointee_size, AnalysisResults,
+    Block, Context, EscapedSymbols, Function, Instruction, IrError, LocalVar, Pass, PassMutability,
+    ScopedPass, Symbol, Type, Value, ValueDatum, ESCAPED_SYMBOLS_NAME,
 };
 
 pub const MEMCPYOPT_NAME: &str = "memcpyopt";
@@ -31,82 +31,6 @@ pub fn mem_copy_opt(
     modified |= local_copy_prop(context, analyses, function)?;
 
     Ok(modified)
-}
-
-// Combine a series of GEPs into one.
-fn combine_indices(context: &Context, val: Value) -> Option<Vec<Value>> {
-    match &context.values[val.0].value {
-        ValueDatum::Instruction(Instruction::GetLocal(_)) => Some(vec![]),
-        ValueDatum::Instruction(Instruction::GetElemPtr {
-            base,
-            elem_ptr_ty: _,
-            indices,
-        }) => {
-            let mut base_indices = combine_indices(context, *base)?;
-            base_indices.append(&mut indices.clone());
-            Some(base_indices)
-        }
-        ValueDatum::Argument(_) => Some(vec![]),
-        _ => None,
-    }
-}
-
-// Given a memory pointer instruction, compute the offset of indexed element,
-// for each symbol that this may alias to.
-fn get_memory_offsets(context: &Context, val: Value) -> FxHashMap<Symbol, u64> {
-    get_symbols(context, val)
-        .into_iter()
-        .filter_map(|sym| {
-            let offset = sym
-                .get_type(context)
-                .get_pointee_type(context)?
-                .get_indexed_offset(context, &combine_indices(context, val)?)?;
-            Some((sym, offset))
-        })
-        .collect()
-}
-
-// Can memory ranges [val1, val1+len1] and [val2, val2+len2] overlap?
-// Conservatively returns true if cannot statically determine.
-fn may_alias(context: &Context, val1: Value, len1: u64, val2: Value, len2: u64) -> bool {
-    let mem_offsets_1 = get_memory_offsets(context, val1);
-    let mem_offsets_2 = get_memory_offsets(context, val2);
-
-    for (sym1, off1) in mem_offsets_1 {
-        if let Some(off2) = mem_offsets_2.get(&sym1) {
-            // does off1 + len1 overlap with off2 + len2?
-            if (off1 <= *off2 && (off1 + len1 > *off2)) || (*off2 <= off1 && (*off2 + len2 > off1))
-            {
-                return true;
-            }
-        }
-    }
-    false
-}
-// Are memory ranges [val1, val1+len1] and [val2, val2+len2] exactly the same?
-// Conservatively returns false if cannot statically determine.
-fn must_alias(context: &Context, val1: Value, len1: u64, val2: Value, len2: u64) -> bool {
-    let mem_offsets_1 = get_memory_offsets(context, val1);
-    let mem_offsets_2 = get_memory_offsets(context, val2);
-
-    if mem_offsets_1.len() != 1 || mem_offsets_2.len() != 1 {
-        return false;
-    }
-
-    let (sym1, off1) = mem_offsets_1.iter().next().unwrap();
-    let (sym2, off2) = mem_offsets_2.iter().next().unwrap();
-
-    // does off1 + len1 overlap with off2 + len2?
-    sym1 == sym2 && off1 == off2 && len1 == len2
-}
-
-fn pointee_size(context: &Context, ptr_val: Value) -> u64 {
-    ptr_val
-        .get_type(context)
-        .unwrap()
-        .get_pointee_type(context)
-        .expect("Expected arg to be a pointer")
-        .size_in_bytes(context)
 }
 
 struct InstInfo {

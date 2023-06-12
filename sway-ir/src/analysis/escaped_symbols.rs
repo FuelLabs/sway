@@ -4,8 +4,8 @@
 use rustc_hash::FxHashSet;
 
 use crate::{
-    AnalysisResult, AnalysisResultT, AnalysisResults, BlockArgument, Context, Function,
-    Instruction, IrError, LocalVar, Pass, PassMutability, ScopedPass, Type, Value, ValueDatum,
+    get_symbols, AnalysisResult, AnalysisResultT, AnalysisResults, Context, Function, Instruction,
+    IrError, Pass, PassMutability, ScopedPass, Symbol, Value,
 };
 
 pub const ESCAPED_SYMBOLS_NAME: &str = "escaped_symbols";
@@ -17,67 +17,6 @@ pub fn create_escaped_symbols_pass() -> Pass {
         deps: vec![],
         runner: ScopedPass::FunctionPass(PassMutability::Analysis(compute_escaped_symbols_pass)),
     }
-}
-
-#[derive(Eq, PartialEq, Copy, Clone, Hash)]
-pub enum Symbol {
-    Local(LocalVar),
-    Arg(BlockArgument),
-}
-
-impl Symbol {
-    pub fn get_type(&self, context: &Context) -> Type {
-        match self {
-            Symbol::Local(l) => l.get_type(context),
-            Symbol::Arg(ba) => ba.ty,
-        }
-    }
-
-    pub fn _get_name(&self, context: &Context, function: Function) -> String {
-        match self {
-            Symbol::Local(l) => function.lookup_local_name(context, l).unwrap().clone(),
-            Symbol::Arg(ba) => format!("{}[{}]", ba.block.get_label(context), ba.idx),
-        }
-    }
-}
-
-// A value may (indirectly) refer to one or more symbols.
-pub fn get_symbols(context: &Context, val: Value) -> Vec<Symbol> {
-    let mut visited = FxHashSet::default();
-    fn get_symbols_rec(
-        context: &Context,
-        visited: &mut FxHashSet<Value>,
-        val: Value,
-    ) -> Vec<Symbol> {
-        if visited.contains(&val) {
-            return vec![];
-        }
-        visited.insert(val);
-        match context.values[val.0].value {
-            ValueDatum::Instruction(Instruction::GetLocal(local)) => vec![Symbol::Local(local)],
-            ValueDatum::Instruction(Instruction::GetElemPtr { base, .. }) => {
-                get_symbols_rec(context, visited, base)
-            }
-            ValueDatum::Argument(b) => {
-                if b.block.get_label(context) == "entry" {
-                    vec![Symbol::Arg(b)]
-                } else {
-                    b.block
-                        .pred_iter(context)
-                        .map(|pred| b.get_val_coming_from(context, pred).unwrap())
-                        .flat_map(|v| get_symbols_rec(context, visited, v))
-                        .collect()
-                }
-            }
-            _ => vec![],
-        }
-    }
-    get_symbols_rec(context, &mut visited, val)
-}
-
-pub fn get_symbol(context: &Context, val: Value) -> Option<Symbol> {
-    let syms = get_symbols(context, val);
-    (syms.len() == 1).then(|| syms[0])
 }
 
 pub type EscapedSymbols = FxHashSet<Symbol>;

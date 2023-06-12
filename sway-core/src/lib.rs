@@ -37,7 +37,7 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{
     create_o1_pass_group, register_known_passes, Context, Kind, Module, PassManager,
     ARGDEMOTION_NAME, CONSTDEMOTION_NAME, DCE_NAME, MEMCPYOPT_NAME, MISCDEMOTION_NAME,
-    MODULEPRINTER_NAME, RETDEMOTION_NAME,
+    MODULEPRINTER_NAME, REG_PRESSURE_OPT_NAME, RETDEMOTION_NAME,
 };
 use sway_types::constants::DOC_COMMENT_ATTRIBUTE_NAME;
 use sway_utils::{time_expr, PerformanceData, PerformanceMetric};
@@ -624,6 +624,8 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         // manifests in the `should_pass/language/while_loops` test.  Fixing the register allocator
         // is a very high priority but isn't a part of this change.
         //pass_group.append_pass(SIMPLIFYCFG_NAME);
+
+        pass_group.append_pass(REG_PRESSURE_OPT_NAME);
     }
 
     if build_config.print_ir {

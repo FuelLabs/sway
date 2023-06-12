@@ -8,9 +8,9 @@
 use rustc_hash::FxHashSet;
 
 use crate::{
-    get_symbols, AnalysisResults, Context, EscapedSymbols, FuelVmInstruction, Function,
-    Instruction, IrError, LocalVar, Module, Pass, PassMutability, ScopedPass, Symbol, Value,
-    ValueDatum, ESCAPED_SYMBOLS_NAME,
+    get_loaded_symbols, get_stored_symbols, get_symbols, AnalysisResults, Context, EscapedSymbols,
+    Function, Instruction, IrError, LocalVar, Module, Pass, PassMutability, ScopedPass, Symbol,
+    Value, ValueDatum, ESCAPED_SYMBOLS_NAME,
 };
 
 use std::collections::{HashMap, HashSet};
@@ -46,128 +46,6 @@ fn can_eliminate_instruction(
     let inst = val.get_instruction(context).unwrap();
     (!inst.is_terminator() && !inst.may_have_side_effect())
         || is_removable_store(context, val, num_symbol_uses, escaped_symbols)
-}
-
-fn get_loaded_symbols(context: &Context, val: Value) -> Vec<Symbol> {
-    match val.get_instruction(context).unwrap() {
-        Instruction::BinaryOp { .. }
-        | Instruction::BitCast(_, _)
-        | Instruction::Branch(_)
-        | Instruction::ConditionalBranch { .. }
-        | Instruction::Cmp(_, _, _)
-        | Instruction::Nop
-        | Instruction::CastPtr(_, _)
-        | Instruction::GetLocal(_)
-        | Instruction::GetElemPtr { .. }
-        | Instruction::IntToPtr(_, _) => vec![],
-        Instruction::PtrToInt(src_val_ptr, _) => get_symbols(context, *src_val_ptr).to_vec(),
-        Instruction::ContractCall {
-            params,
-            coins,
-            asset_id,
-            ..
-        } => vec![*params, *coins, *asset_id]
-            .iter()
-            .flat_map(|val| get_symbols(context, *val).to_vec())
-            .collect(),
-        Instruction::Call(_, args) => args
-            .iter()
-            .flat_map(|val| get_symbols(context, *val).to_vec())
-            .collect(),
-        Instruction::AsmBlock(_, args) => args
-            .iter()
-            .filter_map(|val| {
-                val.initializer
-                    .map(|val| get_symbols(context, val).to_vec())
-            })
-            .flatten()
-            .collect(),
-        Instruction::MemCopyBytes { src_val_ptr, .. }
-        | Instruction::MemCopyVal { src_val_ptr, .. }
-        | Instruction::Ret(src_val_ptr, _)
-        | Instruction::Load(src_val_ptr)
-        | Instruction::FuelVm(FuelVmInstruction::Log {
-            log_val: src_val_ptr,
-            ..
-        })
-        | Instruction::FuelVm(FuelVmInstruction::StateLoadWord(src_val_ptr))
-        | Instruction::FuelVm(FuelVmInstruction::StateStoreWord {
-            key: src_val_ptr, ..
-        })
-        | Instruction::FuelVm(FuelVmInstruction::StateLoadQuadWord {
-            key: src_val_ptr, ..
-        })
-        | Instruction::FuelVm(FuelVmInstruction::StateClear {
-            key: src_val_ptr, ..
-        }) => get_symbols(context, *src_val_ptr).to_vec(),
-        Instruction::FuelVm(FuelVmInstruction::StateStoreQuadWord {
-            stored_val: memopd1,
-            key: memopd2,
-            ..
-        })
-        | Instruction::FuelVm(FuelVmInstruction::Smo {
-            recipient: memopd1,
-            message: memopd2,
-            ..
-        }) => get_symbols(context, *memopd1)
-            .iter()
-            .cloned()
-            .chain(get_symbols(context, *memopd2).iter().cloned())
-            .collect(),
-        Instruction::Store { dst_val_ptr: _, .. } => vec![],
-        Instruction::FuelVm(FuelVmInstruction::Gtf { .. })
-        | Instruction::FuelVm(FuelVmInstruction::ReadRegister(_))
-        | Instruction::FuelVm(FuelVmInstruction::Revert(_)) => vec![],
-    }
-}
-
-fn get_stored_symbols(context: &Context, val: Value) -> Vec<Symbol> {
-    match val.get_instruction(context).unwrap() {
-        Instruction::BinaryOp { .. }
-        | Instruction::BitCast(_, _)
-        | Instruction::Branch(_)
-        | Instruction::ConditionalBranch { .. }
-        | Instruction::Cmp(_, _, _)
-        | Instruction::Nop
-        | Instruction::PtrToInt(_, _)
-        | Instruction::Ret(_, _)
-        | Instruction::CastPtr(_, _)
-        | Instruction::GetLocal(_)
-        | Instruction::GetElemPtr { .. }
-        | Instruction::IntToPtr(_, _) => vec![],
-        Instruction::ContractCall { params, .. } => get_symbols(context, *params),
-        Instruction::Call(_, args) => args
-            .iter()
-            .flat_map(|val| get_symbols(context, *val).to_vec())
-            .collect(),
-        Instruction::AsmBlock(_, args) => args
-            .iter()
-            .filter_map(|val| {
-                val.initializer
-                    .map(|val| get_symbols(context, val).to_vec())
-            })
-            .flatten()
-            .collect(),
-        Instruction::MemCopyBytes { dst_val_ptr, .. }
-        | Instruction::MemCopyVal { dst_val_ptr, .. }
-        | Instruction::Store { dst_val_ptr, .. } => get_symbols(context, *dst_val_ptr).to_vec(),
-        Instruction::Load(_) => vec![],
-        Instruction::FuelVm(vmop) => match vmop {
-            FuelVmInstruction::Gtf { .. }
-            | FuelVmInstruction::Log { .. }
-            | FuelVmInstruction::ReadRegister(_)
-            | FuelVmInstruction::Revert(_)
-            | FuelVmInstruction::Smo { .. }
-            | FuelVmInstruction::StateClear { .. } => vec![],
-            FuelVmInstruction::StateLoadQuadWord { load_val, .. } => {
-                get_symbols(context, *load_val).to_vec()
-            }
-            FuelVmInstruction::StateLoadWord(_) | FuelVmInstruction::StateStoreWord { .. } => {
-                vec![]
-            }
-            FuelVmInstruction::StateStoreQuadWord { stored_val: _, .. } => vec![],
-        },
-    }
 }
 
 fn is_removable_store(
