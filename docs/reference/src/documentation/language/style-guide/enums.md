@@ -1,6 +1,10 @@
 # Enums
 
-> TODO: intro, show enums
+An [enum](../../language/built-ins/enums.md) may contain many types including other enums.
+
+```sway
+{{#include ../../../code/language/style-guide/enum_style/src/lib.sw:style_enums}}
+```
 
 ## Encouraged
 
