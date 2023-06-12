@@ -224,9 +224,9 @@ pub(crate) fn ir_type_size_in_bytes(context: &Context, ty: &Type) -> u64 {
     }
 }
 
-pub(crate) fn ir_type_size_without_padding_in_bytes(context: &Context, ty: &Type) -> u64 {
+pub(crate) fn ir_type_str_size_in_bytes(context: &Context, ty: &Type) -> u64 {
     match ty.get_content(context) {
         TypeContent::String(n) => *n,
-        _ => ir_type_size_in_bytes(context, ty),
+        _ => 0,
     }
 }
