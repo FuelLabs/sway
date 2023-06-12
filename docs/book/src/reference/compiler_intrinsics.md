@@ -54,7 +54,6 @@ __is_str_type<T>() -> bool
 
 ___
 
-
 ```sway
 __eq<T>(lhs: T, rhs: T) -> bool
 ```
