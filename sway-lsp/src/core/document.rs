@@ -1,6 +1,6 @@
 #![allow(dead_code)]
+use lsp_types::{Position, Range, TextDocumentContentChangeEvent};
 use ropey::Rope;
-use tower_lsp::lsp_types::{Position, Range, TextDocumentContentChangeEvent};
 
 use crate::error::DocumentError;
 

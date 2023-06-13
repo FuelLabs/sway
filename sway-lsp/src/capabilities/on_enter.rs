@@ -99,10 +99,10 @@ fn get_comment_workspace_edit(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sway_lsp_test_utils::get_absolute_path;
-    use tower_lsp::lsp_types::{
+    use lsp_types::{
         AnnotatedTextEdit, TextDocumentContentChangeEvent, VersionedTextDocumentIdentifier,
     };
+    use sway_lsp_test_utils::get_absolute_path;
 
     fn assert_text_edit(
         actual: &OneOf<TextEdit, AnnotatedTextEdit>,

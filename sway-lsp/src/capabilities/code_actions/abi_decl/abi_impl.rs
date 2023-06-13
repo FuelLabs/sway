@@ -1,8 +1,8 @@
+use lsp_types::{Range, Url};
 use sway_core::{
     language::ty::{self, TyAbiDecl, TyFunctionParameter, TyTraitFn},
     Engines,
 };
-use tower_lsp::lsp_types::{Range, Url};
 
 use crate::capabilities::code_actions::{
     common::generate_impl::{GenerateImplCodeAction, CONTRACT},

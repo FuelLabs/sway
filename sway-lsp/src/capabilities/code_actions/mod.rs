@@ -14,14 +14,14 @@ use crate::core::{
     token_map::TokenMap,
 };
 pub use crate::error::DocumentError;
+use lsp_types::{
+    CodeAction as LspCodeAction, CodeActionDisabled, CodeActionKind, CodeActionOrCommand,
+    CodeActionResponse, Position, Range, TextDocumentIdentifier, TextEdit, Url, WorkspaceEdit,
+};
 use serde_json::Value;
 use std::{collections::HashMap, sync::Arc};
 use sway_core::{language::ty, Engines};
 use sway_types::Spanned;
-use tower_lsp::lsp_types::{
-    CodeAction as LspCodeAction, CodeActionDisabled, CodeActionKind, CodeActionOrCommand,
-    CodeActionResponse, Position, Range, TextDocumentIdentifier, TextEdit, Url, WorkspaceEdit,
-};
 
 pub(crate) const CODE_ACTION_IMPL_TITLE: &str = "Generate impl for";
 pub(crate) const CODE_ACTION_NEW_TITLE: &str = "Generate `new`";
