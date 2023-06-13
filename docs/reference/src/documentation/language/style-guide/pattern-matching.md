@@ -2,7 +2,7 @@
 
 The following examples present pattern matching using the [`match`](../../language/control-flow/match/index.md) keyword for the catch-all case.
 
-## Unnamed
+## Encouraged
 
 The `_` is used for the catch-all to indicate the important cases have been defined above and the last case is not important enough to warrant a name.
 
@@ -10,9 +10,9 @@ The `_` is used for the catch-all to indicate the important cases have been defi
 {{#include ../../../code/language/style-guide/pattern_matching/src/lib.sw:style_match_unnamed}}
 ```
 
-## Named
+## Alternative
 
-Alternatively, we may apply an appropriate name to provide context to the reader.
+We may apply an appropriate name to provide context to the reader; however, this is similar to creating an unused variable; therefore, the preferred usage is defined in the [`encouraged`](#encouraged) case.
 
 ```sway
 {{#include ../../../code/language/style-guide/pattern_matching/src/lib.sw:style_match_named}}
