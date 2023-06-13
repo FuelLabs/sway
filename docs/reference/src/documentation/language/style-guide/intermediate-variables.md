@@ -12,7 +12,7 @@ It may be beneficial to use an intermediate variable to provide context to the r
 
 ## Shortened Name
 
-In the cases of multiple levels of indentation or overly verbose names it may be beneficial to create an intermediate variable with a shorter name. 
+In the cases of multiple levels of indentation or overly verbose names it may be beneficial to create an intermediate variable with a shorter name.
 
 ```sway
 {{#include ../../../code/language/style-guide/intermediate_variables/src/lib.sw:shortened_name}}
