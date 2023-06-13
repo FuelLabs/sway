@@ -1,27 +1,27 @@
 [[package]]
 name = 'annotation_style'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'annotations'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'arrays'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'assertions'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'asset_operations'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'associated-consts'
@@ -30,30 +30,30 @@ source = 'member'
 [[package]]
 name = 'booleans'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'bytes'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'call'
 source = 'member'
 dependencies = [
     'contract_interface',
-    'std',
+    'std path+from-root-0F28276288D2432C',
 ]
 
 [[package]]
 name = 'call_data'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'comments'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'constants'
@@ -62,184 +62,198 @@ source = 'member'
 [[package]]
 name = 'contract_interface'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'control_flow'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'core'
 source = 'path+from-root-0F28276288D2432C'
 
 [[package]]
+name = 'core'
+source = 'path+from-root-D62A8C57DD8D2801'
+
+[[package]]
 name = 'counter'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'empty_storage_init'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'enum-advanced'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'enum_style'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'enums'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'fizzbuzz'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'functions'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'hashing'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'interface'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
+
+[[package]]
+name = 'intermediate_variables'
+source = 'member'
+dependencies = ['std git+https://github.com/fuellabs/sway?tag=v0.40.1#48104d0bde0d343154a5bc39a310092532883235']
 
 [[package]]
 name = 'letter_casing'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'logging'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'my_lib'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'my_library'
 source = 'member'
 dependencies = [
     'my_other_library',
-    'std',
+    'std path+from-root-0F28276288D2432C',
 ]
 
 [[package]]
 name = 'my_other_library'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'namespace'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'numerics'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'ownership'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'reading_writing_to_storage'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'simple_predicate'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'simple_script'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
+
+[[package]]
+name = 'std'
+source = 'git+https://github.com/fuellabs/sway?tag=v0.40.1#48104d0bde0d343154a5bc39a310092532883235'
+dependencies = ['core path+from-root-D62A8C57DD8D2801']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-0F28276288D2432C'
-dependencies = ['core']
+dependencies = ['core path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'storage_init'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'storage_map'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'storage_vec'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'store_get'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'string_issue'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'strings'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'struct_shorthand'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'structs'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'tuples'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'variables'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'wallet'
 source = 'member'
 dependencies = [
     'interface',
-    'std',
+    'std path+from-root-0F28276288D2432C',
 ]
 
 [[package]]
 name = 'wallet_example'
 source = 'member'
-dependencies = ['std']
+dependencies = ['std path+from-root-0F28276288D2432C']
