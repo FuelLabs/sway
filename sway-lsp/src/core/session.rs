@@ -19,8 +19,14 @@ use crate::{
 use dashmap::DashMap;
 use forc_pkg as pkg;
 use parking_lot::RwLock;
-use pkg::{manifest::ManifestFile, source::IPFSNode, Programs};
-use std::{fs::File, io::Write, path::PathBuf, sync::Arc, vec};
+use pkg::{manifest::ManifestFile, Programs};
+use std::{
+    fs::File,
+    io::Write,
+    path::PathBuf,
+    sync::{atomic::Ordering, Arc},
+    vec,
+};
 use sway_core::{
     decl_engine::DeclEngine,
     language::{
@@ -99,10 +105,13 @@ impl Session {
     }
 
     pub fn shutdown(&self) {
-        // shutdown the thread watching the manifest file
-        let handle = self.sync.notify_join_handle.read();
-        if let Some(join_handle) = &*handle {
-            join_handle.abort();
+        // Set the should_end flag to true
+        self.sync.should_end.store(true, Ordering::Relaxed);
+
+        // Wait for the thread to finish
+        let mut join_handle_option = self.sync.notify_join_handle.write();
+        if let Some(join_handle) = std::mem::take(&mut *join_handle_option) {
+            let _ = join_handle.join();
         }
 
         // Delete the temporary directory.
