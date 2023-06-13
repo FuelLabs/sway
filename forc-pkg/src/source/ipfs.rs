@@ -13,7 +13,7 @@ use std::{
     str::FromStr,
 };
 use tar::Archive;
-use tracing::{info, warn};
+use tracing::info;
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Cid(cid::Cid);
@@ -33,7 +33,6 @@ impl Pinned {
     pub const PREFIX: &'static str = "ipfs";
 }
 
-const PUBLIC_GATEWAY: &str = "https://ipfs.io";
 const IPFS_DIR_NAME: &str = "ipfs";
 const IPFS_CACHE_DIR_NAME: &str = "cache";
 
@@ -77,19 +76,23 @@ impl source::Fetch for Pinned {
                 let ipfs_client = ipfs_client();
                 let dest = cache_dir();
                 futures::executor::block_on(async {
-                    info!(
-                        "   {} for local IPFS node",
-                        ansi_term::Color::Green.bold().paint("Checking")
-                    );
-                    if cid.fetch_with_client(&ipfs_client, &dest).await.is_err() {
-                        warn!(
-                            "   {} from {}. Note: This can take several minutes.",
-                            ansi_term::Color::Green.bold().paint("Fetching"),
-                            PUBLIC_GATEWAY
-                        );
-                        cid.fetch_with_public_gateway(&dest).await
-                    } else {
-                        Ok(())
+                    match ctx.ipfs_node() {
+                        source::IPFSNode::Local => {
+                            info!(
+                                "   {} with local IPFS node",
+                                ansi_term::Color::Green.bold().paint("Fetching")
+                            );
+                            cid.fetch_with_client(&ipfs_client, &dest).await
+                        }
+                        source::IPFSNode::WithUrl(ipfs_node_gateway_url) => {
+                            info!(
+                                "   {} from {}. Note: This can take several minutes.",
+                                ansi_term::Color::Green.bold().paint("Fetching"),
+                                ipfs_node_gateway_url
+                            );
+                            cid.fetch_with_gateway_url(ipfs_node_gateway_url, &dest)
+                                .await
+                        }
                     }
                 })?;
             }
@@ -144,13 +147,13 @@ impl Cid {
         Ok(())
     }
 
-    /// Using a public gateway, fetches the content described by this cid.
-    async fn fetch_with_public_gateway(&self, dst: &Path) -> Result<()> {
+    /// Using the provided gateway url, fetches the content described by this cid.
+    async fn fetch_with_gateway_url(&self, gateway_url: &str, dst: &Path) -> Result<()> {
         let client = reqwest::Client::new();
         // We request the content to be served to us in tar format by the public gateway.
         let fetch_url = format!(
             "{}/ipfs/{}?download=true&format=tar&filename={}.tar",
-            PUBLIC_GATEWAY, self.0, self.0
+            gateway_url, self.0, self.0
         );
         let req = client.get(&fetch_url);
         let res = req.send().await?;
@@ -221,7 +224,6 @@ fn pkg_cache_dir(cid: &Cid) -> PathBuf {
 }
 
 /// Returns a `IpfsClient` instance ready to be used to make requests to local ipfs node.
-/// TODO: Accept user specified local ipfs node port.
 fn ipfs_client() -> IpfsClient {
     IpfsClient::default()
 }

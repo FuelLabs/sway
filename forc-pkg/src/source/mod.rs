@@ -8,7 +8,7 @@
 //! 4. Add variant support to the `from_manifest_dep` and `FromStr` implementations.
 
 pub mod git;
-mod ipfs;
+pub(crate) mod ipfs;
 mod member;
 pub mod path;
 mod reg;
@@ -45,6 +45,33 @@ trait DepPath {
 }
 
 type FetchId = u64;
+
+#[derive(Clone, Debug)]
+pub enum IPFSNode {
+    Local,
+    WithUrl(String),
+}
+
+impl Default for IPFSNode {
+    fn default() -> Self {
+        Self::Local
+    }
+}
+
+impl FromStr for IPFSNode {
+    type Err = anyhow::Error;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "PUBLIC" => {
+                let url = sway_utils::constants::DEFAULT_IPFS_GATEWAY_URL;
+                Ok(IPFSNode::WithUrl(url.to_string()))
+            }
+            "LOCAL" => Ok(IPFSNode::Local),
+            url => Ok(IPFSNode::WithUrl(url.to_string())),
+        }
+    }
+}
 
 /// Specifies a base source for a package.
 ///
@@ -92,6 +119,8 @@ pub(crate) struct PinCtx<'a> {
     pub(crate) offline: bool,
     /// The name of the package associated with this source.
     pub(crate) name: &'a str,
+    /// The IPFS node to use for fetching IPFS sources.
+    pub(crate) ipfs_node: &'a IPFSNode,
 }
 
 pub(crate) enum DependencyPath {
@@ -312,6 +341,9 @@ impl<'a> PinCtx<'a> {
     }
     fn name(&self) -> &str {
         self.name
+    }
+    fn ipfs_node(&self) -> &'a IPFSNode {
+        self.ipfs_node
     }
 }
 

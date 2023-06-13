@@ -19,7 +19,7 @@ use crate::{
 use dashmap::DashMap;
 use forc_pkg as pkg;
 use parking_lot::RwLock;
-use pkg::{manifest::ManifestFile, Programs};
+use pkg::{manifest::ManifestFile, source::IPFSNode, Programs};
 use std::{fs::File, io::Write, path::PathBuf, sync::Arc, vec};
 use sway_core::{
     decl_engine::DeclEngine,
@@ -160,9 +160,16 @@ impl Session {
                     dir: uri.path().into(),
                 })?;
 
-        let plan =
-            pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)
-                .map_err(LanguageServerError::BuildPlanFailed)?;
+        let ipfs_node = IPFSNode::Local;
+
+        let plan = pkg::BuildPlan::from_lock_and_manifests(
+            &lock_path,
+            &member_manifests,
+            locked,
+            offline,
+            ipfs_node,
+        )
+        .map_err(LanguageServerError::BuildPlanFailed)?;
 
         let new_type_engine = TypeEngine::default();
         let new_decl_engine = DeclEngine::default();

@@ -148,8 +148,13 @@ fn build_docs(
     // compile the program and extract the docs
     let member_manifests = manifest.member_manifests()?;
     let lock_path = manifest.lock_path()?;
-    let plan =
-        pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)?;
+    let plan = pkg::BuildPlan::from_lock_and_manifests(
+        &lock_path,
+        &member_manifests,
+        locked,
+        offline,
+        build_instructions.ipfs_node.clone().unwrap_or_default(),
+    )?;
     let type_engine = TypeEngine::default();
     let decl_engine = DeclEngine::default();
     let query_engine = QueryEngine::default();
