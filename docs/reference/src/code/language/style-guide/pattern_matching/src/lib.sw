@@ -1,12 +1,21 @@
 library;
 
 #[allow(dead_code)]
+enum Shape {
+    Triangle: (),
+    Quadrilateral: (),
+    Pentagon: (),
+    Hexagon: (),
+    Heptagon: (),
+}
+
+#[allow(dead_code)]
 // ANCHOR: style_match_unnamed
-fn unnamed_case(variable: u64) {
-    let value = match variable {
-        1 => 1,
-        2 => 3,
-        3 => 5,
+fn unnamed_case(shape: Shape) {
+    let value = match shape {
+        Shape::Triangle => 3,
+        Shape::Quadrilateral => 4,
+        Shape::Pentagon => 5,
         _ => 0,
     };
 }
@@ -14,12 +23,12 @@ fn unnamed_case(variable: u64) {
 
 #[allow(dead_code)]
 // ANCHOR: style_match_named
-fn named_case(variable: u64) {
-    let value = match variable {
-        1 => 1,
-        2 => 3,
-        3 => 5,
-        default => 0,
+fn named_case(shape: Shape) {
+    let value = match shape {
+        Shape::Triangle => 3,
+        Shape::Quadrilateral => 4,
+        Shape::Pentagon => 5,
+        _invalid_shape => 0,
     };
 }
 // ANCHOR_END: style_match_named

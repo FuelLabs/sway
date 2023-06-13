@@ -12,7 +12,7 @@ The `_` is used for the catch-all to indicate the important cases have been defi
 
 ## Alternative
 
-We may apply an appropriate name to provide context to the reader; however, this is similar to creating an unused variable; therefore, the preferred usage is defined in the [`encouraged`](#encouraged) case.
+We may apply an appropriate name to provide context to the reader; however, unless it provides additional information the preferred usage is defined in the [`encouraged`](#encouraged) case.
 
 ```sway
 {{#include ../../../code/language/style-guide/pattern_matching/src/lib.sw:style_match_named}}
