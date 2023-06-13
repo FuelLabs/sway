@@ -44,8 +44,8 @@ impl ty::TyTraitDecl {
             })
         }
 
-        let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
+        let type_engine = ctx.engines.te();
+        let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
         // A temporary namespace for checking within the trait's scope.
@@ -102,7 +102,7 @@ impl ty::TyTraitDecl {
                         warnings,
                         errors
                     );
-                    let decl_ref = ctx.decl_engine.insert(const_decl.clone());
+                    let decl_ref = ctx.engines.de().insert(const_decl.clone());
                     new_interface_surface
                         .push(ty::TyTraitInterfaceItem::Constant(decl_ref.clone()));
 
@@ -246,7 +246,7 @@ impl ty::TyTraitDecl {
             ..
         } = self;
 
-        let decl_engine = ctx.decl_engine;
+        let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
         // Retrieve the interface surface for this trait.
@@ -323,7 +323,7 @@ impl ty::TyTraitDecl {
         type_arguments: &[TypeArgument],
         type_id: TypeId,
     ) {
-        let decl_engine = ctx.decl_engine;
+        let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
         let ty::TyTraitDecl {
@@ -356,9 +356,10 @@ impl ty::TyTraitDecl {
                     method.replace_self_type(engines, type_id);
                     method.subst(&type_mapping, engines);
                     all_items.push(TyImplItem::Fn(
-                        ctx.decl_engine
+                        ctx.engines
+                            .de()
                             .insert(method.to_dummy_func(Mode::NonAbi))
-                            .with_parent(ctx.decl_engine, (*decl_ref.id()).into()),
+                            .with_parent(ctx.engines.de(), (*decl_ref.id()).into()),
                     ));
                 }
                 ty::TyTraitInterfaceItem::Constant(decl_ref) => {
@@ -383,16 +384,17 @@ impl ty::TyTraitDecl {
                     method.replace_self_type(engines, type_id);
                     method.subst(&type_mapping, engines);
                     all_items.push(TyImplItem::Fn(
-                        ctx.decl_engine
+                        ctx.engines
+                            .de()
                             .insert(method)
-                            .with_parent(ctx.decl_engine, (*decl_ref.id()).into()),
+                            .with_parent(ctx.engines.de(), (*decl_ref.id()).into()),
                     ));
                 }
                 ty::TyTraitItem::Constant(decl_ref) => {
                     let mut const_decl = decl_engine.get_constant(decl_ref);
                     const_decl.replace_self_type(engines, type_id);
                     const_decl.subst(&type_mapping, engines);
-                    all_items.push(TyImplItem::Constant(ctx.decl_engine.insert(const_decl)));
+                    all_items.push(TyImplItem::Constant(ctx.engines.de().insert(const_decl)));
                 }
             }
         }

@@ -42,7 +42,7 @@ pub fn create_module_verifier_pass() -> Pass {
     }
 }
 
-impl Context {
+impl<'eng> Context<'eng> {
     /// Verify the contents of this [`Context`] is valid.
     pub fn verify(self) -> Result<Self, IrError> {
         for (_, module) in &self.modules {
@@ -159,14 +159,14 @@ impl Context {
     }
 }
 
-struct InstructionVerifier<'a> {
-    context: &'a Context,
+struct InstructionVerifier<'a, 'eng> {
+    context: &'a Context<'eng>,
     cur_module: &'a ModuleContent,
     cur_function: &'a FunctionContent,
     cur_block: &'a BlockContent,
 }
 
-impl<'a> InstructionVerifier<'a> {
+impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
     fn verify_instructions(&self) -> Result<(), IrError> {
         for ins in &self.cur_block.instructions {
             let value_content = &self.context.values[ins.0];

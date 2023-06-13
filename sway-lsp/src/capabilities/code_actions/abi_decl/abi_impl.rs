@@ -2,16 +2,23 @@ use sway_core::{
     language::ty::{self, TyAbiDecl, TyFunctionParameter, TyTraitFn},
     Engines,
 };
-use tower_lsp::lsp_types::Url;
+use tower_lsp::lsp_types::{Range, Url};
 
 use crate::capabilities::code_actions::{
-    CodeAction, CodeActionContext, CODE_ACTION_IMPL_TITLE, CONTRACT,
+    common::generate_impl::{GenerateImplCodeAction, CONTRACT},
+    CodeAction, CodeActionContext, CODE_ACTION_IMPL_TITLE,
 };
 
 pub(crate) struct AbiImplCodeAction<'a> {
-    engines: Engines<'a>,
+    engines: &'a Engines,
     decl: &'a TyAbiDecl,
     uri: &'a Url,
+}
+
+impl<'a> GenerateImplCodeAction<'a, TyAbiDecl> for AbiImplCodeAction<'a> {
+    fn decl_name(&self) -> String {
+        self.decl.name.to_string()
+    }
 }
 
 impl<'a> CodeAction<'a, TyAbiDecl> for AbiImplCodeAction<'a> {
@@ -35,8 +42,8 @@ impl<'a> CodeAction<'a, TyAbiDecl> for AbiImplCodeAction<'a> {
         format!("{} `{}`", CODE_ACTION_IMPL_TITLE, self.decl_name())
     }
 
-    fn decl_name(&self) -> String {
-        self.decl.name.to_string()
+    fn range(&self) -> Range {
+        self.range_after()
     }
 
     fn decl(&self) -> &TyAbiDecl {

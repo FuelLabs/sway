@@ -14,7 +14,6 @@ use serde::{Deserialize, Serialize};
 use std::{
     fs::File,
     io::Write,
-    ops::Deref,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -167,7 +166,8 @@ impl Backend {
         let diagnostics_res = {
             let mut diagnostics_to_publish = vec![];
             let config = &self.config.read();
-            let tokens = session.token_map().tokens_for_file(uri);
+            let engines = session.engines.read();
+            let tokens = session.token_map().tokens_for_file(engines.se(), uri);
             match config.debug.show_collected_tokens_as_warnings {
                 // If collected_tokens_as_warnings is Parsed or Typed,
                 // take over the normal error and warning display behavior
@@ -583,7 +583,8 @@ impl Backend {
 
                 // Returns true if the current path matches the path of a submodule
                 let path_is_submodule = |ident: &Ident, path: &Option<PathBuf>| -> bool {
-                    ident.span().path().map(|a| a.deref()) == path.as_ref()
+                    let engines = session.engines.read();
+                    ident.span().source_id().map(|p| engines.se().get_path(p)) == *path
                 };
 
                 let ast_path = PathBuf::from(params.save_path.path());
@@ -628,14 +629,14 @@ impl Backend {
                                 // Initialize the string with the AST from the root
                                 let mut formatted_ast = debug::print_decl_engine_types(
                                     &typed_program.root.all_nodes,
-                                    &session.decl_engine.read(),
+                                    session.engines.read().de(),
                                 );
                                 for (ident, submodule) in &typed_program.root.submodules {
                                     if path_is_submodule(ident, &path) {
                                         // overwrite the root AST with the submodule AST
                                         formatted_ast = debug::print_decl_engine_types(
                                             &submodule.module.all_nodes,
-                                            &session.decl_engine.read(),
+                                            session.engines.read().de(),
                                         );
                                     }
                                 }

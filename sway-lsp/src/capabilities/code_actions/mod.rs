@@ -1,5 +1,12 @@
 pub mod abi_decl;
+pub mod common;
+pub mod constant_decl;
+pub mod enum_decl;
+pub mod enum_variant;
+pub mod function_decl;
+pub mod storage_field;
 pub mod struct_decl;
+pub mod struct_field;
 
 use crate::core::{
     session::Session,
@@ -9,11 +16,7 @@ use crate::core::{
 pub use crate::error::DocumentError;
 use serde_json::Value;
 use std::{collections::HashMap, sync::Arc};
-use sway_core::{
-    language::ty,
-    transform::{AttributeKind, AttributesMap},
-    Engines, TypeParameter,
-};
+use sway_core::{language::ty, Engines};
 use sway_types::Spanned;
 use tower_lsp::lsp_types::{
     CodeAction as LspCodeAction, CodeActionDisabled, CodeActionKind, CodeActionOrCommand,
@@ -22,12 +25,11 @@ use tower_lsp::lsp_types::{
 
 pub(crate) const CODE_ACTION_IMPL_TITLE: &str = "Generate impl for";
 pub(crate) const CODE_ACTION_NEW_TITLE: &str = "Generate `new`";
-pub(crate) const CONTRACT: &str = "Contract";
-pub(crate) const TAB: &str = "    ";
+pub(crate) const CODE_ACTION_DOC_TITLE: &str = "Generate a documentation template";
 
 #[derive(Clone)]
 pub(crate) struct CodeActionContext<'a> {
-    engines: Engines<'a>,
+    engines: &'a Engines,
     tokens: &'a TokenMap,
     token: &'a Token,
     uri: &'a Url,
@@ -39,31 +41,39 @@ pub(crate) fn code_actions(
     text_document: TextDocumentIdentifier,
     temp_uri: &Url,
 ) -> Option<CodeActionResponse> {
+    let engines = session.engines.read();
     let (_, token) = session
         .token_map()
-        .token_at_position(temp_uri, range.start)?;
+        .token_at_position(engines.se(), temp_uri, range.start)?;
 
-    let type_engine = session.type_engine.read();
-    let decl_engine = session.decl_engine.read();
-    let query_engine = session.query_engine.read();
     let ctx = CodeActionContext {
-        engines: Engines::new(&type_engine, &decl_engine, &query_engine),
+        engines: &engines,
         tokens: session.token_map(),
-        token: &token.clone(),
+        token: &token,
         uri: &text_document.uri,
     };
-    token.typed.and_then(|typed_token| match typed_token {
+
+    match token.typed.as_ref()? {
         TypedAstToken::TypedDeclaration(decl) => match decl {
             ty::TyDecl::AbiDecl(ty::AbiDecl { decl_id, .. }) => {
-                abi_decl::code_actions(&decl_id, ctx)
+                abi_decl::code_actions(decl_id, ctx)
             }
             ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
-                struct_decl::code_actions(&decl_id, ctx)
+                struct_decl::code_actions(decl_id, ctx)
+            }
+            ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
+                enum_decl::code_actions(decl_id, ctx)
             }
             _ => None,
         },
+        TypedAstToken::TypedFunctionDeclaration(decl) => function_decl::code_actions(decl, ctx),
+        TypedAstToken::TypedStorageField(decl) => storage_field::code_actions(decl, ctx),
+        TypedAstToken::TypedConstantDeclaration(decl) => constant_decl::code_actions(decl, ctx),
+        TypedAstToken::TypedEnumVariant(decl) => enum_variant::code_actions(decl, ctx),
+        TypedAstToken::TypedStructField(decl) => struct_field::code_actions(decl, ctx),
+
         _ => None,
-    })
+    }
 }
 
 pub(crate) trait CodeAction<'a, T: Spanned> {
@@ -76,8 +86,10 @@ pub(crate) trait CodeAction<'a, T: Spanned> {
     /// Returns a [String] of text to use as the title of the code action.
     fn title(&self) -> String;
 
-    /// Returns a [String] hold the name of the declaration.
-    fn decl_name(&self) -> String;
+    fn indentation(&self) -> String {
+        let (_, column) = self.decl().span().start_pos().line_col();
+        " ".repeat(column - 1)
+    }
 
     /// Returns the declaration.
     fn decl(&self) -> &T;
@@ -111,9 +123,11 @@ pub(crate) trait CodeAction<'a, T: Spanned> {
         })
     }
 
+    /// Returns the [Range] to insert text. This will usually be implemented as `range_before` or `range_after`.
+    fn range(&self) -> Range;
+
     /// Returns the [Range] to insert text after the last line of the span, with an empty line in between.
-    /// Can be overridden if the code action calls for it.
-    fn range(&self) -> Range {
+    fn range_after(&self) -> Range {
         let (last_line, _) = self.decl().span().end_pos().line_col();
         let insertion_position = Position {
             line: last_line as u32,
@@ -125,91 +139,16 @@ pub(crate) trait CodeAction<'a, T: Spanned> {
         }
     }
 
-    /// Returns an optional [String] of the type parameters for the given [TypeParameter] vector.
-    fn type_param_string(&self, type_params: &Vec<TypeParameter>) -> Option<String> {
-        if type_params.is_empty() {
-            None
-        } else {
-            Some(
-                type_params
-                    .iter()
-                    .map(|param| param.name_ident.to_string())
-                    .collect::<Vec<_>>()
-                    .join(", "),
-            )
+    /// Returns the [Range] to insert text before the first line of the span, with an empty line in between.
+    fn range_before(&self) -> Range {
+        let (first_line, _) = self.decl().span().start_pos().line_col();
+        let insertion_position = Position {
+            line: first_line as u32 - 1,
+            character: 0,
+        };
+        Range {
+            start: insertion_position,
+            end: insertion_position,
         }
-    }
-
-    /// Returns a [String] of a generated impl with the optional `for <for_name>` signature.
-    /// Can be used for both ABI and Struct impls.
-    fn impl_string(
-        &self,
-        type_params: Option<String>,
-        body: String,
-        for_name: Option<String>,
-    ) -> String {
-        let for_string = match for_name {
-            Some(name) => format!(" for {name}"),
-            None => "".to_string(),
-        };
-        let type_param_string = match type_params {
-            Some(params) => format!("<{params}>"),
-            None => "".to_string(),
-        };
-        format!(
-            "\nimpl{} {}{}{} {{{}}}\n",
-            type_param_string,
-            self.decl_name(),
-            type_param_string,
-            for_string,
-            body
-        )
-    }
-
-    /// Returns a [String] of a an attribute map, optionally excluding comments.
-    fn attribute_string(&self, attr_map: &AttributesMap, include_comments: bool) -> String {
-        let attr_string = attr_map
-            .iter()
-            .map(|(kind, attrs)| {
-                attrs
-                    .iter()
-                    .filter_map(|attr| match kind {
-                        AttributeKind::DocComment { .. } => {
-                            if include_comments {
-                                return Some(format!("{}{}", TAB, attr.span.as_str()));
-                            }
-                            None
-                        }
-                        _ => Some(format!("{}{}", TAB, attr.span.as_str())),
-                    })
-                    .collect::<Vec<String>>()
-                    .join("\n")
-            })
-            .collect::<Vec<String>>()
-            .join("\n");
-        let attribute_padding = match attr_string.len() > 1 {
-            true => "\n",
-            false => "",
-        };
-        format!("{attr_string}{attribute_padding}")
-    }
-
-    /// Returns a [String] of a generated function signature.
-    fn fn_signature_string(
-        &self,
-        fn_name: String,
-        params_string: String,
-        attr_map: &AttributesMap,
-        return_type_string: String,
-        body: Option<String>,
-    ) -> String {
-        let attribute_string = self.attribute_string(attr_map, false);
-        let body_string = match body {
-            Some(body) => format!(" {body} "),
-            None => String::new(),
-        };
-        format!(
-            "{attribute_string}{TAB}fn {fn_name}({params_string}){return_type_string} {{{body_string}}}",
-        )
     }
 }

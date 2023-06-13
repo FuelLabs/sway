@@ -69,6 +69,65 @@ pub(crate) async fn code_action_abi_request(
     code_action
 }
 
+pub(crate) async fn code_action_function_request(
+    service: &mut LspService<Backend>,
+    uri: &Url,
+) -> Request {
+    let params = json!({
+        "textDocument": {
+            "uri": uri,
+        },
+        "range" : {
+            "start": {
+                "line": 18,
+                "character": 4
+            },
+            "end": {
+                "line": 18,
+                "character": 4
+            }
+        },
+        "context": {
+            "diagnostics": [],
+            "triggerKind": 2
+        }
+    });
+    let code_action = build_request_with_id("textDocument/codeAction", params, 1);
+    let response = call_request(service, code_action.clone()).await;
+    let uri_string = uri.to_string();
+    let expected = Response::from_ok(
+        1.into(),
+        json!([
+          {
+            "data": uri,
+            "edit": {
+              "changes": {
+                uri_string: [
+                  {
+                    "newText": "/// Add a brief description.\n/// \n/// ### Additional Information\n/// \n/// Provide information beyond the core purpose or functionality.\n/// \n/// ### Reverts\n/// \n/// * List any cases where the function will revert\n/// \n/// ### Number of Storage Accesses\n/// \n/// * Reads: `0`\n/// * Writes: `0`\n/// * Clears: `0`\n/// \n/// ### Examples\n/// \n/// ```sway\n/// let x = test();\n/// ```\n",
+                    "range": {
+                      "end": {
+                        "character": 0,
+                        "line": 18
+                      },
+                      "start": {
+                        "character": 0,
+                        "line": 18
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "kind": "refactor",
+            "title": "Generate a documentation template"
+          }
+        ]),
+    );
+    assert_json_eq!(expected, response.ok().unwrap());
+    code_action
+}
+
 pub(crate) async fn code_action_struct_request(
     service: &mut LspService<Backend>,
     uri: &Url,
@@ -126,7 +185,7 @@ pub(crate) async fn code_action_struct_request(
             "data": uri,
             "edit": {
               "changes": {
-                  uri_string: [
+                  uri_string.clone(): [
                   {
                     "newText": "\nimpl Data {\n    fn new(value: NumberOrString, address: u64) -> Self { Self { value, address } }\n}\n",
                     "range": {
@@ -145,6 +204,29 @@ pub(crate) async fn code_action_struct_request(
             },
             "kind": "refactor",
             "title": "Generate `new`"
+          },
+          {
+            "data": uri,
+            "edit": {
+              "changes": {
+                uri_string: [
+                  {
+                    "newText": "/// Add a brief description.\n/// \n/// ### Additional Information\n/// \n/// Provide information beyond the core purpose or functionality.\n",                    "range": {
+                      "end": {
+                        "character": 0,
+                        "line": 19
+                      },
+                      "start": {
+                        "character": 0,
+                        "line": 19
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "kind": "refactor",
+            "title": "Generate a documentation template"
           }
         ]),
     );
@@ -212,7 +294,7 @@ pub(crate) async fn code_action_struct_type_params_request(
             },
             "edit": {
               "changes": {
-                uri_string: [
+                uri_string.clone(): [
                   {
                     "newText": "    fn new(value: T) -> Self { Self { value } }\n",
                     "range": {
@@ -231,6 +313,29 @@ pub(crate) async fn code_action_struct_type_params_request(
             },
             "kind": "refactor",
             "title": "Generate `new`"
+          },
+          {
+            "data": uri,
+            "edit": {
+              "changes": {
+                uri_string: [
+                  {
+                    "newText": "/// Add a brief description.\n/// \n/// ### Additional Information\n/// \n/// Provide information beyond the core purpose or functionality.\n",                    "range": {
+                      "end": {
+                        "character": 0,
+                        "line": 4
+                      },
+                      "start": {
+                        "character": 0,
+                        "line": 4
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "kind": "refactor",
+            "title": "Generate a documentation template"
           }
         ]),
     );
@@ -295,7 +400,7 @@ pub(crate) async fn code_action_struct_existing_impl_request(
             "data": uri,
             "edit": {
               "changes": {
-                uri_string: [
+                uri_string.clone(): [
                   {
                     "newText": "    fn new(a: u64, b: u64) -> Self { Self { a, b } }\n",
                     "range": {
@@ -314,6 +419,29 @@ pub(crate) async fn code_action_struct_existing_impl_request(
             },
             "kind": "refactor",
             "title": "Generate `new`"
+          },
+          {
+            "data": uri,
+            "edit": {
+              "changes": {
+                uri_string: [
+                  {
+                    "newText": "/// Add a brief description.\n/// \n/// ### Additional Information\n/// \n/// Provide information beyond the core purpose or functionality.\n",                    "range": {
+                      "end": {
+                        "character": 0,
+                        "line": 2
+                      },
+                      "start": {
+                        "character": 0,
+                        "line": 2
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "kind": "refactor",
+            "title": "Generate a documentation template"
           }
         ]),
     );

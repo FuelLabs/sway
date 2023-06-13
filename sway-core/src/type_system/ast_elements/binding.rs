@@ -126,7 +126,7 @@ impl Spanned for TypeArgs {
 }
 
 impl PartialEqWithEngines for TypeArgs {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         match (self, other) {
             (TypeArgs::Regular(vec1), TypeArgs::Regular(vec2)) => vec1.eq(vec2, engines),
             (TypeArgs::Prefix(vec1), TypeArgs::Prefix(vec2)) => vec1.eq(vec2, engines),
@@ -142,7 +142,7 @@ impl<T> Spanned for TypeBinding<T> {
 }
 
 impl PartialEqWithEngines for TypeBinding<()> {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.span == other.span && self.type_arguments.eq(&other.type_arguments, engines)
     }
 }
@@ -165,7 +165,7 @@ impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let type_engine = ctx.type_engine;
+        let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
         let (type_info, type_ident) = self.inner.suffix.clone();
@@ -232,8 +232,8 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
     )> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
+        let type_engine = ctx.engines.te();
+        let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
         // Grab the declaration.
         let unknown_decl = check!(
@@ -287,9 +287,10 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
         }
         // Insert the new copy into the declaration engine.
         let new_fn_ref = ctx
-            .decl_engine
+            .engines
+            .de()
             .insert(new_copy)
-            .with_parent(ctx.decl_engine, fn_ref.id().into());
+            .with_parent(ctx.engines.de(), fn_ref.id().into());
         ok((new_fn_ref, None, None), warnings, errors)
     }
 }
@@ -305,8 +306,8 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
     )> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
+        let type_engine = ctx.engines.te();
+        let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
         // Grab the declaration.
         let unknown_decl = check!(
@@ -339,7 +340,7 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
             errors
         );
         // Insert the new copy into the declaration engine.
-        let new_struct_ref = ctx.decl_engine.insert(new_copy);
+        let new_struct_ref = ctx.engines.de().insert(new_copy);
         // Take any trait items that apply to the old type and copy them to the new type.
         let type_id = type_engine.insert(engines, TypeInfo::Struct(new_struct_ref.clone()));
         ctx.namespace
@@ -359,8 +360,8 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
     )> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
+        let type_engine = ctx.engines.te();
+        let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
         // Grab the declaration.
         let unknown_decl = check!(
@@ -403,7 +404,7 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
             errors
         );
         // Insert the new copy into the declaration engine.
-        let new_enum_ref = ctx.decl_engine.insert(new_copy);
+        let new_enum_ref = ctx.engines.de().insert(new_copy);
         // Take any trait items that apply to the old type and copy them to the new type.
         let type_id = type_engine.insert(engines, TypeInfo::Enum(new_enum_ref.clone()));
         ctx.namespace

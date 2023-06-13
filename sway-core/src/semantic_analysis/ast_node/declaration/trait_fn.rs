@@ -24,7 +24,7 @@ impl ty::TyTraitFn {
             attributes,
         } = trait_fn;
 
-        let type_engine = ctx.type_engine;
+        let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
         // Create a namespace for the trait function.

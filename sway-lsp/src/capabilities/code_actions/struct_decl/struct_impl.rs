@@ -1,13 +1,19 @@
-use sway_core::language::ty::TyStructDecl;
-use tower_lsp::lsp_types::Url;
-
 use crate::capabilities::code_actions::{
-    CodeAction, CodeActionContext, CODE_ACTION_IMPL_TITLE, TAB,
+    common::generate_impl::{GenerateImplCodeAction, TAB},
+    CodeAction, CodeActionContext, CODE_ACTION_IMPL_TITLE,
 };
+use sway_core::language::ty::TyStructDecl;
+use tower_lsp::lsp_types::{Range, Url};
 
 pub(crate) struct StructImplCodeAction<'a> {
     decl: &'a TyStructDecl,
     uri: &'a Url,
+}
+
+impl<'a> GenerateImplCodeAction<'a, TyStructDecl> for StructImplCodeAction<'a> {
+    fn decl_name(&self) -> String {
+        self.decl.call_path.suffix.to_string()
+    }
 }
 
 impl<'a> CodeAction<'a, TyStructDecl> for StructImplCodeAction<'a> {
@@ -27,8 +33,8 @@ impl<'a> CodeAction<'a, TyStructDecl> for StructImplCodeAction<'a> {
         format!("{} `{}`", CODE_ACTION_IMPL_TITLE, self.decl_name())
     }
 
-    fn decl_name(&self) -> String {
-        self.decl.call_path.suffix.to_string()
+    fn range(&self) -> Range {
+        self.range_after()
     }
 
     fn decl(&self) -> &TyStructDecl {

@@ -228,6 +228,28 @@ pub struct BuildProfile {
     pub error_on_warnings: bool,
 }
 
+impl DependencyDetails {
+    /// Checks if dependency details reserved for a specific dependency type used without the main
+    /// detail for that type.
+    ///
+    /// Following dependency details sets are considered to be invalid:
+    /// 1. A set of dependency details which declares `branch`, `tag` or `rev` without `git`.
+    pub fn validate(&self) -> anyhow::Result<()> {
+        let DependencyDetails {
+            git,
+            branch,
+            tag,
+            rev,
+            ..
+        } = self;
+
+        if git.is_none() && (branch.is_some() || tag.is_some() || rev.is_some()) {
+            bail!("Details reserved for git sources used without a git field");
+        }
+        Ok(())
+    }
+}
+
 impl Dependency {
     /// The string of the `package` field if specified.
     pub fn package(&self) -> Option<&str> {
@@ -491,12 +513,17 @@ impl PackageManifest {
 
     /// Validate the `PackageManifest`.
     ///
-    /// This checks the project and organization names against a set of reserved/restricted
-    /// keywords and patterns.
+    /// This checks:
+    /// 1. The project and organization names against a set of reserved/restricted keywords and patterns.
+    /// 2. The validity of the details provided. Makes sure that there are no mismatching detail
+    ///    declarations (to prevent mixing details specific to certain types).
     pub fn validate(&self) -> Result<()> {
         validate_name(&self.project.name, "package name")?;
         if let Some(ref org) = self.project.organization {
             validate_name(org, "organization name")?;
+        }
+        for (_, dependency_details) in self.deps_detailed() {
+            dependency_details.validate()?;
         }
         Ok(())
     }
@@ -979,4 +1006,148 @@ pub fn find_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
 /// The same as [find_within], but returns the package's project directory.
 pub fn find_dir_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
     find_within(dir, pkg_name).and_then(|path| path.parent().map(Path::to_path_buf))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::DependencyDetails;
+
+    #[test]
+    fn test_invalid_dependency_details_mixed_together() {
+        let dependency_details_path_branch = DependencyDetails {
+            version: None,
+            path: Some("example_path/".to_string()),
+            git: None,
+            branch: Some("test_branch".to_string()),
+            tag: None,
+            package: None,
+            rev: None,
+        };
+
+        let dependency_details_branch = DependencyDetails {
+            path: None,
+            ..dependency_details_path_branch.clone()
+        };
+
+        let dependency_details_path_tag = DependencyDetails {
+            version: None,
+            path: Some("example_path/".to_string()),
+            git: None,
+            branch: None,
+            tag: Some("v0.1.0".to_string()),
+            package: None,
+            rev: None,
+        };
+
+        let dependency_details_tag = DependencyDetails {
+            path: None,
+            ..dependency_details_path_tag.clone()
+        };
+
+        let dependency_details_path_rev = DependencyDetails {
+            version: None,
+            path: Some("example_path/".to_string()),
+            git: None,
+            branch: None,
+            tag: None,
+            package: None,
+            rev: Some("9f35b8e".to_string()),
+        };
+
+        let dependency_details_rev = DependencyDetails {
+            path: None,
+            ..dependency_details_path_rev.clone()
+        };
+
+        let expected_mismatch_error = "Details reserved for git sources used without a git field";
+        assert_eq!(
+            dependency_details_path_branch
+                .validate()
+                .err()
+                .map(|e| e.to_string()),
+            Some(expected_mismatch_error.to_string())
+        );
+        assert_eq!(
+            dependency_details_path_tag
+                .validate()
+                .err()
+                .map(|e| e.to_string()),
+            Some(expected_mismatch_error.to_string())
+        );
+        assert_eq!(
+            dependency_details_path_rev
+                .validate()
+                .err()
+                .map(|e| e.to_string()),
+            Some(expected_mismatch_error.to_string())
+        );
+        assert_eq!(
+            dependency_details_branch
+                .validate()
+                .err()
+                .map(|e| e.to_string()),
+            Some(expected_mismatch_error.to_string())
+        );
+        assert_eq!(
+            dependency_details_tag
+                .validate()
+                .err()
+                .map(|e| e.to_string()),
+            Some(expected_mismatch_error.to_string())
+        );
+        assert_eq!(
+            dependency_details_rev
+                .validate()
+                .err()
+                .map(|e| e.to_string()),
+            Some(expected_mismatch_error.to_string())
+        );
+    }
+
+    #[test]
+    fn test_valid_dependency_details() {
+        let dependency_details_path = DependencyDetails {
+            version: None,
+            path: Some("example_path/".to_string()),
+            git: None,
+            branch: None,
+            tag: None,
+            package: None,
+            rev: None,
+        };
+
+        let git_source_string = "https://github.com/FuelLabs/sway".to_string();
+        let dependency_details_git_tag = DependencyDetails {
+            version: None,
+            path: None,
+            git: Some(git_source_string.clone()),
+            branch: None,
+            tag: Some("v0.1.0".to_string()),
+            package: None,
+            rev: None,
+        };
+        let dependency_details_git_branch = DependencyDetails {
+            version: None,
+            path: None,
+            git: Some(git_source_string.clone()),
+            branch: Some("test_branch".to_string()),
+            tag: None,
+            package: None,
+            rev: None,
+        };
+        let dependency_details_git_rev = DependencyDetails {
+            version: None,
+            path: None,
+            git: Some(git_source_string),
+            branch: Some("test_branch".to_string()),
+            tag: None,
+            package: None,
+            rev: Some("9f35b8e".to_string()),
+        };
+
+        assert!(dependency_details_path.validate().is_ok());
+        assert!(dependency_details_git_tag.validate().is_ok());
+        assert!(dependency_details_git_branch.validate().is_ok());
+        assert!(dependency_details_git_rev.validate().is_ok());
+    }
 }

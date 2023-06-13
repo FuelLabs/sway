@@ -6,6 +6,8 @@ use crate::capabilities::code_actions::{CodeAction, CodeActionContext};
 use sway_core::{decl_engine::id::DeclId, language::ty};
 use tower_lsp::lsp_types::CodeActionOrCommand;
 
+use super::common::generate_doc::BasicDocCommentCodeAction;
+
 pub(crate) fn code_actions(
     decl_id: &DeclId<ty::TyStructDecl>,
     ctx: CodeActionContext,
@@ -13,6 +15,7 @@ pub(crate) fn code_actions(
     let decl = ctx.engines.de().get_struct(decl_id);
     Some(vec![
         StructImplCodeAction::new(ctx.clone(), &decl).code_action(),
-        StructNewCodeAction::new(ctx, &decl).code_action(),
+        StructNewCodeAction::new(ctx.clone(), &decl).code_action(),
+        BasicDocCommentCodeAction::new(ctx, &decl).code_action(),
     ])
 }

@@ -15,7 +15,7 @@ pub struct TyVariableDecl {
 
 impl EqWithEngines for TyVariableDecl {}
 impl PartialEqWithEngines for TyVariableDecl {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         let type_engine = engines.te();
         self.name == other.name
             && self.body.eq(&other.body, engines)
@@ -28,7 +28,7 @@ impl PartialEqWithEngines for TyVariableDecl {
 }
 
 impl HashWithEngines for TyVariableDecl {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TyVariableDecl {
             name,
             body,
@@ -46,7 +46,7 @@ impl HashWithEngines for TyVariableDecl {
 }
 
 impl SubstTypes for TyVariableDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         self.return_type.subst(type_mapping, engines);
         self.type_ascription.subst(type_mapping, engines);
         self.body.subst(type_mapping, engines)
@@ -54,7 +54,7 @@ impl SubstTypes for TyVariableDecl {
 }
 
 impl ReplaceSelfType for TyVariableDecl {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         self.return_type.replace_self_type(engines, self_type);
         self.type_ascription.replace_self_type(engines, self_type);
         self.body.replace_self_type(engines, self_type)
