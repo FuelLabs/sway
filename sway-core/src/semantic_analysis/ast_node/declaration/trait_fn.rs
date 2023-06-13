@@ -62,7 +62,6 @@ impl ty::TyTraitFn {
             span,
             parameters: typed_parameters,
             return_type,
-            // return_type_span,
             purity,
             attributes,
         };
