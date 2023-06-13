@@ -18,6 +18,10 @@ use crate::{
 };
 use dashmap::DashMap;
 use forc_pkg as pkg;
+use lsp_types::{
+    CompletionItem, GotoDefinitionResponse, Location, Position, Range, SymbolInformation,
+    TextDocumentContentChangeEvent, TextEdit, Url,
+};
 use parking_lot::RwLock;
 use pkg::{manifest::ManifestFile, Programs};
 use std::{fs::File, io::Write, path::PathBuf, sync::Arc, vec};
@@ -33,10 +37,6 @@ use sway_core::{
 use sway_types::{Span, Spanned};
 use sway_utils::helpers::get_sway_files;
 use tokio::sync::Semaphore;
-use tower_lsp::lsp_types::{
-    CompletionItem, GotoDefinitionResponse, Location, Position, Range, SymbolInformation,
-    TextDocumentContentChangeEvent, TextEdit, Url,
-};
 
 pub type Documents = DashMap<String, TextDocument>;
 pub type ProjectDirectory = PathBuf;
