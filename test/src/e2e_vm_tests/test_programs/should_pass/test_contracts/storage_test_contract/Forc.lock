@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-E31377F563BCB450'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-E31377F563BCB450'
+dependencies = ['core']
+
+[[package]]
+name = 'storage_test_contract'
+source = 'member'
+dependencies = ['std']

@@ -1,0 +1,3 @@
+[[package]]
+name = 'storage_test_contract'
+source = 'member'
