@@ -164,7 +164,9 @@ impl Session {
                     dir: uri.path().into(),
                 })?;
 
-        let ipfs_node = IPFSNode::Local;
+        // TODO: Either we want LSP to deploy a local node in the background or we want this to
+        // point to Fuel operated IPFS node.
+        let ipfs_node = pkg::source::IPFSNode::Local;
 
         let plan = pkg::BuildPlan::from_lock_and_manifests(
             &lock_path,
