@@ -7,19 +7,28 @@ fn call() -> (u64, u64) {
 }
 
 #[allow(dead_code)]
+// ANCHOR: unused_variable
+fn unused_variable() -> u64 {
+    let (timestamp, deposit_amount) = call();
+
+    deposit_amount
+}
+// ANCHOR_END: unused_variable
+
+#[allow(dead_code)]
 // ANCHOR: named_unused_variable
 fn named_unused_variable() -> u64 {
-    let (timestamp, deposit_amount) = call();
+    let (_timestamp, deposit_amount) = call();
 
     deposit_amount
 }
 // ANCHOR_END: named_unused_variable
 
 #[allow(dead_code)]
-// ANCHOR: unnamed_unused_variable
-fn unnamed_unused_variable() -> u64 {
+// ANCHOR: nameless_variable
+fn nameless_variable() -> u64 {
     let (_, deposit_amount) = call();
 
     deposit_amount
 }
-// ANCHOR_END: unnamed_unused_variable
+// ANCHOR_END: nameless_variable
