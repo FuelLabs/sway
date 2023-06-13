@@ -17,10 +17,10 @@ impl ty::TyTraitFn {
 
         let parsed::TraitFn {
             name,
+            span,
             purity,
             parameters,
-            return_type,
-            return_type_span,
+            mut return_type,
             attributes,
         } = trait_fn;
 
@@ -45,10 +45,10 @@ impl ty::TyTraitFn {
         }
 
         // Type check the return type.
-        let return_type = check!(
+        return_type.type_id = check!(
             ctx.resolve_type_with_self(
-                type_engine.insert(engines, return_type),
-                &return_type_span,
+                return_type.type_id,
+                &return_type.span,
                 EnforceTypeArguments::Yes,
                 None
             ),
@@ -59,9 +59,10 @@ impl ty::TyTraitFn {
 
         let trait_fn = ty::TyTraitFn {
             name,
+            span,
             parameters: typed_parameters,
             return_type,
-            return_type_span,
+            // return_type_span,
             purity,
             attributes,
         };
@@ -81,12 +82,7 @@ impl ty::TyTraitFn {
             implementing_type: None,
             span: self.name.span(),
             attributes: self.attributes.clone(),
-            return_type: TypeArgument {
-                type_id: self.return_type,
-                initial_type_id: self.return_type,
-                span: self.return_type_span.clone(),
-                call_path_tree: None,
-            },
+            return_type: self.return_type.clone(),
             visibility: Visibility::Public,
             type_parameters: vec![],
             is_contract_call: mode == Mode::ImplAbiFn,

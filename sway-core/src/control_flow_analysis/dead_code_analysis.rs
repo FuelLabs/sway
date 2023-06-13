@@ -791,7 +791,7 @@ fn connect_abi_declaration(
                 if let Some(TypeInfo::Struct(decl_ref)) = get_struct_type_info_from_type_id(
                     type_engine,
                     decl_engine,
-                    fn_decl.return_type,
+                    fn_decl.return_type.type_id,
                 )? {
                     let decl = decl_engine.get_struct(&decl_ref);
                     if let Some(ns) = graph.namespace.get_struct(&decl.call_path.suffix).cloned() {
