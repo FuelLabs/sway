@@ -53,10 +53,6 @@ fn hash_str(text: &str, algorithm: Hash) -> [u8; 32] {
         buffer.push(character as u8);
     }
 
-    while buffer.len() % 8 != 0 {
-        buffer.push(0);
-    }
-
     match algorithm {
         Hash::Sha256 => Sha256::digest(buffer).into(),
         Hash::Keccak256 => Keccak256::digest(buffer).into(),

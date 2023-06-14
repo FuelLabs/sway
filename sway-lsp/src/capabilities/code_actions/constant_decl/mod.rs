@@ -1,8 +1,7 @@
-use crate::capabilities::code_actions::{CodeAction, CodeActionContext};
-use sway_core::language::ty;
-use tower_lsp::lsp_types::CodeActionOrCommand;
-
 use super::common::generate_doc::BasicDocCommentCodeAction;
+use crate::capabilities::code_actions::{CodeAction, CodeActionContext};
+use lsp_types::CodeActionOrCommand;
+use sway_core::language::ty;
 
 pub(crate) fn code_actions(
     decl: &ty::TyConstantDecl,

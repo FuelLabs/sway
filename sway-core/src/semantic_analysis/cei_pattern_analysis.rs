@@ -603,10 +603,9 @@ fn effects_of_intrinsic(intr: &sway_ast::Intrinsic) -> HashSet<Effect> {
         StateClear | StateStoreWord | StateStoreQuad => HashSet::from([Effect::StorageWrite]),
         StateLoadWord | StateLoadQuad => HashSet::from([Effect::StorageRead]),
         Smo => HashSet::from([Effect::OutputMessage]),
-        Revert | IsReferenceType | SizeOfType | SizeOfVal | Eq | Gt | Lt | Gtf | AddrOf | Log
-        | Add | Sub | Mul | Div | And | Or | Xor | Mod | Rsh | Lsh | PtrAdd | PtrSub => {
-            HashSet::new()
-        }
+        Revert | IsReferenceType | IsStrType | SizeOfType | SizeOfVal | SizeOfStr | Eq | Gt
+        | Lt | Gtf | AddrOf | Log | Add | Sub | Mul | Div | And | Or | Xor | Mod | Rsh | Lsh
+        | PtrAdd | PtrSub => HashSet::new(),
     }
 }
 

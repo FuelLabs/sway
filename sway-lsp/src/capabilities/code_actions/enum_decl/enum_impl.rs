@@ -2,8 +2,8 @@ use crate::capabilities::code_actions::{
     common::generate_impl::{GenerateImplCodeAction, TAB},
     CodeAction, CodeActionContext, CODE_ACTION_IMPL_TITLE,
 };
+use lsp_types::{Range, Url};
 use sway_core::language::ty::TyEnumDecl;
-use tower_lsp::lsp_types::{Range, Url};
 
 pub(crate) struct EnumImplCodeAction<'a> {
     decl: &'a TyEnumDecl,
