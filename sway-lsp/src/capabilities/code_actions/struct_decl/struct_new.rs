@@ -5,9 +5,9 @@ use crate::{
     },
     core::{token::TypedAstToken, token_map::TokenMapExt},
 };
+use lsp_types::{CodeActionDisabled, Position, Range, Url};
 use sway_core::language::ty::{self, TyImplTrait, TyStructDecl, TyStructField};
 use sway_types::Spanned;
-use tower_lsp::lsp_types::{CodeActionDisabled, Position, Range, Url};
 
 pub(crate) struct StructNewCodeAction<'a> {
     decl: &'a TyStructDecl,

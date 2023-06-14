@@ -1,8 +1,7 @@
+use crate::capabilities::code_actions::{CodeAction, CodeActionContext, CODE_ACTION_DOC_TITLE};
+use lsp_types::{Range, Url};
 use sway_core::{Engines, TypeId};
 use sway_types::Spanned;
-use tower_lsp::lsp_types::{Range, Url};
-
-use crate::capabilities::code_actions::{CodeAction, CodeActionContext, CODE_ACTION_DOC_TITLE};
 
 pub(crate) trait GenerateDocCodeAction<'a, T: Spanned>: CodeAction<'a, T> {
     /// Returns a placeholder description as a vector of strings.

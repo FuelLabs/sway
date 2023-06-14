@@ -2,8 +2,8 @@ use crate::capabilities::code_actions::{
     common::generate_doc::GenerateDocCodeAction, CodeAction, CodeActionContext,
     CODE_ACTION_DOC_TITLE,
 };
+use lsp_types::{Range, Url};
 use sway_core::{language::ty::TyFunctionDecl, Engines};
-use tower_lsp::lsp_types::{Range, Url};
 
 pub(crate) struct DocCommentCodeAction<'a> {
     engines: &'a Engines,

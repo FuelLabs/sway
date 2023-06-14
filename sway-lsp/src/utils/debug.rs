@@ -1,11 +1,11 @@
 #![allow(dead_code)]
 use crate::core::token::{get_range_from_span, Token};
+use lsp_types::{Diagnostic, DiagnosticSeverity};
 use sway_core::{
     decl_engine::DeclEngine,
     language::{ty, Literal},
 };
 use sway_types::{Ident, Spanned};
-use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity};
 
 pub(crate) fn generate_warnings_non_typed_tokens<I>(tokens: I) -> Vec<Diagnostic>
 where
