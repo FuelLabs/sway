@@ -3,8 +3,8 @@ pub(crate) mod enum_impl;
 
 use self::enum_impl::EnumImplCodeAction;
 use crate::capabilities::code_actions::{CodeAction, CodeActionContext};
+use lsp_types::CodeActionOrCommand;
 use sway_core::{decl_engine::id::DeclId, language::ty};
-use tower_lsp::lsp_types::CodeActionOrCommand;
 
 use super::common::generate_doc::BasicDocCommentCodeAction;
 

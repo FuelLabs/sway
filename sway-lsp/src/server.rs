@@ -9,6 +9,7 @@ use crate::{
 use dashmap::DashMap;
 use forc_pkg::manifest::PackageManifestFile;
 use forc_tracing::{init_tracing_subscriber, TracingSubscriberOptions, TracingWriterMode};
+use lsp_types::*;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -19,7 +20,6 @@ use std::{
 };
 use sway_types::{Ident, Spanned};
 use tokio::task;
-use tower_lsp::lsp_types::*;
 use tower_lsp::{jsonrpc, Client, LanguageServer};
 use tracing::metadata::LevelFilter;
 
