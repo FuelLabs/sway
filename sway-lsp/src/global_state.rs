@@ -11,12 +11,12 @@ use dashmap::DashMap;
 use forc_pkg::PackageManifestFile;
 use lsp_types::Url;
 use parking_lot::RwLock;
-use std::{path::PathBuf, sync::Arc, time::Instant};
+use std::{path::PathBuf, sync::Arc};
 use tokio::task;
 use tower_lsp::Client;
 
 /// `GlobalState` is the primary mutable state of the language server
-pub(crate) struct GlobalState {
+pub struct GlobalState {
     pub(crate) client: Client,
     pub(crate) config: Arc<RwLock<Config>>,
     pub(crate) keyword_docs: Arc<KeywordDocs>,
@@ -33,7 +33,7 @@ pub(crate) struct GlobalStateSnapshot {
 impl std::panic::UnwindSafe for GlobalStateSnapshot {}
 
 impl GlobalState {
-    pub(crate) fn new(client: Client) -> GlobalState {
+    pub fn new(client: Client) -> GlobalState {
         let sessions = Arc::new(Sessions(DashMap::new()));
         let config = Arc::new(RwLock::new(Default::default()));
         let keyword_docs = Arc::new(KeywordDocs::new());

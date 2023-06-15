@@ -1,6 +1,6 @@
 //! sway-lsp extensions to the LSP.
 
-use lsp_types::{request::Request, TextDocumentIdentifier, Url};
+use lsp_types::{TextDocumentIdentifier, Url};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]

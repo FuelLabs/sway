@@ -5,19 +5,17 @@ use crate::{
     capabilities,
     core::sync,
     global_state::GlobalState,
-    event_loop::Result,
 };
 use forc_pkg::PackageManifestFile;
 use lsp_types::{
-    CancelParams, DidChangeTextDocumentParams, DidChangeWatchedFilesParams,
+    DidChangeTextDocumentParams, DidChangeWatchedFilesParams,
     DidOpenTextDocumentParams, DidSaveTextDocumentParams, FileChangeType,
 };
-
 
 pub(crate) async fn handle_did_open_text_document(
     state: &GlobalState,
     params: DidOpenTextDocumentParams,
-) -> Result<()> {
+) {
     match state
         .sessions
         .get_uri_and_session(&params.text_document.uri)
@@ -28,13 +26,12 @@ pub(crate) async fn handle_did_open_text_document(
         }
         Err(err) => tracing::error!("{}", err.to_string()),
     }
-    Ok(())
 }
 
 pub(crate) async fn handle_did_change_text_document(
     state: &GlobalState,
     params: DidChangeTextDocumentParams,
-) -> Result<()> {
+) {
     let config = state.config.read().on_enter.clone();
     match state.sessions.get_uri_and_session(&params.text_document.uri) {
         Ok((uri, session)) => {
@@ -53,13 +50,12 @@ pub(crate) async fn handle_did_change_text_document(
         }
         Err(err) => tracing::error!("{}", err.to_string()),
     }
-    Ok(())
 }
 
-pub(crate) fn handle_did_save_text_document(
+pub(crate) async fn handle_did_save_text_document(
     state: &GlobalState,
     params: DidSaveTextDocumentParams,
-) -> Result<()> {
+) {
     match state.sessions.get_uri_and_session(&params.text_document.uri) {
         Ok((uri, session)) => {
             // overwrite the contents of the tmp/folder with everything in
@@ -82,14 +78,13 @@ pub(crate) fn handle_did_save_text_document(
         }
         Err(err) => tracing::error!("{}", err.to_string()),
     }
-    Ok(())
 }
 
 
-pub(crate) fn handle_did_change_watched_files(
+pub(crate) async fn handle_did_change_watched_files(
     state: &GlobalState,
     params: DidChangeWatchedFilesParams,
-) -> Result<()> {
+) {
     for event in params.changes {
         if event.typ == FileChangeType::DELETED {
             match state.sessions.get_uri_and_session(&event.uri) {
@@ -100,5 +95,4 @@ pub(crate) fn handle_did_change_watched_files(
             }
         }
     }
-    Ok(())
 }

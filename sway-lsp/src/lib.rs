@@ -23,8 +23,8 @@ pub async fn start() {
     let stdout = tokio::io::stdout();
 
     let (service, socket) = LspService::build(GlobalState::new)
-        .custom_method("sway/show_ast", handlers::request::handle_show_ast)
-        .custom_method("textDocument/inlayHint", handlers::request::handle_inlay_hints)
+        .custom_method("sway/show_ast", GlobalState::show_ast)
+        .custom_method("textDocument/inlayHint", GlobalState::inlay_hints)
         .finish();
     Server::new(stdin, stdout, socket).serve(service).await;
 }

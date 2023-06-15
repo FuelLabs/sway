@@ -5,7 +5,7 @@
 use crate::integration::lsp::{build_request_with_id, call_request};
 use assert_json_diff::assert_json_eq;
 use serde_json::json;
-use sway_lsp::server::Backend;
+use sway_lsp::global_state::GlobalState;
 use tower_lsp::{
     jsonrpc::{Request, Response},
     lsp_types::*,
@@ -13,7 +13,7 @@ use tower_lsp::{
 };
 
 pub(crate) async fn code_action_abi_request(
-    service: &mut LspService<Backend>,
+    service: &mut LspService<GlobalState>,
     uri: &Url,
 ) -> Request {
     let params = json!({
@@ -70,7 +70,7 @@ pub(crate) async fn code_action_abi_request(
 }
 
 pub(crate) async fn code_action_function_request(
-    service: &mut LspService<Backend>,
+    service: &mut LspService<GlobalState>,
     uri: &Url,
 ) -> Request {
     let params = json!({
@@ -188,7 +188,7 @@ pub(crate) async fn code_action_trait_fn_request(
 }
 
 pub(crate) async fn code_action_struct_request(
-    service: &mut LspService<Backend>,
+    service: &mut LspService<GlobalState>,
     uri: &Url,
 ) -> Request {
     let params = json!({
@@ -294,7 +294,7 @@ pub(crate) async fn code_action_struct_request(
 }
 
 pub(crate) async fn code_action_struct_type_params_request(
-    service: &mut LspService<Backend>,
+    service: &mut LspService<GlobalState>,
     uri: &Url,
 ) -> Request {
     let params = json!({
@@ -403,7 +403,7 @@ pub(crate) async fn code_action_struct_type_params_request(
 }
 
 pub(crate) async fn code_action_struct_existing_impl_request(
-    service: &mut LspService<Backend>,
+    service: &mut LspService<GlobalState>,
     uri: &Url,
 ) -> Request {
     let params = json!({

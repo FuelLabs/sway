@@ -4,7 +4,6 @@
 use crate::{
     capabilities,
     global_state::GlobalStateSnapshot,
-    event_loop::Result,
     lsp_ext,
     utils::debug,
 };
@@ -16,11 +15,10 @@ use lsp_types::{
 use std::{
     fs::File,
     io::Write,
-    ops::Deref,
     path::{Path, PathBuf},
 };
 use sway_types::{Ident, Spanned};
-
+use tower_lsp::jsonrpc::Result;
 
 pub(crate) fn handle_document_symbol(
     snap: GlobalStateSnapshot,
@@ -254,7 +252,7 @@ pub(crate) fn handle_inlay_hints(
     match snap.sessions.get_uri_and_session(&params.text_document.uri) {
         Ok((uri, session)) => {
             let _ = session.wait_for_parsing();
-            let config = &snap.config.inlay_hints;
+            let config = &snap.config.read().inlay_hints;
             Ok(capabilities::inlay_hints::inlay_hints(
                 session,
                 &uri,

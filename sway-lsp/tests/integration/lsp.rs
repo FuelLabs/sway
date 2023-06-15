@@ -6,7 +6,10 @@ use crate::{GotoDefinition, HoverDocumentation, Rename};
 use assert_json_diff::assert_json_eq;
 use serde_json::json;
 use std::{borrow::Cow, path::Path};
-use sway_lsp::server::{self, Backend};
+use sway_lsp::{
+    server,
+    global_state::GlobalState,
+};
 use sway_lsp_test_utils::extract_result_array;
 use tower::{Service, ServiceExt};
 use tower_lsp::{
@@ -24,13 +27,13 @@ pub(crate) fn build_request_with_id(
 }
 
 pub(crate) async fn call_request(
-    service: &mut LspService<Backend>,
+    service: &mut LspService<GlobalState>,
     req: Request,
 ) -> Result<Option<Response>, ExitedError> {
     service.ready().await?.call(req).await
 }
 
-pub(crate) async fn initialize_request(service: &mut LspService<Backend>) -> Request {
+pub(crate) async fn initialize_request(service: &mut LspService<GlobalState>) -> Request {
     let params = json!({ "capabilities": server::capabilities() });
     let initialize = build_request_with_id("initialize", params, 1);
     let response = call_request(service, initialize.clone()).await;
@@ -39,13 +42,13 @@ pub(crate) async fn initialize_request(service: &mut LspService<Backend>) -> Req
     initialize
 }
 
-pub(crate) async fn initialized_notification(service: &mut LspService<Backend>) {
+pub(crate) async fn initialized_notification(service: &mut LspService<GlobalState>) {
     let initialized = Request::build("initialized").finish();
     let response = call_request(service, initialized).await;
     assert_eq!(response, Ok(None));
 }
 
-pub(crate) async fn shutdown_request(service: &mut LspService<Backend>) -> Request {
+pub(crate) async fn shutdown_request(service: &mut LspService<GlobalState>) -> Request {
     let shutdown = Request::build("shutdown").id(1).finish();
     let response = call_request(service, shutdown.clone()).await;
     let expected = Response::from_ok(1.into(), json!(null));
@@ -53,14 +56,14 @@ pub(crate) async fn shutdown_request(service: &mut LspService<Backend>) -> Reque
     shutdown
 }
 
-pub(crate) async fn exit_notification(service: &mut LspService<Backend>) {
+pub(crate) async fn exit_notification(service: &mut LspService<GlobalState>) {
     let exit = Request::build("exit").finish();
     let response = call_request(service, exit.clone()).await;
     assert_eq!(response, Ok(None));
 }
 
 pub(crate) async fn did_open_notification(
-    service: &mut LspService<Backend>,
+    service: &mut LspService<GlobalState>,
     uri: &Url,
     text: &str,
 ) {
@@ -80,7 +83,7 @@ pub(crate) async fn did_open_notification(
     assert_eq!(response, Ok(None));
 }
 
-pub(crate) async fn did_change_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+pub(crate) async fn did_change_request(service: &mut LspService<GlobalState>, uri: &Url) -> Request {
     let params = json!({
         "textDocument": {
             "uri": uri,
@@ -111,14 +114,14 @@ pub(crate) async fn did_change_request(service: &mut LspService<Backend>, uri: &
     did_change
 }
 
-pub(crate) async fn did_close_notification(service: &mut LspService<Backend>) {
+pub(crate) async fn did_close_notification(service: &mut LspService<GlobalState>) {
     let exit = Request::build("textDocument/didClose").finish();
     let response = call_request(service, exit.clone()).await;
     assert_eq!(response, Ok(None));
 }
 
 pub(crate) async fn show_ast_request(
-    service: &mut LspService<Backend>,
+    service: &mut LspService<GlobalState>,
     uri: &Url,
     ast_kind: &str,
     save_path: Option<Url>,
@@ -147,7 +150,7 @@ pub(crate) async fn show_ast_request(
 }
 
 pub(crate) async fn semantic_tokens_request(
-    service: &mut LspService<Backend>,
+    service: &mut LspService<GlobalState>,
     uri: &Url,
 ) -> Request {
     let params = json!({
@@ -161,7 +164,7 @@ pub(crate) async fn semantic_tokens_request(
 }
 
 pub(crate) async fn document_symbol_request(
-    service: &mut LspService<Backend>,
+    service: &mut LspService<GlobalState>,
     uri: &Url,
 ) -> Request {
     let params = json!({
@@ -187,7 +190,7 @@ pub(crate) fn definition_request(uri: &Url, token_line: i32, token_char: i32, id
     build_request_with_id("textDocument/definition", params, id)
 }
 
-pub(crate) async fn format_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+pub(crate) async fn format_request(service: &mut LspService<GlobalState>, uri: &Url) -> Request {
     let params = json!({
         "textDocument": {
             "uri": uri,
@@ -202,7 +205,7 @@ pub(crate) async fn format_request(service: &mut LspService<Backend>, uri: &Url)
     formatting
 }
 
-pub(crate) async fn highlight_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+pub(crate) async fn highlight_request(service: &mut LspService<GlobalState>, uri: &Url) -> Request {
     let params = json!({
         "textDocument": {
             "uri": uri,
@@ -247,7 +250,7 @@ pub(crate) async fn highlight_request(service: &mut LspService<Backend>, uri: &U
     highlight
 }
 
-pub(crate) async fn code_lens_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+pub(crate) async fn code_lens_request(service: &mut LspService<GlobalState>, uri: &Url) -> Request {
     let params = json!({
         "textDocument": {
             "uri": uri,
@@ -327,7 +330,7 @@ pub(crate) async fn code_lens_request(service: &mut LspService<Backend>, uri: &U
     code_lens
 }
 
-pub(crate) async fn completion_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+pub(crate) async fn completion_request(service: &mut LspService<GlobalState>, uri: &Url) -> Request {
     let params = json!({
         "textDocument": {
           "uri": uri
@@ -385,7 +388,7 @@ pub(crate) async fn completion_request(service: &mut LspService<Backend>, uri: &
 }
 
 pub(crate) async fn definition_check<'a>(
-    service: &mut LspService<Backend>,
+    service: &mut LspService<GlobalState>,
     go_to: &'a GotoDefinition<'a>,
     ids: &mut impl Iterator<Item = i64>,
 ) -> Request {
@@ -438,7 +441,7 @@ pub(crate) async fn definition_check<'a>(
 }
 
 pub(crate) async fn hover_request<'a>(
-    service: &mut LspService<Backend>,
+    service: &mut LspService<GlobalState>,
     hover_docs: &'a HoverDocumentation<'a>,
     ids: &mut impl Iterator<Item = i64>,
 ) -> Request {
@@ -487,7 +490,7 @@ pub(crate) async fn hover_request<'a>(
 }
 
 pub(crate) async fn prepare_rename_request<'a>(
-    service: &mut LspService<Backend>,
+    service: &mut LspService<GlobalState>,
     rename: &'a Rename<'a>,
     ids: &mut impl Iterator<Item = i64>,
 ) -> Option<PrepareRenameResponse> {
@@ -511,7 +514,7 @@ pub(crate) async fn prepare_rename_request<'a>(
 }
 
 pub(crate) async fn rename_request<'a>(
-    service: &mut LspService<Backend>,
+    service: &mut LspService<GlobalState>,
     rename: &'a Rename<'a>,
     ids: &mut impl Iterator<Item = i64>,
 ) -> WorkspaceEdit {
