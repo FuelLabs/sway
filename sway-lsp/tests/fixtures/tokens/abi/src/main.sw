@@ -1,6 +1,6 @@
 contract;
 
-struct Empty{}
+struct Empty {}
 
 /// Docs for MyContract
 abi MyContract {
@@ -9,7 +9,7 @@ abi MyContract {
 
 impl MyContract for Contract {
     fn test_function() -> Empty {
-        Empty{}
+        Empty {}
     }
 }
 
