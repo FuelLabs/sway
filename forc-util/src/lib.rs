@@ -6,16 +6,13 @@ use annotate_snippets::{
 };
 use ansi_term::Colour;
 use anyhow::{bail, Result};
-use clap::Args;
 use forc_tracing::{println_red_err, println_yellow_err};
-use serde::{Deserialize, Serialize};
 use std::str;
 use std::{ffi::OsStr, process::Termination};
 use std::{
     fmt::Display,
     path::{Path, PathBuf},
 };
-use sway_core::fuel_prelude::fuel_tx;
 use sway_core::language::parsed::TreeType;
 use sway_error::error::CompileError;
 use sway_error::warning::CompileWarning;
@@ -132,6 +129,14 @@ macro_rules! forc_result_bail {
     };
 }
 
+#[cfg(feature = "fuel-tx")]
+pub mod tx_utils {
+
+use clap::Args;
+use sway_core::fuel_prelude::fuel_tx;
+use serde::{Deserialize, Serialize};
+use anyhow::Result;
+
 /// Added salt used to derive the contract ID.
 #[derive(Debug, Args, Default, Deserialize, Serialize)]
 pub struct Salt {
@@ -171,6 +176,7 @@ pub fn format_log_receipts(receipts: &[fuel_tx::Receipt], pretty_print: bool) ->
     } else {
         Ok(serde_json::to_string(&receipt_to_json_array)?)
     }
+}
 }
 
 /// Continually go down in the file tree until a Forc manifest file is found.
