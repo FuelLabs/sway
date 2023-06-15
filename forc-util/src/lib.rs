@@ -132,51 +132,54 @@ macro_rules! forc_result_bail {
 #[cfg(feature = "fuel-tx")]
 pub mod tx_utils {
 
-use clap::Args;
-use sway_core::fuel_prelude::fuel_tx;
-use serde::{Deserialize, Serialize};
-use anyhow::Result;
+    use anyhow::Result;
+    use clap::Args;
+    use serde::{Deserialize, Serialize};
+    use sway_core::fuel_prelude::fuel_tx;
 
-/// Added salt used to derive the contract ID.
-#[derive(Debug, Args, Default, Deserialize, Serialize)]
-pub struct Salt {
     /// Added salt used to derive the contract ID.
-    ///
-    /// By default, this is `0x0000000000000000000000000000000000000000000000000000000000000000`.
-    #[clap(long = "salt")]
-    pub salt: Option<fuel_tx::Salt>,
-}
+    #[derive(Debug, Args, Default, Deserialize, Serialize)]
+    pub struct Salt {
+        /// Added salt used to derive the contract ID.
+        ///
+        /// By default, this is `0x0000000000000000000000000000000000000000000000000000000000000000`.
+        #[clap(long = "salt")]
+        pub salt: Option<fuel_tx::Salt>,
+    }
 
-/// Format `Log` and `LogData` receipts.
-pub fn format_log_receipts(receipts: &[fuel_tx::Receipt], pretty_print: bool) -> Result<String> {
-    let mut receipt_to_json_array = serde_json::to_value(receipts)?;
-    for (rec_index, receipt) in receipts.iter().enumerate() {
-        let rec_value = receipt_to_json_array.get_mut(rec_index).ok_or_else(|| {
-            anyhow::anyhow!(
-                "Serialized receipts does not contain {} th index",
-                rec_index
-            )
-        })?;
-        match receipt {
-            fuel_tx::Receipt::LogData { data, .. } => {
-                if let Some(v) = rec_value.pointer_mut("/LogData/data") {
-                    *v = hex::encode(data).into();
+    /// Format `Log` and `LogData` receipts.
+    pub fn format_log_receipts(
+        receipts: &[fuel_tx::Receipt],
+        pretty_print: bool,
+    ) -> Result<String> {
+        let mut receipt_to_json_array = serde_json::to_value(receipts)?;
+        for (rec_index, receipt) in receipts.iter().enumerate() {
+            let rec_value = receipt_to_json_array.get_mut(rec_index).ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Serialized receipts does not contain {} th index",
+                    rec_index
+                )
+            })?;
+            match receipt {
+                fuel_tx::Receipt::LogData { data, .. } => {
+                    if let Some(v) = rec_value.pointer_mut("/LogData/data") {
+                        *v = hex::encode(data).into();
+                    }
                 }
-            }
-            fuel_tx::Receipt::ReturnData { data, .. } => {
-                if let Some(v) = rec_value.pointer_mut("/ReturnData/data") {
-                    *v = hex::encode(data).into();
+                fuel_tx::Receipt::ReturnData { data, .. } => {
+                    if let Some(v) = rec_value.pointer_mut("/ReturnData/data") {
+                        *v = hex::encode(data).into();
+                    }
                 }
+                _ => {}
             }
-            _ => {}
+        }
+        if pretty_print {
+            Ok(serde_json::to_string_pretty(&receipt_to_json_array)?)
+        } else {
+            Ok(serde_json::to_string(&receipt_to_json_array)?)
         }
     }
-    if pretty_print {
-        Ok(serde_json::to_string_pretty(&receipt_to_json_array)?)
-    } else {
-        Ok(serde_json::to_string(&receipt_to_json_array)?)
-    }
-}
 }
 
 /// Continually go down in the file tree until a Forc manifest file is found.
