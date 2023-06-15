@@ -1,8 +1,8 @@
 use fuels::{
+    accounts::wallet::WalletUnlocked,
     prelude::*,
     types::AssetId,
     types::{Bits256, Identity},
-    accounts::wallet::WalletUnlocked,
 };
 use std::str::FromStr;
 

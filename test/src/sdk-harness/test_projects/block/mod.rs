@@ -1,4 +1,4 @@
-use fuels::{prelude::*, types::Bits256, accounts::wallet::WalletUnlocked};
+use fuels::{accounts::wallet::WalletUnlocked, prelude::*, types::Bits256};
 use tai64::Tai64;
 use tokio::time::{sleep, Duration};
 

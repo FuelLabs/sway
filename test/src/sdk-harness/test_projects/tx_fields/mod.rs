@@ -3,7 +3,7 @@ use fuel_vm::fuel_tx::{
     field::*, Bytes32, ConsensusParameters, ContractId, Input as TxInput, TxPointer, UtxoId,
 };
 use fuels::{
-    accounts::{predicate::Predicate, Account, wallet::WalletUnlocked},
+    accounts::{predicate::Predicate, wallet::WalletUnlocked, Account},
     prelude::*,
 };
 use std::str::FromStr;

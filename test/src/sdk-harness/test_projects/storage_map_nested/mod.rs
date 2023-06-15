@@ -1,4 +1,4 @@
-use fuels::{prelude::*, accounts::wallet::WalletUnlocked};
+use fuels::{accounts::wallet::WalletUnlocked, prelude::*};
 
 abigen!(Contract(
     name = "TestStorageMapNestedContract",

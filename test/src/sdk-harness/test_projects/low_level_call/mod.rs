@@ -1,8 +1,8 @@
 use fuel_vm::fuel_tx::{Bytes32, ContractId, Output, TxPointer, UtxoId};
 use fuels::{
+    accounts::wallet::WalletUnlocked,
     prelude::*,
     types::{input::Input, Bits256, SizedAsciiString},
-    accounts::wallet::WalletUnlocked
 };
 
 macro_rules! fn_selector {

@@ -1,5 +1,5 @@
 use fuel_vm::consts::VM_MAX_RAM;
-use fuels::{prelude::*, types::ContractId, accounts::wallet::WalletUnlocked};
+use fuels::{accounts::wallet::WalletUnlocked, prelude::*, types::ContractId};
 
 use sha2::{Digest, Sha256};
 

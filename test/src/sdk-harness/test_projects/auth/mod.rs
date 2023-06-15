@@ -1,4 +1,8 @@
-use fuels::{prelude::*, types::ContractId, accounts::wallet::{WalletUnlocked, Wallet}};
+use fuels::{
+    accounts::wallet::{Wallet, WalletUnlocked},
+    prelude::*,
+    types::ContractId,
+};
 
 abigen!(
     Contract(
