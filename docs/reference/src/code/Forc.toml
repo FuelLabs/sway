@@ -28,6 +28,7 @@ members = [
   "language/style-guide/enum_style",
   "language/style-guide/letter_casing",
   "language/style-guide/struct_shorthand",
+  "language/style-guide/variable_hoisting",
   "language/traits/associated-consts",
   "language/variables",
   "misc/advanced-concepts/enum_advanced",
