@@ -43,6 +43,16 @@ impl Named for TyFunctionDecl {
     }
 }
 
+impl declaration::FunctionSignature for TyFunctionDecl {
+    fn parameters(&self) -> &Vec<TyFunctionParameter> {
+        &self.parameters
+    }
+
+    fn return_type(&self) -> &TypeArgument {
+        &self.return_type
+    }
+}
+
 impl EqWithEngines for TyFunctionDecl {}
 impl PartialEqWithEngines for TyFunctionDecl {
     fn eq(&self, other: &Self, engines: &Engines) -> bool {
