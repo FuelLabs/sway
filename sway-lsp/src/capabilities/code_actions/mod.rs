@@ -54,7 +54,6 @@ pub(crate) fn code_actions(
         uri: &text_document.uri,
     };
 
-    eprintln!("token.typed.as_ref() {:?}", token.typed.clone());
 
     match token.typed.as_ref()? {
         TypedAstToken::TypedDeclaration(decl) => match decl {
