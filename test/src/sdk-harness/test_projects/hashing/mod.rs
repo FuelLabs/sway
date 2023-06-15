@@ -2,6 +2,7 @@ use fuels::{
     prelude::*,
     types::ContractId,
     types::{Bits256, SizedAsciiString},
+    accounts::wallet::WalletUnlocked
 };
 use sha2::{Digest, Sha256};
 use sha3::Keccak256;

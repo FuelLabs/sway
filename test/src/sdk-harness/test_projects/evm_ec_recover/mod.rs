@@ -6,6 +6,7 @@ use fuels::{
     prelude::*,
     tx::Bytes32,
     types::{Bits256, EvmAddress},
+    accounts::wallet::WalletUnlocked,
 };
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use sha3::{Digest, Keccak256};

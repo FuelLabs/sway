@@ -2,6 +2,7 @@ use fuels::{
     prelude::*,
     types::AssetId,
     types::{Bits256, Identity},
+    accounts::wallet::WalletUnlocked,
 };
 use std::str::FromStr;
 
@@ -196,7 +197,7 @@ async fn can_mint_and_send_to_address() {
 
     fuelcoin_instance
         .methods()
-        .mint_and_send_to_address(amount, recipient.into())
+        .mint_and_send_to_address(amount, recipient)
         .append_variable_outputs(1)
         .call()
         .await

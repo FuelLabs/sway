@@ -3,7 +3,7 @@ use fuel_vm::{
     fuel_tx::Bytes64,
     fuel_types::Bytes32,
 };
-use fuels::{prelude::*, types::Bits256};
+use fuels::{prelude::*, types::Bits256, accounts::wallet::WalletUnlocked};
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
 abigen!(Contract(

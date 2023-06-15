@@ -1,5 +1,6 @@
 use fuels::prelude::*;
 use fuels::types::ContractId;
+use fuels::accounts::wallet::WalletUnlocked;
 
 abigen!(Contract(
     name = "TestPowContract",

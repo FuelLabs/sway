@@ -1,4 +1,5 @@
 use fuels::prelude::*;
+use fuels::accounts::wallet::WalletUnlocked;
 
 abigen!(Contract(
     name = "TestStorageBytesContract",

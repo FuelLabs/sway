@@ -10,7 +10,6 @@ publish = false
 assert_matches = "1.5.0"
 fuel-core = { version = "0.18.2", default-features = false }
 fuel-core-client = { version = "0.18.2", default-features = false }
-fuel-types = "0.31.1"
 fuel-vm = "0.31.2"
 fuels = { version = "0.43", features = ["fuel-core-lib"] }
 hex = "0.4.3"

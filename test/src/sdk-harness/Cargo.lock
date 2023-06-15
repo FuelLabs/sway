@@ -3339,7 +3339,6 @@ dependencies = [
  "assert_matches",
  "fuel-core",
  "fuel-core-client",
- "fuel-types",
  "fuel-vm",
  "fuels",
  "hex",
