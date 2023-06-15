@@ -2,11 +2,11 @@ use crate::capabilities::code_actions::{CodeAction, CodeActionContext};
 use lsp_types::CodeActionOrCommand;
 use sway_core::language::ty;
 
-use super::common::basic_doc_comment::BasicDocCommentCodeAction;
+use super::common::fn_doc_comment::FnDocCommentCodeAction;
 
 pub(crate) fn code_actions(
-    decl: &ty::TyStructField,
+    decl: &ty::TyTraitFn,
     ctx: CodeActionContext,
 ) -> Option<Vec<CodeActionOrCommand>> {
-    Some(vec![BasicDocCommentCodeAction::new(ctx, decl).code_action()])
+    Some(vec![FnDocCommentCodeAction::new(ctx, decl).code_action()])
 }

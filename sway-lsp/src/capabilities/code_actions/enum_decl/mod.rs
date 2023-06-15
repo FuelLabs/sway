@@ -1,4 +1,3 @@
-pub(crate) mod doc_comment;
 pub(crate) mod enum_impl;
 
 use self::enum_impl::EnumImplCodeAction;
@@ -6,7 +5,7 @@ use crate::capabilities::code_actions::{CodeAction, CodeActionContext};
 use lsp_types::CodeActionOrCommand;
 use sway_core::{decl_engine::id::DeclId, language::ty};
 
-use super::common::generate_doc::BasicDocCommentCodeAction;
+use super::common::basic_doc_comment::BasicDocCommentCodeAction;
 
 pub(crate) fn code_actions(
     decl_id: &DeclId<ty::TyEnumDecl>,
