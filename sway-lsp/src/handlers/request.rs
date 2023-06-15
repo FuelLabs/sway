@@ -1,11 +1,17 @@
 //! This module is responsible for implementing handlers for Language Server
 //! Protocol. This module specifically handles requests.
 
-use crate::{capabilities, global_state::GlobalStateSnapshot, lsp_ext, utils::debug};
+use crate::{
+    capabilities,
+    global_state::{GlobalState, GlobalStateSnapshot},
+    lsp_ext,
+    utils::debug,
+};
+use forc_tracing::{init_tracing_subscriber, TracingSubscriberOptions, TracingWriterMode};
 use lsp_types::{
-    CodeLens, CompletionResponse, DocumentFormattingParams, DocumentSymbolResponse, InlayHint,
-    InlayHintParams, PrepareRenameResponse, RenameParams, SemanticTokensParams,
-    SemanticTokensResult, TextDocumentIdentifier, Url, WorkspaceEdit,
+    CodeLens, CompletionResponse, DocumentFormattingParams, DocumentSymbolResponse,
+    InitializeResult, InlayHint, InlayHintParams, PrepareRenameResponse, RenameParams,
+    SemanticTokensParams, SemanticTokensResult, TextDocumentIdentifier, Url, WorkspaceEdit,
 };
 use std::{
     fs::File,
@@ -14,6 +20,35 @@ use std::{
 };
 use sway_types::{Ident, Spanned};
 use tower_lsp::jsonrpc::Result;
+use tracing::metadata::LevelFilter;
+
+pub(crate) fn handle_initialize(
+    state: &GlobalState,
+    params: lsp_types::InitializeParams,
+) -> Result<InitializeResult> {
+    if let Some(initialization_options) = &params.initialization_options {
+        let mut config = state.config.write();
+        *config = serde_json::from_value(initialization_options.clone())
+            .ok()
+            .unwrap_or_default();
+    }
+    // Initalizing tracing library based on the user's config
+    let config = state.config.read();
+    if config.logging.level != LevelFilter::OFF {
+        let tracing_options = TracingSubscriberOptions {
+            log_level: Some(config.logging.level),
+            writer_mode: Some(TracingWriterMode::Stderr),
+            ..Default::default()
+        };
+        init_tracing_subscriber(tracing_options);
+    }
+    tracing::info!("Initializing the Sway Language Server");
+    Ok(InitializeResult {
+        server_info: None,
+        capabilities: crate::server_capabilities(),
+        ..InitializeResult::default()
+    })
+}
 
 pub(crate) fn handle_document_symbol(
     snap: GlobalStateSnapshot,

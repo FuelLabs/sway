@@ -1,7 +1,5 @@
 #![recursion_limit = "256"]
 
-use tower_lsp::{LspService, Server};
-
 mod capabilities;
 pub mod config;
 mod core;
@@ -17,14 +15,67 @@ mod traverse;
 pub mod utils;
 
 use global_state::GlobalState;
+use lsp_types::{
+    CodeActionProviderCapability, CodeLensOptions, CompletionOptions, ExecuteCommandOptions,
+    HoverProviderCapability, OneOf, RenameOptions, SemanticTokensFullOptions, SemanticTokensLegend,
+    SemanticTokensOptions, ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind,
+    WorkDoneProgressOptions,
+};
+use tower_lsp::{LspService, Server};
 
 pub async fn start() {
-    let stdin = tokio::io::stdin();
-    let stdout = tokio::io::stdout();
-
     let (service, socket) = LspService::build(GlobalState::new)
         .custom_method("sway/show_ast", GlobalState::show_ast)
         .custom_method("textDocument/inlayHint", GlobalState::inlay_hints)
         .finish();
-    Server::new(stdin, stdout, socket).serve(service).await;
+    Server::new(tokio::io::stdin(), tokio::io::stdout(), socket)
+        .serve(service)
+        .await;
+}
+
+/// Returns the capabilities of the server to the client,
+/// indicating its support for various language server protocol features.
+pub fn server_capabilities() -> ServerCapabilities {
+    ServerCapabilities {
+        code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
+        code_lens_provider: Some(CodeLensOptions {
+            resolve_provider: Some(false),
+        }),
+        completion_provider: Some(CompletionOptions {
+            trigger_characters: Some(vec![".".to_string()]),
+            ..Default::default()
+        }),
+        definition_provider: Some(OneOf::Left(true)),
+        document_formatting_provider: Some(OneOf::Left(true)),
+        document_highlight_provider: Some(OneOf::Left(true)),
+        document_symbol_provider: Some(OneOf::Left(true)),
+        execute_command_provider: Some(ExecuteCommandOptions {
+            commands: vec![],
+            ..Default::default()
+        }),
+        hover_provider: Some(HoverProviderCapability::Simple(true)),
+        inlay_hint_provider: Some(OneOf::Left(true)),
+        rename_provider: Some(OneOf::Right(RenameOptions {
+            prepare_provider: Some(true),
+            work_done_progress_options: WorkDoneProgressOptions {
+                work_done_progress: Some(true),
+            },
+        })),
+        semantic_tokens_provider: Some(
+            SemanticTokensOptions {
+                legend: SemanticTokensLegend {
+                    token_types: capabilities::semantic_tokens::SUPPORTED_TYPES.to_vec(),
+                    token_modifiers: capabilities::semantic_tokens::SUPPORTED_MODIFIERS.to_vec(),
+                },
+                full: Some(SemanticTokensFullOptions::Bool(true)),
+                range: None,
+                ..Default::default()
+            }
+            .into(),
+        ),
+        text_document_sync: Some(TextDocumentSyncCapability::Kind(
+            TextDocumentSyncKind::INCREMENTAL,
+        )),
+        ..ServerCapabilities::default()
+    }
 }

@@ -13,7 +13,7 @@ use lsp_types::Url;
 use parking_lot::RwLock;
 use std::{path::PathBuf, sync::Arc};
 use tokio::task;
-use tower_lsp::Client;
+use tower_lsp::{jsonrpc, Client};
 
 /// `GlobalState` is the primary mutable state of the language server
 pub struct GlobalState {
@@ -43,6 +43,15 @@ impl GlobalState {
             keyword_docs,
             sessions,
         }
+    }
+
+    pub(crate) fn shutdown_server(&self) -> jsonrpc::Result<()> {
+        tracing::info!("Shutting Down the Sway Language Server");
+        let _ = self.sessions.iter().map(|item| {
+            let session = item.value();
+            session.shutdown();
+        });
+        Ok(())
     }
 
     pub(crate) fn snapshot(&self) -> GlobalStateSnapshot {

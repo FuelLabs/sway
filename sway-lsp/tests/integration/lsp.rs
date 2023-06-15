@@ -6,7 +6,7 @@ use crate::{GotoDefinition, HoverDocumentation, Rename};
 use assert_json_diff::assert_json_eq;
 use serde_json::json;
 use std::{borrow::Cow, path::Path};
-use sway_lsp::{global_state::GlobalState, server};
+use sway_lsp::global_state::GlobalState;
 use sway_lsp_test_utils::extract_result_array;
 use tower::{Service, ServiceExt};
 use tower_lsp::{
@@ -31,10 +31,13 @@ pub(crate) async fn call_request(
 }
 
 pub(crate) async fn initialize_request(service: &mut LspService<GlobalState>) -> Request {
-    let params = json!({ "capabilities": server::capabilities() });
+    let params = json!({ "capabilities": sway_lsp::server_capabilities() });
     let initialize = build_request_with_id("initialize", params, 1);
     let response = call_request(service, initialize.clone()).await;
-    let expected = Response::from_ok(1.into(), json!({ "capabilities": server::capabilities() }));
+    let expected = Response::from_ok(
+        1.into(),
+        json!({ "capabilities": sway_lsp::server_capabilities() }),
+    );
     assert_json_eq!(expected, response.ok().unwrap());
     initialize
 }
