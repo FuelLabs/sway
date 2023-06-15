@@ -1,4 +1,8 @@
-use fuels::{prelude::*, types::ContractId};
+use fuels::{
+    accounts::wallet::{Wallet, WalletUnlocked},
+    prelude::*,
+    types::ContractId,
+};
 
 abigen!(
     Contract(
@@ -29,7 +33,7 @@ async fn msg_sender_from_sdk() {
     let (auth_instance, _, _, _, wallet) = get_contracts().await;
     let result = auth_instance
         .methods()
-        .returns_msg_sender_address(wallet.address().into())
+        .returns_msg_sender_address(wallet.address())
         .call()
         .await
         .unwrap();
