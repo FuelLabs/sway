@@ -54,7 +54,6 @@ pub(crate) fn code_actions(
         uri: &text_document.uri,
     };
 
-
     match token.typed.as_ref()? {
         TypedAstToken::TypedDeclaration(decl) => match decl {
             ty::TyDecl::AbiDecl(ty::AbiDecl { decl_id, .. }) => {
