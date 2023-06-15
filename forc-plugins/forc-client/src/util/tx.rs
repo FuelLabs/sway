@@ -8,10 +8,8 @@ use fuel_tx::{
     field, Address, AssetId, Buildable, ContractId, Input, Output, TransactionBuilder, Witness,
 };
 use fuel_vm::prelude::SerializableVec;
-use fuels_accounts::{provider::Provider, ViewOnlyAccount, Wallet};
-use fuels_types::bech32::Bech32Address;
-use fuels_types::coin_type::CoinType;
-use fuels_types::transaction_builders::{create_coin_input, create_coin_message_input};
+use fuels_accounts::{provider::Provider, wallet::Wallet, ViewOnlyAccount};
+use fuels_core::types::{bech32::Bech32Address, coin_type::CoinType, transaction_builders::{create_coin_input, create_coin_message_input}};
 
 /// The maximum time to wait for a transaction to be included in a block by the node
 pub const TX_SUBMIT_TIMEOUT_MS: u64 = 30_000u64;
