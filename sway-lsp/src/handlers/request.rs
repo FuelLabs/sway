@@ -1,12 +1,7 @@
 //! This module is responsible for implementing handlers for Language Server
 //! Protocol. This module specifically handles requests.
 
-use crate::{
-    capabilities,
-    global_state::GlobalStateSnapshot,
-    lsp_ext,
-    utils::debug,
-};
+use crate::{capabilities, global_state::GlobalStateSnapshot, lsp_ext, utils::debug};
 use lsp_types::{
     CodeLens, CompletionResponse, DocumentFormattingParams, DocumentSymbolResponse, InlayHint,
     InlayHintParams, PrepareRenameResponse, RenameParams, SemanticTokensParams,
@@ -244,7 +239,6 @@ pub(crate) fn handle_semantic_tokens_full(
     }
 }
 
-
 pub(crate) fn handle_inlay_hints(
     snap: GlobalStateSnapshot,
     params: InlayHintParams,
@@ -320,10 +314,7 @@ pub(crate) fn handle_show_ast(
                                     formatted_ast = format!("{:#?}", submodule.module.tree);
                                 }
                             }
-                            write_ast_to_file(
-                                ast_path.join("lexed.rs").as_path(),
-                                &formatted_ast,
-                            )
+                            write_ast_to_file(ast_path.join("lexed.rs").as_path(), &formatted_ast)
                         }))
                     }
                     "parsed" => {
@@ -338,10 +329,7 @@ pub(crate) fn handle_show_ast(
                                         format!("{:#?}", submodule.module.tree.root_nodes);
                                 }
                             }
-                            write_ast_to_file(
-                                ast_path.join("parsed.rs").as_path(),
-                                &formatted_ast,
-                            )
+                            write_ast_to_file(ast_path.join("parsed.rs").as_path(), &formatted_ast)
                         }))
                     }
                     "typed" => {
@@ -360,10 +348,7 @@ pub(crate) fn handle_show_ast(
                                     );
                                 }
                             }
-                            write_ast_to_file(
-                                ast_path.join("typed.rs").as_path(),
-                                &formatted_ast,
-                            )
+                            write_ast_to_file(ast_path.join("typed.rs").as_path(), &formatted_ast)
                         }))
                     }
                     _ => Ok(None),

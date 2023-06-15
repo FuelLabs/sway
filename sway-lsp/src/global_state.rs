@@ -110,7 +110,6 @@ async fn run_blocking_parse_project(uri: Url, session: Arc<Session>) -> bool {
     .unwrap_or_default()
 }
 
-
 pub(crate) struct Sessions(DashMap<PathBuf, Arc<Session>>);
 
 impl Sessions {

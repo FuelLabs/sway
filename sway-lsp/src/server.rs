@@ -1,8 +1,9 @@
 pub use crate::error::DocumentError;
 use crate::{
     capabilities,
+    global_state::GlobalState,
     handlers::{notification, request},
-    global_state::GlobalState, lsp_ext::ShowAstParams,
+    lsp_ext::ShowAstParams,
 };
 use forc_tracing::{init_tracing_subscriber, TracingSubscriberOptions, TracingWriterMode};
 use lsp_types::*;
@@ -104,19 +105,19 @@ impl LanguageServer for GlobalState {
 
     // Document Handlers
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        notification::handle_did_open_text_document(&self, params).await;
+        notification::handle_did_open_text_document(self, params).await;
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        notification::handle_did_change_text_document(&self, params).await;
+        notification::handle_did_change_text_document(self, params).await;
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
-        notification::handle_did_save_text_document(&self, params).await;
+        notification::handle_did_save_text_document(self, params).await;
     }
 
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
-        notification::handle_did_change_watched_files(&self, params).await;
+        notification::handle_did_change_watched_files(self, params).await;
     }
 
     async fn hover(&self, params: HoverParams) -> jsonrpc::Result<Option<Hover>> {

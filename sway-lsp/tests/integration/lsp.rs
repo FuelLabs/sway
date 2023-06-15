@@ -6,10 +6,7 @@ use crate::{GotoDefinition, HoverDocumentation, Rename};
 use assert_json_diff::assert_json_eq;
 use serde_json::json;
 use std::{borrow::Cow, path::Path};
-use sway_lsp::{
-    server,
-    global_state::GlobalState,
-};
+use sway_lsp::{global_state::GlobalState, server};
 use sway_lsp_test_utils::extract_result_array;
 use tower::{Service, ServiceExt};
 use tower_lsp::{
@@ -83,7 +80,10 @@ pub(crate) async fn did_open_notification(
     assert_eq!(response, Ok(None));
 }
 
-pub(crate) async fn did_change_request(service: &mut LspService<GlobalState>, uri: &Url) -> Request {
+pub(crate) async fn did_change_request(
+    service: &mut LspService<GlobalState>,
+    uri: &Url,
+) -> Request {
     let params = json!({
         "textDocument": {
             "uri": uri,
@@ -330,7 +330,10 @@ pub(crate) async fn code_lens_request(service: &mut LspService<GlobalState>, uri
     code_lens
 }
 
-pub(crate) async fn completion_request(service: &mut LspService<GlobalState>, uri: &Url) -> Request {
+pub(crate) async fn completion_request(
+    service: &mut LspService<GlobalState>,
+    uri: &Url,
+) -> Request {
     let params = json!({
         "textDocument": {
           "uri": uri
