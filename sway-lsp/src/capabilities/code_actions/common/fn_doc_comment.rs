@@ -1,20 +1,25 @@
-use crate::capabilities::code_actions::{
-    common::generate_doc::GenerateDocCodeAction, CodeAction, CodeActionContext,
-    CODE_ACTION_DOC_TITLE,
-};
+use crate::capabilities::code_actions::{CodeAction, CodeActionContext, CODE_ACTION_DOC_TITLE};
 use lsp_types::{Range, Url};
-use sway_core::{language::ty::TyFunctionDecl, Engines};
+use sway_core::{language::ty::FunctionSignature, Engines};
+use sway_types::{Named, Spanned};
 
-pub(crate) struct DocCommentCodeAction<'a> {
+use super::generate_doc::GenerateDocCodeAction;
+
+pub struct FnDocCommentCodeAction<'a, T: Spanned + Named + FunctionSignature> {
     engines: &'a Engines,
-    decl: &'a TyFunctionDecl,
+    decl: &'a T,
     uri: &'a Url,
 }
 
-impl<'a> GenerateDocCodeAction<'a, TyFunctionDecl> for DocCommentCodeAction<'a> {}
+impl<'a, T: Spanned + Named + FunctionSignature> GenerateDocCodeAction<'a, T>
+    for FnDocCommentCodeAction<'a, T>
+{
+}
 
-impl<'a> CodeAction<'a, TyFunctionDecl> for DocCommentCodeAction<'a> {
-    fn new(ctx: CodeActionContext<'a>, decl: &'a TyFunctionDecl) -> Self {
+impl<'a, T: Spanned + Named + FunctionSignature> CodeAction<'a, T>
+    for FnDocCommentCodeAction<'a, T>
+{
+    fn new(ctx: CodeActionContext<'a>, decl: &'a T) -> Self {
         Self {
             engines: ctx.engines,
             decl,
@@ -46,7 +51,7 @@ impl<'a> CodeAction<'a, TyFunctionDecl> for DocCommentCodeAction<'a> {
         CODE_ACTION_DOC_TITLE.to_string()
     }
 
-    fn decl(&self) -> &TyFunctionDecl {
+    fn decl(&self) -> &T {
         self.decl
     }
 
@@ -55,41 +60,7 @@ impl<'a> CodeAction<'a, TyFunctionDecl> for DocCommentCodeAction<'a> {
     }
 }
 
-impl DocCommentCodeAction<'_> {
-    /// Formats the arguments of the function into a vector of strings.
-    fn arguments_section(&self) -> Vec<String> {
-        if self.decl.parameters.is_empty() {
-            return vec![];
-        }
-        let mut lines = vec![String::new(), "### Arguments".to_string(), String::new()];
-        self.decl.parameters.iter().for_each(|param| {
-            lines.push(self.formatted_list_item(
-                self.engines,
-                Some(param.name.to_string()),
-                param.type_argument.type_id,
-            ))
-        });
-        lines
-    }
-
-    /// Formats the return value of the function into a vector of strings.
-    fn returns_section(&self) -> Vec<String> {
-        if self
-            .engines
-            .te()
-            .get(self.decl.return_type.type_id)
-            .is_unit()
-        {
-            return vec![];
-        }
-        vec![
-            String::new(),
-            "### Returns".to_string(),
-            String::new(),
-            self.formatted_list_item(self.engines, None, self.decl.return_type.type_id),
-        ]
-    }
-
+impl<'a, T: Spanned + Named + FunctionSignature> FnDocCommentCodeAction<'a, T> {
     /// Formats the return value of the function into a vector of strings.
     fn reverts_section(&self) -> Vec<String> {
         vec![
@@ -112,16 +83,50 @@ impl DocCommentCodeAction<'_> {
         ]
     }
 
+    /// Formats the arguments of the function into a vector of strings.
+    fn arguments_section(&self) -> Vec<String> {
+        if self.decl.parameters().is_empty() {
+            return vec![];
+        }
+        let mut lines = vec![String::new(), "### Arguments".to_string(), String::new()];
+        self.decl.parameters().iter().for_each(|param| {
+            lines.push(self.formatted_list_item(
+                self.engines,
+                Some(param.name.to_string()),
+                param.type_argument.type_id,
+            ))
+        });
+        lines
+    }
+
+    /// Formats the return value of the function into a vector of strings.
+    fn returns_section(&self) -> Vec<String> {
+        if self
+            .engines
+            .te()
+            .get(self.decl.return_type().type_id)
+            .is_unit()
+        {
+            return vec![];
+        }
+        vec![
+            String::new(),
+            "### Returns".to_string(),
+            String::new(),
+            self.formatted_list_item(self.engines, None, self.decl.return_type().type_id),
+        ]
+    }
+
     /// Generates examples of function usage and formats it into a vector of strings.
     fn examples_section(&self) -> Vec<String> {
         let example_args = self
             .decl
-            .parameters
+            .parameters()
             .iter()
             .map(|param| param.name.to_string())
             .collect::<Vec<String>>()
             .join(", ");
-        let example = format!("let x = {}({});", self.decl.name, example_args);
+        let example = format!("let x = {}({});", self.decl.name(), example_args);
         vec![
             String::new(),
             "### Examples".to_string(),
