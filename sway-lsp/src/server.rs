@@ -1,3 +1,6 @@
+//! This module implements the [LanguageServer] trait for [GlobalState].
+//! It provides an interface between the LSP protocol and the sway-lsp internals.
+
 use crate::{
     global_state::GlobalState,
     handlers::{notification, request},

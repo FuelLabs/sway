@@ -25,12 +25,10 @@ pub struct GlobalState {
 
 /// An immutable snapshot of the world's state at a point in time.
 pub(crate) struct GlobalStateSnapshot {
-    pub(crate) config: Arc<RwLock<Config>>,
+    pub(crate) config: Arc<RwLock<Config>>, // TODO: remove RwLock once we deprecate tower-lsp
     pub(crate) keyword_docs: Arc<KeywordDocs>,
     pub(crate) sessions: Arc<Sessions>,
 }
-
-impl std::panic::UnwindSafe for GlobalStateSnapshot {}
 
 impl GlobalState {
     pub fn new(client: Client) -> GlobalState {
@@ -119,6 +117,8 @@ async fn run_blocking_parse_project(uri: Url, session: Arc<Session>) -> bool {
     .unwrap_or_default()
 }
 
+/// `Sessions` is a collection of `Session`s, each of which represents a project
+/// that has been opened in the users workspace.
 pub(crate) struct Sessions(DashMap<PathBuf, Arc<Session>>);
 
 impl Sessions {
