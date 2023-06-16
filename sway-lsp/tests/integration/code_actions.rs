@@ -129,7 +129,7 @@ pub(crate) async fn code_action_function_request(
 }
 
 pub(crate) async fn code_action_trait_fn_request(
-    service: &mut LspService<Backend>,
+    service: &mut LspService<GlobalState>,
     uri: &Url,
 ) -> Request {
     let params = json!({
