@@ -3,7 +3,7 @@ use ansi_term::Colour;
 use clap::Parser;
 use forc_pkg as pkg;
 use forc_test::{TestFilter, TestRunnerCount, TestedPackage};
-use forc_util::{format_log_receipts, ForcError, ForcResult};
+use forc_util::{tx_utils::format_log_receipts, ForcError, ForcResult};
 use tracing::info;
 
 /// Run the Sway unit tests for the current project.
