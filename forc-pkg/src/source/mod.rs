@@ -20,6 +20,7 @@ use crate::{
 };
 use anyhow::{anyhow, bail, Result};
 use serde::{Deserialize, Serialize};
+use sway_utils::DEFAULT_IPFS_GATEWAY_URL;
 use std::{
     collections::hash_map,
     fmt,
@@ -54,7 +55,7 @@ pub enum IPFSNode {
 
 impl Default for IPFSNode {
     fn default() -> Self {
-        Self::Local
+        Self::WithUrl(DEFAULT_IPFS_GATEWAY_URL.to_string())
     }
 }
 
