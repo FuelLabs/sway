@@ -20,7 +20,6 @@ use crate::{
 };
 use anyhow::{anyhow, bail, Result};
 use serde::{Deserialize, Serialize};
-use sway_utils::DEFAULT_IPFS_GATEWAY_URL;
 use std::{
     collections::hash_map,
     fmt,
@@ -28,6 +27,7 @@ use std::{
     path::{Path, PathBuf},
     str::FromStr,
 };
+use sway_utils::DEFAULT_IPFS_GATEWAY_URL;
 
 /// Pin this source at a specific "version", return the local directory to fetch into.
 trait Pin {
