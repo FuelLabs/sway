@@ -68,8 +68,8 @@ fn test_address() {
     let identity = Identity::Address(address);
     assert(identity.is_address());
     assert(!identity.is_contract_id());
-    assert(identity.address().unwrap() == address);
-    assert(identity.contract_id().is_err());
+    assert(identity.as_address().unwrap() == address);
+    assert(identity.as_contract_id().is_none());
     assert(identity.value() == ZERO_B256);
 }
 
@@ -79,7 +79,7 @@ fn test_contract_id() {
     let identity = Identity::ContractId(contract_id);
     assert(!identity.is_address());
     assert(identity.is_contract_id());
-    assert(identity.contract_id().unwrap() == contract_id);
-    assert(identity.address().is_err());
+    assert(identity.as_contract_id().unwrap() == contract_id);
+    assert(identity.as_address().is_none());
     assert(identity.value() == BASE_ASSET_ID);
 }
