@@ -56,8 +56,8 @@ impl Identity {
 
     pub fn value(self) -> b256 {
         match self {
-            Identity::Address(address) => address.value(),
-            Identity::ContractId(contract_id) => contract_id.value(),
+            Identity::Address(address) => address.value,
+            Identity::ContractId(contract_id) => contract_id.value,
         }
     }
 }
