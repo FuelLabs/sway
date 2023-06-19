@@ -18,6 +18,10 @@ abigen!(
     Predicate(
         name = "TestPredicate",
         abi = "test_projects/tx_fields/out/debug/tx_predicate-abi.json"
+    ),
+    Predicate(
+        name = "TestOutputPredicate",
+        abi = "test_artifacts/tx_output_predicate/out/debug/tx_output_predicate-abi.json"
     )
 );
 
@@ -142,6 +146,44 @@ async fn add_message_input(tx: &mut ScriptTransaction, wallet: WalletUnlocked) {
     tx.tx.inputs_mut().push(message_input);
 }
 
+
+async fn get_output_predicate() -> (WalletUnlocked, Predicate) {
+    let asset_id = AssetId::default();
+    let wallets_config = WalletsConfig::new_multiple_assets(
+        1,
+        vec![AssetConfig {
+            id: asset_id,
+            num_coins: 1,
+            coin_amount: 1_000,
+        }],
+    );
+
+    let wallets = launch_custom_provider_and_get_wallets(wallets_config, None, None).await;
+    let wallet = wallets.pop();
+    
+    let predicate_data = TestOutputPredicate::encode_data(
+        0,
+        ContractId::zeroed,
+        wallet.address()
+    );
+    
+    let predicate = Predicate::load_from("test_artifacts/tx_output_predicate/out/debug/tx_output_predicate.bin")
+        .unwrap()
+        .with_data(predicate_data)
+        .with_provider(wallet1.try_provider().unwrap().clone());
+
+    wallet
+        .transfer(
+            predicate.address(),
+            100,
+            asset_id,
+            TxParameters::default(),
+        )
+        .await
+        .unwrap();
+
+    (wallet, predicate)
+}
 mod tx {
     use super::*;
 
@@ -725,6 +767,33 @@ mod outputs {
                 .await
                 .unwrap();
             assert_eq!(result.value, Output::Contract);
+        }
+
+        #[tokio::test]
+        async fn can_get_tx_output_details() {
+            let (wallet, predicate, asset_id) = get_output_predicate().await;
+
+            let balance = predicate
+                .get_asset_balance(&asset_id)
+                .await
+                .unwrap();
+
+            predicate
+                .transfer(
+                    wallet.address(),
+                    10,
+                    asset_id,
+                    TxParameters::default(),
+                )
+                .await
+                .unwrap();
+
+            let new_balance = predicate
+                .get_asset_balance(&asset_id)
+                .await
+                .unwrap();
+
+            assert!(balance - 10 == new_balance);
         }
     }
 
