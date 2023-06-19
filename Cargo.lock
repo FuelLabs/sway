@@ -1911,7 +1911,7 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
- "syn 2.0.16",
+ "syn 2.0.18",
  "thiserror",
 ]
 
