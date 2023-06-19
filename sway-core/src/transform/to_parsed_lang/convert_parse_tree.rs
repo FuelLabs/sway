@@ -1374,12 +1374,23 @@ fn fn_signature_to_trait_fn(
     fn_signature: FnSignature,
     attributes: AttributesMap,
 ) -> Result<TraitFn, ErrorEmitted> {
-    let return_type_span = match &fn_signature.return_type_opt {
-        Some((_right_arrow_token, ty)) => ty.span(),
-        None => fn_signature.span(),
+    let return_type = match &fn_signature.return_type_opt {
+        Some((_right_arrow, ty)) => ty_to_type_argument(context, handler, engines, ty.clone())?,
+        None => {
+            let type_id = engines.te().insert(engines, TypeInfo::Tuple(Vec::new()));
+            TypeArgument {
+                type_id,
+                initial_type_id: type_id,
+                // TODO: Fix as part of https://github.com/FuelLabs/sway/issues/3635
+                span: fn_signature.span(),
+                call_path_tree: None,
+            }
+        }
     };
+
     let trait_fn = TraitFn {
-        name: fn_signature.name,
+        name: fn_signature.name.clone(),
+        span: fn_signature.span(),
         purity: get_attributed_purity(context, handler, &attributes)?,
         attributes,
         parameters: fn_args_to_function_parameters(
@@ -1388,11 +1399,7 @@ fn fn_signature_to_trait_fn(
             engines,
             fn_signature.arguments.into_inner(),
         )?,
-        return_type: match fn_signature.return_type_opt {
-            Some((_right_arrow_token, ty)) => ty_to_type_info(context, handler, engines, ty)?,
-            None => TypeInfo::Tuple(Vec::new()),
-        },
-        return_type_span,
+        return_type,
     };
     Ok(trait_fn)
 }

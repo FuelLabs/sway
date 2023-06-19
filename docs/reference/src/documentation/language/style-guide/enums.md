@@ -1,10 +1,14 @@
 # Enums
 
-> TODO: intro, show enums
+An [`enum`](../../language/built-ins/enums.md) may contain many types including other enums.
+
+```sway
+{{#include ../../../code/language/style-guide/enum_style/src/lib.sw:style_enums}}
+```
 
 ## Encouraged
 
-The preferred way to use [enums](../built-ins/enums.md) is to use the individual (not nested) enums directly because they are easy to follow and the lines are short:
+The preferred way to use [`enums`](../built-ins/enums.md) is to use the individual (not nested) enums directly because they are easy to follow and the lines are short:
 
 ```sway
 {{#include ../../../code/language/style-guide/enum_style/src/lib.sw:use}}

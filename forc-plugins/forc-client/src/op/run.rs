@@ -7,7 +7,7 @@ use crate::{
 };
 use anyhow::{anyhow, bail, Context, Result};
 use forc_pkg::{self as pkg, fuel_core_not_running, PackageManifestFile};
-use forc_util::format_log_receipts;
+use forc_util::tx_utils::format_log_receipts;
 use fuel_core_client::client::FuelClient;
 use fuel_tx::{ContractId, Transaction, TransactionBuilder};
 use pkg::BuiltPackage;

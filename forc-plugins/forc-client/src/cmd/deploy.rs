@@ -3,7 +3,7 @@ use fuel_crypto::SecretKey;
 
 pub use forc::cli::shared::{BuildOutput, BuildProfile, Minify, Pkg, Print};
 pub use forc_tx::{Gas, Maturity};
-pub use forc_util::Salt;
+pub use forc_util::tx_utils::Salt;
 
 #[derive(Debug, Default, Parser)]
 #[clap(bin_name = "forc deploy", version)]
