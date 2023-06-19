@@ -12,7 +12,10 @@ pub(crate) async fn handle_did_open_text_document(
     state: &ServerState,
     params: DidOpenTextDocumentParams,
 ) {
-    match state.sessions.from_workspace_uri(&params.text_document.uri) {
+    match state
+        .sessions
+        .uri_and_session_from_workspace(&params.text_document.uri)
+    {
         Ok((uri, session)) => {
             session.handle_open_file(&uri);
             state
@@ -28,7 +31,10 @@ pub(crate) async fn handle_did_change_text_document(
     params: DidChangeTextDocumentParams,
 ) {
     let config = state.config.read().on_enter.clone();
-    match state.sessions.from_workspace_uri(&params.text_document.uri) {
+    match state
+        .sessions
+        .uri_and_session_from_workspace(&params.text_document.uri)
+    {
         Ok((uri, session)) => {
             // handle on_enter capabilities if they are enabled
             capabilities::on_enter(&config, &state.client, &session, &uri.clone(), &params).await;
@@ -51,7 +57,10 @@ pub(crate) async fn handle_did_save_text_document(
     state: &ServerState,
     params: DidSaveTextDocumentParams,
 ) {
-    match state.sessions.from_workspace_uri(&params.text_document.uri) {
+    match state
+        .sessions
+        .uri_and_session_from_workspace(&params.text_document.uri)
+    {
         Ok((uri, session)) => {
             // overwrite the contents of the tmp/folder with everything in
             // the current workspace. (resync)
@@ -82,7 +91,7 @@ pub(crate) async fn handle_did_change_watched_files(
 ) {
     for event in params.changes {
         if event.typ == FileChangeType::DELETED {
-            match state.sessions.from_workspace_uri(&event.uri) {
+            match state.sessions.uri_and_session_from_workspace(&event.uri) {
                 Ok((uri, session)) => {
                     let _ = session.remove_document(&uri);
                 }

@@ -49,7 +49,10 @@ pub(crate) fn handle_document_symbol(
     state: &ServerState,
     params: lsp_types::DocumentSymbolParams,
 ) -> Result<Option<lsp_types::DocumentSymbolResponse>> {
-    match state.sessions.from_workspace_uri(&params.text_document.uri) {
+    match state
+        .sessions
+        .uri_and_session_from_workspace(&params.text_document.uri)
+    {
         Ok((uri, session)) => Ok(session
             .symbol_information(&uri)
             .map(DocumentSymbolResponse::Flat)),
@@ -66,7 +69,7 @@ pub(crate) fn handle_goto_definition(
 ) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
     match state
         .sessions
-        .from_workspace_uri(&params.text_document_position_params.text_document.uri)
+        .uri_and_session_from_workspace(&params.text_document_position_params.text_document.uri)
     {
         Ok((uri, session)) => {
             let position = params.text_document_position_params.position;
@@ -91,7 +94,7 @@ pub(crate) fn handle_completion(
     let position = params.text_document_position.position;
     match state
         .sessions
-        .from_workspace_uri(&params.text_document_position.text_document.uri)
+        .uri_and_session_from_workspace(&params.text_document_position.text_document.uri)
     {
         Ok((uri, session)) => Ok(session
             .completion_items(&uri, position, trigger_char)
@@ -109,7 +112,7 @@ pub(crate) fn handle_hover(
 ) -> Result<Option<lsp_types::Hover>> {
     match state
         .sessions
-        .from_workspace_uri(&params.text_document_position_params.text_document.uri)
+        .uri_and_session_from_workspace(&params.text_document_position_params.text_document.uri)
     {
         Ok((uri, session)) => {
             let position = params.text_document_position_params.position;
@@ -131,7 +134,10 @@ pub(crate) fn handle_prepare_rename(
     state: &ServerState,
     params: lsp_types::TextDocumentPositionParams,
 ) -> Result<Option<PrepareRenameResponse>> {
-    match state.sessions.from_workspace_uri(&params.text_document.uri) {
+    match state
+        .sessions
+        .uri_and_session_from_workspace(&params.text_document.uri)
+    {
         Ok((uri, session)) => {
             match capabilities::rename::prepare_rename(session, uri, params.position) {
                 Ok(res) => Ok(Some(res)),
@@ -154,7 +160,7 @@ pub(crate) fn handle_rename(
 ) -> Result<Option<WorkspaceEdit>> {
     match state
         .sessions
-        .from_workspace_uri(&params.text_document_position.text_document.uri)
+        .uri_and_session_from_workspace(&params.text_document_position.text_document.uri)
     {
         Ok((uri, session)) => {
             let new_name = params.new_name;
@@ -180,7 +186,7 @@ pub(crate) fn handle_document_highlight(
 ) -> Result<Option<Vec<lsp_types::DocumentHighlight>>> {
     match state
         .sessions
-        .from_workspace_uri(&params.text_document_position_params.text_document.uri)
+        .uri_and_session_from_workspace(&params.text_document_position_params.text_document.uri)
     {
         Ok((uri, session)) => {
             let position = params.text_document_position_params.position;
@@ -201,7 +207,7 @@ pub(crate) fn handle_formatting(
 ) -> Result<Option<Vec<lsp_types::TextEdit>>> {
     state
         .sessions
-        .from_workspace_uri(&params.text_document.uri)
+        .uri_and_session_from_workspace(&params.text_document.uri)
         .and_then(|(uri, session)| session.format_text(&uri).map(Some))
         .or_else(|err| {
             tracing::error!("{}", err.to_string());
@@ -213,7 +219,10 @@ pub(crate) fn handle_code_action(
     state: &ServerState,
     params: lsp_types::CodeActionParams,
 ) -> Result<Option<lsp_types::CodeActionResponse>> {
-    match state.sessions.from_workspace_uri(&params.text_document.uri) {
+    match state
+        .sessions
+        .uri_and_session_from_workspace(&params.text_document.uri)
+    {
         Ok((temp_uri, session)) => Ok(capabilities::code_actions(
             session,
             &params.range,
@@ -232,7 +241,10 @@ pub(crate) fn handle_code_lens(
     params: lsp_types::CodeLensParams,
 ) -> Result<Option<Vec<CodeLens>>> {
     let mut result = vec![];
-    match state.sessions.from_workspace_uri(&params.text_document.uri) {
+    match state
+        .sessions
+        .uri_and_session_from_workspace(&params.text_document.uri)
+    {
         Ok((_, session)) => {
             // Construct code lenses for runnable functions
             session.runnables.iter().for_each(|item| {
@@ -256,7 +268,10 @@ pub(crate) fn handle_semantic_tokens_full(
     state: &ServerState,
     params: SemanticTokensParams,
 ) -> Result<Option<SemanticTokensResult>> {
-    match state.sessions.from_workspace_uri(&params.text_document.uri) {
+    match state
+        .sessions
+        .uri_and_session_from_workspace(&params.text_document.uri)
+    {
         Ok((uri, session)) => {
             let _ = session.wait_for_parsing();
             Ok(capabilities::semantic_tokens::semantic_tokens_full(
@@ -274,7 +289,10 @@ pub(crate) fn handle_inlay_hints(
     state: &ServerState,
     params: InlayHintParams,
 ) -> Result<Option<Vec<InlayHint>>> {
-    match state.sessions.from_workspace_uri(&params.text_document.uri) {
+    match state
+        .sessions
+        .uri_and_session_from_workspace(&params.text_document.uri)
+    {
         Ok((uri, session)) => {
             let _ = session.wait_for_parsing();
             let config = &state.config.read().inlay_hints;
@@ -308,7 +326,10 @@ pub(crate) fn handle_show_ast(
     state: &ServerState,
     params: lsp_ext::ShowAstParams,
 ) -> Result<Option<TextDocumentIdentifier>> {
-    match state.sessions.from_workspace_uri(&params.text_document.uri) {
+    match state
+        .sessions
+        .uri_and_session_from_workspace(&params.text_document.uri)
+    {
         Ok((_, session)) => {
             let current_open_file = params.text_document.uri;
             // Convert the Uri to a PathBuf
