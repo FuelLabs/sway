@@ -2,6 +2,7 @@
 //! The use of this type allows for handling interactions with contracts and addresses in a unified manner.
 library;
 
+use ::assert::assert;
 use ::address::Address;
 use ::constants::{ZERO_B256, BASE_ASSET_ID};
 use ::contract_id::ContractId;
@@ -27,15 +28,15 @@ impl core::ops::Eq for Identity {
 impl Identity {
     pub fn address(self) -> Result<Address, ContractId> {
         match self {
-            Identity::Address(address) => Ok(address),
-            Identity::ContractId(contract_id) => Err(contract_id),
+            Identity::Address(address) => Result::Ok(address),
+            Identity::ContractId(contract_id) => Result::Err(contract_id),
         }
     }
 
     pub fn contract_id(self) -> Result<ContractId, Address> {
         match self {
-            Identity::Address(address) => Err(address),
-            Identity::ContractId(contract_id) => Ok(contract_id),
+            Identity::Address(address) => Result::Err(address),
+            Identity::ContractId(contract_id) => Result::Ok(contract_id),
         }
     }
 
