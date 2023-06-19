@@ -29,13 +29,13 @@ impl Identity {
     pub fn as_address(self) -> Option<Address> {
         match self {
             Identity::Address(address) => Option::Some(address),
-            Identity::ContractId(_) => Option::None(),
+            Identity::ContractId(_) => Option::None,
         }
     }
 
     pub fn as_contract_id(self) -> Option<ContractId> {
         match self {
-            Identity::Address(_) => Option::None(),
+            Identity::Address(_) => Option::None,
             Identity::ContractId(contract_id) => Option::Some(contract_id),
         }
     }
