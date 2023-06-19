@@ -6,7 +6,7 @@ use ::assert::assert;
 use ::address::Address;
 use ::constants::{ZERO_B256, BASE_ASSET_ID};
 use ::contract_id::ContractId;
-use ::result::Result;
+use ::option::Option;
 
 /// The `Identity` type: either an `Address` or a `ContractId`.
 // ANCHOR: docs_identity
@@ -26,17 +26,17 @@ impl core::ops::Eq for Identity {
 }
 
 impl Identity {
-    pub fn address(self) -> Result<Address, ContractId> {
+    pub fn as_address(self) -> Option<Address> {
         match self {
-            Identity::Address(address) => Result::Ok(address),
-            Identity::ContractId(contract_id) => Result::Err(contract_id),
+            Identity::Address(address) => Option::Some(address),
+            Identity::ContractId(_) => Option::None(),
         }
     }
 
-    pub fn contract_id(self) -> Result<ContractId, Address> {
+    pub fn as_contract_id(self) -> Option<ContractId> {
         match self {
-            Identity::Address(address) => Result::Err(address),
-            Identity::ContractId(contract_id) => Result::Ok(contract_id),
+            Identity::Address(_) => Option::None(),
+            Identity::ContractId(contract_id) => Option::Some(contract_id),
         }
     }
 
@@ -53,6 +53,13 @@ impl Identity {
             Identity::ContractId(_) => true,
         }
     }
+
+    pub fn value(self) -> b256 {
+        match self {
+            Identity::Address(address) => address.value(),
+            Identity::ContractId(contract_id) => contract_id.value(),
+        }
+    }
 }
 
 #[test]
@@ -63,6 +70,7 @@ fn test_address() {
     assert(!identity.is_contract_id());
     assert(identity.address().unwrap() == address);
     assert(identity.contract_id().is_err());
+    assert(identity.value() == ZERO_B256);
 }
 
 #[test]
@@ -73,4 +81,5 @@ fn test_contract_id() {
     assert(identity.is_contract_id());
     assert(identity.contract_id().unwrap() == contract_id);
     assert(identity.address().is_err());
+    assert(identity.value() == BASE_ASSET_ID);
 }
