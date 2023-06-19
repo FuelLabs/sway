@@ -1,7 +1,7 @@
 //! This module is responsible for implementing handlers for Language Server
-//! Protocol. This module specifically handles notifications.
+//! Protocol. This module specifically handles notification messages sent by the Client.
 
-use crate::{capabilities, core::sync, global_state::GlobalState};
+use crate::{capabilities, core::sync, server_state::ServerState};
 use forc_pkg::PackageManifestFile;
 use lsp_types::{
     DidChangeTextDocumentParams, DidChangeWatchedFilesParams, DidOpenTextDocumentParams,
@@ -9,13 +9,10 @@ use lsp_types::{
 };
 
 pub(crate) async fn handle_did_open_text_document(
-    state: &GlobalState,
+    state: &ServerState,
     params: DidOpenTextDocumentParams,
 ) {
-    match state
-        .sessions
-        .get_uri_and_session(&params.text_document.uri)
-    {
+    match state.sessions.from_workspace_uri(&params.text_document.uri) {
         Ok((uri, session)) => {
             session.handle_open_file(&uri);
             state
@@ -27,14 +24,11 @@ pub(crate) async fn handle_did_open_text_document(
 }
 
 pub(crate) async fn handle_did_change_text_document(
-    state: &GlobalState,
+    state: &ServerState,
     params: DidChangeTextDocumentParams,
 ) {
     let config = state.config.read().on_enter.clone();
-    match state
-        .sessions
-        .get_uri_and_session(&params.text_document.uri)
-    {
+    match state.sessions.from_workspace_uri(&params.text_document.uri) {
         Ok((uri, session)) => {
             // handle on_enter capabilities if they are enabled
             capabilities::on_enter(&config, &state.client, &session, &uri.clone(), &params).await;
@@ -54,13 +48,10 @@ pub(crate) async fn handle_did_change_text_document(
 }
 
 pub(crate) async fn handle_did_save_text_document(
-    state: &GlobalState,
+    state: &ServerState,
     params: DidSaveTextDocumentParams,
 ) {
-    match state
-        .sessions
-        .get_uri_and_session(&params.text_document.uri)
-    {
+    match state.sessions.from_workspace_uri(&params.text_document.uri) {
         Ok((uri, session)) => {
             // overwrite the contents of the tmp/folder with everything in
             // the current workspace. (resync)
@@ -86,12 +77,12 @@ pub(crate) async fn handle_did_save_text_document(
 }
 
 pub(crate) async fn handle_did_change_watched_files(
-    state: &GlobalState,
+    state: &ServerState,
     params: DidChangeWatchedFilesParams,
 ) {
     for event in params.changes {
         if event.typ == FileChangeType::DELETED {
-            match state.sessions.get_uri_and_session(&event.uri) {
+            match state.sessions.from_workspace_uri(&event.uri) {
                 Ok((uri, session)) => {
                     let _ = session.remove_document(&uri);
                 }

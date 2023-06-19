@@ -15,27 +15,20 @@ use std::{path::PathBuf, sync::Arc};
 use tokio::task;
 use tower_lsp::{jsonrpc, Client};
 
-/// `GlobalState` is the primary mutable state of the language server
-pub struct GlobalState {
+/// `ServerState` is the primary mutable state of the language server
+pub struct ServerState {
     pub(crate) client: Client,
     pub(crate) config: Arc<RwLock<Config>>,
     pub(crate) keyword_docs: Arc<KeywordDocs>,
     pub(crate) sessions: Arc<Sessions>,
 }
 
-/// An immutable snapshot of the world's state at a point in time.
-pub(crate) struct GlobalStateSnapshot {
-    pub(crate) config: Arc<RwLock<Config>>, // TODO: remove RwLock once we deprecate tower-lsp
-    pub(crate) keyword_docs: Arc<KeywordDocs>,
-    pub(crate) sessions: Arc<Sessions>,
-}
-
-impl GlobalState {
-    pub fn new(client: Client) -> GlobalState {
+impl ServerState {
+    pub fn new(client: Client) -> ServerState {
         let sessions = Arc::new(Sessions(DashMap::new()));
         let config = Arc::new(RwLock::new(Default::default()));
         let keyword_docs = Arc::new(KeywordDocs::new());
-        GlobalState {
+        ServerState {
             client,
             config,
             keyword_docs,
@@ -50,14 +43,6 @@ impl GlobalState {
             session.shutdown();
         });
         Ok(())
-    }
-
-    pub(crate) fn snapshot(&self) -> GlobalStateSnapshot {
-        GlobalStateSnapshot {
-            config: Arc::clone(&self.config),
-            keyword_docs: Arc::clone(&self.keyword_docs),
-            sessions: Arc::clone(&self.sessions),
-        }
     }
 
     async fn publish_diagnostics(&self, uri: &Url, workspace_uri: &Url, session: Arc<Session>) {
@@ -117,7 +102,7 @@ async fn run_blocking_parse_project(uri: Url, session: Arc<Session>) -> bool {
     .unwrap_or_default()
 }
 
-/// `Sessions` is a collection of `Session`s, each of which represents a project
+/// `Sessions` is a collection of [Session]s, each of which represents a project
 /// that has been opened in the users workspace.
 pub(crate) struct Sessions(DashMap<PathBuf, Arc<Session>>);
 
@@ -129,7 +114,9 @@ impl Sessions {
         Ok(())
     }
 
-    pub(crate) fn get_uri_and_session(
+    /// Constructs and returns a tuple of `(Url, Arc<Session>)` from a given workspace URI.
+    /// The returned URL represents the temp directory workspace.
+    pub(crate) fn from_workspace_uri(
         &self,
         workspace_uri: &Url,
     ) -> Result<(Url, Arc<Session>), LanguageServerError> {

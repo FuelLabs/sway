@@ -1,12 +1,7 @@
 //! This module is responsible for implementing handlers for Language Server
 //! Protocol. This module specifically handles requests.
 
-use crate::{
-    capabilities,
-    global_state::{GlobalState, GlobalStateSnapshot},
-    lsp_ext,
-    utils::debug,
-};
+use crate::{capabilities, lsp_ext, server_state::ServerState, utils::debug};
 use forc_tracing::{init_tracing_subscriber, TracingSubscriberOptions, TracingWriterMode};
 use lsp_types::{
     CodeLens, CompletionResponse, DocumentFormattingParams, DocumentSymbolResponse,
@@ -23,7 +18,7 @@ use tower_lsp::jsonrpc::Result;
 use tracing::metadata::LevelFilter;
 
 pub(crate) fn handle_initialize(
-    state: &GlobalState,
+    state: &ServerState,
     params: lsp_types::InitializeParams,
 ) -> Result<InitializeResult> {
     if let Some(initialization_options) = &params.initialization_options {
@@ -51,10 +46,10 @@ pub(crate) fn handle_initialize(
 }
 
 pub(crate) fn handle_document_symbol(
-    snap: GlobalStateSnapshot,
+    state: &ServerState,
     params: lsp_types::DocumentSymbolParams,
 ) -> Result<Option<lsp_types::DocumentSymbolResponse>> {
-    match snap.sessions.get_uri_and_session(&params.text_document.uri) {
+    match state.sessions.from_workspace_uri(&params.text_document.uri) {
         Ok((uri, session)) => Ok(session
             .symbol_information(&uri)
             .map(DocumentSymbolResponse::Flat)),
@@ -66,12 +61,12 @@ pub(crate) fn handle_document_symbol(
 }
 
 pub(crate) fn handle_goto_definition(
-    snap: GlobalStateSnapshot,
+    state: &ServerState,
     params: lsp_types::GotoDefinitionParams,
 ) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
-    match snap
+    match state
         .sessions
-        .get_uri_and_session(&params.text_document_position_params.text_document.uri)
+        .from_workspace_uri(&params.text_document_position_params.text_document.uri)
     {
         Ok((uri, session)) => {
             let position = params.text_document_position_params.position;
@@ -85,7 +80,7 @@ pub(crate) fn handle_goto_definition(
 }
 
 pub(crate) fn handle_completion(
-    snap: GlobalStateSnapshot,
+    state: &ServerState,
     params: lsp_types::CompletionParams,
 ) -> Result<Option<lsp_types::CompletionResponse>> {
     let trigger_char = params
@@ -94,9 +89,9 @@ pub(crate) fn handle_completion(
         .unwrap_or_default()
         .unwrap_or("".to_string());
     let position = params.text_document_position.position;
-    match snap
+    match state
         .sessions
-        .get_uri_and_session(&params.text_document_position.text_document.uri)
+        .from_workspace_uri(&params.text_document_position.text_document.uri)
     {
         Ok((uri, session)) => Ok(session
             .completion_items(&uri, position, trigger_char)
@@ -109,18 +104,18 @@ pub(crate) fn handle_completion(
 }
 
 pub(crate) fn handle_hover(
-    snap: GlobalStateSnapshot,
+    state: &ServerState,
     params: lsp_types::HoverParams,
 ) -> Result<Option<lsp_types::Hover>> {
-    match snap
+    match state
         .sessions
-        .get_uri_and_session(&params.text_document_position_params.text_document.uri)
+        .from_workspace_uri(&params.text_document_position_params.text_document.uri)
     {
         Ok((uri, session)) => {
             let position = params.text_document_position_params.position;
             Ok(capabilities::hover::hover_data(
                 session,
-                &snap.keyword_docs,
+                &state.keyword_docs,
                 uri,
                 position,
             ))
@@ -133,10 +128,10 @@ pub(crate) fn handle_hover(
 }
 
 pub(crate) fn handle_prepare_rename(
-    snap: GlobalStateSnapshot,
+    state: &ServerState,
     params: lsp_types::TextDocumentPositionParams,
 ) -> Result<Option<PrepareRenameResponse>> {
-    match snap.sessions.get_uri_and_session(&params.text_document.uri) {
+    match state.sessions.from_workspace_uri(&params.text_document.uri) {
         Ok((uri, session)) => {
             match capabilities::rename::prepare_rename(session, uri, params.position) {
                 Ok(res) => Ok(Some(res)),
@@ -154,12 +149,12 @@ pub(crate) fn handle_prepare_rename(
 }
 
 pub(crate) fn handle_rename(
-    snap: GlobalStateSnapshot,
+    state: &ServerState,
     params: RenameParams,
 ) -> Result<Option<WorkspaceEdit>> {
-    match snap
+    match state
         .sessions
-        .get_uri_and_session(&params.text_document_position.text_document.uri)
+        .from_workspace_uri(&params.text_document_position.text_document.uri)
     {
         Ok((uri, session)) => {
             let new_name = params.new_name;
@@ -180,12 +175,12 @@ pub(crate) fn handle_rename(
 }
 
 pub(crate) fn handle_document_highlight(
-    snap: GlobalStateSnapshot,
+    state: &ServerState,
     params: lsp_types::DocumentHighlightParams,
 ) -> Result<Option<Vec<lsp_types::DocumentHighlight>>> {
-    match snap
+    match state
         .sessions
-        .get_uri_and_session(&params.text_document_position_params.text_document.uri)
+        .from_workspace_uri(&params.text_document_position_params.text_document.uri)
     {
         Ok((uri, session)) => {
             let position = params.text_document_position_params.position;
@@ -201,11 +196,12 @@ pub(crate) fn handle_document_highlight(
 }
 
 pub(crate) fn handle_formatting(
-    snap: GlobalStateSnapshot,
+    state: &ServerState,
     params: DocumentFormattingParams,
 ) -> Result<Option<Vec<lsp_types::TextEdit>>> {
-    snap.sessions
-        .get_uri_and_session(&params.text_document.uri)
+    state
+        .sessions
+        .from_workspace_uri(&params.text_document.uri)
         .and_then(|(uri, session)| session.format_text(&uri).map(Some))
         .or_else(|err| {
             tracing::error!("{}", err.to_string());
@@ -214,10 +210,10 @@ pub(crate) fn handle_formatting(
 }
 
 pub(crate) fn handle_code_action(
-    snap: GlobalStateSnapshot,
+    state: &ServerState,
     params: lsp_types::CodeActionParams,
 ) -> Result<Option<lsp_types::CodeActionResponse>> {
-    match snap.sessions.get_uri_and_session(&params.text_document.uri) {
+    match state.sessions.from_workspace_uri(&params.text_document.uri) {
         Ok((temp_uri, session)) => Ok(capabilities::code_actions(
             session,
             &params.range,
@@ -232,11 +228,11 @@ pub(crate) fn handle_code_action(
 }
 
 pub(crate) fn handle_code_lens(
-    snap: GlobalStateSnapshot,
+    state: &ServerState,
     params: lsp_types::CodeLensParams,
 ) -> Result<Option<Vec<CodeLens>>> {
     let mut result = vec![];
-    match snap.sessions.get_uri_and_session(&params.text_document.uri) {
+    match state.sessions.from_workspace_uri(&params.text_document.uri) {
         Ok((_, session)) => {
             // Construct code lenses for runnable functions
             session.runnables.iter().for_each(|item| {
@@ -257,10 +253,10 @@ pub(crate) fn handle_code_lens(
 }
 
 pub(crate) fn handle_semantic_tokens_full(
-    snap: GlobalStateSnapshot,
+    state: &ServerState,
     params: SemanticTokensParams,
 ) -> Result<Option<SemanticTokensResult>> {
-    match snap.sessions.get_uri_and_session(&params.text_document.uri) {
+    match state.sessions.from_workspace_uri(&params.text_document.uri) {
         Ok((uri, session)) => {
             let _ = session.wait_for_parsing();
             Ok(capabilities::semantic_tokens::semantic_tokens_full(
@@ -275,13 +271,13 @@ pub(crate) fn handle_semantic_tokens_full(
 }
 
 pub(crate) fn handle_inlay_hints(
-    snap: GlobalStateSnapshot,
+    state: &ServerState,
     params: InlayHintParams,
 ) -> Result<Option<Vec<InlayHint>>> {
-    match snap.sessions.get_uri_and_session(&params.text_document.uri) {
+    match state.sessions.from_workspace_uri(&params.text_document.uri) {
         Ok((uri, session)) => {
             let _ = session.wait_for_parsing();
-            let config = &snap.config.read().inlay_hints;
+            let config = &state.config.read().inlay_hints;
             Ok(capabilities::inlay_hints::inlay_hints(
                 session,
                 &uri,
@@ -309,10 +305,10 @@ pub(crate) fn handle_inlay_hints(
 /// returned to the client so it can be opened and displayed in a
 /// seperate side panel.
 pub(crate) fn handle_show_ast(
-    snap: GlobalStateSnapshot,
+    state: &ServerState,
     params: lsp_ext::ShowAstParams,
 ) -> Result<Option<TextDocumentIdentifier>> {
-    match snap.sessions.get_uri_and_session(&params.text_document.uri) {
+    match state.sessions.from_workspace_uri(&params.text_document.uri) {
         Ok((_, session)) => {
             let current_open_file = params.text_document.uri;
             // Convert the Uri to a PathBuf

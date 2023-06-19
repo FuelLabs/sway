@@ -4,7 +4,7 @@ mod capabilities;
 pub mod config;
 mod core;
 pub mod error;
-pub mod global_state;
+pub mod server_state;
 mod handlers {
     pub mod notification;
     pub mod request;
@@ -14,19 +14,19 @@ pub mod server;
 mod traverse;
 pub mod utils;
 
-use global_state::GlobalState;
 use lsp_types::{
     CodeActionProviderCapability, CodeLensOptions, CompletionOptions, ExecuteCommandOptions,
     HoverProviderCapability, OneOf, RenameOptions, SemanticTokensFullOptions, SemanticTokensLegend,
     SemanticTokensOptions, ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind,
     WorkDoneProgressOptions,
 };
+use server_state::ServerState;
 use tower_lsp::{LspService, Server};
 
 pub async fn start() {
-    let (service, socket) = LspService::build(GlobalState::new)
-        .custom_method("sway/show_ast", GlobalState::show_ast)
-        .custom_method("textDocument/inlayHint", GlobalState::inlay_hints)
+    let (service, socket) = LspService::build(ServerState::new)
+        .custom_method("sway/show_ast", ServerState::show_ast)
+        .custom_method("textDocument/inlayHint", ServerState::inlay_hints)
         .finish();
     Server::new(tokio::io::stdin(), tokio::io::stdout(), socket)
         .serve(service)
