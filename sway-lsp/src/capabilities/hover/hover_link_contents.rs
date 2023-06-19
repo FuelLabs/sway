@@ -11,8 +11,8 @@ use sway_core::{
     Engines, TypeId, TypeInfo,
 };
 
+use lsp_types::{Range, Url};
 use sway_types::{Span, Spanned};
-use tower_lsp::lsp_types::{Range, Url};
 
 #[derive(Debug, Clone)]
 pub struct RelatedType {

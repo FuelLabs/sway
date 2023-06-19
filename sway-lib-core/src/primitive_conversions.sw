@@ -330,19 +330,19 @@ fn test_u64_to_le_bytes() {
     let x: u64 = 578437695752307201;
     let result = x.to_le_bytes();
 
-    assert(result[0] == 1);
-    assert(result[1] == 2);
-    assert(result[2] == 3);
-    assert(result[3] == 4);
-    assert(result[4] == 5);
-    assert(result[5] == 6);
-    assert(result[6] == 7);
-    assert(result[7] == 8);
+    assert(result[0] == 1_u8);
+    assert(result[1] == 2_u8);
+    assert(result[2] == 3_u8);
+    assert(result[3] == 4_u8);
+    assert(result[4] == 5_u8);
+    assert(result[5] == 6_u8);
+    assert(result[6] == 7_u8);
+    assert(result[7] == 8_u8);
 }
 
 #[test]
 fn test_u64_from_le_bytes() {
-    let bytes = [1, 2, 3, 4, 5, 6, 7, 8];
+    let bytes = [1_u8, 2_u8, 3_u8, 4_u8, 5_u8, 6_u8, 7_u8, 8_u8];
     let result = u64::from_le_bytes(bytes);
 
     assert(result == 578437695752307201);
@@ -353,19 +353,19 @@ fn test_u64_to_be_bytes() {
     let x: u64 = 578437695752307201;
     let result = x.to_be_bytes();
 
-    assert(result[0] == 8);
-    assert(result[1] == 7);
-    assert(result[2] == 6);
-    assert(result[3] == 5);
-    assert(result[4] == 4);
-    assert(result[5] == 3);
-    assert(result[6] == 2);
-    assert(result[7] == 1);
+    assert(result[0] == 8_u8);
+    assert(result[1] == 7_u8);
+    assert(result[2] == 6_u8);
+    assert(result[3] == 5_u8);
+    assert(result[4] == 4_u8);
+    assert(result[5] == 3_u8);
+    assert(result[6] == 2_u8);
+    assert(result[7] == 1_u8);
 }
 
 #[test]
 fn test_u64_from_be_bytes() {
-    let bytes = [8, 7, 6, 5, 4, 3, 2, 1];
+    let bytes = [8_u8, 7_u8, 6_u8, 5_u8, 4_u8, 3_u8, 2_u8, 1_u8];
     let result = u64::from_be_bytes(bytes);
 
     assert(result == 578437695752307201);
@@ -376,18 +376,18 @@ fn test_u32_to_le_bytes() {
     let x: u32 = 67305985;
     let result = x.to_le_bytes();
 
-    assert(result[0] == 1);
-    assert(result[1] == 2);
-    assert(result[2] == 3);
-    assert(result[3] == 4);
+    assert(result[0] == 1_u8);
+    assert(result[1] == 2_u8);
+    assert(result[2] == 3_u8);
+    assert(result[3] == 4_u8);
 }
 
 #[test]
 fn test_u32_from_le_bytes() {
-    let bytes = [1, 2, 3, 4];
+    let bytes = [1_u8, 2_u8, 3_u8, 4_u8];
     let result = u32::from_le_bytes(bytes);
 
-    assert(result == 67305985);
+    assert(result == 67305985_u32);
 }
 
 #[test]
@@ -395,18 +395,18 @@ fn test_u32_to_be_bytes() {
     let x: u32 = 67305985;
     let result = x.to_be_bytes();
 
-    assert(result[0] == 4);
-    assert(result[1] == 3);
-    assert(result[2] == 2);
-    assert(result[3] == 1);
+    assert(result[0] == 4_u8);
+    assert(result[1] == 3_u8);
+    assert(result[2] == 2_u8);
+    assert(result[3] == 1_u8);
 }
 
 #[test]
 fn test_u32_from_be_bytes() {
-    let bytes = [4, 3, 2, 1];
+    let bytes = [4_u8, 3_u8, 2_u8, 1_u8];
     let result = u32::from_be_bytes(bytes);
 
-    assert(result == 67305985);
+    assert(result == 67305985_u32);
 }
 
 #[test]
@@ -414,16 +414,16 @@ fn test_u16_to_le_bytes() {
     let x: u16 = 513;
     let result = x.to_le_bytes();
 
-    assert(result[0] == 1);
-    assert(result[1] == 2);
+    assert(result[0] == 1_u8);
+    assert(result[1] == 2_u8);
 }
 
 #[test]
 fn test_u16_from_le_bytes() {
-    let bytes = [1, 2];
+    let bytes = [1_u8, 2_u8];
     let result = u16::from_le_bytes(bytes);
 
-    assert(result == 513);
+    assert(result == 513_u16);
 }
 
 #[test]
@@ -431,24 +431,24 @@ fn test_u16_to_be_bytes() {
     let x: u16 = 513;
     let result = x.to_be_bytes();
 
-    assert(result[0] == 2);
-    assert(result[1] == 1);
+    assert(result[0] == 2_u8);
+    assert(result[1] == 1_u8);
 }
 
 #[test]
 fn test_u16_from_be_bytes() {
-    let bytes = [2, 1];
+    let bytes = [2_u8, 1_u8];
     let result = u16::from_be_bytes(bytes);
 
-    assert(result == 513);
+    assert(result == 513_u16);
 }
 
 #[test]
 fn test_b256_from_le_bytes() {
-    let bytes = [32, 31, 30, 29, 28, 27, 26, 25, 24, 23,
-                 22, 21, 20, 19, 18, 17, 16, 15, 14, 13,
-                 12, 11, 10, 9, 8, 7, 6, 5, 4, 3,
-                 2, 1];
+    let bytes = [32_u8, 31_u8, 30_u8, 29_u8, 28_u8, 27_u8, 26_u8, 25_u8, 24_u8, 23_u8,
+                 22_u8, 21_u8, 20_u8, 19_u8, 18_u8, 17_u8, 16_u8, 15_u8, 14_u8, 13_u8,
+                 12_u8, 11_u8, 10_u8, 9_u8, 8_u8, 7_u8, 6_u8, 5_u8, 4_u8, 3_u8,
+                 2_u8, 1_u8];
 
     let x = b256::from_le_bytes(bytes);
 
@@ -461,20 +461,20 @@ fn test_b256_to_le_bytes() {
 
     let bytes = x.to_le_bytes();
 
-    let mut i = 0;
-    while i < 32 {
-        assert(bytes[i] == 32 - i);
-        i += 1;
+    let mut i: u8 = 0;
+    while i < 32_u8 {
+        assert(bytes[i] == 32_u8 - i);
+        i += 1_u8;
     }
 
 }
 
 #[test]
 fn test_b256_from_be_bytes() {
-    let bytes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
-                 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-                 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
-                 31, 32];
+    let bytes = [1_u8, 2_u8, 3_u8, 4_u8, 5_u8, 6_u8, 7_u8, 8_u8, 9_u8, 10_u8,
+                 11_u8, 12_u8, 13_u8, 14_u8, 15_u8, 16_u8, 17_u8, 18_u8, 19_u8, 20_u8,
+                 21_u8, 22_u8, 23_u8, 24_u8, 25_u8, 26_u8, 27_u8, 28_u8, 29_u8, 30_u8,
+                 31_u8, 32_u8];
 
     let x = b256::from_be_bytes(bytes);
 
@@ -487,9 +487,9 @@ fn test_b256_to_be_bytes() {
 
     let bytes = x.to_be_bytes();
 
-    let mut i = 0;
-    while i < 32 {
-        assert(bytes[i] == i + 1);
-        i += 1;
+    let mut i: u8 = 0;
+    while i < 32_u8 {
+        assert(bytes[i] == i + 1_u8);
+        i += 1_u8;
     }
 }

@@ -1,8 +1,8 @@
 use crate::core::token::{self, Token, TypedAstToken};
 use dashmap::DashMap;
+use lsp_types::{Position, Url};
 use sway_core::{language::ty, type_system::TypeId, Engines};
 use sway_types::{Ident, SourceEngine, Span, Spanned};
-use tower_lsp::lsp_types::{Position, Url};
 
 // Re-export the TokenMapExt trait.
 pub use crate::core::token_map_ext::TokenMapExt;

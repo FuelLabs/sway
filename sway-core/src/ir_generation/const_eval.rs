@@ -1,7 +1,7 @@
 use std::ops::{BitAnd, BitOr, BitXor};
 
 use crate::{
-    asm_generation::from_ir::ir_type_size_in_bytes,
+    asm_generation::from_ir::{ir_type_size_in_bytes, ir_type_str_size_in_bytes},
     engine_threading::*,
     language::{
         ty::{self, TyConstantDecl, TyIntrinsicFunctionKind},
@@ -618,6 +618,20 @@ fn const_eval_intrinsic(
                 value: ConstantValue::Uint(ir_type_size_in_bytes(lookup.context, &ir_type)),
             }))
         }
+        sway_ast::Intrinsic::SizeOfStr => {
+            let targ = &intrinsic.type_arguments[0];
+            let ir_type = convert_resolved_typeid(
+                lookup.engines.te(),
+                lookup.engines.de(),
+                lookup.context,
+                &targ.type_id,
+                &targ.span,
+            )?;
+            Ok(Some(Constant {
+                ty: Type::get_uint64(lookup.context),
+                value: ConstantValue::Uint(ir_type_str_size_in_bytes(lookup.context, &ir_type)),
+            }))
+        }
         sway_ast::Intrinsic::Eq => {
             assert!(args.len() == 2);
             Ok(Some(Constant {
@@ -649,6 +663,7 @@ fn const_eval_intrinsic(
         sway_ast::Intrinsic::PtrAdd => Ok(None),
         sway_ast::Intrinsic::PtrSub => Ok(None),
         sway_ast::Intrinsic::IsReferenceType
+        | sway_ast::Intrinsic::IsStrType
         | sway_ast::Intrinsic::Gtf
         | sway_ast::Intrinsic::StateClear
         | sway_ast::Intrinsic::StateLoadWord

@@ -1,9 +1,8 @@
+use crate::core::token::get_range_from_span;
+use lsp_types::{Command, Range};
 use serde_json::{json, Value};
 use sway_core::language::parsed::TreeType;
 use sway_types::Span;
-use tower_lsp::lsp_types::{Command, Range};
-
-use crate::core::token::get_range_from_span;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct RunnableMainFn {

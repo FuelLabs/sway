@@ -809,10 +809,10 @@ fn type_check_impl_method(
         (true, true) | (false, false) => (), // no payability mismatch
     }
 
-    if !type_engine
-        .get(impl_method.return_type.type_id)
-        .eq(&type_engine.get(impl_method_signature.return_type), engines)
-    {
+    if !type_engine.get(impl_method.return_type.type_id).eq(
+        &type_engine.get(impl_method_signature.return_type.type_id),
+        engines,
+    ) {
         errors.push(CompileError::MismatchedTypeInInterfaceSurface {
             interface_name: interface_name(),
             span: impl_method.return_type.span.clone(),

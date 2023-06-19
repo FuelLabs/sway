@@ -3,7 +3,7 @@ use crate::{
     ops::forc_contract_id,
 };
 use clap::Parser;
-use forc_util::{ForcResult, Salt};
+use forc_util::{tx_utils::Salt, ForcResult};
 
 /// Determine contract-id for a contract. For workspaces outputs all contract ids in the workspace.
 #[derive(Debug, Parser)]
