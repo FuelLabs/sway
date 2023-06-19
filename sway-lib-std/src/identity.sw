@@ -81,5 +81,5 @@ fn test_contract_id() {
     assert(identity.is_contract_id());
     assert(identity.as_contract_id().unwrap() == contract_id);
     assert(identity.as_address().is_none());
-    assert(identity.value() == BASE_ASSET_ID);
+    assert(identity.value() == ZERO_B256);
 }
