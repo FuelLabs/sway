@@ -99,7 +99,7 @@ pub fn output_asset_id(index: u64) -> Option<ContractId> {
     }
 }
 
-/// If the output's type is `Output::Coin` return the to b256 as an `Some(to)`.
+/// If the output's type is `Output::Coin` return the b256 as `Some(to)`.
 /// Otherwise, returns `None`.
 /// TODO: Update to `Identity` when https://github.com/FuelLabs/sway/issues/4569 is resolved
 pub fn output_asset_to(index: u64) -> Option<b256> {

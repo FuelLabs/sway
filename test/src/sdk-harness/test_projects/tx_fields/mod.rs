@@ -147,24 +147,33 @@ async fn add_message_input(tx: &mut ScriptTransaction, wallet: WalletUnlocked) {
     tx.tx.inputs_mut().push(message_input);
 }
 
-async fn get_output_predicate() -> (WalletUnlocked, Predicate, AssetId) {
-    let asset_id = AssetId::default();
+async fn setup_output_predicate() -> (WalletUnlocked, WalletUnlocked, Predicate, AssetId, AssetId) {
+    let asset_id1 = AssetId::default();
+    let asset_id2 = AssetId::new([2u8; 32]);
     let wallets_config = WalletsConfig::new_multiple_assets(
-        1,
-        vec![AssetConfig {
-            id: asset_id,
-            num_coins: 1,
-            coin_amount: 1_000,
-        }],
+        2,
+        vec![
+            AssetConfig {
+                id: asset_id1,
+                num_coins: 1,
+                coin_amount: 1_000,
+            },
+            AssetConfig {
+                id: asset_id2,
+                num_coins: 1,
+                coin_amount: 1_000,
+            },
+        ],
     );
 
     let mut wallets = launch_custom_provider_and_get_wallets(wallets_config, None, None).await;
-    let wallet = wallets.pop().unwrap();
+    let wallet1 = wallets.pop().unwrap();
+    let wallet2 = wallets.pop().unwrap();
 
     let predicate_data = TestOutputPredicateEncoder::encode_data(
         0,
         ContractId::zeroed(),
-        Bits256(*wallet.address().hash()),
+        Bits256(*wallet1.address().hash()),
     );
 
     let predicate = Predicate::load_from(
@@ -172,14 +181,19 @@ async fn get_output_predicate() -> (WalletUnlocked, Predicate, AssetId) {
     )
     .unwrap()
     .with_data(predicate_data)
-    .with_provider(wallet.try_provider().unwrap().clone());
+    .with_provider(wallet1.try_provider().unwrap().clone());
 
-    wallet
-        .transfer(predicate.address(), 100, asset_id, TxParameters::default())
+    wallet1
+        .transfer(predicate.address(), 100, asset_id1, TxParameters::default())
         .await
         .unwrap();
 
-    (wallet, predicate, asset_id)
+    wallet1
+        .transfer(predicate.address(), 100, asset_id2, TxParameters::default())
+        .await
+        .unwrap();
+
+    (wallet1, wallet2, predicate, asset_id1, asset_id2)
 }
 
 mod tx {
@@ -769,18 +783,24 @@ mod outputs {
 
         #[tokio::test]
         async fn can_get_tx_output_details() {
-            let (wallet, predicate, asset_id) = get_output_predicate().await;
+            let (wallet, _, predicate, asset_id, _) = setup_output_predicate().await;
 
             let balance = predicate.get_asset_balance(&asset_id).await.unwrap();
 
+            let transfer_amount = 10;
             predicate
-                .transfer(wallet.address(), 10, asset_id, TxParameters::default())
+                .transfer(
+                    wallet.address(),
+                    transfer_amount,
+                    asset_id,
+                    TxParameters::default(),
+                )
                 .await
                 .unwrap();
 
             let new_balance = predicate.get_asset_balance(&asset_id).await.unwrap();
 
-            assert!(balance - 10 == new_balance);
+            assert!(balance - transfer_amount == new_balance);
         }
     }
 
@@ -801,6 +821,40 @@ mod outputs {
                     .await
                     .unwrap();
             }
+        }
+
+        #[tokio::test]
+        #[should_panic]
+        async fn fails_output_predicate_when_incorrect_asset() {
+            let (wallet1, _, predicate, _, asset_id) = setup_output_predicate().await;
+
+            let transfer_amount = 10;
+            predicate
+                .transfer(
+                    wallet1.address(),
+                    transfer_amount,
+                    asset_id,
+                    TxParameters::default(),
+                )
+                .await
+                .unwrap();
+        }
+
+        #[tokio::test]
+        #[should_panic]
+        async fn fails_output_predicate_when_incorrect_to() {
+            let (_, wallet2, predicate, asset_id1, _) = setup_output_predicate().await;
+
+            let transfer_amount = 10;
+            predicate
+                .transfer(
+                    wallet2.address(),
+                    transfer_amount,
+                    asset_id1,
+                    TxParameters::default(),
+                )
+                .await
+                .unwrap();
         }
     }
 }
