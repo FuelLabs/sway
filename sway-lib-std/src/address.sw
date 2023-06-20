@@ -95,7 +95,6 @@ impl Address {
         asm(r1: amount) {
             mint r1;
         };
-        // transfer_to_address(amount, contract_id(), to);
         self.transfer(amount, contract_id());
     }
 }
