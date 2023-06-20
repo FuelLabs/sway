@@ -4,6 +4,9 @@ library;
 use ::call_frames::contract_id;
 use ::contract_id::{AssetId};
 use ::convert::From;
+use ::error_signals::FAILED_TRANSFER_TO_ADDRESS_SIGNAL;
+use ::revert::revert;
+use ::outputs::{Output, output_amount, output_count, output_type};
 
 /// The `Address` type, a struct wrapper around the inner `b256` value.
 pub struct Address {
