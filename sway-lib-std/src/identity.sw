@@ -53,13 +53,6 @@ impl Identity {
             Identity::ContractId(_) => true,
         }
     }
-
-    pub fn value(self) -> b256 {
-        match self {
-            Identity::Address(address) => address.value,
-            Identity::ContractId(contract_id) => contract_id.value,
-        }
-    }
 }
 
 #[test]
@@ -70,7 +63,6 @@ fn test_address() {
     assert(!identity.is_contract_id());
     assert(identity.as_address().unwrap() == address);
     assert(identity.as_contract_id().is_none());
-    assert(identity.value() == ZERO_B256);
 }
 
 #[test]
@@ -81,5 +73,4 @@ fn test_contract_id() {
     assert(identity.is_contract_id());
     assert(identity.as_contract_id().unwrap() == contract_id);
     assert(identity.as_address().is_none());
-    assert(identity.value() == ZERO_B256);
 }
