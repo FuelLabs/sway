@@ -5,6 +5,7 @@ use fuel_vm::fuel_tx::{
 use fuels::{
     accounts::{predicate::Predicate, wallet::WalletUnlocked, Account},
     prelude::*,
+    types::Bits256,
 };
 use std::str::FromStr;
 
@@ -146,8 +147,7 @@ async fn add_message_input(tx: &mut ScriptTransaction, wallet: WalletUnlocked) {
     tx.tx.inputs_mut().push(message_input);
 }
 
-
-async fn get_output_predicate() -> (WalletUnlocked, Predicate) {
+async fn get_output_predicate() -> (WalletUnlocked, Predicate, AssetId) {
     let asset_id = AssetId::default();
     let wallets_config = WalletsConfig::new_multiple_assets(
         1,
@@ -158,32 +158,30 @@ async fn get_output_predicate() -> (WalletUnlocked, Predicate) {
         }],
     );
 
-    let wallets = launch_custom_provider_and_get_wallets(wallets_config, None, None).await;
-    let wallet = wallets.pop();
-    
-    let predicate_data = TestOutputPredicate::encode_data(
+    let mut wallets = launch_custom_provider_and_get_wallets(wallets_config, None, None).await;
+    let wallet = wallets.pop().unwrap();
+
+    let predicate_data = TestOutputPredicateEncoder::encode_data(
         0,
-        ContractId::zeroed,
-        wallet.address()
+        ContractId::zeroed(),
+        Bits256(*wallet.address().hash()),
     );
-    
-    let predicate = Predicate::load_from("test_artifacts/tx_output_predicate/out/debug/tx_output_predicate.bin")
-        .unwrap()
-        .with_data(predicate_data)
-        .with_provider(wallet1.try_provider().unwrap().clone());
+
+    let predicate = Predicate::load_from(
+        "test_artifacts/tx_output_predicate/out/debug/tx_output_predicate.bin",
+    )
+    .unwrap()
+    .with_data(predicate_data)
+    .with_provider(wallet.try_provider().unwrap().clone());
 
     wallet
-        .transfer(
-            predicate.address(),
-            100,
-            asset_id,
-            TxParameters::default(),
-        )
+        .transfer(predicate.address(), 100, asset_id, TxParameters::default())
         .await
         .unwrap();
 
-    (wallet, predicate)
+    (wallet, predicate, asset_id)
 }
+
 mod tx {
     use super::*;
 
@@ -773,25 +771,14 @@ mod outputs {
         async fn can_get_tx_output_details() {
             let (wallet, predicate, asset_id) = get_output_predicate().await;
 
-            let balance = predicate
-                .get_asset_balance(&asset_id)
-                .await
-                .unwrap();
+            let balance = predicate.get_asset_balance(&asset_id).await.unwrap();
 
             predicate
-                .transfer(
-                    wallet.address(),
-                    10,
-                    asset_id,
-                    TxParameters::default(),
-                )
+                .transfer(wallet.address(), 10, asset_id, TxParameters::default())
                 .await
                 .unwrap();
 
-            let new_balance = predicate
-                .get_asset_balance(&asset_id)
-                .await
-                .unwrap();
+            let new_balance = predicate.get_asset_balance(&asset_id).await.unwrap();
 
             assert!(balance - 10 == new_balance);
         }
