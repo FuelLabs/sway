@@ -16,7 +16,7 @@ the address <code>to</code>.</p>
 <pre><code class="language-sway">use std::{constants::{BASE_ASSET_ID, ZERO_B256}, token::transfer_to_address};
 
 // replace the zero Address with your desired Address
-let to_address = Identity::Address(Address::from(ZERO_B256));
+let to_address = Address::from(ZERO_B256);
 transfer_to_address(500, BASE_ASSET_ID, to_address);
 </code></pre>
 </div></details></section></div></main><script src="../../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>

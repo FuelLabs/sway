@@ -21,7 +21,7 @@ to the <strong><em>PERMANENT LOSS OF COINS</em></strong> if not used with care.<
 <pre><code class="language-sway">use std::{constants::{BASE_ASSET_ID, ZERO_B256}, token::force_transfer_to_contract};
 
 // replace the zero ContractId with your desired ContractId
-let to_contract_id = Identity::ContractId(ContractId::from(ZERO_B256));
+let to_contract_id = ContractId::from(ZERO_B256);
 force_transfer_to_contract(500, BASE_ASSET_ID, to_contract_id);
 </code></pre>
 </div></details></section></div></main><script src="../../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>
