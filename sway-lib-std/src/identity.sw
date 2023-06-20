@@ -53,7 +53,7 @@ impl Identity {
             Identity::ContractId(_) => true,
         }
     }
-
+  
     /// Transfer `amount` coins of the type `asset_id` and send them
     /// to the Identity.
     ///
