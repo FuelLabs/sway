@@ -4,7 +4,7 @@ The `assert_eq` function is automatically imported into every program from the [
 
 ## Example
 
-Here is a function which asserts that `a` & `b` must be equal.
+Here is a function which asserts that `a` and `b` must be equal.
 
 ```sway
 {{#include ../../../code/operations/assertions/src/lib.sw:assert_eq}}
