@@ -197,6 +197,7 @@ pub struct DependencyDetails {
     pub(crate) tag: Option<String>,
     pub(crate) package: Option<String>,
     pub(crate) rev: Option<String>,
+    pub(crate) ipfs: Option<String>,
 }
 
 /// Parameters to pass through to the `sway_core::BuildConfig` during compilation.
@@ -1021,10 +1022,17 @@ mod tests {
             tag: None,
             package: None,
             rev: None,
+            ipfs: None,
         };
 
         let dependency_details_branch = DependencyDetails {
             path: None,
+            ..dependency_details_path_branch.clone()
+        };
+
+        let dependency_details_ipfs_branch = DependencyDetails {
+            path: None,
+            ipfs: Some("QmVxgEbiDDdHpG9AesCpZAqNvHYp1P3tWLFdrpUBWPMBcc".to_string()),
             ..dependency_details_path_branch.clone()
         };
 
@@ -1036,11 +1044,18 @@ mod tests {
             tag: Some("v0.1.0".to_string()),
             package: None,
             rev: None,
+            ipfs: None,
         };
 
         let dependency_details_tag = DependencyDetails {
             path: None,
             ..dependency_details_path_tag.clone()
+        };
+
+        let dependency_details_ipfs_tag = DependencyDetails {
+            path: None,
+            ipfs: Some("QmVxgEbiDDdHpG9AesCpZAqNvHYp1P3tWLFdrpUBWPMBcc".to_string()),
+            ..dependency_details_path_branch.clone()
         };
 
         let dependency_details_path_rev = DependencyDetails {
@@ -1050,6 +1065,7 @@ mod tests {
             branch: None,
             tag: None,
             package: None,
+            ipfs: None,
             rev: Some("9f35b8e".to_string()),
         };
 
@@ -1058,9 +1074,22 @@ mod tests {
             ..dependency_details_path_rev.clone()
         };
 
+        let dependency_details_ipfs_rev = DependencyDetails {
+            path: None,
+            ipfs: Some("QmVxgEbiDDdHpG9AesCpZAqNvHYp1P3tWLFdrpUBWPMBcc".to_string()),
+            ..dependency_details_path_branch.clone()
+        };
+
         let expected_mismatch_error = "Details reserved for git sources used without a git field";
         assert_eq!(
             dependency_details_path_branch
+                .validate()
+                .err()
+                .map(|e| e.to_string()),
+            Some(expected_mismatch_error.to_string())
+        );
+        assert_eq!(
+            dependency_details_ipfs_branch
                 .validate()
                 .err()
                 .map(|e| e.to_string()),
@@ -1074,7 +1103,21 @@ mod tests {
             Some(expected_mismatch_error.to_string())
         );
         assert_eq!(
+            dependency_details_ipfs_tag
+                .validate()
+                .err()
+                .map(|e| e.to_string()),
+            Some(expected_mismatch_error.to_string())
+        );
+        assert_eq!(
             dependency_details_path_rev
+                .validate()
+                .err()
+                .map(|e| e.to_string()),
+            Some(expected_mismatch_error.to_string())
+        );
+        assert_eq!(
+            dependency_details_ipfs_rev
                 .validate()
                 .err()
                 .map(|e| e.to_string()),
@@ -1113,6 +1156,7 @@ mod tests {
             tag: None,
             package: None,
             rev: None,
+            ipfs: None,
         };
 
         let git_source_string = "https://github.com/FuelLabs/sway".to_string();
@@ -1124,6 +1168,7 @@ mod tests {
             tag: Some("v0.1.0".to_string()),
             package: None,
             rev: None,
+            ipfs: None,
         };
         let dependency_details_git_branch = DependencyDetails {
             version: None,
@@ -1133,6 +1178,7 @@ mod tests {
             tag: None,
             package: None,
             rev: None,
+            ipfs: None,
         };
         let dependency_details_git_rev = DependencyDetails {
             version: None,
@@ -1142,11 +1188,24 @@ mod tests {
             tag: None,
             package: None,
             rev: Some("9f35b8e".to_string()),
+            ipfs: None,
+        };
+
+        let dependency_details_ipfs = DependencyDetails {
+            version: None,
+            path: None,
+            git: None,
+            branch: None,
+            tag: None,
+            package: None,
+            rev: None,
+            ipfs: Some("QmVxgEbiDDdHpG9AesCpZAqNvHYp1P3tWLFdrpUBWPMBcc".to_string()),
         };
 
         assert!(dependency_details_path.validate().is_ok());
         assert!(dependency_details_git_tag.validate().is_ok());
         assert!(dependency_details_git_branch.validate().is_ok());
         assert!(dependency_details_git_rev.validate().is_ok());
+        assert!(dependency_details_ipfs.validate().is_ok());
     }
 }
