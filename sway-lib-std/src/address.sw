@@ -2,6 +2,7 @@
 library;
 
 use ::call_frames::contract_id;
+use ::contract_id::{AssetId};
 use ::convert::From;
 
 /// The `Address` type, a struct wrapper around the inner `b256` value.

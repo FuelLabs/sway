@@ -5,7 +5,7 @@ library;
 use ::assert::assert;
 use ::address::Address;
 use ::constants::{ZERO_B256, BASE_ASSET_ID};
-use ::contract_id::ContractId;
+use ::contract_id::{AssetId, ContractId};
 use ::option::Option;
 
 /// The `Identity` type: either an `Address` or a `ContractId`.
