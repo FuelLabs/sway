@@ -19,8 +19,8 @@ pub enum Identity {
 impl core::ops::Eq for Identity {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
-            (Identity::Address(address1), Identity::Address(address2)) => address1 == address2,
-            (Identity::ContractId(asset1), Identity::ContractId(asset2)) => asset1 == asset2,
+            (Identity::Address(addr1), Identity::Address(addr2)) => addr1 == addr2,
+            (Identity::ContractId(id1), Identity::ContractId(id2)) => id1 == id2,
             _ => false,
         }
     }
@@ -29,7 +29,7 @@ impl core::ops::Eq for Identity {
 impl Identity {
     pub fn as_address(self) -> Option<Address> {
         match self {
-            Identity::Address(address) => Option::Some(address),
+            Identity::Address(addr) => Option::Some(addr),
             Identity::ContractId(_) => Option::None,
         }
     }
@@ -37,7 +37,7 @@ impl Identity {
     pub fn as_contract_id(self) -> Option<ContractId> {
         match self {
             Identity::Address(_) => Option::None,
-            Identity::ContractId(contract_id) => Option::Some(contract_id),
+            Identity::ContractId(id) => Option::Some(id),
         }
     }
 
@@ -87,7 +87,7 @@ impl Identity {
     /// to_contract_id.transfer(500, BASE_ASSET_ID);
     /// ```
     pub fn transfer(self, amount: u64, asset_id: AssetId) {
-        match to {
+        match self {
             Identity::Address(addr) => addr.transfer(amount, asset_id),
             Identity::ContractId(id) => id.transfer(amount, asset_id),
         };
