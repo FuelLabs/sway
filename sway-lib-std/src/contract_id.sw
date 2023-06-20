@@ -1,7 +1,6 @@
 //! A wrapper around the `b256` type to help enhance type-safety.
 library;
 
-use ::call_frames::contract_id;
 use ::convert::From;
 
 /// The `ContractId` type, a struct wrapper around the inner `b256` value.
@@ -90,7 +89,7 @@ impl ContractId {
         asm(r1: amount) {
             mint r1;
         };
-        self.transfer(amount, contract_id());
+        self.transfer(amount, ContractId::from(asm() { fp: b256 })); // Transfer the self contract token
     }
 }
 
