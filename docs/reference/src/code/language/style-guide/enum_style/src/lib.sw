@@ -1,5 +1,6 @@
 library;
 
+// ANCHOR: style_enums
 pub enum Error {
     StateError: StateError,
     UserError: UserError,
@@ -15,6 +16,7 @@ pub enum UserError {
     InsufficientPermissions: (),
     Unauthorized: (),
 }
+// ANCHOR_END: style_enums
 
 fn preferred() {
     // ANCHOR: use

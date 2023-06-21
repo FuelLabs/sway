@@ -27,6 +27,7 @@ members = [
   "language/style-guide/annotation_style",
   "language/style-guide/enum_style",
   "language/style-guide/letter_casing",
+  "language/style-guide/pattern_matching",
   "language/style-guide/struct_shorthand",
   "language/style-guide/intermediate_variables",
   "language/traits/associated-consts",

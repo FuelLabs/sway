@@ -1,5 +1,6 @@
 use crate::ops::forc_check;
 use clap::Parser;
+use forc_pkg::source::IPFSNode;
 use forc_util::{forc_result_bail, ForcResult};
 use sway_core::{BuildTarget, Engines};
 
@@ -29,6 +30,11 @@ pub struct Command {
     /// Disable checking unit tests.
     #[clap(long = "disable-tests")]
     pub disable_tests: bool,
+    /// The IPFS Node to use for fetching IPFS sources.
+    ///
+    /// Possible values: PUBLIC, LOCAL, <GATEWAY_URL>
+    #[clap(long)]
+    pub ipfs_node: Option<IPFSNode>,
 }
 
 pub(crate) fn exec(command: Command) -> ForcResult<()> {
