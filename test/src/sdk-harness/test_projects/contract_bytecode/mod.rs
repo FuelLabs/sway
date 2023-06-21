@@ -1,5 +1,5 @@
 use fuel_vm::fuel_tx::Contract as FuelsTxContract;
-use fuels::{prelude::*, types::Bits256};
+use fuels::{accounts::wallet::WalletUnlocked, prelude::*, types::Bits256};
 
 abigen!(Contract(
     name = "ContractBytecodeTest",

@@ -1,7 +1,7 @@
 use crate::{
     lock::Lock,
     manifest::{BuildProfile, Dependency, ManifestFile, MemberManifestFiles, PackageManifestFile},
-    source::{self, Source},
+    source::{self, IPFSNode, Source},
     CORE, PRELUDE, STD,
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
@@ -240,6 +240,8 @@ pub struct PkgOpts {
     pub output_directory: Option<String>,
     /// Outputs json abi with callpath instead of struct and enum names.
     pub json_abi_with_callpaths: bool,
+    /// The IPFS node to be used for fetching IPFS sources.
+    pub ipfs_node: IPFSNode,
 }
 
 #[derive(Default, Clone)]
@@ -584,18 +586,29 @@ impl BuildPlan {
             &member_manifests,
             build_options.pkg.locked,
             build_options.pkg.offline,
+            build_options.pkg.ipfs_node.clone(),
         )
     }
 
     /// Create a new build plan for the project by fetching and pinning all dependenies.
     ///
     /// To account for an existing lock file, use `from_lock_and_manifest` instead.
-    pub fn from_manifests(manifests: &MemberManifestFiles, offline: bool) -> Result<Self> {
+    pub fn from_manifests(
+        manifests: &MemberManifestFiles,
+        offline: bool,
+        ipfs_node: IPFSNode,
+    ) -> Result<Self> {
         // Check toolchain version
         validate_version(manifests)?;
         let mut graph = Graph::default();
         let mut manifest_map = ManifestMap::default();
-        fetch_graph(manifests, offline, &mut graph, &mut manifest_map)?;
+        fetch_graph(
+            manifests,
+            offline,
+            &ipfs_node,
+            &mut graph,
+            &mut manifest_map,
+        )?;
         // Validate the graph, since we constructed the graph from scratch the paths will not be a
         // problem but the version check is still needed
         validate_graph(&graph, manifests)?;
@@ -628,6 +641,7 @@ impl BuildPlan {
         manifests: &MemberManifestFiles,
         locked: bool,
         offline: bool,
+        ipfs_node: IPFSNode,
     ) -> Result<Self> {
         // Check toolchain version
         validate_version(manifests)?;
@@ -667,7 +681,13 @@ impl BuildPlan {
         let mut manifest_map = graph_to_manifest_map(manifests, &graph)?;
 
         // Attempt to fetch the remainder of the graph.
-        let _added = fetch_graph(manifests, offline, &mut graph, &mut manifest_map)?;
+        let _added = fetch_graph(
+            manifests,
+            offline,
+            &ipfs_node,
+            &mut graph,
+            &mut manifest_map,
+        )?;
 
         // Determine the compilation order.
         let compilation_order = compilation_order(&graph)?;
@@ -1294,7 +1314,10 @@ fn find_path_root(graph: &Graph, mut node: NodeIx) -> Result<NodeIx> {
                     })?;
                 node = parent;
             }
-            source::Pinned::Git(_) | source::Pinned::Registry(_) | source::Pinned::Member(_) => {
+            source::Pinned::Git(_)
+            | source::Pinned::Ipfs(_)
+            | source::Pinned::Member(_)
+            | source::Pinned::Registry(_) => {
                 return Ok(node);
             }
         }
@@ -1311,6 +1334,7 @@ fn find_path_root(graph: &Graph, mut node: NodeIx) -> Result<NodeIx> {
 fn fetch_graph(
     member_manifests: &MemberManifestFiles,
     offline: bool,
+    ipfs_node: &IPFSNode,
     graph: &mut Graph,
     manifest_map: &mut ManifestMap,
 ) -> Result<HashSet<NodeIx>> {
@@ -1319,6 +1343,7 @@ fn fetch_graph(
         added_nodes.extend(&fetch_pkg_graph(
             member_pkg_manifest,
             offline,
+            ipfs_node,
             graph,
             manifest_map,
             member_manifests,
@@ -1344,6 +1369,7 @@ fn fetch_graph(
 fn fetch_pkg_graph(
     proj_manifest: &PackageManifestFile,
     offline: bool,
+    ipfs_node: &IPFSNode,
     graph: &mut Graph,
     manifest_map: &mut ManifestMap,
     member_manifests: &MemberManifestFiles,
@@ -1378,6 +1404,7 @@ fn fetch_pkg_graph(
     fetch_deps(
         fetch_id,
         offline,
+        ipfs_node,
         proj_node,
         path_root,
         graph,
@@ -1395,6 +1422,7 @@ fn fetch_pkg_graph(
 fn fetch_deps(
     fetch_id: u64,
     offline: bool,
+    ipfs_node: &IPFSNode,
     node: NodeIx,
     path_root: PinnedId,
     graph: &mut Graph,
@@ -1443,6 +1471,7 @@ fn fetch_deps(
                     path_root,
                     name: &pkg.name,
                     offline,
+                    ipfs_node,
                 };
                 let source = pkg.source.pin(ctx, manifest_map)?;
                 let name = pkg.name.clone();
@@ -1475,9 +1504,10 @@ fn fetch_deps(
         })?;
 
         let path_root = match dep_pinned.source {
-            source::Pinned::Member(_) | source::Pinned::Git(_) | source::Pinned::Registry(_) => {
-                dep_pkg_id
-            }
+            source::Pinned::Member(_)
+            | source::Pinned::Git(_)
+            | source::Pinned::Ipfs(_)
+            | source::Pinned::Registry(_) => dep_pkg_id,
             source::Pinned::Path(_) => path_root,
         };
 
@@ -1485,6 +1515,7 @@ fn fetch_deps(
         added.extend(fetch_deps(
             fetch_id,
             offline,
+            ipfs_node,
             dep_node,
             path_root,
             graph,
@@ -2718,8 +2749,14 @@ fn test_root_pkg_order() {
     let manifest_file = ManifestFile::from_dir(&manifest_dir).unwrap();
     let member_manifests = manifest_file.member_manifests().unwrap();
     let lock_path = manifest_file.lock_path().unwrap();
-    let build_plan =
-        BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, false, false).unwrap();
+    let build_plan = BuildPlan::from_lock_and_manifests(
+        &lock_path,
+        &member_manifests,
+        false,
+        false,
+        Default::default(),
+    )
+    .unwrap();
     let graph = build_plan.graph();
     let order: Vec<String> = build_plan
         .member_nodes()
