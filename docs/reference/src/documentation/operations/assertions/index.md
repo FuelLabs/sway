@@ -12,3 +12,4 @@ Handling exceptions may be done through [if expressions](../../language/control-
 - [`assert`](assert.md): Checks if a `condition` is `true` otherwise reverts
 - [`require`](require.md): Checks if a `condition` is `true` otherwise logs a `value` and reverts
 - [`revert`](revert.md): Reverts the virtual machine with the provided exit code
+- [`assert_eq`](assert-eq.md): Checks if `a` and `b` are equal otherwise reverts
