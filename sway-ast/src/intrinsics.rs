@@ -3,8 +3,10 @@ use std::fmt;
 #[derive(Eq, PartialEq, Debug, Clone, Hash)]
 pub enum Intrinsic {
     IsReferenceType,
+    IsStrType,
     SizeOfType,
     SizeOfVal,
+    SizeOfStr,
     Eq,
     Gt,
     Lt,
@@ -36,8 +38,10 @@ impl fmt::Display for Intrinsic {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let s = match self {
             Intrinsic::IsReferenceType => "is_reference_type",
+            Intrinsic::IsStrType => "is_str_type",
             Intrinsic::SizeOfType => "size_of",
             Intrinsic::SizeOfVal => "size_of_val",
+            Intrinsic::SizeOfStr => "size_of_str",
             Intrinsic::Eq => "eq",
             Intrinsic::Gt => "gt",
             Intrinsic::Lt => "lt",
@@ -73,8 +77,10 @@ impl Intrinsic {
         use Intrinsic::*;
         Some(match raw {
             "__is_reference_type" => IsReferenceType,
+            "__is_str_type" => IsStrType,
             "__size_of" => SizeOfType,
             "__size_of_val" => SizeOfVal,
+            "__size_of_str" => SizeOfStr,
             "__eq" => Eq,
             "__gt" => Gt,
             "__lt" => Lt,
