@@ -17,10 +17,28 @@ enum Hash {
     Keccak256,
 }
 
+fn hash_u8(number: u8, algorithm: Hash) -> [u8; 32] {
+    match algorithm {
+        Hash::Sha256 => Sha256::digest(number.to_be_bytes()).into(),
+        Hash::Keccak256 => Keccak256::digest(number.to_be_bytes()).into(),
+    }
+}
+
+fn hash_u16(number: u16, algorithm: Hash) -> [u8; 32] {
+    match algorithm {
+        Hash::Sha256 => Sha256::digest(number.to_be_bytes()).into(),
+        Hash::Keccak256 => Keccak256::digest(number.to_be_bytes()).into(),
+    }
+}
+
+fn hash_u32(number: u32, algorithm: Hash) -> [u8; 32] {
+    match algorithm {
+        Hash::Sha256 => Sha256::digest(number.to_be_bytes()).into(),
+        Hash::Keccak256 => Keccak256::digest(number.to_be_bytes()).into(),
+    }
+}
+
 fn hash_u64(number: u64, algorithm: Hash) -> [u8; 32] {
-    // Note!
-    // Numbers will be padded into u64 in sway regardless of whether you declare a smaller type
-    // Therefore tests pass because we use a rust u64 type rather than any smaller type
     match algorithm {
         Hash::Sha256 => Sha256::digest(number.to_be_bytes()).into(),
         Hash::Keccak256 => Keccak256::digest(number.to_be_bytes()).into(),
@@ -31,16 +49,16 @@ fn hash_bool(value: bool, algorithm: Hash) -> [u8; 32] {
     let hash = match algorithm {
         Hash::Sha256 => {
             if value {
-                Sha256::digest([0, 0, 0, 0, 0, 0, 0, 1])
+                Sha256::digest([1])
             } else {
-                Sha256::digest([0, 0, 0, 0, 0, 0, 0, 0])
+                Sha256::digest([0])
             }
         }
         Hash::Keccak256 => {
             if value {
-                Keccak256::digest([0, 0, 0, 0, 0, 0, 0, 1])
+                Keccak256::digest([1])
             } else {
-                Keccak256::digest([0, 0, 0, 0, 0, 0, 0, 0])
+                Keccak256::digest([0])
             }
         }
     };
@@ -67,10 +85,10 @@ fn hash_b256(arr: [u8; 32], algorithm: Hash) -> [u8; 32] {
     }
 }
 
-fn hash_tuple(arr: [u8; 16], algorithm: Hash) -> [u8; 32] {
+fn hash_tuple(arr: [u8; 9], algorithm: Hash) -> [u8; 32] {
     // A tuple is hashed by converting each element into bytes and then combining them together
     // in the sequential order that they are in the tuple
-    // E.g. (true, 5) -> [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5]
+    // E.g. (true, 5) -> [1, 0, 0, 0, 0, 0, 0, 0, 5]
     match algorithm {
         Hash::Sha256 => Sha256::digest(arr).into(),
         Hash::Keccak256 => Keccak256::digest(arr).into(),
@@ -87,7 +105,7 @@ fn hash_array(arr: [u8; 16], algorithm: Hash) -> [u8; 32] {
     }
 }
 
-fn hash_enum(arr: [u8; 8], algorithm: Hash) -> [u8; 32] {
+fn hash_enum(arr: [u8; 1], algorithm: Hash) -> [u8; 32] {
     /*
         Enums are encoded in the following format:
         1. Encode the discriminant (the variant tag)
@@ -103,13 +121,13 @@ fn hash_enum(arr: [u8; 8], algorithm: Hash) -> [u8; 32] {
         }
 
         arr of Test::A will be
-        [0, 0, 0, 0, 0, 0, 0, 0]
+        [0]
 
         arr of Test::B will be
-        [0, 0, 0, 0, 0, 0, 0, 1]
+        [1]
 
         arr of Test::C will be
-        [0, 0, 0, 0, 0, 0, 0, 2]
+        [2]
     */
     match algorithm {
         Hash::Sha256 => Sha256::digest(arr).into(),
@@ -117,7 +135,7 @@ fn hash_enum(arr: [u8; 8], algorithm: Hash) -> [u8; 32] {
     }
 }
 
-fn hash_struct(arr: [u8; 80], algorithm: Hash) -> [u8; 32] {
+fn hash_struct(arr: [u8; 55], algorithm: Hash) -> [u8; 32] {
     match algorithm {
         Hash::Sha256 => Sha256::digest(arr).into(),
         Hash::Keccak256 => Keccak256::digest(arr).into(),
@@ -148,8 +166,8 @@ mod sha256 {
     async fn test_u8() {
         let (instance, _id) = get_hashing_instance().await;
 
-        let expected_1 = Bits256(hash_u64(254, Hash::Sha256));
-        let expected_2 = Bits256(hash_u64(253, Hash::Sha256));
+        let expected_1 = Bits256(hash_u8(254, Hash::Sha256));
+        let expected_2 = Bits256(hash_u8(253, Hash::Sha256));
 
         let call_1 = instance.methods().sha256_u8(254u8).call().await.unwrap();
         let call_2 = instance.methods().sha256_u8(254u8).call().await.unwrap();
@@ -166,8 +184,8 @@ mod sha256 {
     async fn test_u16() {
         let (instance, _id) = get_hashing_instance().await;
 
-        let expected_1 = Bits256(hash_u64(65534, Hash::Sha256));
-        let expected_2 = Bits256(hash_u64(65533, Hash::Sha256));
+        let expected_1 = Bits256(hash_u16(65534, Hash::Sha256));
+        let expected_2 = Bits256(hash_u16(65533, Hash::Sha256));
 
         let call_1 = instance
             .methods()
@@ -199,8 +217,8 @@ mod sha256 {
     async fn test_u32() {
         let (instance, _id) = get_hashing_instance().await;
 
-        let expected_1 = Bits256(hash_u64(4294967294, Hash::Sha256));
-        let expected_2 = Bits256(hash_u64(4294967293, Hash::Sha256));
+        let expected_1 = Bits256(hash_u32(4294967294, Hash::Sha256));
+        let expected_2 = Bits256(hash_u32(4294967293, Hash::Sha256));
 
         let call_1 = instance
             .methods()
@@ -358,14 +376,8 @@ mod sha256 {
     async fn test_tuple() {
         let (instance, _id) = get_hashing_instance().await;
 
-        let expected_1 = Bits256(hash_tuple(
-            [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5],
-            Hash::Sha256,
-        ));
-        let expected_2 = Bits256(hash_tuple(
-            [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6],
-            Hash::Sha256,
-        ));
+        let expected_1 = Bits256(hash_tuple([1, 0, 0, 0, 0, 0, 0, 0, 5], Hash::Sha256));
+        let expected_2 = Bits256(hash_tuple([1, 0, 0, 0, 0, 0, 0, 0, 6], Hash::Sha256));
 
         let call_1 = instance
             .methods()
@@ -421,8 +433,8 @@ mod sha256 {
     async fn test_enum() {
         let (instance, _id) = get_hashing_instance().await;
 
-        let expected_1 = Bits256(hash_enum([0, 0, 0, 0, 0, 0, 0, 0], Hash::Sha256));
-        let expected_2 = Bits256(hash_enum([0, 0, 0, 0, 0, 0, 0, 1], Hash::Sha256));
+        let expected_1 = Bits256(hash_enum([0], Hash::Sha256));
+        let expected_2 = Bits256(hash_enum([1], Hash::Sha256));
 
         let call_1 = instance.methods().sha256_enum(true).call().await.unwrap();
         let call_2 = instance.methods().sha256_enum(true).call().await.unwrap();
@@ -441,17 +453,17 @@ mod sha256 {
 
         let expected_1 = Bits256(hash_struct(
             [
-                74, 111, 104, 110, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 18, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
+                74, 111, 104, 110, 18, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 9, 1, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0,
             ],
             Hash::Sha256,
         ));
         let expected_2 = Bits256(hash_struct(
             [
-                74, 111, 104, 110, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 18, 0, 0, 0, 0, 0, 0, 0, 1, 0,
-                0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
+                74, 111, 104, 110, 18, 1, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 9, 1, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0,
             ],
             Hash::Sha256,
         ));
@@ -481,8 +493,8 @@ mod keccak256 {
     async fn test_u8() {
         let (instance, _id) = get_hashing_instance().await;
 
-        let expected_1 = Bits256(hash_u64(254, Hash::Keccak256));
-        let expected_2 = Bits256(hash_u64(253, Hash::Keccak256));
+        let expected_1 = Bits256(hash_u8(254, Hash::Keccak256));
+        let expected_2 = Bits256(hash_u8(253, Hash::Keccak256));
 
         let call_1 = instance.methods().keccak256_u8(254u8).call().await.unwrap();
         let call_2 = instance.methods().keccak256_u8(254u8).call().await.unwrap();
@@ -499,8 +511,8 @@ mod keccak256 {
     async fn test_u16() {
         let (instance, _id) = get_hashing_instance().await;
 
-        let expected_1 = Bits256(hash_u64(65534, Hash::Keccak256));
-        let expected_2 = Bits256(hash_u64(65533, Hash::Keccak256));
+        let expected_1 = Bits256(hash_u16(65534, Hash::Keccak256));
+        let expected_2 = Bits256(hash_u16(65533, Hash::Keccak256));
 
         let call_1 = instance
             .methods()
@@ -532,8 +544,8 @@ mod keccak256 {
     async fn test_u32() {
         let (instance, _id) = get_hashing_instance().await;
 
-        let expected_1 = Bits256(hash_u64(4294967294, Hash::Keccak256));
-        let expected_2 = Bits256(hash_u64(4294967293, Hash::Keccak256));
+        let expected_1 = Bits256(hash_u32(4294967294, Hash::Keccak256));
+        let expected_2 = Bits256(hash_u32(4294967293, Hash::Keccak256));
 
         let call_1 = instance
             .methods()
@@ -706,14 +718,8 @@ mod keccak256 {
     async fn test_tuple() {
         let (instance, _id) = get_hashing_instance().await;
 
-        let expected_1 = Bits256(hash_tuple(
-            [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5],
-            Hash::Keccak256,
-        ));
-        let expected_2 = Bits256(hash_tuple(
-            [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6],
-            Hash::Keccak256,
-        ));
+        let expected_1 = Bits256(hash_tuple([1, 0, 0, 0, 0, 0, 0, 0, 5], Hash::Keccak256));
+        let expected_2 = Bits256(hash_tuple([1, 0, 0, 0, 0, 0, 0, 0, 6], Hash::Keccak256));
 
         let call_1 = instance
             .methods()
@@ -784,8 +790,8 @@ mod keccak256 {
     async fn test_enum() {
         let (instance, _id) = get_hashing_instance().await;
 
-        let expected_1 = Bits256(hash_enum([0, 0, 0, 0, 0, 0, 0, 0], Hash::Keccak256));
-        let expected_2 = Bits256(hash_enum([0, 0, 0, 0, 0, 0, 0, 1], Hash::Keccak256));
+        let expected_1 = Bits256(hash_enum([0], Hash::Keccak256));
+        let expected_2 = Bits256(hash_enum([1], Hash::Keccak256));
 
         let call_1 = instance
             .methods()
@@ -819,17 +825,17 @@ mod keccak256 {
 
         let expected_1 = Bits256(hash_struct(
             [
-                74, 111, 104, 110, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 18, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
+                74, 111, 104, 110, 18, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 9, 1, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0,
             ],
             Hash::Keccak256,
         ));
         let expected_2 = Bits256(hash_struct(
             [
-                74, 111, 104, 110, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 18, 0, 0, 0, 0, 0, 0, 0, 1, 0,
-                0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
+                74, 111, 104, 110, 18, 1, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 9, 1, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0,
             ],
             Hash::Keccak256,
         ));

@@ -4,6 +4,7 @@ library;
 use ::alias::{AssetId, SubId};
 use ::call_frames::contract_id;
 use ::convert::From;
+use ::hash::*;
 use ::error_signals::FAILED_TRANSFER_TO_ADDRESS_SIGNAL;
 use ::hash::sha256;
 use ::revert::revert;
@@ -101,5 +102,11 @@ impl Address {
             mint r1 r2;
         };
         self.transfer(sha256((contract_id(), sub_id)), amount);
+    }
+}
+
+impl Hash for Address {
+    fn hash(self, ref mut state: Hasher) {
+        self.value.hash(state);
     }
 }

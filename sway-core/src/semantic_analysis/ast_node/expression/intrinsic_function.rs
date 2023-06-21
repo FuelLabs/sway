@@ -43,6 +43,9 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::IsStrType => {
                 type_check_is_reference_type(handler, ctx, kind, arguments, type_arguments, span)
             }
+            Intrinsic::CheckStrType => {
+                type_check_check_str_type(ctx, kind, arguments, type_arguments, span)
+            }
             Intrinsic::Eq | Intrinsic::Gt | Intrinsic::Lt => {
                 type_check_cmp(handler, ctx, kind, arguments, span)
             }
@@ -270,6 +273,69 @@ fn type_check_is_reference_type(
         intrinsic_function,
         type_engine.insert(engines, TypeInfo::Boolean),
     ))
+}
+
+/// Signature: `__check_str_type<T>()`
+/// Description: Throws a compile error if `T` is not of type str.
+/// Constraints: None.
+fn type_check_check_str_type(
+    mut ctx: TypeCheckContext,
+    kind: sway_ast::Intrinsic,
+    _arguments: Vec<Expression>,
+    type_arguments: Vec<TypeArgument>,
+    span: Span,
+) -> CompileResult<(ty::TyIntrinsicFunctionKind, TypeId)> {
+    let type_engine = ctx.engines.te();
+    let engines = ctx.engines();
+
+    let mut warnings = vec![];
+    let mut errors = vec![];
+
+    if type_arguments.len() != 1 {
+        errors.push(CompileError::IntrinsicIncorrectNumTArgs {
+            name: kind.to_string(),
+            expected: 1,
+            span,
+        });
+        return err(warnings, errors);
+    }
+    let targ = type_arguments[0].clone();
+    let initial_type_info = check!(
+        CompileResult::from(
+            type_engine
+                .to_typeinfo(targ.type_id, &targ.span)
+                .map_err(CompileError::from)
+        ),
+        TypeInfo::ErrorRecovery,
+        warnings,
+        errors
+    );
+    let initial_type_id = type_engine.insert(engines, initial_type_info);
+    let type_id = check!(
+        ctx.resolve_type_with_self(initial_type_id, &targ.span, EnforceTypeArguments::Yes, None),
+        type_engine.insert(engines, TypeInfo::ErrorRecovery),
+        warnings,
+        errors,
+    );
+    let intrinsic_function = ty::TyIntrinsicFunctionKind {
+        kind,
+        arguments: vec![],
+        type_arguments: vec![TypeArgument {
+            type_id,
+            initial_type_id,
+            span: targ.span,
+            call_path_tree: targ.call_path_tree,
+        }],
+        span,
+    };
+    ok(
+        (
+            intrinsic_function,
+            type_engine.insert(engines, TypeInfo::Tuple(vec![])),
+        ),
+        warnings,
+        errors,
+    )
 }
 
 /// Signature: `__eq<T>(lhs: T, rhs: T) -> bool`

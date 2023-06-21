@@ -2,7 +2,13 @@ library;
 
 use core::ops::*;
 use ::data_structures::*;
-use std::hash::sha256;
+use std::hash::*;
+
+fn sha256<T>(v: T) -> b256 where T: Hash {
+    let mut hasher = Hasher::new();
+    v.hash(hasher);
+    hasher.sha256()
+}
 
 /* Currently need to occasionally use `sha256` to compare generic types because
  * the correct implementation of `eq` for a type is not always detected
@@ -30,7 +36,8 @@ where
 
 fn test_unwrap_or<T>(val: T, default: T)
 where
-    T: Eq
+    T: Eq,
+    T: Hash
 {
     assert(sha256(Some(val).unwrap_or(default)) == sha256(val));
     assert(sha256(None::<T>.unwrap_or(default)) == sha256(default));
@@ -49,7 +56,9 @@ where
 }
 fn test_none_ok_or<T, E>(_val: T, default: E)
 where
-    E: Eq
+    E: Eq,
+    T: Hash,
+    E: Hash
 {
     match None::<T>.ok_or(default) {
         Ok(_) => revert(0),

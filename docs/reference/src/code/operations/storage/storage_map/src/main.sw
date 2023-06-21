@@ -1,12 +1,21 @@
 contract;
 
+use std::hash::*;
+
+impl Hash for (Identity, u64) {
+    fn hash(self, ref mut state: Hasher) {
+        self.0.hash(state);
+        self.1.hash(state);
+    }
+}
+
 // ANCHOR: initialization
 
 storage {
     // k = Identity, v = u64
-    balance: StorageMap<Identity, u64> = StorageMap {},
+    balance: StorageMap<Identity, u64> = StorageMap::<Identity, u64> {},
     // k = (Identity, u64), v = bool
-    user: StorageMap<(Identity, u64), bool> = StorageMap {},
+    user: StorageMap<(Identity, u64), bool> = StorageMap::<(Identity, u64), bool> {},
 }
 // ANCHOR_END: initialization
 // ANCHOR: reading_from_storage

@@ -552,6 +552,22 @@ impl<'eng> FnCompiler<'eng> {
                 let val = matches!(engines.te().get_unaliased(targ.type_id), TypeInfo::Str(_));
                 Ok(Constant::get_bool(context, val))
             }
+            Intrinsic::CheckStrType => {
+                let targ = type_arguments[0].clone();
+                let ir_type = convert_resolved_typeid(
+                    engines.te(),
+                    engines.de(),
+                    context,
+                    &targ.type_id,
+                    &targ.span,
+                )?;
+                match ir_type.get_content(context) {
+                    TypeContent::String(_n) => Ok(Constant::get_unit(context)),
+                    _ => Err(CompileError::NonStrGenericType {
+                        span: targ.span.clone(),
+                    }),
+                }
+            }
             Intrinsic::Eq | Intrinsic::Gt | Intrinsic::Lt => {
                 let lhs = &arguments[0];
                 let rhs = &arguments[1];

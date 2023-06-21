@@ -1,7 +1,7 @@
 library;
 
 use core::ops::*;
-use std::hash::sha256;
+use std::hash::*;
 
 /////////////////////////////////////////////////////////////////////////////
 // Data Structures Used in in the Tests
@@ -44,8 +44,14 @@ impl Eq for [u64; 3] {
     }
 }
 
+fn sha256_str4(value: str[4]) -> b256 {
+    let mut hasher = Hasher::new();
+    hasher.write_str(value);
+    hasher.sha256()
+}
+
 impl Eq for str[4] {
     fn eq(self, other: Self) -> bool {
-        sha256(self) == sha256(other)
+        sha256_str4(self) == sha256_str4(other)
     }
 }

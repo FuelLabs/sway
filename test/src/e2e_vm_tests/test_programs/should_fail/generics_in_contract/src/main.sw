@@ -1,20 +1,35 @@
 contract;
 
-use std::{hash::sha256, storage::storage_api::read};
+use std::{hash::*, storage::storage_api::read};
 
-struct MyStorageMap<K, V> {}
+fn tuple2_to_key<K>(tuple: (K, b256)) -> b256 where K: Hash {
+    let mut hasher = Hasher::new();
+    tuple.0.hash(hasher);
+    tuple.1.hash(hasher);
+    hasher.sha256()
+}
 
-impl<K, V> StorageKey<MyStorageMap<K, V>> {
+fn tuple3_to_key<K>(tuple: (K, u64, b256)) -> b256 where K: Hash {
+    let mut hasher = Hasher::new();
+    tuple.0.hash(hasher);
+    tuple.1.hash(hasher);
+    tuple.2.hash(hasher);
+    hasher.sha256()
+}
+
+struct MyStorageMap<K, V> where K: Hash {}
+
+impl<K, V> StorageKey<MyStorageMap<K, V>> where K: Hash {
     // This version puts the err on the `vec.push` statement because `vec` is
     // annotated with `Vec<V>`.
     #[storage(read)]
     fn to_vec1(self, key: K) -> Vec<V> {
-        let k = sha256((key, self.slot));
+        let k = tuple2_to_key((key, self.slot));
         let len = read::<u64>(k, 0).unwrap_or(0);
         let mut i = 0;
         let mut vec: Vec<V> = Vec::new();
         while len > i {
-            let k = sha256((key, i, self.slot));
+            let k = tuple3_to_key((key, i, self.slot));
             let item = read::<K>(k, 0).unwrap();
             vec.push(item); // <-----
             i += 1;
@@ -26,12 +41,12 @@ impl<K, V> StorageKey<MyStorageMap<K, V>> {
     // the type of `vec` (`Vec<K>`) is taken from the `vec.push` statement.
     #[storage(read)]
     fn to_vec2(self, key: K) -> Vec<V> {
-        let k = sha256((key, self.slot));
+        let k = tuple2_to_key((key, self.slot));
         let len = read::<u64>(k, 0).unwrap_or(0);
         let mut i = 0;
         let mut vec/*: Vec<V>*/ = Vec::new();
         while len > i {
-            let k = sha256((key, i, self.slot));
+            let k = tuple3_to_key((key, i, self.slot));
             let item = read::<K>(k, 0).unwrap();
             vec.push(item); // <-----
             i += 1;
@@ -41,8 +56,8 @@ impl<K, V> StorageKey<MyStorageMap<K, V>> {
 }
 
 storage {
-    map1: MyStorageMap<u64, bool> = MyStorageMap {},
-    map2: MyStorageMap<u64, str[4]> = MyStorageMap {},
+    map1: MyStorageMap<u64, bool> = MyStorageMap::<u64, bool> {},
+    map2: MyStorageMap<u64, str[4]> = MyStorageMap::<u64, str[4]> {},
 }
 
 abi TestAbi {

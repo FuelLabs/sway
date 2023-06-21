@@ -1,6 +1,58 @@
 contract;
 
-use std::hash::{keccak256, sha256};
+use std::hash::*;
+
+impl Hash for str[4] {
+    fn hash(self, ref mut state: Hasher) {
+        state.write_str(self);
+    }
+}
+
+impl Hash for (bool, u64) {
+    fn hash(self, ref mut state: Hasher) {
+        self.0.hash(state);
+        self.1.hash(state);
+    }
+}
+
+impl Hash for [u64; 2] {
+    fn hash(self, ref mut state: Hasher) {
+        self[0].hash(state);
+        self[1].hash(state);
+    }
+}
+
+impl Hash for Location {
+    fn hash(self, ref mut state: Hasher) {
+        match self {
+            Location::Earth => {
+                0_u8.hash(state);
+            }
+            Location::Mars => {
+                1_u8.hash(state);
+            }
+        }
+    }
+}
+
+impl Hash for Stats {
+    fn hash(self, ref mut state: Hasher) {
+        self.strength.hash(state);
+        self.agility.hash(state);
+    }
+}
+
+impl Hash for Person {
+    fn hash(self, ref mut state: Hasher) {
+        self.name.hash(state);
+        self.age.hash(state);
+        self.birth_place.hash(state);
+        self.stats.hash(state);
+        self.alive.hash(state);
+        self.random_b256.hash(state);
+    }
+}
+
 
 abi MyContract {
     fn sha256_u8(value: u8) -> b256;

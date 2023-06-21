@@ -1,14 +1,23 @@
 contract;
 
+use std::hash::*;
+
+impl Hash for (b256, bool) {
+    fn hash(self, ref mut state: Hasher) {
+        self.0.hash(state);
+        self.1.hash(state);
+    }
+}
+
 storage {
     // ANCHOR: storage_map_decl
-    map: StorageMap<Address, u64> = StorageMap {},
+    map: StorageMap<Address, u64> = StorageMap::<Address, u64> {},
     // ANCHOR_END: storage_map_decl
     // ANCHOR: storage_map_tuple_key
-    map_two_keys: StorageMap<(b256, bool), b256> = StorageMap {},
+    map_two_keys: StorageMap<(b256, bool), b256> = StorageMap::<(b256, bool), b256> {},
     // ANCHOR_END: storage_map_tuple_key
     // ANCHOR: storage_map_nested
-    nested_map: StorageMap<u64, StorageMap<u64, u64>> = StorageMap {},
+    nested_map: StorageMap<u64, StorageMap<u64, u64>> = StorageMap::<u64, StorageMap<u64, u64>> {},
     // ANCHOR_END: storage_map_nested
 }
 

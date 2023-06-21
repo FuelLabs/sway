@@ -4,8 +4,16 @@ library;
 use ::address::Address;
 use ::b512::B512;
 use ::registers::error;
-use ::hash::sha256;
+use ::hash::*;
 use ::result::Result::{self, *};
+
+// Helper function to get the storage slot for a tuple (len, field_id)
+fn pub_key_address(tuple: (b256, b256)) -> b256 {
+    let mut hasher = Hasher::new();
+    tuple.0.hash(hasher);
+    tuple.1.hash(hasher);
+    hasher.sha256()
+}
 
 /// The error type used when the `ec_recover` function fails.
 pub enum EcRecoverError {
@@ -38,7 +46,7 @@ pub fn ec_recover_address(signature: B512, msg_hash: b256) -> Result<Address, Ec
         Err(e)
     } else {
         let pub_key = pub_key_result.unwrap();
-        let address = sha256(((pub_key.bytes)[0], (pub_key.bytes)[1]));
+        let address = pub_key_address(((pub_key.bytes)[0], (pub_key.bytes)[1]));
         Ok(Address::from(address))
     }
 }

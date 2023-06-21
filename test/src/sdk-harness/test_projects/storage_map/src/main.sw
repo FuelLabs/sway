@@ -1,9 +1,19 @@
 contract;
 
+use std::hash::*;
+
 pub struct Struct {
     x: u32,
     y: b256,
     z: b256,
+}
+
+impl Hash for Struct {
+    fn hash(self, ref mut state: Hasher) {
+        self.x.hash(state);
+        self.y.hash(state);
+        self.z.hash(state);
+    }
 }
 
 pub enum Enum {
@@ -12,26 +22,67 @@ pub enum Enum {
     V3: b256,
 }
 
+impl Hash for Enum {
+    fn hash(self, ref mut state: Hasher) {
+        match self {
+            Enum::V1(val) => {
+                0_u8.hash(state);
+                val.hash(state);
+            }
+            Enum::V2(val) => {
+                1_u8.hash(state);
+                val.hash(state);
+            }
+            Enum::V3(val) => {
+                2_u8.hash(state);
+                val.hash(state);
+            }
+        }
+    }
+}
+
+impl Hash for str[33] {
+    fn hash(self, ref mut state: Hasher) {
+        state.write_str(self);
+    }
+}
+
+impl Hash for (b256, u8, bool) {
+    fn hash(self, ref mut state: Hasher) {
+        self.0.hash(state);
+        self.1.hash(state);
+        self.2.hash(state);
+    }
+}
+
+impl Hash for [b256; 3] {
+    fn hash(self, ref mut state: Hasher) {
+        self[0].hash(state);
+        self[1].hash(state);
+        self[2].hash(state);
+    }
+}
+
 storage {
-    map1: StorageMap<u64, bool> = StorageMap {},
-    map2: StorageMap<u64, u8> = StorageMap {},
-    map3: StorageMap<u64, u16> = StorageMap {},
-    map4: StorageMap<u64, u32> = StorageMap {},
-    map5: StorageMap<u64, u64> = StorageMap {},
-    map6: StorageMap<u64, (b256, u8, bool)> = StorageMap {},
-    map7: StorageMap<u64, Struct> = StorageMap {},
-    map8: StorageMap<u64, Enum> = StorageMap {},
-    map9: StorageMap<u64, str[33]> = StorageMap {},
-    map10: StorageMap<u64, [b256; 3]> = StorageMap {},
-    map11: StorageMap<bool, u64> = StorageMap {},
-    map12: StorageMap<u8, u64> = StorageMap {},
-    map13: StorageMap<u16, u64> = StorageMap {},
-    map14: StorageMap<u32, u64> = StorageMap {},
-    map15: StorageMap<(b256, u8, bool), u64> = StorageMap {},
-    map16: StorageMap<Struct, u64> = StorageMap {},
-    map17: StorageMap<Enum, u64> = StorageMap {},
-    map18: StorageMap<str[33], u64> = StorageMap {},
-    map19: StorageMap<[b256; 3], u64> = StorageMap {},
+    map1: StorageMap<u64, bool> = StorageMap::<u64, bool> {},
+    map2: StorageMap<u64, u8> = StorageMap::<u64, u8> {},
+    map3: StorageMap<u64, u16> = StorageMap::<u64, u16> {},
+    map4: StorageMap<u64, u32> = StorageMap::<u64, u32> {},
+    map5: StorageMap<u64, u64> = StorageMap::<u64, u64> {},
+    map6: StorageMap<u64, (b256, u8, bool)> = StorageMap::<u64, (b256, u8, bool)> {},
+    map7: StorageMap<u64, Struct> = StorageMap::<u64, Struct> {},
+    map8: StorageMap<u64, Enum> = StorageMap::<u64, Enum> {},
+    map9: StorageMap<u64, str[33]> = StorageMap::<u64, str[33]> {},
+    map10: StorageMap<u64, [b256; 3]> = StorageMap::<u64, [b256; 3]> {},
+    map11: StorageMap<bool, u64> = StorageMap::<bool, u64> {},
+    map12: StorageMap<u8, u64> = StorageMap::<u8, u64> {},
+    map13: StorageMap<u16, u64> = StorageMap::<u16, u64> {},
+    map14: StorageMap<u32, u64> = StorageMap::<u32, u64> {},
+    map15: StorageMap<(b256, u8, bool), u64> = StorageMap::<(b256, u8, bool), u64> {},
+    map16: StorageMap<Struct, u64> = StorageMap::<Struct, u64> {},
+    map17: StorageMap<Enum, u64> = StorageMap::<Enum, u64> {},
+    map18: StorageMap<str[33], u64> = StorageMap::<str[33], u64> {},
+    map19: StorageMap<[b256; 3], u64> = StorageMap::<[b256; 3], u64> {},
 }
 
 abi StorageMapTest {

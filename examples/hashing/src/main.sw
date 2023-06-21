@@ -1,6 +1,73 @@
 script;
 
-use std::hash::{keccak256, sha256};
+use std::hash::*;
+
+impl Hash for str[4] {
+    fn hash(self, ref mut state: Hasher) {
+        state.write_str(self);
+    }
+}
+
+impl Hash for str[32] {
+    fn hash(self, ref mut state: Hasher) {
+        state.write_str(self);
+    }
+}
+
+impl Hash for (bool, u64) {
+    fn hash(self, ref mut state: Hasher) {
+        self.0.hash(state);
+        self.1.hash(state);
+    }
+}
+
+impl Hash for [u64; 2] {
+    fn hash(self, ref mut state: Hasher) {
+        self[0].hash(state);
+        self[1].hash(state);
+    }
+}
+
+impl Hash for [u64; 3] {
+    fn hash(self, ref mut state: Hasher) {
+        self[0].hash(state);
+        self[1].hash(state);
+        self[2].hash(state);
+    }
+}
+
+impl Hash for Location {
+    fn hash(self, ref mut state: Hasher) {
+        match self {
+            Location::Earth => {
+                0_u8.hash(state);
+            }
+            Location::Mars => {
+                1_u8.hash(state);
+            }
+        }
+    }
+}
+
+impl Hash for Stats {
+    fn hash(self, ref mut state: Hasher) {
+        self.strength.hash(state);
+        self.agility.hash(state);
+    }
+}
+
+impl Hash for Person {
+    fn hash(self, ref mut state: Hasher) {
+        self.name.hash(state);
+        self.age.hash(state);
+        self.alive.hash(state);
+        self.location.hash(state);
+        self.stats.hash(state);
+        self.some_tuple.hash(state);
+        self.some_array.hash(state);
+        self.some_b256.hash(state);
+    }
+}
 
 const VALUE_A = 0x9280359a3b96819889d30614068715d634ad0cf9bba70c0f430a8c201138f79f;
 
