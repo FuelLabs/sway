@@ -226,7 +226,6 @@ pub struct BuildProfile {
     pub json_abi_with_callpaths: bool,
     #[serde(default)]
     pub error_on_warnings: bool,
-
     pub reverse_results: bool,
 }
 

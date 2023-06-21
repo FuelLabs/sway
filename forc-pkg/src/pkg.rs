@@ -1808,7 +1808,7 @@ pub fn compile(
     let terse_mode = profile.terse;
     let reverse_results = profile.reverse_results;
     let fail = |warnings, errors| {
-        print_on_failure(terse_mode, warnings, errors, reverse_results);
+        print_on_failure(engines.se(), terse_mode, warnings, errors, reverse_results);
         bail!("Failed to compile {}", pkg.name);
     };
 
@@ -2317,7 +2317,13 @@ pub fn build(
         };
 
         let fail = |warnings, errors| {
-            print_on_failure(profile.terse, warnings, errors, profile.reverse_results);
+            print_on_failure(
+                engines.se(),
+                profile.terse,
+                warnings,
+                errors,
+                profile.reverse_results,
+            );
             bail!("Failed to compile {}", pkg.name);
         };
 
@@ -2414,7 +2420,13 @@ pub fn build(
         ) {
             Ok(o) => o,
             Err(errs) => {
-                print_on_failure(profile.terse, &[], &errs, profile.reverse_results);
+                print_on_failure(
+                    engines.se(),
+                    profile.terse,
+                    &[],
+                    &errs,
+                    profile.reverse_results,
+                );
                 bail!("Failed to compile {}", pkg.name);
             }
         };

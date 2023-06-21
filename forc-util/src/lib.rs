@@ -391,6 +391,7 @@ pub fn print_warnings(
 }
 
 pub fn print_on_failure(
+    source_engine: &SourceEngine,
     terse_mode: bool,
     warnings: &[CompileWarning],
     errors: &[CompileError],
@@ -401,11 +402,19 @@ pub fn print_on_failure(
 
     if !terse_mode {
         if reverse_results {
-            warnings.iter().rev().for_each(format_warning);
-            errors.iter().rev().for_each(format_err);
+            warnings
+                .iter()
+                .rev()
+                .for_each(|w| format_warning(source_engine, w));
+            errors
+                .iter()
+                .rev()
+                .for_each(|e| format_err(source_engine, e));
         } else {
-            warnings.iter().for_each(format_warning);
-            errors.iter().for_each(format_err);
+            warnings
+                .iter()
+                .for_each(|w| format_warning(source_engine, w));
+            errors.iter().for_each(|e| format_err(source_engine, e));
         }
     }
 
