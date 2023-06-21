@@ -1020,7 +1020,7 @@ async fn go_to_definition_for_consts() {
         req_uri: &uri,
         req_line: 9,
         req_char: 24,
-        def_line: 18,
+        def_line: 17,
         def_start_char: 5,
         def_end_char: 9,
         def_path: "sway-lib-std/src/contract_id.sw",
