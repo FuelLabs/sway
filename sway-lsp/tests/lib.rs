@@ -1028,7 +1028,7 @@ async fn go_to_definition_for_consts() {
     let _ = lsp::definition_check(&mut service, &contract_go_to, &mut i).await;
 
     contract_go_to.req_char = 34;
-    contract_go_to.def_line = 19;
+    contract_go_to.def_line = 18;
     contract_go_to.def_start_char = 7;
     contract_go_to.def_end_char = 11;
     let _ = lsp::definition_check(&mut service, &contract_go_to, &mut i).await;
