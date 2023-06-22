@@ -14,7 +14,7 @@ use sway_error::parser_error::{ParseError, ParseErrorKind};
 use sway_types::{Ident, Span, Spanned};
 
 pub struct Parser<'a, 'e> {
-    token_trees: &'a [TokenTree],
+    pub token_trees: &'a [TokenTree],
     full_span: Span,
     handler: &'e Handler,
 }

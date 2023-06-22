@@ -158,6 +158,7 @@ macro_rules! impl_brackets (
                     if parser.peek::<$open_token>().is_some() {
                         let open_token = parser.parse()?;
                         let inner = parser.parse()?;
+                        dbg!(&parser.token_trees);
                         if parser.peek::<$close_token>().is_some() {
                             return Ok(
                                 $ty_name {
@@ -197,3 +198,35 @@ impl_brackets!(
     OpeningSquareBracket,
     ClosingSquareBracket
 );
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils::parse;
+    use insta::*;
+    use sway_ast::{AttributeDecl, Item};
+
+    #[test]
+    fn parse_fn() {
+        let item = parse::<Item>(
+            r#"
+            fn f() -> bool {
+                false
+            }
+            "#,
+        );
+
+        // cargo insta test --accept
+        assert_ron_snapshot!(item, @r###""###);
+
+        // assert!(true);
+        // assert!(matches!(item.value, ItemKind::Fn(_)));
+        // assert_eq!(
+        //     attributes(&item.attribute_list),
+        //     vec![
+        //         [("doc-comment", Some(vec![" This is a doc comment."]))],
+        //         [("doc-comment", Some(vec![" This is another doc comment."]))]
+        //     ]
+        // );
+    }
+}

@@ -97,6 +97,22 @@ pub struct Delimiters {
     pub opening: Option<OpeningDelimiter>,
     pub closing: Option<ClosingDelimiter>,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Delimiter {
+    kind: DelimiterKind,
+    span: Span,
+}
+impl Spanned for Delimiter {
+    fn span(&self) -> Span {
+        self.span.clone()
+    }
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum DelimiterKind {
+    Opening(OpeningDelimiter),
+    Closing(ClosingDelimiter),
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum OpeningDelimiter {
     Parenthesis,
@@ -217,6 +233,7 @@ impl Spanned for DocComment {
 /// Allows for generalizing over commented and uncommented token streams.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub enum GenericTokenTree<T> {
+    Delim(Delimiter),
     Punct(Punct),
     Ident(Ident),
     Group(GenericGroup<T>),
@@ -246,6 +263,7 @@ impl CommentedGroup {
 impl<T> Spanned for GenericTokenTree<T> {
     fn span(&self) -> Span {
         match self {
+            Self::Delim(delim) => delim.span(),
             Self::Punct(punct) => punct.span(),
             Self::Ident(ident) => ident.span(),
             Self::Group(group) => group.span(),
@@ -261,6 +279,12 @@ impl Spanned for CommentedTokenTree {
             Self::Comment(cmt) => cmt.span(),
             Self::Tree(tt) => tt.span(),
         }
+    }
+}
+
+impl<T> From<Delimiter> for GenericTokenTree<T> {
+    fn from(delim: Delimiter) -> Self {
+        Self::Delim(delim)
     }
 }
 
@@ -405,6 +429,7 @@ impl CommentedTokenTree {
             Self::Tree(commented_tt) => commented_tt,
         };
         let tt = match commented_tt {
+            CommentedTree::Delim(delim) => delim.into(),
             CommentedTree::Punct(punct) => punct.into(),
             CommentedTree::Ident(ident) => ident.into(),
             CommentedTree::Group(group) => group.strip_comments().into(),
