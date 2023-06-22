@@ -131,7 +131,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             self.non_entries
                 .clone()
                 .into_iter()
-                .map(|ops| AbstractInstructionSet { ops })
+                .map(|ops| (AbstractInstructionSet { ops }))
                 .collect(),
         ))
     }

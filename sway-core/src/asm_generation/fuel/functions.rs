@@ -662,7 +662,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
         // Reserve space on the stack (in bytes) for all our locals which require it.  Firstly save
         // the current $sp.
-        let locals_base_reg = self.reg_seqr.next();
+        let locals_base_reg = VirtualRegister::Constant(ConstantRegister::LocalsBase);
         self.cur_bytecode.push(Op::register_move(
             locals_base_reg.clone(),
             VirtualRegister::Constant(ConstantRegister::StackPointer),
@@ -671,18 +671,16 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         ));
 
         let locals_size = stack_base * 8;
-        if locals_size != 0 {
-            if locals_size > compiler_constants::TWENTY_FOUR_BITS {
-                todo!("Enormous stack usage for locals.");
-            }
-            self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::CFEI(VirtualImmediate24 {
-                    value: locals_size as u32,
-                })),
-                comment: format!("allocate {locals_size} bytes for locals"),
-                owning_span: None,
-            });
+        if locals_size > compiler_constants::TWENTY_FOUR_BITS {
+            todo!("Enormous stack usage for locals.");
         }
+        self.cur_bytecode.push(Op {
+            opcode: Either::Left(VirtualOp::CFEI(VirtualImmediate24 {
+                value: locals_size as u32,
+            })),
+            comment: format!("allocate {locals_size} bytes for locals"),
+            owning_span: None,
+        });
 
         // Initialise that stack variables which require it.
         for (var_stack_offs, var_word_size, var_data_id) in init_mut_vars {
@@ -774,18 +772,16 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             .locals_ctxs
             .pop()
             .expect("Calls guaranteed to save locals context.");
-        if locals_size != 0 {
-            if locals_size > compiler_constants::TWENTY_FOUR_BITS {
-                todo!("Enormous stack usage for locals.");
-            }
-            self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::CFSI(VirtualImmediate24 {
-                    value: locals_size as u32,
-                })),
-                comment: format!("free {locals_size} bytes for locals"),
-                owning_span: None,
-            });
+        if locals_size > compiler_constants::TWENTY_FOUR_BITS {
+            todo!("Enormous stack usage for locals.");
         }
+        self.cur_bytecode.push(Op {
+            opcode: Either::Left(VirtualOp::CFSI(VirtualImmediate24 {
+                value: locals_size as u32,
+            })),
+            comment: format!("free {locals_size} bytes for locals"),
+            owning_span: None,
+        });
     }
 
     pub(super) fn locals_base_reg(&self) -> &VirtualRegister {

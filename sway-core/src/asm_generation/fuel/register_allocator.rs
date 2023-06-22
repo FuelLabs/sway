@@ -1,16 +1,19 @@
 use crate::{
     asm_generation::fuel::compiler_constants,
     asm_lang::{
-        allocated_ops::AllocatedRegister, virtual_register::*, ControlFlowOp, Label, Op, VirtualOp,
+        allocated_ops::AllocatedRegister, virtual_register::*, ControlFlowOp, Label, Op,
+        VirtualImmediate12, VirtualImmediate18, VirtualImmediate24, VirtualOp,
     },
 };
 
 use either::Either;
-use petgraph::graph::{node_index, NodeIndex};
-use rustc_hash::FxHashSet;
+use petgraph::graph::NodeIndex;
+use rustc_hash::{FxHashMap, FxHashSet};
 use std::collections::{BTreeSet, HashMap};
 use sway_error::error::CompileError;
-use sway_types::span::Span;
+use sway_types::Span;
+
+use super::register_sequencer::RegisterSequencer;
 
 pub type InterferenceGraph =
     petgraph::stable_graph::StableGraph<Option<VirtualRegister>, (), petgraph::Undirected>;
@@ -316,10 +319,35 @@ pub(crate) fn coalesce_registers(
                             continue;
                         }
 
+                        let r1_neighbours =
+                            interference_graph.neighbors(*ix1).collect::<FxHashSet<_>>();
+                        let r2_neighbours =
+                            interference_graph.neighbors(*ix2).collect::<FxHashSet<_>>();
+
+                        // Using either of the two safety conditions below, it's guaranteed
+                        // that we aren't turning a k-colourable graph into one that's not,
+                        // by doing the coalescing. Ref: "Coalescing" section in Appel's book.
+                        let briggs_safety = r1_neighbours
+                            .union(&r2_neighbours)
+                            .filter(|&&neighbour| {
+                                interference_graph.neighbors(neighbour).count()
+                                    >= compiler_constants::NUM_ALLOCATABLE_REGISTERS as usize
+                            })
+                            .count()
+                            < compiler_constants::NUM_ALLOCATABLE_REGISTERS as usize;
+
+                        let george_safety = r2_neighbours.iter().all(|&r2_neighbor| {
+                            r1_neighbours.contains(&r2_neighbor)
+                                || interference_graph.neighbors(r2_neighbor).count()
+                                    < compiler_constants::NUM_ALLOCATABLE_REGISTERS as usize
+                        });
+
+                        let safe = briggs_safety || george_safety;
+
                         // If r1 and r2 are connected in the interference graph (i.e. their
                         // respective liveness ranges overalp), preserve the MOVE instruction by
                         // adding it to reduced_ops
-                        if interference_graph.contains_edge(*ix1, *ix2) {
+                        if interference_graph.contains_edge(*ix1, *ix2) || !safe {
                             reduced_ops.push(op.clone());
                             continue;
                         }
@@ -334,7 +362,7 @@ pub(crate) fn coalesce_registers(
                         // some graph nodes are added or removed.
 
                         // Add all of ix2(r2)'s edges to `ix1(r1)`
-                        for neighbor in interference_graph.neighbors(*ix2).collect::<Vec<_>>() {
+                        for neighbor in r2_neighbours {
                             interference_graph.add_edge(neighbor, *ix1, ());
                         }
 
@@ -385,51 +413,88 @@ pub(crate) fn coalesce_registers(
 ///
 /// Algorithm:
 /// ===============================================================================================
-/// 1. Pick any node n such that degree(n) < k and put it on the stack along with its neighbors.
+/// 1. Pick any node n such that degree(n) < k and put it on the stack.
 /// 2. Remove node n and all its edges from the graph
 ///    - This may make some new nodes have fewer than k neighbours which is nice.
-/// 3. If some vertex n still has k or more neighbors, then the graph is not k colorable, and we
-///    have to spill. For now, we will just error out, but we may be able to do better in the
-///    future.
+/// 3. If some vertex n still has k or more neighbors, then the graph may not be k colorable.
+///     We still add it to the stack as is, as a potential spill. When popping, if we still
+///     can't colour it, then it becomes an actual spill.
 /// ===============================================================================================
 ///
-/// As we don't implement spilling just yet, I've modified the algorithm above to assume k=infinity
-/// and moving the colorability checking until the register assignment phase. The reason for this
-/// is that the algorithm above can be too conservative and may bail our early even though a valid
-/// assignment is actually available. We can revisit this decision when decide to implement
-/// spilling.
-///
 pub(crate) fn color_interference_graph(
-    interference_graph: &mut InterferenceGraph,
-) -> Vec<(VirtualRegister, BTreeSet<VirtualRegister>)> {
+    interference_graph: &InterferenceGraph,
+) -> Result<Vec<VirtualRegister>, FxHashSet<VirtualRegister>> {
     let mut stack = Vec::with_capacity(interference_graph.node_count());
+    let mut on_stack = vec![false; interference_graph.node_count()];
+    let mut spills = FxHashSet::default();
 
-    // Raw for loop here is safe because we are not actually removing any nodes from the graph at
-    // any point (i.e. we're never calling `remove_node()`). This means that each `index` below
-    // correspond to a valid `NodeIndex` in the graph.
-    for index in 0..interference_graph.node_count() {
-        // Convert to a `NodeIndex`
-        let node = node_index(index);
+    // Nodes with < k-degree or potential spills,
+    // before adding to the stack,
+    // to have their neighbours processed.
+    let mut worklist = vec![];
+    // Nodes as yet having >= k-degree or not yet potentially spilled.
+    let mut pending = FxHashSet::default();
 
-        // Nodes with weight `None` are dead
-        if interference_graph[node].is_none() {
-            continue;
-        }
-
-        // Grab all neighbors with node weight not equal to `None`
-        let neighbors = interference_graph
+    for node in interference_graph
+        .node_indices()
+        .filter(|&idx| interference_graph[idx].is_some())
+    {
+        let num_neighbors = interference_graph
             .neighbors(node)
-            .filter_map(|n| interference_graph[n].clone())
-            .collect();
-
-        // Build the stack
-        stack.push((interference_graph[node].clone().unwrap(), neighbors));
-
-        // Remove `node` by setting its weight to `None`.
-        interference_graph[node] = None;
+            .filter(|&n| interference_graph[n].is_some())
+            .count();
+        if num_neighbors < compiler_constants::NUM_ALLOCATABLE_REGISTERS as usize {
+            worklist.push(node);
+        } else {
+            pending.insert(node);
+        }
     }
 
-    stack
+    loop {
+        while let Some(node_index) = worklist.pop() {
+            // Ensure that we've not already processed this.
+            if on_stack[node_index.index()] {
+                continue;
+            }
+
+            // Assert that we aren't dealing with dead nodes.
+            assert!(interference_graph[node_index].is_some());
+            // This node is colourable.
+            stack.push(interference_graph[node_index].clone().unwrap());
+            on_stack[node_index.index()] = true;
+
+            // See if any neighbours can be moved to the worklist, from pending.
+            let candidate_neighbors: Vec<_> = interference_graph
+                .neighbors(node_index)
+                .filter(|n| {
+                    interference_graph[*n].is_some()
+                        && pending.contains(n)
+                        && interference_graph
+                            .neighbors(*n)
+                            .filter(|n| interference_graph[*n].is_some() && pending.contains(n))
+                            .count()
+                            < compiler_constants::NUM_ALLOCATABLE_REGISTERS as usize
+                })
+                .collect();
+            for candidate_neighbor in &candidate_neighbors {
+                pending.remove(candidate_neighbor);
+                worklist.push(*candidate_neighbor);
+            }
+        }
+
+        if let Some(&spill_reg) = pending.iter().next() {
+            pending.remove(&spill_reg);
+            spills.insert(interference_graph[spill_reg].clone().unwrap());
+        } else {
+            break;
+        }
+    }
+
+    if spills.is_empty() {
+        Ok(stack)
+    } else {
+        Err(spills)
+    }
 }
 
 /// Use the stack generated by the coloring algorithm to figure out a register assignment for each
@@ -439,10 +504,18 @@ pub(crate) fn color_interference_graph(
 /// r (available in the used_by field) is empty.
 ///
 pub(crate) fn assign_registers(
-    stack: &mut Vec<(VirtualRegister, BTreeSet<VirtualRegister>)>,
+    interference_graph: &InterferenceGraph,
+    reg_to_node_map: &HashMap<VirtualRegister, NodeIndex>,
+    stack: &mut Vec<VirtualRegister>,
 ) -> Result<RegisterPool, CompileError> {
     let mut pool = RegisterPool::init();
-    while let Some((reg, neighbors)) = stack.pop() {
+
+    while let Some(reg) = stack.pop() {
+        let node = reg_to_node_map[&reg];
+        let neighbors: BTreeSet<VirtualRegister> = interference_graph
+            .neighbors(node)
+            .filter_map(|n| interference_graph[n].clone())
+            .collect();
         if matches!(reg, VirtualRegister::Virtual(_)) {
             let available =
                 pool.registers
@@ -454,11 +527,9 @@ pub(crate) fn assign_registers(
             if let Some(RegisterAllocationStatus { reg: _, used_by }) = available {
                 used_by.insert(reg.clone());
             } else {
-                // Error out for now if no available register is found
                 return Err(CompileError::Internal(
                     "The allocator cannot resolve a register mapping for this program. \
-                     This is a temporary artifact of the early stage version of this \
-                     compiler.  Using #[inline(never)] on some functions may help.",
+                             Using #[inline(never)] on some functions may help.",
                     Span::dummy(),
                 ));
             }
@@ -466,4 +537,223 @@ pub(crate) fn assign_registers(
     }
 
     Ok(pool)
+}
+
+/// Given a function, its locals info (stack frame usage details)
+/// and a set of virtual registers to be spilled, insert the actual spills
+/// and return the updated function and the updated stack info.
+pub(crate) fn spill(
+    reg_seqr: &mut RegisterSequencer,
+    ops: &Vec<Op>,
+    spills: &FxHashSet<VirtualRegister>,
+) -> Vec<Op> {
+    let mut spilled: Vec<Op> = vec![];
+
+    // Attempt to discover the current stack size and base register.
+    let mut cfe_idx_opt = None;
+    let mut cfs_idx_opt = None;
+    for (op_idx, op) in ops.iter().enumerate() {
+        match &op.opcode {
+            Either::Left(VirtualOp::CFEI(_)) => {
+                assert!(cfe_idx_opt.is_none(), "Found more than one stack extension");
+                cfe_idx_opt = Some(op_idx);
+            }
+            Either::Left(VirtualOp::CFSI(_)) => {
+                assert!(cfs_idx_opt.is_none(), "Found more than one stack shrink");
+                cfs_idx_opt = Some(op_idx);
+            }
+            _ => (),
+        }
+    }
+
+    let cfe_idx = cfe_idx_opt.expect("Function does not have CFEI instruction for locals");
+
+    let Either::Left(VirtualOp::CFEI(VirtualImmediate24 { value: locals_size })) = ops[cfe_idx].opcode else {
+            panic!("Unexpected opcode");
+        };
+
+    // Determine the stack slots for each spilled register.
+    let spill_offsets: FxHashMap<VirtualRegister, u32> = spills
+        .iter()
+        .enumerate()
+        .map(|(i, reg)| (reg.clone(), (i * 8) as u32 + locals_size))
+        .collect();
+
+    let new_locals_size = locals_size + (8 * spills.len()) as u32;
+    if new_locals_size > compiler_constants::TWENTY_FOUR_BITS as u32 {
+        panic!("Enormous stack usage for locals.");
+    }
+
+    for (op_idx, op) in ops.iter().enumerate() {
+        if op_idx == cfe_idx {
+            // This is the CFE instruction, use the new stack size.
+            spilled.push(Op {
+                opcode: Either::Left(VirtualOp::CFEI(VirtualImmediate24 {
+                    value: new_locals_size as u32,
+                })),
+                comment: op.comment.clone(),
+                owning_span: op.owning_span.clone(),
+            });
+        } else if cfs_idx_opt.is_some_and(|cfs_idx| cfs_idx == op_idx) {
+            // This is the CFS instruction, use the new stack size.
+            spilled.push(Op {
+                opcode: Either::Left(VirtualOp::CFSI(VirtualImmediate24 {
+                    value: new_locals_size as u32,
+                })),
+                comment: op.comment.clone(),
+                owning_span: op.owning_span.clone(),
+            });
+        } else {
+            // For every other instruction:
+            //   If it defines a spilled register, store that register to its stack slot.
+            //   If it uses a spilled register, load that register from its stack slot.
+            let use_registers = op.use_registers();
+            let def_registers = op.def_registers();
+
+            fn calculate_offset(
+                reg_seqr: &mut RegisterSequencer,
+                inst_list: &mut Vec<Op>,
+                offset: u32,
+            ) -> (VirtualRegister, VirtualImmediate12) {
+                if offset <= compiler_constants::EIGHTEEN_BITS as u32 {
+                    let offset_mov_reg = reg_seqr.next();
+                    let offset_mov_instr = Op {
+                        opcode: Either::Left(VirtualOp::MOVI(
+                            offset_mov_reg.clone(),
+                            VirtualImmediate18 {
+                                value: offset as u32,
+                            },
+                        )),
+                        comment: "Spill/Refill: Set offset".to_string(),
+                        owning_span: None,
+                    };
+                    inst_list.push(offset_mov_instr);
+                    let offset_add_reg = reg_seqr.next();
+                    let offset_add_instr = Op {
+                        opcode: Either::Left(VirtualOp::ADD(
+                            offset_add_reg.clone(),
+                            offset_mov_reg,
+                            VirtualRegister::Constant(ConstantRegister::LocalsBase),
+                        )),
+                        comment: "Spill/Refill: Add offset to stack base".to_string(),
+                        owning_span: None,
+                    };
+                    inst_list.push(offset_add_instr);
+                    (offset_add_reg, VirtualImmediate12 { value: 0 })
+                } else {
+                    assert!(offset <= compiler_constants::TWENTY_FOUR_BITS as u32);
+                    let offset_upper_12 = offset >> 12;
+                    let offset_lower_12 = offset & 0b111111111111;
+                    assert!((offset_upper_12 << 12) + offset_lower_12 == offset);
+                    let offset_upper_mov_reg = reg_seqr.next();
+                    let offset_upper_mov_instr = Op {
+                        opcode: Either::Left(VirtualOp::MOVI(
+                            offset_upper_mov_reg.clone(),
+                            VirtualImmediate18 {
+                                value: offset_upper_12 as u32,
+                            },
+                        )),
+                        comment: "Spill/Refill: Offset computation".to_string(),
+                        owning_span: None,
+                    };
+                    inst_list.push(offset_upper_mov_instr);
+                    let offset_upper_shift_reg = reg_seqr.next();
+                    let offset_upper_shift_instr = Op {
+                        opcode: Either::Left(VirtualOp::SLLI(
+                            offset_upper_shift_reg.clone(),
+                            offset_upper_mov_reg,
+                            VirtualImmediate12 { value: 12 },
+                        )),
+                        comment: "Spill/Refill: Offset computation".to_string(),
+                        owning_span: None,
+                    };
+                    inst_list.push(offset_upper_shift_instr);
+                    let offset_add_reg = reg_seqr.next();
+                    let offset_add_instr = Op {
+                        opcode: Either::Left(VirtualOp::ADD(
+                            offset_add_reg.clone(),
+                            offset_upper_shift_reg,
+                            VirtualRegister::Constant(ConstantRegister::LocalsBase),
+                        )),
+                        comment: "Spill/Refill: Offset computation".to_string(),
+                        owning_span: None,
+                    };
+                    inst_list.push(offset_add_instr);
+                    (
+                        offset_add_reg,
+                        VirtualImmediate12 {
+                            value: offset_lower_12 as u16,
+                        },
+                    )
+                }
+            }
+
+            // Take care of any refills on the uses.
+            for &spilled_use in use_registers.iter().filter(|r#use| spills.contains(r#use)) {
+                // Load the spilled register from its stack slot.
+                let offset = spill_offsets[spilled_use];
+                if offset <= compiler_constants::TWELVE_BITS as u32 {
+                    spilled.push(Op {
+                        opcode: Either::Left(VirtualOp::LW(
+                            spilled_use.clone(),
+                            VirtualRegister::Constant(ConstantRegister::LocalsBase),
+                            VirtualImmediate12 {
+                                value: offset as u16,
+                            },
+                        )),
+                        comment: "Refilling from spill".to_string(),
+                        owning_span: None,
+                    });
+                } else {
+                    let (offset_reg, offset_imm) = calculate_offset(reg_seqr, &mut spilled, offset);
+                    let lw = Op {
+                        opcode: Either::Left(VirtualOp::LW(
+                            spilled_use.clone(),
+                            offset_reg,
+                            offset_imm,
+                        )),
+                        comment: "Refilling from spill".to_string(),
+                        owning_span: None,
+                    };
+                    spilled.push(lw);
+                }
+            }
+
+            // The op itself.
+            spilled.push(op.clone());
+
+            // Take care of spills from the def registers.
+            for &spilled_def in def_registers.iter().filter(|def| spills.contains(def)) {
+                // Store the def register to its stack slot.
+                let offset = spill_offsets[spilled_def];
+                if offset <= compiler_constants::TWELVE_BITS as u32 {
+                    spilled.push(Op {
+                        opcode: Either::Left(VirtualOp::SW(
+                            VirtualRegister::Constant(ConstantRegister::LocalsBase),
+                            spilled_def.clone(),
+                            VirtualImmediate12 {
+                                value: offset as u16,
+                            },
+                        )),
+                        comment: "Spill".to_string(),
+                        owning_span: None,
+                    });
+                } else {
+                    let (offset_reg, offset_imm) = calculate_offset(reg_seqr, &mut spilled, offset);
+                    let sw = Op {
+                        opcode: Either::Left(VirtualOp::SW(
+                            offset_reg,
+                            spilled_def.clone(),
+                            offset_imm,
+                        )),
+                        comment: "Spill".to_string(),
+                        owning_span: None,
+                    };
+                    spilled.push(sw);
+                }
+            }
+        }
+    }
+
+    spilled
 }

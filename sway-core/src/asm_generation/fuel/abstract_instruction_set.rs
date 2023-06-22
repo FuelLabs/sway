@@ -1,6 +1,7 @@
 use crate::{
     asm_generation::fuel::{
-        allocated_abstract_instruction_set::AllocatedAbstractInstructionSet, register_allocator,
+        allocated_abstract_instruction_set::AllocatedAbstractInstructionSet,
+        register_allocator::{self, spill, InterferenceGraph},
     },
     asm_lang::{
         allocated_ops::{AllocatedOp, AllocatedOpcode},
@@ -8,12 +9,19 @@ use crate::{
     },
 };
 
+use petgraph::stable_graph::NodeIndex;
+use rustc_hash::FxHashSet;
 use sway_error::error::CompileError;
 use sway_types::Span;
 
-use std::{collections::HashSet, fmt};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt,
+};
 
 use either::Either;
+
+use super::register_sequencer::RegisterSequencer;
 
 /// An [AbstractInstructionSet] is a set of instructions that use entirely virtual registers
 /// and excessive moves, with the intention of later optimizing it.
@@ -166,44 +174,87 @@ impl AbstractInstructionSet {
     ///
     pub(crate) fn allocate_registers(
         self,
+        reg_seqr: &mut RegisterSequencer,
     ) -> Result<AllocatedAbstractInstructionSet, CompileError> {
-        // Step 1: Liveness Analysis.
-        let live_out = register_allocator::liveness_analysis(&self.ops);
+        fn try_color(
+            ops: &Vec<Op>,
+        ) -> Result<
+            (
+                Vec<Op>,
+                InterferenceGraph,
+                HashMap<VirtualRegister, NodeIndex>,
+                Vec<VirtualRegister>,
+            ),
+            FxHashSet<VirtualRegister>,
+        > {
+            // Step 1: Liveness Analysis.
+            let live_out = register_allocator::liveness_analysis(ops);
 
-        // Step 2: Construct the interference graph.
-        let (mut interference_graph, mut reg_to_node_ix) =
-            register_allocator::create_interference_graph(&self.ops, &live_out);
+            // Step 2: Construct the interference graph.
+            let (mut interference_graph, mut reg_to_node_ix) =
+                register_allocator::create_interference_graph(ops, &live_out);
 
-        // Step 3: Remove redundant MOVE instructions using the interference graph.
-        let reduced_ops = register_allocator::coalesce_registers(
-            &self.ops,
-            &mut interference_graph,
-            &mut reg_to_node_ix,
-        );
+            // Step 3: Remove redundant MOVE instructions using the interference graph.
+            let reduced_ops = register_allocator::coalesce_registers(
+                ops,
+                &mut interference_graph,
+                &mut reg_to_node_ix,
+            );
 
-        // Step 4: Simplify - i.e. color the interference graph and return a stack that contains
-        // each colorable node and its neighbors.
-        let mut stack = register_allocator::color_interference_graph(&mut interference_graph);
+            // Step 4: Simplify - i.e. color the interference graph and return a stack that contains
+            // each colorable node and its neighbors.
+            let stack = register_allocator::color_interference_graph(&mut interference_graph)?;
 
-        // Uncomment the following to get some idea of which function is failing to complete
-        // register allocation.  The last comment printed will indicate the current function name.
-        // This will be unnecessary once we have the new register allocator, coming very soon!
-        //
-        //let comment = self.ops.iter().find_map(|op| {
-        //    if let Either::Right(crate::asm_lang::ControlFlowOp::Label(_)) = op.opcode {
-        //        Some(op.comment.clone())
-        //    } else {
-        //        None
-        //    }
-        //});
-        //dbg!(comment);
+            Ok((reduced_ops, interference_graph, reg_to_node_ix, stack))
+        }
+
+        let mut updated_ops_ref = &self.ops;
+        let mut updated_ops;
+        let mut try_count = 0;
+        // Try and assign registers. If we fail, spill. Repeat few times.
+        let (updated_ops, interference_graph, reg_to_node_ix, mut stack) = loop {
+            match try_color(updated_ops_ref) {
+                Ok((reduced_ops, interference_graph, reg_to_node_ix, stack)) => {
+                    break (reduced_ops, interference_graph, reg_to_node_ix, stack);
+                }
+                Err(spills) => {
+                    if try_count >= 4 {
+                        let comment = self
+                            .ops
+                            .iter()
+                            .find_map(|op| {
+                                if let Either::Right(crate::asm_lang::ControlFlowOp::Label(_)) =
+                                    op.opcode
+                                {
+                                    Some(op.comment.clone())
+                                } else {
+                                    None
+                                }
+                            })
+                            .unwrap_or("unknown".into());
+
+                        return Err(CompileError::InternalOwned(
+                            format!(
+                                "The allocator cannot resolve a register mapping for function {}. \
+                                     Using #[inline(never)] on some functions may help.",
+                                comment
+                            ),
+                            Span::dummy(),
+                        ));
+                    }
+                    try_count += 1;
+                    updated_ops = spill(reg_seqr, updated_ops_ref, &spills);
+                    updated_ops_ref = &updated_ops;
+                }
+            }
+        };
 
         // Step 5: Use the stack to assign a register for each virtual register.
-        let pool = register_allocator::assign_registers(&mut stack)?;
-
+        let pool =
+            register_allocator::assign_registers(&interference_graph, &reg_to_node_ix, &mut stack)?;
         // Step 6: Update all instructions to use the resulting register pool.
         let mut buf = vec![];
-        for op in &reduced_ops {
+        for op in &updated_ops {
             buf.push(AllocatedAbstractOp {
                 opcode: op.allocate_registers(&pool),
                 comment: op.comment.clone(),
