@@ -226,6 +226,7 @@ pub struct BuildProfile {
     pub json_abi_with_callpaths: bool,
     #[serde(default)]
     pub error_on_warnings: bool,
+    pub reverse_results: bool,
 }
 
 impl DependencyDetails {
@@ -697,6 +698,7 @@ impl BuildProfile {
             include_tests: false,
             json_abi_with_callpaths: false,
             error_on_warnings: false,
+            reverse_results: false,
         }
     }
 
@@ -714,6 +716,7 @@ impl BuildProfile {
             include_tests: false,
             json_abi_with_callpaths: false,
             error_on_warnings: false,
+            reverse_results: false,
         }
     }
 }
