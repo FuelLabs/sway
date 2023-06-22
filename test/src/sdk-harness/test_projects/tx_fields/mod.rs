@@ -826,14 +826,14 @@ mod outputs {
         #[tokio::test]
         #[should_panic]
         async fn fails_output_predicate_when_incorrect_asset() {
-            let (wallet1, _, predicate, _, asset_id) = setup_output_predicate().await;
+            let (wallet1, _, predicate, _, asset_id2) = setup_output_predicate().await;
 
             let transfer_amount = 10;
             predicate
                 .transfer(
                     wallet1.address(),
                     transfer_amount,
-                    asset_id,
+                    asset_id2,
                     TxParameters::default(),
                 )
                 .await
