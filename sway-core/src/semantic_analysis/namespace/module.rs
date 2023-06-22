@@ -236,7 +236,7 @@ impl Module {
         src: &Path,
         dst: &Path,
         engines: &Engines,
-        is_absolute: bool,
+        is_src_absolute: bool,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -276,7 +276,7 @@ impl Module {
                     src.to_vec(),
                     GlobImport::Yes,
                     symbol_and_decl.1,
-                    is_absolute,
+                    is_src_absolute,
                 ),
             );
         }
@@ -295,7 +295,7 @@ impl Module {
         src: &Path,
         dst: &Path,
         engines: &Engines,
-        is_absolute: bool,
+        is_src_absolute: bool,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -355,7 +355,7 @@ impl Module {
         let mut try_add = |symbol, path, decl: ty::TyDecl| {
             dst_ns
                 .use_synonyms
-                .insert(symbol, (path, GlobImport::Yes, decl, is_absolute));
+                .insert(symbol, (path, GlobImport::Yes, decl, is_src_absolute));
         };
 
         for (symbol, decl) in symbols_and_decls {
@@ -379,10 +379,10 @@ impl Module {
         src: &Path,
         dst: &Path,
         alias: Option<Ident>,
-        is_absolute: bool,
+        is_src_absolute: bool,
     ) -> CompileResult<()> {
         let (last_item, src) = src.split_last().expect("guaranteed by grammar");
-        self.item_import(engines, src, last_item, dst, alias, is_absolute)
+        self.item_import(engines, src, last_item, dst, alias, is_src_absolute)
     }
 
     /// Pull a single `item` from the given `src` module and import it into the `dst` module.
@@ -395,7 +395,7 @@ impl Module {
         item: &Ident,
         dst: &Path,
         alias: Option<Ident>,
-        is_absolute: bool,
+        is_src_absolute: bool,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -443,7 +443,7 @@ impl Module {
                     }
                     dst_ns.use_synonyms.insert(
                         name.clone(),
-                        (src.to_vec(), GlobImport::No, decl, is_absolute),
+                        (src.to_vec(), GlobImport::No, decl, is_src_absolute),
                     );
                 };
                 match alias {
@@ -483,7 +483,7 @@ impl Module {
         variant_name: &Ident,
         dst: &Path,
         alias: Option<Ident>,
-        is_absolute: bool,
+        is_src_absolute: bool,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -545,7 +545,7 @@ impl Module {
                                         variant_name: variant_name.clone(),
                                         variant_decl_span: variant_decl.span.clone(),
                                     }),
-                                    is_absolute,
+                                    is_src_absolute,
                                 ),
                             );
                         };
@@ -594,7 +594,7 @@ impl Module {
         dst: &Path,
         engines: &Engines,
         enum_name: &Ident,
-        is_absolute: bool,
+        is_src_absolute: bool,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -651,7 +651,7 @@ impl Module {
                                     variant_name,
                                     variant_decl_span: variant_decl.span.clone(),
                                 }),
-                                is_absolute,
+                                is_src_absolute,
                             ),
                         );
                     }
