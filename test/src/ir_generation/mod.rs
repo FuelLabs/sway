@@ -343,6 +343,7 @@ fn compile_core(build_target: BuildTarget, engines: &Engines) -> namespace::Modu
         terse_mode: true,
         disable_tests: false,
         locked: false,
+        ipfs_node: None,
     };
 
     let res = forc::test::forc_check::check(check_cmd, engines)

@@ -12,13 +12,14 @@ use ::tx::{
     Transaction,
     tx_type,
 };
+use ::option::*;
 
 // GTF Opcode const selectors
 //
 pub const GTF_OUTPUT_TYPE = 0x201;
-// pub const GTF_OUTPUT_COIN_TO = 0x202;
+pub const GTF_OUTPUT_COIN_TO = 0x202;
 pub const GTF_OUTPUT_COIN_AMOUNT = 0x203;
-// pub const GTF_OUTPUT_COIN_ASSET_ID = 0x204;
+pub const GTF_OUTPUT_COIN_ASSET_ID = 0x204;
 // pub const GTF_OUTPUT_CONTRACT_INPUT_INDEX = 0x205;
 // pub const GTF_OUTPUT_CONTRACT_BALANCE_ROOT = 0x206;
 // pub const GTF_OUTPUT_CONTRACT_STATE_ROOT = 0x207;
@@ -86,5 +87,24 @@ pub fn output_amount(index: u64) -> u64 {
                 r1: u64
             }
         },
+    }
+}
+
+/// If the output's type is `Output::Coin` return the asset ID as an `Some(id)`.
+/// Otherwise, returns `None`.
+pub fn output_asset_id(index: u64) -> Option<ContractId> {
+    match output_type(index) {
+        Output::Coin => Option::Some(ContractId::from(__gtf::<b256>(index, GTF_OUTPUT_COIN_ASSET_ID))),
+        _ => Option::None,
+    }
+}
+
+/// If the output's type is `Output::Coin` return the b256 as `Some(to)`.
+/// Otherwise, returns `None`.
+/// TODO: Update to `Identity` when https://github.com/FuelLabs/sway/issues/4569 is resolved
+pub fn output_asset_to(index: u64) -> Option<b256> {
+    match output_type(index) {
+        Output::Coin => Option::Some(__gtf::<b256>(index, GTF_OUTPUT_COIN_TO)),
+        _ => Option::None,
     }
 }

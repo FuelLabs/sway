@@ -7,7 +7,7 @@ use crate::{
 };
 use anyhow::{anyhow, bail, Context, Result};
 use forc_pkg::{self as pkg, fuel_core_not_running, PackageManifestFile};
-use forc_util::format_log_receipts;
+use forc_util::tx_utils::format_log_receipts;
 use fuel_core_client::client::FuelClient;
 use fuel_tx::{ContractId, Transaction, TransactionBuilder};
 use pkg::BuiltPackage;
@@ -151,6 +151,7 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
             locked: cmd.pkg.locked,
             output_directory: cmd.pkg.output_directory.clone(),
             json_abi_with_callpaths: cmd.pkg.json_abi_with_callpaths,
+            ipfs_node: cmd.pkg.ipfs_node.clone().unwrap_or_default(),
         },
         print: pkg::PrintOpts {
             ast: cmd.print.ast,
@@ -159,6 +160,7 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
             finalized_asm: cmd.print.finalized_asm,
             intermediate_asm: cmd.print.intermediate_asm,
             ir: cmd.print.ir,
+            reverse_order: cmd.print.reverse_order,
         },
         minify: pkg::MinifyOpts {
             json_abi: cmd.minify.json_abi,
