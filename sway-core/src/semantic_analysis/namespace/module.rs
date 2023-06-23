@@ -435,6 +435,18 @@ impl Module {
                         engines,
                     );
                 }
+                // if this is a trait, import its implementations
+                let decl_span = decl.span();
+                if let TyDecl::TraitDecl(_) = &decl {
+                    // TODO: we only import local impls from the source namespace
+                    // this is okay for now but we'll need to device some mechanism to collect all available trait impls
+                    impls_to_insert.extend(
+                        src_ns
+                            .implemented_traits
+                            .filter_by_trait_decl_span(decl_span),
+                        engines,
+                    );
+                }
                 // no matter what, import it this way though.
                 let dst_ns = &mut self[dst];
                 let add_synonym = |name| {

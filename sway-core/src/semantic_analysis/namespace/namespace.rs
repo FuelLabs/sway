@@ -2,10 +2,7 @@ use crate::{
     decl_engine::{DeclRefConstant, DeclRefFunction},
     engine_threading::*,
     error::*,
-    language::{
-        ty::{self},
-        CallPath, Visibility,
-    },
+    language::{ty, CallPath, Visibility},
     type_system::*,
     CompileResult, Ident,
 };
@@ -616,6 +613,7 @@ impl Namespace {
         type_id: TypeId,
         items: &[ty::TyImplItem],
         impl_span: &Span,
+        trait_decl_span: Option<Span>,
         is_impl_self: bool,
         engines: &Engines,
     ) -> CompileResult<()> {
@@ -629,6 +627,7 @@ impl Namespace {
             type_id,
             items,
             impl_span,
+            trait_decl_span,
             is_impl_self,
             engines,
         )

@@ -58,6 +58,7 @@ type TraitName = CallPath<TraitSuffix>;
 struct TraitKey {
     name: TraitName,
     type_id: TypeId,
+    trait_decl_span: Option<Span>,
 }
 
 impl OrdWithEngines for TraitKey {
@@ -112,6 +113,7 @@ impl TraitMap {
         type_id: TypeId,
         items: &[TyImplItem],
         impl_span: &Span,
+        trait_decl_span: Option<Span>,
         is_impl_self: bool,
         engines: &Engines,
     ) -> CompileResult<()> {
@@ -150,6 +152,7 @@ impl TraitMap {
                 TraitKey {
                     name: map_trait_name,
                     type_id: map_type_id,
+                    trait_decl_span: _,
                 },
             value:
                 TraitValue {
@@ -241,7 +244,14 @@ impl TraitMap {
         };
 
         // even if there is a conflicting definition, add the trait anyway
-        self.insert_inner(trait_name, impl_span.clone(), type_id, trait_items, engines);
+        self.insert_inner(
+            trait_name,
+            impl_span.clone(),
+            trait_decl_span,
+            type_id,
+            trait_items,
+            engines,
+        );
 
         if errors.is_empty() {
             ok((), warnings, errors)
@@ -254,6 +264,7 @@ impl TraitMap {
         &mut self,
         trait_name: TraitName,
         impl_span: Span,
+        trait_decl_span: Option<Span>,
         type_id: TypeId,
         trait_methods: TraitItems,
         engines: &Engines,
@@ -261,6 +272,7 @@ impl TraitMap {
         let key = TraitKey {
             name: trait_name,
             type_id,
+            trait_decl_span,
         };
         let value = TraitValue {
             trait_items: trait_methods,
@@ -379,6 +391,23 @@ impl TraitMap {
                 Err(pos) => self.trait_impls.insert(pos, oe),
             }
         }
+    }
+
+    /// Filters the entries in `self` and return a new [TraitMap] with all of
+    /// the entries from `self` that implement a trait from the declaration with that span.
+    pub(crate) fn filter_by_trait_decl_span(&self, trait_decl_span: Span) -> TraitMap {
+        let mut trait_map = TraitMap::default();
+        for entry in self.trait_impls.iter() {
+            if entry
+                .key
+                .trait_decl_span
+                .as_ref()
+                .map_or(false, |span| span == &trait_decl_span)
+            {
+                trait_map.trait_impls.push(entry.clone());
+            }
+        }
+        trait_map
     }
 
     /// Filters the entries in `self` with the given [TypeId] `type_id` and
@@ -603,6 +632,7 @@ impl TraitMap {
                 TraitKey {
                     name: map_trait_name,
                     type_id: map_type_id,
+                    trait_decl_span: map_trait_decl_span,
                 },
             value:
                 TraitValue {
@@ -617,6 +647,7 @@ impl TraitMap {
                     trait_map.insert_inner(
                         map_trait_name.clone(),
                         impl_span.clone(),
+                        map_trait_decl_span.clone(),
                         *type_id,
                         map_trait_items.clone(),
                         engines,
@@ -655,6 +686,7 @@ impl TraitMap {
                     trait_map.insert_inner(
                         map_trait_name.clone(),
                         impl_span.clone(),
+                        map_trait_decl_span.clone(),
                         *type_id,
                         trait_items,
                         engines,
