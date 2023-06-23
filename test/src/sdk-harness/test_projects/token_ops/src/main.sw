@@ -13,6 +13,13 @@ abi TestFuelCoin {
     fn generic_mint_to(amount: u64, to: Identity);
     fn generic_transfer(amount: u64, asset_id: ContractId, to: Identity);
     fn send_message(recipient: b256, msg_data: Vec<u64>, coins: u64);
+
+    fn address_mint_to(recipient: Address, amount: u64);
+    fn address_transfer(recipient: Address, asset_id: ContractId, amount: u64);
+    fn contract_mint_to(recipient: ContractId, amount: u64);
+    fn contract_transfer(recipient: ContractId, asset_id: ContractId, amount: u64);
+    fn identity_mint_to(recipient: Identity, amount: u64);
+    fn identity_transfer(recipient: Identity, asset_id: ContractId, amount: u64);
 }
 
 impl TestFuelCoin for Contract {
@@ -61,5 +68,29 @@ impl TestFuelCoin for Contract {
         }
 
         send_message(recipient, data, coins);
+    }
+
+    fn address_mint_to(recipient: Address, amount: u64) {
+        recipient.mint_to(amount);
+    }
+
+    fn address_transfer(recipient: Address, asset_id: ContractId, amount: u64) {
+        recipient.transfer(amount, asset_id);
+    }
+
+    fn contract_mint_to(recipient: ContractId, amount: u64) {
+        recipient.mint_to(amount);
+    }
+
+    fn contract_transfer(recipient: ContractId, asset_id: ContractId, amount: u64) {
+        recipient.transfer(amount, asset_id);
+    }
+
+    fn identity_mint_to(recipient: Identity, amount: u64) {
+        recipient.mint_to(amount);
+    }
+
+    fn identity_transfer(recipient: Identity, asset_id: ContractId, amount: u64) {
+        recipient.transfer(amount, asset_id);
     }
 }
