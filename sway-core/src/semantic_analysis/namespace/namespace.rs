@@ -506,8 +506,14 @@ impl Namespace {
     }
 
     /// Short-hand for performing a [Module::star_import] with `mod_path` as the destination.
-    pub(crate) fn star_import(&mut self, src: &Path, engines: &Engines) -> CompileResult<()> {
-        self.root.star_import(src, &self.mod_path, engines)
+    pub(crate) fn star_import(
+        &mut self,
+        src: &Path,
+        engines: &Engines,
+        is_absolute: bool,
+    ) -> CompileResult<()> {
+        self.root
+            .star_import(src, &self.mod_path, engines, is_absolute)
     }
 
     /// Short-hand for performing a [Module::variant_star_import] with `mod_path` as the destination.
@@ -516,9 +522,10 @@ impl Namespace {
         src: &Path,
         engines: &Engines,
         enum_name: &Ident,
+        is_absolute: bool,
     ) -> CompileResult<()> {
         self.root
-            .variant_star_import(src, &self.mod_path, engines, enum_name)
+            .variant_star_import(src, &self.mod_path, engines, enum_name, is_absolute)
     }
 
     /// Short-hand for performing a [Module::self_import] with `mod_path` as the destination.
@@ -527,8 +534,10 @@ impl Namespace {
         engines: &Engines,
         src: &Path,
         alias: Option<Ident>,
+        is_absolute: bool,
     ) -> CompileResult<()> {
-        self.root.self_import(engines, src, &self.mod_path, alias)
+        self.root
+            .self_import(engines, src, &self.mod_path, alias, is_absolute)
     }
 
     /// Short-hand for performing a [Module::item_import] with `mod_path` as the destination.
@@ -538,9 +547,10 @@ impl Namespace {
         src: &Path,
         item: &Ident,
         alias: Option<Ident>,
+        is_absolute: bool,
     ) -> CompileResult<()> {
         self.root
-            .item_import(engines, src, item, &self.mod_path, alias)
+            .item_import(engines, src, item, &self.mod_path, alias, is_absolute)
     }
 
     /// Short-hand for performing a [Module::variant_import] with `mod_path` as the destination.
@@ -551,9 +561,17 @@ impl Namespace {
         enum_name: &Ident,
         variant_name: &Ident,
         alias: Option<Ident>,
+        is_absolute: bool,
     ) -> CompileResult<()> {
-        self.root
-            .variant_import(engines, src, enum_name, variant_name, &self.mod_path, alias)
+        self.root.variant_import(
+            engines,
+            src,
+            enum_name,
+            variant_name,
+            &self.mod_path,
+            alias,
+            is_absolute,
+        )
     }
 
     /// "Enter" the submodule at the given path by returning a new [SubmoduleNamespace].
