@@ -140,6 +140,7 @@ impl ty::TyImplTrait {
                         &trait_decl.items,
                         &items,
                         &trait_name,
+                        &trait_decl.span(),
                         &block_span,
                         false,
                     ),
@@ -199,6 +200,7 @@ impl ty::TyImplTrait {
                         &abi.items,
                         &items,
                         &trait_name,
+                        &abi.span(),
                         &block_span,
                         true
                     ),
@@ -394,6 +396,7 @@ fn type_check_trait_implementation(
     trait_items: &[TyImplItem],
     impl_items: &[ImplItem],
     trait_name: &CallPath,
+    trait_decl_span: &Span,
     block_span: &Span,
     is_contract: bool,
 ) -> CompileResult<Vec<TyImplItem>> {
@@ -481,6 +484,7 @@ fn type_check_trait_implementation(
                 .cloned()
                 .collect::<Vec<_>>(),
             &trait_name.span(),
+            Some(trait_decl_span.clone()),
             false,
             engines,
         );
