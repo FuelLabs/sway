@@ -476,7 +476,7 @@ async fn test_address_mint_to() {
     let amount = 44u64;
     let to = wallet.address();
 
-    fuelcoin_instance.methods().address_mint_to(to, amount).call().await.unwrap();
+    fuelcoin_instance.methods().address_mint_to(to, amount).append_variable_outputs(1).call().await.unwrap();
 
     let balance = wallet.get_asset_balance(&AssetId::from(*fuelcoin_id)).await.unwrap();
     assert_eq!(balance, amount);
@@ -497,7 +497,7 @@ async fn test_address_transfer_new_mint() {
         .await
         .unwrap();
 
-    fuelcoin_instance.methods().address_transfer(to, fuelcoin_id, amount).call().await.unwrap();
+    fuelcoin_instance.methods().address_transfer(to, fuelcoin_id, amount).append_variable_outputs(1).call().await.unwrap();
 
     let balance = wallet.get_asset_balance(&AssetId::from(*fuelcoin_id)).await.unwrap();
 
@@ -514,7 +514,7 @@ async fn test_address_transfer_base_asset() {
 
     let balance_prev = wallet.get_asset_balance(&AssetId::from(*fuelcoin_id)).await.unwrap();
 
-    fuelcoin_instance.methods().address_transfer(to, ContractId::from(*AssetId::BASE), amount).call().await.unwrap();
+    fuelcoin_instance.methods().address_transfer(to, ContractId::from(*AssetId::BASE), amount).append_variable_outputs(1).call().await.unwrap();
 
     let balance_new = wallet.get_asset_balance(&AssetId::from(*fuelcoin_id)).await.unwrap();
 
@@ -529,7 +529,7 @@ async fn test_contract_mint_to() {
     let amount = 44u64;
     let to = get_balance_contract_id(wallet.clone()).await;
 
-    fuelcoin_instance.methods().contract_mint_to(to, amount).call().await.unwrap();
+    fuelcoin_instance.methods().contract_mint_to(to, amount).append_contract(to.into()).call().await.unwrap();
 
     let balance = fuelcoin_instance.methods().get_balance(to, fuelcoin_id).call().await.unwrap().value;
     assert_eq!(balance, amount);
@@ -550,7 +550,7 @@ async fn test_contract_transfer_new_mint() {
         .await
         .unwrap();
 
-    fuelcoin_instance.methods().contract_transfer(to, fuelcoin_id, amount).call().await.unwrap();
+    fuelcoin_instance.methods().contract_transfer(to, fuelcoin_id, amount).append_contract(to.into()).call().await.unwrap();
 
     let balance = fuelcoin_instance.methods().get_balance(to, fuelcoin_id).call().await.unwrap().value;
 
@@ -567,7 +567,7 @@ async fn test_contract_transfer_base_asset() {
 
     fuelcoin_instance.methods().contract_transfer(to, ContractId::from(*AssetId::BASE), amount).call().await.unwrap();
 
-    let balance = fuelcoin_instance.methods().get_balance(to, fuelcoin_id).call().await.unwrap().value;
+    let balance = fuelcoin_instance.methods().get_balance(to, fuelcoin_id).append_contract(to.into()).call().await.unwrap().value;
 
     assert_eq!(balance, amount);
 }
@@ -581,7 +581,7 @@ async fn test_identity_address_mint_to() {
     let to = wallet.address().into();
     let to = Identity::Address(to);
 
-    fuelcoin_instance.methods().identity_mint_to(to, amount).call().await.unwrap();
+    fuelcoin_instance.methods().identity_mint_to(to, amount).append_variable_outputs(1).call().await.unwrap();
 
     let balance = wallet.get_asset_balance(&AssetId::from(*fuelcoin_id)).await.unwrap();
     assert_eq!(balance, amount);
@@ -603,7 +603,7 @@ async fn test_identity_address_transfer_new_mint() {
         .await
         .unwrap();
 
-    fuelcoin_instance.methods().identity_transfer(to, fuelcoin_id, amount).call().await.unwrap();
+    fuelcoin_instance.methods().identity_transfer(to, fuelcoin_id, amount).append_variable_outputs(1).call().await.unwrap();
 
     let balance = wallet.get_asset_balance(&AssetId::from(*fuelcoin_id)).await.unwrap();
 
@@ -621,7 +621,7 @@ async fn test_identity_address_transfer_base_asset() {
 
     let balance_prev = wallet.get_asset_balance(&AssetId::from(*fuelcoin_id)).await.unwrap();
 
-    fuelcoin_instance.methods().identity_transfer(to, ContractId::from(*AssetId::BASE), amount).call().await.unwrap();
+    fuelcoin_instance.methods().identity_transfer(to, ContractId::from(*AssetId::BASE), amount).append_variable_outputs(1).call().await.unwrap();
 
     let balance_new = wallet.get_asset_balance(&AssetId::from(*fuelcoin_id)).await.unwrap();
 
@@ -639,7 +639,7 @@ async fn test_identity_contract_mint_to() {
 
     fuelcoin_instance.methods().identity_mint_to(to, amount).call().await.unwrap();
 
-    let balance = fuelcoin_instance.methods().get_balance(balance_contract_id, fuelcoin_id).call().await.unwrap().value;
+    let balance = fuelcoin_instance.methods().get_balance(balance_contract_id, fuelcoin_id).append_contract(balance_contract_id.into()).call().await.unwrap().value;
     assert_eq!(balance, amount);
 }
 
@@ -661,7 +661,7 @@ async fn test_identity_contract_transfer_new_mint() {
 
     fuelcoin_instance.methods().identity_transfer(to, fuelcoin_id, amount).call().await.unwrap();
 
-    let balance = fuelcoin_instance.methods().get_balance(balance_contract_id, fuelcoin_id).call().await.unwrap().value;
+    let balance = fuelcoin_instance.methods().get_balance(balance_contract_id, fuelcoin_id).append_contract(balance_contract_id.into()).call().await.unwrap().value;
 
     assert_eq!(balance, amount);        
 }
@@ -675,7 +675,7 @@ async fn test_identity_contract_transfer_base_asset() {
     let amount = 44u64;
     let to = Identity::ContractId(balance_contract_id);
 
-    fuelcoin_instance.methods().identity_transfer(to, ContractId::from(*AssetId::BASE), amount).call().await.unwrap();
+    fuelcoin_instance.methods().identity_transfer(to, ContractId::from(*AssetId::BASE), amount).append_contract(balance_contract_id.into()).call().await.unwrap();
 
     let balance = fuelcoin_instance.methods().get_balance(balance_contract_id, fuelcoin_id).call().await.unwrap().value;
     
