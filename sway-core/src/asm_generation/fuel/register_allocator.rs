@@ -4,14 +4,15 @@ use crate::{
         allocated_ops::AllocatedRegister, virtual_register::*, ControlFlowOp, Label, Op,
         VirtualImmediate12, VirtualImmediate18, VirtualImmediate24, VirtualOp,
     },
+    size_bytes_round_up_to_word_alignment,
 };
 
 use either::Either;
 use petgraph::graph::NodeIndex;
 use rustc_hash::{FxHashMap, FxHashSet};
-use std::collections::{BTreeSet, HashMap};
 use sway_error::error::CompileError;
 use sway_types::Span;
+use std::collections::{BTreeSet, HashMap};
 
 use super::register_sequencer::RegisterSequencer;
 
@@ -485,6 +486,7 @@ pub(crate) fn color_interference_graph(
         if let Some(&spill_reg) = pending.iter().next() {
             pending.remove(&spill_reg);
             spills.insert(interference_graph[spill_reg].clone().unwrap());
+            worklist.push(spill_reg);
         } else {
             break;
         }
@@ -568,18 +570,21 @@ pub(crate) fn spill(
 
     let cfe_idx = cfe_idx_opt.expect("Function does not have CFEI instruction for locals");
 
-    let Either::Left(VirtualOp::CFEI(VirtualImmediate24 { value: locals_size })) = ops[cfe_idx].opcode else {
+    let Either::Left(VirtualOp::CFEI(VirtualImmediate24 { value: locals_size_bytes })) = ops[cfe_idx].opcode else {
             panic!("Unexpected opcode");
         };
 
+    // pad up the locals size in bytes to a word.
+    let locals_size_bytes = size_bytes_round_up_to_word_alignment!(locals_size_bytes);
+
     // Determine the stack slots for each spilled register.
-    let spill_word_offsets: FxHashMap<VirtualRegister, u32> = spills
+    let spill_offsets_bytes: FxHashMap<VirtualRegister, u32> = spills
         .iter()
         .enumerate()
-        .map(|(i, reg)| (reg.clone(), i as u32 + locals_size))
+        .map(|(i, reg)| (reg.clone(), (i * 8) as u32 + locals_size_bytes))
         .collect();
 
-    let new_locals_byte_size = locals_size + (8 * spills.len()) as u32;
+    let new_locals_byte_size = locals_size_bytes + (8 * spills.len()) as u32;
     if new_locals_byte_size > compiler_constants::TWENTY_FOUR_BITS as u32 {
         panic!("Enormous stack usage for locals.");
     }
@@ -616,6 +621,7 @@ pub(crate) fn spill(
                 inst_list: &mut Vec<Op>,
                 offset_bytes: u32,
             ) -> (VirtualRegister, VirtualImmediate12) {
+                assert!(offset_bytes % 8 == 0);
                 if offset_bytes <= compiler_constants::EIGHTEEN_BITS as u32 {
                     let offset_mov_reg = reg_seqr.next();
                     let offset_mov_instr = Op {
@@ -643,6 +649,12 @@ pub(crate) fn spill(
                     (offset_add_reg, VirtualImmediate12 { value: 0 })
                 } else {
                     assert!(offset_bytes <= compiler_constants::TWENTY_FOUR_BITS as u32);
+                    // To have a 24b immediate value, we split it into 12-12 bits
+                    // The upper 12 bits are shifted down, then put in a register using
+                    // MOVi and then shifted back up via SLLI. Adding back the lower 12 bits
+                    // gives us back the original value. We first add the locals_base register
+                    // though and then just return the lower 12 bits (but in words) to be used
+                    // as an imm value and added in the consumer LW/SW.
                     let offset_upper_12 = offset_bytes >> 12;
                     let offset_lower_12 = offset_bytes & 0b111111111111;
                     assert!((offset_upper_12 << 12) + offset_lower_12 == offset_bytes);
@@ -693,14 +705,16 @@ pub(crate) fn spill(
             // Take care of any refills on the uses.
             for &spilled_use in use_registers.iter().filter(|r#use| spills.contains(r#use)) {
                 // Load the spilled register from its stack slot.
-                let offset_words = spill_word_offsets[spilled_use];
-                if offset_words <= compiler_constants::TWELVE_BITS as u32 {
+                let offset_bytes = spill_offsets_bytes[spilled_use];
+                assert!(offset_bytes % 8 == 0);
+                if offset_bytes / 8 <= compiler_constants::TWELVE_BITS as u32 {
                     spilled.push(Op {
                         opcode: Either::Left(VirtualOp::LW(
                             spilled_use.clone(),
                             VirtualRegister::Constant(ConstantRegister::LocalsBase),
                             VirtualImmediate12 {
-                                value: offset_words as u16,
+                                // This will be multiplied by 8 by the VM
+                                value: (offset_bytes / 8) as u16,
                             },
                         )),
                         comment: "Refilling from spill".to_string(),
@@ -708,7 +722,7 @@ pub(crate) fn spill(
                     });
                 } else {
                     let (offset_reg, offset_imm_word) =
-                        calculate_offset_reg_wordimm(reg_seqr, &mut spilled, offset_words * 8);
+                        calculate_offset_reg_wordimm(reg_seqr, &mut spilled, offset_bytes);
                     let lw = Op {
                         opcode: Either::Left(VirtualOp::LW(
                             spilled_use.clone(),
@@ -729,14 +743,16 @@ pub(crate) fn spill(
             // Take care of spills from the def registers.
             for &spilled_def in def_registers.iter().filter(|def| spills.contains(def)) {
                 // Store the def register to its stack slot.
-                let offset_words = spill_word_offsets[spilled_def];
-                if offset_words <= compiler_constants::TWELVE_BITS as u32 {
+                let offset_bytes = spill_offsets_bytes[spilled_def];
+                assert!(offset_bytes % 8 == 0);
+                if offset_bytes / 8 <= compiler_constants::TWELVE_BITS as u32 {
                     spilled.push(Op {
                         opcode: Either::Left(VirtualOp::SW(
                             VirtualRegister::Constant(ConstantRegister::LocalsBase),
                             spilled_def.clone(),
                             VirtualImmediate12 {
-                                value: offset_words as u16,
+                                // This will be multiplied by 8 by the VM
+                                value: (offset_bytes / 8) as u16,
                             },
                         )),
                         comment: "Spill".to_string(),
@@ -744,7 +760,7 @@ pub(crate) fn spill(
                     });
                 } else {
                     let (offset_reg, offset_imm_word) =
-                        calculate_offset_reg_wordimm(reg_seqr, &mut spilled, offset_words * 8);
+                        calculate_offset_reg_wordimm(reg_seqr, &mut spilled, offset_bytes);
                     let sw = Op {
                         opcode: Either::Left(VirtualOp::SW(
                             offset_reg,
