@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-9F4EED204534DB2D'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-9F4EED204534DB2D'
+dependencies = ['core']
+
+[[package]]
+name = 'use_absolute_path'
+source = 'member'
+dependencies = ['std']
