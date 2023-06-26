@@ -395,15 +395,27 @@ pub fn print_on_failure(
     terse_mode: bool,
     warnings: &[CompileWarning],
     errors: &[CompileError],
+    reverse_results: bool,
 ) {
     let e_len = errors.len();
     let w_len = warnings.len();
 
     if !terse_mode {
-        warnings
-            .iter()
-            .for_each(|w| format_warning(source_engine, w));
-        errors.iter().for_each(|e| format_err(source_engine, e));
+        if reverse_results {
+            warnings
+                .iter()
+                .rev()
+                .for_each(|w| format_warning(source_engine, w));
+            errors
+                .iter()
+                .rev()
+                .for_each(|e| format_err(source_engine, e));
+        } else {
+            warnings
+                .iter()
+                .for_each(|w| format_warning(source_engine, w));
+            errors.iter().for_each(|e| format_err(source_engine, e));
+        }
     }
 
     if e_len == 0 && w_len > 0 {

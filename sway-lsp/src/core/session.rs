@@ -164,9 +164,18 @@ impl Session {
                     dir: uri.path().into(),
                 })?;
 
-        let plan =
-            pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)
-                .map_err(LanguageServerError::BuildPlanFailed)?;
+        // TODO: Either we want LSP to deploy a local node in the background or we want this to
+        // point to Fuel operated IPFS node.
+        let ipfs_node = pkg::source::IPFSNode::Local;
+
+        let plan = pkg::BuildPlan::from_lock_and_manifests(
+            &lock_path,
+            &member_manifests,
+            locked,
+            offline,
+            ipfs_node,
+        )
+        .map_err(LanguageServerError::BuildPlanFailed)?;
 
         let new_engines = Engines::default();
         let tests_enabled = true;

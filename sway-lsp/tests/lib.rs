@@ -2,7 +2,7 @@ pub mod integration;
 
 use crate::integration::{code_actions, lsp};
 use std::{fs, path::PathBuf};
-use sway_lsp::server::Backend;
+use sway_lsp::server_state::ServerState;
 use sway_lsp_test_utils::{
     assert_server_requests, dir_contains_forc_manifest, doc_comments_dir, e2e_language_dir,
     e2e_test_dir, generic_impl_self_dir, get_fixture, load_sway_example, runnables_test_dir,
@@ -42,7 +42,7 @@ pub(crate) struct Rename<'a> {
     new_name: &'a str,
 }
 
-async fn init_and_open(service: &mut LspService<Backend>, entry_point: PathBuf) -> Url {
+async fn init_and_open(service: &mut LspService<ServerState>, entry_point: PathBuf) -> Url {
     let _ = lsp::initialize_request(service).await;
     lsp::initialized_notification(service).await;
     let (uri, sway_program) = load_sway_example(entry_point);
@@ -50,7 +50,7 @@ async fn init_and_open(service: &mut LspService<Backend>, entry_point: PathBuf) 
     uri
 }
 
-async fn shutdown_and_exit(service: &mut LspService<Backend>) {
+async fn shutdown_and_exit(service: &mut LspService<ServerState>) {
     let _ = lsp::shutdown_request(service).await;
     lsp::exit_notification(service).await;
 }
@@ -62,8 +62,8 @@ async fn shutdown_and_exit(service: &mut LspService<Backend>) {
 #[allow(unused)]
 //#[tokio::test]
 async fn write_all_example_asts() {
-    let (mut service, _) = LspService::build(Backend::new)
-        .custom_method("sway/show_ast", Backend::show_ast)
+    let (mut service, _) = LspService::build(ServerState::new)
+        .custom_method("sway/show_ast", ServerState::show_ast)
         .finish();
     let _ = lsp::initialize_request(&mut service).await;
     lsp::initialized_notification(&mut service).await;
@@ -109,20 +109,20 @@ async fn write_all_example_asts() {
 
 #[tokio::test]
 async fn initialize() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let _ = lsp::initialize_request(&mut service).await;
 }
 
 #[tokio::test]
 async fn initialized() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let _ = lsp::initialize_request(&mut service).await;
     lsp::initialized_notification(&mut service).await;
 }
 
 #[tokio::test]
 async fn initializes_only_once() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let initialize = lsp::initialize_request(&mut service).await;
     lsp::initialized_notification(&mut service).await;
     let response = lsp::call_request(&mut service, initialize).await;
@@ -132,7 +132,7 @@ async fn initializes_only_once() {
 
 #[tokio::test]
 async fn shutdown() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let _ = lsp::initialize_request(&mut service).await;
     lsp::initialized_notification(&mut service).await;
     let shutdown = lsp::shutdown_request(&mut service).await;
@@ -144,7 +144,7 @@ async fn shutdown() {
 
 #[tokio::test]
 async fn refuses_requests_after_shutdown() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let _ = lsp::initialize_request(&mut service).await;
     let shutdown = lsp::shutdown_request(&mut service).await;
     let response = lsp::call_request(&mut service, shutdown).await;
@@ -154,14 +154,14 @@ async fn refuses_requests_after_shutdown() {
 
 #[tokio::test]
 async fn did_open() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let _ = init_and_open(&mut service, e2e_test_dir().join("src/main.sw")).await;
     shutdown_and_exit(&mut service).await;
 }
 
 #[tokio::test]
 async fn did_close() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let _ = init_and_open(&mut service, e2e_test_dir().join("src/main.sw")).await;
     lsp::did_close_notification(&mut service).await;
     shutdown_and_exit(&mut service).await;
@@ -169,7 +169,7 @@ async fn did_close() {
 
 #[tokio::test]
 async fn did_change() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
     let _ = lsp::did_change_request(&mut service, &uri).await;
     shutdown_and_exit(&mut service).await;
@@ -177,7 +177,7 @@ async fn did_change() {
 
 #[tokio::test]
 async fn lsp_syncs_with_workspace_edits() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
     let mut i = 0..;
     let mut go_to = GotoDefinition {
@@ -198,8 +198,8 @@ async fn lsp_syncs_with_workspace_edits() {
 
 #[tokio::test]
 async fn show_ast() {
-    let (mut service, _) = LspService::build(Backend::new)
-        .custom_method("sway/show_ast", Backend::show_ast)
+    let (mut service, _) = LspService::build(ServerState::new)
+        .custom_method("sway/show_ast", ServerState::show_ast)
         .finish();
 
     let uri = init_and_open(&mut service, e2e_test_dir().join("src/main.sw")).await;
@@ -211,7 +211,7 @@ async fn show_ast() {
 
 #[tokio::test]
 async fn go_to_definition() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
     let mut i = 0..;
     let go_to = GotoDefinition {
@@ -228,7 +228,7 @@ async fn go_to_definition() {
 }
 
 async fn definition_check_with_req_offset<'a>(
-    service: &mut LspService<Backend>,
+    service: &mut LspService<ServerState>,
     go_to: &mut GotoDefinition<'a>,
     req_line: i32,
     req_char: i32,
@@ -241,7 +241,7 @@ async fn definition_check_with_req_offset<'a>(
 
 #[tokio::test]
 async fn go_to_definition_for_fields() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(
         &mut service,
         test_fixtures_dir().join("tokens/fields/src/main.sw"),
@@ -297,7 +297,7 @@ async fn go_to_definition_for_fields() {
 
 #[tokio::test]
 async fn go_to_definition_inside_turbofish() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(
         &mut service,
         test_fixtures_dir().join("tokens/turbofish/src/main.sw"),
@@ -346,7 +346,7 @@ async fn go_to_definition_inside_turbofish() {
 
 #[tokio::test]
 async fn go_to_definition_for_matches() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(
         &mut service,
         test_fixtures_dir().join("tokens/matches/src/main.sw"),
@@ -458,7 +458,7 @@ async fn go_to_definition_for_matches() {
 
 #[tokio::test]
 async fn go_to_definition_for_modules() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(
         &mut service,
         test_fixtures_dir().join("tokens/modules/src/lib.sw"),
@@ -480,7 +480,7 @@ async fn go_to_definition_for_modules() {
 
     shutdown_and_exit(&mut service).await;
 
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(
         &mut service,
         test_fixtures_dir().join("tokens/modules/src/test_mod.sw"),
@@ -503,7 +503,7 @@ async fn go_to_definition_for_modules() {
 
 #[tokio::test]
 async fn go_to_definition_for_paths() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(
         &mut service,
         test_fixtures_dir().join("tokens/paths/src/main.sw"),
@@ -876,7 +876,7 @@ async fn go_to_definition_for_paths() {
 
 #[tokio::test]
 async fn go_to_definition_for_traits() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(
         &mut service,
         test_fixtures_dir().join("tokens/traits/src/main.sw"),
@@ -915,7 +915,7 @@ async fn go_to_definition_for_traits() {
 
 #[tokio::test]
 async fn go_to_definition_for_variables() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(
         &mut service,
         test_fixtures_dir().join("tokens/variables/src/main.sw"),
@@ -1007,7 +1007,7 @@ async fn go_to_definition_for_variables() {
 
 #[tokio::test]
 async fn go_to_definition_for_consts() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(
         &mut service,
         test_fixtures_dir().join("tokens/consts/src/main.sw"),
@@ -1020,7 +1020,7 @@ async fn go_to_definition_for_consts() {
         req_uri: &uri,
         req_line: 9,
         req_char: 24,
-        def_line: 18,
+        def_line: 17,
         def_start_char: 5,
         def_end_char: 9,
         def_path: "sway-lib-std/src/contract_id.sw",
@@ -1028,7 +1028,7 @@ async fn go_to_definition_for_consts() {
     let _ = lsp::definition_check(&mut service, &contract_go_to, &mut i).await;
 
     contract_go_to.req_char = 34;
-    contract_go_to.def_line = 19;
+    contract_go_to.def_line = 18;
     contract_go_to.def_start_char = 7;
     contract_go_to.def_end_char = 11;
     let _ = lsp::definition_check(&mut service, &contract_go_to, &mut i).await;
@@ -1083,7 +1083,7 @@ async fn go_to_definition_for_consts() {
 
 #[tokio::test]
 async fn go_to_definition_for_functions() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(
         &mut service,
         test_fixtures_dir().join("tokens/functions/src/main.sw"),
@@ -1134,7 +1134,7 @@ async fn go_to_definition_for_functions() {
 
 #[tokio::test]
 async fn go_to_definition_for_structs() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(
         &mut service,
         test_fixtures_dir().join("tokens/structs/src/main.sw"),
@@ -1188,7 +1188,7 @@ async fn go_to_definition_for_structs() {
 
 #[tokio::test]
 async fn go_to_definition_for_impls() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(
         &mut service,
         test_fixtures_dir().join("tokens/impls/src/main.sw"),
@@ -1226,7 +1226,7 @@ async fn go_to_definition_for_impls() {
 
 #[tokio::test]
 async fn go_to_definition_for_where_clause() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(
         &mut service,
         test_fixtures_dir().join("tokens/where_clause/src/main.sw"),
@@ -1286,7 +1286,7 @@ async fn go_to_definition_for_where_clause() {
 
 #[tokio::test]
 async fn go_to_definition_for_enums() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(
         &mut service,
         test_fixtures_dir().join("tokens/enums/src/main.sw"),
@@ -1330,7 +1330,7 @@ async fn go_to_definition_for_enums() {
 
 #[tokio::test]
 async fn go_to_definition_for_abi() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(
         &mut service,
         test_fixtures_dir().join("tokens/abi/src/main.sw"),
@@ -1362,7 +1362,7 @@ async fn go_to_definition_for_abi() {
 
 #[tokio::test]
 async fn hover_docs_for_consts() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(
         &mut service,
         test_fixtures_dir().join("tokens/consts/src/main.sw"),
@@ -1385,7 +1385,7 @@ async fn hover_docs_for_consts() {
 
 #[tokio::test]
 async fn hover_docs_for_functions() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(
         &mut service,
         test_fixtures_dir().join("tokens/functions/src/main.sw"),
@@ -1404,7 +1404,7 @@ async fn hover_docs_for_functions() {
 
 #[tokio::test]
 async fn hover_docs_for_structs() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(
         &mut service,
         test_fixtures_dir().join("tokens/structs/src/main.sw"),
@@ -1442,7 +1442,7 @@ async fn hover_docs_for_structs() {
 
 #[tokio::test]
 async fn hover_docs_for_enums() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(
         &mut service,
         test_fixtures_dir().join("tokens/enums/src/main.sw"),
@@ -1469,7 +1469,7 @@ async fn hover_docs_for_enums() {
 
 #[tokio::test]
 async fn hover_docs_for_abis() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(
         &mut service,
         test_fixtures_dir().join("tokens/abi/src/main.sw"),
@@ -1488,7 +1488,7 @@ async fn hover_docs_for_abis() {
 
 #[tokio::test]
 async fn hover_docs_for_variables() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(
         &mut service,
         test_fixtures_dir().join("tokens/variables/src/main.sw"),
@@ -1507,7 +1507,7 @@ async fn hover_docs_for_variables() {
 
 #[tokio::test]
 async fn hover_docs_with_code_examples() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
 
     let hover = HoverDocumentation {
@@ -1522,7 +1522,7 @@ async fn hover_docs_with_code_examples() {
 
 #[tokio::test]
 async fn hover_docs_for_self_keywords() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(
         &mut service,
         test_fixtures_dir().join("completion/src/main.sw"),
@@ -1545,7 +1545,7 @@ async fn hover_docs_for_self_keywords() {
 
 #[tokio::test]
 async fn hover_docs_for_boolean_keywords() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(
         &mut service,
         test_fixtures_dir().join("tokens/storage/src/main.sw"),
@@ -1569,7 +1569,7 @@ async fn hover_docs_for_boolean_keywords() {
 
 #[tokio::test]
 async fn rename() {
-    let (mut service, _) = LspService::new(Backend::new);
+    let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(
         &mut service,
         test_fixtures_dir().join("renaming/src/main.sw"),
@@ -1686,7 +1686,7 @@ async fn rename() {
 
 #[tokio::test]
 async fn publish_diagnostics_dead_code_warning() {
-    let (mut service, socket) = LspService::new(Backend::new);
+    let (mut service, socket) = LspService::new(ServerState::new);
     let fixture = get_fixture(test_fixtures_dir().join("diagnostics/dead_code/expected.json"));
     let expected_requests = vec![fixture];
     let socket_handle = assert_server_requests(socket, expected_requests, None).await;
@@ -1708,7 +1708,7 @@ async fn publish_diagnostics_dead_code_warning() {
 // The capability argument is an async function.
 macro_rules! test_lsp_capability {
     ($entry_point:expr, $capability:expr) => {{
-        let (mut service, _) = LspService::new(Backend::new);
+        let (mut service, _) = LspService::new(ServerState::new);
         let uri = init_and_open(&mut service, $entry_point).await;
         // Call the specific LSP capability function that was passed in.
         let _ = $capability(&mut service, &uri).await;
