@@ -276,10 +276,8 @@ jobs:
         with:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
-      - name: Install latest nextest release
-        uses: taiki-e/install-action@nextest
       - name: Cargo Run E2E Tests (EVM)
-        run: cargo nextest run --locked --release --bin test -- --target midenvm --locked
+        run: cargo run --locked --release --bin test -- --target midenvm --locked
 
   # TODO: Remove this upon merging std tests with the rest of the E2E tests.
   cargo-test-lib-std:
