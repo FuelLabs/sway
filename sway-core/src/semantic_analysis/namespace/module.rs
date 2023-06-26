@@ -236,6 +236,7 @@ impl Module {
         src: &Path,
         dst: &Path,
         engines: &Engines,
+        is_src_absolute: bool,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -271,7 +272,12 @@ impl Module {
         for symbol_and_decl in symbols_and_decls {
             dst_ns.use_synonyms.insert(
                 symbol_and_decl.0,
-                (src.to_vec(), GlobImport::Yes, symbol_and_decl.1),
+                (
+                    src.to_vec(),
+                    GlobImport::Yes,
+                    symbol_and_decl.1,
+                    is_src_absolute,
+                ),
             );
         }
 
@@ -289,6 +295,7 @@ impl Module {
         src: &Path,
         dst: &Path,
         engines: &Engines,
+        is_src_absolute: bool,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -314,7 +321,7 @@ impl Module {
         let mut symbols_and_decls = src_ns
             .use_synonyms
             .iter()
-            .map(|(symbol, (_, _, decl))| (symbol.clone(), decl.clone()))
+            .map(|(symbol, (_, _, decl, _))| (symbol.clone(), decl.clone()))
             .collect::<Vec<_>>();
         for (symbol, decl) in src_ns.symbols.iter() {
             if is_ancestor(src, dst) || decl.visibility(decl_engine).is_public() {
@@ -323,7 +330,7 @@ impl Module {
         }
 
         let mut symbols_paths_and_decls = vec![];
-        for (symbol, (mod_path, _, decl)) in use_synonyms {
+        for (symbol, (mod_path, _, decl, _)) in use_synonyms {
             let mut is_external = false;
             let submodule = src_ns.submodule(&[mod_path[0].clone()]);
             if let Some(submodule) = submodule {
@@ -348,7 +355,7 @@ impl Module {
         let mut try_add = |symbol, path, decl: ty::TyDecl| {
             dst_ns
                 .use_synonyms
-                .insert(symbol, (path, GlobImport::Yes, decl));
+                .insert(symbol, (path, GlobImport::Yes, decl, is_src_absolute));
         };
 
         for (symbol, decl) in symbols_and_decls {
@@ -372,9 +379,10 @@ impl Module {
         src: &Path,
         dst: &Path,
         alias: Option<Ident>,
+        is_src_absolute: bool,
     ) -> CompileResult<()> {
         let (last_item, src) = src.split_last().expect("guaranteed by grammar");
-        self.item_import(engines, src, last_item, dst, alias)
+        self.item_import(engines, src, last_item, dst, alias, is_src_absolute)
     }
 
     /// Pull a single `item` from the given `src` module and import it into the `dst` module.
@@ -387,6 +395,7 @@ impl Module {
         item: &Ident,
         dst: &Path,
         alias: Option<Ident>,
+        is_src_absolute: bool,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -426,15 +435,28 @@ impl Module {
                         engines,
                     );
                 }
+                // if this is a trait, import its implementations
+                let decl_span = decl.span();
+                if let TyDecl::TraitDecl(_) = &decl {
+                    // TODO: we only import local impls from the source namespace
+                    // this is okay for now but we'll need to device some mechanism to collect all available trait impls
+                    impls_to_insert.extend(
+                        src_ns
+                            .implemented_traits
+                            .filter_by_trait_decl_span(decl_span),
+                        engines,
+                    );
+                }
                 // no matter what, import it this way though.
                 let dst_ns = &mut self[dst];
                 let add_synonym = |name| {
-                    if let Some((_, GlobImport::No, _)) = dst_ns.use_synonyms.get(name) {
+                    if let Some((_, GlobImport::No, _, _)) = dst_ns.use_synonyms.get(name) {
                         errors.push(CompileError::ShadowsOtherSymbol { name: name.clone() });
                     }
-                    dst_ns
-                        .use_synonyms
-                        .insert(name.clone(), (src.to_vec(), GlobImport::No, decl));
+                    dst_ns.use_synonyms.insert(
+                        name.clone(),
+                        (src.to_vec(), GlobImport::No, decl, is_src_absolute),
+                    );
                 };
                 match alias {
                     Some(alias) => {
@@ -473,6 +495,7 @@ impl Module {
         variant_name: &Ident,
         dst: &Path,
         alias: Option<Ident>,
+        is_src_absolute: bool,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -520,7 +543,7 @@ impl Module {
                         // import it this way.
                         let dst_ns = &mut self[dst];
                         let mut add_synonym = |name| {
-                            if let Some((_, GlobImport::No, _)) = dst_ns.use_synonyms.get(name) {
+                            if let Some((_, GlobImport::No, _, _)) = dst_ns.use_synonyms.get(name) {
                                 errors
                                     .push(CompileError::ShadowsOtherSymbol { name: name.clone() });
                             }
@@ -534,6 +557,7 @@ impl Module {
                                         variant_name: variant_name.clone(),
                                         variant_decl_span: variant_decl.span.clone(),
                                     }),
+                                    is_src_absolute,
                                 ),
                             );
                         };
@@ -582,6 +606,7 @@ impl Module {
         dst: &Path,
         engines: &Engines,
         enum_name: &Ident,
+        is_src_absolute: bool,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -638,6 +663,7 @@ impl Module {
                                     variant_name,
                                     variant_decl_span: variant_decl.span.clone(),
                                 }),
+                                is_src_absolute,
                             ),
                         );
                     }
