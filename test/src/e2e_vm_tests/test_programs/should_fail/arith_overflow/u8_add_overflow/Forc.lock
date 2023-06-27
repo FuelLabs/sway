@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-6A0B0BB6D9599A3B'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-6A0B0BB6D9599A3B'
+dependencies = ['core']
+
+[[package]]
+name = 'u8_add_overflow'
+source = 'member'
+dependencies = ['std']
