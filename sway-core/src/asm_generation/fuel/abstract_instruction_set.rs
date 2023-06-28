@@ -174,7 +174,7 @@ impl AbstractInstructionSet {
         reg_seqr: &mut RegisterSequencer,
     ) -> Result<AllocatedAbstractInstructionSet, CompileError> {
         fn try_color(
-            ops: &Vec<Op>,
+            ops: &[Op],
         ) -> Result<
             (Vec<Op>, InterferenceGraph, Vec<NodeIndex>),
             (FxHashSet<VirtualRegister>, Vec<Op>),
@@ -216,7 +216,7 @@ impl AbstractInstructionSet {
                     break (reduced_ops, interference_graph, stack);
                 }
                 Err((spills, reduced_ops)) => {
-                    if try_count >= 1 {
+                    if try_count >= 4 {
                         let comment = self
                             .ops
                             .iter()

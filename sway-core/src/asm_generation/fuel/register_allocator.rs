@@ -438,7 +438,7 @@ pub(crate) fn coalesce_registers(
 }
 
 // For every virtual register, compute its (def points, use points).
-fn compute_def_use_points(ops: &Vec<Op>) -> FxHashMap<VirtualRegister, (Vec<usize>, Vec<usize>)> {
+fn compute_def_use_points(ops: &[Op]) -> FxHashMap<VirtualRegister, (Vec<usize>, Vec<usize>)> {
     let mut res: FxHashMap<VirtualRegister, (Vec<usize>, Vec<usize>)> = FxHashMap::default();
     for (idx, op) in ops.iter().enumerate() {
         let mut op_use = op.use_registers();
@@ -493,8 +493,8 @@ fn compute_def_use_points(ops: &Vec<Op>) -> FxHashMap<VirtualRegister, (Vec<usiz
 ///
 pub(crate) fn color_interference_graph(
     interference_graph: &mut InterferenceGraph,
-    ops: &Vec<Op>,
-    live_out: &Vec<FxHashSet<VirtualRegister>>,
+    ops: &[Op],
+    live_out: &[FxHashSet<VirtualRegister>],
 ) -> Result<Vec<NodeIndex>, FxHashSet<VirtualRegister>> {
     let mut stack = Vec::with_capacity(interference_graph.node_count());
     let mut on_stack = FxHashSet::default();
@@ -536,30 +536,30 @@ pub(crate) fn color_interference_graph(
     }
 
     // Get outgoing "true" edged neighbors.
-    fn get_connected_outgoing_neighbors<'a>(
-        interference_graph: &'a InterferenceGraph,
+    fn get_connected_outgoing_neighbors(
+        interference_graph: &InterferenceGraph,
         node_index: NodeIndex,
-    ) -> impl Iterator<Item = NodeIndex> + 'a {
+    ) -> impl Iterator<Item = NodeIndex> + '_ {
         interference_graph
             .edges_directed(node_index, Outgoing)
             .filter_map(|e| interference_graph[e.id()].then_some(e.target()))
     }
 
     // Get incoming "true" edged neighbors.
-    fn get_connected_incoming_neighbors<'a>(
-        interference_graph: &'a InterferenceGraph,
+    fn get_connected_incoming_neighbors(
+        interference_graph: &InterferenceGraph,
         node_index: NodeIndex,
-    ) -> impl Iterator<Item = NodeIndex> + 'a {
+    ) -> impl Iterator<Item = NodeIndex> + '_ {
         interference_graph
             .edges_directed(node_index, Incoming)
             .filter_map(|e| interference_graph[e.id()].then_some(e.source()))
     }
 
     // Get neighbours (either direction) connected via a "true" edge.
-    fn get_connected_neighbours<'a>(
-        interference_graph: &'a InterferenceGraph,
+    fn get_connected_neighbours(
+        interference_graph: &InterferenceGraph,
         node_index: NodeIndex,
-    ) -> impl Iterator<Item = NodeIndex> + 'a {
+    ) -> impl Iterator<Item = NodeIndex> + '_ {
         get_connected_outgoing_neighbors(interference_graph, node_index).chain(
             get_connected_incoming_neighbors(interference_graph, node_index),
         )
@@ -608,9 +608,6 @@ pub(crate) fn color_interference_graph(
             let candidate_neighbors: Vec<_> = interference_graph
                 .neighbors_undirected(node_index)
                 .filter(|n| {
-                    if format!("{}", &interference_graph[*n]) == "$r80" {
-                        dbg!(get_connected_neighbours(interference_graph, *n).count());
-                    }
                     pending.contains(n)
                         && get_connected_neighbours(interference_graph, *n).count()
                             < compiler_constants::NUM_ALLOCATABLE_REGISTERS as usize
@@ -626,9 +623,9 @@ pub(crate) fn color_interference_graph(
             // At the moment, our spill priority function is just this,
             // i.e., spill the register with more incoming interferences.
             // (roughly indicating how long the interval is).
-            get_connected_incoming_neighbors(&interference_graph, node1)
+            get_connected_incoming_neighbors(interference_graph, node1)
                 .count()
-                .cmp(&get_connected_incoming_neighbors(&interference_graph, node2).count())
+                .cmp(&get_connected_incoming_neighbors(interference_graph, node2).count())
         }) {
             let spill_reg = interference_graph[spill_reg_index].clone();
             spills.insert(spill_reg.clone());
@@ -721,7 +718,7 @@ pub(crate) fn assign_registers(
 /// and return the updated function and the updated stack info.
 pub(crate) fn spill(
     reg_seqr: &mut RegisterSequencer,
-    ops: &Vec<Op>,
+    ops: &[Op],
     spills: &FxHashSet<VirtualRegister>,
 ) -> Vec<Op> {
     let mut spilled: Vec<Op> = vec![];
@@ -769,7 +766,7 @@ pub(crate) fn spill(
             // This is the CFE instruction, use the new stack size.
             spilled.push(Op {
                 opcode: Either::Left(VirtualOp::CFEI(VirtualImmediate24 {
-                    value: new_locals_byte_size as u32,
+                    value: new_locals_byte_size,
                 })),
                 comment: op.comment.clone(),
                 owning_span: op.owning_span.clone(),
@@ -778,7 +775,7 @@ pub(crate) fn spill(
             // This is the CFS instruction, use the new stack size.
             spilled.push(Op {
                 opcode: Either::Left(VirtualOp::CFSI(VirtualImmediate24 {
-                    value: new_locals_byte_size as u32,
+                    value: new_locals_byte_size,
                 })),
                 comment: op.comment.clone(),
                 owning_span: op.owning_span.clone(),
@@ -803,7 +800,7 @@ pub(crate) fn spill(
                         opcode: Either::Left(VirtualOp::MOVI(
                             offset_mov_reg.clone(),
                             VirtualImmediate18 {
-                                value: offset_bytes as u32,
+                                value: offset_bytes,
                             },
                         )),
                         comment: "Spill/Refill: Set offset".to_string(),
@@ -838,7 +835,7 @@ pub(crate) fn spill(
                         opcode: Either::Left(VirtualOp::MOVI(
                             offset_upper_mov_reg.clone(),
                             VirtualImmediate18 {
-                                value: offset_upper_12 as u32,
+                                value: offset_upper_12,
                             },
                         )),
                         comment: "Spill/Refill: Offset computation".to_string(),
