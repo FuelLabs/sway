@@ -14,10 +14,7 @@ use rustc_hash::FxHashSet;
 use sway_error::error::CompileError;
 use sway_types::Span;
 
-use std::{
-    collections::{HashMap, HashSet},
-    fmt,
-};
+use std::{collections::HashSet, fmt};
 
 use either::Either;
 
@@ -179,13 +176,8 @@ impl AbstractInstructionSet {
         fn try_color(
             ops: &Vec<Op>,
         ) -> Result<
-            (
-                Vec<Op>,
-                InterferenceGraph,
-                HashMap<VirtualRegister, NodeIndex>,
-                Vec<VirtualRegister>,
-            ),
-            FxHashSet<VirtualRegister>,
+            (Vec<Op>, InterferenceGraph, Vec<NodeIndex>),
+            (FxHashSet<VirtualRegister>, Vec<Op>),
         > {
             // Step 1: Liveness Analysis.
             let live_out = register_allocator::liveness_analysis(ops);
@@ -195,30 +187,36 @@ impl AbstractInstructionSet {
                 register_allocator::create_interference_graph(ops, &live_out);
 
             // Step 3: Remove redundant MOVE instructions using the interference graph.
-            let reduced_ops = register_allocator::coalesce_registers(
+            let (reduced_ops, live_out) = register_allocator::coalesce_registers(
                 ops,
+                live_out,
                 &mut interference_graph,
                 &mut reg_to_node_ix,
             );
 
             // Step 4: Simplify - i.e. color the interference graph and return a stack that contains
             // each colorable node and its neighbors.
-            let stack = register_allocator::color_interference_graph(&mut interference_graph)?;
-
-            Ok((reduced_ops, interference_graph, reg_to_node_ix, stack))
+            match register_allocator::color_interference_graph(
+                &mut interference_graph,
+                &reduced_ops,
+                &live_out,
+            ) {
+                Ok(stack) => Ok((reduced_ops, interference_graph, stack)),
+                Err(spills) => Err((spills, reduced_ops)),
+            }
         }
 
         let mut updated_ops_ref = &self.ops;
         let mut updated_ops;
         let mut try_count = 0;
         // Try and assign registers. If we fail, spill. Repeat few times.
-        let (updated_ops, interference_graph, reg_to_node_ix, mut stack) = loop {
+        let (updated_ops, interference_graph, mut stack) = loop {
             match try_color(updated_ops_ref) {
-                Ok((reduced_ops, interference_graph, reg_to_node_ix, stack)) => {
-                    break (reduced_ops, interference_graph, reg_to_node_ix, stack);
+                Ok((reduced_ops, interference_graph, stack)) => {
+                    break (reduced_ops, interference_graph, stack);
                 }
-                Err(spills) => {
-                    if try_count >= 4 {
+                Err((spills, reduced_ops)) => {
+                    if try_count >= 1 {
                         let comment = self
                             .ops
                             .iter()
@@ -243,15 +241,14 @@ impl AbstractInstructionSet {
                         ));
                     }
                     try_count += 1;
-                    updated_ops = spill(reg_seqr, updated_ops_ref, &spills);
+                    updated_ops = spill(reg_seqr, &reduced_ops, &spills);
                     updated_ops_ref = &updated_ops;
                 }
             }
         };
 
         // Step 5: Use the stack to assign a register for each virtual register.
-        let pool =
-            register_allocator::assign_registers(&interference_graph, &reg_to_node_ix, &mut stack)?;
+        let pool = register_allocator::assign_registers(&interference_graph, &mut stack)?;
         // Step 6: Update all instructions to use the resulting register pool.
         let mut buf = vec![];
         for op in &updated_ops {

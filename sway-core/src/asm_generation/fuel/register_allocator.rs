@@ -8,16 +8,27 @@ use crate::{
 };
 
 use either::Either;
-use petgraph::graph::NodeIndex;
+use petgraph::{
+    graph::NodeIndex,
+    visit::EdgeRef,
+    Direction::{Incoming, Outgoing},
+};
 use rustc_hash::{FxHashMap, FxHashSet};
+use std::collections::{hash_map, BTreeSet, HashMap};
 use sway_error::error::CompileError;
 use sway_types::Span;
-use std::collections::{BTreeSet, HashMap};
 
 use super::register_sequencer::RegisterSequencer;
 
+// Each node in the interference graph represents a VirtualRegister.
+// An edge from V1 -> V2 means that V2 was an open live range at the
+// the time V1 was defined. For spilling, incoming edges matter more
+// as it indicates how big the range is, and thus is better to spill.
+// An edge has a "bool" weight to indicate whether it was deleted
+// during colouring. We don't actually delete the edge because that's
+// required again during the actual assignment.
 pub type InterferenceGraph =
-    petgraph::stable_graph::StableGraph<Option<VirtualRegister>, (), petgraph::Undirected>;
+    petgraph::stable_graph::StableGraph<VirtualRegister, bool, petgraph::Directed>;
 
 // Initially, the bytecode will have a lot of individual registers being used. Each register will
 // have a new unique identifier. For example, two separate invocations of `+` will result in 4
@@ -229,7 +240,7 @@ pub(crate) fn create_interference_graph(
         })
         .iter()
         .for_each(|&reg| {
-            reg_to_node_map.insert(reg.clone(), interference_graph.add_node(Some(reg.clone())));
+            reg_to_node_map.insert(reg.clone(), interference_graph.add_node(reg.clone()));
         });
 
     for (ix, regs) in live_out.iter().enumerate() {
@@ -239,10 +250,9 @@ pub(crate) fn create_interference_graph(
                     for b in regs.iter() {
                         if let Some(ix2) = reg_to_node_map.get(b) {
                             // Add edge (v, b) if b != c
-                            // Also, avoid adding self edges and edges that already exist
-                            if *b != *c && *b != *v && !interference_graph.contains_edge(*ix1, *ix2)
-                            {
-                                interference_graph.add_edge(*ix1, *ix2, ());
+                            // Also, avoid adding self edges
+                            if *b != *c && *b != *v {
+                                interference_graph.update_edge(*ix1, *ix2, true);
                             }
                         }
                     }
@@ -254,9 +264,9 @@ pub(crate) fn create_interference_graph(
                         for b in regs.iter() {
                             if let Some(ix2) = reg_to_node_map.get(b) {
                                 // Add edge (v, b)
-                                // Avoid adding self edges and edges that already exist
-                                if *b != **v && !interference_graph.contains_edge(*ix1, *ix2) {
-                                    interference_graph.add_edge(*ix1, *ix2, ());
+                                // Avoid adding self edges
+                                if *b != **v {
+                                    interference_graph.update_edge(*ix1, *ix2, true);
                                 }
                             }
                         }
@@ -283,17 +293,20 @@ pub(crate) fn create_interference_graph(
 ///
 pub(crate) fn coalesce_registers(
     ops: &[Op],
+    live_out: Vec<FxHashSet<VirtualRegister>>,
     interference_graph: &mut InterferenceGraph,
     reg_to_node_map: &mut HashMap<VirtualRegister, NodeIndex>,
-) -> Vec<Op> {
+) -> (Vec<Op>, Vec<FxHashSet<VirtualRegister>>) {
     // A map from the virtual registers that are removed to the virtual registers that they are
     // replaced with during the coalescing process.
     let mut reg_to_reg_map: HashMap<&VirtualRegister, &VirtualRegister> = HashMap::new();
 
     // To hold the final *reduced* list of ops
     let mut reduced_ops: Vec<Op> = Vec::with_capacity(ops.len());
+    let mut reduced_live_out: Vec<FxHashSet<VirtualRegister>> = Vec::with_capacity(live_out.len());
+    assert!(ops.len() == live_out.len());
 
-    for op in ops {
+    for (op_idx, op) in ops.iter().enumerate() {
         match &op.opcode {
             Either::Left(VirtualOp::MOVE(x, y)) => {
                 match (x, y) {
@@ -320,10 +333,12 @@ pub(crate) fn coalesce_registers(
                             continue;
                         }
 
-                        let r1_neighbours =
-                            interference_graph.neighbors(*ix1).collect::<FxHashSet<_>>();
-                        let r2_neighbours =
-                            interference_graph.neighbors(*ix2).collect::<FxHashSet<_>>();
+                        let r1_neighbours = interference_graph
+                            .neighbors_undirected(*ix1)
+                            .collect::<FxHashSet<_>>();
+                        let r2_neighbours = interference_graph
+                            .neighbors_undirected(*ix2)
+                            .collect::<FxHashSet<_>>();
 
                         // Using either of the two safety conditions below, it's guaranteed
                         // that we aren't turning a k-colourable graph into one that's not,
@@ -331,7 +346,7 @@ pub(crate) fn coalesce_registers(
                         let briggs_safety = r1_neighbours
                             .union(&r2_neighbours)
                             .filter(|&&neighbour| {
-                                interference_graph.neighbors(neighbour).count()
+                                interference_graph.neighbors_undirected(neighbour).count()
                                     >= compiler_constants::NUM_ALLOCATABLE_REGISTERS as usize
                             })
                             .count()
@@ -339,7 +354,7 @@ pub(crate) fn coalesce_registers(
 
                         let george_safety = r2_neighbours.iter().all(|&r2_neighbor| {
                             r1_neighbours.contains(&r2_neighbor)
-                                || interference_graph.neighbors(r2_neighbor).count()
+                                || interference_graph.neighbors_undirected(r2_neighbor).count()
                                     < compiler_constants::NUM_ALLOCATABLE_REGISTERS as usize
                         });
 
@@ -348,42 +363,50 @@ pub(crate) fn coalesce_registers(
                         // If r1 and r2 are connected in the interference graph (i.e. their
                         // respective liveness ranges overalp), preserve the MOVE instruction by
                         // adding it to reduced_ops
-                        if interference_graph.contains_edge(*ix1, *ix2) || !safe {
+                        if interference_graph.contains_edge(*ix1, *ix2)
+                            || interference_graph.contains_edge(*ix2, *ix1)
+                            || !safe
+                        {
                             reduced_ops.push(op.clone());
+                            reduced_live_out.push(live_out[op_idx].clone());
                             continue;
                         }
 
                         // The MOVE instruction can now be safely removed. That is, we simply don't
                         // add it to the reduced_ops vector. Also, we combine the two nodes ix1 and
-                        // ix2 into ix1 and then we remove ix2 from the graph. We also have
+                        // ix2 into ix2 and then we remove ix1 from the graph. We also have
                         // to do some bookkeeping.
                         //
                         // Note that because the interference graph is of type StableGraph, the
                         // node index corresponding to each virtual register does not change when
                         // some graph nodes are added or removed.
 
-                        // Add all of ix2(r2)'s edges to `ix1(r1)`
-                        for neighbor in r2_neighbours {
-                            interference_graph.add_edge(neighbor, *ix1, ());
+                        // Add all of ix1(r1)'s edges to `ix2(r2)` as incoming edges.
+                        for neighbor in r1_neighbours {
+                            if !interference_graph.contains_edge(*ix2, neighbor) {
+                                interference_graph.update_edge(neighbor, *ix2, true);
+                            }
                         }
 
-                        // Remove ix2 by setting its weight to `None`.
-                        interference_graph[*ix2] = None;
+                        // Remove ix1.
+                        interference_graph.remove_node(*ix1);
 
                         // Update the register maps
-                        reg_to_node_map.insert(r2.clone(), *ix1);
-                        reg_to_reg_map.insert(r2, r1);
+                        reg_to_node_map.insert(r1.clone(), *ix2);
+                        reg_to_reg_map.insert(r1, r2);
                     }
                     _ => {
                         // Preserve the MOVE instruction if either registers used in the MOVE is
                         // special registers (i.e. *not* a VirtualRegister::Virtual(_))
                         reduced_ops.push(op.clone());
+                        reduced_live_out.push(live_out[op_idx].clone());
                     }
                 }
             }
             _ => {
                 // Preserve all other instructions
                 reduced_ops.push(op.clone());
+                reduced_live_out.push(live_out[op_idx].clone());
             }
         }
     }
@@ -403,8 +426,54 @@ pub(crate) fn coalesce_registers(
     for new_op in &mut reduced_ops {
         *new_op = new_op.update_register(&final_reg_to_reg_map);
     }
+    for new_live_out in &mut reduced_live_out {
+        for (old, &new) in &final_reg_to_reg_map {
+            if new_live_out.remove(old) {
+                new_live_out.insert(new.clone());
+            }
+        }
+    }
 
-    reduced_ops
+    (reduced_ops, reduced_live_out)
+}
+
+// For every virtual register, compute its (def points, use points).
+fn compute_def_use_points(ops: &Vec<Op>) -> FxHashMap<VirtualRegister, (Vec<usize>, Vec<usize>)> {
+    let mut res: FxHashMap<VirtualRegister, (Vec<usize>, Vec<usize>)> = FxHashMap::default();
+    for (idx, op) in ops.iter().enumerate() {
+        let mut op_use = op.use_registers();
+        let mut op_def = op.def_registers();
+        op_use.retain(|&reg| matches!(reg, VirtualRegister::Virtual(_)));
+        op_def.retain(|&reg| matches!(reg, VirtualRegister::Virtual(_)));
+
+        for &vreg in op_use
+            .iter()
+            .filter(|reg| matches!(reg, VirtualRegister::Virtual(_)))
+        {
+            match res.entry(vreg.clone()) {
+                hash_map::Entry::Occupied(mut occ) => {
+                    occ.get_mut().1.push(idx);
+                }
+                hash_map::Entry::Vacant(vac) => {
+                    vac.insert((vec![], vec![idx]));
+                }
+            }
+        }
+        for &vreg in op_def
+            .iter()
+            .filter(|reg| matches!(reg, VirtualRegister::Virtual(_)))
+        {
+            match res.entry(vreg.clone()) {
+                hash_map::Entry::Occupied(mut occ) => {
+                    occ.get_mut().0.push(idx);
+                }
+                hash_map::Entry::Vacant(vac) => {
+                    vac.insert((vec![idx], vec![]));
+                }
+            }
+        }
+    }
+    res
 }
 
 /// Given an interference graph and a integer k, figure out if the graph k-colorable. Graph
@@ -423,27 +492,42 @@ pub(crate) fn coalesce_registers(
 /// ===============================================================================================
 ///
 pub(crate) fn color_interference_graph(
-    interference_graph: &InterferenceGraph,
-) -> Result<Vec<VirtualRegister>, FxHashSet<VirtualRegister>> {
+    interference_graph: &mut InterferenceGraph,
+    ops: &Vec<Op>,
+    live_out: &Vec<FxHashSet<VirtualRegister>>,
+) -> Result<Vec<NodeIndex>, FxHashSet<VirtualRegister>> {
     let mut stack = Vec::with_capacity(interference_graph.node_count());
-    let mut on_stack = vec![false; interference_graph.node_count()];
+    let mut on_stack = FxHashSet::default();
     let mut spills = FxHashSet::default();
+    let def_use_points = compute_def_use_points(ops);
 
-    // Nodes with < k-degree or potential spills,
-    // before adding to the stack,
+    // for op in ops {
+    //     println!("{}", op);
+    // }
+    // println!("");
+
+    // for node_index in interference_graph.node_indices() {
+    //     let node = &interference_graph[node_index];
+    //     print!(
+    //         "Neighbours of {} (o{}, i{}): ",
+    //         node,
+    //         interference_graph.neighbors_directed(node_index, Outgoing).count(),
+    //         interference_graph.neighbors_directed(node_index, Incoming).count()
+    //     );
+    //     for neighbour in interference_graph.neighbors(node_index) {
+    //         print!("{} ", interference_graph[neighbour]);
+    //     }
+    //     println!("");
+    // }
+
+    // Nodes with < k-degree before adding to the stack,
     // to have their neighbours processed.
     let mut worklist = vec![];
-    // Nodes as yet having >= k-degree or not yet potentially spilled.
+    // Nodes as yet having >= k-degree.
     let mut pending = FxHashSet::default();
 
-    for node in interference_graph
-        .node_indices()
-        .filter(|&idx| interference_graph[idx].is_some())
-    {
-        let num_neighbors = interference_graph
-            .neighbors(node)
-            .filter(|&n| interference_graph[n].is_some())
-            .count();
+    for node in interference_graph.node_indices() {
+        let num_neighbors = interference_graph.neighbors_undirected(node).count();
         if num_neighbors < compiler_constants::NUM_ALLOCATABLE_REGISTERS as usize {
             worklist.push(node);
         } else {
@@ -451,29 +535,84 @@ pub(crate) fn color_interference_graph(
         }
     }
 
+    // Get outgoing "true" edged neighbors.
+    fn get_connected_outgoing_neighbors<'a>(
+        interference_graph: &'a InterferenceGraph,
+        node_index: NodeIndex,
+    ) -> impl Iterator<Item = NodeIndex> + 'a {
+        interference_graph
+            .edges_directed(node_index, Outgoing)
+            .filter_map(|e| interference_graph[e.id()].then_some(e.target()))
+    }
+
+    // Get incoming "true" edged neighbors.
+    fn get_connected_incoming_neighbors<'a>(
+        interference_graph: &'a InterferenceGraph,
+        node_index: NodeIndex,
+    ) -> impl Iterator<Item = NodeIndex> + 'a {
+        interference_graph
+            .edges_directed(node_index, Incoming)
+            .filter_map(|e| interference_graph[e.id()].then_some(e.source()))
+    }
+
+    // Get neighbours (either direction) connected via a "true" edge.
+    fn get_connected_neighbours<'a>(
+        interference_graph: &'a InterferenceGraph,
+        node_index: NodeIndex,
+    ) -> impl Iterator<Item = NodeIndex> + 'a {
+        get_connected_outgoing_neighbors(interference_graph, node_index).chain(
+            get_connected_incoming_neighbors(interference_graph, node_index),
+        )
+    }
+
+    // Mark edges to/from node satisfying the conditions as deleted.
+    fn delete_edges<P: Fn(&VirtualRegister, &VirtualRegister) -> bool>(
+        interference_graph: &mut InterferenceGraph,
+        node_index: NodeIndex,
+        should_delete: P,
+    ) {
+        let edges: Vec<_> = interference_graph
+            .edges_directed(node_index, Outgoing)
+            .chain(interference_graph.edges_directed(node_index, Incoming))
+            .map(|edge| edge.id())
+            .collect();
+
+        for e in edges {
+            let (source, target) = interference_graph.edge_endpoints(e).unwrap();
+            {
+                if should_delete(&interference_graph[source], &interference_graph[target]) {
+                    interference_graph[e] = false;
+                }
+            }
+        }
+    }
+
     loop {
         while let Some(node_index) = worklist.pop() {
             // Ensure that we've not already processed this.
-            if on_stack[node_index.index()] {
+            if on_stack.contains(&node_index) {
                 continue;
             }
 
-            // Assert that we aren't dealing with dead nodes.
-            assert!(interference_graph[node_index].is_some());
             // This node is colourable.
-            stack.push(interference_graph[node_index].clone().unwrap());
-            on_stack[node_index.index()] = true;
+            stack.push(node_index);
+            on_stack.insert(node_index);
 
-            // See if any neighbours can be moved to the worklist, from pending.
+            // When spilled, not all edges should be deleted, and the spilling
+            // code takes care of deleting the right edges.
+            if !spills.contains(&interference_graph[node_index]) {
+                // Delete all edges connected to node_index.
+                delete_edges(interference_graph, node_index, |_, _| true)
+            }
+
             let candidate_neighbors: Vec<_> = interference_graph
-                .neighbors(node_index)
+                .neighbors_undirected(node_index)
                 .filter(|n| {
-                    interference_graph[*n].is_some()
-                        && pending.contains(n)
-                        && interference_graph
-                            .neighbors(*n)
-                            .filter(|n| interference_graph[*n].is_some() && pending.contains(n))
-                            .count()
+                    if format!("{}", &interference_graph[*n]) == "$r80" {
+                        dbg!(get_connected_neighbours(interference_graph, *n).count());
+                    }
+                    pending.contains(n)
+                        && get_connected_neighbours(interference_graph, *n).count()
                             < compiler_constants::NUM_ALLOCATABLE_REGISTERS as usize
                 })
                 .collect();
@@ -483,10 +622,47 @@ pub(crate) fn color_interference_graph(
             }
         }
 
-        if let Some(&spill_reg) = pending.iter().next() {
-            pending.remove(&spill_reg);
-            spills.insert(interference_graph[spill_reg].clone().unwrap());
-            worklist.push(spill_reg);
+        if let Some(&spill_reg_index) = pending.iter().max_by(|&&node1, &&node2| {
+            // At the moment, our spill priority function is just this,
+            // i.e., spill the register with more incoming interferences.
+            // (roughly indicating how long the interval is).
+            get_connected_incoming_neighbors(&interference_graph, node1)
+                .count()
+                .cmp(&get_connected_incoming_neighbors(&interference_graph, node2).count())
+        }) {
+            let spill_reg = interference_graph[spill_reg_index].clone();
+            spills.insert(spill_reg.clone());
+
+            // Update the interference graph that this is spilled.
+            // A spill implies a store right after a definition and
+            // a load right before a use, forming new tiny live ranges.
+            // So we retain only those interferences that correspond to
+            // these tiny live ranges and remove the rest.
+            let to_retain =
+                def_use_points
+                    .get(&spill_reg)
+                    .map_or(FxHashSet::default(), |(defs, uses)| {
+                        let mut retains = FxHashSet::default();
+                        for &def in defs {
+                            retains
+                                .extend(live_out[def].iter().filter(|reg| !spills.contains(*reg)));
+                        }
+                        for &r#use in uses.iter().filter(|&&r#use| r#use > 0) {
+                            retains.extend(
+                                live_out[r#use - 1]
+                                    .iter()
+                                    .filter(|reg| !spills.contains(*reg)),
+                            );
+                        }
+                        retains
+                    });
+
+            delete_edges(interference_graph, spill_reg_index, |source, target| {
+                !(to_retain.contains(source) || to_retain.contains(target))
+            });
+
+            pending.remove(&spill_reg_index);
+            worklist.push(spill_reg_index);
         } else {
             break;
         }
@@ -507,16 +683,15 @@ pub(crate) fn color_interference_graph(
 ///
 pub(crate) fn assign_registers(
     interference_graph: &InterferenceGraph,
-    reg_to_node_map: &HashMap<VirtualRegister, NodeIndex>,
-    stack: &mut Vec<VirtualRegister>,
+    stack: &mut Vec<NodeIndex>,
 ) -> Result<RegisterPool, CompileError> {
     let mut pool = RegisterPool::init();
 
-    while let Some(reg) = stack.pop() {
-        let node = reg_to_node_map[&reg];
+    while let Some(node) = stack.pop() {
+        let reg = interference_graph[node].clone();
         let neighbors: BTreeSet<VirtualRegister> = interference_graph
-            .neighbors(node)
-            .filter_map(|n| interference_graph[n].clone())
+            .neighbors_undirected(node)
+            .map(|neighbor| interference_graph[neighbor].clone())
             .collect();
         if matches!(reg, VirtualRegister::Virtual(_)) {
             let available =
