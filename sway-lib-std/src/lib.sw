@@ -21,6 +21,7 @@ pub mod address;
 pub mod identity;
 pub mod vec;
 pub mod bytes;
+pub mod string;
 pub mod r#storage;
 pub mod b256;
 pub mod tx;
