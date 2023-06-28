@@ -53,7 +53,7 @@ pub fn block_header_hash(block_height: u64) -> Result<b256, BlockHashError> {
 ////////////////////////////////////////////////////////////////////
  
 #[test(should_revert)]
-fn test_block_header_hash_err_current_height() {
+fn block_test_header_hash_err_current_height() {
     // Get the header hash of the current block. Each time this test runs, the block height will be 1. calling BHSH with a height >= current height will fail.
     let mut hash = block_header_hash(height());
     let correct_error = match hash {
@@ -65,7 +65,7 @@ fn test_block_header_hash_err_current_height() {
 }
 
 #[test(should_revert)]
-fn test_block_header_hash_err_future_height() {
+fn block_test_header_hash_err_future_height() {
 
     // Try to get header hash of a block in the future
     // The function should return a BlockHashError

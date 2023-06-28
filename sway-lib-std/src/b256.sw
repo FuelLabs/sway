@@ -20,7 +20,7 @@ impl TryFrom<Bytes> for b256 {
 }
 
 #[test]
-fn test_b256_try_from() {
+fn b256_test_try_from() {
     let mut initial_bytes = Bytes::with_capacity(32);
     let mut i = 0;
     while i < 32 {

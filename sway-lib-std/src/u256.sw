@@ -229,7 +229,7 @@ impl core::ops::Ord for U256 {
 }
 
 #[test]
-fn test_u256_ord() {
+fn u256_test_ord() {
     assert(U256::from((0, 0, 0, 1)) < U256::from((0, u64::max(), 0, 0)));
     assert(!(U256::from((0, 0, 0, 1)) > U256::from((0, u64::max(), 0, 0))));
 

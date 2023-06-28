@@ -452,7 +452,7 @@ impl<T> From<raw_slice> for Vec<T> {
 }
 
 #[test()]
-fn test_vec_with_len_1() {
+fn vec_test_with_len_1() {
     let mut ve: Vec<u64> = Vec::new();
     assert(ve.len == 0);
     ve.push(1);

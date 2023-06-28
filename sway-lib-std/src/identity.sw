@@ -56,7 +56,7 @@ impl Identity {
 }
 
 #[test]
-fn test_address() {
+fn identity_test_address() {
     let address = Address::from(ZERO_B256);
     let identity = Identity::Address(address);
     assert(identity.is_address());
@@ -66,7 +66,7 @@ fn test_address() {
 }
 
 #[test]
-fn test_contract_id() {
+fn identity_test_contract_id() {
     let contract_id = BASE_ASSET_ID;
     let identity = Identity::ContractId(contract_id);
     assert(!identity.is_address());

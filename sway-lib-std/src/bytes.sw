@@ -1,10 +1,9 @@
-//! The `Bytes` type is used when a collection of tightly-packed arbitrary bytes is needed.
 library;
 
 use ::{alloc::{alloc_bytes, realloc_bytes}, vec::Vec};
 use ::assert::assert;
 use ::intrinsics::size_of_val;
-use ::option::Option::{self, *};
+use ::option::Option::{*, self};
 use ::convert::From;
 
 struct RawBytes {
@@ -588,8 +587,14 @@ impl Bytes {
         let left_len = mid;
         let right_len = self.len - mid;
 
-        let mut left_bytes = Self { buf: RawBytes::with_capacity(left_len), len: left_len };
-        let mut right_bytes = Self { buf: RawBytes::with_capacity(right_len), len: right_len };
+        let mut left_bytes = Self {
+            buf: RawBytes::with_capacity(left_len),
+            len: left_len,
+        };
+        let mut right_bytes = Self {
+            buf: RawBytes::with_capacity(right_len),
+            len: right_len,
+        };
 
         if mid > 0 {
             self.buf.ptr().copy_bytes_to(left_bytes.buf.ptr(), left_len);
@@ -600,7 +605,6 @@ impl Bytes {
 
         left_bytes.len = left_len;
         right_bytes.len = right_len;
-
         (left_bytes, right_bytes)
     }
 
@@ -690,7 +694,7 @@ impl core::ops::Eq for Bytes {
         }
 
         asm(result, r2: self.buf.ptr, r3: other.buf.ptr, r4: self.len) {
-            meq result r2 r3 r4;
+            meq  result r2 r3 r4;
             result: bool
         }
     }
@@ -742,12 +746,12 @@ fn setup() -> (Bytes, u8, u8, u8) {
 }
 
 #[test()]
-fn test_new_bytes() {
+fn bytes_test_new_bytes() {
     let bytes = Bytes::new();
     assert(bytes.len() == 0);
 }
 #[test()]
-fn test_push() {
+fn bytes_test_push() {
     let (_, a, b, c) = setup();
     let mut bytes = Bytes::new();
     bytes.push(a);
@@ -758,7 +762,7 @@ fn test_push() {
     assert(bytes.len() == 3);
 }
 #[test()]
-fn test_pop() {
+fn bytes_test_pop() {
     let (mut bytes, a, b, c) = setup();
     assert(bytes.len() == 3);
     bytes.push(42u8);
@@ -797,12 +801,12 @@ fn test_pop() {
     assert(bytes.len() == 0);
 }
 #[test()]
-fn test_len() {
+fn bytes_test_len() {
     let (mut bytes, _, _, _) = setup();
     assert(bytes.len() == 3);
 }
 #[test()]
-fn test_clear() {
+fn bytes_test_clear() {
     let (mut bytes, _, _, _) = setup();
     assert(bytes.len() == 3);
 
@@ -811,7 +815,7 @@ fn test_clear() {
     assert(bytes.len() == 0);
 }
 #[test()]
-fn test_packing() {
+fn bytes_test_packing() {
     let mut bytes = Bytes::new();
     bytes.push(5u8);
     bytes.push(5u8);
@@ -830,7 +834,7 @@ fn test_packing() {
 }
 
 #[test()]
-fn test_capacity() {
+fn bytes_test_capacity() {
     let mut bytes = Bytes::new();
     assert(bytes.capacity() == 0);
     bytes.push(5u8);
@@ -848,7 +852,7 @@ fn test_capacity() {
 }
 
 #[test()]
-fn test_get() {
+fn bytes_test_get() {
     let (bytes, a, b, c) = setup();
     assert(bytes.len() == 3);
     assert(bytes.get(0).unwrap() == a);
@@ -862,7 +866,7 @@ fn test_get() {
 }
 
 #[test()]
-fn test_remove() {
+fn bytes_test_remove() {
     let (mut bytes, a, b, c) = setup();
     assert(bytes.len() == 3);
 
@@ -876,7 +880,7 @@ fn test_remove() {
 }
 
 #[test()]
-fn test_insert() {
+fn bytes_test_insert() {
     let (mut bytes, a, b, c) = setup();
     let d = 11u8;
     assert(bytes.len() == 3);
@@ -891,7 +895,7 @@ fn test_insert() {
 }
 
 #[test()]
-fn test_swap() {
+fn bytes_test_swap() {
     let (mut bytes, a, b, c) = setup();
     assert(bytes.len() == 3);
 
@@ -904,7 +908,7 @@ fn test_swap() {
 }
 
 #[test()]
-fn test_set() {
+fn bytes_test_set() {
     let (mut bytes, a, _b, c) = setup();
     assert(bytes.len() == 3);
     let d = 11u8;
@@ -918,7 +922,7 @@ fn test_set() {
 }
 
 #[test()]
-fn test_from_vec_u8() {
+fn bytes_test_from_vec_u8() {
     let mut vec = Vec::new();
     let (_, a, b, c) = setup();
     vec.push(a);
@@ -934,7 +938,7 @@ fn test_from_vec_u8() {
 }
 
 #[test()]
-fn test_into_vec_u8() {
+fn bytes_test_into_vec_u8() {
     let (mut bytes, a, b, c) = setup();
     assert(bytes.len() == 3);
 
@@ -947,7 +951,7 @@ fn test_into_vec_u8() {
 }
 
 #[test()]
-fn test_bytes_limits() {
+fn bytes_test_bytes_limits() {
     let mut bytes = Bytes::new();
     let max = 255u8;
     let min = 0u8;
@@ -969,7 +973,7 @@ fn test_bytes_limits() {
 }
 
 #[test()]
-fn test_split_at() {
+fn bytes_test_split_at() {
     let (mut original, _a, _b, _c) = setup();
     assert(original.len() == 3);
     let index = 1;
@@ -981,7 +985,7 @@ fn test_split_at() {
 }
 
 #[test()]
-fn test_split_at_0() {
+fn bytes_test_split_at_0() {
     let (mut original, _a, _b, _c) = setup();
     assert(original.len() == 3);
     let index = 0;
@@ -993,7 +997,7 @@ fn test_split_at_0() {
 }
 
 #[test()]
-fn test_split_at_len() {
+fn bytes_test_split_at_len() {
     let (mut original, _a, _b, _c) = setup();
     assert(original.len() == 3);
     let index = 3;
@@ -1005,7 +1009,7 @@ fn test_split_at_len() {
 }
 
 #[test()]
-fn test_append() {
+fn bytes_test_append() {
     let (mut bytes, a, b, c) = setup();
     assert(bytes.len() == 3);
     assert(bytes.get(0).unwrap() == a);
@@ -1040,7 +1044,7 @@ fn test_append() {
 }
 
 #[test()]
-fn test_append_empty_bytes() {
+fn bytes_test_append_empty_bytes() {
     // nothing is appended or modified when appending an empty bytes.
     let (mut bytes, a, b, c) = setup();
     assert(bytes.len() == 3);
@@ -1058,7 +1062,7 @@ fn test_append_empty_bytes() {
 }
 
 #[test()]
-fn test_append_to_empty_bytes() {
+fn bytes_test_append_to_empty_bytes() {
     let mut bytes = Bytes::new();
     assert(bytes.len() == 0);
     let (mut bytes2, a, b, c) = setup();
@@ -1080,11 +1084,10 @@ fn test_append_to_empty_bytes() {
 
     assert(bytes2.len() == 0);
     assert(bytes2.capacity() == 0);
-
 }
 
 #[test()]
-fn test_eq() {
+fn bytes_test_eq() {
     let (mut bytes, _a, _b, _c) = setup();
     let (mut bytes2, _a, _b, _c) = setup();
     assert(bytes == bytes2);
@@ -1109,7 +1112,7 @@ fn test_eq() {
 }
 
 #[test()]
-fn test_sha256() {
+fn bytes_test_sha256() {
     use ::hash::sha256;
     let (mut bytes, _a, _b, _c) = setup();
     bytes.push(0u8);
@@ -1123,7 +1126,7 @@ fn test_sha256() {
 }
 
 #[test()]
-fn test_keccak256() {
+fn bytes_test_keccak256() {
     use ::hash::keccak256;
     let (mut bytes, _a, _b, _c) = setup();
     bytes.push(0u8);
@@ -1137,7 +1140,7 @@ fn test_keccak256() {
 }
 
 #[test()]
-fn test_as_raw_slice() {
+fn bytes_test_as_raw_slice() {
     let val = 0x3497297632836282349729763283628234972976328362823497297632836282;
     let slice_1 = asm(ptr: (__addr_of(val), 32)) { ptr: raw_slice };
     let mut bytes = Bytes::from_raw_slice(slice_1);
@@ -1148,7 +1151,7 @@ fn test_as_raw_slice() {
 
 // This test will need to be updated once https://github.com/FuelLabs/sway/pull/3882 is resolved
 #[test()]
-fn test_from_raw_slice() {
+fn bytes_test_from_raw_slice() {
     let val = 0x3497297632836282349729763283628234972976328362823497297632836282;
     let slice_1 = asm(ptr: (__addr_of(val), 32)) { ptr: raw_slice };
     let mut bytes = Bytes::from_raw_slice(slice_1);
@@ -1158,7 +1161,7 @@ fn test_from_raw_slice() {
 }
 
 #[test]
-fn test_from_b256() {
+fn bytes_test_from_b256() {
     let initial = 0x3333333333333333333333333333333333333333333333333333333333333333;
     let b: Bytes = Bytes::from(initial);
     let mut control_bytes = Bytes::with_capacity(32);
@@ -1174,7 +1177,7 @@ fn test_from_b256() {
 }
 
 #[test]
-fn test_into_b256() {
+fn bytes_test_into_b256() {
     let mut initial_bytes = Bytes::with_capacity(32);
 
     let mut i = 0;
