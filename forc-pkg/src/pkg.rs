@@ -1455,7 +1455,7 @@ fn fetch_deps(
         let parent_manifest = &manifest_map[&parent_id];
         let source =
             Source::from_manifest_dep_patched(parent_manifest, name, &dep, member_manifests)
-                .context("Failed to source dependency")?;
+                .context(format!("Failed to source dependency: {dep_name}"))?;
 
         // If we haven't yet fetched this dependency, fetch it, pin it and add it to the graph.
         let dep_pkg = Pkg {
