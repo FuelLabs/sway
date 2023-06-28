@@ -1,9 +1,10 @@
+//! The `Bytes` type is used when a collection of tightly-packed arbitrary bytes is needed.
 library;
 
 use ::{alloc::{alloc_bytes, realloc_bytes}, vec::Vec};
 use ::assert::assert;
 use ::intrinsics::size_of_val;
-use ::option::Option::{*, self};
+use ::option::Option::{self, *};
 use ::convert::From;
 
 struct RawBytes {
@@ -587,14 +588,8 @@ impl Bytes {
         let left_len = mid;
         let right_len = self.len - mid;
 
-        let mut left_bytes = Self {
-            buf: RawBytes::with_capacity(left_len),
-            len: left_len,
-        };
-        let mut right_bytes = Self {
-            buf: RawBytes::with_capacity(right_len),
-            len: right_len,
-        };
+        let mut left_bytes = Self { buf: RawBytes::with_capacity(left_len), len: left_len };
+        let mut right_bytes = Self { buf: RawBytes::with_capacity(right_len), len: right_len };
 
         if mid > 0 {
             self.buf.ptr().copy_bytes_to(left_bytes.buf.ptr(), left_len);
@@ -605,6 +600,7 @@ impl Bytes {
 
         left_bytes.len = left_len;
         right_bytes.len = right_len;
+
         (left_bytes, right_bytes)
     }
 
@@ -694,7 +690,7 @@ impl core::ops::Eq for Bytes {
         }
 
         asm(result, r2: self.buf.ptr, r3: other.buf.ptr, r4: self.len) {
-            meq  result r2 r3 r4;
+            meq result r2 r3 r4;
             result: bool
         }
     }
@@ -1084,6 +1080,7 @@ fn bytes_test_append_to_empty_bytes() {
 
     assert(bytes2.len() == 0);
     assert(bytes2.capacity() == 0);
+
 }
 
 #[test()]
