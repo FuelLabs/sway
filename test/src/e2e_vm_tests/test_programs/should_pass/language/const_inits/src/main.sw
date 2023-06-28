@@ -6,6 +6,34 @@ fn contract_id_wrapper(b: b256) -> ContractId {
 }
 const ETH_ID1 = contract_id_wrapper(0x0000000000000000000000000000000000000000000000000000000000000001);
 
+// test if-expressions
+fn bool_to_num(b: bool) -> u64 {
+    if b {
+        1
+    } else {
+        0
+    }
+}
+
+// test variable shadowing and local const
+fn const_42(x: u64) -> u64 {
+    const forty_two = 42;
+    let x: u64 = forty_two;
+    x
+}
+
+// test variable scopes and local const
+fn id(x: u64) -> u64 {
+    const forty_two = 42;
+    {
+        let x: u64 = forty_two;
+    };
+    x
+}
+
+const QUUX: u64 = id(0);
+const BAZ: u64 = const_42(123456);
+
 const TUP1 = (2, 1, 21);
 const ARR1 = [1, 2, 3];
 
@@ -15,8 +43,9 @@ fn tup_wrapper(a: u64, b: u64, c: u64) -> (u64, u64, u64) {
 const TUP2 = tup_wrapper(2, 1, 21);
 
 fn arr_wrapper(a: u64, b: u64, c: u64) -> [u64; 3] {
-    return [a, b, c];
+    [a, b, c]
 }
+
 const ARR2 = arr_wrapper(1, 2, 3);
 
 enum En1 {
@@ -50,12 +79,12 @@ const ZERO_B256 = 0x000000000000000000000000000000000000000000000000000000000000
 const KEY = ZERO_B256;
 
 const BAR: u32 = 6;
-const FOO: u32 = 5;
+const FOO: u32 = ((u32::min() + 1) * 12 / 2 - 1) % 6;
 const MASK: u32 = 11;
 const MASK2: u32 = 8;
 const MASK3: u32 = 15;
 const FOO_MIDDLE: u32 = ((FOO & MASK) | MASK2) ^ MASK3;
-const OPS: u64 = 10 + 9 - 8 * 7 / 6 << 5 >> 4 ^ 3 | 2 & 1;
+const OPS: u64 = 10 + 9 - 8 * 7 / 6 << 5 >> 4 ^ 3 | 2 & bool_to_num(true);
 
 const CARR1 = [X_SIZE - Y_SIZE + 1; 4];
 // This doesn't work because const-eval happens after type-checking,
@@ -70,6 +99,8 @@ fn main() -> u64 {
     const eth_id0 = ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000000);
     const eth_id1 = ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
     assert(eth_id0 == ETH_ID0 && eth_id1 == ETH_ID1);
+    assert(BAZ == 42);
+    assert(QUUX == 0);
 
     // tuples and arrays.
     const t1 = (2, 1, 21);
@@ -117,6 +148,7 @@ fn main() -> u64 {
     assert(SOV == __size_of_val("hello"));
     assert(TRUEB != FALSEB);
     assert(TRUEB1 != FALSEB1);
+    assert(FOO == 5);
     assert(FOO_MIDDLE == BAR);
     assert(OPS == 23);
 
