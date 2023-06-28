@@ -38,5 +38,6 @@ pub mod u256;
 pub mod message;
 pub mod prelude;
 pub mod low_level_call;
+pub mod string;
 
 use core::*;
