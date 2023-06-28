@@ -648,6 +648,30 @@ impl From<b256> for Bytes {
 }
 
 impl From<raw_slice> for Bytes {
+    /// Creates a `Bytes` from a `raw_slice`.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std:bytes::Bytes;
+    ///
+    /// let mut vec = Vec::new();
+    /// let a = 5u8;
+    /// let b = 7u8;
+    /// let c = 9u8
+    ///
+    /// vec.push(a);
+    /// vec.push(b);
+    /// vec.push(c);
+    /// 
+    /// let vec_as_raw_slice = vec.as_raw_slice();
+    /// let bytes = Bytes::from(vec_as_raw_slice);
+    ///
+    /// assert(bytes.len == 3);
+    /// assert(bytes.get(0).unwrap() == a);
+    /// assert(bytes.get(1).unwrap() == b);
+    /// assert(bytes.get(2).unwrap() == c);
+    /// ```
     fn from(slice: raw_slice) -> Self {
         let number_of_bytes = slice.number_of_bytes();
         Self {
@@ -659,6 +683,27 @@ impl From<raw_slice> for Bytes {
         }
     }
 
+    /// Creates a `raw_slice` from a `Bytes`.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std:bytes::Bytes;
+    ///
+    /// let mut bytes = Bytes::new();
+    /// let a = 5u8;
+    /// let b = 7u8;
+    /// let c = 9u8
+    /// bytes.push(a);
+    /// bytes.push(b);
+    /// bytes.push(c);
+    ///
+    /// assert(bytes.len() == 3);
+    ///
+    /// let slice: raw_slice = bytes.into();
+    ///
+    /// assert(slice.number_of_bytes() == 3);
+    /// ```
     fn into(self) -> raw_slice {
         asm(ptr: (self.buf.ptr(), self.len)) { ptr: raw_slice }
     }
