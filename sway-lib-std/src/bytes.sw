@@ -734,7 +734,7 @@ impl From<Vec<u8>> for Bytes {
     /// assert(bytes.get(2).unwrap() == c);
     /// ```
     fn from(vec: Vec<u8>) -> Self {
-        let mut bytes = Bytes::new();
+        let mut bytes = Bytes::with_capacity(vec.len());
         let mut i = 0;
         let length = vec.len();
         while i < length {
