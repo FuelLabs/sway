@@ -54,6 +54,7 @@ use sway_error::warning::CompileWarning;
 use sway_types::{ident::Ident, span, Spanned};
 pub use type_system::*;
 
+pub use language::Programs;
 use language::{lexed, parsed, ty, Visibility};
 use transform::to_parsed_lang::{self, convert_module_kind};
 
@@ -456,7 +457,7 @@ pub fn compile_to_ast(
     build_config: Option<&BuildConfig>,
     package_name: &str,
     metrics: &mut PerformanceData,
-) -> CompileResult<ty::TyProgram> {
+) -> CompileResult<Programs> {
     // Parse the program to a concrete syntax tree (CST).
     let CompileResult {
         value: parse_program_opt,
@@ -470,8 +471,8 @@ pub fn compile_to_ast(
         metrics
     );
 
-    let (.., mut parse_program) = match parse_program_opt {
-        Some(parse_program) => parse_program,
+    let (lexed_program, mut parsed_program) = match parse_program_opt {
+        Some(modules) => modules,
         None => return deduped_err(warnings, errors),
     };
 
@@ -480,7 +481,7 @@ pub fn compile_to_ast(
         .map(|config| !config.include_tests)
         .unwrap_or(true)
     {
-        parse_program.exclude_tests();
+        parsed_program.exclude_tests();
     }
 
     // Type check (+ other static analysis) the CST to a typed AST.
@@ -489,7 +490,7 @@ pub fn compile_to_ast(
         "parse_ast",
         parsed_to_ast(
             engines,
-            &parse_program,
+            &parsed_program,
             initial_namespace,
             build_config,
             package_name,
@@ -500,20 +501,15 @@ pub fn compile_to_ast(
 
     errors.extend(typed_res.errors);
     warnings.extend(typed_res.warnings);
-    let typed_program = match typed_res.value {
-        Some(tp) => tp,
-        None => return deduped_err(warnings, errors),
-    };
 
     ok(
-        typed_program,
+        Programs::new(lexed_program, parsed_program, typed_res.value),
         dedup_unsorted(warnings),
         dedup_unsorted(errors),
     )
 }
 
-/// Given input Sway source code,
-/// try compiling to a `CompiledAsm`,
+/// Given input Sway source code, try compiling to a `CompiledAsm`,
 /// containing the asm in opcode form (not raw bytes/bytecode).
 pub fn compile_to_asm(
     engines: &Engines,
@@ -534,28 +530,32 @@ pub fn compile_to_asm(
     ast_to_asm(engines, &ast_res, &build_config)
 }
 
-/// Given an AST compilation result,
-/// try compiling to a `CompiledAsm`,
+/// Given an AST compilation result, try compiling to a `CompiledAsm`,
 /// containing the asm in opcode form (not raw bytes/bytecode).
 pub fn ast_to_asm(
     engines: &Engines,
-    ast_res: &CompileResult<ty::TyProgram>,
+    ast_res: &CompileResult<Programs>,
     build_config: &BuildConfig,
 ) -> CompileResult<CompiledAsm> {
-    match &ast_res.value {
-        None => err(ast_res.warnings.clone(), ast_res.errors.clone()),
-        Some(typed_program) => {
-            let mut errors = ast_res.errors.clone();
-            let mut warnings = ast_res.warnings.clone();
-            let asm = check!(
-                compile_ast_to_ir_to_asm(engines, typed_program, build_config),
-                return deduped_err(warnings, errors),
-                warnings,
-                errors
-            );
-            ok(CompiledAsm(asm), warnings, errors)
-        }
-    }
+    let programs = match ast_res.value.as_ref() {
+        Some(programs) => programs,
+        None => return err(ast_res.warnings.clone(), ast_res.errors.clone()),
+    };
+
+    let typed_program = match &programs.typed {
+        Some(typed_program) => typed_program,
+        None => return err(ast_res.warnings.clone(), ast_res.errors.clone()),
+    };
+
+    let mut errors = ast_res.errors.clone();
+    let mut warnings = ast_res.warnings.clone();
+    let asm = check!(
+        compile_ast_to_ir_to_asm(engines, typed_program, build_config),
+        return deduped_err(warnings, errors),
+        warnings,
+        errors
+    );
+    ok(CompiledAsm(asm), warnings, errors)
 }
 
 pub(crate) fn compile_ast_to_ir_to_asm(
