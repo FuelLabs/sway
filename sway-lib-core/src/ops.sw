@@ -528,7 +528,9 @@ impl Shift for u64 {
 
 impl Shift for u32 {
     fn lsh(self, other: u64) -> Self {
-        __lsh(self, other)
+        // any non-64-bit value is compiled to a u64 value under-the-hood
+        // so we need to clear upper bits here
+        __and(__lsh(self, other), Self::max())
     }
     fn rsh(self, other: u64) -> Self {
         __rsh(self, other)
@@ -537,7 +539,7 @@ impl Shift for u32 {
 
 impl Shift for u16 {
     fn lsh(self, other: u64) -> Self {
-        __lsh(self, other)
+        __and(__lsh(self, other), Self::max())
     }
     fn rsh(self, other: u64) -> Self {
         __rsh(self, other)
@@ -546,7 +548,7 @@ impl Shift for u16 {
 
 impl Shift for u8 {
     fn lsh(self, other: u64) -> Self {
-        __lsh(self, other)
+        __and(__lsh(self, other), Self::max())
     }
     fn rsh(self, other: u64) -> Self {
         __rsh(self, other)
