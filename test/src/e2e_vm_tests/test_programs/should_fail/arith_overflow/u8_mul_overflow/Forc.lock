@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-266A49018292505D'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-266A49018292505D'
+dependencies = ['core']
+
+[[package]]
+name = 'u8_mul_overflow'
+source = 'member'
+dependencies = ['std']

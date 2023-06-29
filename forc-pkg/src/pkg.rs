@@ -26,6 +26,7 @@ use std::{
     sync::Arc,
 };
 use sway_core::fuel_prelude::fuel_tx::ConsensusParameters;
+pub use sway_core::Programs;
 use sway_core::{
     abi_generation::{
         evm_json_abi,
@@ -37,11 +38,7 @@ use sway_core::{
         fuel_crypto,
         fuel_tx::{self, Contract, ContractId, StorageSlot},
     },
-    language::{
-        lexed::LexedProgram,
-        parsed::{ParseProgram, TreeType},
-        ty, Visibility,
-    },
+    language::{parsed::TreeType, Visibility},
     semantic_analysis::namespace,
     source_map::SourceMap,
     transform::AttributeKind,
@@ -320,13 +317,6 @@ pub struct MemberFilter {
     pub build_scripts: bool,
     pub build_predicates: bool,
     pub build_libraries: bool,
-}
-
-/// Contains the lexed, parsed, and typed compilation stages of a program.
-pub struct Programs {
-    pub lexed: LexedProgram,
-    pub parsed: ParseProgram,
-    pub typed: Option<ty::TyProgram>,
 }
 
 impl Default for MemberFilter {
@@ -823,20 +813,6 @@ impl BuildPlan {
                 .next()
                 .flatten()
         })
-    }
-}
-
-impl Programs {
-    pub fn new(
-        lexed: LexedProgram,
-        parsed: ParseProgram,
-        typed: Option<ty::TyProgram>,
-    ) -> Programs {
-        Programs {
-            lexed,
-            parsed,
-            typed,
-        }
     }
 }
 
@@ -1750,33 +1726,6 @@ fn find_core_dep(graph: &Graph, node: NodeIx) -> Option<NodeIx> {
     None
 }
 
-/// Compiles the package to an AST.
-pub fn compile_ast(
-    pkg: &PackageDescriptor,
-    build_profile: &BuildProfile,
-    engines: &Engines,
-    namespace: namespace::Module,
-    package_name: &str,
-    metrics: &mut PerformanceData,
-) -> Result<CompileResult<ty::TyProgram>> {
-    let source = pkg.manifest_file.entry_string()?;
-    let sway_build_config = sway_build_config(
-        pkg.manifest_file.dir(),
-        &pkg.manifest_file.entry_path(),
-        pkg.target,
-        build_profile,
-    )?;
-    let ast_res = sway_core::compile_to_ast(
-        engines,
-        source,
-        namespace,
-        Some(&sway_build_config),
-        package_name,
-        metrics,
-    );
-    Ok(ast_res)
-}
-
 /// Compiles the given package.
 ///
 /// ## Program Types
@@ -1813,16 +1762,28 @@ pub fn compile(
         print_on_failure(engines.se(), terse_mode, warnings, errors, reverse_results);
         bail!("Failed to compile {}", pkg.name);
     };
+    let source = pkg.manifest_file.entry_string()?;
 
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
     let ast_res = time_expr!(
         "compile to ast",
         "compile_to_ast",
-        compile_ast(pkg, profile, engines, namespace, &pkg.name, &mut metrics)?,
+        sway_core::compile_to_ast(
+            engines,
+            source,
+            namespace,
+            Some(&sway_build_config),
+            &pkg.name,
+            &mut metrics,
+        ),
         Some(sway_build_config.clone()),
         metrics
     );
-    let typed_program = match ast_res.value.as_ref() {
+    let programs = match ast_res.value.as_ref() {
+        None => return fail(&ast_res.warnings, &ast_res.errors),
+        Some(programs) => programs,
+    };
+    let typed_program = match programs.typed.as_ref() {
         None => return fail(&ast_res.warnings, &ast_res.errors),
         Some(typed_program) => typed_program,
     };
@@ -2610,7 +2571,7 @@ fn update_json_type_declaration(
 }
 
 /// Compile the entire forc package and return the lexed, parsed and typed programs
-/// of the dependancies and project.
+/// of the dependencies and project.
 /// The final item in the returned vector is the project.
 pub fn check(
     plan: &BuildPlan,
@@ -2638,52 +2599,63 @@ pub fn check(
         )
         .expect("failed to create dependency namespace");
 
-        let CompileResult {
-            value,
-            mut warnings,
-            mut errors,
-        } = parse(manifest, build_target, terse_mode, include_tests, engines)?;
-
-        let (lexed, parsed) = match value {
-            None => {
-                results.push(CompileResult::new(None, warnings, errors));
-                return Ok(results);
-            }
-            Some(modules) => modules,
+        let profile = BuildProfile {
+            terse: terse_mode,
+            ..BuildProfile::debug()
         };
 
-        let ast_result = sway_core::parsed_to_ast(engines, &parsed, dep_namespace, None, &pkg.name);
-        warnings.extend(ast_result.warnings);
-        errors.extend(ast_result.errors);
+        let build_config = sway_build_config(
+            manifest.dir(),
+            &manifest.entry_path(),
+            build_target,
+            &profile,
+        )?
+        .include_tests(include_tests);
 
-        let typed_program = match ast_result.value {
-            None => {
-                let value = Some(Programs::new(lexed, parsed, None));
-                results.push(CompileResult::new(value, warnings, errors));
+        let mut metrics = PerformanceData::default();
+        let programs_res = sway_core::compile_to_ast(
+            engines,
+            manifest.entry_string()?,
+            dep_namespace,
+            Some(&build_config),
+            &pkg.name,
+            &mut metrics,
+        );
+
+        let programs = match programs_res.value.as_ref() {
+            Some(programs) => programs,
+            _ => {
+                results.push(programs_res);
                 return Ok(results);
             }
-            Some(typed_program) => typed_program,
         };
 
-        if let TreeType::Library = typed_program.kind.tree_type() {
-            let mut namespace = typed_program.root.namespace.clone();
-            namespace.name = Some(Ident::new_no_span(pkg.name.clone()));
-            namespace.span = Some(
-                Span::new(
-                    manifest.entry_string()?,
-                    0,
-                    0,
-                    Some(engines.se().get_source_id(&manifest.entry_path())),
-                )
-                .unwrap(),
-            );
-            lib_namespace_map.insert(node, namespace.module().clone());
+        match programs.typed.as_ref() {
+            Some(typed_program) => {
+                if let TreeType::Library = typed_program.kind.tree_type() {
+                    let mut namespace = typed_program.root.namespace.clone();
+                    namespace.name = Some(Ident::new_no_span(pkg.name.clone()));
+                    namespace.span = Some(
+                        Span::new(
+                            manifest.entry_string()?,
+                            0,
+                            0,
+                            Some(engines.se().get_source_id(&manifest.entry_path())),
+                        )
+                        .unwrap(),
+                    );
+                    lib_namespace_map.insert(node, namespace.module().clone());
+                }
+
+                source_map.insert_dependency(manifest.dir());
+            }
+            None => {
+                results.push(programs_res);
+                return Ok(results);
+            }
         }
 
-        source_map.insert_dependency(manifest.dir());
-
-        let value = Some(Programs::new(lexed, parsed, Some(typed_program)));
-        results.push(CompileResult::new(value, warnings, errors));
+        results.push(programs_res)
     }
 
     if results.is_empty() {
@@ -2691,29 +2663,6 @@ pub fn check(
     }
 
     Ok(results)
-}
-
-/// Returns a parsed AST from the supplied [PackageManifestFile]
-pub fn parse(
-    manifest: &PackageManifestFile,
-    build_target: BuildTarget,
-    terse_mode: bool,
-    include_tests: bool,
-    engines: &Engines,
-) -> anyhow::Result<CompileResult<(LexedProgram, ParseProgram)>> {
-    let profile = BuildProfile {
-        terse: terse_mode,
-        ..BuildProfile::debug()
-    };
-    let source = manifest.entry_string()?;
-    let sway_build_config = sway_build_config(
-        manifest.dir(),
-        &manifest.entry_path(),
-        build_target,
-        &profile,
-    )?
-    .include_tests(include_tests);
-    Ok(sway_core::parse(source, engines, Some(&sway_build_config)))
 }
 
 /// Format an error message for an absent `Forc.toml`.
