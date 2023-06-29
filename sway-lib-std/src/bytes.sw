@@ -736,7 +736,7 @@ impl From<Vec<u8>> for Bytes {
     fn from(vec: Vec<u8>) -> Self {
         let mut bytes = Bytes::with_capacity(vec.len());
         let mut i = 0;
-        while i < vec.len(); {
+        while i < vec.len() {
             bytes.push(vec.get(i).unwrap());
             i += 1;
         };
