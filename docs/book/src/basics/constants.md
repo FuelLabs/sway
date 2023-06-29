@@ -13,6 +13,27 @@ Constants are similar to variables; however, there are a few differences:
 const ID: u32 = 0;
 ```
 
+Constant initializer expressions can be quite complex, but they cannot use, for
+instance, assembly instructions, storage access, mutable variables, loops and
+`return` statements. Although, function calls, primitive types and compound data
+structures are perfectly fine to use:
+
+```sway
+fn bool_to_num(b: bool) -> u64 {
+    if b {
+        1
+    } else {
+        0
+    }
+}
+
+fn arr_wrapper(a: u64, b: u64, c: u64) -> [u64; 3] {
+    [a, b, c]
+}
+
+const ARR2 = arr_wrapper(bool_to_num(1) + 42, 2, 3);
+```
+
 ## Associated Constants
 
 <!-- This section should explain what associated constants are -->
