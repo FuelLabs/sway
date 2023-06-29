@@ -145,7 +145,7 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
             .await?;
         }
 
-        let mut tx = self._finalize_without_signature();
+        let mut tx = self.finalize_without_signature_inner();
 
         if !unsigned {
             let signature = if let Some(signing_key) = signing_key {
@@ -154,16 +154,16 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
                 // of a cryptographically secure hash. However, the bytes are
                 // coming from `tx.id()`, which already uses `Hasher::hash()`
                 // to hash it using a secure hash mechanism.
-                let message = Message::from_bytes(*tx.id(&params));
+                let message = Message::from_bytes(*tx.id(&params.chain_id));
                 Signature::sign(&signing_key, &message)
             } else {
-                prompt_signature(tx.id(&params))?
+                prompt_signature(tx.id(&params.chain_id))?
             };
 
             let witness = Witness::from(signature.as_ref());
             tx.replace_witness(signature_witness_index, witness);
         }
-        tx.precompute(&params);
+        tx.precompute(&params.chain_id)?;
 
         Ok(tx)
     }

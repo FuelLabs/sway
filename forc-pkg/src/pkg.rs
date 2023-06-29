@@ -25,7 +25,7 @@ use std::{
     str::FromStr,
     sync::Arc,
 };
-use sway_core::fuel_prelude::fuel_tx::ConsensusParameters;
+use sway_core::fuel_prelude::{fuel_types::ChainId};
 pub use sway_core::Programs;
 use sway_core::{
     abi_generation::{
@@ -496,7 +496,7 @@ impl BuiltPackage {
                     "0x{}",
                     fuel_tx::Input::predicate_owner(
                         &self.bytecode.bytes,
-                        &ConsensusParameters::DEFAULT
+                        &ChainId::default(),
                     )
                 );
                 let root_file_name = format!("{}{}", &pkg_name, SWAY_BIN_ROOT_SUFFIX);

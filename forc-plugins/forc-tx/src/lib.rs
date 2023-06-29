@@ -721,6 +721,7 @@ impl TryFrom<Input> for fuel_tx::Input {
                             asset_id,
                             tx_pointer,
                             maturity.into(),
+                            0, // TODO
                             std::fs::read(&predicate).map_err(|err| {
                                 ConvertInputError::PredicateRead {
                                     path: predicate,
@@ -803,6 +804,7 @@ impl TryFrom<Input> for fuel_tx::Input {
                                 recipient,
                                 amount,
                                 nonce,
+                                0, // TODO
                                 predicate,
                                 predicate_data,
                             )
@@ -812,6 +814,7 @@ impl TryFrom<Input> for fuel_tx::Input {
                                 recipient,
                                 amount,
                                 nonce,
+                                0, // TODO
                                 data,
                                 predicate,
                                 predicate_data,
