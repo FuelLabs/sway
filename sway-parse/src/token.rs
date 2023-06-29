@@ -334,7 +334,11 @@ fn lex_close_delimiter(
     open_index: usize,
     delimiters: Delimiters,
 ) -> Vec<CommentedTokenTree> {
-    let full_span = span(l, open_index, index);
+    let full_span = if let Some(close_delim) = delimiters.closing {
+        span(l, open_index, index + close_delim.as_char().len_utf8())
+    } else {
+        span(l, open_index, index)
+    };
     let group = CommentedGroup {
         token_stream: CommentedTokenStream {
             token_trees,
