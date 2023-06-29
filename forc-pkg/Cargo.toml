@@ -17,7 +17,7 @@ forc-tracing = { version = "0.40.1", path = "../forc-tracing" }
 forc-util = { version = "0.40.1", path = "../forc-util" }
 fuel-abi-types = "0.1"
 futures = "0.3"
-git2 = { version = "0.16.1", features = ["vendored-libgit2", "vendored-openssl"] }
+git2 = { version = "0.17.2", features = ["vendored-libgit2", "vendored-openssl"] }
 gix-url = { version = "0.16.0", features = ["serde1"] }
 hex = "0.4.3"
 ipfs-api-backend-hyper = { version = "0.6", features = ["with-builder"] }
