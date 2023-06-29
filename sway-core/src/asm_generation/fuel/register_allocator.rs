@@ -768,7 +768,8 @@ pub(crate) fn spill(
                 opcode: Either::Left(VirtualOp::CFEI(VirtualImmediate24 {
                     value: new_locals_byte_size,
                 })),
-                comment: op.comment.clone(),
+                comment: op.comment.clone()
+                    + &format!(" and {new_locals_byte_size} bytes for spills"),
                 owning_span: op.owning_span.clone(),
             });
         } else if cfs_idx_opt.is_some_and(|cfs_idx| cfs_idx == op_idx) {
@@ -777,7 +778,8 @@ pub(crate) fn spill(
                 opcode: Either::Left(VirtualOp::CFSI(VirtualImmediate24 {
                     value: new_locals_byte_size,
                 })),
-                comment: op.comment.clone(),
+                comment: op.comment.clone()
+                    + &format!(" and {new_locals_byte_size} bytes for spills"),
                 owning_span: op.owning_span.clone(),
             });
         } else {
