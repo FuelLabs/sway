@@ -78,16 +78,16 @@ impl PunctKind {
 // the delimiters field here is only ever used in the `enter_delimited` method to match the opening delimiter
 // and get the next parser
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
-pub struct GenericGroup<T> {
+pub struct DelimitedGroup<T> {
     pub delimiters: Delimiters,
     pub token_stream: T,
     pub span: Span,
 }
 
-pub type Group = GenericGroup<TokenStream>;
-pub type CommentedGroup = GenericGroup<CommentedTokenStream>;
+pub type Group = DelimitedGroup<TokenStream>;
+pub type CommentedGroup = DelimitedGroup<CommentedTokenStream>;
 
-impl<T> Spanned for GenericGroup<T> {
+impl<T> Spanned for DelimitedGroup<T> {
     fn span(&self) -> Span {
         self.span.clone()
     }
@@ -236,7 +236,7 @@ pub enum GenericTokenTree<T> {
     Delim(Delimiter),
     Punct(Punct),
     Ident(Ident),
-    Group(GenericGroup<T>),
+    Group(DelimitedGroup<T>),
     Literal(Literal),
     DocComment(DocComment),
 }
@@ -300,8 +300,8 @@ impl<T> From<Ident> for GenericTokenTree<T> {
     }
 }
 
-impl<T> From<GenericGroup<T>> for GenericTokenTree<T> {
-    fn from(group: GenericGroup<T>) -> Self {
+impl<T> From<DelimitedGroup<T>> for GenericTokenTree<T> {
+    fn from(group: DelimitedGroup<T>) -> Self {
         Self::Group(group)
     }
 }

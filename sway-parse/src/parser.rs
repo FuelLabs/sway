@@ -4,8 +4,8 @@ use core::marker::PhantomData;
 use sway_ast::keywords::Keyword;
 use sway_ast::literal::Literal;
 use sway_ast::token::{
-    ClosingDelimiter, DocComment, GenericGroup, Group, OpeningDelimiter, Punct, PunctKind, Spacing,
-    TokenStream, TokenTree,
+    ClosingDelimiter, DelimitedGroup, DocComment, Group, OpeningDelimiter, Punct, PunctKind,
+    Spacing, TokenStream, TokenTree,
 };
 use sway_ast::PubToken;
 use sway_error::error::CompileError;
@@ -274,7 +274,7 @@ impl<'a> Peeker<'a> {
         }
         for (open_delim, tt) in first_punct_kinds.iter().zip(self.token_trees.iter()) {
             match tt {
-                TokenTree::Group(GenericGroup { delimiters, .. }) => {
+                TokenTree::Group(DelimitedGroup { delimiters, .. }) => {
                     if let Some(delim) = delimiters.opening {
                         if delim != *open_delim {
                             return Err(self);
@@ -285,7 +285,7 @@ impl<'a> Peeker<'a> {
             }
         }
         let span_end = match &self.token_trees[delimiter.len() - 1] {
-            TokenTree::Group(GenericGroup {
+            TokenTree::Group(DelimitedGroup {
                 delimiters,
                 token_stream: _,
                 span,
@@ -302,7 +302,7 @@ impl<'a> Peeker<'a> {
             _ => return Err(self),
         };
         let span_start = match &self.token_trees[0] {
-            TokenTree::Group(GenericGroup { span, .. }) => span,
+            TokenTree::Group(DelimitedGroup { span, .. }) => span,
             _ => unreachable!(),
         };
         let span = Span::join(span_start.clone(), span_end.clone());
@@ -319,7 +319,7 @@ impl<'a> Peeker<'a> {
         }
         for (close_delim, tt) in first_punct_kinds.iter().zip(self.token_trees.iter()) {
             match tt {
-                TokenTree::Group(GenericGroup { delimiters, .. }) => {
+                TokenTree::Group(DelimitedGroup { delimiters, .. }) => {
                     if let Some(delim) = delimiters.closing {
                         if delim != *close_delim {
                             return Err(self);
@@ -330,7 +330,7 @@ impl<'a> Peeker<'a> {
             }
         }
         let span_end = match &self.token_trees[delimiter.len() - 1] {
-            TokenTree::Group(GenericGroup {
+            TokenTree::Group(DelimitedGroup {
                 delimiters,
                 token_stream: _,
                 span,
@@ -347,7 +347,7 @@ impl<'a> Peeker<'a> {
             _ => return Err(self),
         };
         let span_start = match &self.token_trees[0] {
-            TokenTree::Group(GenericGroup { span, .. }) => span,
+            TokenTree::Group(DelimitedGroup { span, .. }) => span,
             _ => unreachable!(),
         };
         let span = Span::join(span_start.clone(), span_end.clone());
