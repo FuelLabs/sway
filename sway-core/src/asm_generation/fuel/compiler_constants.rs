@@ -11,7 +11,7 @@ const NUM_FREE_REGISTERS: u8 = 48;
 /// 3. RETURN_VALUE - the value returned by a _function_ call.
 /// 4. SCRATCH - used for certain operations which need a register temporarily, such as JMP.
 /// 5. LOCALS_BASE - base register for stack locals.
-/// 5. ARGS - for passing arguments to function calls.
+/// 6. ARGS - for passing arguments to function calls.
 const NUM_COMPILER_RESERVED_REGISTERS: u8 = 5 + NUM_ARG_REGISTERS;
 
 pub(crate) const DATA_SECTION_REGISTER: u8 = NUM_TOTAL_REGISTERS - 1;

@@ -3,7 +3,7 @@ script;
 use increment_abi::Incrementor;
 
 fn main() -> bool {
-    let the_abi = abi(Incrementor, 0xb1e5d89c93b868694aa3cb65a7d69912ed08ae6a318b099cc86d2f8e1f8212ef);
+    let the_abi = abi(Incrementor, 0xe1439dbffde3e8680420e453ce7f8e74c390708c367dbd702c7e5b50a303fa0f);
     the_abi.increment(5);
     the_abi.increment(5);
     let result = the_abi.get();

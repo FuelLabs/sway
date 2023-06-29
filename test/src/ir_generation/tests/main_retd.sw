@@ -42,4 +42,4 @@ fn main() -> D {
 
 // D is 72 bytes.
 // check: movi $(len_reg=$REG) i72
-// check: retd  $REG $len_reg
+// check: retd  $$$$locbase $len_reg

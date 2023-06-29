@@ -253,6 +253,8 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                         .map(|asm| format!("{asm}"))
                         .expect("Failed to stringify ASM for {test_file_name}.");
 
+                    print!("{asm_output}");
+
                     if asm_checker.is_empty() {
                         panic!(
                             "ASM test for {} has the '::check-asm::' marker \

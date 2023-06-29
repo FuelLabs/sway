@@ -37,4 +37,4 @@ fn main() {
 
 // regex: REG=\$r\d+
 
-// check: smo  $REG $REG $REG $REG
+// check: smo  $REG $$$$locbase $REG $REG

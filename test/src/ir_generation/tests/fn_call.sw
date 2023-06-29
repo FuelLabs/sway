@@ -51,9 +51,9 @@ fn main() -> u64 {
 // check: move $REG $$$$arg0
 // check: move $REG $$$$arg1
 //
-// check: move $(stack_ptr=$REG) $$sp
+// check: move $$$$locbase $$sp
 // check: cfei i8
-// check: sw   $stack_ptr $$zero i0
+// check: sw   $$$$locbase $$zero i0
 // ...
 // check: cfsi i8
 // check: jmp $$$$reta
