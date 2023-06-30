@@ -6,16 +6,13 @@ use annotate_snippets::{
 };
 use ansi_term::Colour;
 use anyhow::{bail, Result};
-use clap::Args;
 use forc_tracing::{println_red_err, println_yellow_err};
-use serde::{Deserialize, Serialize};
 use std::str;
 use std::{ffi::OsStr, process::Termination};
 use std::{
     fmt::Display,
     path::{Path, PathBuf},
 };
-use sway_core::fuel_prelude::fuel_tx;
 use sway_core::language::parsed::TreeType;
 use sway_error::error::CompileError;
 use sway_error::warning::CompileWarning;
@@ -132,44 +129,56 @@ macro_rules! forc_result_bail {
     };
 }
 
-/// Added salt used to derive the contract ID.
-#[derive(Debug, Args, Default, Deserialize, Serialize)]
-pub struct Salt {
-    /// Added salt used to derive the contract ID.
-    ///
-    /// By default, this is `0x0000000000000000000000000000000000000000000000000000000000000000`.
-    #[clap(long = "salt")]
-    pub salt: Option<fuel_tx::Salt>,
-}
+#[cfg(feature = "fuel-tx")]
+pub mod tx_utils {
 
-/// Format `Log` and `LogData` receipts.
-pub fn format_log_receipts(receipts: &[fuel_tx::Receipt], pretty_print: bool) -> Result<String> {
-    let mut receipt_to_json_array = serde_json::to_value(receipts)?;
-    for (rec_index, receipt) in receipts.iter().enumerate() {
-        let rec_value = receipt_to_json_array.get_mut(rec_index).ok_or_else(|| {
-            anyhow::anyhow!(
-                "Serialized receipts does not contain {} th index",
-                rec_index
-            )
-        })?;
-        match receipt {
-            fuel_tx::Receipt::LogData { data, .. } => {
-                if let Some(v) = rec_value.pointer_mut("/LogData/data") {
-                    *v = hex::encode(data).into();
-                }
-            }
-            fuel_tx::Receipt::ReturnData { data, .. } => {
-                if let Some(v) = rec_value.pointer_mut("/ReturnData/data") {
-                    *v = hex::encode(data).into();
-                }
-            }
-            _ => {}
-        }
+    use anyhow::Result;
+    use clap::Args;
+    use serde::{Deserialize, Serialize};
+    use sway_core::fuel_prelude::fuel_tx;
+
+    /// Added salt used to derive the contract ID.
+    #[derive(Debug, Args, Default, Deserialize, Serialize)]
+    pub struct Salt {
+        /// Added salt used to derive the contract ID.
+        ///
+        /// By default, this is `0x0000000000000000000000000000000000000000000000000000000000000000`.
+        #[clap(long = "salt")]
+        pub salt: Option<fuel_tx::Salt>,
     }
-    if pretty_print {
-        Ok(serde_json::to_string_pretty(&receipt_to_json_array)?)
-    } else {
-        Ok(serde_json::to_string(&receipt_to_json_array)?)
+
+    /// Format `Log` and `LogData` receipts.
+    pub fn format_log_receipts(
+        receipts: &[fuel_tx::Receipt],
+        pretty_print: bool,
+    ) -> Result<String> {
+        let mut receipt_to_json_array = serde_json::to_value(receipts)?;
+        for (rec_index, receipt) in receipts.iter().enumerate() {
+            let rec_value = receipt_to_json_array.get_mut(rec_index).ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Serialized receipts does not contain {} th index",
+                    rec_index
+                )
+            })?;
+            match receipt {
+                fuel_tx::Receipt::LogData { data, .. } => {
+                    if let Some(v) = rec_value.pointer_mut("/LogData/data") {
+                        *v = hex::encode(data).into();
+                    }
+                }
+                fuel_tx::Receipt::ReturnData { data, .. } => {
+                    if let Some(v) = rec_value.pointer_mut("/ReturnData/data") {
+                        *v = hex::encode(data).into();
+                    }
+                }
+                _ => {}
+            }
+        }
+        if pretty_print {
+            Ok(serde_json::to_string_pretty(&receipt_to_json_array)?)
+        } else {
+            Ok(serde_json::to_string(&receipt_to_json_array)?)
+        }
     }
 }
 
@@ -386,15 +395,27 @@ pub fn print_on_failure(
     terse_mode: bool,
     warnings: &[CompileWarning],
     errors: &[CompileError],
+    reverse_results: bool,
 ) {
     let e_len = errors.len();
     let w_len = warnings.len();
 
     if !terse_mode {
-        warnings
-            .iter()
-            .for_each(|w| format_warning(source_engine, w));
-        errors.iter().for_each(|e| format_err(source_engine, e));
+        if reverse_results {
+            warnings
+                .iter()
+                .rev()
+                .for_each(|w| format_warning(source_engine, w));
+            errors
+                .iter()
+                .rev()
+                .for_each(|e| format_err(source_engine, e));
+        } else {
+            warnings
+                .iter()
+                .for_each(|w| format_warning(source_engine, w));
+            errors.iter().for_each(|e| format_err(source_engine, e));
+        }
     }
 
     if e_len == 0 && w_len > 0 {

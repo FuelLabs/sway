@@ -162,6 +162,11 @@ source = 'member'
 dependencies = ['std']
 
 [[package]]
+name = 'pattern_matching'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
 name = 'reading_writing_to_storage'
 source = 'member'
 dependencies = ['std']

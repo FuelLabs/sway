@@ -2,7 +2,7 @@
 
 use clap::{Args, Parser};
 use devault::Devault;
-use forc_util::Salt;
+use forc_util::tx_utils::Salt;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use thiserror::Error;

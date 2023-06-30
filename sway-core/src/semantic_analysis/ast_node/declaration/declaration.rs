@@ -188,6 +188,10 @@ impl ty::TyDecl {
                         impl_trait.implementing_for.type_id,
                         &impl_trait.items,
                         &impl_trait.span,
+                        impl_trait
+                            .trait_decl_ref
+                            .as_ref()
+                            .map(|decl_ref| decl_ref.decl_span().clone()),
                         false,
                         engines,
                     ),
@@ -216,6 +220,10 @@ impl ty::TyDecl {
                         impl_trait.implementing_for.type_id,
                         &impl_trait.items,
                         &impl_trait.span,
+                        impl_trait
+                            .trait_decl_ref
+                            .as_ref()
+                            .map(|decl_ref| decl_ref.decl_span().clone()),
                         true,
                         engines,
                     ),

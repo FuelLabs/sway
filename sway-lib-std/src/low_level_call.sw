@@ -107,5 +107,5 @@ pub fn call_with_function_selector_vec(
     let mut function_selector = function_selector;
     let mut calldata = calldata;
 
-    call_with_function_selector(target, Bytes::from_vec_u8(function_selector), Bytes::from_vec_u8(calldata), single_value_type_arg, call_params);
+    call_with_function_selector(target, Bytes::from(function_selector), Bytes::from(calldata), single_value_type_arg, call_params);
 }

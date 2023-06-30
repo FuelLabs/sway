@@ -1,4 +1,5 @@
 use fuels::{
+    accounts::wallet::WalletUnlocked,
     prelude::*,
     types::AssetId,
     types::{Bits256, Identity},
@@ -196,7 +197,7 @@ async fn can_mint_and_send_to_address() {
 
     fuelcoin_instance
         .methods()
-        .mint_and_send_to_address(amount, recipient.into())
+        .mint_and_send_to_address(amount, recipient)
         .append_variable_outputs(1)
         .call()
         .await

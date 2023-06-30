@@ -1,7 +1,7 @@
 use crate::{
     lock::Lock,
     manifest::{BuildProfile, Dependency, ManifestFile, MemberManifestFiles, PackageManifestFile},
-    source::{self, Source},
+    source::{self, IPFSNode, Source},
     CORE, PRELUDE, STD,
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
@@ -26,6 +26,7 @@ use std::{
     sync::Arc,
 };
 use sway_core::fuel_prelude::fuel_tx::ConsensusParameters;
+pub use sway_core::Programs;
 use sway_core::{
     abi_generation::{
         evm_json_abi,
@@ -37,11 +38,7 @@ use sway_core::{
         fuel_crypto,
         fuel_tx::{self, Contract, ContractId, StorageSlot},
     },
-    language::{
-        lexed::LexedProgram,
-        parsed::{ParseProgram, TreeType},
-        ty, Visibility,
-    },
+    language::{parsed::TreeType, Visibility},
     semantic_analysis::namespace,
     source_map::SourceMap,
     transform::AttributeKind,
@@ -240,6 +237,8 @@ pub struct PkgOpts {
     pub output_directory: Option<String>,
     /// Outputs json abi with callpath instead of struct and enum names.
     pub json_abi_with_callpaths: bool,
+    /// The IPFS node to be used for fetching IPFS sources.
+    pub ipfs_node: IPFSNode,
 }
 
 #[derive(Default, Clone)]
@@ -264,6 +263,8 @@ pub struct PrintOpts {
     pub intermediate_asm: bool,
     /// Print the generated Sway IR (Intermediate Representation).
     pub ir: bool,
+    /// Output build errors and warnings in reverse order.
+    pub reverse_order: bool,
 }
 
 #[derive(Default, Clone)]
@@ -316,13 +317,6 @@ pub struct MemberFilter {
     pub build_scripts: bool,
     pub build_predicates: bool,
     pub build_libraries: bool,
-}
-
-/// Contains the lexed, parsed, and typed compilation stages of a program.
-pub struct Programs {
-    pub lexed: LexedProgram,
-    pub parsed: ParseProgram,
-    pub typed: Option<ty::TyProgram>,
 }
 
 impl Default for MemberFilter {
@@ -582,18 +576,29 @@ impl BuildPlan {
             &member_manifests,
             build_options.pkg.locked,
             build_options.pkg.offline,
+            build_options.pkg.ipfs_node.clone(),
         )
     }
 
     /// Create a new build plan for the project by fetching and pinning all dependenies.
     ///
     /// To account for an existing lock file, use `from_lock_and_manifest` instead.
-    pub fn from_manifests(manifests: &MemberManifestFiles, offline: bool) -> Result<Self> {
+    pub fn from_manifests(
+        manifests: &MemberManifestFiles,
+        offline: bool,
+        ipfs_node: IPFSNode,
+    ) -> Result<Self> {
         // Check toolchain version
         validate_version(manifests)?;
         let mut graph = Graph::default();
         let mut manifest_map = ManifestMap::default();
-        fetch_graph(manifests, offline, &mut graph, &mut manifest_map)?;
+        fetch_graph(
+            manifests,
+            offline,
+            &ipfs_node,
+            &mut graph,
+            &mut manifest_map,
+        )?;
         // Validate the graph, since we constructed the graph from scratch the paths will not be a
         // problem but the version check is still needed
         validate_graph(&graph, manifests)?;
@@ -626,6 +631,7 @@ impl BuildPlan {
         manifests: &MemberManifestFiles,
         locked: bool,
         offline: bool,
+        ipfs_node: IPFSNode,
     ) -> Result<Self> {
         // Check toolchain version
         validate_version(manifests)?;
@@ -665,7 +671,13 @@ impl BuildPlan {
         let mut manifest_map = graph_to_manifest_map(manifests, &graph)?;
 
         // Attempt to fetch the remainder of the graph.
-        let _added = fetch_graph(manifests, offline, &mut graph, &mut manifest_map)?;
+        let _added = fetch_graph(
+            manifests,
+            offline,
+            &ipfs_node,
+            &mut graph,
+            &mut manifest_map,
+        )?;
 
         // Determine the compilation order.
         let compilation_order = compilation_order(&graph)?;
@@ -801,20 +813,6 @@ impl BuildPlan {
                 .next()
                 .flatten()
         })
-    }
-}
-
-impl Programs {
-    pub fn new(
-        lexed: LexedProgram,
-        parsed: ParseProgram,
-        typed: Option<ty::TyProgram>,
-    ) -> Programs {
-        Programs {
-            lexed,
-            parsed,
-            typed,
-        }
     }
 }
 
@@ -1292,7 +1290,10 @@ fn find_path_root(graph: &Graph, mut node: NodeIx) -> Result<NodeIx> {
                     })?;
                 node = parent;
             }
-            source::Pinned::Git(_) | source::Pinned::Registry(_) | source::Pinned::Member(_) => {
+            source::Pinned::Git(_)
+            | source::Pinned::Ipfs(_)
+            | source::Pinned::Member(_)
+            | source::Pinned::Registry(_) => {
                 return Ok(node);
             }
         }
@@ -1309,6 +1310,7 @@ fn find_path_root(graph: &Graph, mut node: NodeIx) -> Result<NodeIx> {
 fn fetch_graph(
     member_manifests: &MemberManifestFiles,
     offline: bool,
+    ipfs_node: &IPFSNode,
     graph: &mut Graph,
     manifest_map: &mut ManifestMap,
 ) -> Result<HashSet<NodeIx>> {
@@ -1317,6 +1319,7 @@ fn fetch_graph(
         added_nodes.extend(&fetch_pkg_graph(
             member_pkg_manifest,
             offline,
+            ipfs_node,
             graph,
             manifest_map,
             member_manifests,
@@ -1342,6 +1345,7 @@ fn fetch_graph(
 fn fetch_pkg_graph(
     proj_manifest: &PackageManifestFile,
     offline: bool,
+    ipfs_node: &IPFSNode,
     graph: &mut Graph,
     manifest_map: &mut ManifestMap,
     member_manifests: &MemberManifestFiles,
@@ -1376,6 +1380,7 @@ fn fetch_pkg_graph(
     fetch_deps(
         fetch_id,
         offline,
+        ipfs_node,
         proj_node,
         path_root,
         graph,
@@ -1393,6 +1398,7 @@ fn fetch_pkg_graph(
 fn fetch_deps(
     fetch_id: u64,
     offline: bool,
+    ipfs_node: &IPFSNode,
     node: NodeIx,
     path_root: PinnedId,
     graph: &mut Graph,
@@ -1441,6 +1447,7 @@ fn fetch_deps(
                     path_root,
                     name: &pkg.name,
                     offline,
+                    ipfs_node,
                 };
                 let source = pkg.source.pin(ctx, manifest_map)?;
                 let name = pkg.name.clone();
@@ -1473,9 +1480,10 @@ fn fetch_deps(
         })?;
 
         let path_root = match dep_pinned.source {
-            source::Pinned::Member(_) | source::Pinned::Git(_) | source::Pinned::Registry(_) => {
-                dep_pkg_id
-            }
+            source::Pinned::Member(_)
+            | source::Pinned::Git(_)
+            | source::Pinned::Ipfs(_)
+            | source::Pinned::Registry(_) => dep_pkg_id,
             source::Pinned::Path(_) => path_root,
         };
 
@@ -1483,6 +1491,7 @@ fn fetch_deps(
         added.extend(fetch_deps(
             fetch_id,
             offline,
+            ipfs_node,
             dep_node,
             path_root,
             graph,
@@ -1650,6 +1659,7 @@ pub fn dependency_namespace(
         &[CORE, PRELUDE].map(|s| Ident::new_no_span(s.into())),
         &[],
         engines,
+        true,
     );
 
     if has_std_dep(graph, node) {
@@ -1657,6 +1667,7 @@ pub fn dependency_namespace(
             &[STD, PRELUDE].map(|s| Ident::new_no_span(s.into())),
             &[],
             engines,
+            true,
         );
     }
 
@@ -1715,33 +1726,6 @@ fn find_core_dep(graph: &Graph, node: NodeIx) -> Option<NodeIx> {
     None
 }
 
-/// Compiles the package to an AST.
-pub fn compile_ast(
-    pkg: &PackageDescriptor,
-    build_profile: &BuildProfile,
-    engines: &Engines,
-    namespace: namespace::Module,
-    package_name: &str,
-    metrics: &mut PerformanceData,
-) -> Result<CompileResult<ty::TyProgram>> {
-    let source = pkg.manifest_file.entry_string()?;
-    let sway_build_config = sway_build_config(
-        pkg.manifest_file.dir(),
-        &pkg.manifest_file.entry_path(),
-        pkg.target,
-        build_profile,
-    )?;
-    let ast_res = sway_core::compile_to_ast(
-        engines,
-        source,
-        namespace,
-        Some(&sway_build_config),
-        package_name,
-        metrics,
-    );
-    Ok(ast_res)
-}
-
 /// Compiles the given package.
 ///
 /// ## Program Types
@@ -1773,20 +1757,33 @@ pub fn compile(
     let sway_build_config =
         sway_build_config(pkg.manifest_file.dir(), &entry_path, pkg.target, profile)?;
     let terse_mode = profile.terse;
+    let reverse_results = profile.reverse_results;
     let fail = |warnings, errors| {
-        print_on_failure(engines.se(), terse_mode, warnings, errors);
+        print_on_failure(engines.se(), terse_mode, warnings, errors, reverse_results);
         bail!("Failed to compile {}", pkg.name);
     };
+    let source = pkg.manifest_file.entry_string()?;
 
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
     let ast_res = time_expr!(
         "compile to ast",
         "compile_to_ast",
-        compile_ast(pkg, profile, engines, namespace, &pkg.name, &mut metrics)?,
+        sway_core::compile_to_ast(
+            engines,
+            source,
+            namespace,
+            Some(&sway_build_config),
+            &pkg.name,
+            &mut metrics,
+        ),
         Some(sway_build_config.clone()),
         metrics
     );
-    let typed_program = match ast_res.value.as_ref() {
+    let programs = match ast_res.value.as_ref() {
+        None => return fail(&ast_res.warnings, &ast_res.errors),
+        Some(programs) => programs,
+    };
+    let typed_program = match programs.typed.as_ref() {
         None => return fail(&ast_res.warnings, &ast_res.errors),
         Some(typed_program) => typed_program,
     };
@@ -2283,7 +2280,13 @@ pub fn build(
         };
 
         let fail = |warnings, errors| {
-            print_on_failure(engines.se(), profile.terse, warnings, errors);
+            print_on_failure(
+                engines.se(),
+                profile.terse,
+                warnings,
+                errors,
+                profile.reverse_results,
+            );
             bail!("Failed to compile {}", pkg.name);
         };
 
@@ -2379,7 +2382,16 @@ pub fn build(
             contract_id_value.clone(),
         ) {
             Ok(o) => o,
-            Err(errs) => return fail(&[], &errs),
+            Err(errs) => {
+                print_on_failure(
+                    engines.se(),
+                    profile.terse,
+                    &[],
+                    &errs,
+                    profile.reverse_results,
+                );
+                bail!("Failed to compile {}", pkg.name);
+            }
         };
 
         let mut compiled = compile(
@@ -2559,7 +2571,7 @@ fn update_json_type_declaration(
 }
 
 /// Compile the entire forc package and return the lexed, parsed and typed programs
-/// of the dependancies and project.
+/// of the dependencies and project.
 /// The final item in the returned vector is the project.
 pub fn check(
     plan: &BuildPlan,
@@ -2587,52 +2599,63 @@ pub fn check(
         )
         .expect("failed to create dependency namespace");
 
-        let CompileResult {
-            value,
-            mut warnings,
-            mut errors,
-        } = parse(manifest, build_target, terse_mode, include_tests, engines)?;
-
-        let (lexed, parsed) = match value {
-            None => {
-                results.push(CompileResult::new(None, warnings, errors));
-                return Ok(results);
-            }
-            Some(modules) => modules,
+        let profile = BuildProfile {
+            terse: terse_mode,
+            ..BuildProfile::debug()
         };
 
-        let ast_result = sway_core::parsed_to_ast(engines, &parsed, dep_namespace, None, &pkg.name);
-        warnings.extend(ast_result.warnings);
-        errors.extend(ast_result.errors);
+        let build_config = sway_build_config(
+            manifest.dir(),
+            &manifest.entry_path(),
+            build_target,
+            &profile,
+        )?
+        .include_tests(include_tests);
 
-        let typed_program = match ast_result.value {
-            None => {
-                let value = Some(Programs::new(lexed, parsed, None));
-                results.push(CompileResult::new(value, warnings, errors));
+        let mut metrics = PerformanceData::default();
+        let programs_res = sway_core::compile_to_ast(
+            engines,
+            manifest.entry_string()?,
+            dep_namespace,
+            Some(&build_config),
+            &pkg.name,
+            &mut metrics,
+        );
+
+        let programs = match programs_res.value.as_ref() {
+            Some(programs) => programs,
+            _ => {
+                results.push(programs_res);
                 return Ok(results);
             }
-            Some(typed_program) => typed_program,
         };
 
-        if let TreeType::Library = typed_program.kind.tree_type() {
-            let mut namespace = typed_program.root.namespace.clone();
-            namespace.name = Some(Ident::new_no_span(pkg.name.clone()));
-            namespace.span = Some(
-                Span::new(
-                    manifest.entry_string()?,
-                    0,
-                    0,
-                    Some(engines.se().get_source_id(&manifest.entry_path())),
-                )
-                .unwrap(),
-            );
-            lib_namespace_map.insert(node, namespace.module().clone());
+        match programs.typed.as_ref() {
+            Some(typed_program) => {
+                if let TreeType::Library = typed_program.kind.tree_type() {
+                    let mut namespace = typed_program.root.namespace.clone();
+                    namespace.name = Some(Ident::new_no_span(pkg.name.clone()));
+                    namespace.span = Some(
+                        Span::new(
+                            manifest.entry_string()?,
+                            0,
+                            0,
+                            Some(engines.se().get_source_id(&manifest.entry_path())),
+                        )
+                        .unwrap(),
+                    );
+                    lib_namespace_map.insert(node, namespace.module().clone());
+                }
+
+                source_map.insert_dependency(manifest.dir());
+            }
+            None => {
+                results.push(programs_res);
+                return Ok(results);
+            }
         }
 
-        source_map.insert_dependency(manifest.dir());
-
-        let value = Some(Programs::new(lexed, parsed, Some(typed_program)));
-        results.push(CompileResult::new(value, warnings, errors));
+        results.push(programs_res)
     }
 
     if results.is_empty() {
@@ -2640,29 +2663,6 @@ pub fn check(
     }
 
     Ok(results)
-}
-
-/// Returns a parsed AST from the supplied [PackageManifestFile]
-pub fn parse(
-    manifest: &PackageManifestFile,
-    build_target: BuildTarget,
-    terse_mode: bool,
-    include_tests: bool,
-    engines: &Engines,
-) -> anyhow::Result<CompileResult<(LexedProgram, ParseProgram)>> {
-    let profile = BuildProfile {
-        terse: terse_mode,
-        ..BuildProfile::debug()
-    };
-    let source = manifest.entry_string()?;
-    let sway_build_config = sway_build_config(
-        manifest.dir(),
-        &manifest.entry_path(),
-        build_target,
-        &profile,
-    )?
-    .include_tests(include_tests);
-    Ok(sway_core::parse(source, engines, Some(&sway_build_config)))
 }
 
 /// Format an error message for an absent `Forc.toml`.
@@ -2712,8 +2712,14 @@ fn test_root_pkg_order() {
     let manifest_file = ManifestFile::from_dir(&manifest_dir).unwrap();
     let member_manifests = manifest_file.member_manifests().unwrap();
     let lock_path = manifest_file.lock_path().unwrap();
-    let build_plan =
-        BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, false, false).unwrap();
+    let build_plan = BuildPlan::from_lock_and_manifests(
+        &lock_path,
+        &member_manifests,
+        false,
+        false,
+        Default::default(),
+    )
+    .unwrap();
     let graph = build_plan.graph();
     let order: Vec<String> = build_plan
         .member_nodes()

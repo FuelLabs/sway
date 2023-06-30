@@ -21,6 +21,7 @@ fn build_opts_from_cmd(cmd: PredicateRootCommand) -> pkg::BuildOpts {
             locked: cmd.pkg.locked,
             output_directory: cmd.pkg.output_directory.clone(),
             json_abi_with_callpaths: cmd.pkg.json_abi_with_callpaths,
+            ipfs_node: cmd.pkg.ipfs_node.unwrap_or_default(),
         },
         print: pkg::PrintOpts {
             ast: cmd.print.ast,
@@ -29,6 +30,7 @@ fn build_opts_from_cmd(cmd: PredicateRootCommand) -> pkg::BuildOpts {
             finalized_asm: cmd.print.finalized_asm,
             intermediate_asm: cmd.print.intermediate_asm,
             ir: cmd.print.ir,
+            reverse_order: cmd.print.reverse_order,
         },
         time_phases: cmd.print.time_phases,
         metrics_outfile: cmd.print.metrics_outfile,

@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-DE1E6791086C4731'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-DE1E6791086C4731'
+dependencies = ['core']
+
+[[package]]
+name = 'u64_mul_const_eval_overflow'
+source = 'member'
+dependencies = ['std']

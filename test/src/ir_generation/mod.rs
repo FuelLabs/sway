@@ -129,7 +129,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
 
                 let mut metrics = PerformanceData::default();
                 let sway_str = String::from_utf8_lossy(&sway_str);
-                let typed_res = compile_to_ast(
+                let compile_res = compile_to_ast(
                     &engines,
                     Arc::from(sway_str),
                     core_lib.clone(),
@@ -137,11 +137,11 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                     "test_lib",
                     &mut metrics,
                 );
-                if !typed_res.errors.is_empty() {
+                if !compile_res.errors.is_empty() {
                     panic!(
                         "Failed to compile test {}:\n{}",
                         path.display(),
-                        typed_res
+                        compile_res
                             .errors
                             .iter()
                             .map(|err| err.to_string())
@@ -150,13 +150,15 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                             .join("\n")
                     );
                 }
-                let typed_program = typed_res
+                let programs = compile_res
                     .value
                     .expect("there were no errors, so there should be a program");
 
+                let typed_program = programs.typed.as_ref().unwrap();
+
                 // Compile to IR.
                 let include_tests = true;
-                let mut ir = compile_program(&typed_program, include_tests, &engines)
+                let mut ir = compile_program(typed_program, include_tests, &engines)
                     .unwrap_or_else(|e| {
                         panic!("Failed to compile test {}:\n{e}", path.display());
                     })
@@ -182,7 +184,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                         panic!(
                             "Failed to compile test {}:\n{}",
                             path.display(),
-                            typed_res
+                            compile_res
                                 .errors
                                 .iter()
                                 .map(|err| err.to_string())
@@ -226,7 +228,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                         panic!(
                             "Failed to compile test {}:\n{}",
                             path.display(),
-                            typed_res
+                            compile_res
                                 .errors
                                 .iter()
                                 .map(|err| err.to_string())
@@ -341,6 +343,7 @@ fn compile_core(build_target: BuildTarget, engines: &Engines) -> namespace::Modu
         terse_mode: true,
         disable_tests: false,
         locked: false,
+        ipfs_node: None,
     };
 
     let res = forc::test::forc_check::check(check_cmd, engines)

@@ -7,6 +7,7 @@ pub mod function_decl;
 pub mod storage_field;
 pub mod struct_decl;
 pub mod struct_field;
+pub mod trait_fn;
 
 use crate::core::{
     session::Session,
@@ -71,7 +72,7 @@ pub(crate) fn code_actions(
         TypedAstToken::TypedConstantDeclaration(decl) => constant_decl::code_actions(decl, ctx),
         TypedAstToken::TypedEnumVariant(decl) => enum_variant::code_actions(decl, ctx),
         TypedAstToken::TypedStructField(decl) => struct_field::code_actions(decl, ctx),
-
+        TypedAstToken::TypedTraitFn(decl) => trait_fn::code_actions(decl, ctx),
         _ => None,
     }
 }
