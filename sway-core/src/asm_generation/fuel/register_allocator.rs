@@ -18,8 +18,6 @@ use std::collections::{hash_map, BTreeSet, HashMap};
 use sway_error::error::CompileError;
 use sway_types::Span;
 
-use super::register_sequencer::RegisterSequencer;
-
 // Each node in the interference graph represents a VirtualRegister.
 // An edge from V1 -> V2 means that V2 was an open live range at the
 // the time V1 was defined. For spilling, incoming edges matter more
@@ -716,11 +714,7 @@ pub(crate) fn assign_registers(
 /// Given a function, its locals info (stack frame usage details)
 /// and a set of virtual registers to be spilled, insert the actual spills
 /// and return the updated function and the updated stack info.
-pub(crate) fn spill(
-    reg_seqr: &mut RegisterSequencer,
-    ops: &[Op],
-    spills: &FxHashSet<VirtualRegister>,
-) -> Vec<Op> {
+pub(crate) fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
     let mut spilled: Vec<Op> = vec![];
 
     // Attempt to discover the current stack size and base register.
@@ -791,16 +785,14 @@ pub(crate) fn spill(
 
             // Calculate the address off a local in a register + imm word offset.
             fn calculate_offset_reg_wordimm(
-                reg_seqr: &mut RegisterSequencer,
                 inst_list: &mut Vec<Op>,
                 offset_bytes: u32,
             ) -> (VirtualRegister, VirtualImmediate12) {
                 assert!(offset_bytes % 8 == 0);
                 if offset_bytes <= compiler_constants::EIGHTEEN_BITS as u32 {
-                    let offset_mov_reg = reg_seqr.next();
                     let offset_mov_instr = Op {
                         opcode: Either::Left(VirtualOp::MOVI(
-                            offset_mov_reg.clone(),
+                            VirtualRegister::Constant(ConstantRegister::Scratch),
                             VirtualImmediate18 {
                                 value: offset_bytes,
                             },
@@ -809,18 +801,20 @@ pub(crate) fn spill(
                         owning_span: None,
                     };
                     inst_list.push(offset_mov_instr);
-                    let offset_add_reg = reg_seqr.next();
                     let offset_add_instr = Op {
                         opcode: Either::Left(VirtualOp::ADD(
-                            offset_add_reg.clone(),
-                            offset_mov_reg,
+                            VirtualRegister::Constant(ConstantRegister::Scratch),
+                            VirtualRegister::Constant(ConstantRegister::Scratch),
                             VirtualRegister::Constant(ConstantRegister::LocalsBase),
                         )),
                         comment: "Spill/Refill: Add offset to stack base".to_string(),
                         owning_span: None,
                     };
                     inst_list.push(offset_add_instr);
-                    (offset_add_reg, VirtualImmediate12 { value: 0 })
+                    (
+                        VirtualRegister::Constant(ConstantRegister::Scratch),
+                        VirtualImmediate12 { value: 0 },
+                    )
                 } else {
                     assert!(offset_bytes <= compiler_constants::TWENTY_FOUR_BITS as u32);
                     // To have a 24b immediate value, we split it into 12-12 bits
@@ -832,10 +826,9 @@ pub(crate) fn spill(
                     let offset_upper_12 = offset_bytes >> 12;
                     let offset_lower_12 = offset_bytes & 0b111111111111;
                     assert!((offset_upper_12 << 12) + offset_lower_12 == offset_bytes);
-                    let offset_upper_mov_reg = reg_seqr.next();
                     let offset_upper_mov_instr = Op {
                         opcode: Either::Left(VirtualOp::MOVI(
-                            offset_upper_mov_reg.clone(),
+                            VirtualRegister::Constant(ConstantRegister::Scratch),
                             VirtualImmediate18 {
                                 value: offset_upper_12,
                             },
@@ -844,22 +837,20 @@ pub(crate) fn spill(
                         owning_span: None,
                     };
                     inst_list.push(offset_upper_mov_instr);
-                    let offset_upper_shift_reg = reg_seqr.next();
                     let offset_upper_shift_instr = Op {
                         opcode: Either::Left(VirtualOp::SLLI(
-                            offset_upper_shift_reg.clone(),
-                            offset_upper_mov_reg,
+                            VirtualRegister::Constant(ConstantRegister::Scratch),
+                            VirtualRegister::Constant(ConstantRegister::Scratch),
                             VirtualImmediate12 { value: 12 },
                         )),
                         comment: "Spill/Refill: Offset computation".to_string(),
                         owning_span: None,
                     };
                     inst_list.push(offset_upper_shift_instr);
-                    let offset_add_reg = reg_seqr.next();
                     let offset_add_instr = Op {
                         opcode: Either::Left(VirtualOp::ADD(
-                            offset_add_reg.clone(),
-                            offset_upper_shift_reg,
+                            VirtualRegister::Constant(ConstantRegister::Scratch),
+                            VirtualRegister::Constant(ConstantRegister::Scratch),
                             VirtualRegister::Constant(ConstantRegister::LocalsBase),
                         )),
                         comment: "Spill/Refill: Offset computation".to_string(),
@@ -867,7 +858,7 @@ pub(crate) fn spill(
                     };
                     inst_list.push(offset_add_instr);
                     (
-                        offset_add_reg,
+                        VirtualRegister::Constant(ConstantRegister::Scratch),
                         VirtualImmediate12 {
                             // This will be multiplied by 8 by the VM
                             value: (offset_lower_12 / 8) as u16,
@@ -896,7 +887,7 @@ pub(crate) fn spill(
                     });
                 } else {
                     let (offset_reg, offset_imm_word) =
-                        calculate_offset_reg_wordimm(reg_seqr, &mut spilled, offset_bytes);
+                        calculate_offset_reg_wordimm(&mut spilled, offset_bytes);
                     let lw = Op {
                         opcode: Either::Left(VirtualOp::LW(
                             spilled_use.clone(),
@@ -934,7 +925,7 @@ pub(crate) fn spill(
                     });
                 } else {
                     let (offset_reg, offset_imm_word) =
-                        calculate_offset_reg_wordimm(reg_seqr, &mut spilled, offset_bytes);
+                        calculate_offset_reg_wordimm(&mut spilled, offset_bytes);
                     let sw = Op {
                         opcode: Either::Left(VirtualOp::SW(
                             offset_reg,

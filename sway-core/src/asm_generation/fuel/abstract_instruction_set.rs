@@ -18,8 +18,6 @@ use std::{collections::HashSet, fmt};
 
 use either::Either;
 
-use super::register_sequencer::RegisterSequencer;
-
 /// An [AbstractInstructionSet] is a set of instructions that use entirely virtual registers
 /// and excessive moves, with the intention of later optimizing it.
 #[derive(Clone)]
@@ -171,7 +169,6 @@ impl AbstractInstructionSet {
     ///
     pub(crate) fn allocate_registers(
         self,
-        reg_seqr: &mut RegisterSequencer,
     ) -> Result<AllocatedAbstractInstructionSet, CompileError> {
         fn try_color(
             ops: &[Op],
@@ -241,7 +238,7 @@ impl AbstractInstructionSet {
                         ));
                     }
                     try_count += 1;
-                    updated_ops = spill(reg_seqr, &reduced_ops, &spills);
+                    updated_ops = spill(&reduced_ops, &spills);
                     updated_ops_ref = &updated_ops;
                 }
             }

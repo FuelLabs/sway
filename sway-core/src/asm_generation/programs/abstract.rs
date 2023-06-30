@@ -74,7 +74,7 @@ impl AbstractProgram {
             .into_iter()
             .map(|fn_ops| {
                 fn_ops
-                    .allocate_registers(&mut self.reg_seqr)
+                    .allocate_registers()
                     .map(AllocatedAbstractInstructionSet::emit_pusha_popa)
             })
             .collect::<Result<Vec<_>, _>>()?;
