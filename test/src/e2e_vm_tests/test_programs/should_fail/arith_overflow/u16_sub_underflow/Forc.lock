@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-DDD16884D4F7CFAB'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-DDD16884D4F7CFAB'
+dependencies = ['core']
+
+[[package]]
+name = 'u16_sub_underflow'
+source = 'member'
+dependencies = ['std']

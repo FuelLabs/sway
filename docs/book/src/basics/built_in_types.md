@@ -42,6 +42,13 @@ Numbers can be declared with binary syntax, hexadecimal syntax, base-10 syntax, 
 <!-- This section should explain the default numeric type in Sway -->
 <!-- default_num:example:start -->
 The default numeric type is `u64`. The FuelVM's word size is 64 bits, and the cases where using a smaller numeric type saves space are minimal.
+
+If a 64-bit arithmetic operation produces an overflow or an underflow,
+computation gets reverted automatically by FuelVM.
+
+8/16/32-bit arithmetic operations are emulated using their 64-bit analogues with
+additional overflow/underflow checks inserted, which generally results in
+somewhat higher gas consumption.
 <!-- default_num:example:end -->
 
 ## Boolean Type

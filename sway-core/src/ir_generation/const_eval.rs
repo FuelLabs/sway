@@ -266,17 +266,8 @@ fn const_eval_typed_expr(
                 known_consts.push(name.clone(), cval);
             }
 
-            // TODO: Handle more than one statement in the block.
             let function_decl = lookup.engines.de().get_function(fn_ref);
-            if function_decl.body.contents.len() > 1 {
-                return Ok(None);
-            }
-            let body_contents_opt = function_decl.body.contents.last();
-            let res = if let Some(first_expr) = body_contents_opt {
-                const_eval_typed_ast_node(lookup, known_consts, first_expr)?
-            } else {
-                None
-            };
+            let res = const_eval_codeblock(lookup, known_consts, &function_decl.body)?;
             for (name, _) in arguments {
                 known_consts.pop(name);
             }
@@ -484,18 +475,47 @@ fn const_eval_typed_expr(
             }) => fields.get(*elem_to_access_num).cloned(),
             _ => None,
         },
-        ty::TyExpressionVariant::Return(exp) => const_eval_typed_expr(lookup, known_consts, exp)?,
+        // we could allow non-local control flow in pure functions, but it would
+        // require some more work and at this point it's not clear if it is too useful
+        // for constant initializers -- the user can always refactor their pure functions
+        // to not use the return statement
+        ty::TyExpressionVariant::Return(_exp) => None,
         ty::TyExpressionVariant::MatchExp { desugared, .. } => {
             const_eval_typed_expr(lookup, known_consts, desugared)?
         }
         ty::TyExpressionVariant::IntrinsicFunction(kind) => {
             const_eval_intrinsic(lookup, known_consts, kind)?
         }
+        ty::TyExpressionVariant::IfExp {
+            condition,
+            then,
+            r#else,
+        } => {
+            match const_eval_typed_expr(lookup, known_consts, condition)? {
+                Some(Constant {
+                    value: ConstantValue::Bool(cond),
+                    ..
+                }) => {
+                    if cond {
+                        const_eval_typed_expr(lookup, known_consts, then)?
+                    } else if let Some(r#else) = r#else {
+                        const_eval_typed_expr(lookup, known_consts, r#else)?
+                    } else {
+                        // missing 'else' branch:
+                        // we probably don't really care about evaluating
+                        // const expressions of the unit type
+                        None
+                    }
+                }
+                _ => None,
+            }
+        }
+        ty::TyExpressionVariant::CodeBlock(codeblock) => {
+            const_eval_codeblock(lookup, known_consts, codeblock)?
+        }
         ty::TyExpressionVariant::ArrayIndex { .. }
-        | ty::TyExpressionVariant::CodeBlock(_)
         | ty::TyExpressionVariant::Reassignment(_)
         | ty::TyExpressionVariant::FunctionParameter
-        | ty::TyExpressionVariant::IfExp { .. }
         | ty::TyExpressionVariant::AsmExpression { .. }
         | ty::TyExpressionVariant::LazyOperator { .. }
         | ty::TyExpressionVariant::AbiCast { .. }
@@ -507,6 +527,56 @@ fn const_eval_typed_expr(
         | ty::TyExpressionVariant::Continue
         | ty::TyExpressionVariant::WhileLoop { .. } => None,
     })
+}
+
+// the (constant) value of a codeblock is essentially it's last expression if there is one
+// or if it makes sense as the last expression, e.g. a dangling let-expression in a codeblock
+// would be an evaluation error
+fn const_eval_codeblock(
+    lookup: &mut LookupEnv,
+    known_consts: &mut MappedStack<Ident, Constant>,
+    codeblock: &ty::TyCodeBlock,
+) -> Result<Option<Constant>, CompileError> {
+    // the current result
+    let mut res_const = None;
+    // keep track of new bindings for this codeblock
+    let mut bindings: Vec<_> = vec![];
+
+    for ast_node in &codeblock.contents {
+        match &ast_node.content {
+            ty::TyAstNodeContent::Declaration(ty::TyDecl::VariableDecl(var_decl)) => {
+                let rhs_opt = const_eval_typed_expr(lookup, known_consts, &var_decl.body)?;
+                if let Some(rhs) = rhs_opt {
+                    known_consts.push(var_decl.name.clone(), rhs);
+                    bindings.push(var_decl.name.clone());
+                }
+                res_const = None
+            }
+            ty::TyAstNodeContent::Declaration(ty::TyDecl::ConstantDecl(const_decl)) => {
+                let ty_const_decl = lookup.engines.de().get_constant(&const_decl.decl_id);
+                if let Some(const_expr) = ty_const_decl.value {
+                    if let Some(constant) =
+                        const_eval_typed_expr(lookup, known_consts, &const_expr)?
+                    {
+                        known_consts.push(const_decl.name.clone(), constant);
+                        bindings.push(const_decl.name.clone());
+                    }
+                }
+                res_const = None
+            }
+            ty::TyAstNodeContent::Declaration(_) => res_const = None,
+            ty::TyAstNodeContent::Expression(e)
+            | ty::TyAstNodeContent::ImplicitReturnExpression(e) => {
+                res_const = const_eval_typed_expr(lookup, known_consts, e)?
+            }
+            ty::TyAstNodeContent::SideEffect(_) => res_const = None,
+        }
+    }
+    // remove introduced vars/consts from scope at the end of the codeblock
+    for name in bindings {
+        known_consts.pop(&name)
+    }
+    Ok(res_const)
 }
 
 fn const_eval_intrinsic(
@@ -673,22 +743,5 @@ fn const_eval_intrinsic(
         | sway_ast::Intrinsic::Log
         | sway_ast::Intrinsic::Revert
         | sway_ast::Intrinsic::Smo => Ok(None),
-    }
-}
-
-fn const_eval_typed_ast_node(
-    lookup: &mut LookupEnv,
-    known_consts: &mut MappedStack<Ident, Constant>,
-    expr: &ty::TyAstNode,
-) -> Result<Option<Constant>, CompileError> {
-    match &expr.content {
-        ty::TyAstNodeContent::Declaration(_) => {
-            // TODO: add the binding to known_consts (if it's a const) and proceed.
-            Ok(None)
-        }
-        ty::TyAstNodeContent::Expression(e) | ty::TyAstNodeContent::ImplicitReturnExpression(e) => {
-            const_eval_typed_expr(lookup, known_consts, e)
-        }
-        ty::TyAstNodeContent::SideEffect(_) => Ok(None),
     }
 }
