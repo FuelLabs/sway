@@ -153,6 +153,9 @@ pub struct InputCoin {
     /// UTXO being spent must have been created at least this many blocks ago.
     #[clap(long)]
     pub maturity: u32,
+    /// Gas used by predicates.
+    #[clap(long, default_value_t = 0)]
+    pub predicate_gas_used: u64,
     #[clap(flatten)]
     pub predicate: Predicate,
 }
@@ -199,6 +202,9 @@ pub struct InputMessage {
     /// Index of witness that authorizes the message.
     #[clap(long)]
     pub witness_ix: Option<u8>,
+    /// Gas used by predicates.
+    #[clap(long, default_value_t = 0)]
+    pub predicate_gas_used: u64,
     #[clap(flatten)]
     pub predicate: Predicate,
 }
@@ -700,6 +706,7 @@ impl TryFrom<Input> for fuel_tx::Input {
                     asset_id,
                     tx_ptr: tx_pointer,
                     maturity,
+                    predicate_gas_used,
                     predicate,
                     witness_ix,
                 } = coin;
@@ -721,7 +728,7 @@ impl TryFrom<Input> for fuel_tx::Input {
                             asset_id,
                             tx_pointer,
                             maturity.into(),
-                            0, // TODO
+                            predicate_gas_used,
                             std::fs::read(&predicate).map_err(|err| {
                                 ConvertInputError::PredicateRead {
                                     path: predicate,
@@ -756,6 +763,7 @@ impl TryFrom<Input> for fuel_tx::Input {
                     nonce,
                     msg_data,
                     witness_ix,
+                    predicate_gas_used,
                     predicate,
                 } = msg;
                 let data =
@@ -804,7 +812,7 @@ impl TryFrom<Input> for fuel_tx::Input {
                                 recipient,
                                 amount,
                                 nonce,
-                                0, // TODO
+                                predicate_gas_used,
                                 predicate,
                                 predicate_data,
                             )
@@ -814,7 +822,7 @@ impl TryFrom<Input> for fuel_tx::Input {
                                 recipient,
                                 amount,
                                 nonce,
-                                0, // TODO
+                                predicate_gas_used,
                                 data,
                                 predicate,
                                 predicate_data,
