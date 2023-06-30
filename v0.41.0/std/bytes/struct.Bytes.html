@@ -1,0 +1,86 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="swaydoc"><meta name="description" content="API documentation for the Sway `Bytes` struct in `bytes`."><meta name="keywords" content="sway, swaylang, sway-lang, Bytes"><link rel="icon" href="../../static.files/sway-logo.svg"><title>Bytes in bytes - Sway</title><link rel="stylesheet" type="text/css" href="../../static.files/normalize.css"><link rel="stylesheet" type="text/css" href="../../static.files/swaydoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../static.files/ayu.css"><link rel="stylesheet" href="../../static.files/ayu.min.css"></head><body class="swaydoc struct"><nav class="sidebar"><a class="sidebar-logo" href="../../std/index.html"><div class="logo-container"><img class="sway-logo" src="../../static.files/sway-logo.svg" alt="logo"></div></a><h2 class="location">Struct Bytes</h2><div class="sidebar-elems"><section><div class="block"><ul><li><a href="#fields">Fields</a></li></ul></div></section></div></nav><main><div class="width-limiter"><section id="main-content" class="content"><div class="main-heading"><h1 class="fqn"><span class="in-band">Struct <a class="mod" href="../index.html">std</a><span>::</span><a class="mod" href="index.html">bytes</a><span>::</span><a class="struct" href="#">Bytes</a></span></h1></div><div class="docblock item-decl"><pre class="sway struct"><code>pub struct Bytes {
+    buf: RawBytes,
+    len: u64,
+}</code></pre></div><details class="swaydoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>A type used to represent raw bytes.</p>
+</div></details><h2 id="fields" class="fields small-section-header">Fields<a class="anchor" href="#fields"></a></h2><span id="structfield.buf" class="structfield small-section-header"><a class="anchor field" href="#structfield.buf"></a><code>buf: RawBytes</code></span><span id="structfield.len" class="structfield small-section-header"><a class="anchor field" href="#structfield.len"></a><code>len: u64</code></span><h2 id="trait-implementations" class="small-section-header">Trait Implementations<a href="#trait-implementations" class="anchor"></a></h2><div id="trait-implementations-list"><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-Eq" class="impl has-srclink"><a href="#impl-Eq" class="anchor"></a><h3 class="code-header in-band">impl Eq for Bytes</h3></div></summary><div class="impl-items"><div id="method.eq" class="method trait-impl"><a href="#method.eq" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.eq">eq</a>(self, other: Self) -&gt; bool</h4></div><div id="method.neq" class="method trait-impl"><a href="#method.neq" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.neq">neq</a>(self, other: Self) -&gt; bool</h4></div></div></details><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-AsRawSlice" class="impl has-srclink"><a href="#impl-AsRawSlice" class="anchor"></a><h3 class="code-header in-band">impl AsRawSlice for Bytes</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.as_raw_slice" class="method trait-impl"><a href="#method.as_raw_slice" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.as_raw_slice">as_raw_slice</a>(self) -&gt; raw_slice</h4></div></summary><div class="doc-block"><p>Returns a raw slice of all of the elements in the vector.</p>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-From" class="impl has-srclink"><a href="#impl-From" class="anchor"></a><h3 class="code-header in-band">impl From for Bytes</h3></div></summary><div class="impl-items"><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.from">from</a>(b: b256) -&gt; Bytes</h4></div><div id="method.into" class="method trait-impl"><a href="#method.into" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.into">into</a>(self) -&gt; b256</h4></div></div></details><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-From" class="impl has-srclink"><a href="#impl-From" class="anchor"></a><h3 class="code-header in-band">impl From for Bytes</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.from">from</a>(slice: raw_slice) -&gt; Self</h4></div></summary><div class="doc-block"><p>Creates a <code>Bytes</code> from a <code>raw_slice</code>.</p>
+<h3>Examples</h3>
+<pre><code class="language-sway">use std:bytes::Bytes;
+
+let mut vec = Vec::new();
+let a = 5u8;
+let b = 7u8;
+let c = 9u8
+
+vec.push(a);
+vec.push(b);
+vec.push(c);
+
+let vec_as_raw_slice = vec.as_raw_slice();
+let bytes = Bytes::from(vec_as_raw_slice);
+
+assert(bytes.len == 3);
+assert(bytes.get(0).unwrap() == a);
+assert(bytes.get(1).unwrap() == b);
+assert(bytes.get(2).unwrap() == c);
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.into" class="method trait-impl"><a href="#method.into" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.into">into</a>(self) -&gt; raw_slice</h4></div></summary><div class="doc-block"><p>Creates a <code>raw_slice</code> from a <code>Bytes</code>.</p>
+<h3>Examples</h3>
+<pre><code class="language-sway">use std:bytes::Bytes;
+
+let mut bytes = Bytes::new();
+let a = 5u8;
+let b = 7u8;
+let c = 9u8
+bytes.push(a);
+bytes.push(b);
+bytes.push(c);
+
+assert(bytes.len() == 3);
+
+let slice: raw_slice = bytes.into();
+
+assert(slice.number_of_bytes() == 3);
+</code></pre>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-From" class="impl has-srclink"><a href="#impl-From" class="anchor"></a><h3 class="code-header in-band">impl From for Bytes</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.from">from</a>(vec: Vec&lt;u8&gt;) -&gt; Self</h4></div></summary><div class="doc-block"><p>Creates a <code>Bytes</code> from a <code>Vec&lt;u8&gt;</code>.</p>
+<h3>Examples</h3>
+<pre><code class="language-sway">use std:bytes::Bytes;
+
+let mut vec = Vec::new();
+let a = 5u8;
+let b = 7u8;
+let c = 9u8
+
+vec.push(a);
+vec.push(b);
+vec.push(c);
+
+let bytes = Bytes::from(vec);
+
+assert(bytes.len == 3);
+assert(bytes.get(0).unwrap() == a);
+assert(bytes.get(1).unwrap() == b);
+assert(bytes.get(2).unwrap() == c);
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.into" class="method trait-impl"><a href="#method.into" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.into">into</a>(self) -&gt; Vec&lt;u8&gt;</h4></div></summary><div class="doc-block"><p>Creates a <code>Vec&lt;u8&gt;</code> from a <code>Bytes</code>.</p>
+<h3>Examples</h3>
+<pre><code class="language-sway">use std:bytes::Bytes;
+
+let mut bytes = Bytes::new();
+let a = 5u8;
+let b = 7u8;
+let c = 9u8
+bytes.push(a);
+bytes.push(b);
+bytes.push(c);
+
+assert(bytes.len() == 3);
+
+let vec: Vec&lt;u8&gt; = bytes.into();
+
+assert(vec.len() == 3);
+assert(vec.get(0).unwrap() == a);
+assert(vec.get(1).unwrap() == b);
+assert(vec.get(2).unwrap() == c);
+</code></pre>
+</div></details></div></details></div></section></div></main><script src="../../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>
