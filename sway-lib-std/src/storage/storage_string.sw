@@ -27,11 +27,12 @@ impl StorableSlice<String> for StorageKey<StorageString> {
     /// }
     ///
     /// fn foo() {
-    ///     let mut string = String::new();
-    ///     string.push(5_u8);
-    ///     string.push(7_u8);
-    ///     string.push(9_u8);
-    ///
+    ///     let mut bytes = Bytes::new();
+    ///     bytes.push(5_u8);
+    ///     bytes.push(7_u8);
+    ///     bytes.push(9_u8);
+    ///     let string = String::from(bytes);
+    /// 
     ///     storage.stored_string.write_slice(string);
     /// }
     /// ```
@@ -54,10 +55,11 @@ impl StorableSlice<String> for StorageKey<StorageString> {
     /// }
     ///
     /// fn foo() {
-    ///     let mut string = String::new();
-    ///     string.push(5_u8);
-    ///     string.push(7_u8);
-    ///     string.push(9_u8);
+    ///     let mut bytes = Bytes::new();
+    ///     bytes.push(5_u8);
+    ///     bytes.push(7_u8);
+    ///     bytes.push(9_u8);
+    ///     let string = String::from(bytes);
     ///
     ///     assert(storage.stored_string.read_slice(key).is_none());
     ///     storage.stored_string.write_slice(string);
@@ -90,10 +92,12 @@ impl StorableSlice<String> for StorageKey<StorageString> {
     /// }
     ///
     /// fn foo() {
-    ///     let mut string = String::new();
-    ///     string.push(5_u8);
-    ///     string.push(7_u8);
-    ///     string.push(9_u8);
+    ///     let mut bytes = Bytes::new();
+    ///     bytes.push(5_u8);
+    ///     bytes.push(7_u8);
+    ///     bytes.push(9_u8);
+    ///     let string = String::from(bytes);
+    /// 
     ///     storage.stored_string.write_slice(string);
     ///
     ///     assert(storage.stored_string.read_slice(key).is_some());
@@ -122,11 +126,12 @@ impl StorableSlice<String> for StorageKey<StorageString> {
     /// }
     ///
     /// fn foo() {
-    ///     let mut string = String::new();
-    ///     string.push(5_u8);
-    ///     string.push(7_u8);
-    ///     string.push(9_u8);
-    ///
+    ///     let mut bytes = Bytes::new();
+    ///     bytes.push(5_u8);
+    ///     bytes.push(7_u8);
+    ///     bytes.push(9_u8);
+    ///     let string = String::from(bytes);
+    /// 
     ///     assert(storage.stored_string.len() == 0)
     ///     storage.stored_string.write_slice(string);
     ///     assert(storage.stored_string.len() == 3);
