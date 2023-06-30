@@ -6,8 +6,8 @@ use std::sync::Arc;
 use sway_ast::literal::{LitChar, LitInt, LitIntType, LitString, Literal};
 use sway_ast::token::{
     ClosingDelimiter, Comment, CommentKind, CommentedGroup, CommentedTokenStream,
-    CommentedTokenTree, Delimiter, Delimiters, DocComment, DocStyle, GenericTokenTree,
-    OpeningDelimiter, Punct, PunctKind, Spacing, TokenStream,
+    CommentedTokenTree, Delimiter, DelimiterKind, Delimiters, DocComment, DocStyle,
+    GenericTokenTree, OpeningDelimiter, Punct, PunctKind, Spacing, TokenStream,
 };
 use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -225,10 +225,7 @@ pub fn lex_commented(
         if let Some(delimiter) = character.as_open_delimiter() {
             let moved_token_trees = mem::take(&mut token_trees);
             parent_token_trees.push((moved_token_trees, index, delimiter));
-            let delim = Delimiter {
-                kind: sway_ast::token::DelimiterKind::Opening(delimiter),
-                span: span_until(&mut l, index),
-            };
+            let delim = lex_delimiter(&mut l, index, DelimiterKind::Opening(delimiter));
             token_trees.push(CommentedTokenTree::Tree(delim.into()));
             continue;
         }
@@ -262,7 +259,7 @@ pub fn lex_commented(
                         error(l.handler, LexError { kind, span });
                     }
 
-                    token_trees = lex_close_delimiter(
+                    token_trees = lex_delimited_group(
                         &mut l,
                         index,
                         parent,
@@ -314,7 +311,7 @@ pub fn lex_commented(
         let span = span_one(&l, open_index, opening_delimiter.as_char());
         error(l.handler, LexError { kind, span });
 
-        token_trees = lex_close_delimiter(
+        token_trees = lex_delimited_group(
             &mut l,
             src.len(),
             parent,
@@ -332,7 +329,7 @@ pub fn lex_commented(
     })
 }
 
-fn lex_close_delimiter(
+fn lex_delimited_group(
     l: &mut Lexer<'_>,
     index: usize,
     mut parent: Vec<CommentedTokenTree>,
@@ -341,10 +338,7 @@ fn lex_close_delimiter(
     delimiters: Delimiters,
 ) -> Vec<CommentedTokenTree> {
     let full_span = if let Some(close_delim) = delimiters.closing {
-        let delim = Delimiter {
-            kind: sway_ast::token::DelimiterKind::Closing(close_delim),
-            span: span_until(l, index),
-        };
+        let delim = lex_delimiter(l, index, DelimiterKind::Closing(close_delim));
         token_trees.push(CommentedTokenTree::Tree(delim.into()));
         span(l, open_index, index + close_delim.as_char().len_utf8())
     } else {
@@ -360,6 +354,12 @@ fn lex_close_delimiter(
     };
     parent.push(CommentedTokenTree::Tree(group.into()));
     parent
+}
+fn lex_delimiter(l: &mut Lexer<'_>, index: usize, kind: DelimiterKind) -> Delimiter {
+    Delimiter {
+        kind,
+        span: span_until(l, index),
+    }
 }
 
 fn lex_line_comment(
