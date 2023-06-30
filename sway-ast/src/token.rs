@@ -89,8 +89,8 @@ pub struct Delimiters {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Delimiter {
-    kind: DelimiterKind,
-    span: Span,
+    pub kind: DelimiterKind,
+    pub span: Span,
 }
 impl Spanned for Delimiter {
     fn span(&self) -> Span {
