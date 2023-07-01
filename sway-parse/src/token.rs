@@ -852,6 +852,7 @@ mod tests {
                 _ => panic!("expected group"),
             };
             let mut tts = group.token_stream.token_trees().iter();
+            assert_eq!(tts.next().unwrap().span().as_str(), "{");
             assert_eq!(
                 tts.next().unwrap().span().as_str(),
                 "/* multi-\n             * line-\n             * comment */",
@@ -867,6 +868,7 @@ mod tests {
                     comment_kind: CommentKind::Trailing,
                 })) if span.as_str() ==  "// trailing comment"
             );
+            assert_eq!(tts.next().unwrap().span().as_str(), "}");
             assert!(tts.next().is_none());
         }
         assert!(tts.next().is_none());
@@ -899,6 +901,7 @@ mod tests {
         );
         assert_eq!(tts.next().unwrap().span().as_str(), "abi");
         assert_eq!(tts.next().unwrap().span().as_str(), "Foo");
+        assert_eq!(tts.next().unwrap().span().as_str(), "{");
 
         {
             let group = match tts.next() {
@@ -932,6 +935,7 @@ mod tests {
                     comment_kind: CommentKind::Newlined,
                 })) if span.as_str() ==  "// CommentKind::Newlined"
             );
+            assert_eq!(tts.next().unwrap().span().as_str(), "}");
             assert!(tts.next().is_none());
         }
     }
