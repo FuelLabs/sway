@@ -901,7 +901,6 @@ mod tests {
         );
         assert_eq!(tts.next().unwrap().span().as_str(), "abi");
         assert_eq!(tts.next().unwrap().span().as_str(), "Foo");
-        assert_eq!(tts.next().unwrap().span().as_str(), "{");
 
         {
             let group = match tts.next() {
@@ -910,6 +909,7 @@ mod tests {
             };
             let mut tts = group.token_stream.token_trees().iter();
 
+            assert_eq!(tts.next().unwrap().span().as_str(), "{");
             assert_matches!(
                 tts.next(),
                 Some(CommentedTokenTree::Comment(Comment {
