@@ -329,6 +329,7 @@ pub fn lex_commented(
     })
 }
 
+/// Handles the `ClosingDelimiter` and creates a [DelimitedGroup].
 fn lex_delimited_group(
     l: &mut Lexer<'_>,
     index: usize,
@@ -355,6 +356,7 @@ fn lex_delimited_group(
     parent.push(CommentedTokenTree::Tree(group.into()));
     parent
 }
+
 fn lex_delimiter(l: &mut Lexer<'_>, index: usize, kind: DelimiterKind) -> Delimiter {
     Delimiter {
         kind,
