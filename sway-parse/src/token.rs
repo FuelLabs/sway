@@ -1028,16 +1028,35 @@ mod tests {
     #[test]
     fn lex_fn() {
         let input = r#"
-        fn f(hello: u8) -> bool {
+        fn f() -> bool {
             false
         }
         "#;
         let handler = Handler::default();
         let stream = lex(&handler, &Arc::from(input), 0, input.len(), None).unwrap();
         assert!(handler.consume().0.is_empty());
+        let mut tts = stream.token_trees().iter();
+        assert_eq!(tts.next().unwrap().span().as_str(), "fn");
+        assert_eq!(tts.next().unwrap().span().as_str(), "f");
+        assert_eq!(tts.next().unwrap().span().as_str(), "()");
+        assert_eq!(tts.next().unwrap().span().as_str(), "-");
+        assert_eq!(tts.next().unwrap().span().as_str(), ">");
+        assert_eq!(tts.next().unwrap().span().as_str(), "bool");
+        assert_eq!(tts.next().unwrap().span().as_str(), "{");
+        assert_eq!(tts.next().unwrap().span().as_str(), "false");
+        assert_eq!(tts.next().unwrap().span().as_str(), "}");
+    }
+    #[test]
+    fn lex_unclosed_curly_brace() {
+        let input = r#"
+        fn f() -> bool {
+            false
+        
+        "#;
+        let handler = Handler::default();
+        let stream = lex(&handler, &Arc::from(input), 0, input.len(), None).unwrap();
+
         let tts = stream.token_trees();
         dbg!(tts);
-        // group: GenericGroup { delimiters: Delimiters { opening: Some(Parenthesis), closing: Some(Parenthesis) }, token_stream: CommentedTokenStream { token_trees: [], full_span: Span { src (ptr): 0x7fd1b0000cf0, path: None, start: 13, end: 14, as_str(): "(" } }, span: Span { src (ptr): 0x7fd1b0000cf0, path: None, start: 13, end: 15, as_str(): "()" } }
-        // group: GenericGroup { delimiters: Delimiters { opening: Some(CurlyBrace), closing: Some(CurlyBrace) }, token_stream: CommentedTokenStream { token_trees: [Tree(Ident(BaseIdent { name_override_opt: None, span: Span { src (ptr): 0x7fd1b0000cf0, path: None, start: 38, end: 43, as_str(): "false" }, is_raw_ident: false }))], full_span: Span { src (ptr): 0x7fd1b0000cf0, path: None, start: 24, end: 52, as_str(): "{\n            false\n        " } }, span: Span { src (ptr): 0x7fd1b0000cf0, path: None, start: 24, end: 53, as_str(): "{\n            false\n        }" } }
     }
 }
