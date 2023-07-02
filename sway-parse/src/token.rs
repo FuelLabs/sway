@@ -817,10 +817,14 @@ mod tests {
         literal::{LitChar, Literal},
         token::{
             Comment, CommentKind, CommentedTokenTree, CommentedTree, DocComment, DocStyle,
-            TokenTree,
+            GenericTokenTree, TokenTree,
         },
     };
-    use sway_error::handler::Handler;
+    use sway_error::{
+        error::CompileError,
+        handler::Handler,
+        lex_error::{LexError, LexErrorKind},
+    };
 
     #[test]
     fn lex_commented_token_stream() {
@@ -1038,16 +1042,30 @@ mod tests {
         let mut tts = stream.token_trees().iter();
         assert_eq!(tts.next().unwrap().span().as_str(), "fn");
         assert_eq!(tts.next().unwrap().span().as_str(), "f");
-        assert_eq!(tts.next().unwrap().span().as_str(), "()");
+        if let Some(GenericTokenTree::Group(group)) = tts.next() {
+            let mut dts = group.token_stream.token_trees().iter();
+            assert_eq!(dts.next().unwrap().span().as_str(), "(");
+            assert_eq!(dts.next().unwrap().span().as_str(), ")");
+            assert!(dts.next().is_none());
+        } else {
+            panic!("expected a delimited group")
+        }
         assert_eq!(tts.next().unwrap().span().as_str(), "-");
         assert_eq!(tts.next().unwrap().span().as_str(), ">");
         assert_eq!(tts.next().unwrap().span().as_str(), "bool");
-        assert_eq!(tts.next().unwrap().span().as_str(), "{");
-        assert_eq!(tts.next().unwrap().span().as_str(), "false");
-        assert_eq!(tts.next().unwrap().span().as_str(), "}");
+        if let Some(GenericTokenTree::Group(group)) = tts.next() {
+            let mut dts = group.token_stream.token_trees().iter();
+            assert_eq!(dts.next().unwrap().span().as_str(), "{");
+            assert_eq!(dts.next().unwrap().span().as_str(), "false");
+            assert_eq!(dts.next().unwrap().span().as_str(), "}");
+            assert!(dts.next().is_none());
+        } else {
+            panic!("expected a delimited group")
+        }
+        assert!(tts.next().is_none());
     }
     #[test]
-    fn lex_unclosed_curly_brace() {
+    fn lex_unclosed_curly_brace_in_fn_body() {
         let input = r#"
         fn f() -> bool {
             false
@@ -1055,8 +1073,37 @@ mod tests {
         "#;
         let handler = Handler::default();
         let stream = lex(&handler, &Arc::from(input), 0, input.len(), None).unwrap();
-
-        let tts = stream.token_trees();
-        dbg!(tts);
+        assert_matches!(
+            handler.consume().0.first().unwrap(),
+            CompileError::Lex {
+                error: LexError {
+                    kind: LexErrorKind::UnclosedDelimiter { .. },
+                    ..
+                }
+            }
+        );
+        let mut tts = stream.token_trees().iter();
+        assert_eq!(tts.next().unwrap().span().as_str(), "fn");
+        assert_eq!(tts.next().unwrap().span().as_str(), "f");
+        if let Some(GenericTokenTree::Group(group)) = tts.next() {
+            let mut dts = group.token_stream.token_trees().iter();
+            assert_eq!(dts.next().unwrap().span().as_str(), "(");
+            assert_eq!(dts.next().unwrap().span().as_str(), ")");
+            assert!(dts.next().is_none());
+        } else {
+            panic!("expected a delimited group")
+        }
+        assert_eq!(tts.next().unwrap().span().as_str(), "-");
+        assert_eq!(tts.next().unwrap().span().as_str(), ">");
+        assert_eq!(tts.next().unwrap().span().as_str(), "bool");
+        if let Some(GenericTokenTree::Group(group)) = tts.next() {
+            let mut dts = group.token_stream.token_trees().iter();
+            assert_eq!(dts.next().unwrap().span().as_str(), "{");
+            assert_eq!(dts.next().unwrap().span().as_str(), "false");
+            assert!(dts.next().is_none());
+        } else {
+            panic!("expected a delimited group")
+        }
+        assert!(tts.next().is_none());
     }
 }
