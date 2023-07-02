@@ -1106,4 +1106,47 @@ mod tests {
         }
         assert!(tts.next().is_none());
     }
+    #[test]
+    fn lex_mismatched_delimiter_in_fn_body() {
+        let input = r#"
+        fn f() -> bool {
+            false
+        ]
+        "#;
+        let handler = Handler::default();
+        let stream = lex(&handler, &Arc::from(input), 0, input.len(), None).unwrap();
+        assert_matches!(
+            handler.consume().0.first().unwrap(),
+            CompileError::Lex {
+                error: LexError {
+                    kind: LexErrorKind::MismatchedDelimiters { .. },
+                    ..
+                }
+            }
+        );
+        let mut tts = stream.token_trees().iter();
+        assert_eq!(tts.next().unwrap().span().as_str(), "fn");
+        assert_eq!(tts.next().unwrap().span().as_str(), "f");
+        if let Some(GenericTokenTree::Group(group)) = tts.next() {
+            let mut dts = group.token_stream.token_trees().iter();
+            assert_eq!(dts.next().unwrap().span().as_str(), "(");
+            assert_eq!(dts.next().unwrap().span().as_str(), ")");
+            assert!(dts.next().is_none());
+        } else {
+            panic!("expected a delimited group")
+        }
+        assert_eq!(tts.next().unwrap().span().as_str(), "-");
+        assert_eq!(tts.next().unwrap().span().as_str(), ">");
+        assert_eq!(tts.next().unwrap().span().as_str(), "bool");
+        if let Some(GenericTokenTree::Group(group)) = tts.next() {
+            let mut dts = group.token_stream.token_trees().iter();
+            assert_eq!(dts.next().unwrap().span().as_str(), "{");
+            assert_eq!(dts.next().unwrap().span().as_str(), "false");
+            assert_eq!(dts.next().unwrap().span().as_str(), "]");
+            assert!(dts.next().is_none());
+        } else {
+            panic!("expected a delimited group")
+        }
+        assert!(tts.next().is_none());
+    }
 }
