@@ -21,6 +21,7 @@ pub struct ServerState {
     pub(crate) config: Arc<RwLock<Config>>,
     pub(crate) keyword_docs: Arc<KeywordDocs>,
     pub(crate) sessions: Arc<Sessions>,
+    pub(crate) should_recompile: bool,
 }
 
 impl ServerState {
@@ -33,6 +34,7 @@ impl ServerState {
             config,
             keyword_docs,
             sessions,
+            should_recompile: false,
         }
     }
 
