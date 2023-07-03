@@ -122,8 +122,8 @@ dependencies = ['std']
 name = 'intermediate_variables'
 source = 'member'
 dependencies = [
-    'core path+from-root-0F28276288D2432C',
-    'std path+from-root-0F28276288D2432C',
+    'core',
+    'std',
 ]
 
 [[package]]
