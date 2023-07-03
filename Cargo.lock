@@ -1680,6 +1680,7 @@ dependencies = [
  "forc-tracing",
  "forc-tx",
  "forc-util",
+ "fuel-abi-types 0.3.0",
  "fuel-core-client",
  "fuel-crypto",
  "fuel-tx",

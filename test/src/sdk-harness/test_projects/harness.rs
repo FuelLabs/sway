@@ -32,6 +32,7 @@ mod storage_bytes;
 mod storage_init;
 mod storage_map;
 mod storage_map_nested;
+mod storage_string;
 mod storage_vec;
 mod storage_vec_nested;
 mod token_ops;
