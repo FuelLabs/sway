@@ -42,10 +42,10 @@ impl StorageExample for Contract {
     #[storage(read)]
     fn get_something() -> (u64, u64, b256, bool) {
         (
-            storage.var1.x.read(),
-            storage.var1.y.read(),
-            storage.var2.w.read(),
-            storage.var2.z.read(),
+            storage.var1.x.read().unwrap_or(0),
+            storage.var1.y.read().unwrap_or(0),
+            storage.var2.w.read().unwrap_or(0),
+            storage.var2.z.read().unwrap_or(0),
         )
     }
     // ANCHOR_END: storage_read
