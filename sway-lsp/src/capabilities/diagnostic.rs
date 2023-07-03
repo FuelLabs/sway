@@ -15,7 +15,7 @@ fn get_error_diagnostics(errors: &[CompileError]) -> Vec<Diagnostic> {
             .iter()
             .filter(|error| {
                 // Filters out specific `UnknownVariable` errors pertaining to `CONTRACT_ID` from diagnostic warnings.
-                // This is necessary because `CONTRACT_ID` is a special constant that's not injected into the 
+                // This is necessary because `CONTRACT_ID` is a special constant that's not injected into the
                 // compiler's namespace during syntax checks, leading to false error signals.
                 //
                 // See this github issue for more context: https://github.com/FuelLabs/sway-vscode-plugin/issues/154
