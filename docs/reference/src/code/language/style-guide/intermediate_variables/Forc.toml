@@ -5,3 +5,5 @@ license = "Apache-2.0"
 name = "intermediate_variables"
 
 [dependencies]
+core = { path = "../../../../../../../sway-lib-core" }
+std = { path = "../../../../../../../sway-lib-std" }
