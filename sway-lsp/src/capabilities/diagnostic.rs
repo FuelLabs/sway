@@ -10,12 +10,26 @@ pub struct Diagnostics {
 }
 
 fn get_error_diagnostics(errors: &[CompileError]) -> Vec<Diagnostic> {
-    Vec::from_iter(errors.iter().map(|error| Diagnostic {
-        range: get_range(error.span().line_col()),
-        severity: Some(DiagnosticSeverity::ERROR),
-        message: format!("{error}"),
-        ..Default::default()
-    }))
+    Vec::from_iter(
+        errors
+            .iter()
+            .filter(|error| {
+                // Filters out specific `UnknownVariable` errors pertaining to `CONTRACT_ID` from diagnostic warnings.
+                // This is necessary because `CONTRACT_ID` is a special constant that's not injected into the 
+                // compiler's namespace during syntax checks, leading to false error signals.
+                //
+                // See this github issue for more context: https://github.com/FuelLabs/sway-vscode-plugin/issues/154
+                !error
+                    .to_string()
+                    .contains("Variable \"CONTRACT_ID\" does not exist in this scope.")
+            })
+            .map(|error| Diagnostic {
+                range: get_range(error.span().line_col()),
+                severity: Some(DiagnosticSeverity::ERROR),
+                message: format!("{error}"),
+                ..Default::default()
+            }),
+    )
 }
 
 fn get_warning_diagnostics(warnings: &[CompileWarning]) -> Vec<Diagnostic> {
@@ -59,18 +73,4 @@ fn get_warning_diagnostic_tags(warning: &Warning) -> Option<Vec<DiagnosticTag>> 
         | Warning::UnusedReturnValue { .. } => Some(vec![DiagnosticTag::UNNECESSARY]),
         _ => None,
     }
-}
-
-/// Filters out specific `UnknownVariable` errors pertaining to `CONTRACT_ID` from diagnostic warnings.
-/// This is necessary because `CONTRACT_ID` is a special constant that's not injected into the compiler's namespace during syntax checks, leading to false error signals.
-/// See this github issue for more context: https://github.com/FuelLabs/sway-vscode-plugin/issues/154
-pub(crate) fn filter_contract_id_errors(warnings: Vec<Diagnostic>) -> Vec<Diagnostic> {
-    warnings
-        .into_iter()
-        .filter(|diagnostic| {
-            !diagnostic
-                .message
-                .contains("Variable \"CONTRACT_ID\" does not exist in this scope.")
-        })
-        .collect()
 }
