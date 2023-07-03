@@ -30,15 +30,12 @@ exclude = [
     "forc-test/test_data"
 ]
 
-[profile.dev.package.sway-lsp]
-debug = 2
-
 [workspace.dependencies]
 fuel-asm = "0.31.1"
 fuel-crypto = "0.31.1"
 fuel-types = "0.31.1"
 fuel-tx = "0.31.1"
-fuel-core-client = "0.18.2"
+fuel-core-client = { version = "0.18.2", default-features = false }
 fuel-vm = "0.31.2"
 fuels-core = "0.43"
 fuels-accounts = "0.43"

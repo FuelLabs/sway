@@ -485,75 +485,6 @@ impl Bytes {
 
 // Need to use seperate impl blocks for now: https://github.com/FuelLabs/sway/issues/1548
 impl Bytes {
-    /// Creates a `Bytes` from a `Vec<u8>`.
-    ///
-    /// ### Examples
-    ///
-    /// ```sway
-    /// use std:bytes::Bytes;
-    ///
-    /// let mut vec = Vec::new();
-    /// let a = 5u8;
-    /// let b = 7u8;
-    /// let c = 9u8
-    ///
-    /// vec.push(a);
-    /// vec.push(b);
-    /// vec.push(c);
-    ///
-    /// let bytes = Bytes::from_vec_u8(vec);
-    ///
-    /// assert(bytes.len == 3);
-    /// assert(bytes.get(0).unwrap() == a);
-    /// assert(bytes.get(1).unwrap() == b);
-    /// assert(bytes.get(2).unwrap() == c);
-    /// ```
-    pub fn from_vec_u8(ref mut vec: Vec<u8>) -> Self {
-        let mut bytes = Bytes::new();
-        let mut i = 0;
-        let length = vec.len();
-        while i < length {
-            bytes.push(vec.get(i).unwrap());
-            i += 1;
-        };
-        bytes
-    }
-
-    /// Creates a `Vec<u8>` from a `Bytes`.
-    ///
-    /// ### Examples
-    ///
-    /// ```sway
-    /// use std:bytes::Bytes;
-    ///
-    /// let mut bytes = Bytes::new();
-    /// let a = 5u8;
-    /// let b = 7u8;
-    /// let c = 9u8
-    /// bytes.push(a);
-    /// bytes.push(b);
-    /// bytes.push(c);
-    ///
-    /// assert(bytes.len() == 3);
-    ///
-    /// let vec = bytes.into_vec_u8();
-    ///
-    /// assert(vec.len() == 3);
-    /// assert(vec.get(0).unwrap() == a);
-    /// assert(vec.get(1).unwrap() == b);
-    /// assert(vec.get(2).unwrap() == c);
-    /// ```
-    pub fn into_vec_u8(self) -> Vec<u8> {
-        let mut vec = Vec::new();
-        let mut i = 0;
-        let length = self.len;
-        while i < length {
-            vec.push(self.get(i).unwrap());
-            i += 1;
-        };
-        vec
-    }
-
     /// Divides one Bytes into two at an index.
     ///
     /// The first will contain all indices from `[0, mid)` (excluding the index
@@ -669,18 +600,6 @@ impl Bytes {
         // clear `other`
         other.clear();
     }
-
-    // Should be remove and replace when https://github.com/FuelLabs/sway/pull/3882 is resovled
-    pub fn from_raw_slice(slice: raw_slice) -> Self {
-        let number_of_bytes = slice.number_of_bytes();
-        Self {
-            buf: RawBytes {
-                ptr: slice.ptr(),
-                cap: number_of_bytes,
-            },
-            len: number_of_bytes,
-        }
-    }
 }
 
 impl core::ops::Eq for Bytes {
@@ -725,6 +644,137 @@ impl From<b256> for Bytes {
         self.buf.ptr().copy_to::<b256>(ptr, 1);
 
         value
+    }
+}
+
+impl From<raw_slice> for Bytes {
+    /// Creates a `Bytes` from a `raw_slice`.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std:bytes::Bytes;
+    ///
+    /// let mut vec = Vec::new();
+    /// let a = 5u8;
+    /// let b = 7u8;
+    /// let c = 9u8
+    ///
+    /// vec.push(a);
+    /// vec.push(b);
+    /// vec.push(c);
+    /// 
+    /// let vec_as_raw_slice = vec.as_raw_slice();
+    /// let bytes = Bytes::from(vec_as_raw_slice);
+    ///
+    /// assert(bytes.len == 3);
+    /// assert(bytes.get(0).unwrap() == a);
+    /// assert(bytes.get(1).unwrap() == b);
+    /// assert(bytes.get(2).unwrap() == c);
+    /// ```
+    fn from(slice: raw_slice) -> Self {
+        let number_of_bytes = slice.number_of_bytes();
+        Self {
+            buf: RawBytes {
+                ptr: slice.ptr(),
+                cap: number_of_bytes,
+            },
+            len: number_of_bytes,
+        }
+    }
+
+    /// Creates a `raw_slice` from a `Bytes`.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std:bytes::Bytes;
+    ///
+    /// let mut bytes = Bytes::new();
+    /// let a = 5u8;
+    /// let b = 7u8;
+    /// let c = 9u8
+    /// bytes.push(a);
+    /// bytes.push(b);
+    /// bytes.push(c);
+    ///
+    /// assert(bytes.len() == 3);
+    ///
+    /// let slice: raw_slice = bytes.into();
+    ///
+    /// assert(slice.number_of_bytes() == 3);
+    /// ```
+    fn into(self) -> raw_slice {
+        asm(ptr: (self.buf.ptr(), self.len)) { ptr: raw_slice }
+    }
+}
+
+impl From<Vec<u8>> for Bytes {
+    /// Creates a `Bytes` from a `Vec<u8>`.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std:bytes::Bytes;
+    ///
+    /// let mut vec = Vec::new();
+    /// let a = 5u8;
+    /// let b = 7u8;
+    /// let c = 9u8
+    ///
+    /// vec.push(a);
+    /// vec.push(b);
+    /// vec.push(c);
+    ///
+    /// let bytes = Bytes::from(vec);
+    ///
+    /// assert(bytes.len == 3);
+    /// assert(bytes.get(0).unwrap() == a);
+    /// assert(bytes.get(1).unwrap() == b);
+    /// assert(bytes.get(2).unwrap() == c);
+    /// ```
+    fn from(vec: Vec<u8>) -> Self {
+        let mut bytes = Bytes::with_capacity(vec.len());
+        let mut i = 0;
+        while i < vec.len() {
+            bytes.push(vec.get(i).unwrap());
+            i += 1;
+        };
+        bytes
+    }
+
+    /// Creates a `Vec<u8>` from a `Bytes`.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std:bytes::Bytes;
+    ///
+    /// let mut bytes = Bytes::new();
+    /// let a = 5u8;
+    /// let b = 7u8;
+    /// let c = 9u8
+    /// bytes.push(a);
+    /// bytes.push(b);
+    /// bytes.push(c);
+    ///
+    /// assert(bytes.len() == 3);
+    ///
+    /// let vec: Vec<u8> = bytes.into();
+    ///
+    /// assert(vec.len() == 3);
+    /// assert(vec.get(0).unwrap() == a);
+    /// assert(vec.get(1).unwrap() == b);
+    /// assert(vec.get(2).unwrap() == c);
+    /// ```
+    fn into(self) -> Vec<u8> {
+        let mut vec = Vec::with_capacity(self.len);
+        let mut i = 0;
+        while i < self.len {
+            vec.push(self.get(i).unwrap());
+            i += 1;
+        };
+        vec
     }
 }
 
@@ -925,7 +975,7 @@ fn test_from_vec_u8() {
     vec.push(b);
     vec.push(c);
 
-    let bytes = Bytes::from_vec_u8(vec);
+    let bytes = Bytes::from(vec);
 
     assert(bytes.len == 3);
     assert(bytes.get(0).unwrap() == a);
@@ -938,7 +988,7 @@ fn test_into_vec_u8() {
     let (mut bytes, a, b, c) = setup();
     assert(bytes.len() == 3);
 
-    let vec = bytes.into_vec_u8();
+    let vec: Vec<u8> = bytes.into();
 
     assert(vec.len() == 3);
     assert(vec.get(0).unwrap() == a);
@@ -1140,7 +1190,7 @@ fn test_keccak256() {
 fn test_as_raw_slice() {
     let val = 0x3497297632836282349729763283628234972976328362823497297632836282;
     let slice_1 = asm(ptr: (__addr_of(val), 32)) { ptr: raw_slice };
-    let mut bytes = Bytes::from_raw_slice(slice_1);
+    let mut bytes = Bytes::from(slice_1);
     let slice_2 = bytes.as_raw_slice();
     assert(slice_1.ptr() == slice_2.ptr());
     assert(slice_1.number_of_bytes() == slice_2.number_of_bytes());
@@ -1151,7 +1201,7 @@ fn test_as_raw_slice() {
 fn test_from_raw_slice() {
     let val = 0x3497297632836282349729763283628234972976328362823497297632836282;
     let slice_1 = asm(ptr: (__addr_of(val), 32)) { ptr: raw_slice };
-    let mut bytes = Bytes::from_raw_slice(slice_1);
+    let mut bytes = Bytes::from(slice_1);
     let slice_2 = bytes.as_raw_slice();
     assert(slice_1.ptr() == slice_2.ptr());
     assert(slice_1.number_of_bytes() == slice_2.number_of_bytes());

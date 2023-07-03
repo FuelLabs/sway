@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-A18BA26192A1D371'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-A18BA26192A1D371'
+dependencies = ['core']
+
+[[package]]
+name = 'u8_mul_const_eval_overflow'
+source = 'member'
+dependencies = ['std']

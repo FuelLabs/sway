@@ -1,0 +1,3 @@
+category = "fail"
+
+# check: $()Could not evaluate initializer to a const declaration.
