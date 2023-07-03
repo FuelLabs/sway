@@ -1,6 +1,7 @@
 //! The context or environment in which the language server functions.
 
 use crate::{
+    capabilities::diagnostic,
     config::{Config, Warnings},
     core::session::Session,
     error::{DirectoryError, DocumentError, LanguageServerError},
@@ -68,7 +69,8 @@ impl ServerState {
                 diagnostics_to_publish.extend(diagnostics.warnings);
             }
             if config.diagnostic.show_errors {
-                diagnostics_to_publish.extend(diagnostics.errors);
+                diagnostics_to_publish
+                    .extend(diagnostic::filter_contract_id_errors(diagnostics.errors));
             }
             diagnostics_to_publish
         };

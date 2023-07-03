@@ -60,3 +60,17 @@ fn get_warning_diagnostic_tags(warning: &Warning) -> Option<Vec<DiagnosticTag>> 
         _ => None,
     }
 }
+
+/// Filters out specific `UnknownVariable` errors pertaining to `CONTRACT_ID` from diagnostic warnings.
+/// This is necessary because `CONTRACT_ID` is a special constant that's not injected into the compiler's namespace during syntax checks, leading to false error signals.
+/// See this github issue for more context: https://github.com/FuelLabs/sway-vscode-plugin/issues/154
+pub(crate) fn filter_contract_id_errors(warnings: Vec<Diagnostic>) -> Vec<Diagnostic> {
+    warnings
+        .into_iter()
+        .filter(|diagnostic| {
+            !diagnostic
+                .message
+                .contains("Variable \"CONTRACT_ID\" does not exist in this scope.")
+        })
+        .collect()
+}
