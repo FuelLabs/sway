@@ -44,8 +44,8 @@ impl StorageExample for Contract {
         (
             storage.var1.x.read().unwrap_or(0),
             storage.var1.y.read().unwrap_or(0),
-            storage.var2.w.read().unwrap_or(0),
-            storage.var2.z.read().unwrap_or(0),
+            storage.var2.w.read().unwrap_or(0x0000000000000000000000000000000000000000000000000000000000000000),
+            storage.var2.z.read().unwrap_or(false),
         )
     }
     // ANCHOR_END: storage_read
