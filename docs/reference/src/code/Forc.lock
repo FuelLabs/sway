@@ -75,7 +75,7 @@ source = 'path+from-root-0F28276288D2432C'
 
 [[package]]
 name = 'core'
-source = 'path+from-root-EC2069570D70DA98'
+source = 'path+from-root-D62A8C57DD8D2801'
 
 [[package]]
 name = 'counter'
@@ -176,7 +176,7 @@ dependencies = ['std path+from-root-0F28276288D2432C']
 [[package]]
 name = 'pattern_matching'
 source = 'member'
-dependencies = ['std git+https://github.com/fuellabs/sway?tag=v0.41.0#0d45b890c9eaa75b88093a9a4cbecbf5ca8c0731']
+dependencies = ['std git+https://github.com/fuellabs/sway?tag=v0.40.1#48104d0bde0d343154a5bc39a310092532883235']
 
 [[package]]
 name = 'reading_writing_to_storage'
@@ -195,8 +195,8 @@ dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
 name = 'std'
-source = 'git+https://github.com/fuellabs/sway?tag=v0.41.0#0d45b890c9eaa75b88093a9a4cbecbf5ca8c0731'
-dependencies = ['core path+from-root-EC2069570D70DA98']
+source = 'git+https://github.com/fuellabs/sway?tag=v0.40.1#48104d0bde0d343154a5bc39a310092532883235'
+dependencies = ['core path+from-root-D62A8C57DD8D2801']
 
 [[package]]
 name = 'std'
