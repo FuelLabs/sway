@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-AA4B286930BA1707'
+
+[[package]]
+name = 'generic_where_in_impl_self'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-AA4B286930BA1707'
+dependencies = ['core']
