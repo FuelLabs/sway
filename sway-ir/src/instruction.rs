@@ -32,6 +32,8 @@ pub struct BranchToWithArgs {
 pub enum Instruction {
     /// An opaque list of ASM instructions passed directly to codegen.
     AsmBlock(AsmBlock, Vec<AsmArg>),
+    /// Unart arithmetic operations
+    UnaryOp { op: UnaryOpKind, arg: Value },
     /// Binary arithmetic operations
     BinaryOp {
         op: BinaryOpKind,
@@ -164,6 +166,11 @@ pub enum Predicate {
 }
 
 #[derive(Debug, Clone, Copy)]
+pub enum UnaryOpKind {
+    Not,
+}
+
+#[derive(Debug, Clone, Copy)]
 pub enum BinaryOpKind {
     Add,
     Sub,
@@ -219,6 +226,7 @@ impl Instruction {
         match self {
             // These all return something in particular.
             Instruction::AsmBlock(asm_block, _) => Some(asm_block.get_type(context)),
+            Instruction::UnaryOp { arg, .. } => arg.get_type(context),
             Instruction::BinaryOp { arg1, .. } => arg1.get_type(context),
             Instruction::BitCast(_, ty) => Some(*ty),
             Instruction::Call(function, _) => Some(context.functions[function.0].return_type),
@@ -281,6 +289,7 @@ impl Instruction {
         match self {
             Instruction::AsmBlock(_, args) => args.iter().filter_map(|aa| aa.initializer).collect(),
             Instruction::BitCast(v, _) => vec![*v],
+            Instruction::UnaryOp { op: _, arg } => vec![*arg],
             Instruction::BinaryOp { op: _, arg1, arg2 } => vec![*arg1, *arg2],
             Instruction::Branch(BranchToWithArgs { args, .. }) => args.clone(),
             Instruction::Call(_, vs) => vs.clone(),
@@ -395,6 +404,9 @@ impl Instruction {
                     .for_each(|init_val| replace(init_val))
             }),
             Instruction::BitCast(value, _) => replace(value),
+            Instruction::UnaryOp { op: _, arg } => {
+                replace(arg);
+            }
             Instruction::BinaryOp { op: _, arg1, arg2 } => {
                 replace(arg1);
                 replace(arg2);
@@ -540,7 +552,8 @@ impl Instruction {
             | Instruction::Store { .. }
             | Instruction::Ret(..) => true,
 
-            Instruction::BinaryOp { .. }
+            Instruction::UnaryOp { .. }
+            | Instruction::BinaryOp { .. }
             | Instruction::BitCast(..)
             | Instruction::Branch(_)
             | Instruction::CastPtr { .. }
@@ -668,6 +681,10 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
 
     pub fn bitcast(self, value: Value, ty: Type) -> Value {
         make_instruction!(self, Instruction::BitCast(value, ty))
+    }
+
+    pub fn unary_op(self, op: UnaryOpKind, arg: Value) -> Value {
+        make_instruction!(self, Instruction::UnaryOp { op, arg })
     }
 
     pub fn binary_op(self, op: BinaryOpKind, arg1: Value, arg2: Value) -> Value {

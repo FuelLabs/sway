@@ -15,7 +15,7 @@ use crate::{
     module::ModuleContent,
     value::{Value, ValueDatum},
     AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, BlockArgument,
-    BranchToWithArgs, Module, Pass, PassMutability, ScopedPass, TypeOption,
+    BranchToWithArgs, Module, Pass, PassMutability, ScopedPass, TypeOption, UnaryOpKind,
 };
 
 pub struct ModuleVerifierResult;
@@ -174,6 +174,7 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
                 match instruction {
                     Instruction::AsmBlock(..) => (),
                     Instruction::BitCast(value, ty) => self.verify_bitcast(value, ty)?,
+                    Instruction::UnaryOp { op, arg } => self.verify_unary_op(op, arg)?,
                     Instruction::BinaryOp { op, arg1, arg2 } => {
                         self.verify_binary_op(op, arg1, arg2)?
                     }
@@ -288,6 +289,21 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
         } else {
             Ok(())
         }
+    }
+
+    fn verify_unary_op(&self, op: &UnaryOpKind, arg: &Value) -> Result<(), IrError> {
+        let arg_ty = arg
+            .get_type(self.context)
+            .ok_or(IrError::VerifyUnaryOpIncorrectArgType)?;
+        match op {
+            UnaryOpKind::Not => {
+                if !arg_ty.is_uint(self.context) {
+                    return Err(IrError::VerifyUnaryOpIncorrectArgType);
+                }
+            }
+        }
+
+        Ok(())
     }
 
     fn verify_binary_op(

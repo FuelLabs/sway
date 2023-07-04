@@ -743,5 +743,29 @@ fn const_eval_intrinsic(
         | sway_ast::Intrinsic::Log
         | sway_ast::Intrinsic::Revert
         | sway_ast::Intrinsic::Smo => Ok(None),
+        sway_ast::Intrinsic::Not => {
+            assert!(args.len() == 1 && args[0].ty.is_uint(lookup.context));
+
+            let Some(arg) = args.into_iter().next() else {
+                unreachable!("Unexpected 'not' without any arguments");
+            };
+
+            let ConstantValue::Uint(v) = arg.value else {
+                unreachable!("Type checker allowed non integer value for Not");
+            };
+
+            let v = match arg.ty.get_uint_width(lookup.context) {
+                Some(8) => !(v as u8) as u64,
+                Some(16) => !(v as u16) as u64,
+                Some(32) => !(v as u32) as u64,
+                Some(64) => !v,
+                _ => unreachable!("Invalid unsigned integer width"),
+            };
+
+            Ok(Some(Constant {
+                ty: arg.ty,
+                value: ConstantValue::Uint(v),
+            }))
+        }
     }
 }

@@ -941,6 +941,16 @@ impl<'eng> FnCompiler<'eng> {
                     .smo(recipient_var, message, user_message_size_val, coins)
                     .add_metadatum(context, span_md_idx))
             }
+            Intrinsic::Not => {
+                assert!(arguments.len() == 1);
+
+                let op = &arguments[0];
+                let value = self.compile_expression_to_value(context, md_mgr, op)?;
+                Ok(self
+                    .current_block
+                    .ins(context)
+                    .unary_op(UnaryOpKind::Not, value))
+            }
         }
     }
 
