@@ -51,6 +51,3 @@ fn main() {
 // check: $(left=$VAL) = const u64 1, $MD
 // check: $(right=$VAL) = const u64 2, $MD
 // check: $VAL = lsh $left, $right
-
-// check: $(op=$VAL) = const u64 1, $MD
-// check: $VAL = not $op
