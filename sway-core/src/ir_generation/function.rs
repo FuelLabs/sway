@@ -258,6 +258,19 @@ impl<'eng> FnCompiler<'eng> {
         md_mgr: &mut MetadataManager,
         ast_expr: &ty::TyExpression,
     ) -> Result<Value, CompileError> {
+        // resolve expression to a constant, if possible
+        if let Ok(constant) = compile_constant_expression_to_constant(
+            self.engines,
+            context,
+            md_mgr,
+            self.module,
+            None,
+            Some(self),
+            ast_expr,
+        ) {
+            return Ok(Value::new_constant(context, constant));
+        }
+
         let span_md_idx = md_mgr.span_to_md(context, &ast_expr.span);
         match &ast_expr.expression {
             ty::TyExpressionVariant::Literal(l) => {
