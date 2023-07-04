@@ -1,15 +1,15 @@
 use crate::{
     asm_generation::fuel::compiler_constants,
     asm_lang::{
-        allocated_ops::AllocatedRegister, virtual_register::*, ControlFlowOp, Label, Op,
-        VirtualImmediate12, VirtualImmediate18, VirtualImmediate24, VirtualOp,
+        allocated_ops::AllocatedRegister, virtual_register::*, AllocatedAbstractOp, ControlFlowOp,
+        Label, Op, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24, VirtualOp,
     },
     size_bytes_round_up_to_word_alignment,
 };
 
 use either::Either;
 use petgraph::{
-    graph::NodeIndex,
+    stable_graph::NodeIndex,
     visit::EdgeRef,
     Direction::{Incoming, Outgoing},
 };
@@ -17,6 +17,8 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use std::collections::{hash_map, BTreeSet, HashMap};
 use sway_error::error::CompileError;
 use sway_types::Span;
+
+use super::allocated_abstract_instruction_set::AllocatedAbstractInstructionSet;
 
 // Each node in the interference graph represents a VirtualRegister.
 // An edge from V1 -> V2 means that V2 was an open live range at the
@@ -670,13 +672,125 @@ pub(crate) fn color_interference_graph(
     }
 }
 
+/// Assigns an allocatable register to each virtual register used by some instruction in the
+/// list `self.ops`. The algorithm used is Chaitin's graph-coloring register allocation
+/// algorithm (https://en.wikipedia.org/wiki/Chaitin%27s_algorithm). The individual steps of
+/// the algorithm are thoroughly explained in register_allocator.rs.
+
+pub(crate) fn allocate_registers(
+    ops: &[Op],
+) -> Result<AllocatedAbstractInstructionSet, CompileError> {
+    enum ColouringResult {
+        Success {
+            updated_ops: Vec<Op>,
+            interference_graph: InterferenceGraph,
+            colouring_stack: Vec<NodeIndex>,
+        },
+        SpillsNeeded {
+            updated_ops: Vec<Op>,
+            spills: FxHashSet<VirtualRegister>,
+        },
+    }
+
+    fn try_color(ops: &[Op]) -> ColouringResult {
+        // Step 1: Liveness Analysis.
+        let live_out = liveness_analysis(ops);
+
+        // Step 2: Construct the interference graph.
+        let (mut interference_graph, mut reg_to_node_ix) =
+            create_interference_graph(ops, &live_out);
+
+        // Step 3: Remove redundant MOVE instructions using the interference graph.
+        let (updated_ops, live_out) =
+            coalesce_registers(ops, live_out, &mut interference_graph, &mut reg_to_node_ix);
+
+        // Step 4: Simplify - i.e. color the interference graph and return a stack that contains
+        // each colorable node and its neighbors.
+        match color_interference_graph(&mut interference_graph, &updated_ops, &live_out) {
+            Ok(colouring_stack) => ColouringResult::Success {
+                updated_ops,
+                interference_graph,
+                colouring_stack,
+            },
+            Err(spills) => ColouringResult::SpillsNeeded {
+                updated_ops,
+                spills,
+            },
+        }
+    }
+
+    // We start with the ops we're given.
+    let mut updated_ops_ref = ops;
+    // A placeholder for updated ops.
+    let mut updated_ops;
+    // How many times to try spilling before we give up.
+    let mut try_count = 0;
+    // Try and assign registers. If we fail, spill. Repeat few times.
+    let (updated_ops, interference_graph, mut stack) = loop {
+        match try_color(updated_ops_ref) {
+            ColouringResult::Success {
+                updated_ops,
+                interference_graph,
+                colouring_stack,
+            } => {
+                break (updated_ops, interference_graph, colouring_stack);
+            }
+            ColouringResult::SpillsNeeded {
+                updated_ops: updated_ops_before_spill,
+                spills,
+            } => {
+                if try_count >= 4 {
+                    let comment = updated_ops_before_spill
+                        .iter()
+                        .find_map(|op| {
+                            if let Either::Right(crate::asm_lang::ControlFlowOp::Label(_)) =
+                                op.opcode
+                            {
+                                Some(op.comment.clone())
+                            } else {
+                                None
+                            }
+                        })
+                        .unwrap_or("unknown".into());
+
+                    return Err(CompileError::InternalOwned(
+                        format!(
+                            "The allocator cannot resolve a register mapping for function {}. \
+                                     Using #[inline(never)] on some functions may help.",
+                            comment
+                        ),
+                        Span::dummy(),
+                    ));
+                }
+                try_count += 1;
+                updated_ops = spill(&updated_ops_before_spill, &spills);
+                updated_ops_ref = &updated_ops;
+            }
+        }
+    };
+
+    // Step 5: Use the stack to assign a register for each virtual register.
+    let pool = assign_registers(&interference_graph, &mut stack)?;
+    // Step 6: Update all instructions to use the resulting register pool.
+    let mut buf = vec![];
+    for op in &updated_ops {
+        buf.push(AllocatedAbstractOp {
+            opcode: op.allocate_registers(&pool),
+            comment: op.comment.clone(),
+            owning_span: op.owning_span.clone(),
+        })
+    }
+
+    Ok(AllocatedAbstractInstructionSet { ops: buf })
+}
+
 /// Use the stack generated by the coloring algorithm to figure out a register assignment for each
 /// virtual register. The idea here is to successively pop the stack while selecting a register to
 /// each virtual register. A register r is available to a virtual register v if the intersection of
 /// the neighbors of v (available from the stack) and the list of virtual registers already used by
 /// r (available in the used_by field) is empty.
 ///
-pub(crate) fn assign_registers(
+fn assign_registers(
     interference_graph: &InterferenceGraph,
     stack: &mut Vec<NodeIndex>,
 ) -> Result<RegisterPool, CompileError> {
@@ -714,7 +828,7 @@ pub(crate) fn assign_registers(
 /// Given a function, its locals info (stack frame usage details)
 /// and a set of virtual registers to be spilled, insert the actual spills
 /// and return the updated function and the updated stack info.
-pub(crate) fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
+fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
     let mut spilled: Vec<Op> = vec![];
 
     // Attempt to discover the current stack size and base register.
