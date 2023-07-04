@@ -430,7 +430,6 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
         };
 
         if let Err(err) = result {
-            dbg!(1);
             println!(" {}", "failed".red().bold());
             println!("{}", textwrap::indent(err.to_string().as_str(), "     "));
             println!("{}", textwrap::indent(&output, "          "));

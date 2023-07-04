@@ -744,6 +744,9 @@ fn const_eval_intrinsic(
         | sway_ast::Intrinsic::Revert
         | sway_ast::Intrinsic::Smo => Ok(None),
         sway_ast::Intrinsic::Not => {
+            // Not works only with uint at the moment
+            // `bool` ops::Not implementation uses `__eq`.
+
             assert!(args.len() == 1 && args[0].ty.is_uint(lookup.context));
 
             let Some(arg) = args.into_iter().next() else {
