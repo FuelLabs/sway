@@ -29,8 +29,8 @@ revm = "2.3.1"
 serde_json = "1.0.73"
 sway-core = { path = "../sway-core" }
 sway-ir = { path = "../sway-ir" }
-sway-utils = { path = "../sway-utils" }
 sway-types = { path = "../sway-types" }
+sway-utils = { path = "../sway-utils" }
 textwrap = "0.16.0"
 tokio = "1.12"
 toml = "0.5"
