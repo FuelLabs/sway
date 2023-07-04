@@ -25,7 +25,7 @@ use std::{
     str::FromStr,
     sync::Arc,
 };
-use sway_core::fuel_prelude::{fuel_types::ChainId};
+use sway_core::fuel_prelude::fuel_types::ChainId;
 pub use sway_core::Programs;
 use sway_core::{
     abi_generation::{
@@ -494,10 +494,7 @@ impl BuiltPackage {
                 // TODO: Pass the user specified `ChainId` into `predicate_owner`
                 let root = format!(
                     "0x{}",
-                    fuel_tx::Input::predicate_owner(
-                        &self.bytecode.bytes,
-                        &ChainId::default(),
-                    )
+                    fuel_tx::Input::predicate_owner(&self.bytecode.bytes, &ChainId::default(),)
                 );
                 let root_file_name = format!("{}{}", &pkg_name, SWAY_BIN_ROOT_SUFFIX);
                 let root_path = output_dir.join(root_file_name);
