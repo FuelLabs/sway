@@ -880,7 +880,7 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
                     + &format!(" and {new_locals_byte_size} bytes for spills"),
                 owning_span: op.owning_span.clone(),
             });
-        } else if cfs_idx_opt.is_some_and(|cfs_idx| cfs_idx == op_idx) {
+        } else if matches!(cfs_idx_opt, Some(cfs_idx) if cfs_idx == op_idx) {
             // This is the CFS instruction, use the new stack size.
             spilled.push(Op {
                 opcode: Either::Left(VirtualOp::CFSI(VirtualImmediate24 {
