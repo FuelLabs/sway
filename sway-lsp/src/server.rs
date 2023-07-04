@@ -106,14 +106,14 @@ impl LanguageServer for ServerState {
     ) -> Result<Option<PrepareRenameResponse>> {
         request::handle_prepare_rename(self, params)
     }
+
+    async fn inlay_hint(&self, params: InlayHintParams) -> Result<Option<Vec<InlayHint>>> {
+        request::handle_inlay_hints(self, params)
+    }
 }
 
 // Custom LSP-Server Methods
 impl ServerState {
-    pub async fn inlay_hints(&self, params: InlayHintParams) -> Result<Option<Vec<InlayHint>>> {
-        request::handle_inlay_hints(self, params)
-    }
-
     pub async fn show_ast(&self, params: ShowAstParams) -> Result<Option<TextDocumentIdentifier>> {
         request::handle_show_ast(self, params)
     }
