@@ -37,3 +37,6 @@ tracing = "0.1"
 url = { version = "2.2", features = ["serde"] }
 vec1 = "1.8.0"
 walkdir = "2"
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+sysinfo = "0.29.0"

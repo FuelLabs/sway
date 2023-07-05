@@ -44,3 +44,6 @@ thiserror = "1.0"
 tracing = "0.1"
 uint = "0.9"
 vec1 = "1.8.0"
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+sysinfo = "0.29.0"
