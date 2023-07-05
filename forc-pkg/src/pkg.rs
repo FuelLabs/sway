@@ -2597,11 +2597,10 @@ pub fn check(
         // are dependencies.
         //
         // See this github issue for more context: https://github.com/FuelLabs/sway-vscode-plugin/issues/154
-        let contract_id_value = if idx == plan.compilation_order.len() - 1 {
-            Some("0x0000000000000000000000000000000000000000000000000000000000000000".to_string())
-        } else {
-            None
-        };
+        const DUMMY_CONTRACT_ID: &str =
+            "0x0000000000000000000000000000000000000000000000000000000000000000";
+        let contract_id_value =
+            (idx == plan.compilation_order.len() - 1).then(|| DUMMY_CONTRACT_ID.to_string());
 
         let dep_namespace = dependency_namespace(
             &lib_namespace_map,
