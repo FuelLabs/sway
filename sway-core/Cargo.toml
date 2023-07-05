@@ -40,7 +40,6 @@ sway-ir = { version = "0.41.0", path = "../sway-ir" }
 sway-parse = { version = "0.41.0", path = "../sway-parse" }
 sway-types = { version = "0.41.0", path = "../sway-types" }
 sway-utils = { version = "0.41.0", path = "../sway-utils" }
-sysinfo = "0.29.0"
 thiserror = "1.0"
 tracing = "0.1"
 uint = "0.9"

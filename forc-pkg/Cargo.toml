@@ -31,7 +31,6 @@ sway-core = { version = "0.41.0", path = "../sway-core" }
 sway-error = { version = "0.41.0", path = "../sway-error" }
 sway-types = { version = "0.41.0", path = "../sway-types" }
 sway-utils = { version = "0.41.0", path = "../sway-utils" }
-sysinfo = "0.29.0"
 tar = "0.4.38"
 toml = "0.5"
 tracing = "0.1"

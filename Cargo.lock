@@ -1772,7 +1772,6 @@ dependencies = [
  "sway-error",
  "sway-types",
  "sway-utils",
- "sysinfo",
  "tar",
  "toml",
  "tracing",
@@ -5356,7 +5355,6 @@ dependencies = [
  "sway-parse",
  "sway-types",
  "sway-utils",
- "sysinfo",
  "thiserror",
  "tracing",
  "uint",
@@ -5485,6 +5483,7 @@ name = "sway-utils"
 version = "0.41.0"
 dependencies = [
  "serde",
+ "sysinfo",
 ]
 
 [[package]]
