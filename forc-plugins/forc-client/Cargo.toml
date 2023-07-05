@@ -19,7 +19,7 @@ forc-pkg = { version = "0.41.0", path = "../../forc-pkg" }
 forc-tracing = { version = "0.41.0", path = "../../forc-tracing" }
 forc-tx = { version = "0.41.0", path = "../forc-tx" }
 forc-util = { version = "0.41.0", path = "../../forc-util" }
-forc-wallet = { path = "../../../forc-wallet/" } 
+forc-wallet = "0.2.3" 
 fuel-abi-types = "0.3"
 fuel-core-client = { workspace = true }
 fuel-crypto = { workspace = true }

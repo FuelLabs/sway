@@ -1848,7 +1848,9 @@ dependencies = [
 
 [[package]]
 name = "forc-wallet"
-version = "0.2.2"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c665edcb55f5e6e4f839f1219b4aeab4ef9db354fc5f2eb499b9b93b5b93d84e"
 dependencies = [
  "anyhow",
  "clap 4.3.9",
