@@ -26,13 +26,13 @@ macro_rules! time_expr {
                     println!("  Time elapsed to {}: {:?}", $description, elapsed);
                 }
                 if cfg.metrics_outfile.is_some() {
-                    #[cfg(sysinfo)]
+                    #[cfg(not(target_os = "macos"))]
                     let memory_usage = {
                         use sysinfo::{System, SystemExt};
                         let mut sys = System::new();
                         sys.refresh_system();
                     };
-                    #[cfg(not(sysinfo))]
+                    #[cfg(target_os = "macos")]
                     let memory_usage = None;
 
                     $data.metrics.push(PerformanceMetric {
