@@ -2,7 +2,7 @@ use crate::{
     cmd,
     util::{
         pkg::built_pkgs,
-        tx::{TransactionBuilderExt, TX_SUBMIT_TIMEOUT_MS},
+        tx::{TransactionBuilderExt, WalletSelectionMode, TX_SUBMIT_TIMEOUT_MS},
     },
 };
 use anyhow::{anyhow, bail, Context, Result};
@@ -77,12 +77,22 @@ pub async fn run_pkg(
                 .map_err(|e| anyhow!("Failed to parse contract id: {}", e))
         })
         .collect::<Result<Vec<ContractId>>>()?;
+    let wallet_mode = if command.manual_signing {
+        WalletSelectionMode::Manual
+    } else {
+        WalletSelectionMode::ForcWallet
+    };
     let tx = TransactionBuilder::script(compiled.bytecode.bytes.clone(), script_data)
         .gas_limit(command.gas.limit)
         .gas_price(command.gas.price)
         .maturity(command.maturity.maturity.into())
         .add_contracts(contract_ids)
-        .finalize_signed(client.clone(), command.unsigned, command.signing_key)
+        .finalize_signed(
+            client.clone(),
+            command.unsigned,
+            command.signing_key,
+            wallet_mode,
+        )
         .await?;
     if command.dry_run {
         info!("{:?}", tx);
