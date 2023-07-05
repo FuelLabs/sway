@@ -31,6 +31,7 @@ macro_rules! time_expr {
                         use sysinfo::{System, SystemExt};
                         let mut sys = System::new();
                         sys.refresh_system();
+                        Some(sys.used_memory())
                     };
                     #[cfg(target_os = "macos")]
                     let memory_usage = None;
