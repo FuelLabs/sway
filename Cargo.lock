@@ -5485,7 +5485,6 @@ name = "sway-utils"
 version = "0.41.0"
 dependencies = [
  "serde",
- "sysinfo",
 ]
 
 [[package]]

@@ -10,6 +10,3 @@ repository.workspace = true
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
-
-[target.'cfg(not(target_os = "macos"))'.dependencies]
-sysinfo = "0.29.0"
