@@ -27,16 +27,38 @@ The `msg_sender` function works as follows:
 
 ## Contract Ownership
 
-Many contracts require some form of ownership for access control. To accomplish this, it is recommended that a storage variable of type `Option<Identity>` is used to keep track of the owner. This allows setting and revoking ownership using the variants `Some(..)` and `None` respectively. This is better, safer, and more readable than using the `Identity` type directly where revoking ownership has to be done using some magic value such as `std::constants::ZERO_B256` or otherwise.
+Many contracts require some form of ownership for access control. The [SRC-5 Ownership Standard](**LINK WHEN MERGED HERE**) has been defined to provide a interoperable interface for ownership within contracts. 
 
-The following is an example of how to properly set ownership of a contract:
+To accomplish this, use the [Ownerhsip Library](https://github.com/FuelLabs/sway-libs/tree/master/libs/ownership) to keep track of the owner. This allows setting and revoking ownership using the variants `Some(..)` and `None` respectively. This is better, safer, and more readable than using the `Identity` type directly where revoking ownership has to be done using some magic value such as `std::constants::ZERO_B256` or otherwise.
+
+- The following is an example of how to properly lock a function such that only the owner may call a function:
 
 ```sway
-{{#include ../../../../examples/ownership/src/main.sw:set_owner_example}}
+{{#include ../../../../examples/ownership/src/main.sw:only_owner_example}}
 ```
 
-The following is an example of how to properly revoke ownership of a contract:
+Setting ownership can be done in one of two ways; During compile time or run time.
+
+- The following is an example of how to properly set ownership of a contract during compile time:
+
+```sway
+{{#include ../../../../examples/ownership/src/main.sw:set_owner_example_storage}}
+```
+
+- The following is an example of how to properly set ownership of a contract during run time:
+
+```sway
+{{#include ../../../../examples/ownership/src/main.sw:set_owner_example_function}}
+```
+
+- The following is an example of how to properly revoke ownership of a contract:
 
 ```sway
 {{#include ../../../../examples/ownership/src/main.sw:revoke_owner_example}}
+```
+
+- The following is an example of how to properly retrieve the state of ownership:
+
+```sway
+{{#include ../../../../examples/ownership/src/main.sw:get_owner_example}}
 ```
