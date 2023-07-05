@@ -605,7 +605,7 @@ fn effects_of_intrinsic(intr: &sway_ast::Intrinsic) -> HashSet<Effect> {
         Smo => HashSet::from([Effect::OutputMessage]),
         Revert | IsReferenceType | IsStrType | SizeOfType | SizeOfVal | SizeOfStr | Eq | Gt
         | Lt | Gtf | AddrOf | Log | Add | Sub | Mul | Div | And | Or | Xor | Mod | Rsh | Lsh
-        | PtrAdd | PtrSub => HashSet::new(),
+        | PtrAdd | PtrSub | Not => HashSet::new(),
     }
 }
 

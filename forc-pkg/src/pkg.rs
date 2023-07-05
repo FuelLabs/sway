@@ -2585,16 +2585,29 @@ pub fn check(
     let compiled_contract_deps = HashMap::new();
 
     let mut results = vec![];
-    for &node in plan.compilation_order.iter() {
+    for (idx, &node) in plan.compilation_order.iter().enumerate() {
         let pkg = &plan.graph[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
+
+        // This is necessary because `CONTRACT_ID` is a special constant that's injected into the
+        // compiler's namespace. Although we only know the contract id during building, we are
+        // inserting a dummy value here to avoid false error signals being reported in LSP.
+        // We only do this for the last node in the compilation order because previous nodes
+        // are dependencies.
+        //
+        // See this github issue for more context: https://github.com/FuelLabs/sway-vscode-plugin/issues/154
+        const DUMMY_CONTRACT_ID: &str =
+            "0x0000000000000000000000000000000000000000000000000000000000000000";
+        let contract_id_value =
+            (idx == plan.compilation_order.len() - 1).then(|| DUMMY_CONTRACT_ID.to_string());
+
         let dep_namespace = dependency_namespace(
             &lib_namespace_map,
             &compiled_contract_deps,
             &plan.graph,
             node,
             engines,
-            None,
+            contract_id_value,
         )
         .expect("failed to create dependency namespace");
 

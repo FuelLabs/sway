@@ -275,6 +275,9 @@ impl<'ir, 'eng> MidenVMAsmBuilder<'ir, 'eng> {
             match instruction {
                 Instruction::AsmBlock(asm, args) => todo!(),
                 Instruction::BitCast(val, ty) => todo!(),
+                Instruction::UnaryOp { op, arg } => {
+                    todo!()
+                }
                 Instruction::BinaryOp { op, arg1, arg2 } => {
                     todo!()
                 }

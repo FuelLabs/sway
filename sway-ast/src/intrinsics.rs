@@ -32,6 +32,7 @@ pub enum Intrinsic {
     PtrAdd,
     PtrSub,
     Smo,
+    Not,
 }
 
 impl fmt::Display for Intrinsic {
@@ -67,6 +68,7 @@ impl fmt::Display for Intrinsic {
             Intrinsic::PtrAdd => "ptr_add",
             Intrinsic::PtrSub => "ptr_sub",
             Intrinsic::Smo => "smo",
+            Intrinsic::Not => "not",
         };
         write!(f, "{s}")
     }
@@ -106,6 +108,7 @@ impl Intrinsic {
             "__ptr_add" => PtrAdd,
             "__ptr_sub" => PtrSub,
             "__smo" => Smo,
+            "__not" => Not,
             _ => return None,
         })
     }

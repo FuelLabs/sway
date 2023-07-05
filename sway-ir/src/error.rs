@@ -16,6 +16,7 @@ pub enum IrError {
     ValueNotFound(String),
 
     VerifyArgumentValueIsNotArgument(String),
+    VerifyUnaryOpIncorrectArgType,
     VerifyBinaryOpIncorrectArgType,
     VerifyBitcastBetweenInvalidTypes(String, String),
     VerifyBitcastUnknownSourceType,
@@ -116,6 +117,12 @@ impl fmt::Display for IrError {
                 f,
                 "Verification failed: Bitcast not allowed from a {from_ty} to a {to_ty}."
             ),
+            IrError::VerifyUnaryOpIncorrectArgType => {
+                write!(
+                    f,
+                    "Verification failed: Incorrect argument type for unary op"
+                )
+            }
             IrError::VerifyBinaryOpIncorrectArgType => {
                 write!(
                     f,
