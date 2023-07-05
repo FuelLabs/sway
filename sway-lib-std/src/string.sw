@@ -43,6 +43,21 @@ impl String {
         }
     }
 
+    /// Converts a string literal containing ASCII encoded bytes to a `String`
+    ///
+    /// WARNING: this is a temporary convenience before dynamically sized types are implemented
+    pub fn from_ascii_str<S>(s: S) -> Self {
+        assert(__is_str_type::<S>());
+        let len =  __size_of_str::<S>();
+        let ptr = asm(s: s) {
+            s: raw_ptr
+        };
+        let slice = asm(parts:(ptr, len)) { parts: raw_slice};
+        Self {
+            bytes: Bytes::from(slice)
+        }
+    }
+
     /// Returns `true` if the string is empty (contains no bytes).
     pub fn is_empty(self) -> bool {
         self.bytes.is_empty()
@@ -198,9 +213,24 @@ fn string_test_from_ascii() {
 
     let mut string_from_ascii = String::from_ascii(bytes);
     assert(bytes.capacity() == string_from_ascii.capacity());
+    let bytes = string_from_ascii.as_bytes();
     assert(bytes.get(0).unwrap() == 0u8);
     assert(bytes.get(1).unwrap() == 1u8);
     assert(bytes.get(2).unwrap() == 2u8);
+}
+
+#[test]
+fn string_test_from_ascii_str() {
+    let mut string_from_ascii = String::from_ascii_str("ABCDEF");
+    assert(string_from_ascii.capacity() == 6);
+    let bytes = string_from_ascii.as_bytes();
+    assert(bytes.get(0).unwrap() == 65u8);
+    assert(bytes.get(1).unwrap() == 66u8);
+    assert(bytes.get(2).unwrap() == 67u8);
+    assert(bytes.get(3).unwrap() == 68u8);
+    assert(bytes.get(4).unwrap() == 69u8);
+    assert(bytes.get(5).unwrap() == 70u8);
+    assert(bytes.get(6).is_none());
 }
 
 #[test]
