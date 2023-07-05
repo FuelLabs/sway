@@ -107,6 +107,7 @@ pub fn compute_escaped_symbols(context: &Context, function: &Function) -> Escape
                     add_from_val(&mut result, &arg_init)
                 }
             }
+            Instruction::UnaryOp { .. } => (),
             Instruction::BinaryOp { .. } => (),
             Instruction::BitCast(_, _) => (),
             Instruction::Branch(_) => (),

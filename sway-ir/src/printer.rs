@@ -19,7 +19,7 @@ use crate::{
     module::{Kind, ModuleContent},
     value::{Value, ValueContent, ValueDatum},
     AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, BlockArgument, IrError, Module,
-    Pass, PassMutability, ScopedPass,
+    Pass, PassMutability, ScopedPass, UnaryOpKind,
 };
 
 #[derive(Debug)]
@@ -398,6 +398,19 @@ fn instruction_to_doc<'a>(
                         namer.name(context, ins_value),
                         namer.name(context, value),
                         ty.as_string(context),
+                    ))
+                    .append(md_namer.md_idx_to_doc(context, metadata)),
+                ))
+            }
+            Instruction::UnaryOp { op, arg } => {
+                let op_str = match op {
+                    UnaryOpKind::Not => "not",
+                };
+                maybe_constant_to_doc(context, md_namer, namer, arg).append(Doc::line(
+                    Doc::text(format!(
+                        "{} = {op_str} {}",
+                        namer.name(context, ins_value),
+                        namer.name(context, arg),
                     ))
                     .append(md_namer.md_idx_to_doc(context, metadata)),
                 ))
