@@ -38,7 +38,7 @@ macro_rules! time_expr {
                     $data.metrics.push(PerformanceMetric {
                         phase: $key.to_string(),
                         elapsed: elapsed.as_secs_f64(),
-                        memory_usage 
+                        memory_usage,
                     });
                 }
                 output
