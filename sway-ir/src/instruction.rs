@@ -32,7 +32,7 @@ pub struct BranchToWithArgs {
 pub enum Instruction {
     /// An opaque list of ASM instructions passed directly to codegen.
     AsmBlock(AsmBlock, Vec<AsmArg>),
-    /// Unart arithmetic operations
+    /// Unary arithmetic operations
     UnaryOp { op: UnaryOpKind, arg: Value },
     /// Binary arithmetic operations
     BinaryOp {
