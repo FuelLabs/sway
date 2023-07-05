@@ -5880,6 +5880,7 @@ dependencies = [
  "serde_json",
  "sway-core",
  "sway-ir",
+ "sway-types",
  "sway-utils",
  "textwrap 0.16.0",
  "tokio",

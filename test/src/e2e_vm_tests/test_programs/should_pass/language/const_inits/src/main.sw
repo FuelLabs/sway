@@ -152,5 +152,21 @@ fn main() -> u64 {
     assert(FOO_MIDDLE == BAR);
     assert(OPS == 23);
 
+    test_not();
+
     1
+}
+
+const NOTA = !0u8;
+const NOTB = !0u16;
+const NOTC = !0u32;
+const NOTD = !0u64;
+const NOTE = !false;
+
+fn test_not() {
+    assert(NOTA == 0xFFu8);
+    assert(NOTB == 0xFFFFu16);
+    assert(NOTC == 0xFFFFFFFFu32);
+    assert(NOTD == 0xFFFFFFFFFFFFFFFFu64);
+    assert(NOTE == true);
 }

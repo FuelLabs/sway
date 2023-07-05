@@ -209,6 +209,9 @@ impl Session {
             } = res;
 
             if value.is_none() {
+                // If there was an unrecoverable error in the parser
+                // make sure to still return the diagnostics.
+                *diagnostics = get_diagnostics(&warnings, &errors);
                 continue;
             }
             let Programs {
