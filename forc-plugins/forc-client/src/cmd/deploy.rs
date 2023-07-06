@@ -29,7 +29,7 @@ pub struct Command {
     /// --salt contract_b:0x0000000000000000000000000000000000000000000000000000000000000002
     #[clap(long)]
     pub salt: Option<Vec<String>>,
-    /// Generate a defualt salt (0x0000000000000000000000000000000000000000000000000000000000000000) for the contract.
+    /// Generate a default salt (0x0000000000000000000000000000000000000000000000000000000000000000) for the contract.
     /// Useful for CI, to create reproducable deployments.
     #[clap(long)]
     pub default_salt: bool,
