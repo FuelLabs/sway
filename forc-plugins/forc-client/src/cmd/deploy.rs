@@ -56,4 +56,7 @@ pub struct Command {
     /// Possible values are: [beta-1, beta-2, beta-3, latest]
     #[clap(long)]
     pub target: Option<Target>,
+    /// Use preset configuration for the latest testnet.
+    #[clap(long)]
+    pub testnet: bool,
 }

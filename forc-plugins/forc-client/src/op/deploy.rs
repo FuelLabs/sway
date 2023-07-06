@@ -1,5 +1,5 @@
 use crate::{
-    cmd,
+    cmd::{self, deploy::Target},
     util::{
         pkg::built_pkgs,
         tx::{TransactionBuilderExt, WalletSelectionMode, TX_SUBMIT_TIMEOUT_MS},
@@ -78,7 +78,7 @@ fn validate_and_parse_salts<'a>(
 ///
 /// When deploying a single contract, only that contract's ID is returned.
 pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
-    let command = apply_target(command);
+    let command = apply_target(command)?;
     let mut contract_ids = Vec::new();
     let curr_dir = if let Some(ref path) = command.pkg.path {
         PathBuf::from(path)
@@ -155,8 +155,19 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
     Ok(contract_ids)
 }
 
-pub fn apply_target(command: cmd::Deploy) -> cmd::Deploy {
-    let target = command.target.clone();
+/// Applies specified target information to the provided arguments. 
+///
+/// Basically provides preset configurations for known test-nets.
+fn apply_target(command: cmd::Deploy) -> Result<cmd::Deploy> {
+    let deploy_to_latest_testnet = command.testnet;
+    let target = if deploy_to_latest_testnet {
+        if command.target.is_some() {
+            bail!("Both `--testnet` and `--target` were specified: must choose one")
+        }
+        Some(Target::Beta3)
+    } else {
+        command.target.clone()
+    };
 
     if let Some(target) = target {
         match target {
@@ -170,19 +181,19 @@ pub fn apply_target(command: cmd::Deploy) -> cmd::Deploy {
                 };
 
                 let target_url = Some(target.target_url().to_string());
-                cmd::Deploy {
+                Ok(cmd::Deploy {
                     gas: Gas {
                         price: gas_price,
                         ..command.gas
                     },
                     node_url: target_url,
                     ..command
-                }
+                })
             }
-            cmd::deploy::Target::LATEST => command,
+            cmd::deploy::Target::LATEST => Ok(command),
         }
     } else {
-        command
+        Ok(command)
     }
 }
 
