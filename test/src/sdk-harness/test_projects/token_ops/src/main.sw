@@ -7,7 +7,7 @@ abi TestFuelCoin {
     fn burn_coins(burn_amount: u64);
     fn force_transfer_coins(coins: u64, asset_id: ContractId, target: ContractId);
     fn transfer_coins_to_address(coins: u64, asset_id: ContractId, to: Address);
-    fn get_balance(target: ContractId, asset_id: ContractId) -> u64;
+    fn get_balance(asset_id: ContractId, target: ContractId) -> u64;
     fn mint_and_send_to_contract(amount: u64, to: ContractId);
     fn mint_and_send_to_address(amount: u64, to: Address);
     fn generic_mint_to(amount: u64, to: Identity);
@@ -39,8 +39,8 @@ impl TestFuelCoin for Contract {
         transfer_to_address(coins, asset_id, to);
     }
 
-    fn get_balance(target: ContractId, asset_id: ContractId) -> u64 {
-        balance_of(target, asset_id)
+    fn get_balance(asset_id: ContractId, target: ContractId) -> u64 {
+        balance_of(asset_id, target)
     }
 
     fn mint_and_send_to_contract(amount: u64, to: ContractId) {
