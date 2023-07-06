@@ -176,7 +176,6 @@ pub async fn deploy_pkg(
     let root = contract.root();
     let state_root = Contract::initial_state_root(storage_slots.iter());
     let contract_id = contract.id(&salt, &root, &state_root);
-    info!("Contract id: 0x{}", hex::encode(contract_id));
 
     let wallet_mode = if command.manual_signing {
         WalletSelectionMode::Manual
@@ -205,7 +204,12 @@ pub async fn deploy_pkg(
                 bail!("contract {} deployment timed out", &contract_id);
             }
             TransactionStatus::Success { block_id, .. } => {
-                info!("contract {} deployed in block {}", &contract_id, &block_id);
+                let pkg_name = manifest.project_name();
+                info!("\n\nContract {pkg_name} Deployed!");
+
+                info!("\nNetwork: {node_url}");
+                info!("Contract ID: 0x{contract_id}");
+                info!("Deployed in block {}", &block_id);
                 Ok(contract_id)
             }
             e => {
