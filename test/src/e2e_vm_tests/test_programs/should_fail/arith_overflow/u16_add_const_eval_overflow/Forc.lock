@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-0EAD15BE42537FD3'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-0EAD15BE42537FD3'
+dependencies = ['core']
+
+[[package]]
+name = 'u16_add_const_eval_overflow'
+source = 'member'
+dependencies = ['std']

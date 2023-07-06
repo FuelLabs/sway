@@ -69,7 +69,7 @@ impl StorableSlice<Bytes> for StorageKey<StorageBytes> {
     fn read_slice(self) -> Option<Bytes> {
         match read_slice(self.field_id) {
             Some(slice) => {
-                Some(Bytes::from_raw_slice(slice))
+                Some(Bytes::from(slice))
             },
             None => None,
         }

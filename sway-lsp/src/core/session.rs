@@ -23,7 +23,7 @@ use lsp_types::{
     TextDocumentContentChangeEvent, TextEdit, Url,
 };
 use parking_lot::RwLock;
-use pkg::{manifest::ManifestFile, Programs};
+use pkg::manifest::ManifestFile;
 use std::{
     fs::File,
     io::Write,
@@ -38,7 +38,7 @@ use sway_core::{
         parsed::{AstNode, ParseProgram},
         ty,
     },
-    BuildTarget, CompileResult, Engines, Namespace,
+    BuildTarget, CompileResult, Engines, Namespace, Programs,
 };
 use sway_types::{Span, Spanned};
 use sway_utils::helpers::get_sway_files;
@@ -209,6 +209,9 @@ impl Session {
             } = res;
 
             if value.is_none() {
+                // If there was an unrecoverable error in the parser
+                // make sure to still return the diagnostics.
+                *diagnostics = get_diagnostics(&warnings, &errors);
                 continue;
             }
             let Programs {
