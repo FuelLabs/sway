@@ -2,7 +2,7 @@ use crate::{
     cmd,
     util::{
         pkg::built_pkgs,
-        tx::{TransactionBuilderExt, TX_SUBMIT_TIMEOUT_MS},
+        tx::{TransactionBuilderExt, WalletSelectionMode, TX_SUBMIT_TIMEOUT_MS},
     },
 };
 use anyhow::{bail, Context, Result};
@@ -178,12 +178,23 @@ pub async fn deploy_pkg(
     let contract_id = contract.id(&salt, &root, &state_root);
     info!("Contract id: 0x{}", hex::encode(contract_id));
 
+    let wallet_mode = if command.manual_signing {
+        WalletSelectionMode::Manual
+    } else {
+        WalletSelectionMode::ForcWallet
+    };
+
     let tx = TransactionBuilder::create(bytecode.as_slice().into(), salt, storage_slots.clone())
         .gas_limit(command.gas.limit)
         .gas_price(command.gas.price)
         .maturity(command.maturity.maturity.into())
         .add_output(Output::contract_created(contract_id, state_root))
-        .finalize_signed(client.clone(), command.unsigned, command.signing_key)
+        .finalize_signed(
+            client.clone(),
+            command.unsigned,
+            command.signing_key,
+            wallet_mode,
+        )
         .await?;
 
     let tx = Transaction::from(tx);

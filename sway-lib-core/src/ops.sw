@@ -12,21 +12,41 @@ impl Add for u64 {
     }
 }
 
+// Emulate overflowing arithmetic for non-64-bit integer types
 impl Add for u32 {
     fn add(self, other: Self) -> Self {
-        __add(self, other)
+        // any non-64-bit value is compiled to a u64 value under-the-hood
+        // constants (like Self::max() below) are also automatically promoted to u64
+        let res = __add(self, other);
+        if __gt(res, Self::max()) {
+            // integer overflow
+            __revert(0)
+        } else {
+            // no overflow
+            res
+        }
     }
 }
 
 impl Add for u16 {
     fn add(self, other: Self) -> Self {
-        __add(self, other)
+        let res = __add(self, other);
+        if __gt(res, Self::max()) {
+            __revert(0)
+        } else {
+            res
+        }
     }
 }
 
 impl Add for u8 {
     fn add(self, other: Self) -> Self {
-        __add(self, other)
+        let res = __add(self, other);
+        if __gt(res, Self::max()) {
+            __revert(0)
+        } else {
+            res
+        }
     }
 }
 
@@ -40,6 +60,8 @@ impl Subtract for u64 {
     }
 }
 
+// unlike addition, underflowing subtraction does not need special treatment
+// because VM handles underflow
 impl Subtract for u32 {
     fn subtract(self, other: Self) -> Self {
         __sub(self, other)
@@ -68,21 +90,41 @@ impl Multiply for u64 {
     }
 }
 
+// Emulate overflowing arithmetic for non-64-bit integer types
 impl Multiply for u32 {
     fn multiply(self, other: Self) -> Self {
-        __mul(self, other)
+        // any non-64-bit value is compiled to a u64 value under-the-hood
+        // constants (like Self::max() below) are also automatically promoted to u64
+        let res = __mul(self, other);
+        if __gt(res, Self::max()) {
+            // integer overflow
+            __revert(0)
+        } else {
+            // no overflow
+            res
+        }
     }
 }
 
 impl Multiply for u16 {
     fn multiply(self, other: Self) -> Self {
-        __mul(self, other)
+        let res = __mul(self, other);
+        if __gt(res, Self::max()) {
+            __revert(0)
+        } else {
+            res
+        }
     }
 }
 
 impl Multiply for u8 {
     fn multiply(self, other: Self) -> Self {
-        __mul(self, other)
+        let res = __mul(self, other);
+        if __gt(res, Self::max()) {
+            __revert(0)
+        } else {
+            res
+        }
     }
 }
 
@@ -96,6 +138,10 @@ impl Divide for u64 {
     }
 }
 
+// division for unsigned integers cannot overflow,
+// but if signed integers are ever introduced,
+// overflow needs to be handled, since
+// Self::max() / -1 overflows
 impl Divide for u32 {
     fn divide(self, other: Self) -> Self {
         __div(self, other)
@@ -370,40 +416,28 @@ impl BitwiseXor for u8 {
 
 impl Not for u64 {
     fn not(self) -> Self {
-        asm(r1: self, r2) {
-            not r2 r1;
-            r2: u64
-        }
+        __not(self)
     }
 }
 
 impl Not for u32 {
     fn not(self) -> Self {
-        asm(r1: self, r2, r3: u32::max(), r4) {
-            not r2 r1;
-            and r4 r2 r3;
-            r4: u32
-        }
+        let v = __not(self);
+        __and(v, u32::max())
     }
 }
 
 impl Not for u16 {
     fn not(self) -> Self {
-        asm(r1: self, r2, r3: u16::max(), r4) {
-            not r2 r1;
-            and r4 r2 r3;
-            r4: u16
-        }
+        let v = __not(self);
+        __and(v, u16::max())
     }
 }
 
 impl Not for u8 {
     fn not(self) -> Self {
-        asm(r1: self, r2, r3: u8::max(), r4) {
-            not r2 r1;
-            and r4 r2 r3;
-            r4: u8
-        }
+        let v = __not(self);
+        __and(v, u8::max())
     }
 }
 
@@ -482,7 +516,9 @@ impl Shift for u64 {
 
 impl Shift for u32 {
     fn lsh(self, other: u64) -> Self {
-        __lsh(self, other)
+        // any non-64-bit value is compiled to a u64 value under-the-hood
+        // so we need to clear upper bits here
+        __and(__lsh(self, other), Self::max())
     }
     fn rsh(self, other: u64) -> Self {
         __rsh(self, other)
@@ -491,7 +527,7 @@ impl Shift for u32 {
 
 impl Shift for u16 {
     fn lsh(self, other: u64) -> Self {
-        __lsh(self, other)
+        __and(__lsh(self, other), Self::max())
     }
     fn rsh(self, other: u64) -> Self {
         __rsh(self, other)
@@ -500,7 +536,7 @@ impl Shift for u16 {
 
 impl Shift for u8 {
     fn lsh(self, other: u64) -> Self {
-        __lsh(self, other)
+        __and(__lsh(self, other), Self::max())
     }
     fn rsh(self, other: u64) -> Self {
         __rsh(self, other)

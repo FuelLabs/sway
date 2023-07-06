@@ -159,6 +159,9 @@ mod ir_builder {
                     mdi
                 }
 
+            rule unary_op_kind() -> UnaryOpKind
+                = "not" _ { UnaryOpKind::Not }
+
             rule binary_op_kind() -> BinaryOpKind
                 = "add" _ { BinaryOpKind::Add }
                 / "sub" _ { BinaryOpKind::Sub }
@@ -175,6 +178,7 @@ mod ir_builder {
                 = op_asm()
                 / op_branch()
                 / op_bitcast()
+                / op_unary()
                 / op_binary()
                 / op_call()
                 / op_cast_ptr()
@@ -218,6 +222,11 @@ mod ir_builder {
             rule op_bitcast() -> IrAstOperation
                 = "bitcast" _ val:id() "to" _ ty:ast_ty() {
                     IrAstOperation::BitCast(val, ty)
+                }
+
+            rule op_unary() -> IrAstOperation
+                = op: unary_op_kind() arg1:id() {
+                    IrAstOperation::UnaryOp(op, arg1)
                 }
 
             rule op_binary() -> IrAstOperation
@@ -616,7 +625,7 @@ mod ir_builder {
         metadata::{MetadataIndex, Metadatum},
         module::{Kind, Module},
         value::Value,
-        BinaryOpKind, BlockArgument,
+        BinaryOpKind, BlockArgument, UnaryOpKind,
     };
 
     #[derive(Debug)]
@@ -664,6 +673,7 @@ mod ir_builder {
             Option<MdIdxRef>,
         ),
         BitCast(String, IrAstTy),
+        UnaryOp(UnaryOpKind, String),
         BinaryOp(BinaryOpKind, String, String),
         Br(String, Vec<String>),
         Call(String, Vec<String>),
@@ -1039,6 +1049,10 @@ mod ir_builder {
                             .bitcast(*val_map.get(&val).unwrap(), to_ty)
                             .add_metadatum(context, opt_metadata)
                     }
+                    IrAstOperation::UnaryOp(op, arg) => block
+                        .ins(context)
+                        .unary_op(op, *val_map.get(&arg).unwrap())
+                        .add_metadatum(context, opt_metadata),
                     IrAstOperation::BinaryOp(op, arg1, arg2) => block
                         .ins(context)
                         .binary_op(

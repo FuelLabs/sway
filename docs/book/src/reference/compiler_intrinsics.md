@@ -287,3 +287,12 @@ __smo<T>(recipient: b256, data: T, coins: u64)
 **Constraints:** None.
 
 ___
+
+```sway
+__not(op: T) -> T
+```
+
+**Description:** Bitwise NOT of `op`
+
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+___

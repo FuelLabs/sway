@@ -3,20 +3,27 @@ use std::{io::Write, str::FromStr};
 use anyhow::{Error, Result};
 use async_trait::async_trait;
 use fuel_core_client::client::FuelClient;
-use fuel_crypto::{Message, SecretKey, Signature};
+use fuel_crypto::{Message, PublicKey, SecretKey, Signature};
 use fuel_tx::{
     field, Address, AssetId, Buildable, ContractId, Input, Output, TransactionBuilder, Witness,
 };
 use fuel_vm::prelude::SerializableVec;
 use fuels_accounts::{provider::Provider, wallet::Wallet, ViewOnlyAccount};
 use fuels_core::types::{
-    bech32::Bech32Address,
+    bech32::{Bech32Address, FUEL_BECH32_HRP},
     coin_type::CoinType,
     transaction_builders::{create_coin_input, create_coin_message_input},
 };
 
+use forc_wallet::{account::derive_secret_key, utils::default_wallet_path};
+
 /// The maximum time to wait for a transaction to be included in a block by the node
 pub const TX_SUBMIT_TIMEOUT_MS: u64 = 30_000u64;
+
+pub enum WalletSelectionMode {
+    ForcWallet,
+    Manual,
+}
 
 fn prompt_address() -> Result<Bech32Address> {
     print!("Please provide the address of the wallet you are going to sign this transaction with:");
@@ -51,6 +58,7 @@ pub trait TransactionBuilderExt<Tx> {
         client: FuelClient,
         unsigned: bool,
         signing_key: Option<SecretKey>,
+        wallet_mode: WalletSelectionMode,
     ) -> Result<Tx>;
 }
 
@@ -121,13 +129,65 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
         client: FuelClient,
         unsigned: bool,
         signing_key: Option<SecretKey>,
+        wallet_mode: WalletSelectionMode,
     ) -> Result<Tx> {
         let params = client.chain_info().await?.consensus_parameters.into();
         let mut signature_witness_index = 0u8;
-        if !unsigned {
+        let signing_key = if !unsigned {
+            let key = match (wallet_mode, signing_key) {
+                (WalletSelectionMode::ForcWallet, None) => {
+                    // TODO: This is a very simple TUI, we should consider adding a nice TUI
+                    // capabilities for selections and answer collection.
+                    let wallet_path = default_wallet_path();
+                    if !wallet_path.exists() {
+                        anyhow::bail!("Cannot find a wallet at {wallet_path:?}\nPlease a generate new wallet with `forc wallet new`");
+                    }
+                    let prompt = format!(
+                        "\nPlease provide the password of your encrypted wallet vault at {wallet_path:?}:"
+                    );
+                    let password = rpassword::prompt_password(prompt)?;
+                    // TODO: List all derived wallets via forc-wallet and let the users choose
+                    // account.
+                    let account_index = 0;
+                    let secret_key = derive_secret_key(&wallet_path, account_index, &password).map_err(|e| {
+                        if e.to_string().contains("Mac Mismatch") {
+                            anyhow::anyhow!("Failed to access forc-wallet vault. Please check your password")
+                        }else {
+                            e
+                        }
+                    })?;
+
+                    // TODO: Do this via forc-wallet once the functinoality is exposed.
+                    let public_key = PublicKey::from(&secret_key);
+                    let hashed = public_key.hash();
+                    let bech32 = Bech32Address::new(FUEL_BECH32_HRP, hashed);
+                    // TODO: Check for balance and suggest using the faucet.
+                    print!("Do you accept to sign this transaction with {bech32} [y/N]:");
+                    std::io::stdout().flush()?;
+                    let mut ans = String::new();
+                    std::io::stdin().read_line(&mut ans)?;
+                    // Pop trailing \n as users press enter to submit their answers.
+                    ans.pop();
+                    // Trim the user input as it might have an additional space.
+                    let ans = ans.trim();
+                    if ans != "y" && ans != "Y" {
+                        anyhow::bail!("User refused to sign");
+                    }
+
+                    Some(secret_key)
+                }
+                (WalletSelectionMode::ForcWallet, Some(key)) => {
+                    tracing::warn!(
+                        "Signing key is provided while requesting to sign with forc-wallet. Using signing key"
+                    );
+                    Some(key)
+                }
+                (WalletSelectionMode::Manual, None) => None,
+                (WalletSelectionMode::Manual, Some(key)) => Some(key),
+            };
             // Get the address
-            let address = if let Some(signing_key) = signing_key {
-                Address::from(*signing_key.public_key().hash())
+            let address = if let Some(key) = key {
+                Address::from(*key.public_key().hash())
             } else {
                 Address::from(prompt_address()?)
             };
@@ -143,7 +203,10 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
                 signature_witness_index,
             )
             .await?;
-        }
+            key
+        } else {
+            None
+        };
 
         let mut tx = self._finalize_without_signature();
 

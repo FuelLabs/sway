@@ -129,7 +129,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
 
                 let mut metrics = PerformanceData::default();
                 let sway_str = String::from_utf8_lossy(&sway_str);
-                let typed_res = compile_to_ast(
+                let compile_res = compile_to_ast(
                     &engines,
                     Arc::from(sway_str),
                     core_lib.clone(),
@@ -137,11 +137,11 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                     "test_lib",
                     &mut metrics,
                 );
-                if !typed_res.errors.is_empty() {
+                if !compile_res.errors.is_empty() {
                     panic!(
                         "Failed to compile test {}:\n{}",
                         path.display(),
-                        typed_res
+                        compile_res
                             .errors
                             .iter()
                             .map(|err| err.to_string())
@@ -150,15 +150,25 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                             .join("\n")
                     );
                 }
-                let typed_program = typed_res
+                let programs = compile_res
                     .value
                     .expect("there were no errors, so there should be a program");
 
+                let typed_program = programs.typed.as_ref().unwrap();
+
                 // Compile to IR.
                 let include_tests = true;
-                let mut ir = compile_program(&typed_program, include_tests, &engines)
+                let mut ir = compile_program(typed_program, include_tests, &engines)
                     .unwrap_or_else(|e| {
-                        panic!("Failed to compile test {}:\n{e}", path.display());
+                        use sway_types::span::Spanned;
+                        let span = e.span();
+                        panic!(
+                            "Failed to compile test {}:\nError \"{e}\" at {}:{}\nCode: \"{}\"",
+                            path.display(),
+                            span.start(),
+                            span.end(),
+                            span.as_str()
+                        );
                     })
                     .verify()
                     .unwrap_or_else(|err| {
@@ -182,7 +192,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                         panic!(
                             "Failed to compile test {}:\n{}",
                             path.display(),
-                            typed_res
+                            compile_res
                                 .errors
                                 .iter()
                                 .map(|err| err.to_string())
@@ -226,7 +236,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                         panic!(
                             "Failed to compile test {}:\n{}",
                             path.display(),
-                            typed_res
+                            compile_res
                                 .errors
                                 .iter()
                                 .map(|err| err.to_string())
@@ -344,8 +354,12 @@ fn compile_core(build_target: BuildTarget, engines: &Engines) -> namespace::Modu
         ipfs_node: None,
     };
 
-    let res = forc::test::forc_check::check(check_cmd, engines)
-        .expect("Failed to compile sway-lib-core for IR tests.");
+    let res = match forc::test::forc_check::check(check_cmd, engines) {
+        Ok(res) => res,
+        Err(err) => {
+            panic!("Failed to compile sway-lib-core for IR tests: {err:?}")
+        }
+    };
 
     match res.value {
         Some(typed_program) if res.is_ok() => {
@@ -364,6 +378,11 @@ fn compile_core(build_target: BuildTarget, engines: &Engines) -> namespace::Modu
             std_module.insert_submodule("core".to_owned(), core_module);
             std_module
         }
-        _ => panic!("Failed to compile sway-lib-core for IR tests."),
+        _ => {
+            for err in res.errors {
+                println!("{err:?}");
+            }
+            panic!("Failed to compile sway-lib-core for IR tests.");
+        }
     }
 }
