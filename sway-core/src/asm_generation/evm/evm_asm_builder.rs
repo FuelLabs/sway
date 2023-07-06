@@ -302,6 +302,7 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
                     )
                 }
                 Instruction::BitCast(val, ty) => self.compile_bitcast(instr_val, val, ty),
+                Instruction::UnaryOp { op, arg } => self.compile_unary_op(instr_val, op, arg),
                 Instruction::BinaryOp { op, arg1, arg2 } => {
                     self.compile_binary_op(instr_val, op, arg1, arg2)
                 }
@@ -400,6 +401,10 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
     }
 
     fn compile_bitcast(&mut self, instr_val: &Value, bitcast_val: &Value, to_type: &Type) {
+        todo!();
+    }
+
+    fn compile_unary_op(&mut self, instr_val: &Value, op: &UnaryOpKind, arg: &Value) {
         todo!();
     }
 

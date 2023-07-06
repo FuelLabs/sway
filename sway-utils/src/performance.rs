@@ -4,7 +4,7 @@ use serde::Serialize;
 pub struct PerformanceMetric {
     pub phase: String,
     pub elapsed: f64,
-    pub memory_usage: u64,
+    pub memory_usage: Option<u64>,
 }
 
 #[derive(Debug, Default, Serialize)]
@@ -26,12 +26,20 @@ macro_rules! time_expr {
                     println!("  Time elapsed to {}: {:?}", $description, elapsed);
                 }
                 if cfg.metrics_outfile.is_some() {
-                    let mut sys = System::new();
-                    sys.refresh_system();
+                    #[cfg(not(target_os = "macos"))]
+                    let memory_usage = {
+                        use sysinfo::{System, SystemExt};
+                        let mut sys = System::new();
+                        sys.refresh_system();
+                        Some(sys.used_memory())
+                    };
+                    #[cfg(target_os = "macos")]
+                    let memory_usage = None;
+
                     $data.metrics.push(PerformanceMetric {
                         phase: $key.to_string(),
                         elapsed: elapsed.as_secs_f64(),
-                        memory_usage: sys.used_memory(),
+                        memory_usage,
                     });
                 }
                 output
