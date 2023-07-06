@@ -40,8 +40,10 @@ sway-ir = { version = "0.42.0", path = "../sway-ir" }
 sway-parse = { version = "0.42.0", path = "../sway-parse" }
 sway-types = { version = "0.42.0", path = "../sway-types" }
 sway-utils = { version = "0.42.0", path = "../sway-utils" }
-sysinfo = "0.29.0"
 thiserror = "1.0"
 tracing = "0.1"
 uint = "0.9"
 vec1 = "1.8.0"
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+sysinfo = "0.29.0"
