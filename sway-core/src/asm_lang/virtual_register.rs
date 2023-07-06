@@ -10,6 +10,12 @@ pub enum VirtualRegister {
     Constant(ConstantRegister),
 }
 
+impl VirtualRegister {
+    pub fn is_virtual(&self) -> bool {
+        matches!(self, Self::Virtual(_))
+    }
+}
+
 impl From<&VirtualRegister> for VirtualRegister {
     fn from(register: &VirtualRegister) -> VirtualRegister {
         register.clone()

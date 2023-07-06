@@ -172,8 +172,8 @@ pub(crate) fn liveness_analysis(ops: &[Op]) -> Vec<FxHashSet<VirtualRegister>> {
             // Get use and def vectors without any of the Constant registers
             let mut op_use = op.use_registers();
             let mut op_def = op.def_registers();
-            op_use.retain(|&reg| matches!(reg, VirtualRegister::Virtual(_)));
-            op_def.retain(|&reg| matches!(reg, VirtualRegister::Virtual(_)));
+            op_use.retain(|&reg| reg.is_virtual());
+            op_def.retain(|&reg| reg.is_virtual());
 
             // Compute live_out(op) = live_in(s_1) UNION live_in(s_2) UNION ..., where s1, s_2, ...
             // are successors of op
@@ -234,7 +234,7 @@ pub(crate) fn create_interference_graph(
     ops.iter()
         .fold(BTreeSet::new(), |mut tree, elem| {
             let mut regs = elem.registers();
-            regs.retain(|&reg| matches!(reg, VirtualRegister::Virtual(_)));
+            regs.retain(|&reg| reg.is_virtual());
             tree.extend(regs.into_iter());
             tree
         })
@@ -443,13 +443,10 @@ fn compute_def_use_points(ops: &[Op]) -> FxHashMap<VirtualRegister, (Vec<usize>,
     for (idx, op) in ops.iter().enumerate() {
         let mut op_use = op.use_registers();
         let mut op_def = op.def_registers();
-        op_use.retain(|&reg| matches!(reg, VirtualRegister::Virtual(_)));
-        op_def.retain(|&reg| matches!(reg, VirtualRegister::Virtual(_)));
+        op_use.retain(|&reg| reg.is_virtual());
+        op_def.retain(|&reg| reg.is_virtual());
 
-        for &vreg in op_use
-            .iter()
-            .filter(|reg| matches!(reg, VirtualRegister::Virtual(_)))
-        {
+        for &vreg in op_use.iter().filter(|reg| reg.is_virtual()) {
             match res.entry(vreg.clone()) {
                 hash_map::Entry::Occupied(mut occ) => {
                     occ.get_mut().1.push(idx);
@@ -459,10 +456,7 @@ fn compute_def_use_points(ops: &[Op]) -> FxHashMap<VirtualRegister, (Vec<usize>,
                 }
             }
         }
-        for &vreg in op_def
-            .iter()
-            .filter(|reg| matches!(reg, VirtualRegister::Virtual(_)))
-        {
+        for &vreg in op_def.iter().filter(|reg| reg.is_virtual()) {
             match res.entry(vreg.clone()) {
                 hash_map::Entry::Occupied(mut occ) => {
                     occ.get_mut().0.push(idx);
@@ -500,25 +494,6 @@ pub(crate) fn color_interference_graph(
     let mut on_stack = FxHashSet::default();
     let mut spills = FxHashSet::default();
     let def_use_points = compute_def_use_points(ops);
-
-    // for op in ops {
-    //     println!("{}", op);
-    // }
-    // println!("");
-
-    // for node_index in interference_graph.node_indices() {
-    //     let node = &interference_graph[node_index];
-    //     print!(
-    //         "Neighbours of {} (o{}, i{}): ",
-    //         node,
-    //         interference_graph.neighbors_directed(node_index, Outgoing).count(),
-    //         interference_graph.neighbors_directed(node_index, Incoming).count()
-    //     );
-    //     for neighbour in interference_graph.neighbors(node_index) {
-    //         print!("{} ", interference_graph[neighbour]);
-    //     }
-    //     println!("");
-    // }
 
     // Nodes with < k-degree before adding to the stack,
     // to have their neighbours processed.
@@ -802,7 +777,7 @@ fn assign_registers(
             .neighbors_undirected(node)
             .map(|neighbor| interference_graph[neighbor].clone())
             .collect();
-        if matches!(reg, VirtualRegister::Virtual(_)) {
+        if reg.is_virtual() {
             let available =
                 pool.registers
                     .iter_mut()

@@ -777,7 +777,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         }
         self.cur_bytecode.push(Op {
             opcode: Either::Left(VirtualOp::CFSI(VirtualImmediate24 {
-                value: locals_size as u32,
+                value: u32::try_from(locals_size).unwrap(),
             })),
             comment: format!("free {locals_size} bytes for locals"),
             owning_span: None,
