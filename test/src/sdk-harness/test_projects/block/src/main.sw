@@ -4,7 +4,7 @@ use std::block::{block_header_hash, height, timestamp, timestamp_of_block};
 use block_test_abi::BlockTest;
 
 impl BlockTest for Contract {
-    fn get_block_height() -> u64 {
+    fn get_block_height() -> u32 {
         height()
     }
 
@@ -12,15 +12,15 @@ impl BlockTest for Contract {
         timestamp()
     }
 
-    fn get_timestamp_of_block(block_height: u64) -> u64 {
+    fn get_timestamp_of_block(block_height: u32) -> u64 {
         timestamp_of_block(block_height)
     }
 
-    fn get_block_and_timestamp() -> (u64, u64) {
+    fn get_block_and_timestamp() -> (u32, u64) {
         (height(), timestamp())
     }
 
-    fn get_block_header_hash(h: u64) -> b256 {
+    fn get_block_header_hash(h: u32) -> b256 {
         let res = block_header_hash(h);
         match res {
             Ok(h) => h,
