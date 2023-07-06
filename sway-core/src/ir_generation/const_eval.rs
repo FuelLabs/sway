@@ -805,7 +805,7 @@ mod tests {
         let r = crate::compile_to_ast(
             &engines,
             std::sync::Arc::from(format!("library; {prefix} fn f() -> u64 {{ {expr}; 0 }}")),
-            core_lib.clone(),
+            core_lib,
             None,
             "test",
             &mut performance_data,
@@ -828,7 +828,7 @@ mod tests {
             .expect("An function named `f` was not found.");
 
         let f = engines.de().get_function(&f.decl_id);
-        let expr_under_test = f.body.contents.iter().next().unwrap();
+        let expr_under_test = f.body.contents.first().unwrap();
         let expr_under_test = match &expr_under_test.content {
             ty::TyAstNodeContent::Expression(expr) => expr,
             x => todo!("{x:?}"),
