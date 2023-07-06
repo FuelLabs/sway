@@ -216,7 +216,12 @@ pub async fn deploy_pkg(
                 )
             }
         },
-        Err(e) => bail!("{e}"),
+        Err(e) => { 
+            if e.to_string().contains("not enough coins to fit the target") {
+                bail!("Deployment failed due to insufficent funds. Please be sure to have enough coins to pay for deployment transaction.")
+            }
+            bail!("{e}") 
+        },
     });
 
     // submit contract deployment with a timeout
