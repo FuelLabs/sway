@@ -420,22 +420,17 @@ fn const_eval_typed_expr(
             if let Ok(enum_ty) = aggregate {
                 let tag_value = Constant::new_uint(lookup.context, 64, *tag as u64);
                 let mut fields: Vec<Constant> = vec![tag_value];
+
                 match contents {
                     None => fields.push(Constant::new_unit(lookup.context)),
-                    Some(subexpr) => {
-                        let eval_expr = const_eval_typed_expr(lookup, known_consts, subexpr)?;
-                        eval_expr.into_iter().for_each(|enum_val| {
-                            fields.push(enum_val);
-                        })
-                    }
+                    Some(subexpr) => match const_eval_typed_expr(lookup, known_consts, subexpr)? {
+                        Some(constant) => fields.push(constant),
+                        None => return Ok(None),
+                    },
                 }
 
                 let fields_tys = enum_ty.get_field_types(lookup.context);
-                if fields.len() != fields_tys.len() {
-                    None
-                } else {
-                    Some(Constant::new_struct(lookup.context, fields_tys, fields))
-                }
+                Some(Constant::new_struct(lookup.context, fields_tys, fields))
             } else {
                 None
             }
@@ -847,11 +842,11 @@ mod tests {
 
         match (is_constant, actual_constant) {
             (true, Ok(_)) => {}
-            (true, Err(_)) => {
-                panic!("Expression cannot be converted to constant: {expr}");
+            (true, Err(err)) => {
+                panic!("Expression cannot be converted to constant: {expr:?}\nError: {err:?}");
             }
-            (false, Ok(_)) => {
-                panic!("Expression unexpectedly can be converted to constant: {expr}");
+            (false, Ok(constant)) => {
+                panic!("Expression unexpectedly can be converted to constant: {expr:?}\nConstant: {constant:?}");
             }
             (false, Err(_)) => {}
         }
@@ -862,6 +857,7 @@ mod tests {
         // Can be converted to constant
         assert_is_constant(true, "", "1");
         assert_is_constant(true, "", "{ 1 }");
+        assert_is_constant(true, "enum Color { Blue: () }", "Color::Blue");
         assert_is_constant(true, "enum Color { Blue: u64 }", "Color::Blue(1)");
 
         // Cannot be converted to constant
