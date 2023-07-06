@@ -198,6 +198,7 @@ pub async fn deploy_pkg(
         .await?;
 
     let tx = Transaction::from(tx);
+    println!("here");
 
     let deployment_request = client.submit_and_await_commit(&tx).map(|res| match res {
         Ok(logs) => match logs {
@@ -216,12 +217,7 @@ pub async fn deploy_pkg(
                 )
             }
         },
-        Err(e) => { 
-            if e.to_string().contains("not enough coins to fit the target") {
-                bail!("Deployment failed due to insufficient funds. Please be sure to have enough coins to pay for deployment transaction.")
-            }
-            bail!("{e}") 
-        },
+        Err(e) => bail!("{e}"),
     });
 
     // submit contract deployment with a timeout
