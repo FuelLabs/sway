@@ -155,7 +155,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
     Ok(contract_ids)
 }
 
-/// Applies specified target information to the provided arguments. 
+/// Applies specified target information to the provided arguments.
 ///
 /// Basically provides preset configurations for known test-nets.
 fn apply_target(command: cmd::Deploy) -> Result<cmd::Deploy> {
