@@ -565,9 +565,9 @@ async fn test_contract_transfer_base_asset() {
     let amount = 44u64;
     let to = get_balance_contract_id(wallet.clone()).await;
 
-    fuelcoin_instance.methods().contract_transfer(to, ContractId::from(*AssetId::BASE), amount).call().await.unwrap();
+    fuelcoin_instance.methods().contract_transfer(to, ContractId::from(*AssetId::BASE), amount).append_contract(to.into()).call().await.unwrap();
 
-    let balance = fuelcoin_instance.methods().get_balance(ContractId::from(*AssetId::BASE), to).append_contract(to.into()).append_contract(to.into()).call().await.unwrap().value;
+    let balance = fuelcoin_instance.methods().get_balance(ContractId::from(*AssetId::BASE), to).append_contract(to.into()).call().await.unwrap().value;
 
     assert_eq!(balance, amount);
 }
