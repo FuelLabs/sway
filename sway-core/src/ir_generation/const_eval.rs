@@ -429,11 +429,13 @@ fn const_eval_typed_expr(
                         })
                     }
                 }
-                Some(Constant::new_struct(
-                    lookup.context,
-                    enum_ty.get_field_types(lookup.context),
-                    fields,
-                ))
+
+                let fields_tys = enum_ty.get_field_types(lookup.context);
+                if fields.len() != fields_tys.len() {
+                    None
+                } else {
+                    Some(Constant::new_struct(lookup.context, fields_tys, fields))
+                }
             } else {
                 None
             }
@@ -570,6 +572,10 @@ fn const_eval_codeblock(
                 res_const = const_eval_typed_expr(lookup, known_consts, e)?
             }
             ty::TyAstNodeContent::SideEffect(_) => res_const = None,
+        }
+
+        if res_const.is_none() {
+            break;
         }
     }
     // remove introduced vars/consts from scope at the end of the codeblock
@@ -770,5 +776,101 @@ fn const_eval_intrinsic(
                 value: ConstantValue::Uint(v),
             }))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// This function validates if an expression can be converted to [Constant].
+    ///
+    /// The flag `is_constant` is used to define if the expression should be convertible or not.
+    /// `prefix` is any valid code at top level, useful to declare types.
+    ///
+    /// Example:
+    ///
+    /// ```rust,ignore
+    /// assert_is_constant(true, "enum Color { Blue: u64 }", "Color::Blue(1)");
+    /// assert_is_constant(false, "", "{return 1; 1}");
+    /// ```
+    fn assert_is_constant(is_constant: bool, prefix: &str, expr: &str) {
+        let engines = Engines::default();
+        let mut context = Context::new(engines.se());
+        let mut md_mgr = MetadataManager::default();
+        let core_lib = namespace::Module::default();
+
+        let mut performance_data = sway_utils::PerformanceData::default();
+
+        let r = crate::compile_to_ast(
+            &engines,
+            std::sync::Arc::from(format!("library; {prefix} fn f() -> u64 {{ {expr}; 0 }}")),
+            core_lib.clone(),
+            None,
+            "test",
+            &mut performance_data,
+        );
+
+        if !r.errors.is_empty() {
+            panic!("{:#?}", r.errors);
+        }
+
+        let f = r.value.unwrap();
+        let f = f.typed.unwrap();
+
+        let f = f
+            .declarations
+            .iter()
+            .find_map(|x| match x {
+                ty::TyDecl::FunctionDecl(x) if x.name.as_str() == "f" => Some(x),
+                _ => None,
+            })
+            .expect("An function named `f` was not found.");
+
+        let f = engines.de().get_function(&f.decl_id);
+        let expr_under_test = f.body.contents.iter().next().unwrap();
+        let expr_under_test = match &expr_under_test.content {
+            ty::TyAstNodeContent::Expression(expr) => expr,
+            x => todo!("{x:?}"),
+        };
+
+        let module = sway_ir::module::Module::new(&mut context, sway_ir::Kind::Script);
+        let actual_constant = compile_constant_expression_to_constant(
+            &engines,
+            &mut context,
+            &mut md_mgr,
+            module,
+            None,
+            None,
+            expr_under_test,
+        );
+
+        match (is_constant, actual_constant) {
+            (true, Ok(_)) => {}
+            (true, Err(_)) => {
+                panic!("Expression cannot be converted to constant: {expr}");
+            }
+            (false, Ok(_)) => {
+                panic!("Expression unexpectedly can be converted to constant: {expr}");
+            }
+            (false, Err(_)) => {}
+        }
+    }
+
+    #[test]
+    fn const_eval_test() {
+        // Can be converted to constant
+        assert_is_constant(true, "", "1");
+        assert_is_constant(true, "", "{ 1 }");
+        assert_is_constant(true, "enum Color { Blue: u64 }", "Color::Blue(1)");
+
+        // Cannot be converted to constant
+        assert_is_constant(false, "", "{ return 1; }");
+        assert_is_constant(false, "", "{ return 1; 1}");
+        assert_is_constant(
+            false,
+            "enum Color { Blue: u64 }",
+            "Color::Blue({ return 1; 1})",
+        );
     }
 }
