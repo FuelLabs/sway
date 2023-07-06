@@ -3,7 +3,7 @@ use crate::{error::CompileError, warning::CompileWarning};
 use core::cell::RefCell;
 
 /// A handler with which you can emit diagnostics.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Handler {
     /// The inner handler.
     /// This construction is used to avoid `&mut` all over the compiler.
@@ -12,7 +12,7 @@ pub struct Handler {
 
 /// Contains the actual data for `Handler`.
 /// Modelled this way to afford an API using interior mutability.
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct HandlerInner {
     /// The sink through which errors will be emitted.
     errors: Vec<CompileError>,

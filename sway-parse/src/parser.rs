@@ -13,6 +13,7 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::parser_error::{ParseError, ParseErrorKind};
 use sway_types::{Ident, Span, Spanned};
 
+#[derive(Debug)]
 pub struct Parser<'a, 'e> {
     pub token_trees: &'a [TokenTree],
     full_span: Span,
