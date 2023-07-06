@@ -7,6 +7,7 @@ use crate::{
 };
 use anyhow::{bail, Context, Result};
 use forc_pkg::{self as pkg, PackageManifestFile};
+use forc_tx::Gas;
 use fuel_core_client::client::types::TransactionStatus;
 use fuel_core_client::client::FuelClient;
 use fuel_tx::{Output, Salt, TransactionBuilder};
@@ -77,6 +78,7 @@ fn validate_and_parse_salts<'a>(
 ///
 /// When deploying a single contract, only that contract's ID is returned.
 pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
+    let command = apply_target(command);
     let mut contract_ids = Vec::new();
     let curr_dir = if let Some(ref path) = command.pkg.path {
         PathBuf::from(path)
@@ -151,6 +153,37 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
         }
     }
     Ok(contract_ids)
+}
+
+pub fn apply_target(command: cmd::Deploy) -> cmd::Deploy {
+    let target = command.target.clone();
+
+    if let Some(target) = target {
+        match target {
+            cmd::deploy::Target::Beta2 | cmd::deploy::Target::Beta3 => {
+                // If the user did not specified a gas price, we can use `1` as a gas price for
+                // beta test-nets.
+                let gas_price = if command.gas.price == 0 {
+                    1
+                } else {
+                    command.gas.price
+                };
+
+                let target_url = Some(target.target_url().to_string());
+                cmd::Deploy {
+                    gas: Gas {
+                        price: gas_price,
+                        ..command.gas
+                    },
+                    node_url: target_url,
+                    ..command
+                }
+            }
+            cmd::deploy::Target::LATEST => command,
+        }
+    } else {
+        command
+    }
 }
 
 /// Deploy a single pkg given deploy command and the manifest file

@@ -1,6 +1,7 @@
 use clap::Parser;
 use fuel_crypto::SecretKey;
 
+pub use crate::util::Target;
 pub use forc::cli::shared::{BuildOutput, BuildProfile, Minify, Pkg, Print};
 pub use forc_tx::{Gas, Maturity};
 pub use forc_util::tx_utils::Salt;
@@ -50,4 +51,9 @@ pub struct Command {
     /// Sign the deployment transaction manually.
     #[clap(long)]
     pub manual_signing: bool,
+    /// Use preset configurations for deploying to a specific target.
+    ///
+    /// Possible values are: [beta-1, beta-2, beta-3, latest]
+    #[clap(long)]
+    pub target: Option<Target>,
 }
