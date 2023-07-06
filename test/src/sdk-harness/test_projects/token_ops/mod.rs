@@ -619,11 +619,11 @@ async fn test_identity_address_transfer_base_asset() {
     let to = wallet.address().into();
     let to = Identity::Address(to);
 
-    let balance_prev = wallet.get_asset_balance(&AssetId::from(*fuelcoin_id)).await.unwrap();
+    let balance_prev = wallet.get_asset_balance(&AssetId::BASE).await.unwrap();
 
     fuelcoin_instance.methods().identity_transfer(to, ContractId::from(*AssetId::BASE), amount).append_variable_outputs(1).call().await.unwrap();
 
-    let balance_new = wallet.get_asset_balance(&AssetId::from(*fuelcoin_id)).await.unwrap();
+    let balance_new = wallet.get_asset_balance(&AssetId::BASE).await.unwrap();
 
     assert_eq!(balance_new, balance_prev + amount);
 }
