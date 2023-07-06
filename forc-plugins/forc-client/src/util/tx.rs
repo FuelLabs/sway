@@ -207,7 +207,6 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
             } else {
                 e
             })?;
-            println!("here");
             key
         } else {
             None
@@ -231,9 +230,7 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
             let witness = Witness::from(signature.as_ref());
             tx.replace_witness(signature_witness_index, witness);
         }
-        println!("here");
         tx.precompute(&params);
-        println!("here");
 
         Ok(tx)
     }

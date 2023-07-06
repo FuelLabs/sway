@@ -198,7 +198,6 @@ pub async fn deploy_pkg(
         .await?;
 
     let tx = Transaction::from(tx);
-    println!("here");
 
     let deployment_request = client.submit_and_await_commit(&tx).map(|res| match res {
         Ok(logs) => match logs {
