@@ -1,4 +1,4 @@
-use std::ops::{BitAnd, BitOr, BitXor};
+use std::ops::{BitAnd, BitOr, BitXor, ControlFlow};
 
 use crate::{
     asm_generation::from_ir::{ir_type_size_in_bytes, ir_type_str_size_in_bytes},
@@ -510,8 +510,35 @@ fn const_eval_typed_expr(
         ty::TyExpressionVariant::CodeBlock(codeblock) => {
             const_eval_codeblock(lookup, known_consts, codeblock)?
         }
-        ty::TyExpressionVariant::ArrayIndex { .. }
-        | ty::TyExpressionVariant::Reassignment(_)
+        ty::TyExpressionVariant::ArrayIndex { prefix, index } => {
+            let prefix = const_eval_typed_expr(lookup, known_consts, prefix)?;
+            let index = const_eval_typed_expr(lookup, known_consts, index)?;
+            match (prefix, index) {
+                (
+                    Some(Constant {
+                        value: ConstantValue::Array(items),
+                        ..
+                    }),
+                    Some(Constant {
+                        value: ConstantValue::Uint(index),
+                        ..
+                    }),
+                ) => {
+                    let count = items.len() as u64;
+                    if index < count {
+                        Some(items[index as usize].clone())
+                    } else {
+                        return Err(CompileError::ArrayOutOfBounds {
+                            index,
+                            count,
+                            span: expr.span.clone(),
+                        });
+                    }
+                }
+                _ => None,
+            }
+        }
+        ty::TyExpressionVariant::Reassignment(_)
         | ty::TyExpressionVariant::FunctionParameter
         | ty::TyExpressionVariant::AsmExpression { .. }
         | ty::TyExpressionVariant::LazyOperator { .. }
@@ -535,41 +562,50 @@ fn const_eval_codeblock(
     codeblock: &ty::TyCodeBlock,
 ) -> Result<Option<Constant>, CompileError> {
     // the current result
-    let mut res_const = None;
+    let mut current_constant = ControlFlow::Continue(None);
     // keep track of new bindings for this codeblock
     let mut bindings: Vec<_> = vec![];
 
     for ast_node in &codeblock.contents {
-        match &ast_node.content {
+        current_constant = match &ast_node.content {
             ty::TyAstNodeContent::Declaration(ty::TyDecl::VariableDecl(var_decl)) => {
-                let rhs_opt = const_eval_typed_expr(lookup, known_consts, &var_decl.body)?;
-                if let Some(rhs) = rhs_opt {
-                    known_consts.push(var_decl.name.clone(), rhs);
-                    bindings.push(var_decl.name.clone());
+                match const_eval_typed_expr(lookup, known_consts, &var_decl.body)? {
+                    Some(rhs) => {
+                        known_consts.push(var_decl.name.clone(), rhs);
+                        bindings.push(var_decl.name.clone());
+                        ControlFlow::Continue(None)
+                    }
+                    None => ControlFlow::Break(()),
                 }
-                res_const = None
             }
             ty::TyAstNodeContent::Declaration(ty::TyDecl::ConstantDecl(const_decl)) => {
                 let ty_const_decl = lookup.engines.de().get_constant(&const_decl.decl_id);
-                if let Some(const_expr) = ty_const_decl.value {
-                    if let Some(constant) =
-                        const_eval_typed_expr(lookup, known_consts, &const_expr)?
-                    {
-                        known_consts.push(const_decl.name.clone(), constant);
-                        bindings.push(const_decl.name.clone());
+                match ty_const_decl.value {
+                    Some(const_expr) => {
+                        match const_eval_typed_expr(lookup, known_consts, &const_expr)? {
+                            Some(constant) => {
+                                known_consts.push(const_decl.name.clone(), constant);
+                                bindings.push(const_decl.name.clone());
+                                ControlFlow::Continue(None)
+                            }
+                            None => ControlFlow::Break(()),
+                        }
                     }
+                    None => ControlFlow::Break(()),
                 }
-                res_const = None
             }
-            ty::TyAstNodeContent::Declaration(_) => res_const = None,
+            ty::TyAstNodeContent::Declaration(_) => ControlFlow::Continue(None),
             ty::TyAstNodeContent::Expression(e)
             | ty::TyAstNodeContent::ImplicitReturnExpression(e) => {
-                res_const = const_eval_typed_expr(lookup, known_consts, e)?
+                match const_eval_typed_expr(lookup, known_consts, e)? {
+                    Some(constant) => ControlFlow::Continue(Some(constant)),
+                    None => ControlFlow::Break(()),
+                }
             }
-            ty::TyAstNodeContent::SideEffect(_) => res_const = None,
-        }
+            ty::TyAstNodeContent::SideEffect(_) => ControlFlow::Break(()),
+        };
 
-        if res_const.is_none() {
+        if current_constant.is_break() {
             break;
         }
     }
@@ -577,7 +613,11 @@ fn const_eval_codeblock(
     for name in bindings {
         known_consts.pop(&name)
     }
-    Ok(res_const)
+
+    match current_constant {
+        ControlFlow::Continue(v) => Ok(v),
+        ControlFlow::Break(_) => Ok(None),
+    }
 }
 
 fn const_eval_intrinsic(
@@ -777,6 +817,7 @@ fn const_eval_intrinsic(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sway_ir::Kind;
 
     /// This function validates if an expression can be converted to [Constant].
     ///
@@ -824,12 +865,17 @@ mod tests {
 
         let f = engines.de().get_function(&f.decl_id);
         let expr_under_test = f.body.contents.first().unwrap();
+
         let expr_under_test = match &expr_under_test.content {
-            ty::TyAstNodeContent::Expression(expr) => expr,
+            ty::TyAstNodeContent::Expression(expr_under_test) => expr_under_test.clone(),
+            ty::TyAstNodeContent::Declaration(crate::language::ty::TyDecl::ConstantDecl(decl)) => {
+                let decl = engines.de().get_constant(&decl.decl_id);
+                decl.value.unwrap()
+            }
             x => todo!("{x:?}"),
         };
 
-        let module = sway_ir::module::Module::new(&mut context, sway_ir::Kind::Script);
+        let module = Module::new(&mut context, Kind::Library);
         let actual_constant = compile_constant_expression_to_constant(
             &engines,
             &mut context,
@@ -837,16 +883,16 @@ mod tests {
             module,
             None,
             None,
-            expr_under_test,
+            &expr_under_test,
         );
 
         match (is_constant, actual_constant) {
             (true, Ok(_)) => {}
             (true, Err(err)) => {
-                panic!("Expression cannot be converted to constant: {expr:?}\nError: {err:?}");
+                panic!("Expression cannot be converted to constant: {expr:?}\nExpr:{expr_under_test:?}\nError: {err:?}");
             }
             (false, Ok(constant)) => {
-                panic!("Expression unexpectedly can be converted to constant: {expr:?}\nConstant: {constant:?}");
+                panic!("Expression unexpectedly can be converted to constant: {expr:?}\nExpr:{expr_under_test:?}\nConstant: {constant:?}");
             }
             (false, Err(_)) => {}
         }
@@ -854,13 +900,20 @@ mod tests {
 
     #[test]
     fn const_eval_test() {
-        // Can be converted to constant
+        // Expressions that can be converted to constant
         assert_is_constant(true, "", "1");
-        assert_is_constant(true, "", "{ 1 }");
+        assert_is_constant(true, "", "true");
+        assert_is_constant(true, "fn one() -> u64 { 1 }", "one()");
+        assert_is_constant(true, "fn id(x: u64) -> u64 { x }", "id(1)");
         assert_is_constant(true, "enum Color { Blue: () }", "Color::Blue");
         assert_is_constant(true, "enum Color { Blue: u64 }", "Color::Blue(1)");
+        assert_is_constant(true, "struct Person { age: u64 }", "Person { age: 1 }");
+        assert_is_constant(true, "struct Person { age: u64 }", "Person { age: 1 }.age");
+        assert_is_constant(true, "", "if true { 1 } else { 0 }");
+        assert_is_constant(true, "", "(0,1).0");
+        assert_is_constant(true, "", "[0,1][0]");
 
-        // Cannot be converted to constant
+        // Expressions that cannot be converted to constant
         assert_is_constant(false, "", "{ return 1; }");
         assert_is_constant(false, "", "{ return 1; 1}");
         assert_is_constant(
@@ -868,5 +921,21 @@ mod tests {
             "enum Color { Blue: u64 }",
             "Color::Blue({ return 1; 1})",
         );
+        // At the moment this is not constant because of the "return"
+        assert_is_constant(false, "fn id(x: u64) -> u64 { return x; }", "id(1)");
+        assert_is_constant(false, "", "[0,1][2]");
+
+        // Code blocks that can be converted to constants
+        assert_is_constant(true, "", "{ 1 }");
+        assert_is_constant(true, "", "{ let a = 1; a }");
+        assert_is_constant(true, "", "{ const a = 1; a }");
+        assert_is_constant(true, "", "{ struct A {} 1 }");
+
+        // Code blocks that cannot be converted to constants
+        assert_is_constant(false, "", "{ let a = 1; }");
+        assert_is_constant(false, "", "{ const a = 1; }");
+        assert_is_constant(false, "", "{ struct A {} }");
+        assert_is_constant(false, "", "{ return 1; 1 }");
+        assert_is_constant(false, "", "{ }");
     }
 }
