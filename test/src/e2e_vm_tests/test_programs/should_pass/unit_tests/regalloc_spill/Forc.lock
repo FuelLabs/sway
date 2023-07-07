@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-CA82D6910AC0C4B8'
+
+[[package]]
+name = 'regalloc_spill'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'git+https://github.com/fuellabs/sway?tag=v0.42.0#c4e4ef7e4ae52a21ae1aa709d1f43ac680987bd1'
+dependencies = ['core']
