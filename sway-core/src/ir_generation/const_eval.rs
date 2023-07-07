@@ -830,6 +830,8 @@ mod tests {
     /// assert_is_constant(true, "enum Color { Blue: u64 }", "Color::Blue(1)");
     /// assert_is_constant(false, "", "{return 1; 1}");
     /// ```
+    ///
+    /// It DOES NOT have access to the std lib, and constants, and other features that demand full compilation.
     fn assert_is_constant(is_constant: bool, prefix: &str, expr: &str) {
         let engines = Engines::default();
         let mut context = Context::new(engines.se());
@@ -930,6 +932,7 @@ mod tests {
         assert_is_constant(true, "", "{ let a = 1; a }");
         assert_is_constant(true, "", "{ const a = 1; a }");
         assert_is_constant(true, "", "{ struct A {} 1 }");
+        assert_is_constant(true, "fn id(x: u64) -> u64 { { let x = 2; }; x }", "id(1)");
 
         // Code blocks that cannot be converted to constants
         assert_is_constant(false, "", "{ let a = 1; }");
