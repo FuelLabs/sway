@@ -152,6 +152,7 @@ pub(crate) fn compile_const_decl(
                         }
                         err => err,
                     })?;
+
                     if !is_configurable {
                         env.module.add_global_constant(
                             env.context,
@@ -196,7 +197,14 @@ pub(super) fn compile_constant_expression(
         module_ns,
         function_compiler,
         const_expr,
-    )?;
+    )
+    .map_err(|err| match err {
+        CompileError::CannotBeEvaluatedToConst { .. } => CompileError::NonConstantDeclValue {
+            span: call_path.span(),
+        },
+        err => err,
+    })?;
+
     if !is_configurable {
         Ok(Value::new_constant(context, constant_evaluated).add_metadatum(context, span_id_idx))
     } else {
@@ -241,7 +249,14 @@ pub(crate) fn compile_constant_expression_to_constant(
     };
     let mut known_consts = MappedStack::<Ident, Constant>::new();
 
-    const_eval_typed_expr(lookup, &mut known_consts, const_expr)?.map_or(err, Ok)
+    const_eval_typed_expr(lookup, &mut known_consts, const_expr)
+        .map_err(|err| match err {
+            CompileError::CannotBeEvaluatedToConst { .. } => CompileError::NonConstantDeclValue {
+                span: const_expr.span.clone(),
+            },
+            err => err,
+        })?
+        .map_or(err, Ok)
 }
 
 /// Given an environment mapping names to constants,
@@ -682,16 +697,19 @@ fn const_eval_intrinsic(
     known_consts: &mut MappedStack<Ident, Constant>,
     intrinsic: &TyIntrinsicFunctionKind,
 ) -> Result<Option<Constant>, CompileError> {
-    let args = intrinsic
-        .arguments
-        .iter()
-        .filter_map(|arg| const_eval_typed_expr(lookup, known_consts, arg).transpose())
-        .collect::<Result<Vec<_>, CompileError>>()?;
-
-    if args.len() != intrinsic.arguments.len() {
-        // We couldn't const-eval all arguments.
-        return Ok(None);
+    let mut args = vec![];
+    for arg in intrinsic.arguments.iter() {
+        if let Ok(Some(constant)) = const_eval_typed_expr(lookup, known_consts, &arg) {
+            args.push(constant);
+        } else {
+            return Err(CompileError::CannotBeEvaluatedToConst {
+                span: arg.span.clone(),
+            });
+        }
     }
+
+    assert!(args.len() == intrinsic.arguments.len());
+
     match intrinsic.kind {
         sway_ast::Intrinsic::Add
         | sway_ast::Intrinsic::Sub
@@ -709,6 +727,7 @@ fn const_eval_intrinsic(
             else {
                 panic!("Type checker allowed incorrect args to binary op");
             };
+
             // All arithmetic is done as if it were u64
             let result = match intrinsic.kind {
                 Intrinsic::Add => arg1.checked_add(*arg2),
@@ -721,12 +740,17 @@ fn const_eval_intrinsic(
                 Intrinsic::Mod => arg1.checked_rem(*arg2),
                 _ => unreachable!(),
             };
+
             match result {
                 Some(sum) => Ok(Some(Constant {
                     ty,
                     value: ConstantValue::Uint(sum),
                 })),
-                None => Ok(None),
+                None => {
+                    return Err(CompileError::CannotBeEvaluatedToConst {
+                        span: intrinsic.span.clone(),
+                    })
+                }
             }
         }
         sway_ast::Intrinsic::Lsh | sway_ast::Intrinsic::Rsh => {
@@ -736,10 +760,12 @@ fn const_eval_intrinsic(
                     && ty.is_uint(lookup.context)
                     && args[1].ty.is_uint64(lookup.context)
             );
+
             let (ConstantValue::Uint(arg1), ConstantValue::Uint(ref arg2)) = (&args[0].value, &args[1].value)
             else {
                 panic!("Type checker allowed incorrect args to binary op");
             };
+
             let result = match intrinsic.kind {
                 Intrinsic::Lsh => u32::try_from(*arg2)
                     .ok()
@@ -749,12 +775,17 @@ fn const_eval_intrinsic(
                     .and_then(|arg2| arg1.checked_shr(arg2)),
                 _ => unreachable!(),
             };
+
             match result {
                 Some(sum) => Ok(Some(Constant {
                     ty,
                     value: ConstantValue::Uint(sum),
                 })),
-                None => Ok(None),
+                None => {
+                    return Err(CompileError::CannotBeEvaluatedToConst {
+                        span: intrinsic.span.clone(),
+                    })
+                }
             }
         }
         sway_ast::Intrinsic::SizeOfType => {
@@ -827,10 +858,10 @@ fn const_eval_intrinsic(
                 value: ConstantValue::Bool(val1 < val2),
             }))
         }
-        sway_ast::Intrinsic::AddrOf => Ok(None),
-        sway_ast::Intrinsic::PtrAdd => Ok(None),
-        sway_ast::Intrinsic::PtrSub => Ok(None),
-        sway_ast::Intrinsic::IsReferenceType
+        sway_ast::Intrinsic::AddrOf
+        | sway_ast::Intrinsic::PtrAdd
+        | sway_ast::Intrinsic::PtrSub
+        | sway_ast::Intrinsic::IsReferenceType
         | sway_ast::Intrinsic::IsStrType
         | sway_ast::Intrinsic::Gtf
         | sway_ast::Intrinsic::StateClear
@@ -840,7 +871,11 @@ fn const_eval_intrinsic(
         | sway_ast::Intrinsic::StateStoreQuad
         | sway_ast::Intrinsic::Log
         | sway_ast::Intrinsic::Revert
-        | sway_ast::Intrinsic::Smo => Ok(None),
+        | sway_ast::Intrinsic::Smo => {
+            return Err(CompileError::CannotBeEvaluatedToConst {
+                span: intrinsic.span.clone(),
+            })
+        }
         sway_ast::Intrinsic::Not => {
             // Not works only with uint at the moment
             // `bool` ops::Not implementation uses `__eq`.
