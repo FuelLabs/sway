@@ -30,10 +30,10 @@ pub struct Command {
     /// --salt contract_b:0x0000000000000000000000000000000000000000000000000000000000000002
     #[clap(long)]
     pub salt: Option<Vec<String>>,
-    /// Generate a random salt for the contract.
-    /// Useful for testing or deploying examples to a shared network.
+    /// Generate a default salt (0x0000000000000000000000000000000000000000000000000000000000000000) for the contract.
+    /// Useful for CI, to create reproducable deployments.
     #[clap(long)]
-    pub random_salt: bool,
+    pub default_salt: bool,
     #[clap(flatten)]
     pub build_output: BuildOutput,
     #[clap(flatten)]

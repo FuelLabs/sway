@@ -72,6 +72,7 @@ pub(crate) async fn deploy_contract(file_name: &str, run_config: &RunConfig) -> 
             ..Default::default()
         },
         signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
+        default_salt: true,
         ..Default::default()
     })
     .await
