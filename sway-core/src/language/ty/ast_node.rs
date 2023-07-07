@@ -92,6 +92,9 @@ impl ReplaceDecls for TyAstNode {
             TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
                 exp.replace_decls(decl_mapping, engines)
             }
+            TyAstNodeContent::Declaration(TyDecl::VariableDecl(ref mut decl)) => {
+                decl.body.replace_decls(decl_mapping, engines);
+            }
             TyAstNodeContent::Declaration(_) => {}
             TyAstNodeContent::Expression(ref mut expr) => expr.replace_decls(decl_mapping, engines),
             TyAstNodeContent::SideEffect(_) => (),
