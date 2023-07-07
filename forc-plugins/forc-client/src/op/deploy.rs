@@ -2,7 +2,7 @@ use crate::{
     cmd,
     util::{
         pkg::built_pkgs,
-        tx::{TransactionBuilderExt, TX_SUBMIT_TIMEOUT_MS},
+        tx::{TransactionBuilderExt, WalletSelectionMode, TX_SUBMIT_TIMEOUT_MS},
     },
 };
 use anyhow::{bail, Context, Result};
@@ -176,14 +176,24 @@ pub async fn deploy_pkg(
     let root = contract.root();
     let state_root = Contract::initial_state_root(storage_slots.iter());
     let contract_id = contract.id(&salt, &root, &state_root);
-    info!("Contract id: 0x{}", hex::encode(contract_id));
+
+    let wallet_mode = if command.manual_signing {
+        WalletSelectionMode::Manual
+    } else {
+        WalletSelectionMode::ForcWallet
+    };
 
     let tx = TransactionBuilder::create(bytecode.as_slice().into(), salt, storage_slots.clone())
         .gas_limit(command.gas.limit)
         .gas_price(command.gas.price)
         .maturity(command.maturity.maturity.into())
         .add_output(Output::contract_created(contract_id, state_root))
-        .finalize_signed(client.clone(), command.unsigned, command.signing_key)
+        .finalize_signed(
+            client.clone(),
+            command.unsigned,
+            command.signing_key,
+            wallet_mode,
+        )
         .await?;
 
     let tx = Transaction::from(tx);
@@ -194,7 +204,12 @@ pub async fn deploy_pkg(
                 bail!("contract {} deployment timed out", &contract_id);
             }
             TransactionStatus::Success { block_id, .. } => {
-                info!("contract {} deployed in block {}", &contract_id, &block_id);
+                let pkg_name = manifest.project_name();
+                info!("\n\nContract {pkg_name} Deployed!");
+
+                info!("\nNetwork: {node_url}");
+                info!("Contract ID: 0x{contract_id}");
+                info!("Deployed in block {}", &block_id);
                 Ok(contract_id)
             }
             e => {
