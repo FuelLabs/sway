@@ -4,7 +4,7 @@ use crate::{
     asm_generation::from_ir::{ir_type_size_in_bytes, ir_type_str_size_in_bytes},
     engine_threading::*,
     language::{
-        ty::{self, TyConstantDecl, TyIntrinsicFunctionKind},
+        ty::{self, TyConstantDecl, TyExpression, TyExpressionVariant, TyIntrinsicFunctionKind},
         CallPath,
     },
     metadata::MetadataManager,
@@ -476,7 +476,11 @@ fn const_eval_typed_expr(
         // require some more work and at this point it's not clear if it is too useful
         // for constant initializers -- the user can always refactor their pure functions
         // to not use the return statement
-        ty::TyExpressionVariant::Return(_exp) => None,
+        ty::TyExpressionVariant::Return(exp) => {
+            return Err(CompileError::CodeCannotBeAConstant {
+                span: exp.span.clone(),
+            })
+        }
         ty::TyExpressionVariant::MatchExp { desugared, .. } => {
             const_eval_typed_expr(lookup, known_consts, desugared)?
         }
@@ -562,62 +566,74 @@ fn const_eval_codeblock(
     codeblock: &ty::TyCodeBlock,
 ) -> Result<Option<Constant>, CompileError> {
     // the current result
-    let mut current_constant = ControlFlow::Continue(None);
+    let mut result: Result<Option<Constant>, CompileError> = Ok(None);
     // keep track of new bindings for this codeblock
     let mut bindings: Vec<_> = vec![];
 
     for ast_node in &codeblock.contents {
-        current_constant = match &ast_node.content {
-            ty::TyAstNodeContent::Declaration(ty::TyDecl::VariableDecl(var_decl)) => {
-                match const_eval_typed_expr(lookup, known_consts, &var_decl.body)? {
-                    Some(rhs) => {
-                        known_consts.push(var_decl.name.clone(), rhs);
-                        bindings.push(var_decl.name.clone());
-                        ControlFlow::Continue(None)
-                    }
-                    None => ControlFlow::Break(()),
+        result = match &ast_node.content {
+            ty::TyAstNodeContent::Declaration(decl @ ty::TyDecl::VariableDecl(var_decl)) => {
+                if let Ok(Some(rhs)) = const_eval_typed_expr(lookup, known_consts, &var_decl.body) {
+                    known_consts.push(var_decl.name.clone(), rhs);
+                    bindings.push(var_decl.name.clone());
+                    Ok(None)
+                } else {
+                    Err(CompileError::CodeCannotBeAConstant {
+                        span: decl.span().clone(),
+                    })
                 }
             }
             ty::TyAstNodeContent::Declaration(ty::TyDecl::ConstantDecl(const_decl)) => {
                 let ty_const_decl = lookup.engines.de().get_constant(&const_decl.decl_id);
-                match ty_const_decl.value {
-                    Some(const_expr) => {
-                        match const_eval_typed_expr(lookup, known_consts, &const_expr)? {
-                            Some(constant) => {
-                                known_consts.push(const_decl.name.clone(), constant);
-                                bindings.push(const_decl.name.clone());
-                                ControlFlow::Continue(None)
-                            }
-                            None => ControlFlow::Break(()),
-                        }
-                    }
-                    None => ControlFlow::Break(()),
+                if let Some(constant) = ty_const_decl
+                    .value
+                    .and_then(|expr| const_eval_typed_expr(lookup, known_consts, &expr).ok())
+                    .flatten()
+                {
+                    known_consts.push(const_decl.name.clone(), constant);
+                    bindings.push(const_decl.name.clone());
+                    Ok(None)
+                } else {
+                    Err(CompileError::CodeCannotBeAConstant {
+                        span: const_decl.decl_span.clone(),
+                    })
                 }
             }
-            ty::TyAstNodeContent::Declaration(_) => ControlFlow::Continue(None),
-            ty::TyAstNodeContent::Expression(e)
-            | ty::TyAstNodeContent::ImplicitReturnExpression(e) => {
-                match const_eval_typed_expr(lookup, known_consts, e)? {
-                    Some(constant) => ControlFlow::Continue(Some(constant)),
-                    None => ControlFlow::Break(()),
+            ty::TyAstNodeContent::Declaration(_) => Ok(None),
+            ty::TyAstNodeContent::Expression(e) => {
+                if const_eval_typed_expr(lookup, known_consts, e).is_err() {
+                    Err(CompileError::CodeCannotBeAConstant {
+                        span: e.span.clone(),
+                    })
+                } else {
+                    Ok(None)
                 }
             }
-            ty::TyAstNodeContent::SideEffect(_) => ControlFlow::Break(()),
+            ty::TyAstNodeContent::ImplicitReturnExpression(e) => {
+                if let Ok(Some(constant)) = const_eval_typed_expr(lookup, known_consts, e) {
+                    Ok(Some(constant))
+                } else {
+                    Err(CompileError::CodeCannotBeAConstant {
+                        span: e.span.clone(),
+                    })
+                }
+            }
+            ty::TyAstNodeContent::SideEffect(_) => Err(CompileError::CodeCannotBeAConstant {
+                span: sway_types::Span::dummy(),
+            }),
         };
 
-        if current_constant.is_break() {
+        if result.is_err() {
             break;
         }
     }
+
     // remove introduced vars/consts from scope at the end of the codeblock
     for name in bindings {
         known_consts.pop(&name)
     }
 
-    match current_constant {
-        ControlFlow::Continue(v) => Ok(v),
-        ControlFlow::Break(_) => Ok(None),
-    }
+    result
 }
 
 fn const_eval_intrinsic(
@@ -891,10 +907,10 @@ mod tests {
         match (is_constant, actual_constant) {
             (true, Ok(_)) => {}
             (true, Err(err)) => {
-                panic!("Expression cannot be converted to constant: {expr:?}\nExpr:{expr_under_test:?}\nError: {err:?}");
+                panic!("Expression cannot be converted to constant: {expr:?}\nPrefix: {prefix:?}\nExpr:{expr_under_test:#?}\nError: {err:#?}");
             }
             (false, Ok(constant)) => {
-                panic!("Expression unexpectedly can be converted to constant: {expr:?}\nExpr:{expr_under_test:?}\nConstant: {constant:?}");
+                panic!("Expression unexpectedly can be converted to constant: {expr:?}\nPrefix: {prefix:?}\nExpr:{expr_under_test:#?}\nConstant: {constant:#?}");
             }
             (false, Err(_)) => {}
         }
@@ -940,5 +956,6 @@ mod tests {
         assert_is_constant(false, "", "{ struct A {} }");
         assert_is_constant(false, "", "{ return 1; 1 }");
         assert_is_constant(false, "", "{ }");
+        assert_is_constant(false, "fn id(x: u64) -> u64 { { return 1; }; x }", "id(1)");
     }
 }
