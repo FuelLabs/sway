@@ -135,7 +135,7 @@ impl<'a, I: Iterator<Item = String>> ConfigBuilder<'a, I> {
                             "Usage: opt [passname...] -i input_file -o output_file\n\n{}",
                             self.pass_mgr.help_text()
                         );
-                        print!("\n\nIn the absense of -i or -o options, input is taken from stdin and output is printed to stdout.\n");
+                        print!("\n\nIn the absence of -i or -o options, input is taken from stdin and output is printed to stdout.\n");
                         exit(0);
                     }
 
