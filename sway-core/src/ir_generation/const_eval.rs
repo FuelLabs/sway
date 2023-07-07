@@ -246,32 +246,41 @@ fn const_eval_typed_expr(
     Ok(match &expr.expression {
         ty::TyExpressionVariant::Literal(l) => Some(convert_literal_to_constant(lookup.context, l)),
         ty::TyExpressionVariant::FunctionApplication {
-            arguments, fn_ref, ..
+            arguments,
+            fn_ref,
+            call_path,
+            ..
         } => {
             let mut actuals_const: Vec<_> = vec![];
+
             for arg in arguments {
                 let (name, sub_expr) = arg;
                 let eval_expr_opt = const_eval_typed_expr(lookup, known_consts, sub_expr)?;
                 if let Some(sub_const) = eval_expr_opt {
                     actuals_const.push((name, sub_const));
+                } else {
+                    // If all actual arguments don't evaluate a constant, bail out.
+                    // TODO: Explore if we could continue here and if it'll be useful.
+                    return Err(CompileError::CodeCannotBeAConstant {
+                        span: call_path.span(),
+                    });
                 }
             }
 
-            // If all actual arguments don't evaluate a constant, bail out.
-            // TODO: Explore if we could continue here and if it'll be useful.
-            if actuals_const.len() < arguments.len() {
-                return Ok(None);
-            }
+            assert!(actuals_const.len() == arguments.len());
+
             for (name, cval) in actuals_const.into_iter() {
                 known_consts.push(name.clone(), cval);
             }
 
             let function_decl = lookup.engines.de().get_function(fn_ref);
-            let res = const_eval_codeblock(lookup, known_consts, &function_decl.body)?;
+            let res = const_eval_codeblock(lookup, known_consts, &function_decl.body);
+
             for (name, _) in arguments {
                 known_consts.pop(name);
             }
-            res
+
+            res?
         }
         ty::TyExpressionVariant::ConstantExpression { const_decl, .. } => {
             let call_path = &const_decl.call_path;
@@ -306,21 +315,29 @@ fn const_eval_typed_expr(
                     .and_then(|v| v.get_constant(lookup.context).cloned())
             }
         },
-        ty::TyExpressionVariant::StructExpression { fields, .. } => {
+        ty::TyExpressionVariant::StructExpression {
+            fields,
+            instantiation_span,
+            ..
+        } => {
             let (mut field_typs, mut field_vals): (Vec<_>, Vec<_>) = (vec![], vec![]);
+
             for field in fields {
                 let ty::TyStructExpressionField { name: _, value, .. } = field;
                 let eval_expr_opt = const_eval_typed_expr(lookup, known_consts, value)?;
                 if let Some(cv) = eval_expr_opt {
                     field_typs.push(value.return_type);
                     field_vals.push(cv);
+                } else {
+                    return Err(CompileError::CodeCannotBeAConstant {
+                        span: instantiation_span.clone(),
+                    });
                 }
             }
 
-            if field_vals.len() < fields.len() {
-                // We couldn't evaluate all fields to a constant.
-                return Ok(None);
-            }
+            assert!(field_typs.len() == fields.len());
+            assert!(field_vals.len() == fields.len());
+
             get_struct_for_types(
                 lookup.engines.te(),
                 lookup.engines.de(),
@@ -337,17 +354,22 @@ fn const_eval_typed_expr(
         }
         ty::TyExpressionVariant::Tuple { fields } => {
             let (mut field_typs, mut field_vals): (Vec<_>, Vec<_>) = (vec![], vec![]);
+
             for value in fields {
                 let eval_expr_opt = const_eval_typed_expr(lookup, known_consts, value)?;
                 if let Some(cv) = eval_expr_opt {
                     field_typs.push(value.return_type);
                     field_vals.push(cv);
+                } else {
+                    return Err(CompileError::CodeCannotBeAConstant {
+                        span: expr.span.clone(),
+                    });
                 }
             }
-            if field_vals.len() < fields.len() {
-                // We couldn't evaluate all fields to a constant.
-                return Ok(None);
-            }
+
+            assert!(field_typs.len() == fields.len());
+            assert!(field_vals.len() == fields.len());
+
             create_tuple_aggregate(
                 lookup.engines.te(),
                 lookup.engines.de(),
@@ -367,30 +389,36 @@ fn const_eval_typed_expr(
             contents,
         } => {
             let (mut element_typs, mut element_vals): (Vec<_>, Vec<_>) = (vec![], vec![]);
+
             for value in contents {
                 let eval_expr_opt = const_eval_typed_expr(lookup, known_consts, value)?;
                 if let Some(cv) = eval_expr_opt {
                     element_typs.push(value.return_type);
                     element_vals.push(cv);
+                } else {
+                    return Err(CompileError::CodeCannotBeAConstant {
+                        span: expr.span.clone(),
+                    });
                 }
             }
-            if element_vals.len() < contents.len() || element_typs.is_empty() {
-                // We couldn't evaluate all fields to a constant or cannot determine element type.
-                return Ok(None);
-            }
-            let elem_type_info = lookup.engines.te().get(*elem_type);
-            if !element_typs.iter().all(|tid| {
-                lookup
-                    .engines
-                    .te()
-                    .get(*tid)
-                    .eq(&elem_type_info, lookup.engines)
-            }) {
-                // This shouldn't happen if the type checker did its job.
-                return Ok(None);
-            }
+
+            assert!(element_typs.len() == contents.len());
+            assert!(element_vals.len() == contents.len());
+
+            let te = lookup.engines.te();
+            assert!({
+                let elem_type_info = te.get(*elem_type);
+                element_typs.iter().all(|tid| {
+                    lookup
+                        .engines
+                        .te()
+                        .get(*tid)
+                        .eq(&elem_type_info, lookup.engines)
+                })
+            });
+
             create_array_aggregate(
-                lookup.engines.te(),
+                te,
                 lookup.engines.de(),
                 lookup.context,
                 *elem_type,
@@ -408,6 +436,7 @@ fn const_eval_typed_expr(
             enum_ref,
             tag,
             contents,
+            variant_instantiation_span,
             ..
         } => {
             let enum_decl = lookup.engines.de().get_enum(enum_ref);
@@ -425,7 +454,11 @@ fn const_eval_typed_expr(
                     None => fields.push(Constant::new_unit(lookup.context)),
                     Some(subexpr) => match const_eval_typed_expr(lookup, known_consts, subexpr)? {
                         Some(constant) => fields.push(constant),
-                        None => return Ok(None),
+                        None => {
+                            return Err(CompileError::CodeCannotBeAConstant {
+                                span: variant_instantiation_span.clone(),
+                            })
+                        }
                     },
                 }
 
@@ -619,7 +652,7 @@ fn const_eval_codeblock(
                 }
             }
             ty::TyAstNodeContent::SideEffect(_) => Err(CompileError::CodeCannotBeAConstant {
-                span: sway_types::Span::dummy(),
+                span: ast_node.span.clone(),
             }),
         };
 
@@ -942,6 +975,11 @@ mod tests {
         // At the moment this is not constant because of the "return"
         assert_is_constant(false, "fn id(x: u64) -> u64 { return x; }", "id(1)");
         assert_is_constant(false, "", "[0,1][2]");
+        assert_is_constant(
+            false,
+            "enum Color { Blue: u64 }",
+            "Color::Blue({return 1;})",
+        );
 
         // Code blocks that can be converted to constants
         assert_is_constant(true, "", "{ 1 }");
