@@ -131,7 +131,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
             .check_program_type(vec![TreeType::Contract])
             .is_ok()
         {
-            let salt = match (&contract_salt_map, command.random_salt) {
+            let salt = match (&contract_salt_map, command.default_salt) {
                 (Some(map), false) => {
                     if let Some(salt) = map.get(pkg.descriptor.manifest_file.project_name()) {
                         *salt
@@ -139,10 +139,10 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
                         Default::default()
                     }
                 }
-                (None, true) => rand::random(),
-                (None, false) => Default::default(),
+                (None, true) => Default::default(),
+                (None, false) => rand::random(),
                 (Some(_), true) => {
-                    bail!("Both `--salt` and `--random-salt` were specified: must choose one")
+                    bail!("Both `--salt` and `--default-salt` were specified: must choose one")
                 }
             };
             let contract_id =
