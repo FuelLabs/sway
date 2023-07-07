@@ -548,15 +548,15 @@ fn const_eval_typed_expr(
             then,
             r#else,
         } => {
-            match dbg!(const_eval_typed_expr(lookup, known_consts, condition))? {
+            match const_eval_typed_expr(lookup, known_consts, condition)? {
                 Some(Constant {
                     value: ConstantValue::Bool(cond),
                     ..
                 }) => {
                     if cond {
-                        dbg!(const_eval_typed_expr(lookup, known_consts, then))?
+                        const_eval_typed_expr(lookup, known_consts, then)?
                     } else if let Some(r#else) = r#else {
-                        dbg!(const_eval_typed_expr(lookup, known_consts, r#else))?
+                        const_eval_typed_expr(lookup, known_consts, r#else)?
                     } else {
                         // missing 'else' branch:
                         // we probably don't really care about evaluating
