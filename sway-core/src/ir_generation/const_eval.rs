@@ -1,10 +1,10 @@
-use std::ops::{BitAnd, BitOr, BitXor, ControlFlow};
+use std::ops::{BitAnd, BitOr, BitXor};
 
 use crate::{
     asm_generation::from_ir::{ir_type_size_in_bytes, ir_type_str_size_in_bytes},
     engine_threading::*,
     language::{
-        ty::{self, TyConstantDecl, TyExpression, TyExpressionVariant, TyIntrinsicFunctionKind},
+        ty::{self, TyConstantDecl, TyIntrinsicFunctionKind},
         CallPath,
     },
     metadata::MetadataManager,
