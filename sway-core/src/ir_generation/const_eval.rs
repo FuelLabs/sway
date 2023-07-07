@@ -699,7 +699,7 @@ fn const_eval_intrinsic(
 ) -> Result<Option<Constant>, CompileError> {
     let mut args = vec![];
     for arg in intrinsic.arguments.iter() {
-        if let Ok(Some(constant)) = const_eval_typed_expr(lookup, known_consts, &arg) {
+        if let Ok(Some(constant)) = const_eval_typed_expr(lookup, known_consts, arg) {
             args.push(constant);
         } else {
             return Err(CompileError::CannotBeEvaluatedToConst {
@@ -746,11 +746,9 @@ fn const_eval_intrinsic(
                     ty,
                     value: ConstantValue::Uint(sum),
                 })),
-                None => {
-                    return Err(CompileError::CannotBeEvaluatedToConst {
-                        span: intrinsic.span.clone(),
-                    })
-                }
+                None => Err(CompileError::CannotBeEvaluatedToConst {
+                    span: intrinsic.span.clone(),
+                }),
             }
         }
         sway_ast::Intrinsic::Lsh | sway_ast::Intrinsic::Rsh => {
@@ -781,11 +779,9 @@ fn const_eval_intrinsic(
                     ty,
                     value: ConstantValue::Uint(sum),
                 })),
-                None => {
-                    return Err(CompileError::CannotBeEvaluatedToConst {
-                        span: intrinsic.span.clone(),
-                    })
-                }
+                None => Err(CompileError::CannotBeEvaluatedToConst {
+                    span: intrinsic.span.clone(),
+                }),
             }
         }
         sway_ast::Intrinsic::SizeOfType => {
@@ -871,11 +867,9 @@ fn const_eval_intrinsic(
         | sway_ast::Intrinsic::StateStoreQuad
         | sway_ast::Intrinsic::Log
         | sway_ast::Intrinsic::Revert
-        | sway_ast::Intrinsic::Smo => {
-            return Err(CompileError::CannotBeEvaluatedToConst {
-                span: intrinsic.span.clone(),
-            })
-        }
+        | sway_ast::Intrinsic::Smo => Err(CompileError::CannotBeEvaluatedToConst {
+            span: intrinsic.span.clone(),
+        }),
         sway_ast::Intrinsic::Not => {
             // Not works only with uint at the moment
             // `bool` ops::Not implementation uses `__eq`.
