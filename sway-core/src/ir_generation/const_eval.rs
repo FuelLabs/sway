@@ -143,7 +143,15 @@ pub(crate) fn compile_const_decl(
                         &call_path,
                         &value.unwrap(),
                         is_configurable,
-                    )?;
+                    )
+                    .map_err(|err| match err {
+                        CompileError::CannotBeEvaluatedToConst { .. } => {
+                            CompileError::NonConstantDeclValue {
+                                span: call_path.span(),
+                            }
+                        }
+                        err => err,
+                    })?;
                     if !is_configurable {
                         env.module.add_global_constant(
                             env.context,
@@ -261,7 +269,7 @@ fn const_eval_typed_expr(
                 } else {
                     // If all actual arguments don't evaluate a constant, bail out.
                     // TODO: Explore if we could continue here and if it'll be useful.
-                    return Err(CompileError::CodeCannotBeAConstant {
+                    return Err(CompileError::CannotBeEvaluatedToConst {
                         span: call_path.span(),
                     });
                 }
@@ -329,7 +337,7 @@ fn const_eval_typed_expr(
                     field_typs.push(value.return_type);
                     field_vals.push(cv);
                 } else {
-                    return Err(CompileError::CodeCannotBeAConstant {
+                    return Err(CompileError::CannotBeEvaluatedToConst {
                         span: instantiation_span.clone(),
                     });
                 }
@@ -361,7 +369,7 @@ fn const_eval_typed_expr(
                     field_typs.push(value.return_type);
                     field_vals.push(cv);
                 } else {
-                    return Err(CompileError::CodeCannotBeAConstant {
+                    return Err(CompileError::CannotBeEvaluatedToConst {
                         span: expr.span.clone(),
                     });
                 }
@@ -396,7 +404,7 @@ fn const_eval_typed_expr(
                     element_typs.push(value.return_type);
                     element_vals.push(cv);
                 } else {
-                    return Err(CompileError::CodeCannotBeAConstant {
+                    return Err(CompileError::CannotBeEvaluatedToConst {
                         span: expr.span.clone(),
                     });
                 }
@@ -455,7 +463,7 @@ fn const_eval_typed_expr(
                     Some(subexpr) => match const_eval_typed_expr(lookup, known_consts, subexpr)? {
                         Some(constant) => fields.push(constant),
                         None => {
-                            return Err(CompileError::CodeCannotBeAConstant {
+                            return Err(CompileError::CannotBeEvaluatedToConst {
                                 span: variant_instantiation_span.clone(),
                             })
                         }
@@ -510,7 +518,7 @@ fn const_eval_typed_expr(
         // for constant initializers -- the user can always refactor their pure functions
         // to not use the return statement
         ty::TyExpressionVariant::Return(exp) => {
-            return Err(CompileError::CodeCannotBeAConstant {
+            return Err(CompileError::CannotBeEvaluatedToConst {
                 span: exp.span.clone(),
             })
         }
@@ -525,15 +533,15 @@ fn const_eval_typed_expr(
             then,
             r#else,
         } => {
-            match const_eval_typed_expr(lookup, known_consts, condition)? {
+            match dbg!(const_eval_typed_expr(lookup, known_consts, condition))? {
                 Some(Constant {
                     value: ConstantValue::Bool(cond),
                     ..
                 }) => {
                     if cond {
-                        const_eval_typed_expr(lookup, known_consts, then)?
+                        dbg!(const_eval_typed_expr(lookup, known_consts, then))?
                     } else if let Some(r#else) = r#else {
-                        const_eval_typed_expr(lookup, known_consts, r#else)?
+                        dbg!(const_eval_typed_expr(lookup, known_consts, r#else))?
                     } else {
                         // missing 'else' branch:
                         // we probably don't really care about evaluating
@@ -611,7 +619,7 @@ fn const_eval_codeblock(
                     bindings.push(var_decl.name.clone());
                     Ok(None)
                 } else {
-                    Err(CompileError::CodeCannotBeAConstant {
+                    Err(CompileError::CannotBeEvaluatedToConst {
                         span: decl.span().clone(),
                     })
                 }
@@ -627,7 +635,7 @@ fn const_eval_codeblock(
                     bindings.push(const_decl.name.clone());
                     Ok(None)
                 } else {
-                    Err(CompileError::CodeCannotBeAConstant {
+                    Err(CompileError::CannotBeEvaluatedToConst {
                         span: const_decl.decl_span.clone(),
                     })
                 }
@@ -635,7 +643,7 @@ fn const_eval_codeblock(
             ty::TyAstNodeContent::Declaration(_) => Ok(None),
             ty::TyAstNodeContent::Expression(e) => {
                 if const_eval_typed_expr(lookup, known_consts, e).is_err() {
-                    Err(CompileError::CodeCannotBeAConstant {
+                    Err(CompileError::CannotBeEvaluatedToConst {
                         span: e.span.clone(),
                     })
                 } else {
@@ -646,12 +654,12 @@ fn const_eval_codeblock(
                 if let Ok(Some(constant)) = const_eval_typed_expr(lookup, known_consts, e) {
                     Ok(Some(constant))
                 } else {
-                    Err(CompileError::CodeCannotBeAConstant {
+                    Err(CompileError::CannotBeEvaluatedToConst {
                         span: e.span.clone(),
                     })
                 }
             }
-            ty::TyAstNodeContent::SideEffect(_) => Err(CompileError::CodeCannotBeAConstant {
+            ty::TyAstNodeContent::SideEffect(_) => Err(CompileError::CannotBeEvaluatedToConst {
                 span: ast_node.span.clone(),
             }),
         };
