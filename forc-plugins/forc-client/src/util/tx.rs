@@ -202,7 +202,11 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
                 Provider::new(client, params),
                 signature_witness_index,
             )
-            .await?;
+            .await.map_err(|e| if e.to_string().contains("not enough coins to fit the target") {
+                anyhow::anyhow!("Deployment failed due to insufficient funds. Please be sure to have enough coins to pay for deployment transaction.")
+            } else {
+                e
+            })?;
             key
         } else {
             None
