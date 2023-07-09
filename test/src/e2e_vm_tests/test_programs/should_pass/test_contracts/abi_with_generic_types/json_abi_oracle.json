@@ -6,7 +6,7 @@
       "inputs": [
         {
           "name": "_arg1",
-          "type": 22,
+          "type": 21,
           "typeArguments": [
             {
               "name": "",
@@ -15,7 +15,7 @@
             },
             {
               "name": "",
-              "type": 28,
+              "type": 27,
               "typeArguments": null
             }
           ]
@@ -32,14 +32,14 @@
         },
         {
           "name": "_arg4",
-          "type": 21,
+          "type": 20,
           "typeArguments": null
         }
       ],
       "name": "complex_function",
       "output": {
         "name": "",
-        "type": 19,
+        "type": 18,
         "typeArguments": null
       }
     },
@@ -48,16 +48,16 @@
       "inputs": [
         {
           "name": "_arg",
-          "type": 20,
+          "type": 19,
           "typeArguments": [
             {
               "name": "",
-              "type": 28,
+              "type": 27,
               "typeArguments": null
             },
             {
               "name": "",
-              "type": 25,
+              "type": 24,
               "typeArguments": null
             }
           ]
@@ -66,7 +66,7 @@
       "name": "take_generic_array",
       "output": {
         "name": "",
-        "type": 27,
+        "type": 26,
         "typeArguments": null
       }
     },
@@ -75,27 +75,27 @@
       "inputs": [
         {
           "name": "_arg",
-          "type": 23,
+          "type": 22,
           "typeArguments": [
             {
               "name": "",
-              "type": 24,
+              "type": 23,
               "typeArguments": [
                 {
                   "name": "",
-                  "type": 27,
+                  "type": 26,
                   "typeArguments": null
                 }
               ]
             },
             {
               "name": "",
-              "type": 25,
+              "type": 24,
               "typeArguments": null
             },
             {
               "name": "",
-              "type": 26,
+              "type": 25,
               "typeArguments": null
             }
           ]
@@ -202,11 +202,11 @@
       "components": [
         {
           "name": "__array_element",
-          "type": 22,
+          "type": 21,
           "typeArguments": [
             {
               "name": "",
-              "type": 27,
+              "type": 26,
               "typeArguments": null
             },
             {
@@ -225,7 +225,7 @@
       "components": [
         {
           "name": "__array_element",
-          "type": 22,
+          "type": 21,
           "typeArguments": [
             {
               "name": "",
@@ -260,7 +260,7 @@
       "components": [
         {
           "name": "Foo",
-          "type": 27,
+          "type": 26,
           "typeArguments": null
         },
         {
@@ -319,14 +319,8 @@
     },
     {
       "components": null,
-      "type": "str[5]",
+      "type": "str",
       "typeId": 18,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "str[6]",
-      "typeId": 19,
       "typeParameters": null
     },
     {
@@ -343,7 +337,7 @@
         }
       ],
       "type": "struct MyArrayStruct",
-      "typeId": 20,
+      "typeId": 19,
       "typeParameters": [
         13,
         14
@@ -353,12 +347,12 @@
       "components": [
         {
           "name": "bom",
-          "type": 27,
+          "type": 26,
           "typeArguments": null
         }
       ],
       "type": "struct MyOtherStruct",
-      "typeId": 21,
+      "typeId": 20,
       "typeParameters": null
     },
     {
@@ -374,14 +368,14 @@
           "typeArguments": [
             {
               "name": "",
-              "type": 27,
+              "type": 26,
               "typeArguments": null
             }
           ]
         }
       ],
       "type": "struct MyStruct",
-      "typeId": 22,
+      "typeId": 21,
       "typeParameters": [
         11,
         12
@@ -401,7 +395,7 @@
         }
       ],
       "type": "struct MyStructWithTuple",
-      "typeId": 23,
+      "typeId": 22,
       "typeParameters": [
         15,
         16,
@@ -417,7 +411,7 @@
         }
       ],
       "type": "struct SomeGenericStruct",
-      "typeId": 24,
+      "typeId": 23,
       "typeParameters": [
         17
       ]
@@ -425,25 +419,25 @@
     {
       "components": null,
       "type": "u16",
-      "typeId": 25,
+      "typeId": 24,
       "typeParameters": null
     },
     {
       "components": null,
       "type": "u32",
-      "typeId": 26,
+      "typeId": 25,
       "typeParameters": null
     },
     {
       "components": null,
       "type": "u64",
-      "typeId": 27,
+      "typeId": 26,
       "typeParameters": null
     },
     {
       "components": null,
       "type": "u8",
-      "typeId": 28,
+      "typeId": 27,
       "typeParameters": null
     }
   ]

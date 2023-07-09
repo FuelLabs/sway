@@ -42,7 +42,7 @@ impl<K, V> StorageKey<MyStorageMap<K, V>> {
 
 storage {
     map1: MyStorageMap<u64, bool> = MyStorageMap {},
-    map2: MyStorageMap<u64, str[4]> = MyStorageMap {},
+    map2: MyStorageMap<u64, str> = MyStorageMap {},
 }
 
 abi TestAbi {

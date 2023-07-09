@@ -44,12 +44,6 @@ impl Eq for [u64; 3] {
     }
 }
 
-impl Eq for str[4] {
-    fn eq(self, other: Self) -> bool {
-        sha256(self) == sha256(other)
-    }
-}
-
 /////////////////////////////////////////////////////////////////////////////
 // Error 
 /////////////////////////////////////////////////////////////////////////////
@@ -63,7 +57,7 @@ pub enum Error {
     EnumError: MyEnum,
     TupleError: (u64, u64),
     ArrayError: [u64; 3],
-    StringError: str[4],
+    StringError: str,
 }
 
 impl Eq for Error {

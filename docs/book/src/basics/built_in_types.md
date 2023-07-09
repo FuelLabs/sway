@@ -17,7 +17,7 @@ Sway has the following primitive types:
 1. `u16` (16-bit unsigned integer)
 1. `u32` (32-bit unsigned integer)
 1. `u64` (64-bit unsigned integer)
-1. `str[]` (fixed-length string)
+1. `str` (string slice)
 1. `bool` (Boolean `true` or `false`)
 1. `b256` (256 bits (32 bytes), i.e. a hash)
 
@@ -71,16 +71,15 @@ fn returns_false() -> bool {
 
 <!-- This section should explain the string type in Sway -->
 <!-- str:example:start -->
-In Sway, static-length strings are a primitive type. This means that when you declare a string, its size is a part of its type. This is necessary for the compiler to know how much memory to give for the storage of that data. The size of the string is denoted with square brackets.
+String slices the most primitive string type in Sway. They're made up of two components, a pointer to some bytes and a length.
 <!-- str:example:end -->
 
 Let's take a look:
 
 ```sway
-let my_string: str[4] = "fuel";
+let my_string: str = "fuel";
+assert_eq(my_string.len(), 4);
 ```
-
-Because the string literal `"fuel"` is four letters, the type is `str[4]`, denoting a static length of 4 characters. Strings default to UTF-8 in Sway.
 
 ## Compound Types
 

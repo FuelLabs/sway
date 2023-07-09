@@ -1318,9 +1318,17 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 // Sometimes (all the time?) a slice type will be `ptr slice`.
                 let ret_type = ret_type.get_pointee_type(self.context).unwrap_or(*ret_type);
 
+                // Sometimes we may get a { slice }, treat that as a slice
+                let is_slice_wrapper = {
+                    let field_types = ret_type.get_field_types(self.context);
+                    ret_type.is_struct(self.context)
+                        && field_types.len() == 1
+                        && field_types[0].is_slice(self.context)
+                };
+
                 // If the type is a pointer then we use RETD to return data.
                 let size_reg = self.reg_seqr.next();
-                if ret_type.is_slice(self.context) {
+                if ret_type.is_slice(self.context) || is_slice_wrapper {
                     // If this is a slice then return what it points to.
                     self.cur_bytecode.push(Op {
                         opcode: Either::Left(VirtualOp::LW(

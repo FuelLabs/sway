@@ -17,7 +17,7 @@ fn main() -> bool {
     let c: u16 = 1;
     let d: u8 = 1;
     let e: b256 = zero;
-    let f: str[11] = "Fuel rocks!";
+    let f: str = "Fuel rocks!";
 
     let test_array = [42u16; 3];
 
@@ -41,7 +41,7 @@ fn main() -> bool {
     assert(size_of::<u16>() == 8);
     assert(size_of::<u8>() == 8);
     assert(size_of::<b256>() == 32);
-    assert(size_of::<str[11]>() == 16);
+    assert(size_of::<str>() == 16);
     assert(size_of::<[u16; 3]>() == 24);
     assert(size_of::<TestStruct>() == 16);
 

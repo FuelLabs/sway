@@ -43,9 +43,3 @@ impl Eq for [u64; 3] {
         self[0] == other[0] && self[1] == other[1] && self[2] == other[2]
     }
 }
-
-impl Eq for str[4] {
-    fn eq(self, other: Self) -> bool {
-        sha256(self) == sha256(other)
-    }
-}

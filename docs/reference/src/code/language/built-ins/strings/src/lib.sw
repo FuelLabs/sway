@@ -2,9 +2,9 @@ library;
 
 fn explicit() {
     // ANCHOR: explicit
-    let fuel: str[4] = "fuel";
-    let blockchain: str[10] = "blockchain";
-    let crypto: str[6] = "crypto";
+    let fuel: str = "fuel";
+    let blockchain: str = "blockchain";
+    let crypto: str = "crypto";
     // ANCHOR_END: explicit
 }
 

@@ -2,7 +2,7 @@ use fuel_vm::fuel_tx::{Bytes32, ContractId, Output, TxPointer, UtxoId};
 use fuels::{
     accounts::wallet::WalletUnlocked,
     prelude::*,
-    types::{input::Input, Bits256, SizedAsciiString},
+    types::{input::Input, AsciiString, Bits256},
 };
 
 macro_rules! fn_selector {
@@ -148,14 +148,13 @@ async fn can_call_with_multiple_args() {
 async fn can_call_with_multiple_args_complex() {
     let (instance, id, wallet) = get_contract_instance().await;
 
-    let function_selector =
-        fn_selector!(set_value_multiple_complex(MyStruct, SizedAsciiString::<4>));
+    let function_selector = fn_selector!(set_value_multiple_complex(MyStruct, AsciiString));
     let calldata = calldata!(
         MyStruct {
             a: true,
             b: [1, 2, 3],
         },
-        SizedAsciiString::<4>::try_from("fuel").unwrap()
+        AsciiString::try_from("fuel").unwrap()
     );
 
     low_level_call(id, wallet, function_selector, calldata, false).await;

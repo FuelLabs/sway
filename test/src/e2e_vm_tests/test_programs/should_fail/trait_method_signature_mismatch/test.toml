@@ -5,9 +5,9 @@ category = "fail"
 # check: $()found:    Option<T>
 # check: $()help:     The definition of this function must match the one in the trait "MyTrait" declaration.
 
-# check: fn foo(s: str[7]) -> str[7] {
+# check: fn foo(s: str) -> str {
 # nextln: $()expected: u64
-# nextln: $()found:    str[7]
+# nextln: $()found:    str
 # nextln: $()The definition of this function must match the one in the trait "Foo" declaration.
 
 # check: fn bar(ref mut variable: u64) -> bool {

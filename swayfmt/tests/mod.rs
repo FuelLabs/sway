@@ -179,9 +179,8 @@ enum TestTy {
     _,
     Array : [u8;
     40],
-    String:         str[
-    4
-    ],
+    String:         str
+        ,
     PathType     : root::
 example::
     some_type,
@@ -195,7 +194,7 @@ example::
 enum TestTy {
     Infer: _,
     Array: [u8; 40],
-    String: str[4],
+    String: str,
     PathType: root::example::some_type,
     TupleNil: (),
     Tuple: (u64, u32),
@@ -1055,7 +1054,7 @@ struct Point {
     y: u64,
 }
 struct TupleInStruct {
-    nested_tuple: (u64, (u32, (bool, str[2]))),
+    nested_tuple: (u64, (u32, (bool, str))),
 }
 fn struct_destructuring() {
     let point1 = Point { x: 0, y: 0 };
@@ -1080,7 +1079,7 @@ struct Point {
     y: u64,
 }
 struct TupleInStruct {
-    nested_tuple: (u64, (u32, (bool, str[2]))),
+    nested_tuple: (u64, (u32, (bool, str))),
 }
 fn struct_destructuring() {
     let point1 = Point { x: 0, y: 0 };

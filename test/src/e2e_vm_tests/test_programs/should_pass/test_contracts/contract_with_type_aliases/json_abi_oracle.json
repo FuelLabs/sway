@@ -155,7 +155,7 @@
     },
     {
       "components": null,
-      "type": "str[9]",
+      "type": "str",
       "typeId": 6,
       "typeParameters": null
     },

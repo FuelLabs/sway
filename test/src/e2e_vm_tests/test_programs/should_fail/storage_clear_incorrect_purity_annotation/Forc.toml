@@ -5,4 +5,4 @@ license = "Apache-2.0"
 name = "abi_impl_purity_mismatch"
 
 [dependencies]
-std = { path = "../../../../../../../sway/sway-lib-std" }
+std = { path = "../../../../../../sway-lib-std" }

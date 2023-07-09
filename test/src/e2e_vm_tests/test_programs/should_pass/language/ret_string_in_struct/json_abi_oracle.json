@@ -17,7 +17,7 @@
   "types": [
     {
       "components": null,
-      "type": "str[9]",
+      "type": "str",
       "typeId": 0,
       "typeParameters": null
     },

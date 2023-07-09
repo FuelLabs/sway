@@ -1,7 +1,7 @@
 script;
 
 fn main() {
-  let g: str[3] = three_generics(true, "foo", 10);
+  let g: str = three_generics(true, "foo", 10);
 }
 
 fn three_generics<A, B, C>(a: A, b: B, c: C) -> B {

@@ -1,7 +1,7 @@
 contract;
 
 pub enum SomeError {
-    SomeErrorString: str[5],
+    SomeErrorString: str,
 }
 
 struct MyStruct {
@@ -24,7 +24,7 @@ abi MyContract {
     fn struct_test(input: Vec<MyStruct>) -> [MyStruct; 3];
     fn enum_test(input: Vec<MyEnum>) -> [MyEnum; 3];
     fn array_test(input: Vec<[Address; 2]>) -> [[Address; 2]; 3];
-    fn string_test(input: Vec<str[4]>) -> [str[4]; 3];
+    fn string_test(input: Vec<str>) -> [str; 3];
     fn vec_in_vec_test(input: Vec<Vec<u64>>) -> [u64; 9];
 }
 
@@ -101,7 +101,7 @@ impl MyContract for Contract {
             input.get(2).unwrap(),
         ]
     }
-    fn string_test(input: Vec<str[4]>) -> [str[4]; 3] {
+    fn string_test(input: Vec<str>) -> [str; 3] {
         assert(input.len() >= 3);
         [
             input.get(0).unwrap(),

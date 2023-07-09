@@ -1,4 +1,4 @@
-use fuels::{prelude::*, types::SizedAsciiString};
+use fuels::{prelude::*, types::AsciiString};
 
 #[tokio::test]
 async fn script_uses_default_configurables() -> Result<()> {
@@ -41,7 +41,7 @@ async fn script_configurables() -> Result<()> {
     let bin_path = "test_projects/configurables_in_script/out/debug/configurables_in_script.bin";
     let instance = MyScript::new(wallet, bin_path);
 
-    let new_str: SizedAsciiString<4> = "FUEL".try_into()?;
+    let new_str: AsciiString = "FUEL".try_into()?;
     let new_struct = StructWithGeneric {
         field_1: 16u8,
         field_2: 32,

@@ -294,7 +294,7 @@ impl TypeEngine {
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Placeholder(..)
             | TypeInfo::TypeParam(..)
-            | TypeInfo::Str(..)
+            | TypeInfo::Str
             | TypeInfo::UnsignedInteger(..)
             | TypeInfo::Boolean
             | TypeInfo::ContractCaller { .. }
@@ -347,7 +347,7 @@ impl TypeEngine {
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Placeholder(..)
             | TypeInfo::TypeParam(..)
-            | TypeInfo::Str(..)
+            | TypeInfo::Str
             | TypeInfo::UnsignedInteger(..)
             | TypeInfo::Boolean
             | TypeInfo::ContractCaller { .. }

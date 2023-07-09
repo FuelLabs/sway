@@ -20,7 +20,7 @@ impl core::ops::Eq for Tuple {
     }
 }
 
-pub type StringTy = str[9];
+pub type StringTy = str;
 impl core::ops::Eq for StringTy {
     fn eq(self, other: Self) -> bool {
         std::hash::sha256(self) == std::hash::sha256(other)

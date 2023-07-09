@@ -647,7 +647,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         | TypeContent::Pointer(_) => 1,
                         TypeContent::Slice => 2,
                         TypeContent::B256 => 4,
-                        TypeContent::String(n) => size_bytes_round_up_to_word_alignment!(n),
+                        TypeContent::StringData(n) => size_bytes_round_up_to_word_alignment!(n),
                         TypeContent::Array(..) | TypeContent::Struct(_) | TypeContent::Union(_) => {
                             size_bytes_in_words!(ir_type_size_in_bytes(self.context, &ptr_ty))
                         }

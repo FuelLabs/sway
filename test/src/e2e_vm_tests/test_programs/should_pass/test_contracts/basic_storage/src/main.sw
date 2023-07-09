@@ -7,17 +7,17 @@ const S5 = "aaaaa";
 
 storage {
     c1: u64 = C1,
-    str0: str[0] = "",
-    str1: str[1] = "a",
-    str2: str[2] = "aa",
-    str3: str[3] = "aaa",
-    str4: str[4] = "aaaa",
-    str5: str[5] = S5,
-    str6: str[6] = "aaaaaa",
-    str7: str[7] = "aaaaaaa",
-    str8: str[8] = "aaaaaaaa",
-    str9: str[9] = "aaaaaaaaa",
-    str10: str[10] = "aaaaaaaaaa",
+    str0: str = "",
+    str1: str = "a",
+    str2: str = "aa",
+    str3: str = "aaa",
+    str4: str = "aaaa",
+    str5: str = S5,
+    str6: str = "aaaaaa",
+    str7: str = "aaaaaaa",
+    str8: str = "aaaaaaaa",
+    str9: str = "aaaaaaaaa",
+    str10: str = "aaaaaaaaaa",
 }
 
 impl BasicStorage for Contract {

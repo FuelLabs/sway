@@ -160,7 +160,7 @@ pub fn serialize_to_words(constant: &Constant, context: &Context, ty: &Type) -> 
         ConstantValue::B256(b) if ty.is_b256(context) => {
             Vec::from_iter((0..4).map(|i| Bytes8::new(b[8 * i..8 * i + 8].try_into().unwrap())))
         }
-        ConstantValue::String(s) if ty.is_string(context) => {
+        ConstantValue::StringData(s) if ty.is_string(context) => {
             // Turn the bytes into serialized words (Bytes8).
             let mut s = s.clone();
             s.extend(vec![0; ((s.len() + 7) / 8) * 8 - s.len()]);

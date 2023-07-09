@@ -5,7 +5,7 @@ fn main() -> u64 {
     f(s, s)
 }
 
-fn f(a: str[10], b: str[10]) -> u64 {
+fn f(a: str, b: str) -> u64 {
     // There are 2 strings.
     2
 }

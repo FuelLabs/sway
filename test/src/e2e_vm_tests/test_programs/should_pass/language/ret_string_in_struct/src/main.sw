@@ -1,7 +1,7 @@
 script;
 
 struct Wrapper {
-    name: str[9],
+    name: str,
 }
 
 fn main() -> Wrapper {

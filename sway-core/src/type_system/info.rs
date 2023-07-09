@@ -100,7 +100,7 @@ pub enum TypeInfo {
     /// NOTE: This type is *not used yet*.
     // https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.TyKind.html#variant.Param
     TypeParam(usize),
-    Str(Length),
+    Str,
     UnsignedInteger(IntegerBits),
     Enum(DeclRefEnum),
     Struct(DeclRefStruct),
@@ -159,9 +159,6 @@ impl HashWithEngines for TypeInfo {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         self.discriminant_value().hash(state);
         match self {
-            TypeInfo::Str(len) => {
-                len.hash(state);
-            }
             TypeInfo::UnsignedInteger(bits) => {
                 bits.hash(state);
             }
@@ -219,7 +216,8 @@ impl HashWithEngines for TypeInfo {
             TypeInfo::Slice(ty) => {
                 ty.hash(state, engines);
             }
-            TypeInfo::Numeric
+            TypeInfo::Str
+            | TypeInfo::Numeric
             | TypeInfo::Boolean
             | TypeInfo::B256
             | TypeInfo::Contract
@@ -262,7 +260,6 @@ impl PartialEqWithEngines for TypeInfo {
                 l_name.suffix == r_name.suffix
                     && l_type_args.as_deref().eq(&r_type_args.as_deref(), engines)
             }
-            (Self::Str(l), Self::Str(r)) => l.val() == r.val(),
             (Self::UnsignedInteger(l), Self::UnsignedInteger(r)) => l == r,
             (Self::Enum(l_decl_ref), Self::Enum(r_decl_ref)) => {
                 let l_decl = engines.de().get_enum(l_decl_ref);
@@ -359,7 +356,6 @@ impl OrdWithEngines for TypeInfo {
                 .suffix
                 .cmp(&r_call_path.suffix)
                 .then_with(|| l_type_args.as_deref().cmp(&r_type_args.as_deref(), engines)),
-            (Self::Str(l), Self::Str(r)) => l.val().cmp(&r.val()),
             (Self::UnsignedInteger(l), Self::UnsignedInteger(r)) => l.cmp(r),
             (Self::Enum(l_decl_ref), Self::Enum(r_decl_ref)) => {
                 let l_decl = decl_engine.get_enum(l_decl_ref);
@@ -429,7 +425,7 @@ impl DisplayWithEngines for TypeInfo {
             UnknownGeneric { name, .. } => name.to_string(),
             Placeholder(type_param) => type_param.name_ident.to_string(),
             TypeParam(n) => format!("{n}"),
-            Str(x) => format!("str[{}]", x.val()),
+            Str => "str".into(),
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",
                 IntegerBits::Sixteen => "u16",
@@ -495,7 +491,7 @@ impl DebugWithEngines for TypeInfo {
             UnknownGeneric { name, .. } => name.to_string(),
             Placeholder(_) => "_".to_string(),
             TypeParam(n) => format!("typeparam({n})"),
-            Str(x) => format!("str[{}]", x.val()),
+            Str => "str".into(),
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",
                 IntegerBits::Sixteen => "u16",
@@ -576,7 +572,7 @@ impl TypeInfo {
             TypeInfo::Unknown => 0,
             TypeInfo::UnknownGeneric { .. } => 1,
             TypeInfo::Placeholder(_) => 2,
-            TypeInfo::Str(_) => 3,
+            TypeInfo::Str => 3,
             TypeInfo::UnsignedInteger(_) => 4,
             TypeInfo::Enum { .. } => 5,
             TypeInfo::Struct { .. } => 6,
@@ -611,7 +607,7 @@ impl TypeInfo {
         let decl_engine = engines.de();
         use TypeInfo::*;
         let name = match self {
-            Str(len) => format!("str[{}]", len.val()),
+            Str => "str".into(),
             UnsignedInteger(bits) => {
                 use IntegerBits::*;
                 match bits {
@@ -940,7 +936,7 @@ impl TypeInfo {
             }
             TypeInfo::Unknown
             | TypeInfo::UnknownGeneric { .. }
-            | TypeInfo::Str(_)
+            | TypeInfo::Str
             | TypeInfo::UnsignedInteger(_)
             | TypeInfo::Boolean
             | TypeInfo::Tuple(_)
@@ -1011,7 +1007,7 @@ impl TypeInfo {
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::Custom { .. }
             | TypeInfo::SelfType
-            | TypeInfo::Str(_)
+            | TypeInfo::Str
             | TypeInfo::Contract
             | TypeInfo::Array(_, _)
             | TypeInfo::Storage { .. }
@@ -1043,7 +1039,7 @@ impl TypeInfo {
             | TypeInfo::Ptr(_)
             | TypeInfo::Slice(_)
             | TypeInfo::Custom { .. }
-            | TypeInfo::Str(_)
+            | TypeInfo::Str
             | TypeInfo::Array(_, _)
             | TypeInfo::Contract
             | TypeInfo::Numeric
@@ -1102,7 +1098,7 @@ impl TypeInfo {
             TypeInfo::Unknown
             | TypeInfo::Placeholder(_)
             | TypeInfo::TypeParam(_)
-            | TypeInfo::Str(_)
+            | TypeInfo::Str
             | TypeInfo::UnsignedInteger(_)
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
@@ -1354,7 +1350,7 @@ impl TypeInfo {
                 let decl = decl_engine.get_struct(decl_ref);
                 !decl.type_parameters.is_empty()
             }
-            TypeInfo::Str(_)
+            TypeInfo::Str
             | TypeInfo::UnsignedInteger(_)
             | TypeInfo::Boolean
             | TypeInfo::B256

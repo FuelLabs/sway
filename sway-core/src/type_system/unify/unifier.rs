@@ -93,9 +93,7 @@ impl<'a> Unifier<'a> {
             (Contract, Contract) => (),
             (RawUntypedPtr, RawUntypedPtr) => (),
             (RawUntypedSlice, RawUntypedSlice) => (),
-            (Str(l), Str(r)) => {
-                self.unify_strs(handler, received, expected, span, l.val(), r.val())
-            }
+            (Str, Str) => (),
             (Tuple(rfs), Tuple(efs)) if rfs.len() == efs.len() => {
                 self.unify_tuples(handler, rfs, efs)
             }
@@ -271,29 +269,6 @@ impl<'a> Unifier<'a> {
 
     fn occurs_check(&self, generic: TypeInfo, other: &TypeInfo) -> bool {
         OccursCheck::new(self.engines).check(generic, other)
-    }
-
-    fn unify_strs(
-        &self,
-        handler: &Handler,
-        received: TypeId,
-        expected: TypeId,
-        span: &Span,
-        r: usize,
-        e: usize,
-    ) {
-        if r != e {
-            let (received, expected) = self.assign_args(received, expected);
-            handler.emit_err(
-                TypeError::MismatchedType {
-                    expected,
-                    received,
-                    help_text: self.help_text.clone(),
-                    span: span.clone(),
-                }
-                .into(),
-            );
-        }
     }
 
     fn unify_tuples(&self, handler: &Handler, rfs: Vec<TypeArgument>, efs: Vec<TypeArgument>) {

@@ -3,8 +3,8 @@ category = "fail"
 # check: A: u64,
 # nextln: A: b256,
 # nextln: $()enum variant "A" already declared
-# nextln: A: str[4],
+# nextln: A: str,
 
 # check: A: b256,
-# nextln: A: str[4],
+# nextln: A: str,
 # nextln: $()enum variant "A" already declared

@@ -34,9 +34,6 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::SizeOfType => {
                 type_check_size_of_type(handler, ctx, kind, arguments, type_arguments, span)
             }
-            Intrinsic::SizeOfStr => {
-                type_check_size_of_type(handler, ctx, kind, arguments, type_arguments, span)
-            }
             Intrinsic::IsReferenceType => {
                 type_check_is_reference_type(handler, ctx, kind, arguments, type_arguments, span)
             }

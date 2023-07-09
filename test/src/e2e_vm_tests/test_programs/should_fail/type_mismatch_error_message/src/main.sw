@@ -26,6 +26,6 @@ fn main() {
 }
 
 fn example() {
-    let foo = MyResult::Ok::<Data<bool>, str[4]>(Data { value: true, other: 1 });
+    let foo = MyResult::Ok::<Data<bool>, str>(Data { value: true, other: 1 });
     foo.does_not_exist();
 }

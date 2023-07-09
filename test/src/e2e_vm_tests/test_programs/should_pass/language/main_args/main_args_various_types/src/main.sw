@@ -1,19 +1,12 @@
 script;
 
-fn eq_str_3(a: str[3], b: str[3]) -> bool {
-    asm(a: a, b: b, len: 3, r) {
-        meq r a b len;
-        r: bool
-    }
-}
-
 enum SignedNum {
     Positive: u64,
     Negative: u64,
 }
 
 struct OpName {
-    val: str[3]
+    val: str
 }
 
 fn main(ops: [(OpName, SignedNum); 2]) -> u64 {
@@ -23,7 +16,7 @@ fn main(ops: [(OpName, SignedNum); 2]) -> u64 {
     while i < 2 {
         let (op, val) = ops[i];
 
-        if eq_str_3(op.val, "set") {
+        if op.val == "set" {
             match val {
                 SignedNum::Positive(v) => {
                     result = v;
@@ -32,7 +25,7 @@ fn main(ops: [(OpName, SignedNum); 2]) -> u64 {
                     revert(0);
                 }
             }
-        } else if eq_str_3(op.val, "add") {
+        } else if op.val == "add" {
             match val {
                 SignedNum::Positive(v) => {
                     result += v;

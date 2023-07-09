@@ -6,7 +6,7 @@ abi CalledContract {
     #[storage(write)]
     fn set_value_multiple(a: u64, b: u64);
     #[storage(write)]
-    fn set_value_multiple_complex(a: MyStruct, b: str[4]);
+    fn set_value_multiple_complex(a: MyStruct, b: str);
     #[storage(read)]
     fn get_value() -> u64;
     #[storage(write)]
@@ -14,7 +14,7 @@ abi CalledContract {
     #[storage(read)]
     fn get_b256_value() -> b256;
     #[storage(read)]
-    fn get_str_value() -> str[4];
+    fn get_str_value() -> str;
     #[storage(read)]
     fn get_bool_value() -> bool;
 }
@@ -27,7 +27,7 @@ pub struct MyStruct {
 storage {
     value: u64 = 0,
     value_b256: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000,
-    value_str: str[4] = "none",
+    value_str: str = "none",
     value_bool: bool = false,
 }
 
@@ -45,7 +45,7 @@ impl CalledContract for Contract {
     }
 
     #[storage(write)]
-    fn set_value_multiple_complex(a: MyStruct, b: str[4]) {
+    fn set_value_multiple_complex(a: MyStruct, b: str) {
         //revert(999);
         storage.value.write(a.b[1]);
         storage.value_str.write(b);
@@ -68,7 +68,7 @@ impl CalledContract for Contract {
     }
 
     #[storage(read)]
-    fn get_str_value() -> str[4] {
+    fn get_str_value() -> str {
         storage.value_str.read()
     }
 

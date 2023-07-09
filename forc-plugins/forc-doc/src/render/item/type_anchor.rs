@@ -2,7 +2,6 @@ use crate::{doc::module::ModuleInfo, RenderPlan};
 use anyhow::{anyhow, Result};
 use horrorshow::{box_html, RenderBox};
 use sway_core::{AbiName, TypeInfo};
-use sway_types::Spanned;
 
 /// Handles types & nested types that should have links
 /// eg. (`[]` represent types with links).
@@ -86,8 +85,8 @@ pub(crate) fn render_type_anchor(
         TypeInfo::UnknownGeneric { name, .. } => Ok(box_html! {
             : name.as_str();
         }),
-        TypeInfo::Str(len) => Ok(box_html! {
-            : len.span().as_str();
+        TypeInfo::Str => Ok(box_html! {
+            : "str";
         }),
         TypeInfo::UnsignedInteger(int_bits) => {
             use sway_types::integer_bits::IntegerBits;

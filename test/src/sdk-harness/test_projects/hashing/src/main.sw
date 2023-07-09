@@ -8,7 +8,7 @@ abi MyContract {
     fn sha256_u32(value: u32) -> b256;
     fn sha256_u64(value: u64) -> b256;
     fn sha256_bool(value: bool) -> b256;
-    fn sha256_str(value: str[4]) -> b256;
+    fn sha256_str(value: str) -> b256;
     fn sha256_b256(value: b256) -> b256;
     fn sha256_tuple(value: (bool, u64)) -> b256;
     fn sha256_array(value1: u64, value2: u64) -> b256;
@@ -20,7 +20,7 @@ abi MyContract {
     fn keccak256_u32(value: u32) -> b256;
     fn keccak256_u64(value: u64) -> b256;
     fn keccak256_bool(value: bool) -> b256;
-    fn keccak256_str(value: str[4]) -> b256;
+    fn keccak256_str(value: str) -> b256;
     fn keccak256_b256(value: b256) -> b256;
     fn keccak256_tuple(value: (bool, u64)) -> b256;
     fn keccak256_array(value1: u64, value2: u64) -> b256;
@@ -34,7 +34,7 @@ enum Location {
 }
 
 struct Person {
-    name: str[4],
+    name: str,
     age: u8,
     birth_place: Location,
     stats: Stats,
@@ -68,7 +68,7 @@ impl MyContract for Contract {
         sha256(value)
     }
 
-    fn sha256_str(value: str[4]) -> b256 {
+    fn sha256_str(value: str) -> b256 {
         sha256(value)
     }
 
@@ -130,7 +130,7 @@ impl MyContract for Contract {
         keccak256(value)
     }
 
-    fn keccak256_str(value: str[4]) -> b256 {
+    fn keccak256_str(value: str) -> b256 {
         keccak256(value)
     }
 

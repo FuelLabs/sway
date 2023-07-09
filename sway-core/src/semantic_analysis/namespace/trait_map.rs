@@ -453,7 +453,7 @@ impl TraitMap {
     /// }
     ///
     /// pub struct Data<T> {
-    ///     value: MyResult<T, str[10]>,
+    ///     value: MyResult<T, str>,
     /// }
     ///
     /// impl<T> Data<T> {
@@ -485,7 +485,7 @@ impl TraitMap {
     /// this was required, this would make users make large portions of their
     /// libraries public with `pub`. Moreover, we wouldn't need to import the
     /// whole `MyResult<T, E>` enum anyway, because the only type that we are
-    /// seeing in `main.sw` is `MyResult<bool, str[10]>`!
+    /// seeing in `main.sw` is `MyResult<bool, str>`!
     ///
     /// When an entry is found from `self` with type `type_id'` for which
     /// `type_id` is a subtype, we take the methods defined upon `type_id'` and

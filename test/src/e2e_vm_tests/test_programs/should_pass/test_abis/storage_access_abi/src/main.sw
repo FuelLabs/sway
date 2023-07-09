@@ -63,7 +63,7 @@ abi StorageAccess {
     #[storage(write)]
     fn set_e(e: E);
     #[storage(write)]
-    fn set_string(s: str[40]);
+    fn set_string(s: str);
 
     // Getters
     #[storage(read)]
@@ -107,5 +107,5 @@ abi StorageAccess {
     #[storage(read)]
     fn get_e2() -> E;
     #[storage(read)]
-    fn get_string() -> str[40];
+    fn get_string() -> str;
 }

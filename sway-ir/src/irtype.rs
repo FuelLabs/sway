@@ -20,7 +20,7 @@ pub enum TypeContent {
     Bool,
     Uint(u16),
     B256,
-    String(u64),
+    StringData(u64),
     Array(Type, u64),
     Union(Vec<Type>),
     Struct(Vec<Type>),
@@ -102,8 +102,8 @@ impl Type {
     }
 
     /// Get string type
-    pub fn new_string(context: &mut Context, len: u64) -> Type {
-        Self::get_or_create_unique_type(context, TypeContent::String(len))
+    pub fn new_string_data(context: &mut Context, len: u64) -> Type {
+        Self::get_or_create_unique_type(context, TypeContent::StringData(len))
     }
 
     /// Get array type
@@ -146,7 +146,7 @@ impl Type {
             TypeContent::Bool => "bool".into(),
             TypeContent::Uint(nbits) => format!("u{nbits}"),
             TypeContent::B256 => "b256".into(),
-            TypeContent::String(n) => format!("string<{n}>"),
+            TypeContent::StringData(n) => format!("string<{n}>"),
             TypeContent::Array(ty, cnt) => {
                 format!("[{}; {}]", ty.as_string(context), cnt)
             }
@@ -169,7 +169,7 @@ impl Type {
             (TypeContent::Bool, TypeContent::Bool) => true,
             (TypeContent::Uint(l), TypeContent::Uint(r)) => l == r,
             (TypeContent::B256, TypeContent::B256) => true,
-            (TypeContent::String(l), TypeContent::String(r)) => l == r,
+            (TypeContent::StringData(l), TypeContent::StringData(r)) => l == r,
 
             (TypeContent::Array(l, llen), TypeContent::Array(r, rlen)) => {
                 llen == rlen && l.eq(context, r)
@@ -230,7 +230,7 @@ impl Type {
 
     /// Is string type
     pub fn is_string(&self, context: &Context) -> bool {
-        matches!(*self.get_content(context), TypeContent::String(_))
+        matches!(*self.get_content(context), TypeContent::StringData(_))
     }
 
     /// Is array type
@@ -365,15 +365,6 @@ impl Type {
         }
     }
 
-    /// Get the length of a string
-    pub fn get_string_len(&self, context: &Context) -> Option<u64> {
-        if let TypeContent::String(n) = *self.get_content(context) {
-            Some(n)
-        } else {
-            None
-        }
-    }
-
     /// Get the type of each field of a struct Type. Empty vector otherwise.
     pub fn get_field_types(&self, context: &Context) -> Vec<Type> {
         match self.get_content(context) {
@@ -388,7 +379,7 @@ impl Type {
             TypeContent::Uint(bits) => (*bits as u64) / 8,
             TypeContent::Slice => 16,
             TypeContent::B256 => 32,
-            TypeContent::String(n) => super::size_bytes_round_up_to_word_alignment!(*n),
+            TypeContent::StringData(n) => super::size_bytes_round_up_to_word_alignment!(*n),
             TypeContent::Array(el_ty, cnt) => cnt * el_ty.size_in_bytes(context),
             TypeContent::Struct(field_tys) => {
                 // Sum up all the field sizes.

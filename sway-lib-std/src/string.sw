@@ -43,18 +43,10 @@ impl String {
         }
     }
 
-    /// Converts a string literal containing ASCII encoded bytes to a `String`
-    ///
-    /// WARNING: this is a temporary convenience before dynamically sized types are implemented
-    pub fn from_ascii_str<S>(s: S) -> Self {
-        assert(__is_str_type::<S>());
-        let len =  __size_of_str::<S>();
-        let ptr = asm(s: s) {
-            s: raw_ptr
-        };
-        let slice = asm(parts:(ptr, len)) { parts: raw_slice};
+    /// Converts a string literal to a `String`
+    pub fn from_str(s: str) -> Self {
         Self {
-            bytes: Bytes::from(slice)
+            bytes: Bytes::from(s)
         }
     }
 
@@ -220,8 +212,8 @@ fn string_test_from_ascii() {
 }
 
 #[test]
-fn string_test_from_ascii_str() {
-    let mut string_from_ascii = String::from_ascii_str("ABCDEF");
+fn string_test_from_str() {
+    let mut string_from_ascii = String::from_str("ABCDEF");
     assert(string_from_ascii.capacity() == 6);
     let bytes = string_from_ascii.as_bytes();
     assert(bytes.get(0).unwrap() == 65u8);

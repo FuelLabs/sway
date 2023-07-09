@@ -13,7 +13,7 @@ enum TestEnum {
 
 fn main() {
     let k: b256 = 0xef86afa9696cf0dc6385e2c407a6e159a1103cefb7e2ae0636fb33d3cb2a9e4a;
-    let a: str[4] = "Fuel";
+    let a: str = "Fuel";
     let b: [u8; 3] = [1u8, 2u8, 3u8];
     let test_struct = TestStruct {
         field_1: true,

@@ -34,10 +34,7 @@ impl Parse for Ty {
             return Ok(Ty::Array(descriptor));
         };
         if let Some(str_token) = parser.take() {
-            let length = SquareBrackets::parse_all_inner(parser, |mut parser| {
-                parser.emit_error(ParseErrorKind::UnexpectedTokenAfterStrLength)
-            })?;
-            return Ok(Ty::Str { str_token, length });
+            return Ok(Ty::Str(str_token));
         }
         if let Some(underscore_token) = parser.take() {
             return Ok(Ty::Infer { underscore_token });

@@ -6,7 +6,7 @@ use super::{
     types::*,
 };
 use crate::{
-    asm_generation::from_ir::{ir_type_size_in_bytes, ir_type_str_size_in_bytes},
+    asm_generation::from_ir::ir_type_size_in_bytes,
     engine_threading::*,
     ir_generation::const_eval::{
         compile_constant_expression, compile_constant_expression_to_constant,
@@ -252,6 +252,89 @@ impl<'eng> FnCompiler<'eng> {
         Ok(tmp_val)
     }
 
+    fn compile_string_slice(
+        &mut self,
+        context: &mut Context,
+        span_md_idx: Option<MetadataIndex>,
+        string_data: Value,
+        string_len: u64,
+    ) -> Result<Value, CompileError> {
+        let int_ty = Type::get_uint64(context);
+
+        // build field values of the slice
+        let ptr_val = self
+            .current_block
+            .ins(context)
+            .ptr_to_int(string_data, int_ty)
+            .add_metadatum(context, span_md_idx);
+        let len_val = Constant::get_uint(context, 64, string_len);
+
+        // a slice is a pointer and a length
+        let field_types = vec![int_ty, int_ty];
+
+        // build a struct variable to store the values
+        let struct_type = Type::new_struct(context, field_types.clone());
+        let struct_var = self
+            .function
+            .new_local_var(
+                context,
+                self.lexical_map.insert_anon(),
+                struct_type,
+                None,
+                false,
+            )
+            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
+        let struct_val = self
+            .current_block
+            .ins(context)
+            .get_local(struct_var)
+            .add_metadatum(context, span_md_idx);
+
+        // put field values inside the struct variable
+        [ptr_val, len_val]
+            .into_iter()
+            .zip(field_types.into_iter())
+            .enumerate()
+            .for_each(|(insert_idx, (insert_val, field_type))| {
+                let gep_val = self.current_block.ins(context).get_elem_ptr_with_idx(
+                    struct_val,
+                    field_type,
+                    insert_idx as u64,
+                );
+
+                self.current_block
+                    .ins(context)
+                    .store(gep_val, insert_val)
+                    .add_metadatum(context, span_md_idx);
+            });
+
+        // build a slice variable to return
+        let slice_type = Type::get_slice(context);
+        let slice_var = self
+            .function
+            .new_local_var(
+                context,
+                self.lexical_map.insert_anon(),
+                slice_type,
+                None,
+                false,
+            )
+            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
+        let slice_val = self
+            .current_block
+            .ins(context)
+            .get_local(slice_var)
+            .add_metadatum(context, span_md_idx);
+
+        // copy the value of the struct variable into the slice
+        self.current_block
+            .ins(context)
+            .mem_copy_bytes(slice_val, struct_val, 16);
+
+        // return the slice
+        Ok(slice_val)
+    }
+
     fn compile_expression(
         &mut self,
         context: &mut Context,
@@ -260,6 +343,12 @@ impl<'eng> FnCompiler<'eng> {
     ) -> Result<Value, CompileError> {
         let span_md_idx = md_mgr.span_to_md(context, &ast_expr.span);
         match &ast_expr.expression {
+            ty::TyExpressionVariant::Literal(Literal::String(s)) => {
+                let string_data =
+                    Constant::get_string_data(context, s.as_str().as_bytes().to_vec());
+                let string_len = s.as_str().len() as u64;
+                self.compile_string_slice(context, span_md_idx, string_data, string_len)
+            }
             ty::TyExpressionVariant::Literal(l) => {
                 Ok(convert_literal_to_value(context, l).add_metadatum(context, span_md_idx))
             }
@@ -527,21 +616,6 @@ impl<'eng> FnCompiler<'eng> {
                     ir_type_size_in_bytes(context, &ir_type),
                 ))
             }
-            Intrinsic::SizeOfStr => {
-                let targ = type_arguments[0].clone();
-                let ir_type = convert_resolved_typeid(
-                    engines.te(),
-                    engines.de(),
-                    context,
-                    &targ.type_id,
-                    &targ.span,
-                )?;
-                Ok(Constant::get_uint(
-                    context,
-                    64,
-                    ir_type_str_size_in_bytes(context, &ir_type),
-                ))
-            }
             Intrinsic::IsReferenceType => {
                 let targ = type_arguments[0].clone();
                 let val = !engines.te().get_unaliased(targ.type_id).is_copy_type();
@@ -549,7 +623,7 @@ impl<'eng> FnCompiler<'eng> {
             }
             Intrinsic::IsStrType => {
                 let targ = type_arguments[0].clone();
-                let val = matches!(engines.te().get_unaliased(targ.type_id), TypeInfo::Str(_));
+                let val = matches!(engines.te().get_unaliased(targ.type_id), TypeInfo::Str);
                 Ok(Constant::get_bool(context, val))
             }
             Intrinsic::Eq | Intrinsic::Gt | Intrinsic::Lt => {
@@ -1648,18 +1722,23 @@ impl<'eng> FnCompiler<'eng> {
         const_decl: &TyConstantDecl,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
-        let result = self.compile_var_expr(
-            context,
-            &Some(const_decl.call_path.clone()),
-            const_decl.name(),
-            span_md_idx,
-        );
+        let result = self
+            .compile_var_expr(
+                context,
+                &Some(const_decl.call_path.clone()),
+                const_decl.name(),
+                span_md_idx,
+            )
+            .or(self.compile_const_decl(context, md_mgr, const_decl, span_md_idx, true))?;
 
-        if result.is_ok() {
-            result
-        } else {
-            self.compile_const_decl(context, md_mgr, const_decl, span_md_idx, true)
+        // parse constant string data into a string slice
+        if let Some(TypeContent::StringData(len)) =
+            result.get_type(context).map(|t| t.get_content(context))
+        {
+            return self.compile_string_slice(context, span_md_idx, result, *len);
         }
+
+        Ok(result)
     }
 
     fn compile_var_expr(

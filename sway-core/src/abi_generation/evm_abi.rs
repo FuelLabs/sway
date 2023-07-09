@@ -83,7 +83,7 @@ pub fn abi_str(type_info: &TypeInfo, type_engine: &TypeEngine, decl_engine: &Dec
         UnknownGeneric { name, .. } => name.to_string(),
         Placeholder(_) => "_".to_string(),
         TypeParam(n) => format!("typeparam({n})"),
-        Str(x) => format!("str[{}]", x.val()),
+        Str => "str".into(),
         UnsignedInteger(x) => match x {
             IntegerBits::Eight => "uint8",
             IntegerBits::Sixteen => "uint16",
@@ -144,7 +144,7 @@ pub fn abi_param_type(
 ) -> ethabi::ParamType {
     use TypeInfo::*;
     match type_info {
-        Str(x) => ethabi::ParamType::FixedArray(Box::new(ethabi::ParamType::String), x.val()),
+        Str => ethabi::ParamType::String,
         UnsignedInteger(x) => match x {
             IntegerBits::Eight => ethabi::ParamType::Uint(8),
             IntegerBits::Sixteen => ethabi::ParamType::Uint(16),

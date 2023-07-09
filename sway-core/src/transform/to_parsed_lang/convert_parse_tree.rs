@@ -1292,9 +1292,7 @@ fn ty_to_type_info(
                 expr_to_length(context, handler, *ty_array_descriptor.length)?,
             )
         }
-        Ty::Str { length, .. } => {
-            TypeInfo::Str(expr_to_length(context, handler, *length.into_inner())?)
-        }
+        Ty::Str(_) => TypeInfo::Str,
         Ty::Infer { .. } => TypeInfo::Unknown,
         Ty::Ptr { ty, .. } => {
             let type_argument = ty_to_type_argument(context, handler, engines, *ty.into_inner())?;

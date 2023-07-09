@@ -1,7 +1,7 @@
 script;
 
 struct S {
-    n: str[17],
+    n: str,
     v: u64,
 }
 

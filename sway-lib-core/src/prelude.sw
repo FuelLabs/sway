@@ -6,6 +6,7 @@ library;
 use ::primitives::*;
 use ::raw_ptr::*;
 use ::raw_slice::*;
+use ::str::*;
 use ::never::*;
 use ::ops::*;
 use ::storage::*;

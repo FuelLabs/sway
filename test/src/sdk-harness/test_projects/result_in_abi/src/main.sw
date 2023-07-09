@@ -1,7 +1,7 @@
 contract;
 
 pub enum SomeError {
-    SomeErrorString: str[5],
+    SomeErrorString: str,
 }
 
 struct MyStruct {
@@ -25,8 +25,8 @@ abi MyContract {
     fn tuple_test(input: Result<(Result<Address, SomeError>, u64), SomeError>) -> Result<(Result<Address, SomeError>, u64), SomeError>;
     fn enum_test(input: Result<MyEnum, SomeError>) -> Result<MyEnum, SomeError>;
     fn array_test(input: Result<[Result<Address, SomeError>; 3], SomeError>) -> Result<[Result<Address, SomeError>; 3], SomeError>;
-    fn string_test(input: Result<str[4], SomeError>) -> Result<str[4], SomeError>;
-    fn option_in_result_test(input: Result<Option<str[4]>, SomeError>) -> Result<Option<str[4]>, SomeError>;
+    fn string_test(input: Result<str, SomeError>) -> Result<str, SomeError>;
+    fn option_in_result_test(input: Result<Option<str>, SomeError>) -> Result<Option<str>, SomeError>;
 }
 
 impl MyContract for Contract {
@@ -64,12 +64,12 @@ impl MyContract for Contract {
     ) -> Result<[Result<Address, SomeError>; 3], SomeError> {
         input
     }
-    fn string_test(input: Result<str[4], SomeError>) -> Result<str[4], SomeError> {
+    fn string_test(input: Result<str, SomeError>) -> Result<str, SomeError> {
         input
     }
     fn option_in_result_test(
-        input: Result<Option<str[4]>, SomeError>,
-    ) -> Result<Option<str[4]>, SomeError> {
+        input: Result<Option<str>, SomeError>,
+    ) -> Result<Option<str>, SomeError> {
         input
     }
 }

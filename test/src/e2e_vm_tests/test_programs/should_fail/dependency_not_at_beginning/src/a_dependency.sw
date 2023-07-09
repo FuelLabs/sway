@@ -1,3 +1,3 @@
 library;
 
-pub struct Foo { foo: str[3] }
+pub struct Foo { foo: str }

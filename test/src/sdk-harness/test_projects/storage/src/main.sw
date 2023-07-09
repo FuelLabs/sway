@@ -101,9 +101,9 @@ abi StorageTest {
     fn get_tuple() -> Option<(b256, u8, b256)>;
 
     #[storage(read, write)]
-    fn store_string(value: str[31]);
+    fn store_string(value: str);
     #[storage(read)]
-    fn get_string() -> Option<str[31]>;
+    fn get_string() -> Option<str>;
 
     #[storage(read, write)]
     fn store_array();
@@ -236,13 +236,13 @@ impl StorageTest for Contract {
     }
 
     #[storage(read, write)]
-    fn store_string(value: str[31]) {
+    fn store_string(value: str) {
         write(S_13, 0, value);
     }
 
     #[storage(read)]
-    fn get_string() -> Option<str[31]> {
-        read::<str[31]>(S_13, 0)
+    fn get_string() -> Option<str> {
+        read::<str>(S_13, 0)
     }
 
     #[storage(read, write)]

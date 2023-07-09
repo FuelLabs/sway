@@ -708,6 +708,21 @@ impl From<raw_slice> for Bytes {
         asm(ptr: (self.buf.ptr(), self.len)) { ptr: raw_slice }
     }
 }
+impl From<str> for Bytes {
+    fn from(slice: str) -> Self {
+        Self {
+            buf: RawBytes {
+                ptr: slice.as_ptr(),
+                cap: slice.len(),
+            },
+            len: slice.len(),
+        }
+    }
+
+    fn into(self) -> str {
+        asm(ptr: (self.buf.ptr(), self.len)) { ptr: str }
+    }
+}
 
 impl From<Vec<u8>> for Bytes {
     /// Creates a `Bytes` from a `Vec<u8>`.

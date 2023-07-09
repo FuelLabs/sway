@@ -1,7 +1,7 @@
 use fuels::{
     accounts::wallet::WalletUnlocked,
     prelude::*,
-    types::{Bits256, Identity, SizedAsciiString},
+    types::{AsciiString, Bits256, Identity},
 };
 
 abigen!(Contract(
@@ -25,13 +25,16 @@ async fn get_type_aliases_instance() -> (TypeAliasesTestContract<WalletUnlocked>
 }
 
 #[tokio::test]
-async fn test_foo() -> Result<()> {
+async fn test_foobar() -> Result<()> {
     let (instance, _id) = get_type_aliases_instance().await;
     let contract_methods = instance.methods();
 
     let x = Bits256([1u8; 32]);
 
-    let y = [Identity::ContractId(ContractId::new([1u8; 32])), Identity::ContractId(ContractId::new([1u8; 32]))];
+    let y = [
+        Identity::ContractId(ContractId::new([1u8; 32])),
+        Identity::ContractId(ContractId::new([1u8; 32])),
+    ];
 
     let z = IdentityAliasWrapper { i: y[0].clone() };
 
@@ -39,10 +42,8 @@ async fn test_foo() -> Result<()> {
 
     let u = (x, x);
 
-    let s = SizedAsciiString::try_from("fuelfuel0").unwrap();
-
-    let (x_result, y_result, z_result, w_result, u_result, s_result) = contract_methods
-        .foo(x, y.clone(), z.clone(), w.clone(), u.clone(), s.clone())
+    let (x_result, y_result, z_result, w_result, u_result) = contract_methods
+        .foo(x, y.clone(), z.clone(), w.clone(), u.clone())
         .call()
         .await
         .unwrap()
@@ -53,6 +54,11 @@ async fn test_foo() -> Result<()> {
     assert_eq!(z, z_result);
     assert_eq!(w, w_result);
     assert_eq!(u, u_result);
+
+    let s = AsciiString::try_from("fuelfuel0").unwrap();
+
+    let s_result = contract_methods.bar(s.clone()).call().await.unwrap().value;
+
     assert_eq!(s, s_result);
 
     Ok(())

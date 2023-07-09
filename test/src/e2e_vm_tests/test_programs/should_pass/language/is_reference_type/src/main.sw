@@ -17,7 +17,7 @@ fn main() -> bool {
     assert(!__is_reference_type::<bool>());
     assert(!__is_reference_type::<u64>());
 
-    assert(__is_reference_type::<str[1]>());
+    assert(__is_reference_type::<str>());
     assert(__is_reference_type::<b256>());
     assert(__is_reference_type::<S>());
     assert(__is_reference_type::<E>());

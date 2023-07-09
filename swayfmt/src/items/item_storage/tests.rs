@@ -13,7 +13,7 @@ fmt_test_item!(  storage_maps
     map6: StorageMap<u64, (b256, u8, bool)> = StorageMap {},
     map7: StorageMap<u64, Struct> = StorageMap {},
     map8: StorageMap<u64, Enum> = StorageMap {},
-    map9: StorageMap<u64, str[33]> = StorageMap {},
+    map9: StorageMap<u64, str> = StorageMap {},
     map10: StorageMap<u64, [b256; 3]> = StorageMap {},
     map11: StorageMap<bool, u64> = StorageMap {},
     map12: StorageMap<u8, u64> = StorageMap {},
@@ -22,7 +22,7 @@ fmt_test_item!(  storage_maps
     map15: StorageMap<(b256, u8, bool), u64> = StorageMap {},
     map16: StorageMap<Struct, u64> = StorageMap {},
     map17: StorageMap<Enum, u64> = StorageMap {},
-    map18: StorageMap<str[33], u64> = StorageMap {},
+    map18: StorageMap<str, u64> = StorageMap {},
     map19: StorageMap<[b256; 3], u64> = StorageMap {},
 }",
             wrong_new_lines
@@ -52,7 +52,7 @@ fmt_test_item!(  storage_maps
     Enum> = StorageMap {
     },
     map9: StorageMap<u64,
-    str[33]> = StorageMap {
+    str> = StorageMap {
     },
     map10: StorageMap<u64,
     [b256;
@@ -79,7 +79,7 @@ fmt_test_item!(  storage_maps
     map17: StorageMap<Enum,
     u64> = StorageMap {
     },
-    map18: StorageMap<str[33],
+    map18: StorageMap<str,
     u64> = StorageMap {
     },
     map19: StorageMap<[b256;

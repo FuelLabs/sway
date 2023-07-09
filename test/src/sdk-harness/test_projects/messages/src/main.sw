@@ -22,7 +22,7 @@ abi TestFuelCoin {
     fn send_typed_message_struct(recipient: b256, msg_data: MyStruct<u64>, coins: u64);
     fn send_typed_message_enum(recipient: b256, msg_data: MyEnum<b256>, coins: u64);
     fn send_typed_message_array(recipient: b256, msg_data: [u64; 3], coins: u64);
-    fn send_typed_message_string(recipient: b256, msg_data: str[4], coins: u64);
+    fn send_typed_message_string(recipient: b256, msg_data: str, coins: u64);
 }
 
 impl TestFuelCoin for Contract {
@@ -53,7 +53,7 @@ impl TestFuelCoin for Contract {
     fn send_typed_message_array(recipient: b256, msg_data: [u64; 3], coins: u64) {
         send_typed_message(recipient, msg_data, coins);
     }
-    fn send_typed_message_string(recipient: b256, msg_data: str[4], coins: u64) {
+    fn send_typed_message_string(recipient: b256, msg_data: str, coins: u64) {
         send_typed_message(recipient, msg_data, coins);
     }
 }

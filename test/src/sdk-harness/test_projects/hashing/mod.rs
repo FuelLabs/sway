@@ -2,7 +2,7 @@ use fuels::{
     accounts::wallet::WalletUnlocked,
     prelude::*,
     types::ContractId,
-    types::{Bits256, SizedAsciiString},
+    types::{AsciiString, Bits256},
 };
 use sha2::{Digest, Sha256};
 use sha3::Keccak256;
@@ -288,19 +288,19 @@ mod sha256 {
 
         let call_1 = instance
             .methods()
-            .sha256_str(SizedAsciiString::try_from("John").unwrap())
+            .sha256_str(AsciiString::try_from("John").unwrap())
             .call()
             .await
             .unwrap();
         let call_2 = instance
             .methods()
-            .sha256_str(SizedAsciiString::try_from("John").unwrap())
+            .sha256_str(AsciiString::try_from("John").unwrap())
             .call()
             .await
             .unwrap();
         let call_3 = instance
             .methods()
-            .sha256_str(SizedAsciiString::try_from("Nick").unwrap())
+            .sha256_str(AsciiString::try_from("Nick").unwrap())
             .call()
             .await
             .unwrap();
@@ -636,19 +636,19 @@ mod keccak256 {
 
         let call_1 = instance
             .methods()
-            .keccak256_str(SizedAsciiString::try_from("John").unwrap())
+            .keccak256_str(AsciiString::try_from("John").unwrap())
             .call()
             .await
             .unwrap();
         let call_2 = instance
             .methods()
-            .keccak256_str(SizedAsciiString::try_from("John").unwrap())
+            .keccak256_str(AsciiString::try_from("John").unwrap())
             .call()
             .await
             .unwrap();
         let call_3 = instance
             .methods()
-            .keccak256_str(SizedAsciiString::try_from("Nick").unwrap())
+            .keccak256_str(AsciiString::try_from("Nick").unwrap())
             .call()
             .await
             .unwrap();

@@ -1,7 +1,7 @@
 use fuels::{
     accounts::wallet::WalletUnlocked,
     prelude::*,
-    types::{Bits256, SizedAsciiString},
+    types::{AsciiString, Bits256},
 };
 
 abigen!(Contract(
@@ -33,7 +33,7 @@ async fn test_parse_logged_varibles() -> Result<()> {
 
     let log_u64 = response.decode_logs_with_type::<u64>()?;
     let log_bits256 = response.decode_logs_with_type::<Bits256>()?;
-    let log_string = response.decode_logs_with_type::<SizedAsciiString<4>>()?;
+    let log_string = response.decode_logs_with_type::<AsciiString>()?;
     let log_array = response.decode_logs_with_type::<[u8; 3]>()?;
 
     let expected_bits256 = Bits256([
@@ -169,7 +169,7 @@ async fn test_get_logs() -> Result<()> {
         format!("{:?}", 8u8),
         format!("{:?}", 64u64),
         format!("{:?}", expected_bits256),
-        format!("{:?}", SizedAsciiString::<4>::new("Fuel".to_string())?),
+        format!("{:?}", AsciiString::new("Fuel".to_string())?),
         format!("{:?}", [1, 2, 3]),
         format!("{:?}", expected_struct),
         format!("{:?}", expected_enum),

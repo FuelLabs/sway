@@ -10,7 +10,7 @@ enum NumberOrString {
     /// The `Number` variant in `NumberOrString`
     Number: u64,
     /// The `String` variant in `NumberOrString`
-    String: str[4],
+    String: str,
 }
 
 /// Struct holding:
@@ -35,7 +35,7 @@ storage {
     /// A `u64` field
     field_a: u64 = 0,
     /// An `str` field
-    field_b: str[4] = "aaaa",
+    field_b: str = "aaaa",
 }
 
 /// The implementation of the `FooABI` abi

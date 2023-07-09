@@ -16,12 +16,12 @@ struct Product {
 }
 
 struct ItemDetails {
-    name: str[4],
+    name: str,
     price: u64,
 }
 
 enum SaleError {
-    NotEnoughInventory: str[3],
+    NotEnoughInventory: str,
 }
 
 fn main() -> u64 {

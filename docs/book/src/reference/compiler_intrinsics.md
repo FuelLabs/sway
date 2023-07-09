@@ -25,16 +25,6 @@ __size_of<T>() -> u64
 ___
 
 ```sway
-__size_of_str<T>() -> u64
-```
-
-**Description:** Return the size of type `T` in bytes. This intrinsic differs from `__size_of` in the case of `str` type where the actual length in bytes of the string is returned without padding the byte size to the next word alignment. When `T` is not a string `0` is returned.
-
-**Constraints:** None.
-
-___
-
-```sway
 __is_reference_type<T>() -> bool
 ```
 

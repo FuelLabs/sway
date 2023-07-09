@@ -33,7 +33,7 @@ storage {
         int32: 6,
     },
     ), e2: E = E::A(777),
-    string: str[40] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    string: str = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
 }
 
 impl StorageAccess for Contract {
@@ -95,7 +95,7 @@ impl StorageAccess for Contract {
     #[storage(write)]fn set_e(e: E) {
         storage.e.write(e);
     }
-    #[storage(write)]fn set_string(string: str[40]) {
+    #[storage(write)]fn set_string(string: str) {
         storage.string.write(string);
     }
 
@@ -160,7 +160,7 @@ impl StorageAccess for Contract {
     #[storage(read)]fn get_e2() -> E {
         storage.e2.read()
     }
-    #[storage(read)]fn get_string() -> str[40] {
+    #[storage(read)]fn get_string() -> str {
         storage.string.read()
     }
 }

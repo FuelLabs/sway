@@ -3,7 +3,7 @@ script;
 struct E {
     x: u64,
     x: b256,
-    x: str[4],
+    x: str,
 }
 
 fn main() -> u64 {

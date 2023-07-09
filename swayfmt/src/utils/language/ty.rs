@@ -5,8 +5,7 @@ use crate::{
 use std::fmt::Write;
 use sway_ast::{
     brackets::SquareBrackets,
-    expr::Expr,
-    keywords::{PtrToken, SliceToken, StrToken, Token, UnderscoreToken},
+    keywords::{PtrToken, SliceToken, Token, UnderscoreToken},
     ty::{Ty, TyArrayDescriptor, TyTupleDescriptor},
 };
 use sway_types::{ast::Delimiter, Spanned};
@@ -26,8 +25,9 @@ impl Format for Ty {
             }
             Self::Infer { underscore_token } => format_infer(formatted_code, underscore_token),
             Self::Path(path_ty) => path_ty.format(formatted_code, formatter),
-            Self::Str { str_token, length } => {
-                format_str(formatted_code, str_token.clone(), length.clone())
+            Self::Str(str_token) => {
+                write!(formatted_code, "{}", str_token.span().as_str())?;
+                Ok(())
             }
             Self::Tuple(tup_descriptor) => {
                 write!(formatted_code, "{}", Delimiter::Parenthesis.as_open_char())?;
@@ -65,22 +65,6 @@ impl Format for TyArrayDescriptor {
         self.length.format(formatted_code, formatter)?;
         Ok(())
     }
-}
-
-fn format_str(
-    formatted_code: &mut FormattedCode,
-    str_token: StrToken,
-    length: SquareBrackets<Box<Expr>>,
-) -> Result<(), FormatterError> {
-    write!(
-        formatted_code,
-        "{}{}{}{}",
-        str_token.span().as_str(),
-        Delimiter::Bracket.as_open_char(),
-        length.into_inner().span().as_str(),
-        Delimiter::Bracket.as_close_char()
-    )?;
-    Ok(())
 }
 
 fn format_ptr(
@@ -151,11 +135,7 @@ impl LeafSpans for Ty {
             Ty::Path(path) => path.leaf_spans(),
             Ty::Tuple(tuple) => tuple.leaf_spans(),
             Ty::Array(array) => array.leaf_spans(),
-            Ty::Str { str_token, length } => {
-                let mut collected_spans = vec![ByteSpan::from(str_token.span())];
-                collected_spans.append(&mut length.leaf_spans());
-                collected_spans
-            }
+            Ty::Str(str_token) => vec![ByteSpan::from(str_token.span())],
             Ty::Infer { underscore_token } => vec![ByteSpan::from(underscore_token.span())],
             Ty::Ptr { ptr_token, ty } => {
                 let mut collected_spans = vec![ByteSpan::from(ptr_token.span())];

@@ -76,7 +76,7 @@
     },
     {
       "components": null,
-      "type": "str[3]",
+      "type": "str",
       "typeId": 2,
       "typeParameters": null
     },

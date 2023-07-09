@@ -3,7 +3,7 @@ script;
 use contract_with_type_aliases_abi::*;
 
 fn main() {
-    let caller = abi(MyContract, 0xbd74e82536dd497dc73b8810ed5750b2b3b5b97a08d31e89b4135cb5360d447d);
+    let caller = abi(MyContract, 0x7c6c2502feb74dd847ebc1dab0d50f02918d6bc9077a08b82188597e11f2acbc);
 
     let x: b256 = 0x0101010101010101010101010101010101010101010101010101010101010101;
 

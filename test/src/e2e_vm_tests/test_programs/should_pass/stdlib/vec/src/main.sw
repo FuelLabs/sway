@@ -1950,7 +1950,7 @@ fn test_vector_new_string_a() {
 }
 
 #[inline(never)]
-fn test_vector_new_string_b(ref mut vector: Vec<str[4]>) {
+fn test_vector_new_string_b(ref mut vector: Vec<str>) {
     let s0 = "fuel";
     let s1 = "john";
     let s2 = "nick";
@@ -2019,7 +2019,7 @@ fn test_vector_new_string_b(ref mut vector: Vec<str[4]>) {
 }
 
 #[inline(never)]
-fn test_vector_new_string_c(ref mut vector: Vec<str[4]>) {
+fn test_vector_new_string_c(ref mut vector: Vec<str>) {
     let s0 = "fuel";
     let s1 = "john";
     let s2 = "nick";

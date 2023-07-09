@@ -2,8 +2,8 @@ category = "fail"
 
 # check: x: b256,
 # nextln: $()struct field "x" already declared
-# nextln: x: str[4],
+# nextln: x: str,
 
 # check: x: b256,
-# nextln: x: str[4],
+# nextln: x: str,
 # nextln: $()struct field "x" already declared

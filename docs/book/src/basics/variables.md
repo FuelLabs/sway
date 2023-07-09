@@ -48,7 +48,7 @@ let foo: u32 = 5;
 We have just declared the _type_ of the variable `foo` as a `u32`, which is an unsigned 32-bit integer. Let's take a look at a few other type annotations:
 
 ```sway
-let bar: str[4] = "sway";
+let bar: str = "sway";
 let baz: bool = true;
 ```
 

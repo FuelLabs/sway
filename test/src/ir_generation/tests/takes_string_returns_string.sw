@@ -1,15 +1,15 @@
 contract;
 
 abi MyContract {
-    fn small_string(s: str[7]) -> str[7];
-    fn large_string(s: str[9]) -> str[9];
+    fn small_string(s: str) -> str;
+    fn large_string(s: str) -> str;
 }
 
 impl MyContract for Contract {
-    fn small_string(s: str[7]) -> str[7] {
+    fn small_string(s: str) -> str {
         s
     }
-    fn large_string(s: str[9]) -> str[9] {
+    fn large_string(s: str) -> str {
         s
     }
 }

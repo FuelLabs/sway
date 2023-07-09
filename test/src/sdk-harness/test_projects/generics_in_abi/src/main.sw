@@ -34,14 +34,14 @@ struct MegaExample<T, U> {
 
 abi MyContract {
     fn struct_w_generic(arg1: SimpleGeneric<u64>) -> SimpleGeneric<u64>;
-    fn struct_delegating_generic(arg1: PassTheGenericOn<str[3]>) -> PassTheGenericOn<str[3]>;
+    fn struct_delegating_generic(arg1: PassTheGenericOn<str>) -> PassTheGenericOn<str>;
     fn struct_w_generic_in_array(arg1: StructWArrayGeneric<u32>) -> StructWArrayGeneric<u32>;
     fn struct_w_generic_in_tuple(arg1: StructWTupleGeneric<u32>) -> StructWTupleGeneric<u32>;
     fn struct_w_diff_generic_in_tuple(arg1: StructWDiffTupleGeneric<u32, bool>) -> StructWDiffTupleGeneric<u32, bool>;
 
     fn enum_w_generic(arg1: EnumWGeneric<u64>) -> EnumWGeneric<u64>;
 
-    fn complex_test(arg1: MegaExample<str[2], b256>);
+    fn complex_test(arg1: MegaExample<str, b256>);
 }
 
 impl MyContract for Contract {
@@ -55,7 +55,7 @@ impl MyContract for Contract {
         expected
     }
 
-    fn struct_delegating_generic(arg1: PassTheGenericOn<str[3]>) -> PassTheGenericOn<str[3]> {
+    fn struct_delegating_generic(arg1: PassTheGenericOn<str>) -> PassTheGenericOn<str> {
         let expected = PassTheGenericOn {
             one: SimpleGeneric {
                 single_generic_param: "abc",
@@ -107,5 +107,5 @@ impl MyContract for Contract {
         EnumWGeneric::b(10)
     }
 
-    fn complex_test(arg1: MegaExample<str[2], b256>) {}
+    fn complex_test(arg1: MegaExample<str, b256>) {}
 }

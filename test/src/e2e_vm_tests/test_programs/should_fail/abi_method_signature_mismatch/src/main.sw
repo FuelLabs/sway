@@ -4,13 +4,13 @@
 contract;
 
 abi MyContract {
-    fn foo(x: u64) -> str[7];
+    fn foo(x: u64) -> str;
     fn bar() -> u32;
     fn baz() -> u64;
 }
 
 impl MyContract for Contract {
-    fn foo(s: str[7]) -> str[7] {
+    fn foo(s: str) -> str {
         s
     }
 

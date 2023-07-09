@@ -11,7 +11,7 @@ abi MyContract {
         arg1: MyStruct1,
         arg2: MyStruct2,
         arg3: Option<u64>,
-    ) -> str[6];
+    ) -> str;
 }
 
 impl MyContract for Contract {
@@ -19,7 +19,7 @@ impl MyContract for Contract {
         _arg1: MyStruct1,
         _arg2: MyStruct2,
         _arg3: Option<u64>,
-    ) -> str[6] {
+    ) -> str {
         "fuel42"
     }
 }

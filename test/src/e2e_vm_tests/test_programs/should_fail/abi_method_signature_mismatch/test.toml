@@ -1,8 +1,8 @@
 category = "fail"
 
-# check: fn foo(s: str[7]) -> str[7] {
+# check: fn foo(s: str) -> str {
 # check: $()expected: u64
-# check: $()found:    str[7]
+# check: $()found:    str
 # check: $()The definition of this function must match the one in the ABI "MyContract" declaration.
 
 # check: fn bar() -> u64 {

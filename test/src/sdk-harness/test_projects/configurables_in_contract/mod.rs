@@ -1,4 +1,4 @@
-use fuels::{prelude::*, types::SizedAsciiString};
+use fuels::{prelude::*, types::AsciiString};
 
 #[tokio::test]
 async fn contract_uses_default_configurables() -> Result<()> {
@@ -53,7 +53,7 @@ async fn contract_configurables() -> Result<()> {
 
     let wallet = launch_provider_and_get_wallet().await;
 
-    let new_str: SizedAsciiString<4> = "FUEL".try_into()?;
+    let new_str: AsciiString = "FUEL".try_into()?;
     let new_struct = StructWithGeneric {
         field_1: 16u8,
         field_2: 32,

@@ -1,7 +1,7 @@
 use fuels::{
     accounts::wallet::WalletUnlocked,
     prelude::*,
-    types::{Bits256, SizedAsciiString},
+    types::{AsciiString, Bits256},
 };
 
 abigen!(Contract(
@@ -224,12 +224,12 @@ async fn can_store_string() {
     // Test store
     instance
         .methods()
-        .store_string(SizedAsciiString::try_from(s.clone()).unwrap())
+        .store_string(AsciiString::try_from(s.clone()).unwrap())
         .call()
         .await
         .unwrap();
     let result = instance.methods().get_string().call().await.unwrap();
-    assert_eq!(result.value, Some(SizedAsciiString::try_from(s).unwrap()));
+    assert_eq!(result.value, Some(AsciiString::try_from(s).unwrap()));
 }
 
 #[tokio::test]

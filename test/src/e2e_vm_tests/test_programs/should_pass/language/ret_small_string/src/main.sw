@@ -1,5 +1,5 @@
 script;
 
-fn main() -> str[3] {
+fn main() -> str {
     "foo"
 }

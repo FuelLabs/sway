@@ -11,7 +11,7 @@ fmt_test_item!( configurables
     C3: MyStruct = MyStruct { x: 42, y: true },
     C4: MyEnum = MyEnum::A(42),
     C5: MyEnum = MyEnum::B(true),
-    C6: str[4] = \"fuel\",
+    C6: str = \"fuel\",
     C7: [u64; 4] = [1, 2, 3, 4],
     C8: u64 = 0,
 }",
@@ -27,7 +27,7 @@ fmt_test_item!( configurables
     C4: MyEnum 
     = MyEnum::A(42),
     C5: MyEnum = MyEnum::B(true),
-    C6: str[4] = \"fuel\",
+    C6: str = \"fuel\",
     C7: [u64; 4] = [1, 2, 
     3, 4], C8: u64 = 0,
 }"

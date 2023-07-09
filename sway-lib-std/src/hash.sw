@@ -14,14 +14,17 @@ pub fn sha256<T>(param: T) -> b256 {
             hash: b256 // Return
         }
     } else {
-        let size = if __is_str_type::<T>() {
-            __size_of_str::<T>()
+        if __is_str_type::<T>() {
+            let s = asm(p: param) { p: str };
+            asm(hash: result_buffer, ptr: s.as_ptr(), bytes: s.len()) {
+                s256 hash ptr bytes; // Hash the next "size" number of bytes starting from "ptr" into "hash"
+                hash: b256 // Return
+            }
         } else {
-            __size_of::<T>()
-        };
-        asm(hash: result_buffer, ptr: param, bytes: size) {
-            s256 hash ptr bytes; // Hash the next "size" number of bytes starting from "ptr" into "hash"
-            hash: b256 // Return
+            asm(hash: result_buffer, ptr: param, bytes: __size_of::<T>()) {
+                s256 hash ptr bytes; // Hash the next "size" number of bytes starting from "ptr" into "hash"
+                hash: b256 // Return
+            }
         }
     }
 }
@@ -40,7 +43,8 @@ pub fn keccak256<T>(param: T) -> b256 {
         }
     } else {
         let size = if __is_str_type::<T>() {
-            __size_of_str::<T>()
+            let s = asm(p: param) { p: str };
+            s.len()
         } else {
             __size_of::<T>()
         };

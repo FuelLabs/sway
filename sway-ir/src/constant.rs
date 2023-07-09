@@ -19,7 +19,7 @@ pub enum ConstantValue {
     Uint(u64),
     U256(U256),
     B256([u8; 32]),
-    String(Vec<u8>),
+    StringData(Vec<u8>),
     Array(Vec<Constant>),
     Struct(Vec<Constant>),
 }
@@ -64,10 +64,10 @@ impl Constant {
         }
     }
 
-    pub fn new_string(context: &mut Context, string: Vec<u8>) -> Self {
+    pub fn new_string_data(context: &mut Context, string: Vec<u8>) -> Self {
         Constant {
-            ty: Type::new_string(context, string.len() as u64),
-            value: ConstantValue::String(string),
+            ty: Type::new_string_data(context, string.len() as u64),
+            value: ConstantValue::StringData(string),
         }
     }
 
@@ -82,6 +82,13 @@ impl Constant {
         Constant {
             ty: Type::new_struct(context, field_tys),
             value: ConstantValue::Struct(fields),
+        }
+    }
+
+    pub fn new_slice(context: &mut Context, ptr: Constant, len: Constant) -> Self {
+        Constant {
+            ty: Type::get_slice(context),
+            value: ConstantValue::Struct(vec![ptr, len]),
         }
     }
 
@@ -117,8 +124,8 @@ impl Constant {
         Value::new_constant(context, new_const)
     }
 
-    pub fn get_string(context: &mut Context, value: Vec<u8>) -> Value {
-        let new_const = Constant::new_string(context, value);
+    pub fn get_string_data(context: &mut Context, value: Vec<u8>) -> Value {
+        let new_const = Constant::new_string_data(context, value);
         Value::new_constant(context, new_const)
     }
 
@@ -145,7 +152,7 @@ impl Constant {
                 (ConstantValue::Uint(l0), ConstantValue::Uint(r0)) => l0 == r0,
                 (ConstantValue::U256(l0), ConstantValue::U256(r0)) => l0 == r0,
                 (ConstantValue::B256(l0), ConstantValue::B256(r0)) => l0 == r0,
-                (ConstantValue::String(l0), ConstantValue::String(r0)) => l0 == r0,
+                (ConstantValue::StringData(l0), ConstantValue::StringData(r0)) => l0 == r0,
                 (ConstantValue::Array(l0), ConstantValue::Array(r0))
                 | (ConstantValue::Struct(l0), ConstantValue::Struct(r0)) => {
                     l0.iter().zip(r0.iter()).all(|(l0, r0)| l0.eq(context, r0))
