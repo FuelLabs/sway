@@ -10,6 +10,12 @@ pub enum VirtualRegister {
     Constant(ConstantRegister),
 }
 
+impl VirtualRegister {
+    pub fn is_virtual(&self) -> bool {
+        matches!(self, Self::Virtual(_))
+    }
+}
+
 impl From<&VirtualRegister> for VirtualRegister {
     fn from(register: &VirtualRegister) -> VirtualRegister {
         register.clone()
@@ -59,6 +65,7 @@ pub enum ConstantRegister {
     CallReturnAddress,
     CallReturnValue,
     Scratch,
+    LocalsBase,
 
     // Registers for the first NUM_ARG_REGISTERS function arguments.
     FuncArg0,
@@ -96,6 +103,7 @@ impl ConstantRegister {
             CallReturnAddress => fuel_asm::RegId::new(compiler_constants::RETURN_ADDRESS_REGISTER),
             CallReturnValue => fuel_asm::RegId::new(compiler_constants::RETURN_VALUE_REGISTER),
             Scratch => fuel_asm::RegId::new(compiler_constants::SCRATCH_REGISTER),
+            LocalsBase => fuel_asm::RegId::new(compiler_constants::LOCALS_BASE),
 
             FuncArg0 => fuel_asm::RegId::new(compiler_constants::ARG_REG0),
             FuncArg1 => fuel_asm::RegId::new(compiler_constants::ARG_REG1),
@@ -142,6 +150,7 @@ impl fmt::Display for ConstantRegister {
             CallReturnAddress => "$$reta",
             CallReturnValue => "$$retv",
             Scratch => "$$tmp",
+            LocalsBase => "$$locbase",
             FuncArg0 => "$$arg0",
             FuncArg1 => "$$arg1",
             FuncArg2 => "$$arg2",

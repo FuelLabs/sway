@@ -4,7 +4,7 @@ use crate::{
     },
     asm_lang::{
         allocated_ops::{AllocatedOp, AllocatedOpcode},
-        AllocatedAbstractOp, Op, OrganizationalOp, RealizedOp, VirtualOp, VirtualRegister,
+        Op, OrganizationalOp, RealizedOp, VirtualOp, VirtualRegister,
     },
 };
 
@@ -159,59 +159,11 @@ impl AbstractInstructionSet {
         }
     }
 
-    /// Assigns an allocatable register to each virtual register used by some instruction in the
-    /// list `self.ops`. The algorithm used is Chaitin's graph-coloring register allocation
-    /// algorithm (https://en.wikipedia.org/wiki/Chaitin%27s_algorithm). The individual steps of
-    /// the algorithm are thoroughly explained in register_allocator.rs.
-    ///
+    /// Allocate registers.
     pub(crate) fn allocate_registers(
         self,
     ) -> Result<AllocatedAbstractInstructionSet, CompileError> {
-        // Step 1: Liveness Analysis.
-        let live_out = register_allocator::liveness_analysis(&self.ops);
-
-        // Step 2: Construct the interference graph.
-        let (mut interference_graph, mut reg_to_node_ix) =
-            register_allocator::create_interference_graph(&self.ops, &live_out);
-
-        // Step 3: Remove redundant MOVE instructions using the interference graph.
-        let reduced_ops = register_allocator::coalesce_registers(
-            &self.ops,
-            &mut interference_graph,
-            &mut reg_to_node_ix,
-        );
-
-        // Step 4: Simplify - i.e. color the interference graph and return a stack that contains
-        // each colorable node and its neighbors.
-        let mut stack = register_allocator::color_interference_graph(&mut interference_graph);
-
-        // Uncomment the following to get some idea of which function is failing to complete
-        // register allocation.  The last comment printed will indicate the current function name.
-        // This will be unnecessary once we have the new register allocator, coming very soon!
-        //
-        //let comment = self.ops.iter().find_map(|op| {
-        //    if let Either::Right(crate::asm_lang::ControlFlowOp::Label(_)) = op.opcode {
-        //        Some(op.comment.clone())
-        //    } else {
-        //        None
-        //    }
-        //});
-        //dbg!(comment);
-
-        // Step 5: Use the stack to assign a register for each virtual register.
-        let pool = register_allocator::assign_registers(&mut stack)?;
-
-        // Step 6: Update all instructions to use the resulting register pool.
-        let mut buf = vec![];
-        for op in &reduced_ops {
-            buf.push(AllocatedAbstractOp {
-                opcode: op.allocate_registers(&pool),
-                comment: op.comment.clone(),
-                owning_span: op.owning_span.clone(),
-            })
-        }
-
-        Ok(AllocatedAbstractInstructionSet { ops: buf })
+        register_allocator::allocate_registers(&self.ops)
     }
 }
 
