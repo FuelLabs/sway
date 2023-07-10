@@ -48,3 +48,6 @@ authors = ["Fuel Labs <contact@fuel.sh>"]
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/sway"
+
+[patch.crates-io]
+fuel-vm = { path = "../fuel-vm/fuel-vm" }

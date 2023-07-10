@@ -443,6 +443,8 @@ impl<'a> PackageTests {
                         })
                         .collect();
 
+                    println!("==== logs ====\n{:#?}", &logs);
+
                     let span = test_entry.span.clone();
                     let file_path = test_entry.file_path.clone();
                     let condition = test_entry.pass_condition.clone();

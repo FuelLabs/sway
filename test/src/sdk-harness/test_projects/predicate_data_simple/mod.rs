@@ -24,7 +24,7 @@ async fn setup() -> (Vec<u8>, Address, WalletUnlocked, u64, AssetId) {
         ..Config::local_node()
     };
     let predicate_address =
-        fuel_tx::Input::predicate_owner(&predicate_code, &config.chain_conf.transaction_parameters);
+        fuel_tx::Input::predicate_owner(&predicate_code, &config.chain_conf.transaction_parameters.chain_id);
 
     let wallets =
         launch_custom_provider_and_get_wallets(WalletsConfig::default(), Some(config), None).await;
@@ -84,7 +84,7 @@ async fn submit_to_predicate(
     asset_id: AssetId,
     receiver_address: Address,
     predicate_data: UnresolvedBytes,
-) {
+) -> Result<()> {
     let filter = ResourceFilter {
         from: predicate_address.into(),
         asset_id,
@@ -111,20 +111,25 @@ async fn submit_to_predicate(
         total_amount_in_predicate += coin.amount();
     }
 
-    let output_coin = Output::coin(receiver_address, total_amount_in_predicate, asset_id);
+    let output_coin = Output::coin(receiver_address, total_amount_in_predicate - 1, asset_id);
     let output_change = Output::change(predicate_address, 0, asset_id);
 
+    dbg!(&inputs);
+
     let params = wallet.provider().unwrap().consensus_parameters();
-    let new_tx = ScriptTransactionBuilder::prepare_transfer(
+    
+
+    let mut new_tx = ScriptTransactionBuilder::prepare_transfer(
         inputs,
         vec![output_coin, output_change],
-        TxParameters::default().set_gas_limit(1_000_000),
+        TxParameters::default().set_gas_price(1).set_gas_limit(1_000_000),
     )
     .set_consensus_parameters(params)
     .build()
     .unwrap();
+    new_tx.estimate_predicates(&params).unwrap();
 
-    let _call_result = wallet.provider().unwrap().send_transaction(&new_tx).await;
+    wallet.provider().unwrap().send_transaction(&new_tx).await.map(|_| ())
 }
 
 async fn get_balance(wallet: &Wallet, address: Address, asset_id: AssetId) -> u64 {
@@ -161,11 +166,12 @@ async fn valid_predicate_data_simple() {
         receiver_address,
         predicate_data,
     )
-    .await;
+    .await
+    .expect("Failed to submit to predicate");
 
     let receiver_balance_after = get_balance(&wallet, receiver_address, asset_id).await;
     assert_eq!(
-        receiver_balance_before + amount_to_predicate,
+        receiver_balance_before + amount_to_predicate - 1,
         receiver_balance_after
     );
 
@@ -198,7 +204,8 @@ async fn invalid_predicate_data_simple() {
         receiver_address,
         predicate_data,
     )
-    .await;
+    .await
+    .expect_err("Submitting to predicate should have failed");
 
     let receiver_balance_after = get_balance(&wallet, receiver_address, asset_id).await;
     assert_eq!(receiver_balance_before, receiver_balance_after);

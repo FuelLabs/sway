@@ -5,7 +5,9 @@ use fuel_vm::fuel_tx::{
 use fuels::{
     accounts::{predicate::Predicate, wallet::WalletUnlocked, Account},
     prelude::*,
-    types::Bits256,
+    types::{
+        Bits256,
+    },
 };
 use std::str::FromStr;
 
@@ -103,6 +105,37 @@ async fn generate_predicate_inputs(
         .await
         .unwrap();
 
+    let predicate_address: Address = predicate.address().into();
+
+    // println!("==== START ESTIMATE PREDICATES ====");
+
+
+    // let inputs = vec![fuels::types::input::Input::resource_predicate(
+    //     wallet.get_spendable_resources(AssetId::default(), amount).await.unwrap()[0].clone(),
+    //     predicate_code.to_vec(),
+    //     UnresolvedBytes::default(),
+    // )];
+
+    // let output_coin = fuel_vm::fuel_tx::Output::coin(Address::default(), amount, AssetId::default());
+    // let output_change = fuel_vm::fuel_tx::Output::change(Address::default(), 0, AssetId::default());
+
+    // let mut new_tx = ScriptTransactionBuilder::prepare_transfer(
+    //     inputs,
+    //     vec![output_coin, output_change],
+    //     TxParameters::default()
+    //         .set_gas_price(1)
+    //         .set_gas_limit(1_000_000),
+    // )
+    // .set_consensus_parameters(ConsensusParameters::default())
+    // .build()
+    // .unwrap();
+
+    // dbg!(new_tx
+    //     .estimate_predicates(&ConsensusParameters::default())
+    //     .expect("Failed to estimate predicates"));
+
+    // println!("====   END ESTIMATE PREDICATES ====");
+
     let predicate_coin = &provider
         .get_coins(&predicate_root, AssetId::default())
         .await
@@ -114,17 +147,18 @@ async fn generate_predicate_inputs(
         AssetId::from(predicate_coin.asset_id.clone()),
         TxPointer::default(),
         0u32.into(),
+        0,
         predicate_code.clone(),
         vec![],
     );
-    let predicate_address: Address = predicate.address().into();
-    let message = &wallet.get_messages().await.unwrap()[0];
 
+    let message = &wallet.get_messages().await.unwrap()[0];
     let predicate_message = TxInput::message_coin_predicate(
         message.sender.clone().into(),
         predicate_address.clone().into(),
         message.amount,
         message.nonce.clone(),
+        0,
         predicate_code.clone(),
         vec![],
     );
@@ -358,7 +392,7 @@ mod tx {
             .await
             .unwrap();
 
-        assert_eq!(receipts[1].val().unwrap(), 11032);
+        assert_eq!(receipts[1].val().unwrap(), 11040);
     }
 
     #[tokio::test]
@@ -459,7 +493,7 @@ mod tx {
         let tx = handler.build_tx().await.unwrap();
 
         let params = wallet.provider().unwrap().consensus_parameters();
-        let tx_id = tx.id(&params);
+        let tx_id = tx.id(*params.chain_id);
 
         let receipts = wallet
             .provider()
@@ -577,6 +611,7 @@ mod inputs {
             let mut tx = handler.build_tx().await.unwrap();
 
             tx.tx.inputs_mut().push(predicate_coin);
+            tx.estimate_predicates(&wallet.provider().unwrap().consensus_parameters()).unwrap();
 
             let receipts = wallet
                 .provider()
@@ -686,6 +721,7 @@ mod inputs {
                 let handler = contract_instance.methods().get_input_predicate_length(2);
                 let mut tx = handler.build_tx().await.unwrap();
                 tx.tx.inputs_mut().push(predicate_message);
+                tx.estimate_predicates(&wallet.provider().unwrap().consensus_parameters()).unwrap();
 
                 let receipts = wallet
                     .provider()
@@ -706,6 +742,7 @@ mod inputs {
                     .get_input_predicate_data_length(1);
                 let mut tx = handler.build_tx().await.unwrap();
                 tx.tx.inputs_mut().push(predicate_message);
+                tx.estimate_predicates(&wallet.provider().unwrap().consensus_parameters()).unwrap();
 
                 let receipts = wallet
                     .provider()
@@ -748,7 +785,8 @@ mod inputs {
                     .get_input_predicate(2, predicate_bytes.clone());
                 let mut tx = handler.build_tx().await.unwrap();
 
-                tx.tx.inputs_mut().push(predicate_message);
+                tx.tx.inputs_mut().push(predicate_message);                
+                tx.estimate_predicates(&wallet.provider().unwrap().consensus_parameters()).unwrap();
 
                 let receipts = wallet
                     .provider()
