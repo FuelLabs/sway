@@ -15,6 +15,7 @@ use crate::{
     traverse::{
         dependency, lexed_tree, parsed_tree::ParsedTree, typed_tree::TypedTree, ParseContext,
     },
+    utils::semaphore::Semaphore,
 };
 use dashmap::DashMap;
 use forc_pkg as pkg;
@@ -42,7 +43,6 @@ use sway_core::{
 };
 use sway_types::{Span, Spanned};
 use sway_utils::helpers::get_sway_files;
-use tokio::sync::Semaphore;
 
 pub type Documents = DashMap<String, TextDocument>;
 pub type ProjectDirectory = PathBuf;
@@ -133,7 +133,7 @@ impl Session {
         // Acquire a permit to parse the project. If there are none available, return false. This way,
         // we avoid publishing the same diagnostics multiple times.
         let permit = self.parse_permits.try_acquire();
-        if permit.is_err() {
+        if permit.is_none() {
             return Ok(false);
         }
 
