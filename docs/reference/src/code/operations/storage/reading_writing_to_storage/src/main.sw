@@ -10,6 +10,12 @@ storage {
 fn read() {
     let counter = storage.counter.read();
 }
+// ANCHOR_END: declaration
+// ANCHOR: read_unchecked
+#[storage(read)]
+fn read_unchecked() {
+    let counter = storage.counter.read_unchecked();
+}
 // ANCHOR_END: read
 // ANCHOR: write
 #[storage(write)]
