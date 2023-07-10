@@ -1,12 +1,13 @@
 use crate::{
-    cmd,
+    cmd::{self, deploy::Target},
     util::{
         pkg::built_pkgs,
-        tx::{TransactionBuilderExt, TX_SUBMIT_TIMEOUT_MS},
+        tx::{TransactionBuilderExt, WalletSelectionMode, TX_SUBMIT_TIMEOUT_MS},
     },
 };
 use anyhow::{bail, Context, Result};
 use forc_pkg::{self as pkg, PackageManifestFile};
+use forc_tx::Gas;
 use fuel_core_client::client::types::TransactionStatus;
 use fuel_core_client::client::FuelClient;
 use fuel_tx::{Output, Salt, TransactionBuilder};
@@ -77,6 +78,7 @@ fn validate_and_parse_salts<'a>(
 ///
 /// When deploying a single contract, only that contract's ID is returned.
 pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
+    let command = apply_target(command)?;
     let mut contract_ids = Vec::new();
     let curr_dir = if let Some(ref path) = command.pkg.path {
         PathBuf::from(path)
@@ -131,7 +133,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
             .check_program_type(vec![TreeType::Contract])
             .is_ok()
         {
-            let salt = match (&contract_salt_map, command.random_salt) {
+            let salt = match (&contract_salt_map, command.default_salt) {
                 (Some(map), false) => {
                     if let Some(salt) = map.get(pkg.descriptor.manifest_file.project_name()) {
                         *salt
@@ -139,10 +141,10 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
                         Default::default()
                     }
                 }
-                (None, true) => rand::random(),
-                (None, false) => Default::default(),
+                (None, true) => Default::default(),
+                (None, false) => rand::random(),
                 (Some(_), true) => {
-                    bail!("Both `--salt` and `--random-salt` were specified: must choose one")
+                    bail!("Both `--salt` and `--default-salt` were specified: must choose one")
                 }
             };
             let contract_id =
@@ -151,6 +153,48 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
         }
     }
     Ok(contract_ids)
+}
+
+/// Applies specified target information to the provided arguments.
+///
+/// Basically provides preset configurations for known test-nets.
+fn apply_target(command: cmd::Deploy) -> Result<cmd::Deploy> {
+    let deploy_to_latest_testnet = command.testnet;
+    let target = if deploy_to_latest_testnet {
+        if command.target.is_some() {
+            bail!("Both `--testnet` and `--target` were specified: must choose one")
+        }
+        Some(Target::Beta3)
+    } else {
+        command.target.clone()
+    };
+
+    if let Some(target) = target {
+        match target {
+            cmd::deploy::Target::Beta2 | cmd::deploy::Target::Beta3 => {
+                // If the user did not specified a gas price, we can use `1` as a gas price for
+                // beta test-nets.
+                let gas_price = if command.gas.price == 0 {
+                    1
+                } else {
+                    command.gas.price
+                };
+
+                let target_url = Some(target.target_url().to_string());
+                Ok(cmd::Deploy {
+                    gas: Gas {
+                        price: gas_price,
+                        ..command.gas
+                    },
+                    node_url: target_url,
+                    ..command
+                })
+            }
+            cmd::deploy::Target::LATEST => Ok(command),
+        }
+    } else {
+        Ok(command)
+    }
 }
 
 /// Deploy a single pkg given deploy command and the manifest file
@@ -176,14 +220,24 @@ pub async fn deploy_pkg(
     let root = contract.root();
     let state_root = Contract::initial_state_root(storage_slots.iter());
     let contract_id = contract.id(&salt, &root, &state_root);
-    info!("Contract id: 0x{}", hex::encode(contract_id));
+
+    let wallet_mode = if command.manual_signing {
+        WalletSelectionMode::Manual
+    } else {
+        WalletSelectionMode::ForcWallet
+    };
 
     let tx = TransactionBuilder::create(bytecode.as_slice().into(), salt, storage_slots.clone())
         .gas_limit(command.gas.limit)
         .gas_price(command.gas.price)
         .maturity(command.maturity.maturity.into())
         .add_output(Output::contract_created(contract_id, state_root))
-        .finalize_signed(client.clone(), command.unsigned, command.signing_key)
+        .finalize_signed(
+            client.clone(),
+            command.unsigned,
+            command.signing_key,
+            wallet_mode,
+        )
         .await?;
 
     let tx = Transaction::from(tx);
@@ -194,7 +248,12 @@ pub async fn deploy_pkg(
                 bail!("contract {} deployment timed out", &contract_id);
             }
             TransactionStatus::Success { block_id, .. } => {
-                info!("contract {} deployed in block {}", &contract_id, &block_id);
+                let pkg_name = manifest.project_name();
+                info!("\n\nContract {pkg_name} Deployed!");
+
+                info!("\nNetwork: {node_url}");
+                info!("Contract ID: 0x{contract_id}");
+                info!("Deployed in block {}", &block_id);
                 Ok(contract_id)
             }
             e => {
