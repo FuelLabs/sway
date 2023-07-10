@@ -119,6 +119,24 @@ impl Parse for StatementLet {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use sway_ast::StatementLet;
+
+    use crate::test_utils::parse;
+
+    #[test]
+    fn lex_punct() {
+        let input = parse::<StatementLet>(
+            r#"
+        let x: u8 = 5;
+        "#,
+        );
+        dbg!(input);
+        assert!(true);
+    }
+}
+
 impl Parse for CodeBlockContents {
     fn parse(mut parser: &mut Parser) -> ParseResult<CodeBlockContents> {
         let mut statements = Vec::new();

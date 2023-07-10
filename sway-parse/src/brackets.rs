@@ -170,8 +170,10 @@ macro_rules! impl_brackets (
                         }
                         return Err(parser.emit_error(ParseErrorKind::ExpectedClosingDelimiter { kinds: vec![$close_kind] }))
                     }
+                    println!("hello there");
                     return Err(parser.emit_error(ParseErrorKind::ExpectedOpeningDelimiter { kinds: vec![$open_kind] }))
                 }
+                println!("Hello there 2");
                 Err(parser.emit_error(ParseErrorKind::ExpectedOpeningDelimiter { kinds: vec![$open_kind] }))
             }
         }

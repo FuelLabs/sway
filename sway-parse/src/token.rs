@@ -1149,4 +1149,15 @@ mod tests {
         }
         assert!(tts.next().is_none());
     }
+
+    #[test]
+    fn lex_punct() {
+        let input = r#"
+        let x: u8 = 5;
+        "#;
+        let handler = Handler::default();
+        let stream = lex(&handler, &Arc::from(input), 0, input.len(), None).unwrap();
+        dbg!(stream);
+        assert!(true);
+    }
 }
