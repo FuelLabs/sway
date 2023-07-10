@@ -43,15 +43,15 @@ pub fn combine_constants(
             continue;
         }
 
-        if combine_binary_op(context, &function) {
-            modified = true;
-            continue;
-        }
+        // if combine_binary_op(context, &function) {
+        //     modified = true;
+        //     continue;
+        // }
 
-        if combine_unary_op(context, &function) {
-            modified = true;
-            continue;
-        }
+        // if combine_unary_op(context, &function) {
+        //     modified = true;
+        //     continue;
+        // }
 
         // Other passes here... always continue to the top if pass returns true.
         break;
