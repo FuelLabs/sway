@@ -2366,6 +2366,8 @@ dependencies = [
 [[package]]
 name = "fuel-vm"
 version = "0.34.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d3a031708a34fcbee85bca5f4b9f0b61cd80bf8555972020ddee2420d7306a47"
 dependencies = [
  "bitflags 1.3.2",
  "derivative",
