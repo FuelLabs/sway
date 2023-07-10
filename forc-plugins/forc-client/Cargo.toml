@@ -19,7 +19,8 @@ forc-pkg = { version = "0.42.1", path = "../../forc-pkg" }
 forc-tracing = { version = "0.42.1", path = "../../forc-tracing" }
 forc-tx = { version = "0.42.1", path = "../forc-tx" }
 forc-util = { version = "0.42.1", path = "../../forc-util" }
-forc-wallet = "0.2.3" 
+# forc-wallet = "0.2.3" 
+forc-wallet = { git = "https://github.com/FuelLabs/forc-wallet", branch = "dento/bump-fuel-deps" }
 fuel-abi-types = "0.3"
 fuel-core-client = { workspace = true }
 fuel-crypto = { workspace = true }
