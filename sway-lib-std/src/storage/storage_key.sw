@@ -29,8 +29,39 @@ impl<T> StorageKey<T> {
     /// }
     /// ```
     #[storage(read)]
+    #[deprecated(note="`read` functionalities have been migrated to `read_unchecked`, please migrate as breaking changes are to follow")]
     pub fn read(self) -> T {
         read::<T>(self.slot, self.offset).unwrap()
+    }
+
+impl<T> StorageKey<T> {
+    /// Reads a value of type `T` starting at the location specified by `self`. If the value
+    /// crosses the boundary of a storage slot, reading continues at the following slot.
+    ///
+    /// Returns the value previously stored if a the storage slots read were
+    /// valid and contain `value`. Panics otherwise.
+    ///
+    /// ### Arguments
+    ///
+    /// None
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let r: StorageKey<u64> = StorageKey {
+    ///         slot: 0x0000000000000000000000000000000000000000000000000000000000000000,
+    ///         offset: 2,
+    ///         field_id: 0x0000000000000000000000000000000000000000000000000000000000000000,
+    ///     };
+    ///
+    ///     // Reads the third word from storage slot with key 0x000...0
+    ///     let x: u64 = r.read_unchecked();
+    /// }
+    /// ```
+    #[storage(read)]
+    pub fn read_unchecked(self) -> T {
+        read_unchecked::<T>(self.slot, self.offset).unwrap()
     }
 
     /// Reads a value of type `T` starting at the location specified by `self`. If the value
@@ -58,8 +89,9 @@ impl<T> StorageKey<T> {
     /// }
     /// ```
     #[storage(read)]
+    #[deprecated(note="try_read functionalities are to be migrated to `read` in a further release, this function will be deprecated")]
     pub fn try_read(self) -> Option<T> {
-        read(self.slot, self.offset)
+        read_unchecked(self.slot, self.offset)
     }
 
     /// Writes a value of type `T` starting at the location specified by `self`. If the value
