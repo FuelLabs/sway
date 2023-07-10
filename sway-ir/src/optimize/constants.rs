@@ -43,15 +43,15 @@ pub fn combine_constants(
             continue;
         }
 
-        // if combine_binary_op(context, &function) {
-        //     modified = true;
-        //     continue;
-        // }
+        if combine_binary_op(context, &function) {
+            modified = true;
+            continue;
+        }
 
-        // if combine_unary_op(context, &function) {
-        //     modified = true;
-        //     continue;
-        // }
+        if combine_unary_op(context, &function) {
+            modified = true;
+            continue;
+        }
 
         // Other passes here... always continue to the top if pass returns true.
         break;
@@ -164,79 +164,71 @@ fn combine_binary_op(context: &mut Context, function: &Function) -> bool {
                 {
                     let val1 = arg1.get_constant(context).unwrap();
                     let val2 = arg2.get_constant(context).unwrap();
-                    match op {
+                    let v = match op {
                         crate::BinaryOpKind::Add => match (&val1.value, &val2.value) {
-                            (ConstantValue::Uint(l), ConstantValue::Uint(r)) => {
-                                l.checked_add(*r).map(|v| (inst_val, block, v))
-                            }
+                            (ConstantValue::Uint(l), ConstantValue::Uint(r)) => l.checked_add(*r),
                             _ => None,
                         },
                         crate::BinaryOpKind::Sub => match (&val1.value, &val2.value) {
-                            (ConstantValue::Uint(l), ConstantValue::Uint(r)) => {
-                                l.checked_sub(*r).map(|v| (inst_val, block, v))
-                            }
+                            (ConstantValue::Uint(l), ConstantValue::Uint(r)) => l.checked_sub(*r),
                             _ => None,
                         },
                         crate::BinaryOpKind::Mul => match (&val1.value, &val2.value) {
-                            (ConstantValue::Uint(l), ConstantValue::Uint(r)) => {
-                                l.checked_mul(*r).map(|v| (inst_val, block, v))
-                            }
+                            (ConstantValue::Uint(l), ConstantValue::Uint(r)) => l.checked_mul(*r),
                             _ => None,
                         },
                         crate::BinaryOpKind::Div => match (&val1.value, &val2.value) {
-                            (ConstantValue::Uint(l), ConstantValue::Uint(r)) => {
-                                l.checked_div(*r).map(|v| (inst_val, block, v))
-                            }
+                            (ConstantValue::Uint(l), ConstantValue::Uint(r)) => l.checked_div(*r),
                             _ => None,
                         },
                         crate::BinaryOpKind::And => match (&val1.value, &val2.value) {
-                            (ConstantValue::Uint(l), ConstantValue::Uint(r)) => {
-                                Some((inst_val, block, l & r))
-                            }
+                            (ConstantValue::Uint(l), ConstantValue::Uint(r)) => Some(l & r),
                             _ => None,
                         },
                         crate::BinaryOpKind::Or => match (&val1.value, &val2.value) {
-                            (ConstantValue::Uint(l), ConstantValue::Uint(r)) => {
-                                Some((inst_val, block, l | r))
-                            }
+                            (ConstantValue::Uint(l), ConstantValue::Uint(r)) => Some(l | r),
                             _ => None,
                         },
                         crate::BinaryOpKind::Xor => match (&val1.value, &val2.value) {
-                            (ConstantValue::Uint(l), ConstantValue::Uint(r)) => {
-                                Some((inst_val, block, l ^ r))
-                            }
+                            (ConstantValue::Uint(l), ConstantValue::Uint(r)) => Some(l ^ r),
                             _ => None,
                         },
                         crate::BinaryOpKind::Mod => match (&val1.value, &val2.value) {
-                            (ConstantValue::Uint(l), ConstantValue::Uint(r)) => {
-                                Some((inst_val, block, l % r))
-                            }
+                            (ConstantValue::Uint(l), ConstantValue::Uint(r)) => Some(l % r),
                             _ => None,
                         },
                         crate::BinaryOpKind::Rsh => match (&val1.value, &val2.value) {
-                            (ConstantValue::Uint(l), ConstantValue::Uint(r)) => u32::try_from(*r)
-                                .ok()
-                                .and_then(|r| l.checked_shr(r))
-                                .map(|v| (inst_val, block, v)),
+                            (ConstantValue::Uint(l), ConstantValue::Uint(r)) => {
+                                u32::try_from(*r).ok().and_then(|r| l.checked_shr(r))
+                            }
                             _ => None,
                         },
                         crate::BinaryOpKind::Lsh => match (&val1.value, &val2.value) {
-                            (ConstantValue::Uint(l), ConstantValue::Uint(r)) => u32::try_from(*r)
-                                .ok()
-                                .and_then(|r| l.checked_shl(r))
-                                .map(|v| (inst_val, block, v)),
+                            (ConstantValue::Uint(l), ConstantValue::Uint(r)) => {
+                                u32::try_from(*r).ok().and_then(|r| l.checked_shl(r))
+                            }
                             _ => None,
                         },
-                    }
+                    };
+
+                    v.map(|v| {
+                        (
+                            inst_val,
+                            block,
+                            Constant {
+                                ty: val1.ty,
+                                value: ConstantValue::Uint(v),
+                            },
+                        )
+                    })
                 }
                 _ => None,
             },
         );
 
     // Replace this binary op instruction with a constant.
-    candidate.map_or(false, |(inst_val, block, cn_replace)| {
-        let constant = Constant::new_uint(context, 64, cn_replace);
-        inst_val.replace(context, ValueDatum::Constant(constant));
+    candidate.map_or(false, |(inst_val, block, new_value)| {
+        inst_val.replace(context, ValueDatum::Constant(new_value));
         block.remove_instruction(context, inst_val);
         true
     })
@@ -253,7 +245,14 @@ fn combine_unary_op(context: &mut Context, function: &Function) -> bool {
                     let val = arg.get_constant(context).unwrap();
                     match op {
                         crate::UnaryOpKind::Not => match &val.value {
-                            ConstantValue::Uint(v) => Some((inst_val, block, !v)),
+                            ConstantValue::Uint(v) => Some((
+                                inst_val,
+                                block,
+                                Constant {
+                                    ty: val.ty,
+                                    value: ConstantValue::Uint(!v),
+                                },
+                            )),
                             _ => None,
                         },
                     }
@@ -262,10 +261,9 @@ fn combine_unary_op(context: &mut Context, function: &Function) -> bool {
             },
         );
 
-    // Replace this binary op instruction with a constant.
-    candidate.map_or(false, |(inst_val, block, cn_replace)| {
-        let constant = Constant::new_uint(context, 64, cn_replace);
-        inst_val.replace(context, ValueDatum::Constant(constant));
+    // Replace this unary op instruction with a constant.
+    candidate.map_or(false, |(inst_val, block, new_value)| {
+        inst_val.replace(context, ValueDatum::Constant(new_value));
         block.remove_instruction(context, inst_val);
         true
     })
