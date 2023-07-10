@@ -18,6 +18,8 @@ fn main() -> u64 {
   // bool
   const E = !true;
 
+  let a = 1 + 2 + 3 + 4 + 5;
+
   const X = s(1);
   X.s
 }
@@ -29,12 +31,16 @@ fn main() -> u64 {
 // check:        local u64 D
 // check:        local bool E
 // check:        local { u64 } X
+// check:        local u64 a
 
-// check: $(a_var=$VAL) = const u64 255
-// check: $(b_var=$VAL) = const u64 65535
-// check: $(c_var=$VAL) = const u64 4294967295
-// check: $(d_var=$VAL) = const u64 18446744073709551615
-// check: $(e_var=$VAL) = const bool false
+// check: $(A_var=$VAL) = const u64 255
+// check: $(B_var=$VAL) = const u64 65535
+// check: $(C_var=$VAL) = const u64 4294967295
+// check: $(D_var=$VAL) = const u64 18446744073709551615
+
+// check: $(E_var=$VAL) = const bool false
+
+// check: $(a_var=$VAL) = const u64 15
 
 // check: $(x_var=$VAL) = get_local ptr { u64 }, X
 // check: $(one=$VAL) = const { u64 } { u64 1 }
