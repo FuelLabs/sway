@@ -5,15 +5,9 @@ use sway_ast::keywords::{
     CloseCurlyBraceToken, CloseParenthesisToken, CloseSquareBracketToken, OpenCurlyBraceToken,
     OpenParenthesisToken, OpenSquareBracketToken,
 };
-use sway_ast::token::{
-    ClosingDelimiter::{
-        CurlyBrace as ClosingCurlyBrace, Parenthesis as ClosingParenthesis,
-        SquareBracket as ClosingSquareBracket,
-    },
-    OpeningDelimiter::{
-        CurlyBrace as OpeningCurlyBrace, Parenthesis as OpeningParenthesis,
-        SquareBracket as OpeningSquareBracket,
-    },
+use sway_ast::token::DelimiterKind::{
+    CloseCurlyBrace, CloseParenthesis, CloseSquareBracket, OpenCurlyBrace, OpenParenthesis,
+    OpenSquareBracket,
 };
 use sway_error::handler::ErrorEmitted;
 use sway_error::parser_error::ParseErrorKind;
@@ -184,22 +178,22 @@ impl_brackets!(
     Braces,
     OpenCurlyBraceToken,
     CloseCurlyBraceToken,
-    OpeningCurlyBrace,
-    ClosingCurlyBrace
+    OpenCurlyBrace,
+    CloseCurlyBrace
 );
 impl_brackets!(
     Parens,
     OpenParenthesisToken,
     CloseParenthesisToken,
-    OpeningParenthesis,
-    ClosingParenthesis
+    OpenParenthesis,
+    CloseParenthesis
 );
 impl_brackets!(
     SquareBrackets,
     OpenSquareBracketToken,
     CloseSquareBracketToken,
-    OpeningSquareBracket,
-    ClosingSquareBracket
+    OpenSquareBracket,
+    CloseSquareBracket
 );
 
 #[cfg(test)]

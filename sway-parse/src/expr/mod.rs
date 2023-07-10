@@ -11,7 +11,7 @@ use sway_ast::keywords::{
 };
 use sway_ast::literal::{LitBool, LitBoolType};
 use sway_ast::punctuated::Punctuated;
-use sway_ast::token::OpeningDelimiter;
+use sway_ast::token::DelimiterKind;
 use sway_ast::{
     AbiCastArgs, CodeBlockContents, Expr, ExprArrayDescriptor, ExprStructField,
     ExprTupleDescriptor, GenericArgs, IfCondition, IfExpr, LitInt, Literal, MatchBranch,
@@ -634,7 +634,7 @@ fn parse_atom(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
     if let Some(array_inner) = SquareBrackets::try_parse(parser)? {
         return Ok(Expr::Array(array_inner));
     }
-    if let Some(mut parser) = parser.enter_delimited(OpeningDelimiter::Parenthesis) {
+    if let Some(mut parser) = parser.enter_delimited(DelimiterKind::OpenParenthesis) {
         if let Some(_consumed) = parser.check_empty() {
             return Ok(Expr::Tuple(Parens::new(ExprTupleDescriptor::Nil)));
         }

@@ -83,8 +83,8 @@ impl<T> Spanned for DelimitedGroup<T> {
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Delimiters {
-    pub opening: Option<OpeningDelimiter>,
-    pub closing: Option<ClosingDelimiter>,
+    pub opening: Option<DelimiterKind>,
+    pub closing: Option<DelimiterKind>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -99,51 +99,34 @@ impl Spanned for Delimiter {
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum DelimiterKind {
-    Opening(OpeningDelimiter),
-    Closing(ClosingDelimiter),
+    OpenCurlyBrace,
+    CloseCurlyBrace,
+    OpenParenthesis,
+    CloseParenthesis,
+    OpenSquareBracket,
+    CloseSquareBracket,
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum OpeningDelimiter {
-    Parenthesis,
-    CurlyBrace,
-    SquareBracket,
-    AngleBracket,
-}
-impl OpeningDelimiter {
+impl DelimiterKind {
     pub fn as_char(&self) -> char {
         match self {
-            OpeningDelimiter::Parenthesis => '(',
-            OpeningDelimiter::CurlyBrace => '{',
-            OpeningDelimiter::SquareBracket => '[',
-            OpeningDelimiter::AngleBracket => '<',
+            DelimiterKind::OpenCurlyBrace => '{',
+            DelimiterKind::CloseCurlyBrace => '}',
+            DelimiterKind::OpenParenthesis => '(',
+            DelimiterKind::CloseParenthesis => ')',
+            DelimiterKind::OpenSquareBracket => '[',
+            DelimiterKind::CloseSquareBracket => ']',
         }
     }
-    pub fn get_closing_delimiter(&self) -> ClosingDelimiter {
+    pub fn get_closing_delimiter(&self) -> Self {
         match self {
-            Self::Parenthesis => ClosingDelimiter::Parenthesis,
-            Self::CurlyBrace => ClosingDelimiter::CurlyBrace,
-            Self::SquareBracket => ClosingDelimiter::SquareBracket,
-            Self::AngleBracket => ClosingDelimiter::AngleBracket,
+            Self::OpenParenthesis => Self::CloseParenthesis,
+            Self::OpenCurlyBrace => Self::CloseCurlyBrace,
+            Self::OpenSquareBracket => Self::CloseSquareBracket,
+            _ => unreachable!("should only be used on open delim variants"),
         }
     }
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum ClosingDelimiter {
-    Parenthesis,
-    CurlyBrace,
-    SquareBracket,
-    AngleBracket,
-}
-impl ClosingDelimiter {
-    pub fn as_char(&self) -> char {
-        match self {
-            ClosingDelimiter::Parenthesis => ')',
-            ClosingDelimiter::CurlyBrace => '}',
-            ClosingDelimiter::SquareBracket => ']',
-            ClosingDelimiter::AngleBracket => '>',
-        }
-    }
-}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub enum CommentKind {
     /// A newlined comment is a comment with a preceding newline before another token.
@@ -333,20 +316,20 @@ pub struct CommentedTokenStream {
 
 #[extension_trait]
 impl CharExt for char {
-    fn as_open_delimiter(self) -> Option<OpeningDelimiter> {
+    fn as_open_delimiter(self) -> Option<DelimiterKind> {
         match self {
-            '(' => Some(OpeningDelimiter::Parenthesis),
-            '{' => Some(OpeningDelimiter::CurlyBrace),
-            '[' => Some(OpeningDelimiter::SquareBracket),
+            '(' => Some(DelimiterKind::OpenParenthesis),
+            '{' => Some(DelimiterKind::OpenCurlyBrace),
+            '[' => Some(DelimiterKind::OpenSquareBracket),
             _ => None,
         }
     }
 
-    fn as_close_delimiter(self) -> Option<ClosingDelimiter> {
+    fn as_close_delimiter(self) -> Option<DelimiterKind> {
         match self {
-            ')' => Some(ClosingDelimiter::Parenthesis),
-            '}' => Some(ClosingDelimiter::CurlyBrace),
-            ']' => Some(ClosingDelimiter::SquareBracket),
+            ')' => Some(DelimiterKind::CloseParenthesis),
+            '}' => Some(DelimiterKind::CloseCurlyBrace),
+            ']' => Some(DelimiterKind::CloseSquareBracket),
             _ => None,
         }
     }

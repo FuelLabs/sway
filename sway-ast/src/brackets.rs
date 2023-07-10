@@ -1,4 +1,4 @@
-use crate::{priv_prelude::*, token::OpeningDelimiter};
+use crate::priv_prelude::*;
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Braces<T> {
@@ -12,9 +12,6 @@ impl<T> Braces<T> {
     }
     pub fn into_inner(self) -> T {
         self.inner
-    }
-    pub fn as_opening_delimiter() -> OpeningDelimiter {
-        OpeningDelimiter::CurlyBrace
     }
 }
 impl<T> Spanned for Braces<T> {
@@ -47,9 +44,6 @@ impl<T> Parens<T> {
     pub fn into_inner(self) -> T {
         self.inner
     }
-    pub fn as_opening_delimiter() -> OpeningDelimiter {
-        OpeningDelimiter::Parenthesis
-    }
 }
 impl<T> Spanned for Parens<T> {
     fn span(&self) -> Span {
@@ -80,9 +74,6 @@ impl<T> SquareBrackets<T> {
     }
     pub fn into_inner(self) -> T {
         self.inner
-    }
-    pub fn as_opening_delimiter() -> OpeningDelimiter {
-        OpeningDelimiter::SquareBracket
     }
 }
 impl<T> Spanned for SquareBrackets<T> {

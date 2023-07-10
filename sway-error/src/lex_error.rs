@@ -1,4 +1,4 @@
-use sway_ast::token::{ClosingDelimiter, OpeningDelimiter};
+use sway_ast::token::DelimiterKind;
 use sway_types::{Ident, Span, Spanned};
 use thiserror::Error;
 
@@ -16,19 +16,19 @@ pub enum LexErrorKind {
     #[error("unexpected closing delimiter")]
     UnexpectedClosingDelimiter {
         position: usize,
-        closing_delimiter: ClosingDelimiter,
+        closing_delimiter: DelimiterKind,
     },
     #[error("mismatched delimiters")]
     MismatchedDelimiters {
         open_position: usize,
         close_position: usize,
-        opening_delimiter: OpeningDelimiter,
-        closing_delimiter: ClosingDelimiter,
+        opening_delimiter: DelimiterKind,
+        closing_delimiter: DelimiterKind,
     },
     #[error("unclosed delimiter")]
     UnclosedDelimiter {
         open_position: usize,
-        opening_delimiter: OpeningDelimiter,
+        opening_delimiter: DelimiterKind,
     },
     #[error("unclosed string literal")]
     UnclosedStringLiteral { position: usize },

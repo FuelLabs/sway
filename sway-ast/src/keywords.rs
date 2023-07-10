@@ -1,7 +1,4 @@
-use crate::{
-    priv_prelude::*,
-    token::{ClosingDelimiter, OpeningDelimiter},
-};
+use crate::{priv_prelude::*, token::DelimiterKind};
 
 /// The type is a keyword.
 pub trait Keyword: Spanned + Sized {
@@ -233,8 +230,10 @@ define_token!(DoublePipeToken, "`||`", [Pipe, Pipe], [Pipe]);
 define_token!(UnderscoreToken, "`_`", [Underscore], [Underscore]);
 define_token!(HashToken, "`#`", [Sharp], []);
 define_token!(HashBangToken, "`#!`", [Sharp, Bang], []);
+define_token!(OpenAngleBracketToken, "`<`", [LessThan], []);
+define_token!(CloseAngleBracketToken, "`>`", [GreaterThan], []);
 
-pub trait OpenDelimiterToken: Spanned + Sized {
+pub trait DelimiterToken: Spanned + Sized {
     /// Creates the keyword from the given `span`.
     fn new(span: Span) -> Self;
 
@@ -242,9 +241,9 @@ pub trait OpenDelimiterToken: Spanned + Sized {
     fn ident(&self) -> Ident;
 
     /// The sequence of punctuations that make up the token.
-    const DELIMITER_KIND: &'static [OpeningDelimiter];
+    const DELIMITER_KIND: &'static [DelimiterKind];
 }
-macro_rules! define_opening_delimiter_token (
+macro_rules! define_delimiter_token (
     ($ty_name:ident, $description:literal, [$($delimiter_kind:ident)*]) => {
         #[derive(Clone, Debug, Serialize)]
         pub struct $ty_name {
@@ -257,7 +256,7 @@ macro_rules! define_opening_delimiter_token (
             }
         }
 
-        impl OpenDelimiterToken for $ty_name {
+        impl DelimiterToken for $ty_name {
             fn new(span: Span) -> Self {
                 $ty_name { span }
             }
@@ -266,7 +265,7 @@ macro_rules! define_opening_delimiter_token (
                 Ident::new(self.span())
             }
 
-            const DELIMITER_KIND: &'static [OpeningDelimiter] = &[$(OpeningDelimiter::$delimiter_kind)*];
+            const DELIMITER_KIND: &'static [DelimiterKind] = &[$(DelimiterKind::$delimiter_kind)*];
         }
 
         impl From<$ty_name> for Ident {
@@ -277,55 +276,9 @@ macro_rules! define_opening_delimiter_token (
     };
 );
 
-define_opening_delimiter_token!(OpenAngleBracketToken, "`<`", [AngleBracket]);
-define_opening_delimiter_token!(OpenCurlyBraceToken, "`{`", [CurlyBrace]);
-define_opening_delimiter_token!(OpenParenthesisToken, "`(`", [Parenthesis]);
-define_opening_delimiter_token!(OpenSquareBracketToken, "`[`", [SquareBracket]);
-
-pub trait CloseDelimiterToken: Spanned + Sized {
-    /// Creates the keyword from the given `span`.
-    fn new(span: Span) -> Self;
-
-    /// Returns an identifier for this keyword.
-    fn ident(&self) -> Ident;
-
-    /// The sequence of punctuations that make up the token.
-    const DELIMITER_KIND: &'static [ClosingDelimiter];
-}
-macro_rules! define_closing_delimiter_token (
-    ($ty_name:ident, $description:literal, [$($delimiter_kind:ident)*]) => {
-        #[derive(Clone, Debug, Serialize)]
-        pub struct $ty_name {
-            pub(crate) span: Span,
-        }
-
-        impl Spanned for $ty_name {
-            fn span(&self) -> Span {
-                self.span.clone()
-            }
-        }
-
-        impl CloseDelimiterToken for $ty_name {
-            fn new(span: Span) -> Self {
-                $ty_name { span }
-            }
-
-            fn ident(&self) -> Ident {
-                Ident::new(self.span())
-            }
-
-            const DELIMITER_KIND: &'static [ClosingDelimiter] = &[$(ClosingDelimiter::$delimiter_kind)*];
-        }
-
-        impl From<$ty_name> for Ident {
-            fn from(o: $ty_name) -> Ident {
-                o.ident()
-            }
-        }
-    };
-);
-
-define_closing_delimiter_token!(CloseAngleBracketToken, "`>`", [AngleBracket]);
-define_closing_delimiter_token!(CloseCurlyBraceToken, "`}`", [CurlyBrace]);
-define_closing_delimiter_token!(CloseParenthesisToken, "`)`", [Parenthesis]);
-define_closing_delimiter_token!(CloseSquareBracketToken, "`]`", [SquareBracket]);
+define_delimiter_token!(OpenCurlyBraceToken, "`{`", [OpenCurlyBrace]);
+define_delimiter_token!(OpenParenthesisToken, "`(`", [OpenParenthesis]);
+define_delimiter_token!(OpenSquareBracketToken, "`[`", [OpenSquareBracket]);
+define_delimiter_token!(CloseCurlyBraceToken, "`}`", [CloseCurlyBrace]);
+define_delimiter_token!(CloseParenthesisToken, "`)`", [CloseParenthesis]);
+define_delimiter_token!(CloseSquareBracketToken, "`]`", [CloseSquareBracket]);

@@ -5,9 +5,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use sway_ast::literal::{LitChar, LitInt, LitIntType, LitString, Literal};
 use sway_ast::token::{
-    ClosingDelimiter, Comment, CommentKind, CommentedGroup, CommentedTokenStream,
-    CommentedTokenTree, Delimiter, DelimiterKind, Delimiters, DocComment, DocStyle,
-    GenericTokenTree, OpeningDelimiter, Punct, PunctKind, Spacing, TokenStream,
+    Comment, CommentKind, CommentedGroup, CommentedTokenStream, CommentedTokenTree, Delimiter,
+    DelimiterKind, Delimiters, DocComment, DocStyle, GenericTokenTree, Punct, PunctKind, Spacing,
+    TokenStream,
 };
 use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -18,21 +18,21 @@ use unicode_xid::UnicodeXID;
 #[extension_trait]
 impl CharExt for char {
     /// Converts the character into an opening delimiter, if any.
-    fn as_open_delimiter(&self) -> Option<OpeningDelimiter> {
+    fn as_open_delimiter(&self) -> Option<DelimiterKind> {
         match self {
-            '(' => Some(OpeningDelimiter::Parenthesis),
-            '{' => Some(OpeningDelimiter::CurlyBrace),
-            '[' => Some(OpeningDelimiter::SquareBracket),
+            '(' => Some(DelimiterKind::OpenParenthesis),
+            '{' => Some(DelimiterKind::OpenCurlyBrace),
+            '[' => Some(DelimiterKind::OpenSquareBracket),
             _ => None,
         }
     }
 
     /// Converts the character into a closing delimiter, if any.
-    fn as_close_delimiter(&self) -> Option<ClosingDelimiter> {
+    fn as_close_delimiter(&self) -> Option<DelimiterKind> {
         match self {
-            ')' => Some(ClosingDelimiter::Parenthesis),
-            '}' => Some(ClosingDelimiter::CurlyBrace),
-            ']' => Some(ClosingDelimiter::SquareBracket),
+            ')' => Some(DelimiterKind::CloseParenthesis),
+            '}' => Some(DelimiterKind::CloseCurlyBrace),
+            ']' => Some(DelimiterKind::CloseSquareBracket),
             _ => None,
         }
     }
@@ -225,7 +225,7 @@ pub fn lex_commented(
         if let Some(delimiter) = character.as_open_delimiter() {
             let moved_token_trees = mem::take(&mut token_trees);
             parent_token_trees.push((moved_token_trees, index, delimiter));
-            let delim = lex_delimiter(&mut l, index, DelimiterKind::Opening(delimiter));
+            let delim = lex_delimiter(&mut l, index, delimiter);
             token_trees.push(CommentedTokenTree::Tree(delim.into()));
             continue;
         }
@@ -339,7 +339,7 @@ fn lex_delimited_group(
     delimiters: Delimiters,
 ) -> Vec<CommentedTokenTree> {
     let full_span = if let Some(close_delim) = delimiters.closing {
-        let delim = lex_delimiter(l, index, DelimiterKind::Closing(close_delim));
+        let delim = lex_delimiter(l, index, close_delim);
         token_trees.push(CommentedTokenTree::Tree(delim.into()));
         span(l, open_index, index + close_delim.as_char().len_utf8())
     } else {

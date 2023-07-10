@@ -2,7 +2,7 @@ use crate::keywords::RESERVED_KEYWORDS;
 use crate::{ParseResult, Parser, ParserConsumed, Peeker};
 
 use sway_ast::keywords::{CloseCurlyBraceToken, CloseParenthesisToken, CloseSquareBracketToken};
-use sway_ast::token::OpeningDelimiter;
+use sway_ast::token::DelimiterKind;
 use sway_ast::Intrinsic;
 use sway_error::parser_error::ParseErrorKind;
 use sway_types::{Ident, Spanned};
@@ -153,8 +153,8 @@ impl Parse for Ident {
     }
 }
 
-impl Peek for OpeningDelimiter {
-    fn peek(peeker: Peeker<'_>) -> Option<OpeningDelimiter> {
-        peeker.peek_open_delimiter().ok()
+impl Peek for DelimiterKind {
+    fn peek(peeker: Peeker<'_>) -> Option<DelimiterKind> {
+        peeker.peek_delimiter_kind().ok()
     }
 }
