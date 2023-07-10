@@ -245,14 +245,25 @@ fn combine_unary_op(context: &mut Context, function: &Function) -> bool {
                     let val = arg.get_constant(context).unwrap();
                     match op {
                         crate::UnaryOpKind::Not => match &val.value {
-                            ConstantValue::Uint(v) => Some((
-                                inst_val,
-                                block,
-                                Constant {
-                                    ty: val.ty,
-                                    value: ConstantValue::Uint(!v),
-                                },
-                            )),
+                            ConstantValue::Uint(v) => {
+                                val.ty.get_uint_width(context).and_then(|width| {
+                                    let max = match width {
+                                        8 => u8::MAX as u64,
+                                        16 => u16::MAX as u64,
+                                        32 => u32::MAX as u64,
+                                        64 => u64::MAX,
+                                        _ => return None,
+                                    };
+                                    Some((
+                                        inst_val,
+                                        block,
+                                        Constant {
+                                            ty: val.ty,
+                                            value: ConstantValue::Uint((!v) & max),
+                                        },
+                                    ))
+                                })
+                            }
                             _ => None,
                         },
                     }
