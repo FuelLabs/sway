@@ -1,6 +1,6 @@
 library;
 
-use core::ops::OrdEq;
+use core::ops::{Ord, Eq, OrdEq};
 
 use ::assert::assert;
 
