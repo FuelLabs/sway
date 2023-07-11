@@ -1,6 +1,9 @@
 //! Utilities for common math operations.
 library;
 
+use ::flags::{disable_panic_on_overflow, enable_panic_on_overflow};
+use ::alloc::alloc;
+
 /// Calculates the square root.
 pub trait Root {
     fn sqrt(self) -> Self;
@@ -161,5 +164,27 @@ impl BinaryLogarithm for u16 {
 impl BinaryLogarithm for u8 {
     fn log2(self) -> Self {
         self.log(2u8)
+    }
+}
+
+impl u64 {
+    pub fn overflowing_add(self, right: Self) -> (Self, Self) {
+        disable_panic_on_overflow();
+        let result = alloc::<u64>(2);
+
+        asm(sum, overflow, left: self, right: right, result_ptr: result) {
+            // Add left and right.
+            add sum left right;
+            // Immediately copy the overflow of the addition from `$of` into
+            // `overflow` so that it's not lost.
+            move overflow of;
+            // Store the overflow into the first word of result.
+            sw result_ptr overflow i0;
+            // Store the sum into the second word of result.
+            sw result_ptr sum i1;
+        };
+        enable_panic_on_overflow();
+
+        asm(ptr: result) {ptr: (u64, u64)}
     }
 }
