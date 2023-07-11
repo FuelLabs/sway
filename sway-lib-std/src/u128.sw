@@ -52,27 +52,6 @@ impl core::ops::Ord for U128 {
 // impl core::ops::OrdEq for U128 {
 // }
 impl u64 {
-    pub fn overflowing_add(self, right: Self) -> U128 {
-        disable_panic_on_overflow();
-        let mut result = U128 {
-            upper: 0,
-            lower: 0,
-        };
-        asm(sum, overflow, left: self, right: right, result_ptr: result) {
-            // Add left and right.
-            add sum left right;
-            // Immediately copy the overflow of the addition from `$of` into
-            // `overflow` so that it's not lost.
-            move overflow of;
-            // Store the overflow into the first word of result.
-            sw result_ptr overflow i0;
-            // Store the sum into the second word of result.
-            sw result_ptr sum i1;
-        };
-        enable_panic_on_overflow();
-        result
-    }
-
     pub fn overflowing_mul(self, right: Self) -> U128 {
         disable_panic_on_overflow();
         let mut result = U128 {
@@ -270,24 +249,24 @@ impl core::ops::Not for U128 {
 impl core::ops::Add for U128 {
     /// Add a `U128` to a `U128`. Panics on overflow.
     fn add(self, other: Self) -> Self {
-        let mut upper_128 = self.upper.overflowing_add(other.upper);
+        let (mut overflow_upper, mut upper_128) = self.upper.overflowing_add(other.upper);
 
         // If the upper overflows, then the number cannot fit in 128 bits, so panic.
-        assert(upper_128.upper == 0);
-        let lower_128 = self.lower.overflowing_add(other.lower);
+        assert(overflow_upper == 0);
+        let (overflow_lower, lower_128) = self.lower.overflowing_add(other.lower);
 
         // If overflow has occurred in the lower component addition, carry.
         // Note: carry can be at most 1.
-        if lower_128.upper > 0 {
-            upper_128 = upper_128.lower.overflowing_add(lower_128.upper);
+        if overflow_lower > 0 {
+            let (overflow_upper, upper_128) = upper_128.overflowing_add(overflow_lower);
         }
 
         // If overflow has occurred in the upper component addition, panic.
-        assert(upper_128.upper == 0);
+        assert(overflow_upper == 0);
 
         U128 {
-            upper: upper_128.lower,
-            lower: lower_128.lower,
+            upper: upper_128,
+            lower: lower_128,
         }
     }
 }
