@@ -1,3 +1,5 @@
+library;
+
 use ::assert::assert;
 
 pub enum Ordering {
