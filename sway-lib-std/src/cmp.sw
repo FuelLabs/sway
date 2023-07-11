@@ -1,5 +1,7 @@
 library;
 
+use core::ops::OrdEq;
+
 use ::assert::assert;
 
 pub enum Ordering {
@@ -39,7 +41,7 @@ pub trait Cmp {
     }
 }
 
-impl<T> Cmp for T where T: core::ops::OrdEq {
+impl<T> Cmp for T where T: OrdEq {
     fn cmp(self, other: Self) -> Ordering {
         if self == other {
             Ordering::Equal
