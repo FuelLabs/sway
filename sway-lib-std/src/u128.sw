@@ -249,7 +249,7 @@ impl core::ops::Not for U128 {
 impl core::ops::Add for U128 {
     /// Add a `U128` to a `U128`. Panics on overflow.
     fn add(self, other: Self) -> Self {
-        let (mut overflow_upper, mut upper_128) = self.upper.overflowing_add(other.upper);
+        let (overflow_upper, upper_128) = self.upper.overflowing_add(other.upper);
 
         // If the upper overflows, then the number cannot fit in 128 bits, so panic.
         assert(overflow_upper == 0);
@@ -258,11 +258,15 @@ impl core::ops::Add for U128 {
         // If overflow has occurred in the lower component addition, carry.
         // Note: carry can be at most 1.
         if overflow_lower > 0 {
-            let (overflow_upper, upper_128) = upper_128.overflowing_add(overflow_lower);
-        }
+            let (overflow_upper_2, upper_128_2) = upper_128.overflowing_add(overflow_lower);
+            // If overflow has occurred in the upper component addition, panic.
+            assert(overflow_upper_2 == 0);
 
-        // If overflow has occurred in the upper component addition, panic.
-        assert(overflow_upper == 0);
+            return U128 {
+                upper: upper_128_2,
+                lower: lower_128,
+            };
+        }
 
         U128 {
             upper: upper_128,
