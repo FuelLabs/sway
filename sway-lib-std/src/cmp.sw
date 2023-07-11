@@ -9,10 +9,8 @@ pub enum Ordering {
 }
 
 pub trait Cmp {
-    // Required method
     fn cmp(self, other: Self) -> Ordering;
-
-    // Provided methods
+} {
     fn max(self, other: Self) -> Self {
         if self.cmp(other) == Ordering::Less {
             other
