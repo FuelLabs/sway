@@ -1,6 +1,6 @@
 library;
 
-use core::ops::OrdEq;
+use core::ops::Ord;
 
 use ::assert::assert;
 
@@ -41,7 +41,7 @@ pub trait Cmp {
     }
 }
 
-impl<T> Cmp for T where T: OrdEq {
+impl<T> Cmp for T where T: Ord {
     fn cmp(self, other: Self) -> Ordering {
         if self == other {
             Ordering::Equal
