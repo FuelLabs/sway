@@ -169,6 +169,11 @@ impl BinaryLogarithm for u8 {
 
 impl u64 {
     pub fn overflowing_add(self, right: Self) -> (Self, Self) {
+        // If either self or right is zero we do nothing 
+        if self == 0 || right == 0 {
+            return (0, self + right);
+        }
+
         disable_panic_on_overflow();
         let result = alloc::<u64>(2);
 
