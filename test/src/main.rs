@@ -99,7 +99,7 @@ async fn main() -> Result<()> {
     // Run IR tests
     if !filter_config.first_only {
         println!("\n");
-        ir_generation::run(filter_config.include.as_ref())
+        ir_generation::run(filter_config.include.as_ref(), cli.verbose)
             .instrument(tracing::trace_span!("IR"))
             .await?;
     }
