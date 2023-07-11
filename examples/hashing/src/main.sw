@@ -14,28 +14,6 @@ impl Hash for str[32] {
     }
 }
 
-impl Hash for (bool, u64) {
-    fn hash(self, ref mut state: Hasher) {
-        self.0.hash(state);
-        self.1.hash(state);
-    }
-}
-
-impl Hash for [u64; 2] {
-    fn hash(self, ref mut state: Hasher) {
-        self[0].hash(state);
-        self[1].hash(state);
-    }
-}
-
-impl Hash for [u64; 3] {
-    fn hash(self, ref mut state: Hasher) {
-        self[0].hash(state);
-        self[1].hash(state);
-        self[2].hash(state);
-    }
-}
-
 impl Hash for Location {
     fn hash(self, ref mut state: Hasher) {
         match self {

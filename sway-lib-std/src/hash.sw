@@ -123,6 +123,145 @@ impl Hash for bool {
     }
 }
 
+impl<A, B> Hash for (A, B) where A: Hash, B: Hash  {
+    fn hash(self, ref mut state: Hasher) {
+        self.0.hash(state);
+        self.1.hash(state);
+    }
+}
+
+impl<A, B, C> Hash for (A, B, C) where A: Hash, B: Hash, C: Hash {
+    fn hash(self, ref mut state: Hasher) {
+        self.0.hash(state);
+        self.1.hash(state);
+        self.2.hash(state);
+    }
+}
+
+impl<A, B, C, D> Hash for (A, B, C, D) where A: Hash, B: Hash, C: Hash, D: Hash {
+    fn hash(self, ref mut state: Hasher) {
+        self.0.hash(state);
+        self.1.hash(state);
+        self.2.hash(state);
+        self.3.hash(state);
+    }
+}
+
+impl<A, B, C, D, E> Hash for (A, B, C, D, E) where A: Hash, B: Hash, C: Hash, D: Hash, E: Hash {
+    fn hash(self, ref mut state: Hasher) {
+        self.0.hash(state);
+        self.1.hash(state);
+        self.2.hash(state);
+        self.3.hash(state);
+        self.4.hash(state);
+    }
+}
+
+impl<T> Hash for [T; 1] where T: Hash {
+    fn hash(self, ref mut state: Hasher) {
+        self[0].hash(state);
+    }
+}
+
+impl<T> Hash for [T; 2] where T: Hash {
+    fn hash(self, ref mut state: Hasher) {
+        self[0].hash(state);
+        self[1].hash(state);
+    }
+}
+
+impl<T> Hash for [T; 3] where T: Hash {
+    fn hash(self, ref mut state: Hasher) {
+        self[0].hash(state);
+        self[1].hash(state);
+        self[2].hash(state);
+    }
+}
+
+impl<T> Hash for [T; 4] where T: Hash {
+    fn hash(self, ref mut state: Hasher) {
+        self[0].hash(state);
+        self[1].hash(state);
+        self[2].hash(state);
+        self[3].hash(state);
+    }
+}
+
+impl<T> Hash for [T; 5] where T: Hash {
+    fn hash(self, ref mut state: Hasher) {
+        self[0].hash(state);
+        self[1].hash(state);
+        self[2].hash(state);
+        self[3].hash(state);
+        self[4].hash(state);
+    }
+}
+
+impl<T> Hash for [T; 6] where T: Hash {
+    fn hash(self, ref mut state: Hasher) {
+        self[0].hash(state);
+        self[1].hash(state);
+        self[2].hash(state);
+        self[3].hash(state);
+        self[4].hash(state);
+        self[5].hash(state);
+    }
+}
+
+impl<T> Hash for [T; 7] where T: Hash {
+    fn hash(self, ref mut state: Hasher) {
+        self[0].hash(state);
+        self[1].hash(state);
+        self[2].hash(state);
+        self[3].hash(state);
+        self[4].hash(state);
+        self[5].hash(state);
+        self[6].hash(state);
+    }
+}
+
+impl<T> Hash for [T; 8] where T: Hash {
+    fn hash(self, ref mut state: Hasher) {
+        self[0].hash(state);
+        self[1].hash(state);
+        self[2].hash(state);
+        self[3].hash(state);
+        self[4].hash(state);
+        self[5].hash(state);
+        self[6].hash(state);
+        self[7].hash(state);
+    }
+}
+
+impl<T> Hash for [T; 9] where T: Hash {
+    fn hash(self, ref mut state: Hasher) {
+        self[0].hash(state);
+        self[1].hash(state);
+        self[2].hash(state);
+        self[3].hash(state);
+        self[4].hash(state);
+        self[5].hash(state);
+        self[6].hash(state);
+        self[7].hash(state);
+        self[8].hash(state);
+    }
+}
+
+impl<T> Hash for [T; 10] where T: Hash {
+    fn hash(self, ref mut state: Hasher) {
+        self[0].hash(state);
+        self[1].hash(state);
+        self[2].hash(state);
+        self[3].hash(state);
+        self[4].hash(state);
+        self[5].hash(state);
+        self[6].hash(state);
+        self[7].hash(state);
+        self[8].hash(state);
+        self[9].hash(state);
+    }
+}
+
 pub fn sha256<T>(s: T) -> b256 where T: Hash {
     let mut hasher = Hasher::new();
     s.hash(hasher);

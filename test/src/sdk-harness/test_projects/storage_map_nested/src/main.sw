@@ -42,13 +42,6 @@ impl Hash for str[4] {
     }
 }
 
-impl Hash for (u64, u64) {
-    fn hash(self, ref mut state: Hasher) {
-        self.0.hash(state);
-        self.1.hash(state);
-    }
-}
-
 storage {
     nested_map_1: StorageMap<u64, StorageMap<u64, StorageMap<u64, u64>>> = StorageMap::<u64, StorageMap<u64, StorageMap<u64, u64>>> {},
     nested_map_2: StorageMap<(u64, u64), StorageMap<str[4], StorageMap<u64, M>>> = StorageMap::<(u64, u64), StorageMap<str[4], StorageMap<u64, M>>> {},

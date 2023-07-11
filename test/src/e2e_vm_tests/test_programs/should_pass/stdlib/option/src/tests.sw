@@ -4,12 +4,6 @@ use core::ops::*;
 use ::data_structures::*;
 use std::hash::*;
 
-fn sha256<T>(v: T) -> b256 where T: Hash {
-    let mut hasher = Hasher::new();
-    v.hash(hasher);
-    hasher.sha256()
-}
-
 /* Currently need to occasionally use `sha256` to compare generic types because
  * the correct implementation of `eq` for a type is not always detected
  * correctly. See https://github.com/FuelLabs/sway/issues/3351 and

@@ -7,14 +7,6 @@ use ::storage::storage_key::*;
 /// A persistent key-value pair mapping struct.
 pub struct StorageMap<K, V> where K: Hash {}
 
-// Helper function to get the storage slot for a tuple (key, field_id)
-fn get_storage_slot<K>(tuple: (K, b256)) -> b256 where K: Hash{
-    let mut hasher = Hasher::new();
-    tuple.0.hash(hasher);
-    tuple.1.hash(hasher);
-    hasher.sha256()
-}
-
 impl<K, V> StorageKey<StorageMap<K, V>> where K: Hash {
     /// Inserts a key-value pair into the map.
     ///
@@ -40,7 +32,7 @@ impl<K, V> StorageKey<StorageMap<K, V>> where K: Hash {
     /// ```
     #[storage(read, write)]
     pub fn insert(self, key: K, value: V) {
-        let key = get_storage_slot((key, self.field_id));
+        let key = sha256((key, self.field_id));
         write::<V>(key, 0, value);
     }
 
@@ -68,9 +60,9 @@ impl<K, V> StorageKey<StorageMap<K, V>> where K: Hash {
     /// ```
     pub fn get(self, key: K) -> StorageKey<V> {
         StorageKey {
-            slot: get_storage_slot((key, self.field_id)),
+            slot: sha256((key, self.field_id)),
             offset: 0,
-            field_id: get_storage_slot((key, self.field_id)),
+            field_id: sha256((key, self.field_id)),
         }
     }
 
@@ -100,7 +92,7 @@ impl<K, V> StorageKey<StorageMap<K, V>> where K: Hash {
     /// ```
     #[storage(write)]
     pub fn remove(self, key: K) -> bool {
-        let key = get_storage_slot((key, self.slot));
+        let key = sha256((key, self.slot));
         clear::<V>(key)
     }
 }

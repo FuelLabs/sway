@@ -2,13 +2,6 @@ contract;
 
 use std::hash::*;
 
-impl Hash for (Identity, u64) {
-    fn hash(self, ref mut state: Hasher) {
-        self.0.hash(state);
-        self.1.hash(state);
-    }
-}
-
 // ANCHOR: initialization
 
 storage {

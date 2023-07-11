@@ -2,13 +2,6 @@ contract;
 
 use std::hash::*;
 
-impl Hash for (b256, bool) {
-    fn hash(self, ref mut state: Hasher) {
-        self.0.hash(state);
-        self.1.hash(state);
-    }
-}
-
 storage {
     // ANCHOR: storage_map_decl
     map: StorageMap<Address, u64> = StorageMap::<Address, u64> {},

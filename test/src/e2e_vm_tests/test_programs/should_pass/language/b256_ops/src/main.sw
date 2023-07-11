@@ -2,13 +2,6 @@ script;
 
 use std::hash::*;
 
-impl Hash for (b256, b256) {
-    fn hash(self, ref mut state: Hasher) {
-        self.0.hash(state);
-        self.1.hash(state);
-    }
-}
-
 fn main() -> u64 {
     let aaaa = 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
     let aaab = 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_b;

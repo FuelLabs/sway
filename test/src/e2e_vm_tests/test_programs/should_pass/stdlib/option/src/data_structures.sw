@@ -54,24 +54,9 @@ impl Eq for (u64, u64) {
     }
 }
 
-impl Hash for (u64, u64) {
-    fn hash(self, ref mut state: Hasher) {
-        self.0.hash(state);
-        self.1.hash(state);
-    }
-}
-
 impl Eq for [u64; 3] {
     fn eq(self, other: Self) -> bool {
         self[0] == other[0] && self[1] == other[1] && self[2] == other[2]
-    }
-}
-
-impl Hash for [u64; 3] {
-    fn hash(self, ref mut state: Hasher) {
-        self[0].hash(state);
-        self[1].hash(state);
-        self[2].hash(state);
     }
 }
 

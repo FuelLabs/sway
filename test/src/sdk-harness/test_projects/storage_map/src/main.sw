@@ -47,22 +47,6 @@ impl Hash for str[33] {
     }
 }
 
-impl Hash for (b256, u8, bool) {
-    fn hash(self, ref mut state: Hasher) {
-        self.0.hash(state);
-        self.1.hash(state);
-        self.2.hash(state);
-    }
-}
-
-impl Hash for [b256; 3] {
-    fn hash(self, ref mut state: Hasher) {
-        self[0].hash(state);
-        self[1].hash(state);
-        self[2].hash(state);
-    }
-}
-
 storage {
     map1: StorageMap<u64, bool> = StorageMap::<u64, bool> {},
     map2: StorageMap<u64, u8> = StorageMap::<u64, u8> {},
