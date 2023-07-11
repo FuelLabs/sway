@@ -388,7 +388,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> R
                                     );
                                 }
                             }
-                            
+
                             // Compile to ASM.
                             let asm_result = compile_ir_to_asm(&ir, None);
 
@@ -415,8 +415,6 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> R
                                 );
                             }
 
-                            
-
                             // Do ASM checks.
                             match checker.explain(&asm_output, filecheck::NO_VARIABLES) {
                                 Ok((success, error)) => {
@@ -438,8 +436,6 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> R
                         }
                     }
                 }
-
-                
 
                 // Parse the IR again, and print it yet again to make sure that IR de/serialisation works.
                 let parsed_ir = sway_ir::parser::parse(&ir_output, engines.se())
