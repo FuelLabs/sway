@@ -43,7 +43,7 @@ pub mod tests {
     use crate::{PassGroup, PassManager};
 
     // This function parses the IR text representation and run the specified optimizers. After that checks if the IR WAS
-    // modified and captures all instructions with metadata "!0". These are check against `expected`.
+    // modified and captures all instructions with metadata "!0". These are checked against `expected`.
     //
     // For example:
     //
