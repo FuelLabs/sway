@@ -3,9 +3,9 @@ library;
 use ::assert::assert;
 
 pub enum Ordering {
-    Less,
-    Equal,
-    Greater,
+    Less: (),
+    Equal: (),
+    Greater: (),
 }
 
 pub trait Cmp {
