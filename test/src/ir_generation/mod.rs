@@ -50,7 +50,7 @@ impl Checker {
         let mut checkers: Vec<(Checker, String)> = vec![(Checker::Ir, "".to_string())];
 
         for line in input.lines() {
-            if line.contains("::check-ir::") {
+            if line.contains("::check-ir::") && !matches!(checkers.last(), Some((Checker::Ir, _))) {
                 checkers.push((Checker::Ir, "".to_string()));
             }
 
@@ -62,15 +62,14 @@ impl Checker {
                 checkers.push((Checker::OptimizedIr { passes: vec![] }, "".to_string()));
             }
 
-            let s = checkers.last_mut().unwrap();
-
             if let Some(pass) = line.strip_prefix("// pass: ") {
-                if let Checker::OptimizedIr { passes } = &mut s.0 {
+                if let Some((Checker::OptimizedIr { passes }, _)) = checkers.last_mut() {
                     passes.push(pass.trim().to_string());
                 }
             }
 
             if line.starts_with("//") {
+                let s = checkers.last_mut().unwrap();
                 s.1.push_str(line);
                 s.1.push('\n');
             }
@@ -369,6 +368,27 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> R
                             };
                         }
                         (Checker::Asm, Some(checker)) => {
+                            if optimisation_inline {
+                                let mut pass_mgr = PassManager::default();
+                                let mut pmgr_config = PassGroup::default();
+                                let inline = pass_mgr.register(create_inline_in_module_pass());
+                                pmgr_config.append_pass(inline);
+                                let inline_res = pass_mgr.run(&mut ir, &pmgr_config);
+                                if inline_res.is_err() {
+                                    panic!(
+                                        "Failed to compile test {}:\n{}",
+                                        path.display(),
+                                        compile_res
+                                            .errors
+                                            .iter()
+                                            .map(|err| err.to_string())
+                                            .collect::<Vec<_>>()
+                                            .as_slice()
+                                            .join("\n")
+                                    );
+                                }
+                            }
+                            
                             // Compile to ASM.
                             let asm_result = compile_ir_to_asm(&ir, None);
 
@@ -395,6 +415,8 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> R
                                 );
                             }
 
+                            
+
                             // Do ASM checks.
                             match checker.explain(&asm_output, filecheck::NO_VARIABLES) {
                                 Ok((success, error)) => {
@@ -417,26 +439,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> R
                     }
                 }
 
-                if optimisation_inline {
-                    let mut pass_mgr = PassManager::default();
-                    let mut pmgr_config = PassGroup::default();
-                    let inline = pass_mgr.register(create_inline_in_module_pass());
-                    pmgr_config.append_pass(inline);
-                    let inline_res = pass_mgr.run(&mut ir, &pmgr_config);
-                    if inline_res.is_err() {
-                        panic!(
-                            "Failed to compile test {}:\n{}",
-                            path.display(),
-                            compile_res
-                                .errors
-                                .iter()
-                                .map(|err| err.to_string())
-                                .collect::<Vec<_>>()
-                                .as_slice()
-                                .join("\n")
-                        );
-                    }
-                }
+                
 
                 // Parse the IR again, and print it yet again to make sure that IR de/serialisation works.
                 let parsed_ir = sway_ir::parser::parse(&ir_output, engines.se())
