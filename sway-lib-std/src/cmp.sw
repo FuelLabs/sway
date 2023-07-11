@@ -34,7 +34,7 @@ pub trait Cmp {
             _ => match self.cmp(max) {
                 Ordering::Greater => max,
                 _ => self,
-            }
+            },
         }
     }
 }
