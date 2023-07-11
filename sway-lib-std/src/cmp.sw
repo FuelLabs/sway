@@ -11,28 +11,35 @@ pub enum Ordering {
 pub trait Cmp {
     fn cmp(self, other: Self) -> Ordering;
 } {
+    /// Returns the maximum of the two values.
     fn max(self, other: Self) -> Self {
-        if self.cmp(other) == Ordering::Less {
-            other
-        } else {
-            self
+        match self.cmp(other) {
+            Ordering::Less => other,
+            _ => self,
         }
     }
 
+    /// Returns the minimum of the two values.
     fn min(self, other: Self) -> Self {
-        if self.cmp(other) == Ordering::Greater {
-            other
-        } else {
-            self
+        match self.cmp(other) {
+            Ordering::Greater => other,
+            _ => self,
         }
     }
 
+    /// Limits the value to the range [min, max].
     fn clamp(self, min: Self, max: Self) -> Self {
-        self.max(min).min(max)
+        match self.cmp(min) {
+            Ordering::Less => min,
+            _ => match self.cmp(max) {
+                Ordering::Greater => max,
+                _ => self,
+            }
+        }
     }
 }
 
-impl<T> Cmp for T where T: OrdEq {
+impl<T> Cmp for T where T: core::ops::OrdEq {
     fn cmp(self, other: Self) -> Ordering {
         if self == other {
             Ordering::Equal
