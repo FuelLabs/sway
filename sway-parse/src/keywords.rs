@@ -155,7 +155,8 @@ token_impls! {
 }
 
 fn peek_delimiter<T: DelimiterToken>(peeker: Peeker<'_>) -> Option<T> {
-    let span = peeker.peek_delimiter_token(T::DELIMITER_KIND).ok()?;
+    let span = peeker.peek_delimiter_span(T::DELIMITER_KIND).ok()?;
+    dbg!(&span);
     Some(T::new(span))
 }
 

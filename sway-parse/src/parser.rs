@@ -4,8 +4,8 @@ use core::marker::PhantomData;
 use sway_ast::keywords::Keyword;
 use sway_ast::literal::Literal;
 use sway_ast::token::{
-    DelimitedGroup, DelimiterKind, DocComment, Group, Punct, PunctKind, Spacing, TokenStream,
-    TokenTree,
+    DelimitedGroup, Delimiter, DelimiterKind, DocComment, Group, Punct, PunctKind, Spacing,
+    TokenStream, TokenTree,
 };
 use sway_ast::PubToken;
 use sway_error::error::CompileError;
@@ -100,7 +100,10 @@ impl<'a, 'e> Parser<'a, 'e> {
         Ok(Some((value, consumed)))
     }
 
-    pub fn enter_delimited(&mut self, expected_delimiter: DelimiterKind) -> Option<Parser<'_, '_>> {
+    pub fn try_enter_delimited(
+        &mut self,
+        expected_delimiter: DelimiterKind,
+    ) -> Option<Parser<'_, '_>> {
         match self.token_trees {
             [TokenTree::Group(Group {
                 delimiters,
@@ -260,50 +263,26 @@ impl<'a> Peeker<'a> {
             _ => Err(self),
         }
     }
-    /// There may be a way to combine the function for peeking all delimiters
-    pub fn peek_delimiter_token(self, delimiter: &[DelimiterKind]) -> Result<Span, Self> {
-        let (last_punct_kind, first_punct_kinds) = delimiter
-            .split_last()
-            .unwrap_or_else(|| panic!("peek_open_delimiter called with empty slice"));
+
+    pub fn peek_delimiter_span(self, delimiter: &[DelimiterKind]) -> Result<Span, Self> {
         if self.token_trees.len() < delimiter.len() {
             return Err(self);
         }
-        for (open_delim, tt) in first_punct_kinds.iter().zip(self.token_trees.iter()) {
-            match tt {
-                TokenTree::Group(DelimitedGroup { delimiters, .. }) => {
-                    if let Some(delim) = delimiters.opening {
-                        if delim != *open_delim {
-                            return Err(self);
-                        }
-                    }
+        match &self.token_trees[0] {
+            TokenTree::Delim(Delimiter { span, kind }) => {
+                if kind
+                    == delimiter
+                        .first()
+                        .expect("peek_delimiter_span called with empty slice")
+                {
+                    *self.num_tokens = 1;
+                    return Ok(span.clone());
+                } else {
+                    return Err(self);
                 }
-                _ => return Err(self),
             }
-        }
-        let span_end = match &self.token_trees[delimiter.len() - 1] {
-            TokenTree::Group(DelimitedGroup {
-                delimiters,
-                token_stream: _,
-                span,
-            }) => match delimiters.opening {
-                Some(delim) => {
-                    if delim == *last_punct_kind {
-                        span
-                    } else {
-                        return Err(self);
-                    }
-                }
-                None => return Err(self),
-            },
-            _ => return Err(self),
-        };
-        let span_start = match &self.token_trees[0] {
-            TokenTree::Group(DelimitedGroup { span, .. }) => span,
             _ => unreachable!(),
         };
-        let span = Span::join(span_start.clone(), span_end.clone());
-        *self.num_tokens = delimiter.len();
-        Ok(span)
     }
 
     pub fn peek_doc_comment(self) -> Result<&'a DocComment, Self> {

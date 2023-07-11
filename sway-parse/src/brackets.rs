@@ -47,7 +47,7 @@ macro_rules! impl_brackets (
             {
                 println!("try_parse");
                 if let Some(mut parser)
-                    = parser.enter_delimited($open_kind)
+                    = parser.try_enter_delimited($open_kind)
                 {
                     if parser.peek::<$open_token>().is_some() {
                         let open_token = parser.parse()?;
@@ -77,7 +77,7 @@ macro_rules! impl_brackets (
             {
                 println!("parse_all_inner");
                 if let Some(mut parser)
-                    = parser.enter_delimited($open_kind)
+                    = parser.try_enter_delimited($open_kind)
                 {
                     if parser.peek::<$open_token>().is_some() {
                         let open_token = parser.parse()?;
@@ -111,7 +111,7 @@ macro_rules! impl_brackets (
             {
                 println!("try_parse_all_inner");
                 if let Some(mut parser)
-                    = parser.enter_delimited($open_kind)
+                    = parser.try_enter_delimited($open_kind)
                 {
                     if parser.peek::<$open_token>().is_some() {
                         let open_token = parser.parse()?;
@@ -147,27 +147,21 @@ macro_rules! impl_brackets (
             {
                 println!("parse");
                 if let Some(mut parser)
-                    = parser.enter_delimited($open_kind)
+                    = parser.try_enter_delimited($open_kind)
                 {
                     dbg!(&parser);
-                    if parser.peek::<$open_token>().is_some() {
-                        let open_token = parser.parse()?;
-                        let inner = parser.parse()?;
-                        dbg!(&parser.token_trees);
-                        if parser.peek::<$close_token>().is_some() {
-                            return Ok(
-                                $ty_name {
-                                    open_token,
-                                    inner,
-                                    close_token: parser.parse()?,
-                                })
-                        }
-                        return Err(parser.emit_error(ParseErrorKind::ExpectedClosingDelimiter { kinds: vec![$close_kind] }))
-                    }
-                    println!("hello there");
-                    return Err(parser.emit_error(ParseErrorKind::ExpectedOpeningDelimiter { kinds: vec![$open_kind] }))
+                    let open_token = parser.parse()?;
+                    dbg!(&open_token);
+                    dbg!(&parser);
+                    let inner = parser.parse()?;
+                    dbg!(&parser.token_trees);
+                    return Ok(
+                        $ty_name {
+                            open_token,
+                            inner,
+                            close_token: parser.parse()?,
+                        })
                 }
-                println!("Hello there 2");
                 Err(parser.emit_error(ParseErrorKind::ExpectedOpeningDelimiter { kinds: vec![$open_kind] }))
             }
         }
@@ -207,7 +201,7 @@ mod tests {
     fn parse_fn() {
         let item = parse::<Item>(
             r#"
-            fn f() -> bool {
+            fn always_false() -> bool {
                 false
             }
             "#,
