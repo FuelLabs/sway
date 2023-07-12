@@ -274,6 +274,7 @@ fn test_disable_panic_on_unsafe_math_preserving() {
         r1: u64
     };
     log(error());
+    log(error());
     assert(error() == 1);
     set_flags(prior_flags);
 
