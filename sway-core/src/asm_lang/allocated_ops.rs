@@ -98,6 +98,22 @@ pub(crate) enum AllocatedOpcode {
     JNE(AllocatedRegister, AllocatedRegister, AllocatedRegister),
     JNEI(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
     JNZI(AllocatedRegister, VirtualImmediate18),
+    JMPB(AllocatedRegister, VirtualImmediate18),
+    JMPF(AllocatedRegister, VirtualImmediate18),
+    JNZB(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
+    JNZF(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
+    JNEB(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        VirtualImmediate06,
+    ),
+    JNEF(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        VirtualImmediate06,
+    ),
     RET(AllocatedRegister),
 
     /* Memory Instructions */
@@ -246,6 +262,12 @@ impl AllocatedOpcode {
             JNE(_r1, _r2, _r3) => vec![],
             JNEI(_r1, _r2, _i) => vec![],
             JNZI(_r1, _i) => vec![],
+            JMPB(_r1, _i) => vec![],
+            JMPF(_r1, _i) => vec![],
+            JNZB(_r1, _r2, _i) => vec![],
+            JNZF(_r1, _r2, _i) => vec![],
+            JNEB(_r1, _r2, _r3, _i) => vec![],
+            JNEF(_r1, _r2, _r3, _i) => vec![],
             RET(_r1) => vec![],
 
             /* Memory Instructions */
@@ -355,6 +377,12 @@ impl fmt::Display for AllocatedOpcode {
             JNE(a, b, c) => write!(fmtr, "jne  {a} {b} {c}"),
             JNEI(a, b, c) => write!(fmtr, "jnei {a} {b} {c}"),
             JNZI(a, b) => write!(fmtr, "jnzi {a} {b}"),
+            JMPB(a, b) => write!(fmtr, "jmpb {a} {b}"),
+            JMPF(a, b) => write!(fmtr, "jmpf {a} {b}"),
+            JNZB(a, b, c) => write!(fmtr, "jnzb {a} {b} {c}"),
+            JNZF(a, b, c) => write!(fmtr, "jnzf {a} {b} {c}"),
+            JNEB(a, b, c, d) => write!(fmtr, "jeqb {a} {b} {c} {d}"),
+            JNEF(a, b, c, d) => write!(fmtr, "jeqf {a} {b} {c} {d}"),
             RET(a) => write!(fmtr, "ret  {a}"),
 
             /* Memory Instructions */
@@ -495,6 +523,16 @@ impl AllocatedOp {
             JNE(a, b, c) => op::JNE::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             JNEI(a, b, c) => op::JNEI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
             JNZI(a, b) => op::JNZI::new(a.to_reg_id(), b.value.into()).into(),
+            JMPB(a, b) => op::JMPB::new(a.to_reg_id(), b.value.into()).into(),
+            JMPF(a, b) => op::JMPF::new(a.to_reg_id(), b.value.into()).into(),
+            JNZB(a, b, c) => op::JNZB::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            JNZF(a, b, c) => op::JNZF::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            JNEB(a, b, c, d) => {
+                op::JNEB::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
+            }
+            JNEF(a, b, c, d) => {
+                op::JNEF::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
+            }
             RET(a) => op::RET::new(a.to_reg_id()).into(),
 
             /* Memory Instructions */

@@ -25,6 +25,17 @@ impl VirtualImmediate06 {
             })
         }
     }
+
+    /// This method should only be used if the size of the raw value has already been manually
+    /// checked.
+    /// This is valuable when you don't necessarily have exact [Span] info and want to handle the
+    /// error at a higher level, probably via an internal compiler error or similar.
+    /// A panic message is still required, just in case the programmer has made an error.
+    pub(crate) fn new_unchecked(raw: u64, msg: impl Into<String>) -> Self {
+        Self {
+            value: raw.try_into().unwrap_or_else(|_| panic!("{}", msg.into())),
+        }
+    }    
 }
 impl fmt::Display for VirtualImmediate06 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

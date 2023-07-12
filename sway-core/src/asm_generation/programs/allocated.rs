@@ -13,7 +13,6 @@ impl AllocatedProgram {
         };
 
         let (realized_ops, mut label_offsets) = abstract_ops
-            .relocate_control_flow(&self.data_section)
             .realize_labels(&mut self.data_section)?;
         let ops = realized_ops.pad_to_even();
 

@@ -186,14 +186,14 @@ impl Op {
     }
 
     /// Move an address at a label into a register.
-    pub(crate) fn move_address(
+    pub(crate) fn save_ret_addr(
         reg: VirtualRegister,
         label: Label,
         comment: impl Into<String>,
         owning_span: Option<Span>,
     ) -> Self {
         Op {
-            opcode: Either::Right(OrganizationalOp::MoveAddress(reg, label)),
+            opcode: Either::Right(OrganizationalOp::SaveRetAddr(reg, label)),
             comment: comment.into(),
             owning_span,
         }
@@ -1556,8 +1556,8 @@ pub(crate) enum ControlFlowOp<Reg> {
     JumpIfNotZero(Reg, Label),
     // Jumps to a label, similarly to Jump, though semantically expecting to return.
     Call(Label),
-    // Save a label address in a register.
-    MoveAddress(Reg, Label),
+    // Save a return label address in a register.
+    SaveRetAddr(Reg, Label),
     // placeholder for the DataSection offset
     DataSectionOffsetPlaceholder,
     // Placeholder for loading an address from the data section.
@@ -1583,7 +1583,7 @@ impl<Reg: fmt::Display> fmt::Display for ControlFlowOp<Reg> {
                 JumpIfNotEq(r1, r2, lab) => format!("jnei {r1} {r2} {lab}"),
                 JumpIfNotZero(r1, lab) => format!("jnzi {r1} {lab}"),
                 Call(lab) => format!("fncall {lab}"),
-                MoveAddress(r1, lab) => format!("mova {r1} {lab}"),
+                SaveRetAddr(r1, lab) => format!("mova {r1} {lab}"),
                 DataSectionOffsetPlaceholder =>
                     "DATA SECTION OFFSET[0..32]\nDATA SECTION OFFSET[32..64]".into(),
                 LoadLabel(r1, lab) => format!("lwlab {r1} {lab}"),
@@ -1607,7 +1607,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | PopAll(_) => vec![],
 
             JumpIfNotEq(r1, r2, _) => vec![r1, r2],
-            JumpIfNotZero(r1, _) | MoveAddress(r1, _) | LoadLabel(r1, _) => vec![r1],
+            JumpIfNotZero(r1, _) | SaveRetAddr(r1, _) | LoadLabel(r1, _) => vec![r1],
         })
         .into_iter()
         .collect()
@@ -1620,7 +1620,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | Comment
             | Jump(_)
             | Call(_)
-            | MoveAddress(..)
+            | SaveRetAddr(..)
             | DataSectionOffsetPlaceholder
             | LoadLabel(..)
             | PushAll(_)
@@ -1636,7 +1636,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
     pub(crate) fn def_registers(&self) -> BTreeSet<&Reg> {
         use ControlFlowOp::*;
         (match self {
-            MoveAddress(reg, _) | LoadLabel(reg, _) => vec![reg],
+            SaveRetAddr(reg, _) | LoadLabel(reg, _) => vec![reg],
 
             Label(_)
             | Comment
@@ -1667,7 +1667,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
 
             JumpIfNotEq(r1, r2, label) => Self::JumpIfNotEq(update_reg(r1), update_reg(r2), *label),
             JumpIfNotZero(r1, label) => Self::JumpIfNotZero(update_reg(r1), *label),
-            MoveAddress(r1, label) => Self::MoveAddress(update_reg(r1), *label),
+            SaveRetAddr(r1, label) => Self::SaveRetAddr(update_reg(r1), *label),
             LoadLabel(r1, label) => Self::LoadLabel(update_reg(r1), *label),
         }
     }
@@ -1690,7 +1690,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             Label(_)
             | Comment
             | Call(_)
-            | MoveAddress(..)
+            | SaveRetAddr(..)
             | DataSectionOffsetPlaceholder
             | LoadLabel(..)
             | PushAll(_)
@@ -1753,7 +1753,7 @@ impl ControlFlowOp<VirtualRegister> {
 
             JumpIfNotEq(r1, r2, label) => JumpIfNotEq(map_reg(r1), map_reg(r2), *label),
             JumpIfNotZero(r1, label) => JumpIfNotZero(map_reg(r1), *label),
-            MoveAddress(r1, label) => MoveAddress(map_reg(r1), *label),
+            SaveRetAddr(r1, label) => SaveRetAddr(map_reg(r1), *label),
             LoadLabel(r1, label) => LoadLabel(map_reg(r1), *label),
         }
     }
