@@ -142,7 +142,7 @@ pub fn disable_panic_on_overflow_preserving() -> u64 {
 ///     disable_panic_on_unsafe_math();
 ///      
 ///     let bar = 1 / 0; // Division by zero is considered unsafe math.
-///     assert(error() == true); // Error flag is set to true whenever unsafe math occurs.
+///     assert(error() == 1); // Error flag is set to true whenever unsafe math occurs.
 ///
 ///     enable_panic_on_unsafe_math();
 /// }
@@ -174,7 +174,7 @@ pub fn disable_panic_on_unsafe_math() {
 ///     disable_panic_on_unsafe_math();
 ///      
 ///     let bar = 1 / 0; // Division by zero is considered unsafe math.
-///     assert(error() == true); // Error flag is set to true whenever unsafe math occurs.
+///     assert(error() == 1); // Error flag is set to true whenever unsafe math occurs.
 ///
 ///     enable_panic_on_unsafe_math();
 /// }
@@ -207,7 +207,7 @@ pub fn enable_panic_on_unsafe_math() {
 ///     let prior_flags = disable_panic_on_unsafe_math_preserving();
 ///      
 ///     let bar = 1 / 0; // Division by zero is considered unsafe math.
-///     assert(error() == true); // Error flag is set to true whenever unsafe math occurs.
+///     assert(error() == 1); // Error flag is set to true whenever unsafe math occurs.
 ///
 ///     set_flags(prior_flags);
 /// }
@@ -253,7 +253,7 @@ fn test_disable_panic_on_unsafe_math() {
     disable_panic_on_unsafe_math();
 
     let _bar = 1 / 0;
-    assert(error() == true);
+    assert(error() == 1);
 
     enable_panic_on_unsafe_math();
 }
@@ -264,11 +264,11 @@ fn test_disable_panic_on_unsafe_math_preserving() {
 
     let prior_flags = disable_panic_on_unsafe_math_preserving();
     let _bar = 1 / 0;
-    assert(error() == true);
+    assert(error() == 1);
     set_flags(prior_flags);
 
     let _bar = 1 / 0;
-    assert(error() == true);
+    assert(error() == 1);
 
     enable_panic_on_unsafe_math();
 }
