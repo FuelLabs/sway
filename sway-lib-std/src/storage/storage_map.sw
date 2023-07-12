@@ -93,6 +93,6 @@ impl<K, V> StorageKey<StorageMap<K, V>> {
     #[storage(write)]
     pub fn remove(self, key: K) -> bool {
         let key = sha256((key, self.slot));
-        clear::<V>(key)
+        clear::<V>(key, 0)
     }
 }
