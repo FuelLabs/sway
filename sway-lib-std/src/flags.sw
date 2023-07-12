@@ -264,6 +264,7 @@ fn test_disable_panic_on_unsafe_math_preserving() {
 
     let prior_flags = disable_panic_on_unsafe_math_preserving();
     let _bar = 1 / 0;
+    ::logging::log(error());
     assert(error() == 1);
     set_flags(prior_flags);
 
