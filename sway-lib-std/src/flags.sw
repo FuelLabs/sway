@@ -255,8 +255,8 @@ fn test_disable_panic_on_unsafe_math() {
     let _bar = 1 / 0;
     
     let log_var = asm(t_val: true) {
-        t_val: u64;
-    }
+        t_val: u64
+    };
     log(log_var);
     
     assert(error() == 1);
