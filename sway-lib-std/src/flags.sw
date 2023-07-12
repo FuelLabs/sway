@@ -252,12 +252,10 @@ fn test_disable_panic_on_overflow_preserving() {
 fn test_disable_panic_on_unsafe_math() {
     disable_panic_on_unsafe_math();
 
-    let _bar = 1 / 0;
-    
-    let log_var = asm(t_val: true) {
-        t_val: u64
+    let _bar = asm(r2: 1, r3: 0, r1) {
+        div r1 r2 r3;
+        r1: u64
     };
-    log(log_var);
     
     assert(error() == 1);
 
@@ -273,12 +271,13 @@ fn test_disable_panic_on_unsafe_math_preserving() {
         div r1 r2 r3;
         r1: u64
     };
-    log(error());
-    log(error());
     assert(error() == 1);
     set_flags(prior_flags);
 
-    let _bar = 1 / 0;
+    let _bar = asm(r2: 1, r3: 0, r1) {
+        div r1 r2 r3;
+        r1: u64
+    };
     assert(error() == 1);
 
     enable_panic_on_unsafe_math();
