@@ -1,7 +1,7 @@
 //! Functionality for setting and unsetting FuelVM flags to modify behavior related to the `$err` and `$of` registers.
 library;
 
-use ::{assert::assert, registers::{flags, error}};
+use ::{assert::assert, logging::log, registers::{flags, error}};
 
 /// Sets the flag register to the given value.
 ///
@@ -253,6 +253,12 @@ fn test_disable_panic_on_unsafe_math() {
     disable_panic_on_unsafe_math();
 
     let _bar = 1 / 0;
+    
+    let log_var = asm(t_val: true) {
+        t_val: u64;
+    }
+    log(log_var);
+    
     assert(error() == 1);
 
     enable_panic_on_unsafe_math();
@@ -264,7 +270,7 @@ fn test_disable_panic_on_unsafe_math_preserving() {
 
     let prior_flags = disable_panic_on_unsafe_math_preserving();
     let _bar = 1 / 0;
-    ::logging::log(error());
+    log(error());
     assert(error() == 1);
     set_flags(prior_flags);
 
