@@ -138,7 +138,7 @@ fn test_disable_panic_on_overflow_preserving() {
     disable_panic_on_overflow();
 
     let prior_flags = disable_panic_on_overflow_preserving();
-    let _bar = u64::max() + 1;
+    let mut _bar = u64::max() + 1;
     set_flags(prior_flags);
 
     _bar = u64::max() + 1;
