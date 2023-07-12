@@ -3,6 +3,15 @@ library;
 
 use ::{assert::assert, logging::log, registers::{flags, error}};
 
+// Mask second bit, which is `F_WRAPPING`.
+const F_WRAPPING_DISABLE_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000010;
+// Mask second bit, which is `F_WRAPPING`.
+const F_WRAPPING_ENABLE_MASK: u64 = 0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11111101;
+// Mask first bit, which is `F_UNSAFEMATH`.
+const F_UNSAFEMATH_DISABLE_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000001;
+// Mask first bit, which is `F_UNSAFEMATH`.
+const F_UNSAFEMATH_ENABLE_MASK: u64 = 0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11111110;
+
 /// Sets the flag register to the given value.
 ///
 /// ### Arguments
@@ -17,6 +26,7 @@ use ::{assert::assert, logging::log, registers::{flags, error}};
 /// fn foo() {
 ///     let prior_flags = disable_panic_on_overflow_preserving();
 ///      
+///     // Adding 1 to the max value of a u64 is considered an overflow.
 ///     let bar = u64::max() + 1;
 ///
 ///     set_flags(prior_flags);
@@ -42,18 +52,16 @@ pub fn set_flags(new_flags: u64) {
 /// fn main() {
 ///     disable_panic_on_overflow();
 ///      
+///     // Adding 1 to the max value of a u64 is considered an overflow.
 ///     let bar = u64::max() + 1;
 ///
 ///     enable_panic_on_overflow();
 /// }
 /// ```
 pub fn disable_panic_on_overflow() {
-    // Mask second bit, which is `F_WRAPPING`.
-    let mask = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000010;
-
     // Get the current value of the flags register and mask it, setting the
     // masked bit. Flags are inverted, so set = off.
-    let flag_val = flags() | mask;
+    let flag_val = flags() | F_WRAPPING_DISABLE_MASK;
     asm(flag_val: flag_val) {
         flag flag_val;
     }
@@ -73,18 +81,16 @@ pub fn disable_panic_on_overflow() {
 /// fn main() {
 ///     disable_panic_on_overflow();
 ///      
+///     // Adding 1 to the max value of a u64 is considered an overflow.
 ///     let bar = u64::max() + 1;
 ///
 ///     enable_panic_on_overflow();
 /// }
 /// ```
 pub fn enable_panic_on_overflow() {
-    // Mask second bit, which is `F_WRAPPING`.
-    let mask = 0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11111101;
-
     // Get the current value of the flags register and mask it, unsetting the
     // masked bit. Flags are inverted, so unset = on.
-    let flag_val = flags() & mask;
+    let flag_val = flags() & F_WRAPPING_ENABLE_MASK;
     asm(flag_val: flag_val) {
         flag flag_val;
     }
@@ -97,6 +103,10 @@ pub fn enable_panic_on_overflow() {
 /// >
 /// > Don't forget to call `set_flags` after performing the operations for which you disabled the default `panic-on-overflow` behavior in the first place!
 ///
+/// ### Returns
+/// 
+/// * [u64] - The flag prior to disabling panic on overflow.
+///
 /// ### Examples
 ///
 /// ```sway
@@ -105,6 +115,7 @@ pub fn enable_panic_on_overflow() {
 /// fn foo() {
 ///     let prior_flags = disable_panic_on_overflow_preserving();
 ///      
+///     // Adding 1 to the max value of a u64 is considered an overflow.
 ///     let bar = u64::max() + 1;
 ///
 ///     set_flags(prior_flags);
@@ -113,12 +124,9 @@ pub fn enable_panic_on_overflow() {
 pub fn disable_panic_on_overflow_preserving() -> u64 {
     let prior_flags = flags();
 
-    // Mask second bit, which is `F_WRAPPING`.
-    let mask = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000010;
-
     // Get the current value of the flags register and mask it, setting the
     // masked bit. Flags are inverted, so set = off.
-    let flag_val = prior_flags | mask;
+    let flag_val = prior_flags | F_WRAPPING_DISABLE_MASK;
     asm(flag_val: flag_val) {
         flag flag_val;
     }
@@ -141,19 +149,18 @@ pub fn disable_panic_on_overflow_preserving() -> u64 {
 /// fn main() {
 ///     disable_panic_on_unsafe_math();
 ///      
-///     let bar = 1 / 0; // Division by zero is considered unsafe math.
-///     assert(error() == 1); // Error flag is set to true whenever unsafe math occurs.
+///     // Division by zero is considered unsafe math.
+///     let bar = 1 / 0; 
+///     // Error flag is set to true whenever unsafe math occurs. Here represented as 1.
+///     assert(error() == 1); 
 ///
 ///     enable_panic_on_unsafe_math();
 /// }
 /// ```
 pub fn disable_panic_on_unsafe_math() {
-    // Mask first bit, which is `F_UNSAFEMATH`.
-    let mask = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000001;
-
     // Get the current value of the flags register and mask it, setting the
     // masked bit. Flags are inverted, so set = off.
-    let flag_val = flags() | mask;
+    let flag_val = flags() | F_UNSAFEMATH_DISABLE_MASK;
     asm(flag_val: flag_val) {
         flag flag_val;
     }
@@ -173,19 +180,18 @@ pub fn disable_panic_on_unsafe_math() {
 /// fn main() {
 ///     disable_panic_on_unsafe_math();
 ///      
-///     let bar = 1 / 0; // Division by zero is considered unsafe math.
-///     assert(error() == 1); // Error flag is set to true whenever unsafe math occurs.
+///     // Division by zero is considered unsafe math.
+///     let bar = 1 / 0; 
+///     // Error flag is set to true whenever unsafe math occurs. Here represented as 1.
+///     assert(error() == 1); 
 ///
 ///     enable_panic_on_unsafe_math();
 /// }
 /// ```
 pub fn enable_panic_on_unsafe_math() {
-    // Mask first bit, which is `F_UNSAFEMATH`.
-    let mask = 0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11111110;
-
     // Get the current value of the flags register and mask it, unsetting the
     // masked bit. Flags are inverted, so unset = on.
-    let flag_val = flags() & mask;
+    let flag_val = flags() & F_UNSAFEMATH_ENABLE_MASK;
     asm(flag_val: flag_val) {
         flag flag_val;
     }
@@ -198,6 +204,10 @@ pub fn enable_panic_on_unsafe_math() {
 /// >
 /// > Don't forget to call `set_flags` after performing the operations for which you disabled the default `panic-on-unsafe-math` behavior in the first place!
 ///
+/// ### Returns
+/// 
+/// * [u64] - The flag prior to disabling panic on overflow.
+///
 /// ### Examples
 ///
 /// ```sway
@@ -206,8 +216,10 @@ pub fn enable_panic_on_unsafe_math() {
 /// fn foo() {
 ///     let prior_flags = disable_panic_on_unsafe_math_preserving();
 ///      
-///     let bar = 1 / 0; // Division by zero is considered unsafe math.
-///     assert(error() == 1); // Error flag is set to true whenever unsafe math occurs.
+///     // Division by zero is considered unsafe math.
+///     let bar = 1 / 0; 
+///     // Error flag is set to true whenever unsafe math occurs. Here represented as 1.
+///     assert(error() == 1); 
 ///
 ///     set_flags(prior_flags);
 /// }
@@ -215,12 +227,9 @@ pub fn enable_panic_on_unsafe_math() {
 pub fn disable_panic_on_unsafe_math_preserving() -> u64 {
     let prior_flags = flags();
 
-    // Mask first bit, which is `F_UNSAFEMATH`.
-    let mask = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000001;
-
     // Get the current value of the flags register and mask it, setting the
     // masked bit. Flags are inverted, so set = off.
-    let flag_val = prior_flags | mask;
+    let flag_val = prior_flags | F_UNSAFEMATH_DISABLE_MASK;
     asm(flag_val: flag_val) {
         flag flag_val;
     }
