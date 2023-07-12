@@ -35,7 +35,7 @@ impl VirtualImmediate06 {
         Self {
             value: raw.try_into().unwrap_or_else(|_| panic!("{}", msg.into())),
         }
-    }    
+    }
 }
 impl fmt::Display for VirtualImmediate06 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

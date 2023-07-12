@@ -198,16 +198,31 @@ impl AllocatedAbstractInstructionSet {
                 }),
                 Either::Right(org_op) => match org_op {
                     ControlFlowOp::Jump(ref lab) | ControlFlowOp::Call(ref lab) => {
-                        let imm = VirtualImmediate18::new_unchecked(
-                            // JMP(B/F) adds a 1
-                            rel_offset(curr_offset, lab) - 1,
-                            "Programs with more than 2^18 labels are unsupported right now",
-                        );
-                        if curr_offset > label_offsets.get(lab).unwrap().offs {
+                        let imm = || {
+                            VirtualImmediate18::new_unchecked(
+                                // JMP(B/F) adds a 1
+                                rel_offset(curr_offset, lab) - 1,
+                                "Programs with more than 2^18 labels are unsupported right now",
+                            )
+                        };
+                        if curr_offset == label_offsets.get(lab).unwrap().offs {
+                            assert!(matches!(
+                                self.ops[op_idx - 1].opcode,
+                                Either::Left(AllocatedOpcode::NOOP)
+                            ));
                             realized_ops.push(RealizedOp {
                                 opcode: AllocatedOpcode::JMPB(
                                     AllocatedRegister::Constant(ConstantRegister::Zero),
-                                    imm,
+                                    VirtualImmediate18::new_unchecked(0, "unreachable()"),
+                                ),
+                                owning_span,
+                                comment,
+                            });
+                        } else if curr_offset > label_offsets.get(lab).unwrap().offs {
+                            realized_ops.push(RealizedOp {
+                                opcode: AllocatedOpcode::JMPB(
+                                    AllocatedRegister::Constant(ConstantRegister::Zero),
+                                    imm(),
                                 ),
                                 owning_span,
                                 comment,
@@ -216,7 +231,7 @@ impl AllocatedAbstractInstructionSet {
                             realized_ops.push(RealizedOp {
                                 opcode: AllocatedOpcode::JMPF(
                                     AllocatedRegister::Constant(ConstantRegister::Zero),
-                                    imm,
+                                    imm(),
                                 ),
                                 owning_span,
                                 comment,
@@ -224,18 +239,35 @@ impl AllocatedAbstractInstructionSet {
                         }
                     }
                     ControlFlowOp::JumpIfNotEq(r1, r2, ref lab) => {
-                        let imm = VirtualImmediate06::new_unchecked(
-                            // JNE(B/F) adds a 1
-                            rel_offset(curr_offset, lab) - 1,
-                            "Programs with more than 2^6 labels are unsupported right now",
-                        );
-                        if curr_offset > label_offsets.get(lab).unwrap().offs {
+                        let imm = || {
+                            VirtualImmediate06::new_unchecked(
+                                // JNE(B/F) adds a 1
+                                rel_offset(curr_offset, lab) - 1,
+                                "Programs with more than 2^6 labels are unsupported right now",
+                            )
+                        };
+                        if curr_offset == label_offsets.get(lab).unwrap().offs {
+                            assert!(matches!(
+                                self.ops[op_idx - 1].opcode,
+                                Either::Left(AllocatedOpcode::NOOP)
+                            ));
                             realized_ops.push(RealizedOp {
                                 opcode: AllocatedOpcode::JNEB(
                                     r1,
                                     r2,
                                     AllocatedRegister::Constant(ConstantRegister::Zero),
-                                    imm,
+                                    VirtualImmediate06::new_unchecked(0, "unreachable()"),
+                                ),
+                                owning_span,
+                                comment,
+                            });
+                        } else if curr_offset > label_offsets.get(lab).unwrap().offs {
+                            realized_ops.push(RealizedOp {
+                                opcode: AllocatedOpcode::JNEB(
+                                    r1,
+                                    r2,
+                                    AllocatedRegister::Constant(ConstantRegister::Zero),
+                                    imm(),
                                 ),
                                 owning_span,
                                 comment,
@@ -246,7 +278,7 @@ impl AllocatedAbstractInstructionSet {
                                     r1,
                                     r2,
                                     AllocatedRegister::Constant(ConstantRegister::Zero),
-                                    imm,
+                                    imm(),
                                 ),
                                 owning_span,
                                 comment,
@@ -254,17 +286,33 @@ impl AllocatedAbstractInstructionSet {
                         }
                     }
                     ControlFlowOp::JumpIfNotZero(r1, ref lab) => {
-                        let imm = VirtualImmediate12::new_unchecked(
-                            // JNZ(B/F) adds a 1
-                            rel_offset(curr_offset, lab) - 1,
-                            "Programs with more than 2^12 labels are unsupported right now",
-                        );
-                        if curr_offset > label_offsets.get(lab).unwrap().offs {
+                        let imm = || {
+                            VirtualImmediate12::new_unchecked(
+                                // JNZ(B/F) adds a 1
+                                rel_offset(curr_offset, lab) - 1,
+                                "Programs with more than 2^12 labels are unsupported right now",
+                            )
+                        };
+                        if curr_offset == label_offsets.get(lab).unwrap().offs {
+                            assert!(matches!(
+                                self.ops[op_idx - 1].opcode,
+                                Either::Left(AllocatedOpcode::NOOP)
+                            ));
                             realized_ops.push(RealizedOp {
                                 opcode: AllocatedOpcode::JNZB(
                                     r1,
                                     AllocatedRegister::Constant(ConstantRegister::Zero),
-                                    imm,
+                                    VirtualImmediate12::new_unchecked(0, "unreachable()"),
+                                ),
+                                owning_span,
+                                comment,
+                            });
+                        } else if curr_offset > label_offsets.get(lab).unwrap().offs {
+                            realized_ops.push(RealizedOp {
+                                opcode: AllocatedOpcode::JNZB(
+                                    r1,
+                                    AllocatedRegister::Constant(ConstantRegister::Zero),
+                                    imm(),
                                 ),
                                 owning_span,
                                 comment,
@@ -274,7 +322,7 @@ impl AllocatedAbstractInstructionSet {
                                 opcode: AllocatedOpcode::JNZF(
                                     r1,
                                     AllocatedRegister::Constant(ConstantRegister::Zero),
-                                    imm,
+                                    imm(),
                                 ),
                                 owning_span,
                                 comment,
@@ -306,11 +354,7 @@ impl AllocatedAbstractInstructionSet {
                             comment: "Current instruction offset in 32b words".into(),
                         });
                         realized_ops.push(RealizedOp {
-                            opcode: AllocatedOpcode::ADDI(
-                                r1.clone(),
-                                r1,
-                                imm,
-                            ),
+                            opcode: AllocatedOpcode::ADDI(r1.clone(), r1, imm),
                             owning_span,
                             comment,
                         });
@@ -483,15 +527,15 @@ impl AllocatedAbstractInstructionSet {
             }
 
             if let Either::Right(Jump(lab) | Call(lab)) = op.opcode {
-                jmp_labels.insert(lab);
+                jmp_labels.insert((cur_offset, lab));
             }
 
             if let Either::Right(JumpIfNotZero(_, lab)) = op.opcode {
-                jnz_labels.insert(lab);
+                jnz_labels.insert((cur_offset, lab));
             }
 
             if let Either::Right(JumpIfNotEq(_, _, lab)) = op.opcode {
-                jneq_labels.insert(lab);
+                jneq_labels.insert((cur_offset, lab));
             }
 
             // Update the offset.
@@ -503,15 +547,21 @@ impl AllocatedAbstractInstructionSet {
             labelled_blocks.insert(lab, BasicBlock { offs });
         }
 
+        let needs_remap = |offset, lab, limit| {
+            let rel_offset = labelled_blocks.get(lab).unwrap().offs.abs_diff(offset);
+            // Self jumps need a NOOP inserted before it so that we can jump to the NOOP.
+            // if rel_offset exceeds limit, we'll need to insert LoadLabels.
+            rel_offset == 0 || rel_offset > limit
+        };
         let need_to_remap_jumps = jneq_labels
             .iter()
-            .any(|lab| labelled_blocks.get(lab).copied().unwrap().offs > consts::SIX_BITS)
+            .any(|(offset, lab)| needs_remap(*offset, lab, consts::SIX_BITS))
             || jmp_labels
                 .iter()
-                .any(|lab| labelled_blocks.get(lab).copied().unwrap().offs > consts::EIGHTEEN_BITS)
+                .any(|(offset, lab)| needs_remap(*offset, lab, consts::EIGHTEEN_BITS))
             || jnz_labels
                 .iter()
-                .any(|lab| labelled_blocks.get(lab).copied().unwrap().offs > consts::TWELVE_BITS);
+                .any(|(offset, lab)| needs_remap(*offset, lab, consts::TWELVE_BITS));
 
         (need_to_remap_jumps, labelled_blocks)
     }
@@ -537,7 +587,15 @@ impl AllocatedAbstractInstructionSet {
                 match &op.opcode {
                     Either::Right(ControlFlowOp::Jump(ref lab))
                     | Either::Right(ControlFlowOp::Call(ref lab)) => {
-                        if rel_offset(lab) - 1 <= consts::EIGHTEEN_BITS {
+                        if rel_offset(lab) == 0 {
+                            new_ops.push(AllocatedAbstractOp {
+                                opcode: Either::Left(AllocatedOpcode::NOOP),
+                                comment: "NOP for self loop".into(),
+                                owning_span: None,
+                            });
+                            new_ops.push( op);
+                            modified = true;
+                        } else if rel_offset(lab) - 1 <= consts::EIGHTEEN_BITS {
                             new_ops.push(op)
                         } else {
                             // Load the offset into $tmp.
@@ -572,7 +630,15 @@ impl AllocatedAbstractInstructionSet {
                         }
                     }
                     Either::Right(ControlFlowOp::JumpIfNotEq(r1, r2, ref lab)) => {
-                        if rel_offset(lab) - 1 <= consts::SIX_BITS {
+                        if rel_offset(lab) == 0 {
+                            new_ops.push(AllocatedAbstractOp {
+                                opcode: Either::Left(AllocatedOpcode::NOOP),
+                                comment: "NOP for self loop".into(),
+                                owning_span: None,
+                            });
+                            new_ops.push( op);
+                            modified = true;
+                        } else if rel_offset(lab) - 1 <= consts::SIX_BITS {
                             new_ops.push(op)
                         } else {
                             // Load the destination address into $tmp.
@@ -611,7 +677,15 @@ impl AllocatedAbstractInstructionSet {
                         }
                     }
                     Either::Right(ControlFlowOp::JumpIfNotZero(r1, ref lab)) => {
-                        if rel_offset(lab) - 1 <= consts::TWELVE_BITS {
+                        if rel_offset(lab) == 0 {
+                            new_ops.push(AllocatedAbstractOp {
+                                opcode: Either::Left(AllocatedOpcode::NOOP),
+                                comment: "NOP for self loop".into(),
+                                owning_span: None,
+                            });
+                            new_ops.push( op);
+                            modified = true;
+                        } else if rel_offset(lab) - 1 <= consts::TWELVE_BITS {
                             new_ops.push(op)
                         } else {
                             // Load the destination address into $tmp.
