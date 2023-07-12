@@ -267,10 +267,11 @@ fn test_disable_panic_on_unsafe_math() {
 #[test]
 fn test_disable_panic_on_unsafe_math_preserving() {
     disable_panic_on_unsafe_math();
-    log(error());
 
     let prior_flags = disable_panic_on_unsafe_math_preserving();
-    let _bar = 1 / 0;
+    let _bar = asm(r2: 1, r3: 0, r1) {
+        div r1 r2 r3
+    };
     log(error());
     assert(error() == 1);
     set_flags(prior_flags);
