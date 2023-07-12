@@ -120,9 +120,9 @@ pub fn disable_panic_on_overflow_preserving() -> u64 {
 ///     set_flags(prior_flags);
 /// }
 /// ```
-pub fn set_flags(flags: u64) {
-    asm(flags: flags) {
-        flag flags;
+pub fn set_flags(new_flags: u64) {
+    asm(new_flags: new_flags) {
+        flag new_flags;
     }
 }
 
@@ -140,7 +140,7 @@ fn test_disable_panic_on_overflow_preserving() {
     let prior_flags = disable_panic_on_overflow_preserving();
     let bar = u64::max() + 1;
     set_flags(prior_flags);
-    
+
     let bar = u64::max() + 1;
 
     enable_panic_on_overflow();
