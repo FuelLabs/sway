@@ -270,7 +270,8 @@ fn test_disable_panic_on_unsafe_math_preserving() {
 
     let prior_flags = disable_panic_on_unsafe_math_preserving();
     let _bar = asm(r2: 1, r3: 0, r1) {
-        div r1 r2 r3
+        div r1 r2 r3;
+        r1: u64
     };
     log(error());
     assert(error() == 1);
