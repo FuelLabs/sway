@@ -5,13 +5,13 @@ use context_testing_abi::*;
 
 impl ContextTesting for Contract {
     #[payable]
-    fn get_this_balance(asset: ContractId) -> u64 {
+    fn get_this_balance(asset: b256) -> u64 {
         this_balance(asset)
     }
 
     #[payable]
-    fn get_balance_of_contract(asset: ContractId, r#contract: ContractId) -> u64 {
-        balance_of(asset, r#contract)
+    fn get_balance_of_contract(asset: b256, r#contract: ContractId) -> u64 {
+        balance_of(r#contract, asset)
     }
 
     #[payable]

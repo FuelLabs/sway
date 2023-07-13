@@ -2,9 +2,9 @@ library;
 
 abi ContextTesting {
     #[payable]
-    fn get_this_balance(asset: ContractId) -> u64;
+    fn get_this_balance(asset: b256) -> u64;
     #[payable]
-    fn get_balance_of_contract(asset: ContractId, r#contract: ContractId) -> u64;
+    fn get_balance_of_contract(asset: b256, r#contract: ContractId) -> u64;
     #[payable]
     fn get_amount() -> u64;
     #[payable]

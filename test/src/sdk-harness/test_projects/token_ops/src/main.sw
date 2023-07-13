@@ -5,58 +5,58 @@ use std::{bytes::Bytes, constants::ZERO_B256, context::balance_of, message::send
 abi TestFuelCoin {
     fn mint_coins(mint_amount: u64);
     fn burn_coins(burn_amount: u64);
-    fn force_transfer_coins(coins: u64, asset_id: ContractId, target: ContractId);
-    fn transfer_coins_to_address(coins: u64, asset_id: ContractId, to: Address);
-    fn get_balance(asset_id: ContractId, target: ContractId) -> u64;
+    fn force_transfer_coins(coins: u64, asset_id: b256, target: ContractId);
+    fn transfer_coins_to_address(coins: u64, asset_id: b256, to: Address);
+    fn get_balance(asset_id: b256, target: ContractId) -> u64;
     fn mint_and_send_to_contract(amount: u64, to: ContractId);
     fn mint_and_send_to_address(amount: u64, to: Address);
     fn generic_mint_to(amount: u64, to: Identity);
-    fn generic_transfer(amount: u64, asset_id: ContractId, to: Identity);
+    fn generic_transfer(amount: u64, asset_id: b256, to: Identity);
     fn send_message(recipient: b256, msg_data: Vec<u64>, coins: u64);
 
     fn address_mint_to(recipient: Address, amount: u64);
-    fn address_transfer(recipient: Address, asset_id: ContractId, amount: u64);
+    fn address_transfer(recipient: Address, asset_id: b256, amount: u64);
     fn contract_mint_to(recipient: ContractId, amount: u64);
-    fn contract_transfer(recipient: ContractId, asset_id: ContractId, amount: u64);
+    fn contract_transfer(recipient: ContractId, asset_id: b256, amount: u64);
     fn identity_mint_to(recipient: Identity, amount: u64);
-    fn identity_transfer(recipient: Identity, asset_id: ContractId, amount: u64);
+    fn identity_transfer(recipient: Identity, asset_id: b256, amount: u64);
 }
 
 impl TestFuelCoin for Contract {
     fn mint_coins(mint_amount: u64) {
-        mint(mint_amount, ZERO_B256);
+        mint(ZERO_B256, mint_amount);
     }
 
     fn burn_coins(burn_amount: u64) {
-        burn(burn_amount, ZERO_B256);
+        burn(ZERO_B256, burn_amount);
     }
 
     fn force_transfer_coins(coins: u64, asset_id: b256, target: ContractId) {
-        force_transfer_to_contract(coins, asset_id, target);
+        force_transfer_to_contract(target, asset_id, coins);
     }
 
     fn transfer_coins_to_address(coins: u64, asset_id: b256, to: Address) {
-        transfer_to_address(coins, asset_id, to);
+        transfer_to_address(to, asset_id, coins);
     }
 
     fn get_balance(asset_id: b256, target: ContractId) -> u64 {
-        balance_of(asset_id, target)
+        balance_of(target, asset_id)
     }
 
     fn mint_and_send_to_contract(amount: u64, to: ContractId) {
-        mint_to_contract(amount, to, ZERO_B256);
+        mint_to_contract(to, ZERO_B256, amount);
     }
 
     fn mint_and_send_to_address(amount: u64, to: Address) {
-        mint_to_address(amount, to, ZERO_B256);
+        mint_to_address(to, ZERO_B256, amount);
     }
 
     fn generic_mint_to(amount: u64, to: Identity) {
-        mint_to(amount, to, ZERO_B256);
+        mint_to(to, ZERO_B256, amount);
     }
 
     fn generic_transfer(amount: u64, asset_id: b256, to: Identity) {
-        transfer(amount, asset_id, to)
+        transfer(to, asset_id, amount)
     }
 
     fn send_message(recipient: b256, msg_data: Vec<u64>, coins: u64) {
@@ -71,26 +71,26 @@ impl TestFuelCoin for Contract {
     }
 
     fn address_mint_to(recipient: Address, amount: u64) {
-        recipient.mint_to(amount);
+        recipient.mint_to(ZERO_B256, amount);
     }
 
-    fn address_transfer(recipient: Address, asset_id: ContractId, amount: u64) {
-        recipient.transfer(amount, asset_id);
+    fn address_transfer(recipient: Address, asset_id: b256, amount: u64) {
+        recipient.transfer(asset_id, amount);
     }
 
     fn contract_mint_to(recipient: ContractId, amount: u64) {
-        recipient.mint_to(amount);
+        recipient.mint_to(ZERO_B256, amount);
     }
 
-    fn contract_transfer(recipient: ContractId, asset_id: ContractId, amount: u64) {
-        recipient.transfer(amount, asset_id);
+    fn contract_transfer(recipient: ContractId, asset_id: b256, amount: u64) {
+        recipient.transfer(asset_id, amount);
     }
 
     fn identity_mint_to(recipient: Identity, amount: u64) {
-        recipient.mint_to(amount);
+        recipient.mint_to(ZERO_B256, amount);
     }
 
-    fn identity_transfer(recipient: Identity, asset_id: ContractId, amount: u64) {
-        recipient.transfer(amount, asset_id);
+    fn identity_transfer(recipient: Identity, asset_id: b256, amount: u64) {
+        recipient.transfer(asset_id, amount);
     }
 }

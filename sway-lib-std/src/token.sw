@@ -90,7 +90,7 @@ pub fn mint_to_contract(to: ContractId, sub_id: SubId, amount: u64) {
 /// let to = Address::from(ZERO_B256);
 /// mint_to_address(to, ZERO_B256, 500);
 /// ```
-pub fn mint_to_address(amount: u64, to: Address, sub_id: SubId) {
+pub fn mint_to_address(to: Address, sub_id: SubId, amount: u64) {
     mint(sub_id, amount);
     transfer_to_address(to, sha256((contract_id(), sub_id)), amount);
 }
@@ -111,7 +111,7 @@ pub fn mint_to_address(amount: u64, to: Address, sub_id: SubId) {
 /// ```
 pub fn mint(sub_id: SubId, amount: u64) {
     asm(r1: amount, r2: sub_id) {
-        mint r1 r2;
+        mint r1;
     }
 }
 
