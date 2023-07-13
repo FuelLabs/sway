@@ -1,0 +1,3 @@
+[[package]]
+name = 'contract_calls_its_method'
+source = 'member'
