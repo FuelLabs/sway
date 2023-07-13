@@ -247,7 +247,7 @@ fn format_manifest(app: &App, manifest_file: PathBuf) -> Result<bool> {
         return Ok(edited);
     };
 
-    bail!("failed to format manifest")
+    bail!("failed to format manifest: {:?}", manifest_file)
 }
 
 /// Format the package at the given directory.

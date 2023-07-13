@@ -1,4 +1,4 @@
-pub(super) use super::unify::{unifier::Unifier, unify_check::UnifyCheck};
+pub(super) use super::unify::unifier::Unifier;
 
 pub(crate) use super::{
     ast_elements::{
@@ -9,6 +9,7 @@ pub(crate) use super::{
     engine::{EnforceTypeArguments, MonomorphizeHelper},
     info::VecSet,
     substitute::{subst_list::SubstList, subst_map::TypeSubstMap, subst_types::SubstTypes},
+    unify::unify_check::UnifyCheck,
 };
 
 pub use super::{

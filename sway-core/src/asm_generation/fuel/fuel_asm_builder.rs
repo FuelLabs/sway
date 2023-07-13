@@ -23,7 +23,7 @@ use sway_types::{span::Span, Spanned};
 use either::Either;
 use std::collections::HashMap;
 
-pub struct FuelAsmBuilder<'ir> {
+pub struct FuelAsmBuilder<'ir, 'eng> {
     pub(super) program_kind: ProgramKind,
 
     // Data section is used by the rest of code gen to layout const memory.
@@ -52,7 +52,7 @@ pub struct FuelAsmBuilder<'ir> {
     pub(super) locals_ctxs: Vec<(u64, VirtualRegister)>,
 
     // IR context we're compiling.
-    pub(super) context: &'ir Context,
+    pub(super) context: &'ir Context<'eng>,
 
     // Metadata manager for converting metadata to Spans, etc.
     pub(super) md_mgr: MetadataManager,
@@ -78,7 +78,7 @@ pub type FuelAsmBuilderResult = (
     Vec<AbstractInstructionSet>,
 );
 
-impl<'ir> AsmBuilder for FuelAsmBuilder<'ir> {
+impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
     fn func_to_labels(&mut self, func: &Function) -> (Label, Label) {
         self.func_to_labels(func)
     }
@@ -92,12 +92,12 @@ impl<'ir> AsmBuilder for FuelAsmBuilder<'ir> {
     }
 }
 
-impl<'ir> FuelAsmBuilder<'ir> {
+impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
     pub fn new(
         program_kind: ProgramKind,
         data_section: DataSection,
         reg_seqr: RegisterSequencer,
-        context: &'ir Context,
+        context: &'ir Context<'eng>,
     ) -> Self {
         FuelAsmBuilder {
             program_kind,
@@ -160,6 +160,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
             match instruction {
                 Instruction::AsmBlock(..) => unreachable!("Handled immediately above."),
                 Instruction::BitCast(val, ty) => self.compile_bitcast(instr_val, val, ty),
+                Instruction::UnaryOp { op, arg } => self.compile_unary_op(instr_val, op, arg),
                 Instruction::BinaryOp { op, arg1, arg2 } => {
                     self.compile_binary_op(instr_val, op, arg1, arg2)
                 }
@@ -198,17 +199,11 @@ impl<'ir> FuelAsmBuilder<'ir> {
                         self.compile_revert(instr_val, revert_val)
                     }
                     FuelVmInstruction::Smo {
-                        recipient_and_message,
+                        recipient,
+                        message,
                         message_size,
-                        output_index,
                         coins,
-                    } => self.compile_smo(
-                        instr_val,
-                        recipient_and_message,
-                        message_size,
-                        output_index,
-                        coins,
-                    ),
+                    } => self.compile_smo(instr_val, recipient, message, message_size, coins),
                     FuelVmInstruction::StateClear {
                         key,
                         number_of_slots,
@@ -453,6 +448,27 @@ impl<'ir> FuelAsmBuilder<'ir> {
             val_reg
         };
         self.reg_map.insert(*instr_val, reg);
+        Ok(())
+    }
+
+    fn compile_unary_op(
+        &mut self,
+        instr_val: &Value,
+        op: &UnaryOpKind,
+        arg: &Value,
+    ) -> Result<(), CompileError> {
+        let val_reg = self.value_to_register(arg)?;
+        let res_reg = self.reg_seqr.next();
+        let opcode = match op {
+            UnaryOpKind::Not => Either::Left(VirtualOp::NOT(res_reg.clone(), val_reg)),
+        };
+        self.cur_bytecode.push(Op {
+            opcode,
+            comment: String::new(),
+            owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+        });
+
+        self.reg_map.insert(*instr_val, res_reg);
         Ok(())
     }
 
@@ -1164,23 +1180,23 @@ impl<'ir> FuelAsmBuilder<'ir> {
     fn compile_smo(
         &mut self,
         instr_val: &Value,
-        recipient_and_message: &Value,
+        recipient: &Value,
+        message: &Value,
         message_size: &Value,
-        output_index: &Value,
         coins: &Value,
     ) -> Result<(), CompileError> {
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
-        let recipient_and_message_reg = self.value_to_register(recipient_and_message)?;
+        let recipient_reg = self.value_to_register(recipient)?;
+        let message_reg = self.value_to_register(message)?;
         let message_size_reg = self.value_to_register(message_size)?;
-        let output_index_reg = self.value_to_register(output_index)?;
         let coins_reg = self.value_to_register(coins)?;
 
         self.cur_bytecode.push(Op {
             owning_span,
             opcode: Either::Left(VirtualOp::SMO(
-                recipient_and_message_reg,
+                recipient_reg,
+                message_reg,
                 message_size_reg,
-                output_index_reg,
                 coins_reg,
             )),
             comment: "".into(),

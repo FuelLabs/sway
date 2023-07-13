@@ -21,13 +21,13 @@ use std::{
 pub struct TypeId(usize);
 
 impl DisplayWithEngines for TypeId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         write!(f, "{}", engines.help_out(engines.te().get(*self)))
     }
 }
 
 impl DebugWithEngines for TypeId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         write!(f, "{:?}", engines.help_out(engines.te().get(*self)))
     }
 }
@@ -47,11 +47,11 @@ impl CollectTypesMetadata for TypeId {
             matches!(type_info, TypeInfo::UnknownGeneric { .. })
                 || matches!(type_info, TypeInfo::Placeholder(_))
         }
-        let engines = Engines::new(ctx.type_engine, ctx.decl_engine);
+        let engines = ctx.engines;
         let possible = self.extract_any_including_self(engines, &filter_fn, vec![]);
         let mut res = vec![];
         for (type_id, _) in possible.into_iter() {
-            match ctx.type_engine.get(type_id) {
+            match ctx.engines.te().get(type_id) {
                 TypeInfo::UnknownGeneric { name, .. } => {
                     res.push(TypeMetadata::UnresolvedType(
                         name,
@@ -72,8 +72,8 @@ impl CollectTypesMetadata for TypeId {
 }
 
 impl ReplaceSelfType for TypeId {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        fn helper(type_id: TypeId, engines: Engines<'_>, self_type: TypeId) -> Option<TypeId> {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
+        fn helper(type_id: TypeId, engines: &Engines, self_type: TypeId) -> Option<TypeId> {
             let type_engine = engines.te();
             let decl_engine = engines.de();
             match type_engine.get(type_id) {
@@ -101,7 +101,7 @@ impl ReplaceSelfType for TypeId {
 
                     if need_to_create_new {
                         let new_decl_ref = decl_engine.insert(decl);
-                        Some(type_engine.insert(decl_engine, TypeInfo::Enum(new_decl_ref)))
+                        Some(type_engine.insert(engines, TypeInfo::Enum(new_decl_ref)))
                     } else {
                         None
                     }
@@ -128,7 +128,7 @@ impl ReplaceSelfType for TypeId {
 
                     if need_to_create_new {
                         let new_decl_ref = decl_engine.insert(decl);
-                        Some(type_engine.insert(decl_engine, TypeInfo::Struct(new_decl_ref)))
+                        Some(type_engine.insert(engines, TypeInfo::Struct(new_decl_ref)))
                     } else {
                         None
                     }
@@ -146,7 +146,7 @@ impl ReplaceSelfType for TypeId {
                         })
                         .collect::<Vec<_>>();
                     if need_to_create_new {
-                        Some(type_engine.insert(decl_engine, TypeInfo::Tuple(fields)))
+                        Some(type_engine.insert(engines, TypeInfo::Tuple(fields)))
                     } else {
                         None
                     }
@@ -171,7 +171,7 @@ impl ReplaceSelfType for TypeId {
                     });
                     if need_to_create_new {
                         Some(type_engine.insert(
-                            decl_engine,
+                            engines,
                             TypeInfo::Custom {
                                 call_path,
                                 type_arguments,
@@ -184,7 +184,7 @@ impl ReplaceSelfType for TypeId {
                 TypeInfo::Array(mut elem_ty, count) => helper(elem_ty.type_id, engines, self_type)
                     .map(|type_id| {
                         elem_ty.type_id = type_id;
-                        type_engine.insert(decl_engine, TypeInfo::Array(elem_ty, count))
+                        type_engine.insert(engines, TypeInfo::Array(elem_ty, count))
                     }),
                 TypeInfo::Storage { fields } => {
                     let mut need_to_create_new = false;
@@ -201,7 +201,7 @@ impl ReplaceSelfType for TypeId {
                         })
                         .collect::<Vec<_>>();
                     if need_to_create_new {
-                        Some(type_engine.insert(decl_engine, TypeInfo::Storage { fields }))
+                        Some(type_engine.insert(engines, TypeInfo::Storage { fields }))
                     } else {
                         None
                     }
@@ -209,16 +209,16 @@ impl ReplaceSelfType for TypeId {
                 TypeInfo::Alias { name, mut ty } => {
                     helper(ty.type_id, engines, self_type).map(|type_id| {
                         ty.type_id = type_id;
-                        type_engine.insert(decl_engine, TypeInfo::Alias { name, ty })
+                        type_engine.insert(engines, TypeInfo::Alias { name, ty })
                     })
                 }
                 TypeInfo::Ptr(mut ty) => helper(ty.type_id, engines, self_type).map(|type_id| {
                     ty.type_id = type_id;
-                    type_engine.insert(decl_engine, TypeInfo::Ptr(ty))
+                    type_engine.insert(engines, TypeInfo::Ptr(ty))
                 }),
                 TypeInfo::Slice(mut ty) => helper(ty.type_id, engines, self_type).map(|type_id| {
                     ty.type_id = type_id;
-                    type_engine.insert(decl_engine, TypeInfo::Slice(ty))
+                    type_engine.insert(engines, TypeInfo::Slice(ty))
                 }),
                 TypeInfo::Unknown
                 | TypeInfo::UnknownGeneric { .. }
@@ -243,7 +243,7 @@ impl ReplaceSelfType for TypeId {
 }
 
 impl SubstTypes for TypeId {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         let type_engine = engines.te();
         if let Some(matching_id) = type_mapping.find_match(*self, engines) {
             if !matches!(type_engine.get(matching_id), TypeInfo::ErrorRecovery) {
@@ -256,7 +256,7 @@ impl SubstTypes for TypeId {
 impl UnconstrainedTypeParameters for TypeId {
     fn type_parameter_is_unconstrained(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         type_parameter: &TypeParameter,
     ) -> bool {
         let type_engine = engines.te();
@@ -323,7 +323,7 @@ impl TypeId {
 
     pub(crate) fn extract_any_including_self<F>(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         filter_fn: &F,
         trait_constraints: Vec<TraitConstraint>,
     ) -> HashMap<TypeId, Vec<TraitConstraint>>
@@ -363,15 +363,20 @@ impl TypeId {
         &self,
         ctx: &TypeCheckContext,
         span: &Span,
+        trait_constraints: Vec<TraitConstraint>,
     ) -> CompileResult<()> {
         let warnings = vec![];
         let mut errors = vec![];
         let engines = ctx.engines();
 
-        let structure_generics = engines
+        let mut structure_generics = engines
             .te()
             .get(*self)
             .extract_inner_types_with_trait_constraints(engines);
+
+        if !trait_constraints.is_empty() {
+            structure_generics.insert(*self, trait_constraints);
+        }
 
         for (structure_type_id, structure_trait_constraints) in &structure_generics {
             if structure_trait_constraints.is_empty() {

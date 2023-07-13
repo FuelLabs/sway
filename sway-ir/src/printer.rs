@@ -6,6 +6,8 @@
 
 use std::collections::{BTreeMap, HashMap};
 
+use sway_types::SourceEngine;
+
 use crate::{
     asm::*,
     block::Block,
@@ -17,7 +19,7 @@ use crate::{
     module::{Kind, ModuleContent},
     value::{Value, ValueContent, ValueDatum},
     AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, BlockArgument, IrError, Module,
-    Pass, PassMutability, ScopedPass,
+    Pass, PassMutability, ScopedPass, UnaryOpKind,
 };
 
 #[derive(Debug)]
@@ -400,6 +402,19 @@ fn instruction_to_doc<'a>(
                     .append(md_namer.md_idx_to_doc(context, metadata)),
                 ))
             }
+            Instruction::UnaryOp { op, arg } => {
+                let op_str = match op {
+                    UnaryOpKind::Not => "not",
+                };
+                maybe_constant_to_doc(context, md_namer, namer, arg).append(Doc::line(
+                    Doc::text(format!(
+                        "{} = {op_str} {}",
+                        namer.name(context, ins_value),
+                        namer.name(context, arg),
+                    ))
+                    .append(md_namer.md_idx_to_doc(context, metadata)),
+                ))
+            }
             Instruction::BinaryOp { op, arg1, arg2 } => {
                 let op_str = match op {
                     BinaryOpKind::Add => "add",
@@ -613,30 +628,25 @@ fn instruction_to_doc<'a>(
                             .append(md_namer.md_idx_to_doc(context, metadata)),
                     )),
                 FuelVmInstruction::Smo {
-                    recipient_and_message,
+                    recipient,
+                    message,
                     message_size,
-                    output_index,
                     coins,
-                } => maybe_constant_to_doc(context, md_namer, namer, recipient_and_message)
+                } => maybe_constant_to_doc(context, md_namer, namer, recipient)
+                    .append(maybe_constant_to_doc(context, md_namer, namer, message))
                     .append(maybe_constant_to_doc(
                         context,
                         md_namer,
                         namer,
                         message_size,
                     ))
-                    .append(maybe_constant_to_doc(
-                        context,
-                        md_namer,
-                        namer,
-                        output_index,
-                    ))
                     .append(maybe_constant_to_doc(context, md_namer, namer, coins))
                     .append(Doc::line(
                         Doc::text(format!(
                             "smo {}, {}, {}, {}",
-                            namer.name(context, recipient_and_message),
+                            namer.name(context, recipient),
+                            namer.name(context, message),
                             namer.name(context, message_size),
-                            namer.name(context, output_index),
                             namer.name(context, coins),
                         ))
                         .append(md_namer.md_idx_to_doc(context, metadata)),
@@ -1095,7 +1105,7 @@ impl MetadataNamer {
 
     fn add_md(&mut self, context: &Context, md: &Metadatum) {
         match md {
-            Metadatum::Integer(_) | Metadatum::String(_) => (),
+            Metadatum::Integer(_) | Metadatum::String(_) | Metadatum::SourceId(_) => (),
             Metadatum::Index(idx) => {
                 let _ = self.add_md_idx(context, idx);
             }
@@ -1113,7 +1123,11 @@ impl MetadataNamer {
     }
 
     fn to_doc(&self, context: &Context) -> Doc {
-        fn md_to_string(md_namer: &MetadataNamer, md: &Metadatum) -> String {
+        fn md_to_string(
+            md_namer: &MetadataNamer,
+            md: &Metadatum,
+            source_engine: &SourceEngine,
+        ) -> String {
             match md {
                 Metadatum::Integer(i) => i.to_string(),
                 Metadatum::Index(idx) => format!(
@@ -1123,11 +1137,15 @@ impl MetadataNamer {
                         .unwrap_or_else(|| panic!("Metadata index ({idx:?}) not found in namer."))
                 ),
                 Metadatum::String(s) => format!("{s:?}"),
+                Metadatum::SourceId(id) => {
+                    let path = source_engine.get_path(id);
+                    format!("{path:?}")
+                }
                 Metadatum::Struct(tag, els) => {
                     format!(
                         "{tag} {}",
                         els.iter()
-                            .map(|el_md| md_to_string(md_namer, el_md))
+                            .map(|el_md| md_to_string(md_namer, el_md, source_engine))
                             .collect::<Vec<_>>()
                             .join(" ")
                     )
@@ -1154,7 +1172,7 @@ impl MetadataNamer {
             .map(|(ref_idx, md_idx)| {
                 Doc::text_line(format!(
                     "!{ref_idx} = {}",
-                    md_to_string(self, &context.metadata[md_idx.0])
+                    md_to_string(self, &context.metadata[md_idx.0], context.source_engine)
                 ))
             })
             .collect::<Vec<_>>();

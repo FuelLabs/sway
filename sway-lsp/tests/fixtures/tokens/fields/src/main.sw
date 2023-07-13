@@ -7,7 +7,7 @@ struct A {
 }
 
 enum B {
-	B: Option<Option<u32>>,
+    B: Option<Option<u32>>,
 }
 
 storage {

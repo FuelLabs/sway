@@ -51,10 +51,9 @@ impl Root {
     /// and the symbol's own visibility
     pub(crate) fn resolve_call_path_with_visibility_check(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         mod_path: &Path,
         call_path: &CallPath,
-        experimental_private_modules: bool,
     ) -> CompileResult<&ty::TyDecl> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -71,23 +70,21 @@ impl Root {
             return ok(decl, warnings, errors);
         }
 
-        if experimental_private_modules {
-            // check the visibility of the call path elements
-            // we don't check the first prefix because direct children are always accessible
-            for prefix in iter_prefixes(&call_path.prefixes).skip(1) {
-                let module = check!(
-                    self.check_submodule(prefix),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                if module.visibility.is_private() {
-                    let prefix_last = prefix[prefix.len() - 1].clone();
-                    errors.push(CompileError::ImportPrivateModule {
-                        span: prefix_last.span(),
-                        name: prefix_last,
-                    });
-                }
+        // check the visibility of the call path elements
+        // we don't check the first prefix because direct children are always accessible
+        for prefix in iter_prefixes(&call_path.prefixes).skip(1) {
+            let module = check!(
+                self.check_submodule(prefix),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            if module.visibility.is_private() {
+                let prefix_last = prefix[prefix.len() - 1].clone();
+                errors.push(CompileError::ImportPrivateModule {
+                    span: prefix_last.span(),
+                    name: prefix_last,
+                });
             }
         }
 
@@ -118,8 +115,10 @@ impl Root {
                 .get(symbol.as_str())
                 .unwrap_or(symbol);
             match module.use_synonyms.get(symbol) {
-                Some((_, _, decl @ ty::TyDecl::EnumVariantDecl { .. })) => ok(decl, vec![], vec![]),
-                Some((src_path, _, _)) if mod_path != src_path => {
+                Some((_, _, decl @ ty::TyDecl::EnumVariantDecl { .. }, _)) => {
+                    ok(decl, vec![], vec![])
+                }
+                Some((src_path, _, _, _)) if mod_path != src_path => {
                     // TODO: check that the symbol import is public?
                     self.resolve_symbol(src_path, true_symbol)
                 }

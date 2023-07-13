@@ -42,7 +42,6 @@ pub const GTF_INPUT_COIN_PREDICATE_DATA = 0x10D;
 // pub const GTF_INPUT_CONTRACT_STATE_ROOT = 0x111;
 // pub const GTF_INPUT_CONTRACT_TX_POINTER = 0x112;
 // pub const GTF_INPUT_CONTRACT_CONTRACT_ID = 0x113;
-pub const GTF_INPUT_MESSAGE_MESSAGE_ID = 0x114;
 pub const GTF_INPUT_MESSAGE_SENDER = 0x115;
 pub const GTF_INPUT_MESSAGE_RECIPIENT = 0x116;
 pub const GTF_INPUT_MESSAGE_AMOUNT = 0x117;
@@ -241,14 +240,6 @@ pub fn input_maturity(index: u64) -> Option<u32> {
     }
 }
 
-// Message Inputs
-//
-/// Get the message ID of the input message at `index`.
-pub fn input_message_msg_id(index: u64) -> b256 {
-    assert(valid_input_type(index, Input::Message));
-    __gtf::<b256>(index, GTF_INPUT_MESSAGE_MESSAGE_ID)
-}
-
 /// Get the sender of the input message at `index`.
 pub fn input_message_sender(index: u64) -> Address {
     Address::from(__gtf::<b256>(index, GTF_INPUT_MESSAGE_SENDER))
@@ -260,8 +251,8 @@ pub fn input_message_recipient(index: u64) -> Address {
 }
 
 /// Get the nonce of input message at `index`.
-pub fn input_message_nonce(index: u64) -> u64 {
-    __gtf::<u64>(index, GTF_INPUT_MESSAGE_NONCE)
+pub fn input_message_nonce(index: u64) -> b256 {
+    __gtf::<b256>(index, GTF_INPUT_MESSAGE_NONCE)
 }
 
 /// Get the length of the input message at `index`.

@@ -1,6 +1,7 @@
 use dirs::home_dir;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use sway_types::SourceEngine;
 
 use serde::{Deserialize, Serialize};
 
@@ -37,14 +38,15 @@ impl SourceMap {
         // TODO: Only dependencies in ~/.forc are supported for now
     }
 
-    pub fn insert(&mut self, pc: usize, span: &Span) {
-        if let Some(path) = span.path() {
+    pub fn insert(&mut self, source_engine: &SourceEngine, pc: usize, span: &Span) {
+        if let Some(source_id) = span.source_id() {
+            let path = source_engine.get_path(source_id);
             let path_index = self
                 .paths
                 .iter()
-                .position(|p| *p == **path)
+                .position(|p| *p == *path)
                 .unwrap_or_else(|| {
-                    self.paths.push((**path).to_owned());
+                    self.paths.push((*path).to_owned());
                     self.paths.len() - 1
                 });
             self.map.insert(

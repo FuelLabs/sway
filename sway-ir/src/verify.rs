@@ -15,7 +15,7 @@ use crate::{
     module::ModuleContent,
     value::{Value, ValueDatum},
     AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, BlockArgument,
-    BranchToWithArgs, Module, Pass, PassMutability, ScopedPass, TypeOption,
+    BranchToWithArgs, Module, Pass, PassMutability, ScopedPass, TypeOption, UnaryOpKind,
 };
 
 pub struct ModuleVerifierResult;
@@ -42,7 +42,7 @@ pub fn create_module_verifier_pass() -> Pass {
     }
 }
 
-impl Context {
+impl<'eng> Context<'eng> {
     /// Verify the contents of this [`Context`] is valid.
     pub fn verify(self) -> Result<Self, IrError> {
         for (_, module) in &self.modules {
@@ -159,14 +159,14 @@ impl Context {
     }
 }
 
-struct InstructionVerifier<'a> {
-    context: &'a Context,
+struct InstructionVerifier<'a, 'eng> {
+    context: &'a Context<'eng>,
     cur_module: &'a ModuleContent,
     cur_function: &'a FunctionContent,
     cur_block: &'a BlockContent,
 }
 
-impl<'a> InstructionVerifier<'a> {
+impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
     fn verify_instructions(&self) -> Result<(), IrError> {
         for ins in &self.cur_block.instructions {
             let value_content = &self.context.values[ins.0];
@@ -174,6 +174,7 @@ impl<'a> InstructionVerifier<'a> {
                 match instruction {
                     Instruction::AsmBlock(..) => (),
                     Instruction::BitCast(value, ty) => self.verify_bitcast(value, ty)?,
+                    Instruction::UnaryOp { op, arg } => self.verify_unary_op(op, arg)?,
                     Instruction::BinaryOp { op, arg1, arg2 } => {
                         self.verify_binary_op(op, arg1, arg2)?
                     }
@@ -209,16 +210,11 @@ impl<'a> InstructionVerifier<'a> {
                         FuelVmInstruction::ReadRegister(_) => (),
                         FuelVmInstruction::Revert(val) => self.verify_revert(val)?,
                         FuelVmInstruction::Smo {
-                            recipient_and_message,
+                            recipient,
+                            message,
                             message_size,
-                            output_index,
                             coins,
-                        } => self.verify_smo(
-                            recipient_and_message,
-                            message_size,
-                            output_index,
-                            coins,
-                        )?,
+                        } => self.verify_smo(recipient, message, message_size, coins)?,
                         FuelVmInstruction::StateClear {
                             key,
                             number_of_slots,
@@ -293,6 +289,21 @@ impl<'a> InstructionVerifier<'a> {
         } else {
             Ok(())
         }
+    }
+
+    fn verify_unary_op(&self, op: &UnaryOpKind, arg: &Value) -> Result<(), IrError> {
+        let arg_ty = arg
+            .get_type(self.context)
+            .ok_or(IrError::VerifyUnaryOpIncorrectArgType)?;
+        match op {
+            UnaryOpKind::Not => {
+                if !arg_ty.is_uint(self.context) {
+                    return Err(IrError::VerifyUnaryOpIncorrectArgType);
+                }
+            }
+        }
+
+        Ok(())
     }
 
     fn verify_binary_op(
@@ -688,21 +699,26 @@ impl<'a> InstructionVerifier<'a> {
 
     fn verify_smo(
         &self,
-        recipient_and_message: &Value,
+        recipient: &Value,
+        message: &Value,
         message_size: &Value,
-        output_index: &Value,
         coins: &Value,
     ) -> Result<(), IrError> {
-        // Check that the first operand is a struct with the first field being a `b256`
-        // representing the recipient address
-        let struct_ty = self.get_ptr_type(recipient_and_message, IrError::VerifySmoNonPointer)?;
+        // Check that the first operand is a `b256` representing the recipient address.
+        let recipient = self.get_ptr_type(recipient, IrError::VerifySmoRecipientNonPointer)?;
+        if !recipient.is_b256(self.context) {
+            return Err(IrError::VerifySmoRecipientBadType);
+        }
+
+        // Check that the second operand is a struct with two fields
+        let struct_ty = self.get_ptr_type(message, IrError::VerifySmoMessageNonPointer)?;
 
         if !struct_ty.is_struct(self.context) {
-            return Err(IrError::VerifySmoBadRecipientAndMessageType);
+            return Err(IrError::VerifySmoBadMessageType);
         }
         let fields = struct_ty.get_field_types(self.context);
-        if fields.is_empty() || !fields[0].is_b256(self.context) {
-            return Err(IrError::VerifySmoRecipientBadType);
+        if fields.len() != 2 {
+            return Err(IrError::VerifySmoBadMessageType);
         }
 
         // Check that the second operand is a `u64` representing the message size.
@@ -713,15 +729,7 @@ impl<'a> InstructionVerifier<'a> {
             return Err(IrError::VerifySmoMessageSize);
         }
 
-        // Check that the third operand is a `u64` representing the output index.
-        if !output_index
-            .get_type(self.context)
-            .is(Type::is_uint64, self.context)
-        {
-            return Err(IrError::VerifySmoOutputIndex);
-        }
-
-        // Check that the fourth operand is a `u64` representing the amount of coins being sent.
+        // Check that the third operand is a `u64` representing the amount of coins being sent.
         if !coins
             .get_type(self.context)
             .is(Type::is_uint64, self.context)

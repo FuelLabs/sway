@@ -70,7 +70,7 @@ pub enum ControlFlowGraphNode<'cfg> {
         span: Span,
         method_name: Ident,
         method_decl_ref: DeclRefFunction,
-        engines: Engines<'cfg>,
+        engines: &'cfg Engines,
     },
     StructField {
         struct_decl_id: DeclId<ty::TyStructDecl>,
@@ -126,7 +126,7 @@ impl<'cfg> std::convert::From<&str> for ControlFlowGraphNode<'cfg> {
 }
 
 impl<'cfg> DebugWithEngines for ControlFlowGraphNode<'cfg> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, engines: Engines<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, engines: &Engines) -> std::fmt::Result {
         let text = match self {
             ControlFlowGraphNode::OrganizationalDominator(s) => s.to_string(),
             ControlFlowGraphNode::ProgramNode { node, .. } => {
@@ -210,7 +210,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
     /// Prints out GraphViz DOT format for this graph.
     pub(crate) fn visualize(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         print_graph: Option<String>,
         print_graph_url_format: Option<String>,
     ) {
@@ -236,7 +236,9 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                         let mut url = "".to_string();
                         if let Some(url_format) = print_graph_url_format.clone() {
                             if let Some(span) = node.span() {
-                                if let Some(path) = span.path_str() {
+                                if let Some(source_id) = span.source_id() {
+                                    let path = engines.se().get_path(source_id);
+                                    let path = path.to_string_lossy();
                                     let (line, col) = span.start_pos().line_col();
                                     let url_format = url_format
                                         .replace("{path}", path.to_string().as_str())

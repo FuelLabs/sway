@@ -1,6 +1,6 @@
 script;
 
-use interface::Vault;
+use contract_interface::Vault;
 
 fn main(amount: u64, asset_id: ContractId, vault_id: b256) -> bool {
     let caller = abi(Vault, vault_id);

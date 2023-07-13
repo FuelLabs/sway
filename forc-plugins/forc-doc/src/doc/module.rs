@@ -157,7 +157,7 @@ impl ModuleInfo {
     }
     /// Create a path prefix `&str` for navigation from the `module.depth()`.
     fn to_html_path_prefix(&self) -> String {
-        (1..self.depth()).map(|_| "../").collect::<String>()
+        (0..self.depth()).map(|_| "../").collect::<String>()
     }
     /// The depth of a module as `usize`.
     pub(crate) fn depth(&self) -> usize {

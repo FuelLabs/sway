@@ -13,7 +13,7 @@ pub struct TyStorageAccess {
 
 impl EqWithEngines for TyStorageAccess {}
 impl PartialEqWithEngines for TyStorageAccess {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.ix == other.ix
             && self.fields.len() == other.fields.len()
             && self.fields.eq(&other.fields, engines)
@@ -21,7 +21,7 @@ impl PartialEqWithEngines for TyStorageAccess {
 }
 
 impl HashWithEngines for TyStorageAccess {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TyStorageAccess { fields, ix } = self;
         fields.hash(state, engines);
         ix.hash(state);
@@ -54,7 +54,7 @@ pub struct TyStorageAccessDescriptor {
 
 impl EqWithEngines for TyStorageAccessDescriptor {}
 impl PartialEqWithEngines for TyStorageAccessDescriptor {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         let type_engine = engines.te();
         self.name == other.name
             && type_engine
@@ -64,7 +64,7 @@ impl PartialEqWithEngines for TyStorageAccessDescriptor {
 }
 
 impl HashWithEngines for TyStorageAccessDescriptor {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TyStorageAccessDescriptor {
             name,
             type_id,

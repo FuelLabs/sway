@@ -21,7 +21,7 @@ impl Named for TyTypeAliasDecl {
 
 impl EqWithEngines for TyTypeAliasDecl {}
 impl PartialEqWithEngines for TyTypeAliasDecl {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.name == other.name
             && self.ty.eq(&other.ty, engines)
             && self.visibility == other.visibility
@@ -29,7 +29,7 @@ impl PartialEqWithEngines for TyTypeAliasDecl {
 }
 
 impl HashWithEngines for TyTypeAliasDecl {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TyTypeAliasDecl {
             name,
             ty,
@@ -46,23 +46,22 @@ impl HashWithEngines for TyTypeAliasDecl {
 }
 
 impl SubstTypes for TyTypeAliasDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         self.ty.subst(type_mapping, engines);
     }
 }
 
 impl ReplaceSelfType for TyTypeAliasDecl {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         self.ty.replace_self_type(engines, self_type);
     }
 }
 
 impl CreateTypeId for TyTypeAliasDecl {
-    fn create_type_id(&self, engines: Engines<'_>) -> TypeId {
+    fn create_type_id(&self, engines: &Engines) -> TypeId {
         let type_engine = engines.te();
-        let decl_engine = engines.de();
         type_engine.insert(
-            decl_engine,
+            engines,
             TypeInfo::Alias {
                 name: self.name.clone(),
                 ty: self.ty.clone(),

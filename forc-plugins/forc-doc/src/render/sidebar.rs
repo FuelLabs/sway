@@ -1,3 +1,6 @@
+use crate::ASSETS_DIR_NAME;
+use std::path::PathBuf;
+
 use crate::{
     doc::module::ModuleInfo,
     render::{
@@ -41,7 +44,7 @@ impl Renderable for Sidebar {
     fn render(self, _render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
         let path_to_logo = self
             .module_info
-            .to_html_shorthand_path_string("assets/sway-logo.svg");
+            .to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/sway-logo.svg"));
         let style = self.style.clone();
         let version_opt = self.version_opt.clone();
         let location_with_prefix = match &style {
@@ -59,9 +62,15 @@ impl Renderable for Sidebar {
                 format!("{} {}", title.item_title_str(), name.as_str())
             }
         };
-        let root_path = self
-            .module_info
-            .to_html_shorthand_path_string(INDEX_FILENAME);
+        let root_path = self.module_info.to_html_shorthand_path_string(
+            PathBuf::from(self.module_info.project_name())
+                .join(INDEX_FILENAME)
+                .to_str()
+                .ok_or_else(|| anyhow::anyhow!(
+                    "found invalid root file path for {}\nmake sure your project's name contains only valid unicode characters",
+                    self.module_info.project_name(),
+                ))?,
+        );
         let logo_path_to_root = match style {
             DocStyle::AllDoc(_) | DocStyle::Item { .. } | DocStyle::ModuleIndex => root_path,
             DocStyle::ProjectIndex(_) => IDENTITY.to_owned(),

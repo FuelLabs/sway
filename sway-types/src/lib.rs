@@ -13,6 +13,9 @@ pub use ident::*;
 
 pub mod integer_bits;
 
+pub mod source_engine;
+pub use source_engine::*;
+
 pub mod span;
 pub use span::*;
 
@@ -83,7 +86,12 @@ impl Instruction {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
+pub struct SourceId {
+    id: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
 pub struct Source {
     /// Absolute path to the source file
     path: PathBuf,

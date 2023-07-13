@@ -12,12 +12,12 @@ use crate::{engine_threading::*, type_system::priv_prelude::*};
 /// sides and, if it does, decline to unify"
 /// https://papl.cs.brown.edu/2016/Type_Inference.html
 pub(super) struct OccursCheck<'a> {
-    engines: Engines<'a>,
+    engines: &'a Engines,
 }
 
 impl<'a> OccursCheck<'a> {
     /// Creates a new [OccursCheck].
-    pub(super) fn new(engines: Engines<'a>) -> OccursCheck<'a> {
+    pub(super) fn new(engines: &'a Engines) -> OccursCheck<'a> {
         OccursCheck { engines }
     }
 

@@ -16,8 +16,8 @@ pub(crate) fn instantiate_if_expression(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
+    let type_engine = ctx.engines.te();
+    let decl_engine = ctx.engines.de();
     let engines = ctx.engines();
 
     // if the branch aborts, then its return type doesn't matter.
@@ -27,11 +27,11 @@ pub(crate) fn instantiate_if_expression(
         let ty_to_check = if r#else.is_some() {
             ctx.type_annotation()
         } else {
-            type_engine.insert(decl_engine, TypeInfo::Tuple(vec![]))
+            type_engine.insert(engines, TypeInfo::Tuple(vec![]))
         };
         append!(
             type_engine.unify_with_self(
-                ctx.decl_engine,
+                engines,
                 then.return_type,
                 ty_to_check,
                 ctx.self_type(),
@@ -55,7 +55,7 @@ pub(crate) fn instantiate_if_expression(
             // if this does not deterministically_abort, check the block return type
             append!(
                 type_engine.unify_with_self(
-                    ctx.decl_engine,
+                    engines,
                     r#else.return_type,
                     ty_to_check,
                     ctx.self_type(),
@@ -73,11 +73,11 @@ pub(crate) fn instantiate_if_expression(
     let r#else_ret_ty = r#else
         .as_ref()
         .map(|x| x.return_type)
-        .unwrap_or_else(|| type_engine.insert(decl_engine, TypeInfo::Tuple(Vec::new())));
+        .unwrap_or_else(|| type_engine.insert(engines, TypeInfo::Tuple(Vec::new())));
     // if there is a type annotation, then the else branch must exist
     if !else_deterministically_aborts && !then_deterministically_aborts {
         let (mut new_warnings, mut new_errors) = type_engine.unify_with_self(
-            ctx.decl_engine,
+            engines,
             then.return_type,
             r#else_ret_ty,
             ctx.self_type(),

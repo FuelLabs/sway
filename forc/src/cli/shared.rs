@@ -1,6 +1,7 @@
 //! Sets of arguments that are shared between commands.
 
 use clap::{Args, Parser};
+use forc_pkg::source::IPFSNode;
 use sway_core::BuildTarget;
 
 /// Args that can be shared between all commands that `build` a package. E.g. `build`, `test`,
@@ -49,8 +50,6 @@ pub struct BuildProfile {
     /// Treat warnings as errors.
     #[clap(long)]
     pub error_on_warnings: bool,
-    #[clap(long)]
-    pub experimental_private_modules: bool,
 }
 
 /// Options related to printing stages of compiler output.
@@ -87,6 +86,12 @@ pub struct Print {
     /// Output the time elapsed over each part of the compilation process.
     #[clap(long)]
     pub time_phases: bool,
+    /// Output build errors and warnings in reverse order.
+    #[clap(long)]
+    pub reverse_order: bool,
+    /// Output compilation metrics into file.
+    #[clap(long)]
+    pub metrics_outfile: Option<String>,
 }
 
 /// Package-related options.
@@ -114,6 +119,11 @@ pub struct Pkg {
     /// Outputs json abi with callpaths instead of names for struct and enums.
     #[clap(long)]
     pub json_abi_with_callpaths: bool,
+    /// The IPFS Node to use for fetching IPFS sources.
+    ///
+    /// Possible values: PUBLIC, LOCAL, <GATEWAY_URL>
+    #[clap(long)]
+    pub ipfs_node: Option<IPFSNode>,
 }
 
 /// Options related to minifying output.

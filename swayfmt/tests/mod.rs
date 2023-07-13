@@ -21,6 +21,18 @@ fn check(unformatted: &str, expected: &str) {
 }
 
 #[test]
+fn conserve_pub_mod() {
+    check(
+        r#"contract;
+pub mod foo;
+"#,
+        r#"contract;
+pub mod foo;
+"#,
+    )
+}
+
+#[test]
 fn const_spacing() {
     check(
         r#"contract;

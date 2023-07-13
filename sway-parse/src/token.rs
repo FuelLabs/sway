@@ -1,7 +1,6 @@
 use core::mem;
 use extension_trait::extension_trait;
 use num_bigint::BigUint;
-use std::path::PathBuf;
 use std::sync::Arc;
 use sway_ast::literal::{LitChar, LitInt, LitIntType, LitString, Literal};
 use sway_ast::token::{
@@ -11,7 +10,7 @@ use sway_ast::token::{
 use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::lex_error::{LexError, LexErrorKind};
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, SourceId, Span, Spanned};
 use unicode_xid::UnicodeXID;
 
 #[extension_trait]
@@ -88,7 +87,7 @@ type Result<T> = core::result::Result<T, ErrorEmitted>;
 struct Lexer<'l> {
     handler: &'l Handler,
     src: &'l Arc<str>,
-    path: &'l Option<Arc<PathBuf>>,
+    source_id: &'l Option<SourceId>,
     stream: &'l mut CharIndices<'l>,
 }
 
@@ -97,9 +96,9 @@ pub fn lex(
     src: &Arc<str>,
     start: usize,
     end: usize,
-    path: Option<Arc<PathBuf>>,
+    source_id: Option<SourceId>,
 ) -> Result<TokenStream> {
-    lex_commented(handler, src, start, end, &path).map(|stream| stream.strip_comments())
+    lex_commented(handler, src, start, end, &source_id).map(|stream| stream.strip_comments())
 }
 
 pub fn lex_commented(
@@ -107,7 +106,7 @@ pub fn lex_commented(
     src: &Arc<str>,
     start: usize,
     end: usize,
-    path: &Option<Arc<PathBuf>>,
+    source_id: &Option<SourceId>,
 ) -> Result<CommentedTokenStream> {
     let stream = &mut CharIndicesInner {
         src: &src[..end],
@@ -117,7 +116,7 @@ pub fn lex_commented(
     let mut l = Lexer {
         handler,
         src,
-        path,
+        source_id,
         stream,
     };
     let mut gather_module_docs = false;
@@ -776,7 +775,7 @@ fn span_one(l: &Lexer<'_>, start: usize, c: char) -> Span {
 }
 
 fn span(l: &Lexer<'_>, start: usize, end: usize) -> Span {
-    Span::new(l.src.clone(), start, end, l.path.clone()).unwrap()
+    Span::new(l.src.clone(), start, end, *l.source_id).unwrap()
 }
 
 /// Emit a lexer error.

@@ -71,7 +71,7 @@ fn args_helper(args: &[(Ident, ty::TyExpression)]) -> Vec<TypeId> {
 
 impl EqWithEngines for Constraint {}
 impl PartialEqWithEngines for Constraint {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         let type_engine = engines.te();
         match (self, other) {
             (Constraint::Ty(l), Constraint::Ty(r)) => {
@@ -107,7 +107,7 @@ impl PartialEqWithEngines for Constraint {
 }
 
 impl HashWithEngines for Constraint {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let type_engine = engines.te();
         match self {
             Constraint::Ty(type_id) => {
@@ -133,7 +133,7 @@ impl HashWithEngines for Constraint {
 }
 
 impl OrdWithEngines for Constraint {
-    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
+    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
         let type_engine = engines.te();
         match (self, other) {
             (Constraint::Ty(l), Constraint::Ty(r)) => {

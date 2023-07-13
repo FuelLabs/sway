@@ -73,7 +73,7 @@ impl<T> Into<usize> for DeclId<T> {
 }
 
 impl SubstTypes for DeclId<TyFunctionDecl> {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);
         decl.subst(type_mapping, engines);
@@ -81,7 +81,7 @@ impl SubstTypes for DeclId<TyFunctionDecl> {
     }
 }
 impl SubstTypes for DeclId<TyTraitDecl> {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);
         decl.subst(type_mapping, engines);
@@ -89,7 +89,7 @@ impl SubstTypes for DeclId<TyTraitDecl> {
     }
 }
 impl SubstTypes for DeclId<TyTraitFn> {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);
         decl.subst(type_mapping, engines);
@@ -97,7 +97,7 @@ impl SubstTypes for DeclId<TyTraitFn> {
     }
 }
 impl SubstTypes for DeclId<TyImplTrait> {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);
         decl.subst(type_mapping, engines);
@@ -105,7 +105,7 @@ impl SubstTypes for DeclId<TyImplTrait> {
     }
 }
 impl SubstTypes for DeclId<TyStructDecl> {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);
         decl.subst(type_mapping, engines);
@@ -113,7 +113,7 @@ impl SubstTypes for DeclId<TyStructDecl> {
     }
 }
 impl SubstTypes for DeclId<TyEnumDecl> {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);
         decl.subst(type_mapping, engines);
@@ -121,7 +121,7 @@ impl SubstTypes for DeclId<TyEnumDecl> {
     }
 }
 impl SubstTypes for DeclId<TyTypeAliasDecl> {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);
         decl.subst(type_mapping, engines);
@@ -130,7 +130,7 @@ impl SubstTypes for DeclId<TyTypeAliasDecl> {
 }
 
 impl ReplaceSelfType for DeclId<TyFunctionDecl> {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);
         decl.replace_self_type(engines, self_type);
@@ -138,7 +138,7 @@ impl ReplaceSelfType for DeclId<TyFunctionDecl> {
     }
 }
 impl ReplaceSelfType for DeclId<TyTraitDecl> {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);
         decl.replace_self_type(engines, self_type);
@@ -146,7 +146,7 @@ impl ReplaceSelfType for DeclId<TyTraitDecl> {
     }
 }
 impl ReplaceSelfType for DeclId<TyTraitFn> {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);
         decl.replace_self_type(engines, self_type);
@@ -154,7 +154,7 @@ impl ReplaceSelfType for DeclId<TyTraitFn> {
     }
 }
 impl ReplaceSelfType for DeclId<TyImplTrait> {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);
         decl.replace_self_type(engines, self_type);
@@ -162,7 +162,7 @@ impl ReplaceSelfType for DeclId<TyImplTrait> {
     }
 }
 impl ReplaceSelfType for DeclId<TyStructDecl> {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);
         decl.replace_self_type(engines, self_type);
@@ -170,7 +170,7 @@ impl ReplaceSelfType for DeclId<TyStructDecl> {
     }
 }
 impl ReplaceSelfType for DeclId<TyEnumDecl> {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);
         decl.replace_self_type(engines, self_type);
@@ -178,7 +178,7 @@ impl ReplaceSelfType for DeclId<TyEnumDecl> {
     }
 }
 impl ReplaceSelfType for DeclId<TyTypeAliasDecl> {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);
         decl.replace_self_type(engines, self_type);

@@ -4,7 +4,7 @@ fn comment() {
     // ANCHOR: comment
     // imagine that this line is twice as long
     // and it needed to be split onto multiple lines
-    let baz = 8;  // Eight is a good number
+    let baz = 8; // Eight is a good number
     // ANCHOR_END: comment
 }
 
@@ -14,8 +14,7 @@ fn block() {
         imagine that this line is twice as long
         and it needed to be split onto multiple lines
     */
-    let baz = 8;  /* Eight is a good number */
-    // ANCHOR_END: block
+    let baz = 8; /* Eight is a good number */ // ANCHOR_END: block
 }
 
 // ANCHOR: documentation

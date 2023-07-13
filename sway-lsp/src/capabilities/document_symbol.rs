@@ -1,6 +1,6 @@
 use crate::core::token::{get_range_from_span, SymbolKind, Token};
+use lsp_types::{self, Location, SymbolInformation, Url};
 use sway_types::{Ident, Spanned};
-use tower_lsp::lsp_types::{self, Location, SymbolInformation, Url};
 
 pub fn to_symbol_information<I>(tokens: I, url: Url) -> Vec<SymbolInformation>
 where

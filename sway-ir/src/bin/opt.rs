@@ -8,6 +8,7 @@ use sway_ir::{
     insert_after_each, register_known_passes, PassGroup, PassManager, MODULEPRINTER_NAME,
     MODULEVERIFIER_NAME,
 };
+use sway_types::SourceEngine;
 
 // -------------------------------------------------------------------------------------------------
 
@@ -22,8 +23,10 @@ fn main() -> Result<(), anyhow::Error> {
     // Read the input file, or standard in.
     let input_str = read_from_input(&config.input_path)?;
 
+    let source_engine = SourceEngine::default();
+
     // Parse it. XXX Improve this error message too.
-    let mut ir = sway_ir::parser::parse(&input_str)?;
+    let mut ir = sway_ir::parser::parse(&input_str, &source_engine)?;
 
     // Perform optimisation passes in order.
     let mut passes = PassGroup::default();
@@ -132,7 +135,7 @@ impl<'a, I: Iterator<Item = String>> ConfigBuilder<'a, I> {
                             "Usage: opt [passname...] -i input_file -o output_file\n\n{}",
                             self.pass_mgr.help_text()
                         );
-                        print!("\n\nIn the absense of -i or -o options, input is taken from stdin and output is printed to stdout.\n");
+                        print!("\n\nIn the absence of -i or -o options, input is taken from stdin and output is printed to stdout.\n");
                         exit(0);
                     }
 

@@ -1,7 +1,7 @@
 script;
 
-fn smo<T>(recipient: b256, value: T, output_index: u64, coins: u64) {
-    __smo::<T>(recipient, value, output_index, coins);
+fn smo<T>(recipient: b256, value: T, coins: u64) {
+    __smo::<T>(recipient, value, coins);
 }
 
 struct TestStruct<T> {
@@ -22,7 +22,6 @@ pub enum Option<T> {
 
 fn main() -> bool {
     let recipient = 0x0101010101010101010101010101010101010101010101010101010101010101;
-    let output_index = 3;
     let coins = 24;
 
     // Check various data types as message data in `__smo`
@@ -36,20 +35,20 @@ fn main() -> bool {
     };
 
     let test_enum = TestEnum::VariantTwo;
-    smo(recipient, k, output_index, coins);
-    smo(recipient, 42, output_index, coins);
-    smo(recipient, 42u32, output_index, coins);
-    smo(recipient, 42u16, output_index, coins);
-    smo(recipient, 42u8, output_index, coins);
-    __smo(recipient, a, output_index, coins);
-    __smo(recipient, b, output_index, coins);
-    __smo(recipient, test_struct, output_index, coins);
-    __smo(recipient, test_enum, output_index, coins);
+    smo(recipient, k, coins);
+    smo(recipient, 42, coins);
+    smo(recipient, 42u32, coins);
+    smo(recipient, 42u16, coins);
+    smo(recipient, 42u8, coins);
+    __smo(recipient, a, coins);
+    __smo(recipient, b, coins);
+    __smo(recipient, test_struct, coins);
+    __smo(recipient, test_enum, coins);
     __smo::<Option::<TestStruct<u64>>>(recipient, Option::Some(TestStruct {
         field_1: true,
         field_2: 42,
         field_3: 42,
-    }), output_index, coins);
+    }), coins);
 
     // Make sure that logs don't clobber messages in the JSON ABI
     __log(a);

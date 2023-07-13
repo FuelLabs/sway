@@ -1,0 +1,23 @@
+script {
+    entry fn main() -> u64 {
+        local { u64, u64, u64, u64 } __anon_468
+        local { u64, u64, u64, u64 } __anon_0
+
+        entry():
+        v13 = get_local ptr { u64, u64, u64, u64 }, __anon_0
+        v14 = const u64 0
+        v15 = get_elem_ptr v13, ptr u64, v14
+        v25 = get_local ptr { u64, u64, u64, u64 }, __anon_468
+        v26 = const u64 0
+        v27 = get_elem_ptr v25, ptr u64, v26
+        mem_copy_val v27, v15
+        v0 = load v27
+        ret u64 v0
+    }
+}
+
+// regex: VAL=v\d+
+
+// check: mem_copy_val $(mem_cpy_dest=$VAL), $(mem_cpy_src=$VAL)
+// The optimization should replace the load's source to be the memcpy's source.
+// check: $VAL = load $(mem_cpy_src)

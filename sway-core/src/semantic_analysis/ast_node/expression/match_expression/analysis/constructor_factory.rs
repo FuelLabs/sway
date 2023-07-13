@@ -18,7 +18,7 @@ pub(crate) struct ConstructorFactory {
 }
 
 impl ConstructorFactory {
-    pub(crate) fn new(engines: Engines<'_>, type_id: TypeId) -> Self {
+    pub(crate) fn new(engines: &Engines, type_id: TypeId) -> Self {
         let possible_types = engines.te().get(type_id).extract_nested_types(engines);
         ConstructorFactory { possible_types }
     }
@@ -62,7 +62,7 @@ impl ConstructorFactory {
     /// ```
     pub(crate) fn create_pattern_not_present(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         sigma: PatStack,
         span: &Span,
     ) -> CompileResult<Pattern> {
@@ -395,7 +395,7 @@ impl ConstructorFactory {
     /// from the "`Tuple` with 2 sub-patterns" type.
     pub(crate) fn is_complete_signature(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         pat_stack: &PatStack,
         span: &Span,
     ) -> CompileResult<bool> {

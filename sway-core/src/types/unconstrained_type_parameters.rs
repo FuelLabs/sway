@@ -3,13 +3,13 @@ use crate::{Engines, TypeParameter};
 pub(crate) trait UnconstrainedTypeParameters {
     fn type_parameter_is_unconstrained(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         type_parameter: &TypeParameter,
     ) -> bool;
 
     fn type_parameter_is_constrained(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         type_parameter: &TypeParameter,
     ) -> bool {
         !self.type_parameter_is_unconstrained(engines, type_parameter)
@@ -17,7 +17,7 @@ pub(crate) trait UnconstrainedTypeParameters {
 
     fn unconstrained_type_parameters<'a>(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         type_parameters: &'a [TypeParameter],
     ) -> Vec<&'a TypeParameter> {
         let mut unconstrained = vec![];
@@ -31,7 +31,7 @@ pub(crate) trait UnconstrainedTypeParameters {
 
     fn constrained_type_parameters<'a>(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         type_parameters: &'a [TypeParameter],
     ) -> Vec<&'a TypeParameter> {
         let mut constrained = vec![];

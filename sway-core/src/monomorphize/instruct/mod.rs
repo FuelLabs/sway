@@ -16,7 +16,7 @@ use crate::{language::ty, monomorphize::priv_prelude::*, Engines};
 
 /// Uses [Instruction]s to monomorphize a typed AST.
 pub(crate) fn apply_instructions(
-    engines: Engines<'_>,
+    engines: &Engines,
     handler: &Handler,
     instructions: Vec<Instruction>,
     module: &mut ty::TyModule,

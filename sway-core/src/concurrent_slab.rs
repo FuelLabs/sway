@@ -78,7 +78,7 @@ impl ConcurrentSlab<TypeInfo> {
         index: TypeId,
         prev_value: &TypeInfo,
         new_value: TypeInfo,
-        engines: Engines<'_>,
+        engines: &Engines,
     ) -> Option<TypeInfo> {
         let index = index.index();
         // The comparison below ends up calling functions in the slab, which

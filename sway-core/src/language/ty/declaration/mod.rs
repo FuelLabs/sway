@@ -24,3 +24,10 @@ pub use storage::*;
 pub use trait_fn::*;
 pub use type_alias::*;
 pub use variable::*;
+
+use crate::TypeArgument;
+
+pub trait FunctionSignature {
+    fn parameters(&self) -> &Vec<TyFunctionParameter>;
+    fn return_type(&self) -> &TypeArgument;
+}

@@ -25,5 +25,5 @@ Predicates may introspect the transaction spending their coins (inputs, outputs,
 Similar to a [script](script.md), a predicate consists of a single `main()` function which can take any number of arguments but must return a [Boolean](../built-ins/boolean.md). In order for the predicate to be valid, the returned [Boolean]((../built-ins/boolean.md)) value must be `true`.
 
 ```sway
-{{#include ../../../code/language/program-types/predicates/simple/src/main.sw}}
+{{#include ../../../code/language/program-types/predicates/simple_predicate/src/main.sw}}
 ```

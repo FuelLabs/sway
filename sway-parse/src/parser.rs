@@ -44,7 +44,7 @@ impl<'a, 'e> Parser<'a, 'e> {
                     self.full_span.src().clone(),
                     self.full_span.end().saturating_sub(trim_offset),
                     (self.full_span.end() + 1).saturating_sub(trim_offset),
-                    self.full_span.path().cloned(),
+                    self.full_span.source_id().cloned(),
                 )
             }
             .unwrap(),

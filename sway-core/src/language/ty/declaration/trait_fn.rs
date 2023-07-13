@@ -12,10 +12,10 @@ use crate::{
 #[derive(Clone, Debug)]
 pub struct TyTraitFn {
     pub name: Ident,
+    pub(crate) span: Span,
     pub(crate) purity: Purity,
     pub parameters: Vec<TyFunctionParameter>,
-    pub return_type: TypeId,
-    pub return_type_span: Span,
+    pub return_type: TypeArgument,
     pub attributes: transform::AttributesMap,
 }
 
@@ -27,26 +27,36 @@ impl Named for TyTraitFn {
 
 impl Spanned for TyTraitFn {
     fn span(&self) -> Span {
-        self.name.span()
+        self.span.clone()
+    }
+}
+
+impl declaration::FunctionSignature for TyTraitFn {
+    fn parameters(&self) -> &Vec<TyFunctionParameter> {
+        &self.parameters
+    }
+
+    fn return_type(&self) -> &TypeArgument {
+        &self.return_type
     }
 }
 
 impl EqWithEngines for TyTraitFn {}
 impl PartialEqWithEngines for TyTraitFn {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         let type_engine = engines.te();
         self.name == other.name
             && self.purity == other.purity
             && self.parameters.eq(&other.parameters, engines)
             && type_engine
-                .get(self.return_type)
-                .eq(&type_engine.get(other.return_type), engines)
+                .get(self.return_type.type_id)
+                .eq(&type_engine.get(other.return_type.type_id), engines)
             && self.attributes == other.attributes
     }
 }
 
 impl HashWithEngines for TyTraitFn {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TyTraitFn {
             name,
             purity,
@@ -54,19 +64,19 @@ impl HashWithEngines for TyTraitFn {
             return_type,
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
-            return_type_span: _,
+            span: _,
             attributes: _,
         } = self;
         let type_engine = engines.te();
         name.hash(state);
         parameters.hash(state, engines);
-        type_engine.get(*return_type).hash(state, engines);
+        type_engine.get(return_type.type_id).hash(state, engines);
         purity.hash(state);
     }
 }
 
 impl SubstTypes for TyTraitFn {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         self.parameters
             .iter_mut()
             .for_each(|x| x.subst(type_mapping, engines));
@@ -75,7 +85,7 @@ impl SubstTypes for TyTraitFn {
 }
 
 impl ReplaceSelfType for TyTraitFn {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         self.parameters
             .iter_mut()
             .for_each(|x| x.replace_self_type(engines, self_type));

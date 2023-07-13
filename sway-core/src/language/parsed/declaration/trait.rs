@@ -39,7 +39,7 @@ impl Spanned for Supertrait {
 
 impl EqWithEngines for Supertrait {}
 impl PartialEqWithEngines for Supertrait {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         let Supertrait {
             name: ln,
             decl_ref: ldr,
@@ -53,7 +53,7 @@ impl PartialEqWithEngines for Supertrait {
 }
 
 impl HashWithEngines for Supertrait {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let Supertrait { name, decl_ref } = self;
         name.hash(state);
         decl_ref.hash(state, engines);
@@ -63,9 +63,9 @@ impl HashWithEngines for Supertrait {
 #[derive(Debug, Clone)]
 pub struct TraitFn {
     pub name: Ident,
+    pub span: Span,
     pub attributes: transform::AttributesMap,
     pub purity: Purity,
     pub parameters: Vec<FunctionParameter>,
-    pub return_type: TypeInfo,
-    pub return_type_span: Span,
+    pub return_type: TypeArgument,
 }

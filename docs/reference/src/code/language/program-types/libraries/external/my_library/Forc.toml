@@ -6,3 +6,4 @@ name = "my_library"
 
 [dependencies]
 my_other_library = { path = "../my_other_library" }
+std = { path = "../../../../../../../../../sway-lib-std" }

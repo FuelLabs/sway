@@ -1,7 +1,7 @@
 contract;
 
 // ANCHOR: initialization
-use std::storage::StorageVec;
+use std::storage::storage_vec::*;
 
 storage {
     // T = u64
@@ -15,7 +15,7 @@ storage {
 fn reading_from_storage(id: u64) {
     let balance = storage.balance.get(id).unwrap();
 
-    let (user, value) = storage.user.get(id).unwrap();
+    let (user, value) = storage.user.get(id).unwrap().read();
 }
 // ANCHOR_END: reading_from_storage
 // ANCHOR: writing_to_storage

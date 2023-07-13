@@ -6,9 +6,9 @@ use crate::{
 use super::DeclMapping;
 
 pub trait ReplaceDecls {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>);
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: &Engines);
 
-    fn replace_decls(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
+    fn replace_decls(&mut self, decl_mapping: &DeclMapping, engines: &Engines) {
         if !decl_mapping.is_empty() {
             self.replace_decls_inner(decl_mapping, engines);
         }
@@ -16,9 +16,9 @@ pub trait ReplaceDecls {
 }
 
 pub(crate) trait ReplaceFunctionImplementingType {
-    fn replace_implementing_type(&mut self, engines: Engines<'_>, implementing_type: ty::TyDecl);
+    fn replace_implementing_type(&mut self, engines: &Engines, implementing_type: ty::TyDecl);
 }
 
 pub(crate) trait UpdateConstantExpression {
-    fn update_constant_expression(&mut self, engines: Engines<'_>, implementing_type: &TyDecl);
+    fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl);
 }

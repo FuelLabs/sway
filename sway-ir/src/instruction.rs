@@ -32,6 +32,8 @@ pub struct BranchToWithArgs {
 pub enum Instruction {
     /// An opaque list of ASM instructions passed directly to codegen.
     AsmBlock(AsmBlock, Vec<AsmArg>),
+    /// Unary arithmetic operations
+    UnaryOp { op: UnaryOpKind, arg: Value },
     /// Binary arithmetic operations
     BinaryOp {
         op: BinaryOpKind,
@@ -118,14 +120,12 @@ pub enum FuelVmInstruction {
     /// Revert VM execution.
     Revert(Value),
     /// - Sends a message to an output via the `smo` FuelVM instruction. The first operand must be
-    /// a struct with the first field being a `B256` representing the recipient. The rest of the
-    /// struct is the message data being sent.
-    /// - Assumes the existence of an `OutputMessage` at `output_index`
-    /// - `message_size`, `output_index`, and `coins` must be of type `U64`.
+    /// a `B256` representing the recipient. The second operand is the message data being sent.
+    /// - `message_size` and `coins` must be of type `U64`.
     Smo {
-        recipient_and_message: Value,
+        recipient: Value,
+        message: Value,
         message_size: Value,
-        output_index: Value,
         coins: Value,
     },
     /// Clears `number_of_slots` storage slots (`b256` each) starting at key `key`.
@@ -163,6 +163,11 @@ pub enum Predicate {
     Equal,
     LessThan,
     GreaterThan,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum UnaryOpKind {
+    Not,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -221,6 +226,7 @@ impl Instruction {
         match self {
             // These all return something in particular.
             Instruction::AsmBlock(asm_block, _) => Some(asm_block.get_type(context)),
+            Instruction::UnaryOp { arg, .. } => arg.get_type(context),
             Instruction::BinaryOp { arg1, .. } => arg1.get_type(context),
             Instruction::BitCast(_, ty) => Some(*ty),
             Instruction::Call(function, _) => Some(context.functions[function.0].return_type),
@@ -283,6 +289,7 @@ impl Instruction {
         match self {
             Instruction::AsmBlock(_, args) => args.iter().filter_map(|aa| aa.initializer).collect(),
             Instruction::BitCast(v, _) => vec![*v],
+            Instruction::UnaryOp { op: _, arg } => vec![*arg],
             Instruction::BinaryOp { op: _, arg1, arg2 } => vec![*arg1, *arg2],
             Instruction::Branch(BranchToWithArgs { args, .. }) => args.clone(),
             Instruction::Call(_, vs) => vs.clone(),
@@ -355,11 +362,11 @@ impl Instruction {
                 FuelVmInstruction::ReadRegister(_) => vec![],
                 FuelVmInstruction::Revert(v) => vec![*v],
                 FuelVmInstruction::Smo {
-                    recipient_and_message,
+                    recipient,
+                    message,
                     message_size,
-                    output_index,
                     coins,
-                } => vec![*recipient_and_message, *message_size, *output_index, *coins],
+                } => vec![*recipient, *message, *message_size, *coins],
                 FuelVmInstruction::StateClear {
                     key,
                     number_of_slots,
@@ -397,6 +404,9 @@ impl Instruction {
                     .for_each(|init_val| replace(init_val))
             }),
             Instruction::BitCast(value, _) => replace(value),
+            Instruction::UnaryOp { op: _, arg } => {
+                replace(arg);
+            }
             Instruction::BinaryOp { op: _, arg1, arg2 } => {
                 replace(arg1);
                 replace(arg2);
@@ -479,14 +489,14 @@ impl Instruction {
                 FuelVmInstruction::ReadRegister { .. } => (),
                 FuelVmInstruction::Revert(revert_val) => replace(revert_val),
                 FuelVmInstruction::Smo {
-                    recipient_and_message,
+                    recipient,
+                    message,
                     message_size,
-                    output_index,
                     coins,
                 } => {
-                    replace(recipient_and_message);
+                    replace(recipient);
+                    replace(message);
                     replace(message_size);
-                    replace(output_index);
                     replace(coins);
                 }
                 FuelVmInstruction::StateClear {
@@ -536,11 +546,14 @@ impl Instruction {
             | Instruction::FuelVm(FuelVmInstruction::StateLoadQuadWord { .. })
             | Instruction::FuelVm(FuelVmInstruction::StateStoreQuadWord { .. })
             | Instruction::FuelVm(FuelVmInstruction::StateStoreWord { .. })
+            | Instruction::FuelVm(FuelVmInstruction::Revert(..))
             | Instruction::MemCopyBytes { .. }
             | Instruction::MemCopyVal { .. }
-            | Instruction::Store { .. } => true,
+            | Instruction::Store { .. }
+            | Instruction::Ret(..) => true,
 
-            Instruction::BinaryOp { .. }
+            Instruction::UnaryOp { .. }
+            | Instruction::BinaryOp { .. }
             | Instruction::BitCast(..)
             | Instruction::Branch(_)
             | Instruction::CastPtr { .. }
@@ -548,15 +561,13 @@ impl Instruction {
             | Instruction::ConditionalBranch { .. }
             | Instruction::FuelVm(FuelVmInstruction::Gtf { .. })
             | Instruction::FuelVm(FuelVmInstruction::ReadRegister(_))
-            | Instruction::FuelVm(FuelVmInstruction::Revert(..))
             | Instruction::FuelVm(FuelVmInstruction::StateLoadWord(_))
             | Instruction::GetElemPtr { .. }
             | Instruction::GetLocal(_)
             | Instruction::IntToPtr(..)
             | Instruction::Load(_)
             | Instruction::Nop
-            | Instruction::PtrToInt(..)
-            | Instruction::Ret(..) => false,
+            | Instruction::PtrToInt(..) => false,
         }
     }
 
@@ -621,8 +632,8 @@ impl DoubleEndedIterator for InstructionIterator {
 }
 
 /// Provide a context for appending new [`Instruction`]s to a [`Block`].
-pub struct InstructionInserter<'a> {
-    context: &'a mut Context,
+pub struct InstructionInserter<'a, 'eng> {
+    context: &'a mut Context<'eng>,
     block: Block,
 }
 
@@ -636,9 +647,9 @@ macro_rules! make_instruction {
     }};
 }
 
-impl<'a> InstructionInserter<'a> {
+impl<'a, 'eng> InstructionInserter<'a, 'eng> {
     /// Return a new [`InstructionInserter`] context for `block`.
-    pub fn new(context: &'a mut Context, block: Block) -> InstructionInserter<'a> {
+    pub fn new(context: &'a mut Context<'eng>, block: Block) -> InstructionInserter<'a, 'eng> {
         InstructionInserter { context, block }
     }
 
@@ -670,6 +681,10 @@ impl<'a> InstructionInserter<'a> {
 
     pub fn bitcast(self, value: Value, ty: Type) -> Value {
         make_instruction!(self, Instruction::BitCast(value, ty))
+    }
+
+    pub fn unary_op(self, op: UnaryOpKind, arg: Value) -> Value {
+        make_instruction!(self, Instruction::UnaryOp { op, arg })
     }
 
     pub fn binary_op(self, op: BinaryOpKind, arg1: Value, arg2: Value) -> Value {
@@ -859,19 +874,13 @@ impl<'a> InstructionInserter<'a> {
         revert_val
     }
 
-    pub fn smo(
-        self,
-        recipient_and_message: Value,
-        message_size: Value,
-        output_index: Value,
-        coins: Value,
-    ) -> Value {
+    pub fn smo(self, recipient: Value, message: Value, message_size: Value, coins: Value) -> Value {
         make_instruction!(
             self,
             Instruction::FuelVm(FuelVmInstruction::Smo {
-                recipient_and_message,
+                recipient,
+                message,
                 message_size,
-                output_index,
                 coins,
             })
         )

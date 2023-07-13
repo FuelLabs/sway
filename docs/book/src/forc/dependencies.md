@@ -1,10 +1,10 @@
 # Dependencies
 
-Forc has a dependency management system which can pull packages using git. This allows users to build and share Forc libraries.
+Forc has a dependency management system which can pull packages using git and ipfs. This allows users to build and share Forc libraries.
 
 ## Adding a dependency
 
-If your `Forc.toml` doesn't already have a `[dependencies]` table, add one. Below, list the package name alongside its source. Currently, `forc` supports both `git` and `path` sources.
+If your `Forc.toml` doesn't already have a `[dependencies]` table, add one. Below, list the package name alongside its source. Currently, `forc` supports `git`, `ipfs` and `path` sources.
 
 If a `git` source is specified, `forc` will fetch the git repository at the given URL and then search for a `Forc.toml` for a package with the given name anywhere inside the git repository.
 
@@ -24,8 +24,17 @@ Depending on a local library using `path`:
 custom_lib = { path = "../custom_lib" }
 ```
 
+For `ipfs` sources, `forc` will fetch the specified `cid` using either a local ipfs node or a public gateway. `forc` automatically tries to connect to local `ipfs` node and if it fails, fallbacks to using `https://ipfs.io/`, as a gateway.
+
+The following example adds a dependency with an `ipfs` source.
+
+```toml
+[dependencies]
+custom_lib = { ipfs = "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG" }
+```
+
 Once the package is added, running `forc build` will automatically download added dependencies.
 
 ## Updating dependencies
 
-To update dependencies in your Forc directory you can run `forc update`. For `path` dependencies this will have no effect. For `git` dependencies with a `branch` reference, this will update the project to use the latest commit for the given branch.
+To update dependencies in your Forc directory you can run `forc update`. For `path` and `ipfs` dependencies this will have no effect. For `git` dependencies with a `branch` reference, this will update the project to use the latest commit for the given branch.

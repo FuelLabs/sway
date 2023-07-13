@@ -38,10 +38,9 @@ abi TxContractTest {
     fn get_input_owner(index: u64) -> Address;
     fn get_input_amount(index: u64) -> u64;
     fn get_tx_input_predicate_data_pointer(index: u64) -> u64;
-    fn get_input_message_msg_id(index: u64) -> b256;
     fn get_input_message_sender(index: u64) -> Address;
     fn get_input_message_recipient(index: u64) -> Address;
-    fn get_input_message_nonce(index: u64) -> u64;
+    fn get_input_message_nonce(index: u64) -> b256;
     fn get_input_witness_index(index: u64) -> u8;
     fn get_input_message_data_length(index: u64) -> u16;
     fn get_input_predicate_length(index: u64) -> u16;
@@ -121,16 +120,13 @@ impl TxContractTest for Contract {
     fn get_tx_input_predicate_data_pointer(index: u64) -> u64 {
         asm(r1: input_predicate_data_pointer(index).unwrap()) { r1: u64 }
     }
-    fn get_input_message_msg_id(index: u64) -> b256 {
-        input_message_msg_id(index)
-    }
     fn get_input_message_sender(index: u64) -> Address {
         input_message_sender(index)
     }
     fn get_input_message_recipient(index: u64) -> Address {
         input_message_recipient(index)
     }
-    fn get_input_message_nonce(index: u64) -> u64 {
+    fn get_input_message_nonce(index: u64) -> b256 {
         input_message_nonce(index)
     }
     fn get_input_witness_index(index: u64) -> u8 {

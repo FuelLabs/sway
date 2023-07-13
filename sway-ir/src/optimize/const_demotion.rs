@@ -1,12 +1,12 @@
 use std::collections::hash_map::Entry;
 
-///! Constant value demotion.
-///!
-///! This pass demotes 'by-value' constant types to 'by-reference` pointer types, based on target
-///! specific parameters.
-///!
-///! Storage for constant values is created on the stack in variables which are initialized with the
-///! original values.
+/// Constant value demotion.
+///
+/// This pass demotes 'by-value' constant types to 'by-reference` pointer types, based on target
+/// specific parameters.
+///
+/// Storage for constant values is created on the stack in variables which are initialized with the
+/// original values.
 use crate::{
     AnalysisResults, Block, Constant, Context, Function, Instruction, IrError, Pass,
     PassMutability, ScopedPass, Value,

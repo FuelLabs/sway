@@ -23,8 +23,8 @@ impl ty::TyAstNode {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
-        let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
+        let type_engine = ctx.engines.te();
+        let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
         let node = ty::TyAstNode {
@@ -38,11 +38,7 @@ impl ty::TyAstNode {
                     let mut res = match a.import_type {
                         ImportType::Star => {
                             // try a standard starimport first
-                            let import = ctx.namespace.star_import(
-                                &path,
-                                engines,
-                                ctx.experimental_private_modules_enabled(),
-                            );
+                            let import = ctx.namespace.star_import(&path, engines, a.is_absolute);
                             if import.is_ok() {
                                 import
                             } else {
@@ -52,7 +48,7 @@ impl ty::TyAstNode {
                                         path,
                                         engines,
                                         enum_name,
-                                        ctx.experimental_private_modules_enabled(),
+                                        a.is_absolute,
                                     );
                                     if variant_import.is_ok() {
                                         variant_import
@@ -68,7 +64,7 @@ impl ty::TyAstNode {
                             engines,
                             &path,
                             a.alias.clone(),
-                            ctx.experimental_private_modules_enabled(),
+                            a.is_absolute,
                         ),
                         ImportType::Item(ref s) => {
                             // try a standard item import first
@@ -77,7 +73,7 @@ impl ty::TyAstNode {
                                 &path,
                                 s,
                                 a.alias.clone(),
-                                ctx.experimental_private_modules_enabled(),
+                                a.is_absolute,
                             );
 
                             if import.is_ok() {
@@ -91,7 +87,7 @@ impl ty::TyAstNode {
                                         enum_name,
                                         s,
                                         a.alias.clone(),
-                                        ctx.experimental_private_modules_enabled(),
+                                        a.is_absolute,
                                     );
                                     if variant_import.is_ok() {
                                         variant_import
@@ -128,7 +124,7 @@ impl ty::TyAstNode {
                 )),
                 AstNodeContent::Expression(expr) => {
                     let ctx = ctx
-                        .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown))
+                        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown))
                         .with_help_text("");
                     let inner = check!(
                         ty::TyExpression::type_check(ctx, expr.clone()),

@@ -15,7 +15,7 @@ use crate::{
         CallPath,
     },
     type_system::{SubstTypes, TypeId},
-    ReplaceSelfType, TraitConstraint, TypeArgument, TypeInfo, TypeSubstMap,
+    ReplaceSelfType, TraitConstraint, TypeArgument, TypeInfo, TypeSubstMap, UnifyCheck,
 };
 
 #[derive(Clone, Debug)]
@@ -24,12 +24,12 @@ struct TraitSuffix {
     args: Vec<TypeArgument>,
 }
 impl PartialEqWithEngines for TraitSuffix {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.name == other.name && self.args.eq(&other.args, engines)
     }
 }
 impl OrdWithEngines for TraitSuffix {
-    fn cmp(&self, other: &Self, engines: Engines<'_>) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self, engines: &Engines) -> std::cmp::Ordering {
         self.name
             .cmp(&other.name)
             .then_with(|| self.args.cmp(&other.args, engines))
@@ -37,14 +37,14 @@ impl OrdWithEngines for TraitSuffix {
 }
 
 impl<T: PartialEqWithEngines> PartialEqWithEngines for CallPath<T> {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.prefixes == other.prefixes
             && self.suffix.eq(&other.suffix, engines)
             && self.is_absolute == other.is_absolute
     }
 }
 impl<T: OrdWithEngines> OrdWithEngines for CallPath<T> {
-    fn cmp(&self, other: &Self, engines: Engines<'_>) -> Ordering {
+    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
         self.prefixes
             .cmp(&other.prefixes)
             .then_with(|| self.suffix.cmp(&other.suffix, engines))
@@ -58,10 +58,11 @@ type TraitName = CallPath<TraitSuffix>;
 struct TraitKey {
     name: TraitName,
     type_id: TypeId,
+    trait_decl_span: Option<Span>,
 }
 
 impl OrdWithEngines for TraitKey {
-    fn cmp(&self, other: &Self, engines: Engines<'_>) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self, engines: &Engines) -> std::cmp::Ordering {
         self.name
             .cmp(&other.name, engines)
             .then_with(|| self.type_id.cmp(&other.type_id))
@@ -112,14 +113,15 @@ impl TraitMap {
         type_id: TypeId,
         items: &[TyImplItem],
         impl_span: &Span,
+        trait_decl_span: Option<Span>,
         is_impl_self: bool,
-        engines: Engines<'_>,
+        engines: &Engines,
     ) -> CompileResult<()> {
         let warnings = vec![];
         let mut errors = vec![];
 
         let type_engine = engines.te();
-        let decl_engine = engines.de();
+        let _decl_engine = engines.de();
 
         let mut trait_items: TraitItems = im::HashMap::new();
         for item in items.iter() {
@@ -135,7 +137,7 @@ impl TraitMap {
 
         // check to see if adding this trait will produce a conflicting definition
         let trait_type_id = type_engine.insert(
-            decl_engine,
+            engines,
             TypeInfo::Custom {
                 call_path: trait_name.suffix.clone().into(),
                 type_arguments: if trait_type_args.is_empty() {
@@ -150,6 +152,7 @@ impl TraitMap {
                 TraitKey {
                     name: map_trait_name,
                     type_id: map_type_id,
+                    trait_decl_span: _,
                 },
             value:
                 TraitValue {
@@ -167,7 +170,7 @@ impl TraitMap {
                 ..
             } = map_trait_name;
             let map_trait_type_id = type_engine.insert(
-                decl_engine,
+                engines,
                 TypeInfo::Custom {
                     call_path: map_trait_name_suffix.clone().into(),
                     type_arguments: if map_trait_type_args.is_empty() {
@@ -178,12 +181,9 @@ impl TraitMap {
                 },
             );
 
-            let types_are_subset = type_engine
-                .get(type_id)
-                .is_subset_of(&type_engine.get(*map_type_id), engines);
-            let traits_are_subset = type_engine
-                .get(trait_type_id)
-                .is_subset_of(&type_engine.get(map_trait_type_id), engines);
+            let unify_checker = UnifyCheck::constraint_subset(engines);
+            let types_are_subset = unify_checker.check(type_id, *map_type_id);
+            let traits_are_subset = unify_checker.check(trait_type_id, map_trait_type_id);
 
             if types_are_subset && traits_are_subset && !is_impl_self {
                 let trait_name_str = format!(
@@ -244,7 +244,14 @@ impl TraitMap {
         };
 
         // even if there is a conflicting definition, add the trait anyway
-        self.insert_inner(trait_name, impl_span.clone(), type_id, trait_items, engines);
+        self.insert_inner(
+            trait_name,
+            impl_span.clone(),
+            trait_decl_span,
+            type_id,
+            trait_items,
+            engines,
+        );
 
         if errors.is_empty() {
             ok((), warnings, errors)
@@ -257,13 +264,15 @@ impl TraitMap {
         &mut self,
         trait_name: TraitName,
         impl_span: Span,
+        trait_decl_span: Option<Span>,
         type_id: TypeId,
         trait_methods: TraitItems,
-        engines: Engines<'_>,
+        engines: &Engines,
     ) {
         let key = TraitKey {
             name: trait_name,
             type_id,
+            trait_decl_span,
         };
         let value = TraitValue {
             trait_items: trait_methods,
@@ -362,13 +371,13 @@ impl TraitMap {
     /// re-insert them under `type_id`. Moreover, the impl block for
     /// `Data<T, T>` needs to be able to call methods that are defined in the
     /// impl block of `Data<T, F>`
-    pub(crate) fn insert_for_type(&mut self, engines: Engines<'_>, type_id: TypeId) {
+    pub(crate) fn insert_for_type(&mut self, engines: &Engines, type_id: TypeId) {
         self.extend(self.filter_by_type(type_id, engines), engines);
     }
 
     /// Given [TraitMap]s `self` and `other`, extend `self` with `other`,
     /// extending existing entries when possible.
-    pub(crate) fn extend(&mut self, other: TraitMap, engines: Engines<'_>) {
+    pub(crate) fn extend(&mut self, other: TraitMap, engines: &Engines) {
         for oe in other.trait_impls.into_iter() {
             let pos = self
                 .trait_impls
@@ -382,6 +391,23 @@ impl TraitMap {
                 Err(pos) => self.trait_impls.insert(pos, oe),
             }
         }
+    }
+
+    /// Filters the entries in `self` and return a new [TraitMap] with all of
+    /// the entries from `self` that implement a trait from the declaration with that span.
+    pub(crate) fn filter_by_trait_decl_span(&self, trait_decl_span: Span) -> TraitMap {
+        let mut trait_map = TraitMap::default();
+        for entry in self.trait_impls.iter() {
+            if entry
+                .key
+                .trait_decl_span
+                .as_ref()
+                .map_or(false, |span| span == &trait_decl_span)
+            {
+                trait_map.trait_impls.push(entry.clone());
+            }
+        }
+        trait_map
     }
 
     /// Filters the entries in `self` with the given [TypeId] `type_id` and
@@ -491,12 +517,13 @@ impl TraitMap {
     /// have `Data<T, T>: get_first(self) -> T` and
     /// `Data<T, T>: get_second(self) -> T`, and we can create a new [TraitMap]
     /// with those entries for `Data<T, T>`.
-    pub(crate) fn filter_by_type(&self, type_id: TypeId, engines: Engines<'_>) -> TraitMap {
+    pub(crate) fn filter_by_type(&self, type_id: TypeId, engines: &Engines) -> TraitMap {
         let type_engine = engines.te();
+
+        let unify_checker = UnifyCheck::constraint_subset(engines);
+
         // a curried version of the decider protocol to use in the helper functions
-        let decider = |type_info: &TypeInfo, map_type_info: &TypeInfo| {
-            type_info.is_subset_of(map_type_info, engines)
-        };
+        let decider = |left: TypeId, right: TypeId| unify_checker.check(left, right);
         let mut all_types = type_engine.get(type_id).extract_inner_types(engines);
         all_types.insert(type_id);
         let all_types = all_types.into_iter().collect::<Vec<_>>();
@@ -564,13 +591,16 @@ impl TraitMap {
     pub(crate) fn filter_by_type_item_import(
         &self,
         type_id: TypeId,
-        engines: Engines<'_>,
+        engines: &Engines,
     ) -> TraitMap {
         let type_engine = engines.te();
+
+        let unify_checker = UnifyCheck::constraint_subset(engines);
+        let unify_checker_for_item_import = UnifyCheck::non_generic_constraint_subset(engines);
+
         // a curried version of the decider protocol to use in the helper functions
-        let decider = |type_info: &TypeInfo, map_type_info: &TypeInfo| {
-            type_info.is_subset_of(map_type_info, engines)
-                || map_type_info.is_subset_of_for_item_import(type_info, engines)
+        let decider = |left: TypeId, right: TypeId| {
+            unify_checker.check(left, right) || unify_checker_for_item_import.check(right, left)
         };
         let mut trait_map = self.filter_by_type_inner(engines, vec![type_id], decider);
         let all_types = type_engine
@@ -579,9 +609,8 @@ impl TraitMap {
             .into_iter()
             .collect::<Vec<_>>();
         // a curried version of the decider protocol to use in the helper functions
-        let decider2 = |type_info: &TypeInfo, map_type_info: &TypeInfo| {
-            type_info.is_subset_of(map_type_info, engines)
-        };
+        let decider2 = |left: TypeId, right: TypeId| unify_checker.check(left, right);
+
         trait_map.extend(
             self.filter_by_type_inner(engines, all_types, decider2),
             engines,
@@ -591,9 +620,9 @@ impl TraitMap {
 
     fn filter_by_type_inner(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         mut all_types: Vec<TypeId>,
-        decider: impl Fn(&TypeInfo, &TypeInfo) -> bool,
+        decider: impl Fn(TypeId, TypeId) -> bool,
     ) -> TraitMap {
         let type_engine = engines.te();
         let decl_engine = engines.de();
@@ -603,6 +632,7 @@ impl TraitMap {
                 TraitKey {
                     name: map_trait_name,
                     type_id: map_type_id,
+                    trait_decl_span: map_trait_decl_span,
                 },
             value:
                 TraitValue {
@@ -617,18 +647,19 @@ impl TraitMap {
                     trait_map.insert_inner(
                         map_trait_name.clone(),
                         impl_span.clone(),
+                        map_trait_decl_span.clone(),
                         *type_id,
                         map_trait_items.clone(),
                         engines,
                     );
-                } else if decider(&type_info, &type_engine.get(*map_type_id)) {
+                } else if decider(*type_id, *map_type_id) {
                     let type_mapping = TypeSubstMap::from_superset_and_subset(
                         type_engine,
                         decl_engine,
                         *map_type_id,
                         *type_id,
                     );
-                    let new_self_type = type_engine.insert(decl_engine, TypeInfo::SelfType);
+                    let new_self_type = type_engine.insert(engines, TypeInfo::SelfType);
                     type_id.replace_self_type(engines, new_self_type);
                     let trait_items: TraitItems = map_trait_items
                         .clone()
@@ -655,6 +686,7 @@ impl TraitMap {
                     trait_map.insert_inner(
                         map_trait_name.clone(),
                         impl_span.clone(),
+                        map_trait_decl_span.clone(),
                         *type_id,
                         trait_items,
                         engines,
@@ -676,10 +708,12 @@ impl TraitMap {
     ///     entries that qualify as hits are equivalents of `type_id`
     pub(crate) fn get_items_for_type(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         type_id: TypeId,
     ) -> Vec<ty::TyTraitItem> {
         let type_engine = engines.te();
+        let unify_check = UnifyCheck::non_dynamic_equality(engines);
+
         let mut items = vec![];
         // small performance gain in bad case
         if type_engine
@@ -689,7 +723,7 @@ impl TraitMap {
             return items;
         }
         for entry in self.trait_impls.iter() {
-            if are_equal_minus_dynamic_types(engines, type_id, entry.key.type_id) {
+            if unify_check.check(type_id, entry.key.type_id) {
                 let mut trait_items = entry
                     .value
                     .trait_items
@@ -711,12 +745,10 @@ impl TraitMap {
     /// - this method does not translate types from the found entries to the
     ///     `type_id` (like in `filter_by_type()`). This is because the only
     ///     entries that qualify as hits are equivalents of `type_id`
-    pub(crate) fn get_impl_spans_for_type(
-        &self,
-        engines: Engines<'_>,
-        type_id: &TypeId,
-    ) -> Vec<Span> {
+    pub(crate) fn get_impl_spans_for_type(&self, engines: &Engines, type_id: &TypeId) -> Vec<Span> {
         let type_engine = engines.te();
+        let unify_check = UnifyCheck::non_dynamic_equality(engines);
+
         let mut spans = vec![];
         // small performance gain in bad case
         if type_engine
@@ -726,7 +758,7 @@ impl TraitMap {
             return spans;
         }
         for entry in self.trait_impls.iter() {
-            if are_equal_minus_dynamic_types(engines, *type_id, entry.key.type_id) {
+            if unify_check.check(*type_id, entry.key.type_id) {
                 spans.push(entry.value.impl_span.clone());
             }
         }
@@ -764,11 +796,12 @@ impl TraitMap {
     ///     entries that qualify as hits are equivalents of `type_id`
     pub(crate) fn get_items_for_type_and_trait_name(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         type_id: TypeId,
         trait_name: &CallPath,
     ) -> Vec<ty::TyTraitItem> {
         let type_engine = engines.te();
+        let unify_check = UnifyCheck::non_dynamic_equality(engines);
         let mut items = vec![];
         // small performance gain in bad case
         if type_engine
@@ -783,9 +816,7 @@ impl TraitMap {
                 suffix: e.key.name.suffix.name.clone(),
                 is_absolute: e.key.name.is_absolute,
             };
-            if &map_trait_name == trait_name
-                && are_equal_minus_dynamic_types(engines, type_id, e.key.type_id)
-            {
+            if &map_trait_name == trait_name && unify_check.check(type_id, e.key.type_id) {
                 let mut trait_items = e.value.trait_items.values().cloned().collect::<Vec<_>>();
                 items.append(&mut trait_items);
             }
@@ -795,10 +826,11 @@ impl TraitMap {
 
     pub(crate) fn get_trait_names_for_type(
         &self,
-        engines: Engines<'_>,
+        engines: &Engines,
         type_id: TypeId,
     ) -> Vec<CallPath> {
         let type_engine = engines.te();
+        let unify_check = UnifyCheck::non_dynamic_equality(engines);
         let mut trait_names = vec![];
         // small performance gain in bad case
         if type_engine
@@ -808,7 +840,7 @@ impl TraitMap {
             return trait_names;
         }
         for entry in self.trait_impls.iter() {
-            if are_equal_minus_dynamic_types(engines, type_id, entry.key.type_id) {
+            if unify_check.check(type_id, entry.key.type_id) {
                 let trait_call_path = CallPath {
                     prefixes: entry.key.name.prefixes.clone(),
                     suffix: entry.key.name.suffix.name.clone(),
@@ -826,13 +858,14 @@ impl TraitMap {
         type_id: TypeId,
         constraints: &[TraitConstraint],
         access_span: &Span,
-        engines: Engines<'_>,
+        engines: &Engines,
     ) -> CompileResult<()> {
         let warnings = vec![];
         let mut errors = vec![];
 
         let type_engine = engines.te();
-        let decl_engine = engines.de();
+        let _decl_engine = engines.de();
+        let unify_check = UnifyCheck::non_dynamic_equality(engines);
 
         let all_impld_traits: BTreeMap<Ident, TypeId> = self
             .trait_impls
@@ -841,7 +874,7 @@ impl TraitMap {
                 let key = &e.key;
                 let suffix = &key.name.suffix;
                 let map_trait_type_id = type_engine.insert(
-                    decl_engine,
+                    engines,
                     TypeInfo::Custom {
                         call_path: suffix.name.clone().into(),
                         type_arguments: if suffix.args.is_empty() {
@@ -851,7 +884,7 @@ impl TraitMap {
                         },
                     },
                 );
-                if are_equal_minus_dynamic_types(engines, type_id, key.type_id) {
+                if unify_check.check(type_id, key.type_id) {
                     Some((suffix.name.clone(), map_trait_type_id))
                 } else {
                     None
@@ -867,7 +900,7 @@ impl TraitMap {
                     type_arguments: constraint_type_arguments,
                 } = c;
                 let constraint_type_id = type_engine.insert(
-                    decl_engine,
+                    engines,
                     TypeInfo::Custom {
                         call_path: constraint_trait_name.suffix.clone().into(),
                         type_arguments: if constraint_type_arguments.is_empty() {
@@ -885,11 +918,9 @@ impl TraitMap {
             .into_iter()
             .filter(|(impld_trait_name, impld_trait_type_id)| {
                 match required_traits.get(impld_trait_name) {
-                    Some(constraint_type_id) => are_equal_minus_dynamic_types(
-                        engines,
-                        *constraint_type_id,
-                        *impld_trait_type_id,
-                    ),
+                    Some(constraint_type_id) => {
+                        unify_check.check(*constraint_type_id, *impld_trait_type_id)
+                    }
                     _ => false,
                 }
             })
@@ -913,161 +944,5 @@ impl TraitMap {
         } else {
             err(warnings, errors)
         }
-    }
-}
-
-pub(crate) fn are_equal_minus_dynamic_types(
-    engines: Engines<'_>,
-    left: TypeId,
-    right: TypeId,
-) -> bool {
-    if left.index() == right.index() {
-        return true;
-    }
-
-    let type_engine = engines.te();
-    let decl_engine = engines.de();
-
-    match (type_engine.get(left), type_engine.get(right)) {
-        // when a type alias is encoutered, defer the decision to the type it contains (i.e. the
-        // type it aliases with)
-        (TypeInfo::Alias { ty, .. }, _) => {
-            are_equal_minus_dynamic_types(engines, ty.type_id, right)
-        }
-        (_, TypeInfo::Alias { ty, .. }) => are_equal_minus_dynamic_types(engines, left, ty.type_id),
-
-        // these cases are false because, unless left and right have the same
-        // TypeId, they may later resolve to be different types in the type
-        // engine
-        (TypeInfo::Unknown, TypeInfo::Unknown) => false,
-        (TypeInfo::SelfType, TypeInfo::SelfType) => false,
-        (TypeInfo::Numeric, TypeInfo::Numeric) => false,
-        (TypeInfo::Storage { .. }, TypeInfo::Storage { .. }) => false,
-
-        // these cases are able to be directly compared
-        (TypeInfo::Contract, TypeInfo::Contract) => true,
-        (TypeInfo::Boolean, TypeInfo::Boolean) => true,
-        (TypeInfo::B256, TypeInfo::B256) => true,
-        (TypeInfo::ErrorRecovery, TypeInfo::ErrorRecovery) => true,
-        (TypeInfo::Str(l), TypeInfo::Str(r)) => l.val() == r.val(),
-        (TypeInfo::UnsignedInteger(l), TypeInfo::UnsignedInteger(r)) => l == r,
-        (TypeInfo::RawUntypedPtr, TypeInfo::RawUntypedPtr) => true,
-        (TypeInfo::RawUntypedSlice, TypeInfo::RawUntypedSlice) => true,
-        (
-            TypeInfo::UnknownGeneric {
-                name: rn,
-                trait_constraints: rtc,
-            },
-            TypeInfo::UnknownGeneric {
-                name: en,
-                trait_constraints: etc,
-            },
-        ) => rn.as_str() == en.as_str() && rtc.eq(&etc, engines),
-        (TypeInfo::Placeholder(_), TypeInfo::Placeholder(_)) => false,
-
-        // these cases may contain dynamic types
-        (
-            TypeInfo::Custom {
-                call_path: l_name,
-                type_arguments: l_type_args,
-            },
-            TypeInfo::Custom {
-                call_path: r_name,
-                type_arguments: r_type_args,
-            },
-        ) => {
-            l_name.suffix == r_name.suffix
-                && l_type_args
-                    .unwrap_or_default()
-                    .iter()
-                    .zip(r_type_args.unwrap_or_default().iter())
-                    .fold(true, |acc, (left, right)| {
-                        acc && are_equal_minus_dynamic_types(engines, left.type_id, right.type_id)
-                    })
-        }
-        (TypeInfo::Enum(l_decl_ref), TypeInfo::Enum(r_decl_ref)) => {
-            let l_decl = decl_engine.get_enum(&l_decl_ref);
-            let r_decl = decl_engine.get_enum(&r_decl_ref);
-            l_decl.call_path.suffix == r_decl.call_path.suffix
-                && l_decl.call_path.suffix.span() == r_decl.call_path.suffix.span()
-                && l_decl.variants.iter().zip(r_decl.variants.iter()).fold(
-                    true,
-                    |acc, (left, right)| {
-                        acc && left.name == right.name
-                            && are_equal_minus_dynamic_types(
-                                engines,
-                                left.type_argument.type_id,
-                                right.type_argument.type_id,
-                            )
-                    },
-                )
-                && l_decl
-                    .type_parameters
-                    .iter()
-                    .zip(r_decl.type_parameters.iter())
-                    .fold(true, |acc, (left, right)| {
-                        acc && left.name_ident == right.name_ident
-                            && are_equal_minus_dynamic_types(engines, left.type_id, right.type_id)
-                    })
-        }
-        (TypeInfo::Struct(l_decl_ref), TypeInfo::Struct(r_decl_ref)) => {
-            let l_decl = decl_engine.get_struct(&l_decl_ref);
-            let r_decl = decl_engine.get_struct(&r_decl_ref);
-            l_decl.call_path.suffix == r_decl.call_path.suffix
-                && l_decl.call_path.suffix.span() == r_decl.call_path.suffix.span()
-                && l_decl.fields.iter().zip(r_decl.fields.iter()).fold(
-                    true,
-                    |acc, (left, right)| {
-                        acc && left.name == right.name
-                            && are_equal_minus_dynamic_types(
-                                engines,
-                                left.type_argument.type_id,
-                                right.type_argument.type_id,
-                            )
-                    },
-                )
-                && l_decl
-                    .type_parameters
-                    .iter()
-                    .zip(r_decl.type_parameters.iter())
-                    .fold(true, |acc, (left, right)| {
-                        acc && left.name_ident == right.name_ident
-                            && are_equal_minus_dynamic_types(engines, left.type_id, right.type_id)
-                    })
-        }
-        (TypeInfo::Tuple(l), TypeInfo::Tuple(r)) => {
-            if l.len() != r.len() {
-                false
-            } else {
-                l.iter().zip(r.iter()).fold(true, |acc, (left, right)| {
-                    acc && are_equal_minus_dynamic_types(engines, left.type_id, right.type_id)
-                })
-            }
-        }
-        (
-            TypeInfo::ContractCaller {
-                abi_name: l_abi_name,
-                address: l_address,
-            },
-            TypeInfo::ContractCaller {
-                abi_name: r_abi_name,
-                address: r_address,
-            },
-        ) => {
-            l_abi_name == r_abi_name
-                && Option::zip(l_address, r_address)
-                    .map(|(l_address, r_address)| {
-                        are_equal_minus_dynamic_types(
-                            engines,
-                            l_address.return_type,
-                            r_address.return_type,
-                        )
-                    })
-                    .unwrap_or(true)
-        }
-        (TypeInfo::Array(l0, l1), TypeInfo::Array(r0, r1)) => {
-            l1.val() == r1.val() && are_equal_minus_dynamic_types(engines, l0.type_id, r0.type_id)
-        }
-        _ => false,
     }
 }

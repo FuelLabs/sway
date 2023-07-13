@@ -18,9 +18,19 @@ use crate::{
 };
 use dashmap::DashMap;
 use forc_pkg as pkg;
+use lsp_types::{
+    CompletionItem, GotoDefinitionResponse, Location, Position, Range, SymbolInformation,
+    TextDocumentContentChangeEvent, TextEdit, Url,
+};
 use parking_lot::RwLock;
-use pkg::{manifest::ManifestFile, Programs};
-use std::{fs::File, io::Write, path::PathBuf, sync::Arc, vec};
+use pkg::manifest::ManifestFile;
+use std::{
+    fs::File,
+    io::Write,
+    path::PathBuf,
+    sync::{atomic::Ordering, Arc},
+    vec,
+};
 use sway_core::{
     decl_engine::DeclEngine,
     language::{
@@ -28,15 +38,11 @@ use sway_core::{
         parsed::{AstNode, ParseProgram},
         ty,
     },
-    BuildTarget, CompileResult, Engines, Namespace, TypeEngine,
+    BuildTarget, CompileResult, Engines, Namespace, Programs,
 };
 use sway_types::{Span, Spanned};
 use sway_utils::helpers::get_sway_files;
 use tokio::sync::Semaphore;
-use tower_lsp::lsp_types::{
-    CompletionItem, GotoDefinitionResponse, Location, Position, Range, SymbolInformation,
-    TextDocumentContentChangeEvent, TextEdit, Url,
-};
 
 pub type Documents = DashMap<String, TextDocument>;
 pub type ProjectDirectory = PathBuf;
@@ -58,8 +64,7 @@ pub struct Session {
     pub documents: Documents,
     pub runnables: DashMap<Span, Box<dyn Runnable>>,
     pub compiled_program: RwLock<CompiledProgram>,
-    pub type_engine: RwLock<TypeEngine>,
-    pub decl_engine: RwLock<DeclEngine>,
+    pub engines: RwLock<Engines>,
     pub sync: SyncWorkspace,
     // Limit the number of threads that can wait to parse at the same time. One thread can be parsing
     // and one thread can be waiting to start parsing. All others will return the cached diagnostics.
@@ -75,8 +80,7 @@ impl Session {
             documents: DashMap::new(),
             runnables: DashMap::new(),
             compiled_program: RwLock::new(Default::default()),
-            type_engine: <_>::default(),
-            decl_engine: <_>::default(),
+            engines: <_>::default(),
             sync: SyncWorkspace::new(),
             parse_permits: Arc::new(Semaphore::new(2)),
             diagnostics: Arc::new(RwLock::new(Diagnostics::default())),
@@ -101,10 +105,13 @@ impl Session {
     }
 
     pub fn shutdown(&self) {
-        // shutdown the thread watching the manifest file
-        let handle = self.sync.notify_join_handle.read();
-        if let Some(join_handle) = &*handle {
-            join_handle.abort();
+        // Set the should_end flag to true
+        self.sync.should_end.store(true, Ordering::Relaxed);
+
+        // Wait for the thread to finish
+        let mut join_handle_option = self.sync.notify_join_handle.write();
+        if let Some(join_handle) = std::mem::take(&mut *join_handle_option) {
+            let _ = join_handle.join();
         }
 
         // Delete the temporary directory.
@@ -157,12 +164,20 @@ impl Session {
                     dir: uri.path().into(),
                 })?;
 
-        let plan =
-            pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)
-                .map_err(LanguageServerError::BuildPlanFailed)?;
+        // TODO: Either we want LSP to deploy a local node in the background or we want this to
+        // point to Fuel operated IPFS node.
+        let ipfs_node = pkg::source::IPFSNode::Local;
 
-        let new_type_engine = TypeEngine::default();
-        let new_decl_engine = DeclEngine::default();
+        let plan = pkg::BuildPlan::from_lock_and_manifests(
+            &lock_path,
+            &member_manifests,
+            locked,
+            offline,
+            ipfs_node,
+        )
+        .map_err(LanguageServerError::BuildPlanFailed)?;
+
+        let new_engines = Engines::default();
         let tests_enabled = true;
 
         let results = pkg::check(
@@ -170,18 +185,15 @@ impl Session {
             BuildTarget::default(),
             true,
             tests_enabled,
-            Engines::new(&new_type_engine, &new_decl_engine),
-            true,
+            &new_engines,
         )
         .map_err(LanguageServerError::FailedToCompile)?;
 
         // Acquire locks for the engines before clearing anything.
-        let mut type_engine = self.type_engine.write();
-        let mut decl_engine = self.decl_engine.write();
+        let mut engines = self.engines.write();
 
         // Update the engines with the new data.
-        *type_engine = new_type_engine;
-        *decl_engine = new_decl_engine;
+        *engines = new_engines;
 
         // Clear other data stores.
         self.token_map.clear();
@@ -197,6 +209,9 @@ impl Session {
             } = res;
 
             if value.is_none() {
+                // If there was an unrecoverable error in the parser
+                // make sure to still return the diagnostics.
+                *diagnostics = get_diagnostics(&warnings, &errors);
                 continue;
             }
             let Programs {
@@ -215,11 +230,7 @@ impl Session {
 
             // Create context with write guards to make readers wait until the update to token_map is complete.
             // This operation is fast because we already have the compile results.
-            let ctx = ParseContext::new(
-                &self.token_map,
-                Engines::new(&type_engine, &decl_engine),
-                &typed_program.root.namespace,
-            );
+            let ctx = ParseContext::new(&self.token_map, &engines, &typed_program.root.namespace);
 
             // The final element in the results is the main program.
             if i == results_len - 1 {
@@ -232,7 +243,7 @@ impl Session {
                 self.parse_ast_to_tokens(&parsed, &ctx, |an, _ctx| parsed_tree.traverse_node(an));
 
                 // Finally, create runnables and populate our token_map with typed ast nodes.
-                self.create_runnables(typed_program, &decl_engine);
+                self.create_runnables(typed_program, engines.de());
 
                 let typed_tree = TypedTree::new(&ctx);
                 typed_tree.collect_module_spans(typed_program);
@@ -260,15 +271,15 @@ impl Session {
     }
 
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
-        let (_, token) = self.token_map.token_at_position(url, position)?;
-        let te = self.type_engine.read();
-        let de = self.decl_engine.read();
-        let engines = Engines::new(&te, &de);
+        let (_, token) =
+            self.token_map
+                .token_at_position(self.engines.read().se(), url, position)?;
+        let engines = self.engines.read();
 
         let mut token_ranges: Vec<_> = self
             .token_map
-            .tokens_for_file(url)
-            .all_references_of_token(&token, engines)
+            .tokens_for_file(engines.se(), url)
+            .all_references_of_token(&token, &engines)
             .map(|(ident, _)| get_range_from_span(&ident.span()))
             .collect();
 
@@ -281,17 +292,16 @@ impl Session {
         uri: Url,
         position: Position,
     ) -> Option<GotoDefinitionResponse> {
-        let te = self.type_engine.read();
-        let de = self.decl_engine.read();
-        let engines = Engines::new(&te, &de);
+        let engines = self.engines.read();
         self.token_map
-            .token_at_position(&uri, position)
-            .and_then(|(_, token)| token.declared_token_ident(engines))
+            .token_at_position(engines.se(), &uri, position)
+            .and_then(|(_, token)| token.declared_token_ident(&engines))
             .and_then(|decl_ident| {
                 let range = get_range_from_span(&decl_ident.span());
-                decl_ident.span().path().and_then(|path| {
+                decl_ident.span().source_id().and_then(|source_id| {
+                    let path = engines.se().get_path(source_id);
                     // We use ok() here because we don't care about propagating the error from from_file_path
-                    Url::from_file_path(path.as_ref()).ok().and_then(|url| {
+                    Url::from_file_path(path).ok().and_then(|url| {
                         self.sync
                             .to_workspace_url(url)
                             .map(|url| GotoDefinitionResponse::Scalar(Location::new(url, range)))
@@ -310,10 +320,13 @@ impl Session {
             line: position.line,
             character: position.character - trigger_char.len() as u32 - 1,
         };
-        let (ident_to_complete, _) = self.token_map.token_at_position(uri, shifted_position)?;
-        let fn_tokens = self
-            .token_map
-            .tokens_at_position(uri, shifted_position, Some(true));
+        let engines = self.engines.read();
+        let (ident_to_complete, _) =
+            self.token_map
+                .token_at_position(engines.se(), uri, shifted_position)?;
+        let fn_tokens =
+            self.token_map
+                .tokens_at_position(engines.se(), uri, shifted_position, Some(true));
         let (_, fn_token) = fn_tokens.first()?;
         let compiled_program = &*self.compiled_program.read();
 
@@ -321,7 +334,7 @@ impl Session {
             let program = compiled_program.typed.clone()?;
             return Some(capabilities::completion::to_completion_items(
                 &program.root.namespace,
-                Engines::new(&self.type_engine.read(), &self.decl_engine.read()),
+                &self.engines.read(),
                 &ident_to_complete,
                 &fn_decl,
                 position,
@@ -338,7 +351,8 @@ impl Session {
     }
 
     pub fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
-        let tokens = self.token_map.tokens_for_file(url);
+        let engines = self.engines.read();
+        let tokens = self.token_map.tokens_for_file(engines.se(), url);
         self.sync
             .to_workspace_url(url.clone())
             .map(|url| capabilities::document_symbol::to_symbol_information(tokens, url))

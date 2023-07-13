@@ -2,16 +2,18 @@ use std::path::PathBuf;
 
 use sway_ir::{
     create_arg_demotion_pass, create_const_combine_pass, create_const_demotion_pass,
-    create_dce_pass, create_dom_fronts_pass, create_dominators_pass, create_mem2reg_pass,
-    create_memcpyopt_pass, create_misc_demotion_pass, create_postorder_pass,
+    create_dce_pass, create_dom_fronts_pass, create_dominators_pass, create_escaped_symbols_pass,
+    create_mem2reg_pass, create_memcpyopt_pass, create_misc_demotion_pass, create_postorder_pass,
     create_ret_demotion_pass, create_simplify_cfg_pass, optimize as opt, Context, PassGroup,
     PassManager,
 };
+use sway_types::SourceEngine;
 
 // -------------------------------------------------------------------------------------------------
 // Utility for finding test files and running FileCheck.  See actual pass invocations below.
 
 fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
+    let source_engine = SourceEngine::default();
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let dir: PathBuf = format!("{manifest_dir}/tests/{sub_dir}").into();
     for entry in std::fs::read_dir(dir).unwrap() {
@@ -20,7 +22,7 @@ fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
         let input_bytes = std::fs::read(&path).unwrap();
         let input = String::from_utf8_lossy(&input_bytes);
 
-        let mut ir = sway_ir::parser::parse(&input).unwrap_or_else(|parse_err| {
+        let mut ir = sway_ir::parser::parse(&input, &source_engine).unwrap_or_else(|parse_err| {
             println!("{}: {parse_err}", path.display());
             panic!()
         });
@@ -153,6 +155,7 @@ fn dce() {
     run_tests("dce", |_first_line, ir: &mut Context| {
         let mut pass_mgr = PassManager::default();
         let mut pass_group = PassGroup::default();
+        pass_mgr.register(create_escaped_symbols_pass());
         let pass = pass_mgr.register(create_dce_pass());
         pass_group.append_pass(pass);
         pass_mgr.run(ir, &pass_group).unwrap()
@@ -240,6 +243,7 @@ fn memcpyopt() {
     run_tests("memcpyopt", |_first_line, ir: &mut Context| {
         let mut pass_mgr = PassManager::default();
         let mut pass_group = PassGroup::default();
+        pass_mgr.register(create_escaped_symbols_pass());
         let pass = pass_mgr.register(create_memcpyopt_pass());
         pass_group.append_pass(pass);
         pass_mgr.run(ir, &pass_group).unwrap()

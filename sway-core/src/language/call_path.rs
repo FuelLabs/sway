@@ -58,7 +58,7 @@ impl<T: Spanned> Spanned for CallPath<T> {
                 //LOC below should be removed when #21 goes in
                 .filter(|x| {
                     Arc::ptr_eq(x.src(), self.suffix.span().src())
-                        && x.path() == self.suffix.span().path()
+                        && x.source_id() == self.suffix.span().source_id()
                 })
                 .peekable();
             if prefixes_spans.peek().is_some() {
@@ -111,9 +111,11 @@ impl CallPath {
             // current submodule.
             let mut synonym_prefixes = vec![];
             let mut is_external = false;
+            let mut is_absolute = false;
 
             if let Some(use_synonym) = namespace.use_synonyms.get(&self.suffix) {
                 synonym_prefixes = use_synonym.0.clone();
+                is_absolute = use_synonym.3;
                 let submodule = namespace.submodule(&[use_synonym.0[0].clone()]);
                 if let Some(submodule) = submodule {
                     is_external = submodule.is_external;
@@ -127,8 +129,10 @@ impl CallPath {
                     prefixes.push(pkg_name.clone());
                 }
 
-                for mod_path in namespace.mod_path() {
-                    prefixes.push(mod_path.clone());
+                if !is_absolute {
+                    for mod_path in namespace.mod_path() {
+                        prefixes.push(mod_path.clone());
+                    }
                 }
             }
 

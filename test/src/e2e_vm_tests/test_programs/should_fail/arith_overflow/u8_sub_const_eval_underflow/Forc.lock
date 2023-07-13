@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-F069F51B6DE417DE'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-F069F51B6DE417DE'
+dependencies = ['core']
+
+[[package]]
+name = 'u8_sub_const_eval_underflow'
+source = 'member'
+dependencies = ['std']

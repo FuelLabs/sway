@@ -1,4 +1,8 @@
-use fuels::{prelude::*, tx::ContractId};
+use fuels::{
+    accounts::wallet::{Wallet, WalletUnlocked},
+    prelude::*,
+    types::ContractId,
+};
 
 abigen!(
     Contract(
@@ -29,7 +33,7 @@ async fn msg_sender_from_sdk() {
     let (auth_instance, _, _, _, wallet) = get_contracts().await;
     let result = auth_instance
         .methods()
-        .returns_msg_sender_address(wallet.address().into())
+        .returns_msg_sender_address(wallet.address())
         .call()
         .await
         .unwrap();
@@ -61,19 +65,21 @@ async fn get_contracts() -> (
 ) {
     let wallet = launch_provider_and_get_wallet().await;
 
-    let id_1 = Contract::deploy(
+    let id_1 = Contract::load_from(
         "test_artifacts/auth_testing_contract/out/debug/auth_testing_contract.bin",
-        &wallet,
-        DeployConfiguration::default(),
+        LoadConfiguration::default(),
     )
+    .unwrap()
+    .deploy(&wallet, TxParameters::default())
     .await
     .unwrap();
 
-    let id_2 = Contract::deploy(
+    let id_2 = Contract::load_from(
         "test_artifacts/auth_caller_contract/out/debug/auth_caller_contract.bin",
-        &wallet,
-        DeployConfiguration::default(),
+        LoadConfiguration::default(),
     )
+    .unwrap()
+    .deploy(&wallet, TxParameters::default())
     .await
     .unwrap();
 

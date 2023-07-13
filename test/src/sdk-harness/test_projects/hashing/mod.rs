@@ -1,6 +1,7 @@
 use fuels::{
+    accounts::wallet::WalletUnlocked,
     prelude::*,
-    tx::ContractId,
+    types::ContractId,
     types::{Bits256, SizedAsciiString},
 };
 use sha2::{Digest, Sha256};
@@ -51,10 +52,6 @@ fn hash_str(text: &str, algorithm: Hash) -> [u8; 32] {
     let mut buffer: Vec<u8> = Vec::new();
     for character in text.chars() {
         buffer.push(character as u8);
-    }
-
-    while buffer.len() % 8 != 0 {
-        buffer.push(0);
     }
 
     match algorithm {
@@ -130,11 +127,12 @@ fn hash_struct(arr: [u8; 80], algorithm: Hash) -> [u8; 32] {
 async fn get_hashing_instance() -> (HashingTestContract<WalletUnlocked>, ContractId) {
     let wallet = launch_provider_and_get_wallet().await;
 
-    let id = Contract::deploy(
+    let id = Contract::load_from(
         "test_projects/hashing/out/debug/hashing.bin",
-        &wallet,
-        DeployConfiguration::default(),
+        LoadConfiguration::default(),
     )
+    .unwrap()
+    .deploy(&wallet, TxParameters::default())
     .await
     .unwrap();
     let instance = HashingTestContract::new(id.clone(), wallet);

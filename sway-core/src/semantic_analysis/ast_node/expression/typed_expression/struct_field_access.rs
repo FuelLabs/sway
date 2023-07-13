@@ -7,7 +7,7 @@ use crate::{
 };
 
 pub(crate) fn instantiate_struct_field_access(
-    engines: Engines<'_>,
+    engines: &Engines,
     parent: ty::TyExpression,
     field_to_access: Ident,
     span: Span,

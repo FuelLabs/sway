@@ -15,7 +15,7 @@ pub trait TokenMapExt: Sized {
     fn all_references_of_token<'s>(
         self,
         token_to_match: &'s Token,
-        engines: Engines<'s>,
+        engines: &'s Engines,
     ) -> AllReferencesOfToken<'s, Self>;
 }
 
@@ -27,7 +27,7 @@ where
     fn all_references_of_token<'s>(
         self,
         token_to_match: &'s Token,
-        engines: Engines<'s>,
+        engines: &'s Engines,
     ) -> AllReferencesOfToken<'s, Self> {
         AllReferencesOfToken {
             token_to_match,
@@ -40,7 +40,7 @@ where
 /// A custom iterator that returns all references of a given token.
 pub struct AllReferencesOfToken<'s, I> {
     token_to_match: &'s Token,
-    engines: Engines<'s>,
+    engines: &'s Engines,
     iter: I,
 }
 

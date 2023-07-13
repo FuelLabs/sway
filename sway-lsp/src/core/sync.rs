@@ -4,6 +4,7 @@ use crate::{
 };
 use dashmap::DashMap;
 use forc_pkg::{manifest::Dependency, PackageManifestFile};
+use lsp_types::Url;
 use notify::RecursiveMode;
 use notify_debouncer_mini::new_debouncer;
 use parking_lot::RwLock;
@@ -12,11 +13,12 @@ use std::{
     fs::{self, File},
     io::{Read, Write},
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{atomic::AtomicBool, mpsc, Arc},
+    thread::JoinHandle,
+    time::Duration,
 };
-use sway_types::Span;
+use sway_types::{SourceEngine, Span};
 use tempfile::Builder;
-use tower_lsp::lsp_types::Url;
 
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub enum Directory {
@@ -27,7 +29,9 @@ pub enum Directory {
 #[derive(Debug)]
 pub struct SyncWorkspace {
     pub directories: DashMap<Directory, PathBuf>,
-    pub notify_join_handle: RwLock<Option<tokio::task::JoinHandle<()>>>,
+    pub notify_join_handle: RwLock<Option<JoinHandle<()>>>,
+    // if we should shutdown the thread watching the manifest file
+    pub should_end: Arc<AtomicBool>,
 }
 
 impl SyncWorkspace {
@@ -37,6 +41,7 @@ impl SyncWorkspace {
         Self {
             directories: DashMap::new(),
             notify_join_handle: RwLock::new(None),
+            should_end: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -116,16 +121,21 @@ impl SyncWorkspace {
 
     /// If it is a path to a temp directory, convert the path in the [Span] to the same file in the user's
     /// workspace. Otherwise, return the span as-is.
-    pub(crate) fn temp_to_workspace_span(&self, span: &Span) -> Result<Span, DirectoryError> {
-        let url = get_url_from_span(span)?;
+    pub(crate) fn temp_to_workspace_span(
+        &self,
+        source_engine: &SourceEngine,
+        span: &Span,
+    ) -> Result<Span, DirectoryError> {
+        let url = get_url_from_span(source_engine, span)?;
         if self.is_path_in_temp_workspace(&url) {
             let converted_url = self.convert_url(&url, self.manifest_dir()?, self.temp_dir()?)?;
             let converted_path = get_path_from_url(&converted_url)?;
+            let source_id = source_engine.get_source_id(&converted_path);
             let converted_span = Span::new(
                 span.src().clone(),
                 span.start(),
                 span.end(),
-                Some(converted_path.clone().into()),
+                Some(source_id),
             );
             match converted_span {
                 Some(span) => Ok(span),
@@ -170,13 +180,13 @@ impl SyncWorkspace {
                 if let Some(temp_manifest_path) = self.temp_manifest_path() {
                     edit_manifest_dependency_paths(&manifest, &temp_manifest_path);
 
-                    let handle = tokio::spawn(async move {
-                        let (tx, mut rx) = tokio::sync::mpsc::channel(10);
+                    let (tx, rx) = mpsc::channel();
+                    let handle = std::thread::spawn(move || {
                         // Setup debouncer. No specific tickrate, max debounce time 2 seconds
                         let mut debouncer =
-                            new_debouncer(std::time::Duration::from_secs(1), None, move |event| {
+                            new_debouncer(Duration::from_secs(1), None, move |event| {
                                 if let Ok(e) = event {
-                                    let _ = tx.blocking_send(e);
+                                    let _ = tx.send(e);
                                 }
                             })
                             .unwrap();
@@ -186,7 +196,7 @@ impl SyncWorkspace {
                             .watch(manifest_dir.as_ref().path(), RecursiveMode::NonRecursive)
                             .unwrap();
 
-                        while let Some(_events) = rx.recv().await {
+                        while let Ok(_events) = rx.recv() {
                             // Rescan the Forc.toml and convert
                             // relative paths to absolute. Save into our temp directory.
                             edit_manifest_dependency_paths(&manifest, &temp_manifest_path);

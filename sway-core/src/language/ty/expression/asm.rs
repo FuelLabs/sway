@@ -11,7 +11,7 @@ pub struct TyAsmRegisterDeclaration {
 }
 
 impl PartialEqWithEngines for TyAsmRegisterDeclaration {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.name == other.name
             && if let (Some(l), Some(r)) = (&self.initializer, &other.initializer) {
                 l.eq(r, engines)
@@ -22,7 +22,7 @@ impl PartialEqWithEngines for TyAsmRegisterDeclaration {
 }
 
 impl HashWithEngines for TyAsmRegisterDeclaration {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TyAsmRegisterDeclaration { initializer, name } = self;
         name.hash(state);
         if let Some(x) = initializer.as_ref() {
@@ -32,7 +32,7 @@ impl HashWithEngines for TyAsmRegisterDeclaration {
 }
 
 impl SubstTypes for TyAsmRegisterDeclaration {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         if let Some(ref mut initializer) = self.initializer {
             initializer.subst(type_mapping, engines)
         }
@@ -40,7 +40,7 @@ impl SubstTypes for TyAsmRegisterDeclaration {
 }
 
 impl ReplaceSelfType for TyAsmRegisterDeclaration {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         if let Some(ref mut initializer) = self.initializer {
             initializer.replace_self_type(engines, self_type)
         }

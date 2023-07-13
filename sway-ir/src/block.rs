@@ -53,11 +53,13 @@ pub struct BlockArgument {
 impl BlockArgument {
     /// Get the actual parameter passed to this block argument from `from_block`
     pub fn get_val_coming_from(&self, context: &Context, from_block: &Block) -> Option<Value> {
-        for pred in self.block.pred_iter(context) {
-            for BranchToWithArgs { block, args } in pred.successors(context) {
-                if block == *from_block {
-                    return Some(args[self.idx]);
-                }
+        for BranchToWithArgs {
+            block: succ_block,
+            args,
+        } in from_block.successors(context)
+        {
+            if succ_block == self.block {
+                return Some(args[self.idx]);
             }
         }
         None
@@ -90,7 +92,7 @@ impl Block {
     }
 
     /// Create a new [`InstructionInserter`] to more easily append instructions to this block.
-    pub fn ins<'a>(&self, context: &'a mut Context) -> InstructionInserter<'a> {
+    pub fn ins<'a, 'eng>(&self, context: &'a mut Context<'eng>) -> InstructionInserter<'a, 'eng> {
         InstructionInserter::new(context, *self)
     }
 

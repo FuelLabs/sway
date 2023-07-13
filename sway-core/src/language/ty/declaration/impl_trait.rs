@@ -36,7 +36,7 @@ impl Spanned for TyImplTrait {
 
 impl EqWithEngines for TyImplTrait {}
 impl PartialEqWithEngines for TyImplTrait {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.impl_type_parameters
             .eq(&other.impl_type_parameters, engines)
             && self.trait_name == other.trait_name
@@ -50,7 +50,7 @@ impl PartialEqWithEngines for TyImplTrait {
 }
 
 impl HashWithEngines for TyImplTrait {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TyImplTrait {
             impl_type_parameters,
             trait_name,
@@ -72,7 +72,7 @@ impl HashWithEngines for TyImplTrait {
 }
 
 impl SubstTypes for TyImplTrait {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         self.impl_type_parameters
             .iter_mut()
             .for_each(|x| x.subst(type_mapping, engines));
@@ -84,7 +84,7 @@ impl SubstTypes for TyImplTrait {
 }
 
 impl ReplaceSelfType for TyImplTrait {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
         self.impl_type_parameters
             .iter_mut()
             .for_each(|x| x.replace_self_type(engines, self_type));

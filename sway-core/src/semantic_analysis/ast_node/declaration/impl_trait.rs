@@ -33,8 +33,8 @@ impl ty::TyImplTrait {
             block_span,
         } = impl_trait;
 
-        let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
+        let type_engine = ctx.engines.te();
+        let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
         // create a namespace for the impl
@@ -44,7 +44,7 @@ impl ty::TyImplTrait {
         // Type check the type parameters. This will also insert them into the
         // current namespace.
         let new_impl_type_parameters = check!(
-            TypeParameter::type_check_type_params(ctx.by_ref(), impl_type_parameters, false),
+            TypeParameter::type_check_type_params(ctx.by_ref(), impl_type_parameters),
             return err(warnings, errors),
             warnings,
             errors
@@ -96,7 +96,7 @@ impl ty::TyImplTrait {
         let mut ctx = ctx
             .with_self_type(implementing_for.type_id)
             .with_help_text("")
-            .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
 
         let impl_trait = match ctx
             .namespace
@@ -140,6 +140,7 @@ impl ty::TyImplTrait {
                         &trait_decl.items,
                         &items,
                         &trait_name,
+                        &trait_decl.span(),
                         &block_span,
                         false,
                     ),
@@ -199,6 +200,7 @@ impl ty::TyImplTrait {
                         &abi.items,
                         &items,
                         &trait_name,
+                        &abi.span(),
                         &block_span,
                         true
                     ),
@@ -241,8 +243,8 @@ impl ty::TyImplTrait {
             block_span,
         } = impl_self;
 
-        let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
+        let type_engine = ctx.engines.te();
+        let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
         // create the namespace for the impl
@@ -262,7 +264,7 @@ impl ty::TyImplTrait {
         // Type check the type parameters. This will also insert them into the
         // current namespace.
         let new_impl_type_parameters = check!(
-            TypeParameter::type_check_type_params(ctx.by_ref(), impl_type_parameters, false),
+            TypeParameter::type_check_type_params(ctx.by_ref(), impl_type_parameters),
             return err(warnings, errors),
             warnings,
             errors
@@ -300,9 +302,11 @@ impl ty::TyImplTrait {
         );
 
         check!(
-            implementing_for
-                .type_id
-                .check_type_parameter_bounds(&ctx, &implementing_for.span),
+            implementing_for.type_id.check_type_parameter_bounds(
+                &ctx,
+                &implementing_for.span,
+                vec![]
+            ),
             return err(warnings, errors),
             warnings,
             errors
@@ -311,7 +315,7 @@ impl ty::TyImplTrait {
         let mut ctx = ctx
             .with_self_type(implementing_for.type_id)
             .with_help_text("")
-            .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
 
         // Insert implementing type decl as `Self` symbol.
         let self_decl: Option<ty::TyDecl> = match type_engine.get(implementing_for.type_id) {
@@ -392,13 +396,14 @@ fn type_check_trait_implementation(
     trait_items: &[TyImplItem],
     impl_items: &[ImplItem],
     trait_name: &CallPath,
+    trait_decl_span: &Span,
     block_span: &Span,
     is_contract: bool,
 ) -> CompileResult<Vec<TyImplItem>> {
     let mut errors = vec![];
     let mut warnings = vec![];
 
-    let decl_engine = ctx.decl_engine;
+    let decl_engine = ctx.engines.de();
     let engines = ctx.engines();
     let self_type = ctx.self_type();
 
@@ -420,6 +425,19 @@ fn type_check_trait_implementation(
         warnings,
         errors
     );
+
+    for (type_arg, type_param) in trait_type_arguments.iter().zip(trait_type_parameters) {
+        check!(
+            type_arg.type_id.check_type_parameter_bounds(
+                &ctx,
+                &type_arg.span(),
+                type_param.trait_constraints.clone()
+            ),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+    }
 
     // This map keeps track of the remaining functions in the interface surface
     // that still need to be implemented for the trait to be fully implemented.
@@ -466,6 +484,7 @@ fn type_check_trait_implementation(
                 .cloned()
                 .collect::<Vec<_>>(),
             &trait_name.span(),
+            Some(trait_decl_span.clone()),
             false,
             engines,
         );
@@ -633,15 +652,14 @@ fn type_check_impl_method(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
+    let type_engine = ctx.engines.te();
     let engines = ctx.engines();
     let self_type = ctx.self_type();
 
     let mut ctx = ctx
         .by_ref()
         .with_help_text("")
-        .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
+        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
 
     let interface_name = || -> InterfaceName {
         if is_contract {
@@ -795,10 +813,10 @@ fn type_check_impl_method(
         (true, true) | (false, false) => (), // no payability mismatch
     }
 
-    if !type_engine
-        .get(impl_method.return_type.type_id)
-        .eq(&type_engine.get(impl_method_signature.return_type), engines)
-    {
+    if !type_engine.get(impl_method.return_type.type_id).eq(
+        &type_engine.get(impl_method_signature.return_type.type_id),
+        engines,
+    ) {
         errors.push(CompileError::MismatchedTypeInInterfaceSurface {
             interface_name: interface_name(),
             span: impl_method.return_type.span.clone(),
@@ -851,15 +869,14 @@ fn type_check_const_decl(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
+    let type_engine = ctx.engines.te();
     let engines = ctx.engines();
     let self_type = ctx.self_type();
 
     let mut ctx = ctx
         .by_ref()
         .with_help_text("")
-        .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
+        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
 
     let interface_name = || -> InterfaceName {
         if is_contract {
@@ -967,7 +984,7 @@ fn type_check_const_decl(
 /// }
 /// ```
 fn check_for_unconstrained_type_parameters(
-    engines: Engines<'_>,
+    engines: &Engines,
     type_parameters: &[TypeParameter],
     trait_type_arguments: &[TypeArgument],
     self_type: TypeId,
@@ -1025,7 +1042,7 @@ fn handle_supertraits(
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
 
-    let decl_engine = ctx.decl_engine;
+    let decl_engine = ctx.engines.de();
 
     let mut interface_surface_item_ids: InterfaceItemMap = BTreeMap::new();
     let mut impld_item_refs: ItemMap = BTreeMap::new();

@@ -198,7 +198,7 @@ use super::{
 /// exhaustive if the imaginary additional wildcard pattern has an empty
 /// `WitnessReport`.
 pub(crate) fn check_match_expression_usefulness(
-    engines: Engines<'_>,
+    engines: &Engines,
     type_id: TypeId,
     scrutinees: Vec<ty::TyScrutinee>,
     span: Span,
@@ -270,7 +270,7 @@ pub(crate) fn check_match_expression_usefulness(
 /// pattern, or-pattern, or constructed pattern we do something different. Each
 /// case returns a witness report that we propagate through the recursive steps.
 fn is_useful(
-    engines: Engines<'_>,
+    engines: &Engines,
     factory: &ConstructorFactory,
     p: &Matrix,
     q: &PatStack,
@@ -357,7 +357,7 @@ fn is_useful(
 ///     5. Add this new pattern to the resulting witness report
 ///     6. Return the witness report
 fn is_useful_wildcard(
-    engines: Engines<'_>,
+    engines: &Engines,
     factory: &ConstructorFactory,
     p: &Matrix,
     q: &PatStack,
@@ -548,7 +548,7 @@ fn is_useful_wildcard(
 /// 2. Extract the specialized `Matrix` *S(c, q)*
 /// 3. Recursively compute *U(S(c, P), S(c, q))*
 fn is_useful_constructed(
-    engines: Engines<'_>,
+    engines: &Engines,
     factory: &ConstructorFactory,
     p: &Matrix,
     q: &PatStack,
@@ -603,7 +603,7 @@ fn is_useful_constructed(
 /// 2. Compute the witnesses from *U(P, q')*
 /// 3. Aggregate the witnesses from every *U(P, q')*
 fn is_useful_or(
-    engines: Engines<'_>,
+    engines: &Engines,
     factory: &ConstructorFactory,
     p: &Matrix,
     q: &PatStack,

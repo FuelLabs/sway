@@ -12,13 +12,13 @@ use super::occurs_check::OccursCheck;
 
 /// Helper struct to aid in type unification.
 pub(crate) struct Unifier<'a> {
-    engines: Engines<'a>,
+    engines: &'a Engines,
     help_text: String,
 }
 
 impl<'a> Unifier<'a> {
     /// Creates a new [Unifier].
-    pub(crate) fn new(engines: Engines<'a>, help_text: &str) -> Unifier<'a> {
+    pub(crate) fn new(engines: &'a Engines, help_text: &str) -> Unifier<'a> {
         Unifier {
             engines,
             help_text: help_text.to_string(),
@@ -432,8 +432,8 @@ impl<'a> Unifier<'a> {
     where
         WithEngines<'a, T>: fmt::Debug,
     {
-        let r = format!("{:?}", self.engines.with_thing(r));
-        let e = format!("{:?}", self.engines.with_thing(e));
+        let r = format!("{:?}", self.engines.help_out(r));
+        let e = format!("{:?}", self.engines.help_out(e));
         (r, e)
     }
 }

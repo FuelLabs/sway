@@ -1,0 +1,8 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-8E4C78460FB62C32'
+
+[[package]]
+name = 'where_clause_traits'
+source = 'member'
+dependencies = ['core']

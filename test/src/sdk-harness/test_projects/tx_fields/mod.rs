@@ -1,8 +1,11 @@
 use fuel_vm::fuel_crypto::Hasher;
+use fuel_vm::fuel_tx::{
+    field::*, Bytes32, ConsensusParameters, ContractId, Input as TxInput, TxPointer, UtxoId,
+};
 use fuels::{
-    accounts::{predicate::Predicate, Account},
+    accounts::{predicate::Predicate, wallet::WalletUnlocked, Account},
     prelude::*,
-    tx::{field::*, Bytes32, ConsensusParameters, ContractId, Input as TxInput, TxPointer, UtxoId},
+    types::Bits256,
 };
 use std::str::FromStr;
 
@@ -16,6 +19,10 @@ abigen!(
     Predicate(
         name = "TestPredicate",
         abi = "test_projects/tx_fields/out/debug/tx_predicate-abi.json"
+    ),
+    Predicate(
+        name = "TestOutputPredicate",
+        abi = "test_artifacts/tx_output_predicate/out/debug/tx_output_predicate-abi.json"
     )
 );
 
@@ -46,7 +53,7 @@ async fn get_contracts() -> (
         },
         wallet.address(),
         DEFAULT_COIN_AMOUNT,
-        69,
+        69.into(),
         MESSAGE_DATA.to_vec(),
     );
 
@@ -55,11 +62,12 @@ async fn get_contracts() -> (
     wallet.set_provider(provider.clone());
     deployment_wallet.set_provider(provider);
 
-    let contract_id = Contract::deploy(
+    let contract_id = Contract::load_from(
         "test_artifacts/tx_contract/out/debug/tx_contract.bin",
-        &deployment_wallet,
-        DeployConfiguration::default(),
+        LoadConfiguration::default(),
     )
+    .unwrap()
+    .deploy(&wallet, TxParameters::default())
     .await
     .unwrap();
 
@@ -70,7 +78,6 @@ async fn get_contracts() -> (
 
 async fn generate_predicate_inputs(
     amount: u64,
-    data: Vec<u8>,
     wallet: &WalletUnlocked,
 ) -> (Vec<u8>, TxInput, TxInput) {
     let predicate =
@@ -100,36 +107,27 @@ async fn generate_predicate_inputs(
         .get_coins(&predicate_root, AssetId::default())
         .await
         .unwrap()[0];
-    let predicate_coin = TxInput::CoinPredicate {
-        utxo_id: UtxoId::from(predicate_coin.utxo_id.clone()),
-        owner: Address::from(predicate_coin.owner.clone()),
-        amount: predicate_coin.amount.clone().into(),
-        asset_id: AssetId::from(predicate_coin.asset_id.clone()),
-        tx_pointer: TxPointer::default(),
-        maturity: 0,
-        predicate: predicate_code.clone(),
-        predicate_data: vec![],
-    };
+    let predicate_coin = TxInput::coin_predicate(
+        UtxoId::from(predicate_coin.utxo_id.clone()),
+        Address::from(predicate_coin.owner.clone()),
+        predicate_coin.amount.clone().into(),
+        AssetId::from(predicate_coin.asset_id.clone()),
+        TxPointer::default(),
+        0u32.into(),
+        predicate_code.clone(),
+        vec![],
+    );
     let predicate_address: Address = predicate.address().into();
     let message = &wallet.get_messages().await.unwrap()[0];
-    let message_id = TxInput::compute_message_id(
-        &message.sender.clone().into(),
-        &predicate_address,
-        message.nonce.clone(),
-        message.amount,
-        &data,
-    );
 
-    let predicate_message = TxInput::MessagePredicate {
-        message_id: message_id,
-        sender: message.sender.clone().into(),
-        recipient: predicate_address.clone().into(),
-        amount: message.amount,
-        nonce: message.nonce.clone(),
-        data: data.clone(),
-        predicate: predicate_code.clone(),
-        predicate_data: vec![],
-    };
+    let predicate_message = TxInput::message_coin_predicate(
+        message.sender.clone().into(),
+        predicate_address.clone().into(),
+        message.amount,
+        message.nonce.clone(),
+        predicate_code.clone(),
+        vec![],
+    );
 
     (predicate_code, predicate_coin, predicate_message)
 }
@@ -137,25 +135,65 @@ async fn generate_predicate_inputs(
 async fn add_message_input(tx: &mut ScriptTransaction, wallet: WalletUnlocked) {
     let message = &wallet.get_messages().await.unwrap()[0];
 
-    let message_id = TxInput::compute_message_id(
-        &message.sender.clone().into(),
-        &message.recipient.clone().into(),
-        message.nonce.clone().into(),
+    let message_input = TxInput::message_data_signed(
+        message.sender.clone().into(),
+        message.recipient.clone().into(),
         message.amount,
-        &message.data,
+        message.nonce,
+        0,
+        message.data.clone(),
     );
 
-    let message_input = TxInput::MessageSigned {
-        message_id: message_id,
-        sender: message.sender.clone().into(),
-        recipient: message.recipient.clone().into(),
-        amount: message.amount,
-        nonce: message.nonce,
-        witness_index: 0,
-        data: message.data.clone(),
-    };
-
     tx.tx.inputs_mut().push(message_input);
+}
+
+async fn setup_output_predicate() -> (WalletUnlocked, WalletUnlocked, Predicate, AssetId, AssetId) {
+    let asset_id1 = AssetId::default();
+    let asset_id2 = AssetId::new([2u8; 32]);
+    let wallets_config = WalletsConfig::new_multiple_assets(
+        2,
+        vec![
+            AssetConfig {
+                id: asset_id1,
+                num_coins: 1,
+                coin_amount: 1_000,
+            },
+            AssetConfig {
+                id: asset_id2,
+                num_coins: 1,
+                coin_amount: 1_000,
+            },
+        ],
+    );
+
+    let mut wallets = launch_custom_provider_and_get_wallets(wallets_config, None, None).await;
+    let wallet1 = wallets.pop().unwrap();
+    let wallet2 = wallets.pop().unwrap();
+
+    let predicate_data = TestOutputPredicateEncoder::encode_data(
+        0,
+        ContractId::zeroed(),
+        Bits256(*wallet1.address().hash()),
+    );
+
+    let predicate = Predicate::load_from(
+        "test_artifacts/tx_output_predicate/out/debug/tx_output_predicate.bin",
+    )
+    .unwrap()
+    .with_data(predicate_data)
+    .with_provider(wallet1.try_provider().unwrap().clone());
+
+    wallet1
+        .transfer(predicate.address(), 100, asset_id1, TxParameters::default())
+        .await
+        .unwrap();
+
+    wallet1
+        .transfer(predicate.address(), 100, asset_id2, TxParameters::default())
+        .await
+        .unwrap();
+
+    (wallet1, wallet2, predicate, asset_id1, asset_id2)
 }
 
 mod tx {
@@ -419,7 +457,9 @@ mod tx {
 
         let handler = contract_instance.methods().get_tx_id();
         let tx = handler.build_tx().await.unwrap();
-        let tx_id = tx.id();
+
+        let params = wallet.provider().unwrap().consensus_parameters();
+        let tx_id = tx.id(&params);
 
         let receipts = wallet
             .provider()
@@ -527,7 +567,7 @@ mod inputs {
         async fn can_get_input_coin_predicate() {
             let (contract_instance, _, wallet, _) = get_contracts().await;
             let (predicate_bytecode, predicate_coin, _) =
-                generate_predicate_inputs(100, vec![], &wallet).await;
+                generate_predicate_inputs(100, &wallet).await;
             let predicate_bytes: Vec<u8> = predicate_bytecode.try_into().unwrap();
 
             // Add predicate coin to inputs and call contract
@@ -550,28 +590,6 @@ mod inputs {
 
         mod message {
             use super::*;
-
-            #[tokio::test]
-            async fn can_get_input_message_msg_id() -> Result<()> {
-                let (contract_instance, _, wallet, _) = get_contracts().await;
-
-                let handler = contract_instance.methods().get_input_message_msg_id(2);
-                let mut tx = handler.build_tx().await.unwrap();
-                add_message_input(&mut tx, wallet.clone()).await;
-
-                let messages = wallet.get_messages().await?;
-                let message_id: [u8; 32] = *messages[0].message_id();
-
-                let receipts = wallet
-                    .provider()
-                    .unwrap()
-                    .send_transaction(&tx)
-                    .await
-                    .unwrap();
-
-                assert_eq!(receipts[1].data().unwrap(), message_id);
-                Ok(())
-            }
 
             #[tokio::test]
             async fn can_get_input_message_sender() -> Result<()> {
@@ -624,8 +642,9 @@ mod inputs {
                     .send_transaction(&tx)
                     .await
                     .unwrap();
-                let nonce: u64 = messages[0].nonce.clone().into();
-                assert_eq!(receipts[1].val().unwrap(), nonce);
+                let nonce = *messages[0].nonce.clone();
+                let val = receipts[1].data().unwrap();
+                assert_eq!(val, &nonce);
                 Ok(())
             }
 
@@ -663,7 +682,7 @@ mod inputs {
             async fn can_get_input_message_predicate_length() {
                 let (contract_instance, _, wallet, _) = get_contracts().await;
                 let (predicate_bytecode, _, predicate_message) =
-                    generate_predicate_inputs(100, vec![], &wallet).await;
+                    generate_predicate_inputs(100, &wallet).await;
                 let handler = contract_instance.methods().get_input_predicate_length(2);
                 let mut tx = handler.build_tx().await.unwrap();
                 tx.tx.inputs_mut().push(predicate_message);
@@ -680,10 +699,8 @@ mod inputs {
 
             #[tokio::test]
             async fn can_get_input_message_predicate_data_length() {
-                let predicate_data = vec![];
                 let (contract_instance, _, wallet, _) = get_contracts().await;
-                let (_, _, predicate_message) =
-                    generate_predicate_inputs(100, predicate_data.clone(), &wallet).await;
+                let (_, _, predicate_message) = generate_predicate_inputs(100, &wallet).await;
                 let handler = contract_instance
                     .methods()
                     .get_input_predicate_data_length(1);
@@ -696,7 +713,7 @@ mod inputs {
                     .send_transaction(&tx)
                     .await
                     .unwrap();
-                assert_eq!(receipts[1].val().unwrap(), predicate_data.len() as u64);
+                assert_eq!(receipts[1].val().unwrap(), 0);
             }
 
             #[tokio::test]
@@ -724,7 +741,7 @@ mod inputs {
             async fn can_get_input_message_predicate() {
                 let (contract_instance, _, wallet, _) = get_contracts().await;
                 let (predicate_bytecode, _, predicate_message) =
-                    generate_predicate_inputs(100, vec![], &wallet).await;
+                    generate_predicate_inputs(100, &wallet).await;
                 let predicate_bytes: Vec<u8> = predicate_bytecode.try_into().unwrap();
                 let handler = contract_instance
                     .methods()
@@ -763,6 +780,28 @@ mod outputs {
                 .unwrap();
             assert_eq!(result.value, Output::Contract);
         }
+
+        #[tokio::test]
+        async fn can_get_tx_output_details() {
+            let (wallet, _, predicate, asset_id, _) = setup_output_predicate().await;
+
+            let balance = predicate.get_asset_balance(&asset_id).await.unwrap();
+
+            let transfer_amount = 10;
+            predicate
+                .transfer(
+                    wallet.address(),
+                    transfer_amount,
+                    asset_id,
+                    TxParameters::default(),
+                )
+                .await
+                .unwrap();
+
+            let new_balance = predicate.get_asset_balance(&asset_id).await.unwrap();
+
+            assert!(balance - transfer_amount == new_balance);
+        }
     }
 
     mod revert {
@@ -782,6 +821,40 @@ mod outputs {
                     .await
                     .unwrap();
             }
+        }
+
+        #[tokio::test]
+        #[should_panic]
+        async fn fails_output_predicate_when_incorrect_asset() {
+            let (wallet1, _, predicate, _, asset_id2) = setup_output_predicate().await;
+
+            let transfer_amount = 10;
+            predicate
+                .transfer(
+                    wallet1.address(),
+                    transfer_amount,
+                    asset_id2,
+                    TxParameters::default(),
+                )
+                .await
+                .unwrap();
+        }
+
+        #[tokio::test]
+        #[should_panic]
+        async fn fails_output_predicate_when_incorrect_to() {
+            let (_, wallet2, predicate, asset_id1, _) = setup_output_predicate().await;
+
+            let transfer_amount = 10;
+            predicate
+                .transfer(
+                    wallet2.address(),
+                    transfer_amount,
+                    asset_id1,
+                    TxParameters::default(),
+                )
+                .await
+                .unwrap();
         }
     }
 }

@@ -119,19 +119,12 @@ pub(crate) fn matcher(
         span,
     } = scrutinee;
 
-    let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
+    let type_engine = ctx.engines.te();
+    let engines = ctx.engines();
 
     // unify the type of the scrutinee with the type of the expression
     check!(
-        CompileResult::from(type_engine.unify(
-            decl_engine,
-            type_id,
-            exp.return_type,
-            &span,
-            "",
-            None
-        )),
+        CompileResult::from(type_engine.unify(engines, type_id, exp.return_type, &span, "", None)),
         return err(warnings, errors),
         warnings,
         errors

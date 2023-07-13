@@ -17,6 +17,7 @@ fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
             locked: cmd.build.pkg.locked,
             output_directory: cmd.build.pkg.output_directory,
             json_abi_with_callpaths: cmd.build.pkg.json_abi_with_callpaths,
+            ipfs_node: cmd.build.pkg.ipfs_node.unwrap_or_default(),
         },
         print: pkg::PrintOpts {
             ast: cmd.build.print.ast,
@@ -25,8 +26,10 @@ fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
             finalized_asm: cmd.build.print.finalized_asm,
             intermediate_asm: cmd.build.print.intermediate_asm,
             ir: cmd.build.print.ir,
+            reverse_order: cmd.build.print.reverse_order,
         },
         time_phases: cmd.build.print.time_phases,
+        metrics_outfile: cmd.build.print.metrics_outfile,
         minify: pkg::MinifyOpts {
             json_abi: cmd.build.minify.json_abi,
             json_storage_slots: cmd.build.minify.json_storage_slots,
@@ -39,6 +42,5 @@ fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
         build_target: cmd.build.build_target,
         tests: cmd.tests,
         member_filter: Default::default(),
-        experimental_private_modules: cmd.build.profile.experimental_private_modules,
     }
 }

@@ -7,7 +7,7 @@ use crate::{
 };
 
 pub(crate) fn instantiate_tuple_index_access(
-    engines: Engines<'_>,
+    engines: &Engines,
     parent: ty::TyExpression,
     index: usize,
     index_span: Span,

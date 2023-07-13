@@ -40,7 +40,7 @@ fn gather_from_fn_decl(
     decl_id: &DeclId<ty::TyFunctionDecl>,
     subst_list: &SubstList,
 ) -> Result<(), ErrorEmitted> {
-    let decl = ctx.decl_engine.get_function(decl_id);
+    let decl = ctx.engines.de().get_function(decl_id);
 
     if !subst_list.is_empty() {
         unimplemented!("{}", decl.name);

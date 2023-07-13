@@ -60,19 +60,19 @@ impl std::iter::FromIterator<TypeParameter> for SubstList {
 
 impl EqWithEngines for SubstList {}
 impl PartialEqWithEngines for SubstList {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.list.eq(&other.list, engines)
     }
 }
 
 impl HashWithEngines for SubstList {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         self.list.hash(state, engines);
     }
 }
 
 impl OrdWithEngines for SubstList {
-    fn cmp(&self, other: &Self, engines: Engines<'_>) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self, engines: &Engines) -> std::cmp::Ordering {
         let SubstList { list: ll } = self;
         let SubstList { list: rl } = other;
         ll.cmp(rl, engines)
@@ -80,7 +80,7 @@ impl OrdWithEngines for SubstList {
 }
 
 impl SubstTypes for SubstList {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         self.list
             .iter_mut()
             .for_each(|x| x.subst(type_mapping, engines));

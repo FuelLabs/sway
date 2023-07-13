@@ -1,10 +1,10 @@
-///! Return value demotion.
-///!
-///! This pass demotes 'by-value' function return types to 'by-reference` pointer types, based on
-///! target specific parameters.
-///!
-///! An extra argument pointer is added to the function and this pointer is also returned.  The
-///! return value is mem_copied to the new argument instead of being returned by value.
+/// Return value demotion.
+///
+/// This pass demotes 'by-value' function return types to 'by-reference` pointer types, based on
+/// target specific parameters.
+///
+/// An extra argument pointer is added to the function and this pointer is also returned.  The
+/// return value is mem_copied to the new argument instead of being returned by value.
 use crate::{
     AnalysisResults, BlockArgument, Context, Function, Instruction, IrError, Pass, PassMutability,
     ScopedPass, Type, Value,

@@ -1,10 +1,15 @@
 //! A parser for the printed IR, useful mostly for testing.
 
+use sway_types::SourceEngine;
+
 use crate::{context::Context, error::IrError};
 
 // -------------------------------------------------------------------------------------------------
 /// Parse a string produced by [`crate::printer::to_string`] into a new [`Context`].
-pub fn parse(input: &str) -> Result<Context, IrError> {
+pub fn parse<'eng>(
+    input: &str,
+    source_engine: &'eng SourceEngine,
+) -> Result<Context<'eng>, IrError> {
     let irmod = ir_builder::parser::ir_descrs(input).map_err(|err| {
         let found = if input.len() - err.location.offset <= 20 {
             &input[err.location.offset..]
@@ -13,13 +18,13 @@ pub fn parse(input: &str) -> Result<Context, IrError> {
         };
         IrError::ParseFailure(err.to_string(), found.into())
     })?;
-    ir_builder::build_context(irmod)?.verify()
+    ir_builder::build_context(irmod, source_engine)?.verify()
 }
 
 // -------------------------------------------------------------------------------------------------
 
 mod ir_builder {
-    use sway_types::{ident::Ident, span::Span};
+    use sway_types::{ident::Ident, span::Span, SourceEngine};
 
     type MdIdxRef = u64;
 
@@ -154,6 +159,9 @@ mod ir_builder {
                     mdi
                 }
 
+            rule unary_op_kind() -> UnaryOpKind
+                = "not" _ { UnaryOpKind::Not }
+
             rule binary_op_kind() -> BinaryOpKind
                 = "add" _ { BinaryOpKind::Add }
                 / "sub" _ { BinaryOpKind::Sub }
@@ -170,6 +178,7 @@ mod ir_builder {
                 = op_asm()
                 / op_branch()
                 / op_bitcast()
+                / op_unary()
                 / op_binary()
                 / op_call()
                 / op_cast_ptr()
@@ -213,6 +222,11 @@ mod ir_builder {
             rule op_bitcast() -> IrAstOperation
                 = "bitcast" _ val:id() "to" _ ty:ast_ty() {
                     IrAstOperation::BitCast(val, ty)
+                }
+
+            rule op_unary() -> IrAstOperation
+                = op: unary_op_kind() arg1:id() {
+                    IrAstOperation::UnaryOp(op, arg1)
                 }
 
             rule op_binary() -> IrAstOperation
@@ -611,7 +625,7 @@ mod ir_builder {
         metadata::{MetadataIndex, Metadatum},
         module::{Kind, Module},
         value::Value,
-        BinaryOpKind, BlockArgument,
+        BinaryOpKind, BlockArgument, UnaryOpKind,
     };
 
     #[derive(Debug)]
@@ -659,6 +673,7 @@ mod ir_builder {
             Option<MdIdxRef>,
         ),
         BitCast(String, IrAstTy),
+        UnaryOp(UnaryOpKind, String),
         BinaryOp(BinaryOpKind, String, String),
         Br(String, Vec<String>),
         Call(String, Vec<String>),
@@ -841,8 +856,11 @@ mod ir_builder {
 
     use std::{collections::HashMap, iter::FromIterator};
 
-    pub(super) fn build_context(ir_ast_mod: IrAstModule) -> Result<Context, IrError> {
-        let mut ctx = Context::default();
+    pub(super) fn build_context(
+        ir_ast_mod: IrAstModule,
+        source_engine: &SourceEngine,
+    ) -> Result<Context, IrError> {
+        let mut ctx = Context::new(source_engine);
         let md_map = build_metadata_map(&mut ctx, ir_ast_mod.metadata);
         let mut module = Module::new(&mut ctx, ir_ast_mod.kind);
         let mut builder = IrBuilder {
@@ -1031,6 +1049,10 @@ mod ir_builder {
                             .bitcast(*val_map.get(&val).unwrap(), to_ty)
                             .add_metadatum(context, opt_metadata)
                     }
+                    IrAstOperation::UnaryOp(op, arg) => block
+                        .ins(context)
+                        .unary_op(op, *val_map.get(&arg).unwrap())
+                        .add_metadatum(context, opt_metadata),
                     IrAstOperation::BinaryOp(op, arg1, arg2) => block
                         .ins(context)
                         .binary_op(
@@ -1230,17 +1252,12 @@ mod ir_builder {
                         .ins(context)
                         .revert(*val_map.get(&ret_val_name).unwrap())
                         .add_metadatum(context, opt_metadata),
-                    IrAstOperation::Smo(
-                        recipient_and_message,
-                        message_size,
-                        output_index,
-                        coins,
-                    ) => block
+                    IrAstOperation::Smo(recipient, message, message_size, coins) => block
                         .ins(context)
                         .smo(
-                            *val_map.get(&recipient_and_message).unwrap(),
+                            *val_map.get(&recipient).unwrap(),
+                            *val_map.get(&message).unwrap(),
                             *val_map.get(&message_size).unwrap(),
-                            *val_map.get(&output_index).unwrap(),
                             *val_map.get(&coins).unwrap(),
                         )
                         .add_metadatum(context, opt_metadata),

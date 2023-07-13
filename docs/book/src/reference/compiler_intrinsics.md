@@ -25,10 +25,30 @@ __size_of<T>() -> u64
 ___
 
 ```sway
+__size_of_str<T>() -> u64
+```
+
+**Description:** Return the size of type `T` in bytes. This intrinsic differs from `__size_of` in the case of `str` type where the actual length in bytes of the string is returned without padding the byte size to the next word alignment. When `T` is not a string `0` is returned.
+
+**Constraints:** None.
+
+___
+
+```sway
 __is_reference_type<T>() -> bool
 ```
 
 **Description:** Returns `true` if `T` is a _reference type_ and `false` otherwise.
+
+**Constraints:** None.
+
+___
+
+```sway
+__is_str_type<T>() -> bool
+```
+
+**Description:** Returns `true` if `T` is a str type and `false` otherwise.
 
 **Constraints:** None.
 
@@ -259,11 +279,20 @@ __ptr_sub(ptr: raw_ptr, offset: u64)
 ___
 
 ```sway
-__smo<T>(recipient: b256, data: T, output_index: u64, coins: u64)
+__smo<T>(recipient: b256, data: T, coins: u64)
 ```
 
-**Description:** Sends a message `data` of arbitrary type `T` and `coins` amount of the base asset to address `recipient`. This intrinsic assumes that an OutputMessage is available at index `output_index`.
+**Description:** Sends a message `data` of arbitrary type `T` and `coins` amount of the base asset to address `recipient`.
 
 **Constraints:** None.
 
+___
+
+```sway
+__not(op: T) -> T
+```
+
+**Description:** Bitwise NOT of `op`
+
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
 ___

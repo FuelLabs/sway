@@ -9,12 +9,13 @@ pub use crate::{
 };
 use std::{fmt::Write, path::Path, sync::Arc};
 use sway_core::BuildConfig;
-use sway_types::Spanned;
+use sway_types::{SourceEngine, Spanned};
 
 pub(crate) mod shape;
 
 #[derive(Debug, Default, Clone)]
 pub struct Formatter {
+    pub source_engine: Arc<SourceEngine>,
     pub shape: Shape,
     pub config: Config,
     pub comments_context: CommentsContext,
@@ -68,7 +69,7 @@ impl Formatter {
         self.comments_context =
             CommentsContext::new(CommentMap::from_src(Arc::from(src))?, src.to_string());
 
-        let module = parse_file(Arc::from(src), path.clone())?.value;
+        let module = parse_file(&self.source_engine, Arc::from(src), path.clone())?.value;
         module.format(&mut raw_formatted_code, self)?;
 
         let mut formatted_code = String::from(&raw_formatted_code);
@@ -82,6 +83,7 @@ impl Formatter {
 
         // Add newline sequences
         handle_newlines(
+            &self.source_engine,
             Arc::from(src),
             &module,
             Arc::from(formatted_code.clone()),

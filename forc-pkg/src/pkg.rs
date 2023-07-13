@@ -1,7 +1,7 @@
 use crate::{
     lock::Lock,
     manifest::{BuildProfile, Dependency, ManifestFile, MemberManifestFiles, PackageManifestFile},
-    source::{self, Source},
+    source::{self, IPFSNode, Source},
     CORE, PRELUDE, STD,
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
@@ -25,30 +25,28 @@ use std::{
     str::FromStr,
     sync::Arc,
 };
+use sway_core::fuel_prelude::fuel_tx::ConsensusParameters;
+pub use sway_core::Programs;
 use sway_core::{
     abi_generation::{
         evm_json_abi,
         fuel_json_abi::{self, JsonAbiContext},
     },
     asm_generation::ProgramABI,
-    decl_engine::{DeclEngine, DeclRefFunction},
+    decl_engine::DeclRefFunction,
     fuel_prelude::{
         fuel_crypto,
         fuel_tx::{self, Contract, ContractId, StorageSlot},
     },
-    language::{
-        lexed::LexedProgram,
-        parsed::{ParseProgram, TreeType},
-        ty, Visibility,
-    },
+    language::{parsed::TreeType, Visibility},
     semantic_analysis::namespace,
     source_map::SourceMap,
     transform::AttributeKind,
-    BuildTarget, CompileResult, Engines, FinalizedEntry, TypeEngine,
+    BuildTarget, CompileResult, Engines, FinalizedEntry,
 };
 use sway_error::{error::CompileError, warning::CompileWarning};
 use sway_types::{Ident, Span, Spanned};
-use sway_utils::constants;
+use sway_utils::{constants, time_expr, PerformanceData, PerformanceMetric};
 use tracing::{info, warn};
 
 type GraphIx = u32;
@@ -157,6 +155,7 @@ pub enum TestPassCondition {
 pub struct PkgTestEntry {
     pub pass_condition: TestPassCondition,
     pub span: Span,
+    pub file_path: Arc<PathBuf>,
 }
 
 /// The result of successfully compiling a workspace.
@@ -179,6 +178,7 @@ pub struct CompiledPackage {
     pub bytecode: BuiltPackageBytecode,
     pub namespace: namespace::Root,
     pub warnings: Vec<CompileWarning>,
+    pub metrics: PerformanceData,
 }
 
 /// Compiled contract dependency parts relevant to calculating a contract's ID.
@@ -236,6 +236,8 @@ pub struct PkgOpts {
     pub output_directory: Option<String>,
     /// Outputs json abi with callpath instead of struct and enum names.
     pub json_abi_with_callpaths: bool,
+    /// The IPFS node to be used for fetching IPFS sources.
+    pub ipfs_node: IPFSNode,
 }
 
 #[derive(Default, Clone)]
@@ -260,6 +262,8 @@ pub struct PrintOpts {
     pub intermediate_asm: bool,
     /// Print the generated Sway IR (Intermediate Representation).
     pub ir: bool,
+    /// Output build errors and warnings in reverse order.
+    pub reverse_order: bool,
 }
 
 #[derive(Default, Clone)]
@@ -296,14 +300,14 @@ pub struct BuildOpts {
     pub release: bool,
     /// Output the time elapsed over each part of the compilation process.
     pub time_phases: bool,
+    /// If set, outputs compilation metrics info in JSON format.
+    pub metrics_outfile: Option<String>,
     /// Warnings must be treated as compiler errors.
     pub error_on_warnings: bool,
     /// Include all test functions within the build.
     pub tests: bool,
     /// The set of options to filter by member project kind.
     pub member_filter: MemberFilter,
-    /// Enable the experimental module privacy enforcement.
-    pub experimental_private_modules: bool,
 }
 
 /// The set of options to filter type of projects to build in a workspace.
@@ -312,13 +316,6 @@ pub struct MemberFilter {
     pub build_scripts: bool,
     pub build_predicates: bool,
     pub build_libraries: bool,
-}
-
-/// Contains the lexed, parsed, and typed compilation stages of a program.
-pub struct Programs {
-    pub lexed: LexedProgram,
-    pub parsed: ParseProgram,
-    pub typed: Option<ty::TyProgram>,
 }
 
 impl Default for MemberFilter {
@@ -493,7 +490,14 @@ impl BuiltPackage {
             }
             TreeType::Predicate => {
                 // Get the root hash of the bytecode for predicates and store the result in a file in the output directory
-                let root = format!("0x{}", Contract::root_from_code(&self.bytecode.bytes));
+                // TODO: Pass the user specified `ChainId` into `predicate_owner`
+                let root = format!(
+                    "0x{}",
+                    fuel_tx::Input::predicate_owner(
+                        &self.bytecode.bytes,
+                        &ConsensusParameters::DEFAULT
+                    )
+                );
                 let root_file_name = format!("{}{}", &pkg_name, SWAY_BIN_ROOT_SUFFIX);
                 let root_path = output_dir.join(root_file_name);
                 fs::write(root_path, &root)?;
@@ -571,18 +575,29 @@ impl BuildPlan {
             &member_manifests,
             build_options.pkg.locked,
             build_options.pkg.offline,
+            build_options.pkg.ipfs_node.clone(),
         )
     }
 
     /// Create a new build plan for the project by fetching and pinning all dependenies.
     ///
     /// To account for an existing lock file, use `from_lock_and_manifest` instead.
-    pub fn from_manifests(manifests: &MemberManifestFiles, offline: bool) -> Result<Self> {
+    pub fn from_manifests(
+        manifests: &MemberManifestFiles,
+        offline: bool,
+        ipfs_node: IPFSNode,
+    ) -> Result<Self> {
         // Check toolchain version
         validate_version(manifests)?;
         let mut graph = Graph::default();
         let mut manifest_map = ManifestMap::default();
-        fetch_graph(manifests, offline, &mut graph, &mut manifest_map)?;
+        fetch_graph(
+            manifests,
+            offline,
+            &ipfs_node,
+            &mut graph,
+            &mut manifest_map,
+        )?;
         // Validate the graph, since we constructed the graph from scratch the paths will not be a
         // problem but the version check is still needed
         validate_graph(&graph, manifests)?;
@@ -615,6 +630,7 @@ impl BuildPlan {
         manifests: &MemberManifestFiles,
         locked: bool,
         offline: bool,
+        ipfs_node: IPFSNode,
     ) -> Result<Self> {
         // Check toolchain version
         validate_version(manifests)?;
@@ -654,7 +670,13 @@ impl BuildPlan {
         let mut manifest_map = graph_to_manifest_map(manifests, &graph)?;
 
         // Attempt to fetch the remainder of the graph.
-        let _added = fetch_graph(manifests, offline, &mut graph, &mut manifest_map)?;
+        let _added = fetch_graph(
+            manifests,
+            offline,
+            &ipfs_node,
+            &mut graph,
+            &mut manifest_map,
+        )?;
 
         // Determine the compilation order.
         let compilation_order = compilation_order(&graph)?;
@@ -790,20 +812,6 @@ impl BuildPlan {
                 .next()
                 .flatten()
         })
-    }
-}
-
-impl Programs {
-    pub fn new(
-        lexed: LexedProgram,
-        parsed: ParseProgram,
-        typed: Option<ty::TyProgram>,
-    ) -> Programs {
-        Programs {
-            lexed,
-            parsed,
-            typed,
-        }
     }
 }
 
@@ -1281,7 +1289,10 @@ fn find_path_root(graph: &Graph, mut node: NodeIx) -> Result<NodeIx> {
                     })?;
                 node = parent;
             }
-            source::Pinned::Git(_) | source::Pinned::Registry(_) | source::Pinned::Member(_) => {
+            source::Pinned::Git(_)
+            | source::Pinned::Ipfs(_)
+            | source::Pinned::Member(_)
+            | source::Pinned::Registry(_) => {
                 return Ok(node);
             }
         }
@@ -1298,6 +1309,7 @@ fn find_path_root(graph: &Graph, mut node: NodeIx) -> Result<NodeIx> {
 fn fetch_graph(
     member_manifests: &MemberManifestFiles,
     offline: bool,
+    ipfs_node: &IPFSNode,
     graph: &mut Graph,
     manifest_map: &mut ManifestMap,
 ) -> Result<HashSet<NodeIx>> {
@@ -1306,6 +1318,7 @@ fn fetch_graph(
         added_nodes.extend(&fetch_pkg_graph(
             member_pkg_manifest,
             offline,
+            ipfs_node,
             graph,
             manifest_map,
             member_manifests,
@@ -1331,6 +1344,7 @@ fn fetch_graph(
 fn fetch_pkg_graph(
     proj_manifest: &PackageManifestFile,
     offline: bool,
+    ipfs_node: &IPFSNode,
     graph: &mut Graph,
     manifest_map: &mut ManifestMap,
     member_manifests: &MemberManifestFiles,
@@ -1365,6 +1379,7 @@ fn fetch_pkg_graph(
     fetch_deps(
         fetch_id,
         offline,
+        ipfs_node,
         proj_node,
         path_root,
         graph,
@@ -1382,6 +1397,7 @@ fn fetch_pkg_graph(
 fn fetch_deps(
     fetch_id: u64,
     offline: bool,
+    ipfs_node: &IPFSNode,
     node: NodeIx,
     path_root: PinnedId,
     graph: &mut Graph,
@@ -1414,7 +1430,7 @@ fn fetch_deps(
         let parent_manifest = &manifest_map[&parent_id];
         let source =
             Source::from_manifest_dep_patched(parent_manifest, name, &dep, member_manifests)
-                .context("Failed to source dependency")?;
+                .context(format!("Failed to source dependency: {dep_name}"))?;
 
         // If we haven't yet fetched this dependency, fetch it, pin it and add it to the graph.
         let dep_pkg = Pkg {
@@ -1430,6 +1446,7 @@ fn fetch_deps(
                     path_root,
                     name: &pkg.name,
                     offline,
+                    ipfs_node,
                 };
                 let source = pkg.source.pin(ctx, manifest_map)?;
                 let name = pkg.name.clone();
@@ -1462,9 +1479,10 @@ fn fetch_deps(
         })?;
 
         let path_root = match dep_pinned.source {
-            source::Pinned::Member(_) | source::Pinned::Git(_) | source::Pinned::Registry(_) => {
-                dep_pkg_id
-            }
+            source::Pinned::Member(_)
+            | source::Pinned::Git(_)
+            | source::Pinned::Ipfs(_)
+            | source::Pinned::Registry(_) => dep_pkg_id,
             source::Pinned::Path(_) => path_root,
         };
 
@@ -1472,6 +1490,7 @@ fn fetch_deps(
         added.extend(fetch_deps(
             fetch_id,
             offline,
+            ipfs_node,
             dep_node,
             path_root,
             graph,
@@ -1547,7 +1566,8 @@ pub fn sway_build_config(
     .print_intermediate_asm(build_profile.print_intermediate_asm)
     .print_ir(build_profile.print_ir)
     .include_tests(build_profile.include_tests)
-    .experimental_private_modules(build_profile.experimental_private_modules);
+    .time_phases(build_profile.time_phases)
+    .metrics(build_profile.metrics_outfile.clone());
     Ok(build_config)
 }
 
@@ -1571,9 +1591,8 @@ pub fn dependency_namespace(
     compiled_contract_deps: &CompiledContractDeps,
     graph: &Graph,
     node: NodeIx,
-    engines: Engines<'_>,
+    engines: &Engines,
     contract_id_value: Option<ContractIdConst>,
-    experimental_private_modules: bool,
 ) -> Result<namespace::Module, vec1::Vec1<CompileError>> {
     // TODO: Clean this up when config-time constants v1 are removed.
     let node_idx = &graph[node];
@@ -1639,7 +1658,7 @@ pub fn dependency_namespace(
         &[CORE, PRELUDE].map(|s| Ident::new_no_span(s.into())),
         &[],
         engines,
-        experimental_private_modules,
+        true,
     );
 
     if has_std_dep(graph, node) {
@@ -1647,7 +1666,7 @@ pub fn dependency_namespace(
             &[STD, PRELUDE].map(|s| Ident::new_no_span(s.into())),
             &[],
             engines,
-            experimental_private_modules,
+            true,
         );
     }
 
@@ -1706,31 +1725,6 @@ fn find_core_dep(graph: &Graph, node: NodeIx) -> Option<NodeIx> {
     None
 }
 
-/// Compiles the package to an AST.
-pub fn compile_ast(
-    pkg: &PackageDescriptor,
-    build_profile: &BuildProfile,
-    engines: Engines<'_>,
-    namespace: namespace::Module,
-    package_name: &str,
-) -> Result<CompileResult<ty::TyProgram>> {
-    let source = pkg.manifest_file.entry_string()?;
-    let sway_build_config = sway_build_config(
-        pkg.manifest_file.dir(),
-        &pkg.manifest_file.entry_path(),
-        pkg.target,
-        build_profile,
-    )?;
-    let ast_res = sway_core::compile_to_ast(
-        engines,
-        source,
-        namespace,
-        Some(&sway_build_config),
-        package_name,
-    );
-    Ok(ast_res)
-}
-
 /// Compiles the given package.
 ///
 /// ## Program Types
@@ -1752,45 +1746,43 @@ pub fn compile_ast(
 pub fn compile(
     pkg: &PackageDescriptor,
     profile: &BuildProfile,
-    engines: Engines<'_>,
+    engines: &Engines,
     namespace: namespace::Module,
     source_map: &mut SourceMap,
 ) -> Result<CompiledPackage> {
-    // Time the given expression and print the result if `build_config.time_phases` is true.
-    macro_rules! time_expr {
-        ($description:expr, $expression:expr) => {{
-            if profile.time_phases {
-                let expr_start = std::time::Instant::now();
-                let output = { $expression };
-                println!(
-                    "  Time elapsed to {}: {:?}",
-                    $description,
-                    expr_start.elapsed()
-                );
-                output
-            } else {
-                $expression
-            }
-        }};
-    }
+    let mut metrics = PerformanceData::default();
 
     let entry_path = pkg.manifest_file.entry_path();
-    let sway_build_config = time_expr!(
-        "produce `sway_core::BuildConfig`",
-        sway_build_config(pkg.manifest_file.dir(), &entry_path, pkg.target, profile)?
-    );
+    let sway_build_config =
+        sway_build_config(pkg.manifest_file.dir(), &entry_path, pkg.target, profile)?;
     let terse_mode = profile.terse;
+    let reverse_results = profile.reverse_results;
     let fail = |warnings, errors| {
-        print_on_failure(terse_mode, warnings, errors);
+        print_on_failure(engines.se(), terse_mode, warnings, errors, reverse_results);
         bail!("Failed to compile {}", pkg.name);
     };
+    let source = pkg.manifest_file.entry_string()?;
 
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
     let ast_res = time_expr!(
         "compile to ast",
-        compile_ast(pkg, profile, engines, namespace, &pkg.name)?
+        "compile_to_ast",
+        sway_core::compile_to_ast(
+            engines,
+            source,
+            namespace,
+            Some(&sway_build_config),
+            &pkg.name,
+            &mut metrics,
+        ),
+        Some(sway_build_config.clone()),
+        metrics
     );
-    let typed_program = match ast_res.value.as_ref() {
+    let programs = match ast_res.value.as_ref() {
+        None => return fail(&ast_res.warnings, &ast_res.errors),
+        Some(programs) => programs,
+    };
+    let typed_program = match programs.typed.as_ref() {
         None => return fail(&ast_res.warnings, &ast_res.errors),
         Some(typed_program) => typed_program,
     };
@@ -1810,7 +1802,10 @@ pub fn compile(
 
     let asm_res = time_expr!(
         "compile ast to asm",
-        sway_core::ast_to_asm(engines, &ast_res, &sway_build_config)
+        "compile_ast_to_asm",
+        sway_core::ast_to_asm(engines, &ast_res, &sway_build_config),
+        Some(sway_build_config.clone()),
+        metrics
     );
 
     let mut program_abi = match pkg.target {
@@ -1818,6 +1813,7 @@ pub fn compile(
             let mut types = vec![];
             ProgramABI::Fuel(time_expr!(
                 "generate JSON ABI program",
+                "generate_json_abi",
                 fuel_json_abi::generate_json_abi_program(
                     &mut JsonAbiContext {
                         program: typed_program,
@@ -1826,7 +1822,9 @@ pub fn compile(
                     engines.te(),
                     engines.de(),
                     &mut types
-                )
+                ),
+                Some(sway_build_config.clone()),
+                metrics
             ))
         }
         BuildTarget::EVM => {
@@ -1842,7 +1840,10 @@ pub fn compile(
 
             let abi = time_expr!(
                 "generate JSON ABI program",
-                evm_json_abi::generate_json_abi_program(typed_program, &engines)
+                "generate_json_abi",
+                evm_json_abi::generate_json_abi_program(typed_program, engines),
+                Some(sway_build_config.clone()),
+                metrics
             );
 
             ops.extend(abi.into_iter());
@@ -1858,14 +1859,16 @@ pub fn compile(
         .as_ref()
         .map(|asm| asm.0.entries.clone())
         .unwrap_or_default();
-    let decl_engine = engines.de();
     let entries = entries
         .iter()
-        .map(|finalized_entry| PkgEntry::from_finalized_entry(finalized_entry, decl_engine))
+        .map(|finalized_entry| PkgEntry::from_finalized_entry(finalized_entry, engines))
         .collect::<anyhow::Result<_>>()?;
     let bc_res = time_expr!(
         "compile asm to bytecode",
-        sway_core::asm_to_bytecode(asm_res, source_map)
+        "compile_asm_to_bytecode",
+        sway_core::asm_to_bytecode(asm_res, source_map, engines.se()),
+        Some(sway_build_config),
+        metrics
     );
 
     let errored =
@@ -1876,7 +1879,13 @@ pub fn compile(
         _ => return fail(&bc_res.warnings, &bc_res.errors),
     };
 
-    print_warnings(terse_mode, &pkg.name, &bc_res.warnings, &tree_type);
+    print_warnings(
+        engines.se(),
+        terse_mode,
+        &pkg.name,
+        &bc_res.warnings,
+        &tree_type,
+    );
 
     // TODO: This should probably be in `fuel_abi_json::generate_json_abi_program`?
     // If ABI requires knowing config offsets, they should be inputs to ABI gen.
@@ -1893,6 +1902,7 @@ pub fn compile(
         }
     }
 
+    metrics.bytecode_size = compiled.bytecode.len();
     let bytecode = BuiltPackageBytecode {
         bytes: compiled.bytecode,
         entries,
@@ -1905,6 +1915,7 @@ pub fn compile(
         bytecode,
         namespace,
         warnings: bc_res.warnings,
+        metrics,
     };
     Ok(compiled_package)
 }
@@ -1915,13 +1926,10 @@ impl PkgEntry {
         self.kind.test().is_some()
     }
 
-    fn from_finalized_entry(
-        finalized_entry: &FinalizedEntry,
-        decl_engine: &DeclEngine,
-    ) -> Result<Self> {
+    fn from_finalized_entry(finalized_entry: &FinalizedEntry, engines: &Engines) -> Result<Self> {
         let pkg_entry_kind = match &finalized_entry.test_decl_ref {
             Some(test_decl_ref) => {
-                let pkg_test_entry = PkgTestEntry::from_decl(test_decl_ref.clone(), decl_engine)?;
+                let pkg_test_entry = PkgTestEntry::from_decl(test_decl_ref.clone(), engines)?;
                 PkgEntryKind::Test(pkg_test_entry)
             }
             None => PkgEntryKind::Main,
@@ -1945,9 +1953,9 @@ impl PkgEntryKind {
 }
 
 impl PkgTestEntry {
-    fn from_decl(decl_ref: DeclRefFunction, decl_engine: &DeclEngine) -> Result<Self> {
+    fn from_decl(decl_ref: DeclRefFunction, engines: &Engines) -> Result<Self> {
         let span = decl_ref.span();
-        let test_function_decl = decl_engine.get_function(&decl_ref);
+        let test_function_decl = engines.de().get_function(&decl_ref);
 
         const FAILING_TEST_KEYWORD: &str = "should_revert";
 
@@ -1983,9 +1991,16 @@ impl PkgTestEntry {
             bail!("Invalid test argument(s) for test: {test_name}.")
         }?;
 
+        let file_path = Arc::new(
+            engines.se().get_path(
+                span.source_id()
+                    .ok_or_else(|| anyhow::anyhow!("Missing span for test function"))?,
+            ),
+        );
         Ok(Self {
             pass_condition,
             span,
+            file_path,
         })
     }
 }
@@ -2009,9 +2024,9 @@ fn build_profile_from_opts(
         build_profile,
         release,
         time_phases,
+        metrics_outfile,
         tests,
         error_on_warnings,
-        experimental_private_modules,
         ..
     } = build_options;
     let mut selected_build_profile = BuildProfile::DEBUG;
@@ -2059,10 +2074,12 @@ fn build_profile_from_opts(
     profile.print_intermediate_asm |= print.intermediate_asm;
     profile.terse |= pkg.terse;
     profile.time_phases |= time_phases;
+    if profile.metrics_outfile.is_none() {
+        profile.metrics_outfile = metrics_outfile.clone();
+    }
     profile.include_tests |= tests;
     profile.json_abi_with_callpaths |= pkg.json_abi_with_callpaths;
     profile.error_on_warnings |= error_on_warnings;
-    profile.experimental_private_modules |= experimental_private_modules;
 
     Ok((selected_build_profile.to_string(), profile))
 }
@@ -2229,9 +2246,7 @@ pub fn build(
         .flat_map(|output_node| plan.node_deps(*output_node))
         .collect();
 
-    let type_engine = TypeEngine::default();
-    let decl_engine = DeclEngine::default();
-    let engines = Engines::new(&type_engine, &decl_engine);
+    let engines = Engines::default();
     let include_tests = profile.include_tests;
 
     // This is the Contract ID of the current contract being compiled.
@@ -2264,7 +2279,13 @@ pub fn build(
         };
 
         let fail = |warnings, errors| {
-            print_on_failure(profile.terse, warnings, errors);
+            print_on_failure(
+                engines.se(),
+                profile.terse,
+                warnings,
+                errors,
+                profile.reverse_results,
+            );
             bail!("Failed to compile {}", pkg.name);
         };
 
@@ -2293,20 +2314,27 @@ pub fn build(
                 &compiled_contract_deps,
                 plan.graph(),
                 node,
-                engines,
+                &engines,
                 None,
-                profile.experimental_private_modules,
             ) {
                 Ok(o) => o,
                 Err(errs) => return fail(&[], &errs),
             };
+
             let compiled_without_tests = compile(
                 &descriptor,
                 &profile,
-                engines,
+                &engines,
                 dep_namespace,
                 &mut source_map,
             )?;
+
+            if let Some(outfile) = profile.metrics_outfile {
+                let path = Path::new(&outfile);
+                let metrics_json = serde_json::to_string(&compiled_without_tests.metrics)
+                    .expect("JSON serialization failed");
+                fs::write(path, metrics_json)?;
+            }
 
             // If this contract is built because:
             // 1) it is a contract dependency, or
@@ -2349,21 +2377,36 @@ pub fn build(
             &compiled_contract_deps,
             plan.graph(),
             node,
-            engines,
+            &engines,
             contract_id_value.clone(),
-            profile.experimental_private_modules,
         ) {
             Ok(o) => o,
-            Err(errs) => return fail(&[], &errs),
+            Err(errs) => {
+                print_on_failure(
+                    engines.se(),
+                    profile.terse,
+                    &[],
+                    &errs,
+                    profile.reverse_results,
+                );
+                bail!("Failed to compile {}", pkg.name);
+            }
         };
 
         let mut compiled = compile(
             &descriptor,
             &profile,
-            engines,
+            &engines,
             dep_namespace,
             &mut source_map,
         )?;
+
+        if let Some(outfile) = profile.metrics_outfile {
+            let path = Path::new(&outfile);
+            let metrics_json =
+                serde_json::to_string(&compiled.metrics).expect("JSON serialization failed");
+            fs::write(path, metrics_json)?;
+        }
 
         if let TreeType::Library = compiled.tree_type {
             let mut namespace = namespace::Module::from(compiled.namespace);
@@ -2527,15 +2570,14 @@ fn update_json_type_declaration(
 }
 
 /// Compile the entire forc package and return the lexed, parsed and typed programs
-/// of the dependancies and project.
+/// of the dependencies and project.
 /// The final item in the returned vector is the project.
 pub fn check(
     plan: &BuildPlan,
     build_target: BuildTarget,
     terse_mode: bool,
     include_tests: bool,
-    engines: Engines<'_>,
-    experimental_private_modules: bool,
+    engines: &Engines,
 ) -> anyhow::Result<Vec<CompileResult<Programs>>> {
     let mut lib_namespace_map = Default::default();
     let mut source_map = SourceMap::new();
@@ -2543,66 +2585,89 @@ pub fn check(
     let compiled_contract_deps = HashMap::new();
 
     let mut results = vec![];
-    for &node in plan.compilation_order.iter() {
+    for (idx, &node) in plan.compilation_order.iter().enumerate() {
         let pkg = &plan.graph[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
+
+        // This is necessary because `CONTRACT_ID` is a special constant that's injected into the
+        // compiler's namespace. Although we only know the contract id during building, we are
+        // inserting a dummy value here to avoid false error signals being reported in LSP.
+        // We only do this for the last node in the compilation order because previous nodes
+        // are dependencies.
+        //
+        // See this github issue for more context: https://github.com/FuelLabs/sway-vscode-plugin/issues/154
+        const DUMMY_CONTRACT_ID: &str =
+            "0x0000000000000000000000000000000000000000000000000000000000000000";
+        let contract_id_value =
+            (idx == plan.compilation_order.len() - 1).then(|| DUMMY_CONTRACT_ID.to_string());
+
         let dep_namespace = dependency_namespace(
             &lib_namespace_map,
             &compiled_contract_deps,
             &plan.graph,
             node,
             engines,
-            None,
-            experimental_private_modules,
+            contract_id_value,
         )
         .expect("failed to create dependency namespace");
 
-        let CompileResult {
-            value,
-            mut warnings,
-            mut errors,
-        } = parse(manifest, build_target, terse_mode, include_tests, engines)?;
-
-        let (lexed, parsed) = match value {
-            None => {
-                results.push(CompileResult::new(None, warnings, errors));
-                return Ok(results);
-            }
-            Some(modules) => modules,
+        let profile = BuildProfile {
+            terse: terse_mode,
+            ..BuildProfile::debug()
         };
 
-        let ast_result = sway_core::parsed_to_ast(engines, &parsed, dep_namespace, None, &pkg.name);
-        warnings.extend(ast_result.warnings);
-        errors.extend(ast_result.errors);
+        let build_config = sway_build_config(
+            manifest.dir(),
+            &manifest.entry_path(),
+            build_target,
+            &profile,
+        )?
+        .include_tests(include_tests);
 
-        let typed_program = match ast_result.value {
-            None => {
-                let value = Some(Programs::new(lexed, parsed, None));
-                results.push(CompileResult::new(value, warnings, errors));
+        let mut metrics = PerformanceData::default();
+        let programs_res = sway_core::compile_to_ast(
+            engines,
+            manifest.entry_string()?,
+            dep_namespace,
+            Some(&build_config),
+            &pkg.name,
+            &mut metrics,
+        );
+
+        let programs = match programs_res.value.as_ref() {
+            Some(programs) => programs,
+            _ => {
+                results.push(programs_res);
                 return Ok(results);
             }
-            Some(typed_program) => typed_program,
         };
 
-        if let TreeType::Library = typed_program.kind.tree_type() {
-            let mut namespace = typed_program.root.namespace.clone();
-            namespace.name = Some(Ident::new_no_span(pkg.name.clone()));
-            namespace.span = Some(
-                Span::new(
-                    manifest.entry_string()?,
-                    0,
-                    0,
-                    Some(manifest.entry_path().into()),
-                )
-                .unwrap(),
-            );
-            lib_namespace_map.insert(node, namespace.module().clone());
+        match programs.typed.as_ref() {
+            Some(typed_program) => {
+                if let TreeType::Library = typed_program.kind.tree_type() {
+                    let mut namespace = typed_program.root.namespace.clone();
+                    namespace.name = Some(Ident::new_no_span(pkg.name.clone()));
+                    namespace.span = Some(
+                        Span::new(
+                            manifest.entry_string()?,
+                            0,
+                            0,
+                            Some(engines.se().get_source_id(&manifest.entry_path())),
+                        )
+                        .unwrap(),
+                    );
+                    lib_namespace_map.insert(node, namespace.module().clone());
+                }
+
+                source_map.insert_dependency(manifest.dir());
+            }
+            None => {
+                results.push(programs_res);
+                return Ok(results);
+            }
         }
 
-        source_map.insert_dependency(manifest.dir());
-
-        let value = Some(Programs::new(lexed, parsed, Some(typed_program)));
-        results.push(CompileResult::new(value, warnings, errors));
+        results.push(programs_res)
     }
 
     if results.is_empty() {
@@ -2610,29 +2675,6 @@ pub fn check(
     }
 
     Ok(results)
-}
-
-/// Returns a parsed AST from the supplied [PackageManifestFile]
-pub fn parse(
-    manifest: &PackageManifestFile,
-    build_target: BuildTarget,
-    terse_mode: bool,
-    include_tests: bool,
-    engines: Engines<'_>,
-) -> anyhow::Result<CompileResult<(LexedProgram, ParseProgram)>> {
-    let profile = BuildProfile {
-        terse: terse_mode,
-        ..BuildProfile::debug()
-    };
-    let source = manifest.entry_string()?;
-    let sway_build_config = sway_build_config(
-        manifest.dir(),
-        &manifest.entry_path(),
-        build_target,
-        &profile,
-    )?
-    .include_tests(include_tests);
-    Ok(sway_core::parse(source, engines, Some(&sway_build_config)))
 }
 
 /// Format an error message for an absent `Forc.toml`.
@@ -2682,8 +2724,14 @@ fn test_root_pkg_order() {
     let manifest_file = ManifestFile::from_dir(&manifest_dir).unwrap();
     let member_manifests = manifest_file.member_manifests().unwrap();
     let lock_path = manifest_file.lock_path().unwrap();
-    let build_plan =
-        BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, false, false).unwrap();
+    let build_plan = BuildPlan::from_lock_and_manifests(
+        &lock_path,
+        &member_manifests,
+        false,
+        false,
+        Default::default(),
+    )
+    .unwrap();
     let graph = build_plan.graph();
     let order: Vec<String> = build_plan
         .member_nodes()

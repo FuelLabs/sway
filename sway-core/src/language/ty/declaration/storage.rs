@@ -24,13 +24,13 @@ impl Named for TyStorageDecl {
 
 impl EqWithEngines for TyStorageDecl {}
 impl PartialEqWithEngines for TyStorageDecl {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.fields.eq(&other.fields, engines) && self.attributes == other.attributes
     }
 }
 
 impl HashWithEngines for TyStorageDecl {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TyStorageDecl {
             fields,
             // these fields are not hashed because they aren't relevant/a
@@ -166,6 +166,12 @@ impl TyStorageDecl {
     }
 }
 
+impl Spanned for TyStorageField {
+    fn span(&self) -> Span {
+        self.span.clone()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct TyStorageField {
     pub name: Ident,
@@ -177,7 +183,7 @@ pub struct TyStorageField {
 
 impl EqWithEngines for TyStorageField {}
 impl PartialEqWithEngines for TyStorageField {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.name == other.name
             && self.type_argument.eq(&other.type_argument, engines)
             && self.initializer.eq(&other.initializer, engines)
@@ -185,7 +191,7 @@ impl PartialEqWithEngines for TyStorageField {
 }
 
 impl HashWithEngines for TyStorageField {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TyStorageField {
             name,
             type_argument,

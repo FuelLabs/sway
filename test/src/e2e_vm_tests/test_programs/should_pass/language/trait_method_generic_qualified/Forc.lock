@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-75394A513C1CBC16'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-75394A513C1CBC16'
+dependencies = ['core']
+
+[[package]]
+name = 'trait_method_generic_qualified'
+source = 'member'
+dependencies = ['std']
