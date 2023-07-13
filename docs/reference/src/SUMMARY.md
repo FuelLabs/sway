@@ -72,6 +72,7 @@
   - [Comments](./documentation/language/style-guide/comments.md)
   - [Getter Functions](./documentation/language/style-guide/getters.md)
   - [Unused Variables](./documentation/language/style-guide/unused-variables.md)
+  - [Intermediate Variables](./documentation/language/style-guide/intermediate-variables.md)
 
 ## Common Operations
 

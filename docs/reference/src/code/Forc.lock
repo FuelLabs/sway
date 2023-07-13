@@ -128,6 +128,14 @@ source = 'member'
 dependencies = ['std path+from-root-0F28276288D2432C']
 
 [[package]]
+name = 'intermediate_variables'
+source = 'member'
+dependencies = [
+    'core',
+    'std',
+]
+
+[[package]]
 name = 'letter_casing'
 source = 'member'
 dependencies = ['std path+from-root-0F28276288D2432C']
