@@ -42,7 +42,11 @@ pub fn set_flags(new_flags: u64) {
 ///
 /// > **_WARNING:_**
 /// >
-/// > Don't forget to call `enable_panic_on_overflow` after performing the operations for which you disabled the default `panic-on-overflow` behavior in the first place!
+/// > Don't forget to call `enable_panic_on_overflow` or `set_flags` after performing the operations for which you disabled the default `panic-on-overflow` behavior in the first place!
+///
+/// ### Returns
+/// 
+/// * [u64] - The flag prior to disabling panic on overflow.
 ///
 /// ### Examples
 ///
@@ -58,13 +62,30 @@ pub fn set_flags(new_flags: u64) {
 ///     enable_panic_on_overflow();
 /// }
 /// ```
-pub fn disable_panic_on_overflow() {
+///
+/// ```sway
+/// use std::flags::{disable_panic_on_overflow, set_flags};
+///
+/// fn foo() {
+///     let prior_flags = disable_panic_on_overflow();
+///      
+///     // Adding 1 to the max value of a u64 is considered an overflow.
+///     let bar = u64::max() + 1;
+///
+///     set_flags(prior_flags);
+/// }
+/// ```
+pub fn disable_panic_on_overflow() -> u64 {
+    let prior_flags = flags();
+
     // Get the current value of the flags register and mask it, setting the
     // masked bit. Flags are inverted, so set = off.
-    let flag_val = flags() | F_WRAPPING_DISABLE_MASK;
+    let flag_val = prior_flags | F_WRAPPING_DISABLE_MASK;
     asm(flag_val: flag_val) {
         flag flag_val;
     }
+
+    prior_flags
 }
 
 /// Enables the default `panic-on-overflow` behavior in the FuelVM.
@@ -96,50 +117,16 @@ pub fn enable_panic_on_overflow() {
     }
 }
 
-/// Allows overflowing operations to occur without a FuelVM panic.
-/// More suitable than `disable_panic_on_overflow` for use in functions that are not the entry point of a program.
-///
-/// > **_WARNING:_**
-/// >
-/// > Don't forget to call `set_flags` after performing the operations for which you disabled the default `panic-on-overflow` behavior in the first place!
-///
-/// ### Returns
-/// 
-/// * [u64] - The flag prior to disabling panic on overflow.
-///
-/// ### Examples
-///
-/// ```sway
-/// use std::flags::{disable_panic_on_overflow_preserving, set_flags};
-///
-/// fn foo() {
-///     let prior_flags = disable_panic_on_overflow_preserving();
-///      
-///     // Adding 1 to the max value of a u64 is considered an overflow.
-///     let bar = u64::max() + 1;
-///
-///     set_flags(prior_flags);
-/// }
-/// ```
-pub fn disable_panic_on_overflow_preserving() -> u64 {
-    let prior_flags = flags();
-
-    // Get the current value of the flags register and mask it, setting the
-    // masked bit. Flags are inverted, so set = off.
-    let flag_val = prior_flags | F_WRAPPING_DISABLE_MASK;
-    asm(flag_val: flag_val) {
-        flag flag_val;
-    }
-
-    prior_flags
-}
-
 /// Allows unsafe math operations to occur without a FuelVM panic.
 /// Sets the `$err` register to `true` whenever unsafe math occurs.
 ///
 /// > **_WARNING:_**
 /// >
-/// > Don't forget to call `enable_panic_on_unsafe_math` after performing the operations for which you disabled the default `panic-on-unsafe-math` behavior in the first place!
+/// > Don't forget to call `enable_panic_on_unsafe_math` or `set_flags` after performing the operations for which you disabled the default `panic-on-unsafe-math` behavior in the first place!
+///
+/// ### Returns
+/// 
+/// * [u64] - The flag prior to disabling panic on overflow.
 ///
 /// ### Examples
 ///
@@ -157,13 +144,32 @@ pub fn disable_panic_on_overflow_preserving() -> u64 {
 ///     enable_panic_on_unsafe_math();
 /// }
 /// ```
+///
+/// ```sway
+/// use std::{assert::assert, flags::{disable_panic_on_unsafe_math, set_flags}, registers::error};
+///
+/// fn foo() {
+///     let prior_flags = disable_panic_on_unsafe_math();
+///      
+///     // Division by zero is considered unsafe math.
+///     let bar = 1 / 0; 
+///     // Error flag is set to true whenever unsafe math occurs. Here represented as 1.
+///     assert(error() == 1); 
+///
+///     set_flags(prior_flags);
+/// }
+/// ```
 pub fn disable_panic_on_unsafe_math() {
+    let prior_flags = flags();
+
     // Get the current value of the flags register and mask it, setting the
     // masked bit. Flags are inverted, so set = off.
-    let flag_val = flags() | F_UNSAFEMATH_DISABLE_MASK;
+    let flag_val = prior_flags | F_UNSAFEMATH_DISABLE_MASK;
     asm(flag_val: flag_val) {
         flag flag_val;
     }
+
+    prior_flags
 }
 
 /// Enables the default `panic-on-unsafe-math` behavior in the FuelVM.
@@ -197,46 +203,6 @@ pub fn enable_panic_on_unsafe_math() {
     }
 }
 
-/// Allows unsafe math operations to occur without a FuelVM panic.
-/// More suitable than `disable_panic_on_unsafe_math` for use in functions that are not the entry point of a program.
-///
-/// > **_WARNING:_**
-/// >
-/// > Don't forget to call `set_flags` after performing the operations for which you disabled the default `panic-on-unsafe-math` behavior in the first place!
-///
-/// ### Returns
-/// 
-/// * [u64] - The flag prior to disabling panic on overflow.
-///
-/// ### Examples
-///
-/// ```sway
-/// use std::{assert::assert, flags::{disable_panic_on_unsafe_math_preserving, set_flags}, registers::error};
-///
-/// fn foo() {
-///     let prior_flags = disable_panic_on_unsafe_math_preserving();
-///      
-///     // Division by zero is considered unsafe math.
-///     let bar = 1 / 0; 
-///     // Error flag is set to true whenever unsafe math occurs. Here represented as 1.
-///     assert(error() == 1); 
-///
-///     set_flags(prior_flags);
-/// }
-/// ```
-pub fn disable_panic_on_unsafe_math_preserving() -> u64 {
-    let prior_flags = flags();
-
-    // Get the current value of the flags register and mask it, setting the
-    // masked bit. Flags are inverted, so set = off.
-    let flag_val = prior_flags | F_UNSAFEMATH_DISABLE_MASK;
-    asm(flag_val: flag_val) {
-        flag flag_val;
-    }
-
-    prior_flags
-}
-
 #[test]
 fn test_disable_panic_on_overflow() {
     disable_panic_on_overflow();
@@ -248,7 +214,7 @@ fn test_disable_panic_on_overflow() {
 fn test_disable_panic_on_overflow_preserving() {
     disable_panic_on_overflow();
 
-    let prior_flags = disable_panic_on_overflow_preserving();
+    let prior_flags = disable_panic_on_overflow();
     let _bar = u64::max() + 1;
     set_flags(prior_flags);
 
@@ -275,7 +241,7 @@ fn test_disable_panic_on_unsafe_math() {
 fn test_disable_panic_on_unsafe_math_preserving() {
     disable_panic_on_unsafe_math();
 
-    let prior_flags = disable_panic_on_unsafe_math_preserving();
+    let prior_flags = disable_panic_on_unsafe_math();
     let _bar = asm(r2: 1, r3: 0, r1) {
         div r1 r2 r3;
         r1: u64
