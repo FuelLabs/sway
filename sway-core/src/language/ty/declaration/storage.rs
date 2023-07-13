@@ -166,6 +166,12 @@ impl TyStorageDecl {
     }
 }
 
+impl Spanned for TyStorageField {
+    fn span(&self) -> Span {
+        self.span.clone()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct TyStorageField {
     pub name: Ident,

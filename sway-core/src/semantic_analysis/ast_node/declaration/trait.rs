@@ -146,6 +146,7 @@ impl ty::TyTraitDecl {
                 self_type,
                 &dummy_interface_surface,
                 &span,
+                None,
                 false,
                 engines,
             ),
@@ -409,6 +410,7 @@ impl ty::TyTraitDecl {
             type_id,
             &all_items,
             &trait_name.span(),
+            Some(self.span()),
             false,
             engines,
         );

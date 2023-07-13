@@ -1,4 +1,5 @@
 use fuels::{
+    accounts::wallet::WalletUnlocked,
     prelude::*,
     types::ContractId,
     types::{Bits256, SizedAsciiString},
@@ -51,10 +52,6 @@ fn hash_str(text: &str, algorithm: Hash) -> [u8; 32] {
     let mut buffer: Vec<u8> = Vec::new();
     for character in text.chars() {
         buffer.push(character as u8);
-    }
-
-    while buffer.len() % 8 != 0 {
-        buffer.push(0);
     }
 
     match algorithm {

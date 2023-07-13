@@ -1058,9 +1058,9 @@ impl TypeInfo {
             | TypeInfo::Array(_, _)
             | TypeInfo::Contract
             | TypeInfo::Numeric
-            | TypeInfo::Alias { .. } => ok((), warnings, errors),
+            | TypeInfo::Alias { .. }
+            | TypeInfo::UnknownGeneric { .. } => ok((), warnings, errors),
             TypeInfo::Unknown
-            | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::SelfType
             | TypeInfo::Storage { .. }

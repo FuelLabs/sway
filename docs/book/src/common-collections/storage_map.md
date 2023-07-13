@@ -73,7 +73,7 @@ Maps with multiple keys can be implemented using tuples as keys. For example:
 {{#include ../../../../examples/storage_map/src/main.sw:storage_map_tuple_key}}
 ```
 
-## Nested Storage Naps
+## Nested Storage Maps
 
 It is possible to nest storage maps as follows:
 

@@ -155,7 +155,7 @@ impl Renderable for Context {
                             )?;
                         }
                     }
-                    write!(fn_sig, ") -> {}", method.return_type_span.as_str())?;
+                    write!(fn_sig, ") -> {}", method.return_type.span.as_str())?;
                     let multiline = fn_sig.chars().count() >= 60;
                     let fn_sig = format!("fn {}(", method.name);
                     let method_id = format!("tymethod.{}", method.name.as_str());
@@ -215,9 +215,9 @@ impl Renderable for Context {
                                     }
                                     : ")";
                                 }
-                                @ if !method.return_type_span.as_str().contains(&fn_sig) {
+                                @ if !method.return_type.span.as_str().contains(&fn_sig) {
                                     : " -> ";
-                                    : method.return_type_span.as_str();
+                                    : method.return_type.span.as_str();
                                 }
                             }
                         }

@@ -122,6 +122,12 @@ impl TyEnumDecl {
     }
 }
 
+impl Spanned for TyEnumVariant {
+    fn span(&self) -> Span {
+        self.span.clone()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct TyEnumVariant {
     pub name: Ident,

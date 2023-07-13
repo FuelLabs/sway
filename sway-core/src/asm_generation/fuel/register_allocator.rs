@@ -1,19 +1,34 @@
 use crate::{
     asm_generation::fuel::compiler_constants,
     asm_lang::{
-        allocated_ops::AllocatedRegister, virtual_register::*, ControlFlowOp, Label, Op, VirtualOp,
+        allocated_ops::AllocatedRegister, virtual_register::*, AllocatedAbstractOp, ControlFlowOp,
+        Label, Op, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24, VirtualOp,
     },
+    size_bytes_round_up_to_word_alignment,
 };
 
 use either::Either;
-use petgraph::graph::{node_index, NodeIndex};
-use rustc_hash::FxHashSet;
-use std::collections::{BTreeSet, HashMap};
+use petgraph::{
+    stable_graph::NodeIndex,
+    visit::EdgeRef,
+    Direction::{Incoming, Outgoing},
+};
+use rustc_hash::{FxHashMap, FxHashSet};
+use std::collections::{hash_map, BTreeSet, HashMap};
 use sway_error::error::CompileError;
-use sway_types::span::Span;
+use sway_types::Span;
 
+use super::allocated_abstract_instruction_set::AllocatedAbstractInstructionSet;
+
+// Each node in the interference graph represents a VirtualRegister.
+// An edge from V1 -> V2 means that V2 was an open live range at the
+// the time V1 was defined. For spilling, incoming edges matter more
+// as it indicates how big the range is, and thus is better to spill.
+// An edge has a "bool" weight to indicate whether it was deleted
+// during colouring. We don't actually delete the edge because that's
+// required again during the actual assignment.
 pub type InterferenceGraph =
-    petgraph::stable_graph::StableGraph<Option<VirtualRegister>, (), petgraph::Undirected>;
+    petgraph::stable_graph::StableGraph<VirtualRegister, bool, petgraph::Directed>;
 
 // Initially, the bytecode will have a lot of individual registers being used. Each register will
 // have a new unique identifier. For example, two separate invocations of `+` will result in 4
@@ -157,8 +172,8 @@ pub(crate) fn liveness_analysis(ops: &[Op]) -> Vec<FxHashSet<VirtualRegister>> {
             // Get use and def vectors without any of the Constant registers
             let mut op_use = op.use_registers();
             let mut op_def = op.def_registers();
-            op_use.retain(|&reg| matches!(reg, VirtualRegister::Virtual(_)));
-            op_def.retain(|&reg| matches!(reg, VirtualRegister::Virtual(_)));
+            op_use.retain(|&reg| reg.is_virtual());
+            op_def.retain(|&reg| reg.is_virtual());
 
             // Compute live_out(op) = live_in(s_1) UNION live_in(s_2) UNION ..., where s1, s_2, ...
             // are successors of op
@@ -219,13 +234,13 @@ pub(crate) fn create_interference_graph(
     ops.iter()
         .fold(BTreeSet::new(), |mut tree, elem| {
             let mut regs = elem.registers();
-            regs.retain(|&reg| matches!(reg, VirtualRegister::Virtual(_)));
+            regs.retain(|&reg| reg.is_virtual());
             tree.extend(regs.into_iter());
             tree
         })
         .iter()
         .for_each(|&reg| {
-            reg_to_node_map.insert(reg.clone(), interference_graph.add_node(Some(reg.clone())));
+            reg_to_node_map.insert(reg.clone(), interference_graph.add_node(reg.clone()));
         });
 
     for (ix, regs) in live_out.iter().enumerate() {
@@ -235,10 +250,9 @@ pub(crate) fn create_interference_graph(
                     for b in regs.iter() {
                         if let Some(ix2) = reg_to_node_map.get(b) {
                             // Add edge (v, b) if b != c
-                            // Also, avoid adding self edges and edges that already exist
-                            if *b != *c && *b != *v && !interference_graph.contains_edge(*ix1, *ix2)
-                            {
-                                interference_graph.add_edge(*ix1, *ix2, ());
+                            // Also, avoid adding self edges
+                            if *b != *c && *b != *v {
+                                interference_graph.update_edge(*ix1, *ix2, true);
                             }
                         }
                     }
@@ -250,9 +264,9 @@ pub(crate) fn create_interference_graph(
                         for b in regs.iter() {
                             if let Some(ix2) = reg_to_node_map.get(b) {
                                 // Add edge (v, b)
-                                // Avoid adding self edges and edges that already exist
-                                if *b != **v && !interference_graph.contains_edge(*ix1, *ix2) {
-                                    interference_graph.add_edge(*ix1, *ix2, ());
+                                // Avoid adding self edges
+                                if *b != **v {
+                                    interference_graph.update_edge(*ix1, *ix2, true);
                                 }
                             }
                         }
@@ -279,17 +293,20 @@ pub(crate) fn create_interference_graph(
 ///
 pub(crate) fn coalesce_registers(
     ops: &[Op],
+    live_out: Vec<FxHashSet<VirtualRegister>>,
     interference_graph: &mut InterferenceGraph,
     reg_to_node_map: &mut HashMap<VirtualRegister, NodeIndex>,
-) -> Vec<Op> {
+) -> (Vec<Op>, Vec<FxHashSet<VirtualRegister>>) {
     // A map from the virtual registers that are removed to the virtual registers that they are
     // replaced with during the coalescing process.
     let mut reg_to_reg_map: HashMap<&VirtualRegister, &VirtualRegister> = HashMap::new();
 
     // To hold the final *reduced* list of ops
     let mut reduced_ops: Vec<Op> = Vec::with_capacity(ops.len());
+    let mut reduced_live_out: Vec<FxHashSet<VirtualRegister>> = Vec::with_capacity(live_out.len());
+    assert!(ops.len() == live_out.len());
 
-    for op in ops {
+    for (op_idx, op) in ops.iter().enumerate() {
         match &op.opcode {
             Either::Left(VirtualOp::MOVE(x, y)) => {
                 match (x, y) {
@@ -316,45 +333,80 @@ pub(crate) fn coalesce_registers(
                             continue;
                         }
 
+                        let r1_neighbours = interference_graph
+                            .neighbors_undirected(*ix1)
+                            .collect::<FxHashSet<_>>();
+                        let r2_neighbours = interference_graph
+                            .neighbors_undirected(*ix2)
+                            .collect::<FxHashSet<_>>();
+
+                        // Using either of the two safety conditions below, it's guaranteed
+                        // that we aren't turning a k-colourable graph into one that's not,
+                        // by doing the coalescing. Ref: "Coalescing" section in Appel's book.
+                        let briggs_safety = r1_neighbours
+                            .union(&r2_neighbours)
+                            .filter(|&&neighbour| {
+                                interference_graph.neighbors_undirected(neighbour).count()
+                                    >= compiler_constants::NUM_ALLOCATABLE_REGISTERS as usize
+                            })
+                            .count()
+                            < compiler_constants::NUM_ALLOCATABLE_REGISTERS as usize;
+
+                        let george_safety = r2_neighbours.iter().all(|&r2_neighbor| {
+                            r1_neighbours.contains(&r2_neighbor)
+                                || interference_graph.neighbors_undirected(r2_neighbor).count()
+                                    < compiler_constants::NUM_ALLOCATABLE_REGISTERS as usize
+                        });
+
+                        let safe = briggs_safety || george_safety;
+
                         // If r1 and r2 are connected in the interference graph (i.e. their
                         // respective liveness ranges overalp), preserve the MOVE instruction by
                         // adding it to reduced_ops
-                        if interference_graph.contains_edge(*ix1, *ix2) {
+                        if interference_graph.contains_edge(*ix1, *ix2)
+                            || interference_graph.contains_edge(*ix2, *ix1)
+                            || !safe
+                        {
                             reduced_ops.push(op.clone());
+                            reduced_live_out.push(live_out[op_idx].clone());
                             continue;
                         }
 
                         // The MOVE instruction can now be safely removed. That is, we simply don't
                         // add it to the reduced_ops vector. Also, we combine the two nodes ix1 and
-                        // ix2 into ix1 and then we remove ix2 from the graph. We also have
+                        // ix2 into ix2 and then we remove ix1 from the graph. We also have
                         // to do some bookkeeping.
                         //
                         // Note that because the interference graph is of type StableGraph, the
                         // node index corresponding to each virtual register does not change when
                         // some graph nodes are added or removed.
 
-                        // Add all of ix2(r2)'s edges to `ix1(r1)`
-                        for neighbor in interference_graph.neighbors(*ix2).collect::<Vec<_>>() {
-                            interference_graph.add_edge(neighbor, *ix1, ());
+                        // Add all of ix1(r1)'s edges to `ix2(r2)` as incoming edges.
+                        for neighbor in r1_neighbours {
+                            if !interference_graph.contains_edge(*ix2, neighbor) {
+                                interference_graph.update_edge(neighbor, *ix2, true);
+                            }
                         }
 
-                        // Remove ix2 by setting its weight to `None`.
-                        interference_graph[*ix2] = None;
+                        // Remove ix1.
+                        interference_graph.remove_node(*ix1);
 
                         // Update the register maps
-                        reg_to_node_map.insert(r2.clone(), *ix1);
-                        reg_to_reg_map.insert(r2, r1);
+                        reg_to_node_map.insert(r1.clone(), *ix2);
+                        reg_to_reg_map.insert(r1, r2);
                     }
                     _ => {
                         // Preserve the MOVE instruction if either registers used in the MOVE is
                         // special registers (i.e. *not* a VirtualRegister::Virtual(_))
                         reduced_ops.push(op.clone());
+                        reduced_live_out.push(live_out[op_idx].clone());
                     }
                 }
             }
             _ => {
                 // Preserve all other instructions
                 reduced_ops.push(op.clone());
+                reduced_live_out.push(live_out[op_idx].clone());
             }
         }
     }
@@ -374,8 +426,48 @@ pub(crate) fn coalesce_registers(
     for new_op in &mut reduced_ops {
         *new_op = new_op.update_register(&final_reg_to_reg_map);
     }
+    for new_live_out in &mut reduced_live_out {
+        for (old, &new) in &final_reg_to_reg_map {
+            if new_live_out.remove(old) {
+                new_live_out.insert(new.clone());
+            }
+        }
+    }
 
-    reduced_ops
+    (reduced_ops, reduced_live_out)
+}
+
+// For every virtual register, compute its (def points, use points).
+fn compute_def_use_points(ops: &[Op]) -> FxHashMap<VirtualRegister, (Vec<usize>, Vec<usize>)> {
+    let mut res: FxHashMap<VirtualRegister, (Vec<usize>, Vec<usize>)> = FxHashMap::default();
+    for (idx, op) in ops.iter().enumerate() {
+        let mut op_use = op.use_registers();
+        let mut op_def = op.def_registers();
+        op_use.retain(|&reg| reg.is_virtual());
+        op_def.retain(|&reg| reg.is_virtual());
+
+        for &vreg in op_use.iter().filter(|reg| reg.is_virtual()) {
+            match res.entry(vreg.clone()) {
+                hash_map::Entry::Occupied(mut occ) => {
+                    occ.get_mut().1.push(idx);
+                }
+                hash_map::Entry::Vacant(vac) => {
+                    vac.insert((vec![], vec![idx]));
+                }
+            }
+        }
+        for &vreg in op_def.iter().filter(|reg| reg.is_virtual()) {
+            match res.entry(vreg.clone()) {
+                hash_map::Entry::Occupied(mut occ) => {
+                    occ.get_mut().0.push(idx);
+                }
+                hash_map::Entry::Vacant(vac) => {
+                    vac.insert((vec![idx], vec![]));
+                }
+            }
+        }
+    }
+    res
 }
 
 /// Given an interference graph and a integer k, figure out if the graph k-colorable. Graph
@@ -385,51 +477,286 @@ pub(crate) fn coalesce_registers(
 ///
 /// Algorithm:
 /// ===============================================================================================
-/// 1. Pick any node n such that degree(n) < k and put it on the stack along with its neighbors.
+/// 1. Pick any node n such that degree(n) < k and put it on the stack.
 /// 2. Remove node n and all its edges from the graph
 ///    - This may make some new nodes have fewer than k neighbours which is nice.
-/// 3. If some vertex n still has k or more neighbors, then the graph is not k colorable, and we
-///    have to spill. For now, we will just error out, but we may be able to do better in the
-///    future.
+/// 3. If some vertex n still has k or more neighbors, then the graph may not be k colorable.
+///     We still add it to the stack as is, as a potential spill. When popping, if we still
+///     can't colour it, then it becomes an actual spill.
 /// ===============================================================================================
-///
-/// As we don't implement spilling just yet, I've modified the algorithm above to assume k=infinity
-/// and moving the colorability checking until the register assignment phase. The reason for this
-/// is that the algorithm above can be too conservative and may bail our early even though a valid
-/// assignment is actually available. We can revisit this decision when decide to implement
-/// spilling.
 ///
 pub(crate) fn color_interference_graph(
     interference_graph: &mut InterferenceGraph,
-) -> Vec<(VirtualRegister, BTreeSet<VirtualRegister>)> {
+    ops: &[Op],
+    live_out: &[FxHashSet<VirtualRegister>],
+) -> Result<Vec<NodeIndex>, FxHashSet<VirtualRegister>> {
     let mut stack = Vec::with_capacity(interference_graph.node_count());
+    let mut on_stack = FxHashSet::default();
+    let mut spills = FxHashSet::default();
+    let def_use_points = compute_def_use_points(ops);
 
-    // Raw for loop here is safe because we are not actually removing any nodes from the graph at
-    // any point (i.e. we're never calling `remove_node()`). This means that each `index` below
-    // correspond to a valid `NodeIndex` in the graph.
-    for index in 0..interference_graph.node_count() {
-        // Convert to a `NodeIndex`
-        let node = node_index(index);
+    // Nodes with < k-degree before adding to the stack,
+    // to have their neighbours processed.
+    let mut worklist = vec![];
+    // Nodes as yet having >= k-degree.
+    let mut pending = FxHashSet::default();
 
-        // Nodes with weight `None` are dead
-        if interference_graph[node].is_none() {
-            continue;
+    for node in interference_graph.node_indices() {
+        let num_neighbors = interference_graph.neighbors_undirected(node).count();
+        if num_neighbors < compiler_constants::NUM_ALLOCATABLE_REGISTERS as usize {
+            worklist.push(node);
+        } else {
+            pending.insert(node);
         }
-
-        // Grab all neighbors with node weight not equal to `None`
-        let neighbors = interference_graph
-            .neighbors(node)
-            .filter_map(|n| interference_graph[n].clone())
-            .collect();
-
-        // Build the stack
-        stack.push((interference_graph[node].clone().unwrap(), neighbors));
-
-        // Remove `node` by setting its weight to `None`.
-        interference_graph[node] = None;
     }
 
-    stack
+    // Get outgoing "true" edged neighbors.
+    fn get_connected_outgoing_neighbors(
+        interference_graph: &InterferenceGraph,
+        node_index: NodeIndex,
+    ) -> impl Iterator<Item = NodeIndex> + '_ {
+        interference_graph
+            .edges_directed(node_index, Outgoing)
+            .filter_map(|e| interference_graph[e.id()].then_some(e.target()))
+    }
+
+    // Get incoming "true" edged neighbors.
+    fn get_connected_incoming_neighbors(
+        interference_graph: &InterferenceGraph,
+        node_index: NodeIndex,
+    ) -> impl Iterator<Item = NodeIndex> + '_ {
+        interference_graph
+            .edges_directed(node_index, Incoming)
+            .filter_map(|e| interference_graph[e.id()].then_some(e.source()))
+    }
+
+    // Get neighbours (either direction) connected via a "true" edge.
+    fn get_connected_neighbours(
+        interference_graph: &InterferenceGraph,
+        node_index: NodeIndex,
+    ) -> impl Iterator<Item = NodeIndex> + '_ {
+        get_connected_outgoing_neighbors(interference_graph, node_index).chain(
+            get_connected_incoming_neighbors(interference_graph, node_index),
+        )
+    }
+
+    // Mark edges to/from node satisfying the conditions as deleted.
+    fn delete_edges<P: Fn(&VirtualRegister, &VirtualRegister) -> bool>(
+        interference_graph: &mut InterferenceGraph,
+        node_index: NodeIndex,
+        should_delete: P,
+    ) {
+        let edges: Vec<_> = interference_graph
+            .edges_directed(node_index, Outgoing)
+            .chain(interference_graph.edges_directed(node_index, Incoming))
+            .map(|edge| edge.id())
+            .collect();
+
+        for e in edges {
+            let (source, target) = interference_graph.edge_endpoints(e).unwrap();
+            {
+                if should_delete(&interference_graph[source], &interference_graph[target]) {
+                    interference_graph[e] = false;
+                }
+            }
+        }
+    }
+
+    loop {
+        while let Some(node_index) = worklist.pop() {
+            // Ensure that we've not already processed this.
+            if on_stack.contains(&node_index) {
+                continue;
+            }
+
+            // This node is colourable.
+            stack.push(node_index);
+            on_stack.insert(node_index);
+
+            // When spilled, not all edges should be deleted, and the spilling
+            // code takes care of deleting the right edges.
+            if !spills.contains(&interference_graph[node_index]) {
+                // Delete all edges connected to node_index.
+                delete_edges(interference_graph, node_index, |_, _| true)
+            }
+
+            let candidate_neighbors: Vec<_> = interference_graph
+                .neighbors_undirected(node_index)
+                .filter(|n| {
+                    pending.contains(n)
+                        && get_connected_neighbours(interference_graph, *n).count()
+                            < compiler_constants::NUM_ALLOCATABLE_REGISTERS as usize
+                })
+                .collect();
+            for candidate_neighbor in &candidate_neighbors {
+                pending.remove(candidate_neighbor);
+                worklist.push(*candidate_neighbor);
+            }
+        }
+
+        if let Some(&spill_reg_index) = pending.iter().max_by(|&&node1, &&node2| {
+            // At the moment, our spill priority function is just this,
+            // i.e., spill the register with more incoming interferences.
+            // (roughly indicating how long the interval is).
+            get_connected_incoming_neighbors(interference_graph, node1)
+                .count()
+                .cmp(&get_connected_incoming_neighbors(interference_graph, node2).count())
+        }) {
+            let spill_reg = interference_graph[spill_reg_index].clone();
+            spills.insert(spill_reg.clone());
+
+            // Update the interference graph that this is spilled.
+            // A spill implies a store right after a definition and
+            // a load right before a use, forming new tiny live ranges.
+            // So we retain only those interferences that correspond to
+            // these tiny live ranges and remove the rest.
+            let to_retain =
+                def_use_points
+                    .get(&spill_reg)
+                    .map_or(FxHashSet::default(), |(defs, uses)| {
+                        let mut retains = FxHashSet::default();
+                        for &def in defs {
+                            retains
+                                .extend(live_out[def].iter().filter(|reg| !spills.contains(*reg)));
+                        }
+                        for &r#use in uses.iter().filter(|&&r#use| r#use > 0) {
+                            retains.extend(
+                                live_out[r#use - 1]
+                                    .iter()
+                                    .filter(|reg| !spills.contains(*reg)),
+                            );
+                        }
+                        retains
+                    });
+
+            delete_edges(interference_graph, spill_reg_index, |source, target| {
+                !(to_retain.contains(source) || to_retain.contains(target))
+            });
+
+            pending.remove(&spill_reg_index);
+            worklist.push(spill_reg_index);
+        } else {
+            break;
+        }
+    }
+
+    if spills.is_empty() {
+        Ok(stack)
+    } else {
+        Err(spills)
+    }
+}
+
+/// Assigns an allocatable register to each virtual register used by some instruction in the
+/// list `self.ops`. The algorithm used is Chaitin's graph-coloring register allocation
+/// algorithm (https://en.wikipedia.org/wiki/Chaitin%27s_algorithm). The individual steps of
+/// the algorithm are thoroughly explained in register_allocator.rs.
+
+pub(crate) fn allocate_registers(
+    ops: &[Op],
+) -> Result<AllocatedAbstractInstructionSet, CompileError> {
+    enum ColouringResult {
+        Success {
+            updated_ops: Vec<Op>,
+            interference_graph: InterferenceGraph,
+            colouring_stack: Vec<NodeIndex>,
+        },
+        SpillsNeeded {
+            updated_ops: Vec<Op>,
+            spills: FxHashSet<VirtualRegister>,
+        },
+    }
+
+    fn try_color(ops: &[Op]) -> ColouringResult {
+        // Step 1: Liveness Analysis.
+        let live_out = liveness_analysis(ops);
+
+        // Step 2: Construct the interference graph.
+        let (mut interference_graph, mut reg_to_node_ix) =
+            create_interference_graph(ops, &live_out);
+
+        // Step 3: Remove redundant MOVE instructions using the interference graph.
+        let (updated_ops, live_out) =
+            coalesce_registers(ops, live_out, &mut interference_graph, &mut reg_to_node_ix);
+
+        // Step 4: Simplify - i.e. color the interference graph and return a stack that contains
+        // each colorable node and its neighbors.
+        match color_interference_graph(&mut interference_graph, &updated_ops, &live_out) {
+            Ok(colouring_stack) => ColouringResult::Success {
+                updated_ops,
+                interference_graph,
+                colouring_stack,
+            },
+            Err(spills) => ColouringResult::SpillsNeeded {
+                updated_ops,
+                spills,
+            },
+        }
+    }
+
+    // We start with the ops we're given.
+    let mut updated_ops_ref = ops;
+    // A placeholder for updated ops.
+    let mut updated_ops;
+    // How many times to try spilling before we give up.
+    let mut try_count = 0;
+    // Try and assign registers. If we fail, spill. Repeat few times.
+    let (updated_ops, interference_graph, mut stack) = loop {
+        match try_color(updated_ops_ref) {
+            ColouringResult::Success {
+                updated_ops,
+                interference_graph,
+                colouring_stack,
+            } => {
+                break (updated_ops, interference_graph, colouring_stack);
+            }
+            ColouringResult::SpillsNeeded {
+                updated_ops: updated_ops_before_spill,
+                spills,
+            } => {
+                if try_count >= 4 {
+                    let comment = updated_ops_before_spill
+                        .iter()
+                        .find_map(|op| {
+                            if let Either::Right(crate::asm_lang::ControlFlowOp::Label(_)) =
+                                op.opcode
+                            {
+                                Some(op.comment.clone())
+                            } else {
+                                None
+                            }
+                        })
+                        .unwrap_or("unknown".into());
+
+                    return Err(CompileError::InternalOwned(
+                        format!(
+                            "The allocator cannot resolve a register mapping for function {}. \
+                                     Using #[inline(never)] on some functions may help.",
+                            comment
+                        ),
+                        Span::dummy(),
+                    ));
+                }
+                try_count += 1;
+                updated_ops = spill(&updated_ops_before_spill, &spills);
+                updated_ops_ref = &updated_ops;
+            }
+        }
+    };
+
+    // Step 5: Use the stack to assign a register for each virtual register.
+    let pool = assign_registers(&interference_graph, &mut stack)?;
+    // Step 6: Update all instructions to use the resulting register pool.
+    let mut buf = vec![];
+    for op in &updated_ops {
+        buf.push(AllocatedAbstractOp {
+            opcode: op.allocate_registers(&pool),
+            comment: op.comment.clone(),
+            owning_span: op.owning_span.clone(),
+        })
+    }
+
+    Ok(AllocatedAbstractInstructionSet { ops: buf })
 }
 
 /// Use the stack generated by the coloring algorithm to figure out a register assignment for each
@@ -438,12 +765,19 @@ pub(crate) fn color_interference_graph(
 /// the neighbors of v (available from the stack) and the list of virtual registers already used by
 /// r (available in the used_by field) is empty.
 ///
-pub(crate) fn assign_registers(
-    stack: &mut Vec<(VirtualRegister, BTreeSet<VirtualRegister>)>,
+fn assign_registers(
+    interference_graph: &InterferenceGraph,
+    stack: &mut Vec<NodeIndex>,
 ) -> Result<RegisterPool, CompileError> {
     let mut pool = RegisterPool::init();
-    while let Some((reg, neighbors)) = stack.pop() {
-        if matches!(reg, VirtualRegister::Virtual(_)) {
+
+    while let Some(node) = stack.pop() {
+        let reg = interference_graph[node].clone();
+        let neighbors: BTreeSet<VirtualRegister> = interference_graph
+            .neighbors_undirected(node)
+            .map(|neighbor| interference_graph[neighbor].clone())
+            .collect();
+        if reg.is_virtual() {
             let available =
                 pool.registers
                     .iter_mut()
@@ -454,11 +788,9 @@ pub(crate) fn assign_registers(
             if let Some(RegisterAllocationStatus { reg: _, used_by }) = available {
                 used_by.insert(reg.clone());
             } else {
-                // Error out for now if no available register is found
                 return Err(CompileError::Internal(
                     "The allocator cannot resolve a register mapping for this program. \
-                     This is a temporary artifact of the early stage version of this \
-                     compiler.  Using #[inline(never)] on some functions may help.",
+                             Using #[inline(never)] on some functions may help.",
                     Span::dummy(),
                 ));
             }
@@ -466,4 +798,238 @@ pub(crate) fn assign_registers(
     }
 
     Ok(pool)
+}
+
+/// Given a function, its locals info (stack frame usage details)
+/// and a set of virtual registers to be spilled, insert the actual spills
+/// and return the updated function and the updated stack info.
+fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
+    let mut spilled: Vec<Op> = vec![];
+
+    // Attempt to discover the current stack size and base register.
+    let mut cfe_idx_opt = None;
+    let mut cfs_idx_opt = None;
+    for (op_idx, op) in ops.iter().enumerate() {
+        match &op.opcode {
+            Either::Left(VirtualOp::CFEI(_)) => {
+                assert!(cfe_idx_opt.is_none(), "Found more than one stack extension");
+                cfe_idx_opt = Some(op_idx);
+            }
+            Either::Left(VirtualOp::CFSI(_)) => {
+                assert!(cfs_idx_opt.is_none(), "Found more than one stack shrink");
+                cfs_idx_opt = Some(op_idx);
+            }
+            _ => (),
+        }
+    }
+
+    let cfe_idx = cfe_idx_opt.expect("Function does not have CFEI instruction for locals");
+
+    let Either::Left(VirtualOp::CFEI(VirtualImmediate24 { value: locals_size_bytes })) = ops[cfe_idx].opcode else {
+            panic!("Unexpected opcode");
+        };
+
+    // pad up the locals size in bytes to a word.
+    let locals_size_bytes = size_bytes_round_up_to_word_alignment!(locals_size_bytes);
+
+    // Determine the stack slots for each spilled register.
+    let spill_offsets_bytes: FxHashMap<VirtualRegister, u32> = spills
+        .iter()
+        .enumerate()
+        .map(|(i, reg)| (reg.clone(), (i * 8) as u32 + locals_size_bytes))
+        .collect();
+
+    let new_locals_byte_size = locals_size_bytes + (8 * spills.len()) as u32;
+    if new_locals_byte_size > compiler_constants::TWENTY_FOUR_BITS as u32 {
+        panic!("Enormous stack usage for locals.");
+    }
+
+    for (op_idx, op) in ops.iter().enumerate() {
+        if op_idx == cfe_idx {
+            // This is the CFE instruction, use the new stack size.
+            spilled.push(Op {
+                opcode: Either::Left(VirtualOp::CFEI(VirtualImmediate24 {
+                    value: new_locals_byte_size,
+                })),
+                comment: op.comment.clone()
+                    + &format!(" and {new_locals_byte_size} bytes for spills"),
+                owning_span: op.owning_span.clone(),
+            });
+        } else if matches!(cfs_idx_opt, Some(cfs_idx) if cfs_idx == op_idx) {
+            // This is the CFS instruction, use the new stack size.
+            spilled.push(Op {
+                opcode: Either::Left(VirtualOp::CFSI(VirtualImmediate24 {
+                    value: new_locals_byte_size,
+                })),
+                comment: op.comment.clone()
+                    + &format!(" and {new_locals_byte_size} bytes for spills"),
+                owning_span: op.owning_span.clone(),
+            });
+        } else {
+            // For every other instruction:
+            //   If it defines a spilled register, store that register to its stack slot.
+            //   If it uses a spilled register, load that register from its stack slot.
+            let use_registers = op.use_registers();
+            let def_registers = op.def_registers();
+
+            // Calculate the address off a local in a register + imm word offset.
+            fn calculate_offset_reg_wordimm(
+                inst_list: &mut Vec<Op>,
+                offset_bytes: u32,
+            ) -> (VirtualRegister, VirtualImmediate12) {
+                assert!(offset_bytes % 8 == 0);
+                if offset_bytes <= compiler_constants::EIGHTEEN_BITS as u32 {
+                    let offset_mov_instr = Op {
+                        opcode: Either::Left(VirtualOp::MOVI(
+                            VirtualRegister::Constant(ConstantRegister::Scratch),
+                            VirtualImmediate18 {
+                                value: offset_bytes,
+                            },
+                        )),
+                        comment: "Spill/Refill: Set offset".to_string(),
+                        owning_span: None,
+                    };
+                    inst_list.push(offset_mov_instr);
+                    let offset_add_instr = Op {
+                        opcode: Either::Left(VirtualOp::ADD(
+                            VirtualRegister::Constant(ConstantRegister::Scratch),
+                            VirtualRegister::Constant(ConstantRegister::Scratch),
+                            VirtualRegister::Constant(ConstantRegister::LocalsBase),
+                        )),
+                        comment: "Spill/Refill: Add offset to stack base".to_string(),
+                        owning_span: None,
+                    };
+                    inst_list.push(offset_add_instr);
+                    (
+                        VirtualRegister::Constant(ConstantRegister::Scratch),
+                        VirtualImmediate12 { value: 0 },
+                    )
+                } else {
+                    assert!(offset_bytes <= compiler_constants::TWENTY_FOUR_BITS as u32);
+                    // To have a 24b immediate value, we split it into 12-12 bits
+                    // The upper 12 bits are shifted down, then put in a register using
+                    // MOVi and then shifted back up via SLLI. Adding back the lower 12 bits
+                    // gives us back the original value. We first add the locals_base register
+                    // though and then just return the lower 12 bits (but in words) to be used
+                    // as an imm value and added in the consumer LW/SW.
+                    let offset_upper_12 = offset_bytes >> 12;
+                    let offset_lower_12 = offset_bytes & 0b111111111111;
+                    assert!((offset_upper_12 << 12) + offset_lower_12 == offset_bytes);
+                    let offset_upper_mov_instr = Op {
+                        opcode: Either::Left(VirtualOp::MOVI(
+                            VirtualRegister::Constant(ConstantRegister::Scratch),
+                            VirtualImmediate18 {
+                                value: offset_upper_12,
+                            },
+                        )),
+                        comment: "Spill/Refill: Offset computation".to_string(),
+                        owning_span: None,
+                    };
+                    inst_list.push(offset_upper_mov_instr);
+                    let offset_upper_shift_instr = Op {
+                        opcode: Either::Left(VirtualOp::SLLI(
+                            VirtualRegister::Constant(ConstantRegister::Scratch),
+                            VirtualRegister::Constant(ConstantRegister::Scratch),
+                            VirtualImmediate12 { value: 12 },
+                        )),
+                        comment: "Spill/Refill: Offset computation".to_string(),
+                        owning_span: None,
+                    };
+                    inst_list.push(offset_upper_shift_instr);
+                    let offset_add_instr = Op {
+                        opcode: Either::Left(VirtualOp::ADD(
+                            VirtualRegister::Constant(ConstantRegister::Scratch),
+                            VirtualRegister::Constant(ConstantRegister::Scratch),
+                            VirtualRegister::Constant(ConstantRegister::LocalsBase),
+                        )),
+                        comment: "Spill/Refill: Offset computation".to_string(),
+                        owning_span: None,
+                    };
+                    inst_list.push(offset_add_instr);
+                    (
+                        VirtualRegister::Constant(ConstantRegister::Scratch),
+                        VirtualImmediate12 {
+                            // This will be multiplied by 8 by the VM
+                            value: (offset_lower_12 / 8) as u16,
+                        },
+                    )
+                }
+            }
+
+            // Take care of any refills on the uses.
+            for &spilled_use in use_registers.iter().filter(|r#use| spills.contains(r#use)) {
+                // Load the spilled register from its stack slot.
+                let offset_bytes = spill_offsets_bytes[spilled_use];
+                assert!(offset_bytes % 8 == 0);
+                if offset_bytes / 8 <= compiler_constants::TWELVE_BITS as u32 {
+                    spilled.push(Op {
+                        opcode: Either::Left(VirtualOp::LW(
+                            spilled_use.clone(),
+                            VirtualRegister::Constant(ConstantRegister::LocalsBase),
+                            VirtualImmediate12 {
+                                // This will be multiplied by 8 by the VM
+                                value: (offset_bytes / 8) as u16,
+                            },
+                        )),
+                        comment: "Refilling from spill".to_string(),
+                        owning_span: None,
+                    });
+                } else {
+                    let (offset_reg, offset_imm_word) =
+                        calculate_offset_reg_wordimm(&mut spilled, offset_bytes);
+                    let lw = Op {
+                        opcode: Either::Left(VirtualOp::LW(
+                            spilled_use.clone(),
+                            offset_reg,
+                            // This will be multiplied by 8 by the VM
+                            offset_imm_word,
+                        )),
+                        comment: "Refilling from spill".to_string(),
+                        owning_span: None,
+                    };
+                    spilled.push(lw);
+                }
+            }
+
+            // The op itself.
+            spilled.push(op.clone());
+
+            // Take care of spills from the def registers.
+            for &spilled_def in def_registers.iter().filter(|def| spills.contains(def)) {
+                // Store the def register to its stack slot.
+                let offset_bytes = spill_offsets_bytes[spilled_def];
+                assert!(offset_bytes % 8 == 0);
+                if offset_bytes / 8 <= compiler_constants::TWELVE_BITS as u32 {
+                    spilled.push(Op {
+                        opcode: Either::Left(VirtualOp::SW(
+                            VirtualRegister::Constant(ConstantRegister::LocalsBase),
+                            spilled_def.clone(),
+                            VirtualImmediate12 {
+                                // This will be multiplied by 8 by the VM
+                                value: (offset_bytes / 8) as u16,
+                            },
+                        )),
+                        comment: "Spill".to_string(),
+                        owning_span: None,
+                    });
+                } else {
+                    let (offset_reg, offset_imm_word) =
+                        calculate_offset_reg_wordimm(&mut spilled, offset_bytes);
+                    let sw = Op {
+                        opcode: Either::Left(VirtualOp::SW(
+                            offset_reg,
+                            spilled_def.clone(),
+                            // This will be multiplied by 8 by the VM
+                            offset_imm_word,
+                        )),
+                        comment: "Spill".to_string(),
+                        owning_span: None,
+                    };
+                    spilled.push(sw);
+                }
+            }
+        }
+    }
+
+    spilled
 }

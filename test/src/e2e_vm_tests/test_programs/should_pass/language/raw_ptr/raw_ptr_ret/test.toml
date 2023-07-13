@@ -1,2 +1,2 @@
 category = "run"
-expected_result = { action = "return", value = 67108855 }
+expected_result = { action = "return", value = 67108856 }

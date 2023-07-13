@@ -18,6 +18,7 @@ macro_rules! testgen {
     ) => {
         pub mod $module_name {
             use fuels::prelude::*;
+            use fuels::accounts::wallet::WalletUnlocked;
 
             abigen!(Contract(
                 name = "MyContract",

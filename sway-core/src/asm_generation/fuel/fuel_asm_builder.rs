@@ -160,6 +160,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             match instruction {
                 Instruction::AsmBlock(..) => unreachable!("Handled immediately above."),
                 Instruction::BitCast(val, ty) => self.compile_bitcast(instr_val, val, ty),
+                Instruction::UnaryOp { op, arg } => self.compile_unary_op(instr_val, op, arg),
                 Instruction::BinaryOp { op, arg1, arg2 } => {
                     self.compile_binary_op(instr_val, op, arg1, arg2)
                 }
@@ -447,6 +448,27 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             val_reg
         };
         self.reg_map.insert(*instr_val, reg);
+        Ok(())
+    }
+
+    fn compile_unary_op(
+        &mut self,
+        instr_val: &Value,
+        op: &UnaryOpKind,
+        arg: &Value,
+    ) -> Result<(), CompileError> {
+        let val_reg = self.value_to_register(arg)?;
+        let res_reg = self.reg_seqr.next();
+        let opcode = match op {
+            UnaryOpKind::Not => Either::Left(VirtualOp::NOT(res_reg.clone(), val_reg)),
+        };
+        self.cur_bytecode.push(Op {
+            opcode,
+            comment: String::new(),
+            owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+        });
+
+        self.reg_map.insert(*instr_val, res_reg);
         Ok(())
     }
 

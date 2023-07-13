@@ -32,7 +32,13 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::SizeOfType => {
                 type_check_size_of_type(ctx, kind, arguments, type_arguments, span)
             }
+            Intrinsic::SizeOfStr => {
+                type_check_size_of_type(ctx, kind, arguments, type_arguments, span)
+            }
             Intrinsic::IsReferenceType => {
+                type_check_is_reference_type(ctx, kind, arguments, type_arguments, span)
+            }
+            Intrinsic::IsStrType => {
                 type_check_is_reference_type(ctx, kind, arguments, type_arguments, span)
             }
             Intrinsic::Eq | Intrinsic::Gt | Intrinsic::Lt => {
@@ -56,16 +62,90 @@ impl ty::TyIntrinsicFunctionKind {
             | Intrinsic::And
             | Intrinsic::Or
             | Intrinsic::Xor
-            | Intrinsic::Mod
-            | Intrinsic::Lsh
-            | Intrinsic::Rsh => type_check_binary_op(ctx, kind, arguments, type_arguments, span),
+            | Intrinsic::Mod => type_check_binary_op(ctx, kind, arguments, type_arguments, span),
+            Intrinsic::Lsh | Intrinsic::Rsh => {
+                type_check_shift_binary_op(ctx, kind, arguments, type_arguments, span)
+            }
             Intrinsic::Revert => type_check_revert(ctx, kind, arguments, type_arguments, span),
             Intrinsic::PtrAdd | Intrinsic::PtrSub => {
                 type_check_ptr_ops(ctx, kind, arguments, type_arguments, span)
             }
             Intrinsic::Smo => type_check_smo(ctx, kind, arguments, type_arguments, span),
+            Intrinsic::Not => type_check_not(ctx, kind, arguments, type_arguments, span),
         }
     }
+}
+
+/// Signature: `__not(val: u64) -> u64`
+/// Description: Return the bitwise negation of the operator.
+/// Constraints: None.
+fn type_check_not(
+    ctx: TypeCheckContext,
+    kind: sway_ast::Intrinsic,
+    arguments: Vec<Expression>,
+    _type_arguments: Vec<TypeArgument>,
+    span: Span,
+) -> CompileResult<(ty::TyIntrinsicFunctionKind, TypeId)> {
+    let type_engine = ctx.engines.te();
+    let engines = ctx.engines();
+
+    let mut warnings = vec![];
+    let mut errors = vec![];
+
+    if arguments.len() != 1 {
+        errors.push(CompileError::IntrinsicIncorrectNumArgs {
+            name: kind.to_string(),
+            expected: 1,
+            span,
+        });
+        return err(warnings, errors);
+    }
+
+    let mut ctx = ctx
+        .with_help_text("")
+        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+
+    let operand = arguments[0].clone();
+    let operand_expr = check!(
+        ty::TyExpression::type_check(ctx.by_ref(), operand),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    let operand_typeinfo = check!(
+        CompileResult::from(
+            type_engine
+                .to_typeinfo(operand_expr.return_type, &operand_expr.span)
+                .map_err(CompileError::from)
+        ),
+        TypeInfo::ErrorRecovery,
+        warnings,
+        errors
+    );
+    let is_valid_arg_ty = matches!(operand_typeinfo, TypeInfo::UnsignedInteger(_));
+    if !is_valid_arg_ty {
+        errors.push(CompileError::IntrinsicUnsupportedArgType {
+            name: kind.to_string(),
+            span: operand_expr.span,
+            hint: Hint::empty(),
+        });
+        return err(warnings, errors);
+    }
+
+    ok(
+        (
+            ty::TyIntrinsicFunctionKind {
+                kind,
+                arguments: vec![operand_expr],
+                type_arguments: vec![],
+                span,
+            },
+            type_engine.insert(engines, operand_typeinfo),
+        ),
+        warnings,
+        errors,
+    )
 }
 
 /// Signature: `__size_of_val<T>(val: T) -> u64`
@@ -1048,6 +1128,124 @@ fn type_check_binary_op(
         warnings,
         errors
     );
+    ok(
+        (
+            ty::TyIntrinsicFunctionKind {
+                kind,
+                arguments: vec![lhs, rhs],
+                type_arguments: vec![],
+                span,
+            },
+            type_engine.insert(engines, arg_ty),
+        ),
+        warnings,
+        errors,
+    )
+}
+
+/// Signature: `__lsh<T, U>(lhs: T, rhs: U) -> T`
+/// Description: Logical left shifts the `lhs` by the `rhs` and returns the result.
+/// Constraints: `T` and `U` are an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+///
+/// Signature: `__rsh<T, U>(lhs: T, rhs: U) -> T`
+/// Description: Logical right shifts the `lhs` by the `rhs` and returns the result.
+/// Constraints: `T` and `U` are an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+fn type_check_shift_binary_op(
+    mut ctx: TypeCheckContext,
+    kind: sway_ast::Intrinsic,
+    arguments: Vec<Expression>,
+    type_arguments: Vec<TypeArgument>,
+    span: Span,
+) -> CompileResult<(ty::TyIntrinsicFunctionKind, TypeId)> {
+    let type_engine = ctx.engines.te();
+    let engines = ctx.engines();
+
+    let mut warnings = vec![];
+    let mut errors = vec![];
+
+    if arguments.len() != 2 {
+        errors.push(CompileError::IntrinsicIncorrectNumArgs {
+            name: kind.to_string(),
+            expected: 2,
+            span,
+        });
+        return err(warnings, errors);
+    }
+    if !type_arguments.is_empty() {
+        errors.push(CompileError::IntrinsicIncorrectNumTArgs {
+            name: kind.to_string(),
+            expected: 0,
+            span,
+        });
+        return err(warnings, errors);
+    }
+
+    let mut ctx = ctx
+        .by_ref()
+        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+
+    let lhs = arguments[0].clone();
+    let lhs = check!(
+        ty::TyExpression::type_check(ctx.by_ref(), lhs),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    // Check for supported argument types
+    let arg_ty = check!(
+        CompileResult::from(
+            type_engine
+                .to_typeinfo(lhs.return_type, &lhs.span)
+                .map_err(CompileError::from)
+        ),
+        TypeInfo::ErrorRecovery,
+        warnings,
+        errors
+    );
+    let is_valid_arg_ty = matches!(arg_ty, TypeInfo::UnsignedInteger(_));
+    if !is_valid_arg_ty {
+        errors.push(CompileError::IntrinsicUnsupportedArgType {
+            name: kind.to_string(),
+            span: lhs.span,
+            hint: Hint::empty(),
+        });
+        return err(warnings, errors);
+    }
+
+    let ctx = ctx
+        .by_ref()
+        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+
+    let rhs = arguments[1].clone();
+    let rhs = check!(
+        ty::TyExpression::type_check(ctx, rhs),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    // Check for supported argument types
+    let rhs_ty = check!(
+        CompileResult::from(
+            type_engine
+                .to_typeinfo(rhs.return_type, &rhs.span)
+                .map_err(CompileError::from)
+        ),
+        TypeInfo::ErrorRecovery,
+        warnings,
+        errors
+    );
+    let is_valid_rhs_ty = matches!(rhs_ty, TypeInfo::UnsignedInteger(_));
+    if !is_valid_rhs_ty {
+        errors.push(CompileError::IntrinsicUnsupportedArgType {
+            name: kind.to_string(),
+            span: lhs.span,
+            hint: Hint::empty(),
+        });
+        return err(warnings, errors);
+    }
+
     ok(
         (
             ty::TyIntrinsicFunctionKind {

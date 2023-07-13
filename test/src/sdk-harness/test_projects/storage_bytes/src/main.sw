@@ -22,7 +22,7 @@ impl StorageBytesTest for Contract {
     #[storage(read, write)]
     fn store_bytes(vec: Vec<u8>) {
         let mut vec = vec;
-        let bytes = Bytes::from_vec_u8(vec);
+        let bytes = Bytes::from(vec);
 
         storage.bytes.write_slice(bytes);
     }
@@ -30,7 +30,7 @@ impl StorageBytesTest for Contract {
     #[storage(read)]
     fn assert_stored_bytes(vec: Vec<u8>) {
         let mut vec = vec;
-        let bytes = Bytes::from_vec_u8(vec);
+        let bytes = Bytes::from(vec);
         let stored_bytes = storage.bytes.read_slice().unwrap();
 
         assert(bytes.len() == stored_bytes.len());

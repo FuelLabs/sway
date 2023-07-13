@@ -2,15 +2,15 @@ use crate::core::{
     session::Session,
     token::{get_range_from_span, SymbolKind, Token},
 };
+use lsp_types::{
+    Range, SemanticToken, SemanticTokenModifier, SemanticTokenType, SemanticTokens,
+    SemanticTokensResult, Url,
+};
 use std::sync::{
     atomic::{AtomicU32, Ordering},
     Arc,
 };
 use sway_types::{Span, Spanned};
-use tower_lsp::lsp_types::{
-    Range, SemanticToken, SemanticTokenModifier, SemanticTokenType, SemanticTokens,
-    SemanticTokensResult, Url,
-};
 
 // https://github.com/microsoft/vscode-extension-samples/blob/5ae1f7787122812dcc84e37427ca90af5ee09f14/semantic-tokens-sample/vscode.proposed.d.ts#L71
 pub fn semantic_tokens_full(session: Arc<Session>, url: &Url) -> Option<SemanticTokensResult> {

@@ -15,8 +15,8 @@ use sway_core::{
     Engines, TypeId,
 };
 
+use lsp_types::{self, Position, Url};
 use sway_types::{Ident, Span, Spanned};
-use tower_lsp::lsp_types::{self, Position, Url};
 
 use self::hover_link_contents::HoverLinkContents;
 

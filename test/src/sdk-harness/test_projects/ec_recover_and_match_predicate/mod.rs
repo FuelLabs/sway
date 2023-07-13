@@ -1,5 +1,5 @@
 use fuels::{
-    accounts::{predicate::Predicate, Account},
+    accounts::{predicate::Predicate, wallet::WalletUnlocked, Account},
     prelude::*,
     types::B512,
 };

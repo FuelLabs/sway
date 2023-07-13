@@ -30,6 +30,7 @@ members = [
   "test_projects/storage_init",
   "test_projects/storage_map",
   "test_projects/storage_map_nested",
+  "test_projects/storage_string",
   "test_projects/storage_vec_nested",
   "test_projects/token_ops",
   "test_projects/tx_fields",
@@ -62,4 +63,5 @@ members = [
   "test_artifacts/storage_vec/svec_u16",
   "test_artifacts/storage_vec/svec_u64",
   "test_artifacts/tx_contract",
+  "test_artifacts/tx_output_predicate",
 ]

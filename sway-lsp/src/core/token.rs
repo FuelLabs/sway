@@ -1,3 +1,4 @@
+use lsp_types::{Position, Range};
 use sway_ast::Intrinsic;
 use sway_core::{
     language::{
@@ -15,7 +16,6 @@ use sway_core::{
     Engines, TraitConstraint, TypeArgument, TypeEngine,
 };
 use sway_types::{Ident, Span, Spanned};
-use tower_lsp::lsp_types::{Position, Range};
 
 /// The `AstToken` holds the types produced by the [sway_core::language::parsed::ParseProgram].
 /// These tokens have not been type-checked.

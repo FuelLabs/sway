@@ -3,8 +3,10 @@ use std::fmt;
 #[derive(Eq, PartialEq, Debug, Clone, Hash)]
 pub enum Intrinsic {
     IsReferenceType,
+    IsStrType,
     SizeOfType,
     SizeOfVal,
+    SizeOfStr,
     Eq,
     Gt,
     Lt,
@@ -30,14 +32,17 @@ pub enum Intrinsic {
     PtrAdd,
     PtrSub,
     Smo,
+    Not,
 }
 
 impl fmt::Display for Intrinsic {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let s = match self {
             Intrinsic::IsReferenceType => "is_reference_type",
+            Intrinsic::IsStrType => "is_str_type",
             Intrinsic::SizeOfType => "size_of",
             Intrinsic::SizeOfVal => "size_of_val",
+            Intrinsic::SizeOfStr => "size_of_str",
             Intrinsic::Eq => "eq",
             Intrinsic::Gt => "gt",
             Intrinsic::Lt => "lt",
@@ -63,6 +68,7 @@ impl fmt::Display for Intrinsic {
             Intrinsic::PtrAdd => "ptr_add",
             Intrinsic::PtrSub => "ptr_sub",
             Intrinsic::Smo => "smo",
+            Intrinsic::Not => "not",
         };
         write!(f, "{s}")
     }
@@ -73,8 +79,10 @@ impl Intrinsic {
         use Intrinsic::*;
         Some(match raw {
             "__is_reference_type" => IsReferenceType,
+            "__is_str_type" => IsStrType,
             "__size_of" => SizeOfType,
             "__size_of_val" => SizeOfVal,
+            "__size_of_str" => SizeOfStr,
             "__eq" => Eq,
             "__gt" => Gt,
             "__lt" => Lt,
@@ -100,6 +108,7 @@ impl Intrinsic {
             "__ptr_add" => PtrAdd,
             "__ptr_sub" => PtrSub,
             "__smo" => Smo,
+            "__not" => Not,
             _ => return None,
         })
     }

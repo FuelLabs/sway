@@ -1,13 +1,13 @@
+use lsp_types::{
+    CompletionItem, CompletionItemKind, CompletionItemLabelDetails, CompletionTextEdit, Position,
+    Range, TextEdit,
+};
 use sway_core::{
     language::ty::{TyAstNodeContent, TyDecl, TyFunctionDecl},
     namespace::Items,
     Engines, TypeId, TypeInfo,
 };
 use sway_types::Ident;
-use tower_lsp::lsp_types::{
-    CompletionItem, CompletionItemKind, CompletionItemLabelDetails, CompletionTextEdit, Position,
-    Range, TextEdit,
-};
 
 pub(crate) fn to_completion_items(
     namespace: &Items,

@@ -1,5 +1,4 @@
-use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity, DiagnosticTag, Position, Range};
-
+use lsp_types::{Diagnostic, DiagnosticSeverity, DiagnosticTag, Position, Range};
 use sway_error::warning::CompileWarning;
 use sway_error::{error::CompileError, warning::Warning};
 use sway_types::{LineCol, Spanned};

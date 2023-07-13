@@ -1,4 +1,5 @@
 use fuels::{
+    accounts::wallet::WalletUnlocked,
     prelude::*,
     types::{Identity, SizedAsciiString},
 };
