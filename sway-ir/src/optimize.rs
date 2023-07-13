@@ -38,32 +38,33 @@ mod target_fuel;
 
 #[cfg(test)]
 pub mod tests {
+    use crate::{PassGroup, PassManager};
     use sway_types::SourceEngine;
 
-    use crate::{PassGroup, PassManager};
-
-    // This function parses the IR text representation and run the specified optimizers. After that checks if the IR WAS
-    // modified and captures all instructions with metadata "!0". These are checked against `expected`.
-    //
-    // For example:
-    //
-    // ```rust, ignore
-    // assert_is_optimized(
-    //     &["constcombine"],
-    //     "entry fn main() -> u64 {
-    //        entry():
-    //             l = const u64 1
-    //             r = const u64 2
-    //             result = add l, r, !0
-    //             ret u64 result
-    //     }",
-    //     ["const u64 3"],
-    // );
-    // ```
-    pub(crate) fn assert_is_optimized<'a>(
+    /// This function parses the IR text representation and run the specified optimizers passes.
+    /// Then, depending on the `expected` parameter it checks if the IR was optimized or not.
+    ///
+    /// This comparison is done by capturing all instructions with metadata "!0".
+    ///
+    /// For example:
+    ///
+    /// ```rust, ignore
+    /// assert_optimization(
+    ///     &["constcombine"],
+    ///     "entry fn main() -> u64 {
+    ///        entry():
+    ///             l = const u64 1
+    ///             r = const u64 2
+    ///             result = add l, r, !0
+    ///             ret u64 result
+    ///     }",
+    ///     ["const u64 3"],
+    /// );
+    /// ```
+    pub(crate) fn assert_optimization<'a>(
         passes: &[&'static str],
         body: &str,
-        expected: impl IntoIterator<Item = &'a str>,
+        expected: Option<impl IntoIterator<Item = String>>,
     ) {
         let source_engine = SourceEngine::default();
         let mut context = crate::parse(
@@ -86,8 +87,12 @@ pub mod tests {
             group.append_pass(pass);
         }
 
-        let r = pass_manager.run(&mut context, &group).unwrap();
-        assert!(r);
+        let modified = pass_manager.run(&mut context, &group).unwrap();
+        assert_eq!(expected.is_some(), modified);
+
+        let Some(expected) = expected else {
+            return;
+        };
 
         let actual = context
             .to_string()
@@ -104,8 +109,9 @@ pub mod tests {
         assert!(!actual.is_empty());
 
         let mut expected_matches = actual.len();
+
         for (actual, expected) in actual.iter().zip(expected) {
-            if !actual.contains(expected) {
+            if !actual.contains(&expected) {
                 panic!("error: {actual:?} {expected:?}");
             } else {
                 expected_matches -= 1;
@@ -113,48 +119,5 @@ pub mod tests {
         }
 
         assert_eq!(expected_matches, 0);
-    }
-
-    // This function parses the IR text representation and run the specified optimizers. After that checks if the IR was
-    // NOT modified.
-    //
-    // For example:
-    //
-    // ```rust, ignore
-    // assert_is_not_optimized(
-    //     &["constcombine"],
-    //     "entry fn main() -> u64 {
-    //        entry():
-    //             l = const u64 0
-    //             r = const u64 1
-    //             result = sub l, r, !0
-    //             ret u64 result
-    //     }"
-    // );
-    // ```
-    pub(crate) fn assert_is_not_optimized(passes: &[&'static str], body: &str) {
-        let source_engine = SourceEngine::default();
-        let mut context = crate::parse(
-            &format!(
-                "script {{
-                {body}
-            }}
-
-            !0 = \"a.sw\""
-            ),
-            &source_engine,
-        )
-        .unwrap();
-
-        let mut pass_manager = PassManager::default();
-        crate::register_known_passes(&mut pass_manager);
-
-        let mut group = PassGroup::default();
-        for pass in passes {
-            group.append_pass(pass);
-        }
-
-        let r = pass_manager.run(&mut context, &group).unwrap();
-        assert!(!r);
     }
 }

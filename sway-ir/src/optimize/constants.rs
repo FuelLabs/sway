@@ -284,103 +284,77 @@ fn combine_unary_op(context: &mut Context, function: &Function) -> bool {
 mod tests {
     use crate::optimize::tests::*;
 
-    fn assert_unary_op_is_optimized(opcode: &str, v: &str, result: &str) {
-        assert_is_optimized(
-            &["constcombine"],
-            &format!(
-                "
-        entry fn main() -> u64 {{
-            entry():
-            v = const u64 {v}
-            result = {opcode} v, !0
-            ret u64 result
-        }}
-    "
-            ),
-            [format!("v0 = const u64 {result}").as_str()],
-        );
-    }
-
-    fn assert_binary_op_is_optimized(opcode: &str, l: &str, r: &str, result: &str) {
-        assert_is_optimized(
+    fn assert_operator(opcode: &str, l: &str, r: Option<&str>, result: Option<&str>) {
+        assert_optimization(
             &["constcombine"],
             &format!(
                 "
         entry fn main() -> u64 {{
             entry():
             l = const u64 {l}
-            r = const u64 {r}
-            result = {opcode} l, r, !0
+            {r_inst}
+            result = {opcode} l, {result_inst} !0
             ret u64 result
         }}
-    "
+    ",
+                r_inst = match r {
+                    Some(r) => format!("r = const u64 {r}"),
+                    None => format!(""),
+                },
+                result_inst = match r.as_ref() {
+                    Some(_) => format!(" r,"),
+                    None => format!(""),
+                }
             ),
-            [format!("v0 = const u64 {result}").as_str()],
-        );
-    }
-
-    fn assert_binary_op_is_not_optimized(opcode: &str, l: &str, r: &str) {
-        assert_is_not_optimized(
-            &["constcombine"],
-            &format!(
-                "
-        entry fn main() -> u64 {{
-            entry():
-            l = const u64 {l}
-            r = const u64 {r}
-            result = {opcode} l, r, !0
-            ret u64 result
-        }}
-    "
-            ),
+            result.map(|result| [format!("v0 = const u64 {result}")]),
         );
     }
 
     #[test]
     fn unary_op_are_optimized() {
-        assert_unary_op_is_optimized("not", &u64::MAX.to_string(), "0");
+        assert_operator("not", &u64::MAX.to_string(), None, Some("0"));
     }
 
     #[test]
     fn binary_op_are_optimized() {
-        assert_binary_op_is_optimized("add", "1", "1", "2");
-        assert_binary_op_is_optimized("sub", "1", "1", "0");
-        assert_binary_op_is_optimized("mul", "2", "2", "4");
-        assert_binary_op_is_optimized("div", "10", "5", "2");
-        assert_binary_op_is_optimized("mod", "12", "5", "2");
-        assert_binary_op_is_optimized("rsh", "16", "1", "8");
-        assert_binary_op_is_optimized("lsh", "16", "1", "32");
+        assert_operator("add", "1", Some("1"), Some("2"));
+        assert_operator("sub", "1", Some("1"), Some("0"));
+        assert_operator("mul", "2", Some("2"), Some("4"));
+        assert_operator("div", "10", Some("5"), Some("2"));
+        assert_operator("mod", "12", Some("5"), Some("2"));
+        assert_operator("rsh", "16", Some("1"), Some("8"));
+        assert_operator("lsh", "16", Some("1"), Some("32"));
 
-        assert_binary_op_is_optimized(
+        assert_operator(
             "and",
             &0x00FFF.to_string(),
-            &0xFFF00.to_string(),
-            &0xF00.to_string(),
+            Some(&0xFFF00.to_string()),
+            Some(&0xF00.to_string()),
         );
-        assert_binary_op_is_optimized(
+        assert_operator(
             "or",
             &0x00FFF.to_string(),
-            &0xFFF00.to_string(),
-            &0xFFFFF.to_string(),
+            Some(&0xFFF00.to_string()),
+            Some(&0xFFFFF.to_string()),
         );
 
-        assert_binary_op_is_optimized(
+        assert_operator(
             "xor",
             &0x00FFF.to_string(),
-            &0xFFF00.to_string(),
-            &0xFF0FF.to_string(),
+            Some(&0xFFF00.to_string()),
+            Some(&0xFF0FF.to_string()),
         );
     }
 
     #[test]
     fn binary_op_are_not_optimized() {
-        assert_binary_op_is_not_optimized("add", &u64::MAX.to_string(), "1");
-        assert_binary_op_is_not_optimized("sub", "0", "1");
-        assert_binary_op_is_not_optimized("mul", &u64::MAX.to_string(), "2");
-        assert_binary_op_is_not_optimized("div", "1", "0");
+        assert_operator("add", &u64::MAX.to_string(), Some("1"), None);
+        assert_operator("sub", "0", Some("1"), None);
+        assert_operator("mul", &u64::MAX.to_string(), Some("2"), None);
+        assert_operator("div", "1", Some("0"), None);
 
-        assert_binary_op_is_not_optimized("rsh", "1", "64");
-        assert_binary_op_is_not_optimized("lsh", "1", "64");
+        assert_operator("rsh", "1", Some("64"), None);
+        assert_operator("lsh", "1", Some("64"), None);
     }
 
     #[test]
@@ -388,7 +362,7 @@ mod tests {
         // Unary operator
 
         // `sub 1` is used to guarantee that the assert string is unique
-        assert_is_optimized(
+        assert_optimization(
             &["constcombine"],
             "
         entry fn main() -> u64 {
@@ -401,11 +375,11 @@ mod tests {
             ret u64 result
         }
     ",
-            ["const u64 18446744073709551614"],
+            Some(["const u64 18446744073709551614".to_string()]),
         );
 
         // Binary Operators
-        assert_is_optimized(
+        assert_optimization(
             &["constcombine"],
             "
         entry fn main() -> u64 {
@@ -418,7 +392,7 @@ mod tests {
             ret u64 result
         }
     ",
-            ["const u64 6"],
+            Some(["const u64 6".to_string()]),
         );
     }
 }
