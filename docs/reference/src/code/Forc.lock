@@ -119,6 +119,14 @@ source = 'member'
 dependencies = ['std']
 
 [[package]]
+name = 'intermediate_variables'
+source = 'member'
+dependencies = [
+    'core',
+    'std',
+]
+
+[[package]]
 name = 'letter_casing'
 source = 'member'
 dependencies = ['std']
