@@ -63,7 +63,6 @@ pub mod fuel_prelude {
 }
 
 pub use engine_threading::Engines;
-use sysinfo::{System, SystemExt};
 
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [lexed::LexedProgram] and [parsed::ParseProgram].
 ///
