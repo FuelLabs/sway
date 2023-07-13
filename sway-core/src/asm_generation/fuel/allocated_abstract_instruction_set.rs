@@ -336,10 +336,8 @@ impl AllocatedAbstractInstructionSet {
                         assert!(matches!(
                             self.ops[op_idx + 1].opcode,
                             Either::Left(
-                                AllocatedOpcode::JNEB(..)
-                                    | AllocatedOpcode::JMPB(..)
+                                AllocatedOpcode::JMPB(..)
                                     | AllocatedOpcode::JNZB(..)
-                                    | AllocatedOpcode::JNEF(..)
                                     | AllocatedOpcode::JMPF(..)
                                     | AllocatedOpcode::JNZF(..)
                             )
