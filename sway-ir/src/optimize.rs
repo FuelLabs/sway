@@ -64,7 +64,7 @@ pub mod tests {
     pub(crate) fn assert_optimization<'a>(
         passes: &[&'static str],
         body: &str,
-        expected: Option<impl IntoIterator<Item = String>>,
+        expected: Option<impl IntoIterator<Item = &'a str>>,
     ) {
         let source_engine = SourceEngine::default();
         let mut context = crate::parse(
@@ -111,7 +111,7 @@ pub mod tests {
         let mut expected_matches = actual.len();
 
         for (actual, expected) in actual.iter().zip(expected) {
-            if !actual.contains(&expected) {
+            if !actual.contains(expected) {
                 panic!("error: {actual:?} {expected:?}");
             } else {
                 expected_matches -= 1;

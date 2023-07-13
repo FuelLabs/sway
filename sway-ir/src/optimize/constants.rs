@@ -285,29 +285,22 @@ mod tests {
     use crate::optimize::tests::*;
 
     fn assert_operator(opcode: &str, l: &str, r: Option<&str>, result: Option<&str>) {
-        assert_optimization(
-            &["constcombine"],
-            &format!(
-                "
-        entry fn main() -> u64 {{
-            entry():
-            l = const u64 {l}
-            {r_inst}
-            result = {opcode} l, {result_inst} !0
-            ret u64 result
-        }}
-    ",
-                r_inst = match r {
-                    Some(r) => format!("r = const u64 {r}"),
-                    None => format!(""),
-                },
-                result_inst = match r.as_ref() {
-                    Some(_) => format!(" r,"),
-                    None => format!(""),
-                }
-            ),
-            result.map(|result| [format!("v0 = const u64 {result}")]),
+        let expected = result.map(|result| format!("v0 = const u64 {result}"));
+        let expected = expected.as_ref().map(|x| vec![x.as_str()]);
+        let body = format!(
+            "
+    entry fn main() -> u64 {{
+        entry():
+        l = const u64 {l}
+        {r_inst}
+        result = {opcode} l, {result_inst} !0
+        ret u64 result
+    }}
+",
+            r_inst = r.map_or("".into(), |r| format!("r = const u64 {r}")),
+            result_inst = r.map_or("", |_| " r,")
         );
+        assert_optimization(&["constcombine"], &body, expected);
     }
 
     #[test]
@@ -375,7 +368,7 @@ mod tests {
             ret u64 result
         }
     ",
-            Some(["const u64 18446744073709551614".to_string()]),
+            Some(["const u64 18446744073709551614"]),
         );
 
         // Binary Operators
@@ -392,7 +385,7 @@ mod tests {
             ret u64 result
         }
     ",
-            Some(["const u64 6".to_string()]),
+            Some(["const u64 6"]),
         );
     }
 }
