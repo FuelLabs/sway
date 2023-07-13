@@ -71,6 +71,7 @@
   - [Pattern Matching](./documentation/language/style-guide/pattern-matching.md)
   - [Comments](./documentation/language/style-guide/comments.md)
   - [Getter Functions](./documentation/language/style-guide/getters.md)
+  - [Intermediate Variables](./documentation/language/style-guide/intermediate-variables.md)
 
 ## Common Operations
 
