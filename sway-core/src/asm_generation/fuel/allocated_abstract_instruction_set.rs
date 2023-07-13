@@ -12,7 +12,10 @@ use super::{
 
 use sway_types::span::Span;
 
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::{
+    cmp::Ordering,
+    collections::{BTreeSet, HashMap, HashSet},
+};
 
 use either::Either;
 
@@ -205,37 +208,41 @@ impl AllocatedAbstractInstructionSet {
                                 "Programs with more than 2^18 labels are unsupported right now",
                             )
                         };
-                        if curr_offset == label_offsets.get(lab).unwrap().offs {
-                            assert!(matches!(
-                                self.ops[op_idx - 1].opcode,
-                                Either::Left(AllocatedOpcode::NOOP)
-                            ));
-                            realized_ops.push(RealizedOp {
-                                opcode: AllocatedOpcode::JMPB(
-                                    AllocatedRegister::Constant(ConstantRegister::Zero),
-                                    VirtualImmediate18::new_unchecked(0, "unreachable()"),
-                                ),
-                                owning_span,
-                                comment,
-                            });
-                        } else if curr_offset > label_offsets.get(lab).unwrap().offs {
-                            realized_ops.push(RealizedOp {
-                                opcode: AllocatedOpcode::JMPB(
-                                    AllocatedRegister::Constant(ConstantRegister::Zero),
-                                    imm(),
-                                ),
-                                owning_span,
-                                comment,
-                            });
-                        } else {
-                            realized_ops.push(RealizedOp {
-                                opcode: AllocatedOpcode::JMPF(
-                                    AllocatedRegister::Constant(ConstantRegister::Zero),
-                                    imm(),
-                                ),
-                                owning_span,
-                                comment,
-                            });
+                        match curr_offset.cmp(&label_offsets.get(lab).unwrap().offs) {
+                            Ordering::Equal => {
+                                assert!(matches!(
+                                    self.ops[op_idx - 1].opcode,
+                                    Either::Left(AllocatedOpcode::NOOP)
+                                ));
+                                realized_ops.push(RealizedOp {
+                                    opcode: AllocatedOpcode::JMPB(
+                                        AllocatedRegister::Constant(ConstantRegister::Zero),
+                                        VirtualImmediate18::new_unchecked(0, "unreachable()"),
+                                    ),
+                                    owning_span,
+                                    comment,
+                                });
+                            }
+                            Ordering::Greater => {
+                                realized_ops.push(RealizedOp {
+                                    opcode: AllocatedOpcode::JMPB(
+                                        AllocatedRegister::Constant(ConstantRegister::Zero),
+                                        imm(),
+                                    ),
+                                    owning_span,
+                                    comment,
+                                });
+                            }
+                            Ordering::Less => {
+                                realized_ops.push(RealizedOp {
+                                    opcode: AllocatedOpcode::JMPF(
+                                        AllocatedRegister::Constant(ConstantRegister::Zero),
+                                        imm(),
+                                    ),
+                                    owning_span,
+                                    comment,
+                                });
+                            }
                         }
                     }
                     ControlFlowOp::JumpIfNotZero(r1, ref lab) => {
@@ -246,40 +253,44 @@ impl AllocatedAbstractInstructionSet {
                                 "Programs with more than 2^12 labels are unsupported right now",
                             )
                         };
-                        if curr_offset == label_offsets.get(lab).unwrap().offs {
-                            assert!(matches!(
-                                self.ops[op_idx - 1].opcode,
-                                Either::Left(AllocatedOpcode::NOOP)
-                            ));
-                            realized_ops.push(RealizedOp {
-                                opcode: AllocatedOpcode::JNZB(
-                                    r1,
-                                    AllocatedRegister::Constant(ConstantRegister::Zero),
-                                    VirtualImmediate12::new_unchecked(0, "unreachable()"),
-                                ),
-                                owning_span,
-                                comment,
-                            });
-                        } else if curr_offset > label_offsets.get(lab).unwrap().offs {
-                            realized_ops.push(RealizedOp {
-                                opcode: AllocatedOpcode::JNZB(
-                                    r1,
-                                    AllocatedRegister::Constant(ConstantRegister::Zero),
-                                    imm(),
-                                ),
-                                owning_span,
-                                comment,
-                            });
-                        } else {
-                            realized_ops.push(RealizedOp {
-                                opcode: AllocatedOpcode::JNZF(
-                                    r1,
-                                    AllocatedRegister::Constant(ConstantRegister::Zero),
-                                    imm(),
-                                ),
-                                owning_span,
-                                comment,
-                            });
+                        match curr_offset.cmp(&label_offsets.get(lab).unwrap().offs) {
+                            Ordering::Equal => {
+                                assert!(matches!(
+                                    self.ops[op_idx - 1].opcode,
+                                    Either::Left(AllocatedOpcode::NOOP)
+                                ));
+                                realized_ops.push(RealizedOp {
+                                    opcode: AllocatedOpcode::JNZB(
+                                        r1,
+                                        AllocatedRegister::Constant(ConstantRegister::Zero),
+                                        VirtualImmediate12::new_unchecked(0, "unreachable()"),
+                                    ),
+                                    owning_span,
+                                    comment,
+                                });
+                            }
+                            Ordering::Greater => {
+                                realized_ops.push(RealizedOp {
+                                    opcode: AllocatedOpcode::JNZB(
+                                        r1,
+                                        AllocatedRegister::Constant(ConstantRegister::Zero),
+                                        imm(),
+                                    ),
+                                    owning_span,
+                                    comment,
+                                });
+                            }
+                            Ordering::Less => {
+                                realized_ops.push(RealizedOp {
+                                    opcode: AllocatedOpcode::JNZF(
+                                        r1,
+                                        AllocatedRegister::Constant(ConstantRegister::Zero),
+                                        imm(),
+                                    ),
+                                    owning_span,
+                                    comment,
+                                });
+                            }
                         }
                     }
                     ControlFlowOp::SaveRetAddr(r1, ref lab) => {
@@ -533,7 +544,7 @@ impl AllocatedAbstractInstructionSet {
                                 comment: "NOP for self loop".into(),
                                 owning_span: None,
                             });
-                            new_ops.push( op);
+                            new_ops.push(op);
                             modified = true;
                         } else if rel_offset(lab) - 1 <= consts::EIGHTEEN_BITS {
                             new_ops.push(op)
@@ -576,7 +587,7 @@ impl AllocatedAbstractInstructionSet {
                                 comment: "NOP for self loop".into(),
                                 owning_span: None,
                             });
-                            new_ops.push( op);
+                            new_ops.push(op);
                             modified = true;
                         } else if rel_offset(lab) - 1 <= consts::TWELVE_BITS {
                             new_ops.push(op)
