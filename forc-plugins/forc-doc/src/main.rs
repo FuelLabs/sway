@@ -79,11 +79,14 @@ pub fn main() -> Result<()> {
 
     let member_manifests = manifest.member_manifests()?;
     let lock_path = manifest.lock_path()?;
+
+    let ipfs_node = build_instructions.ipfs_node.clone().unwrap_or_default();
     let plan = pkg::BuildPlan::from_lock_and_manifests(
         &lock_path,
         &member_manifests,
         build_instructions.locked,
         build_instructions.offline,
+        ipfs_node,
     )?;
 
     let engines = Engines::default();

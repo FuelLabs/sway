@@ -12,6 +12,7 @@ pub(crate) fn built_pkgs(path: &Path, build_opts: BuildOpts) -> Result<Vec<Arc<B
         &manifest_file.member_manifests()?,
         build_opts.pkg.locked,
         build_opts.pkg.offline,
+        build_opts.pkg.ipfs_node.clone(),
     )?;
     let graph = build_plan.graph();
     let built = build_with_options(build_opts)?;

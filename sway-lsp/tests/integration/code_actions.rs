@@ -5,7 +5,7 @@
 use crate::integration::lsp::{build_request_with_id, call_request};
 use assert_json_diff::assert_json_eq;
 use serde_json::json;
-use sway_lsp::server::Backend;
+use sway_lsp::server_state::ServerState;
 use tower_lsp::{
     jsonrpc::{Request, Response},
     lsp_types::*,
@@ -13,7 +13,7 @@ use tower_lsp::{
 };
 
 pub(crate) async fn code_action_abi_request(
-    service: &mut LspService<Backend>,
+    service: &mut LspService<ServerState>,
     uri: &Url,
 ) -> Request {
     let params = json!({
@@ -70,7 +70,7 @@ pub(crate) async fn code_action_abi_request(
 }
 
 pub(crate) async fn code_action_function_request(
-    service: &mut LspService<Backend>,
+    service: &mut LspService<ServerState>,
     uri: &Url,
 ) -> Request {
     let params = json!({
@@ -128,8 +128,67 @@ pub(crate) async fn code_action_function_request(
     code_action
 }
 
+pub(crate) async fn code_action_trait_fn_request(
+    service: &mut LspService<ServerState>,
+    uri: &Url,
+) -> Request {
+    let params = json!({
+        "textDocument": {
+            "uri": uri,
+        },
+        "range" : {
+            "start": {
+                "line": 10,
+                "character": 10
+            },
+            "end": {
+                "line": 10,
+                "character": 10
+            }
+        },
+        "context": {
+            "diagnostics": [],
+            "triggerKind": 2
+        }
+    });
+    let code_action = build_request_with_id("textDocument/codeAction", params, 1);
+    let response = call_request(service, code_action.clone()).await;
+    let uri_string = uri.to_string();
+    let expected = Response::from_ok(
+        1.into(),
+        json!([
+          {
+            "data": uri,
+            "edit": {
+              "changes": {
+                uri_string: [
+                  {
+                    "newText": "    /// Add a brief description.\n    /// \n    /// ### Additional Information\n    /// \n    /// Provide information beyond the core purpose or functionality.\n    /// \n    /// ### Returns\n    /// \n    /// * [Empty] - Add description here\n    /// \n    /// ### Reverts\n    /// \n    /// * List any cases where the function will revert\n    /// \n    /// ### Number of Storage Accesses\n    /// \n    /// * Reads: `0`\n    /// * Writes: `0`\n    /// * Clears: `0`\n    /// \n    /// ### Examples\n    /// \n    /// ```sway\n    /// let x = test_function();\n    /// ```\n",
+                    "range": {
+                      "end": {
+                        "character": 0,
+                        "line": 10
+                      },
+                      "start": {
+                        "character": 0,
+                        "line": 10
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "kind": "refactor",
+            "title": "Generate a documentation template"
+          }
+        ]),
+    );
+    assert_json_eq!(expected, response.ok().unwrap());
+    code_action
+}
+
 pub(crate) async fn code_action_struct_request(
-    service: &mut LspService<Backend>,
+    service: &mut LspService<ServerState>,
     uri: &Url,
 ) -> Request {
     let params = json!({
@@ -235,7 +294,7 @@ pub(crate) async fn code_action_struct_request(
 }
 
 pub(crate) async fn code_action_struct_type_params_request(
-    service: &mut LspService<Backend>,
+    service: &mut LspService<ServerState>,
     uri: &Url,
 ) -> Request {
     let params = json!({
@@ -344,7 +403,7 @@ pub(crate) async fn code_action_struct_type_params_request(
 }
 
 pub(crate) async fn code_action_struct_existing_impl_request(
-    service: &mut LspService<Backend>,
+    service: &mut LspService<ServerState>,
     uri: &Url,
 ) -> Request {
     let params = json!({

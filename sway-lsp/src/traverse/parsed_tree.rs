@@ -897,7 +897,7 @@ impl Parse for TraitFn {
         self.parameters.iter().for_each(|param| {
             param.parse(ctx);
         });
-        collect_type_info_token(ctx, &self.return_type, Some(&self.return_type_span));
+        self.return_type.parse(ctx);
         self.attributes.parse(ctx);
     }
 }

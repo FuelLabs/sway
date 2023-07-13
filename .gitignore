@@ -18,3 +18,6 @@ out
 
 # Benchmarks data output directory
 benchmarks/
+
+# .DS_Store
+.DS_Store

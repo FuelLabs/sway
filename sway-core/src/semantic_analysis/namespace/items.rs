@@ -25,7 +25,7 @@ pub(crate) enum GlobImport {
 }
 
 pub(super) type SymbolMap = im::OrdMap<Ident, ty::TyDecl>;
-pub(super) type UseSynonyms = im::HashMap<Ident, (Vec<Ident>, GlobImport, ty::TyDecl)>;
+pub(super) type UseSynonyms = im::HashMap<Ident, (Vec<Ident>, GlobImport, ty::TyDecl, bool)>;
 pub(super) type UseAliases = im::HashMap<String, Ident>;
 
 /// The set of items that exist within some lexical scope via declaration or importing.
@@ -137,7 +137,7 @@ impl Items {
             append_shadowing_error(decl, &item, &mut errors);
         }
 
-        if let Some((_, GlobImport::No, decl)) = self.use_synonyms.get(&name) {
+        if let Some((_, GlobImport::No, decl, _)) = self.use_synonyms.get(&name) {
             append_shadowing_error(decl, &item, &mut errors);
         }
 

@@ -1560,6 +1560,7 @@ impl ty::TyExpression {
                 return_type,
                 &abi_items,
                 &span,
+                Some(span.clone()),
                 false,
                 engines,
             ),

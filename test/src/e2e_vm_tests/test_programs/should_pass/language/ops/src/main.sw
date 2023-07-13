@@ -134,11 +134,11 @@ fn u32_ops() -> bool {
     assert(1_u32 << 1 == 2_u32);
     assert(2_u32 << 1 == 4_u32);
     assert(255_u32 << 21 == 534773760_u32);
-    assert(max << 1 & max == 4294967294_u32);
-    assert(max << 2 & max == 4294967292_u32);
-    assert(A << 1 & max == C);
-    assert(max << 31 & max == E);
-    assert(max << 32 & max == 0_u32);
+    assert(max << 1 == 4294967294_u32);
+    assert(max << 2 == 4294967292_u32);
+    assert(A << 1 == C);
+    assert(max << 31 == E);
+    assert(max << 32 == 0_u32);
 
     assert(0_u32 >> 0 == 0_u32);
     assert(0_u32 >> 1 == 0_u32);
@@ -152,8 +152,8 @@ fn u32_ops() -> bool {
     assert(A >> 1 == D);
     assert(A >> 21 == 1036_u32);
     assert(max >> 1 == 2147483647_u32);
-    assert(max >> 31 & max == 1_u32);
-    assert(max >> 32 & max == 0_u32);
+    assert(max >> 31 == 1_u32);
+    assert(max >> 32 == 0_u32);
 
     true
 }
@@ -209,11 +209,11 @@ fn u16_ops() -> bool {
     assert(1_u16 << 1 == 2_u16);
     assert(2_u16 << 1 == 4_u16);
     assert(255_u16 << 4 == 4080_u16);
-    assert(max << 1 & max == 65534_u16);
-    assert(max << 2 & max == 65532_u16);
-    assert(A << 1 & max == C);
-    assert(max << 15 & max == E);
-    assert(max << 16 & max == 0_u16);
+    assert(max << 1 == 65534_u16);
+    assert(max << 2 == 65532_u16);
+    assert(A << 1 == C);
+    assert(max << 15 == E);
+    assert(max << 16 == 0_u16);
 
     assert(0_u16 >> 0 == 0_u16);
     assert(0_u16 >> 1 == 0_u16);
@@ -227,8 +227,8 @@ fn u16_ops() -> bool {
     assert(A >> 1 == D);
     assert(A >> 4 == 2072_u16);
     assert(max >> 1 == 32767_u16);
-    assert(max >> 15 & max == 1_u16);
-    assert(max >> 16 & max == 0_u16);
+    assert(max >> 15 == 1_u16);
+    assert(max >> 16 == 0_u16);
 
     true
 }
@@ -284,11 +284,11 @@ fn u8_ops() -> bool {
     assert(1_u8 << 1 == 2_u8);
     assert(2_u8 << 1 == 4_u8);
     assert(31_u8 << 2 == 124_u8);
-    assert(max << 1 & max == 254_u8);
-    assert(max << 2 & max == 252_u8);
-    assert(A << 1 & max == C);
-    assert(max << 7 & max == E);
-    assert(max << 8 & max == 0_u8);
+    assert(max << 1 == 254_u8);
+    assert(max << 2 == 252_u8);
+    assert(A << 1 == C);
+    assert(max << 7 == E);
+    assert(max << 8 == 0_u8);
 
     assert(0_u8 >> 0 == 0_u8);
     assert(0_u8 >> 1 == 0_u8);
@@ -302,8 +302,8 @@ fn u8_ops() -> bool {
     assert(A >> 1 == D);
     assert(A >> 4 == 8_u8);
     assert(max >> 1 == 127_u8);
-    assert(max >> 7 & max == 1_u8);
-    assert(max >> 8 & max == 0_u8);
+    assert(max >> 7 == 1_u8);
+    assert(max >> 8 == 0_u8);
 
     true
 }

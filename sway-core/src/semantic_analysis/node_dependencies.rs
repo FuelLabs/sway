@@ -339,7 +339,7 @@ impl Dependencies {
                         .gather_from_iter(sig.parameters.iter(), |deps, param| {
                             deps.gather_from_type_argument(engines, &param.type_argument)
                         })
-                        .gather_from_typeinfo(engines, &sig.return_type),
+                        .gather_from_type_argument(engines, &sig.return_type),
                     TraitItem::Constant(const_decl) => {
                         deps.gather_from_constant_decl(engines, const_decl)
                     }
@@ -389,7 +389,7 @@ impl Dependencies {
                         .gather_from_iter(sig.parameters.iter(), |deps, param| {
                             deps.gather_from_type_argument(engines, &param.type_argument)
                         })
-                        .gather_from_typeinfo(engines, &sig.return_type),
+                        .gather_from_type_argument(engines, &sig.return_type),
                     TraitItem::Constant(const_decl) => {
                         deps.gather_from_constant_decl(engines, const_decl)
                     }

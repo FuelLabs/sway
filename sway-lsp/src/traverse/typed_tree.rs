@@ -839,14 +839,14 @@ impl Parse for ty::TyTraitFn {
             token.type_def = Some(TypeDefinition::Ident(self.name.clone()));
         }
         self.parameters.iter().for_each(|param| param.parse(ctx));
-        let return_ident = Ident::new(self.return_type_span.clone());
+        let return_ident = Ident::new(self.return_type.span.clone());
         if let Some(mut token) = ctx
             .tokens
             .try_get_mut(&to_ident_key(&return_ident))
             .try_unwrap()
         {
             token.typed = Some(TypedAstToken::TypedTraitFn(self.clone()));
-            token.type_def = Some(TypeDefinition::TypeId(self.return_type));
+            token.type_def = Some(TypeDefinition::TypeId(self.return_type.type_id));
         }
     }
 }

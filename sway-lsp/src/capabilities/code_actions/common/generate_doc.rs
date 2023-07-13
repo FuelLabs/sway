@@ -1,5 +1,4 @@
-use crate::capabilities::code_actions::{CodeAction, CodeActionContext, CODE_ACTION_DOC_TITLE};
-use lsp_types::{Range, Url};
+use crate::capabilities::code_actions::CodeAction;
 use sway_core::{Engines, TypeId};
 use sway_types::Spanned;
 
@@ -51,38 +50,5 @@ pub(crate) trait GenerateDocCodeAction<'a, T: Spanned>: CodeAction<'a, T> {
             false => format!("[{}]", engines.help_out(type_id)),
         };
         format!("* {name_string}{type_string} - Add description here",)
-    }
-}
-
-pub struct BasicDocCommentCodeAction<'a, T: Spanned> {
-    decl: &'a T,
-    uri: &'a Url,
-}
-
-impl<'a, T: Spanned> GenerateDocCodeAction<'a, T> for BasicDocCommentCodeAction<'a, T> {}
-
-impl<'a, T: Spanned> CodeAction<'a, T> for BasicDocCommentCodeAction<'a, T> {
-    fn new(ctx: CodeActionContext<'a>, decl: &'a T) -> Self {
-        Self { decl, uri: ctx.uri }
-    }
-
-    fn new_text(&self) -> String {
-        self.default_template()
-    }
-
-    fn range(&self) -> Range {
-        self.range_before()
-    }
-
-    fn title(&self) -> String {
-        CODE_ACTION_DOC_TITLE.to_string()
-    }
-
-    fn decl(&self) -> &T {
-        self.decl
-    }
-
-    fn uri(&self) -> &Url {
-        self.uri
     }
 }

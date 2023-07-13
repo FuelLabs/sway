@@ -169,7 +169,7 @@ fn item_to_ast_nodes(
         )),
         ItemKind::Fn(item_fn) => {
             let function_declaration = item_fn_to_function_declaration(
-                context, handler, engines, item_fn, attributes, None,
+                context, handler, engines, item_fn, attributes, None, None,
             )?;
             error_if_self_param_is_not_allowed(
                 context,
@@ -189,11 +189,11 @@ fn item_to_ast_nodes(
         ItemKind::Abi(item_abi) => decl(Declaration::AbiDeclaration(item_abi_to_abi_declaration(
             context, handler, engines, item_abi, attributes,
         )?)),
-        ItemKind::Const(item_const) => decl(Declaration::ConstantDeclaration(
+        ItemKind::Const(item_const) => decl(Declaration::ConstantDeclaration({
             item_const_to_constant_declaration(
                 context, handler, engines, item_const, attributes, true,
-            )?,
-        )),
+            )?
+        })),
         ItemKind::Storage(item_storage) => decl(Declaration::StorageDeclaration(
             item_storage_to_storage_declaration(
                 context,
@@ -463,6 +463,7 @@ fn item_fn_to_function_declaration(
     item_fn: ItemFn,
     attributes: AttributesMap,
     parent_generic_params_opt: Option<GenericParams>,
+    parent_where_clause_opt: Option<WhereClause>,
 ) -> Result<FunctionDeclaration, ErrorEmitted> {
     let span = item_fn.span();
     let return_type = match item_fn.fn_signature.return_type_opt {
@@ -498,6 +499,7 @@ fn item_fn_to_function_declaration(
             item_fn.fn_signature.generics,
             parent_generic_params_opt,
             item_fn.fn_signature.where_clause_opt.clone(),
+            parent_where_clause_opt,
         )?,
         where_clause: item_fn
             .fn_signature
@@ -575,7 +577,7 @@ fn item_trait_to_trait_declaration(
         handler,
         engines,
         item_trait.generics.clone(),
-        item_trait.where_clause_opt,
+        item_trait.where_clause_opt.clone(),
     )?;
     let interface_surface = item_trait
         .trait_items
@@ -616,6 +618,7 @@ fn item_trait_to_trait_declaration(
                     item_fn.value,
                     attributes,
                     item_trait.generics.clone(),
+                    item_trait.where_clause_opt.clone(),
                 )?))
             })
             .filter_map_ok(|fn_decl| fn_decl)
@@ -663,6 +666,7 @@ fn item_impl_to_declaration(
                     fn_item,
                     attributes,
                     item_impl.generic_params_opt.clone(),
+                    item_impl.where_clause_opt.clone(),
                 )
                 .map(ImplItem::Fn),
                 sway_ast::ItemImplItem::Const(const_item) => item_const_to_constant_declaration(
@@ -805,6 +809,7 @@ fn item_abi_to_abi_declaration(
                         engines,
                         item_fn.value,
                         attributes,
+                        None,
                         None,
                     )?;
                     error_if_self_param_is_not_allowed(
@@ -1029,6 +1034,7 @@ fn generic_params_opt_to_type_parameters(
         generic_params_opt,
         None,
         where_clause_opt,
+        None,
     )
 }
 
@@ -1039,10 +1045,20 @@ fn generic_params_opt_to_type_parameters_with_parent(
     generic_params_opt: Option<GenericParams>,
     parent_generic_params_opt: Option<GenericParams>,
     where_clause_opt: Option<WhereClause>,
+    parent_where_clause_opt: Option<WhereClause>,
 ) -> Result<Vec<TypeParameter>, ErrorEmitted> {
     let type_engine = engines.te();
 
     let trait_constraints = match where_clause_opt {
+        Some(where_clause) => where_clause
+            .bounds
+            .into_iter()
+            .map(|where_bound| (where_bound.ty_name, where_bound.bounds))
+            .collect::<Vec<_>>(),
+        None => Vec::new(),
+    };
+
+    let parent_trait_constraints = match parent_where_clause_opt {
         Some(where_clause) => where_clause
             .bounds
             .into_iter()
@@ -1082,7 +1098,10 @@ fn generic_params_opt_to_type_parameters_with_parent(
     let parent_params = generics_to_params(parent_generic_params_opt, true);
 
     let mut errors = Vec::new();
-    for (ty_name, bounds) in trait_constraints.into_iter() {
+    for (ty_name, bounds) in trait_constraints
+        .into_iter()
+        .chain(parent_trait_constraints)
+    {
         let param_to_edit = if let Some(o) = params
             .iter_mut()
             .find(|TypeParameter { name_ident, .. }| name_ident.as_str() == ty_name.as_str())
@@ -1374,12 +1393,23 @@ fn fn_signature_to_trait_fn(
     fn_signature: FnSignature,
     attributes: AttributesMap,
 ) -> Result<TraitFn, ErrorEmitted> {
-    let return_type_span = match &fn_signature.return_type_opt {
-        Some((_right_arrow_token, ty)) => ty.span(),
-        None => fn_signature.span(),
+    let return_type = match &fn_signature.return_type_opt {
+        Some((_right_arrow, ty)) => ty_to_type_argument(context, handler, engines, ty.clone())?,
+        None => {
+            let type_id = engines.te().insert(engines, TypeInfo::Tuple(Vec::new()));
+            TypeArgument {
+                type_id,
+                initial_type_id: type_id,
+                // TODO: Fix as part of https://github.com/FuelLabs/sway/issues/3635
+                span: fn_signature.span(),
+                call_path_tree: None,
+            }
+        }
     };
+
     let trait_fn = TraitFn {
-        name: fn_signature.name,
+        name: fn_signature.name.clone(),
+        span: fn_signature.span(),
         purity: get_attributed_purity(context, handler, &attributes)?,
         attributes,
         parameters: fn_args_to_function_parameters(
@@ -1388,11 +1418,7 @@ fn fn_signature_to_trait_fn(
             engines,
             fn_signature.arguments.into_inner(),
         )?,
-        return_type: match fn_signature.return_type_opt {
-            Some((_right_arrow_token, ty)) => ty_to_type_info(context, handler, engines, ty)?,
-            None => TypeInfo::Tuple(Vec::new()),
-        },
-        return_type_span,
+        return_type,
     };
     Ok(trait_fn)
 }

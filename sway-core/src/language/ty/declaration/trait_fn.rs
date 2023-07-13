@@ -12,10 +12,10 @@ use crate::{
 #[derive(Clone, Debug)]
 pub struct TyTraitFn {
     pub name: Ident,
+    pub(crate) span: Span,
     pub(crate) purity: Purity,
     pub parameters: Vec<TyFunctionParameter>,
-    pub return_type: TypeId,
-    pub return_type_span: Span,
+    pub return_type: TypeArgument,
     pub attributes: transform::AttributesMap,
 }
 
@@ -27,7 +27,17 @@ impl Named for TyTraitFn {
 
 impl Spanned for TyTraitFn {
     fn span(&self) -> Span {
-        self.name.span()
+        self.span.clone()
+    }
+}
+
+impl declaration::FunctionSignature for TyTraitFn {
+    fn parameters(&self) -> &Vec<TyFunctionParameter> {
+        &self.parameters
+    }
+
+    fn return_type(&self) -> &TypeArgument {
+        &self.return_type
     }
 }
 
@@ -39,8 +49,8 @@ impl PartialEqWithEngines for TyTraitFn {
             && self.purity == other.purity
             && self.parameters.eq(&other.parameters, engines)
             && type_engine
-                .get(self.return_type)
-                .eq(&type_engine.get(other.return_type), engines)
+                .get(self.return_type.type_id)
+                .eq(&type_engine.get(other.return_type.type_id), engines)
             && self.attributes == other.attributes
     }
 }
@@ -54,13 +64,13 @@ impl HashWithEngines for TyTraitFn {
             return_type,
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
-            return_type_span: _,
+            span: _,
             attributes: _,
         } = self;
         let type_engine = engines.te();
         name.hash(state);
         parameters.hash(state, engines);
-        type_engine.get(*return_type).hash(state, engines);
+        type_engine.get(return_type.type_id).hash(state, engines);
         purity.hash(state);
     }
 }

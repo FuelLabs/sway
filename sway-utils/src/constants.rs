@@ -11,3 +11,5 @@ pub const STORAGE_DOMAIN_SEPARATOR: &str = "storage_";
 pub const LIB_ENTRY: &str = "lib.sw";
 pub const MAIN_ENTRY: &str = "main.sw";
 pub const FORC_INIT_MANIFEST_AUTHOR: &str = "FORC_INIT_MANIFEST_AUTHOR";
+// TODO: Once Fuel has its own IPFS node, default should be that node for performance reasons.
+pub const DEFAULT_IPFS_GATEWAY_URL: &str = "https://ipfs.io";

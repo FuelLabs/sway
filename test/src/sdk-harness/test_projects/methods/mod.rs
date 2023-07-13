@@ -1,4 +1,4 @@
-use fuels::prelude::*;
+use fuels::{accounts::wallet::WalletUnlocked, prelude::*};
 
 abigen!(Contract(
     name = "MethodsContract",

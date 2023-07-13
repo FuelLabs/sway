@@ -2,7 +2,8 @@ use fuel_vm::fuel_asm::{op, RegId};
 use fuel_vm::fuel_tx;
 use fuel_vm::fuel_tx::{Address, AssetId, Output};
 use fuels::{
-    core::abi_encoder::ABIEncoder,
+    accounts::wallet::{Wallet, WalletUnlocked},
+    core::codec::ABIEncoder,
     prelude::*,
     test_helpers::Config,
     types::{

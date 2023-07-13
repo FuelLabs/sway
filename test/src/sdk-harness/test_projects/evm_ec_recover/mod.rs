@@ -3,6 +3,7 @@ use fuel_vm::{
     fuel_types::Bytes64,
 };
 use fuels::{
+    accounts::wallet::WalletUnlocked,
     prelude::*,
     tx::Bytes32,
     types::{Bits256, EvmAddress},

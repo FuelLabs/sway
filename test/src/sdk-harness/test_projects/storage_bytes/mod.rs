@@ -1,3 +1,4 @@
+use fuels::accounts::wallet::WalletUnlocked;
 use fuels::prelude::*;
 
 abigen!(Contract(

@@ -2,12 +2,12 @@ use crate::{
     cmd,
     util::{
         pkg::built_pkgs,
-        tx::{TransactionBuilderExt, TX_SUBMIT_TIMEOUT_MS},
+        tx::{TransactionBuilderExt, WalletSelectionMode, TX_SUBMIT_TIMEOUT_MS},
     },
 };
 use anyhow::{anyhow, bail, Context, Result};
 use forc_pkg::{self as pkg, fuel_core_not_running, PackageManifestFile};
-use forc_util::format_log_receipts;
+use forc_util::tx_utils::format_log_receipts;
 use fuel_core_client::client::FuelClient;
 use fuel_tx::{ContractId, Transaction, TransactionBuilder};
 use pkg::BuiltPackage;
@@ -77,12 +77,22 @@ pub async fn run_pkg(
                 .map_err(|e| anyhow!("Failed to parse contract id: {}", e))
         })
         .collect::<Result<Vec<ContractId>>>()?;
+    let wallet_mode = if command.manual_signing {
+        WalletSelectionMode::Manual
+    } else {
+        WalletSelectionMode::ForcWallet
+    };
     let tx = TransactionBuilder::script(compiled.bytecode.bytes.clone(), script_data)
         .gas_limit(command.gas.limit)
         .gas_price(command.gas.price)
         .maturity(command.maturity.maturity.into())
         .add_contracts(contract_ids)
-        .finalize_signed(client.clone(), command.unsigned, command.signing_key)
+        .finalize_signed(
+            client.clone(),
+            command.unsigned,
+            command.signing_key,
+            wallet_mode,
+        )
         .await?;
     if command.dry_run {
         info!("{:?}", tx);
@@ -151,6 +161,7 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
             locked: cmd.pkg.locked,
             output_directory: cmd.pkg.output_directory.clone(),
             json_abi_with_callpaths: cmd.pkg.json_abi_with_callpaths,
+            ipfs_node: cmd.pkg.ipfs_node.clone().unwrap_or_default(),
         },
         print: pkg::PrintOpts {
             ast: cmd.print.ast,
@@ -159,6 +170,7 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
             finalized_asm: cmd.print.finalized_asm,
             intermediate_asm: cmd.print.intermediate_asm,
             ir: cmd.print.ir,
+            reverse_order: cmd.print.reverse_order,
         },
         minify: pkg::MinifyOpts {
             json_abi: cmd.minify.json_abi,

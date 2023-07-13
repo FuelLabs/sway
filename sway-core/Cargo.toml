@@ -1,6 +1,6 @@
 [package]
 name = "sway-core"
-version = "0.40.1"
+version = "0.42.1"
 description = "Sway core language."
 authors.workspace = true
 edition.workspace = true
@@ -14,10 +14,12 @@ derivative = "2.2.0"
 dirs = "3.0"
 either = "1.6"
 ethabi = { package = "fuel-ethabi", version = "18.0.0" }
-etk-asm = { package = "fuel-etk-asm", version = "0.3.1-dev", features = ["backtraces"] }
+etk-asm = { package = "fuel-etk-asm", version = "0.3.1-dev", features = [
+    "backtraces",
+] }
 etk-dasm = { package = "fuel-etk-dasm", version = "0.3.1-dev" }
 etk-ops = { package = "fuel-etk-ops", version = "0.3.1-dev" }
-fuel-abi-types = "0.1" 
+fuel-abi-types = "0.1"
 fuel-vm = { workspace = true, features = ["serde"] }
 hashbrown = "0.13.1"
 hex = { version = "0.4", optional = true }
@@ -34,14 +36,16 @@ serde_json = "1.0.91"
 sha2 = "0.9"
 smallvec = "1.7"
 strum = { version = "0.24.1", features = ["derive"] }
-sway-ast = { version = "0.40.1", path = "../sway-ast" }
-sway-error = { version = "0.40.1", path = "../sway-error" }
-sway-ir = { version = "0.40.1", path = "../sway-ir" }
-sway-parse = { version = "0.40.1", path = "../sway-parse" }
-sway-types = { version = "0.40.1", path = "../sway-types" }
-sway-utils = { version = "0.40.1", path = "../sway-utils" }
-sysinfo = "0.29.0"
+sway-ast = { version = "0.42.1", path = "../sway-ast" }
+sway-error = { version = "0.42.1", path = "../sway-error" }
+sway-ir = { version = "0.42.1", path = "../sway-ir" }
+sway-parse = { version = "0.42.1", path = "../sway-parse" }
+sway-types = { version = "0.42.1", path = "../sway-types" }
+sway-utils = { version = "0.42.1", path = "../sway-utils" }
 thiserror = "1.0"
 tracing = "0.1"
 uint = "0.9"
 vec1 = "1.8.0"
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+sysinfo = "0.29.0"
