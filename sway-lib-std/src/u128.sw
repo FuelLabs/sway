@@ -3,7 +3,7 @@ library;
 
 use ::assert::assert;
 use ::convert::From;
-use ::flags::{disable_panic_on_overflow_preserving, set_flags};
+use ::flags::{disable_panic_on_overflow, set_flags};
 use ::math::*;
 use ::result::Result::{self, *};
 
@@ -53,7 +53,7 @@ impl core::ops::Ord for U128 {
 // }
 impl u64 {
     pub fn overflowing_add(self, right: Self) -> U128 {
-        let prior_flags = disable_panic_on_overflow_preserving();
+        let prior_flags = disable_panic_on_overflow();
 
         let mut result = U128 {
             upper: 0,
@@ -78,7 +78,7 @@ impl u64 {
     }
 
     pub fn overflowing_mul(self, right: Self) -> U128 {
-        let prior_flags = disable_panic_on_overflow_preserving();
+        let prior_flags = disable_panic_on_overflow();
 
         let mut result = U128 {
             upper: 0,
