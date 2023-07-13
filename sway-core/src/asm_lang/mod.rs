@@ -237,19 +237,6 @@ impl Op {
         }
     }
 
-    /// Jumps to [Label] `label`  if the given [VirtualRegister] `reg1` is not equal to `reg0`.
-    pub(crate) fn jump_if_not_equal(
-        reg0: VirtualRegister,
-        reg1: VirtualRegister,
-        label: Label,
-    ) -> Self {
-        Op {
-            opcode: Either::Right(OrganizationalOp::JumpIfNotEq(reg0, reg1, label)),
-            comment: String::new(),
-            owning_span: None,
-        }
-    }
-
     /// Jumps to [Label] `label`  if the given [VirtualRegister] `reg0` is not equal to zero.
     pub(crate) fn jump_if_not_zero(reg0: VirtualRegister, label: Label) -> Self {
         Op {
@@ -1550,8 +1537,6 @@ pub(crate) enum ControlFlowOp<Reg> {
     Comment,
     // Jumps to a label
     Jump(Label),
-    // Jumps to a label if the two registers are different
-    JumpIfNotEq(Reg, Reg, Label),
     // Jumps to a label if the register is not equal to zero
     JumpIfNotZero(Reg, Label),
     // Jumps to a label, similarly to Jump, though semantically expecting to return.
@@ -1580,7 +1565,6 @@ impl<Reg: fmt::Display> fmt::Display for ControlFlowOp<Reg> {
                 Label(lab) => format!("{lab}"),
                 Jump(lab) => format!("ji  {lab}"),
                 Comment => "".into(),
-                JumpIfNotEq(r1, r2, lab) => format!("jnei {r1} {r2} {lab}"),
                 JumpIfNotZero(r1, lab) => format!("jnzi {r1} {lab}"),
                 Call(lab) => format!("fncall {lab}"),
                 SaveRetAddr(r1, lab) => format!("mova {r1} {lab}"),
@@ -1606,7 +1590,6 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | PushAll(_)
             | PopAll(_) => vec![],
 
-            JumpIfNotEq(r1, r2, _) => vec![r1, r2],
             JumpIfNotZero(r1, _) | SaveRetAddr(r1, _) | LoadLabel(r1, _) => vec![r1],
         })
         .into_iter()
@@ -1627,7 +1610,6 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | PopAll(_) => vec![],
 
             JumpIfNotZero(r1, _) => vec![r1],
-            JumpIfNotEq(r1, r2, _) => vec![r1, r2],
         })
         .into_iter()
         .collect()
@@ -1641,7 +1623,6 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             Label(_)
             | Comment
             | Jump(_)
-            | JumpIfNotEq(..)
             | JumpIfNotZero(..)
             | Call(_)
             | DataSectionOffsetPlaceholder
@@ -1665,7 +1646,6 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | PushAll(_)
             | PopAll(_) => self.clone(),
 
-            JumpIfNotEq(r1, r2, label) => Self::JumpIfNotEq(update_reg(r1), update_reg(r2), *label),
             JumpIfNotZero(r1, label) => Self::JumpIfNotZero(update_reg(r1), *label),
             SaveRetAddr(r1, label) => Self::SaveRetAddr(update_reg(r1), *label),
             LoadLabel(r1, label) => Self::LoadLabel(update_reg(r1), *label),
@@ -1696,7 +1676,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | PushAll(_)
             | PopAll(_) => (),
 
-            Jump(jump_label) | JumpIfNotEq(_, _, jump_label) | JumpIfNotZero(_, jump_label) => {
+            Jump(jump_label) | JumpIfNotZero(_, jump_label) => {
                 next_ops.push(label_to_index[jump_label]);
             }
         };
@@ -1751,7 +1731,6 @@ impl ControlFlowOp<VirtualRegister> {
             PushAll(label) => PushAll(*label),
             PopAll(label) => PopAll(*label),
 
-            JumpIfNotEq(r1, r2, label) => JumpIfNotEq(map_reg(r1), map_reg(r2), *label),
             JumpIfNotZero(r1, label) => JumpIfNotZero(map_reg(r1), *label),
             SaveRetAddr(r1, label) => SaveRetAddr(map_reg(r1), *label),
             LoadLabel(r1, label) => LoadLabel(map_reg(r1), *label),

@@ -1,7 +1,7 @@
 use crate::asm_lang::{
     allocated_ops::{AllocatedOpcode, AllocatedRegister},
-    AllocatedAbstractOp, ConstantRegister, ControlFlowOp, Label, RealizedOp, VirtualImmediate06,
-    VirtualImmediate12, VirtualImmediate18, VirtualImmediate24,
+    AllocatedAbstractOp, ConstantRegister, ControlFlowOp, Label, RealizedOp, VirtualImmediate12,
+    VirtualImmediate18, VirtualImmediate24,
 };
 
 use super::{
@@ -238,53 +238,6 @@ impl AllocatedAbstractInstructionSet {
                             });
                         }
                     }
-                    ControlFlowOp::JumpIfNotEq(r1, r2, ref lab) => {
-                        let imm = || {
-                            VirtualImmediate06::new_unchecked(
-                                // JNE(B/F) adds a 1
-                                rel_offset(curr_offset, lab) - 1,
-                                "Programs with more than 2^6 labels are unsupported right now",
-                            )
-                        };
-                        if curr_offset == label_offsets.get(lab).unwrap().offs {
-                            assert!(matches!(
-                                self.ops[op_idx - 1].opcode,
-                                Either::Left(AllocatedOpcode::NOOP)
-                            ));
-                            realized_ops.push(RealizedOp {
-                                opcode: AllocatedOpcode::JNEB(
-                                    r1,
-                                    r2,
-                                    AllocatedRegister::Constant(ConstantRegister::Zero),
-                                    VirtualImmediate06::new_unchecked(0, "unreachable()"),
-                                ),
-                                owning_span,
-                                comment,
-                            });
-                        } else if curr_offset > label_offsets.get(lab).unwrap().offs {
-                            realized_ops.push(RealizedOp {
-                                opcode: AllocatedOpcode::JNEB(
-                                    r1,
-                                    r2,
-                                    AllocatedRegister::Constant(ConstantRegister::Zero),
-                                    imm(),
-                                ),
-                                owning_span,
-                                comment,
-                            });
-                        } else {
-                            realized_ops.push(RealizedOp {
-                                opcode: AllocatedOpcode::JNEF(
-                                    r1,
-                                    r2,
-                                    AllocatedRegister::Constant(ConstantRegister::Zero),
-                                    imm(),
-                                ),
-                                owning_span,
-                                comment,
-                            });
-                        }
-                    }
                     ControlFlowOp::JumpIfNotZero(r1, ref lab) => {
                         let imm = || {
                             VirtualImmediate12::new_unchecked(
@@ -468,9 +421,7 @@ impl AllocatedAbstractInstructionSet {
             Either::Left(AllocatedOpcode::BLOB(ref count)) => count.value as u64,
 
             // These ops will end up being exactly one op, so the cur_offset goes up one.
-            Either::Right(
-                Jump(..) | JumpIfNotZero(..) | Call(..) | LoadLabel(..) | JumpIfNotEq(..),
-            )
+            Either::Right(Jump(..) | JumpIfNotZero(..) | Call(..) | LoadLabel(..))
             | Either::Left(_) => 1,
 
             // We use three instructions to save the absolute address for return.
@@ -502,9 +453,7 @@ impl AllocatedAbstractInstructionSet {
         // We decide here whether remapping jumps are necessary.
         // 1. JMPB and JMPF offsets are more than 18 bits
         // 2. JNZF and JNZB offsets are more than 12 bits
-        // 3. JEQB and JEQF offsets are more than 6 bits.
 
-        let mut jneq_labels = HashSet::new();
         let mut jnz_labels = HashSet::new();
         let mut jmp_labels = HashSet::new();
 
@@ -512,9 +461,7 @@ impl AllocatedAbstractInstructionSet {
 
         for (op_idx, op) in self.ops.iter().enumerate() {
             // If we're seeing a control flow op then it's the end of the block.
-            if let Either::Right(Label(_) | Jump(_) | JumpIfNotEq(..) | JumpIfNotZero(..)) =
-                op.opcode
-            {
+            if let Either::Right(Label(_) | Jump(_) | JumpIfNotZero(..)) = op.opcode {
                 if let Some((lab, _idx, offs)) = cur_basic_block {
                     // Insert the previous basic block.
                     labelled_blocks.insert(lab, BasicBlock { offs });
@@ -534,10 +481,6 @@ impl AllocatedAbstractInstructionSet {
                 jnz_labels.insert((cur_offset, lab));
             }
 
-            if let Either::Right(JumpIfNotEq(_, _, lab)) = op.opcode {
-                jneq_labels.insert((cur_offset, lab));
-            }
-
             // Update the offset.
             cur_offset += Self::instruction_size(op, data_section);
         }
@@ -553,12 +496,9 @@ impl AllocatedAbstractInstructionSet {
             // if rel_offset exceeds limit, we'll need to insert LoadLabels.
             rel_offset == 0 || rel_offset > limit
         };
-        let need_to_remap_jumps = jneq_labels
+        let need_to_remap_jumps = jmp_labels
             .iter()
-            .any(|(offset, lab)| needs_remap(*offset, lab, consts::SIX_BITS))
-            || jmp_labels
-                .iter()
-                .any(|(offset, lab)| needs_remap(*offset, lab, consts::EIGHTEEN_BITS))
+            .any(|(offset, lab)| needs_remap(*offset, lab, consts::EIGHTEEN_BITS))
             || jnz_labels
                 .iter()
                 .any(|(offset, lab)| needs_remap(*offset, lab, consts::TWELVE_BITS));
@@ -622,53 +562,6 @@ impl AllocatedAbstractInstructionSet {
                                     opcode: Either::Left(AllocatedOpcode::JMPF(
                                         AllocatedRegister::Constant(ConstantRegister::Scratch),
                                         VirtualImmediate18 { value: 0 },
-                                    )),
-                                    ..op
-                                });
-                            }
-                            modified = true;
-                        }
-                    }
-                    Either::Right(ControlFlowOp::JumpIfNotEq(r1, r2, ref lab)) => {
-                        if rel_offset(lab) == 0 {
-                            new_ops.push(AllocatedAbstractOp {
-                                opcode: Either::Left(AllocatedOpcode::NOOP),
-                                comment: "NOP for self loop".into(),
-                                owning_span: None,
-                            });
-                            new_ops.push( op);
-                            modified = true;
-                        } else if rel_offset(lab) - 1 <= consts::SIX_BITS {
-                            new_ops.push(op)
-                        } else {
-                            // Load the destination address into $tmp.
-                            new_ops.push(AllocatedAbstractOp {
-                                opcode: Either::Right(ControlFlowOp::LoadLabel(
-                                    AllocatedRegister::Constant(ConstantRegister::Scratch),
-                                    *lab,
-                                )),
-                                comment: String::new(),
-                                owning_span: None,
-                            });
-
-                            // JNEB/JNEF r1 r2 $tmp.
-                            if curr_offset > label_offsets.get(lab).unwrap().offs {
-                                new_ops.push(AllocatedAbstractOp {
-                                    opcode: Either::Left(AllocatedOpcode::JNEB(
-                                        r1.clone(),
-                                        r2.clone(),
-                                        AllocatedRegister::Constant(ConstantRegister::Scratch),
-                                        VirtualImmediate06 { value: 0 },
-                                    )),
-                                    ..op
-                                });
-                            } else {
-                                new_ops.push(AllocatedAbstractOp {
-                                    opcode: Either::Left(AllocatedOpcode::JNEF(
-                                        r1.clone(),
-                                        r2.clone(),
-                                        AllocatedRegister::Constant(ConstantRegister::Scratch),
-                                        VirtualImmediate06 { value: 0 },
                                     )),
                                     ..op
                                 });
