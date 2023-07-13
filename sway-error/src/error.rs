@@ -453,6 +453,10 @@ pub enum CompileError {
         count: usize,
         span: Span,
     },
+    #[error("Variables cannot shadow constants. The variable \"{name}\" shadows constant with the same name.")]
+    VariableShadowsConstant { name: Ident },
+    #[error("Constants cannot shadow variables. The constant \"{name}\" shadows variable with the same name.")]
+    ConstantShadowsVariable { name: Ident },
     #[error("The name \"{name}\" shadows another symbol with the same name.")]
     ShadowsOtherSymbol { name: Ident },
     #[error("The name \"{name}\" is already used for a generic parameter in this scope.")]
@@ -760,6 +764,8 @@ impl Spanned for CompileError {
             ContractStorageFromExternalContext { span, .. } => span.clone(),
             InvalidOpcodeFromPredicate { span, .. } => span.clone(),
             ArrayOutOfBounds { span, .. } => span.clone(),
+            VariableShadowsConstant { name } => name.span(),
+            ConstantShadowsVariable { name } => name.span(),
             ShadowsOtherSymbol { name } => name.span(),
             GenericShadowsGeneric { name } => name.span(),
             MatchExpressionNonExhaustive { span, .. } => span.clone(),

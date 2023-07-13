@@ -103,13 +103,11 @@ impl Items {
                 use ty::TyDecl::*;
                 match (decl, &item) {
                 // variable shadowing a constant
-                // constant shadowing a constant
-                (
-                    ConstantDecl { .. },
-                    VariableDecl { .. } | ConstantDecl { .. },
-                )
+                (ConstantDecl {..}, VariableDecl { .. }) => errors.push(CompileError::VariableShadowsConstant { name: name.clone() }),
                 // constant shadowing a variable
-                | (VariableDecl { .. }, ConstantDecl { .. })
+                (VariableDecl { .. }, ConstantDecl {..}) => errors.push(CompileError::ConstantShadowsVariable { name: name.clone() }),
+                // constant shadowing a constant
+                (ConstantDecl { .. }, ConstantDecl { .. })
                 // type or type alias shadowing another type or type alias
                 // trait/abi shadowing another trait/abi
                 // type or type alias shadowing a trait/abi, or vice versa
