@@ -159,7 +159,7 @@ pub fn enable_panic_on_overflow() {
 ///     set_flags(prior_flags);
 /// }
 /// ```
-pub fn disable_panic_on_unsafe_math() {
+pub fn disable_panic_on_unsafe_math() -> u64 {
     let prior_flags = flags();
 
     // Get the current value of the flags register and mask it, setting the
@@ -205,14 +205,14 @@ pub fn enable_panic_on_unsafe_math() {
 
 #[test]
 fn test_disable_panic_on_overflow() {
-    disable_panic_on_overflow();
+    let _ = disable_panic_on_overflow();
     let _bar = u64::max() + 1;
     enable_panic_on_overflow();
 }
 
 #[test]
 fn test_disable_panic_on_overflow_preserving() {
-    disable_panic_on_overflow();
+    let _ = disable_panic_on_overflow();
 
     let prior_flags = disable_panic_on_overflow();
     let _bar = u64::max() + 1;
@@ -225,7 +225,7 @@ fn test_disable_panic_on_overflow_preserving() {
 
 #[test]
 fn test_disable_panic_on_unsafe_math() {
-    disable_panic_on_unsafe_math();
+    let _ = disable_panic_on_unsafe_math();
 
     let _bar = asm(r2: 1, r3: 0, r1) {
         div r1 r2 r3;
@@ -239,7 +239,7 @@ fn test_disable_panic_on_unsafe_math() {
 
 #[test]
 fn test_disable_panic_on_unsafe_math_preserving() {
-    disable_panic_on_unsafe_math();
+    let _ = disable_panic_on_unsafe_math();
 
     let prior_flags = disable_panic_on_unsafe_math();
     let _bar = asm(r2: 1, r3: 0, r1) {
