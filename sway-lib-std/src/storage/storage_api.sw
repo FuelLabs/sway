@@ -2,6 +2,7 @@ library;
 
 use ::alloc::alloc;
 use ::option::Option::{self, *};
+use ::u256::U256;
 
 /// Store a stack value in storage. Will not work for heap values.
 ///
@@ -46,8 +47,10 @@ pub fn write<T>(slot: b256, offset: u64, value: T) {
     };
 
     // Determine which slot `T` will be stored based on the offset
-    let mut offset_slot = slot;
-    offset_slot.increment(last_slot - number_of_slots + 1);
+    let mut u256_slot = U256::from(asm(r1: slot) { r1: (u64, u64, u64, u64) });
+    let u256_increment = U256::from((0, 0, 0, last_slot - number_of_slots + 1));
+    u256_slot += u256_increment;
+    let mut offset_slot = asm(r1: u256_slot.into()) { r1: b256 };
 
     // Allocate enough memory on the heap for `value` as well as any potential padding required due 
     // to `offset`.
@@ -109,8 +112,10 @@ pub fn read<T>(slot: b256, offset: u64) -> Option<T> {
         false => 1,
     };
 
-    let mut offset_slot = slot;
-    offset_slot.increment(last_slot - number_of_slots + 1);
+    let mut u256_slot = U256::from(asm(r1: slot) { r1: (u64, u64, u64, u64) });
+    let u256_increment = U256::from((0, 0, 0, last_slot - number_of_slots + 1));
+    u256_slot += u256_increment;
+    let mut offset_slot = asm(r1: u256_slot.into()) { r1: b256 };
 
     // Allocate a buffer for the result. Its size needs to be a multiple of 32 bytes so we can 
     // make the 'quad' storage instruction read without overflowing.
@@ -163,8 +168,10 @@ pub fn clear<T>(slot: b256, offset: u64) -> bool {
         false => 1,
     };
 
-    let mut offset_slot = slot;
-    offset_slot.increment(last_slot - number_of_slots + 1);
+    let mut u256_slot = U256::from(asm(r1: slot) { r1: (u64, u64, u64, u64) });
+    let u256_increment = U256::from((0, 0, 0, last_slot - number_of_slots + 1));
+    u256_slot += u256_increment;
+    let mut offset_slot = asm(r1: u256_slot.into()) { r1: b256 };
 
     // Clear `number_of_slots * 32` bytes starting at storage slot `slot`.
     __state_clear(offset_slot, number_of_slots)
