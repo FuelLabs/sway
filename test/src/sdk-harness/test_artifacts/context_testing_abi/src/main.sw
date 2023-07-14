@@ -8,7 +8,7 @@ abi ContextTesting {
     #[payable]
     fn get_amount() -> u64;
     #[payable]
-    fn get_asset_id() -> ContractId;
+    fn get_asset_id() -> b256;
     #[payable]
     fn get_gas() -> u64;
     #[payable]

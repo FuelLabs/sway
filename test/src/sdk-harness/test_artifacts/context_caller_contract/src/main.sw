@@ -7,7 +7,7 @@ abi ContextCaller {
     fn call_get_this_balance_with_coins(send_amount: u64, context_id: ContractId) -> u64;
     fn call_get_balance_of_contract_with_coins(send_amount: u64, context_id: ContractId) -> u64;
     fn call_get_amount_with_coins(send_amount: u64, context_id: ContractId) -> u64;
-    fn call_get_asset_id_with_coins(send_amount: u64, context_id: ContractId) -> ContractId;
+    fn call_get_asset_id_with_coins(send_amount: u64, context_id: ContractId) -> b256;
     fn call_get_gas_with_coins(send_amount: u64, context_id: ContractId) -> u64;
     fn call_get_global_gas_with_coins(send_amount: u64, context_id: ContractId) -> u64;
     fn call_receive_coins(send_amount: u64, target: ContractId);
@@ -51,7 +51,7 @@ impl ContextCaller for Contract {
         }()
     }
 
-    fn call_get_asset_id_with_coins(send_amount: u64, target: ContractId) -> ContractId {
+    fn call_get_asset_id_with_coins(send_amount: u64, target: ContractId) -> b256 {
         let id = target.value;
         let context_contract = abi(ContextTesting, id);
         let asset_id = sha256((contract_id(), ZERO_B256));
