@@ -143,9 +143,9 @@ fn test_address() {
 #[test]
 fn test_contract_id() {
     let id = BASE_ASSET_ID;
-    let identity = Identity::ContractId(id);
+    let identity = Identity::ContractId(ContractId::from(id));
     assert(!identity.is_address());
     assert(identity.is_contract_id());
-    assert(identity.as_contract_id().unwrap() == id);
+    assert(identity.as_contract_id().unwrap().value == id);
     assert(identity.as_address().is_none());
 }
