@@ -20,7 +20,7 @@ impl ContextTesting for Contract {
     }
 
     #[payable]
-    fn get_asset_id() -> ContractId {
+    fn get_asset_id() -> b256 {
         msg_asset_id()
     }
 
