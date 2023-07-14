@@ -192,10 +192,9 @@ impl_brackets!(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::test_utils::parse;
     use insta::*;
-    use sway_ast::{AttributeDecl, Item};
+    use sway_ast::Item;
 
     #[test]
     fn parse_fn() {
