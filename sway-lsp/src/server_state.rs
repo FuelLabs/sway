@@ -81,18 +81,19 @@ impl ServerState {
             .await;
     }
 
-    pub(crate) async fn parse_project(&self, uri: Url, workspace_uri: Url, session: Arc<Session>) {
+    pub(crate) async fn parse_project(&self, uri: Url, workspace_uri: Url, session: Arc<Session>) -> bool {
         let should_publish = run_blocking_parse_project(uri.clone(), session.clone()).await;
         if should_publish {
             self.publish_diagnostics(&uri, &workspace_uri, session)
                 .await;
         }
+        should_publish
     }
 }
 
 /// Runs parse_project in a blocking thread, because parsing is not async.
 async fn run_blocking_parse_project(uri: Url, session: Arc<Session>) -> bool {
-    task::spawn_blocking(move || match session.parse_project(&uri) {
+    tokio::task::spawn_blocking(move || match session.parse_project(&uri) {
         Ok(should_publish) => should_publish,
         Err(err) => {
             tracing::error!("{}", err);

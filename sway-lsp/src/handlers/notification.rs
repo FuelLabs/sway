@@ -30,6 +30,8 @@ pub(crate) async fn handle_did_change_text_document(
     state: &ServerState,
     params: DidChangeTextDocumentParams,
 ) {
+    eprintln!("current version: {}", params.text_document.version);
+    
     let config = state.config.read().on_enter.clone();
     match state
         .sessions
@@ -42,9 +44,12 @@ pub(crate) async fn handle_did_change_text_document(
             // update this file with the new changes and write to disk
             match session.write_changes_to_file(&uri, params.content_changes) {
                 Ok(_) => {
-                    state
+                    let success = state
                         .parse_project(uri, params.text_document.uri.clone(), session)
                         .await;
+                    if success {
+                        eprintln!("Successfully compiled project, version: {}", params.text_document.version);
+                    }
                 }
                 Err(err) => tracing::error!("{}", err.to_string()),
             }

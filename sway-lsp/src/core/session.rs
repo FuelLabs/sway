@@ -69,6 +69,7 @@ pub struct Session {
     // Limit the number of threads that can wait to parse at the same time. One thread can be parsing
     // and one thread can be waiting to start parsing. All others will return the cached diagnostics.
     parse_permits: Arc<Semaphore>,
+    parse_permits_tokio: Arc<tokio::sync::Semaphore>,
     // Cached diagnostic results that require a lock to access. Readers will wait for writers to complete.
     diagnostics: Arc<RwLock<Diagnostics>>,
 }
@@ -83,6 +84,7 @@ impl Session {
             engines: <_>::default(),
             sync: SyncWorkspace::new(),
             parse_permits: Arc::new(Semaphore::new(2)),
+            parse_permits_tokio: Arc::new(tokio::sync::Semaphore::new(2)),
             diagnostics: Arc::new(RwLock::new(Diagnostics::default())),
         }
     }
@@ -132,8 +134,13 @@ impl Session {
     pub fn parse_project(&self, uri: &Url) -> Result<bool, LanguageServerError> {
         // Acquire a permit to parse the project. If there are none available, return false. This way,
         // we avoid publishing the same diagnostics multiple times.
-        let permit = self.parse_permits.try_acquire();
-        if permit.is_none() {
+        // let permit = self.parse_permits.try_acquire();
+        // if permit.is_none() {
+        //     return Ok(false);
+        // }
+
+        let permit = self.parse_permits_tokio.try_acquire();
+        if permit.is_err() {
             return Ok(false);
         }
 
