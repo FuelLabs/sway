@@ -30,7 +30,7 @@ use std::constants::ZERO_B256;
 fn minting() {
     // ANCHOR: mint
     let amount = 10;
-    mint(amount, ZERO_B256);
+    mint(ZERO_B256, amount);
     // ANCHOR_END: mint
 }
 
@@ -40,7 +40,7 @@ fn minting_to_address() {
     let address = 0x0000000000000000000000000000000000000000000000000000000000000001;
     let user = Address::from(address);
 
-    mint_to_address(amount, user, ZERO_B256);
+    mint_to_address(user, ZERO_B256, amount);
     // ANCHOR_END: mint_to_address
 }
 
@@ -50,7 +50,7 @@ fn minting_to_contract() {
     let address = 0x0000000000000000000000000000000000000000000000000000000000000001;
     let pool = ContractId::from(address);
 
-    mint_to_contract(amount, pool, ZERO_B256);
+    mint_to_contract(pool, ZERO_B256, amount);
     // ANCHOR_END: mint_to_contract
 }
 
@@ -61,15 +61,15 @@ fn minting_to() {
     let user = Identity::Address(Address::from(address));
     let pool = Identity::ContractId(ContractId::from(address));
 
-    mint_to(amount, user, ZERO_B256);
-    mint_to(amount, pool, ZERO_B256);
+    mint_to(user, ZERO_B256, amount);
+    mint_to(pool, ZERO_B256, amount);
     // ANCHOR_END: mint_to
 }
 
 fn burning() {
     // ANCHOR: burn
     let amount = 10;
-    burn(amount, ZERO_B256);
+    burn(ZERO_B256, amount);
     // ANCHOR_END: burn
 }
 
@@ -80,7 +80,7 @@ fn transferring_to_address() {
     let asset = ZERO_B256;
     let user = Address::from(address);
 
-    transfer_to_address(amount, asset, user);
+    transfer_to_address(user, asset, amount);
     // ANCHOR_END: transfer_to_address
 }
 
@@ -91,7 +91,7 @@ fn transferring_to_contract() {
     let asset = ZERO_B256;
     let pool = ContractId::from(address);
 
-    force_transfer_to_contract(amount, asset, pool);
+    force_transfer_to_contract(pool, asset, amount);
     // ANCHOR_END: force_transfer_to_contract
 }
 
@@ -103,7 +103,7 @@ fn transferring_to() {
     let user = Identity::Address(Address::from(address));
     let pool = Identity::ContractId(ContractId::from(address));
 
-    transfer(amount, asset, user);
-    transfer(amount, asset, pool);
+    transfer(user, asset, amount);
+    transfer(pool, asset, amount);
     // ANCHOR_END: transfer
 }
