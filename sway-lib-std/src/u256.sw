@@ -190,26 +190,6 @@ impl U256 {
     pub fn bits() -> u32 {
         256
     }
-
-    /// Get four 64-bit words from a single `U256` value.
-    ///
-    /// ### Examples
-    ///
-    /// ```sway
-    /// use std::u256::U256;
-    ///
-    /// let u64s = (1, 2, 3, 4);
-    /// let u256: U256::from(u64s);
-    /// let decomposed = u256.decompose();
-    ///
-    /// assert(u64s.0 == decomposed.0);
-    /// assert(u64s.1 == decomposed.1);
-    /// assert(u64s.2 == decomposed.2);
-    /// assert(u64s.3 == decomposed.3);
-    /// ```
-    fn decompose(self) -> (u64, u64, u64, u64) {
-        (self.a, self.b, self.c, self.d)
-    }
 }
 
 impl core::ops::Ord for U256 {
@@ -244,8 +224,8 @@ fn test_u256_ord() {
 
 impl core::ops::BitwiseAnd for U256 {
     fn binary_and(self, other: Self) -> Self {
-        let (value_word_1, value_word_2, value_word_3, value_word_4) = self.decompose();
-        let (other_word_1, other_word_2, other_word_3, other_word_4) = other.decompose();
+        let (value_word_1, value_word_2, value_word_3, value_word_4) = self.into();
+        let (other_word_1, other_word_2, other_word_3, other_word_4) = other.into();
         let word_1 = value_word_1 & other_word_1;
         let word_2 = value_word_2 & other_word_2;
         let word_3 = value_word_3 & other_word_3;
@@ -256,8 +236,8 @@ impl core::ops::BitwiseAnd for U256 {
 
 impl core::ops::BitwiseOr for U256 {
     fn binary_or(self, other: Self) -> Self {
-        let (value_word_1, value_word_2, value_word_3, value_word_4) = self.decompose();
-        let (other_word_1, other_word_2, other_word_3, other_word_4) = other.decompose();
+        let (value_word_1, value_word_2, value_word_3, value_word_4) = self.into();
+        let (other_word_1, other_word_2, other_word_3, other_word_4) = other.into();
         let word_1 = value_word_1 | other_word_1;
         let word_2 = value_word_2 | other_word_2;
         let word_3 = value_word_3 | other_word_3;
@@ -268,8 +248,8 @@ impl core::ops::BitwiseOr for U256 {
 
 impl core::ops::BitwiseXor for U256 {
     fn binary_xor(self, other: Self) -> Self {
-        let (value_word_1, value_word_2, value_word_3, value_word_4) = self.decompose();
-        let (other_word_1, other_word_2, other_word_3, other_word_4) = other.decompose();
+        let (value_word_1, value_word_2, value_word_3, value_word_4) = self.into();
+        let (other_word_1, other_word_2, other_word_3, other_word_4) = other.into();
         let word_1 = value_word_1 ^ other_word_1;
         let word_2 = value_word_2 ^ other_word_2;
         let word_3 = value_word_3 ^ other_word_3;
@@ -280,7 +260,7 @@ impl core::ops::BitwiseXor for U256 {
 
 impl core::ops::Shift for U256 {
     fn lsh(self, shift_amount: u64) -> Self {
-        let (word_1, word_2, word_3, word_4) = self.decompose();
+        let (word_1, word_2, word_3, word_4) = self.into();
         let mut w1 = 0;
         let mut w2 = 0;
         let mut w3 = 0;
@@ -314,7 +294,7 @@ impl core::ops::Shift for U256 {
     }
 
     fn rsh(self, shift_amount: u64) -> Self {
-        let (word_1, word_2, word_3, word_4) = self.decompose();
+        let (word_1, word_2, word_3, word_4) = self.into();
         let mut w1 = 0;
         let mut w2 = 0;
         let mut w3 = 0;
@@ -362,8 +342,8 @@ impl core::ops::Not for U256 {
 impl core::ops::Add for U256 {
     /// Add a `U256` to a `U256`. Panics on overflow.
     fn add(self, other: Self) -> Self {
-        let (word_1, word_2, word_3, word_4) = self.decompose();
-        let (other_word_1, other_word_2, other_word_3, other_word_4) = other.decompose();
+        let (word_1, word_2, word_3, word_4) = self.into();
+        let (other_word_1, other_word_2, other_word_3, other_word_4) = other.into();
 
         let mut overflow = 0;
         let mut local_res = U128::from((0, word_4)) + U128::from((0, other_word_4));
@@ -398,8 +378,8 @@ impl core::ops::Subtract for U256 {
         }
         // If trying to subtract a larger number, panic.
         assert(self > other);
-        let (word_1, word_2, word_3, word_4) = self.decompose();
-        let (other_word_1, other_word_2, other_word_3, other_word_4) = other.decompose();
+        let (word_1, word_2, word_3, word_4) = self.into();
+        let (other_word_1, other_word_2, other_word_3, other_word_4) = other.into();
 
         let mut result_a = word_1 - other_word_1;
         let mut result_b = 0;
