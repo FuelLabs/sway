@@ -1,7 +1,7 @@
 use fuels::{
     accounts::wallet::WalletUnlocked,
     prelude::*,
-    types::{Identity, SizedAsciiString},
+    types::{Bits256, Identity, SizedAsciiString},
 };
 
 abigen!(Contract(
@@ -29,9 +29,9 @@ async fn test_foo() -> Result<()> {
     let (instance, _id) = get_type_aliases_instance().await;
     let contract_methods = instance.methods();
 
-    let x = ContractId::new([1u8; 32]);
+    let x = Bits256([1u8; 32]);
 
-    let y = [Identity::ContractId(x), Identity::ContractId(x)];
+    let y = [Identity::ContractId(ContractId::new([1u8; 32])), Identity::ContractId(ContractId::new([1u8; 32]))];
 
     let z = IdentityAliasWrapper { i: y[0].clone() };
 
