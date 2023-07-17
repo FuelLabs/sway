@@ -176,8 +176,7 @@ pub fn promote_to_registers(
         }
     }
     // Transitively add PHIs, till nothing more to do.
-    while !worklist.is_empty() {
-        let (local, ty, known_def) = worklist.pop().unwrap();
+    while let Some((local, ty, known_def)) = worklist.pop() {
         for df in dom_fronts[&known_def].iter() {
             if !new_phi_tracker.contains(&(local.clone(), *df)) && liveins[df].contains(&local) {
                 // Insert PHI for this local at block df.

@@ -513,8 +513,7 @@ impl Function {
         let mut res = format!("digraph {} {{\n", self.get_name(context));
 
         worklist.push(entry);
-        while !worklist.is_empty() {
-            let n = worklist.pop().unwrap();
+        while let Some(n) = worklist.pop() {
             visited.insert(n);
             for BranchToWithArgs { block: n_succ, .. } in n.successors(context) {
                 let _ = writeln!(
