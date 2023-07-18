@@ -8,10 +8,6 @@ publish = false
 
 [dependencies]
 assert_matches = "1.5.0"
-fuel-core = { version = "0.18.2", default-features = false }
-fuel-core-client = { version = "0.18.2", default-features = false }
-fuel-vm = "0.31.2"
-fuels = { version = "0.43", features = ["fuel-core-lib"] }
 hex = "0.4.3"
 rand = "0.8"
 sha2 = "0.10"
@@ -19,9 +15,29 @@ sha3 = "0.10.1"
 tai64 = { version = "4.0", features = ["serde"] }
 tokio = { version = "1.12", features = ["rt", "macros"] }
 
+# Depednencies from the `fuel-core` repository:
+# For dependencies from the `fuel-core` repository, we need to use the same version as the `fuels-rs upgrade/fuel-core-master`.
+# The version should be the same as in the target branch - master`. Otherwise `[patch.crates-io]` doesn't work.
+fuel-core = { version = "0.20.1", default-features = false }
+fuel-core-client = { version = "0.20.1", default-features = false }
+
+# Depednencies from the `fuel-vm` repository:
+# For dependencies from the `fuel-vm` repository, we need to use the same version as the `fuels-rs upgrade/fuel-core-master`.
+fuel-vm = "0.35.0"
+
+# Depednencies from the `fuels-rs` repository:
+# The version should be the same as in the target branch - `upgrade/fuel-core-master`. Otherwise `[patch.crates-io]` doesn't work.
+fuels = { version = "0.44", features = ["fuel-core-lib"] }
+
 [[test]]
 harness = true
 name = "integration_tests"
 path = "test_projects/harness.rs"
 
 [workspace]
+
+[patch.crates-io]
+fuel-core = { git = "https://github.com/FuelLabs/fuel-core", branch = "master" }
+fuel-core-client = { git = "https://github.com/FuelLabs/fuel-core", branch = "master" }
+
+fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "upgrade/fuel-core-master" }

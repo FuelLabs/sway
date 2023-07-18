@@ -31,14 +31,23 @@ exclude = [
 ]
 
 [workspace.dependencies]
-fuel-asm = "0.31.1"
-fuel-crypto = "0.31.1"
-fuel-types = "0.31.1"
-fuel-tx = "0.31.1"
-fuel-core-client = { version = "0.18.2", default-features = false }
-fuel-vm = "0.31.2"
-fuels-core = "0.43"
-fuels-accounts = "0.43"
+# Depednencies from the `fuel-core` repository:
+# For dependencies from the `fuel-core` repository, we need to use the same version as the `fuels-rs upgrade/fuel-core-master`.
+# The version should be the same as in the target branch - master`. Otherwise `[patch.crates-io]` doesn't work.
+fuel-core-client = { version = "0.20.1", default-features = false }
+
+# Depednencies from the `fuel-vm` repository:
+# For dependencies from the `fuel-vm` repository, we need to use the same version as the `fuels-rs upgrade/fuel-core-master`.
+fuel-asm = "0.35.0"
+fuel-crypto = "0.35.0"
+fuel-types = "0.35.0"
+fuel-tx = "0.35.0"
+fuel-vm = "0.35.0"
+
+# Depednencies from the `fuels-rs` repository:
+# The version should be the same as in the target branch - `upgrade/fuel-core-master`. Otherwise `[patch.crates-io]` doesn't work.
+fuels-core = "0.44"
+fuels-accounts = "0.44"
 
 [workspace.package]
 edition = "2021"
@@ -46,3 +55,10 @@ authors = ["Fuel Labs <contact@fuel.sh>"]
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/sway"
+
+[patch.crates-io]
+fuel-core-client = { git = "https://github.com/FuelLabs/fuel-core", branch = "master" }
+
+fuels-core = { git = "https://github.com/FuelLabs/fuels-rs", branch = "upgrade/fuel-core-master" }
+fuels-accounts = { git = "https://github.com/FuelLabs/fuels-rs", branch = "upgrade/fuel-core-master" }
+
