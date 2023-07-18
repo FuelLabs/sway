@@ -46,6 +46,7 @@ impl<'a> ParsedTree<'a> {
     }
 
     pub fn traverse_node(&self, node: &AstNode) {
+        //eprintln!("traversing node: {:#?}", node);
         node.parse(self.ctx);
     }
 
@@ -292,7 +293,16 @@ impl Parse for Expression {
                 prefix.parse(ctx);
                 index.parse(ctx);
             }
-            ExpressionKind::StorageAccess(StorageAccessExpression { field_names }) => {
+            ExpressionKind::StorageAccess(StorageAccessExpression {
+                field_names,
+                storage_keyword_span,
+            }) => {
+                let storage_ident = Ident::new(storage_keyword_span.clone());
+                ctx.tokens.insert(
+                    to_ident_key(&storage_ident),
+                    Token::from_parsed(AstToken::Ident(storage_ident), SymbolKind::Unknown),
+                );
+
                 field_names.iter().for_each(|field_name| {
                     ctx.tokens.insert(
                         to_ident_key(field_name),

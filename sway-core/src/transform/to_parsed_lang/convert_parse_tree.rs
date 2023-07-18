@@ -1988,7 +1988,7 @@ fn expr_to_expression(
             // For example, `storage.foo.bar` would result in `Some([foo, bar])`.
             let mut idents = vec![&name];
             let mut base = &*target;
-            let storage_access_field_names = loop {
+            let kind = loop {
                 match base {
                     // Parent is a projection itself, so check its parent.
                     Expr::FieldProjection { target, name, .. } => {
@@ -2002,21 +2002,21 @@ fn expr_to_expression(
                             && path_expr.prefix.generics_opt.is_none()
                             && path_expr.prefix.name.as_str() == "storage" =>
                     {
-                        break Some(idents)
+                        break ExpressionKind::StorageAccess(StorageAccessExpression {
+                            field_names: idents.into_iter().rev().cloned().collect(),
+                            storage_keyword_span: path_expr.prefix.name.span(),
+                        })
                     }
                     // We'll never find `storage`, so stop here.
-                    _ => break None,
+                    _ => {
+                        break ExpressionKind::Subfield(SubfieldExpression {
+                            prefix: Box::new(expr_to_expression(
+                                context, handler, engines, *target,
+                            )?),
+                            field_to_access: name,
+                        })
+                    }
                 }
-            };
-
-            let kind = match storage_access_field_names {
-                Some(field_names) => ExpressionKind::StorageAccess(StorageAccessExpression {
-                    field_names: field_names.into_iter().rev().cloned().collect(),
-                }),
-                None => ExpressionKind::Subfield(SubfieldExpression {
-                    prefix: Box::new(expr_to_expression(context, handler, engines, *target)?),
-                    field_to_access: name,
-                }),
             };
             Expression { kind, span }
         }
@@ -3768,7 +3768,7 @@ fn assignable_to_expression(
         Assignable::FieldProjection { target, name, .. } => {
             let mut idents = vec![&name];
             let mut base = &*target;
-            let storage_access_field_names_opt = loop {
+            let (storage_access_field_names_opt, storage_name_opt) = loop {
                 match base {
                     Assignable::FieldProjection { target, name, .. } => {
                         idents.push(name);
@@ -3776,24 +3776,25 @@ fn assignable_to_expression(
                     }
                     Assignable::Var(name) => {
                         if name.as_str() == "storage" {
-                            break Some(idents);
+                            break (Some(idents), Some(name.clone()));
                         }
-                        break None;
+                        break (None, None);
                     }
-                    _ => break None,
+                    _ => break (None, None),
                 }
             };
-            match storage_access_field_names_opt {
-                Some(field_names) => {
+            match (storage_access_field_names_opt, storage_name_opt) {
+                (Some(field_names), Some(storage_name)) => {
                     let field_names = field_names.into_iter().rev().cloned().collect();
                     Expression {
                         kind: ExpressionKind::StorageAccess(StorageAccessExpression {
                             field_names,
+                            storage_keyword_span: storage_name.span(),
                         }),
                         span,
                     }
                 }
-                None => Expression {
+                _ => Expression {
                     kind: ExpressionKind::Subfield(SubfieldExpression {
                         prefix: Box::new(assignable_to_expression(
                             context, handler, engines, *target,
@@ -3840,6 +3841,7 @@ fn assignable_to_reassignment_target(
 ) -> Result<ReassignmentTarget, ErrorEmitted> {
     let mut idents = Vec::new();
     let mut base = &assignable;
+
     loop {
         match base {
             Assignable::FieldProjection { target, name, .. } => {

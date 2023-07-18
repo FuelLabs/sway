@@ -470,6 +470,19 @@ impl Parse for ty::TyExpression {
                 address.parse(ctx);
             }
             ty::TyExpressionVariant::StorageAccess(storage_access) => {
+                // collect storage keyword
+                if let Some(mut token) = ctx
+                    .tokens
+                    .try_get_mut(&to_ident_key(&Ident::new(
+                        storage_access.storage_keyword_span.clone(),
+                    )))
+                    .try_unwrap()
+                {
+                    token.typed = Some(TypedAstToken::TypedStorageAccess(storage_access.clone()));
+                    if let Some(storage) = ctx.namespace.get_declared_storage(ctx.engines.de()) {
+                        token.type_def = Some(TypeDefinition::Ident(storage.storage_keyword));
+                    }
+                }
                 if let Some((head_field, tail_fields)) = storage_access.fields.split_first() {
                     // collect the first ident as a field of the storage definition
                     if let Some(mut token) = ctx
@@ -477,8 +490,9 @@ impl Parse for ty::TyExpression {
                         .try_get_mut(&to_ident_key(&head_field.name))
                         .try_unwrap()
                     {
-                        token.typed =
-                            Some(TypedAstToken::TyStorageAccessDescriptor(head_field.clone()));
+                        token.typed = Some(TypedAstToken::TypedStorageAccessDescriptor(
+                            head_field.clone(),
+                        ));
                         if let Some(storage_field) = ctx
                             .namespace
                             .get_declared_storage(ctx.engines.de())
