@@ -5,5 +5,5 @@ license = "Apache-2.0"
 name = "ownership"
 
 [dependencies]
-std = { path = "../../sway-lib-std" }
 ownership = { git = "https://github.com/FuelLabs/sway-libs", tag = "v0.12.0" }
+std = { path = "../../sway-lib-std" }
