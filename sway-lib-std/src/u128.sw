@@ -3,7 +3,7 @@ library;
 
 use ::assert::assert;
 use ::convert::From;
-use ::flags::{disable_panic_on_overflow, enable_panic_on_overflow};
+use ::flags::{disable_panic_on_overflow, set_flags};
 use ::math::*;
 use ::result::Result::{self, *};
 
@@ -53,11 +53,13 @@ impl core::ops::Ord for U128 {
 // }
 impl u64 {
     pub fn overflowing_add(self, right: Self) -> U128 {
-        disable_panic_on_overflow();
+        let prior_flags = disable_panic_on_overflow();
+
         let mut result = U128 {
             upper: 0,
             lower: 0,
         };
+
         asm(sum, overflow, left: self, right: right, result_ptr: result) {
             // Add left and right.
             add sum left right;
@@ -69,16 +71,20 @@ impl u64 {
             // Store the sum into the second word of result.
             sw result_ptr sum i1;
         };
-        enable_panic_on_overflow();
+        
+        set_flags(prior_flags);
+
         result
     }
 
     pub fn overflowing_mul(self, right: Self) -> U128 {
-        disable_panic_on_overflow();
+        let prior_flags = disable_panic_on_overflow();
+
         let mut result = U128 {
             upper: 0,
             lower: 0,
         };
+        
         asm(product, overflow, left: self, right: right, result_ptr: result) {
             // Multiply left and right.
             mul product left right;
@@ -90,7 +96,9 @@ impl u64 {
             // Store the product into the second word of result.
             sw result_ptr product i1;
         };
-        enable_panic_on_overflow();
+        
+        set_flags(prior_flags);
+
         result
     }
 }

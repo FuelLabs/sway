@@ -708,8 +708,7 @@ fn is_clobbered(
     let mut worklist: Vec<(Block, Box<dyn Iterator<Item = Value>>)> =
         vec![(store_block, Box::new(iter))];
     let mut visited = FxHashSet::default();
-    'next_job: while !worklist.is_empty() {
-        let (block, iter) = worklist.pop().unwrap();
+    'next_job: while let Some((block, iter)) = worklist.pop() {
         visited.insert(block);
         for inst in iter {
             if inst == load_val || inst == store_val {

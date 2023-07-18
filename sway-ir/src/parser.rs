@@ -897,7 +897,7 @@ mod ir_builder {
             fn_decl: IrAstFnDecl,
         ) -> Result<(), IrError> {
             let convert_md_idx = |opt_md_idx: &Option<MdIdxRef>| {
-                opt_md_idx.map(|mdi| self.md_map.get(&mdi).copied().unwrap())
+                opt_md_idx.and_then(|mdi| self.md_map.get(&mdi).copied())
             };
             let args: Vec<(String, Type, Option<MetadataIndex>)> = fn_decl
                 .args

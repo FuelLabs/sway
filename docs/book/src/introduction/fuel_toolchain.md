@@ -8,11 +8,7 @@ The "Fuel Orchestrator" [Forc](https://github.com/FuelLabs/sway/tree/master/forc
 
 ## Sway Language Server (`forc-lsp`)
 
-The Sway Language Server `forc-lsp` is provided to expose features to IDEs. [Installation instructions](./installation.md).
-
-Currently, only [Visual Studio Code is supported through a plugin](https://marketplace.visualstudio.com/items?itemName=FuelLabs.sway-vscode-plugin). Vim support is forthcoming, though [syntax highlighting is provided](https://github.com/FuelLabs/sway.vim).
-
-> **Note**: There is no need to manually run `forc-lsp` (the plugin will automatically start it), however both `forc` and `forc-lsp` must be in your `$PATH`. To check if `forc` is in your `$PATH`, type `forc --help` in your terminal.
+The Sway Language Server `forc-lsp` is provided to expose features to IDEs. [Installation instructions](../lsp/installation.md).
 
 ## Sway Formatter (`forc-fmt`)
 

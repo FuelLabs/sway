@@ -254,9 +254,7 @@ pub fn dce(
 
     let mut modified = false;
     let mut cemetery = FxHashSet::default();
-    while !worklist.is_empty() {
-        let dead = worklist.pop().unwrap();
-
+    while let Some(dead) = worklist.pop() {
         if !can_eliminate_instruction(context, dead, &num_symbol_uses, escaped_symbols)
             || cemetery.contains(&dead)
         {
