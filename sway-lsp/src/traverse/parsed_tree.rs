@@ -46,7 +46,6 @@ impl<'a> ParsedTree<'a> {
     }
 
     pub fn traverse_node(&self, node: &AstNode) {
-        //eprintln!("traversing node: {:#?}", node);
         node.parse(self.ctx);
     }
 
