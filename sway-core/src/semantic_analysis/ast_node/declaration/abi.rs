@@ -10,7 +10,9 @@ use crate::{
         parsed::*,
         ty::{self, TyImplItem, TyTraitItem},
     },
-    semantic_analysis::{declaration::insert_supertraits_into_namespace, AbiMode, TypeCheckContext},
+    semantic_analysis::{
+        declaration::insert_supertraits_into_namespace, AbiMode, TypeCheckContext,
+    },
     CompileResult, ReplaceSelfType, TypeId, TypeInfo,
 };
 
@@ -192,7 +194,8 @@ impl ty::TyAbiDecl {
                             name: const_name,
                             decl_id: *decl_ref.id(),
                             decl_span: const_decl.span.clone(),
-                        }), const_shadowing_mode
+                        }),
+                        const_shadowing_mode,
                     );
                 }
             }

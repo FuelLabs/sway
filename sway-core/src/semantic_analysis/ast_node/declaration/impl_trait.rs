@@ -39,7 +39,11 @@ impl ty::TyImplTrait {
 
         // create a namespace for the impl
         let mut impl_namespace = ctx.namespace.clone();
-        let mut ctx = ctx.by_ref().scoped(&mut impl_namespace).with_const_shadowing_mode(ConstShadowingMode::ItemStyle).allow_functions();
+        let mut ctx = ctx
+            .by_ref()
+            .scoped(&mut impl_namespace)
+            .with_const_shadowing_mode(ConstShadowingMode::ItemStyle)
+            .allow_functions();
 
         // Type check the type parameters. This will also insert them into the
         // current namespace.
@@ -249,7 +253,10 @@ impl ty::TyImplTrait {
 
         // create the namespace for the impl
         let mut impl_namespace = ctx.namespace.clone();
-        let mut ctx = ctx.scoped(&mut impl_namespace).with_const_shadowing_mode(ConstShadowingMode::ItemStyle).allow_functions();
+        let mut ctx = ctx
+            .scoped(&mut impl_namespace)
+            .with_const_shadowing_mode(ConstShadowingMode::ItemStyle)
+            .allow_functions();
 
         // create the trait name
         let trait_name = CallPath {

@@ -2,7 +2,10 @@ use crate::{
     engine_threading::*,
     language::{parsed::TreeType, ty::TyDecl, Purity, Visibility},
     namespace::Path,
-    semantic_analysis::{ast_node::{AbiMode, ConstShadowingMode}, Namespace},
+    semantic_analysis::{
+        ast_node::{AbiMode, ConstShadowingMode},
+        Namespace,
+    },
     type_system::{
         EnforceTypeArguments, MonomorphizeHelper, SubstTypes, TypeArgument, TypeId, TypeInfo,
     },
@@ -170,8 +173,14 @@ impl<'a> TypeCheckContext<'a> {
     }
 
     /// Map this `TypeCheckContext` instance to a new one with the given const shadowing `mode`.
-    pub(crate) fn with_const_shadowing_mode(self, const_shadowing_mode: ConstShadowingMode) -> Self {
-        Self { const_shadowing_mode, ..self }
+    pub(crate) fn with_const_shadowing_mode(
+        self,
+        const_shadowing_mode: ConstShadowingMode,
+    ) -> Self {
+        Self {
+            const_shadowing_mode,
+            ..self
+        }
     }
 
     /// Map this `TypeCheckContext` instance to a new one with the given purity.
@@ -319,7 +328,8 @@ impl<'a> TypeCheckContext<'a> {
     /// Short-hand for calling [Namespace::insert_symbol] with the `const_shadowing_mode` provided by
     /// the `TypeCheckContext`.
     pub(crate) fn insert_symbol(&mut self, name: Ident, item: TyDecl) -> CompileResult<()> {
-        self.namespace.insert_symbol(name, item, self.const_shadowing_mode)
+        self.namespace
+            .insert_symbol(name, item, self.const_shadowing_mode)
     }
 
     /// Get the engines needed for engine threading.

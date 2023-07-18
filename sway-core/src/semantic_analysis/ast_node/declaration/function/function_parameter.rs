@@ -130,6 +130,7 @@ fn insert_into_namespace(ctx: TypeCheckContext, typed_parameter: &ty::TyFunction
             ),
             return_type: typed_parameter.type_argument.type_id,
             type_ascription: typed_parameter.type_argument.clone(),
-        })), const_shadowing_mode
+        })),
+        const_shadowing_mode,
     );
 }

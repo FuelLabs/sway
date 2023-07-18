@@ -7,8 +7,8 @@ use crate::{
         CallPath,
     },
     namespace::*,
-    type_system::*,
     semantic_analysis::ast_node::ConstShadowingMode,
+    type_system::*,
 };
 
 use super::TraitMap;
@@ -96,43 +96,65 @@ impl Items {
         self.symbols().keys()
     }
 
-    pub(crate) fn insert_symbol(&mut self, name: Ident, item: ty::TyDecl, const_shadowing_mode: ConstShadowingMode) -> CompileResult<()> {
+    pub(crate) fn insert_symbol(
+        &mut self,
+        name: Ident,
+        item: ty::TyDecl,
+        const_shadowing_mode: ConstShadowingMode,
+    ) -> CompileResult<()> {
         let mut errors = vec![];
 
         let append_shadowing_error =
-            |decl: &ty::TyDecl, item: &ty::TyDecl, const_shadowing_mode: ConstShadowingMode, errors: &mut Vec<CompileError>| {
+            |decl: &ty::TyDecl,
+             item: &ty::TyDecl,
+             const_shadowing_mode: ConstShadowingMode,
+             errors: &mut Vec<CompileError>| {
                 use ty::TyDecl::*;
                 match (decl, &item, const_shadowing_mode) {
-                // variable shadowing a constant
-                (ConstantDecl {..}, VariableDecl { .. }, _) => errors.push(CompileError::VariableShadowsConstant { name: name.clone() }),
-                // constant shadowing a variable
-                (VariableDecl { .. }, ConstantDecl {..}, _) => errors.push(CompileError::ConstantShadowsVariable { name: name.clone() }),
-                // constant shadowing a constant outside function body
-                (ConstantDecl { .. }, ConstantDecl { .. }, ConstShadowingMode::ItemStyle) => errors.push(CompileError::MultipleDefinitionsOfConstant { name: name.clone(), span: name.span() }),
-                // constant shadowing a constant within function body
-                (ConstantDecl { .. }, ConstantDecl { .. }, ConstShadowingMode::Sequential) => errors.push(CompileError::ConstantShadowsConstant { name: name.clone() }),
-                // type or type alias shadowing another type or type alias
-                // trait/abi shadowing another trait/abi
-                // type or type alias shadowing a trait/abi, or vice versa
-                (
-                    StructDecl { .. }
-                    | EnumDecl { .. }
-                    | TypeAliasDecl { .. }
-                    | TraitDecl { .. }
-                    | AbiDecl { .. },
-                    StructDecl { .. }
-                    | EnumDecl { .. }
-                    | TypeAliasDecl { .. }
-                    | TraitDecl { .. }
-                    | AbiDecl { .. },
-                    _
-                ) => errors.push(CompileError::MultipleDefinitionsOfName { name: name.clone(), span: name.span() }),
-                // Generic parameter shadowing another generic parameter
-                (GenericTypeForFunctionScope { .. }, GenericTypeForFunctionScope { .. }, _) => {
-                    errors.push(CompileError::GenericShadowsGeneric { name: name.clone() });
+                    // variable shadowing a constant
+                    (ConstantDecl { .. }, VariableDecl { .. }, _) => {
+                        errors.push(CompileError::VariableShadowsConstant { name: name.clone() })
+                    }
+                    // constant shadowing a variable
+                    (VariableDecl { .. }, ConstantDecl { .. }, _) => {
+                        errors.push(CompileError::ConstantShadowsVariable { name: name.clone() })
+                    }
+                    // constant shadowing a constant outside function body
+                    (ConstantDecl { .. }, ConstantDecl { .. }, ConstShadowingMode::ItemStyle) => {
+                        errors.push(CompileError::MultipleDefinitionsOfConstant {
+                            name: name.clone(),
+                            span: name.span(),
+                        })
+                    }
+                    // constant shadowing a constant within function body
+                    (ConstantDecl { .. }, ConstantDecl { .. }, ConstShadowingMode::Sequential) => {
+                        errors.push(CompileError::ConstantShadowsConstant { name: name.clone() })
+                    }
+                    // type or type alias shadowing another type or type alias
+                    // trait/abi shadowing another trait/abi
+                    // type or type alias shadowing a trait/abi, or vice versa
+                    (
+                        StructDecl { .. }
+                        | EnumDecl { .. }
+                        | TypeAliasDecl { .. }
+                        | TraitDecl { .. }
+                        | AbiDecl { .. },
+                        StructDecl { .. }
+                        | EnumDecl { .. }
+                        | TypeAliasDecl { .. }
+                        | TraitDecl { .. }
+                        | AbiDecl { .. },
+                        _,
+                    ) => errors.push(CompileError::MultipleDefinitionsOfName {
+                        name: name.clone(),
+                        span: name.span(),
+                    }),
+                    // Generic parameter shadowing another generic parameter
+                    (GenericTypeForFunctionScope { .. }, GenericTypeForFunctionScope { .. }, _) => {
+                        errors.push(CompileError::GenericShadowsGeneric { name: name.clone() });
+                    }
+                    _ => {}
                 }
-                _ => {}
-            }
             };
 
         if let Some(decl) = self.symbols.get(&name) {
