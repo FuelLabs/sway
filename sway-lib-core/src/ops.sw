@@ -416,40 +416,28 @@ impl BitwiseXor for u8 {
 
 impl Not for u64 {
     fn not(self) -> Self {
-        asm(r1: self, r2) {
-            not r2 r1;
-            r2: u64
-        }
+        __not(self)
     }
 }
 
 impl Not for u32 {
     fn not(self) -> Self {
-        asm(r1: self, r2, r3: u32::max(), r4) {
-            not r2 r1;
-            and r4 r2 r3;
-            r4: u32
-        }
+        let v = __not(self);
+        __and(v, u32::max())
     }
 }
 
 impl Not for u16 {
     fn not(self) -> Self {
-        asm(r1: self, r2, r3: u16::max(), r4) {
-            not r2 r1;
-            and r4 r2 r3;
-            r4: u16
-        }
+        let v = __not(self);
+        __and(v, u16::max())
     }
 }
 
 impl Not for u8 {
     fn not(self) -> Self {
-        asm(r1: self, r2, r3: u8::max(), r4) {
-            not r2 r1;
-            and r4 r2 r3;
-            r4: u8
-        }
+        let v = __not(self);
+        __and(v, u8::max())
     }
 }
 
@@ -496,21 +484,17 @@ trait OrdEq: Ord + Eq {
 } {
     fn ge(self, other: Self) -> bool {
         self.gt(other) || self.eq(other)
-    }    fn le(self, other: Self) -> bool {
+    }
+    fn le(self, other: Self) -> bool {
         self.lt(other) || self.eq(other)
     }
 }
 
-impl OrdEq for u64 {
-}
-impl OrdEq for u32 {
-}
-impl OrdEq for u16 {
-}
-impl OrdEq for u8 {
-}
-impl OrdEq for b256 {
-}
+impl OrdEq for u64 {}
+impl OrdEq for u32 {}
+impl OrdEq for u16 {}
+impl OrdEq for u8 {}
+impl OrdEq for b256 {}
 
 pub trait Shift {
     fn lsh(self, other: u64) -> Self;

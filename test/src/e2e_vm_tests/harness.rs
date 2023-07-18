@@ -72,6 +72,7 @@ pub(crate) async fn deploy_contract(file_name: &str, run_config: &RunConfig) -> 
             ..Default::default()
         },
         signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
+        default_salt: true,
         ..Default::default()
     })
     .await
@@ -238,14 +239,16 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
         },
         ..Default::default()
     };
-    let result = forc_pkg::build_with_options(build_opts);
-
-    // Print the result of the compilation (i.e., any errors Forc produces).
-    if let Err(ref e) = result {
-        println!("\n{e}");
+    match std::panic::catch_unwind(|| forc_pkg::build_with_options(build_opts)) {
+        Ok(result) => {
+            // Print the result of the compilation (i.e., any errors Forc produces).
+            if let Err(ref e) = result {
+                println!("\n{e}");
+            }
+            result
+        }
+        Err(_) => Err(anyhow!("Compiler panic")),
     }
-
-    result
 }
 
 /// Compiles the project's unit tests, then runs all unit tests.

@@ -109,8 +109,7 @@ fn remove_dead_blocks(context: &mut Context, function: &Function) -> Result<bool
     worklist.push(entry_block);
 
     // Mark reachable nodes.
-    while !worklist.is_empty() {
-        let block = worklist.pop().unwrap();
+    while let Some(block) = worklist.pop() {
         let succs = block.successors(context);
         for BranchToWithArgs { block: succ, .. } in succs {
             // If this isn't already marked reachable, we mark it and add to the worklist.

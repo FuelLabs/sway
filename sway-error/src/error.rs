@@ -355,6 +355,8 @@ pub enum CompileError {
     TraitNotFound { name: String, span: Span },
     #[error("This expression is not valid on the left hand side of a reassignment.")]
     InvalidExpressionOnLhs { span: Span },
+    #[error("This code cannot be evaluated to a constant")]
+    CannotBeEvaluatedToConst { span: Span },
     #[error("{} \"{method_name}\" expects {expected} {} but you provided {received}.",
         if *dot_syntax_used { "Method" } else { "Function" },
         if *expected == 1usize { "argument" } else {"arguments"},
@@ -650,6 +652,8 @@ pub enum CompileError {
         method_name: String,
         as_traits: Vec<String>,
     },
+    #[error("A contract method cannot call methods belonging to the same ABI")]
+    ContractCallsItsOwnMethod { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -821,6 +825,8 @@ impl Spanned for CompileError {
             ConfigurableInLibrary { span } => span.clone(),
             NameDefinedMultipleTimes { span, .. } => span.clone(),
             MultipleApplicableItemsInScope { span, .. } => span.clone(),
+            CannotBeEvaluatedToConst { span } => span.clone(),
+            ContractCallsItsOwnMethod { span } => span.clone(),
         }
     }
 }

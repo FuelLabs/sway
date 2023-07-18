@@ -89,6 +89,7 @@ impl AllocatedAbstractInstructionSet {
                         .expect("Have collected registers above.")
                         .iter()
                         .filter(|reg| matches!(reg, AllocatedRegister::Allocated(_)))
+                        .chain([&AllocatedRegister::Constant(ConstantRegister::LocalsBase)])
                         .collect::<Vec<_>>();
 
                     let stack_use_bytes = regs.len() as u64 * 8;
@@ -128,6 +129,7 @@ impl AllocatedAbstractInstructionSet {
                         .expect("Have collected registers above.")
                         .iter()
                         .filter(|reg| matches!(reg, AllocatedRegister::Allocated(_)))
+                        .chain([&AllocatedRegister::Constant(ConstantRegister::LocalsBase)])
                         .collect::<Vec<_>>();
 
                     let stack_use_bytes = regs.len() as u64 * 8;

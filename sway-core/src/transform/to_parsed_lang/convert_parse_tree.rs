@@ -189,11 +189,11 @@ fn item_to_ast_nodes(
         ItemKind::Abi(item_abi) => decl(Declaration::AbiDeclaration(item_abi_to_abi_declaration(
             context, handler, engines, item_abi, attributes,
         )?)),
-        ItemKind::Const(item_const) => decl(Declaration::ConstantDeclaration(
+        ItemKind::Const(item_const) => decl(Declaration::ConstantDeclaration({
             item_const_to_constant_declaration(
                 context, handler, engines, item_const, attributes, true,
-            )?,
-        )),
+            )?
+        })),
         ItemKind::Storage(item_storage) => decl(Declaration::StorageDeclaration(
             item_storage_to_storage_declaration(
                 context,

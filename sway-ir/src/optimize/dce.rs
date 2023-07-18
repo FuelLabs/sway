@@ -50,7 +50,8 @@ fn can_eliminate_instruction(
 
 fn get_loaded_symbols(context: &Context, val: Value) -> Vec<Symbol> {
     match val.get_instruction(context).unwrap() {
-        Instruction::BinaryOp { .. }
+        Instruction::UnaryOp { .. }
+        | Instruction::BinaryOp { .. }
         | Instruction::BitCast(_, _)
         | Instruction::Branch(_)
         | Instruction::ConditionalBranch { .. }
@@ -123,7 +124,8 @@ fn get_loaded_symbols(context: &Context, val: Value) -> Vec<Symbol> {
 
 fn get_stored_symbols(context: &Context, val: Value) -> Vec<Symbol> {
     match val.get_instruction(context).unwrap() {
-        Instruction::BinaryOp { .. }
+        Instruction::UnaryOp { .. }
+        | Instruction::BinaryOp { .. }
         | Instruction::BitCast(_, _)
         | Instruction::Branch(_)
         | Instruction::ConditionalBranch { .. }
@@ -252,9 +254,7 @@ pub fn dce(
 
     let mut modified = false;
     let mut cemetery = FxHashSet::default();
-    while !worklist.is_empty() {
-        let dead = worklist.pop().unwrap();
-
+    while let Some(dead) = worklist.pop() {
         if !can_eliminate_instruction(context, dead, &num_symbol_uses, escaped_symbols)
             || cemetery.contains(&dead)
         {
