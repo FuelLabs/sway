@@ -825,9 +825,12 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
 
     let cfe_idx = cfe_idx_opt.expect("Function does not have CFEI instruction for locals");
 
-    let Either::Left(VirtualOp::CFEI(VirtualImmediate24 { value: locals_size_bytes })) = ops[cfe_idx].opcode else {
-            panic!("Unexpected opcode");
-        };
+    let Either::Left(VirtualOp::CFEI(VirtualImmediate24 {
+        value: locals_size_bytes,
+    })) = ops[cfe_idx].opcode
+    else {
+        panic!("Unexpected opcode");
+    };
 
     // pad up the locals size in bytes to a word.
     let locals_size_bytes = size_bytes_round_up_to_word_alignment!(locals_size_bytes);
