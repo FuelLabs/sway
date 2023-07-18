@@ -48,7 +48,7 @@ impl TyStorageAccess {
 #[derive(Clone, Debug)]
 pub struct TyStorageAccessDescriptor {
     pub name: Ident,
-    pub(crate) type_id: TypeId,
+    pub type_id: TypeId,
     pub(crate) span: Span,
 }
 

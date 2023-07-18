@@ -470,15 +470,63 @@ impl Parse for ty::TyExpression {
                 address.parse(ctx);
             }
             ty::TyExpressionVariant::StorageAccess(storage_access) => {
-                storage_access.fields.iter().for_each(|field| {
+                if let Some((head_field, tail_fields)) = storage_access.fields.split_first() {
+                    // collect the first ident as a field of the storage definition
                     if let Some(mut token) = ctx
                         .tokens
-                        .try_get_mut(&to_ident_key(&field.name))
+                        .try_get_mut(&to_ident_key(&head_field.name))
                         .try_unwrap()
                     {
-                        token.typed = Some(TypedAstToken::TyStorageAccessDescriptor(field.clone()));
+                        token.typed =
+                            Some(TypedAstToken::TyStorageAccessDescriptor(head_field.clone()));
+                        if let Some(storage_field) = ctx
+                            .namespace
+                            .get_declared_storage(ctx.engines.de())
+                            .and_then(|storage| {
+                                storage
+                                    .fields
+                                    .into_iter()
+                                    .find(|f| f.name.as_str() == head_field.name.as_str())
+                            })
+                        {
+                            token.type_def = Some(TypeDefinition::Ident(storage_field.name));
+                        }
                     }
-                });
+                    // collect the rest of the idents as fields of their respective types
+                    for (field, container_type_id) in tail_fields
+                        .iter()
+                        .zip(storage_access.fields.iter().map(|f| f.type_id))
+                    {
+                        if let Some(mut token) = ctx
+                            .tokens
+                            .try_get_mut(&to_ident_key(&field.name))
+                            .try_unwrap()
+                        {
+                            token.typed = Some(TypedAstToken::Ident(field.name.clone()));
+                            match ctx.engines.te().get(container_type_id) {
+                                TypeInfo::Struct(decl_ref) => {
+                                    if let Some(field_name) = ctx
+                                        .engines
+                                        .de()
+                                        .get_struct(&decl_ref)
+                                        .fields
+                                        .iter()
+                                        .find(|struct_field| {
+                                            // find the corresponding field in the containing type declaration
+                                            struct_field.name.as_str() == field.name.as_str()
+                                        })
+                                        .map(|struct_field| struct_field.name.clone())
+                                    {
+                                        token.type_def = Some(TypeDefinition::Ident(field_name));
+                                    }
+                                }
+                                _ => {
+                                    token.type_def = Some(TypeDefinition::TypeId(field.type_id));
+                                }
+                            }
+                        }
+                    }
+                }
             }
             ty::TyExpressionVariant::IntrinsicFunction(kind) => {
                 kind.parse(ctx);
