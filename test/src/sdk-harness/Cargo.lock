@@ -1519,8 +1519,9 @@ dependencies = [
 
 [[package]]
 name = "fuels"
-version = "0.43.0"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=iqdecay/deps-fuel-core-update#0eb8121ffccaf9363824fc26eeb1fe4b7cb5b91e"
+version = "0.44.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5280da1aababb8cae2c4f56d9ac43613e5aab328f62d146bc4598ed3a3e7d93b"
 dependencies = [
  "fuel-core",
  "fuel-core-client",
@@ -1534,8 +1535,9 @@ dependencies = [
 
 [[package]]
 name = "fuels-accounts"
-version = "0.43.0"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=iqdecay/deps-fuel-core-update#0eb8121ffccaf9363824fc26eeb1fe4b7cb5b91e"
+version = "0.44.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "58e79e6b022c45f8e13cbdbded36232cac380e6885eaac12e8b3234613ad2c3a"
 dependencies = [
  "async-trait",
  "bytes",
@@ -1560,8 +1562,9 @@ dependencies = [
 
 [[package]]
 name = "fuels-code-gen"
-version = "0.43.0"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=iqdecay/deps-fuel-core-update#0eb8121ffccaf9363824fc26eeb1fe4b7cb5b91e"
+version = "0.44.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "051906531d2f79ac3a790f06590a5f8b3e63229482494ebdabcce3ca41d581d8"
 dependencies = [
  "Inflector",
  "fuel-abi-types",
@@ -1575,8 +1578,9 @@ dependencies = [
 
 [[package]]
 name = "fuels-core"
-version = "0.43.0"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=iqdecay/deps-fuel-core-update#0eb8121ffccaf9363824fc26eeb1fe4b7cb5b91e"
+version = "0.44.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3ca6bc2b138bcbbd94bc5e00129f0062268135f085208e63c58c9c59a4efc9e5"
 dependencies = [
  "bech32 0.9.1",
  "chrono",
@@ -1603,8 +1607,9 @@ dependencies = [
 
 [[package]]
 name = "fuels-macros"
-version = "0.43.0"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=iqdecay/deps-fuel-core-update#0eb8121ffccaf9363824fc26eeb1fe4b7cb5b91e"
+version = "0.44.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9dfcb6d4b7f354a55c061350f8013f739b0833758baa1b89e2e1b35791e6030e"
 dependencies = [
  "Inflector",
  "fuel-abi-types",
@@ -1620,8 +1625,9 @@ dependencies = [
 
 [[package]]
 name = "fuels-programs"
-version = "0.43.0"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=iqdecay/deps-fuel-core-update#0eb8121ffccaf9363824fc26eeb1fe4b7cb5b91e"
+version = "0.44.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32e4febb48ea24ef35489174dc76f449f7d12dadbe22b970ab70250d024405e2"
 dependencies = [
  "async-trait",
  "bytes",
@@ -1647,8 +1653,9 @@ dependencies = [
 
 [[package]]
 name = "fuels-test-helpers"
-version = "0.43.0"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=iqdecay/deps-fuel-core-update#0eb8121ffccaf9363824fc26eeb1fe4b7cb5b91e"
+version = "0.44.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "823d2016fbfe3efbc2e16f1f40f5bda85922e1207f00be50579036ed3a8639d9"
 dependencies = [
  "fuel-core",
  "fuel-core-chain-config",

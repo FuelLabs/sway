@@ -1702,8 +1702,8 @@ dependencies = [
  "fuel-crypto",
  "fuel-tx",
  "fuel-vm",
- "fuels-accounts",
- "fuels-core",
+ "fuels-accounts 0.44.0",
+ "fuels-core 0.44.0",
  "futures",
  "hex",
  "rand",
@@ -1873,7 +1873,7 @@ dependencies = [
  "fuel-crypto",
  "fuel-types",
  "fuels",
- "fuels-core",
+ "fuels-core 0.43.0",
  "futures",
  "hex",
  "home",
@@ -2220,9 +2220,9 @@ source = "git+https://github.com/FuelLabs/fuels-rs?branch=iqdecay/deps-fuel-core
 dependencies = [
  "fuel-core-client",
  "fuel-tx",
- "fuels-accounts",
- "fuels-core",
- "fuels-macros",
+ "fuels-accounts 0.43.0",
+ "fuels-core 0.43.0",
+ "fuels-macros 0.43.0",
  "fuels-programs",
  "fuels-test-helpers",
 ]
@@ -2242,7 +2242,34 @@ dependencies = [
  "fuel-tx",
  "fuel-types",
  "fuel-vm",
- "fuels-core",
+ "fuels-core 0.43.0",
+ "hex",
+ "itertools",
+ "rand",
+ "serde",
+ "sha2 0.10.7",
+ "tai64",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
+name = "fuels-accounts"
+version = "0.44.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "58e79e6b022c45f8e13cbdbded36232cac380e6885eaac12e8b3234613ad2c3a"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "chrono",
+ "elliptic-curve",
+ "eth-keystore",
+ "fuel-core-client",
+ "fuel-crypto",
+ "fuel-tx",
+ "fuel-types",
+ "fuel-vm",
+ "fuels-core 0.44.0",
  "hex",
  "itertools",
  "rand",
@@ -2269,6 +2296,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "fuels-code-gen"
+version = "0.44.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "051906531d2f79ac3a790f06590a5f8b3e63229482494ebdabcce3ca41d581d8"
+dependencies = [
+ "Inflector",
+ "fuel-abi-types 0.3.0",
+ "itertools",
+ "proc-macro2",
+ "quote",
+ "regex",
+ "serde_json",
+ "syn 2.0.25",
+]
+
+[[package]]
 name = "fuels-core"
 version = "0.43.0"
 source = "git+https://github.com/FuelLabs/fuels-rs?branch=iqdecay/deps-fuel-core-update#0eb8121ffccaf9363824fc26eeb1fe4b7cb5b91e"
@@ -2282,7 +2325,36 @@ dependencies = [
  "fuel-tx",
  "fuel-types",
  "fuel-vm",
- "fuels-macros",
+ "fuels-macros 0.43.0",
+ "hex",
+ "itertools",
+ "proc-macro2",
+ "regex",
+ "serde",
+ "serde_json",
+ "sha2 0.10.7",
+ "strum",
+ "strum_macros 0.24.3",
+ "thiserror",
+ "uint",
+]
+
+[[package]]
+name = "fuels-core"
+version = "0.44.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3ca6bc2b138bcbbd94bc5e00129f0062268135f085208e63c58c9c59a4efc9e5"
+dependencies = [
+ "bech32 0.9.1",
+ "chrono",
+ "fuel-abi-types 0.3.0",
+ "fuel-asm",
+ "fuel-core-chain-config",
+ "fuel-core-client",
+ "fuel-tx",
+ "fuel-types",
+ "fuel-vm",
+ "fuels-macros 0.44.0",
  "hex",
  "itertools",
  "proc-macro2",
@@ -2303,7 +2375,25 @@ source = "git+https://github.com/FuelLabs/fuels-rs?branch=iqdecay/deps-fuel-core
 dependencies = [
  "Inflector",
  "fuel-abi-types 0.3.0",
- "fuels-code-gen",
+ "fuels-code-gen 0.43.0",
+ "itertools",
+ "proc-macro2",
+ "quote",
+ "rand",
+ "regex",
+ "serde_json",
+ "syn 2.0.25",
+]
+
+[[package]]
+name = "fuels-macros"
+version = "0.44.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9dfcb6d4b7f354a55c061350f8013f739b0833758baa1b89e2e1b35791e6030e"
+dependencies = [
+ "Inflector",
+ "fuel-abi-types 0.3.0",
+ "fuels-code-gen 0.44.0",
  "itertools",
  "proc-macro2",
  "quote",
@@ -2324,8 +2414,8 @@ dependencies = [
  "fuel-tx",
  "fuel-types",
  "fuel-vm",
- "fuels-accounts",
- "fuels-core",
+ "fuels-accounts 0.43.0",
+ "fuels-core 0.43.0",
  "hex",
  "itertools",
  "proc-macro2",
@@ -2351,8 +2441,8 @@ dependencies = [
  "fuel-tx",
  "fuel-types",
  "fuel-vm",
- "fuels-accounts",
- "fuels-core",
+ "fuels-accounts 0.43.0",
+ "fuels-core 0.43.0",
  "futures",
  "hex",
  "portpicker",

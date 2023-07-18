@@ -37,10 +37,8 @@ fuel-types = "0.34.1"
 fuel-tx = "0.34.1"
 fuel-core-client = { version = "0.19.1", default-features = false }
 fuel-vm = "0.34.1"
-# fuels-core = "0.43"
-# fuels-accounts = "0.43"
-fuels-core = { git = "https://github.com/FuelLabs/fuels-rs", branch = "iqdecay/deps-fuel-core-update" }
-fuels-accounts = { git = "https://github.com/FuelLabs/fuels-rs", branch = "iqdecay/deps-fuel-core-update" }
+fuels-core = "0.44"
+fuels-accounts = "0.44"
 
 [workspace.package]
 edition = "2021"
