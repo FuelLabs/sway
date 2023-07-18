@@ -80,7 +80,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
         // Set a new return address.
         let ret_label = self.reg_seqr.get_label();
-        self.cur_bytecode.push(Op::move_address(
+        self.cur_bytecode.push(Op::save_ret_addr(
             VirtualRegister::Constant(ConstantRegister::CallReturnAddress),
             ret_label,
             "set new return addr",
