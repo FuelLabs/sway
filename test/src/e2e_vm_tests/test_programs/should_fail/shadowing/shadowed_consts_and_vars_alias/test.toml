@@ -3,7 +3,7 @@ category = "fail"
 #check: $()error
 
 #check: $()const Y = 7;
-#nextln: $()Name "Y" is defined multiple times.
+#nextln: $()Constant "Y" was already defined in scope.
 
 #check: $()let Y = 4;
 #nextln: $()Variables cannot shadow constants. The variable "Y" shadows constant with the same name.

@@ -7,11 +7,11 @@ category = "fail"
 #nextln: $()The name "L_A" shadows another symbol with the same name.
 
 #check: $()const L_X = 1;
-#nextln: $()Name "L_X" is defined multiple times.
+#nextln: $()Constant "L_X" was already defined in scope.
 
 #check: $()const M_X = 2;
 #nextln: $()const M_X = 3;
-#nextln: $()Name "M_X" is defined multiple times.
+#nextln: $()Constant "M_X" was already defined in scope.
 
 #check: $()const M_Y = 5;
 #nextln: $()Constants cannot shadow constants. The constant "M_Y" shadows constant with the same name.
@@ -59,25 +59,25 @@ category = "fail"
 #nextln: $()Constants cannot shadow constants. The constant "L_M" shadows constant with the same name.
 
 #check: $()const S_X = 201;
-#nextln: $()Name "S_X" is defined multiple times.
+#nextln: $()Constant "S_X" was already defined in scope.
 
 #check: $()const L_N = 202;
-#check: $()Name "L_N" is defined multiple times.
+#check: $()Constant "L_N" was already defined in scope.
 
 #check: $()const M_M = 203;
-#check: $()Name "M_M" is defined multiple times.
+#check: $()Constant "M_M" was already defined in scope.
 
 #check: $()const S_Y = 205;
 #nextln: $()Constants cannot shadow constants. The constant "S_Y" shadows constant with the same name.
 
 #check: $()const E_X = 301;
-#nextln: $()Name "E_X" is defined multiple times.
+#nextln: $()Constant "E_X" was already defined in scope.
 
 #check: $()const L_N = 302;
-#check: $()Name "L_N" is defined multiple times.
+#check: $()Constant "L_N" was already defined in scope.
 
 #check: $()const M_M = 303;
-#check: $()Name "M_M" is defined multiple times.
+#check: $()Constant "M_M" was already defined in scope.
 
 #check: $()const E_Y = 305;
 #nextln: $()Constants cannot shadow constants. The constant "E_Y" shadows constant with the same name.
