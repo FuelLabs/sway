@@ -63,6 +63,7 @@ impl ty::TyFunctionDecl {
             .by_ref()
             .scoped(&mut fn_namespace)
             .with_purity(purity)
+            .with_const_shadowing_mode(ConstShadowingMode::Sequential)
             .disallow_functions();
 
         // Type check the type parameters. This will also insert them into the

@@ -8,6 +8,7 @@ use crate::{
     },
     namespace::*,
     type_system::*,
+    semantic_analysis::ast_node::ConstShadowingMode,
 };
 
 use super::TraitMap;
@@ -95,23 +96,25 @@ impl Items {
         self.symbols().keys()
     }
 
-    pub(crate) fn insert_symbol(&mut self, name: Ident, item: ty::TyDecl) -> CompileResult<()> {
+    pub(crate) fn insert_symbol(&mut self, name: Ident, item: ty::TyDecl, const_shadowing_mode: ConstShadowingMode) -> CompileResult<()> {
         let mut errors = vec![];
 
         let append_shadowing_error =
-            |decl: &ty::TyDecl, item: &ty::TyDecl, errors: &mut Vec<CompileError>| {
+            |decl: &ty::TyDecl, item: &ty::TyDecl, const_shadowing_mode: ConstShadowingMode, errors: &mut Vec<CompileError>| {
                 use ty::TyDecl::*;
-                match (decl, &item) {
+                match (decl, &item, const_shadowing_mode) {
                 // variable shadowing a constant
-                (ConstantDecl {..}, VariableDecl { .. }) => errors.push(CompileError::VariableShadowsConstant { name: name.clone() }),
+                (ConstantDecl {..}, VariableDecl { .. }, _) => errors.push(CompileError::VariableShadowsConstant { name: name.clone() }),
                 // constant shadowing a variable
-                (VariableDecl { .. }, ConstantDecl {..}) => errors.push(CompileError::ConstantShadowsVariable { name: name.clone() }),
-                // constant shadowing a constant
-                (ConstantDecl { .. }, ConstantDecl { .. })
+                (VariableDecl { .. }, ConstantDecl {..}, _) => errors.push(CompileError::ConstantShadowsVariable { name: name.clone() }),
+                // constant shadowing a constant outside function body
+                (ConstantDecl { .. }, ConstantDecl { .. }, ConstShadowingMode::ItemStyle) => errors.push(CompileError::NameDefinedMultipleTimes { name: name.to_string(), span: name.span() }),
+                // constant shadowing a constant within function body
+                (ConstantDecl { .. }, ConstantDecl { .. }, ConstShadowingMode::Sequential) => errors.push(CompileError::ConstantShadowsConstant { name: name.clone() }),
                 // type or type alias shadowing another type or type alias
                 // trait/abi shadowing another trait/abi
                 // type or type alias shadowing a trait/abi, or vice versa
-                | (
+                (
                     StructDecl { .. }
                     | EnumDecl { .. }
                     | TypeAliasDecl { .. }
@@ -122,9 +125,10 @@ impl Items {
                     | TypeAliasDecl { .. }
                     | TraitDecl { .. }
                     | AbiDecl { .. },
+                    _
                 ) => errors.push(CompileError::NameDefinedMultipleTimes { name: name.to_string(), span: name.span() }),
                 // Generic parameter shadowing another generic parameter
-                (GenericTypeForFunctionScope { .. }, GenericTypeForFunctionScope { .. }) => {
+                (GenericTypeForFunctionScope { .. }, GenericTypeForFunctionScope { .. }, _) => {
                     errors.push(CompileError::GenericShadowsGeneric { name: name.clone() });
                 }
                 _ => {}
@@ -132,11 +136,11 @@ impl Items {
             };
 
         if let Some(decl) = self.symbols.get(&name) {
-            append_shadowing_error(decl, &item, &mut errors);
+            append_shadowing_error(decl, &item, const_shadowing_mode, &mut errors);
         }
 
         if let Some((_, GlobImport::No, decl, _)) = self.use_synonyms.get(&name) {
-            append_shadowing_error(decl, &item, &mut errors);
+            append_shadowing_error(decl, &item, const_shadowing_mode, &mut errors);
         }
 
         self.symbols.insert(name, item);

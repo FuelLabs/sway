@@ -108,7 +108,7 @@ impl ty::TyTraitDecl {
 
                     let const_name = const_decl.call_path.suffix.clone();
                     check!(
-                        ctx.namespace.insert_symbol(
+                        ctx.insert_symbol(
                             const_name.clone(),
                             ty::TyDecl::ConstantDecl(ty::ConstantDecl {
                                 name: const_name.clone(),
@@ -367,13 +367,14 @@ impl ty::TyTraitDecl {
                     let const_decl = decl_engine.get_constant(decl_ref);
                     let const_name = const_decl.call_path.suffix.clone();
                     all_items.push(TyImplItem::Constant(decl_ref.clone()));
+                    let const_shadowing_mode = ctx.const_shadowing_mode();
                     ctx.namespace.insert_symbol(
                         const_name.clone(),
                         ty::TyDecl::ConstantDecl(ty::ConstantDecl {
                             name: const_name,
                             decl_id: *decl_ref.id(),
                             decl_span: const_decl.span.clone(),
-                        }),
+                        }), const_shadowing_mode
                     );
                 }
             }

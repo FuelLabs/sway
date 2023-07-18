@@ -2,38 +2,82 @@ category = "fail"
 
 #check: $()error
 
-#check: $()const X = 6;
-#nextln: $()The name `X` is defined multiple times
+#check: $()use lib::L_A;
+#nextln: $()use lib::L_A;
+#nextln: $()The name "L_A" shadows another symbol with the same name.
 
-#check: $()const Y = 7;
-#nextln: $()const Y = 8;
-#nextln: $()The name `Y` is defined multiple times
+#check: $()const L_X = 1;
+#nextln: $()The name `L_X` is defined multiple times
 
-#check: $()let X = 9;
-#nextln: $()Variables cannot shadow constants. The variable "X" shadows constant with the same name.
+#check: $()const M_X = 2;
+#nextln: $()const M_X = 3;
+#nextln: $()The name `M_X` is defined multiple times
 
-#check: $()const Z = 3;
-#nextln: $()let Z = 4;
-#nextln: $()Variables cannot shadow constants. The variable "Z" shadows constant with the same name.
+#check: $()const M_Y = 5;
+#nextln: $()Constants cannot shadow constants. The constant "M_Y" shadows constant with the same name.
 
-#check: $()let W = 2;
-#nextln: $()const W = 1;
-#nextln: $()Constants cannot shadow variables. The constant "W" shadows variable with the same name.
+#check: $()const L_Y = 6;
+#nextln: $()Constants cannot shadow constants. The constant "L_Y" shadows constant with the same name.
 
-#check: $()let Y = 10;
-#nextln: $()Variables cannot shadow constants. The variable "Y" shadows constant with the same name.
+#check: $()const F_X = 7;
+#nextln: $()const F_X = 8;
+#nextln: $()Constants cannot shadow constants. The constant "F_X" shadows constant with the same name.
 
-#check: $()let C = 2;
-#nextln: $()Variables cannot shadow constants. The variable "C" shadows constant with the same name.
+#check: $()const F_Y = 10;
+#nextln: $()Constants cannot shadow constants. The constant "F_Y" shadows constant with the same name.
 
-#check: $()const A = 2;
-#nextln: $()Constants cannot shadow variables. The constant "A" shadows variable with the same name.
+#check: $()let L_X = 100;
+#nextln: $()Variables cannot shadow constants. The variable "L_X" shadows constant with the same name.
 
-#check: $()let B = 2;
-#nextln: $()Variables cannot shadow constants. The variable "B" shadows constant with the same name.
+#check: $()const F_Z = 11;
+#nextln: $()let F_Z = 102;
+#nextln: $()Variables cannot shadow constants. The variable "F_Z" shadows constant with the same name.
 
-#check: $()let L = 1;
-#nextln: $()Variables cannot shadow constants. The variable "L" shadows constant with the same name.
+#check: $()let F_A = 103;
+#nextln: $()const F_A = 12;
+#nextln: $()Constants cannot shadow variables. The constant "F_A" shadows variable with the same name.
 
-#check: $()let R = 1;
-#nextln: $()Variables cannot shadow constants. The variable "R" shadows constant with the same name.
+#check: $()let M_Y = 106;
+#nextln: $()Variables cannot shadow constants. The variable "M_Y" shadows constant with the same name.
+
+#check: $()let M_Z = 107;
+#nextln: $()Variables cannot shadow constants. The variable "M_Z" shadows constant with the same name.
+
+#check: $()const B = 13;
+#nextln: $()Constants cannot shadow variables. The constant "B" shadows variable with the same name.
+
+#check: $()let F_K = 109;
+#nextln: $()Variables cannot shadow constants. The variable "F_K" shadows constant with the same name.
+
+#check: $()let L_Z = 110;
+#nextln: $()Variables cannot shadow constants. The variable "L_Z" shadows constant with the same name.
+
+#check: $()let L_K = 111;
+#nextln: $()Variables cannot shadow constants. The variable "L_K" shadows constant with the same name.
+
+#check: $()const L_M = 15;
+#nextln: $()Constants cannot shadow constants. The constant "L_M" shadows constant with the same name.
+
+#check: $()const S_X = 201;
+#nextln: $()The name `S_X` is defined multiple times
+
+#check: $()const L_N = 202;
+#check: $()The name `L_N` is defined multiple times
+
+#check: $()const M_M = 203;
+#check: $()The name `M_M` is defined multiple times
+
+#check: $()const S_Y = 205;
+#nextln: $()Constants cannot shadow constants. The constant "S_Y" shadows constant with the same name.
+
+#check: $()const E_X = 301;
+#nextln: $()The name `E_X` is defined multiple times
+
+#check: $()const L_N = 302;
+#check: $()The name `L_N` is defined multiple times
+
+#check: $()const M_M = 303;
+#check: $()The name `M_M` is defined multiple times
+
+#check: $()const E_Y = 305;
+#nextln: $()Constants cannot shadow constants. The constant "E_Y" shadows constant with the same name.
