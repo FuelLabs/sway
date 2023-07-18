@@ -459,7 +459,7 @@ pub enum CompileError {
     ConstantShadowsVariable { name: Ident },
     #[error("Constants cannot shadow constants. The constant \"{name}\" shadows constant with the same name.")]
     ConstantShadowsConstant { name: Ident },
-    #[error("The name \"{name}\" shadows another symbol with the same name.")]
+    #[error("The imported symbol \"{name}\" shadows another symbol with the same name.")]
     ShadowsOtherSymbol { name: Ident },
     #[error("The name \"{name}\" is already used for a generic parameter in this scope.")]
     GenericShadowsGeneric { name: Ident },

@@ -4,7 +4,7 @@ category = "fail"
 
 #check: $()use lib::L_A;
 #nextln: $()use lib::L_A;
-#nextln: $()The name "L_A" shadows another symbol with the same name.
+#nextln: $()The imported symbol "L_A" shadows another symbol with the same name.
 
 #check: $()const L_X = 1;
 #nextln: $()Constant "L_X" was already defined in scope.
