@@ -59,6 +59,7 @@ impl Items {
         engines: &Engines,
         fields: Vec<Ident>,
         storage_fields: &[ty::TyStorageField],
+        storage_keyword_span: Span,
     ) -> CompileResult<(ty::TyStorageAccess, TypeId)> {
         let warnings = vec![];
         let mut errors = vec![];
@@ -67,7 +68,13 @@ impl Items {
         match self.declared_storage {
             Some(ref decl_ref) => {
                 let storage = decl_engine.get_storage(&decl_ref.id().clone());
-                storage.apply_storage_load(type_engine, decl_engine, fields, storage_fields)
+                storage.apply_storage_load(
+                    type_engine,
+                    decl_engine,
+                    fields,
+                    storage_fields,
+                    storage_keyword_span,
+                )
             }
             None => {
                 errors.push(CompileError::NoDeclaredStorage {
