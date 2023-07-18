@@ -1,5 +1,5 @@
 #[derive(Clone, Copy, PartialEq, Eq, Default)]
-pub enum Mode {
+pub enum AbiMode {
     ImplAbiFn,
     #[default]
     NonAbi,

@@ -14,7 +14,7 @@ use crate::{
         ty::{self, TyImplItem, TyTraitItem},
         CallPath,
     },
-    semantic_analysis::{declaration::insert_supertraits_into_namespace, Mode, TypeCheckContext},
+    semantic_analysis::{declaration::insert_supertraits_into_namespace, AbiMode, TypeCheckContext},
     type_system::*,
 };
 
@@ -89,7 +89,7 @@ impl ty::TyTraitDecl {
                     let decl_ref = decl_engine.insert(method.clone());
                     dummy_interface_surface.push(ty::TyImplItem::Fn(
                         decl_engine
-                            .insert(method.to_dummy_func(Mode::NonAbi))
+                            .insert(method.to_dummy_func(AbiMode::NonAbi))
                             .with_parent(decl_engine, (*decl_ref.id()).into()),
                     ));
                     new_interface_surface.push(ty::TyTraitInterfaceItem::TraitFn(decl_ref));
@@ -359,7 +359,7 @@ impl ty::TyTraitDecl {
                     all_items.push(TyImplItem::Fn(
                         ctx.engines
                             .de()
-                            .insert(method.to_dummy_func(Mode::NonAbi))
+                            .insert(method.to_dummy_func(AbiMode::NonAbi))
                             .with_parent(ctx.engines.de(), (*decl_ref.id()).into()),
                     ));
                 }

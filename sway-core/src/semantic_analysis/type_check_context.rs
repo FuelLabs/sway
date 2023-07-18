@@ -2,7 +2,7 @@ use crate::{
     engine_threading::*,
     language::{parsed::TreeType, ty::TyDecl, Purity, Visibility},
     namespace::Path,
-    semantic_analysis::{ast_node::{Mode, ConstShadowingMode}, Namespace},
+    semantic_analysis::{ast_node::{AbiMode, ConstShadowingMode}, Namespace},
     type_system::{
         EnforceTypeArguments, MonomorphizeHelper, SubstTypes, TypeArgument, TypeId, TypeInfo,
     },
@@ -41,7 +41,7 @@ pub struct TypeCheckContext<'a> {
     ///
     /// This is `ImplAbiFn` while checking `abi` implementations whether at their original impl
     /// declaration or within an abi cast expression.
-    mode: Mode,
+    abi_mode: AbiMode,
     /// Whether or not a const declaration shadows previous const declarations sequentially.
     ///
     /// This is `Sequential` while checking const declarations in functions, otherwise `ItemStyle`.
@@ -84,7 +84,7 @@ impl<'a> TypeCheckContext<'a> {
             help_text: "",
             // TODO: Contract? Should this be passed in based on program kind (aka TreeType)?
             self_type: engines.te().insert(engines, TypeInfo::Contract),
-            mode: Mode::NonAbi,
+            abi_mode: AbiMode::NonAbi,
             const_shadowing_mode: ConstShadowingMode::ItemStyle,
             purity: Purity::default(),
             kind: TreeType::Contract,
@@ -105,7 +105,7 @@ impl<'a> TypeCheckContext<'a> {
             namespace: self.namespace,
             type_annotation: self.type_annotation,
             self_type: self.self_type,
-            mode: self.mode,
+            abi_mode: self.abi_mode,
             const_shadowing_mode: self.const_shadowing_mode,
             help_text: self.help_text,
             purity: self.purity,
@@ -121,7 +121,7 @@ impl<'a> TypeCheckContext<'a> {
             namespace,
             type_annotation: self.type_annotation,
             self_type: self.self_type,
-            mode: self.mode,
+            abi_mode: self.abi_mode,
             const_shadowing_mode: self.const_shadowing_mode,
             help_text: self.help_text,
             purity: self.purity,
@@ -165,8 +165,8 @@ impl<'a> TypeCheckContext<'a> {
     }
 
     /// Map this `TypeCheckContext` instance to a new one with the given ABI `mode`.
-    pub(crate) fn with_mode(self, mode: Mode) -> Self {
-        Self { mode, ..self }
+    pub(crate) fn with_abi_mode(self, abi_mode: AbiMode) -> Self {
+        Self { abi_mode, ..self }
     }
 
     /// Map this `TypeCheckContext` instance to a new one with the given const shadowing `mode`.
@@ -218,8 +218,8 @@ impl<'a> TypeCheckContext<'a> {
         self.type_annotation
     }
 
-    pub(crate) fn mode(&self) -> Mode {
-        self.mode
+    pub(crate) fn abi_mode(&self) -> AbiMode {
+        self.abi_mode
     }
 
     pub(crate) fn const_shadowing_mode(&self) -> ConstShadowingMode {

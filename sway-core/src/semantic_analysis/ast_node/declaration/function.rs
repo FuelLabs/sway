@@ -144,7 +144,7 @@ impl ty::TyFunctionDecl {
                 (Visibility::Public, false)
             }
         } else {
-            (visibility, ctx.mode() == Mode::ImplAbiFn)
+            (visibility, ctx.abi_mode() == AbiMode::ImplAbiFn)
         };
 
         check!(

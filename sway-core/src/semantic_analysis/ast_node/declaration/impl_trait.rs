@@ -12,7 +12,7 @@ use crate::{
         ty::{self, TyImplItem, TyTraitInterfaceItem, TyTraitItem},
         *,
     },
-    semantic_analysis::{Mode, ConstShadowingMode, TypeCheckContext},
+    semantic_analysis::{AbiMode, ConstShadowingMode, TypeCheckContext},
     type_system::*,
 };
 
@@ -180,7 +180,7 @@ impl ty::TyImplTrait {
                     });
                 }
 
-                let mut ctx = ctx.with_mode(Mode::ImplAbiFn);
+                let mut ctx = ctx.with_abi_mode(AbiMode::ImplAbiFn);
 
                 // Insert the interface surface and methods from this trait into
                 // the namespace.
