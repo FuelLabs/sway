@@ -9,6 +9,7 @@ use crate::{
     language::{
         parsed::*,
         ty::{self, TyImplItem, TyTraitItem},
+        CallPath,
     },
     semantic_analysis::{
         declaration::insert_supertraits_into_namespace, AbiMode, TypeCheckContext,
@@ -219,5 +220,21 @@ impl ty::TyAbiDecl {
                 }
             }
         }
+        // Insert the methods of the ABI into the namespace.
+        // Specifically do not check for conflicting definitions because
+        // this is just a temporary namespace for type checking and
+        // these are not actual impl blocks.
+        // We check that a contract method cannot call a contract method
+        // from the same ABI later, during method application typechecking.
+        ctx.namespace.insert_trait_implementation(
+            CallPath::from(self.name.clone()),
+            vec![],
+            type_id,
+            &all_items,
+            &self.span,
+            Some(self.span()),
+            false,
+            ctx.engines,
+        );
     }
 }

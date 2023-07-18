@@ -284,22 +284,26 @@ pub(crate) fn type_check_method_application(
             .clone()
             .map(|x| type_engine.get(x.return_type))
         {
-            Some(TypeInfo::ContractCaller { address, .. }) => address,
+            Some(TypeInfo::ContractCaller { address, .. }) => match address {
+                Some(address) => address,
+                None => {
+                    errors.push(CompileError::ContractAddressMustBeKnown {
+                        span: call_path.span(),
+                    });
+                    return err(warnings, errors);
+                }
+            },
+            None => {
+                errors.push(CompileError::ContractCallsItsOwnMethod { span });
+                return err(warnings, errors);
+            }
             _ => {
                 errors.push(CompileError::Internal(
                     "Attempted to find contract address of non-contract-call.",
-                    span.clone(),
+                    span,
                 ));
-                None
+                return err(warnings, errors);
             }
-        };
-        let contract_address = if let Some(addr) = contract_address {
-            addr
-        } else {
-            errors.push(CompileError::ContractAddressMustBeKnown {
-                span: call_path.span(),
-            });
-            return err(warnings, errors);
         };
         let func_selector = check!(
             method.to_fn_selector_value(engines),

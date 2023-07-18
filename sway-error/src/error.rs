@@ -656,6 +656,8 @@ pub enum CompileError {
         method_name: String,
         as_traits: Vec<String>,
     },
+    #[error("A contract method cannot call methods belonging to the same ABI")]
+    ContractCallsItsOwnMethod { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -830,6 +832,7 @@ impl Spanned for CompileError {
             ConfigurableInLibrary { span } => span.clone(),
             MultipleApplicableItemsInScope { span, .. } => span.clone(),
             CannotBeEvaluatedToConst { span } => span.clone(),
+            ContractCallsItsOwnMethod { span } => span.clone(),
         }
     }
 }
