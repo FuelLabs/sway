@@ -58,6 +58,7 @@ impl TyStorageDecl {
         decl_engine: &DeclEngine,
         fields: Vec<Ident>,
         storage_fields: &[TyStorageField],
+        storage_keyword_span: Span,
     ) -> CompileResult<(TyStorageAccess, TypeId)> {
         let mut errors = vec![];
         let warnings = vec![];
@@ -137,6 +138,7 @@ impl TyStorageDecl {
                 TyStorageAccess {
                     fields: type_checked_buf,
                     ix,
+                    storage_keyword_span,
                 },
                 return_type,
             ),
