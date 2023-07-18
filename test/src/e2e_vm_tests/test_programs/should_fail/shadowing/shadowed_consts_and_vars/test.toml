@@ -7,11 +7,11 @@ category = "fail"
 #nextln: $()The name "L_A" shadows another symbol with the same name.
 
 #check: $()const L_X = 1;
-#nextln: $()The name `L_X` is defined multiple times
+#nextln: $()Name "L_X" is defined multiple times.
 
 #check: $()const M_X = 2;
 #nextln: $()const M_X = 3;
-#nextln: $()The name `M_X` is defined multiple times
+#nextln: $()Name "M_X" is defined multiple times.
 
 #check: $()const M_Y = 5;
 #nextln: $()Constants cannot shadow constants. The constant "M_Y" shadows constant with the same name.
@@ -59,25 +59,25 @@ category = "fail"
 #nextln: $()Constants cannot shadow constants. The constant "L_M" shadows constant with the same name.
 
 #check: $()const S_X = 201;
-#nextln: $()The name `S_X` is defined multiple times
+#nextln: $()Name "S_X" is defined multiple times.
 
 #check: $()const L_N = 202;
-#check: $()The name `L_N` is defined multiple times
+#check: $()Name "L_N" is defined multiple times.
 
 #check: $()const M_M = 203;
-#check: $()The name `M_M` is defined multiple times
+#check: $()Name "M_M" is defined multiple times.
 
 #check: $()const S_Y = 205;
 #nextln: $()Constants cannot shadow constants. The constant "S_Y" shadows constant with the same name.
 
 #check: $()const E_X = 301;
-#nextln: $()The name `E_X` is defined multiple times
+#nextln: $()Name "E_X" is defined multiple times.
 
 #check: $()const L_N = 302;
-#check: $()The name `L_N` is defined multiple times
+#check: $()Name "L_N" is defined multiple times.
 
 #check: $()const M_M = 303;
-#check: $()The name `M_M` is defined multiple times
+#check: $()Name "M_M" is defined multiple times.
 
 #check: $()const E_Y = 305;
 #nextln: $()Constants cannot shadow constants. The constant "E_Y" shadows constant with the same name.

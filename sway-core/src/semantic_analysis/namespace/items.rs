@@ -108,7 +108,7 @@ impl Items {
                 // constant shadowing a variable
                 (VariableDecl { .. }, ConstantDecl {..}, _) => errors.push(CompileError::ConstantShadowsVariable { name: name.clone() }),
                 // constant shadowing a constant outside function body
-                (ConstantDecl { .. }, ConstantDecl { .. }, ConstShadowingMode::ItemStyle) => errors.push(CompileError::NameDefinedMultipleTimes { name: name.to_string(), span: name.span() }),
+                (ConstantDecl { .. }, ConstantDecl { .. }, ConstShadowingMode::ItemStyle) => errors.push(CompileError::MultipleDefinitionsOfName { name: name.clone(), span: name.span() }),
                 // constant shadowing a constant within function body
                 (ConstantDecl { .. }, ConstantDecl { .. }, ConstShadowingMode::Sequential) => errors.push(CompileError::ConstantShadowsConstant { name: name.clone() }),
                 // type or type alias shadowing another type or type alias
@@ -126,7 +126,7 @@ impl Items {
                     | TraitDecl { .. }
                     | AbiDecl { .. },
                     _
-                ) => errors.push(CompileError::NameDefinedMultipleTimes { name: name.to_string(), span: name.span() }),
+                ) => errors.push(CompileError::MultipleDefinitionsOfName { name: name.clone(), span: name.span() }),
                 // Generic parameter shadowing another generic parameter
                 (GenericTypeForFunctionScope { .. }, GenericTypeForFunctionScope { .. }, _) => {
                     errors.push(CompileError::GenericShadowsGeneric { name: name.clone() });

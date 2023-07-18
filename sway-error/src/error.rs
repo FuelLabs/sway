@@ -643,8 +643,6 @@ pub enum CompileError {
     },
     #[error("Configurable constants are not allowed in libraries.")]
     ConfigurableInLibrary { span: Span },
-    #[error("The name `{name}` is defined multiple times")]
-    NameDefinedMultipleTimes { name: String, span: Span },
     #[error("Multiple applicable items in scope. {}", {
         let mut candidates = "".to_string();
         for (index, as_trait) in as_traits.iter().enumerate() {
@@ -830,7 +828,6 @@ impl Spanned for CompileError {
             CoinsPassedToNonPayableMethod { span, .. } => span.clone(),
             TraitImplPayabilityMismatch { span, .. } => span.clone(),
             ConfigurableInLibrary { span } => span.clone(),
-            NameDefinedMultipleTimes { span, .. } => span.clone(),
             MultipleApplicableItemsInScope { span, .. } => span.clone(),
             CannotBeEvaluatedToConst { span } => span.clone(),
         }
