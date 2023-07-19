@@ -1,35 +1,40 @@
 script;
 
-// Having > 256K NOPs from the BLOBs will force some relocation to keep control flow under the 1MB
-// boundary.  But only one of these need to be moved to get it back under, and it should be the
-// largest one.
-
 fn main() -> u64 {
     asm() {
         blob i50000;
     }
     if t() {
-        if f() {
-            asm() {
-                blob i51000;
+        let mut i = 0;
+        let mut res = 0;
+        while i < 4 {
+            if is_even(i) {
+                asm() {
+                    blob i910000;
+                }
+                res += 111;
+            } else {
+                // This one.
+                asm() {
+                    blob i900000;
+                }
+                res += 222;
             }
-            111
-        } else {
-            // This one.
-            asm() {
-                blob i60000;
+            i += 1;
+            if i == 1 {
+               continue
             }
-            222
         }
+        res
     } else {
         if f() {
             asm() {
-                blob i52000;
+                blob i520000;
             }
             333
         } else {
             asm() {
-                blob i53000;
+                blob i530000;
             }
             444
         }
@@ -46,4 +51,8 @@ fn t() -> bool {
     asm() {
         one: bool
     }
+}
+
+fn is_even(n: u64) -> bool {
+   n % 2 == 0
 }
