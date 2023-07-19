@@ -210,8 +210,7 @@ pub fn dce(
     // so stores to it shouldn't be deliminated.
     for sym in function
         .args_iter(context)
-        .map(|arg| get_symbols(context, arg.1))
-        .flatten()
+        .flat_map(|arg| get_symbols(context, arg.1))
     {
         num_symbol_uses
             .entry(sym)
