@@ -9,14 +9,10 @@ abi MyAbi : MySuperAbi {
 }
 
 impl MySuperAbi for Contract {
-    fn foo() {
-        // ... logic ...
-    }
+    fn foo() {}
 }
 
 // The implementation of MyAbi for Contract must also implement MySuperAbi
 impl MyAbi for Contract {
-    fn bar() {
-        // ... logic ...
-    }
+    fn bar() {}
 }
