@@ -1,3 +1,4 @@
+use fuel_vm::prelude::Cacheable;
 use fuel_vm::fuel_crypto::Hasher;
 use fuel_vm::fuel_tx::{
     field::*, Bytes32, ConsensusParameters, ContractId, Input as TxInput, TxPointer, UtxoId,
@@ -9,6 +10,8 @@ use fuels::{
         Bits256,
     },
 };
+use fuel_core_client::client::types::primitives::ChainId;
+
 use std::str::FromStr;
 
 const MESSAGE_DATA: [u8; 3] = [1u8, 2u8, 3u8];
@@ -303,6 +306,7 @@ mod tx {
         let mut tx = handler.build_tx().await.unwrap();
 
         add_message_input(&mut tx, wallet.clone()).await;
+        tx.precompute(*ChainId::default()).unwrap();
 
         let inputs = tx.inputs();
 
@@ -582,6 +586,7 @@ mod inputs {
             let mut tx = handler.build_tx().await.unwrap();
 
             tx.tx.inputs_mut().push(predicate_coin);
+            tx.precompute(*ChainId::default()).unwrap();
             tx.estimate_predicates(&wallet.provider().unwrap().consensus_parameters()).unwrap();
 
             let receipts = wallet
@@ -603,6 +608,7 @@ mod inputs {
                 let handler = contract_instance.methods().get_input_message_sender(2);
                 let mut tx = handler.build_tx().await.unwrap();
                 add_message_input(&mut tx, wallet.clone()).await; // let result = contract_instance
+                tx.precompute(*ChainId::default())?;
 
                 let messages = wallet.get_messages().await?;
                 let receipts = wallet
@@ -622,6 +628,7 @@ mod inputs {
                 let handler = contract_instance.methods().get_input_message_recipient(2);
                 let mut tx = handler.build_tx().await.unwrap();
                 add_message_input(&mut tx, wallet.clone()).await;
+                tx.precompute(*ChainId::default())?;
 
                 let messages = wallet.get_messages().await?;
                 let receipts = wallet
@@ -640,6 +647,7 @@ mod inputs {
                 let handler = contract_instance.methods().get_input_message_nonce(2);
                 let mut tx = handler.build_tx().await.unwrap();
                 add_message_input(&mut tx, wallet.clone()).await;
+                tx.precompute(*ChainId::default())?;
 
                 let messages = wallet.get_messages().await?;
                 let receipts = wallet
@@ -673,6 +681,7 @@ mod inputs {
                 let handler = contract_instance.methods().get_input_message_data_length(2);
                 let mut tx = handler.build_tx().await.unwrap();
                 add_message_input(&mut tx, wallet.clone()).await;
+                tx.precompute(*ChainId::default()).unwrap();
 
                 let receipts = wallet
                     .provider()
@@ -692,6 +701,7 @@ mod inputs {
                 let handler = contract_instance.methods().get_input_predicate_length(2);
                 let mut tx = handler.build_tx().await.unwrap();
                 tx.tx.inputs_mut().push(predicate_message);
+                tx.precompute(*ChainId::default()).unwrap();
                 tx.estimate_predicates(&wallet.provider().unwrap().consensus_parameters()).unwrap();
 
                 let receipts = wallet
@@ -713,6 +723,7 @@ mod inputs {
                     .get_input_predicate_data_length(1);
                 let mut tx = handler.build_tx().await.unwrap();
                 tx.tx.inputs_mut().push(predicate_message);
+                tx.precompute(*ChainId::default()).unwrap();
                 tx.estimate_predicates(&wallet.provider().unwrap().consensus_parameters()).unwrap();
 
                 let receipts = wallet
@@ -734,6 +745,7 @@ mod inputs {
                         .get_input_message_data(2, 0, MESSAGE_DATA);
                 let mut tx = handler.build_tx().await.unwrap();
                 add_message_input(&mut tx, wallet.clone()).await;
+                tx.precompute(*ChainId::default()).unwrap();
 
                 let receipts = wallet
                     .provider()
@@ -757,6 +769,7 @@ mod inputs {
                 let mut tx = handler.build_tx().await.unwrap();
 
                 tx.tx.inputs_mut().push(predicate_message);                
+                tx.precompute(*ChainId::default()).unwrap();
                 tx.estimate_predicates(&wallet.provider().unwrap().consensus_parameters()).unwrap();
 
                 let receipts = wallet
