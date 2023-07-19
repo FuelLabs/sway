@@ -24,14 +24,18 @@ fn main() {
 
 // Call a function:
 //
-// check: movi $$$$reta $IMM
-// check: ji   $IMM
+// check: sub  $$$$reta $$pc $$is
+// check: srli $$$$reta $$$$reta $IMM
+// check: addi $$$$reta $$$$reta $IMM
+// check: jmpf $$zero $IMM
 
 // Function calls other function, ignores result, returns unit/$zero.
 //
 // check: move $(reta_bk=$REG) $$$$reta
-// check: movi $$$$reta $IMM
-// check: ji   $IMM
+// check: sub  $$$$reta $$pc $$is
+// check: srli $$$$reta $$$$reta $IMM
+// check: addi $$$$reta $$$$reta $IMM
+// check: jmpf $$zero $IMM
 // check: move $$$$retv $$zero
 // check: move $$$$reta $reta_bk
 // check: jmp $$$$reta
