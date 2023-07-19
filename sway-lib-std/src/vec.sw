@@ -592,25 +592,6 @@ impl<T> Vec<T> {
 }
 
 impl<T> AsRawSlice for Vec<T> {
-    /// Returns a raw slice of all the elements in the vector.
-    ///
-    /// # Returns
-    ///
-    /// * [raw_slice] - A raw slice of all the elements in the vector.
-    ///
-    /// # Examples
-    ///
-    /// ```sway
-    /// use std::vec::{Vec, AsRawSlice};
-    ///
-    /// fn foo() {
-    ///     let vec = Vec::new();
-    ///     vec.push(5);
-    ///     vec.push(10);
-    ///
-    ///     let slice = vec.as_raw_slice();
-    ///     assert(slice.len::<u64>() == 2);
-    /// }
     fn as_raw_slice(self) -> raw_slice {
         raw_slice::from_parts::<T>(self.buf.ptr(), self.len)
     }
