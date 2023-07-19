@@ -12,6 +12,7 @@ pub fn possibly_nonzero_u64_expression(
     use ty::TyExpressionVariant::*;
     match &expr.expression {
         Literal(crate::language::Literal::U64(value)) => *value != 0,
+        Literal(crate::language::Literal::Numeric(value)) => *value != 0,
         // not a u64 literal, hence we return true to be on the safe side
         Literal(_) => true,
         ConstantExpression { const_decl, .. } => match &const_decl.value {

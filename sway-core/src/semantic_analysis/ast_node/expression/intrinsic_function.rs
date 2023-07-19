@@ -101,9 +101,9 @@ fn type_check_not(
         return err(warnings, errors);
     }
 
-    let mut ctx = ctx
-        .with_help_text("")
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+    let return_type = type_engine.insert(engines, TypeInfo::Numeric);
+
+    let mut ctx = ctx.with_help_text("").with_type_annotation(return_type);
 
     let operand = arguments[0].clone();
     let operand_expr = check!(
@@ -113,26 +113,6 @@ fn type_check_not(
         errors
     );
 
-    let operand_typeinfo = check!(
-        CompileResult::from(
-            type_engine
-                .to_typeinfo(operand_expr.return_type, &operand_expr.span)
-                .map_err(CompileError::from)
-        ),
-        TypeInfo::ErrorRecovery,
-        warnings,
-        errors
-    );
-    let is_valid_arg_ty = matches!(operand_typeinfo, TypeInfo::UnsignedInteger(_));
-    if !is_valid_arg_ty {
-        errors.push(CompileError::IntrinsicUnsupportedArgType {
-            name: kind.to_string(),
-            span: operand_expr.span,
-            hint: Hint::empty(),
-        });
-        return err(warnings, errors);
-    }
-
     ok(
         (
             ty::TyIntrinsicFunctionKind {
@@ -141,7 +121,7 @@ fn type_check_not(
                 type_arguments: vec![],
                 span,
             },
-            type_engine.insert(engines, operand_typeinfo),
+            return_type,
         ),
         warnings,
         errors,
@@ -362,6 +342,13 @@ fn type_check_cmp(
         warnings,
         errors
     );
+    let rhs = arguments[1].clone();
+    let rhs = check!(
+        ty::TyExpression::type_check(ctx, rhs),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
     // Check for supported argument types
     let arg_ty = check!(
@@ -374,7 +361,7 @@ fn type_check_cmp(
         warnings,
         errors
     );
-    let is_valid_arg_ty = matches!(arg_ty, TypeInfo::UnsignedInteger(_))
+    let is_valid_arg_ty = matches!(arg_ty, TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric)
         || (matches!(&kind, Intrinsic::Eq)
             && matches!(arg_ty, TypeInfo::Boolean | TypeInfo::RawUntypedPtr));
     if !is_valid_arg_ty {
@@ -386,17 +373,6 @@ fn type_check_cmp(
         return err(warnings, errors);
     }
 
-    let rhs = arguments[1].clone();
-    let ctx = ctx
-        .by_ref()
-        .with_help_text("Incorrect argument type")
-        .with_type_annotation(lhs.return_type);
-    let rhs = check!(
-        ty::TyExpression::type_check(ctx, rhs),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
     ok(
         (
             ty::TyIntrinsicFunctionKind {
@@ -450,9 +426,9 @@ fn type_check_gtf(
     }
 
     // Type check the first argument which is the index
-    let mut ctx = ctx
-        .by_ref()
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+    let mut ctx = ctx.by_ref().with_type_annotation(
+        type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
+    );
     let index = check!(
         ty::TyExpression::type_check(ctx.by_ref(), arguments[0].clone()),
         return err(warnings, errors),
@@ -461,59 +437,15 @@ fn type_check_gtf(
     );
 
     // Type check the second argument which is the tx field ID
-    let mut ctx = ctx
-        .by_ref()
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+    let mut ctx = ctx.by_ref().with_type_annotation(
+        type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
+    );
     let tx_field_id = check!(
         ty::TyExpression::type_check(ctx.by_ref(), arguments[1].clone()),
         return err(warnings, errors),
         warnings,
         errors
     );
-
-    // Make sure that the index argument is a `u64`
-    let index_type_info = check!(
-        CompileResult::from(
-            type_engine
-                .to_typeinfo(index.return_type, &index.span)
-                .map_err(CompileError::from)
-        ),
-        TypeInfo::ErrorRecovery,
-        warnings,
-        errors
-    );
-    if !matches!(
-        index_type_info,
-        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
-    ) {
-        errors.push(CompileError::IntrinsicUnsupportedArgType {
-            name: kind.to_string(),
-            span: index.span.clone(),
-            hint: Hint::empty(),
-        });
-    }
-
-    // Make sure that the tx field ID is a `u64`
-    let tx_field_type_info = check!(
-        CompileResult::from(
-            type_engine
-                .to_typeinfo(tx_field_id.return_type, &tx_field_id.span)
-                .map_err(CompileError::from)
-        ),
-        TypeInfo::ErrorRecovery,
-        warnings,
-        errors
-    );
-    if !matches!(
-        tx_field_type_info,
-        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
-    ) {
-        errors.push(CompileError::IntrinsicUnsupportedArgType {
-            name: kind.to_string(),
-            span: tx_field_id.span.clone(),
-            hint: Hint::empty(),
-        });
-    }
 
     let targ = type_arguments[0].clone();
     let initial_type_info = check!(
@@ -1084,9 +1016,11 @@ fn type_check_binary_op(
         return err(warnings, errors);
     }
 
+    let return_type = type_engine.insert(engines, TypeInfo::Numeric);
     let mut ctx = ctx
         .by_ref()
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+        .with_type_annotation(return_type)
+        .with_help_text("Incorrect argument type");
 
     let lhs = arguments[0].clone();
     let lhs = check!(
@@ -1095,39 +1029,14 @@ fn type_check_binary_op(
         warnings,
         errors
     );
-
-    // Check for supported argument types
-    let arg_ty = check!(
-        CompileResult::from(
-            type_engine
-                .to_typeinfo(lhs.return_type, &lhs.span)
-                .map_err(CompileError::from)
-        ),
-        TypeInfo::ErrorRecovery,
-        warnings,
-        errors
-    );
-    let is_valid_arg_ty = matches!(arg_ty, TypeInfo::UnsignedInteger(_));
-    if !is_valid_arg_ty {
-        errors.push(CompileError::IntrinsicUnsupportedArgType {
-            name: kind.to_string(),
-            span: lhs.span,
-            hint: Hint::empty(),
-        });
-        return err(warnings, errors);
-    }
-
     let rhs = arguments[1].clone();
-    let ctx = ctx
-        .by_ref()
-        .with_help_text("Incorrect argument type")
-        .with_type_annotation(lhs.return_type);
     let rhs = check!(
         ty::TyExpression::type_check(ctx, rhs),
         return err(warnings, errors),
         warnings,
         errors
     );
+
     ok(
         (
             ty::TyIntrinsicFunctionKind {
@@ -1136,7 +1045,7 @@ fn type_check_binary_op(
                 type_arguments: vec![],
                 span,
             },
-            type_engine.insert(engines, arg_ty),
+            return_type,
         ),
         warnings,
         errors,
@@ -1180,71 +1089,32 @@ fn type_check_shift_binary_op(
         return err(warnings, errors);
     }
 
-    let mut ctx = ctx
-        .by_ref()
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+    let return_type = type_engine.insert(engines, TypeInfo::Numeric);
 
     let lhs = arguments[0].clone();
     let lhs = check!(
-        ty::TyExpression::type_check(ctx.by_ref(), lhs),
+        ty::TyExpression::type_check(
+            ctx.by_ref()
+                .with_help_text("Incorrect argument type")
+                .with_type_annotation(return_type),
+            lhs
+        ),
         return err(warnings, errors),
         warnings,
         errors
     );
-
-    // Check for supported argument types
-    let arg_ty = check!(
-        CompileResult::from(
-            type_engine
-                .to_typeinfo(lhs.return_type, &lhs.span)
-                .map_err(CompileError::from)
-        ),
-        TypeInfo::ErrorRecovery,
-        warnings,
-        errors
-    );
-    let is_valid_arg_ty = matches!(arg_ty, TypeInfo::UnsignedInteger(_));
-    if !is_valid_arg_ty {
-        errors.push(CompileError::IntrinsicUnsupportedArgType {
-            name: kind.to_string(),
-            span: lhs.span,
-            hint: Hint::empty(),
-        });
-        return err(warnings, errors);
-    }
-
-    let ctx = ctx
-        .by_ref()
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
-
     let rhs = arguments[1].clone();
     let rhs = check!(
-        ty::TyExpression::type_check(ctx, rhs),
+        ty::TyExpression::type_check(
+            ctx.by_ref()
+                .with_help_text("Incorrect argument type")
+                .with_type_annotation(engines.te().insert(engines, TypeInfo::Numeric)),
+            rhs
+        ),
         return err(warnings, errors),
         warnings,
         errors
     );
-
-    // Check for supported argument types
-    let rhs_ty = check!(
-        CompileResult::from(
-            type_engine
-                .to_typeinfo(rhs.return_type, &rhs.span)
-                .map_err(CompileError::from)
-        ),
-        TypeInfo::ErrorRecovery,
-        warnings,
-        errors
-    );
-    let is_valid_rhs_ty = matches!(rhs_ty, TypeInfo::UnsignedInteger(_));
-    if !is_valid_rhs_ty {
-        errors.push(CompileError::IntrinsicUnsupportedArgType {
-            name: kind.to_string(),
-            span: lhs.span,
-            hint: Hint::empty(),
-        });
-        return err(warnings, errors);
-    }
 
     ok(
         (
@@ -1254,7 +1124,7 @@ fn type_check_shift_binary_op(
                 type_arguments: vec![],
                 span,
             },
-            type_engine.insert(engines, arg_ty),
+            return_type,
         ),
         warnings,
         errors,
@@ -1296,29 +1166,15 @@ fn type_check_revert(
     }
 
     // Type check the argument which is the revert code
-    let mut ctx = ctx
-        .by_ref()
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+    let mut ctx = ctx.by_ref().with_type_annotation(
+        type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
+    );
     let revert_code = check!(
         ty::TyExpression::type_check(ctx.by_ref(), arguments[0].clone()),
         return err(warnings, errors),
         warnings,
         errors
     );
-
-    // Make sure that the revert code is a `u64`
-    if !matches!(
-        type_engine
-            .to_typeinfo(revert_code.return_type, &revert_code.span)
-            .unwrap(),
-        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
-    ) {
-        errors.push(CompileError::IntrinsicUnsupportedArgType {
-            name: kind.to_string(),
-            span: revert_code.span.clone(),
-            hint: Hint::empty(),
-        });
-    }
 
     ok(
         (

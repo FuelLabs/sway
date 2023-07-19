@@ -372,6 +372,8 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
             if !caller_arg_type.eq(self.context, callee_arg_type) {
                 return Err(IrError::VerifyCallArgTypeMismatch(
                     callee_content.name.clone(),
+                    caller_arg_type.as_string(self.context),
+                    callee_arg_type.as_string(self.context),
                 ));
             }
         }

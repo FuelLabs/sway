@@ -7,3 +7,4 @@ name = "issue_1512_repro"
 
 [dependencies]
 core = { path = "../../../../../../../sway-lib-core" }
+std = { path = "../../../../../../../sway-lib-std" }

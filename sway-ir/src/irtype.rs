@@ -50,7 +50,6 @@ impl Type {
         Self::get_or_create_unique_type(context, TypeContent::Unit);
         Self::get_or_create_unique_type(context, TypeContent::Bool);
         Self::get_or_create_unique_type(context, TypeContent::Uint(8));
-        Self::get_or_create_unique_type(context, TypeContent::Uint(32));
         Self::get_or_create_unique_type(context, TypeContent::Uint(64));
         Self::get_or_create_unique_type(context, TypeContent::B256);
         Self::get_or_create_unique_type(context, TypeContent::Slice);
@@ -79,11 +78,6 @@ impl Type {
     /// New u8 type
     pub fn get_uint8(context: &Context) -> Type {
         Self::get_type(context, &TypeContent::Uint(8)).expect("create_basic_types not called")
-    }
-
-    /// New u32 type
-    pub fn get_uint32(context: &Context) -> Type {
-        Self::get_type(context, &TypeContent::Uint(32)).expect("create_basic_types not called")
     }
 
     /// New u64 type

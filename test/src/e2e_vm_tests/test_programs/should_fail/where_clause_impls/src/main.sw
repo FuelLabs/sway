@@ -46,11 +46,11 @@ impl<T> MyAdd for MyPoint<T> {
 fn main() -> u8 {
     let foo = MyPoint {
         x: 1u32,
-        y: 2u64,
+        y: 2u32,
     };
     let bar = MyPoint {
         x: 3u32,
-        y: 4u64,
+        y: 4u32,
     };
     let baz = foo.my_add(bar);
     baz.y
