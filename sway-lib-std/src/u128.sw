@@ -13,9 +13,9 @@ use ::result::Result::{self, *};
 ///
 /// Represented as two 64-bit components: `(upper, lower)`, where `value = (upper << 64) + lower`.
 pub struct U128 {
-    /// The upper 64 bits of the `U128`.
+    /// The most significant 64 bits of the `U128`.
     upper: u64,
-    /// The lower 64 bits of the `U128`.
+    /// The least significant 64 bits of the `U128`.
     lower: u64,
 }
 
