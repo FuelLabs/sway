@@ -5,20 +5,27 @@ use ::option::Option::{self, *};
 
 /// Store a stack value in storage. Will not work for heap values.
 ///
-/// ### Arguments
+/// # Arguments
 ///
-/// * `slot` - The storage slot at which the variable will be stored.
-/// * `value` - The value to be stored.
-/// * `offset` - An offset, in words, from the beginning of `slot`, at which `value` should be
+/// * `slot`: [b256] - The storage slot at which the variable will be stored.
+/// * `offset`: [u64] - An offset, in words, from the beginning of `slot`, at which `value` should be
 ///              stored.
+/// * `value`: [T] - The value to be stored.
 ///
-/// ### Examples
+/// # Number of Storage Accesses
+///
+/// * Reads: `1`
+/// * Writes: `1`
+///  
+/// # Examples
 ///
 /// ```sway
-/// let five = 5_u64;
-/// write(ZERO_B256, 2, five);
-/// let stored_five = read::<u64>(ZERO_B256, 2).unwrap();
-/// assert(five == stored_five);
+/// fn foo() {
+///     let five = 5_u64;
+///     write(ZERO_B256, 2, five);
+///     let stored_five = read::<u64>(ZERO_B256, 2).unwrap();
+///     assert(five == stored_five);
+/// }
 /// ```
 #[storage(read, write)]
 pub fn write<T>(slot: b256, offset: u64, value: T) {
@@ -51,21 +58,29 @@ pub fn write<T>(slot: b256, offset: u64, value: T) {
 /// Reads a value of type `T` starting at the location specified by `slot` and `offset`. If the
 /// value crosses the boundary of a storage slot, reading continues at the following slot.
 ///
-/// Returns `Option(value)` if the storage slots read were valid and contain `value`. Otherwise,
-/// return `None`.
+/// # Arguments
 ///
-/// ### Arguments
+/// * `slot`: [b256] - The storage slot to load the value from.
+/// * `offset`: [u64] - An offset, in words, from the start of `slot`, from which the value should be read.
 ///
-/// * `slot` - The storage slot to load the value from.
-/// * `offset` - An offset, in words, from the start of `slot`, from which the value should be read.
+/// # Returns
 ///
-/// ### Examples
+/// * [Option<T>] - `Option(value)` if the storage slots read were valid and contain `value`. Otherwise,
+/// returns `None`.
+///
+/// # Number of Storage Accesses
+///
+/// * Reads: `1`
+/// 
+/// # Examples
 ///
 /// ```sway
-/// let five = 5_u64;
-/// write(ZERO_B256, 2, five);
-/// let stored_five = read::<u64>(ZERO_B256, 2);
-/// assert(five == stored_five);
+/// fn foo() {
+///     let five = 5_u64;
+///     write(ZERO_B256, 2, five);
+///     let stored_five = read::<u64>(ZERO_B256, 2);
+///     assert(five == stored_five.unwrap());
+/// }
 /// ```
 #[storage(read)]
 pub fn read<T>(slot: b256, offset: u64) -> Option<T> {
@@ -91,21 +106,30 @@ pub fn read<T>(slot: b256, offset: u64) -> Option<T> {
     }
 }
 
-/// Clear a sequence of consecutive storage slots starting at a some slot. Returns a Boolean
-/// indicating whether all of the storage slots cleared were previously set.
+/// Clear a sequence of consecutive storage slots starting at a some slot. 
 ///
-/// ### Arguments
+/// # Arguments
 ///
-/// * `slot` - The key of the first storage slot that will be cleared
+/// * `slot`: [b256] - The key of the first storage slot that will be cleared
 ///
-/// ### Examples
+/// # Returns
+///
+/// * [bool] - Indicates whether all of the storage slots cleared were previously set.
+/// 
+/// # Number of Storage Accesses
+///
+/// * Clears: `1`
+///
+/// # Examples
 ///
 /// ```sway
-/// let five = 5_u64;
-/// write(ZERO_B256, 0, five);
-/// let cleared = clear::<u64>(ZERO_B256);
-/// assert(cleared);
-/// assert(read::<u64>(ZERO_B256, 0).is_none());
+/// fn foo() {
+///      let five = 5_u64;
+///     write(ZERO_B256, 0, five);
+///     let cleared = clear::<u64>(ZERO_B256);
+///     assert(cleared);
+///     assert(read::<u64>(ZERO_B256, 0).is_none());
+/// }
 /// ```
 #[storage(write)]
 pub fn clear<T>(slot: b256) -> bool {
