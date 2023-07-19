@@ -16,7 +16,7 @@ use crate::{
     },
     semantic_analysis::{
         declaration::{insert_supertraits_into_namespace, SupertraitOf},
-        Mode, TypeCheckContext,
+        AbiMode, TypeCheckContext,
     },
     type_system::*,
 };
@@ -97,7 +97,7 @@ impl ty::TyTraitDecl {
                     let decl_ref = decl_engine.insert(method.clone());
                     dummy_interface_surface.push(ty::TyImplItem::Fn(
                         decl_engine
-                            .insert(method.to_dummy_func(Mode::NonAbi))
+                            .insert(method.to_dummy_func(AbiMode::NonAbi))
                             .with_parent(decl_engine, (*decl_ref.id()).into()),
                     ));
                     new_interface_surface.push(ty::TyTraitInterfaceItem::TraitFn(decl_ref));
@@ -116,7 +116,7 @@ impl ty::TyTraitDecl {
 
                     let const_name = const_decl.call_path.suffix.clone();
                     check!(
-                        ctx.namespace.insert_symbol(
+                        ctx.insert_symbol(
                             const_name.clone(),
                             ty::TyDecl::ConstantDecl(ty::ConstantDecl {
                                 name: const_name.clone(),
@@ -367,7 +367,7 @@ impl ty::TyTraitDecl {
                     all_items.push(TyImplItem::Fn(
                         ctx.engines
                             .de()
-                            .insert(method.to_dummy_func(Mode::NonAbi))
+                            .insert(method.to_dummy_func(AbiMode::NonAbi))
                             .with_parent(ctx.engines.de(), (*decl_ref.id()).into()),
                     ));
                 }
@@ -375,6 +375,7 @@ impl ty::TyTraitDecl {
                     let const_decl = decl_engine.get_constant(decl_ref);
                     let const_name = const_decl.call_path.suffix.clone();
                     all_items.push(TyImplItem::Constant(decl_ref.clone()));
+                    let const_shadowing_mode = ctx.const_shadowing_mode();
                     ctx.namespace.insert_symbol(
                         const_name.clone(),
                         ty::TyDecl::ConstantDecl(ty::ConstantDecl {
@@ -382,6 +383,7 @@ impl ty::TyTraitDecl {
                             decl_id: *decl_ref.id(),
                             decl_span: const_decl.span.clone(),
                         }),
+                        const_shadowing_mode,
                     );
                 }
             }

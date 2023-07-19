@@ -453,7 +453,13 @@ pub enum CompileError {
         count: usize,
         span: Span,
     },
-    #[error("The name \"{name}\" shadows another symbol with the same name.")]
+    #[error("Variables cannot shadow constants. The variable \"{name}\" shadows constant with the same name.")]
+    VariableShadowsConstant { name: Ident },
+    #[error("Constants cannot shadow variables. The constant \"{name}\" shadows variable with the same name.")]
+    ConstantShadowsVariable { name: Ident },
+    #[error("Constants cannot shadow constants. The constant \"{name}\" shadows constant with the same name.")]
+    ConstantShadowsConstant { name: Ident },
+    #[error("The imported symbol \"{name}\" shadows another symbol with the same name.")]
     ShadowsOtherSymbol { name: Ident },
     #[error("The name \"{name}\" is already used for a generic parameter in this scope.")]
     GenericShadowsGeneric { name: Ident },
@@ -637,8 +643,6 @@ pub enum CompileError {
     },
     #[error("Configurable constants are not allowed in libraries.")]
     ConfigurableInLibrary { span: Span },
-    #[error("The name `{name}` is defined multiple times")]
-    NameDefinedMultipleTimes { name: String, span: Span },
     #[error("Multiple applicable items in scope. {}", {
         let mut candidates = "".to_string();
         for (index, as_trait) in as_traits.iter().enumerate() {
@@ -771,6 +775,9 @@ impl Spanned for CompileError {
             ContractStorageFromExternalContext { span, .. } => span.clone(),
             InvalidOpcodeFromPredicate { span, .. } => span.clone(),
             ArrayOutOfBounds { span, .. } => span.clone(),
+            VariableShadowsConstant { name } => name.span(),
+            ConstantShadowsVariable { name } => name.span(),
+            ConstantShadowsConstant { name } => name.span(),
             ShadowsOtherSymbol { name } => name.span(),
             GenericShadowsGeneric { name } => name.span(),
             MatchExpressionNonExhaustive { span, .. } => span.clone(),
@@ -832,7 +839,6 @@ impl Spanned for CompileError {
             CoinsPassedToNonPayableMethod { span, .. } => span.clone(),
             TraitImplPayabilityMismatch { span, .. } => span.clone(),
             ConfigurableInLibrary { span } => span.clone(),
-            NameDefinedMultipleTimes { span, .. } => span.clone(),
             MultipleApplicableItemsInScope { span, .. } => span.clone(),
             CannotBeEvaluatedToConst { span } => span.clone(),
             ContractCallsItsOwnMethod { span } => span.clone(),

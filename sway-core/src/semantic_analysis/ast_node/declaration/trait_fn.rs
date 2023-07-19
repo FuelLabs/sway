@@ -4,7 +4,7 @@ use crate::{
     decl_engine::DeclId,
     error::*,
     language::{parsed, ty, Visibility},
-    semantic_analysis::{Mode, TypeCheckContext},
+    semantic_analysis::{AbiMode, TypeCheckContext},
     type_system::*,
 };
 
@@ -73,14 +73,14 @@ impl ty::TyTraitFn {
     /// This function is used in trait declarations to insert "placeholder"
     /// functions in the methods. This allows the methods to use functions
     /// declared in the interface surface.
-    pub(crate) fn to_dummy_func(&self, mode: Mode) -> ty::TyFunctionDecl {
+    pub(crate) fn to_dummy_func(&self, abi_mode: AbiMode) -> ty::TyFunctionDecl {
         ty::TyFunctionDecl {
             purity: self.purity,
             name: self.name.clone(),
             body: ty::TyCodeBlock { contents: vec![] },
             parameters: self.parameters.clone(),
-            implementing_type: match mode.clone() {
-                Mode::ImplAbiFn(abi_name) => {
+            implementing_type: match abi_mode.clone() {
+                AbiMode::ImplAbiFn(abi_name) => {
                     // ABI and their super-ABI methods cannot have the same names,
                     // so in order to provide meaningful error messages if this condition
                     // is violated, we need to keep track of ABI names before we can
@@ -91,14 +91,14 @@ impl ty::TyTraitFn {
                         decl_span: Span::dummy(),
                     }))
                 }
-                Mode::NonAbi => None,
+                AbiMode::NonAbi => None,
             },
             span: self.name.span(),
             attributes: self.attributes.clone(),
             return_type: self.return_type.clone(),
             visibility: Visibility::Public,
             type_parameters: vec![],
-            is_contract_call: matches!(mode, Mode::ImplAbiFn(_)),
+            is_contract_call: matches!(abi_mode, AbiMode::ImplAbiFn(_)),
             where_clause: vec![],
         }
     }

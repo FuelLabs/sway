@@ -1548,7 +1548,9 @@ impl ty::TyExpression {
                     let method = decl_engine.get_trait_fn(&decl_ref);
                     abi_items.push(TyImplItem::Fn(
                         decl_engine
-                            .insert(method.to_dummy_func(Mode::ImplAbiFn(abi_name.suffix.clone())))
+                            .insert(
+                                method.to_dummy_func(AbiMode::ImplAbiFn(abi_name.suffix.clone())),
+                            )
                             .with_parent(decl_engine, (*decl_ref.id()).into()),
                     ));
                 }

@@ -1,8 +1,11 @@
 use crate::{
     engine_threading::*,
-    language::{parsed::TreeType, Purity, Visibility},
+    language::{parsed::TreeType, ty::TyDecl, Purity, Visibility},
     namespace::Path,
-    semantic_analysis::{ast_node::Mode, Namespace},
+    semantic_analysis::{
+        ast_node::{AbiMode, ConstShadowingMode},
+        Namespace,
+    },
     type_system::{
         EnforceTypeArguments, MonomorphizeHelper, SubstTypes, TypeArgument, TypeId, TypeInfo,
     },
@@ -41,7 +44,11 @@ pub struct TypeCheckContext<'a> {
     ///
     /// This is `ImplAbiFn` while checking `abi` implementations whether at their original impl
     /// declaration or within an abi cast expression.
-    mode: Mode,
+    abi_mode: AbiMode,
+    /// Whether or not a const declaration shadows previous const declarations sequentially.
+    ///
+    /// This is `Sequential` while checking const declarations in functions, otherwise `ItemStyle`.
+    const_shadowing_mode: ConstShadowingMode,
     /// Provides "help text" to `TypeError`s during unification.
     // TODO: We probably shouldn't carry this through the `Context`, but instead pass it directly
     // to `unify` as necessary?
@@ -80,7 +87,8 @@ impl<'a> TypeCheckContext<'a> {
             help_text: "",
             // TODO: Contract? Should this be passed in based on program kind (aka TreeType)?
             self_type: engines.te().insert(engines, TypeInfo::Contract),
-            mode: Mode::NonAbi,
+            abi_mode: AbiMode::NonAbi,
+            const_shadowing_mode: ConstShadowingMode::ItemStyle,
             purity: Purity::default(),
             kind: TreeType::Contract,
             disallow_functions: false,
@@ -100,7 +108,8 @@ impl<'a> TypeCheckContext<'a> {
             namespace: self.namespace,
             type_annotation: self.type_annotation,
             self_type: self.self_type,
-            mode: self.mode.clone(),
+            abi_mode: self.abi_mode.clone(),
+            const_shadowing_mode: self.const_shadowing_mode,
             help_text: self.help_text,
             purity: self.purity,
             kind: self.kind.clone(),
@@ -115,7 +124,8 @@ impl<'a> TypeCheckContext<'a> {
             namespace,
             type_annotation: self.type_annotation,
             self_type: self.self_type,
-            mode: self.mode,
+            abi_mode: self.abi_mode,
+            const_shadowing_mode: self.const_shadowing_mode,
             help_text: self.help_text,
             purity: self.purity,
             kind: self.kind,
@@ -158,8 +168,19 @@ impl<'a> TypeCheckContext<'a> {
     }
 
     /// Map this `TypeCheckContext` instance to a new one with the given ABI `mode`.
-    pub(crate) fn with_mode(self, mode: Mode) -> Self {
-        Self { mode, ..self }
+    pub(crate) fn with_abi_mode(self, abi_mode: AbiMode) -> Self {
+        Self { abi_mode, ..self }
+    }
+
+    /// Map this `TypeCheckContext` instance to a new one with the given const shadowing `mode`.
+    pub(crate) fn with_const_shadowing_mode(
+        self,
+        const_shadowing_mode: ConstShadowingMode,
+    ) -> Self {
+        Self {
+            const_shadowing_mode,
+            ..self
+        }
     }
 
     /// Map this `TypeCheckContext` instance to a new one with the given purity.
@@ -206,8 +227,12 @@ impl<'a> TypeCheckContext<'a> {
         self.type_annotation
     }
 
-    pub(crate) fn mode(&self) -> Mode {
-        self.mode.clone()
+    pub(crate) fn abi_mode(&self) -> AbiMode {
+        self.abi_mode.clone()
+    }
+
+    pub(crate) fn const_shadowing_mode(&self) -> ConstShadowingMode {
+        self.const_shadowing_mode
     }
 
     pub(crate) fn purity(&self) -> Purity {
@@ -298,6 +323,13 @@ impl<'a> TypeCheckContext<'a> {
             self.help_text(),
             None,
         )
+    }
+
+    /// Short-hand for calling [Namespace::insert_symbol] with the `const_shadowing_mode` provided by
+    /// the `TypeCheckContext`.
+    pub(crate) fn insert_symbol(&mut self, name: Ident, item: TyDecl) -> CompileResult<()> {
+        self.namespace
+            .insert_symbol(name, item, self.const_shadowing_mode)
     }
 
     /// Get the engines needed for engine threading.
