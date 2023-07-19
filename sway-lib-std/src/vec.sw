@@ -481,11 +481,11 @@ impl<T> Vec<T> {
         self.len += 1;
     }
 
-    /// Removes the last element from a vector and returns it
+    /// Removes the last element from a vector and returns it.
     ///
     /// # Returns
     ///
-    /// * [Option<T>] - The last element of the vector, or `None` if the vectory is empty.
+    /// * [Option<T>] - The last element of the vector, or `None` if the vector is empty.
     ///
     /// # Examples
     ///
@@ -516,8 +516,8 @@ impl<T> Vec<T> {
     ///
     /// # Arguments
     ///
-    /// * element1_index: [u64] - The index of the first element.
-    /// * element2_index: [u64] - The index of the second element.
+    /// * `element1_index`: [u64] - The index of the first element.
+    /// * `element2_index`: [u64] - The index of the second element.
     ///
     /// # Panics
     ///
@@ -559,8 +559,8 @@ impl<T> Vec<T> {
     ///
     /// # Arguments
     ///
-    /// * index: [u64] - The index of the element to be set.
-    /// * value: [T] - The value of the element to be set.
+    /// * `index`: [u64] - The index of the element to be set.
+    /// * `value`: [T] - The value of the element to be set.
     ///
     /// # Panics
     ///
