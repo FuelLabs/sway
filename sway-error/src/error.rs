@@ -659,9 +659,9 @@ pub enum CompileError {
     #[error("ABI cannot inherit samely named method (\"{method_name}\") from several super-ABIs: \"{superabi1}\" and \"{superabi2}\"")]
     ConflictingSuperAbiMethods {
         span: Span,
-        method_name: Ident,
-        superabi1: Ident,
-        superabi2: Ident,
+        method_name: String,
+        superabi1: String,
+        superabi2: String,
     },
 }
 

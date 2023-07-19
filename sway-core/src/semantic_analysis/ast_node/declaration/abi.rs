@@ -75,7 +75,7 @@ impl ty::TyAbiDecl {
                         .namespace
                         .find_method_for_type(
                             self_type,
-                            &vec![],
+                            &[],
                             &method.name,
                             self_type,
                             ctx.type_annotation(),
@@ -222,7 +222,7 @@ impl ty::TyAbiDecl {
                             .namespace
                             .find_method_for_type(
                                 ctx.self_type(),
-                                &vec![],
+                                &[],
                                 &method.name.clone(),
                                 ctx.self_type(),
                                 ctx.type_annotation(),
@@ -251,9 +251,9 @@ impl ty::TyAbiDecl {
                                 if self_decl_id != abi_decl.decl_id {
                                     errors.push(CompileError::ConflictingSuperAbiMethods {
                                         span: subabi_span.clone(),
-                                        method_name: method.name.clone(),
-                                        superabi1: abi_decl.name,
-                                        superabi2: self.name.clone(),
+                                        method_name: method.name.to_string(),
+                                        superabi1: abi_decl.name.to_string(),
+                                        superabi2: self.name.to_string(),
                                     })
                                 }
                             }
