@@ -12,7 +12,7 @@ use crate::{
         ty::{self, TyImplItem, TyTraitInterfaceItem, TyTraitItem},
         *,
     },
-    semantic_analysis::{Mode, TypeCheckContext},
+    semantic_analysis::{AbiMode, ConstShadowingMode, TypeCheckContext},
     type_system::*,
 };
 
@@ -39,7 +39,11 @@ impl ty::TyImplTrait {
 
         // create a namespace for the impl
         let mut impl_namespace = ctx.namespace.clone();
-        let mut ctx = ctx.by_ref().scoped(&mut impl_namespace).allow_functions();
+        let mut ctx = ctx
+            .by_ref()
+            .scoped(&mut impl_namespace)
+            .with_const_shadowing_mode(ConstShadowingMode::ItemStyle)
+            .allow_functions();
 
         // Type check the type parameters. This will also insert them into the
         // current namespace.
@@ -180,7 +184,7 @@ impl ty::TyImplTrait {
                     });
                 }
 
-                let mut ctx = ctx.with_mode(Mode::ImplAbiFn);
+                let mut ctx = ctx.with_abi_mode(AbiMode::ImplAbiFn);
 
                 // Insert the interface surface and methods from this trait into
                 // the namespace.
@@ -249,7 +253,10 @@ impl ty::TyImplTrait {
 
         // create the namespace for the impl
         let mut impl_namespace = ctx.namespace.clone();
-        let mut ctx = ctx.scoped(&mut impl_namespace).allow_functions();
+        let mut ctx = ctx
+            .scoped(&mut impl_namespace)
+            .with_const_shadowing_mode(ConstShadowingMode::ItemStyle)
+            .allow_functions();
 
         // create the trait name
         let trait_name = CallPath {
@@ -324,8 +331,7 @@ impl ty::TyImplTrait {
             _ => None,
         };
         if let Some(self_decl) = self_decl {
-            ctx.namespace
-                .insert_symbol(Ident::new_no_span("Self".to_string()), self_decl);
+            ctx.insert_symbol(Ident::new_no_span("Self".to_string()), self_decl);
         }
 
         // type check the items inside of the impl block
@@ -353,7 +359,7 @@ impl ty::TyImplTrait {
                     new_items.push(TyImplItem::Constant(decl_ref.clone()));
 
                     check!(
-                        ctx.namespace.insert_symbol(
+                        ctx.insert_symbol(
                             decl_ref.name().clone(),
                             ty::TyDecl::ConstantDecl(ty::ConstantDecl {
                                 name: decl_ref.name().clone(),

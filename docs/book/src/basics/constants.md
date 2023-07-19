@@ -4,7 +4,7 @@
 <!-- constants:example:start -->
 Constants are similar to variables; however, there are a few differences:
 
-- Constants are always evaluated at compile-time
+- Constants are always evaluated at compile-time.
 - Constants can be declared both inside of a [function](../index.md) and at global / `impl` scope.
 - The `mut` keyword cannot be used with constants.
 <!-- constants:example:end -->
@@ -77,7 +77,7 @@ fn main() -> u32 {
 }
 ```
 
-### `impl self` consts
+### `impl self` Constants
 
 Constants can also be declared inside non-trait `impl` blocks.
 

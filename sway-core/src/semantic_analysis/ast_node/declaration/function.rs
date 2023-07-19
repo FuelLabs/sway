@@ -63,6 +63,7 @@ impl ty::TyFunctionDecl {
             .by_ref()
             .scoped(&mut fn_namespace)
             .with_purity(purity)
+            .with_const_shadowing_mode(ConstShadowingMode::Sequential)
             .disallow_functions();
 
         // Type check the type parameters. This will also insert them into the
@@ -143,7 +144,7 @@ impl ty::TyFunctionDecl {
                 (Visibility::Public, false)
             }
         } else {
-            (visibility, ctx.mode() == Mode::ImplAbiFn)
+            (visibility, ctx.abi_mode() == AbiMode::ImplAbiFn)
         };
 
         check!(
