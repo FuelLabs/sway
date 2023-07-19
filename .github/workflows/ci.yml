@@ -16,7 +16,7 @@ env:
   CARGO_TERM_COLOR: always
   REGISTRY: ghcr.io
   RUST_VERSION: 1.71.0
-  NIGHTLY_RUST_VERSION: nightly-2023-02-08
+  NIGHTLY_RUST_VERSION: nightly-2023-07-19
 
 jobs:
   build-sway-lib-core:
