@@ -11,7 +11,9 @@ use crate::{
         ty::{self, TyImplItem, TyTraitItem},
         CallPath,
     },
-    semantic_analysis::{declaration::insert_supertraits_into_namespace, Mode, TypeCheckContext},
+    semantic_analysis::{
+        declaration::insert_supertraits_into_namespace, AbiMode, TypeCheckContext,
+    },
     CompileResult, ReplaceSelfType, TypeId, TypeInfo,
 };
 
@@ -43,7 +45,7 @@ impl ty::TyAbiDecl {
         let self_type = type_engine.insert(ctx.engines(), TypeInfo::SelfType);
         let mut ctx = ctx
             .scoped(&mut abi_namespace)
-            .with_mode(Mode::ImplAbiFn)
+            .with_abi_mode(AbiMode::ImplAbiFn)
             .with_self_type(self_type);
 
         // Recursively make the interface surfaces and methods of the
@@ -95,7 +97,7 @@ impl ty::TyAbiDecl {
 
                     let const_name = const_decl.call_path.suffix.clone();
                     check!(
-                        ctx.namespace.insert_symbol(
+                        ctx.insert_symbol(
                             const_name.clone(),
                             ty::TyDecl::ConstantDecl(ty::ConstantDecl {
                                 name: const_name.clone(),
@@ -178,7 +180,7 @@ impl ty::TyAbiDecl {
                     all_items.push(TyImplItem::Fn(
                         ctx.engines
                             .de()
-                            .insert(method.to_dummy_func(Mode::ImplAbiFn))
+                            .insert(method.to_dummy_func(AbiMode::ImplAbiFn))
                             .with_parent(ctx.engines.de(), (*decl_ref.id()).into()),
                     ));
                 }
@@ -186,6 +188,7 @@ impl ty::TyAbiDecl {
                     let const_decl = decl_engine.get_constant(decl_ref);
                     let const_name = const_decl.call_path.suffix.clone();
                     all_items.push(TyImplItem::Constant(decl_ref.clone()));
+                    let const_shadowing_mode = ctx.const_shadowing_mode();
                     ctx.namespace.insert_symbol(
                         const_name.clone(),
                         ty::TyDecl::ConstantDecl(ty::ConstantDecl {
@@ -193,6 +196,7 @@ impl ty::TyAbiDecl {
                             decl_id: *decl_ref.id(),
                             decl_span: const_decl.span.clone(),
                         }),
+                        const_shadowing_mode,
                     );
                 }
             }

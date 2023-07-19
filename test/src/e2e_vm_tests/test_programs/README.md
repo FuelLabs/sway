@@ -74,7 +74,7 @@ with an escape sequence and can cause the check to fail.
 To avoid this problem one may either not use the first word in the error message, or use the 'empty
 string' pattern `$()` to direct the matcher as to where the pattern starts.
 
-E.g, `# check: $()The name "S" shadows another symbol with the same name.`
+E.g, `# check: $()The imported symbol "S" shadows another symbol with the same name.`
 
 ## Examples
 
