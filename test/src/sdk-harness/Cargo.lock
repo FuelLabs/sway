@@ -3380,7 +3380,6 @@ dependencies = [
  "fuels",
  "hex",
  "rand",
- "serde_json",
  "sha2 0.10.7",
  "sha3",
  "tai64",

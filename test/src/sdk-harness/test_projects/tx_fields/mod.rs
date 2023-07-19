@@ -1,4 +1,3 @@
-use fuel_vm::prelude::Cacheable;
 use fuel_vm::fuel_crypto::Hasher;
 use fuel_vm::fuel_tx::{
     field::*, Bytes32, ConsensusParameters, ContractId, Input as TxInput, TxPointer, UtxoId,
