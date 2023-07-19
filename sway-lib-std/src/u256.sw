@@ -28,13 +28,13 @@ fn rsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
 ///
 /// Represented as four 64-bit components: `(a, b, c, d)`, where `value = (a << 192) + (b << 128) + (c << 64) + d`.
 pub struct U256 {
-    /// The first 64-bit component of the `U256`.
+    /// The most significant 64 bits of the `U256`.
     a: u64,
-    /// The second 64-bit component of the `U256`.
+    /// The 65-128th most significant bits of the `U256`.
     b: u64,
-    /// The third 64-bit component of the `U256`.
+    /// The 129-192nd most significant bits of the `U256`.
     c: u64,
-    /// The fourth 64-bit component of the `U256`.
+    /// The 193-256th most significant bits of the `U256`.
     d: u64,
 }
 
