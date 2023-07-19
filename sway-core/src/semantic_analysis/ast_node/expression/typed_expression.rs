@@ -31,6 +31,7 @@ use crate::{
     Engines,
 };
 
+use ast_node::declaration::{insert_supertraits_into_namespace, SupertraitOf};
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::{
     convert_parse_tree_error::ConvertParseTreeError,
@@ -1525,6 +1526,7 @@ impl ty::TyExpression {
         let ty::TyAbiDecl {
             interface_surface,
             items,
+            supertraits,
             span,
             ..
         } = decl_engine.get_abi(abi_ref.id());
@@ -1559,6 +1561,20 @@ impl ty::TyExpression {
 
         // Retrieve the items for this abi.
         abi_items.append(&mut items.into_iter().collect::<Vec<_>>());
+
+        // Recursively make the interface surfaces and methods of the
+        // supertraits available to this abi cast.
+        check!(
+            insert_supertraits_into_namespace(
+                ctx.by_ref(),
+                return_type,
+                &supertraits,
+                &SupertraitOf::Abi(span.clone())
+            ),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
         // Insert the abi methods into the namespace.
         check!(

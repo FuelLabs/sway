@@ -13,7 +13,6 @@ abi MySuperAbi {
     fn method() -> u64;
 }
 
-
 abi MyAbi : MySuperAbi + MySuperTrait {
     fn method1() -> u64;
 }
@@ -29,4 +28,11 @@ impl MySuperAbi for Contract {
 impl MyAbi for Contract {
     // should return 42 (Self::method should resolve to MySuperTrait::method)
     fn method1() -> u64 { Self::method() }
+}
+
+#[test]
+fn tests() {
+    let caller = abi(MyAbi, CONTRACT_ID);
+    assert(caller.method1() == 42);
+    assert(caller.method() == 0xBAD)
 }
