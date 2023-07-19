@@ -127,7 +127,16 @@ impl TraitMap {
         for item in items.iter() {
             match item {
                 TyImplItem::Fn(decl_ref) => {
-                    trait_items.insert(decl_ref.name().clone().to_string(), item.clone());
+                    if trait_items
+                        .insert(decl_ref.name().clone().to_string(), item.clone())
+                        .is_some()
+                    {
+                        // duplicate method name
+                        errors.push(CompileError::MultipleDefinitionsOfName {
+                            name: decl_ref.name().clone(),
+                            span: decl_ref.span(),
+                        });
+                    }
                 }
                 TyImplItem::Constant(decl_ref) => {
                     trait_items.insert(decl_ref.name().to_string(), item.clone());

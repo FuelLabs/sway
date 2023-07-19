@@ -100,7 +100,7 @@ impl<'a> TypeCheckContext<'a> {
             namespace: self.namespace,
             type_annotation: self.type_annotation,
             self_type: self.self_type,
-            mode: self.mode,
+            mode: self.mode.clone(),
             help_text: self.help_text,
             purity: self.purity,
             kind: self.kind.clone(),
@@ -207,7 +207,7 @@ impl<'a> TypeCheckContext<'a> {
     }
 
     pub(crate) fn mode(&self) -> Mode {
-        self.mode
+        self.mode.clone()
     }
 
     pub(crate) fn purity(&self) -> Purity {

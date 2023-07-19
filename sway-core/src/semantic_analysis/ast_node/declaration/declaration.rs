@@ -181,12 +181,28 @@ impl ty::TyDecl {
                     warnings,
                     errors
                 );
+                // if this ImplTrait implements a trait and not an ABI,
+                // we insert its methods into the context
+                // otherwise, if it implements an ABI, we do not
+                // insert those since we do not allow calling contract methods
+                // from contract methods
+                let emp_vec = vec![];
+                let impl_trait_items = if let Some(ty::TyDecl::TraitDecl { .. }) = ctx
+                    .namespace
+                    .resolve_call_path(&impl_trait.trait_name)
+                    .ok(&mut warnings, &mut errors)
+                    .cloned()
+                {
+                    &impl_trait.items
+                } else {
+                    &emp_vec
+                };
                 check!(
                     ctx.namespace.insert_trait_implementation(
                         impl_trait.trait_name.clone(),
                         impl_trait.trait_type_arguments.clone(),
                         impl_trait.implementing_for.type_id,
-                        &impl_trait.items,
+                        impl_trait_items,
                         &impl_trait.span,
                         impl_trait
                             .trait_decl_ref

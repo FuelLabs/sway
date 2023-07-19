@@ -654,6 +654,15 @@ pub enum CompileError {
     },
     #[error("A contract method cannot call methods belonging to the same ABI")]
     ContractCallsItsOwnMethod { span: Span },
+    #[error("ABI cannot define a method with the same name as its super-ABI \"{superabi}\"")]
+    AbiShadowsSuperAbiMethod { span: Span, superabi: Ident },
+    #[error("ABI cannot inherit samely named method (\"{method_name}\") from several super-ABIs: \"{superabi1}\" and \"{superabi2}\"")]
+    ConflictingSuperAbiMethods {
+        span: Span,
+        method_name: Ident,
+        superabi1: Ident,
+        superabi2: Ident,
+    },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -827,6 +836,8 @@ impl Spanned for CompileError {
             MultipleApplicableItemsInScope { span, .. } => span.clone(),
             CannotBeEvaluatedToConst { span } => span.clone(),
             ContractCallsItsOwnMethod { span } => span.clone(),
+            AbiShadowsSuperAbiMethod { span, .. } => span.clone(),
+            ConflictingSuperAbiMethods { span, .. } => span.clone(),
         }
     }
 }
