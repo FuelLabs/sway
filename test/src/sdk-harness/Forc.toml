@@ -32,6 +32,8 @@ members = [
   "test_projects/storage_map_nested",
   "test_projects/storage_string",
   "test_projects/storage_vec_nested",
+  "test_projects/superabi",
+  "test_projects/superabi_supertrait",
   "test_projects/token_ops",
   "test_projects/tx_fields",
   "test_projects/type_aliases",

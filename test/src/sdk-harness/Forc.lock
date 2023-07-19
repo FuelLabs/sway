@@ -262,6 +262,16 @@ source = 'member'
 dependencies = ['std']
 
 [[package]]
+name = 'superabi'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'superabi_supertrait'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
 name = 'svec_array'
 source = 'member'
 dependencies = ['std']
