@@ -169,7 +169,7 @@ impl U256 {
     ///
     /// # Returns
     ///
-    /// * [U256] - The smallest value that can be represented by this integer type, zero.
+    /// * [U256] - The smallest value that can be represented by this integer type, `0`.
     ///
     /// # Examples
     ///
@@ -223,7 +223,7 @@ impl U256 {
     ///
     /// # Returns
     ///
-    /// * [u32] - The size of this type in bits, 256.
+    /// * [u32] - The size of this type in bits, `256`.
     ///
     /// # Examples
     ///
