@@ -667,6 +667,8 @@ pub enum CompileError {
         superabi1: String,
         superabi2: String,
     },
+    #[error("Cannot call ABI supertrait's method as a contract method: \"{fn_name}\"")]
+    AbiSupertraitMethodCallAsContractCall { fn_name: Ident, span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -844,6 +846,7 @@ impl Spanned for CompileError {
             ContractCallsItsOwnMethod { span } => span.clone(),
             AbiShadowsSuperAbiMethod { span, .. } => span.clone(),
             ConflictingSuperAbiMethods { span, .. } => span.clone(),
+            AbiSupertraitMethodCallAsContractCall { span, .. } => span.clone(),
         }
     }
 }
