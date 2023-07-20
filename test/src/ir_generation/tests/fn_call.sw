@@ -48,11 +48,12 @@ fn main() -> u64 {
 //
 // Matching fn b() here, which has a local bool var, initialised to false/$zero:
 //
+// check: move $$$$locbase $$sp
+// check: cfei i8
+//
 // check: move $REG $$$$arg0
 // check: move $REG $$$$arg1
 //
-// check: move $$$$locbase $$sp
-// check: cfei i8
 // check: sw   $$$$locbase $$zero i0
 // ...
 // check: cfsi i8
