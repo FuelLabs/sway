@@ -126,7 +126,7 @@ impl ty::TyAbiDecl {
         let mut new_items = vec![];
         for method in methods.into_iter() {
             let method = check!(
-                ty::TyFunctionDecl::type_check(ctx.by_ref(), method.clone(), true, false),
+                ty::TyFunctionDecl::type_check(ctx.by_ref(), method.clone(), false, false),
                 ty::TyFunctionDecl::error(method.clone()),
                 warnings,
                 errors
@@ -138,6 +138,12 @@ impl ty::TyAbiDecl {
                         span: param.name.span(),
                     })
                 }
+            }
+            if !ids.insert(method.name.clone()) {
+                errors.push(CompileError::MultipleDefinitionsOfName {
+                    name: method.name.clone(),
+                    span: method.name.span(),
+                })
             }
             new_items.push(TyTraitItem::Fn(ctx.engines.de().insert(method)));
         }

@@ -1,5 +1,6 @@
 // Add test modules here:
 
+mod abi_impl_methods_callable;
 mod auth;
 mod block;
 mod call_frames;
