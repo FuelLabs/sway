@@ -135,7 +135,7 @@ impl Session {
     pub fn parse_project(
         &self,
         uri: &Url,
-        retrigger_compilation: Arc<AtomicBool>,
+        retrigger_compilation: Option<Arc<AtomicBool>>,
     ) -> Result<bool, LanguageServerError> {
         // Acquire a permit to parse the project. If there are none available, return false. This way,
         // we avoid publishing the same diagnostics multiple times.
@@ -192,6 +192,7 @@ impl Session {
             BuildTarget::default(),
             true,
             tests_enabled,
+            retrigger_compilation,
             &new_engines,
         )
         .map_err(LanguageServerError::FailedToCompile)?;
@@ -582,7 +583,7 @@ mod tests {
         let session = Session::new();
         let dir = get_absolute_path("sway-lsp/tests/fixtures");
         let uri = get_url(&dir);
-        let retrigger_compilation = Arc::new(AtomicBool::new(false));
+        let retrigger_compilation = None;
         let result = Session::parse_project(&session, &uri, retrigger_compilation)
             .expect_err("expected ManifestFileNotFound");
         assert!(matches!(

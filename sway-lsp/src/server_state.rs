@@ -97,7 +97,7 @@ impl ServerState {
         let should_publish = run_blocking_parse_project(
             uri.clone(),
             session.clone(),
-            self.retrigger_compilation.clone(),
+            Some(self.retrigger_compilation.clone()),
         )
         .await;
         if should_publish {
@@ -113,7 +113,7 @@ impl ServerState {
 async fn run_blocking_parse_project(
     uri: Url,
     session: Arc<Session>,
-    retrigger_compilation: Arc<AtomicBool>,
+    retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> bool {
     task::spawn_blocking(
         move || match session.parse_project(&uri, retrigger_compilation) {

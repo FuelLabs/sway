@@ -23,7 +23,7 @@ use std::{
     hash::{Hash, Hasher},
     path::{Path, PathBuf},
     str::FromStr,
-    sync::Arc,
+    sync::{atomic::{AtomicBool, Ordering}, Arc},
 };
 use sway_core::fuel_prelude::fuel_tx::ConsensusParameters;
 pub use sway_core::Programs;
@@ -2577,6 +2577,7 @@ pub fn check(
     build_target: BuildTarget,
     terse_mode: bool,
     include_tests: bool,
+    retrigger_compilation: Option<Arc<AtomicBool>>,
     engines: &Engines,
 ) -> anyhow::Result<Vec<CompileResult<Programs>>> {
     let mut lib_namespace_map = Default::default();
@@ -2623,6 +2624,14 @@ pub fn check(
             &profile,
         )?
         .include_tests(include_tests);
+
+        // If a request to retrigger compilation occurs in the language server,
+        // we stop compilation and return an empty vector.
+        if let Some(retrigger_compilation) = &retrigger_compilation {
+            if retrigger_compilation.load(Ordering::Relaxed) {
+                return Ok(vec![]);
+            }
+        }
 
         let mut metrics = PerformanceData::default();
         let programs_res = sway_core::compile_to_ast(
