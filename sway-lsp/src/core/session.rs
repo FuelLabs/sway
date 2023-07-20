@@ -28,7 +28,10 @@ use std::{
     fs::File,
     io::Write,
     path::PathBuf,
-    sync::{atomic::Ordering, Arc},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
     vec,
 };
 use sway_core::{
@@ -129,7 +132,11 @@ impl Session {
     }
 
     /// Parses the project and returns true if the compiler diagnostics are new and should be published.
-    pub fn parse_project(&self, uri: &Url) -> Result<bool, LanguageServerError> {
+    pub fn parse_project(
+        &self,
+        uri: &Url,
+        retrigger_compilation: Arc<AtomicBool>,
+    ) -> Result<bool, LanguageServerError> {
         // Acquire a permit to parse the project. If there are none available, return false. This way,
         // we avoid publishing the same diagnostics multiple times.
         let permit = self.parse_permits.try_acquire();
@@ -575,8 +582,9 @@ mod tests {
         let session = Session::new();
         let dir = get_absolute_path("sway-lsp/tests/fixtures");
         let uri = get_url(&dir);
-        let result =
-            Session::parse_project(&session, &uri).expect_err("expected ManifestFileNotFound");
+        let retrigger_compilation = Arc::new(AtomicBool::new(false));
+        let result = Session::parse_project(&session, &uri, retrigger_compilation)
+            .expect_err("expected ManifestFileNotFound");
         assert!(matches!(
             result,
             LanguageServerError::DocumentError(

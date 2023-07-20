@@ -11,7 +11,13 @@ use dashmap::DashMap;
 use forc_pkg::PackageManifestFile;
 use lsp_types::Url;
 use parking_lot::RwLock;
-use std::{path::PathBuf, sync::Arc};
+use std::{
+    path::PathBuf,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
 use tokio::task;
 use tower_lsp::{jsonrpc, Client};
 
@@ -21,6 +27,8 @@ pub struct ServerState {
     pub(crate) config: Arc<RwLock<Config>>,
     pub(crate) keyword_docs: Arc<KeywordDocs>,
     pub(crate) sessions: Arc<Sessions>,
+    pub(crate) retrigger_compilation: Arc<AtomicBool>,
+    pub(crate) is_compiling: RwLock<bool>,
 }
 
 impl ServerState {
@@ -28,11 +36,15 @@ impl ServerState {
         let sessions = Arc::new(Sessions(DashMap::new()));
         let config = Arc::new(RwLock::new(Default::default()));
         let keyword_docs = Arc::new(KeywordDocs::new());
+        let retrigger_compilation = Arc::new(AtomicBool::new(false));
+        let is_compiling = RwLock::new(false);
         ServerState {
             client,
             config,
             keyword_docs,
             sessions,
+            retrigger_compilation,
+            is_compiling,
         }
     }
 
@@ -81,23 +93,37 @@ impl ServerState {
     }
 
     pub(crate) async fn parse_project(&self, uri: Url, workspace_uri: Url, session: Arc<Session>) {
-        let should_publish = run_blocking_parse_project(uri.clone(), session.clone()).await;
+        *self.is_compiling.write() = true;
+        let should_publish = run_blocking_parse_project(
+            uri.clone(),
+            session.clone(),
+            self.retrigger_compilation.clone(),
+        )
+        .await;
         if should_publish {
             self.publish_diagnostics(&uri, &workspace_uri, session)
                 .await;
         }
+        *self.is_compiling.write() = false;
+        self.retrigger_compilation.store(false, Ordering::Relaxed);
     }
 }
 
 /// Runs parse_project in a blocking thread, because parsing is not async.
-async fn run_blocking_parse_project(uri: Url, session: Arc<Session>) -> bool {
-    task::spawn_blocking(move || match session.parse_project(&uri) {
-        Ok(should_publish) => should_publish,
-        Err(err) => {
-            tracing::error!("{}", err);
-            matches!(err, LanguageServerError::FailedToParse)
-        }
-    })
+async fn run_blocking_parse_project(
+    uri: Url,
+    session: Arc<Session>,
+    retrigger_compilation: Arc<AtomicBool>,
+) -> bool {
+    task::spawn_blocking(
+        move || match session.parse_project(&uri, retrigger_compilation) {
+            Ok(should_publish) => should_publish,
+            Err(err) => {
+                tracing::error!("{}", err);
+                matches!(err, LanguageServerError::FailedToParse)
+            }
+        },
+    )
     .await
     .unwrap_or_default()
 }

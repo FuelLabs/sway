@@ -7,6 +7,7 @@ use lsp_types::{
     DidChangeTextDocumentParams, DidChangeWatchedFilesParams, DidOpenTextDocumentParams,
     DidSaveTextDocumentParams, FileChangeType,
 };
+use std::sync::atomic::Ordering;
 
 pub(crate) async fn handle_did_open_text_document(
     state: &ServerState,
@@ -36,6 +37,10 @@ pub(crate) async fn handle_did_change_text_document(
         .uri_and_session_from_workspace(&params.text_document.uri)
     {
         Ok((uri, session)) => {
+            if *state.is_compiling.read() {
+                state.retrigger_compilation.store(true, Ordering::Relaxed);
+            }
+
             // handle on_enter capabilities if they are enabled
             capabilities::on_enter(&config, &state.client, &session, &uri.clone(), &params).await;
 
