@@ -56,10 +56,10 @@ impl<'a> ParsedTree<'a> {
 
     fn collect_parse_module(&self, parse_module: &ParseModule) {
         self.ctx.tokens.insert(
-            to_ident_key(&Ident::new(parse_module.span.clone())),
+            to_ident_key(&Ident::new(parse_module.module_kind_span.clone())),
             Token::from_parsed(
-                AstToken::LibrarySpan(parse_module.span.clone()),
-                SymbolKind::Module,
+                AstToken::LibrarySpan(parse_module.module_kind_span.clone()),
+                SymbolKind::Keyword,
             ),
         );
         for (
