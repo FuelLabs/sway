@@ -11,15 +11,15 @@ pub struct StorageString {}
 impl StorableSlice<String> for StorageKey<StorageString> {
     /// Takes a `String` type and saves the underlying data in storage.
     ///
-    /// ### Arguments
+    /// # Arguments
     ///
-    /// * `string` - The string which will be stored.
+    /// * `string`: [String] - The string which will be stored.
     ///
-    /// ### Number of Storage Accesses
+    /// # Number of Storage Accesses
     ///
     /// * Writes: `2`
     ///
-    /// ### Examples
+    /// # Examples
     ///
     /// ```sway
     /// storage {
@@ -43,11 +43,15 @@ impl StorableSlice<String> for StorageKey<StorageString> {
 
     /// Constructs a `String` type from storage.
     ///
-    /// ### Number of Storage Accesses
+    /// # Returns
+    /// 
+    /// * [Option<String>] - The valid `String` stored, otherwise `None`.
+    ///
+    /// # Number of Storage Accesses
     ///
     /// * Reads: `2`
     ///
-    /// ### Examples
+    /// # Examples
     ///
     /// ```sway
     /// storage {
@@ -79,12 +83,16 @@ impl StorableSlice<String> for StorageKey<StorageString> {
 
     /// Clears a stored `String` in storage.
     ///
-    /// ### Number of Storage Accesses
+    /// # Returns
+    ///
+    /// * [bool] - Indicates whether all of the storage slots cleared were previously set.
+    ///
+    /// # Number of Storage Accesses
     ///
     /// * Reads: `1`
     /// * Clears: `2`
     ///
-    /// ### Examples
+    /// # Examples
     ///
     /// ```sway
     /// storage {
@@ -114,11 +122,15 @@ impl StorableSlice<String> for StorageKey<StorageString> {
 
     /// Returns the length of `String` in storage.
     ///
-    /// ### Number of Storage Accesses
+    /// # Returns
+    ///
+    /// * [u64] - The length of the bytes in storage.
+    ///
+    /// # Number of Storage Accesses
     ///
     /// * Reads: `1`
     ///
-    /// ### Examples
+    /// # Examples
     ///
     /// ```sway
     /// storage {
