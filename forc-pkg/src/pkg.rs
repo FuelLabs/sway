@@ -2628,32 +2628,9 @@ pub fn check(
         )?
         .include_tests(include_tests);
 
-        // If a request to retrigger compilation occurs in the language server,
-        // we stop compilation and return an empty vector.
-        if let Some(retrigger_compilation) = &retrigger_compilation {
-            if retrigger_compilation.load(Ordering::Relaxed) {
-                return Ok(vec![]);
-            }
-        }
-
         let mut metrics = PerformanceData::default();
 
-        // let typed_res = sway_core::parse_and_type_check();
-        // if typed_res.is_none() {
-        //    results.push(typed_res);
-        //    return Ok(results);
-        // }
-        //
-        // let programs_res = sway_core::refine_and_analyze_ast(typed_res);
-        // let programs = match programs_res.value.as_ref() {
-        //     Some(programs) => programs,
-        //     _ => {
-        //         results.push(programs_res);
-        //         return Ok(results);
-        //     }
-        // };
-
-        let programs_res = sway_core::compile_to_ast(
+        let res = sway_core::parse_and_type_check(
             engines,
             manifest.entry_string()?,
             dep_namespace,
@@ -2662,6 +2639,16 @@ pub fn check(
             &mut metrics,
         );
 
+        // If a request to retrigger compilation occurs in the language server,
+        // we stop compilation and return an empty vector.
+        if let Some(retrigger_compilation) = &retrigger_compilation {
+            if retrigger_compilation.load(Ordering::Relaxed) {
+                return Ok(vec![]);
+            }
+        }
+
+        let programs_res =
+            sway_core::refine_and_analyze_ast(engines, Some(&build_config), &mut metrics, res);
         let programs = match programs_res.value.as_ref() {
             Some(programs) => programs,
             _ => {
