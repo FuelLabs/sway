@@ -23,7 +23,10 @@ use std::{
     hash::{Hash, Hasher},
     path::{Path, PathBuf},
     str::FromStr,
-    sync::{atomic::{AtomicBool, Ordering}, Arc},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
 };
 use sway_core::fuel_prelude::fuel_tx::ConsensusParameters;
 pub use sway_core::Programs;
@@ -2634,6 +2637,22 @@ pub fn check(
         }
 
         let mut metrics = PerformanceData::default();
+
+        // let typed_res = sway_core::parse_and_type_check();
+        // if typed_res.is_none() {
+        //    results.push(typed_res);
+        //    return Ok(results);
+        // }
+        //
+        // let programs_res = sway_core::refine_and_analyze_ast(typed_res);
+        // let programs = match programs_res.value.as_ref() {
+        //     Some(programs) => programs,
+        //     _ => {
+        //         results.push(programs_res);
+        //         return Ok(results);
+        //     }
+        // };
+
         let programs_res = sway_core::compile_to_ast(
             engines,
             manifest.entry_string()?,

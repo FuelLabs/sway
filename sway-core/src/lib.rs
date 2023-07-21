@@ -28,6 +28,8 @@ use asm_generation::FinalizedAsm;
 pub use asm_generation::{CompiledBytecode, FinalizedEntry};
 pub use build_config::{BuildConfig, BuildTarget};
 use control_flow_analysis::ControlFlowGraph;
+use language::lexed::LexedProgram;
+use language::parsed::ParseProgram;
 use metadata::MetadataManager;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -337,49 +339,18 @@ fn module_path(
 
 pub struct CompiledAsm(pub FinalizedAsm);
 
-use std::sync::atomic::{AtomicBool, Ordering};
-
-/// If a request to retrigger compilation occurs in the language server,
-/// we stop compilation and return.
-fn should_compilation_terminate(retrigger_compilation: Option<Arc<AtomicBool>>) -> bool {
-    match retrigger_compilation {
-        Some(retrigger_compilation) => retrigger_compilation.load(Ordering::Relaxed),
-        None => false,
-    }
-}
-
-pub fn parsed_to_ast(
+pub fn refine_ast_with_analysis(
     engines: &Engines,
-    parse_program: &parsed::ParseProgram,
-    initial_namespace: namespace::Module,
+    mut typed_program: ty::TyProgram,
     build_config: Option<&BuildConfig>,
-    package_name: &str,
 ) -> CompileResult<ty::TyProgram> {
-    // Type check the program.
-    let CompileResult {
-        value: typed_program_opt,
-        mut warnings,
-        mut errors,
-    } = ty::TyProgram::type_check(engines, parse_program, initial_namespace, package_name);
-
-    let mut typed_program = match typed_program_opt {
-        Some(typed_program) => typed_program,
-        None => return err(warnings, errors),
-    };
-
-    
-    if should_compilation_terminate(retrigger_compilation) {
-        return err(warnings, errors);
-    }
-
     // Collect information about the types used in this program
     let CompileResult {
         value: types_metadata_result,
-        warnings: new_warnings,
-        errors: new_errors,
+        mut warnings,
+        mut errors,
     } = typed_program.collect_types_metadata(&mut CollectTypesMetadataContext::new(engines));
-    warnings.extend(new_warnings);
-    errors.extend(new_errors);
+
     let types_metadata = match types_metadata_result {
         Some(types_metadata) => types_metadata,
         None => return deduped_err(warnings, errors),
@@ -473,6 +444,25 @@ pub fn compile_to_ast(
     package_name: &str,
     metrics: &mut PerformanceData,
 ) -> CompileResult<Programs> {
+    let res = parse_and_type_check(
+        engines,
+        input,
+        initial_namespace,
+        build_config,
+        package_name,
+        metrics,
+    );
+    refine_and_analyze_ast(engines, build_config, metrics, res)
+}
+
+pub fn parse_and_type_check(
+    engines: &Engines,
+    input: Arc<str>,
+    initial_namespace: namespace::Module,
+    build_config: Option<&BuildConfig>,
+    package_name: &str,
+    metrics: &mut PerformanceData,
+) -> CompileResult<(LexedProgram, ParseProgram, Option<ty::TyProgram>)> {
     // Parse the program to a concrete syntax tree (CST).
     let CompileResult {
         value: parse_program_opt,
@@ -491,15 +481,6 @@ pub fn compile_to_ast(
         None => return deduped_err(warnings, errors),
     };
 
-    // Type check the CST
-    let type_checked = time_expr!(
-        "type check the concrete syntax tree (CST)",
-        "type_check",
-        ty::TyProgram::type_check(engines, &parsed_program, initial_namespace, package_name),
-        build_config,
-        metrics
-    );
-
     // If tests are not enabled, exclude them from `parsed_program`.
     if build_config
         .map(|config| !config.include_tests)
@@ -508,26 +489,61 @@ pub fn compile_to_ast(
         parsed_program.exclude_tests();
     }
 
-    // Type check (+ other static analysis) the CST to a typed AST.
-    let typed_res = time_expr!(
-        "parse the concrete syntax tree (CST) to a typed AST",
-        "parse_ast",
-        parsed_to_ast(
-            engines,
-            &parsed_program,
-            initial_namespace,
-            build_config,
-            package_name,
-        ),
+    // Type check the CST
+    let type_checked_res = time_expr!(
+        "type check the concrete syntax tree (CST)",
+        "type_check",
+        ty::TyProgram::type_check(engines, &parsed_program, initial_namespace, package_name),
         build_config,
         metrics
     );
 
-    errors.extend(typed_res.errors);
-    warnings.extend(typed_res.warnings);
+    warnings.extend(type_checked_res.warnings);
+    errors.extend(type_checked_res.errors);
 
     ok(
-        Programs::new(lexed_program, parsed_program, typed_res.value),
+        (lexed_program, parsed_program, type_checked_res.value),
+        dedup_unsorted(warnings),
+        dedup_unsorted(errors),
+    )
+}
+
+pub fn refine_and_analyze_ast(
+    engines: &Engines,
+    build_config: Option<&BuildConfig>,
+    metrics: &mut PerformanceData,
+    res: CompileResult<(LexedProgram, ParseProgram, Option<ty::TyProgram>)>,
+) -> CompileResult<Programs> {
+    let CompileResult {
+        value: programs_opt,
+        mut warnings,
+        mut errors,
+    } = res;
+
+    let (lexed_program, parsed_program, typed_program_opt) = match programs_opt {
+        Some(modules) => modules,
+        None => return deduped_err(warnings, errors),
+    };
+
+    let typed_program = match typed_program_opt {
+        Some(typed_program) => typed_program,
+        None => return err(warnings, errors),
+    };
+
+    // Refine the typed AST through further static analysis.
+    let refined_typed_ast_res = time_expr!(
+        "refine the typed AST through further static analysis",
+        "refine_ast",
+        refine_ast_with_analysis(engines, typed_program, build_config,),
+        build_config,
+        metrics
+    );
+
+    errors.extend(refined_typed_ast_res.errors);
+    warnings.extend(refined_typed_ast_res.warnings);
+
+    ok(
+        Programs::new(lexed_program, parsed_program, refined_typed_ast_res.value),
         dedup_unsorted(warnings),
         dedup_unsorted(errors),
     )
