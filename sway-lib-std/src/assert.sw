@@ -7,18 +7,21 @@ use ::error_signals::{FAILED_ASSERT_SIGNAL, FAILED_ASSERT_EQ_SIGNAL};
 
 
 /// Asserts that the given `condition` will always be `true` during runtime.
+///
+/// # Additional Information
+///
 /// To check for conditions that may not be `true`, use `std::revert::require` instead.
 /// For more information, see the Wiki article on [Assertion](https://en.wikipedia.org/wiki/Assertion_(software_development)#Comparison_with_error_handling).
 ///
-/// ### Arguments
+/// # Arguments
 ///
-/// * `condition` - The condition which will be asserted to be `true`.
+/// * `condition`: [bool] - The condition which will be asserted to be `true`.
 ///
-/// ### Reverts
+/// # Panics
 ///
-/// Reverts when `condition` is `false`.
+/// * Panics when `condition` is `false`.
 ///
-/// ### Examples
+/// # Examples
 ///
 /// ```sway
 /// fn foo(a: u64, b: u64) {
@@ -35,16 +38,16 @@ pub fn assert(condition: bool) {
 
 /// Asserts that the given values `v1` & `v2` will always be equal during runtime.
 ///
-/// ### Arguments
+/// # Arguments
 ///
-/// * `v1` - The first value to compare.
-/// * `v2` - The second value to compare.
+/// * `v1`: [T] - The first value to compare.
+/// * `v2`: [T] - The second value to compare.
 ///
-/// ### Reverts
+/// # Panics
 ///
-/// Reverts when `v1` != `v2`.
+/// * Panics when `v1` != `v2`.
 ///
-/// ### Examples
+/// # Examples
 ///
 /// ```sway
 /// fn foo(a: u64, b: u64) {
