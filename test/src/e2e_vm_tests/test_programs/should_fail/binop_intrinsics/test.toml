@@ -2,20 +2,67 @@ category = "fail"
 
 # check: $()error
 # check: $()__add(A { a: 32 }, 32);
-# nextln: $()Unsupported argument type to intrinsic "add"
+# nextln: $()Mismatched types
+# nextln: $()expected: numeric
+# nextln: $()found:    A.
+# nextln: $()help: Incorrect argument type
 
 # check: $()error
 # check: $()__add("Hello", 22);
-# nextln: $()Unsupported argument type to intrinsic "add"
+# nextln: $()Mismatched types
+# nextln: $()expected: numeric
+# nextln: $()found:    str[5].
+# nextln: $()help: Incorrect argument type
 
 # check: $()error
 # check: $()__add("Hello", "Hello")
-# nextln: $()Unsupported argument type to intrinsic "add"
+# nextln: $()Mismatched types
+# nextln: $()expected: numeric
+# nextln: $()found:    str[5].
+# nextln: $()help: Incorrect argument type
+
+# check: $()error
+# check: $()__add("Hello", "Hello")
+# nextln: $()Mismatched types
+# nextln: $()expected: numeric
+# nextln: $()found:    str[5].
+# nextln: $()help: Incorrect argument type
 
 # check: $()error
 # check: $()__add(false, true)
-# nextln: $()Unsupported argument type to intrinsic "add"
+# nextln: $()Mismatched types
+# nextln: $()expected: numeric
+# nextln: $()found:    bool.
+# nextln: $()help: Incorrect argument type
+
+# check: $()error
+# check: $()__add(false, true)
+# nextln: $()Mismatched types
+# nextln: $()expected: numeric
+# nextln: $()found:    bool.
+# nextln: $()help: Incorrect argument type
+
+# check: $()error
+# check: $()__add(1u32, 1u64)
+# nextln: $()Mismatched types
+# nextln: $()expected: u32
+# nextln: $()found:    u64.
+# nextln: $()help: Incorrect argument type
 
 # check: $()error
 # check: $()__add::<u32>(0, 1)
 # nextln: $()Call to "add" expects 0 type arguments
+
+# check: $()error
+# check: $()__rsh("Hello", 1)
+# nextln: $()Mismatched types
+# nextln: $()expected: numeric
+# nextln: $()found:    str[5].
+# nextln: $()help: Incorrect argument type
+
+# check: $()error
+# check: $()__rsh(1, "Hello")
+# nextln: $()Mismatched types
+# nextln: $()expected: numeric
+# nextln: $()found:    str[5].
+# nextln: $()help: Incorrect argument type

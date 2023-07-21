@@ -56,6 +56,7 @@ fn main() -> u64 {
   assert(__lsh(2, 3) == 16);
   assert(__rsh(16, 3) == 2);
   assert(__rsh(1, 1) == 0);
+  assert(__rsh(1u8, 1u64) == 0);
 
   2
 }

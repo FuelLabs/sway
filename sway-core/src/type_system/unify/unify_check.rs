@@ -627,7 +627,13 @@ impl<'a> UnifyCheck<'a> {
                         let a = right_types.get(i).unwrap();
                         let b = right_types.get(j).unwrap();
                         if matches!(&self.mode, Coercion)
-                            && (matches!(a, Placeholder(_)) || matches!(b, Placeholder(_)))
+                            && (matches!(
+                                (a, b),
+                                (_, Placeholder(_))
+                                    | (Placeholder(_), _)
+                                    | (UnsignedInteger(_), Numeric)
+                                    | (Numeric, UnsignedInteger(_))
+                            ))
                         {
                             continue;
                         }
@@ -641,7 +647,13 @@ impl<'a> UnifyCheck<'a> {
                     let a = left_types.get(i).unwrap();
                     let b = left_types.get(j).unwrap();
                     if matches!(&self.mode, Coercion)
-                        && (matches!(a, Placeholder(_)) || matches!(b, Placeholder(_)))
+                        && (matches!(
+                            (a, b),
+                            (_, Placeholder(_))
+                                | (Placeholder(_), _)
+                                | (UnsignedInteger(_), Numeric)
+                                | (Numeric, UnsignedInteger(_))
+                        ))
                     {
                         continue;
                     }
