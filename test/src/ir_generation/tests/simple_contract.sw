@@ -41,6 +41,7 @@ impl Test for Contract {
 
 // regex: REG=\$r\d+
 // regex: ID=[_[:alpha:]][_0-9[:alpha:]]*
+// regex: IMM=i\d+
 
 // Get the called selector.
 // check: lw   $(sel_reg=$REG) $$fp i73
@@ -48,17 +49,17 @@ impl Test for Contract {
 // Check selector for get_b256()
 // check: lw   $(get_b256_sel_reg=$REG) $(get_b256_sel_data=$ID)
 // check: eq   $(eq_reg=$REG) $sel_reg $get_b256_sel_reg
-// check: jnzi $eq_reg
+// check: jnzf $eq_reg $$zero $IMM
 
 // Check selector for get_s()
 // check: lw   $(get_s_sel_reg=$REG) $(get_s_sel_data=$ID)
 // check: eq   $(eq_reg=$REG) $sel_reg $get_s_sel_reg
-// check: jnzi $eq_reg
+// check: jnzf $eq_reg $$zero $IMM
 
 // Check selector for get_u64()
 // check: lw   $(get_u64_sel_reg=$REG) $(get_u64_sel_data=$ID)
 // check: eq   $(eq_reg=$REG) $sel_reg $get_u64_sel_reg
-// check: jnzi $eq_reg
+// check: jnzf $eq_reg $$zero $IMM
 
 // Revert on no match.
 // check: movi $$$$tmp i123

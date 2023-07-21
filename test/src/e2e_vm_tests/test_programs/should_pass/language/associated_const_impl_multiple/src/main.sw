@@ -10,6 +10,6 @@ impl Struct {
     const ID2: u32 = 2;
 }
 
-fn main() -> u64 {
+fn main() -> u32 {
   Struct::ID
 }

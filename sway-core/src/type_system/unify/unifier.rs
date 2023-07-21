@@ -1,10 +1,7 @@
 use std::fmt;
 
-use sway_error::{
-    type_error::TypeError,
-    warning::{CompileWarning, Warning},
-};
-use sway_types::{integer_bits::IntegerBits, Ident, Span};
+use sway_error::{type_error::TypeError, warning::CompileWarning};
+use sway_types::{Ident, Span};
 
 use crate::{engine_threading::*, language::ty, type_system::priv_prelude::*};
 
@@ -150,7 +147,7 @@ impl<'a> Unifier<'a> {
 
             // For integers and numerics, we (potentially) unify the numeric
             // with the integer.
-            (UnsignedInteger(r), UnsignedInteger(e)) => self.unify_unsigned_ints(span, r, e),
+            (UnsignedInteger(r), UnsignedInteger(e)) if r == e => (vec![], vec![]),
             (Numeric, e @ UnsignedInteger(_)) => {
                 self.replace_received_with_expected(received, expected, &Numeric, e, span)
             }
@@ -303,36 +300,6 @@ impl<'a> Unifier<'a> {
         (warnings, errors)
     }
 
-    fn unify_unsigned_ints(
-        &self,
-        span: &Span,
-        r: IntegerBits,
-        e: IntegerBits,
-    ) -> (Vec<CompileWarning>, Vec<TypeError>) {
-        // E.g., in a variable declaration `let a: u32 = 10u64` the 'expected' type will be
-        // the annotation `u32`, and the 'received' type is 'self' of the initialiser, or
-        // `u64`.  So we're casting received TO expected.
-        let warnings = match numeric_cast_compat(e, r) {
-            NumericCastCompatResult::CastableWithWarning(warn) => {
-                vec![CompileWarning {
-                    span: span.clone(),
-                    warning_content: *warn,
-                }]
-            }
-            NumericCastCompatResult::Compatible => {
-                vec![]
-            }
-        };
-
-        // we don't want to do a slab replacement here, because
-        // we don't want to overwrite the original numeric type with the new one.
-        // This isn't actually inferencing the original type to the new numeric type.
-        // We just want to say "up until this point, this was a u32 (eg) and now it is a
-        // u64 (eg)". If we were to do a slab replace here, we'd be saying "this was always a
-        // u64 (eg)".
-        (warnings, vec![])
-    }
-
     fn unify_structs(
         &self,
         received: TypeId,
@@ -436,30 +403,4 @@ impl<'a> Unifier<'a> {
         let e = format!("{:?}", self.engines.help_out(e));
         (r, e)
     }
-}
-
-fn numeric_cast_compat(new_size: IntegerBits, old_size: IntegerBits) -> NumericCastCompatResult {
-    // If this is a downcast, warn for loss of precision. If upcast, then no warning.
-    use IntegerBits::*;
-    match (new_size, old_size) {
-        // These should generate a downcast warning.
-        (Eight, Sixteen)
-        | (Eight, ThirtyTwo)
-        | (Eight, SixtyFour)
-        | (Sixteen, ThirtyTwo)
-        | (Sixteen, SixtyFour)
-        | (ThirtyTwo, SixtyFour) => {
-            NumericCastCompatResult::CastableWithWarning(Box::new(Warning::LossOfPrecision {
-                initial_type: old_size,
-                cast_to: new_size,
-            }))
-        }
-        // Upcasting is ok, so everything else is ok.
-        _ => NumericCastCompatResult::Compatible,
-    }
-}
-
-enum NumericCastCompatResult {
-    Compatible,
-    CastableWithWarning(Box<Warning>),
 }

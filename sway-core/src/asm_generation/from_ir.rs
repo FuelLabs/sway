@@ -200,28 +200,7 @@ pub enum StateAccessType {
 }
 
 pub(crate) fn ir_type_size_in_bytes(context: &Context, ty: &Type) -> u64 {
-    match ty.get_content(context) {
-        TypeContent::Unit | TypeContent::Bool | TypeContent::Uint(_) | TypeContent::Pointer(_) => 8,
-        TypeContent::Slice => 16,
-        TypeContent::B256 => 32,
-        TypeContent::String(n) => size_bytes_round_up_to_word_alignment!(*n),
-        TypeContent::Array(el_ty, cnt) => cnt * ir_type_size_in_bytes(context, el_ty),
-        TypeContent::Struct(field_tys) => {
-            // Sum up all the field sizes.
-            field_tys
-                .iter()
-                .map(|field_ty| ir_type_size_in_bytes(context, field_ty))
-                .sum()
-        }
-        TypeContent::Union(field_tys) => {
-            // Find the max size for field sizes.
-            field_tys
-                .iter()
-                .map(|field_ty| ir_type_size_in_bytes(context, field_ty))
-                .max()
-                .unwrap_or(0)
-        }
-    }
+    ty.size_in_bytes(context)
 }
 
 pub(crate) fn ir_type_str_size_in_bytes(context: &Context, ty: &Type) -> u64 {

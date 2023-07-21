@@ -898,7 +898,10 @@ impl TypeInfo {
         // whether they're actually asking 'is_aggregate()` or something else.
         matches!(
             self,
-            TypeInfo::Boolean | TypeInfo::UnsignedInteger(_) | TypeInfo::RawUntypedPtr
+            TypeInfo::Boolean
+                | TypeInfo::UnsignedInteger(_)
+                | TypeInfo::RawUntypedPtr
+                | TypeInfo::Numeric
         ) || self.is_unit()
     }
 

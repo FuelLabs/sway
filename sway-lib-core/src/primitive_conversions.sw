@@ -141,6 +141,12 @@ impl u64 {
 }
 
 impl u32 {
+    pub fn as_u64(self) -> u64 {
+        asm(input: self) {
+            input: u64
+        }
+    }
+
     pub fn to_le_bytes(self) -> [u8; 4] {
         let output = [0_u8, 0_u8, 0_u8, 0_u8];
 
@@ -213,6 +219,18 @@ impl u32 {
 }
 
 impl u16 {
+    pub fn as_u32(self) -> u32 {
+        asm(input: self) {
+            input: u32
+        }
+    }
+
+    pub fn as_u64(self) -> u64 {
+        asm(input: self) {
+            input: u64
+        }
+    }
+
     pub fn to_le_bytes(self) -> [u8; 2] {
         let output = [0_u8, 0_u8];
 
@@ -255,6 +273,26 @@ impl u16 {
             sll  r1 a i;
             or   r1 r1 b;
             r1: u16
+        }
+    }
+}
+
+impl u8 {
+    pub fn as_u16(self) -> u16 {
+        asm(input: self) {
+            input: u16
+        }
+    }
+
+    pub fn as_u32(self) -> u32 {
+        asm(input: self) {
+            input: u32
+        }
+    }
+
+    pub fn as_u64(self) -> u64 {
+        asm(input: self) {
+            input: u64
         }
     }
 }
@@ -463,7 +501,7 @@ fn test_b256_to_le_bytes() {
 
     let mut i: u8 = 0;
     while i < 32_u8 {
-        assert(bytes[i] == 32_u8 - i);
+        assert(bytes[i.as_u64()] == 32_u8 - i);
         i += 1_u8;
     }
 
@@ -489,7 +527,7 @@ fn test_b256_to_be_bytes() {
 
     let mut i: u8 = 0;
     while i < 32_u8 {
-        assert(bytes[i] == i + 1_u8);
+        assert(bytes[i.as_u64()] == i + 1_u8);
         i += 1_u8;
     }
 }

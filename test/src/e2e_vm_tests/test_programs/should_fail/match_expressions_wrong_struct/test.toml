@@ -2,14 +2,14 @@ category = "fail"
 
 # check: Point { x: 3, y } => { y },
 # nextln: $()Mismatched types.
-# nextln: $()expected: u64
+# nextln: $()expected: numeric
 # nextln: $()found:    Point.
 
 # check: Point { x: 3, y: 4 } => { 24 },
 
 # check: Point { x: 3, y: 4 } => { 24 },
 # nextln: $()Mismatched types.
-# nextln: $()expected: u64
+# nextln: $()expected: numeric
 # nextln: $()found:    Point.
 
 # check: Data { value: 1u64 } => { false },

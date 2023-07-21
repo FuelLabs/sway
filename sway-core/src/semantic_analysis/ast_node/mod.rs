@@ -1,10 +1,10 @@
 pub mod code_block;
 pub mod declaration;
 pub mod expression;
-pub mod mode;
+pub mod modes;
 
 pub(crate) use expression::*;
-pub(crate) use mode::*;
+pub(crate) use modes::*;
 
 use crate::{
     error::*,

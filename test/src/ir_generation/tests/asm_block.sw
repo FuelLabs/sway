@@ -28,10 +28,13 @@ fn main() -> u64 {
 // ::check-asm::
 
 // regex: REG=\$r\d+
+// regex: IMM=i\d+
 
 // Call get_global_gas() and then return the result of the bhei instruction.
-// check: movi $$$$reta
-// check: ji
+// check: sub  $$$$reta $$pc $$is
+// check: srli $$$$reta $$$$reta $IMM
+// check: addi $$$$reta $$$$reta $IMM
+// check: jmpf $$zero $IMM
 // check: bhei $(ret_val=$REG)
 // check: ret  $ret_val
 

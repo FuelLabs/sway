@@ -67,7 +67,7 @@ fn test_vector_new_u8() {
         Some(val) => assert(val == number4), None => revert(0),
     }
 
-    match vector.get(number6) {
+    match vector.get(number6.as_u64()) {
         Some(val) => assert(val == number6), None => revert(0),
     }
 

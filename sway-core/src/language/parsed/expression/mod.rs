@@ -142,6 +142,7 @@ pub struct ArrayIndexExpression {
 #[derive(Debug, Clone)]
 pub struct StorageAccessExpression {
     pub field_names: Vec<Ident>,
+    pub storage_keyword_span: Span,
 }
 
 #[derive(Debug, Clone)]
