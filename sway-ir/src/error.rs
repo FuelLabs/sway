@@ -23,7 +23,7 @@ pub enum IrError {
     VerifyBlockArgMalformed,
     VerifyBranchParamsMismatch,
     VerifyBranchToMissingBlock(String),
-    VerifyCallArgTypeMismatch(String),
+    VerifyCallArgTypeMismatch(String, String, String),
     VerifyCallToMissingFunction(String),
     VerifyCmpBadTypes(String, String),
     VerifyCmpTypeMismatch(String, String),
@@ -136,10 +136,10 @@ impl fmt::Display for IrError {
                     Branch to block '{label}' is not a block in the current function."
                 )
             }
-            IrError::VerifyCallArgTypeMismatch(callee) => {
+            IrError::VerifyCallArgTypeMismatch(callee, caller_ty, callee_ty) => {
                 write!(
                     f,
-                    "Verification failed: Type mismatch found for call to '{callee}'."
+                    "Verification failed: Type mismatch found for call to '{callee}': {caller_ty} is not a {callee_ty}."
                 )
             }
             IrError::VerifyCallToMissingFunction(callee) => {

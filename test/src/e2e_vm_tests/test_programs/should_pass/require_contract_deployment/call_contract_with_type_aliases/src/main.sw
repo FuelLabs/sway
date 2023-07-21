@@ -3,7 +3,7 @@ script;
 use contract_with_type_aliases_abi::*;
 
 fn main() {
-    let caller = abi(MyContract, 0xfcb02d42c5e47a434798b1ec463f9fea652fbb47d2f99e9919650ceceb013799);
+    let caller = abi(MyContract, 0x327fe8d236dd68c93d9e16e3a28fb3ab45404fa75b44e6ebf435e74984cd56fd);
 
     let x = AssetId::from(0x0101010101010101010101010101010101010101010101010101010101010101);
 

@@ -9,6 +9,7 @@ use crate::{
     },
     metadata::MetadataManager,
     semantic_analysis::*,
+    UnifyCheck,
 };
 
 use super::{
@@ -424,14 +425,10 @@ fn const_eval_typed_expr(
             let te = lookup.engines.te();
 
             assert!({
-                let elem_type_info = te.get(*elem_type);
-                element_typs.iter().all(|tid| {
-                    lookup
-                        .engines
-                        .te()
-                        .get(*tid)
-                        .eq(&elem_type_info, lookup.engines)
-                })
+                let unify_check = UnifyCheck::coercion(lookup.engines);
+                element_typs
+                    .iter()
+                    .all(|tid| unify_check.check(*tid, *elem_type))
             });
 
             create_array_aggregate(

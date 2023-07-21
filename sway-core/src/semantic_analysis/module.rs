@@ -14,6 +14,7 @@ impl ty::TyModule {
             tree,
             attributes,
             span,
+            ..
         } = parsed;
 
         // Type-check submodules first in order of declaration.
