@@ -73,7 +73,7 @@ impl TxContractTest for Contract {
         tx_script_data_length()
     }
     fn get_tx_inputs_count() -> u64 {
-        input_count()
+        input_count().as_u64()
     }
     fn get_tx_outputs_count() -> u64 {
         output_count()
@@ -154,7 +154,7 @@ impl TxContractTest for Contract {
 
     fn get_input_predicate(index: u64, bytecode: Vec<u8>) -> bool {
         let code = input_predicate(index);
-        assert(input_predicate_length(index).unwrap() == bytecode.len());
+        assert(input_predicate_length(index).unwrap().as_u64() == bytecode.len());
         let mut i = 0;
         while i < bytecode.len() {
             assert(bytecode.get(i).unwrap() == code.get(i).unwrap());

@@ -265,7 +265,18 @@ impl Namespace {
         let decl_engine = engines.de();
         let type_engine = engines.te();
 
-        let unify_check = UnifyCheck::non_dynamic_equality(engines);
+        let eq_check = UnifyCheck::non_dynamic_equality(engines);
+        let coercion_check = UnifyCheck::coercion(engines);
+
+        // default numeric types to u64
+        if type_engine.contains_numeric(decl_engine, type_id) {
+            check!(
+                type_engine.decay_numeric(engines, type_id, &method_name.span()),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+        }
 
         let matching_item_decl_refs = check!(
             self.find_items_for_type(type_id, method_prefix, method_name, self_type, engines,),
@@ -295,9 +306,9 @@ impl Namespace {
                         .parameters
                         .iter()
                         .zip(args_buf.iter())
-                        .all(|(p, a)| unify_check.check(p.type_argument.type_id, a.return_type))
+                        .all(|(p, a)| coercion_check.check(p.type_argument.type_id, a.return_type))
                     && (matches!(type_engine.get(annotation_type), TypeInfo::Unknown)
-                        || unify_check.check(annotation_type, method.return_type.type_id))
+                        || coercion_check.check(annotation_type, method.return_type.type_id))
                 {
                     maybe_method_decl_refs.push(decl_ref);
                 }
@@ -347,7 +358,7 @@ impl Namespace {
                                                 warnings,
                                                 errors
                                             );
-                                            if !unify_check.check(p1_type_id, p2_type_id) {
+                                            if !eq_check.check(p1_type_id, p2_type_id) {
                                                 params_equal = false;
                                                 break;
                                             }

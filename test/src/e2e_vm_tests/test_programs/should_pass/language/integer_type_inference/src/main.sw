@@ -2,28 +2,16 @@ script;
 
 /* Test Constants */
 const X1: u8 = 4u8;
-const X2: u8 = 4u16;
-const X3: u8 = 4u32;
-const X4: u8 = 4u64;
-const X5: u8 = 4;
+const X2: u8 = 4;
 
-const Y1: u16 = 4u8;
-const Y2: u16 = 4u16;
-const Y3: u16 = 4u32;
-const Y4: u16 = 4u64;
-const Y5: u16 = 4;
+const Y1: u16 = 4u16;
+const Y2: u16 = 4;
 
-const Z1: u32 = 4u8;
-const Z2: u32 = 4u16;
-const Z3: u32 = 4u32;
-const Z4: u32 = 4u64;
-const Z5: u32 = 4;
+const Z1: u32 = 4u32;
+const Z2: u32 = 4;
 
-const W1: u64 = 4u8;
-const W2: u64 = 4u16;
-const W3: u64 = 4u32;
-const W4: u64 = 4u64;
-const W5: u64 = 4;
+const W1: u64 = 4u64;
+const W2: u64 = 4;
 
 const V1 = 4u8;
 const V2 = 4u16;
@@ -69,27 +57,15 @@ fn main() {
     /* Make sure that the resulting types of constants are correct */
     X1.foo_u8();
     X2.foo_u8();
-    X3.foo_u8();
-    X4.foo_u8();
-    X5.foo_u8();
 
     Y1.foo_u16();
     Y2.foo_u16();
-    Y3.foo_u16();
-    Y4.foo_u16();
-    Y5.foo_u16();
 
     Z1.foo_u32();
     Z2.foo_u32();
-    Z3.foo_u32();
-    Z4.foo_u32();
-    Z5.foo_u32();
 
     W1.foo_u64();
     W2.foo_u64();
-    W3.foo_u64();
-    W4.foo_u64();
-    W5.foo_u64();
 
     V1.foo_u8();
     V2.foo_u16();
@@ -99,26 +75,26 @@ fn main() {
 
     /* Make sure that the resulting types of variables are correct */
     let x1: u8 = 4u8;
-    let x2: u8 = 4u16;
-    let x3: u8 = 4u32;
-    let x4: u8 = 4u64;
+    let x2: u8 = 4u16.try_as_u8().unwrap();
+    let x3: u8 = 4u32.try_as_u8().unwrap();
+    let x4: u8 = 4u64.try_as_u8().unwrap();
     let x5: u8 = 4;
 
-    let y1: u16 = 4u8;
+    let y1: u16 = 4u8.as_u16();
     let y2: u16 = 4u16;
-    let y3: u16 = 4u32;
-    let y4: u16 = 4u64;
+    let y3: u16 = 4u32.try_as_u16().unwrap();
+    let y4: u16 = 4u64.try_as_u16().unwrap();
     let y5: u16 = 4;
 
-    let z1: u32 = 4u8;
-    let z2: u32 = 4u16;
+    let z1: u32 = 4u8.as_u32();
+    let z2: u32 = 4u16.as_u32();
     let z3: u32 = 4u32;
-    let z4: u32 = 4u64;
+    let z4: u32 = 4u64.try_as_u32().unwrap();
     let z5: u32 = 4;
 
-    let w1: u64 = 4u8;
-    let w2: u64 = 4u16;
-    let w3: u64 = 4u32;
+    let w1: u64 = 4u8.as_u64();
+    let w2: u64 = 4u16.as_u64();
+    let w3: u64 = 4u32.as_u64();
     let w4: u64 = 4u64;
     let w5: u64 = 4;
 

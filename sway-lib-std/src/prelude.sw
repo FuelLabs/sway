@@ -24,6 +24,9 @@ use ::revert::{require, revert};
 // Convert
 use ::convert::From;
 
+// Primitive conversions
+use ::primitive_conversions::*;
+
 // Logging
 use ::logging::log;
 
