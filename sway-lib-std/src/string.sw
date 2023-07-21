@@ -5,11 +5,14 @@ use ::convert::From;
 use ::option::Option;
 use ::assert::assert;
 
-// WARNING: As this type is meant to be forward compatible with UTF-8, do *not*
-// add any mutation functionality or unicode input of any kind until `char` is
-// implemented, codepoints are *not* guaranteed to fall on byte boundaries
 
 /// A UTF-8 encoded growable string.
+/// 
+/// # Additional Information
+/// 
+/// WARNING: As this type is meant to be forward compatible with UTF-8, do *not*
+/// add any mutation functionality or unicode input of any kind until `char` is
+/// implemented, codepoints are *not* guaranteed to fall on byte boundaries
 pub struct String {
     /// The bytes representing the characters of the string.
     bytes: Bytes,
