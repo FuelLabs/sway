@@ -1,7 +1,37 @@
 contract;
 
 use std::constants::ZERO_B256;
-use ownership::{*, data_structures::State};
+
+// SRC-5 Ownership Standard `State` enum
+pub enum State {
+    Uninitialized: (),
+    Initialized: Identity,
+    Revoked: (),
+}
+
+// SRC-5 Ownership Standard `Ownership` struct
+pub struct Ownership {
+    state: State,
+}
+
+// Skeleton implementation of the Ownership Library.
+// The library can be found here https://github.com/FuelLabs/sway-libs/tree/master/libs/ownership
+impl StorageKey<Ownership> {
+    fn renounce_ownership(self) {}
+    fn set_ownership(self, identity: Identity) {}
+    fn owner(self) -> State {
+        State::Uninitialized
+    }
+    fn only_owner(self) {}
+}
+
+impl Ownership {
+    fn initialized(identity: Identity) -> Self {
+        Self {
+            state: State::Initialized(identity),
+        }
+    }
+}
 
 abi OwnershipExample {
     #[storage(write)]

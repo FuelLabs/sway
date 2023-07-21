@@ -13,7 +13,7 @@ impl u64 {
     }
 
     /// The size of this integer type in bits.
-    pub fn bits() -> u32 {
+    pub fn bits() -> u64 {
         64
     }
 }
@@ -31,7 +31,7 @@ impl u32 {
     }
 
     /// The size of this integer type in bits.
-    pub fn bits() -> u32 {
+    pub fn bits() -> u64 {
         32
     }
 }
@@ -49,7 +49,7 @@ impl u16 {
     }
 
     /// The size of this integer type in bits.
-    pub fn bits() -> u32 {
+    pub fn bits() -> u64 {
         16
     }
 }
@@ -67,7 +67,7 @@ impl u8 {
     }
 
     /// The size of this integer type in bits.
-    pub fn bits() -> u32 {
+    pub fn bits() -> u64 {
         8
     }
 }
