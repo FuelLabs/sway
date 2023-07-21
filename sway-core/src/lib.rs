@@ -337,6 +337,17 @@ fn module_path(
 
 pub struct CompiledAsm(pub FinalizedAsm);
 
+use std::sync::atomic::{AtomicBool, Ordering};
+
+/// If a request to retrigger compilation occurs in the language server,
+/// we stop compilation and return.
+fn should_compilation_terminate(retrigger_compilation: Option<Arc<AtomicBool>>) -> bool {
+    match retrigger_compilation {
+        Some(retrigger_compilation) => retrigger_compilation.load(Ordering::Relaxed),
+        None => false,
+    }
+}
+
 pub fn parsed_to_ast(
     engines: &Engines,
     parse_program: &parsed::ParseProgram,
@@ -355,6 +366,11 @@ pub fn parsed_to_ast(
         Some(typed_program) => typed_program,
         None => return err(warnings, errors),
     };
+
+    
+    if should_compilation_terminate(retrigger_compilation) {
+        return err(warnings, errors);
+    }
 
     // Collect information about the types used in this program
     let CompileResult {
@@ -474,6 +490,15 @@ pub fn compile_to_ast(
         Some(modules) => modules,
         None => return deduped_err(warnings, errors),
     };
+
+    // Type check the CST
+    let type_checked = time_expr!(
+        "type check the concrete syntax tree (CST)",
+        "type_check",
+        ty::TyProgram::type_check(engines, &parsed_program, initial_namespace, package_name),
+        build_config,
+        metrics
+    );
 
     // If tests are not enabled, exclude them from `parsed_program`.
     if build_config
