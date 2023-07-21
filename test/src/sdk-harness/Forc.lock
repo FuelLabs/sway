@@ -1,4 +1,8 @@
 [[package]]
+name = 'abi_impl_methods_callable'
+source = 'member'
+
+[[package]]
 name = 'auth_caller_contract'
 source = 'member'
 dependencies = [

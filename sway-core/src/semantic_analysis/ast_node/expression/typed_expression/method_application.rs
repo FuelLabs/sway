@@ -487,6 +487,7 @@ pub(crate) fn resolve_method_name(
                     &arguments,
                     None,
                     engines,
+                    true
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -529,6 +530,7 @@ pub(crate) fn resolve_method_name(
                     &arguments,
                     None,
                     engines,
+                    true
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -558,6 +560,7 @@ pub(crate) fn resolve_method_name(
                     &arguments,
                     None,
                     engines,
+                    true
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -585,7 +588,8 @@ pub(crate) fn resolve_method_name(
                     ctx.type_annotation(),
                     &arguments,
                     Some(as_trait.clone()),
-                    engines
+                    engines,
+                    true
                 ),
                 return err(warnings, errors),
                 warnings,

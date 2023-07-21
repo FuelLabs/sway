@@ -1,5 +1,6 @@
 [workspace]
 members = [
+  "test_projects/abi_impl_methods_callable",
   "test_projects/block",
   "test_projects/call_frames",
   "test_projects/configurables_in_contract",

@@ -5,8 +5,9 @@ use crate::{
         ProgramKind,
     },
     asm_lang::{
-        virtual_register::*, Op, OrganizationalOp, VirtualImmediate12, VirtualImmediate18,
-        VirtualImmediate24, VirtualOp,
+        virtual_register::{self, *},
+        Op, OrganizationalOp, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24,
+        VirtualOp,
     },
     decl_engine::DeclRef,
     error::*,
@@ -19,6 +20,8 @@ use sway_ir::*;
 use either::Either;
 use sway_error::error::CompileError;
 use sway_types::Ident;
+
+use super::data_section::DataId;
 
 /// A summary of the adopted calling convention:
 ///
@@ -194,6 +197,8 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
+        let locals_alloc_result = self.alloc_locals(function);
+
         if func_is_entry {
             let result = Into::<CompileResult<()>>::into(self.compile_external_args(function));
             check!(result, return err(warnings, errors), warnings, errors);
@@ -223,7 +228,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             self.return_ctxs.push((end_label, retv));
         }
 
-        self.init_locals(function);
+        self.init_locals(locals_alloc_result);
 
         // Compile instructions. Traverse the IR blocks in reverse post order. This guarantees that
         // each block is processed after all its CFG predecessors have been processed.
@@ -608,7 +613,14 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             .push(Op::unowned_jump_label(success_label));
     }
 
-    fn init_locals(&mut self, function: Function) {
+    fn alloc_locals(
+        &mut self,
+        function: Function,
+    ) -> (
+        u64,
+        virtual_register::VirtualRegister,
+        Vec<(u64, u64, DataId)>,
+    ) {
         // If they're immutable and have a constant initialiser then they go in the data section.
         //
         // Otherwise they go in runtime allocated space, either a register or on the stack.
@@ -681,7 +693,17 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             comment: format!("allocate {locals_size} bytes for locals"),
             owning_span: None,
         });
+        (locals_size, locals_base_reg, init_mut_vars)
+    }
 
+    fn init_locals(
+        &mut self,
+        (locals_size, locals_base_reg, init_mut_vars): (
+            u64,
+            virtual_register::VirtualRegister,
+            Vec<(u64, u64, DataId)>,
+        ),
+    ) {
         // Initialise that stack variables which require it.
         for (var_stack_offs, var_word_size, var_data_id) in init_mut_vars {
             // Load our initialiser from the data section.

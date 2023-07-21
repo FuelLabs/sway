@@ -41,34 +41,24 @@ trait MyAdd<T> {
     fn my_add(self, a: T, b: T) -> T;
 }
 
-// impl<T> MyAdd<u8> for FooBarData<T> {
-//     fn my_add(self, a: u8, b: u8) -> u8 {
-//         a + b
-//     }
-// }
-
-impl<T> MyAdd<u64> for FooBarData<T> {
-    fn my_add(self, a: u64, b: u64) -> u64 {
+impl<T> MyAdd<u8> for FooBarData<T> {
+    fn my_add(self, a: u8, b: u8) -> u8 {
         a + b
     }
 }
+
+// impl<T> MyAdd<u64> for FooBarData<T> {
+//     fn my_add(self, a: u64, b: u64) -> u64 {
+//         a + b
+//     }
+// }
 
 trait MySub<T> {
     fn my_sub(a: T, b: T) -> T;
 }
 
-// impl<T> MySub<u8> for FooBarData<T> {
-//     fn my_sub(a: u8, b: u8) -> u8 {
-//         if a >= b {
-//             a - b
-//         } else {
-//             b - a
-//         }
-//     }
-// }
-
-impl<T> MySub<u64> for FooBarData<T> {
-    fn my_sub(a: u64, b: u64) -> u64 {
+impl<T> MySub<u8> for FooBarData<T> {
+    fn my_sub(a: u8, b: u8) -> u8 {
         if a >= b {
             a - b
         } else {
@@ -76,36 +66,36 @@ impl<T> MySub<u64> for FooBarData<T> {
         }
     }
 }
+
+// impl<T> MySub<u64> for FooBarData<T> {
+//     fn my_sub(a: u64, b: u64) -> u64 {
+//         if a >= b {
+//             a - b
+//         } else {
+//             b - a
+//         }
+//     }
+// }
 
 struct OtherData<T> {
     a: T,
     b: T,
 }
 
-// impl<T> MyAdd<u8> for OtherData<T> {
-//     fn my_add(self, a: u8, b: u8) -> u8 {
-//         a + b
-//     }
-// }
-
-impl<T> MyAdd<u64> for OtherData<T> {
-    fn my_add(self, a: u64, b: u64) -> u64 {
+impl<T> MyAdd<u8> for OtherData<T> {
+    fn my_add(self, a: u8, b: u8) -> u8 {
         a + b
     }
 }
 
-// impl<T> MySub<u8> for OtherData<T> {
-//     fn my_sub(a: u8, b: u8) -> u8 {
-//         if a >= b {
-//             a - b
-//         } else {
-//             b - a
-//         }
+// impl<T> MyAdd<u64> for OtherData<T> {
+//     fn my_add(self, a: u64, b: u64) -> u64 {
+//         a + b
 //     }
 // }
 
-impl<T> MySub<u64> for OtherData<T> {
-    fn my_sub(a: u64, b: u64) -> u64 {
+impl<T> MySub<u8> for OtherData<T> {
+    fn my_sub(a: u8, b: u8) -> u8 {
         if a >= b {
             a - b
         } else {
@@ -113,6 +103,16 @@ impl<T> MySub<u64> for OtherData<T> {
         }
     }
 }
+
+// impl<T> MySub<u64> for OtherData<T> {
+//     fn my_sub(a: u64, b: u64) -> u64 {
+//         if a >= b {
+//             a - b
+//         } else {
+//             b - a
+//         }
+//     }
+// }
 
 impl MyTriple<u64> for MyPoint<u64> {
     fn my_triple(self, value: u64) -> u64 {

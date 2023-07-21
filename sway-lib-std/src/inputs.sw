@@ -18,6 +18,7 @@ use ::tx::{
     tx_type,
 };
 use core::ops::Eq;
+use core::primitive_conversions::*;
 
 const GTF_INPUT_TYPE = 0x101;
 
@@ -203,7 +204,7 @@ pub fn input_predicate(index: u64) -> Bytes {
     if wrapped.is_none() {
         revert(0);
     };
-    let length = wrapped.unwrap();
+    let length = wrapped.unwrap().as_u64();
     let mut data_bytes = Bytes::with_capacity(length);
     match input_predicate_pointer(index) {
         Some(d) => {
@@ -265,7 +266,7 @@ pub fn input_message_data(index: u64, offset: u64) -> Bytes {
     assert(valid_input_type(index, Input::Message));
     let data = __gtf::<raw_ptr>(index, GTF_INPUT_MESSAGE_DATA);
     let data_with_offset = data.add_uint_offset(offset);
-    let length = input_message_data_length(index);
+    let length = input_message_data_length(index).as_u64();
     let mut data_bytes = Bytes::with_capacity(length);
     data_bytes.len = length;
     data_with_offset.copy_bytes_to(data_bytes.buf.ptr, length);

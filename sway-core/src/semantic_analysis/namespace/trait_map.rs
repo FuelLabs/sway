@@ -869,12 +869,20 @@ impl TraitMap {
         access_span: &Span,
         engines: &Engines,
     ) -> CompileResult<()> {
-        let warnings = vec![];
+        let mut warnings = vec![];
         let mut errors = vec![];
 
         let type_engine = engines.te();
         let _decl_engine = engines.de();
         let unify_check = UnifyCheck::non_dynamic_equality(engines);
+
+        // resolving trait constraits require a concrete type, we need to default numeric to u64
+        check!(
+            type_engine.decay_numeric(engines, type_id, access_span),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
         let all_impld_traits: BTreeMap<Ident, TypeId> = self
             .trait_impls
