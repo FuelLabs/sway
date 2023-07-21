@@ -1,8 +1,6 @@
 contract;
 
-abi MyContract {
-    fn accept_string_and_return_content(arg: String) -> [u64; 3];
-}
+use abi::MyContract;
 
 use std::string::String;
 
