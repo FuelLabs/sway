@@ -257,6 +257,7 @@ impl Namespace {
         args_buf: &VecDeque<ty::TyExpression>,
         as_trait: Option<TypeInfo>,
         engines: &Engines,
+        try_inserting_trait_impl_on_failure: bool,
     ) -> CompileResult<DeclRefFunction> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -463,6 +464,25 @@ impl Namespace {
             .map(|x| type_engine.get(x.return_type))
             .eq(&Some(TypeInfo::ErrorRecovery), engines)
         {
+            if try_inserting_trait_impl_on_failure {
+                // Retrieve the implemented traits for the type and insert them in the namespace.
+                // insert_trait_implementation_for_type is already called when we do type check of structs, enums, arrays and tuples.
+                // In cases such as blanket trait implementation and usage of builtin types a method may not be found because
+                // insert_trait_implementation_for_type has yet to be called for that type.
+                self.insert_trait_implementation_for_type(engines, type_id);
+
+                return self.find_method_for_type(
+                    type_id,
+                    method_prefix,
+                    method_name,
+                    self_type,
+                    annotation_type,
+                    args_buf,
+                    as_trait,
+                    engines,
+                    false,
+                );
+            }
             let type_name = if let Some(call_path) = qualified_call_path {
                 format!("{} as {}", engines.help_out(type_id), call_path)
             } else {
