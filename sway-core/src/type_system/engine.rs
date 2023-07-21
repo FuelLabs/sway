@@ -399,7 +399,13 @@ impl TypeEngine {
                     warnings,
                     errors
                 );
-                self.insert(engines, TypeInfo::Array(elem_ty, n))
+
+                let type_id = self.insert(engines, TypeInfo::Array(elem_ty, n));
+
+                // take any trait methods that apply to this type and copy them to the new type
+                namespace.insert_trait_implementation_for_type(engines, type_id);
+
+                type_id
             }
             TypeInfo::Tuple(mut type_arguments) => {
                 for type_argument in type_arguments.iter_mut() {
@@ -418,7 +424,13 @@ impl TypeEngine {
                         errors
                     );
                 }
-                self.insert(engines, TypeInfo::Tuple(type_arguments))
+
+                let type_id = self.insert(engines, TypeInfo::Tuple(type_arguments));
+
+                // take any trait methods that apply to this type and copy them to the new type
+                namespace.insert_trait_implementation_for_type(engines, type_id);
+
+                type_id
             }
             _ => type_id,
         };
