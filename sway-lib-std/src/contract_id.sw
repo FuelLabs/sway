@@ -36,8 +36,8 @@ impl From<b256> for ContractId {
     ///    let contract_id = ContractId::from(ZERO_B256);
     /// }
     /// ```
-    fn from(bits: b256) -> Self {
-        Self { value: bits }
+    fn from(bits: b256) -> ContractId {
+        ContractId { value: bits }
     }
 
 
