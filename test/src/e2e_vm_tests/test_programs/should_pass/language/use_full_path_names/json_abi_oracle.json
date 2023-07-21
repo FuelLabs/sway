@@ -17,7 +17,7 @@
   "types": [
     {
       "components": null,
-      "type": "u64",
+      "type": "u32",
       "typeId": 0,
       "typeParameters": null
     }

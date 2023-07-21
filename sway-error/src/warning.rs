@@ -1,6 +1,6 @@
 use core::fmt;
 
-use sway_types::{integer_bits::IntegerBits, Ident, SourceId, Span, Spanned};
+use sway_types::{Ident, SourceId, Span, Spanned};
 
 // TODO: since moving to using Idents instead of strings,
 // the warning_content will usually contain a duplicate of the span.
@@ -51,10 +51,6 @@ pub enum Warning {
     },
     NonScreamingSnakeCaseConstName {
         name: Ident,
-    },
-    LossOfPrecision {
-        initial_type: IntegerBits,
-        cast_to: IntegerBits,
     },
     UnusedReturnValue {
         r#type: String,
@@ -177,12 +173,6 @@ impl fmt::Display for Warning {
                     to_screaming_snake_case(name.as_str()),
                 )
             },
-            LossOfPrecision {
-                initial_type,
-                cast_to,
-            } => write!(f,
-                "This cast, from integer type of width {initial_type} to integer type of width {cast_to}, will lose precision."
-            ),
             UnusedReturnValue { r#type } => write!(
                 f,
                 "This returns a value of type {type}, which is not assigned to anything and is \
