@@ -8,6 +8,7 @@ use ::convert::From;
 /// Stores two `b256`s in contiguous memory.
 /// Guaranteed to be contiguous for use with ec-recover: `std::ecr::ec_recover`.
 pub struct B512 {
+    /// The two `b256`s that make up the `B512`.
     bytes: [b256; 2],
 }
 
@@ -33,6 +34,20 @@ impl From<(b256, b256)> for B512 {
 /// Methods on the `B512` type.
 impl B512 {
     /// Initializes a new, zeroed `B512`.
+    ///
+    /// # Returns
+    ///
+    /// * [B512] - A zero value B512.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::b512::B512;
+    ///
+    /// fn foo() {
+    ///     let zero = B512::new();
+    /// }
+    /// ```
     pub fn new() -> B512 {
         B512 {
             bytes: [ZERO_B256, ZERO_B256],

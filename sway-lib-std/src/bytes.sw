@@ -52,24 +52,34 @@ impl RawBytes {
 
 /// A type used to represent raw bytes.
 pub struct Bytes {
+    /// A barebones struct for the bytes.
     buf: RawBytes,
+    /// The number of bytes being stored.
     len: u64,
 }
 
 impl Bytes {
     /// Constructs a new, empty `Bytes`.
     ///
-    /// The `Bytes` will not allocate until elements are pushed onto it.
+    /// # Additional Information
     ///
-    /// ### Examples
+    /// The struct will not allocate until elements are pushed onto it.
+    ///
+    /// # Returns
+    ///
+    /// * [Bytes] - A new, empty `Bytes`
+    ///
+    /// # Examples
     ///
     /// ```sway
     /// use std::bytes::Bytes;
     ///
-    /// let bytes = Bytes::new();
-    /// // does not allocate
-    /// assert(bytes.len() == 0);
-    /// assert(bytes.capacity() == 0);
+    /// fn foo() {
+    ///     let bytes = Bytes::new();
+    ///     // does not allocate
+    ///     assert(bytes.len() == 0);
+    ///     assert(bytes.capacity() == 0);
+    /// }
     /// ```
     pub fn new() -> Self {
         Bytes {
@@ -80,22 +90,34 @@ impl Bytes {
 
     /// Constructs a new, empty `Bytes` with the specified capacity.
     ///
+    /// # Additional Information
+    ///
     /// The `Bytes` will be able to hold exactly `capacity` bytes without
     /// reallocating. If `capacity` is zero, the `Bytes` will not allocate.
     ///
     /// It is important to note that although the returned `Bytes` has the
     /// capacity specified, the vector will have a zero length.
     ///
-    /// ### Examples
+    /// # Arguments
+    ///
+    /// * `capacity`: [u64] - The capacity with which to initialize the `Bytes`
+    ///
+    /// # Returns
+    ///
+    /// * [Bytes] - A new, empty `Bytes` with the specified capacity
+    ///
+    /// # Examples
     ///
     /// ```sway
     /// use std::bytes::Bytes;
     ///
-    /// let bytes = Bytes::with_capacity(2);
-    /// // does not allocate
-    /// bytes.push(5);
-    /// // does not re-allocate
-    /// bytes.push(10);
+    /// fn foo() {
+    ///     let bytes = Bytes::with_capacity(2);
+    ///     // does not allocate
+    ///     bytes.push(5);
+    ///     // does not re-allocate
+    ///     bytes.push(10);
+    /// }
     /// ```
     pub fn with_capacity(capacity: u64) -> Self {
         Bytes {
@@ -106,17 +128,23 @@ impl Bytes {
 
     /// Appends an element to the back of a `Bytes` collection.
     ///
-    /// ### Examples
+    /// # Arguments
+    ///
+    /// * `byte`: [u8] - The element to be pushed onto the `Bytes`
+    ///
+    /// # Examples
     ///
     /// ```sway
     /// use std::bytes::Bytes;
     ///
-    /// let mut bytes = Bytes::new();
-    /// let a = 5u8;
-    /// let b = 7u8;
-    /// bytes.push(a);
-    /// bytes.push(b);
-    /// assert(bytes.len() == 2);
+    /// fn foo() {
+    ///     let mut bytes = Bytes::new();
+    ///     let a = 5u8;
+    ///     let b = 7u8;
+    ///     bytes.push(a);
+    ///     bytes.push(b);
+    ///     assert(bytes.len() == 2);
+    /// }
     /// ```
     pub fn push(ref mut self, byte: u8) {
         // If there is insufficient capacity, grow the buffer.
@@ -138,20 +166,26 @@ impl Bytes {
     /// Removes the last element from a `Bytes` and returns it, or `None` if it
     /// is empty.
     ///
-    /// ### Examples
+    /// # Returns
+    ///
+    /// * [Option<u8>] - The last element of the `Bytes`, or `None` if it is empty
+    ///
+    /// # Examples
     ///
     /// ```sway
     /// use std::bytes::Bytes;
     ///
-    /// let bytes = Bytes::new();
-    ///
-    /// let res = bytes.pop();
-    /// assert(res.is_none());
-    ///
-    /// bytes.push(5);
-    /// let res = bytes.pop();
-    /// assert(res.unwrap() == 5);
-    /// assert(bytes.is_empty());
+    /// fn foo() {
+    ///     let bytes = Bytes::new();
+    /// 
+    ///     let res = bytes.pop();
+    ///     assert(res.is_none());
+    /// 
+    ///     bytes.push(5);
+    ///     let res = bytes.pop();
+    ///     assert(res.unwrap() == 5);
+    ///     assert(bytes.is_empty());
+    /// }
     /// ```
     pub fn pop(ref mut self) -> Option<u8> {
         if self.len == 0 {
@@ -167,19 +201,29 @@ impl Bytes {
     /// Returns `Some(byte)` at `index`, or `None` if `index` is out of
     /// bounds.
     ///
-    /// ### Examples
+    /// # Arguments
+    ///
+    /// * `index`: [u64] - The index of the element to be returned
+    ///
+    /// # Returns
+    ///
+    /// * [Option<u8>] - The element at the specified index, or `None` if the index is out of bounds
+    ///
+    /// # Examples
     ///
     /// ```sway
     /// use std::bytes::Byte;
     ///
-    /// let bytes = Bytes::new();
-    /// bytes.push(5u8);
-    /// bytes.push(10u8);
-    /// bytes.push(15u8);
-    /// let item = bytes.get(1).unwrap();
-    /// assert(item == 10u8);
-    /// let opt = bytes.get(10);
-    /// assert(opt.is_none()); // index out of bounds
+    /// fn foo() {
+    ///     let bytes = Bytes::new();
+    ///     bytes.push(5u8);
+    ///     bytes.push(10u8);
+    ///     bytes.push(15u8);
+    ///     let item = bytes.get(1).unwrap();
+    ///     assert(item == 10u8);
+    ///     let opt = bytes.get(10);
+    ///     assert(opt.is_none()); // index out of bounds
+    /// }
     /// ```
     pub fn get(self, index: u64) -> Option<u8> {
         // First check that index is within bounds.
@@ -194,36 +238,38 @@ impl Bytes {
 
     /// Updates an element at position `index` with a new element `value`.
     ///
-    /// ### Arguments
+    /// # Arguments
     ///
-    /// * index - The index of the element to be set
-    /// * value - The value of the element to be set
+    /// * index: [u64] - The index of the element to be set
+    /// * value: [u8] - The value of the element to be set
     ///
-    /// ### Reverts
+    /// # Panics
     ///
-    /// * If `index` is greater than or equal to the length of Bytes.
+    /// * When `index` is greater than or equal to the length of Bytes.
     ///
-    /// ### Examples
+    /// # Examples
     ///
     /// ```sway
     /// use std::bytes::Bytes;
     ///
-    /// let bytes = Bytes::new();
-    /// let a = 5u8;
-    /// let b = 7u8;
-    /// let c = 9u8;
-    /// bytes.push(a);
-    /// bytes.push(b);
-    /// bytes.push(c);
-    ///
-    /// let d = 11u8;
-    ///
-    /// bytes.set(1, d);
-    ///
-    /// assert(bytes.len() == 3);
-    /// assert(bytes.get(0).unwrap() == a);
-    /// assert(bytes.get(1).unwrap() == d);
-    /// assert(bytes.get(2).unwrap() == c);
+    /// fn foo() {
+    ///     let bytes = Bytes::new();
+    ///     let a = 5u8;
+    ///     let b = 7u8;
+    ///     let c = 9u8;
+    ///     bytes.push(a);
+    ///     bytes.push(b);
+    ///     bytes.push(c);
+    /// 
+    ///     let d = 11u8;
+    /// 
+    ///     bytes.set(1, d);
+    /// 
+    ///     assert(bytes.len() == 3);
+    ///     assert(bytes.get(0).unwrap() == a);
+    ///     assert(bytes.get(1).unwrap() == d);
+    ///     assert(bytes.get(2).unwrap() == c);
+    /// }
     /// ```
     pub fn set(ref mut self, index: u64, value: u8) {
         assert(index < self.len);
@@ -236,29 +282,36 @@ impl Bytes {
     /// Inserts an element at position `index` within the Bytes, shifting all
     /// elements after it to the right.
     ///
-    /// ### Reverts
+    /// # Arguments
     ///
-    /// * If `index > len`.
+    /// * index: [u64] - The index at which to insert the element
+    /// * element: [u8] - The element to be inserted
     ///
-    /// ### Examples
+    /// # Panics
+    ///
+    /// * When `index > len`.
+    ///
+    /// # Examples
     ///
     /// ```sway
     /// use std::bytes::Byte;
     ///
-    /// let vec = Vec::new();
-    /// let a = 11u8;
-    /// let b = 11u8;
-    /// let c = 11u8;
-    /// let d = 11u8;
-    /// vec.push(a);
-    /// vec.push(b);
-    /// vec.push(c);
-    /// bytes.insert(1, d);
-    ///
-    /// assert(bytes.get(0).unwrap() == a);
-    /// assert(bytes.get(1).unwrap() == d);
-    /// assert(bytes.get(2).unwrap() == b);
-    /// assert(bytes.get(3).unwrap() == c);
+    /// fn foo() {
+    ///     let vec = Vec::new();
+    ///     let a = 11u8;
+    ///     let b = 11u8;
+    ///     let c = 11u8;
+    ///     let d = 11u8;
+    ///     vec.push(a);
+    ///     vec.push(b);
+    ///     vec.push(c);
+    ///     bytes.insert(1, d);
+    /// 
+    ///     assert(bytes.get(0).unwrap() == a);
+    ///     assert(bytes.get(1).unwrap() == d);
+    ///     assert(bytes.get(2).unwrap() == b);
+    ///     assert(bytes.get(3).unwrap() == c);
+    /// }
     /// ```
     pub fn insert(ref mut self, index: u64, element: u8) {
         assert(index <= self.len);
@@ -292,24 +345,34 @@ impl Bytes {
     /// Removes and returns the element at position `index` within the Bytes,
     /// shifting all elements after it to the left.
     ///
-    /// ### Reverts
+    /// # Arguments
     ///
-    /// * If `index >= self.len`
+    /// * index: [u64] - The index of the element to be removed
     ///
-    /// ### Examples
+    /// # Returns
+    ///
+    /// * [u8] - The element at the specified index
+    ///
+    /// # Panics
+    ///
+    /// * When `index >= self.len`
+    ///
+    /// # Examples
     ///
     /// ```sway
     /// use std::bytes::Byte;
     ///
-    /// let bytes = Byte::new();
-    /// bytes.push(5);
-    /// bytes.push(10);
-    /// bytes.push(15);
-    /// let item = bytes.remove(1);
-    /// assert(item == 10);
-    /// assert(bytes.get(0).unwrap() == 5);
-    /// assert(bytes.get(1).unwrap() == 15);
-    /// assert(bytes.get(2).is_none());
+    /// fn foo() {
+    ///     let bytes = Byte::new();
+    ///     bytes.push(5);
+    ///     bytes.push(10);
+    ///     bytes.push(15);
+    ///     let item = bytes.remove(1);
+    ///     assert(item == 10);
+    ///     assert(bytes.get(0).unwrap() == 5);
+    ///     assert(bytes.get(1).unwrap() == 15);
+    ///     assert(bytes.get(2).is_none());
+    /// }
     /// ```
     pub fn remove(ref mut self, index: u64) -> u8 {
         // Panic if index >= length.
@@ -336,33 +399,35 @@ impl Bytes {
 
     /// Swaps two elements.
     ///
-    /// ### Arguments
+    /// # Arguments
     ///
-    /// * element1_index - The index of the first element
-    /// * element2_index - The index of the second element
+    /// * element1_index: [u64] - The index of the first element
+    /// * element2_index: [u64] - The index of the second element
     ///
-    /// ### Reverts
+    /// # Panics
     ///
-    /// * If `element1_index` or `element2_index` is greater than or equal to the length of `Bytes`.
+    /// * When `element1_index` or `element2_index` is greater than or equal to the length of `Bytes`.
     ///
-    /// ### Examples
+    /// # Examples
     ///
     /// ```sway
     /// use std::bytes::Bytes;
     ///
-    /// let bytes = Bytes::new();
-    /// let a = 5u8;
-    /// let b = 7u8;
-    /// let c = 9u8;
-    /// bytes.push(a);
-    /// bytes.push(b);
-    /// bytes.push(c);
-    ///
-    /// bytes.swap(0, 1);
-    ///
-    /// assert(bytes.get(0).unwrap() == b);
-    /// assert(bytes.get(1).unwrap() == a);
-    /// assert(bytes.get(2).unwrap() == c);
+    /// fn foo() {
+    ///     let bytes = Bytes::new();
+    ///     let a = 5u8;
+    ///     let b = 7u8;
+    ///     let c = 9u8;
+    ///     bytes.push(a);
+    ///     bytes.push(b);
+    ///     bytes.push(c);
+    /// 
+    ///     bytes.swap(0, 1);
+    /// 
+    ///     assert(bytes.get(0).unwrap() == b);
+    ///     assert(bytes.get(1).unwrap() == a);
+    ///     assert(bytes.get(2).unwrap() == c);
+    /// }
     /// ```
     pub fn swap(ref mut self, element1_index: u64, element2_index: u64) {
         assert(element1_index < self.len);
@@ -384,37 +449,65 @@ impl Bytes {
 
     /// Gets the capacity of the allocation.
     ///
-    /// ### Examples
+    /// # Returns
+    ///
+    /// * [u64] - The capacity of the allocation
+    ///
+    /// # Examples
     ///
     /// ```sway
     /// use std::bytes::Bytes;
     ///
-    /// let bytes = Bytes::with_capacity(5);
-    /// let cap = bytes.capacity();
-    /// assert(cap == 5);
+    /// fn foo() {
+    ///     let bytes = Bytes::with_capacity(5);
+    ///     let cap = bytes.capacity();
+    ///     assert(cap == 5);
+    /// }
     /// ```
     pub fn capacity(self) -> u64 {
         self.buf.cap
     }
 
+    /// Gets the length of the `Bytes`.
+    ///
+    /// # Returns
+    ///
+    /// * [u64] - The length of the `Bytes`
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::bytes::Bytes;
+    ///
+    /// fn foo() {
+    ///     let bytes = Bytes::new();
+    ///     assert(bytes.len() == 0);
+    ///     bytes.push(5);
+    ///     assert(bytes.len() == 1);
+    /// }
+    /// ```
     pub fn len(self) -> u64 {
         self.len
     }
 
     /// Clears the `Bytes`, removing all values.
     ///
+    /// # Additional Information
+    ///
     /// Note that this method has no effect on the allocated capacity
     /// of the Bytes.
     ///
-    /// ### Examples
+    /// # Examples
     ///
     /// ```sway
     /// use std:bytes::Bytes;
     ///
-    /// let bytes = Bytes::new();
-    /// bytes.push(5);
-    /// bytes.clear()
-    /// assert(bytes.is_empty());
+    /// fn foo() {
+    ///     let bytes = Bytes::new();
+    ///     bytes.push(5);
+    ///     bytes.clear()
+    ///     assert(bytes.is_empty());
+    /// }
     /// ```
     pub fn clear(ref mut self) {
         self.buf.ptr = alloc_bytes(0);
@@ -424,17 +517,23 @@ impl Bytes {
 
     /// Returns `true` if the vector contains no elements.
     ///
-    /// ### Examples
+    /// # Returns
+    ///
+    /// * [bool] - `true` if the vector contains no elements, `false` otherwise
+    ///
+    /// # Examples
     ///
     /// ```sway
     /// use std:bytes::Bytes;
     ///
-    /// let bytes = Bytes::new();
-    /// assert(bytes.is_empty());
-    /// bytes.push(5);
-    /// assert(!bytes.is_empty());
-    /// bytes.clear()
-    /// assert(bytes.is_empty());
+    /// fn foo() {
+    ///     let bytes = Bytes::new();
+    ///     assert(bytes.is_empty());
+    ///     bytes.push(5);
+    ///     assert(!bytes.is_empty());
+    ///     bytes.clear()
+    ///     assert(bytes.is_empty());
+    /// }
     /// ```
     pub fn is_empty(self) -> bool {
         self.len == 0
@@ -442,16 +541,22 @@ impl Bytes {
 
     /// Returns the `SHA-2-256` hash of the elements.
     ///
-    /// ### Examples
+    /// # Returns
+    ///
+    /// * [b256] - The `SHA-2-256` hash of the elements
+    ///
+    /// # Examples
     ///
     /// ```sway
     /// use std:bytes::Bytes;
     ///
-    /// let bytes = Bytes::new();
-    /// bytes.push(1);
-    /// bytes.push(2);
-    /// bytes.push(3);
-    /// let sha256_hash = bytes.sha256();
+    /// fn foo() {
+    ///     let bytes = Bytes::new();
+    ///     bytes.push(1);
+    ///     bytes.push(2);
+    ///     bytes.push(3);
+    ///     let sha256_hash = bytes.sha256();
+    /// }
     /// ```
     pub fn sha256(self) -> b256 {
         let mut result_buffer = b256::min();
@@ -463,16 +568,22 @@ impl Bytes {
 
     /// Returns the `KECCAK-256` hash of the elements.
     ///
-    /// ### Examples
+    /// # Returns
+    ///
+    /// * [b256] - The `KECCAK-256` hash of the elements
+    ///
+    /// # Examples
     ///
     /// ```sway
     /// use std:bytes::Bytes;
     ///
-    /// let bytes = Bytes::new();
-    /// bytes.push(1);
-    /// bytes.push(2);
-    /// bytes.push(3);
-    /// let keccak256_hash = bytes.keccak256();
+    /// fn foo() {
+    ///     let bytes = Bytes::new();
+    ///     bytes.push(1);
+    ///     bytes.push(2);
+    ///     bytes.push(3);
+    ///     let keccak256_hash = bytes.keccak256();
+    /// }
     /// ```
     pub fn keccak256(self) -> b256 {
         let mut result_buffer = b256::min();
@@ -487,31 +598,35 @@ impl Bytes {
 impl Bytes {
     /// Divides one Bytes into two at an index.
     ///
+    /// # Additional Information
+    ///
     /// The first will contain all indices from `[0, mid)` (excluding the index
     /// `mid` itself) and the second will contain all indices from `[mid, len)`
     /// (excluding the index `len` itself).
     ///
-    /// ### Arguments
+    /// # Arguments
     ///
-    /// * mid - Index at which the Bytes is to be split
+    /// * mid: [u64] - Index at which the Bytes is to be split
     ///
-    /// ### Reverts
+    /// # Panics
     ///
-    /// * if `mid > self.len`
+    /// * When `mid > self.len`
     ///
-    /// ### Examples
+    /// # Examples
     ///
     /// ```sway
     /// use std:bytes::Bytes;
     ///
-    /// let (mut bytes, a, b, c) = setup();
-    /// assert(bytes.len() == 3);
-    /// let mid = 1;
-    /// let (left, right) = bytes.split_at(mid);
-    /// assert(left.capacity() == mid);
-    /// assert(right.capacity() == bytes.len() - mid);
-    /// assert(left.len() == 1);
-    /// assert(right.len() == 2);
+    /// fn foo() {
+    ///     let (mut bytes, a, b, c) = setup();
+    ///     assert(bytes.len() == 3);
+    ///     let mid = 1;
+    ///     let (left, right) = bytes.split_at(mid);
+    ///     assert(left.capacity() == mid);
+    ///     assert(right.capacity() == bytes.len() - mid);
+    ///     assert(left.len() == 1);
+    ///     assert(right.len() == 2);
+    /// }
     /// ```
     pub fn split_at(self, mid: u64) -> (Bytes, Bytes) {
         assert(self.len >= mid);
@@ -537,36 +652,37 @@ impl Bytes {
 
     /// Moves all elements of `other` into `self`, leaving `other` empty.
     ///
-    /// ### Arguments
+    /// # Arguments
     ///
-    /// * other - The Bytes to append to self.
+    /// * other: [Bytes] - The Bytes to append to self.
     ///
-    /// ### Examples
+    /// # Examples
     ///
     /// ```sway
     ///
     /// use std:bytes::Bytes;
     ///
-    ///
-    /// let mut bytes = Bytes::new();
-    /// bytes.push(5u8);
-    /// bytes.push(7u8);
-    /// bytes.push(9u8);
-    /// assert(bytes.len() == 3);
-    ///
-    /// let mut bytes2 = Bytes::new();
-    /// bytes2.push(5u8);
-    /// bytes2.push(7u8);
-    /// bytes2.push(9u8);
-    /// assert(bytes2.len() == 3);
-    ///
-    /// let first_length = bytes.len();
-    /// let second_length = bytes2.len();
-    /// let first_cap = bytes.capacity();
-    /// let second_cap = bytes2.capacity();
-    /// bytes.append(bytes2);
-    /// assert(bytes.len() == first_length + second_length);
-    /// assert(bytes.capacity() == first_length + first_length);
+    /// fn foo() {
+    ///     let mut bytes = Bytes::new();
+    ///     bytes.push(5u8);
+    ///     bytes.push(7u8);
+    ///     bytes.push(9u8);
+    ///     assert(bytes.len() == 3);
+    /// 
+    ///     let mut bytes2 = Bytes::new();
+    ///     bytes2.push(5u8);
+    ///     bytes2.push(7u8);
+    ///     bytes2.push(9u8);
+    ///     assert(bytes2.len() == 3);
+    /// 
+    ///     let first_length = bytes.len();
+    ///     let second_length = bytes2.len();
+    ///     let first_cap = bytes.capacity();
+    ///     let second_cap = bytes2.capacity();
+    ///     bytes.append(bytes2);
+    ///     assert(bytes.len() == first_length + second_length);
+    ///     assert(bytes.capacity() == first_length + first_length);
+    /// }
     /// ```
     pub fn append(ref mut self, ref mut other: self) {
         if other.len == 0 {
