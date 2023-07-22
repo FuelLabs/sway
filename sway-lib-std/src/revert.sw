@@ -17,8 +17,7 @@ use ::error_signals::FAILED_REQUIRE_SIGNAL;
 ///
 /// # Panics
 ///
-/// * Panics when called in a contract.
-/// * Panics when called in a predicate.
+/// * Panics unconditionally.
 ///
 /// # Examples
 ///

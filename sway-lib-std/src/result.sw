@@ -81,7 +81,7 @@ impl<T, E> Result<T, E> {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```sway
     /// enum Error {
     ///     NotFound,
     ///     Invalid,
@@ -110,7 +110,7 @@ impl<T, E> Result<T, E> {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```sway
     /// enum Error {
     ///     NotFound,
     ///     Invalid,
@@ -145,11 +145,11 @@ impl<T, E> Result<T, E> {
     ///
     /// # Panics
     ///
-    /// * Panics if the self value is `Err`.
+    /// * Panics if the `Result` is of the `Err` variant.
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```sway
     /// enum Error {
     ///     NotFound,
     ///     Invalid,
@@ -182,7 +182,7 @@ impl<T, E> Result<T, E> {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```sway
     /// enum Error {
     ///     NotFound,
     ///     Invalid,

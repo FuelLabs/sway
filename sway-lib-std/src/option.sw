@@ -100,7 +100,7 @@ impl<T> Option<T> {
     /// 
     /// # Examples
     ///
-    /// ```
+    /// ```sway
     /// fn foo() {
     ///     let x: Option<u32> = Some(2);
     ///     assert(x.is_some());
@@ -124,7 +124,7 @@ impl<T> Option<T> {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```sway
     /// fn foo() {
     ///     let x: Option<u32> = Some(2);
     ///     assert(!x.is_none());
@@ -156,18 +156,18 @@ impl<T> Option<T> {
     ///
     /// # Panics
     ///
-    /// * Panics if the self value equals `None`.
+    /// * Panics if the `Option` is of the `None` variant.
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```sway
     /// fn foo() {
     ///     let x = Some(42);
     ///     assert(x.unwrap() == 42);
     /// }
     /// ```
     ///
-    /// ```
+    /// ```sway
     /// fn foo() {
     ///     let x: Option<u64> = None;
     ///     assert(x.unwrap() == 42); // fails
@@ -192,7 +192,7 @@ impl<T> Option<T> {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```sway
     /// fn foo() {
     ///     assert(Some(42).unwrap_or(69) == 42);
     ///     assert(None::<u64>().unwrap_or(69) == 69);
@@ -227,7 +227,7 @@ impl<T> Option<T> {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```sway
     /// fn foo() {
     ///     let x = Some(42);
     ///     match x.ok_or(0) {
