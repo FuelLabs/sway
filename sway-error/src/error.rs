@@ -1,3 +1,4 @@
+use crate::compile_message::{DescribableCompileMessage, CompileMessageDescription, SourceMessage};
 use crate::convert_parse_tree_error::ConvertParseTreeError;
 use crate::lex_error::LexError;
 use crate::parser_error::ParseError;
@@ -5,7 +6,7 @@ use crate::type_error::TypeError;
 
 use core::fmt;
 use sway_types::constants::STORAGE_PURITY_ATTRIBUTE_NAME;
-use sway_types::{Ident, SourceId, Span, Spanned};
+use sway_types::{Ident, Span, Spanned};
 use thiserror::Error;
 
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
@@ -837,12 +838,19 @@ impl Spanned for CompileError {
     }
 }
 
-impl CompileError {
-    pub fn source_id(&self) -> Option<SourceId> {
-        self.span().source_id().cloned()
+impl DescribableCompileMessage for CompileError {
+    fn description(&self) -> CompileMessageDescription {
+        CompileMessageDescription {
+            message: SourceMessage {
+                span: self.span().clone(),
+                message: format!("{}", self)
+            },
+            ..Default::default()
+        }
     }
 }
 
+// TODO-IG: Delete once multi-span errors are implemented.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Hint {
     msg: Option<String>,

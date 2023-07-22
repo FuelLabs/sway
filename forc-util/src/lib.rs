@@ -14,7 +14,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use sway_core::language::parsed::TreeType;
-use sway_error::error::CompileError;
+use sway_error::{error::CompileError, compile_message::DescribableCompileMessage};
 use sway_error::warning::CompileWarning;
 use sway_types::{LineCol, SourceEngine, Spanned};
 use sway_utils::constants;
@@ -433,22 +433,23 @@ pub fn print_on_failure(
 }
 
 fn format_err(source_engine: &SourceEngine, err: &CompileError) {
-    let span = err.span();
+    let err = err.description();
+    let span = err.message().span();
     let input = span.input();
-    let path = err.source_id().map(|id| source_engine.get_path(&id));
+    let path = err.message().source_id().map(|id| source_engine.get_path(&id));
     let path_str = path.as_ref().map(|p| p.to_string_lossy());
     let mut start_pos = span.start();
     let mut end_pos = span.end();
 
-    let friendly_str = maybe_uwuify(&format!("{err}"));
+    let friendly_str = maybe_uwuify(err.message().message());
     let (snippet_title, snippet_slices) = if start_pos < end_pos {
         let title = Some(Annotation {
-            label: None,
+            label: err.title().map(|title| -> &str { title.as_str() }),
             id: None,
             annotation_type: AnnotationType::Error,
         });
 
-        let (mut start, end) = err.span().line_col();
+        let (mut start, end) = span.line_col();
         let input = construct_window(&mut start, end, &mut start_pos, &mut end_pos, input);
         let slices = vec![Slice {
             source: input,
@@ -466,7 +467,7 @@ fn format_err(source_engine: &SourceEngine, err: &CompileError) {
     } else {
         (
             Some(Annotation {
-                label: Some(friendly_str.as_str()),
+                label: Some(&friendly_str),
                 id: None,
                 annotation_type: AnnotationType::Error,
             }),
