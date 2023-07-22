@@ -2,7 +2,28 @@ library;
 
 use ::raw_ptr::*;
 
+/// Trait to return a type as a `raw_slice`.
 pub trait AsRawSlice {
+    /// Converts self into a `raw_slice`.
+    ///
+    /// # Returns
+    ///
+    /// * [raw_slice] - The newly created `raw_slice` from self.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// struct MyStruct {
+    ///    ptr: raw_ptr,
+    ///    len: u64
+    /// }
+    ///
+    /// impl AsRawSlice for MyStruct {
+    ///     fn as_raw_slice(self) -> raw_slice {
+    ///         from_part(self.ptr, self.len)
+    ///     }
+    /// }
+    /// ```
     fn as_raw_slice(self) -> raw_slice;
 }
 
@@ -21,7 +42,8 @@ impl raw_slice {
     ///
     /// # Arguments
     ///
-    /// * `parts`: [(raw_ptr, u64)] - The pointer and length to convert.
+    /// * `ptr`: [raw_ptr] - The pointer to the location in memory.
+    /// * `count`: [u64] - The number of `__size_of::<T>` bytes.
     ///
     /// # Returns
     ///
