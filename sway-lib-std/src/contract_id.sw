@@ -132,8 +132,7 @@ impl ContractId {
         asm(r1: amount) {
             mint r1;
         };
-        // Transfer the self contract token
-        self.transfer(amount, ContractId::from(asm() { fp: b256 }));
+        self.transfer(amount, ContractId::from(asm() { fp: b256 })); // Transfer the self contract token
     }
 }
 
