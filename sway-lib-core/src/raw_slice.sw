@@ -13,15 +13,27 @@ pub trait AsRawSlice {
     /// # Examples
     ///
     /// ```sway
-    /// struct MyStruct {
+    /// use std::alloc::alloc_bytes;
+    ///
+    /// struct MyType {
     ///    ptr: raw_ptr,
     ///    len: u64
     /// }
     ///
-    /// impl AsRawSlice for MyStruct {
+    /// impl AsRawSlice for MyType {
     ///     fn as_raw_slice(self) -> raw_slice {
-    ///         from_part(self.ptr, self.len)
+    ///         from_parts(self.ptr, self.len)
     ///     }
+    /// }
+    ///
+    /// fn foo() {
+    ///     let my_type = MyType {
+    ///         ptr: alloc_bytes(0),   
+    ///         len: 0
+    ///     }
+    ///     let slice = my_type.as_raw_slice();
+    ///     assert(slice.ptr() == my_type.ptr);
+    ///     assert(slice.number_of_bytes() == my_type.len);
     /// }
     /// ```
     fn as_raw_slice(self) -> raw_slice;
