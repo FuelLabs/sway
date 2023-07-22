@@ -1,21 +1,20 @@
 use sway_types::{Span, SourceId};
 
-/// Rich description of a compile message.
-/// Compile message can be a compile error or a compile warning.
+/// Provides detailed, rich description of a compile error or warning.
 ///
-/// `CompileMessageDescription` contains rich contextual
-/// information about the message. E.g., place in code
+/// `CompileMessage` contains detailed contextual
+/// information about a compile message. E.g., place in code
 /// where an error occurs, additional places in code
 /// that are related to the error, help on how to fix the
 /// error, etc.
 #[derive(Debug, Default)]
-pub struct CompileMessageDescription {
+pub struct CompileMessage {
     pub(crate) message_type: CompileMessageType,
     pub(crate) title: Option<String>,
     pub(crate) message: SourceMessage,
 }
 
-impl CompileMessageDescription {
+impl CompileMessage {
     pub fn message_type(&self) -> CompileMessageType {
         self.message_type
     }
@@ -74,10 +73,4 @@ impl Default for SourceMessage {
             message: "".to_string()
         }
     }
-}
-
-/// Represents a compile message, error or warning, that
-/// can provide its detailed, rich description.
-pub trait DescribableCompileMessage {
-    fn description(&self) -> CompileMessageDescription;
 }

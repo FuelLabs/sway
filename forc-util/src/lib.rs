@@ -14,7 +14,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use sway_core::language::parsed::TreeType;
-use sway_error::{error::CompileError, compile_message::DescribableCompileMessage};
+use sway_error::{error::CompileError, compile_message::CompileMessage};
 use sway_error::warning::CompileWarning;
 use sway_types::{LineCol, SourceEngine, Spanned};
 use sway_utils::constants;
@@ -433,7 +433,7 @@ pub fn print_on_failure(
 }
 
 fn format_err(source_engine: &SourceEngine, err: &CompileError) {
-    let err = err.description();
+    let err: CompileMessage = err.into();
     let span = err.message().span();
     let input = span.input();
     let path = err.message().source_id().map(|id| source_engine.get_path(&id));

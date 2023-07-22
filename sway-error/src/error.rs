@@ -1,4 +1,4 @@
-use crate::compile_message::{DescribableCompileMessage, CompileMessageDescription, SourceMessage};
+use crate::compile_message::{CompileMessage, SourceMessage};
 use crate::convert_parse_tree_error::ConvertParseTreeError;
 use crate::lex_error::LexError;
 use crate::parser_error::ParseError;
@@ -838,12 +838,12 @@ impl Spanned for CompileError {
     }
 }
 
-impl DescribableCompileMessage for CompileError {
-    fn description(&self) -> CompileMessageDescription {
-        CompileMessageDescription {
+impl From<&CompileError> for CompileMessage {
+    fn from(compile_error: &CompileError) -> CompileMessage {
+        CompileMessage {
             message: SourceMessage {
-                span: self.span().clone(),
-                message: format!("{}", self)
+                span: compile_error.span().clone(),
+                message: format!("{}", compile_error)
             },
             ..Default::default()
         }
