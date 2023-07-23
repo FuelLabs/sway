@@ -84,6 +84,7 @@ impl ty::TyAbiDecl {
                             &Default::default(),
                             None,
                             ctx.engines,
+                            false,
                         )
                         .value
                     {
@@ -171,6 +172,31 @@ impl ty::TyAbiDecl {
                     })
                 }
             }
+            if let Some(superabi_impl_method_ref) = ctx
+                .namespace
+                .find_method_for_type(
+                    ctx.self_type(),
+                    &[],
+                    &method.name.clone(),
+                    ctx.self_type(),
+                    ctx.type_annotation(),
+                    &Default::default(),
+                    None,
+                    ctx.engines,
+                    false,
+                )
+                .value
+            {
+                let superabi_impl_method = ctx.engines.de().get_function(&superabi_impl_method_ref);
+                if let Some(ty::TyDecl::AbiDecl(abi_decl)) =
+                    superabi_impl_method.implementing_type.clone()
+                {
+                    errors.push(CompileError::AbiShadowsSuperAbiMethod {
+                        span: method.name.span().clone(),
+                        superabi: abi_decl.name.clone(),
+                    })
+                }
+            }
             if !ids.insert(method.name.clone()) {
                 errors.push(CompileError::MultipleDefinitionsOfName {
                     name: method.name.clone(),
@@ -237,6 +263,7 @@ impl ty::TyAbiDecl {
                                 &Default::default(),
                                 None,
                                 ctx.engines,
+                                false,
                             )
                             .value
                         {
@@ -296,6 +323,40 @@ impl ty::TyAbiDecl {
             match item {
                 ty::TyTraitItem::Fn(decl_ref) => {
                     let mut method = decl_engine.get_function(decl_ref);
+                    // check if we inherit the same impl method from different branches
+                    // XXX this piece of code can be abstracted out into a closure
+                    // and reused for interface methods if the issue of mutable ctx is solved
+                    if let Some(superabi_impl_method_ref) = ctx
+                        .namespace
+                        .find_method_for_type(
+                            ctx.self_type(),
+                            &[],
+                            &method.name.clone(),
+                            ctx.self_type(),
+                            ctx.type_annotation(),
+                            &Default::default(),
+                            None,
+                            ctx.engines,
+                            false,
+                        )
+                        .value
+                    {
+                        let superabi_impl_method =
+                            ctx.engines.de().get_function(&superabi_impl_method_ref);
+                        if let Some(ty::TyDecl::AbiDecl(abi_decl)) =
+                            superabi_impl_method.implementing_type.clone()
+                        {
+                            // allow the diamond superABI hierarchy
+                            if self_decl_id != abi_decl.decl_id {
+                                errors.push(CompileError::ConflictingSuperAbiMethods {
+                                    span: subabi_span.clone(),
+                                    method_name: method.name.to_string(),
+                                    superabi1: abi_decl.name.to_string(),
+                                    superabi2: self.name.to_string(),
+                                })
+                            }
+                        }
+                    }
                     method.replace_self_type(engines, type_id);
                     all_items.push(TyImplItem::Fn(
                         ctx.engines

@@ -22,11 +22,6 @@ abi Bottom : Left + Right {
     fn bottom();
 }
 
-// This should be allowed in principle, because
-// Left::top() and Right::top() actually refer
-// to the same method Top::top().
-// We forbid it temporarily because it's easier to
-// implement it this way before we have proper infrastructure
 impl Top for Contract {
     fn top() { }
 }
