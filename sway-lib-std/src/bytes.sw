@@ -96,7 +96,7 @@ impl Bytes {
     /// reallocating. If `capacity` is zero, the `Bytes` will not allocate.
     ///
     /// It is important to note that although the returned `Bytes` has the
-    /// capacity specified, the vector will have a zero length.
+    /// capacity specified, the type will have a zero length.
     ///
     /// # Arguments
     ///
@@ -515,7 +515,7 @@ impl Bytes {
         self.buf.cap = 0;
     }
 
-    /// Returns `true` if the vector contains no elements.
+    /// Returns `true` if the type contains no elements.
     ///
     /// # Returns
     ///
@@ -732,7 +732,7 @@ impl core::ops::Eq for Bytes {
 }
 
 impl AsRawSlice for Bytes {
-    /// Returns a raw slice of all of the elements in the vector.
+    /// Returns a raw slice of all of the elements in the type.
     fn as_raw_slice(self) -> raw_slice {
         asm(ptr: (self.buf.ptr(), self.len)) { ptr: raw_slice }
     }
