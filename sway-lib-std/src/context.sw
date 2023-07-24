@@ -6,11 +6,54 @@ use ::call_frames::contract_id;
 use ::registers::balance;
 
 /// Get the balance of coin `asset_id` for the current contract.
+///
+/// # Arguments
+///
+/// * `asset_id`: [ContractId] - The asset of which the balance should be returned.
+///
+/// # Returns
+///
+/// * [u64] - The amount of the asset which the contract holds.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::context::this_balance;
+/// use std::token::mint;
+/// use std::call_frames::contract_id;
+/// 
+/// fn foo() {
+///     mint(50);
+///     assert(this_balance(contract_id()) == 50);
+/// }
+/// ```
 pub fn this_balance(asset_id: ContractId) -> u64 {
     balance_of(asset_id, contract_id())
 }
 
 /// Get the balance of coin `asset_id` for the contract at 'target'.
+///
+/// # Arguments
+///
+/// * `asset_id`: [ContractId] - The asset of which the balance should be returned.
+/// * `target`: [ContractId] - The contract of which the balance should be returned.
+///
+/// # Returns
+///
+/// * [u64] - The amount of the asset which the `target` holds.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::context::this_balance;
+/// use std::token::mint;
+/// use std::call_frames::contract_id;
+/// 
+/// fn foo() {
+///     mint(50);
+///     assert(this_balance(contract_id(), contract_id()) == 50);
+/// }
+/// ```
 pub fn balance_of(asset_id: ContractId, target: ContractId) -> u64 {
     asm(balance, token: asset_id.value, id: target.value) {
         bal balance token id;
@@ -19,6 +62,20 @@ pub fn balance_of(asset_id: ContractId, target: ContractId) -> u64 {
 }
 
 /// Get the amount of units of `call_frames::msg_asset_id()` being sent.
+///
+/// # Returns
+///
+/// * [u64] - The amount of tokens being sent.
+///
+/// # Examples 
+/// 
+/// ```sway
+/// use std::context::msg_amount;
+/// 
+/// fn foo() {
+///     assert(msg_amount() == 0);
+/// }
+/// ```
 pub fn msg_amount() -> u64 {
     balance()
 }
