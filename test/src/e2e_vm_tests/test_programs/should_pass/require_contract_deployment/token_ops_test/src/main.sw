@@ -14,10 +14,10 @@ fn main() -> bool {
     let default_gas = 1_000_000_000_000;
 
     // the deployed fuel_coin Contract_Id:
-    let fuelcoin_id = ContractId::from(0x1965bb988d9f2d052ee947f5ec33a5cba8f140cee7cf1ef084215c12915709e2);
+    let fuelcoin_id = ContractId::from(0x65a04f8f865d98dd97ea638d7c1ea7b807670226a5091ccd38bae3f2eeead286);
 
     // contract ID for sway/test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/balance_test_contract/
-    let balance_test_id = ContractId::from(0xd54323a3316a7cfd26a3bab076a0194dfffbcc9a583d152043f5237fa60753ed);
+    let balance_test_id = ContractId::from(0x4a00baa517980432b9274a0e2f03c88735bdb483730816679c6eb37b4046d060);
 
     // todo: use correct type ContractId
     let fuel_coin = abi(TestFuelCoin, fuelcoin_id.into());
