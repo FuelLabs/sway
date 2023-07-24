@@ -67,7 +67,7 @@ impl Bytes {
     ///
     /// # Returns
     ///
-    /// * [Bytes] - A new, empty `Bytes`
+    /// * [Bytes] - A new, empty `Bytes`.
     ///
     /// # Examples
     ///
@@ -100,11 +100,11 @@ impl Bytes {
     ///
     /// # Arguments
     ///
-    /// * `capacity`: [u64] - The capacity with which to initialize the `Bytes`
+    /// * `capacity`: [u64] - The capacity with which to initialize the `Bytes`.
     ///
     /// # Returns
     ///
-    /// * [Bytes] - A new, empty `Bytes` with the specified capacity
+    /// * [Bytes] - A new, empty `Bytes` with the specified capacity.
     ///
     /// # Examples
     ///
@@ -130,7 +130,7 @@ impl Bytes {
     ///
     /// # Arguments
     ///
-    /// * `byte`: [u8] - The element to be pushed onto the `Bytes`
+    /// * `byte`: [u8] - The element to be pushed onto the `Bytes`.
     ///
     /// # Examples
     ///
@@ -168,7 +168,7 @@ impl Bytes {
     ///
     /// # Returns
     ///
-    /// * [Option<u8>] - The last element of the `Bytes`, or `None` if it is empty
+    /// * [Option<u8>] - The last element of the `Bytes`, or `None` if it is empty.
     ///
     /// # Examples
     ///
@@ -203,11 +203,11 @@ impl Bytes {
     ///
     /// # Arguments
     ///
-    /// * `index`: [u64] - The index of the element to be returned
+    /// * `index`: [u64] - The index of the element to be returned.
     ///
     /// # Returns
     ///
-    /// * [Option<u8>] - The element at the specified index, or `None` if the index is out of bounds
+    /// * [Option<u8>] - The element at the specified index, or `None` if the index is out of bounds.
     ///
     /// # Examples
     ///
@@ -240,8 +240,8 @@ impl Bytes {
     ///
     /// # Arguments
     ///
-    /// * `index`: [u64] - The index of the element to be set
-    /// * value: [u8] - The value of the element to be set
+    /// * `index`: [u64] - The index of the element to be set.
+    /// * `value`: [u8] - The value of the element to be set.
     ///
     /// # Panics
     ///
@@ -284,8 +284,8 @@ impl Bytes {
     ///
     /// # Arguments
     ///
-    /// * index: [u64] - The index at which to insert the element
-    /// * element: [u8] - The element to be inserted
+    /// * `index`: [u64] - The index at which to insert the element.
+    /// * `element`: [u8] - The element to be inserted.
     ///
     /// # Panics
     ///
@@ -347,15 +347,15 @@ impl Bytes {
     ///
     /// # Arguments
     ///
-    /// * index: [u64] - The index of the element to be removed
+    /// * `index`: [u64] - The index of the element to be removed.
     ///
     /// # Returns
     ///
-    /// * [u8] - The element at the specified index
+    /// * [u8] - The element at the specified index.
     ///
     /// # Panics
     ///
-    /// * When `index >= self.len`
+    /// * When `index >= self.len`.
     ///
     /// # Examples
     ///
@@ -401,8 +401,8 @@ impl Bytes {
     ///
     /// # Arguments
     ///
-    /// * element1_index: [u64] - The index of the first element
-    /// * element2_index: [u64] - The index of the second element
+    /// * `element1_index`: [u64] - The index of the first element.
+    /// * `element2_index`: [u64] - The index of the second element.
     ///
     /// # Panics
     ///
@@ -451,7 +451,7 @@ impl Bytes {
     ///
     /// # Returns
     ///
-    /// * [u64] - The capacity of the allocation
+    /// * [u64] - The capacity of the allocation.
     ///
     /// # Examples
     ///
@@ -472,7 +472,7 @@ impl Bytes {
     ///
     /// # Returns
     ///
-    /// * [u64] - The length of the `Bytes`
+    /// * [u64] - The length of the `Bytes`.
     ///
     /// # Examples
     ///
@@ -519,7 +519,7 @@ impl Bytes {
     ///
     /// # Returns
     ///
-    /// * [bool] - `true` if the type contains no elements, `false` otherwise
+    /// * [bool] - `true` if the type contains no elements, `false` otherwise.
     ///
     /// # Examples
     ///
@@ -543,7 +543,7 @@ impl Bytes {
     ///
     /// # Returns
     ///
-    /// * [b256] - The `SHA-2-256` hash of the elements
+    /// * [b256] - The `SHA-2-256` hash of the elements.
     ///
     /// # Examples
     ///
@@ -570,7 +570,7 @@ impl Bytes {
     ///
     /// # Returns
     ///
-    /// * [b256] - The `KECCAK-256` hash of the elements
+    /// * [b256] - The `KECCAK-256` hash of the elements.
     ///
     /// # Examples
     ///
@@ -606,11 +606,11 @@ impl Bytes {
     ///
     /// # Arguments
     ///
-    /// * mid: [u64] - Index at which the Bytes is to be split
+    /// * `mid`: [u64] - Index at which the Bytes is to be split.
     ///
     /// # Panics
     ///
-    /// * When `mid > self.len`
+    /// * When `mid > self.len`.
     ///
     /// # Examples
     ///
@@ -654,7 +654,7 @@ impl Bytes {
     ///
     /// # Arguments
     ///
-    /// * other: [Bytes] - The Bytes to append to self.
+    /// * `other`: [Bytes] - The Bytes to append to self.
     ///
     /// # Examples
     ///
