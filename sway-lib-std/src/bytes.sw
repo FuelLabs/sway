@@ -519,7 +519,7 @@ impl Bytes {
     ///
     /// # Returns
     ///
-    /// * [bool] - `true` if the vector contains no elements, `false` otherwise
+    /// * [bool] - `true` if the type contains no elements, `false` otherwise
     ///
     /// # Examples
     ///
