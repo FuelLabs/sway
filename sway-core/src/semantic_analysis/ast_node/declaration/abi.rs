@@ -68,36 +68,42 @@ impl ty::TyAbiDecl {
 
         let mut ids: HashSet<Ident> = HashSet::default();
 
+        let error_on_shadowing_superabi_method =
+            |method_name: &Ident, ctx: &mut TypeCheckContext, errors: &mut Vec<CompileError>| {
+                if let Some(superabi_impl_method_ref) = ctx
+                    .namespace
+                    .find_method_for_type(
+                        ctx.self_type(),
+                        &[],
+                        &method_name.clone(),
+                        ctx.self_type(),
+                        ctx.type_annotation(),
+                        &Default::default(),
+                        None,
+                        ctx.engines,
+                        false,
+                    )
+                    .value
+                {
+                    let superabi_impl_method =
+                        ctx.engines.de().get_function(&superabi_impl_method_ref);
+                    if let Some(ty::TyDecl::AbiDecl(abi_decl)) =
+                        superabi_impl_method.implementing_type.clone()
+                    {
+                        errors.push(CompileError::AbiShadowsSuperAbiMethod {
+                            span: method_name.span().clone(),
+                            superabi: abi_decl.name.clone(),
+                        })
+                    }
+                }
+            };
+
         for item in interface_surface.into_iter() {
             let decl_name = match item {
                 TraitItem::TraitFn(method) => {
                     // check that a super-trait does not define a method
                     // with the same name as the current interface method
-                    if let Some(superabi_method_ref) = ctx
-                        .namespace
-                        .find_method_for_type(
-                            self_type,
-                            &[],
-                            &method.name,
-                            self_type,
-                            ctx.type_annotation(),
-                            &Default::default(),
-                            None,
-                            ctx.engines,
-                            false,
-                        )
-                        .value
-                    {
-                        let superabi_method = ctx.engines.de().get_function(&superabi_method_ref);
-                        if let Some(ty::TyDecl::AbiDecl(abi_decl)) =
-                            superabi_method.implementing_type.clone()
-                        {
-                            errors.push(CompileError::AbiShadowsSuperAbiMethod {
-                                span: method.span.clone(),
-                                superabi: abi_decl.name,
-                            })
-                        }
-                    }
+                    error_on_shadowing_superabi_method(&method.name, &mut ctx, &mut errors);
                     let method = check!(
                         ty::TyTraitFn::type_check(ctx.by_ref(), method),
                         return err(warnings, errors),
@@ -164,36 +170,12 @@ impl ty::TyAbiDecl {
                 warnings,
                 errors
             );
+            error_on_shadowing_superabi_method(&method.name, &mut ctx, &mut errors);
             for param in &method.parameters {
                 if param.is_reference || param.is_mutable {
                     errors.push(CompileError::RefMutableNotAllowedInContractAbi {
                         param_name: param.name.clone(),
                         span: param.name.span(),
-                    })
-                }
-            }
-            if let Some(superabi_impl_method_ref) = ctx
-                .namespace
-                .find_method_for_type(
-                    ctx.self_type(),
-                    &[],
-                    &method.name.clone(),
-                    ctx.self_type(),
-                    ctx.type_annotation(),
-                    &Default::default(),
-                    None,
-                    ctx.engines,
-                    false,
-                )
-                .value
-            {
-                let superabi_impl_method = ctx.engines.de().get_function(&superabi_impl_method_ref);
-                if let Some(ty::TyDecl::AbiDecl(abi_decl)) =
-                    superabi_impl_method.implementing_type.clone()
-                {
-                    errors.push(CompileError::AbiShadowsSuperAbiMethod {
-                        span: method.name.span().clone(),
-                        superabi: abi_decl.name.clone(),
                     })
                 }
             }
