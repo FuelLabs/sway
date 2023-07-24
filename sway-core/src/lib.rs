@@ -178,7 +178,7 @@ fn parse_in_memory(
         engines,
         module.value.clone(),
     )?;
-    let module_kind_span = module.value.kind.span().clone();
+    let module_kind_span = module.value.kind.span();
     let submodules = Default::default();
     let attributes = module_attrs_to_map(handler, &module.attribute_list)?;
     let root = parsed::ParseModule {
@@ -303,7 +303,7 @@ fn parse_module_tree(
         engines,
         module.value.clone(),
     )?;
-    let module_kind_span = module.value.kind.span().clone();
+    let module_kind_span = module.value.kind.span();
     let attributes = module_attrs_to_map(handler, &module.attribute_list)?;
 
     let lexed = lexed::LexedModule {
