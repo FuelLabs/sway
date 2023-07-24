@@ -34,12 +34,13 @@ pub(crate) fn type_check_method_application(
             .by_ref()
             .with_help_text("")
             .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
-        args_buf.push_back(check!(
+        let r = check!(
             ty::TyExpression::type_check(ctx, arg.clone()),
             ty::TyExpression::error(span.clone(), engines),
             warnings,
             errors
-        ));
+        );
+        args_buf.push_back(r);
     }
 
     // resolve the method name to a typed function declaration and type_check

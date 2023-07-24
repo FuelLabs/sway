@@ -769,7 +769,7 @@ fn const_eval_intrinsic(
             }
         }
         sway_ast::Intrinsic::Lsh | sway_ast::Intrinsic::Rsh => {
-            let ty = args[0].ty;
+            let ty: Type = args[0].ty;
             assert!(
                 args.len() == 2
                     && ty.is_uint(lookup.context)

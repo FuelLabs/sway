@@ -194,6 +194,7 @@ impl Pattern {
             Literal::U16(x) => Pattern::U16(Range::from_single(x)),
             Literal::U32(x) => Pattern::U32(Range::from_single(x)),
             Literal::U64(x) => Pattern::U64(Range::from_single(x)),
+            Literal::U256(_) => todo!(),
             Literal::B256(x) => Pattern::B256(x),
             Literal::Boolean(b) => Pattern::Boolean(b),
             Literal::Numeric(x) => Pattern::Numeric(Range::from_single(x)),

@@ -98,7 +98,7 @@ pub fn compile_program<'eng>(
         ),
     }?;
 
-    //println!("{ctx}");
+    // println!("{}", ctx.to_string());
 
     ctx.verify().map_err(|ir_error: sway_ir::IrError| {
         CompileError::InternalOwned(ir_error.to_string(), Span::dummy())

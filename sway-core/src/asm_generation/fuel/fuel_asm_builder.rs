@@ -10,7 +10,10 @@ use crate::{
         },
         ProgramKind,
     },
-    asm_lang::{virtual_register::*, Label, Op, VirtualImmediate12, VirtualImmediate18, VirtualOp},
+    asm_lang::{
+        virtual_register::*, ImmediateOp, Label, Op, VirtualImmediate12, VirtualImmediate18,
+        VirtualOp,
+    },
     decl_engine::DeclRefFunction,
     error::*,
     metadata::MetadataManager,
@@ -485,21 +488,53 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         let val1_reg = self.value_to_register(arg1)?;
         let val2_reg = self.value_to_register(arg2)?;
         let res_reg = self.reg_seqr.next();
-        let opcode = match op {
-            BinaryOpKind::Add => Either::Left(VirtualOp::ADD(res_reg.clone(), val1_reg, val2_reg)),
-            BinaryOpKind::Sub => Either::Left(VirtualOp::SUB(res_reg.clone(), val1_reg, val2_reg)),
-            BinaryOpKind::Mul => Either::Left(VirtualOp::MUL(res_reg.clone(), val1_reg, val2_reg)),
-            BinaryOpKind::Div => Either::Left(VirtualOp::DIV(res_reg.clone(), val1_reg, val2_reg)),
-            BinaryOpKind::And => Either::Left(VirtualOp::AND(res_reg.clone(), val1_reg, val2_reg)),
-            BinaryOpKind::Or => Either::Left(VirtualOp::OR(res_reg.clone(), val1_reg, val2_reg)),
-            BinaryOpKind::Xor => Either::Left(VirtualOp::XOR(res_reg.clone(), val1_reg, val2_reg)),
-            BinaryOpKind::Mod => Either::Left(VirtualOp::MOD(res_reg.clone(), val1_reg, val2_reg)),
-            BinaryOpKind::Rsh => Either::Left(VirtualOp::SRL(res_reg.clone(), val1_reg, val2_reg)),
-            BinaryOpKind::Lsh => Either::Left(VirtualOp::SLL(res_reg.clone(), val1_reg, val2_reg)),
+
+        // Check op is on 256 bits and use the special opcodes
+        let arg1_width = arg1
+            .get_type(self.context)
+            .and_then(|x| x.get_uint_width(self.context));
+        let arg2_width = arg2
+            .get_type(self.context)
+            .and_then(|x| x.get_uint_width(self.context));
+        let (opcode, comment) = match (arg1_width, arg2_width) {
+            (Some(256), Some(256)) => match op {
+                BinaryOpKind::Add => (
+                    VirtualOp::WQOP(
+                        res_reg.clone(),
+                        val1_reg,
+                        val2_reg,
+                        ImmediateOp {
+                            op: crate::asm_lang::ImmediateOpOperation::Add,
+                            indirect: false,
+                        },
+                    ),
+                    Some("add"),
+                ),
+                _ => todo!(),
+            },
+            _ => {
+                // Use the standard opcodes
+                (
+                    match op {
+                        BinaryOpKind::Add => VirtualOp::ADD(res_reg.clone(), val1_reg, val2_reg),
+                        BinaryOpKind::Sub => VirtualOp::SUB(res_reg.clone(), val1_reg, val2_reg),
+                        BinaryOpKind::Mul => VirtualOp::MUL(res_reg.clone(), val1_reg, val2_reg),
+                        BinaryOpKind::Div => VirtualOp::DIV(res_reg.clone(), val1_reg, val2_reg),
+                        BinaryOpKind::And => VirtualOp::AND(res_reg.clone(), val1_reg, val2_reg),
+                        BinaryOpKind::Or => VirtualOp::OR(res_reg.clone(), val1_reg, val2_reg),
+                        BinaryOpKind::Xor => VirtualOp::XOR(res_reg.clone(), val1_reg, val2_reg),
+                        BinaryOpKind::Mod => VirtualOp::MOD(res_reg.clone(), val1_reg, val2_reg),
+                        BinaryOpKind::Rsh => VirtualOp::SRL(res_reg.clone(), val1_reg, val2_reg),
+                        BinaryOpKind::Lsh => VirtualOp::SLL(res_reg.clone(), val1_reg, val2_reg),
+                    },
+                    None,
+                )
+            }
         };
+
         self.cur_bytecode.push(Op {
-            opcode,
-            comment: String::new(),
+            opcode: Either::Left(opcode),
+            comment: comment.map(Into::into).unwrap_or_default(),
             owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
         });
 
@@ -1441,17 +1476,34 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         config_name: Option<String>,
         span: Option<Span>,
     ) -> (VirtualRegister, Option<DataId>) {
+        // Use cheaper $zero or $one registers if possible.
         match &constant.value {
-            // Use cheaper $zero or $one registers if possible.
-            ConstantValue::Unit | ConstantValue::Bool(false) | ConstantValue::Uint(0)
-                if config_name.is_none() =>
+            ConstantValue::Uint(0)
+                if config_name.is_none()
+                    && constant
+                        .ty
+                        .get_uint_width(self.context)
+                        .map(|x| x <= 64)
+                        .unwrap_or(false) =>
             {
                 (VirtualRegister::Constant(ConstantRegister::Zero), None)
             }
 
-            ConstantValue::Bool(true) | ConstantValue::Uint(1) if config_name.is_none() => {
+            ConstantValue::Unit | ConstantValue::Bool(false) if config_name.is_none() => {
+                (VirtualRegister::Constant(ConstantRegister::Zero), None)
+            }
+
+            ConstantValue::Uint(1)
+                if config_name.is_none()
+                    && constant
+                        .ty
+                        .get_uint_width(self.context)
+                        .map(|x| x <= 64)
+                        .unwrap_or(false) =>
+            {
                 (VirtualRegister::Constant(ConstantRegister::One), None)
             }
+            ConstantValue::Bool(true) => (VirtualRegister::Constant(ConstantRegister::One), None),
 
             _otherwise => {
                 // Get the constant into the namespace.

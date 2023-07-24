@@ -22,4 +22,4 @@ fn main() -> u64 {
 // not: local u64 a
 // check: entry():
 // check: $(a=$VAL) = const u64 10
-// check: ret u64 $a
+// check: ret u64 $a  

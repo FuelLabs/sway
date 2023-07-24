@@ -849,6 +849,7 @@ fn type_info_name(type_info: &TypeInfo) -> String {
             IntegerBits::Sixteen => "uint16",
             IntegerBits::ThirtyTwo => "uint32",
             IntegerBits::SixtyFour => "uint64",
+            IntegerBits::V256 => "uint256",
         },
         TypeInfo::Boolean => "bool",
         TypeInfo::Custom {

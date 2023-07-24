@@ -248,7 +248,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> R
 
                 // Compile to IR.
                 let include_tests = true;
-                let mut ir = compile_program(typed_program, include_tests, &engines)
+                let ir = compile_program(typed_program, include_tests, &engines)
                     .unwrap_or_else(|e| {
                         use sway_types::span::Spanned;
                         let span = e.span();
@@ -259,9 +259,11 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> R
                             span.end(),
                             span.as_str()
                         );
-                    })
-                    .verify()
+                    });
+                let ir_string = ir.to_string();
+                let mut ir = ir.verify()
                     .unwrap_or_else(|err| {
+                            println!("{ir_string}");
                         panic!("IR verification failed for test {}:\n{err}", path.display());
                     });
 
@@ -531,8 +533,10 @@ fn compile_core(build_target: BuildTarget, engines: &Engines) -> namespace::Modu
             std_module
         }
         _ => {
+            println!("Errors");
+            println!("------");
             for err in res.errors {
-                println!("{err:?}");
+                println!("    {err:?}");
             }
             panic!("Failed to compile sway-lib-core for IR tests.");
         }

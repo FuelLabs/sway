@@ -703,6 +703,7 @@ fn lex_int_ty_opt(l: &mut Lexer<'_>) -> Result<Option<(LitIntType, Span)>> {
             None => break l.src.len(),
         }
     };
+
     // Parse the suffix to a known one, or if unknown, recover by throwing it away.
     let ty = match parse_int_suffix(&suffix) {
         Some(s) => s,
@@ -726,6 +727,8 @@ pub fn parse_int_suffix(suffix: &str) -> Option<LitIntType> {
         "u16" => LitIntType::U16,
         "u32" => LitIntType::U32,
         "u64" => LitIntType::U64,
+        "u128" => todo!(),
+        "u256" => LitIntType::U256,
         "i8" => LitIntType::I8,
         "i16" => LitIntType::I16,
         "i32" => LitIntType::I32,

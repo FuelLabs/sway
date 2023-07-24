@@ -67,6 +67,7 @@ impl<T: PartialEqWithEngines> PartialEqWithEngines for VecSet<T> {
 }
 
 /// Type information without an associated value, used for type inferencing and definition.
+// see type_name_to_type_info_opt for known types strings to this enum
 #[derive(Debug, Clone, Default)]
 pub enum TypeInfo {
     #[default]
@@ -433,6 +434,7 @@ impl DisplayWithEngines for TypeInfo {
                 IntegerBits::Sixteen => "u16",
                 IntegerBits::ThirtyTwo => "u32",
                 IntegerBits::SixtyFour => "u64",
+                IntegerBits::V256 => "u256",
             }
             .into(),
             Boolean => "bool".into(),
@@ -498,6 +500,7 @@ impl DebugWithEngines for TypeInfo {
                 IntegerBits::Sixteen => "u16",
                 IntegerBits::ThirtyTwo => "u32",
                 IntegerBits::SixtyFour => "u64",
+                IntegerBits::V256 => "u256",
             }
             .into(),
             Boolean => "bool".into(),
@@ -614,6 +617,7 @@ impl TypeInfo {
                     Sixteen => "u16",
                     ThirtyTwo => "u32",
                     SixtyFour => "u64",
+                    V256 => todo!(),
                 }
                 .into()
             }

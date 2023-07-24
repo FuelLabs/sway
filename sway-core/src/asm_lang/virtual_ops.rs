@@ -11,10 +11,49 @@ use super::{
     Op,
 };
 use crate::asm_generation::fuel::{data_section::DataId, register_allocator::RegisterPool};
-
 use std::collections::{BTreeSet, HashMap};
-
 use std::fmt;
+
+#[derive(Clone, Copy, Debug)]
+#[repr(u16)]
+pub enum ImmediateOpOperation {
+    //	Add
+    Add = 0,
+    //	Subtract
+    Sub = 1,
+    //	Invert bits (discards rhs)
+    Not = 2,
+    //	Bitwise or
+    Or = 3,
+    //	Bitwise exclusive or
+    Xor = 4,
+    //	Bitwise and
+    And = 5,
+    //	Shift left (logical)
+    Shl = 6,
+    //	Shift right (logical)
+    Shr = 7,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct ImmediateOp {
+    pub op: ImmediateOpOperation,
+    pub indirect: bool,
+}
+
+impl fmt::Display for ImmediateOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "i{}", self.immediate_value())
+    }
+}
+
+impl ImmediateOp {
+    pub fn immediate_value(&self) -> VirtualImmediate06 {
+        let a = self.op as u8;
+        let b = if self.indirect { 1u8 } else { 0u8 } << 5;
+        VirtualImmediate06 { value: a & b }
+    }
+}
 
 /// This enum is unfortunately a redundancy of the [fuel_asm::Opcode] enum. This variant, however,
 /// allows me to use the compiler's internal [VirtualRegister] types and maintain type safety
@@ -55,6 +94,14 @@ pub(crate) enum VirtualOp {
     SUBI(VirtualRegister, VirtualRegister, VirtualImmediate12),
     XOR(VirtualRegister, VirtualRegister, VirtualRegister),
     XORI(VirtualRegister, VirtualRegister, VirtualImmediate12),
+    /// WQOP: Misc 256-bit integer operations
+    /// wqop $rA, $rB, $rC, imm
+    WQOP(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        ImmediateOp,
+    ),
 
     /* Control Flow Instructions */
     JMP(VirtualRegister),
@@ -207,6 +254,7 @@ impl VirtualOp {
             SUBI(r1, r2, _i) => vec![r1, r2],
             XOR(r1, r2, r3) => vec![r1, r2, r3],
             XORI(r1, r2, _i) => vec![r1, r2],
+            WQOP(r1, r2, r3, _) => vec![r1, r2, r3],
 
             /* Control Flow Instructions */
             JMP(r1) => vec![r1],
@@ -316,6 +364,7 @@ impl VirtualOp {
             SUBI(_r1, r2, _i) => vec![r2],
             XOR(_r1, r2, r3) => vec![r2, r3],
             XORI(_r1, r2, _i) => vec![r2],
+            WQOP(_, r2, r3, _) => vec![r2, r3],
 
             /* Control Flow Instructions */
             JMP(r1) => vec![r1],
@@ -425,6 +474,7 @@ impl VirtualOp {
             SUBI(r1, _r2, _i) => vec![r1],
             XOR(r1, _r2, _r3) => vec![r1],
             XORI(r1, _r2, _i) => vec![r1],
+            WQOP(r1, _, _, _) => vec![r1],
 
             /* Control Flow Instructions */
             JMP(_r1) => vec![],
@@ -668,6 +718,12 @@ impl VirtualOp {
             XORI(r1, r2, i) => Self::XORI(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
+                i.clone(),
+            ),
+            WQOP(r1, r2, r3, i) => Self::WQOP(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
                 i.clone(),
             ),
 
@@ -1087,6 +1143,12 @@ impl VirtualOp {
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 imm.clone(),
+            ),
+            WQOP(reg1, reg2, reg3, imm) => AllocatedOpcode::WQOP(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+                imm.immediate_value(),
             ),
 
             /* Control Flow Instructions */

@@ -24,11 +24,7 @@ members = [
     "swayfmt",
     "test",
 ]
-exclude = [
-    "examples/*",
-    "swayfmt/test_macros",
-    "forc-test/test_data"
-]
+exclude = ["examples/*", "swayfmt/test_macros", "forc-test/test_data"]
 
 [workspace.dependencies]
 fuel-asm = "0.34.1"

@@ -4,7 +4,6 @@ use crate::{
     type_system::*,
     BuildTarget, Engines,
 };
-
 use itertools::Itertools;
 use sway_ast::{
     attribute::Annotated,
@@ -1257,6 +1256,7 @@ pub(crate) fn type_name_to_type_info_opt(name: &Ident) -> Option<TypeInfo> {
         "u16" => Some(TypeInfo::UnsignedInteger(IntegerBits::Sixteen)),
         "u32" => Some(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
         "u64" => Some(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
+        "u256" => Some(TypeInfo::UnsignedInteger(IntegerBits::V256)),
         "bool" => Some(TypeInfo::Boolean),
         "unit" => Some(TypeInfo::Tuple(Vec::new())),
         "b256" => Some(TypeInfo::B256),
@@ -2887,6 +2887,7 @@ fn literal_to_literal(
                         };
                         Literal::U64(value)
                     }
+                    LitIntType::U256 => Literal::U256(parsed),
                     LitIntType::I8 | LitIntType::I16 | LitIntType::I32 | LitIntType::I64 => {
                         let error = ConvertParseTreeError::SignedIntegersNotSupported { span };
                         return Err(handler.emit_err(error.into()));

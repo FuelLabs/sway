@@ -5543,6 +5543,7 @@ dependencies = [
  "itertools",
  "lazy_static",
  "miden-core",
+ "num-bigint",
  "pest",
  "pest_derive",
  "petgraph",

@@ -494,6 +494,7 @@ mod ir_builder {
                 = ("unit" / "()") _ { IrAstTy::Unit }
                 / "bool" _ { IrAstTy::Bool }
                 / "u64" _ { IrAstTy::U64 }
+                / "u256" _ { IrAstTy::U256 }
                 / "b256" _ { IrAstTy::B256 }
                 / "string" _ "<" _ sz:decimal() ">" _ { IrAstTy::String(sz) }
                 / array_ty()
@@ -783,7 +784,11 @@ mod ir_builder {
                 IrAstConstValue::Unit => Constant::get_unit(context),
                 IrAstConstValue::Bool(b) => Constant::get_bool(context, *b),
                 IrAstConstValue::B256(bs) => Constant::get_b256(context, *bs),
-                IrAstConstValue::Number(n) => Constant::get_uint(context, 64, *n),
+                IrAstConstValue::Number(n) => match val_ty {
+                    IrAstTy::U64 => Constant::get_uint(context, 64, *n),
+                    IrAstTy::U256 => Constant::get_uint(context, 256, *n),
+                    _ => todo!(),
+                },
                 IrAstConstValue::String(s) => Constant::get_string(context, s.clone()),
                 IrAstConstValue::Array(..) => {
                     let array_const = self.as_constant(context, val_ty);
@@ -802,6 +807,7 @@ mod ir_builder {
         Unit,
         Bool,
         U64,
+        U256,
         B256,
         String(u64),
         Array(Box<IrAstTy>, u64),
@@ -816,6 +822,7 @@ mod ir_builder {
                 IrAstTy::Unit => Type::get_unit(context),
                 IrAstTy::Bool => Type::get_bool(context),
                 IrAstTy::U64 => Type::get_uint64(context),
+                IrAstTy::U256 => Type::get_uint(context, 256),
                 IrAstTy::B256 => Type::get_b256(context),
                 IrAstTy::String(n) => Type::new_string(context, *n),
                 IrAstTy::Array(el_ty, count) => {

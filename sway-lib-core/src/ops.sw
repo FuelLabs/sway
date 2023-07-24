@@ -6,6 +6,13 @@ pub trait Add {
     fn add(self, other: Self) -> Self;
 }
 
+impl Add for u256 {
+    fn add(self, other: Self) -> Self {
+        //let bytes: [u8; 64] = __be_bytes(self);
+        __add(self, other)
+    }
+}
+
 impl Add for u64 {
     fn add(self, other: Self) -> Self {
         __add(self, other)
@@ -54,6 +61,12 @@ pub trait Subtract {
     fn subtract(self, other: Self) -> Self;
 }
 
+impl Subtract for u256 {
+    fn subtract(self, other: Self) -> Self {
+        __sub(self, other)
+    }
+}
+
 impl Subtract for u64 {
     fn subtract(self, other: Self) -> Self {
         __sub(self, other)
@@ -82,6 +95,12 @@ impl Subtract for u8 {
 
 pub trait Multiply {
     fn multiply(self, other: Self) -> Self;
+}
+
+impl Multiply for u256 {
+    fn multiply(self, other: Self) -> Self {
+        __mul(self, other)
+    }
 }
 
 impl Multiply for u64 {
@@ -132,6 +151,12 @@ pub trait Divide {
     fn divide(self, other: Self) -> Self;
 }
 
+impl Divide for u256 {
+    fn divide(self, other: Self) -> Self {
+        __div(self, other)
+    }
+}
+
 impl Divide for u64 {
     fn divide(self, other: Self) -> Self {
         __div(self, other)
@@ -162,6 +187,12 @@ impl Divide for u8 {
 
 pub trait Mod {
     fn modulo(self, other: Self) -> Self;
+}
+
+impl Mod for u256 {
+    fn modulo(self, other: Self) -> Self {
+        __mod(self, other)
+    }
 }
 
 impl Mod for u64 {
@@ -198,6 +229,34 @@ impl Not for bool {
     }
 }
 
+
+impl Not for u64 {
+    fn not(self) -> Self {
+        __not(self)
+    }
+}
+
+impl Not for u32 {
+    fn not(self) -> Self {
+        let v = __not(self);
+        __and(v, u32::max())
+    }
+}
+
+impl Not for u16 {
+    fn not(self) -> Self {
+        let v = __not(self);
+        __and(v, u16::max())
+    }
+}
+
+impl Not for u8 {
+    fn not(self) -> Self {
+        let v = __not(self);
+        __and(v, u8::max())
+    }
+}
+
 pub trait Eq {
     fn eq(self, other: Self) -> bool;
 } {
@@ -207,6 +266,12 @@ pub trait Eq {
 }
 
 impl Eq for bool {
+    fn eq(self, other: Self) -> bool {
+        __eq(self, other)
+    }
+}
+
+impl Eq for u256 {
     fn eq(self, other: Self) -> bool {
         __eq(self, other)
     }
@@ -256,6 +321,15 @@ impl Eq for raw_ptr {
 pub trait Ord {
     fn gt(self, other: Self) -> bool;
     fn lt(self, other: Self) -> bool;
+}
+
+impl Ord for u256 {
+    fn gt(self, other: Self) -> bool {
+        __gt(self, other)
+    }
+    fn lt(self, other: Self) -> bool {
+        __lt(self, other)
+    }
 }
 
 impl Ord for u64 {
@@ -334,6 +408,12 @@ pub trait BitwiseAnd {
     fn binary_and(self, other: Self) -> Self;
 }
 
+impl BitwiseAnd for u256 {
+    fn binary_and(self, other: Self) -> Self {
+        __and(self, other)
+    }
+}
+
 impl BitwiseAnd for u64 {
     fn binary_and(self, other: Self) -> Self {
         __and(self, other)
@@ -358,8 +438,27 @@ impl BitwiseAnd for u8 {
     }
 }
 
+impl BitwiseAnd for b256 {
+    fn binary_and(val: self, other: Self) -> Self {
+        let (value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
+        let (other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
+        let word_1 = value_word_1.binary_and(other_word_1);
+        let word_2 = value_word_2.binary_and(other_word_2);
+        let word_3 = value_word_3.binary_and(other_word_3);
+        let word_4 = value_word_4.binary_and(other_word_4);
+        let rebuilt = compose((word_1, word_2, word_3, word_4));
+        rebuilt
+    }
+}
+
 pub trait BitwiseOr {
     fn binary_or(self, other: Self) -> Self;
+}
+
+impl BitwiseOr for u256 {
+    fn binary_or(self, other: Self) -> Self {
+        __or(self, other)
+    }
 }
 
 impl BitwiseOr for u64 {
@@ -386,8 +485,27 @@ impl BitwiseOr for u8 {
     }
 }
 
+impl BitwiseOr for b256 {
+    fn binary_or(val: self, other: Self) -> Self {
+        let (value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
+        let (other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
+        let word_1 = value_word_1.binary_or(other_word_1);
+        let word_2 = value_word_2.binary_or(other_word_2);
+        let word_3 = value_word_3.binary_or(other_word_3);
+        let word_4 = value_word_4.binary_or(other_word_4);
+        let rebuilt = compose((word_1, word_2, word_3, word_4));
+        rebuilt
+    }
+}
+
 pub trait BitwiseXor {
     fn binary_xor(self, other: Self) -> Self;
+}
+
+impl BitwiseXor for u256 {
+    fn binary_xor(self, other: Self) -> Self {
+        __xor(self, other)
+    }
 }
 
 impl BitwiseXor for u64 {
@@ -414,59 +532,6 @@ impl BitwiseXor for u8 {
     }
 }
 
-impl Not for u64 {
-    fn not(self) -> Self {
-        __not(self)
-    }
-}
-
-impl Not for u32 {
-    fn not(self) -> Self {
-        let v = __not(self);
-        __and(v, u32::max())
-    }
-}
-
-impl Not for u16 {
-    fn not(self) -> Self {
-        let v = __not(self);
-        __and(v, u16::max())
-    }
-}
-
-impl Not for u8 {
-    fn not(self) -> Self {
-        let v = __not(self);
-        __and(v, u8::max())
-    }
-}
-
-impl BitwiseAnd for b256 {
-    fn binary_and(val: self, other: Self) -> Self {
-        let (value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
-        let (other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
-        let word_1 = value_word_1.binary_and(other_word_1);
-        let word_2 = value_word_2.binary_and(other_word_2);
-        let word_3 = value_word_3.binary_and(other_word_3);
-        let word_4 = value_word_4.binary_and(other_word_4);
-        let rebuilt = compose((word_1, word_2, word_3, word_4));
-        rebuilt
-    }
-}
-
-impl BitwiseOr for b256 {
-    fn binary_or(val: self, other: Self) -> Self {
-        let (value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
-        let (other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
-        let word_1 = value_word_1.binary_or(other_word_1);
-        let word_2 = value_word_2.binary_or(other_word_2);
-        let word_3 = value_word_3.binary_or(other_word_3);
-        let word_4 = value_word_4.binary_or(other_word_4);
-        let rebuilt = compose((word_1, word_2, word_3, word_4));
-        rebuilt
-    }
-}
-
 impl BitwiseXor for b256 {
     fn binary_xor(val: self, other: Self) -> Self {
         let (value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
@@ -490,6 +555,7 @@ trait OrdEq: Ord + Eq {
     }
 }
 
+impl OrdEq for u256 {}
 impl OrdEq for u64 {}
 impl OrdEq for u32 {}
 impl OrdEq for u16 {}
@@ -499,6 +565,15 @@ impl OrdEq for b256 {}
 pub trait Shift {
     fn lsh(self, other: u64) -> Self;
     fn rsh(self, other: u64) -> Self;
+}
+
+impl Shift for u256 {
+    fn lsh(self, other: u64) -> Self {
+        __lsh(self, other)
+    }
+    fn rsh(self, other: u64) -> Self {
+        __rsh(self, other)
+    }
 }
 
 impl Shift for u64 {

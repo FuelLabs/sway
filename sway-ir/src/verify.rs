@@ -308,7 +308,7 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
 
     fn verify_binary_op(
         &self,
-        _op: &BinaryOpKind,
+        op: &BinaryOpKind,
         arg1: &Value,
         arg2: &Value,
     ) -> Result<(), IrError> {
@@ -318,8 +318,30 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
         let arg2_ty = arg2
             .get_type(self.context)
             .ok_or(IrError::VerifyBinaryOpIncorrectArgType)?;
-        if !arg1_ty.eq(self.context, &arg2_ty) || !arg1_ty.is_uint(self.context) {
-            return Err(IrError::VerifyBinaryOpIncorrectArgType);
+
+        match op {
+            // left and right must have the same type and must be uint.
+            BinaryOpKind::Add
+            | BinaryOpKind::Sub
+            | BinaryOpKind::Mul
+            | BinaryOpKind::Div
+            | BinaryOpKind::And
+            | BinaryOpKind::Or
+            | BinaryOpKind::Xor
+            | BinaryOpKind::Mod => {
+                if !arg1_ty.eq(self.context, &arg2_ty) || !arg1_ty.is_uint(self.context) {
+                    return Err(IrError::VerifyBinaryOpIncorrectArgType);
+                }
+            }
+            // left and right must be uint, but
+            // they dont need to be the same type
+            BinaryOpKind::Rsh | BinaryOpKind::Lsh => {
+                let is_arg1_nok = !arg1_ty.is_uint(self.context);
+                let is_arg2_nok = !arg2_ty.is_uint(self.context);
+                if is_arg1_nok || is_arg2_nok {
+                    return Err(IrError::VerifyBinaryOpIncorrectArgType);
+                }
+            }
         }
 
         Ok(())
@@ -370,6 +392,8 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
 
             let caller_arg_type = opt_caller_arg_type.as_ref().unwrap();
             if !caller_arg_type.eq(self.context, callee_arg_type) {
+                dbg!(caller_arg_type.as_string(self.context));
+                dbg!(callee_arg_type.as_string(self.context));
                 return Err(IrError::VerifyCallArgTypeMismatch(
                     callee_content.name.clone(),
                     caller_arg_type.as_string(self.context),

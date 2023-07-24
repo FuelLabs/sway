@@ -37,7 +37,7 @@ impl Constant {
         }
     }
 
-    pub fn new_uint(context: &mut Context, nbits: u8, n: u64) -> Self {
+    pub fn new_uint(context: &mut Context, nbits: u16, n: u64) -> Self {
         Constant {
             ty: Type::new_uint(context, nbits),
             value: ConstantValue::Uint(n),
@@ -89,7 +89,7 @@ impl Constant {
         Value::new_constant(context, new_const)
     }
 
-    pub fn get_uint(context: &mut Context, nbits: u8, value: u64) -> Value {
+    pub fn get_uint(context: &mut Context, nbits: u16, value: u64) -> Value {
         let new_const = Constant::new_uint(context, nbits, value);
         Value::new_constant(context, new_const)
     }

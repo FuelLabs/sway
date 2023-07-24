@@ -27,6 +27,7 @@ im = "15.0"
 itertools = "0.10"
 lazy_static = "1.4"
 miden-core = "0.3.0"
+num-bigint = { version = "0.4.3", features = ["serde"] }
 pest = "2.1.3"
 pest_derive = "2.1"
 petgraph = "0.6"
@@ -46,6 +47,7 @@ thiserror = "1.0"
 tracing = "0.1"
 uint = "0.9"
 vec1 = "1.8.0"
+
 
 [target.'cfg(not(target_os = "macos"))'.dependencies]
 sysinfo = "0.29.0"

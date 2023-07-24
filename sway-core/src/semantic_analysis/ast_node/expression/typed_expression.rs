@@ -396,6 +396,7 @@ impl ty::TyExpression {
             Literal::U16(_) => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
             Literal::U32(_) => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
             Literal::U64(_) => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+            Literal::U256(_) => TypeInfo::UnsignedInteger(IntegerBits::V256),
             Literal::Boolean(_) => TypeInfo::Boolean,
             Literal::B256(_) => TypeInfo::B256,
         };
@@ -2014,6 +2015,7 @@ impl ty::TyExpression {
                         }),
                         new_type,
                     ),
+                    IntegerBits::V256 => todo!(),
                 },
                 TypeInfo::Numeric => (
                     num.to_string().parse().map(Literal::Numeric).map_err(|e| {
