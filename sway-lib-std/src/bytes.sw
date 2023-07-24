@@ -240,7 +240,7 @@ impl Bytes {
     ///
     /// # Arguments
     ///
-    /// * index: [u64] - The index of the element to be set
+    /// * `index`: [u64] - The index of the element to be set
     /// * value: [u8] - The value of the element to be set
     ///
     /// # Panics
