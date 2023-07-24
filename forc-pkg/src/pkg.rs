@@ -2643,6 +2643,7 @@ pub fn check(
         // we stop compilation and return an empty vector.
         if let Some(retrigger_compilation) = &retrigger_compilation {
             if retrigger_compilation.load(Ordering::Relaxed) {
+                eprintln!("RETRIGGERING COMPILATION! | name = {:#?}", &pkg.name);
                 return Ok(vec![]);
             }
         }

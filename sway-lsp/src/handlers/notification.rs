@@ -37,6 +37,7 @@ pub(crate) async fn handle_did_change_text_document(
         .uri_and_session_from_workspace(&params.text_document.uri)
     {
         Ok((uri, session)) => {
+            eprintln!("did_open | state.is_compiling = {:?}", state.is_compiling.read());
             if *state.is_compiling.read() {
                 state.retrigger_compilation.store(true, Ordering::Relaxed);
             }

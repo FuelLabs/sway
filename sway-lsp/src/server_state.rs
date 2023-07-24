@@ -94,18 +94,25 @@ impl ServerState {
 
     pub(crate) async fn parse_project(&self, uri: Url, workspace_uri: Url, session: Arc<Session>) {
         *self.is_compiling.write() = true;
+        
+        eprintln!("self.retrigger_compilation = {:?}", self.retrigger_compilation);
         let should_publish = run_blocking_parse_project(
             uri.clone(),
             session.clone(),
             Some(self.retrigger_compilation.clone()),
         )
         .await;
+        eprintln!("should publish = {:?}", should_publish);
         if should_publish {
             self.publish_diagnostics(&uri, &workspace_uri, session)
                 .await;
         }
+
         *self.is_compiling.write() = false;
         self.retrigger_compilation.store(false, Ordering::Relaxed);
+        eprintln!("self.is_compiling = {:?}", self.is_compiling.read());
+        eprintln!("self.retrigger_compilation = {:?}", self.retrigger_compilation);
+        eprintln!("------------- end of parse_project -------------");
     }
 }
 
@@ -125,7 +132,11 @@ async fn run_blocking_parse_project(
         },
     )
     .await
-    .unwrap_or_default()
+    .unwrap_or_else(|_| {
+        tracing::error!("Failed to spawn blocking task for parse_project");
+        false
+    })
+    // .unwrap_or_default()
 }
 
 /// `Sessions` is a collection of [Session]s, each of which represents a project

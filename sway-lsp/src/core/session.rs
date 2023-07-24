@@ -187,6 +187,8 @@ impl Session {
         let new_engines = Engines::default();
         let tests_enabled = true;
 
+        eprintln!("session.parse_project: calling pkg::check");
+
         let results = pkg::check(
             &plan,
             BuildTarget::default(),
@@ -196,18 +198,29 @@ impl Session {
             &new_engines,
         )
         .map_err(LanguageServerError::FailedToCompile)?;
+        let results_len = results.len();
+        
+        if results_len == 0 {
+            eprintln!("session.parse_project: bailing early");
+            return Ok(false);
+        }
 
+        eprintln!("session.parse_project: COMPLETE pkg::check | res.len() = {}", results_len);
+        
         // Acquire locks for the engines before clearing anything.
         let mut engines = self.engines.write();
 
         // Update the engines with the new data.
         *engines = new_engines;
 
+        eprintln!("token_map.len() before clear = {}", self.token_map.len());
+
         // Clear other data stores.
         self.token_map.clear();
         self.runnables.clear();
 
-        let results_len = results.len();
+        eprintln!("token_map.len() after clear = {}", self.token_map.len());
+
         for (i, res) in results.into_iter().enumerate() {
             // We can convert these destructured elements to a Vec<Diagnostic> later on.
             let CompileResult {
@@ -275,6 +288,7 @@ impl Session {
                 });
             }
         }
+        eprintln!("NEW token_map.len() = {}", self.token_map.len());
         Ok(true)
     }
 
