@@ -15,7 +15,7 @@ use fuels_core::types::{
     transaction_builders::{create_coin_input, create_coin_message_input},
 };
 
-use forc_wallet::{account::derive_secret_key, utils::default_wallet_path};
+use forc_wallet::{account::derive_secret_key, new::new_wallet_cli, utils::default_wallet_path};
 
 /// The maximum time to wait for a transaction to be included in a block by the node
 pub const TX_SUBMIT_TIMEOUT_MS: u64 = 30_000u64;
@@ -40,6 +40,18 @@ fn prompt_signature(tx_id: fuel_tx::Bytes32) -> Result<Signature> {
     let mut buf = String::new();
     std::io::stdin().read_line(&mut buf)?;
     Signature::from_str(buf.trim()).map_err(Error::msg)
+}
+
+fn ask_user_yes_no_question(question: &str) -> Result<bool> {
+    print!("{question}");
+    std::io::stdout().flush()?;
+    let mut ans = String::new();
+    std::io::stdin().read_line(&mut ans)?;
+    // Pop trailing \n as users press enter to submit their answers.
+    ans.pop();
+    // Trim the user input as it might have an additional space.
+    let ans = ans.trim();
+    Ok(ans == "y" || ans == "Y")
 }
 
 #[async_trait]
@@ -140,7 +152,14 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
                     // capabilities for selections and answer collection.
                     let wallet_path = default_wallet_path();
                     if !wallet_path.exists() {
-                        anyhow::bail!("Cannot find a wallet at {wallet_path:?}\nPlease a generate new wallet with `forc wallet new`");
+                        let question = format!("Could not find a wallet at {wallet_path:?}, would you like to create a new one? [y/N]: ");
+                        let accepted = ask_user_yes_no_question(&question)?;
+                        if accepted {
+                            new_wallet_cli(&wallet_path)?;
+                            println!("Wallet created successfully.")
+                        } else {
+                            anyhow::bail!("Refused to create a new wallet. If you don't want to use forc-wallet, you can sign this transaction manually with --manual-signing flag.")
+                        }
                     }
                     let prompt = format!(
                         "\nPlease provide the password of your encrypted wallet vault at {wallet_path:?}:"
@@ -162,15 +181,12 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
                     let hashed = public_key.hash();
                     let bech32 = Bech32Address::new(FUEL_BECH32_HRP, hashed);
                     // TODO: Check for balance and suggest using the faucet.
-                    print!("Do you accept to sign this transaction with {bech32} [y/N]:");
-                    std::io::stdout().flush()?;
-                    let mut ans = String::new();
-                    std::io::stdin().read_line(&mut ans)?;
-                    // Pop trailing \n as users press enter to submit their answers.
-                    ans.pop();
-                    // Trim the user input as it might have an additional space.
-                    let ans = ans.trim();
-                    if ans != "y" && ans != "Y" {
+                    let question = format!(
+                        "Do you accept to sign this transaction with {}? [y/N]: ",
+                        bech32
+                    );
+                    let accepted = ask_user_yes_no_question(&question)?;
+                    if !accepted {
                         anyhow::bail!("User refused to sign");
                     }
 
