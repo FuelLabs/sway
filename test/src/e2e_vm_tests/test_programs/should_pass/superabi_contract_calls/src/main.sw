@@ -3,27 +3,28 @@
 //              |
 //            MyAbi
 
-script;
+contract;
 
 abi MySuperAbi {
-    fn superabi_method();
+    fn superabi_method() -> u64;
 }
 
 abi MyAbi : MySuperAbi {
-    fn abi_method();
+    fn abi_method() -> u64;
 }
 
 impl MySuperAbi for Contract {
-    fn superabi_method() {}
+    fn superabi_method() -> u64 { 42 }
 }
 
 impl MyAbi for Contract {
-    fn abi_method() {}
+    fn abi_method() -> u64 { 43 }
 }
 
-fn main() {
-    let caller = abi(MyAbi, 0x0000000000000000000000000000000000000000000000000000000000000000);
-    caller.abi_method();
+#[test]
+fn tests() {
+    let caller = abi(MyAbi, CONTRACT_ID);
+    assert(caller.abi_method() == 43);
     // superABI methods become ABI methods too
-    caller.superabi_method()
+    assert(caller.superabi_method() == 42)
 }
