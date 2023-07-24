@@ -29,8 +29,8 @@ use sway_core::fuel_prelude::fuel_tx::ConsensusParameters;
 pub use sway_core::Programs;
 use sway_core::{
     abi_generation::{
-        evm_json_abi,
-        fuel_json_abi::{self, JsonAbiContext},
+        evm_abi,
+        fuel_abi::{self, AbiContext},
     },
     asm_generation::ProgramABI,
     decl_engine::DeclRefFunction,
@@ -428,6 +428,38 @@ impl BuiltPackage {
         Ok(())
     }
 
+    /// Writes the ABI in JSON format to the given `path`.
+    pub fn write_json_abi(&self, path: &Path, minify: MinifyOpts) -> Result<()> {
+        match &self.program_abi {
+            ProgramABI::Fuel(program_abi) => {
+                if !program_abi.functions.is_empty() {
+                    let file = File::create(path)?;
+                    let res = if minify.json_abi {
+                        serde_json::to_writer(&file, &program_abi)
+                    } else {
+                        serde_json::to_writer_pretty(&file, &program_abi)
+                    };
+                    res?
+                }
+            }
+            ProgramABI::Evm(program_abi) => {
+                if !program_abi.is_empty() {
+                    let file = File::create(path)?;
+                    let res = if minify.json_abi {
+                        serde_json::to_writer(&file, &program_abi)
+                    } else {
+                        serde_json::to_writer_pretty(&file, &program_abi)
+                    };
+                    res?
+                }
+            }
+            // TODO?
+            ProgramABI::MidenVM(_) => (),
+        }
+
+        Ok(())
+    }
+
     /// Writes BuiltPackage to `output_dir`.
     pub fn write_output(
         &self,
@@ -444,33 +476,8 @@ impl BuiltPackage {
         self.write_bytecode(&bin_path)?;
 
         let program_abi_stem = format!("{pkg_name}-abi");
-        let program_abi_path = output_dir.join(program_abi_stem).with_extension("json");
-        match &self.program_abi {
-            ProgramABI::Fuel(program_abi) => {
-                if !program_abi.functions.is_empty() {
-                    let file = File::create(program_abi_path)?;
-                    let res = if minify.json_abi {
-                        serde_json::to_writer(&file, &program_abi)
-                    } else {
-                        serde_json::to_writer_pretty(&file, &program_abi)
-                    };
-                    res?
-                }
-            }
-            ProgramABI::Evm(program_abi) => {
-                if !program_abi.is_empty() {
-                    let file = File::create(program_abi_path)?;
-                    let res = if minify.json_abi {
-                        serde_json::to_writer(&file, &program_abi)
-                    } else {
-                        serde_json::to_writer_pretty(&file, &program_abi)
-                    };
-                    res?
-                }
-            }
-            // TODO?
-            ProgramABI::MidenVM(_) => (),
-        }
+        let json_abi_path = output_dir.join(program_abi_stem).with_extension("json");
+        self.write_json_abi(&json_abi_path, minify.clone())?;
 
         info!("      Bytecode size: {} bytes", self.bytecode.bytes.len());
         // Additional ops required depending on the program type
@@ -1814,10 +1821,10 @@ pub fn compile(
             ProgramABI::Fuel(time_expr!(
                 "generate JSON ABI program",
                 "generate_json_abi",
-                fuel_json_abi::generate_json_abi_program(
-                    &mut JsonAbiContext {
+                fuel_abi::generate_program_abi(
+                    &mut AbiContext {
                         program: typed_program,
-                        json_abi_with_callpaths: profile.json_abi_with_callpaths,
+                        abi_with_callpaths: profile.json_abi_with_callpaths,
                     },
                     engines.te(),
                     engines.de(),
@@ -1841,7 +1848,7 @@ pub fn compile(
             let abi = time_expr!(
                 "generate JSON ABI program",
                 "generate_json_abi",
-                evm_json_abi::generate_json_abi_program(typed_program, engines),
+                evm_abi::generate_abi_program(typed_program, engines),
                 Some(sway_build_config.clone()),
                 metrics
             );
