@@ -15,3 +15,8 @@ num-traits = "0.2.14"
 sway-ast = { version = "0.42.1", path = "../sway-ast" }
 sway-types = { version = "0.42.1", path = "../sway-types" }
 thiserror = "1.0"
+uwuify = { version = "^0.2", optional = true }
+
+[features]
+default = []
+uwu = ["uwuify"]

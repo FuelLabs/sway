@@ -1,4 +1,4 @@
-use crate::compile_message::{CompileMessage, SourceMessage};
+use crate::compile_message::{CompileMessage, InSourceMessage, ToCompileMessage};
 use crate::convert_parse_tree_error::ConvertParseTreeError;
 use crate::lex_error::LexError;
 use crate::parser_error::ParseError;
@@ -6,7 +6,7 @@ use crate::type_error::TypeError;
 
 use core::fmt;
 use sway_types::constants::STORAGE_PURITY_ATTRIBUTE_NAME;
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, Span, Spanned, SourceEngine};
 use thiserror::Error;
 
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
@@ -455,7 +455,7 @@ pub enum CompileError {
         span: Span,
     },
     #[error("Variables cannot shadow constants. The variable \"{name}\" shadows constant with the same name.")]
-    VariableShadowsConstant { name: Ident },
+    VariableShadowsConstant { name: Ident, constant_span: Span },
     #[error("Constants cannot shadow variables. The constant \"{name}\" shadows variable with the same name.")]
     ConstantShadowsVariable { name: Ident },
     #[error("Constants cannot shadow constants. The constant \"{name}\" shadows constant with the same name.")]
@@ -767,7 +767,7 @@ impl Spanned for CompileError {
             ContractStorageFromExternalContext { span, .. } => span.clone(),
             InvalidOpcodeFromPredicate { span, .. } => span.clone(),
             ArrayOutOfBounds { span, .. } => span.clone(),
-            VariableShadowsConstant { name } => name.span(),
+            VariableShadowsConstant { name, .. } => name.span(),
             ConstantShadowsVariable { name } => name.span(),
             ConstantShadowsConstant { name } => name.span(),
             ShadowsOtherSymbol { name } => name.span(),
@@ -838,14 +838,31 @@ impl Spanned for CompileError {
     }
 }
 
-impl From<&CompileError> for CompileMessage {
-    fn from(compile_error: &CompileError) -> CompileMessage {
-        CompileMessage {
-            message: SourceMessage {
-                span: compile_error.span().clone(),
-                message: format!("{}", compile_error)
+impl ToCompileMessage for CompileError {
+    fn to_compile_message(&self, source_engine: &SourceEngine) -> CompileMessage {
+        use CompileError::*;
+        match self {
+            VariableShadowsConstant { name , constant_span} => CompileMessage {
+                title: Some("Constants cannot be shadowed".to_string()),
+                message: InSourceMessage::new(
+                    source_engine,
+                    self.span().clone(),
+                    format!("Variable \"{name}\" shadows constant with the same name.")
+                ),
+                in_source_info: vec![InSourceMessage::new(
+                    source_engine,
+                    constant_span.clone(),
+                    format!("Constant \"{name}\" is declared here.")
+                )],
+                help: vec![
+                    "Unlike variables, constants cannot be shadowed by other constants or variables, nor they can shadow variables.".to_string()
+                ],
+                ..Default::default()
             },
-            ..Default::default()
+           _ => CompileMessage {
+                    message: InSourceMessage::new(source_engine, self.span().clone(), format!("{}", self)),
+                    ..Default::default()
+                }
         }
     }
 }

@@ -5559,6 +5559,7 @@ dependencies = [
  "sway-ast",
  "sway-types",
  "thiserror",
+ "uwuify",
 ]
 
 [[package]]

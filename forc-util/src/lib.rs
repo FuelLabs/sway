@@ -14,8 +14,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use sway_core::language::parsed::TreeType;
-use sway_error::{error::CompileError, compile_message::CompileMessage};
-use sway_error::warning::CompileWarning;
+use sway_error::{error::CompileError, warning::CompileWarning, compile_message::{InSourceMessage, ToCompileMessage}};
 use sway_types::{LineCol, SourceEngine, Spanned};
 use sway_utils::constants;
 use tracing::error;
@@ -433,57 +432,50 @@ pub fn print_on_failure(
 }
 
 fn format_err(source_engine: &SourceEngine, err: &CompileError) {
-    let err: CompileMessage = err.into();
-    let span = err.message().span();
-    let input = span.input();
-    let path = err.message().source_id().map(|id| source_engine.get_path(&id));
-    let path_str = path.as_ref().map(|p| p.to_string_lossy());
-    let mut start_pos = span.start();
-    let mut end_pos = span.end();
+    let err = err.to_compile_message(source_engine);
 
-    let friendly_str = maybe_uwuify(err.message().message());
-    let (snippet_title, snippet_slices) = if start_pos < end_pos {
-        let title = Some(Annotation {
-            label: err.title().map(|title| -> &str { title.as_str() }),
+    let snippet_title = if err.message().is_in_source() {
+        Some(Annotation {
+            label: err.title().map(|title| title.as_str()),
             id: None,
             annotation_type: AnnotationType::Error,
-        });
-
-        let (mut start, end) = span.line_col();
-        let input = construct_window(&mut start, end, &mut start_pos, &mut end_pos, input);
-        let slices = vec![Slice {
-            source: input,
-            line_start: start.line,
-            origin: path_str.as_deref(),
-            fold: false,
-            annotations: vec![SourceAnnotation {
-                label: &friendly_str,
-                annotation_type: AnnotationType::Error,
-                range: (start_pos, end_pos),
-            }],
-        }];
-
-        (title, slices)
-    } else {
-        (
-            Some(Annotation {
-                label: Some(&friendly_str),
-                id: None,
-                annotation_type: AnnotationType::Error,
-            }),
-            Vec::new(),
-        )
+        })
+    }
+    else {
+        Some(Annotation {
+            label: Some(err.message().friendly_text()),
+            id: None,
+            annotation_type: AnnotationType::Error,
+        })
     };
+
+    let mut snippet_slices = Vec::<Slice<'_>>::new();
+
+    if err.message().is_in_source() {
+        snippet_slices.push(construct_slice(err.message(), AnnotationType::Error))
+    }
+
+    // Even if the error message itself is not in code, we can still have
+    // infos in the source code. So, we always add infos.
+    for info in err.in_source_info() {
+        snippet_slices.push(construct_slice(info, AnnotationType::Info))
+    }
+
+    let mut snippet_footer = Vec::<Annotation<'_>>::new();
+    for help in err.help() {
+        snippet_footer.push(Annotation { id: None, label: Some(&help), annotation_type: AnnotationType::Help });
+    }
 
     let snippet = Snippet {
         title: snippet_title,
-        footer: vec![],
+        footer: snippet_footer,
         slices: snippet_slices,
         opt: FormatOptions {
             color: true,
             ..Default::default()
         },
     };
+
     tracing::error!("{}\n____\n", DisplayList::from(snippet))
 }
 
@@ -529,12 +521,39 @@ fn format_warning(source_engine: &SourceEngine, err: &CompileWarning) {
     tracing::warn!("{}\n____\n", DisplayList::from(snippet))
 }
 
+fn construct_slice<'a>(message: &'a InSourceMessage, annotation_type: AnnotationType) -> Slice<'a> {
+    debug_assert!(
+        message.is_in_source(),
+        "Slices can be constructed only for messages that are related to a place in source code."
+    );
+
+    let span = message.span();
+
+    let mut start_pos = span.start();
+    let mut end_pos = span.end();
+    let (mut start, end) = span.line_col();
+
+    let input = construct_window(&mut start, end, &mut start_pos, &mut end_pos, span.input());
+
+    Slice {
+        source: input,
+        line_start: start.line,
+        origin: message.source_file_path_as_string().map(|path| path.as_str()),
+        fold: false,
+        annotations: vec![SourceAnnotation {
+            label: message.friendly_text(),
+            annotation_type,
+            range: (start_pos, end_pos),
+        }],
+    }
+}
+
 /// Given a start and an end position and an input, determine how much of a window to show in the
 /// error.
 /// Mutates the start and end indexes to be in line with the new slice length.
 ///
 /// The library we use doesn't handle auto-windowing and line numbers, so we must manually
-/// calculate the line numbers and match them up with the input window. It is a bit fiddly.t
+/// calculate the line numbers and match them up with the input window. It is a bit fiddly.
 fn construct_window<'a>(
     start: &mut LineCol,
     end: LineCol,
@@ -591,18 +610,20 @@ fn construct_window<'a>(
     &input[calculated_start_ix..calculated_end_ix]
 }
 
+// TODO-IG: Remove once multi-span is implemented for warnings.
 #[cfg(all(feature = "uwu", any(target_arch = "x86", target_arch = "x86_64")))]
-fn maybe_uwuify(raw: &str) -> String {
+pub fn maybe_uwuify(raw: &str) -> String {
     use uwuifier::uwuify_str_sse;
     uwuify_str_sse(raw)
 }
+
 #[cfg(all(feature = "uwu", not(any(target_arch = "x86", target_arch = "x86_64"))))]
-fn maybe_uwuify(raw: &str) -> String {
+pub fn maybe_uwuify(raw: &str) -> String {
     compile_error!("The `uwu` feature only works on x86 or x86_64 processors.");
     Default::default()
 }
 
 #[cfg(not(feature = "uwu"))]
-fn maybe_uwuify(raw: &str) -> String {
+pub fn maybe_uwuify(raw: &str) -> String {
     raw.to_string()
 }

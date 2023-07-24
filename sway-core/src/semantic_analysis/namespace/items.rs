@@ -119,8 +119,11 @@ impl Items {
                 use ty::TyDecl::*;
                 match (decl, &item, const_shadowing_mode) {
                     // variable shadowing a constant
-                    (ConstantDecl { .. }, VariableDecl { .. }, _) => {
-                        errors.push(CompileError::VariableShadowsConstant { name: name.clone() })
+                    (ConstantDecl(constant_decl), VariableDecl { .. }, _) => {
+                        errors.push(CompileError::VariableShadowsConstant {
+                            name: name.clone(),
+                            constant_span: constant_decl.decl_span.clone()
+                        })
                     }
                     // constant shadowing a variable
                     (VariableDecl { .. }, ConstantDecl { .. }, _) => {
