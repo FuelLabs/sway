@@ -825,9 +825,12 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
 
     let cfe_idx = cfe_idx_opt.expect("Function does not have CFEI instruction for locals");
 
-    let Either::Left(VirtualOp::CFEI(VirtualImmediate24 { value: locals_size_bytes })) = ops[cfe_idx].opcode else {
-            panic!("Unexpected opcode");
-        };
+    let Either::Left(VirtualOp::CFEI(VirtualImmediate24 {
+        value: locals_size_bytes,
+    })) = ops[cfe_idx].opcode
+    else {
+        panic!("Unexpected opcode");
+    };
 
     // pad up the locals size in bytes to a word.
     let locals_size_bytes = size_bytes_round_up_to_word_alignment!(locals_size_bytes);
@@ -839,7 +842,8 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
         .map(|(i, reg)| (reg.clone(), (i * 8) as u32 + locals_size_bytes))
         .collect();
 
-    let new_locals_byte_size = locals_size_bytes + (8 * spills.len()) as u32;
+    let spills_size = (8 * spills.len()) as u32;
+    let new_locals_byte_size = locals_size_bytes + spills_size;
     if new_locals_byte_size > compiler_constants::TWENTY_FOUR_BITS as u32 {
         panic!("Enormous stack usage for locals.");
     }
@@ -851,8 +855,7 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
                 opcode: Either::Left(VirtualOp::CFEI(VirtualImmediate24 {
                     value: new_locals_byte_size,
                 })),
-                comment: op.comment.clone()
-                    + &format!(" and {new_locals_byte_size} bytes for spills"),
+                comment: op.comment.clone() + &format!(" and {spills_size} bytes for spills"),
                 owning_span: op.owning_span.clone(),
             });
         } else if matches!(cfs_idx_opt, Some(cfs_idx) if cfs_idx == op_idx) {
@@ -861,8 +864,7 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
                 opcode: Either::Left(VirtualOp::CFSI(VirtualImmediate24 {
                     value: new_locals_byte_size,
                 })),
-                comment: op.comment.clone()
-                    + &format!(" and {new_locals_byte_size} bytes for spills"),
+                comment: op.comment.clone() + &format!(" and {spills_size} bytes for spills"),
                 owning_span: op.owning_span.clone(),
             });
         } else {

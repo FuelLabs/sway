@@ -206,6 +206,17 @@ pub fn dce(
     let mut num_symbol_uses: HashMap<Symbol, u32> = HashMap::new();
     let mut stores_of_sym: HashMap<Symbol, Vec<Value>> = HashMap::new();
 
+    // Every argument is assumed to be loaded from (from the caller),
+    // so stores to it shouldn't be deliminated.
+    for sym in function
+        .args_iter(context)
+        .flat_map(|arg| get_symbols(context, arg.1))
+    {
+        num_symbol_uses
+            .entry(sym)
+            .and_modify(|count| *count += 1)
+            .or_insert(1);
+    }
     // Go through each instruction and update use_count.
     for (_block, inst) in function.instruction_iter(context) {
         for sym in get_loaded_symbols(context, inst) {
@@ -254,9 +265,7 @@ pub fn dce(
 
     let mut modified = false;
     let mut cemetery = FxHashSet::default();
-    while !worklist.is_empty() {
-        let dead = worklist.pop().unwrap();
-
+    while let Some(dead) = worklist.pop() {
         if !can_eliminate_instruction(context, dead, &num_symbol_uses, escaped_symbols)
             || cemetery.contains(&dead)
         {

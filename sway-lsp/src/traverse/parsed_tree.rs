@@ -56,10 +56,10 @@ impl<'a> ParsedTree<'a> {
 
     fn collect_parse_module(&self, parse_module: &ParseModule) {
         self.ctx.tokens.insert(
-            to_ident_key(&Ident::new(parse_module.span.clone())),
+            to_ident_key(&Ident::new(parse_module.module_kind_span.clone())),
             Token::from_parsed(
-                AstToken::LibrarySpan(parse_module.span.clone()),
-                SymbolKind::Module,
+                AstToken::LibrarySpan(parse_module.module_kind_span.clone()),
+                SymbolKind::Keyword,
             ),
         );
         for (
@@ -292,7 +292,16 @@ impl Parse for Expression {
                 prefix.parse(ctx);
                 index.parse(ctx);
             }
-            ExpressionKind::StorageAccess(StorageAccessExpression { field_names }) => {
+            ExpressionKind::StorageAccess(StorageAccessExpression {
+                field_names,
+                storage_keyword_span,
+            }) => {
+                let storage_ident = Ident::new(storage_keyword_span.clone());
+                ctx.tokens.insert(
+                    to_ident_key(&storage_ident),
+                    Token::from_parsed(AstToken::Ident(storage_ident), SymbolKind::Unknown),
+                );
+
                 field_names.iter().for_each(|field_name| {
                     ctx.tokens.insert(
                         to_ident_key(field_name),
@@ -576,9 +585,14 @@ impl Parse for StructExpression {
             );
         }
         let name = &self.call_path_binding.inner.suffix;
+        let symbol_kind = if name.as_str() == "Self" {
+            SymbolKind::SelfKeyword
+        } else {
+            SymbolKind::Struct
+        };
         ctx.tokens.insert(
             to_ident_key(name),
-            Token::from_parsed(AstToken::StructExpression(self.clone()), SymbolKind::Struct),
+            Token::from_parsed(AstToken::StructExpression(self.clone()), symbol_kind),
         );
         let type_arguments = &self.call_path_binding.type_arguments.to_vec();
         type_arguments.iter().for_each(|type_arg| {
