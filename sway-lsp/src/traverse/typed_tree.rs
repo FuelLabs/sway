@@ -884,7 +884,7 @@ impl Parse for ty::TyFunctionParameter {
             .try_unwrap()
         {
             token.typed = Some(typed_token);
-            token.type_def = Some(TypeDefinition::TypeId(self.type_argument.type_id));
+            token.type_def = Some(TypeDefinition::Ident(self.name.clone()));
         }
         collect_type_argument(ctx, &self.type_argument);
     }
