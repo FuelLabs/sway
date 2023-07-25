@@ -6,6 +6,7 @@ use ::convert::From;
 
 /// The `EvmAddress` type, a struct wrapper around the inner `b256` value.
 pub struct EvmAddress {
+    /// The underlying evm address data.
     value: b256,
 }
 
@@ -34,3 +35,4 @@ impl From<b256> for EvmAddress {
         self.value
     }
 }
+
