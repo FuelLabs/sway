@@ -33,10 +33,12 @@ const SECOND_PARAMETER_OFFSET: u64 = 74;
 /// # Examples
 ///
 /// ```sway
-/// use std::call_frames::contract_id;
+/// use std::{call_frames::contract_id, context::this_balance, token::mint_to_contract};
 ///
 /// fn foo() {
 ///     let this_contract = contract_id();
+///     mint_to_contract(50, this_contract);
+///     assert(this_balance(this_contract) == 50);
 /// }
 /// ```
 pub fn contract_id() -> ContractId {
