@@ -16,7 +16,7 @@ use std::fmt;
 
 #[derive(Clone, Copy, Debug)]
 #[repr(u16)]
-pub enum ImmediateOpOperation {
+pub enum WqopOperation {
     //	Add
     Add = 0,
     //	Subtract
@@ -36,22 +36,60 @@ pub enum ImmediateOpOperation {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct ImmediateOp {
-    pub op: ImmediateOpOperation,
+pub(crate) struct WqopImmediate {
+    pub op: WqopOperation,
     pub indirect: bool,
 }
 
-impl fmt::Display for ImmediateOp {
+impl fmt::Display for WqopImmediate {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "i{}", self.immediate_value())
     }
 }
 
-impl ImmediateOp {
+impl WqopImmediate {
     pub fn immediate_value(&self) -> VirtualImmediate06 {
         let a = self.op as u8;
         let b = if self.indirect { 1u8 } else { 0u8 } << 5;
-        VirtualImmediate06 { value: a & b }
+        VirtualImmediate06 { value: a | b }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct WqmlImmediate {
+    pub left_indirect: bool,
+    pub right_indirect: bool,
+}
+
+impl fmt::Display for WqmlImmediate {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "i{}", self.immediate_value())
+    }
+}
+
+impl WqmlImmediate {
+    pub fn immediate_value(&self) -> VirtualImmediate06 {
+        let a = (if self.left_indirect { 1 } else { 0 }) << 5;
+        let b = (if self.right_indirect { 1 } else { 0 }) << 6;
+        VirtualImmediate06 { value: a | b }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct WqdvImmediate {
+    pub right_indirect: bool,
+}
+
+impl fmt::Display for WqdvImmediate {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "i{}", self.immediate_value())
+    }
+}
+
+impl WqdvImmediate {
+    pub fn immediate_value(&self) -> VirtualImmediate06 {
+        let a = (if self.right_indirect { 1 } else { 0 }) << 6;
+        VirtualImmediate06 { value: a }
     }
 }
 
@@ -95,12 +133,25 @@ pub(crate) enum VirtualOp {
     XOR(VirtualRegister, VirtualRegister, VirtualRegister),
     XORI(VirtualRegister, VirtualRegister, VirtualImmediate12),
     /// WQOP: Misc 256-bit integer operations
-    /// wqop $rA, $rB, $rC, imm
     WQOP(
         VirtualRegister,
         VirtualRegister,
         VirtualRegister,
-        ImmediateOp,
+        WqopImmediate,
+    ),
+    // WQML: Multiply 256-bit integers
+    WQML(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        WqmlImmediate,
+    ),
+    // WQDV: 256-bit integer division
+    WQDV(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        WqdvImmediate,
     ),
 
     /* Control Flow Instructions */
@@ -255,6 +306,8 @@ impl VirtualOp {
             XOR(r1, r2, r3) => vec![r1, r2, r3],
             XORI(r1, r2, _i) => vec![r1, r2],
             WQOP(r1, r2, r3, _) => vec![r1, r2, r3],
+            WQML(r1, r2, r3, _) => vec![r1, r2, r3],
+            WQDV(r1, r2, r3, _) => vec![r1, r2, r3],
 
             /* Control Flow Instructions */
             JMP(r1) => vec![r1],
@@ -365,6 +418,8 @@ impl VirtualOp {
             XOR(_r1, r2, r3) => vec![r2, r3],
             XORI(_r1, r2, _i) => vec![r2],
             WQOP(_, r2, r3, _) => vec![r2, r3],
+            WQML(_, r2, r3, _) => vec![r2, r3],
+            WQDV(_, r2, r3, _) => vec![r2, r3],
 
             /* Control Flow Instructions */
             JMP(r1) => vec![r1],
@@ -475,6 +530,8 @@ impl VirtualOp {
             XOR(r1, _r2, _r3) => vec![r1],
             XORI(r1, _r2, _i) => vec![r1],
             WQOP(r1, _, _, _) => vec![r1],
+            WQML(r1, _, _, _) => vec![r1],
+            WQDV(r1, _, _, _) => vec![r1],
 
             /* Control Flow Instructions */
             JMP(_r1) => vec![],
@@ -721,6 +778,18 @@ impl VirtualOp {
                 i.clone(),
             ),
             WQOP(r1, r2, r3, i) => Self::WQOP(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                i.clone(),
+            ),
+            WQML(r1, r2, r3, i) => Self::WQML(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                i.clone(),
+            ),
+            WQDV(r1, r2, r3, i) => Self::WQDV(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
                 update_reg(reg_to_reg_map, r3),
@@ -1145,6 +1214,18 @@ impl VirtualOp {
                 imm.clone(),
             ),
             WQOP(reg1, reg2, reg3, imm) => AllocatedOpcode::WQOP(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+                imm.immediate_value(),
+            ),
+            WQML(reg1, reg2, reg3, imm) => AllocatedOpcode::WQML(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+                imm.immediate_value(),
+            ),
+            WQDV(reg1, reg2, reg3, imm) => AllocatedOpcode::WQDV(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),

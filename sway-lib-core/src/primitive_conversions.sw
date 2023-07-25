@@ -1,6 +1,12 @@
 library;
 
 impl u64 {
+    pub fn as_u256(self) -> u256 {
+        asm(input: self) {
+            input: u256
+        }
+    }
+
     pub fn to_le_bytes(self) -> [u8; 8] {
         let output = [0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8];
 

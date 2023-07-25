@@ -8,7 +8,6 @@ pub trait Add {
 
 impl Add for u256 {
     fn add(self, other: Self) -> Self {
-        //let bytes: [u8; 64] = __be_bytes(self);
         __add(self, other)
     }
 }
@@ -567,12 +566,19 @@ pub trait Shift {
     fn rsh(self, other: u64) -> Self;
 }
 
+// TODO move to primitive_conversions
+fn as_u256(v: u64) -> u256 {
+    asm(input: v) {
+        input: u256
+    }
+}
+
 impl Shift for u256 {
     fn lsh(self, other: u64) -> Self {
-        __lsh(self, other)
+        __lsh(self, as_u256(other))
     }
     fn rsh(self, other: u64) -> Self {
-        __rsh(self, other)
+        __rsh(self, as_u256(other))
     }
 }
 

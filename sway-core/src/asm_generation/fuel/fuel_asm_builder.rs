@@ -11,8 +11,8 @@ use crate::{
         ProgramKind,
     },
     asm_lang::{
-        virtual_register::*, ImmediateOp, Label, Op, VirtualImmediate12, VirtualImmediate18,
-        VirtualOp,
+        virtual_register::*, Label, Op, VirtualImmediate12, VirtualImmediate18, VirtualOp,
+        WqdvImmediate, WqmlImmediate, WqopImmediate, WqopOperation,
     },
     decl_engine::DeclRefFunction,
     error::*,
@@ -503,14 +503,109 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         res_reg.clone(),
                         val1_reg,
                         val2_reg,
-                        ImmediateOp {
-                            op: crate::asm_lang::ImmediateOpOperation::Add,
+                        WqopImmediate {
+                            op: WqopOperation::Add,
                             indirect: false,
                         },
                     ),
                     Some("add"),
                 ),
-                _ => todo!(),
+                BinaryOpKind::Sub => (
+                    VirtualOp::WQOP(
+                        res_reg.clone(),
+                        val1_reg,
+                        val2_reg,
+                        WqopImmediate {
+                            op: WqopOperation::Sub,
+                            indirect: false,
+                        },
+                    ),
+                    Some("sub"),
+                ),
+                BinaryOpKind::Or => (
+                    VirtualOp::WQOP(
+                        res_reg.clone(),
+                        val1_reg,
+                        val2_reg,
+                        WqopImmediate {
+                            op: WqopOperation::Or,
+                            indirect: false,
+                        },
+                    ),
+                    Some("or"),
+                ),
+                BinaryOpKind::Xor => (
+                    VirtualOp::WQOP(
+                        res_reg.clone(),
+                        val1_reg,
+                        val2_reg,
+                        WqopImmediate {
+                            op: WqopOperation::Xor,
+                            indirect: false,
+                        },
+                    ),
+                    Some("xor"),
+                ),
+                BinaryOpKind::And => (
+                    VirtualOp::WQOP(
+                        res_reg.clone(),
+                        val1_reg,
+                        val2_reg,
+                        WqopImmediate {
+                            op: WqopOperation::And,
+                            indirect: false,
+                        },
+                    ),
+                    Some("and"),
+                ),
+                BinaryOpKind::Lsh => (
+                    VirtualOp::WQOP(
+                        res_reg.clone(),
+                        val1_reg,
+                        val2_reg,
+                        WqopImmediate {
+                            op: WqopOperation::Shl,
+                            indirect: false,
+                        },
+                    ),
+                    Some("shl"),
+                ),
+                BinaryOpKind::Rsh => (
+                    VirtualOp::WQOP(
+                        res_reg.clone(),
+                        val1_reg,
+                        val2_reg,
+                        WqopImmediate {
+                            op: WqopOperation::Shr,
+                            indirect: false,
+                        },
+                    ),
+                    Some("shr"),
+                ),
+                BinaryOpKind::Mul => (
+                    VirtualOp::WQML(
+                        res_reg.clone(),
+                        val1_reg,
+                        val2_reg,
+                        WqmlImmediate {
+                            left_indirect: false,
+                            right_indirect: false,
+                        },
+                    ),
+                    Some("mul"),
+                ),
+                BinaryOpKind::Div => (
+                    VirtualOp::WQDV(
+                        res_reg.clone(),
+                        val1_reg,
+                        val2_reg,
+                        WqdvImmediate {
+                            right_indirect: false,
+                        },
+                    ),
+                    Some("div"),
+                ),
+                BinaryOpKind::Mod => todo!(),
             },
             _ => {
                 // Use the standard opcodes
