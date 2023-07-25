@@ -18,9 +18,7 @@ use ::registers::balance;
 /// # Examples
 ///
 /// ```sway
-/// use std::context::this_balance;
-/// use std::token::mint;
-/// use std::call_frames::contract_id;
+/// use std::{context::this_balance, token::mint, call_frames::contract_id};
 /// 
 /// fn foo() {
 ///     mint(50);
@@ -45,9 +43,7 @@ pub fn this_balance(asset_id: ContractId) -> u64 {
 /// # Examples
 ///
 /// ```sway
-/// use std::context::this_balance;
-/// use std::token::mint;
-/// use std::call_frames::contract_id;
+/// use std::{context::balance_of, token::mint, call_frames::contract_id};
 /// 
 /// fn foo() {
 ///     mint(50);

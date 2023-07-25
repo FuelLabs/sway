@@ -17,9 +17,7 @@ use ::contract_id::ContractId;
 /// # Examples
 ///
 /// ```sway
-/// use std::external::bytecode_root;
-/// use std::call_frames::contract_id;
-/// use std::constants::ZERO_B256;
+/// use std::{external::bytecode_root, call_frames::contract_id, constants::ZERO_B256};
 /// 
 /// fn foo() {
 ///     let root_of_this_contract = bytecode_root(contract_id());

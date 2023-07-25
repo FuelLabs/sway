@@ -52,8 +52,7 @@ pub fn contract_id() -> ContractId {
 /// # Examples
 ///
 /// ```sway
-/// use std::call_frames::msg_asset_id;
-/// use std::contsants::BASE_ASSET_ID;
+/// use std::{call_frames::msg_asset_id, constants::BASE_ASSET_ID};
 /// 
 /// fn foo() {
 ///     let asset = msg_asset_id();
@@ -170,8 +169,7 @@ pub fn second_param<T>() -> T {
 /// # Examples
 ///
 /// ```sway
-/// use std::call_frames::get_previous_frame_pointer;
-/// use std::registers::frame_ptr;
+/// use std::{call_frames::get_previous_frame_pointer, registers::frame_ptr};
 ///
 /// fn foo() {
 ///     let current_call_frame = frame_ptr();
@@ -200,8 +198,7 @@ pub fn get_previous_frame_pointer(frame_pointer: raw_ptr) -> raw_ptr {
 /// # Examples
 ///
 /// ```sway
-/// use std::call_frames::get_previous_frame_pointer;
-/// use std::registers::frame_ptr;
+/// use std::{call_frames::get_contract_id_from_call_frame, registers::frame_ptr};
 ///
 /// fn foo() {
 ///     let current_call_frame = frame_ptr();
