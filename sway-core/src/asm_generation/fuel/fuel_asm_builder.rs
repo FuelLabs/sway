@@ -1503,7 +1503,9 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             {
                 (VirtualRegister::Constant(ConstantRegister::One), None)
             }
-            ConstantValue::Bool(true) => (VirtualRegister::Constant(ConstantRegister::One), None),
+            ConstantValue::Bool(true) if config_name.is_none() => {
+                (VirtualRegister::Constant(ConstantRegister::One), None)
+            }
 
             _otherwise => {
                 // Get the constant into the namespace.
