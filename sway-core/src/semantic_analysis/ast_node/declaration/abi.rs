@@ -46,7 +46,7 @@ impl ty::TyAbiDecl {
         let self_type = type_engine.insert(ctx.engines(), TypeInfo::SelfType);
         let mut ctx = ctx
             .scoped(&mut abi_namespace)
-            .with_abi_mode(AbiMode::ImplAbiFn(name.clone()))
+            .with_abi_mode(AbiMode::ImplAbiFn(name.clone(), None))
             .with_self_type(self_type);
 
         // Recursively make the interface surfaces and methods of the
@@ -262,7 +262,7 @@ impl ty::TyAbiDecl {
                                 //   Left            Right
                                 //      \              /
                                 //           Bottom
-                                // if we are accumulating methods from Left and Rigth
+                                // if we are accumulating methods from Left and Right
                                 // to place it into Bottom we will encounter
                                 // the same method from Top in both Left and Right
                                 if self_decl_id != abi_decl.decl_id {
@@ -280,7 +280,10 @@ impl ty::TyAbiDecl {
                     all_items.push(TyImplItem::Fn(
                         ctx.engines
                             .de()
-                            .insert(method.to_dummy_func(AbiMode::ImplAbiFn(self.name.clone())))
+                            .insert(method.to_dummy_func(AbiMode::ImplAbiFn(
+                                self.name.clone(),
+                                Some(self_decl_id),
+                            )))
                             .with_parent(ctx.engines.de(), (*decl_ref.id()).into()),
                     ));
                 }

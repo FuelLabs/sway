@@ -184,7 +184,7 @@ impl ty::TyImplTrait {
                     });
                 }
 
-                let mut ctx = ctx.with_abi_mode(AbiMode::ImplAbiFn(abi.name.clone()));
+                let mut ctx = ctx.with_abi_mode(AbiMode::ImplAbiFn(abi.name.clone(), None));
 
                 // Insert the interface surface and methods from this trait into
                 // the namespace.
