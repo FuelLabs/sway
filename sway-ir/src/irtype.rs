@@ -298,7 +298,10 @@ impl Type {
                 let Some(Constant {
                     value: ConstantValue::Uint(idx),
                     ty: _,
-                }) = idx.get_constant(context) else { return None; };
+                }) = idx.get_constant(context)
+                else {
+                    return None;
+                };
                 ty.and_then(|(ty, accum_offset)| {
                     if ty.is_struct(context) {
                         // Sum up all sizes of all previous fields.

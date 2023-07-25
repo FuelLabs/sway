@@ -739,7 +739,8 @@ fn const_eval_intrinsic(
             assert!(
                 args.len() == 2 && ty.is_uint(lookup.context) && ty.eq(lookup.context, &args[1].ty)
             );
-            let (ConstantValue::Uint(arg1), ConstantValue::Uint(ref arg2)) = (&args[0].value, &args[1].value)
+            let (ConstantValue::Uint(arg1), ConstantValue::Uint(ref arg2)) =
+                (&args[0].value, &args[1].value)
             else {
                 panic!("Type checker allowed incorrect args to binary op");
             };
@@ -775,7 +776,8 @@ fn const_eval_intrinsic(
                     && args[1].ty.is_uint64(lookup.context)
             );
 
-            let (ConstantValue::Uint(arg1), ConstantValue::Uint(ref arg2)) = (&args[0].value, &args[1].value)
+            let (ConstantValue::Uint(arg1), ConstantValue::Uint(ref arg2)) =
+                (&args[0].value, &args[1].value)
             else {
                 panic!("Type checker allowed incorrect args to binary op");
             };
@@ -854,20 +856,22 @@ fn const_eval_intrinsic(
             }))
         }
         sway_ast::Intrinsic::Gt => {
-            let (ConstantValue::Uint(val1), ConstantValue::Uint(val2)) = (&args[0].value, &args[1].value)
-                else {
-                    unreachable!("Type checker allowed non integer value for GreaterThan")
-                };
+            let (ConstantValue::Uint(val1), ConstantValue::Uint(val2)) =
+                (&args[0].value, &args[1].value)
+            else {
+                unreachable!("Type checker allowed non integer value for GreaterThan")
+            };
             Ok(Some(Constant {
                 ty: Type::get_bool(lookup.context),
                 value: ConstantValue::Bool(val1 > val2),
             }))
         }
         sway_ast::Intrinsic::Lt => {
-            let (ConstantValue::Uint(val1), ConstantValue::Uint(val2)) = (&args[0].value, &args[1].value)
-                else {
-                    unreachable!("Type checker allowed non integer value for LessThan")
-                };
+            let (ConstantValue::Uint(val1), ConstantValue::Uint(val2)) =
+                (&args[0].value, &args[1].value)
+            else {
+                unreachable!("Type checker allowed non integer value for LessThan")
+            };
             Ok(Some(Constant {
                 ty: Type::get_bool(lookup.context),
                 value: ConstantValue::Bool(val1 < val2),
