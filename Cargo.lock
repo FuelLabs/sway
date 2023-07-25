@@ -5926,6 +5926,7 @@ dependencies = [
  "gag",
  "hex",
  "miden",
+ "num-bigint",
  "prettydiff 0.6.4",
  "rand",
  "regex",

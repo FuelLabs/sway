@@ -16,7 +16,7 @@ use std::fmt;
 
 #[derive(Clone, Copy, Debug)]
 #[repr(u16)]
-pub enum WqopOperation {
+pub enum WideOperation {
     //	Add
     Add = 0,
     //	Subtract
@@ -37,8 +37,8 @@ pub enum WqopOperation {
 
 #[derive(Clone, Debug)]
 pub(crate) struct WideOperationsImmediate {
-    pub op: WqopOperation,
-    pub indirect: bool,
+    pub op: WideOperation,
+    pub right_indirect: bool,
 }
 
 impl fmt::Display for WideOperationsImmediate {
@@ -50,7 +50,7 @@ impl fmt::Display for WideOperationsImmediate {
 impl WideOperationsImmediate {
     pub fn immediate_value(&self) -> VirtualImmediate06 {
         let a = self.op as u8;
-        let b = if self.indirect { 1u8 } else { 0u8 } << 5;
+        let b = if self.right_indirect { 32u8 } else { 0u8 };
         VirtualImmediate06 { value: a | b }
     }
 }
@@ -69,8 +69,8 @@ impl fmt::Display for WideMulImmediate {
 
 impl WideMulImmediate {
     pub fn immediate_value(&self) -> VirtualImmediate06 {
-        let a = (if self.left_indirect { 1 } else { 0 }) << 5;
-        let b = (if self.right_indirect { 1 } else { 0 }) << 6;
+        let a = if self.left_indirect { 16 } else { 0 };
+        let b = if self.right_indirect { 32 } else { 0 };
         VirtualImmediate06 { value: a | b }
     }
 }
@@ -88,7 +88,7 @@ impl fmt::Display for WideDivImmediate {
 
 impl WideDivImmediate {
     pub fn immediate_value(&self) -> VirtualImmediate06 {
-        let a = (if self.right_indirect { 1 } else { 0 }) << 6;
+        let a = if self.right_indirect { 32 } else { 0 };
         VirtualImmediate06 { value: a }
     }
 }
@@ -107,6 +107,7 @@ pub(crate) enum WideCmpOp {
 #[derive(Clone, Debug)]
 pub(crate) struct WideCmpImmediate {
     pub op: WideCmpOp,
+    pub right_indirect: bool,
 }
 
 impl fmt::Display for WideCmpImmediate {
@@ -117,10 +118,33 @@ impl fmt::Display for WideCmpImmediate {
 
 impl WideCmpImmediate {
     pub fn immediate_value(&self) -> VirtualImmediate06 {
-        VirtualImmediate06 {
-            value: self.op.clone() as u8,
-        }
+        let a = self.op.clone() as u8;
+        let b = if self.right_indirect { 32 } else { 0 };
+        VirtualImmediate06 { value: a | b }
     }
+}
+
+#[test]
+fn wq_imm_tests() {
+    assert_eq!(
+        32,
+        WideOperationsImmediate {
+            op: WideOperation::Add,
+            right_indirect: true,
+        }
+        .immediate_value()
+        .value
+    );
+
+    assert_eq!(
+        32,
+        WideCmpImmediate {
+            op: WideCmpOp::Equality,
+            right_indirect: true,
+        }
+        .immediate_value()
+        .value
+    );
 }
 
 /// This enum is unfortunately a redundancy of the [fuel_asm::Opcode] enum. This variant, however,

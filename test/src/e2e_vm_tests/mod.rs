@@ -12,6 +12,7 @@ use colored::*;
 use core::fmt;
 use fuel_vm::fuel_tx;
 use fuel_vm::prelude::*;
+use num_bigint::BigUint;
 use regex::Regex;
 use std::collections::HashSet;
 use std::io::stdout;
@@ -41,7 +42,7 @@ enum TestCategory {
 #[derive(PartialEq)]
 enum TestResult {
     Result(Word),
-    Return(u64),
+    Return(BigUint),
     ReturnData(Vec<u8>),
     Revert(u64),
 }
@@ -144,7 +145,7 @@ impl TestContext {
                 let result = match result {
                     harness::VMExecutionResult::Fuel(state, receipts) => {
                         match state {
-                            ProgramState::Return(v) => TestResult::Return(v),
+                            ProgramState::Return(v) => TestResult::Return(v.into()),
                             ProgramState::ReturnData(digest) => {
                                 // Find the ReturnData receipt matching the digest
                                 let receipt = receipts
@@ -173,7 +174,7 @@ impl TestContext {
                         let stack = outputs.stack();
                         // for now, just test primitive u64s.
                         // Later on, we can test stacks that have more elements in them.
-                        TestResult::Return(stack[0])
+                        TestResult::Return(stack[0].into())
                     }
                 };
 
@@ -726,7 +727,13 @@ fn get_expected_result(toml_content: &toml::Value) -> Result<TestResult> {
     fn get_action_value(action: &toml::Value, expected_value: &toml::Value) -> Result<TestResult> {
         match (action.as_str(), expected_value) {
             // A simple integer value.
-            (Some("return"), toml::Value::Integer(v)) => Ok(TestResult::Return(*v as u64)),
+            (Some("return"), toml::Value::Integer(v)) => {
+                Ok(TestResult::Return((*v).try_into().unwrap()))
+            }
+            (Some("return"), toml::Value::String(v)) => {
+                let n = num_bigint::BigUint::from_str(v.as_str()).unwrap();
+                Ok(TestResult::Return(n))
+            }
 
             // Also a simple integer value, but is a result from a contract call.
             (Some("result"), toml::Value::Integer(v)) => Ok(TestResult::Result(*v as Word)),

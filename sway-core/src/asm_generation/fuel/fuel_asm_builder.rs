@@ -12,8 +12,8 @@ use crate::{
     },
     asm_lang::{
         virtual_register::*, Label, Op, VirtualImmediate12, VirtualImmediate18, VirtualOp,
-        WideCmpImmediate, WideCmpOp, WideDivImmediate, WideMulImmediate, WideOperationsImmediate,
-        WqopOperation,
+        WideCmpImmediate, WideCmpOp, WideDivImmediate, WideMulImmediate, WideOperation,
+        WideOperationsImmediate,
     },
     decl_engine::DeclRefFunction,
     error::*,
@@ -505,8 +505,8 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         val1_reg,
                         val2_reg,
                         WideOperationsImmediate {
-                            op: WqopOperation::Add,
-                            indirect: false,
+                            op: WideOperation::Add,
+                            right_indirect: true,
                         },
                     ),
                     Some("add"),
@@ -517,8 +517,8 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         val1_reg,
                         val2_reg,
                         WideOperationsImmediate {
-                            op: WqopOperation::Sub,
-                            indirect: false,
+                            op: WideOperation::Sub,
+                            right_indirect: true,
                         },
                     ),
                     Some("sub"),
@@ -529,8 +529,8 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         val1_reg,
                         val2_reg,
                         WideOperationsImmediate {
-                            op: WqopOperation::Or,
-                            indirect: false,
+                            op: WideOperation::Or,
+                            right_indirect: true,
                         },
                     ),
                     Some("or"),
@@ -541,8 +541,8 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         val1_reg,
                         val2_reg,
                         WideOperationsImmediate {
-                            op: WqopOperation::Xor,
-                            indirect: false,
+                            op: WideOperation::Xor,
+                            right_indirect: true,
                         },
                     ),
                     Some("xor"),
@@ -553,8 +553,8 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         val1_reg,
                         val2_reg,
                         WideOperationsImmediate {
-                            op: WqopOperation::And,
-                            indirect: false,
+                            op: WideOperation::And,
+                            right_indirect: true,
                         },
                     ),
                     Some("and"),
@@ -565,8 +565,8 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         val1_reg,
                         val2_reg,
                         WideOperationsImmediate {
-                            op: WqopOperation::Shl,
-                            indirect: false,
+                            op: WideOperation::Shl,
+                            right_indirect: false,
                         },
                     ),
                     Some("shl"),
@@ -577,8 +577,8 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         val1_reg,
                         val2_reg,
                         WideOperationsImmediate {
-                            op: WqopOperation::Shr,
-                            indirect: false,
+                            op: WideOperation::Shr,
+                            right_indirect: false,
                         },
                     ),
                     Some("shr"),
@@ -589,8 +589,8 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         val1_reg,
                         val2_reg,
                         WideMulImmediate {
-                            left_indirect: false,
-                            right_indirect: false,
+                            left_indirect: true,
+                            right_indirect: true,
                         },
                     ),
                     Some("mul"),
@@ -601,7 +601,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         val1_reg,
                         val2_reg,
                         WideDivImmediate {
-                            right_indirect: false,
+                            right_indirect: true,
                         },
                     ),
                     Some("div"),
@@ -674,6 +674,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         rhs_reg,
                         WideCmpImmediate {
                             op: WideCmpOp::Equality,
+                            right_indirect: true,
                         },
                     ),
                     Some("eq cmp"),
@@ -685,6 +686,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         rhs_reg,
                         WideCmpImmediate {
                             op: WideCmpOp::LessThan,
+                            right_indirect: true,
                         },
                     ),
                     Some("gt cmp"),
@@ -696,6 +698,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         rhs_reg,
                         WideCmpImmediate {
                             op: WideCmpOp::GreaterThan,
+                            right_indirect: true,
                         },
                     ),
                     Some("gt cmp"),

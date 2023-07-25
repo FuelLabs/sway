@@ -566,19 +566,12 @@ pub trait Shift {
     fn rsh(self, other: u64) -> Self;
 }
 
-// TODO move to primitive_conversions
-fn as_u256(v: u64) -> u256 {
-    asm(input: v) {
-        input: u256
-    }
-}
-
 impl Shift for u256 {
     fn lsh(self, other: u64) -> Self {
-        __lsh(self, as_u256(other))
+        __lsh(self, other)
     }
     fn rsh(self, other: u64) -> Self {
-        __rsh(self, as_u256(other))
+        __rsh(self, other)
     }
 }
 
