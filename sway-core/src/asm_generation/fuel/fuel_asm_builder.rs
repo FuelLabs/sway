@@ -12,7 +12,8 @@ use crate::{
     },
     asm_lang::{
         virtual_register::*, Label, Op, VirtualImmediate12, VirtualImmediate18, VirtualOp,
-        WqdvImmediate, WqmlImmediate, WqopImmediate, WqopOperation,
+        WideCmpImmediate, WideCmpOp, WideDivImmediate, WideMulImmediate, WideOperationsImmediate,
+        WqopOperation,
     },
     decl_engine::DeclRefFunction,
     error::*,
@@ -503,7 +504,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         res_reg.clone(),
                         val1_reg,
                         val2_reg,
-                        WqopImmediate {
+                        WideOperationsImmediate {
                             op: WqopOperation::Add,
                             indirect: false,
                         },
@@ -515,7 +516,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         res_reg.clone(),
                         val1_reg,
                         val2_reg,
-                        WqopImmediate {
+                        WideOperationsImmediate {
                             op: WqopOperation::Sub,
                             indirect: false,
                         },
@@ -527,7 +528,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         res_reg.clone(),
                         val1_reg,
                         val2_reg,
-                        WqopImmediate {
+                        WideOperationsImmediate {
                             op: WqopOperation::Or,
                             indirect: false,
                         },
@@ -539,7 +540,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         res_reg.clone(),
                         val1_reg,
                         val2_reg,
-                        WqopImmediate {
+                        WideOperationsImmediate {
                             op: WqopOperation::Xor,
                             indirect: false,
                         },
@@ -551,7 +552,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         res_reg.clone(),
                         val1_reg,
                         val2_reg,
-                        WqopImmediate {
+                        WideOperationsImmediate {
                             op: WqopOperation::And,
                             indirect: false,
                         },
@@ -563,7 +564,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         res_reg.clone(),
                         val1_reg,
                         val2_reg,
-                        WqopImmediate {
+                        WideOperationsImmediate {
                             op: WqopOperation::Shl,
                             indirect: false,
                         },
@@ -575,7 +576,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         res_reg.clone(),
                         val1_reg,
                         val2_reg,
-                        WqopImmediate {
+                        WideOperationsImmediate {
                             op: WqopOperation::Shr,
                             indirect: false,
                         },
@@ -587,7 +588,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         res_reg.clone(),
                         val1_reg,
                         val2_reg,
-                        WqmlImmediate {
+                        WideMulImmediate {
                             left_indirect: false,
                             right_indirect: false,
                         },
@@ -599,7 +600,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         res_reg.clone(),
                         val1_reg,
                         val2_reg,
-                        WqdvImmediate {
+                        WideDivImmediate {
                             right_indirect: false,
                         },
                     ),
@@ -656,31 +657,63 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         let lhs_reg = self.value_to_register(lhs_value)?;
         let rhs_reg = self.value_to_register(rhs_value)?;
         let res_reg = self.reg_seqr.next();
-        let comment = String::new();
-        let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
-        match pred {
-            Predicate::Equal => {
-                self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::EQ(res_reg.clone(), lhs_reg, rhs_reg)),
-                    comment,
-                    owning_span,
-                });
-            }
-            Predicate::LessThan => {
-                self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::LT(res_reg.clone(), lhs_reg, rhs_reg)),
-                    comment,
-                    owning_span,
-                });
-            }
-            Predicate::GreaterThan => {
-                self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::GT(res_reg.clone(), lhs_reg, rhs_reg)),
-                    comment,
-                    owning_span,
-                });
-            }
-        }
+
+        // Check op is on 256 bits and use the special opcodes
+        let lhs_width = lhs_value
+            .get_type(self.context)
+            .and_then(|x| x.get_uint_width(self.context));
+        let rhs_width = rhs_value
+            .get_type(self.context)
+            .and_then(|x| x.get_uint_width(self.context));
+        let (opcode, comment) = match (lhs_width, rhs_width) {
+            (Some(256), Some(256)) => match pred {
+                Predicate::Equal => (
+                    VirtualOp::WQCM(
+                        res_reg.clone(),
+                        lhs_reg,
+                        rhs_reg,
+                        WideCmpImmediate {
+                            op: WideCmpOp::Equality,
+                        },
+                    ),
+                    Some("eq cmp"),
+                ),
+                Predicate::LessThan => (
+                    VirtualOp::WQCM(
+                        res_reg.clone(),
+                        lhs_reg,
+                        rhs_reg,
+                        WideCmpImmediate {
+                            op: WideCmpOp::LessThan,
+                        },
+                    ),
+                    Some("gt cmp"),
+                ),
+                Predicate::GreaterThan => (
+                    VirtualOp::WQCM(
+                        res_reg.clone(),
+                        lhs_reg,
+                        rhs_reg,
+                        WideCmpImmediate {
+                            op: WideCmpOp::GreaterThan,
+                        },
+                    ),
+                    Some("gt cmp"),
+                ),
+            },
+            _ => match pred {
+                Predicate::Equal => (VirtualOp::EQ(res_reg.clone(), lhs_reg, rhs_reg), None),
+                Predicate::LessThan => (VirtualOp::LT(res_reg.clone(), lhs_reg, rhs_reg), None),
+                Predicate::GreaterThan => (VirtualOp::GT(res_reg.clone(), lhs_reg, rhs_reg), None),
+            },
+        };
+
+        self.cur_bytecode.push(Op {
+            opcode: Either::Left(opcode),
+            comment: comment.map(Into::into).unwrap_or_default(),
+            owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+        });
+
         self.reg_map.insert(*instr_val, res_reg);
         Ok(())
     }

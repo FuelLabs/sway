@@ -36,18 +36,18 @@ pub enum WqopOperation {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct WqopImmediate {
+pub(crate) struct WideOperationsImmediate {
     pub op: WqopOperation,
     pub indirect: bool,
 }
 
-impl fmt::Display for WqopImmediate {
+impl fmt::Display for WideOperationsImmediate {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "i{}", self.immediate_value())
     }
 }
 
-impl WqopImmediate {
+impl WideOperationsImmediate {
     pub fn immediate_value(&self) -> VirtualImmediate06 {
         let a = self.op as u8;
         let b = if self.indirect { 1u8 } else { 0u8 } << 5;
@@ -56,18 +56,18 @@ impl WqopImmediate {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct WqmlImmediate {
+pub(crate) struct WideMulImmediate {
     pub left_indirect: bool,
     pub right_indirect: bool,
 }
 
-impl fmt::Display for WqmlImmediate {
+impl fmt::Display for WideMulImmediate {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "i{}", self.immediate_value())
     }
 }
 
-impl WqmlImmediate {
+impl WideMulImmediate {
     pub fn immediate_value(&self) -> VirtualImmediate06 {
         let a = (if self.left_indirect { 1 } else { 0 }) << 5;
         let b = (if self.right_indirect { 1 } else { 0 }) << 6;
@@ -76,20 +76,50 @@ impl WqmlImmediate {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct WqdvImmediate {
+pub(crate) struct WideDivImmediate {
     pub right_indirect: bool,
 }
 
-impl fmt::Display for WqdvImmediate {
+impl fmt::Display for WideDivImmediate {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "i{}", self.immediate_value())
     }
 }
 
-impl WqdvImmediate {
+impl WideDivImmediate {
     pub fn immediate_value(&self) -> VirtualImmediate06 {
         let a = (if self.right_indirect { 1 } else { 0 }) << 6;
         VirtualImmediate06 { value: a }
+    }
+}
+
+#[repr(u8)]
+#[derive(Clone, Debug)]
+pub(crate) enum WideCmpOp {
+    Equality = 0,
+    Inequality = 1,
+    LessThan = 2,
+    GreaterThan = 3,
+    LessThanOrEquals = 4,
+    GreaterThanOrEquals = 5,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct WideCmpImmediate {
+    pub op: WideCmpOp,
+}
+
+impl fmt::Display for WideCmpImmediate {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "i{}", self.immediate_value())
+    }
+}
+
+impl WideCmpImmediate {
+    pub fn immediate_value(&self) -> VirtualImmediate06 {
+        VirtualImmediate06 {
+            value: self.op.clone() as u8,
+        }
     }
 }
 
@@ -137,21 +167,28 @@ pub(crate) enum VirtualOp {
         VirtualRegister,
         VirtualRegister,
         VirtualRegister,
-        WqopImmediate,
+        WideOperationsImmediate,
     ),
     // WQML: Multiply 256-bit integers
     WQML(
         VirtualRegister,
         VirtualRegister,
         VirtualRegister,
-        WqmlImmediate,
+        WideMulImmediate,
     ),
     // WQDV: 256-bit integer division
     WQDV(
         VirtualRegister,
         VirtualRegister,
         VirtualRegister,
-        WqdvImmediate,
+        WideDivImmediate,
+    ),
+    // WQCM: 256-bit integer comparison
+    WQCM(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        WideCmpImmediate,
     ),
 
     /* Control Flow Instructions */
@@ -308,6 +345,7 @@ impl VirtualOp {
             WQOP(r1, r2, r3, _) => vec![r1, r2, r3],
             WQML(r1, r2, r3, _) => vec![r1, r2, r3],
             WQDV(r1, r2, r3, _) => vec![r1, r2, r3],
+            WQCM(r1, r2, r3, _) => vec![r1, r2, r3],
 
             /* Control Flow Instructions */
             JMP(r1) => vec![r1],
@@ -420,6 +458,7 @@ impl VirtualOp {
             WQOP(_, r2, r3, _) => vec![r2, r3],
             WQML(_, r2, r3, _) => vec![r2, r3],
             WQDV(_, r2, r3, _) => vec![r2, r3],
+            WQCM(_, r2, r3, _) => vec![r2, r3],
 
             /* Control Flow Instructions */
             JMP(r1) => vec![r1],
@@ -532,6 +571,7 @@ impl VirtualOp {
             WQOP(r1, _, _, _) => vec![r1],
             WQML(r1, _, _, _) => vec![r1],
             WQDV(r1, _, _, _) => vec![r1],
+            WQCM(r1, _, _, _) => vec![r1],
 
             /* Control Flow Instructions */
             JMP(_r1) => vec![],
@@ -790,6 +830,12 @@ impl VirtualOp {
                 i.clone(),
             ),
             WQDV(r1, r2, r3, i) => Self::WQDV(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                i.clone(),
+            ),
+            WQCM(r1, r2, r3, i) => Self::WQCM(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
                 update_reg(reg_to_reg_map, r3),
@@ -1226,6 +1272,12 @@ impl VirtualOp {
                 imm.immediate_value(),
             ),
             WQDV(reg1, reg2, reg3, imm) => AllocatedOpcode::WQDV(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+                imm.immediate_value(),
+            ),
+            WQCM(reg1, reg2, reg3, imm) => AllocatedOpcode::WQCM(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
