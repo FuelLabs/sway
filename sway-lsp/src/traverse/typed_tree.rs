@@ -921,7 +921,7 @@ impl Parse for ty::TyStructField {
             .try_unwrap()
         {
             token.typed = Some(TypedAstToken::TypedStructField(self.clone()));
-            token.type_def = Some(TypeDefinition::TypeId(self.type_argument.type_id));
+            token.type_def = Some(TypeDefinition::Ident(self.name.clone()));
         }
         collect_type_argument(ctx, &self.type_argument);
     }
