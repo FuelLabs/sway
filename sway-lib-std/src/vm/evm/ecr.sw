@@ -23,8 +23,7 @@ use ::vm::evm::evm_address::EvmAddress;
 /// # Examples
 ///
 /// ```sway
-/// use std::vm::evm::ecr::ec_recover_evm_address,
-/// use std::b512::B512;
+/// use std::{vm::evm::ecr::ec_recover_evm_address, b512::B512};
 ///
 /// fn foo() {
 ///     let hi = 0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c;

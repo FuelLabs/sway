@@ -28,8 +28,7 @@ pub enum EcRecoverError {
 /// # Examples
 ///
 /// ```sway
-/// use std::erc::ec_recover;
-/// use std::b512::B512;
+/// use std::{erc::ec_recover, b512::B512};
 ///
 /// fn foo() {
 ///     let hi = 0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c;
@@ -69,8 +68,7 @@ pub fn ec_recover(signature: B512, msg_hash: b256) -> Result<B512, EcRecoverErro
 /// # Examples
 ///
 /// ```sway
-/// use std::erc::ec_recover_address;
-/// use std::b512::B512;
+/// use std::{erc::ec_recover_address, b512::B512};
 ///
 /// fn foo() {
 ///     let hi = 0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c;
