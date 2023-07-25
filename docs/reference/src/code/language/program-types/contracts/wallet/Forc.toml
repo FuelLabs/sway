@@ -4,9 +4,6 @@ entry = "main.sw"
 license = "Apache-2.0"
 name = "wallet"
 
-[constants]
-
-
 [dependencies]
 interface = { path = "../interface" }
 std = { path = "../../../../../../../../sway-lib-std" }
