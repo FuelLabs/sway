@@ -35,4 +35,3 @@ impl From<b256> for EvmAddress {
         self.value
     }
 }
-

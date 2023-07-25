@@ -7,7 +7,7 @@ use ::registers::error;
 use ::hash::sha256;
 use ::result::Result::{self, *};
 
-/// The error type for when the `ec_recover` function fails.
+/// The error type used when the `ec_recover` function fails.
 pub enum EcRecoverError {
     /// The error varient used when the recover fails.
     UnrecoverablePublicKey: (),
