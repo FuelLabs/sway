@@ -8,8 +8,17 @@ use fuels::{
 async fn call_script(script_data: Vec<u8>) -> Result<Vec<Receipt>> {
     let wallet = launch_provider_and_get_wallet().await;
 
+    let wallet_coins = wallet
+        .get_asset_inputs_for_amount(
+            AssetId::default(),
+            wallet.get_asset_balance(&AssetId::default()).await.unwrap(),
+            None,
+        )
+        .await
+        .unwrap();
+
     let mut tx =
-        ScriptTransactionBuilder::prepare_transfer(vec![], vec![], TxParameters::default())
+        ScriptTransactionBuilder::prepare_transfer(wallet_coins, vec![], TxParameters::default())
             .set_script(std::fs::read(
                 "test_projects/script_data/out/debug/script_data.bin",
             )?)

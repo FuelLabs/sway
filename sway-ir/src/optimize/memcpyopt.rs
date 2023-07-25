@@ -264,7 +264,8 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
     for (value, replace_with) in replaces.into_iter() {
         match replace_with {
             ReplaceWith::InPlaceLocal(replacement_var) => {
-                let Some(Instruction::GetLocal(redundant_var)) = value.get_instruction(context) else {
+                let Some(Instruction::GetLocal(redundant_var)) = value.get_instruction(context)
+                else {
                     panic!("earlier match now fails");
                 };
                 if redundant_var.is_mutable(context) {
