@@ -119,6 +119,6 @@ impl ServerState {
     }
 
     pub async fn on_enter(&self, params: OnEnterParams) -> Result<Option<WorkspaceEdit>> {
-        request::on_enter(self, params).await
+        request::on_enter(self, params)
     }
 }

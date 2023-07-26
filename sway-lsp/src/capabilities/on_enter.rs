@@ -15,7 +15,7 @@ const DOC_COMMENT_START: &str = "///";
 
 /// If the change was an enter keypress or pasting multiple lines in a comment, it prefixes the line(s)
 /// with the appropriate comment start pattern (// or ///).
-pub(crate) async fn on_enter(
+pub(crate) fn on_enter(
     config: &OnEnterConfig,
     session: &Arc<Session>,
     temp_uri: &Url,
@@ -50,50 +50,51 @@ fn get_comment_workspace_edit(
         .range
         .expect("change is missing range");
     let line = text_document.get_line(range.start.line as usize);
-    if line.trim().starts_with(start_pattern) {
-        let uri = change_params.text_document.uri.clone();
-        let text = change_params.content_changes[0].text.clone();
 
-        let indentation = &line[..line.find(start_pattern).unwrap_or(0)];
-        let mut edits = vec![];
-
-        // To support pasting multiple lines in a comment, we need to add the comment start pattern after each newline,
-        // except the last one.
-        let lines: Vec<_> = text.split(NEWLINE).collect();
-        lines.iter().enumerate().for_each(|(i, _)| {
-            if i < lines.len() - 1 {
-                let position =
-                    Position::new(range.start.line + (i as u32) + 1, indentation.len() as u32);
-                edits.push(OneOf::Left(TextEdit {
-                    new_text: format!("{start_pattern} "),
-                    range: Range::new(position, position),
-                }));
-            }
-        });
-        let edit = TextDocumentEdit {
-            text_document: OptionalVersionedTextDocumentIdentifier {
-                // Use the original uri to make updates, not the temporary one from the session.
-                uri,
-                version: None,
-            },
-            edits,
-        };
-        Some(WorkspaceEdit {
-            document_changes: Some(DocumentChanges::Edits(vec![edit])),
-            ..Default::default()
-        })
-    } else {
-        None
+    // If the previous line doesn't start with a comment, return early.
+    if !line.trim().starts_with(start_pattern) {
+        return None;
     }
+
+    let uri = change_params.text_document.uri.clone();
+    let text = change_params.content_changes[0].text.clone();
+
+    let indentation = &line[..line.find(start_pattern).unwrap_or(0)];
+    let mut edits = vec![];
+
+    // To support pasting multiple lines in a comment, we need to add the comment start pattern after each newline,
+    // except the last one.
+    let lines: Vec<_> = text.split(NEWLINE).collect();
+    lines.iter().enumerate().for_each(|(i, _)| {
+        if i < lines.len() - 1 {
+            let position =
+                Position::new(range.start.line + (i as u32) + 1, indentation.len() as u32);
+            edits.push(OneOf::Left(TextEdit {
+                new_text: format!("{start_pattern} "),
+                range: Range::new(position, position),
+            }));
+        }
+    });
+
+    let edit = TextDocumentEdit {
+        text_document: OptionalVersionedTextDocumentIdentifier {
+            // Use the original uri to make updates, not the temporary one from the session.
+            uri,
+            version: None,
+        },
+        edits,
+    };
+
+    Some(WorkspaceEdit {
+        document_changes: Some(DocumentChanges::Edits(vec![edit])),
+        ..Default::default()
+    })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use lsp_types::{
-        AnnotatedTextEdit, TextDocumentContentChangeEvent, TextDocumentIdentifier,
-        VersionedTextDocumentIdentifier,
-    };
+    use lsp_types::{AnnotatedTextEdit, TextDocumentContentChangeEvent, TextDocumentIdentifier};
     use sway_lsp_test_utils::get_absolute_path;
 
     fn assert_text_edit(

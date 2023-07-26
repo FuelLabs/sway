@@ -415,7 +415,7 @@ pub(crate) fn handle_show_ast(
 }
 
 /// This method is triggered when the use hits enter or pastes a newline in the editor.
-pub(crate) async fn on_enter(
+pub(crate) fn on_enter(
     state: &ServerState,
     params: lsp_ext::OnEnterParams,
 ) -> Result<Option<WorkspaceEdit>> {
@@ -426,7 +426,12 @@ pub(crate) async fn on_enter(
     {
         Ok((uri, session)) => {
             // handle on_enter capabilities if they are enabled
-            Ok(capabilities::on_enter(&config, &session, &uri.clone(), &params).await)
+            Ok(capabilities::on_enter(
+                &config,
+                &session,
+                &uri.clone(),
+                &params,
+            ))
         }
         Err(err) => {
             tracing::error!("{}", err.to_string());
