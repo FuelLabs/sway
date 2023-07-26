@@ -1,31 +1,23 @@
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Span, Spanned};
 
-use crate::{
-    error::{err, ok},
-    language::ty,
-    CompileResult, Engines,
-};
+use crate::{language::ty, Engines};
 
 pub(crate) fn instantiate_struct_field_access(
+    handler: &Handler,
     engines: &Engines,
     parent: ty::TyExpression,
     field_to_access: Ident,
     span: Span,
-) -> CompileResult<ty::TyExpression> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+) -> Result<ty::TyExpression, ErrorEmitted> {
     let type_engine = engines.te();
     let field_instantiation_span = field_to_access.span();
-    let field = check!(
-        type_engine.get(parent.return_type).apply_subfields(
-            engines,
-            &[field_to_access],
-            &parent.span
-        ),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    let field = type_engine.get(parent.return_type).apply_subfields(
+        handler,
+        engines,
+        &[field_to_access],
+        &parent.span,
+    )?;
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::StructFieldAccess {
             resolved_type_of_parent: parent.return_type,
@@ -36,5 +28,5 @@ pub(crate) fn instantiate_struct_field_access(
         return_type: field.type_argument.type_id,
         span,
     };
-    ok(exp, warnings, errors)
+    Ok(exp)
 }

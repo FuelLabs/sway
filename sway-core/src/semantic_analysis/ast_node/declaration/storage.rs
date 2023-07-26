@@ -1,5 +1,4 @@
 use crate::{
-    error::*,
     fuel_prelude::fuel_tx::StorageSlot,
     ir_generation::{
         const_eval::compile_constant_expression_to_constant, storage::serialize_to_storage_slots,
@@ -8,19 +7,23 @@ use crate::{
     metadata::MetadataManager,
     Engines,
 };
-use sway_error::error::CompileError;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_ir::{Context, Module};
 use sway_types::state::StateIndex;
 
 impl ty::TyStorageDecl {
     pub(crate) fn get_initialized_storage_slots(
         &self,
+        handler: &Handler,
         engines: &Engines,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         module: Module,
-    ) -> CompileResult<Vec<StorageSlot>> {
-        let mut errors = vec![];
+    ) -> Result<Vec<StorageSlot>, ErrorEmitted> {
+        let mut error_emitted = None;
         let storage_slots = self
             .fields
             .iter()
@@ -34,13 +37,17 @@ impl ty::TyStorageDecl {
                     &StateIndex::new(i),
                 )
             })
-            .filter_map(|s| s.map_err(|e| errors.push(e)).ok())
+            .filter_map(|s| {
+                s.map_err(|e| error_emitted = Some(handler.emit_err(e)))
+                    .ok()
+            })
             .flatten()
             .collect::<Vec<_>>();
 
-        match errors.is_empty() {
-            true => ok(storage_slots, vec![], vec![]),
-            false => err(vec![], errors),
+        if let Some(err) = error_emitted {
+            Err(err)
+        } else {
+            Ok(storage_slots)
         }
     }
 }

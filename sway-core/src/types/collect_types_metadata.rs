@@ -8,7 +8,8 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use crate::{type_system::TypeId, CompileResult, Engines};
+use crate::{type_system::TypeId, Engines};
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Span};
 
 /// If any types contained by this node are unresolved or have yet to be inferred, throw an
@@ -131,6 +132,7 @@ impl<'cx> CollectTypesMetadataContext<'cx> {
 pub(crate) trait CollectTypesMetadata {
     fn collect_types_metadata(
         &self,
+        handler: &Handler,
         ctx: &mut CollectTypesMetadataContext,
-    ) -> CompileResult<Vec<TypeMetadata>>;
+    ) -> Result<Vec<TypeMetadata>, ErrorEmitted>;
 }

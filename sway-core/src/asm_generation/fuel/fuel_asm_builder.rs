@@ -12,11 +12,15 @@ use crate::{
     },
     asm_lang::{virtual_register::*, Label, Op, VirtualImmediate12, VirtualImmediate18, VirtualOp},
     decl_engine::DeclRefFunction,
-    error::*,
     metadata::MetadataManager,
 };
 
-use sway_error::{error::CompileError, warning::CompileWarning, warning::Warning};
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+    warning::CompileWarning,
+    warning::Warning,
+};
 use sway_ir::*;
 use sway_types::{span::Span, Spanned};
 
@@ -83,8 +87,12 @@ impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
         self.func_to_labels(func)
     }
 
-    fn compile_function(&mut self, function: Function) -> CompileResult<()> {
-        self.compile_function(function)
+    fn compile_function(
+        &mut self,
+        handler: &Handler,
+        function: Function,
+    ) -> Result<(), ErrorEmitted> {
+        self.compile_function(handler, function)
     }
 
     fn finalize(&self) -> AsmBuilderResult {
@@ -138,26 +146,23 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
     pub(super) fn compile_instruction(
         &mut self,
+        handler: &Handler,
         instr_val: &Value,
         func_is_entry: bool,
-    ) -> CompileResult<()> {
+    ) -> Result<(), ErrorEmitted> {
         let Some(instruction) = instr_val.get_instruction(self.context) else {
-            return err(
-                vec![],
-                vec![CompileError::Internal(
+            return Err(handler.emit_err(CompileError::Internal(
                     "Value not an instruction.",
                     self.md_mgr
                         .val_to_span(self.context, *instr_val)
-                        .unwrap_or_else(Span::dummy),
-                )],
-            );
+                        .unwrap_or_else(Span::dummy), )));
         };
 
-        // The only instruction whose compilation returns a CompileResult itself is AsmBlock, which
+        // The only instruction whose compilation returns a Result itself is AsmBlock, which
         // we special-case here.  Ideally, the ASM block verification would happen much sooner,
         // perhaps during parsing.  https://github.com/FuelLabs/sway/issues/801
         if let Instruction::AsmBlock(asm, args) = instruction {
-            self.compile_asm_block(instr_val, asm, args)
+            self.compile_asm_block(handler, instr_val, asm, args)
         } else {
             // These matches all return `Result<(), CompileError>`.
             match instruction {
@@ -273,36 +278,35 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     stored_val,
                 } => self.compile_store(instr_val, dst_val_ptr, stored_val),
             }
-            .into()
+            .map_err(|e| handler.emit_err(e))
         }
     }
 
     fn compile_asm_block(
         &mut self,
+        handler: &Handler,
         instr_val: &Value,
         asm: &AsmBlock,
         asm_args: &[AsmArg],
-    ) -> CompileResult<()> {
-        let mut warnings: Vec<CompileWarning> = Vec::new();
-        let mut errors: Vec<CompileError> = Vec::new();
+    ) -> Result<(), ErrorEmitted> {
         let mut inline_reg_map = HashMap::new();
         let mut inline_ops = Vec::new();
         for AsmArg { name, initializer } in asm_args {
-            assert_or_warn!(
-                ConstantRegister::parse_register_name(name.as_str()).is_none(),
-                warnings,
-                name.span().clone(),
-                Warning::ShadowingReservedRegister {
-                    reg_name: name.clone()
-                }
-            );
+            if ConstantRegister::parse_register_name(name.as_str()).is_some() {
+                handler.emit_warn(CompileWarning {
+                    span: name.span().clone(),
+                    warning_content: Warning::ShadowingReservedRegister {
+                        reg_name: name.clone(),
+                    },
+                });
+            }
+
             let arg_reg = match initializer {
                 Some(init_val) => {
                     let init_val_reg = match self.value_to_register(init_val) {
                         Ok(ivr) => ivr,
                         Err(e) => {
-                            errors.push(e);
-                            return err(warnings, errors);
+                            return Err(handler.emit_err(e));
                         }
                     };
                     match init_val_reg {
@@ -353,7 +357,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 })
                 .filter_map(|res| match res {
                     Err(e) => {
-                        errors.push(e);
+                        handler.emit_err(e);
                         None
                     }
                     Ok(o) => Some(o),
@@ -365,17 +369,13 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 .md_mgr
                 .md_to_span(self.context, op.metadata)
                 .unwrap_or_else(Span::dummy);
-            let opcode = check!(
-                Op::parse_opcode(
-                    &op.name,
-                    &replaced_registers,
-                    &op.immediate,
-                    op_span.clone(),
-                ),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
+            let opcode = Op::parse_opcode(
+                handler,
+                &op.name,
+                &replaced_registers,
+                &op.immediate,
+                op_span.clone(),
+            )?;
 
             inline_ops.push(Op {
                 opcode: either::Either::Left(opcode),
@@ -391,15 +391,14 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             let ret_reg = match realize_register(ret_reg_name.as_str()) {
                 Some(reg) => reg,
                 None => {
-                    errors.push(CompileError::UnknownRegister {
+                    return Err(handler.emit_err(CompileError::UnknownRegister {
                         initialized_registers: inline_reg_map
                             .keys()
                             .map(|name| name.to_string())
                             .collect::<Vec<_>>()
                             .join("\n"),
                         span: ret_reg_name.span(),
-                    });
-                    return err(warnings, errors);
+                    }));
                 }
             };
             let instr_reg = self.reg_seqr.next();
@@ -413,7 +412,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
         self.cur_bytecode.append(&mut inline_ops);
 
-        ok((), warnings, errors)
+        Ok(())
     }
 
     fn compile_bitcast(

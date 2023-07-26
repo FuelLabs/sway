@@ -1,10 +1,12 @@
-use sway_error::error::CompileError;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_types::{BaseIdent, Span};
 
 use crate::{
     decl_engine::{DeclEngine, DeclEngineInsert},
     engine_threading::*,
-    error::*,
     language::CallPath,
     semantic_analysis::TypeCheckContext,
     type_system::priv_prelude::*,
@@ -41,8 +43,9 @@ impl From<usize> for TypeId {
 impl CollectTypesMetadata for TypeId {
     fn collect_types_metadata(
         &self,
+        _handler: &Handler,
         ctx: &mut CollectTypesMetadataContext,
-    ) -> CompileResult<Vec<TypeMetadata>> {
+    ) -> Result<Vec<TypeMetadata>, ErrorEmitted> {
         fn filter_fn(type_info: &TypeInfo) -> bool {
             matches!(type_info, TypeInfo::UnknownGeneric { .. })
                 || matches!(type_info, TypeInfo::Placeholder(_))
@@ -67,7 +70,7 @@ impl CollectTypesMetadata for TypeId {
                 _ => {}
             }
         }
-        ok(res, vec![], vec![])
+        Ok(res)
     }
 }
 
@@ -361,12 +364,11 @@ impl TypeId {
     /// is thrown.
     pub(crate) fn check_type_parameter_bounds(
         &self,
+        handler: &Handler,
         ctx: &TypeCheckContext,
         span: &Span,
         trait_constraints: Vec<TraitConstraint>,
-    ) -> CompileResult<()> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+    ) -> Result<(), ErrorEmitted> {
         let engines = ctx.engines();
 
         let mut structure_generics = engines
@@ -378,20 +380,17 @@ impl TypeId {
             structure_generics.insert(*self, trait_constraints);
         }
 
+        let mut error_emitted = None;
+
         for (structure_type_id, structure_trait_constraints) in &structure_generics {
             if structure_trait_constraints.is_empty() {
                 continue;
             }
 
             // resolving trait constraits require a concrete type, we need to default numeric to u64
-            check!(
-                engines
-                    .te()
-                    .decay_numeric(engines, *structure_type_id, span),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
+            engines
+                .te()
+                .decay_numeric(handler, engines, *structure_type_id, span)?;
 
             let structure_type_info = engines.te().get(*structure_type_id);
             let structure_type_info_with_engines = engines.help_out(structure_type_info.clone());
@@ -407,11 +406,13 @@ impl TypeId {
                     if !generic_trait_constraints_trait_names
                         .contains(&structure_trait_constraint.trait_name)
                     {
-                        errors.push(CompileError::TraitConstraintMissing {
-                            param: structure_type_info_with_engines.to_string(),
-                            trait_name: structure_trait_constraint.trait_name.suffix.to_string(),
-                            span: span.clone(),
-                        });
+                        error_emitted =
+                            Some(handler.emit_err(CompileError::TraitConstraintMissing {
+                                param: structure_type_info_with_engines.to_string(),
+                                trait_name:
+                                    structure_trait_constraint.trait_name.suffix.to_string(),
+                                span: span.clone(),
+                            }));
                     }
                 }
             } else {
@@ -425,20 +426,22 @@ impl TypeId {
                             .trait_name
                             .to_fullpath(ctx.namespace),
                     ) {
-                        errors.push(CompileError::TraitConstraintNotSatisfied {
-                            ty: structure_type_info_with_engines.to_string(),
-                            trait_name: structure_trait_constraint.trait_name.suffix.to_string(),
-                            span: span.clone(),
-                        });
+                        error_emitted =
+                            Some(handler.emit_err(CompileError::TraitConstraintNotSatisfied {
+                                ty: structure_type_info_with_engines.to_string(),
+                                trait_name:
+                                    structure_trait_constraint.trait_name.suffix.to_string(),
+                                span: span.clone(),
+                            }));
                     }
                 }
             }
         }
 
-        if errors.is_empty() {
-            ok((), warnings, errors)
+        if let Some(err) = error_emitted {
+            Err(err)
         } else {
-            err(warnings, errors)
+            Ok(())
         }
     }
 }
