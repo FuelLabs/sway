@@ -45,6 +45,9 @@ fuel-vm = "0.35.0"
 fuels-core = "0.44"
 fuels-accounts = "0.44"
 
+# Depednencies from the `forc-wallet` repository:
+forc-wallet = "0.2.4"
+
 [workspace.package]
 edition = "2021"
 authors = ["Fuel Labs <contact@fuel.sh>"]
@@ -52,8 +55,12 @@ homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/sway"
 
-# Keep it until release of the `fuels-rs`.
 [patch.crates-io]
-fuels-core = { git = "https://github.com/FuelLabs/fuels-rs", branch = "upgrade/fuel-core-master" }
-fuels-accounts = { git = "https://github.com/FuelLabs/fuels-rs", branch = "upgrade/fuel-core-master" }
+# Keep it until release of the `fuels-rs`.
+fuels-core = { git = "https://github.com/FuelLabs/fuels-rs", branch = "upgrade/fuel-core-v0.20.1" }
+fuels-accounts = { git = "https://github.com/FuelLabs/fuels-rs", branch = "upgrade/fuel-core-v0.20.1" }
+
+# Keep it until release of the `forc-wallet`.
+forc-wallet = { git = "https://github.com/FuelLabs/forc-wallet", branch = "upgrade/fuel-core-v0.20.1" }
+fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "upgrade/fuel-core-v0.20.1" }
 
