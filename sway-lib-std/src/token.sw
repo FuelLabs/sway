@@ -111,7 +111,7 @@ pub fn mint_to_address(to: Address, sub_id: SubId, amount: u64) {
 /// ```
 pub fn mint(sub_id: SubId, amount: u64) {
     asm(r1: amount, r2: sub_id) {
-        mint r1;
+        mint r1 r2;
     }
 }
 

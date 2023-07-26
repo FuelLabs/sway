@@ -124,7 +124,7 @@ impl Identity {
     /// ```
     pub fn mint_to(self, sub_id: SubId, amount: u64) {
         asm(r1: amount, r2: sub_id) {
-            mint r1;
+            mint r1 r2;
         };
         self.transfer(sha256((contract_id(), sub_id)), amount);
     }

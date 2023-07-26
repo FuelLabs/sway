@@ -102,7 +102,7 @@ define_op_codes!(
     (Tr, TrOpcode, "tr", (contract, coins, asset)),
     (Tro, TroOpcode, "tro", (addr, output, coins, asset)),
     /* Cryptographic Instructions */
-    (Ecr, EcrOpcode, "ecr", (addr, sig, hash)),
+    (Eck1, EcrOpcode, "eck1", (addr, sig, hash)),
     (K256, K256Opcode, "k256", (addr, data, size)),
     (S256, S256Opcode, "s256", (addr, data, size)),
     /* Other Instructions */

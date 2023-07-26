@@ -313,7 +313,7 @@ define_op_codes!(
         (addr: reg, output: reg, coins: reg, asset: reg)
     ),
     /* Cryptographic Instructions */
-    (Ecr, EcrOpcode, "ecr", (addr: reg, sig: reg, hash: reg)),
+    (Eck1, EcrOpcode, "eck1", (addr: reg, sig: reg, hash: reg)),
     (K256, K256Opcode, "k256", (addr: reg, data: reg, size: reg)),
     (S256, S256Opcode, "s256", (addr: reg, data: reg, size: reg)),
     /* Other Instructions */

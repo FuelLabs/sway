@@ -737,13 +737,13 @@ impl Op {
                     VirtualOp::BHSH(r1, r2)
                 }
                 "burn" => {
-                    let r1 = check!(
-                        single_reg(args, immediate, whole_op_span),
+                    let (r1, r2) = check!(
+                        two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
                     );
-                    VirtualOp::BURN(r1)
+                    VirtualOp::BURN(r1, r2)
                 }
                 "call" => {
                     let (r1, r2, r3, r4) = check!(
@@ -819,13 +819,13 @@ impl Op {
                     VirtualOp::LOGD(r1, r2, r3, r4)
                 }
                 "mint" => {
-                    let r1 = check!(
-                        single_reg(args, immediate, whole_op_span),
+                    let (r1, r2) = check!(
+                        two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
                     );
-                    VirtualOp::MINT(r1)
+                    VirtualOp::MINT(r1, r2)
                 }
                 "retd" => {
                     let (r1, r2) = check!(
@@ -928,14 +928,14 @@ impl Op {
                 }
 
                 /* Cryptographic Instructions */
-                "ecr" => {
+                "eck1" => {
                     let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
                     );
-                    VirtualOp::ECR(r1, r2, r3)
+                    VirtualOp::ECK1(r1, r2, r3)
                 }
                 "k256" => {
                     let (r1, r2, r3) = check!(
@@ -1467,7 +1467,7 @@ impl fmt::Display for VirtualOp {
             BAL(a, b, c) => write!(fmtr, "bal {a} {b} {c}"),
             BHEI(a) => write!(fmtr, "bhei {a}"),
             BHSH(a, b) => write!(fmtr, "bhsh {a} {b}"),
-            BURN(a) => write!(fmtr, "burn {a}"),
+            BURN(a, b) => write!(fmtr, "burn {a} {b}"),
             CALL(a, b, c, d) => write!(fmtr, "call {a} {b} {c} {d}"),
             CB(a) => write!(fmtr, "cb {a}"),
             CCP(a, b, c, d) => write!(fmtr, "ccp {a} {b} {c} {d}"),
@@ -1476,7 +1476,7 @@ impl fmt::Display for VirtualOp {
             LDC(a, b, c) => write!(fmtr, "ldc {a} {b} {c}"),
             LOG(a, b, c, d) => write!(fmtr, "log {a} {b} {c} {d}"),
             LOGD(a, b, c, d) => write!(fmtr, "logd {a} {b} {c} {d}"),
-            MINT(a) => write!(fmtr, "mint {a}"),
+            MINT(a, b) => write!(fmtr, "mint {a} {b}"),
             RETD(a, b) => write!(fmtr, "retd {a} {b}"),
             RVRT(a) => write!(fmtr, "rvrt {a}"),
             SMO(a, b, c, d) => write!(fmtr, "smo {a} {b} {c} {d}"),
@@ -1490,7 +1490,7 @@ impl fmt::Display for VirtualOp {
             TRO(a, b, c, d) => write!(fmtr, "tro {a} {b} {c} {d}"),
 
             /* Cryptographic Instructions */
-            ECR(a, b, c) => write!(fmtr, "ecr {a} {b} {c}"),
+            ECK1(a, b, c) => write!(fmtr, "eck1 {a} {b} {c}"),
             K256(a, b, c) => write!(fmtr, "k256 {a} {b} {c}"),
             S256(a, b, c) => write!(fmtr, "s256 {a} {b} {c}"),
 

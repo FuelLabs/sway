@@ -127,7 +127,7 @@ pub(crate) enum AllocatedOpcode {
     BAL(AllocatedRegister, AllocatedRegister, AllocatedRegister),
     BHEI(AllocatedRegister),
     BHSH(AllocatedRegister, AllocatedRegister),
-    BURN(AllocatedRegister),
+    BURN(AllocatedRegister, AllocatedRegister),
     CALL(
         AllocatedRegister,
         AllocatedRegister,
@@ -156,7 +156,7 @@ pub(crate) enum AllocatedOpcode {
         AllocatedRegister,
         AllocatedRegister,
     ),
-    MINT(AllocatedRegister),
+    MINT(AllocatedRegister, AllocatedRegister),
     RETD(AllocatedRegister, AllocatedRegister),
     RVRT(AllocatedRegister),
     SMO(
@@ -190,7 +190,7 @@ pub(crate) enum AllocatedOpcode {
     ),
 
     /* Cryptographic Instructions */
-    ECR(AllocatedRegister, AllocatedRegister, AllocatedRegister),
+    ECK1(AllocatedRegister, AllocatedRegister, AllocatedRegister),
     K256(AllocatedRegister, AllocatedRegister, AllocatedRegister),
     S256(AllocatedRegister, AllocatedRegister, AllocatedRegister),
 
@@ -274,7 +274,7 @@ impl AllocatedOpcode {
             BAL(r1, _r2, _r3) => vec![r1],
             BHEI(r1) => vec![r1],
             BHSH(_r1, _r2) => vec![],
-            BURN(_r1) => vec![],
+            BURN(_r1, _r2) => vec![],
             CALL(_r1, _r2, _r3, _r4) => vec![],
             CB(_r1) => vec![],
             CCP(_r1, _r2, _r3, _r4) => vec![],
@@ -283,7 +283,7 @@ impl AllocatedOpcode {
             LDC(_r1, _r2, _r3) => vec![],
             LOG(_r1, _r2, _r3, _r4) => vec![],
             LOGD(_r1, _r2, _r3, _r4) => vec![],
-            MINT(_r1) => vec![],
+            MINT(_r1, _r2) => vec![],
             RETD(_r1, _r2) => vec![],
             RVRT(_r1) => vec![],
             SMO(_r1, _r2, _r3, _r4) => vec![],
@@ -297,7 +297,7 @@ impl AllocatedOpcode {
             TRO(_r1, _r2, _r3, _r4) => vec![],
 
             /* Cryptographic Instructions */
-            ECR(_r1, _r2, _r3) => vec![],
+            ECK1(_r1, _r2, _r3) => vec![],
             K256(_r1, _r2, _r3) => vec![],
             S256(_r1, _r2, _r3) => vec![],
 
@@ -387,7 +387,7 @@ impl fmt::Display for AllocatedOpcode {
             BAL(a, b, c) => write!(fmtr, "bal  {a} {b} {c}"),
             BHEI(a) => write!(fmtr, "bhei {a}"),
             BHSH(a, b) => write!(fmtr, "bhsh {a} {b}"),
-            BURN(a) => write!(fmtr, "burn {a}"),
+            BURN(a, b) => write!(fmtr, "burn {a} {b}"),
             CALL(a, b, c, d) => write!(fmtr, "call {a} {b} {c} {d}"),
             CB(a) => write!(fmtr, "cb   {a}"),
             CCP(a, b, c, d) => write!(fmtr, "ccp  {a} {b} {c} {d}"),
@@ -396,7 +396,7 @@ impl fmt::Display for AllocatedOpcode {
             LDC(a, b, c) => write!(fmtr, "ldc  {a} {b} {c}"),
             LOG(a, b, c, d) => write!(fmtr, "log  {a} {b} {c} {d}"),
             LOGD(a, b, c, d) => write!(fmtr, "logd {a} {b} {c} {d}"),
-            MINT(a) => write!(fmtr, "mint {a}"),
+            MINT(a, b) => write!(fmtr, "mint {a} {b}"),
             RETD(a, b) => write!(fmtr, "retd  {a} {b}"),
             RVRT(a) => write!(fmtr, "rvrt {a}"),
             SMO(a, b, c, d) => write!(fmtr, "smo  {a} {b} {c} {d}"),
@@ -410,7 +410,7 @@ impl fmt::Display for AllocatedOpcode {
             TRO(a, b, c, d) => write!(fmtr, "tro  {a} {b} {c} {d}"),
 
             /* Cryptographic Instructions */
-            ECR(a, b, c) => write!(fmtr, "ecr  {a} {b} {c}"),
+            ECK1(a, b, c) => write!(fmtr, "eck1  {a} {b} {c}"),
             K256(a, b, c) => write!(fmtr, "k256 {a} {b} {c}"),
             S256(a, b, c) => write!(fmtr, "s256 {a} {b} {c}"),
 
@@ -533,7 +533,7 @@ impl AllocatedOp {
             BAL(a, b, c) => op::BAL::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             BHEI(a) => op::BHEI::new(a.to_reg_id()).into(),
             BHSH(a, b) => op::BHSH::new(a.to_reg_id(), b.to_reg_id()).into(),
-            BURN(a) => op::BURN::new(a.to_reg_id()).into(),
+            BURN(a, b) => op::BURN::new(a.to_reg_id(), b.to_reg_id()).into(),
             CALL(a, b, c, d) => {
                 op::CALL::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
             }
@@ -550,7 +550,7 @@ impl AllocatedOp {
             LOGD(a, b, c, d) => {
                 op::LOGD::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
             }
-            MINT(a) => op::MINT::new(a.to_reg_id()).into(),
+            MINT(a, b) => op::MINT::new(a.to_reg_id(), b.to_reg_id()).into(),
             RETD(a, b) => op::RETD::new(a.to_reg_id(), b.to_reg_id()).into(),
             RVRT(a) => op::RVRT::new(a.to_reg_id()).into(),
             SMO(a, b, c, d) => {
@@ -572,7 +572,7 @@ impl AllocatedOp {
             }
 
             /* Cryptographic Instructions */
-            ECR(a, b, c) => op::ECR::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            ECK1(a, b, c) => op::ECK1::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             K256(a, b, c) => op::K256::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             S256(a, b, c) => op::S256::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
 

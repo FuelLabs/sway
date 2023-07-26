@@ -62,8 +62,8 @@ fn main() -> bool {
     logd r1 r2 r3 r4;
   }
 
-  asm(r1: 0) {
-    mint r1;
+  asm(r1: 0, r2: 0) {
+    mint r1 r2;
   }
 
   // retd: There is no way of testing

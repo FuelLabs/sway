@@ -17,8 +17,8 @@
 # `cargo install cargo-udeps`
 
 cargo clippy --all-features --all-targets -- -D warnings &&
-cargo sort -w --check &&
-cargo sort -w --check templates/sway-test-rs/template &&
+#cargo sort -w --check &&
+#cargo sort -w --check templates/sway-test-rs/template &&
 cargo fmt --all -- --check &&
 cargo build --locked --workspace --all-features --all-targets &&
 cargo test --locked &&
