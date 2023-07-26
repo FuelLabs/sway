@@ -29,29 +29,29 @@ impl core::ops::Eq for Identity {
 impl Identity {
     pub fn as_address(self) -> Option<Address> {
         match self {
-            Identity::Address(addr) => Option::Some(addr),
-            Identity::ContractId(_) => Option::None,
+            Self::Address(addr) => Option::Some(addr),
+            Self::ContractId(_) => Option::None,
         }
     }
 
     pub fn as_contract_id(self) -> Option<ContractId> {
         match self {
-            Identity::Address(_) => Option::None,
-            Identity::ContractId(id) => Option::Some(id),
+            Self::Address(_) => Option::None,
+            Self::ContractId(id) => Option::Some(id),
         }
     }
 
     pub fn is_address(self) -> bool {
         match self {
-            Identity::Address(_) => true,
-            Identity::ContractId(_) => false,
+            Self::Address(_) => true,
+            Self::ContractId(_) => false,
         }
     }
 
     pub fn is_contract_id(self) -> bool {
         match self {
-            Identity::Address(_) => false,
-            Identity::ContractId(_) => true,
+            Self::Address(_) => false,
+            Self::ContractId(_) => true,
         }
     }
   
@@ -88,8 +88,8 @@ impl Identity {
     /// ```
     pub fn transfer(self, amount: u64, asset_id: AssetId) {
         match self {
-            Identity::Address(addr) => addr.transfer(amount, asset_id),
-            Identity::ContractId(id) => id.transfer(amount, asset_id),
+            Self::Address(addr) => addr.transfer(amount, asset_id),
+            Self::ContractId(id) => id.transfer(amount, asset_id),
         };
     }
 }
