@@ -8,12 +8,6 @@ publish = false
 
 [dependencies]
 assert_matches = "1.5.0"
-hex = "0.4.3"
-rand = "0.8"
-sha2 = "0.10"
-sha3 = "0.10.1"
-tai64 = { version = "4.0", features = ["serde"] }
-tokio = { version = "1.12", features = ["rt", "macros"] }
 
 # Depednencies from the `fuel-core` repository:
 fuel-core = { version = "0.20.1", default-features = false }
@@ -24,6 +18,13 @@ fuel-vm = "0.35.0"
 
 # Depednencies from the `fuels-rs` repository:
 fuels = { version = "0.44", features = ["fuel-core-lib"] }
+
+hex = "0.4.3"
+rand = "0.8"
+sha2 = "0.10"
+sha3 = "0.10.1"
+tai64 = { version = "4.0", features = ["serde"] }
+tokio = { version = "1.12", features = ["rt", "macros"] }
 
 [[test]]
 harness = true
