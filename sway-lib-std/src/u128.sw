@@ -20,8 +20,8 @@ pub enum U128Error {
 }
 
 impl From<(u64, u64)> for U128 {
-    fn from(components: (u64, u64)) -> U128 {
-        U128 {
+    fn from(components: (u64, u64)) -> Self {
+        Self {
             upper: components.0,
             lower: components.1,
         }
@@ -116,8 +116,8 @@ impl U128 {
     ///
     /// assert(new_u128 == zero_u128);
     /// ```
-    pub fn new() -> U128 {
-        U128 {
+    pub fn new() -> Self {
+        Self {
             upper: 0,
             lower: 0,
         }
@@ -161,8 +161,8 @@ impl U128 {
     ///
     /// assert(min_u128 == zero_u128);
     /// ```
-    pub fn min() -> U128 {
-        U128 {
+    pub fn min() -> Self {
+        Self {
             upper: 0,
             lower: 0,
         }
@@ -181,8 +181,8 @@ impl U128 {
     ///
     /// assert(max_u128 == maxed_u128);
     /// ```
-    pub fn max() -> U128 {
-        U128 {
+    pub fn max() -> Self {
+        Self {
             upper: u64::max(),
             lower: u64::max(),
         }
@@ -206,13 +206,13 @@ impl U128 {
 
 impl core::ops::BitwiseAnd for U128 {
     fn binary_and(self, other: Self) -> Self {
-        U128::from((self.upper & other.upper, self.lower & other.lower))
+        Self::from((self.upper & other.upper, self.lower & other.lower))
     }
 }
 
 impl core::ops::BitwiseOr for U128 {
     fn binary_or(self, other: Self) -> Self {
-        U128::from((self.upper | other.upper, self.lower | other.lower))
+        Self::from((self.upper | other.upper, self.lower | other.lower))
     }
 }
 
@@ -293,7 +293,7 @@ impl core::ops::Add for U128 {
         // If overflow has occurred in the upper component addition, panic.
         assert(upper_128.upper == 0);
 
-        U128 {
+        Self {
             upper: upper_128.lower,
             lower: lower_128.lower,
         }
@@ -317,7 +317,7 @@ impl core::ops::Subtract for U128 {
             lower = self.lower - other.lower;
         }
 
-        U128 { upper, lower }
+        Self { upper, lower }
     }
 }
 impl core::ops::Multiply for U128 {
@@ -344,16 +344,16 @@ impl core::ops::Multiply for U128 {
 impl core::ops::Divide for U128 {
     /// Divide a `U128` by a `U128`. Panics if divisor is zero.
     fn divide(self, divisor: Self) -> Self {
-        let zero = U128::from((0, 0));
+        let zero = Self::from((0, 0));
 
         assert(divisor != zero);
 
         if self.upper == 0 && divisor.upper == 0 {
-            return U128::from((0, self.lower / divisor.lower));
+            return Self::from((0, self.lower / divisor.lower));
         }
 
-        let mut quotient = U128::new();
-        let mut remainder = U128::new();
+        let mut quotient = Self::new();
+        let mut remainder = Self::new();
         let mut i = 128 - 1;
         while true {
             quotient <<= 1;
@@ -380,8 +380,8 @@ impl Power for U128 {
     fn pow(self, exponent: Self) -> Self {
         let mut value = self;
         let mut exp = exponent;
-        let one = U128::from((0, 1));
-        let zero = U128::from((0, 0));
+        let one = Self::from((0, 1));
+        let zero = Self::from((0, 0));
 
         if exp == zero {
             return one;
@@ -390,7 +390,7 @@ impl Power for U128 {
         if exp == one {
             // Manually clone `self`. Otherwise, we may have a `MemoryOverflow`
             // issue with code that looks like: `x = x.pow(other)`
-            return U128::from((self.upper, self.lower));
+            return Self::from((self.upper, self.lower));
         }
 
         while exp & one == zero {
@@ -417,7 +417,7 @@ impl Power for U128 {
 impl Root for U128 {
     /// Integer square root using [Newton's Method](https://en.wikipedia.org/wiki/Integer_square_root#Algorithm_using_Newton's_method).
     fn sqrt(self) -> Self {
-        let zero = U128::from((0, 0));
+        let zero = Self::from((0, 0));
         let mut x0 = self >> 1;
         let mut s = self;
 
@@ -444,14 +444,14 @@ impl BinaryLogarithm for U128 {
     /// * Otherwise, we can find the highest non-zero bit by taking the regular log of the upper
     /// part of the `U128`, and then add 64.
     fn log2(self) -> Self {
-        let zero = U128::from((0, 0));
+        let zero = Self::from((0, 0));
         let mut res = zero;
         // If trying to get a log2(0), panic, as infinity is not a number.
         assert(self != zero);
         if self.upper != 0 {
-            res = U128::from((0, self.upper.log(2) + 64));
+            res = Self::from((0, self.upper.log(2) + 64));
         } else if self.lower != 0 {
-            res = U128::from((0, self.lower.log(2)));
+            res = Self::from((0, self.lower.log(2)));
         }
         res
     }
