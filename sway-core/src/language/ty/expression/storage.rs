@@ -9,6 +9,7 @@ use crate::{engine_threading::*, type_system::TypeId};
 pub struct TyStorageAccess {
     pub fields: Vec<TyStorageAccessDescriptor>,
     pub(crate) ix: StateIndex,
+    pub storage_keyword_span: Span,
 }
 
 impl EqWithEngines for TyStorageAccess {}
@@ -22,9 +23,14 @@ impl PartialEqWithEngines for TyStorageAccess {
 
 impl HashWithEngines for TyStorageAccess {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
-        let TyStorageAccess { fields, ix } = self;
+        let TyStorageAccess {
+            fields,
+            ix,
+            storage_keyword_span,
+        } = self;
         fields.hash(state, engines);
         ix.hash(state);
+        storage_keyword_span.hash(state);
     }
 }
 
@@ -48,7 +54,7 @@ impl TyStorageAccess {
 #[derive(Clone, Debug)]
 pub struct TyStorageAccessDescriptor {
     pub name: Ident,
-    pub(crate) type_id: TypeId,
+    pub type_id: TypeId,
     pub(crate) span: Span,
 }
 

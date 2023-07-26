@@ -5,6 +5,7 @@ pub mod logging;
 pub mod revert;
 pub mod result;
 pub mod option;
+pub mod primitive_conversions;
 pub mod convert;
 pub mod intrinsics;
 pub mod assert;

@@ -240,8 +240,7 @@ impl TypeParameter {
                     name: name_ident.clone(),
                     type_id,
                 });
-            ctx.namespace
-                .insert_symbol(name_ident.clone(), type_parameter_decl)
+            ctx.insert_symbol(name_ident.clone(), type_parameter_decl)
                 .ok(&mut warnings, &mut errors);
         }
 

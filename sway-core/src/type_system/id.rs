@@ -365,7 +365,7 @@ impl TypeId {
         span: &Span,
         trait_constraints: Vec<TraitConstraint>,
     ) -> CompileResult<()> {
-        let warnings = vec![];
+        let mut warnings = vec![];
         let mut errors = vec![];
         let engines = ctx.engines();
 
@@ -382,6 +382,16 @@ impl TypeId {
             if structure_trait_constraints.is_empty() {
                 continue;
             }
+
+            // resolving trait constraits require a concrete type, we need to default numeric to u64
+            check!(
+                engines
+                    .te()
+                    .decay_numeric(engines, *structure_type_id, span),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
 
             let structure_type_info = engines.te().get(*structure_type_id);
             let structure_type_info_with_engines = engines.help_out(structure_type_info.clone());

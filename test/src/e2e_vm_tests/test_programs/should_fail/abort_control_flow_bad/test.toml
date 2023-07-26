@@ -3,7 +3,7 @@ category = "fail"
 # check: return 42;
 # nextln: $()Mismatched types.
 # nextln: $()expected: ()
-# nextln: $()found:    u64.
+# nextln: $()found:    numeric.
 # nextln: $()help: Return statement must return the declared function return type.
 
 # This 'return true' line appears in both error messages..

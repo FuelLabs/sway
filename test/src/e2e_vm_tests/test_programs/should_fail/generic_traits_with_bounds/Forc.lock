@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-784776BEEA3D86B0'
+
+[[package]]
+name = 'generic_traits_with_bounds'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-784776BEEA3D86B0'
+dependencies = ['core']
