@@ -179,7 +179,7 @@ async fn setup_output_predicate() -> (WalletUnlocked, WalletUnlocked, Predicate,
 
     let predicate_data = TestOutputPredicateEncoder::encode_data(
         0,
-        ContractId::zeroed(),
+        Bits256([0u8; 32]),
         Bits256(*wallet1.address().hash()),
     );
 

@@ -3,7 +3,7 @@ script;
 mod lib;
 
 struct MyType {
-    x: std::contract_id::AssetId,
+    x: std::alias::AssetId,
 }
 type MyTypeAlias1 = MyType;
 type MyTypeAlias2 = MyTypeAlias1;
@@ -46,27 +46,21 @@ struct GenericStruct<T> {
 }
 
 fn foo(x: AssetId) -> AssetId {
-    AssetId::from(x.value)
+    x
 }
 
 fn struct_tests() { /* Structs */
-    let x = AssetId {
-        value: 0x0000000000000000000000000000000000000000000000000000000000000001,
-    };
+    let x = 0x0000000000000000000000000000000000000000000000000000000000000001;
     let y: AssetId = x;
-    let z = AssetId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
+    let z: AssetId = 0x0000000000000000000000000000000000000000000000000000000000000001;
     let _ = foo(x);
     let t = MyTypeAlias2 {
-        x: std::contract_id::AssetId {
-            value: 0x0000000000000000000000000000000000000000000000000000000000000001,
-        },
+        x: 0x0000000000000000000000000000000000000000000000000000000000000001,
     };
     let t2 = MyTypeAlias3 {
-        x: AssetId {
-            value: 0x0000000000000000000000000000000000000000000000000000000000000001,
-        },
+        x: 0x0000000000000000000000000000000000000000000000000000000000000001,
     };
-    assert(x == z && t.x.value == y.value && t.x.value == t2.x.value && z.value == y.value);
+    assert(x == z && t.x == y && t.x == t2.x && z == y);
 
     assert(t.bar0() == 0 && t.bar1() == 1 && t.bar2() == 2 && t.bar3() == 3);
     assert(t2.bar0() == 0 && t2.bar1() == 1 && t2.bar2() == 2 && t2.bar3() == 3);
@@ -98,7 +92,7 @@ fn noop2(x: lib::MyIdentity2) -> Identity {
 }
 
 enum MyEnumType {
-    X: std::contract_id::AssetId,
+    X: std::alias::AssetId,
 }
 type MyEnumTypeAlias1 = MyEnumType;
 type MyEnumTypeAlias2 = MyEnumTypeAlias1;
@@ -140,7 +134,7 @@ fn enum_tests() {
     let x = ContractId {
         value: 0x0000000000000000000000000000000000000000000000000000000000000001,
     };
-    let z = AssetId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
+    let z: AssetId = 0x0000000000000000000000000000000000000000000000000000000000000001;
     let o = Some(x);
     if let Some(AssetId { value }) = o {
         assert(value == z.value);
