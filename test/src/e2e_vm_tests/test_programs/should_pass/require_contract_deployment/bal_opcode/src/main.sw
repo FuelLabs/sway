@@ -5,7 +5,7 @@ use balance_test_abi::BalanceTest;
 
 fn main() -> bool {
     // @todo switch to using ContractId when abi signature changes.
-    let balance_test_contract_id = 0x46d24c009cb468ef822ff7570eabc8d6636ac2a651d9743754803bbf84f36f85;
+    let balance_test_contract_id = 0x4a00baa517980432b9274a0e2f03c88735bdb483730816679c6eb37b4046d060;
 
     let balance_test_contract = abi(BalanceTest, balance_test_contract_id);
     let number = balance_test_contract.get_42 {

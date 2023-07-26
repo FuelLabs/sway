@@ -63,7 +63,7 @@ impl ty::TyMatchBranch {
                 return_type,
                 type_ascription,
             }));
-            ctx.namespace.insert_symbol(left_decl, var_decl.clone());
+            ctx.insert_symbol(left_decl, var_decl.clone());
             code_block_contents.push(ty::TyAstNode {
                 content: ty::TyAstNodeContent::Declaration(var_decl),
                 span,

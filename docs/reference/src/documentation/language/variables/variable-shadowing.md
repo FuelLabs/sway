@@ -1,6 +1,6 @@
 # Shadowing
 
-When looking at the [let](let.md) variable we've seen that the value can be changed through the use of the `mut` keyword. We can take this a couple steps further through [reassignment](#reassignment) and [variable shadowing](#variable-shadowing).
+When looking at the [let](let.md) variable we've seen that the value can be changed through the use of the `mut` keyword. We can take this a couple steps further through [reassignment](#reassignment) and [variable shadowing](#variable-shadowing). Note that shadowing applies only to variables. [Constants](const.md) cannot be shadowed.
 
 ## Reassignment
 

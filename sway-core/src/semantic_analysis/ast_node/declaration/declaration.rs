@@ -69,7 +69,7 @@ impl ty::TyDecl {
                     type_ascription,
                 }));
                 check!(
-                    ctx.namespace.insert_symbol(name, typed_var_decl.clone()),
+                    ctx.insert_symbol(name, typed_var_decl.clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -86,8 +86,7 @@ impl ty::TyDecl {
                 );
                 let typed_const_decl: ty::TyDecl = decl_engine.insert(const_decl.clone()).into();
                 check!(
-                    ctx.namespace
-                        .insert_symbol(const_decl.name().clone(), typed_const_decl.clone()),
+                    ctx.insert_symbol(const_decl.name().clone(), typed_const_decl.clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -105,7 +104,7 @@ impl ty::TyDecl {
                 let call_path = enum_decl.call_path.clone();
                 let decl: ty::TyDecl = decl_engine.insert(enum_decl).into();
                 check!(
-                    ctx.namespace.insert_symbol(call_path.suffix, decl.clone()),
+                    ctx.insert_symbol(call_path.suffix, decl.clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -124,7 +123,7 @@ impl ty::TyDecl {
                 );
                 let name = fn_decl.name.clone();
                 let decl: ty::TyDecl = decl_engine.insert(fn_decl).into();
-                ctx.namespace.insert_symbol(name, decl.clone());
+                ctx.insert_symbol(name, decl.clone());
                 decl
             }
             parsed::Declaration::TraitDeclaration(trait_decl) => {
@@ -166,7 +165,7 @@ impl ty::TyDecl {
                     .iter_mut()
                     .for_each(|item| item.replace_implementing_type(engines, decl.clone()));
                 check!(
-                    ctx.namespace.insert_symbol(name, decl.clone()),
+                    ctx.insert_symbol(name, decl.clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -249,7 +248,7 @@ impl ty::TyDecl {
                 let decl: ty::TyDecl = decl_engine.insert(decl).into();
                 // insert the struct decl into namespace
                 check!(
-                    ctx.namespace.insert_symbol(call_path.suffix, decl.clone()),
+                    ctx.insert_symbol(call_path.suffix, decl.clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -294,7 +293,7 @@ impl ty::TyDecl {
                     .iter_mut()
                     .for_each(|item| item.replace_implementing_type(engines, decl.clone()));
                 check!(
-                    ctx.namespace.insert_symbol(name, decl.clone()),
+                    ctx.insert_symbol(name, decl.clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -390,7 +389,7 @@ impl ty::TyDecl {
 
                 // insert the type alias name and decl into namespace
                 check!(
-                    ctx.namespace.insert_symbol(name, decl.clone()),
+                    ctx.insert_symbol(name, decl.clone()),
                     return err(warnings, errors),
                     warnings,
                     errors

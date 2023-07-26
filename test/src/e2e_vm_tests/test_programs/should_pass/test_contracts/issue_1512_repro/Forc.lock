@@ -5,4 +5,12 @@ source = 'path+from-root-C086F5BB5B0BA300'
 [[package]]
 name = 'issue_1512_repro'
 source = 'member'
+dependencies = [
+    'core',
+    'std',
+]
+
+[[package]]
+name = 'std'
+source = 'path+from-root-C086F5BB5B0BA300'
 dependencies = ['core']
