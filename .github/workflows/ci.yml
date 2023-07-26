@@ -33,6 +33,18 @@ jobs:
       - name: Build sway-lib-core
         run: forc build --path sway-lib-core
 
+  forc-fmt-check-sway-lib-core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Check sway-lib-core formatting
+        run: cargo run --locked -p forc-fmt -- --check --path ./sway-lib-core
+
   build-sway-lib-std:
     runs-on: ubuntu-latest
     steps:
@@ -46,6 +58,18 @@ jobs:
         run: cargo install --locked --debug --path ./forc
       - name: Build sway-lib-std
         run: forc build --path sway-lib-std
+
+  forc-fmt-check-sway-lib-std:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Check sway-lib-std formatting
+        run: cargo run --locked -p forc-fmt -- --check --path ./sway-lib-std
 
   build-sway-examples:
     runs-on: ubuntu-latest
