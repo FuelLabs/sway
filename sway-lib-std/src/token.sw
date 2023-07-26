@@ -135,7 +135,7 @@ pub fn mint(sub_id: SubId, amount: u64) {
 /// ```
 pub fn burn(sub_id: SubId, amount: u64) {
     asm(r1: amount, r2: sub_id) {
-        burn r1;
+        burn r1 r2;
     }
 }
 
