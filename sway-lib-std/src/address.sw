@@ -21,8 +21,8 @@ impl core::ops::Eq for Address {
 
 /// Functions for casting between the `b256` and `Address` types.
 impl From<b256> for Address {
-    fn from(bits: b256) -> Address {
-        Address { value: bits }
+    fn from(bits: b256) -> Self {
+        Self { value: bits }
     }
 
     fn into(self) -> b256 {

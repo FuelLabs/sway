@@ -1546,7 +1546,7 @@ impl ty::TyExpression {
                     let method = decl_engine.get_trait_fn(&decl_ref);
                     abi_items.push(TyImplItem::Fn(
                         decl_engine
-                            .insert(method.to_dummy_func(Mode::ImplAbiFn))
+                            .insert(method.to_dummy_func(AbiMode::ImplAbiFn))
                             .with_parent(decl_engine, (*decl_ref.id()).into()),
                     ));
                 }
@@ -2016,15 +2016,10 @@ impl ty::TyExpression {
                     ),
                 },
                 TypeInfo::Numeric => (
-                    num.to_string().parse().map(Literal::U64).map_err(|e| {
-                        Literal::handle_parse_int_error(
-                            engines,
-                            e,
-                            TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-                            span.clone(),
-                        )
+                    num.to_string().parse().map(Literal::Numeric).map_err(|e| {
+                        Literal::handle_parse_int_error(engines, e, TypeInfo::Numeric, span.clone())
                     }),
-                    type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
+                    type_engine.insert(engines, TypeInfo::Numeric),
                 ),
                 _ => unreachable!("Unexpected type for integer literals"),
             },

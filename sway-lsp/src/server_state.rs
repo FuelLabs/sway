@@ -56,19 +56,21 @@ impl ServerState {
                 // take over the normal error and warning display behavior
                 // and instead show the either the parsed or typed tokens as warnings.
                 // This is useful for debugging the lsp parser.
-                Warnings::Parsed => diagnostics_to_publish
-                    .extend(debug::generate_warnings_for_parsed_tokens(tokens)),
-                Warnings::Typed => {
-                    diagnostics_to_publish.extend(debug::generate_warnings_for_typed_tokens(tokens))
+                Warnings::Parsed => {
+                    diagnostics_to_publish = debug::generate_warnings_for_parsed_tokens(tokens)
                 }
-                Warnings::Default => {}
-            }
-            let diagnostics = session.wait_for_parsing();
-            if config.diagnostic.show_warnings {
-                diagnostics_to_publish.extend(diagnostics.warnings);
-            }
-            if config.diagnostic.show_errors {
-                diagnostics_to_publish.extend(diagnostics.errors);
+                Warnings::Typed => {
+                    diagnostics_to_publish = debug::generate_warnings_for_typed_tokens(tokens)
+                }
+                Warnings::Default => {
+                    let diagnostics = session.wait_for_parsing();
+                    if config.diagnostic.show_warnings {
+                        diagnostics_to_publish.extend(diagnostics.warnings);
+                    }
+                    if config.diagnostic.show_errors {
+                        diagnostics_to_publish.extend(diagnostics.errors);
+                    }
+                }
             }
             diagnostics_to_publish
         };

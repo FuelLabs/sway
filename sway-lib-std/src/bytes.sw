@@ -72,7 +72,7 @@ impl Bytes {
     /// assert(bytes.capacity() == 0);
     /// ```
     pub fn new() -> Self {
-        Bytes {
+        Self {
             buf: RawBytes::new(),
             len: 0,
         }
@@ -98,7 +98,7 @@ impl Bytes {
     /// bytes.push(10);
     /// ```
     pub fn with_capacity(capacity: u64) -> Self {
-        Bytes {
+        Self {
             buf: RawBytes::with_capacity(capacity),
             len: 0,
         }
@@ -513,7 +513,7 @@ impl Bytes {
     /// assert(left.len() == 1);
     /// assert(right.len() == 2);
     /// ```
-    pub fn split_at(self, mid: u64) -> (Bytes, Bytes) {
+    pub fn split_at(self, mid: u64) -> (Self, Self) {
         assert(self.len >= mid);
 
         let left_len = mid;
@@ -624,9 +624,9 @@ impl AsRawSlice for Bytes {
 
 /// Methods for converting between the `Bytes` and the `b256` types.
 impl From<b256> for Bytes {
-    fn from(b: b256) -> Bytes {
+    fn from(b: b256) -> Self {
         // Artificially create bytes with capacity and len
-        let mut bytes = Bytes::with_capacity(32);
+        let mut bytes = Self::with_capacity(32);
         bytes.len = 32;
         // Copy bytes from contract_id into the buffer of the target bytes
         __addr_of(b).copy_bytes_to(bytes.buf.ptr, 32);
@@ -734,7 +734,7 @@ impl From<Vec<u8>> for Bytes {
     /// assert(bytes.get(2).unwrap() == c);
     /// ```
     fn from(vec: Vec<u8>) -> Self {
-        let mut bytes = Bytes::with_capacity(vec.len());
+        let mut bytes = Self::with_capacity(vec.len());
         let mut i = 0;
         while i < vec.len() {
             bytes.push(vec.get(i).unwrap());

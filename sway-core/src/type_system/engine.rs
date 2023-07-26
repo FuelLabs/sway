@@ -2,6 +2,7 @@ use core::fmt::Write;
 use hashbrown::hash_map::RawEntryMut;
 use hashbrown::HashMap;
 use std::sync::RwLock;
+use sway_types::integer_bits::IntegerBits;
 
 use crate::concurrent_slab::ListDisplay;
 use crate::error::{err, ok};
@@ -259,6 +260,150 @@ impl TypeEngine {
         }
     }
 
+    /// Return whether a given type still contains undecayed references to [TypeInfo::Numeric]
+    pub(crate) fn contains_numeric(&self, decl_engine: &DeclEngine, type_id: TypeId) -> bool {
+        match &self.get(type_id) {
+            TypeInfo::Enum(decl_ref) => {
+                decl_engine
+                    .get_enum(decl_ref)
+                    .variants
+                    .iter()
+                    .all(|variant_type| {
+                        self.contains_numeric(decl_engine, variant_type.type_argument.type_id)
+                    })
+            }
+            TypeInfo::Struct(decl_ref) => decl_engine
+                .get_struct(decl_ref)
+                .fields
+                .iter()
+                .any(|field| self.contains_numeric(decl_engine, field.type_argument.type_id)),
+            TypeInfo::Tuple(fields) => fields
+                .iter()
+                .any(|field_type| self.contains_numeric(decl_engine, field_type.type_id)),
+            TypeInfo::Array(elem_ty, _length) => {
+                self.contains_numeric(decl_engine, elem_ty.type_id)
+            }
+            TypeInfo::Ptr(targ) => self.contains_numeric(decl_engine, targ.type_id),
+            TypeInfo::Slice(targ) => self.contains_numeric(decl_engine, targ.type_id),
+            TypeInfo::Unknown
+            | TypeInfo::UnknownGeneric { .. }
+            | TypeInfo::Placeholder(..)
+            | TypeInfo::TypeParam(..)
+            | TypeInfo::Str(..)
+            | TypeInfo::UnsignedInteger(..)
+            | TypeInfo::Boolean
+            | TypeInfo::ContractCaller { .. }
+            | TypeInfo::Custom { .. }
+            | TypeInfo::SelfType
+            | TypeInfo::B256
+            | TypeInfo::Contract
+            | TypeInfo::ErrorRecovery
+            | TypeInfo::Storage { .. }
+            | TypeInfo::RawUntypedPtr
+            | TypeInfo::RawUntypedSlice
+            | TypeInfo::Alias { .. } => false,
+            TypeInfo::Numeric => true,
+        }
+    }
+
+    /// Resolve all inner types that still are a [TypeInfo::Numeric] to a concrete `u64`
+    pub(crate) fn decay_numeric(
+        &self,
+        engines: &Engines,
+        type_id: TypeId,
+        span: &Span,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        let decl_engine = engines.de();
+
+        match &self.get(type_id) {
+            TypeInfo::Enum(decl_ref) => {
+                for variant_type in decl_engine.get_enum(decl_ref).variants.iter() {
+                    check!(
+                        self.decay_numeric(engines, variant_type.type_argument.type_id, span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    )
+                }
+            }
+            TypeInfo::Struct(decl_ref) => {
+                for field in decl_engine.get_struct(decl_ref).fields.iter() {
+                    check!(
+                        self.decay_numeric(engines, field.type_argument.type_id, span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    )
+                }
+            }
+            TypeInfo::Tuple(fields) => {
+                for field_type in fields {
+                    check!(
+                        self.decay_numeric(engines, field_type.type_id, span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    )
+                }
+            }
+            TypeInfo::Array(elem_ty, _length) => check!(
+                self.decay_numeric(engines, elem_ty.type_id, span),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ),
+            TypeInfo::Ptr(targ) => check!(
+                self.decay_numeric(engines, targ.type_id, span),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ),
+            TypeInfo::Slice(targ) => check!(
+                self.decay_numeric(engines, targ.type_id, span),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ),
+
+            TypeInfo::Unknown
+            | TypeInfo::UnknownGeneric { .. }
+            | TypeInfo::Placeholder(..)
+            | TypeInfo::TypeParam(..)
+            | TypeInfo::Str(..)
+            | TypeInfo::UnsignedInteger(..)
+            | TypeInfo::Boolean
+            | TypeInfo::ContractCaller { .. }
+            | TypeInfo::Custom { .. }
+            | TypeInfo::SelfType
+            | TypeInfo::B256
+            | TypeInfo::Contract
+            | TypeInfo::ErrorRecovery
+            | TypeInfo::Storage { .. }
+            | TypeInfo::RawUntypedPtr
+            | TypeInfo::RawUntypedSlice
+            | TypeInfo::Alias { .. } => {}
+            TypeInfo::Numeric => {
+                check!(
+                    CompileResult::from(self.unify(
+                        engines,
+                        type_id,
+                        self.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
+                        span,
+                        "",
+                        None,
+                    )),
+                    (),
+                    warnings,
+                    errors,
+                );
+            }
+        }
+        ok((), warnings, errors)
+    }
+
     /// Resolve the type of the given [TypeId], replacing any instances of
     /// [TypeInfo::Custom] with either a monomorphized struct, monomorphized
     /// enum, or a reference to a type parameter.
@@ -399,7 +544,13 @@ impl TypeEngine {
                     warnings,
                     errors
                 );
-                self.insert(engines, TypeInfo::Array(elem_ty, n))
+
+                let type_id = self.insert(engines, TypeInfo::Array(elem_ty, n));
+
+                // take any trait methods that apply to this type and copy them to the new type
+                namespace.insert_trait_implementation_for_type(engines, type_id);
+
+                type_id
             }
             TypeInfo::Tuple(mut type_arguments) => {
                 for type_argument in type_arguments.iter_mut() {
@@ -418,7 +569,13 @@ impl TypeEngine {
                         errors
                     );
                 }
-                self.insert(engines, TypeInfo::Tuple(type_arguments))
+
+                let type_id = self.insert(engines, TypeInfo::Tuple(type_arguments));
+
+                // take any trait methods that apply to this type and copy them to the new type
+                namespace.insert_trait_implementation_for_type(engines, type_id);
+
+                type_id
             }
             _ => type_id,
         };

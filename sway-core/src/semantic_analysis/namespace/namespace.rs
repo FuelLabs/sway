@@ -257,6 +257,7 @@ impl Namespace {
         args_buf: &VecDeque<ty::TyExpression>,
         as_trait: Option<TypeInfo>,
         engines: &Engines,
+        try_inserting_trait_impl_on_failure: bool,
     ) -> CompileResult<DeclRefFunction> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -264,7 +265,18 @@ impl Namespace {
         let decl_engine = engines.de();
         let type_engine = engines.te();
 
-        let unify_check = UnifyCheck::non_dynamic_equality(engines);
+        let eq_check = UnifyCheck::non_dynamic_equality(engines);
+        let coercion_check = UnifyCheck::coercion(engines);
+
+        // default numeric types to u64
+        if type_engine.contains_numeric(decl_engine, type_id) {
+            check!(
+                type_engine.decay_numeric(engines, type_id, &method_name.span()),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+        }
 
         let matching_item_decl_refs = check!(
             self.find_items_for_type(type_id, method_prefix, method_name, self_type, engines,),
@@ -294,9 +306,9 @@ impl Namespace {
                         .parameters
                         .iter()
                         .zip(args_buf.iter())
-                        .all(|(p, a)| unify_check.check(p.type_argument.type_id, a.return_type))
+                        .all(|(p, a)| coercion_check.check(p.type_argument.type_id, a.return_type))
                     && (matches!(type_engine.get(annotation_type), TypeInfo::Unknown)
-                        || unify_check.check(annotation_type, method.return_type.type_id))
+                        || coercion_check.check(annotation_type, method.return_type.type_id))
                 {
                     maybe_method_decl_refs.push(decl_ref);
                 }
@@ -346,7 +358,7 @@ impl Namespace {
                                                 warnings,
                                                 errors
                                             );
-                                            if !unify_check.check(p1_type_id, p2_type_id) {
+                                            if !eq_check.check(p1_type_id, p2_type_id) {
                                                 params_equal = false;
                                                 break;
                                             }
@@ -452,6 +464,25 @@ impl Namespace {
             .map(|x| type_engine.get(x.return_type))
             .eq(&Some(TypeInfo::ErrorRecovery), engines)
         {
+            if try_inserting_trait_impl_on_failure {
+                // Retrieve the implemented traits for the type and insert them in the namespace.
+                // insert_trait_implementation_for_type is already called when we do type check of structs, enums, arrays and tuples.
+                // In cases such as blanket trait implementation and usage of builtin types a method may not be found because
+                // insert_trait_implementation_for_type has yet to be called for that type.
+                self.insert_trait_implementation_for_type(engines, type_id);
+
+                return self.find_method_for_type(
+                    type_id,
+                    method_prefix,
+                    method_name,
+                    self_type,
+                    annotation_type,
+                    args_buf,
+                    as_trait,
+                    engines,
+                    false,
+                );
+            }
             let type_name = if let Some(call_path) = qualified_call_path {
                 format!("{} as {}", engines.help_out(type_id), call_path)
             } else {
