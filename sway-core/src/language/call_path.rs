@@ -36,13 +36,10 @@ where
     T: fmt::Display,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut buf = String::new();
         for prefix in self.prefixes.iter() {
-            buf.push_str(prefix.as_str());
-            buf.push_str("::");
+            write!(f, "{}::", prefix.as_str())?;
         }
-        buf.push_str(&self.suffix.to_string());
-        write!(f, "{buf}")
+        write!(f, "{}", &self.suffix)?;
     }
 }
 
