@@ -26,6 +26,7 @@ use tower_lsp::{LspService, Server};
 pub async fn start() {
     let (service, socket) = LspService::build(ServerState::new)
         .custom_method("sway/show_ast", ServerState::show_ast)
+        .custom_method("sway/on_enter", ServerState::on_enter)
         .finish();
     Server::new(tokio::io::stdin(), tokio::io::stdout(), socket)
         .serve(service)
