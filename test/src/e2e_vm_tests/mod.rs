@@ -340,6 +340,7 @@ impl TestContext {
                         .collect();
 
                     if !failed.is_empty() {
+                        println!("FAILED!! output:\n{}", output);
                         panic!(
                             "For {name}\n{} tests failed:\n{}",
                             failed.len(),

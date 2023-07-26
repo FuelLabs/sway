@@ -142,12 +142,15 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         func_is_entry: bool,
     ) -> CompileResult<()> {
         let Some(instruction) = instr_val.get_instruction(self.context) else {
-            return err(vec![], vec![CompileError::Internal(
-                "Value not an instruction.",
-                self.md_mgr
-                    .val_to_span(self.context, *instr_val)
-                    .unwrap_or_else(Span::dummy),
-            )]);
+            return err(
+                vec![],
+                vec![CompileError::Internal(
+                    "Value not an instruction.",
+                    self.md_mgr
+                        .val_to_span(self.context, *instr_val)
+                        .unwrap_or_else(Span::dummy),
+                )],
+            );
         };
 
         // The only instruction whose compilation returns a CompileResult itself is AsmBlock, which

@@ -6,7 +6,7 @@
 # - `cargo run --locked --release --bin test -- --locked`
 #
 # You can install `fuel-core` node by:
-# `cargo install fuel-core-bin --git https://github.com/FuelLabs/fuel-core --tag v0.18.1 --locked`
+# `cargo install fuel-core-bin --git https://github.com/FuelLabs/fuel-core --tag v0.19.1 --locked`
 #
 # And run it with:
 # `fuel-core run --db-type in-memory`

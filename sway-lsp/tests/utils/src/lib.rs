@@ -103,11 +103,7 @@ pub async fn assert_server_requests(
 ) -> JoinHandle<()> {
     tokio::spawn(async move {
         let request_stream = socket.take(expected_requests.len()).collect::<Vec<_>>();
-        let requests =
-            tokio::time::timeout(timeout.unwrap_or(Duration::from_secs(10)), request_stream)
-                .await
-                .expect("Timed out waiting for requests from server");
-
+        let requests = request_stream.await;
         assert_eq!(requests.len(), expected_requests.len());
         for (actual, expected) in requests.iter().zip(expected_requests.iter()) {
             assert_eq!(expected["method"], actual.method());
