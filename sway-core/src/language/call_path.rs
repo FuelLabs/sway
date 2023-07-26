@@ -39,7 +39,7 @@ where
         for prefix in self.prefixes.iter() {
             write!(f, "{}::", prefix.as_str())?;
         }
-        write!(f, "{}", &self.suffix)?;
+        write!(f, "{}", &self.suffix)?
     }
 }
 
