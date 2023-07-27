@@ -303,17 +303,20 @@ impl Type {
                 else {
                     return None;
                 };
+
+                let idx = u64::try_from(idx).ok()?;
+
                 ty.and_then(|(ty, accum_offset)| {
                     if ty.is_struct(context) {
                         // Sum up all sizes of all previous fields.
-                        let prev_idxs_offset = (0..(*idx)).try_fold(0, |accum, pre_idx| {
+                        let prev_idxs_offset = (0..idx).try_fold(0, |accum, pre_idx| {
                             ty.get_field_type(context, pre_idx)
                                 .map(|field_ty| field_ty.size_in_bytes(context) + accum)
                         })?;
-                        ty.get_field_type(context, *idx)
+                        ty.get_field_type(context, idx)
                             .map(|field_ty| (field_ty, accum_offset + prev_idxs_offset))
                     } else if ty.is_union(context) {
-                        ty.get_field_type(context, *idx)
+                        ty.get_field_type(context, idx)
                             .map(|field_ty| (field_ty, accum_offset))
                     } else {
                         assert!(

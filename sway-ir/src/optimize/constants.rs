@@ -13,6 +13,8 @@ use crate::{
     value::ValueDatum,
     AnalysisResults, BranchToWithArgs, Pass, PassMutability, Predicate, ScopedPass,
 };
+use num_traits::ops::checked::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub};
+use std::ops::{Shl, Shr};
 
 pub const CONSTCOMBINE_NAME: &str = "constcombine";
 
@@ -168,19 +170,19 @@ fn combine_binary_op(context: &mut Context, function: &Function) -> bool {
                     let val2 = arg2.get_constant(context).unwrap();
                     let v = match op {
                         crate::BinaryOpKind::Add => match (&val1.value, &val2.value) {
-                            (ConstantValue::Uint(l), ConstantValue::Uint(r)) => l.checked_add(*r),
+                            (ConstantValue::Uint(l), ConstantValue::Uint(r)) => l.checked_add(r),
                             _ => None,
                         },
                         crate::BinaryOpKind::Sub => match (&val1.value, &val2.value) {
-                            (ConstantValue::Uint(l), ConstantValue::Uint(r)) => l.checked_sub(*r),
+                            (ConstantValue::Uint(l), ConstantValue::Uint(r)) => l.checked_sub(r),
                             _ => None,
                         },
                         crate::BinaryOpKind::Mul => match (&val1.value, &val2.value) {
-                            (ConstantValue::Uint(l), ConstantValue::Uint(r)) => l.checked_mul(*r),
+                            (ConstantValue::Uint(l), ConstantValue::Uint(r)) => l.checked_mul(r),
                             _ => None,
                         },
                         crate::BinaryOpKind::Div => match (&val1.value, &val2.value) {
-                            (ConstantValue::Uint(l), ConstantValue::Uint(r)) => l.checked_div(*r),
+                            (ConstantValue::Uint(l), ConstantValue::Uint(r)) => l.checked_div(r),
                             _ => None,
                         },
                         crate::BinaryOpKind::And => match (&val1.value, &val2.value) {
@@ -201,27 +203,52 @@ fn combine_binary_op(context: &mut Context, function: &Function) -> bool {
                         },
                         crate::BinaryOpKind::Rsh => match (&val1.value, &val2.value) {
                             (ConstantValue::Uint(l), ConstantValue::Uint(r)) => {
-                                u32::try_from(*r).ok().and_then(|r| l.checked_shr(r))
+                                u32::try_from(r).ok().and_then(|r| {
+                                    // Copy rust checked_shr behaviour
+                                    let width = val1.ty.get_uint_width(context)? as u32;
+                                    if r >= width {
+                                        None
+                                    } else {
+                                        Some(l.shr(r))
+                                    }
+                                })
                             }
                             _ => None,
                         },
                         crate::BinaryOpKind::Lsh => match (&val1.value, &val2.value) {
                             (ConstantValue::Uint(l), ConstantValue::Uint(r)) => {
-                                u32::try_from(*r).ok().and_then(|r| l.checked_shl(r))
+                                u32::try_from(r).ok().and_then(|r| {
+                                    // Copy rust checked_shr behaviour
+                                    let width = val1.ty.get_uint_width(context)? as u32;
+                                    if r >= width {
+                                        None
+                                    } else {
+                                        let mut new_value = l.shl(r);
+                                        for i in width..(new_value.bits() as u32) {
+                                            new_value.set_bit(i as u64, false);
+                                        }
+                                        Some(new_value)
+                                    }
+                                })
                             }
                             _ => None,
                         },
                     };
 
-                    v.map(|v| {
-                        (
-                            inst_val,
-                            block,
-                            Constant {
-                                ty: val1.ty,
-                                value: ConstantValue::Uint(v),
-                            },
-                        )
+                    v.and_then(|v| {
+                        let width = val1.ty.get_uint_width(&context).unwrap() as u64;
+                        if v.bits() > width {
+                            None
+                        } else {
+                            Some((
+                                inst_val,
+                                block,
+                                Constant {
+                                    ty: val1.ty,
+                                    value: ConstantValue::Uint(v),
+                                },
+                            ))
+                        }
                     })
                 }
                 _ => None,
@@ -254,14 +281,17 @@ fn combine_unary_op(context: &mut Context, function: &Function) -> bool {
                                         16 => u16::MAX as u64,
                                         32 => u32::MAX as u64,
                                         64 => u64::MAX,
+                                        256 => todo!(),
                                         _ => return None,
                                     };
+                                    let v = u64::try_from(v).ok()?;
+                                    let new_value = (!v) & max;
                                     Some((
                                         inst_val,
                                         block,
                                         Constant {
                                             ty: val.ty,
-                                            value: ConstantValue::Uint((!v) & max),
+                                            value: ConstantValue::Uint(new_value.into()),
                                         },
                                     ))
                                 })
@@ -286,20 +316,20 @@ fn combine_unary_op(context: &mut Context, function: &Function) -> bool {
 mod tests {
     use crate::optimize::tests::*;
 
-    fn assert_operator(opcode: &str, l: &str, r: Option<&str>, result: Option<&str>) {
-        let expected = result.map(|result| format!("v0 = const u64 {result}"));
+    fn assert_operator(opcode: &str, t: &str, l: &str, r: Option<&str>, result: Option<&str>) {
+        let expected = result.map(|result| format!("v0 = const {t} {result}"));
         let expected = expected.as_ref().map(|x| vec![x.as_str()]);
         let body = format!(
             "
-    entry fn main() -> u64 {{
+    entry fn main() -> {t} {{
         entry():
-        l = const u64 {l}
+        l = const {t} {l}
         {r_inst}
         result = {opcode} l, {result_inst} !0
-        ret u64 result
+        ret {t} result
     }}
 ",
-            r_inst = r.map_or("".into(), |r| format!("r = const u64 {r}")),
+            r_inst = r.map_or("".into(), |r| format!("r = const {t} {r}")),
             result_inst = r.map_or("", |_| " r,")
         );
         assert_optimization(&["constcombine"], &body, expected);
@@ -307,27 +337,29 @@ mod tests {
 
     #[test]
     fn unary_op_are_optimized() {
-        assert_operator("not", &u64::MAX.to_string(), None, Some("0"));
+        assert_operator("not", "u64", &u64::MAX.to_string(), None, Some("0"));
     }
 
     #[test]
     fn binary_op_are_optimized() {
-        assert_operator("add", "1", Some("1"), Some("2"));
-        assert_operator("sub", "1", Some("1"), Some("0"));
-        assert_operator("mul", "2", Some("2"), Some("4"));
-        assert_operator("div", "10", Some("5"), Some("2"));
-        assert_operator("mod", "12", Some("5"), Some("2"));
-        assert_operator("rsh", "16", Some("1"), Some("8"));
-        assert_operator("lsh", "16", Some("1"), Some("32"));
+        assert_operator("add", "u64", "1", Some("1"), Some("2"));
+        assert_operator("sub", "u64", "1", Some("1"), Some("0"));
+        assert_operator("mul", "u64", "2", Some("2"), Some("4"));
+        assert_operator("div", "u64", "10", Some("5"), Some("2"));
+        assert_operator("mod", "u64", "12", Some("5"), Some("2"));
+        assert_operator("rsh", "u64", "16", Some("1"), Some("8"));
+        assert_operator("lsh", "u64", "16", Some("1"), Some("32"));
 
         assert_operator(
             "and",
+            "u64",
             &0x00FFF.to_string(),
             Some(&0xFFF00.to_string()),
             Some(&0xF00.to_string()),
         );
         assert_operator(
             "or",
+            "u64",
             &0x00FFF.to_string(),
             Some(&0xFFF00.to_string()),
             Some(&0xFFFFF.to_string()),
@@ -335,21 +367,31 @@ mod tests {
 
         assert_operator(
             "xor",
+            "u64",
             &0x00FFF.to_string(),
             Some(&0xFFF00.to_string()),
             Some(&0xFF0FF.to_string()),
         );
+
+        // u256
+        assert_operator("add", "u256", "1", Some("1"), Some("2"));
+        assert_operator("sub", "u256", "1", Some("1"), Some("0"));
+        assert_operator("mul", "u256", "2", Some("2"), Some("4"));
+        assert_operator("div", "u256", "10", Some("5"), Some("2"));
+        // assert_operator("mod", "u64", "12", Some("5"), Some("2"));
+        assert_operator("rsh", "u256", "16", Some("1"), Some("8"));
+        assert_operator("lsh", "u256", "16", Some("1"), Some("32"));
     }
 
     #[test]
     fn binary_op_are_not_optimized() {
-        assert_operator("add", &u64::MAX.to_string(), Some("1"), None);
-        assert_operator("sub", "0", Some("1"), None);
-        assert_operator("mul", &u64::MAX.to_string(), Some("2"), None);
-        assert_operator("div", "1", Some("0"), None);
+        assert_operator("add", "u64", &u64::MAX.to_string(), Some("1"), None);
+        assert_operator("sub", "u64", "0", Some("1"), None);
+        assert_operator("mul", "u64", &u64::MAX.to_string(), Some("2"), None);
+        assert_operator("div", "u64", "1", Some("0"), None);
 
-        assert_operator("rsh", "1", Some("64"), None);
-        assert_operator("lsh", "1", Some("64"), None);
+        assert_operator("rsh", "u64", "1", Some("64"), None);
+        assert_operator("lsh", "u64", "1", Some("64"), None);
     }
 
     #[test]

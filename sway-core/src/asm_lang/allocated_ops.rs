@@ -495,7 +495,7 @@ type DoubleWideData = [u8; 8];
 impl AllocatedOp {
     pub(crate) fn to_fuel_asm(
         &self,
-        offset_to_data_section: u64,
+        offset_to_data_section_in_bytes: u64,
         data_section: &mut DataSection,
     ) -> Either<Vec<fuel_asm::Instruction>, DoubleWideData> {
         use AllocatedOpcode::*;
@@ -634,7 +634,7 @@ impl AllocatedOp {
                 )
             }
             DataSectionOffsetPlaceholder => {
-                return Either::Right(offset_to_data_section.to_be_bytes())
+                return Either::Right(offset_to_data_section_in_bytes.to_be_bytes())
             }
             DataSectionRegisterLoadPlaceholder => op::LW::new(
                 fuel_asm::RegId::new(DATA_SECTION_REGISTER),
@@ -643,7 +643,12 @@ impl AllocatedOp {
             )
             .into(),
             LWDataId(a, b) => {
-                return Either::Left(realize_lw(a, b, data_section, offset_to_data_section))
+                return Either::Left(realize_lw(
+                    a,
+                    b,
+                    data_section,
+                    offset_to_data_section_in_bytes,
+                ))
             }
             Undefined => unreachable!("Sway cannot generate undefined ASM opcodes"),
         }])
@@ -658,7 +663,7 @@ fn realize_lw(
     dest: &AllocatedRegister,
     data_id: &DataId,
     data_section: &mut DataSection,
-    offset_to_data_section: u64,
+    offset_to_data_section_in_bytes: u64,
 ) -> Vec<fuel_asm::Instruction> {
     // all data is word-aligned right now, and `offset_to_id` returns the offset in bytes
     let offset_bytes = data_section.data_id_to_offset(data_id) as u64;
@@ -677,18 +682,19 @@ fn realize_lw(
         // load the pointer itself into the register
         // `offset_to_data_section` is in bytes. We want a byte
         // address here
-        let pointer_offset_from_instruction_start = offset_to_data_section + offset_bytes;
+        let pointer_offset_from_instruction_start = offset_to_data_section_in_bytes + offset_bytes;
         // insert the pointer as bytes as a new data section entry at the end of the data
         let data_id_for_pointer =
             data_section.append_pointer(pointer_offset_from_instruction_start);
         // now load the pointer we just created into the `dest`ination
         let mut buf = Vec::with_capacity(2);
-        buf.append(&mut realize_lw(
+        let v = &mut realize_lw(
             dest,
             &data_id_for_pointer,
             data_section,
-            offset_to_data_section,
-        ));
+            offset_to_data_section_in_bytes,
+        );
+        buf.append(v);
         // add $is to the pointer since it is relative to the data section
         buf.push(
             fuel_asm::op::ADD::new(

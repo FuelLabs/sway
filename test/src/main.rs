@@ -45,6 +45,10 @@ struct Cli {
     /// Build target.
     #[arg(long, visible_alias = "target")]
     build_target: Option<String>,
+
+    /// Prints step-by-step execution of the test. Much slower. Ideal for debugging problems only.
+    #[arg(long)]
+    debug: Option<bool>,
 }
 
 #[derive(Debug, Clone)]
@@ -62,6 +66,7 @@ pub struct RunConfig {
     pub build_target: BuildTarget,
     pub locked: bool,
     pub verbose: bool,
+    pub debug: bool,
 }
 
 #[tokio::main]
@@ -89,6 +94,7 @@ async fn main() -> Result<()> {
         locked: cli.locked,
         verbose: cli.verbose,
         build_target,
+        debug: cli.debug.unwrap_or_default(),
     };
 
     // Run E2E tests

@@ -67,17 +67,19 @@ pub mod tests {
         expected: Option<impl IntoIterator<Item = &'a str>>,
     ) {
         let source_engine = SourceEngine::default();
-        let mut context = crate::parse(
-            &format!(
-                "script {{
-                {body}
-            }}
+        let input = format!(
+            "script {{
+            {body}
+        }}
 
-            !0 = \"a.sw\""
-            ),
-            &source_engine,
-        )
-        .unwrap();
+        !0 = \"a.sw\""
+        );
+        let mut context = match crate::parse(&input, &source_engine) {
+            Ok(context) => context,
+            Err(err) => {
+                panic!("Err: {err:?}\nInput: {input}");
+            }
+        };
 
         let mut pass_manager = PassManager::default();
         crate::register_known_passes(&mut pass_manager);
@@ -94,8 +96,11 @@ pub mod tests {
             return;
         };
 
-        let actual = context
-            .to_string()
+        let actual = context.to_string();
+
+        // println!("{}", prettydiff::diff_lines(&input, &actual));
+
+        let actual = actual
             .lines()
             .filter_map(|x| {
                 if x.contains(", !0") {

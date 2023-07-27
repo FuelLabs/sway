@@ -21,15 +21,12 @@ pub(super) fn convert_literal_to_value(context: &mut Context, ast_literal: &Lite
         // concerned.
         //
         // XXX The above isn't true for other targets.  We need to improved this.
-        Literal::U8(n) => Constant::get_uint(context, 64, *n as u64),
-        Literal::U16(n) => Constant::get_uint(context, 64, *n as u64),
-        Literal::U32(n) => Constant::get_uint(context, 64, *n as u64),
-        Literal::U64(n) => Constant::get_uint(context, 64, *n),
-        Literal::U256(n) => {
-            let n: u64 = n.try_into().unwrap(); // TODO u256 limited to 64 bits
-            Constant::get_uint(context, 256, n)
-        }
-        Literal::Numeric(n) => Constant::get_uint(context, 64, *n),
+        Literal::U8(n) => Constant::get_uint(context, 64, (*n).into()),
+        Literal::U16(n) => Constant::get_uint(context, 64, (*n).into()),
+        Literal::U32(n) => Constant::get_uint(context, 64, (*n).into()),
+        Literal::U64(n) => Constant::get_uint(context, 64, (*n).into()),
+        Literal::U256(n) => Constant::get_uint(context, 256, n.clone()),
+        Literal::Numeric(n) => Constant::get_uint(context, 64, n.clone()),
         Literal::String(s) => Constant::get_string(context, s.as_str().as_bytes().to_vec()),
         Literal::Boolean(b) => Constant::get_bool(context, *b),
         Literal::B256(bs) => Constant::get_b256(context, *bs),
@@ -42,12 +39,12 @@ pub(super) fn convert_literal_to_constant(
 ) -> Constant {
     match ast_literal {
         // All integers are `u64`.  See comment above.
-        Literal::U8(n) => Constant::new_uint(context, 64, *n as u64),
-        Literal::U16(n) => Constant::new_uint(context, 64, *n as u64),
-        Literal::U32(n) => Constant::new_uint(context, 64, *n as u64),
-        Literal::U64(n) => Constant::new_uint(context, 64, *n),
+        Literal::U8(n) => Constant::new_uint(context, 64, (*n).into()),
+        Literal::U16(n) => Constant::new_uint(context, 64, (*n).into()),
+        Literal::U32(n) => Constant::new_uint(context, 64, (*n).into()),
+        Literal::U64(n) => Constant::new_uint(context, 64, (*n).into()),
         Literal::U256(_) => todo!(),
-        Literal::Numeric(n) => Constant::new_uint(context, 64, *n),
+        Literal::Numeric(n) => Constant::new_uint(context, 64, n.clone()),
         Literal::String(s) => Constant::new_string(context, s.as_str().as_bytes().to_vec()),
         Literal::Boolean(b) => Constant::new_bool(context, *b),
         Literal::B256(bs) => Constant::new_b256(context, *bs),

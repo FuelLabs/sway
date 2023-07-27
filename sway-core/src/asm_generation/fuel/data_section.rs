@@ -100,10 +100,14 @@ impl Entry {
             ConstantValue::Undef | ConstantValue::Unit => Entry::new_word(0, size, name),
             ConstantValue::Bool(b) => Entry::new_word(u64::from(*b), size, name),
             ConstantValue::Uint(u) => match constant.ty.get_uint_width(context) {
-                Some(width) if width <= 64 => Entry::new_word(*u, size, name),
+                Some(width) if width <= 64 => {
+                    let u = u64::try_from(u).unwrap();
+                    Entry::new_word(u, size, name)
+                }
                 Some(256) => {
-                    let mut bytes = vec![0u8; 24];
-                    bytes.extend(u.to_be_bytes());
+                    let number_bytes = u.to_bytes_be();
+                    let mut bytes = vec![0u8; 32 - number_bytes.len()];
+                    bytes.extend(number_bytes);
                     assert!(bytes.len() == size.unwrap());
                     Entry::new_byte_array(bytes, size, name)
                 }

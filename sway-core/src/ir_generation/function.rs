@@ -509,7 +509,7 @@ impl<'eng> FnCompiler<'eng> {
                 Ok(Constant::get_uint(
                     context,
                     64,
-                    ir_type_size_in_bytes(context, &ir_type),
+                    ir_type_size_in_bytes(context, &ir_type).into(),
                 ))
             }
             Intrinsic::SizeOfType => {
@@ -524,7 +524,7 @@ impl<'eng> FnCompiler<'eng> {
                 Ok(Constant::get_uint(
                     context,
                     64,
-                    ir_type_size_in_bytes(context, &ir_type),
+                    ir_type_size_in_bytes(context, &ir_type).into(),
                 ))
             }
             Intrinsic::SizeOfStr => {
@@ -539,7 +539,7 @@ impl<'eng> FnCompiler<'eng> {
                 Ok(Constant::get_uint(
                     context,
                     64,
-                    ir_type_str_size_in_bytes(context, &ir_type),
+                    ir_type_str_size_in_bytes(context, &ir_type).into(),
                 ))
             }
             Intrinsic::IsReferenceType => {
@@ -607,6 +607,7 @@ impl<'eng> FnCompiler<'eng> {
                 let span_md_idx = md_mgr.span_to_md(context, &span);
 
                 // The `gtf` instruction
+                let tx_field_id = u64::try_from(tx_field_id).unwrap();
                 let gtf_reg = self
                     .current_block
                     .ins(context)
@@ -793,6 +794,7 @@ impl<'eng> FnCompiler<'eng> {
                     Intrinsic::Lsh => BinaryOpKind::Lsh,
                     _ => unreachable!(),
                 };
+
                 let lhs = &arguments[0];
                 let rhs = &arguments[1];
                 let lhs_value = self.compile_expression_to_value(context, md_mgr, lhs)?;
@@ -829,8 +831,11 @@ impl<'eng> FnCompiler<'eng> {
                     &len.type_id,
                     &len.span,
                 )?;
-                let len_value =
-                    Constant::get_uint(context, 64, ir_type_size_in_bytes(context, &ir_type));
+                let len_value = Constant::get_uint(
+                    context,
+                    64,
+                    ir_type_size_in_bytes(context, &ir_type).into(),
+                );
 
                 let lhs = &arguments[0];
                 let count = &arguments[1];
@@ -901,7 +906,7 @@ impl<'eng> FnCompiler<'eng> {
                 let message_id_val = self
                     .messages_types_map
                     .get(&arguments[1].return_type)
-                    .map(|&msg_id| Constant::get_uint(context, 64, *msg_id as u64))
+                    .map(|&msg_id| Constant::get_uint(context, 64, (*msg_id).into()))
                     .ok_or_else(|| {
                         CompileError::Internal(
                             "Unable to determine ID for smo instance.",
@@ -930,7 +935,8 @@ impl<'eng> FnCompiler<'eng> {
                     .add_metadatum(context, span_md_idx);
 
                 /* Third operand: the size of the message data */
-                let user_message_size_val = Constant::get_uint(context, 64, user_message_size);
+                let user_message_size_val =
+                    Constant::get_uint(context, 64, user_message_size.into());
 
                 /* Fourth operand: the amount of coins to send */
                 let coins = self.compile_expression_to_value(context, md_mgr, &arguments[2])?;
@@ -1071,7 +1077,7 @@ impl<'eng> FnCompiler<'eng> {
         let u64_ty = Type::get_uint64(context);
 
         let user_args_val = match compiled_args.len() {
-            0 => Constant::get_uint(context, 64, 0),
+            0 => Constant::get_uint(context, 64, 0u64.into()),
             1 => {
                 // The single arg doesn't need to be put into a struct.
                 let arg0 = compiled_args[0];
@@ -1924,12 +1930,12 @@ impl<'eng> FnCompiler<'eng> {
                                 })
                                 .map(|(field_idx, field_type_id)| {
                                     *cur_type_id = field_type_id;
-                                    Constant::get_uint(context, 64, field_idx)
+                                    Constant::get_uint(context, 64, field_idx.into())
                                 })
                         }
                         (ProjectionKind::TupleField { index, .. }, TypeInfo::Tuple(field_tys)) => {
                             *cur_type_id = field_tys[*index].type_id;
-                            Ok(Constant::get_uint(context, 64, *index as u64))
+                            Ok(Constant::get_uint(context, 64, (*index).into()))
                         }
                         (ProjectionKind::ArrayIndex { index, .. }, TypeInfo::Array(elem_ty, _)) => {
                             *cur_type_id = elem_ty.type_id;
@@ -2056,6 +2062,12 @@ impl<'eng> FnCompiler<'eng> {
             index_expr,
         ) {
             let count = array_type.get_array_len(context).unwrap();
+            let constant_value =
+                u64::try_from(constant_value).map_err(|_| CompileError::ArrayOutOfBounds {
+                    index: u64::MAX,
+                    count,
+                    span: index_expr_span.clone(),
+                })?;
             if constant_value >= count {
                 return Err(CompileError::ArrayOutOfBounds {
                     index: constant_value,
@@ -2230,7 +2242,7 @@ impl<'eng> FnCompiler<'eng> {
             &enum_decl.variants,
         )?;
         let tag_value =
-            Constant::get_uint(context, 64, tag as u64).add_metadatum(context, span_md_idx);
+            Constant::get_uint(context, 64, tag.into()).add_metadatum(context, span_md_idx);
 
         // Start with a temporary local struct and insert the tag.
         let temp_name = self.lexical_map.insert_anon();
@@ -2582,7 +2594,7 @@ impl<'eng> FnCompiler<'eng> {
             .add_metadatum(context, span_md_idx);
 
         // Store the offset as the second field in the `StorageKey` struct
-        let offset_within_slot_val = Constant::get_uint(context, 64, offset_within_slot);
+        let offset_within_slot_val = Constant::get_uint(context, 64, offset_within_slot.into());
         let gep_1_val =
             self.current_block
                 .ins(context)

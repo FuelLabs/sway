@@ -91,7 +91,7 @@ impl TestContext {
             },
         )
     }
-    async fn run(&self, test: TestDescription, output: &mut String) -> Result<()> {
+    async fn run(&self, test: TestDescription, output: &mut String, debug: bool) -> Result<()> {
         let context = self;
         let TestDescription {
             name,
@@ -141,7 +141,7 @@ impl TestContext {
                     )));
                 }
 
-                let result = harness::runs_in_vm(compiled.clone(), script_data)?;
+                let result = harness::runs_in_vm(compiled.clone(), script_data, debug)?;
                 let result = match result {
                     harness::VMExecutionResult::Fuel(state, receipts) => {
                         match state {
@@ -157,6 +157,8 @@ impl TestContext {
                                 TestResult::ReturnData(data)
                             }
                             ProgramState::Revert(v) => TestResult::Revert(v),
+                            ProgramState::RunProgram(_) => todo!(),
+                            ProgramState::VerifyPredicate(_) => todo!(),
                         }
                     }
                     harness::VMExecutionResult::Evm(state) => match state.exit_reason {
@@ -424,11 +426,11 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
 
         let result = if !filter_config.first_only {
             context
-                .run(test, &mut output)
+                .run(test, &mut output, run_config.debug)
                 .instrument(tracing::trace_span!("E2E", i))
                 .await
         } else {
-            context.run(test, &mut output).await
+            context.run(test, &mut output, run_config.debug).await
         };
 
         if let Err(err) = result {

@@ -135,12 +135,18 @@ fn compile_module_to_asm(
                 println!("{abstract_program}\n");
             }
 
+            // let before = abstract_program.to_string();
+
             let allocated_program = check!(
                 CompileResult::from(abstract_program.into_allocated_program()),
                 return err(warnings, errors),
                 warnings,
                 errors
             );
+
+            // let after = allocated_program.to_string();
+            // println!("############################################# into_allocated_program");
+            // println!("{}", prettydiff::diff_lines(&before, &after));
 
             if build_config
                 .map(|cfg| cfg.print_intermediate_asm)

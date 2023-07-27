@@ -12,7 +12,7 @@ use sway_core::{
     Engines,
 };
 use sway_ir::{
-    create_inline_in_module_pass, register_known_passes, PassGroup, PassManager, ARGDEMOTION_NAME,
+    register_known_passes, PassGroup, PassManager, ARGDEMOTION_NAME,
     CONSTDEMOTION_NAME, DCE_NAME, MEMCPYOPT_NAME, MISCDEMOTION_NAME, RETDEMOTION_NAME,
 };
 use sway_utils::PerformanceData;
@@ -370,11 +370,20 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> R
                             };
                         }
                         (Checker::Asm, Some(checker)) => {
+                            dbg!(optimisation_inline);
                             if optimisation_inline {
+                                let mut pmgr_config = sway_ir::create_o1_pass_group();
+                                // Fuel specific optimizations
+                                pmgr_config.append_pass(CONSTDEMOTION_NAME);
+                                pmgr_config.append_pass(ARGDEMOTION_NAME);
+                                pmgr_config.append_pass(RETDEMOTION_NAME);
+                                pmgr_config.append_pass(MISCDEMOTION_NAME);
+                                pmgr_config.append_pass(MEMCPYOPT_NAME);
+                                pmgr_config.append_pass(DCE_NAME);
+                                
                                 let mut pass_mgr = PassManager::default();
-                                let mut pmgr_config = PassGroup::default();
-                                let inline = pass_mgr.register(create_inline_in_module_pass());
-                                pmgr_config.append_pass(inline);
+                                register_known_passes(&mut pass_mgr);
+
                                 let inline_res = pass_mgr.run(&mut ir, &pmgr_config);
                                 if inline_res.is_err() {
                                     panic!(
@@ -390,6 +399,10 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> R
                                     );
                                 }
                             }
+
+                            println!("Final IR");
+                            println!("--------");
+                            println!("{}", ir.to_string());
 
                             // Compile to ASM.
                             let asm_result = compile_ir_to_asm(&ir, None);
@@ -416,6 +429,8 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> R
                                     path.file_name().unwrap().to_string_lossy()
                                 );
                             }
+
+                            
 
                             // Do ASM checks.
                             match checker.explain(&asm_output, filecheck::NO_VARIABLES) {

@@ -788,14 +788,14 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
     }
 
     pub fn get_elem_ptr_with_idx(self, base: Value, elem_ty: Type, index: u64) -> Value {
-        let idx_val = Constant::get_uint(self.context, 64, index);
+        let idx_val = Constant::get_uint(self.context, 64, index.into());
         self.get_elem_ptr(base, elem_ty, vec![idx_val])
     }
 
     pub fn get_elem_ptr_with_idcs(self, base: Value, elem_ty: Type, indices: &[u64]) -> Value {
         let idx_vals = indices
             .iter()
-            .map(|idx| Constant::get_uint(self.context, 64, *idx))
+            .map(|idx| Constant::get_uint(self.context, 64, (*idx).into()))
             .collect();
         self.get_elem_ptr(base, elem_ty, idx_vals)
     }

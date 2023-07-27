@@ -1,4 +1,4 @@
-use std::ops::{BitAnd, BitOr, BitXor};
+use std::ops::{BitAnd, BitOr, BitXor, Shl, Shr};
 
 use crate::{
     asm_generation::from_ir::{ir_type_size_in_bytes, ir_type_str_size_in_bytes},
@@ -18,6 +18,7 @@ use super::{
     types::*,
 };
 
+use num_traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub};
 use sway_ast::Intrinsic;
 use sway_error::error::CompileError;
 use sway_ir::{
@@ -462,7 +463,7 @@ fn const_eval_typed_expr(
             );
 
             if let Ok(enum_ty) = aggregate {
-                let tag_value = Constant::new_uint(lookup.context, 64, *tag as u64);
+                let tag_value = Constant::new_uint(lookup.context, 64, (*tag).into());
                 let mut fields: Vec<Constant> = vec![tag_value];
 
                 match contents {
@@ -590,6 +591,7 @@ fn const_eval_typed_expr(
                         ..
                     }),
                 ) => {
+                    let index = u64::try_from(index).unwrap();
                     let count = items.len() as u64;
                     if index < count {
                         Some(items[index as usize].clone())
@@ -747,14 +749,15 @@ fn const_eval_intrinsic(
 
             // All arithmetic is done as if it were u64
             let result = match intrinsic.kind {
-                Intrinsic::Add => arg1.checked_add(*arg2),
-                Intrinsic::Sub => arg1.checked_sub(*arg2),
-                Intrinsic::Mul => arg1.checked_mul(*arg2),
-                Intrinsic::Div => arg1.checked_div(*arg2),
+                Intrinsic::Add => arg1.checked_add(arg2),
+                Intrinsic::Sub => arg1.checked_sub(arg2),
+                Intrinsic::Mul => arg1.checked_mul(arg2),
+                Intrinsic::Div => arg1.checked_div(arg2),
                 Intrinsic::And => Some(arg1.bitand(arg2)),
-                Intrinsic::Or => Some(arg1.bitor(*arg2)),
-                Intrinsic::Xor => Some(arg1.bitxor(*arg2)),
-                Intrinsic::Mod => arg1.checked_rem(*arg2),
+                Intrinsic::Or => Some(arg1.bitor(arg2)),
+                Intrinsic::Xor => Some(arg1.bitxor(arg2)),
+                // TODO This needs to be checked?
+                Intrinsic::Mod => Some(arg1.modpow(&(1u64.into()), arg2)),
                 _ => unreachable!(),
             };
 
@@ -782,13 +785,14 @@ fn const_eval_intrinsic(
                 panic!("Type checker allowed incorrect args to binary op");
             };
 
+            // TODO these need to be checked?
             let result = match intrinsic.kind {
-                Intrinsic::Lsh => u32::try_from(*arg2)
+                Intrinsic::Lsh => u32::try_from(arg2.clone())
                     .ok()
-                    .and_then(|arg2| arg1.checked_shl(arg2)),
-                Intrinsic::Rsh => u32::try_from(*arg2)
+                    .and_then(|arg2| Some(arg1.shl(arg2))),
+                Intrinsic::Rsh => u32::try_from(arg2.clone())
                     .ok()
-                    .and_then(|arg2| arg1.checked_shr(arg2)),
+                    .and_then(|arg2| Some(arg1.shr(arg2))),
                 _ => unreachable!(),
             };
 
@@ -814,7 +818,7 @@ fn const_eval_intrinsic(
             .map_err(ConstEvalError::CompileError)?;
             Ok(Some(Constant {
                 ty: Type::get_uint64(lookup.context),
-                value: ConstantValue::Uint(ir_type_size_in_bytes(lookup.context, &ir_type)),
+                value: ConstantValue::Uint(ir_type_size_in_bytes(lookup.context, &ir_type).into()),
             }))
         }
         sway_ast::Intrinsic::SizeOfVal => {
@@ -830,7 +834,7 @@ fn const_eval_intrinsic(
             .map_err(ConstEvalError::CompileError)?;
             Ok(Some(Constant {
                 ty: Type::get_uint64(lookup.context),
-                value: ConstantValue::Uint(ir_type_size_in_bytes(lookup.context, &ir_type)),
+                value: ConstantValue::Uint(ir_type_size_in_bytes(lookup.context, &ir_type).into()),
             }))
         }
         sway_ast::Intrinsic::SizeOfStr => {
@@ -845,7 +849,9 @@ fn const_eval_intrinsic(
             .map_err(ConstEvalError::CompileError)?;
             Ok(Some(Constant {
                 ty: Type::get_uint64(lookup.context),
-                value: ConstantValue::Uint(ir_type_str_size_in_bytes(lookup.context, &ir_type)),
+                value: ConstantValue::Uint(
+                    ir_type_str_size_in_bytes(lookup.context, &ir_type).into(),
+                ),
             }))
         }
         sway_ast::Intrinsic::Eq => {
@@ -908,16 +914,28 @@ fn const_eval_intrinsic(
             };
 
             let v = match arg.ty.get_uint_width(lookup.context) {
-                Some(8) => !(v as u8) as u64,
-                Some(16) => !(v as u16) as u64,
-                Some(32) => !(v as u32) as u64,
-                Some(64) => !v,
+                Some(8) => {
+                    let v = u8::try_from(v).unwrap();
+                    !(v as u8) as u64
+                }
+                Some(16) => {
+                    let v = u16::try_from(v).unwrap();
+                    !(v as u16) as u64
+                }
+                Some(32) => {
+                    let v = u32::try_from(v).unwrap();
+                    !(v as u32) as u64
+                }
+                Some(64) => {
+                    let v = u64::try_from(v).unwrap();
+                    !v
+                }
                 _ => unreachable!("Invalid unsigned integer width"),
             };
 
             Ok(Some(Constant {
                 ty: arg.ty,
-                value: ConstantValue::Uint(v),
+                value: ConstantValue::Uint(v.into()),
             }))
         }
     }

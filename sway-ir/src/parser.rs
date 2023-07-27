@@ -24,6 +24,7 @@ pub fn parse<'eng>(
 // -------------------------------------------------------------------------------------------------
 
 mod ir_builder {
+    use num_bigint::BigUint;
     use sway_types::{ident::Ident, span::Span, SourceEngine};
 
     type MdIdxRef = u64;
@@ -437,7 +438,7 @@ mod ir_builder {
                 / "0x" s:$(hex_digit()*<64>) _ {
                     IrAstConstValue::B256(string_to_hex::<32>(s))
                 }
-                / n:decimal() { IrAstConstValue::Number(n) }
+                / n:big_decimal() { IrAstConstValue::Number(n) }
                 / string_const()
                 / array_const()
                 / struct_const()
@@ -575,6 +576,11 @@ mod ir_builder {
 
             rule id_char()
                 = quiet!{ id_char0() / ['0'..='9'] }
+
+            rule big_decimal() -> BigUint
+                = ds:$("0" / ['1'..='9'] ['0'..='9']*) {
+                    ds.parse::<BigUint>().unwrap()
+                }
 
             rule decimal() -> u64
                 = d:dec_digits() _ {
@@ -725,7 +731,7 @@ mod ir_builder {
         Unit,
         Bool(bool),
         B256([u8; 32]),
-        Number(u64),
+        Number(BigUint),
         String(Vec<u8>),
         Array(IrAstTy, Vec<IrAstConst>),
         Struct(Vec<(IrAstTy, IrAstConst)>),
@@ -752,7 +758,7 @@ mod ir_builder {
                 IrAstConstValue::Unit => ConstantValue::Unit,
                 IrAstConstValue::Bool(b) => ConstantValue::Bool(*b),
                 IrAstConstValue::B256(bs) => ConstantValue::B256(*bs),
-                IrAstConstValue::Number(n) => ConstantValue::Uint(*n),
+                IrAstConstValue::Number(n) => ConstantValue::Uint(n.clone()),
                 IrAstConstValue::String(bs) => ConstantValue::String(bs.clone()),
                 IrAstConstValue::Array(el_ty, els) => {
                     let els: Vec<_> = els
@@ -785,8 +791,8 @@ mod ir_builder {
                 IrAstConstValue::Bool(b) => Constant::get_bool(context, *b),
                 IrAstConstValue::B256(bs) => Constant::get_b256(context, *bs),
                 IrAstConstValue::Number(n) => match val_ty {
-                    IrAstTy::U64 => Constant::get_uint(context, 64, *n),
-                    IrAstTy::U256 => Constant::get_uint(context, 256, *n),
+                    IrAstTy::U64 => Constant::get_uint(context, 64, n.clone()),
+                    IrAstTy::U256 => Constant::get_uint(context, 256, n.clone()),
                     _ => todo!(),
                 },
                 IrAstConstValue::String(s) => Constant::get_string(context, s.clone()),

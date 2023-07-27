@@ -88,7 +88,7 @@ pub fn serialize_to_storage_slots(
             vec![StorageSlot::new(
                 get_storage_key(ix, indices),
                 Bytes32::new(
-                    n.to_be_bytes()
+                    n.to_bytes_be()
                         .iter()
                         .cloned()
                         .chain([0; 24].iter().cloned())
@@ -154,9 +154,11 @@ pub fn serialize_to_words(constant: &Constant, context: &Context, ty: &Type) -> 
                     .unwrap(),
             )]
         }
-        ConstantValue::Uint(n) if ty.is_uint(context) => {
-            vec![Bytes8::new(n.to_be_bytes())]
-        }
+        ConstantValue::Uint(n) if ty.is_uint(context) => n
+            .iter_u64_digits()
+            .rev()
+            .map(|n| Bytes8::new(n.to_be_bytes()))
+            .collect(),
         ConstantValue::B256(b) if ty.is_b256(context) => {
             Vec::from_iter((0..4).map(|i| Bytes8::new(b[8 * i..8 * i + 8].try_into().unwrap())))
         }

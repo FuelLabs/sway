@@ -20,6 +20,7 @@ use crate::{
     metadata::MetadataManager,
 };
 
+use num_traits::{One, Zero};
 use sway_error::{error::CompileError, warning::CompileWarning, warning::Warning};
 use sway_ir::*;
 use sway_types::{span::Span, Spanned};
@@ -498,116 +499,132 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             .get_type(self.context)
             .and_then(|x| x.get_uint_width(self.context));
         let (opcode, comment) = match (arg1_width, arg2_width) {
-            (Some(256), Some(256)) => match op {
-                BinaryOpKind::Add => (
-                    VirtualOp::WQOP(
+            (Some(256), Some(256)) => {
+                let locals = self.locals_ctxs.last_mut().unwrap();
+                let local_addr = locals.0 as u16;
+                locals.0 += 32;
+
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::ADDI(
                         res_reg.clone(),
-                        val1_reg,
-                        val2_reg,
-                        WideOperationsImmediate {
-                            op: WideOperation::Add,
-                            right_indirect: true,
-                        },
+                        VirtualRegister::Constant(ConstantRegister::LocalsBase),
+                        VirtualImmediate12 { value: local_addr },
+                    )),
+                    comment: "temp for wide operations".into(),
+                    owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+                });
+
+                match op {
+                    BinaryOpKind::Add => (
+                        VirtualOp::WQOP(
+                            res_reg.clone(),
+                            val1_reg,
+                            val2_reg,
+                            WideOperationsImmediate {
+                                op: WideOperation::Add,
+                                right_indirect: true,
+                            },
+                        ),
+                        Some("add"),
                     ),
-                    Some("add"),
-                ),
-                BinaryOpKind::Sub => (
-                    VirtualOp::WQOP(
-                        res_reg.clone(),
-                        val1_reg,
-                        val2_reg,
-                        WideOperationsImmediate {
-                            op: WideOperation::Sub,
-                            right_indirect: true,
-                        },
+                    BinaryOpKind::Sub => (
+                        VirtualOp::WQOP(
+                            res_reg.clone(),
+                            val1_reg,
+                            val2_reg,
+                            WideOperationsImmediate {
+                                op: WideOperation::Sub,
+                                right_indirect: true,
+                            },
+                        ),
+                        Some("sub"),
                     ),
-                    Some("sub"),
-                ),
-                BinaryOpKind::Or => (
-                    VirtualOp::WQOP(
-                        res_reg.clone(),
-                        val1_reg,
-                        val2_reg,
-                        WideOperationsImmediate {
-                            op: WideOperation::Or,
-                            right_indirect: true,
-                        },
+                    BinaryOpKind::Or => (
+                        VirtualOp::WQOP(
+                            res_reg.clone(),
+                            val1_reg,
+                            val2_reg,
+                            WideOperationsImmediate {
+                                op: WideOperation::Or,
+                                right_indirect: true,
+                            },
+                        ),
+                        Some("or"),
                     ),
-                    Some("or"),
-                ),
-                BinaryOpKind::Xor => (
-                    VirtualOp::WQOP(
-                        res_reg.clone(),
-                        val1_reg,
-                        val2_reg,
-                        WideOperationsImmediate {
-                            op: WideOperation::Xor,
-                            right_indirect: true,
-                        },
+                    BinaryOpKind::Xor => (
+                        VirtualOp::WQOP(
+                            res_reg.clone(),
+                            val1_reg,
+                            val2_reg,
+                            WideOperationsImmediate {
+                                op: WideOperation::Xor,
+                                right_indirect: true,
+                            },
+                        ),
+                        Some("xor"),
                     ),
-                    Some("xor"),
-                ),
-                BinaryOpKind::And => (
-                    VirtualOp::WQOP(
-                        res_reg.clone(),
-                        val1_reg,
-                        val2_reg,
-                        WideOperationsImmediate {
-                            op: WideOperation::And,
-                            right_indirect: true,
-                        },
+                    BinaryOpKind::And => (
+                        VirtualOp::WQOP(
+                            res_reg.clone(),
+                            val1_reg,
+                            val2_reg,
+                            WideOperationsImmediate {
+                                op: WideOperation::And,
+                                right_indirect: true,
+                            },
+                        ),
+                        Some("and"),
                     ),
-                    Some("and"),
-                ),
-                BinaryOpKind::Lsh => (
-                    VirtualOp::WQOP(
-                        res_reg.clone(),
-                        val1_reg,
-                        val2_reg,
-                        WideOperationsImmediate {
-                            op: WideOperation::Shl,
-                            right_indirect: false,
-                        },
+                    BinaryOpKind::Lsh => (
+                        VirtualOp::WQOP(
+                            res_reg.clone(),
+                            val1_reg,
+                            val2_reg,
+                            WideOperationsImmediate {
+                                op: WideOperation::Shl,
+                                right_indirect: false,
+                            },
+                        ),
+                        Some("shl"),
                     ),
-                    Some("shl"),
-                ),
-                BinaryOpKind::Rsh => (
-                    VirtualOp::WQOP(
-                        res_reg.clone(),
-                        val1_reg,
-                        val2_reg,
-                        WideOperationsImmediate {
-                            op: WideOperation::Shr,
-                            right_indirect: false,
-                        },
+                    BinaryOpKind::Rsh => (
+                        VirtualOp::WQOP(
+                            res_reg.clone(),
+                            val1_reg,
+                            val2_reg,
+                            WideOperationsImmediate {
+                                op: WideOperation::Shr,
+                                right_indirect: false,
+                            },
+                        ),
+                        Some("shr"),
                     ),
-                    Some("shr"),
-                ),
-                BinaryOpKind::Mul => (
-                    VirtualOp::WQML(
-                        res_reg.clone(),
-                        val1_reg,
-                        val2_reg,
-                        WideMulImmediate {
-                            left_indirect: true,
-                            right_indirect: true,
-                        },
+                    BinaryOpKind::Mul => (
+                        VirtualOp::WQML(
+                            res_reg.clone(),
+                            val1_reg,
+                            val2_reg,
+                            WideMulImmediate {
+                                left_indirect: true,
+                                right_indirect: true,
+                            },
+                        ),
+                        Some("mul"),
                     ),
-                    Some("mul"),
-                ),
-                BinaryOpKind::Div => (
-                    VirtualOp::WQDV(
-                        res_reg.clone(),
-                        val1_reg,
-                        val2_reg,
-                        WideDivImmediate {
-                            right_indirect: true,
-                        },
+                    BinaryOpKind::Div => (
+                        VirtualOp::WQDV(
+                            res_reg.clone(),
+                            val1_reg,
+                            val2_reg,
+                            WideDivImmediate {
+                                right_indirect: true,
+                            },
+                        ),
+                        Some("div"),
                     ),
-                    Some("div"),
-                ),
-                BinaryOpKind::Mod => todo!(),
-            },
+                    BinaryOpKind::Mod => todo!(),
+                }
+            }
             _ => {
                 // Use the standard opcodes
                 (
@@ -837,8 +854,9 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             idx_val
                 .get_constant(self.context)
                 .and_then(|idx_const| {
-                    if let ConstantValue::Uint(idx) = idx_const.value {
-                        Some(idx as usize)
+                    if let ConstantValue::Uint(idx) = &idx_const.value {
+                        let idx = usize::try_from(idx).unwrap();
+                        Some(idx)
                     } else {
                         None
                     }
@@ -1084,6 +1102,28 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
     fn compile_load(&mut self, instr_val: &Value, src_val: &Value) -> Result<(), CompileError> {
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
+
+        // if is ptr u256, do nothing
+        match src_val
+            .get_type(self.context)
+            .and_then(|x| x.get_pointee_type(self.context))
+        {
+            Some(t) if t.is_uint_of(self.context, 256) => {
+                let src_reg = self.value_to_register(src_val)?;
+                let instr_reg = self.reg_seqr.next();
+
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::MOVE(instr_reg.clone(), src_reg)),
+                    comment: "load value".into(),
+                    owning_span,
+                });
+
+                self.reg_map.insert(*instr_val, instr_reg);
+                return Ok(());
+            }
+            _ => {}
+        }
+
         if src_val
             .get_type(self.context)
             .and_then(|src_ty| src_ty.get_pointee_type(self.context))
@@ -1565,20 +1605,26 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 ))
             }
         } else {
-            let dst_reg = self.value_to_register(dst_val)?;
-            let val_reg = self.value_to_register(stored_val)?;
-
-            self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::SW(
-                    dst_reg,
-                    val_reg,
-                    VirtualImmediate12 { value: 0 },
-                )),
-                comment: "store value".into(),
-                owning_span,
-            });
-
-            Ok(())
+            let stored_ty = stored_val.get_type(self.context).unwrap();
+            let stored_size_bytes = ir_type_size_in_bytes(self.context, &stored_ty);
+            // If fits into one word, use SW
+            if stored_size_bytes < 8 {
+                let dst_reg = self.value_to_register(dst_val)?;
+                let val_reg = self.value_to_register(stored_val)?;
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::SW(
+                        dst_reg,
+                        val_reg,
+                        VirtualImmediate12 { value: 0 },
+                    )),
+                    comment: "store value".into(),
+                    owning_span,
+                });
+                Ok(())
+            } else {
+                // otherwise memcpy
+                self.compile_mem_copy_bytes(instr_val, dst_val, stored_val, stored_size_bytes)
+            }
         }
     }
 
@@ -1609,8 +1655,9 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
     ) -> (VirtualRegister, Option<DataId>) {
         // Use cheaper $zero or $one registers if possible.
         match &constant.value {
-            ConstantValue::Uint(0)
-                if config_name.is_none()
+            ConstantValue::Uint(n)
+                if n.is_zero()
+                    && config_name.is_none()
                     && constant
                         .ty
                         .get_uint_width(self.context)
@@ -1624,8 +1671,9 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 (VirtualRegister::Constant(ConstantRegister::Zero), None)
             }
 
-            ConstantValue::Uint(1)
-                if config_name.is_none()
+            ConstantValue::Uint(num)
+                if num.is_one()
+                    && config_name.is_none()
                     && constant
                         .ty
                         .get_uint_width(self.context)

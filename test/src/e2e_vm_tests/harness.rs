@@ -6,11 +6,12 @@ use forc_client::{
 };
 use forc_pkg::{Built, BuiltPackage};
 use fuel_tx::TransactionBuilder;
-use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
+use fuel_vm::checked_transaction::{builder::TransactionBuilderExt, Checked};
 use fuel_vm::fuel_tx;
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
 use futures::Future;
+use num_bigint::BigUint;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use regex::{Captures, Regex};
@@ -131,10 +132,111 @@ pub(crate) enum VMExecutionResult {
     MidenVM(miden::ExecutionTrace),
 }
 
+fn current_instruction(memory: &[u8], registers: &[u64]) -> Instruction {
+    let [hi, _] = memory[registers[fuel_vm::fuel_asm::RegId::PC] as usize..]
+        .chunks_exact(fuel_vm::consts::WORD_SIZE)
+        .next()
+        .map(|b| b.try_into().expect("Has to be correct size slice"))
+        .map(Word::from_be_bytes)
+        .map(fuel_vm::fuel_asm::raw_instructions_from_word)
+        .ok_or(InterpreterError::Panic(PanicReason::MemoryOverflow))
+        .unwrap();
+
+    Instruction::try_from(hi).unwrap()
+}
+
+fn print_register_values(instruction: Instruction, registers: &[u64]) -> String {
+    let used: [Option<fuel_vm::fuel_asm::RegId>; 4] = instruction.reg_ids();
+    format!(
+        "{}{}{}{}",
+        used[0]
+            .map(|x| format!("{x:?}={} ", registers[x]))
+            .unwrap_or("".into()),
+        used[1]
+            .map(|x| format!("{x:?}={} ", registers[x]))
+            .unwrap_or("".into()),
+        used[2]
+            .map(|x| format!("{x:?}={} ", registers[x]))
+            .unwrap_or("".into()),
+        used[3]
+            .map(|x| format!("{x:?}={}", registers[x]))
+            .unwrap_or("".into()),
+    )
+}
+
+fn as_biguint(memory: &[u8], addr: usize, len_bytes: usize) -> BigUint {
+    BigUint::from_bytes_be(&memory[addr..(addr + len_bytes)])
+}
+
+fn print_memory(instruction: Instruction, memory: &[u8], registers: &[u64]) -> String {
+    match instruction {
+        Instruction::WQOP(_) => {
+            let regs = instruction.reg_ids();
+            let a_addr = registers[regs[0].unwrap()] as usize;
+            let a = as_biguint(memory, a_addr, 32);
+
+            let b_addr = registers[regs[1].unwrap()] as usize;
+            let b = as_biguint(memory, b_addr, 32);
+
+            let c_addr = registers[regs[2].unwrap()] as usize;
+            let c = as_biguint(memory, c_addr, 32);
+            format!("u256@{a_addr} = {a}, u256@{b_addr} = {b}, u256@{c_addr} = {c}")
+        }
+        _ => {
+            format!("")
+        }
+    }
+}
+
+fn debug_exec(
+    i: &mut Interpreter<MemoryStorage, Script>,
+    tx: Checked<Script>,
+) -> Option<ProgramState> {
+    i.set_single_stepping(true);
+
+    let _ = i.transact(tx).ok()?;
+
+    let mut last_program_state;
+    println!("Debug");
+    println!("-----");
+    loop {
+        let instruction = current_instruction(i.memory(), i.registers());
+        println!(
+            "At {} {:?}",
+            i.registers()[fuel_vm::fuel_asm::RegId::PC] as usize,
+            instruction
+        );
+        let before_regs = print_register_values(instruction, i.registers());
+        let before_mem = print_memory(instruction, i.memory(), i.registers());
+
+        let state = i.resume();
+
+        let after_regs = print_register_values(instruction, i.registers());
+        let after_mem = print_memory(instruction, i.memory(), i.registers());
+
+        println!("    {}", prettydiff::diff_chars(&before_regs, &after_regs));
+        if !before_mem.is_empty() || !after_mem.is_empty() {
+            println!("    {}", prettydiff::diff_chars(&before_mem, &after_mem));
+        }
+
+        let state = state.unwrap();
+        last_program_state = Some(state.clone());
+        if let Some(debug) = state.debug_ref() {
+            if let Some(_) = debug.breakpoint().cloned() {
+                continue;
+            }
+        };
+        break;
+    }
+
+    last_program_state
+}
+
 /// Very basic check that code does indeed run in the VM.
 pub(crate) fn runs_in_vm(
     script: BuiltPackage,
     script_data: Option<Vec<u8>>,
+    debug: bool,
 ) -> Result<VMExecutionResult> {
     match script.descriptor.target {
         BuildTarget::Fuel => {
@@ -165,10 +267,16 @@ pub(crate) fn runs_in_vm(
                 .finalize_checked(block_height, &GasCosts::default());
 
             let mut i = Interpreter::with_storage(storage, Default::default(), GasCosts::default());
-            let transition = i.transact(tx)?;
+
+            let state = if debug {
+                debug_exec(&mut i, tx)
+            } else {
+                Some(i.transact(tx)?.state().clone())
+            };
+
             Ok(VMExecutionResult::Fuel(
-                *transition.state(),
-                transition.receipts().to_vec(),
+                state.unwrap(),
+                i.receipts().to_vec(),
             ))
         }
         BuildTarget::EVM => {

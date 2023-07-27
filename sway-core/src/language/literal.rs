@@ -18,7 +18,7 @@ pub enum Literal {
     U64(u64),
     U256(BigUint),
     String(span::Span),
-    Numeric(u64),
+    Numeric(BigUint),
     Boolean(bool),
     B256([u8; 32]),
 }

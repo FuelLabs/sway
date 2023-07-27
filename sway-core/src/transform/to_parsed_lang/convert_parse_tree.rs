@@ -2804,12 +2804,13 @@ fn literal_to_literal(
                 span,
             } = lit_int;
             match ty_opt {
+                // The literal int dont have any suffix
                 None => {
                     let orig_str = span.as_str();
                     if let Some(hex_digits) = orig_str.strip_prefix("0x") {
                         let num_digits = hex_digits.chars().filter(|c| *c != '_').count();
                         match num_digits {
-                            1..=16 => Literal::Numeric(u64::try_from(parsed).unwrap()),
+                            1..=16 => Literal::Numeric(parsed),
                             64 => {
                                 let bytes = parsed.to_bytes_be();
                                 let mut full_bytes = [0u8; 32];
@@ -2824,7 +2825,7 @@ fn literal_to_literal(
                     } else if let Some(bin_digits) = orig_str.strip_prefix("0b") {
                         let num_digits = bin_digits.chars().filter(|c| *c != '_').count();
                         match num_digits {
-                            1..=64 => Literal::Numeric(u64::try_from(parsed).unwrap()),
+                            1..=64 => Literal::Numeric(parsed),
                             256 => {
                                 let bytes = parsed.to_bytes_be();
                                 let mut full_bytes = [0u8; 32];
@@ -2837,15 +2838,10 @@ fn literal_to_literal(
                             }
                         }
                     } else {
-                        match u64::try_from(&parsed) {
-                            Ok(value) => Literal::Numeric(value),
-                            Err(..) => {
-                                let error = ConvertParseTreeError::IntLiteralOutOfRange { span };
-                                return Err(handler.emit_err(error.into()));
-                            }
-                        }
+                        Literal::Numeric(parsed)
                     }
                 }
+                // Literal have a suffix
                 Some((lit_int_type, _)) => match lit_int_type {
                     LitIntType::U8 => {
                         let value = match u8::try_from(parsed) {

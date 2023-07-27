@@ -2015,12 +2015,10 @@ impl ty::TyExpression {
                         }),
                         new_type,
                     ),
-                    IntegerBits::V256 => todo!(),
+                    IntegerBits::V256 => (Ok(Literal::U256(num)), new_type),
                 },
                 TypeInfo::Numeric => (
-                    num.to_string().parse().map(Literal::Numeric).map_err(|e| {
-                        Literal::handle_parse_int_error(engines, e, TypeInfo::Numeric, span.clone())
-                    }),
+                    Ok(Literal::Numeric(num)),
                     type_engine.insert(engines, TypeInfo::Numeric),
                 ),
                 _ => unreachable!("Unexpected type for integer literals"),

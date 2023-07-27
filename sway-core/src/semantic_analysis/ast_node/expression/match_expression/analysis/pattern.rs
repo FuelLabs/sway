@@ -197,7 +197,11 @@ impl Pattern {
             Literal::U256(_) => todo!(),
             Literal::B256(x) => Pattern::B256(x),
             Literal::Boolean(b) => Pattern::Boolean(b),
-            Literal::Numeric(x) => Pattern::Numeric(Range::from_single(x)),
+            Literal::Numeric(x) => {
+                // Patterns limited to u64
+                let x = u64::try_from(&x).unwrap();
+                Pattern::Numeric(Range::from_single(x))
+            }
             Literal::String(s) => Pattern::String(s.as_str().to_string()),
         }
     }

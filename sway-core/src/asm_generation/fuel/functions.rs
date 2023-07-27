@@ -673,6 +673,26 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             },
         );
 
+        // Reserve space for wide operations locals
+        let mut cfei_value = stack_base * 8;
+        for i in function.instruction_iter(self.context) {
+            match i.1.get_instruction(self.context) {
+                Some(i) => match i {
+                    Instruction::BinaryOp { arg1, .. } => {
+                        if let Some(256) = arg1
+                            .get_type(self.context)
+                            .unwrap()
+                            .get_uint_width(self.context)
+                        {
+                            cfei_value += 32;
+                        }
+                    }
+                    _ => {}
+                },
+                None => todo!(),
+            }
+        }
+
         // Reserve space on the stack (in bytes) for all our locals which require it.  Firstly save
         // the current $sp.
         let locals_base_reg = VirtualRegister::Constant(ConstantRegister::LocalsBase);
@@ -689,9 +709,9 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         }
         self.cur_bytecode.push(Op {
             opcode: Either::Left(VirtualOp::CFEI(VirtualImmediate24 {
-                value: locals_size as u32,
+                value: cfei_value as u32,
             })),
-            comment: format!("allocate {locals_size} bytes for locals"),
+            comment: format!("allocate {cfei_value} bytes for locals"),
             owning_span: None,
         });
         (locals_size, locals_base_reg, init_mut_vars)

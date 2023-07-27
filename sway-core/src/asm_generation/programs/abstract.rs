@@ -70,6 +70,7 @@ impl AbstractProgram {
             .collect::<Result<Vec<_>, _>>()?;
 
         // Allocate the registers for each function.
+
         let functions = abstract_functions
             .into_iter()
             .map(|fn_ops| {

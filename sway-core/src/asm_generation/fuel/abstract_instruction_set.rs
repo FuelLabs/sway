@@ -24,6 +24,8 @@ pub struct AbstractInstructionSet {
 
 impl AbstractInstructionSet {
     pub(crate) fn optimize(self) -> AbstractInstructionSet {
+        // println!("AbstractInstructionSet:: Before:");
+        // println!("{}", self.to_string());
         self.remove_sequential_jumps()
             .remove_redundant_moves()
             .remove_unused_ops()
@@ -57,6 +59,8 @@ impl AbstractInstructionSet {
     }
 
     fn remove_redundant_moves(mut self) -> AbstractInstructionSet {
+        // let before = self.to_string();
+
         // This has a lot of room for improvement.
         //
         // For now it is just removing MOVEs to registers which are _never_ used.  It doesn't
@@ -107,6 +111,9 @@ impl AbstractInstructionSet {
             }
         }
 
+        // let after = self.to_string();
+        // println!("######################################### remove_redundant_moves");
+        // println!("{}", prettydiff::diff_lines(&before, &after));
         self
     }
 

@@ -3802,9 +3802,9 @@ dependencies = [
 
 [[package]]
 name = "num-traits"
-version = "0.2.15"
+version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "578ede34cf02f8924ab9447f50c28075b4d3e5b269972345e7e0372b38c6cdcd"
+checksum = "f30b0abd723be7e2ffca1272140fac1a2f084c77ec3e123c192b66af1ee9e6c2"
 dependencies = [
  "autocfg",
 ]
@@ -5544,9 +5544,11 @@ dependencies = [
  "lazy_static",
  "miden-core",
  "num-bigint",
+ "num-traits",
  "pest",
  "pest_derive",
  "petgraph",
+ "prettydiff 0.6.4",
  "rustc-hash",
  "serde",
  "serde_json",
@@ -5586,7 +5588,10 @@ dependencies = [
  "downcast-rs",
  "filecheck",
  "generational-arena",
+ "num-bigint",
+ "num-traits",
  "peg",
+ "prettydiff 0.6.4",
  "rustc-hash",
  "sway-ir-macros",
  "sway-types",

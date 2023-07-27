@@ -46,6 +46,7 @@ impl ty::TyDecl {
                         with the assigned expression's type.",
                     );
                 let result = ty::TyExpression::type_check(ctx.by_ref(), body);
+
                 let body = check!(
                     result,
                     ty::TyExpression::error(name.span(), engines),

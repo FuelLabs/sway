@@ -1,5 +1,7 @@
 //! [`Constant`] is a typed constant value.
 
+use num_bigint::BigUint;
+
 use crate::{context::Context, irtype::Type, pretty::DebugWithContext, value::Value};
 
 /// A [`Type`] and constant value, including [`ConstantValue::Undef`] for uninitialized constants.
@@ -15,7 +17,7 @@ pub enum ConstantValue {
     Undef,
     Unit,
     Bool(bool),
-    Uint(u64),
+    Uint(BigUint),
     B256([u8; 32]),
     String(Vec<u8>),
     Array(Vec<Constant>),
@@ -37,7 +39,7 @@ impl Constant {
         }
     }
 
-    pub fn new_uint(context: &mut Context, nbits: u16, n: u64) -> Self {
+    pub fn new_uint(context: &mut Context, nbits: u16, n: BigUint) -> Self {
         Constant {
             ty: Type::new_uint(context, nbits),
             value: ConstantValue::Uint(n),
@@ -89,7 +91,7 @@ impl Constant {
         Value::new_constant(context, new_const)
     }
 
-    pub fn get_uint(context: &mut Context, nbits: u16, value: u64) -> Value {
+    pub fn get_uint(context: &mut Context, nbits: u16, value: BigUint) -> Value {
         let new_const = Constant::new_uint(context, nbits, value);
         Value::new_constant(context, new_const)
     }

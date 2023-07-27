@@ -575,14 +575,13 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
             ty.and_then(|ty| {
                 idx_val
                     .get_constant(self.context)
-                    .and_then(|const_ref| {
-                        if let ConstantValue::Uint(n) = const_ref.value {
-                            Some(n)
-                        } else {
-                            None
+                    .and_then(|const_ref| match &const_ref.value {
+                        ConstantValue::Uint(idx) => {
+                            let idx = u64::try_from(idx).ok()?;
+                            ty.get_field_type(self.context, idx)
                         }
+                        _ => None,
                     })
-                    .and_then(|idx| ty.get_field_type(self.context, idx))
                     .or_else(|| ty.get_array_elem_type(self.context))
             })
         });

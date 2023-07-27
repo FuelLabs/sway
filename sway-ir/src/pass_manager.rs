@@ -235,7 +235,11 @@ impl PassManager {
     pub fn run(&mut self, ir: &mut Context, passes: &PassGroup) -> Result<bool, IrError> {
         let mut modified = false;
         for pass in passes.flatten_pass_group() {
+            // println!("######################################################### Pass: {pass}");
+            // let before = ir.to_string();
             modified |= self.actually_run(ir, pass)?;
+            // let after = ir.to_string();
+            // println!("{}", prettydiff::diff_lines(&before, &after));
         }
         Ok(modified)
     }

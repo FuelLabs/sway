@@ -40,6 +40,8 @@ impl AllocatedAbstractInstructionSet {
     /// Typically there will be only one of each but the code here allows for nested sections or
     /// even overlapping sections.
     pub(crate) fn emit_pusha_popa(mut self) -> Self {
+        // let before = self.to_string();
+
         // Gather the sets of used registers per section.  Using a fold here because it's actually
         // simpler to manage.  We use a HashSet to keep track of the active section labels and then
         // build a HashMap of Label to HashSet of registers.
@@ -170,6 +172,12 @@ impl AllocatedAbstractInstructionSet {
             };
             new_ops
         });
+
+        // let after = self.to_string();
+        // println!(
+        //     "################################################################# emit_pusha_popa"
+        // );
+        // println!("{}", prettydiff::diff_lines(&before, &after));
 
         self
     }
