@@ -7,15 +7,15 @@ use annotate_snippets::{
 use ansi_term::Colour;
 use anyhow::{bail, Result};
 use forc_tracing::{println_red_err, println_yellow_err};
-use std::str;
+use std::{str, collections::HashSet};
 use std::{ffi::OsStr, process::Termination};
 use std::{
     fmt::Display,
     path::{Path, PathBuf},
 };
 use sway_core::language::parsed::TreeType;
-use sway_error::{error::CompileError, warning::CompileWarning, compile_message::{InSourceMessage, ToCompileMessage}};
-use sway_types::{LineCol, SourceEngine, Spanned};
+use sway_error::{error::CompileError, warning::CompileWarning, compile_message::{InSourceMessage, ToCompileMessage, InSourceMessageType}};
+use sway_types::{LineCol, SourceEngine, Spanned, Span};
 use sway_utils::constants;
 use tracing::error;
 
@@ -451,15 +451,19 @@ fn format_err(source_engine: &SourceEngine, err: &CompileError) {
 
     let mut snippet_slices = Vec::<Slice<'_>>::new();
 
+    // We first display messages from the file in which the message itself occurs.
     if err.message().is_in_source() {
-        snippet_slices.push(construct_slice(err.message(), AnnotationType::Error))
+        snippet_slices.push(construct_slice(err.source_messages_in_message_file()))
     }
 
     // Even if the error message itself is not in code, we can still have
     // infos in the source code. So, we always add infos.
-    for info in err.in_source_info() {
-        snippet_slices.push(construct_slice(info, AnnotationType::Info))
+    for (_, file_path) in err.related_source_files(false) {
+        snippet_slices.push(construct_slice(err.source_messages_in_file(file_path)))
     }
+    // for info in err.in_source_info() {
+    //     snippet_slices.push(construct_slice(info, AnnotationType::Info))
+    // }
 
     let mut snippet_footer = Vec::<Annotation<'_>>::new();
     for help in err.help() {
@@ -521,33 +525,122 @@ fn format_warning(source_engine: &SourceEngine, err: &CompileWarning) {
     tracing::warn!("{}\n____\n", DisplayList::from(snippet))
 }
 
-fn construct_slice<'a>(message: &'a InSourceMessage, annotation_type: AnnotationType) -> Slice<'a> {
+fn construct_slice<'a>(messages: Vec<&'a InSourceMessage>) -> Slice<'a> {
     debug_assert!(
-        message.is_in_source(),
+        !messages.is_empty(),
+        "To construct slices, at least one message must be provided."
+    );
+
+    debug_assert!(
+        messages.iter().all(|message| message.is_in_source()),
         "Slices can be constructed only for messages that are related to a place in source code."
     );
 
-    let span = message.span();
+    debug_assert!(
+        HashSet::<&String>::from_iter(messages.iter().map(|message| message.source_file_path_as_string().unwrap())).len() == 1,
+        "Slices can be constructed only for messages that are related to places in the same source code."
+    );
 
-    let mut start_pos = span.start();
-    let mut end_pos = span.end();
-    let (mut start, end) = span.line_col();
+    let soruce_file = messages[0].source_file_path_as_string().map(|path| path.as_str());
+    let source_code = messages[0].span().input();
+    let span = Span::join_all(messages.iter().map(|message| message.span().clone()));
+    let (source, line_start, shift_in_bytes) = construct_code_snippet(&span, source_code);
 
-    let input = construct_window(&mut start, end, &mut start_pos, &mut end_pos, span.input());
+    let mut annotations = vec![];
 
-    Slice {
-        source: input,
-        line_start: start.line,
-        origin: message.source_file_path_as_string().map(|path| path.as_str()),
-        fold: false,
-        annotations: vec![SourceAnnotation {
+    for message in messages {
+        annotations.push(SourceAnnotation {
             label: message.friendly_text(),
-            annotation_type,
-            range: (start_pos, end_pos),
-        }],
+            annotation_type: get_annotation_type(message.message_type()),
+            range: get_annotation_range(message.span(), source_code, shift_in_bytes)
+        });
+    }
+
+    return Slice {
+        source,
+        line_start,
+        origin: soruce_file,
+        fold: true,
+        annotations,
+    };
+
+    fn get_annotation_range(span: &Span, source_code: &str, shift_in_bytes: usize) -> (usize, usize) {
+        let mut start_pos = span.start();
+        let mut end_pos = span.end();
+
+        let start_ix_bytes = start_pos - std::cmp::min(shift_in_bytes, start_pos);
+        let end_ix_bytes = end_pos - std::cmp::min(shift_in_bytes, end_pos);
+
+        // We want the start_ix and end_ix in terms of chars and not bytes, so translate.
+        start_pos = source_code[shift_in_bytes..(shift_in_bytes + start_ix_bytes)]
+            .chars()
+            .count();
+        end_pos = source_code[shift_in_bytes..(shift_in_bytes + end_ix_bytes)]
+            .chars()
+            .count();
+
+        (start_pos, end_pos)
+    }
+
+    fn get_annotation_type(message_type: InSourceMessageType) -> AnnotationType {
+        match message_type {
+            InSourceMessageType::Info => AnnotationType::Info,
+            InSourceMessageType::Warning => AnnotationType::Warning,
+            InSourceMessageType::Error => AnnotationType::Error,
+        }
     }
 }
 
+/// Given the overall span to be shown in the code snippet, determines how much of the input source
+/// to show in the snippet.
+/// 
+/// Returns the source to be shown, the line start, and the offset of the snippet in bytes relative
+/// to the begining of the input code.
+///
+/// The library we use doesn't handle auto-windowing and line numbers, so we must manually
+/// calculate the line numbers and match them up with the input window. It is a bit fiddly.
+fn construct_code_snippet<'a>(span: &Span, input: &'a str) -> (&'a str, usize, usize) {
+    // how many lines to prepend or append to the highlighted region in the window
+    const NUM_LINES_BUFFER: usize = 2;
+
+    let (start, end) = span.line_col();
+
+    let total_lines_in_input = input.chars().filter(|x| *x == '\n').count();
+    debug_assert!(end.line >= start.line);
+    let total_lines_of_highlight = end.line - start.line;
+    debug_assert!(total_lines_in_input >= total_lines_of_highlight);
+
+    let mut current_line = 0;
+    let mut lines_to_start_of_snippet = 0;
+    let mut calculated_start_ix = None;
+    let mut calculated_end_ix = None;
+    let mut pos = 0;
+    for character in input.chars() {
+        if character == '\n' {
+            current_line += 1
+        }
+
+        if current_line + NUM_LINES_BUFFER >= start.line && calculated_start_ix.is_none() {
+            calculated_start_ix = Some(pos);
+            lines_to_start_of_snippet = current_line;
+        }
+
+        if current_line >= end.line + NUM_LINES_BUFFER && calculated_end_ix.is_none() {
+            calculated_end_ix = Some(pos);
+        }
+
+        if calculated_start_ix.is_some() && calculated_end_ix.is_some() {
+            break;
+        }
+        pos += character.len_utf8();
+    }
+    let calculated_start_ix = calculated_start_ix.unwrap_or(0);
+    let calculated_end_ix = calculated_end_ix.unwrap_or(input.len());
+
+    (&input[calculated_start_ix..calculated_end_ix], lines_to_start_of_snippet, calculated_start_ix)
+}
+
+// TODO-IG: Remove once multi-span is implemented for warnings.
 /// Given a start and an end position and an input, determine how much of a window to show in the
 /// error.
 /// Mutates the start and end indexes to be in line with the new slice length.

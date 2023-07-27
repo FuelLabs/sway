@@ -457,9 +457,9 @@ pub enum CompileError {
     #[error("Variables cannot shadow constants. The variable \"{name}\" shadows constant with the same name.")]
     VariableShadowsConstant { name: Ident, constant_span: Span },
     #[error("Constants cannot shadow variables. The constant \"{name}\" shadows variable with the same name.")]
-    ConstantShadowsVariable { name: Ident },
+    ConstantShadowsVariable { name: Ident, variable_span: Span },
     #[error("Constants cannot shadow constants. The constant \"{name}\" shadows constant with the same name.")]
-    ConstantShadowsConstant { name: Ident },
+    ConstantShadowsConstant { name: Ident, constant_span: Span },
     #[error("The imported symbol \"{name}\" shadows another symbol with the same name.")]
     ShadowsOtherSymbol { name: Ident },
     #[error("The name \"{name}\" is already used for a generic parameter in this scope.")]
@@ -768,8 +768,8 @@ impl Spanned for CompileError {
             InvalidOpcodeFromPredicate { span, .. } => span.clone(),
             ArrayOutOfBounds { span, .. } => span.clone(),
             VariableShadowsConstant { name, .. } => name.span(),
-            ConstantShadowsVariable { name } => name.span(),
-            ConstantShadowsConstant { name } => name.span(),
+            ConstantShadowsVariable { name, ..} => name.span(),
+            ConstantShadowsConstant { name, .. } => name.span(),
             ShadowsOtherSymbol { name } => name.span(),
             GenericShadowsGeneric { name } => name.span(),
             MatchExpressionNonExhaustive { span, .. } => span.clone(),
@@ -844,12 +844,46 @@ impl ToCompileMessage for CompileError {
         match self {
             VariableShadowsConstant { name , constant_span} => CompileMessage {
                 title: Some("Constants cannot be shadowed".to_string()),
-                message: InSourceMessage::new(
+                message: InSourceMessage::error(
                     source_engine,
                     self.span().clone(),
                     format!("Variable \"{name}\" shadows constant with the same name.")
                 ),
-                in_source_info: vec![InSourceMessage::new(
+                in_source_info: vec![InSourceMessage::info(
+                    source_engine,
+                    constant_span.clone(),
+                    format!("Constant \"{name}\" is declared here.")
+                )],
+                help: vec![
+                    "Unlike variables, constants cannot be shadowed by other constants or variables, nor they can shadow variables.".to_string()
+                ],
+                ..Default::default()
+            },
+            ConstantShadowsVariable { name , variable_span} => CompileMessage {
+                title: Some("Constants cannot shadow variables".to_string()),
+                message: InSourceMessage::error(
+                    source_engine,
+                    self.span().clone(),
+                    format!("Constant \"{name}\" shadows variable with the same name.")
+                ),
+                in_source_info: vec![InSourceMessage::info(
+                    source_engine,
+                    variable_span.clone(),
+                    format!("Variable \"{name}\" is declared here.")
+                )],
+                help: vec![
+                    "Unlike variables, constants cannot be shadowed by other constants or variables, nor they can shadow variables.".to_string()
+                ],
+                ..Default::default()
+            },
+            ConstantShadowsConstant { name , constant_span} => CompileMessage {
+                title: Some("Constants cannot be shadowed".to_string()),
+                message: InSourceMessage::error(
+                    source_engine,
+                    self.span().clone(),
+                    format!("Constant \"{name}\" shadows constant with the same name.")
+                ),
+                in_source_info: vec![InSourceMessage::info(
                     source_engine,
                     constant_span.clone(),
                     format!("Constant \"{name}\" is declared here.")
@@ -860,7 +894,7 @@ impl ToCompileMessage for CompileError {
                 ..Default::default()
             },
            _ => CompileMessage {
-                    message: InSourceMessage::new(source_engine, self.span().clone(), format!("{}", self)),
+                    message: InSourceMessage::error(source_engine, self.span().clone(), format!("{}", self)),
                     ..Default::default()
                 }
         }

@@ -126,8 +126,11 @@ impl Items {
                         })
                     }
                     // constant shadowing a variable
-                    (VariableDecl { .. }, ConstantDecl { .. }, _) => {
-                        errors.push(CompileError::ConstantShadowsVariable { name: name.clone() })
+                    (VariableDecl(variable_decl), ConstantDecl { .. }, _) => {
+                        errors.push(CompileError::ConstantShadowsVariable {
+                            name: name.clone(),
+                            variable_span: variable_decl.name.span().clone()
+                        })
                     }
                     // constant shadowing a constant outside function body
                     (ConstantDecl { .. }, ConstantDecl { .. }, ConstShadowingMode::ItemStyle) => {
@@ -137,8 +140,11 @@ impl Items {
                         })
                     }
                     // constant shadowing a constant within function body
-                    (ConstantDecl { .. }, ConstantDecl { .. }, ConstShadowingMode::Sequential) => {
-                        errors.push(CompileError::ConstantShadowsConstant { name: name.clone() })
+                    (ConstantDecl(constant_decl), ConstantDecl { .. }, ConstShadowingMode::Sequential) => {
+                        errors.push(CompileError::ConstantShadowsConstant {
+                            name: name.clone(),
+                            constant_span: constant_decl.decl_span.clone()
+                        })
                     }
                     // type or type alias shadowing another type or type alias
                     // trait/abi shadowing another trait/abi
