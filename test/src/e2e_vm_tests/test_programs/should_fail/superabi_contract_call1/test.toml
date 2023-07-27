@@ -1,0 +1,3 @@
+category = "fail"
+
+# check: $()A contract method cannot call methods belonging to the same ABI
