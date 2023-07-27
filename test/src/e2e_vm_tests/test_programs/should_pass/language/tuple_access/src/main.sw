@@ -8,7 +8,7 @@ fn test<T, E>(a: T, b: E) {
     let (_x, _y): (T, E) = (a, b);
 } 
 
-fn main() -> u32 {
+fn main() -> u64 {
     let (_foo, _bar) = gimme_a_pair();
     let (_x, _y): (u32, bool) = (10, true);
     //let (x, y): (u32, _) = (42, true); // this generates a parsing error

@@ -120,7 +120,7 @@ fn where_x() -> u64 {
     return 1;
 }
 
-fn main() -> u32 {
+fn main() -> u64 {
     let where_y = abi_x()
         + enum_x()
         + fn_x()

@@ -3,7 +3,7 @@ use sway_types::Spanned;
 use crate::{
     error::*,
     language::{parsed, ty, Visibility},
-    semantic_analysis::{Mode, TypeCheckContext},
+    semantic_analysis::{AbiMode, TypeCheckContext},
     type_system::*,
 };
 
@@ -72,7 +72,7 @@ impl ty::TyTraitFn {
     /// This function is used in trait declarations to insert "placeholder"
     /// functions in the methods. This allows the methods to use functions
     /// declared in the interface surface.
-    pub(crate) fn to_dummy_func(&self, mode: Mode) -> ty::TyFunctionDecl {
+    pub(crate) fn to_dummy_func(&self, abi_mode: AbiMode) -> ty::TyFunctionDecl {
         ty::TyFunctionDecl {
             purity: self.purity,
             name: self.name.clone(),
@@ -84,7 +84,7 @@ impl ty::TyTraitFn {
             return_type: self.return_type.clone(),
             visibility: Visibility::Public,
             type_parameters: vec![],
-            is_contract_call: mode == Mode::ImplAbiFn,
+            is_contract_call: abi_mode == AbiMode::ImplAbiFn,
             where_clause: vec![],
         }
     }

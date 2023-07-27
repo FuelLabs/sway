@@ -264,7 +264,8 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
     for (value, replace_with) in replaces.into_iter() {
         match replace_with {
             ReplaceWith::InPlaceLocal(replacement_var) => {
-                let Some(Instruction::GetLocal(redundant_var)) = value.get_instruction(context) else {
+                let Some(Instruction::GetLocal(redundant_var)) = value.get_instruction(context)
+                else {
                     panic!("earlier match now fails");
                 };
                 if redundant_var.is_mutable(context) {
@@ -708,8 +709,7 @@ fn is_clobbered(
     let mut worklist: Vec<(Block, Box<dyn Iterator<Item = Value>>)> =
         vec![(store_block, Box::new(iter))];
     let mut visited = FxHashSet::default();
-    'next_job: while !worklist.is_empty() {
-        let (block, iter) = worklist.pop().unwrap();
+    'next_job: while let Some((block, iter)) = worklist.pop() {
         visited.insert(block);
         for inst in iter {
             if inst == load_val || inst == store_val {

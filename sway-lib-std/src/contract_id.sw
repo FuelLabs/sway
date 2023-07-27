@@ -16,8 +16,8 @@ impl core::ops::Eq for ContractId {
 
 /// Functions for casting between the `b256` and `ContractId` types.
 impl From<b256> for ContractId {
-    fn from(bits: b256) -> ContractId {
-        ContractId { value: bits }
+    fn from(bits: b256) -> Self {
+        Self { value: bits }
     }
 
     fn into(self) -> b256 {
@@ -89,7 +89,7 @@ impl ContractId {
         asm(r1: amount) {
             mint r1;
         };
-        self.transfer(amount, ContractId::from(asm() { fp: b256 })); // Transfer the self contract token
+        self.transfer(amount, Self::from(asm() { fp: b256 })); // Transfer the self contract token
     }
 }
 

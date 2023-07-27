@@ -14,6 +14,8 @@ pub struct ParseModule {
     /// Submodules introduced within this module using the `dep` syntax in order of declaration.
     pub submodules: Vec<(ModName, ParseSubmodule)>,
     pub attributes: transform::AttributesMap,
+    /// The span of the module kind.
+    pub module_kind_span: Span,
     /// an empty span at the beginning of the file containing the module
     pub span: Span,
 }
