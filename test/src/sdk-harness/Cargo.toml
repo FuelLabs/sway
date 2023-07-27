@@ -10,8 +10,8 @@ publish = false
 assert_matches = "1.5.0"
 
 # Depednencies from the `fuel-core` repository:
-fuel-core = { version = "0.20.1", default-features = false }
-fuel-core-client = { version = "0.20.1", default-features = false }
+fuel-core = { version = "0.20.2", default-features = false }
+fuel-core-client = { version = "0.20.2", default-features = false }
 
 # Depednencies from the `fuel-vm` repository:
 fuel-vm = "0.35.0"

@@ -32,7 +32,7 @@ exclude = [
 
 [workspace.dependencies]
 # Depednencies from the `fuel-core` repository:
-fuel-core-client = { version = "0.20.1", default-features = false }
+fuel-core-client = { version = "0.20.2", default-features = false }
 
 # Depednencies from the `fuel-vm` repository:
 fuel-asm = "0.35.0"

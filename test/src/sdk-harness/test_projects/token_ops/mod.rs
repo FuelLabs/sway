@@ -1,12 +1,12 @@
 use fuels::{
     accounts::wallet::WalletUnlocked,
     prelude::*,
+    tx::Bytes32,
     types::AssetId,
     types::{Bits256, Identity},
-    tx::Bytes32,
 };
-use std::str::FromStr;
 use sha2::{Digest, Sha256};
+use std::str::FromStr;
 
 abigen!(Contract(
     name = "TestFuelCoinContract",
@@ -84,7 +84,6 @@ async fn can_mint_multiple() {
         .call()
         .await
         .unwrap();
-
 
     balance_result_1 = fuelcontract_instance
         .methods()
@@ -361,7 +360,11 @@ async fn can_perform_generic_transfer_to_address() {
 
     fuelcontract_instance
         .methods()
-        .generic_transfer(amount, Bits256(*asset_id), Identity::Address(address.into()))
+        .generic_transfer(
+            amount,
+            Bits256(*asset_id),
+            Identity::Address(address.into()),
+        )
         .append_variable_outputs(1)
         .call()
         .await
@@ -457,7 +460,7 @@ async fn can_send_message_output_with_data() {
     assert_eq!(*fuelcontract_id, **message_receipt.sender().unwrap());
     assert_eq!(&recipient_address, message_receipt.recipient().unwrap());
     assert_eq!(amount, message_receipt.amount().unwrap());
-    assert_eq!(8, message_receipt.len().unwrap());
+    assert_eq!(3, message_receipt.len().unwrap());
     assert_eq!(vec![100, 75, 50], message_receipt.data().unwrap());
 }
 
@@ -513,7 +516,12 @@ async fn get_fuelcoin_instance(
     .unwrap();
 
     wallet
-        .force_transfer_to_contract(&fuelcontract_id, 1000, AssetId::BASE, TxParameters::default())
+        .force_transfer_to_contract(
+            &fuelcontract_id,
+            1000,
+            AssetId::BASE,
+            TxParameters::default(),
+        )
         .await
         .unwrap();
     let fuelcontract_instance = TestFuelCoinContract::new(fuelcontract_id.clone(), wallet);
@@ -543,9 +551,18 @@ async fn test_address_mint_to() {
     let amount = 44u64;
     let to = wallet.address();
 
-    fuelcontract_instance.methods().address_mint_to(to, amount, Bits256(*sub_id)).append_variable_outputs(1).call().await.unwrap();
+    fuelcontract_instance
+        .methods()
+        .address_mint_to(to, amount, Bits256(*sub_id))
+        .append_variable_outputs(1)
+        .call()
+        .await
+        .unwrap();
 
-    let balance = wallet.get_asset_balance(&AssetId::from(*asset_id)).await.unwrap();
+    let balance = wallet
+        .get_asset_balance(&AssetId::from(*asset_id))
+        .await
+        .unwrap();
     assert_eq!(balance, amount);
 }
 
@@ -565,11 +582,20 @@ async fn test_address_transfer_new_mint() {
         .await
         .unwrap();
 
-    fuelcontract_instance.methods().address_transfer(to, Bits256(*asset_id), amount).append_variable_outputs(1).call().await.unwrap();
+    fuelcontract_instance
+        .methods()
+        .address_transfer(to, Bits256(*asset_id), amount)
+        .append_variable_outputs(1)
+        .call()
+        .await
+        .unwrap();
 
-    let balance = wallet.get_asset_balance(&AssetId::from(*asset_id)).await.unwrap();
+    let balance = wallet
+        .get_asset_balance(&AssetId::from(*asset_id))
+        .await
+        .unwrap();
 
-    assert_eq!(balance, amount);        
+    assert_eq!(balance, amount);
 }
 
 #[tokio::test]
@@ -582,7 +608,13 @@ async fn test_address_transfer_base_asset() {
 
     let balance_prev = wallet.get_asset_balance(&AssetId::BASE).await.unwrap();
 
-    fuelcontract_instance.methods().address_transfer(to, Bits256([0u8; 32]), amount).append_variable_outputs(1).call().await.unwrap();
+    fuelcontract_instance
+        .methods()
+        .address_transfer(to, Bits256([0u8; 32]), amount)
+        .append_variable_outputs(1)
+        .call()
+        .await
+        .unwrap();
 
     let balance_new = wallet.get_asset_balance(&AssetId::BASE).await.unwrap();
 
@@ -598,9 +630,22 @@ async fn test_contract_mint_to() {
     let amount = 44u64;
     let to = get_balance_contract_id(wallet.clone()).await;
 
-    fuelcontract_instance.methods().contract_mint_to(to, amount, Bits256(*sub_id)).append_contract(to.into()).call().await.unwrap();
+    fuelcontract_instance
+        .methods()
+        .contract_mint_to(to, amount, Bits256(*sub_id))
+        .append_contract(to.into())
+        .call()
+        .await
+        .unwrap();
 
-    let balance = fuelcontract_instance.methods().get_balance(Bits256(*asset_id), to).append_contract(to.into()).call().await.unwrap().value;
+    let balance = fuelcontract_instance
+        .methods()
+        .get_balance(Bits256(*asset_id), to)
+        .append_contract(to.into())
+        .call()
+        .await
+        .unwrap()
+        .value;
     assert_eq!(balance, amount);
 }
 
@@ -620,11 +665,24 @@ async fn test_contract_transfer_new_mint() {
         .await
         .unwrap();
 
-    fuelcontract_instance.methods().contract_transfer(to, Bits256(*asset_id), amount).append_contract(to.into()).call().await.unwrap();
+    fuelcontract_instance
+        .methods()
+        .contract_transfer(to, Bits256(*asset_id), amount)
+        .append_contract(to.into())
+        .call()
+        .await
+        .unwrap();
 
-    let balance = fuelcontract_instance.methods().get_balance(Bits256(*asset_id), to).append_contract(to.into()).call().await.unwrap().value;
+    let balance = fuelcontract_instance
+        .methods()
+        .get_balance(Bits256(*asset_id), to)
+        .append_contract(to.into())
+        .call()
+        .await
+        .unwrap()
+        .value;
 
-    assert_eq!(balance, amount);        
+    assert_eq!(balance, amount);
 }
 
 #[tokio::test]
@@ -635,9 +693,22 @@ async fn test_contract_transfer_base_asset() {
     let amount = 44u64;
     let to = get_balance_contract_id(wallet.clone()).await;
 
-    fuelcontract_instance.methods().contract_transfer(to, Bits256([0u8; 32]), amount).append_contract(to.into()).call().await.unwrap();
+    fuelcontract_instance
+        .methods()
+        .contract_transfer(to, Bits256([0u8; 32]), amount)
+        .append_contract(to.into())
+        .call()
+        .await
+        .unwrap();
 
-    let balance = fuelcontract_instance.methods().get_balance(Bits256([0u8; 32]), to).append_contract(to.into()).call().await.unwrap().value;
+    let balance = fuelcontract_instance
+        .methods()
+        .get_balance(Bits256([0u8; 32]), to)
+        .append_contract(to.into())
+        .call()
+        .await
+        .unwrap()
+        .value;
 
     assert_eq!(balance, amount);
 }
@@ -652,9 +723,18 @@ async fn test_identity_address_mint_to() {
     let to = wallet.address().into();
     let to = Identity::Address(to);
 
-    fuelcontract_instance.methods().identity_mint_to(to, amount, Bits256(*sub_id)).append_variable_outputs(1).call().await.unwrap();
+    fuelcontract_instance
+        .methods()
+        .identity_mint_to(to, amount, Bits256(*sub_id))
+        .append_variable_outputs(1)
+        .call()
+        .await
+        .unwrap();
 
-    let balance = wallet.get_asset_balance(&AssetId::from(*asset_id)).await.unwrap();
+    let balance = wallet
+        .get_asset_balance(&AssetId::from(*asset_id))
+        .await
+        .unwrap();
     assert_eq!(balance, amount);
 }
 
@@ -675,11 +755,20 @@ async fn test_identity_address_transfer_new_mint() {
         .await
         .unwrap();
 
-    fuelcontract_instance.methods().identity_transfer(to, Bits256(*asset_id), amount).append_variable_outputs(1).call().await.unwrap();
+    fuelcontract_instance
+        .methods()
+        .identity_transfer(to, Bits256(*asset_id), amount)
+        .append_variable_outputs(1)
+        .call()
+        .await
+        .unwrap();
 
-    let balance = wallet.get_asset_balance(&AssetId::from(*asset_id)).await.unwrap();
+    let balance = wallet
+        .get_asset_balance(&AssetId::from(*asset_id))
+        .await
+        .unwrap();
 
-    assert_eq!(balance, amount);        
+    assert_eq!(balance, amount);
 }
 
 #[tokio::test]
@@ -693,7 +782,13 @@ async fn test_identity_address_transfer_base_asset() {
 
     let balance_prev = wallet.get_asset_balance(&AssetId::BASE).await.unwrap();
 
-    fuelcontract_instance.methods().identity_transfer(to, Bits256([0u8; 32]), amount).append_variable_outputs(1).call().await.unwrap();
+    fuelcontract_instance
+        .methods()
+        .identity_transfer(to, Bits256([0u8; 32]), amount)
+        .append_variable_outputs(1)
+        .call()
+        .await
+        .unwrap();
 
     let balance_new = wallet.get_asset_balance(&AssetId::BASE).await.unwrap();
 
@@ -710,9 +805,22 @@ async fn test_identity_contract_mint_to() {
     let amount = 44u64;
     let to = Identity::ContractId(balance_contract_id);
 
-    fuelcontract_instance.methods().identity_mint_to(to, amount, Bits256(*sub_id)).append_contract(balance_contract_id.into()).call().await.unwrap();
+    fuelcontract_instance
+        .methods()
+        .identity_mint_to(to, amount, Bits256(*sub_id))
+        .append_contract(balance_contract_id.into())
+        .call()
+        .await
+        .unwrap();
 
-    let balance = fuelcontract_instance.methods().get_balance(Bits256(*asset_id), balance_contract_id).append_contract(balance_contract_id.into()).call().await.unwrap().value;
+    let balance = fuelcontract_instance
+        .methods()
+        .get_balance(Bits256(*asset_id), balance_contract_id)
+        .append_contract(balance_contract_id.into())
+        .call()
+        .await
+        .unwrap()
+        .value;
     assert_eq!(balance, amount);
 }
 
@@ -733,11 +841,24 @@ async fn test_identity_contract_transfer_new_mint() {
         .await
         .unwrap();
 
-    fuelcontract_instance.methods().identity_transfer(to, Bits256(*asset_id), amount).append_contract(balance_contract_id.into()).call().await.unwrap();
+    fuelcontract_instance
+        .methods()
+        .identity_transfer(to, Bits256(*asset_id), amount)
+        .append_contract(balance_contract_id.into())
+        .call()
+        .await
+        .unwrap();
 
-    let balance = fuelcontract_instance.methods().get_balance(Bits256(*asset_id), balance_contract_id).append_contract(balance_contract_id.into()).call().await.unwrap().value;
+    let balance = fuelcontract_instance
+        .methods()
+        .get_balance(Bits256(*asset_id), balance_contract_id)
+        .append_contract(balance_contract_id.into())
+        .call()
+        .await
+        .unwrap()
+        .value;
 
-    assert_eq!(balance, amount);        
+    assert_eq!(balance, amount);
 }
 
 #[tokio::test]
@@ -749,10 +870,23 @@ async fn test_identity_contract_transfer_base_asset() {
     let amount = 44u64;
     let to = Identity::ContractId(balance_contract_id);
 
-    fuelcontract_instance.methods().identity_transfer(to, Bits256([0u8; 32]), amount).append_contract(balance_contract_id.into()).call().await.unwrap();
+    fuelcontract_instance
+        .methods()
+        .identity_transfer(to, Bits256([0u8; 32]), amount)
+        .append_contract(balance_contract_id.into())
+        .call()
+        .await
+        .unwrap();
 
-    let balance = fuelcontract_instance.methods().get_balance(Bits256([0u8; 32]), balance_contract_id).append_contract(balance_contract_id.into()).call().await.unwrap().value;
-    
+    let balance = fuelcontract_instance
+        .methods()
+        .get_balance(Bits256([0u8; 32]), balance_contract_id)
+        .append_contract(balance_contract_id.into())
+        .call()
+        .await
+        .unwrap()
+        .value;
+
     assert_eq!(balance, amount);
 }
 
