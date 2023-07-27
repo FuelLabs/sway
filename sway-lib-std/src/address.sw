@@ -10,6 +10,7 @@ use ::outputs::{Output, output_amount, output_count, output_type};
 
 /// The `Address` type, a struct wrapper around the inner `b256` value.
 pub struct Address {
+    /// The underlying raw `b256` data of the address.
     value: b256,
 }
 
@@ -21,10 +22,46 @@ impl core::ops::Eq for Address {
 
 /// Functions for casting between the `b256` and `Address` types.
 impl From<b256> for Address {
+    /// Casts raw `b256` data to an `Address`.
+    /// 
+    /// # Arguments
+    ///
+    /// * `bits`: [b256] - The raw `b256` data to be casted.
+    /// 
+    /// # Returns
+    ///
+    /// * [Address] - The newly created `Address` from the raw `b256`.
+    ///
+    /// # Examples
+    /// 
+    /// ```sway
+    /// use std::constants::ZERO_B256;
+    ///
+    /// fn foo() {
+    ///    let address = Address::from(ZERO_B256);
+    /// }
+    /// ```
     fn from(bits: b256) -> Address {
         Address { value: bits }
     }
 
+    /// Casts an `Address` to raw `b256` data.
+    /// 
+    /// # Returns
+    ///
+    /// * [b256] - The underlying raw `b256` data of the `Address`.
+    ///
+    /// # Examples
+    /// 
+    /// ```sway
+    /// use std::constants::ZERO_B256;
+    ///
+    /// fn foo() {
+    ///     let address = Address::from(ZERO_B256);
+    ///     let b256_data = address.into();
+    ///     assert(b256_data == ZERO_B256);
+    /// }
+    /// ```
     fn into(self) -> b256 {
         self.value
     }
@@ -34,25 +71,27 @@ impl Address {
     /// Transfer `amount` coins of type `asset_id` and send them to
     /// the Address.
     ///
-    /// ### Arguments
+    /// # Arguments
     ///
-    /// * `amount` - The amount of tokens to transfer.
-    /// * `asset_id` - The `AssetId` of the token to transfer.
+    /// * `amount`: [u64] - The amount of tokens to transfer.
+    /// * `asset_id`: [AssetId] - The `AssetId` of the token to transfer.
     ///
-    /// ### Reverts
+    /// # Panics
     ///
-    /// * If `amount` is greater than the contract balance for `asset_id`.
-    /// * If `amount` is equal to zero.
-    /// * If there are no free variable outputs.
+    /// * When `amount` is greater than the contract balance for `asset_id`.
+    /// * When `amount` is equal to zero.
+    /// * When there are no free variable outputs.
     ///
-    /// ### Examples
+    /// # Examples
     ///
     /// ```sway
     /// use std::constants::{BASE_ASSET_ID, ZERO_B256};
     ///
-    /// // replace the zero Address with your desired Address
-    /// let address = Address::from(ZERO_B256);
-    /// address.transfer(500, BASE_ASSET_ID)
+    /// fn foo() {
+    ///     // replace the zero Address with your desired Address
+    ///     let address = Address::from(ZERO_B256);
+    ///     address.transfer(500, BASE_ASSET_ID)
+    /// }
     /// ```
     pub fn transfer(self, amount: u64, asset_id: AssetId) {
         // maintain a manual index as we only have `while` loops in sway atm:
@@ -82,18 +121,20 @@ impl Address {
     /// Mint `amount` coins of the current contract's `asset_id` and send them to
     /// the Address.
     ///
-    /// ### Arguments
+    /// # Arguments
     ///
-    /// * `amount` - The amount of tokens to mint.
+    /// * `amount`: [u64] - The amount of tokens to mint.
     ///
-    /// ### Examples
+    /// # Examples
     ///
     /// ```sway
     /// use std::constants::ZERO_B256;
     ///
-    /// // replace the zero Address with your desired Address
-    /// let address = Address::from(ZERO_B256);
-    /// address.mint_to(500);
+    /// fn foo() {
+    ///     // replace the zero Address with your desired Address
+    ///     let address = Address::from(ZERO_B256);
+    ///     address.mint_to(500);
+    /// }
     /// ```
     pub fn mint_to(self, amount: u64) {
         asm(r1: amount) {
