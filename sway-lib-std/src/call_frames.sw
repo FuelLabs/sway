@@ -33,12 +33,13 @@ const SECOND_PARAMETER_OFFSET: u64 = 74;
 /// # Examples
 ///
 /// ```sway
-/// use std::{call_frames::contract_id, context::this_balance, token::mint_to_contract};
+/// use std::{call_frames::contract_id, token::mint};
 ///
 /// fn foo() {
 ///     let this_contract = contract_id();
-///     mint_to_contract(50, this_contract);
-///     assert(this_balance(this_contract) == 50);
+///     mint(50);
+///     // Transfer the newly minted tokens to the ZERO_B256 address from this contract
+///     Address::from(ZERO_B256).transfer(50, this_contract)
 /// }
 /// ```
 pub fn contract_id() -> ContractId {

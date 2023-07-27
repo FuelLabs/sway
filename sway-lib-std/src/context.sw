@@ -47,7 +47,7 @@ pub fn this_balance(asset_id: ContractId) -> u64 {
 /// 
 /// fn foo() {
 ///     mint(50);
-///     assert(this_balance(contract_id(), contract_id()) == 50);
+///     assert(balance_of(contract_id(), contract_id()) == 50);
 /// }
 /// ```
 pub fn balance_of(asset_id: ContractId, target: ContractId) -> u64 {
@@ -69,6 +69,7 @@ pub fn balance_of(asset_id: ContractId, target: ContractId) -> u64 {
 /// use std::context::msg_amount;
 /// 
 /// fn foo() {
+///     // Ensures that no assets are being transferred in this context
 ///     assert(msg_amount() == 0);
 /// }
 /// ```
