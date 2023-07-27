@@ -388,7 +388,7 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
-        run: cargo test --locked --report-time
+        run: cargo test --locked -- -Z unstable-options --report-time
 
   cargo-unused-deps-check:
     runs-on: ubuntu-latest
