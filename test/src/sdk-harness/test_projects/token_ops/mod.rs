@@ -46,6 +46,64 @@ async fn can_mint() {
 }
 
 #[tokio::test]
+async fn can_mint_multiple() {
+    let wallet = launch_provider_and_get_wallet().await;
+    let (fuelcontract_instance, fuelcontract_id) = get_fuelcoin_instance(wallet).await;
+    let sub_id_1 = Bytes32::zeroed();
+    let sub_id_2 = Bytes32::from([1u8; 32]);
+    let asset_id_1 = get_asset_id(sub_id_1, fuelcontract_id).await;
+    let asset_id_2 = get_asset_id(sub_id_2, fuelcontract_id).await;
+    let target = fuelcontract_id.clone();
+
+    let mut balance_result_1 = fuelcontract_instance
+        .methods()
+        .get_balance(Bits256(*asset_id_1), target.clone())
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(balance_result_1.value, 0);
+
+    let mut balance_result_2 = fuelcontract_instance
+        .methods()
+        .get_balance(Bits256(*asset_id_2), target.clone())
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(balance_result_2.value, 0);
+
+    fuelcontract_instance
+        .methods()
+        .mint_coins(11, Bits256(*sub_id_1))
+        .call()
+        .await
+        .unwrap();
+
+    fuelcontract_instance
+        .methods()
+        .mint_coins(12, Bits256(*sub_id_2))
+        .call()
+        .await
+        .unwrap();
+
+
+    balance_result_1 = fuelcontract_instance
+        .methods()
+        .get_balance(Bits256(*asset_id_1), fuelcontract_id)
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(balance_result_1.value, 11);
+
+    balance_result_2 = fuelcontract_instance
+        .methods()
+        .get_balance(Bits256(*asset_id_2), fuelcontract_id)
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(balance_result_2.value, 12);
+}
+
+#[tokio::test]
 async fn can_burn() {
     let wallet = launch_provider_and_get_wallet().await;
     let (fuelcontract_instance, fuelcontract_id) = get_fuelcoin_instance(wallet).await;
