@@ -2248,7 +2248,7 @@ dependencies = [
 [[package]]
 name = "fuels"
 version = "0.44.0"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=upgrade/fuel-core-v0.20.1#056b4c63d34095bf0f82c930d645c39050681ba3"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=upgrade/fuel-core-v0.20.1#539dcad2a0d867c81dfca67c763795858181c282"
 dependencies = [
  "fuel-core-client",
  "fuel-tx",
@@ -2262,7 +2262,7 @@ dependencies = [
 [[package]]
 name = "fuels-accounts"
 version = "0.44.0"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=upgrade/fuel-core-v0.20.1#056b4c63d34095bf0f82c930d645c39050681ba3"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=upgrade/fuel-core-v0.20.1#539dcad2a0d867c81dfca67c763795858181c282"
 dependencies = [
  "async-trait",
  "bytes",
@@ -2288,7 +2288,7 @@ dependencies = [
 [[package]]
 name = "fuels-code-gen"
 version = "0.44.0"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=upgrade/fuel-core-v0.20.1#056b4c63d34095bf0f82c930d645c39050681ba3"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=upgrade/fuel-core-v0.20.1#539dcad2a0d867c81dfca67c763795858181c282"
 dependencies = [
  "Inflector",
  "fuel-abi-types 0.3.0",
