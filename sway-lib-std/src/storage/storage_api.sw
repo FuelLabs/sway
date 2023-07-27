@@ -20,6 +20,8 @@ use ::option::Option::{self, *};
 /// # Examples
 ///
 /// ```sway
+/// use std::{storage::storage_api::{read, write}, constants::ZERO_B256};
+///
 /// fn foo() {
 ///     let five = 5_u64;
 ///     write(ZERO_B256, 2, five);
@@ -75,6 +77,8 @@ pub fn write<T>(slot: b256, offset: u64, value: T) {
 /// # Examples
 ///
 /// ```sway
+/// use std::{storage::storage_api::{read, write}, constants::ZERO_B256};
+///
 /// fn foo() {
 ///     let five = 5_u64;
 ///     write(ZERO_B256, 2, five);
@@ -123,6 +127,8 @@ pub fn read<T>(slot: b256, offset: u64) -> Option<T> {
 /// # Examples
 ///
 /// ```sway
+/// use std::{storage::storage_api::{read, write, clear}, constants::ZERO_B256};
+///
 /// fn foo() {
 ///      let five = 5_u64;
 ///     write(ZERO_B256, 0, five);

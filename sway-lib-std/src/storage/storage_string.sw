@@ -22,6 +22,8 @@ impl StorableSlice<String> for StorageKey<StorageString> {
     /// # Examples
     ///
     /// ```sway
+    /// use std::{storage::storage_string::StorageString, bytes::Bytes, string::String};
+    ///
     /// storage {
     ///     stored_string: StorageString = StorageString {}
     /// }
@@ -54,6 +56,8 @@ impl StorableSlice<String> for StorageKey<StorageString> {
     /// # Examples
     ///
     /// ```sway
+    /// use std::{storage::storage_string::StorageString, bytes::Bytes, string::String};
+    ///
     /// storage {
     ///     stored_string: StorageString = StorageString {}
     /// }
@@ -95,6 +99,8 @@ impl StorableSlice<String> for StorageKey<StorageString> {
     /// # Examples
     ///
     /// ```sway
+    /// use std::{storage::storage_string::StorageString, bytes::Bytes, string::String};
+    ///
     /// storage {
     ///     stored_string: StorageString = StorageString {}
     /// }
@@ -133,6 +139,8 @@ impl StorableSlice<String> for StorageKey<StorageString> {
     /// # Examples
     ///
     /// ```sway
+    /// use std::{storage::storage_string::StorageString, bytes::Bytes, string::String};
+    ///
     /// storage {
     ///     stored_string: StorageString = StorageString {}
     /// }
