@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-D150E07ED5F3A1F2'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-D150E07ED5F3A1F2'
+dependencies = ['core']
+
+[[package]]
+name = 'superabi_contract_calls'
+source = 'member'
+dependencies = ['std']
