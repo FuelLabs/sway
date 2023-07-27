@@ -65,9 +65,8 @@ impl Diagnostic {
         self.labels_in_source(self.issue.source_path().unwrap())
     }
 
-
-    pub fn help(&self) -> &[String] {
-        self.help.as_ref()
+    pub fn help(&self) -> impl Iterator<Item = &String> + '_ {
+        self.help.iter().filter(|help| !help.is_empty())
     }
 
     /// All the source files that are related to the diagnostic.

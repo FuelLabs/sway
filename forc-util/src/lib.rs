@@ -14,7 +14,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use sway_core::language::parsed::TreeType;
-use sway_error::{error::CompileError, warning::CompileWarning, diagnostic::{Label, ToDiagnostic, LabelType, SourcePath}};
+use sway_error::{error::CompileError, warning::CompileWarning, diagnostic::{Diagnostic, Label, ToDiagnostic, LabelType}};
 use sway_types::{LineCol, SourceEngine, Spanned, Span};
 use sway_utils::constants;
 use tracing::error;
@@ -434,30 +434,23 @@ pub fn print_on_failure(
 fn format_err(source_engine: &SourceEngine, err: &CompileError) {
     let err = err.to_diagnostic(source_engine);
 
-    let snippet_title = if err.issue().is_in_source() {
-        Some(Annotation {
-            label: err.reason().map(|title| title.as_str()),
-            id: None,
-            annotation_type: AnnotationType::Error,
-        })
-    }
-    else {
-        Some(Annotation {
-            label: Some(err.issue().friendly_text()),
-            id: None,
-            annotation_type: AnnotationType::Error,
-        })
-    };
+    let mut label = String::new();
+    get_title_label(&err, &mut label);
+
+    let snippet_title = Some(Annotation {
+        label: Some(label.as_str()),
+        id: None,
+        annotation_type: AnnotationType::Error,
+    });
 
     let mut snippet_slices = Vec::<Slice<'_>>::new();
 
-    // We first display diagnostic from the issue file.
+    // We first display labels from the issue file...
     if err.issue().is_in_source() {
         snippet_slices.push(construct_slice(err.labels_in_issue_source()))
     }
 
-    // Even if the issue itself is not in code, we can still have
-    // hints in the source code. So, we always add hints.
+    // ...and then all the remaining labels from other files.
     for source_path in err.related_sources(false) {
         snippet_slices.push(construct_slice(err.labels_in_source(source_path)))
     }
@@ -477,7 +470,17 @@ fn format_err(source_engine: &SourceEngine, err: &CompileError) {
         },
     };
 
-    tracing::error!("{}\n____\n", DisplayList::from(snippet))
+    tracing::error!("{}\n____\n", DisplayList::from(snippet));
+
+    fn get_title_label(diagnostics: &Diagnostic, label: &mut String) {
+        label.clear();
+        if diagnostics.reason().is_some() {
+            label.push_str(diagnostics.reason().unwrap());
+            label.push_str(". ");
+        }
+        label.push_str(diagnostics.issue().friendly_text());
+        label.push('.');
+    }
 }
 
 fn format_warning(source_engine: &SourceEngine, err: &CompileWarning) {
@@ -571,7 +574,7 @@ fn construct_slice<'a>(labels: Vec<&'a Label>) -> Slice<'a> {
         let start_ix_bytes = start_pos - std::cmp::min(shift_in_bytes, start_pos);
         let end_ix_bytes = end_pos - std::cmp::min(shift_in_bytes, end_pos);
 
-        // We want the start_ix and end_ix in terms of chars and not bytes, so translate.
+        // We want the start_pos and end_pos in terms of chars and not bytes, so translate.
         start_pos = source_code[shift_in_bytes..(shift_in_bytes + start_ix_bytes)]
             .chars()
             .count();
