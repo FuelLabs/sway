@@ -14,7 +14,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use sway_core::language::parsed::TreeType;
-use sway_error::{error::CompileError, warning::CompileWarning, compile_message::{InSourceMessage, ToCompileMessage, InSourceMessageType}};
+use sway_error::{error::CompileError, warning::CompileWarning, diagnostic::{Label, ToDiagnostic, LabelType, SourcePath}};
 use sway_types::{LineCol, SourceEngine, Spanned, Span};
 use sway_utils::constants;
 use tracing::error;
@@ -432,18 +432,18 @@ pub fn print_on_failure(
 }
 
 fn format_err(source_engine: &SourceEngine, err: &CompileError) {
-    let err = err.to_compile_message(source_engine);
+    let err = err.to_diagnostic(source_engine);
 
-    let snippet_title = if err.message().is_in_source() {
+    let snippet_title = if err.issue().is_in_source() {
         Some(Annotation {
-            label: err.title().map(|title| title.as_str()),
+            label: err.reason().map(|title| title.as_str()),
             id: None,
             annotation_type: AnnotationType::Error,
         })
     }
     else {
         Some(Annotation {
-            label: Some(err.message().friendly_text()),
+            label: Some(err.issue().friendly_text()),
             id: None,
             annotation_type: AnnotationType::Error,
         })
@@ -451,19 +451,16 @@ fn format_err(source_engine: &SourceEngine, err: &CompileError) {
 
     let mut snippet_slices = Vec::<Slice<'_>>::new();
 
-    // We first display messages from the file in which the message itself occurs.
-    if err.message().is_in_source() {
-        snippet_slices.push(construct_slice(err.source_messages_in_message_file()))
+    // We first display diagnostic from the issue file.
+    if err.issue().is_in_source() {
+        snippet_slices.push(construct_slice(err.labels_in_issue_source()))
     }
 
-    // Even if the error message itself is not in code, we can still have
-    // infos in the source code. So, we always add infos.
-    for (_, file_path) in err.related_source_files(false) {
-        snippet_slices.push(construct_slice(err.source_messages_in_file(file_path)))
+    // Even if the issue itself is not in code, we can still have
+    // hints in the source code. So, we always add hints.
+    for source_path in err.related_sources(false) {
+        snippet_slices.push(construct_slice(err.labels_in_source(source_path)))
     }
-    // for info in err.in_source_info() {
-    //     snippet_slices.push(construct_slice(info, AnnotationType::Info))
-    // }
 
     let mut snippet_footer = Vec::<Annotation<'_>>::new();
     for help in err.help() {
@@ -472,8 +469,8 @@ fn format_err(source_engine: &SourceEngine, err: &CompileError) {
 
     let snippet = Snippet {
         title: snippet_title,
-        footer: snippet_footer,
         slices: snippet_slices,
+        footer: snippet_footer,
         opt: FormatOptions {
             color: true,
             ..Default::default()
@@ -525,33 +522,36 @@ fn format_warning(source_engine: &SourceEngine, err: &CompileWarning) {
     tracing::warn!("{}\n____\n", DisplayList::from(snippet))
 }
 
-fn construct_slice<'a>(messages: Vec<&'a InSourceMessage>) -> Slice<'a> {
+fn construct_slice<'a>(labels: Vec<&'a Label>) -> Slice<'a> {
     debug_assert!(
-        !messages.is_empty(),
-        "To construct slices, at least one message must be provided."
+        !labels.is_empty(),
+        "To construct slices, at least one label must be provided."
     );
 
     debug_assert!(
-        messages.iter().all(|message| message.is_in_source()),
-        "Slices can be constructed only for messages that are related to a place in source code."
+        labels.iter().all(|label| label.is_in_source()),
+        "Slices can be constructed only for labels that are related to a place in source code."
     );
 
     debug_assert!(
-        HashSet::<&String>::from_iter(messages.iter().map(|message| message.source_file_path_as_string().unwrap())).len() == 1,
-        "Slices can be constructed only for messages that are related to places in the same source code."
+        HashSet::<&str>::from_iter(labels.iter().map(|label| label.source_path().unwrap().as_str())).len() == 1,
+        "Slices can be constructed only for labels that are related to places in the same source code."
     );
 
-    let soruce_file = messages[0].source_file_path_as_string().map(|path| path.as_str());
-    let source_code = messages[0].span().input();
-    let span = Span::join_all(messages.iter().map(|message| message.span().clone()));
+    let soruce_file = labels[0].source_path().map(|path| path.as_str());
+    let source_code = labels[0].span().input();
+
+    // Joint span of the code snippet that covers all the labels.
+    let span = Span::join_all(labels.iter().map(|message| message.span().clone()));
+
     let (source, line_start, shift_in_bytes) = construct_code_snippet(&span, source_code);
 
     let mut annotations = vec![];
 
-    for message in messages {
+    for message in labels {
         annotations.push(SourceAnnotation {
             label: message.friendly_text(),
-            annotation_type: get_annotation_type(message.message_type()),
+            annotation_type: get_annotation_type(message.label_type()),
             range: get_annotation_range(message.span(), source_code, shift_in_bytes)
         });
     }
@@ -582,11 +582,11 @@ fn construct_slice<'a>(messages: Vec<&'a InSourceMessage>) -> Slice<'a> {
         (start_pos, end_pos)
     }
 
-    fn get_annotation_type(message_type: InSourceMessageType) -> AnnotationType {
+    fn get_annotation_type(message_type: LabelType) -> AnnotationType {
         match message_type {
-            InSourceMessageType::Info => AnnotationType::Info,
-            InSourceMessageType::Warning => AnnotationType::Warning,
-            InSourceMessageType::Error => AnnotationType::Error,
+            LabelType::Info => AnnotationType::Info,
+            LabelType::Warning => AnnotationType::Warning,
+            LabelType::Error => AnnotationType::Error,
         }
     }
 }

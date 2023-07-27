@@ -1,4 +1,4 @@
-use crate::compile_message::{CompileMessage, InSourceMessage, ToCompileMessage};
+use crate::diagnostic::{Diagnostic, ToDiagnostic, Issue};
 use crate::convert_parse_tree_error::ConvertParseTreeError;
 use crate::lex_error::LexError;
 use crate::parser_error::ParseError;
@@ -838,18 +838,18 @@ impl Spanned for CompileError {
     }
 }
 
-impl ToCompileMessage for CompileError {
-    fn to_compile_message(&self, source_engine: &SourceEngine) -> CompileMessage {
+impl ToDiagnostic for CompileError {
+    fn to_diagnostic(&self, source_engine: &SourceEngine) -> Diagnostic {
         use CompileError::*;
         match self {
-            VariableShadowsConstant { name , constant_span} => CompileMessage {
-                title: Some("Constants cannot be shadowed".to_string()),
-                message: InSourceMessage::error(
+            VariableShadowsConstant { name , constant_span} => Diagnostic {
+                reason: Some("Constants cannot be shadowed".to_string()),
+                issue: Issue::error(
                     source_engine,
                     self.span().clone(),
                     format!("Variable \"{name}\" shadows constant with the same name.")
                 ),
-                in_source_info: vec![InSourceMessage::info(
+                hints: vec![crate::diagnostic::Hint::info(
                     source_engine,
                     constant_span.clone(),
                     format!("Constant \"{name}\" is declared here.")
@@ -859,14 +859,14 @@ impl ToCompileMessage for CompileError {
                 ],
                 ..Default::default()
             },
-            ConstantShadowsVariable { name , variable_span} => CompileMessage {
-                title: Some("Constants cannot shadow variables".to_string()),
-                message: InSourceMessage::error(
+            ConstantShadowsVariable { name , variable_span} => Diagnostic {
+                reason: Some("Constants cannot shadow variables".to_string()),
+                issue: Issue::error(
                     source_engine,
                     self.span().clone(),
                     format!("Constant \"{name}\" shadows variable with the same name.")
                 ),
-                in_source_info: vec![InSourceMessage::info(
+                hints: vec![crate::diagnostic::Hint::info(
                     source_engine,
                     variable_span.clone(),
                     format!("Variable \"{name}\" is declared here.")
@@ -876,14 +876,14 @@ impl ToCompileMessage for CompileError {
                 ],
                 ..Default::default()
             },
-            ConstantShadowsConstant { name , constant_span} => CompileMessage {
-                title: Some("Constants cannot be shadowed".to_string()),
-                message: InSourceMessage::error(
+            ConstantShadowsConstant { name , constant_span} => Diagnostic {
+                reason: Some("Constants cannot be shadowed".to_string()),
+                issue: Issue::error(
                     source_engine,
                     self.span().clone(),
                     format!("Constant \"{name}\" shadows constant with the same name.")
                 ),
-                in_source_info: vec![InSourceMessage::info(
+                hints: vec![crate::diagnostic::Hint::info(
                     source_engine,
                     constant_span.clone(),
                     format!("Constant \"{name}\" is declared here.")
@@ -893,8 +893,8 @@ impl ToCompileMessage for CompileError {
                 ],
                 ..Default::default()
             },
-           _ => CompileMessage {
-                    message: InSourceMessage::error(source_engine, self.span().clone(), format!("{}", self)),
+           _ => Diagnostic {
+                    issue: Issue::error(source_engine, self.span().clone(), format!("{}", self)),
                     ..Default::default()
                 }
         }

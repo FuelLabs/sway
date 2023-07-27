@@ -5,4 +5,4 @@ pub mod lex_error;
 pub mod parser_error;
 pub mod type_error;
 pub mod warning;
-pub mod compile_message;
+pub mod diagnostic;
