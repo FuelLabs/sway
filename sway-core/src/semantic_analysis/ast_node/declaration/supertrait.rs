@@ -1,5 +1,5 @@
 use sway_error::error::CompileError;
-use sway_types::Spanned;
+use sway_types::{Span, Spanned};
 
 use crate::{
     error::*,
@@ -8,12 +8,19 @@ use crate::{
     EnforceTypeArguments, TypeId,
 };
 
+#[derive(Clone, PartialEq, Eq)]
+pub enum SupertraitOf {
+    Abi(Span), // Span is needed for error reporting
+    Trait,
+}
+
 /// Recursively insert the interface surfaces and methods from supertraits to
 /// the given namespace.
 pub(crate) fn insert_supertraits_into_namespace(
     mut ctx: TypeCheckContext,
     type_id: TypeId,
     supertraits: &[parsed::Supertrait],
+    supertraits_of: &SupertraitOf,
 ) -> CompileResult<()> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -33,13 +40,15 @@ pub(crate) fn insert_supertraits_into_namespace(
             continue;
         }
 
-        match ctx
+        let decl = ctx
             .namespace
             .resolve_call_path(&supertrait.name)
             .ok(&mut warnings, &mut errors)
-            .cloned()
-        {
-            Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
+            .cloned();
+
+        match (decl.clone(), supertraits_of) {
+            // a trait can be a supertrait of either a trait or a an ABI
+            (Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })), _) => {
                 let mut trait_decl = decl_engine.get_trait(&decl_id);
 
                 // Right now we don't parse type arguments for supertraits, so
@@ -83,16 +92,53 @@ pub(crate) fn insert_supertraits_into_namespace(
                     insert_supertraits_into_namespace(
                         ctx.by_ref(),
                         type_id,
-                        &trait_decl.supertraits
+                        &trait_decl.supertraits,
+                        &SupertraitOf::Trait
                     ),
                     continue,
                     warnings,
                     errors
                 );
             }
-            Some(ty::TyDecl::AbiDecl { .. }) => errors.push(CompileError::AbiAsSupertrait {
-                span: supertrait.name.span().clone(),
-            }),
+            // an ABI can only be a superABI of an ABI
+            (
+                Some(ty::TyDecl::AbiDecl(ty::AbiDecl { decl_id, .. })),
+                SupertraitOf::Abi(subabi_span),
+            ) => {
+                let abi_decl = decl_engine.get_abi(&decl_id);
+                // Insert the interface surface and methods from this ABI into
+                // the namespace.
+                check!(
+                    abi_decl.insert_interface_surface_and_items_into_namespace(
+                        decl_id,
+                        ctx.by_ref(),
+                        type_id,
+                        Some(subabi_span.clone())
+                    ),
+                    continue,
+                    warnings,
+                    errors
+                );
+                // Recurse to insert versions of interfaces and methods of the
+                // *super* superABIs.
+                check!(
+                    insert_supertraits_into_namespace(
+                        ctx.by_ref(),
+                        type_id,
+                        &abi_decl.supertraits,
+                        &SupertraitOf::Abi(subabi_span.clone())
+                    ),
+                    continue,
+                    warnings,
+                    errors
+                );
+            }
+            // an ABI cannot be a supertrait of a trait
+            (Some(ty::TyDecl::AbiDecl { .. }), SupertraitOf::Trait) => {
+                errors.push(CompileError::AbiAsSupertrait {
+                    span: supertrait.name.span().clone(),
+                })
+            }
             _ => errors.push(CompileError::TraitNotFound {
                 name: supertrait.name.to_string(),
                 span: supertrait.name.span(),

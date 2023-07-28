@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-7DEAA3CB093EFA42'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-7DEAA3CB093EFA42'
+dependencies = ['core']
+
+[[package]]
+name = 'superabi_duplicate_methods6'
+source = 'member'
+dependencies = ['std']
