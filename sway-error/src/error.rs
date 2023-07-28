@@ -455,7 +455,7 @@ pub enum CompileError {
         span: Span,
     },
     #[error("Constants cannot be shadowed. {variable_or_constant} \"{name}\" shadows constant with the same name.")]
-    ConstantsCannotBeShadowed { variable_or_constant: String, name: Ident, constant_span: Span , constant_decl: Span },
+    ConstantsCannotBeShadowed { variable_or_constant: String, name: Ident, constant_span: Span, constant_decl: Span, is_alias: bool },
     #[error("Constants cannot shadow variables. The constant \"{name}\" shadows variable with the same name.")]
     ConstantShadowsVariable { name: Ident, variable_span: Span },
     #[error("The imported symbol \"{name}\" shadows another symbol with the same name.")]
@@ -839,7 +839,7 @@ impl ToDiagnostic for CompileError {
     fn to_diagnostic(&self, source_engine: &SourceEngine) -> Diagnostic {
         use CompileError::*;
         match self {
-            ConstantsCannotBeShadowed { variable_or_constant, name, constant_span, constant_decl } => Diagnostic {
+            ConstantsCannotBeShadowed { variable_or_constant, name, constant_span, constant_decl, is_alias } => Diagnostic {
                 reason: Some("Constants cannot be shadowed".to_string()),
                 issue: Issue::error(
                     source_engine,
@@ -885,7 +885,11 @@ impl ToDiagnostic for CompileError {
                     match (variable_or_constant.as_str(), constant_decl.clone() != Span::dummy()) {
                         ("Variable", false) => "Consider renaming either the variable or the constant.".to_string(),
                         ("Constant", false) => "Consider renaming one of the constants.".to_string(),
-                        (variable_or_constant, true) => format!("Consider renaming the {} or using an alias for the imported constant.", variable_or_constant.clone().to_lowercase()),
+                        (variable_or_constant, true) => format!(
+                            "Consider renaming the {} or using {} for the imported constant.",
+                            variable_or_constant.clone().to_lowercase(),
+                            if *is_alias { "a different alias" } else { "an alias" }
+                        ),
                         _ => unreachable!("We can have only the listed combinations: variable/constant shadows a non imported/imported constant.")
                     }
                     

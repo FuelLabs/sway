@@ -42,7 +42,7 @@ pub struct Items {
     pub(crate) use_synonyms: UseSynonyms,
     /// Represents an alternative name for an imported symbol.
     ///
-    /// Aliases are introduced with syntax like `use foo::bar as baz;` syntax, where `baz` is an
+    /// Aliases are introduced with syntax like `use foo::bar as baz;`, where `baz` is an
     /// alias for `bar`.
     pub(crate) use_aliases: UseAliases,
     /// If there is a storage declaration (which are only valid in contracts), store it here.
@@ -115,38 +115,41 @@ impl Items {
             |ident: &Ident,
              decl: &ty::TyDecl,
              is_use: bool,
+             is_alias: bool,
              item: &ty::TyDecl,
              const_shadowing_mode: ConstShadowingMode,
              errors: &mut Vec<CompileError>| {
                 use ty::TyDecl::*;
-                match (ident, decl, is_use, &item, const_shadowing_mode) {
+                match (ident, decl, is_use, is_alias, &item, const_shadowing_mode) {
                     // variable shadowing a constant
-                    (constant_ident, ConstantDecl(constant_decl), is_imported_constant,  VariableDecl { .. }, _) => {
+                    (constant_ident, ConstantDecl(constant_decl), is_imported_constant, is_alias,  VariableDecl { .. }, _) => {
                         errors.push(CompileError::ConstantsCannotBeShadowed {
                             variable_or_constant: "Variable".to_string(),
                             name: name.clone(),
                             constant_span: constant_ident.span().clone(),
-                            constant_decl: if is_imported_constant { constant_decl.decl_span.clone() } else { Span::dummy() }
+                            constant_decl: if is_imported_constant { constant_decl.decl_span.clone() } else { Span::dummy() },
+                            is_alias
                         })
                     }
                     // constant shadowing a constant sequentially
-                    (constant_ident, ConstantDecl(constant_decl), is_imported_constant, ConstantDecl { .. }, ConstShadowingMode::Sequential) => {
+                    (constant_ident, ConstantDecl(constant_decl), is_imported_constant, is_alias, ConstantDecl { .. }, ConstShadowingMode::Sequential) => {
                         errors.push(CompileError::ConstantsCannotBeShadowed {
                             variable_or_constant: "Constant".to_string(),
                             name: name.clone(),
                             constant_span: constant_ident.span().clone(),
-                            constant_decl: if is_imported_constant { constant_decl.decl_span.clone() } else { Span::dummy() }
+                            constant_decl: if is_imported_constant { constant_decl.decl_span.clone() } else { Span::dummy() },
+                            is_alias
                         })
                     }
                     // constant shadowing a variable
-                    (_, VariableDecl(variable_decl), _, ConstantDecl { .. }, _) => {
+                    (_, VariableDecl(variable_decl), _, _, ConstantDecl { .. }, _) => {
                         errors.push(CompileError::ConstantShadowsVariable {
                             name: name.clone(),
                             variable_span: variable_decl.name.span().clone()
                         })
                     }
                     // constant shadowing a constant item-style (outside function body)
-                    (_, ConstantDecl { .. }, _,  ConstantDecl { .. }, ConstShadowingMode::ItemStyle) => {
+                    (_, ConstantDecl { .. }, _, _,  ConstantDecl { .. }, ConstShadowingMode::ItemStyle) => {
                         errors.push(CompileError::MultipleDefinitionsOfConstant {
                             name: name.clone(),
                             span: name.span(),
@@ -162,6 +165,7 @@ impl Items {
                         | TraitDecl { .. }
                         | AbiDecl { .. },
                         _,
+                        _,
                         StructDecl { .. }
                         | EnumDecl { .. }
                         | TypeAliasDecl { .. }
@@ -173,7 +177,7 @@ impl Items {
                         span: name.span(),
                     }),
                     // Generic parameter shadowing another generic parameter
-                    (_, GenericTypeForFunctionScope { .. }, _, GenericTypeForFunctionScope { .. }, _) => {
+                    (_, GenericTypeForFunctionScope { .. }, _, _, GenericTypeForFunctionScope { .. }, _) => {
                         errors.push(CompileError::GenericShadowsGeneric { name: name.clone() });
                     }
                     _ => {}
@@ -181,14 +185,15 @@ impl Items {
             };
 
         if let Some((ident, decl)) = self.symbols.get_key_value(&name) {
-            append_shadowing_error(ident, decl, false, &item, const_shadowing_mode, &mut errors);
+            append_shadowing_error(ident, decl, false, false, &item, const_shadowing_mode, &mut errors);
         }
 
         if let Some((ident, (_, GlobImport::No, decl, _))) = self.use_synonyms.get_key_value(&name) {
-            append_shadowing_error(ident, decl, true, &item, const_shadowing_mode, &mut errors);
+            append_shadowing_error(ident, decl, true, self.use_aliases.get(&name.to_string()).is_some(), &item, const_shadowing_mode, &mut errors);
         }
 
         self.symbols.insert(name, item);
+
         ok((), vec![], errors)
     }
 
