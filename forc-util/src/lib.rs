@@ -433,6 +433,12 @@ pub fn print_on_failure(
     }
 }
 
+/// Temporary switch for testing the feature.
+/// Keep it false until we decide to fully support the diagnostic codes.
+/// This primarily means creating help pages for the defined
+/// diagnostic codes.
+const SHOW_DIAGNOSTIC_CODE: bool = true;
+
 fn format_err(source_engine: &SourceEngine, err: &CompileError) {
     let err = err.to_diagnostic(source_engine);
 
@@ -446,7 +452,7 @@ fn format_err(source_engine: &SourceEngine, err: &CompileError) {
 
     let snippet_title = Some(Annotation {
         label: Some(label.as_str()),
-        id: None,
+        id: if SHOW_DIAGNOSTIC_CODE { err.code().map(|code| code.as_str())} else { None },
         annotation_type: diagnostic_level_to_annotation_type(err.level()),
     });
 

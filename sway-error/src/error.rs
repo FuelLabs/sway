@@ -1,4 +1,4 @@
-use crate::diagnostic::{Diagnostic, ToDiagnostic, Issue};
+use crate::diagnostic::{Diagnostic, ToDiagnostic, Issue, Code};
 use crate::convert_parse_tree_error::ConvertParseTreeError;
 use crate::lex_error::LexError;
 use crate::parser_error::ParseError;
@@ -840,6 +840,7 @@ impl ToDiagnostic for CompileError {
         use CompileError::*;
         match self {
             ConstantsCannotBeShadowed { variable_or_constant, name, constant_span, constant_decl, is_alias } => Diagnostic {
+                code: Some(Code::semantic_analysis(1)),
                 reason: Some("Constants cannot be shadowed".to_string()),
                 issue: Issue::error(
                     source_engine,
@@ -897,6 +898,7 @@ impl ToDiagnostic for CompileError {
                 ..Default::default()
             },
             ConstantShadowsVariable { name , variable_span } => Diagnostic {
+                code: Some(Code::semantic_analysis(2)),
                 reason: Some("Constants cannot shadow variables".to_string()),
                 issue: Issue::error(
                     source_engine,

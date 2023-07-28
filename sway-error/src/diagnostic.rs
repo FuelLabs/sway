@@ -5,6 +5,7 @@ use sway_types::{Span, SourceId, SourceEngine};
 /// Provides detailed, rich description of a compile error or warning.
 #[derive(Debug, Default)]
 pub struct Diagnostic {
+    pub(crate) code: Option<Code>, // TODO: Make mandatory once we remove all old-style warnings and errors.
     pub(crate) reason: Option<String>, // TODO: Make mandatory once we remove all old-style warnings and errors.
     pub(crate) issue: Issue,
     pub(crate) hints: Vec<Hint>,
@@ -17,6 +18,10 @@ impl Diagnostic {
     /// An old-style diagnostic contains just the issue.
     pub fn is_old_style(&self) -> bool {
         self.reason.is_none() && self.hints.is_empty() && self.help.is_empty()
+    }
+
+    pub fn code(&self) -> Option<&Code> {
+        self.code.as_ref()
     }
 
     pub fn level(&self) -> Level {
@@ -318,6 +323,80 @@ impl SourcePath {
 
     pub fn as_str(&self) -> &str {
         self.path_string.as_ref()
+    }
+}
+
+/// Describes the different areas that we have in the
+/// sway-error crate. It allows grouping of diagnostics
+/// and ensuring that we have unique diagnostic code
+/// numbers in each of the groups.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum DiagnosticArea {
+    #[default]
+    LexicalAnalysis,
+    Parsing,
+    ParseTreeConversion,
+    TypeChecking,
+    SemanticAnalysis,
+    Warnings,
+}
+
+impl DiagnosticArea {
+    pub fn prefix(&self) -> &'static str {
+        match self {
+            Self::LexicalAnalysis => "E0",
+            Self::Parsing => "E1",
+            Self::ParseTreeConversion => "E2",
+            Self::TypeChecking => "E3",
+            Self::SemanticAnalysis => "E4",
+            Self::Warnings => "W0",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Code {
+    area: DiagnosticArea,
+    number: u16,
+    text: String,
+}
+
+impl Code {
+    pub fn lexical_analysis(number: u16) -> Code {
+        Self::new(DiagnosticArea::LexicalAnalysis, number)
+    }
+
+    pub fn parsing(number: u16) -> Code {
+        Self::new(DiagnosticArea::Parsing, number)
+    }
+
+    pub fn parse_tree_conversion(number: u16) -> Code {
+        Self::new(DiagnosticArea::ParseTreeConversion, number)
+    }
+
+    pub fn type_checking(number: u16) -> Code {
+        Self::new(DiagnosticArea::TypeChecking, number)
+    }
+
+    pub fn semantic_analysis(number: u16) -> Self {
+        Self::new(DiagnosticArea::SemanticAnalysis, number)
+    }
+
+    pub fn warnings(number: u16) -> Code {
+        Self::new(DiagnosticArea::Warnings, number)
+    }
+
+    fn new(area: DiagnosticArea, number: u16) -> Self {
+        debug_assert!(0 < number && number < 999, "The diagnostic code number must be greater then zero and smaller then 999.");
+        Self {
+            area,
+            number,
+            text: format!("{}{:03}", area.prefix(), number)
+        }
+    }
+
+    pub fn as_str(&self) -> &str {
+        self.text.as_ref()
     }
 }
 
