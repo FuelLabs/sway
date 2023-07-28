@@ -63,6 +63,11 @@ impl<T> DeclId<T> {
     pub(crate) fn replace_id(&mut self, index: Self) {
         self.0 = index.0;
     }
+
+    pub(crate) fn dummy() -> Self {
+        // we assume that `usize::MAX` id is not possible in practice
+        Self(usize::MAX, PhantomData)
+    }
 }
 
 #[allow(clippy::from_over_into)]

@@ -184,13 +184,15 @@ impl ty::TyImplTrait {
                     });
                 }
 
-                let mut ctx = ctx.with_abi_mode(AbiMode::ImplAbiFn);
+                let mut ctx = ctx.with_abi_mode(AbiMode::ImplAbiFn(abi.name.clone(), None));
 
                 // Insert the interface surface and methods from this trait into
                 // the namespace.
                 abi.insert_interface_surface_and_items_into_namespace(
+                    decl_id,
                     ctx.by_ref(),
                     implementing_for.type_id,
+                    None,
                 );
 
                 let new_items = check!(
@@ -480,7 +482,6 @@ fn type_check_trait_implementation(
             warnings,
             errors
         );
-
         ctx.namespace.insert_trait_implementation(
             trait_name.clone(),
             trait_type_arguments.to_vec(),
@@ -1108,9 +1109,9 @@ fn handle_supertraits(
                 interface_surface_item_ids.extend(next_interface_supertrait_decl_refs);
                 impld_item_refs.extend(next_these_supertrait_decl_refs);
             }
-            Some(ty::TyDecl::AbiDecl { .. }) => errors.push(CompileError::AbiAsSupertrait {
-                span: supertrait.name.span().clone(),
-            }),
+            Some(ty::TyDecl::AbiDecl { .. }) => {
+                // we allow ABIs as superABIs now
+            }
             _ => errors.push(CompileError::TraitNotFound {
                 name: supertrait.name.to_string(),
                 span: supertrait.name.span(),

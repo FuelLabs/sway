@@ -108,7 +108,7 @@ impl<'a> TypeCheckContext<'a> {
             namespace: self.namespace,
             type_annotation: self.type_annotation,
             self_type: self.self_type,
-            abi_mode: self.abi_mode,
+            abi_mode: self.abi_mode.clone(),
             const_shadowing_mode: self.const_shadowing_mode,
             help_text: self.help_text,
             purity: self.purity,
@@ -228,7 +228,7 @@ impl<'a> TypeCheckContext<'a> {
     }
 
     pub(crate) fn abi_mode(&self) -> AbiMode {
-        self.abi_mode
+        self.abi_mode.clone()
     }
 
     pub(crate) fn const_shadowing_mode(&self) -> ConstShadowingMode {

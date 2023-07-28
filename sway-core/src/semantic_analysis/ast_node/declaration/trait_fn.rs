@@ -1,8 +1,13 @@
-use sway_types::Spanned;
+use sway_types::{Span, Spanned};
 
 use crate::{
+    decl_engine::DeclId,
     error::*,
-    language::{parsed, ty, Visibility},
+    language::{
+        parsed,
+        ty::{self},
+        Visibility,
+    },
     semantic_analysis::{AbiMode, TypeCheckContext},
     type_system::*,
 };
@@ -78,13 +83,26 @@ impl ty::TyTraitFn {
             name: self.name.clone(),
             body: ty::TyCodeBlock { contents: vec![] },
             parameters: self.parameters.clone(),
-            implementing_type: None,
+            implementing_type: match abi_mode.clone() {
+                AbiMode::ImplAbiFn(abi_name, abi_decl_id) => {
+                    // ABI and their super-ABI methods cannot have the same names,
+                    // so in order to provide meaningful error messages if this condition
+                    // is violated, we need to keep track of ABI names before we can
+                    // provide type-checked `AbiDecl`s
+                    Some(ty::TyDecl::AbiDecl(ty::AbiDecl {
+                        name: abi_name,
+                        decl_id: abi_decl_id.unwrap_or(DeclId::dummy()),
+                        decl_span: Span::dummy(),
+                    }))
+                }
+                AbiMode::NonAbi => None,
+            },
             span: self.name.span(),
             attributes: self.attributes.clone(),
             return_type: self.return_type.clone(),
             visibility: Visibility::Public,
             type_parameters: vec![],
-            is_contract_call: abi_mode == AbiMode::ImplAbiFn,
+            is_contract_call: matches!(abi_mode, AbiMode::ImplAbiFn(..)),
             where_clause: vec![],
         }
     }
