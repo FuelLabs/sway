@@ -4,8 +4,11 @@ use serde::{de::DeserializeOwned, Serialize};
 use std::{fmt, panic, thread};
 use stdx::thread::ThreadIntent;
 
-use crate::event_loop::{
+use crate::{
+    server_state::ServerState,
+    event_loop::{
     self, main_loop::Task, server_state_ext::ServerStateExt, Cancelled, LspError, Result,
+    },
 };
 
 /// A visitor for routing a raw JSON request to an appropriate handler function.
@@ -287,13 +290,13 @@ where
 
 pub(crate) struct NotificationDispatcher<'a> {
     pub(crate) not: Option<lsp_server::Notification>,
-    pub(crate) server_state: &'a mut ServerStateExt,
+    pub(crate) server_state: &'a mut ServerState,
 }
 
 impl<'a> NotificationDispatcher<'a> {
     pub(crate) fn on<N>(
         &mut self,
-        f: fn(&mut ServerStateExt, N::Params) -> Result<()>,
+        f: fn(&mut ServerState, N::Params) -> Result<()>,
     ) -> Result<&mut Self>
     where
         N: lsp_types::notification::Notification,

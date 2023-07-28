@@ -185,26 +185,26 @@ impl ServerStateExt {
             // analysis on the main thread because that would block other
             // requests. Instead, we run these request handlers on higher priority
             // threads in the threadpool.
-            .on_latency_sensitive::<lsp_types::request::Completion>(handlers::handle_completion)
-            .on_latency_sensitive::<lsp_types::request::SemanticTokensFullRequest>(
-                handlers::handle_semantic_tokens_full,
-            )
+            //.on_latency_sensitive::<lsp_types::request::Completion>(handlers::handle_completion)
+            // .on_latency_sensitive::<lsp_types::request::SemanticTokensFullRequest>(
+            //     handlers::handle_semantic_tokens_full,
+            // )
             // Formatting is not caused by the user typing,
             // but it does qualify as latency-sensitive
             // because a delay before formatting is applied
             // can be confusing for the user.
-            .on_latency_sensitive::<lsp_types::request::Formatting>(handlers::handle_formatting)
+            //.on_latency_sensitive::<lsp_types::request::Formatting>(handlers::handle_formatting)
             // All other request handlers
-            .on::<lsp_types::request::HoverRequest>(handlers::handle_hover)
-            .on::<lsp_types::request::PrepareRenameRequest>(handlers::handle_prepare_rename)
-            .on::<lsp_types::request::Rename>(handlers::handle_rename)
-            .on::<lsp_types::request::DocumentSymbolRequest>(handlers::handle_document_symbol)
-            .on::<lsp_types::request::GotoDefinition>(handlers::handle_goto_definition)
-            .on::<lsp_types::request::DocumentHighlightRequest>(handlers::handle_document_highlight)
-            .on::<lsp_types::request::CodeLensRequest>(handlers::handle_code_lens)
-            .on::<lsp_types::request::CodeActionRequest>(handlers::handle_code_action)
-            .on::<lsp_ext::ShowAstParams>(handlers::handle_show_ast)
-            .on_no_retry::<lsp_types::request::InlayHintRequest>(handlers::handle_inlay_hints)
+            //.on::<lsp_types::request::HoverRequest>(handlers::handle_hover)
+            //.on::<lsp_types::request::PrepareRenameRequest>(handlers::handle_prepare_rename)
+            //.on::<lsp_types::request::Rename>(handlers::handle_rename)
+            //.on::<lsp_types::request::DocumentSymbolRequest>(handlers::handle_document_symbol)
+            //.on::<lsp_types::request::GotoDefinition>(handlers::handle_goto_definition)
+            //.on::<lsp_types::request::DocumentHighlightRequest>(handlers::handle_document_highlight)
+            //.on::<lsp_types::request::CodeLensRequest>(handlers::handle_code_lens)
+            //.on::<lsp_types::request::CodeActionRequest>(handlers::handle_code_action)
+            //.on::<lsp_ext::ShowAstParams>(handlers::handle_show_ast)
+            //.on_no_retry::<lsp_types::request::InlayHintRequest>(handlers::handle_inlay_hints)
             .finish();
     }
 
@@ -217,11 +217,11 @@ impl ServerStateExt {
             not: Some(not),
             server_state: self,
         }
-        .on::<notifs::Cancel>(handlers::handle_cancel)?
+        //.on::<notifs::Cancel>(handlers::handle_cancel)?
         .on::<notifs::DidOpenTextDocument>(handlers::handle_did_open_text_document)?
         .on::<notifs::DidChangeTextDocument>(handlers::handle_did_change_text_document)?
-        .on::<notifs::DidSaveTextDocument>(handlers::handle_did_save_text_document)?
-        .on::<notifs::DidChangeWatchedFiles>(handlers::handle_did_change_watched_files)?
+        //.on::<notifs::DidSaveTextDocument>(handlers::handle_did_save_text_document)?
+        //.on::<notifs::DidChangeWatchedFiles>(handlers::handle_did_change_watched_files)?
         .finish();
         Ok(())
     }
