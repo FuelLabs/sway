@@ -112,35 +112,36 @@ impl Items {
         let mut errors = vec![];
 
         let append_shadowing_error =
-            |decl: &ty::TyDecl,
+            |ident: &Ident,
+             decl: &ty::TyDecl,
              item: &ty::TyDecl,
              const_shadowing_mode: ConstShadowingMode,
              errors: &mut Vec<CompileError>| {
                 use ty::TyDecl::*;
-                match (decl, &item, const_shadowing_mode) {
+                match (ident, decl, &item, const_shadowing_mode) {
                     // variable shadowing a constant
-                    (ConstantDecl(constant_decl), VariableDecl { .. }, _) => {
+                    (constant_ident, ConstantDecl { .. }, VariableDecl { .. }, _) => {
                         errors.push(CompileError::VariableShadowsConstant {
                             name: name.clone(),
-                            constant_span: constant_decl.decl_span.clone()
+                            constant_span: constant_ident.span().clone()
                         })
                     }
                     // constant shadowing a variable
-                    (VariableDecl(variable_decl), ConstantDecl { .. }, _) => {
+                    (_, VariableDecl(variable_decl), ConstantDecl { .. }, _) => {
                         errors.push(CompileError::ConstantShadowsVariable {
                             name: name.clone(),
                             variable_span: variable_decl.name.span().clone()
                         })
                     }
                     // constant shadowing a constant outside function body
-                    (ConstantDecl { .. }, ConstantDecl { .. }, ConstShadowingMode::ItemStyle) => {
+                    (_, ConstantDecl { .. }, ConstantDecl { .. }, ConstShadowingMode::ItemStyle) => {
                         errors.push(CompileError::MultipleDefinitionsOfConstant {
                             name: name.clone(),
                             span: name.span(),
                         })
                     }
                     // constant shadowing a constant within function body
-                    (ConstantDecl(constant_decl), ConstantDecl { .. }, ConstShadowingMode::Sequential) => {
+                    (_, ConstantDecl(constant_decl), ConstantDecl { .. }, ConstShadowingMode::Sequential) => {
                         errors.push(CompileError::ConstantShadowsConstant {
                             name: name.clone(),
                             constant_span: constant_decl.decl_span.clone()
@@ -149,7 +150,7 @@ impl Items {
                     // type or type alias shadowing another type or type alias
                     // trait/abi shadowing another trait/abi
                     // type or type alias shadowing a trait/abi, or vice versa
-                    (
+                    (   _, 
                         StructDecl { .. }
                         | EnumDecl { .. }
                         | TypeAliasDecl { .. }
@@ -166,19 +167,19 @@ impl Items {
                         span: name.span(),
                     }),
                     // Generic parameter shadowing another generic parameter
-                    (GenericTypeForFunctionScope { .. }, GenericTypeForFunctionScope { .. }, _) => {
+                    (_, GenericTypeForFunctionScope { .. }, GenericTypeForFunctionScope { .. }, _) => {
                         errors.push(CompileError::GenericShadowsGeneric { name: name.clone() });
                     }
                     _ => {}
                 }
             };
 
-        if let Some(decl) = self.symbols.get(&name) {
-            append_shadowing_error(decl, &item, const_shadowing_mode, &mut errors);
+        if let Some((ident, decl)) = self.symbols.get_key_value(&name) {
+            append_shadowing_error(ident, decl, &item, const_shadowing_mode, &mut errors);
         }
 
-        if let Some((_, GlobImport::No, decl, _)) = self.use_synonyms.get(&name) {
-            append_shadowing_error(decl, &item, const_shadowing_mode, &mut errors);
+        if let Some((ident, (_, GlobImport::No, decl, _))) = self.use_synonyms.get_key_value(&name) {
+            append_shadowing_error(ident, decl, &item, const_shadowing_mode, &mut errors);
         }
 
         self.symbols.insert(name, item);
