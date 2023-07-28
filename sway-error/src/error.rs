@@ -456,10 +456,14 @@ pub enum CompileError {
     },
     #[error("Variables cannot shadow constants. The variable \"{name}\" shadows constant with the same name.")]
     VariableShadowsConstant { name: Ident, constant_span: Span },
+    #[error("Variables cannot shadow constants. The variable \"{name}\" shadows imported constant with the same name.")]
+    VariableShadowsImportedConstant { name: Ident, constant_span: Span, constant_decl: Span },
     #[error("Constants cannot shadow variables. The constant \"{name}\" shadows variable with the same name.")]
     ConstantShadowsVariable { name: Ident, variable_span: Span },
     #[error("Constants cannot shadow constants. The constant \"{name}\" shadows constant with the same name.")]
     ConstantShadowsConstant { name: Ident, constant_span: Span },
+    #[error("Constants cannot shadow constants. The constant \"{name}\" shadows imported constant with the same name.")]
+    ConstantShadowsImportedConstant { name: Ident, constant_span: Span, constant_decl: Span },
     #[error("The imported symbol \"{name}\" shadows another symbol with the same name.")]
     ShadowsOtherSymbol { name: Ident },
     #[error("The name \"{name}\" is already used for a generic parameter in this scope.")]
@@ -768,8 +772,10 @@ impl Spanned for CompileError {
             InvalidOpcodeFromPredicate { span, .. } => span.clone(),
             ArrayOutOfBounds { span, .. } => span.clone(),
             VariableShadowsConstant { name, .. } => name.span(),
+            VariableShadowsImportedConstant { name, .. } => name.span(),
             ConstantShadowsVariable { name, ..} => name.span(),
             ConstantShadowsConstant { name, .. } => name.span(),
+            ConstantShadowsImportedConstant { name, .. } => name.span(),
             ShadowsOtherSymbol { name } => name.span(),
             GenericShadowsGeneric { name } => name.span(),
             MatchExpressionNonExhaustive { span, .. } => span.clone(),
@@ -842,7 +848,7 @@ impl ToDiagnostic for CompileError {
     fn to_diagnostic(&self, source_engine: &SourceEngine) -> Diagnostic {
         use CompileError::*;
         match self {
-            VariableShadowsConstant { name , constant_span} => Diagnostic {
+            VariableShadowsConstant { name , constant_span } => Diagnostic {
                 reason: Some("Constants cannot be shadowed".to_string()),
                 issue: Issue::error(
                     source_engine,
@@ -868,7 +874,38 @@ impl ToDiagnostic for CompileError {
                 ],
                 ..Default::default()
             },
-            ConstantShadowsVariable { name , variable_span} => Diagnostic {
+            VariableShadowsImportedConstant { name , constant_span, constant_decl } => Diagnostic {
+                reason: Some("Constants cannot be shadowed".to_string()),
+                issue: Issue::error(
+                    source_engine,
+                    self.span().clone(),
+                    format!("Variable \"{name}\" shadows imported constant with the same name")
+                ),
+                hints: vec![
+                    crate::diagnostic::Hint::info(
+                        source_engine,
+                        constant_span.clone(),
+                        format!("The shadowed constant is imported here.")
+                    ),
+                    crate::diagnostic::Hint::info(
+                        source_engine,
+                        constant_decl.clone(),
+                        format!("This is the original declaration of the constant \"{name}\".")
+                    ),
+                    crate::diagnostic::Hint::error(
+                        source_engine,
+                        self.span().clone(),
+                        format!("This is the variable \"{name}\" that shadows the imported constant.")
+                    ),
+                ],
+                help: vec![
+                    "Unlike variables, constants cannot be shadowed by other constants or variables.".to_string(),
+                    "They also cannot shadow variables.".to_string(),
+                    "Consider renaming the variable or using an alias for the imported constant.".to_string(),
+                ],
+                ..Default::default()
+            },
+            ConstantShadowsVariable { name , variable_span } => Diagnostic {
                 reason: Some("Constants cannot shadow variables".to_string()),
                 issue: Issue::error(
                     source_engine,
@@ -893,7 +930,7 @@ impl ToDiagnostic for CompileError {
                 ],
                 ..Default::default()
             },
-            ConstantShadowsConstant { name , constant_span} => Diagnostic {
+            ConstantShadowsConstant { name , constant_span } => Diagnostic {
                 reason: Some("Constants cannot be shadowed".to_string()),
                 issue: Issue::error(
                     source_engine,
@@ -909,13 +946,44 @@ impl ToDiagnostic for CompileError {
                     crate::diagnostic::Hint::error(
                         source_engine,
                         self.span().clone(),
-                        format!("This is the constant \"{name}\" that shadows the constant.")
+                        format!("This is the constant \"{name}\" that shadows.")
                     ),
                 ],
                 help: vec![
                     "Unlike variables, constants cannot be shadowed by other constants or variables.".to_string(),
                     "They also cannot shadow variables.".to_string(),
                     "Consider renaming one of the constants.".to_string(),
+                ],
+                ..Default::default()
+            },
+            ConstantShadowsImportedConstant { name , constant_span, constant_decl } => Diagnostic {
+                reason: Some("Constants cannot be shadowed".to_string()),
+                issue: Issue::error(
+                    source_engine,
+                    self.span().clone(),
+                    format!("Constant \"{name}\" shadows imported constant with the same name")
+                ),
+                hints: vec![
+                    crate::diagnostic::Hint::info(
+                        source_engine,
+                        constant_span.clone(),
+                        format!("The shadowed constant is imported here.")
+                    ),
+                    crate::diagnostic::Hint::info(
+                        source_engine,
+                        constant_decl.clone(),
+                        format!("This is the original declaration of the shadowed constant \"{name}\".")
+                    ),
+                    crate::diagnostic::Hint::error(
+                        source_engine,
+                        self.span().clone(),
+                        format!("This is the constant \"{name}\" that shadows the imported constant.")
+                    ),
+                ],
+                help: vec![
+                    "Unlike variables, constants cannot be shadowed by other constants or variables.".to_string(),
+                    "They also cannot shadow variables.".to_string(),
+                    "Consider renaming the constant or using an alias for the imported constant.".to_string(),
                 ],
                 ..Default::default()
             },

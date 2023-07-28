@@ -114,37 +114,54 @@ impl Items {
         let append_shadowing_error =
             |ident: &Ident,
              decl: &ty::TyDecl,
+             is_use: bool,
              item: &ty::TyDecl,
              const_shadowing_mode: ConstShadowingMode,
              errors: &mut Vec<CompileError>| {
                 use ty::TyDecl::*;
-                match (ident, decl, &item, const_shadowing_mode) {
-                    // variable shadowing a constant
-                    (constant_ident, ConstantDecl { .. }, VariableDecl { .. }, _) => {
+                match (ident, decl, is_use, &item, const_shadowing_mode) {
+                    // variable shadowing a non imported constant
+                    (constant_ident, ConstantDecl { .. }, false, VariableDecl { .. }, _) => {
                         errors.push(CompileError::VariableShadowsConstant {
                             name: name.clone(),
                             constant_span: constant_ident.span().clone()
                         })
                     }
+                    // variable shadowing an imported constant
+                    (constant_ident, ConstantDecl(constant_decl), true,  VariableDecl { .. }, _) => {
+                        errors.push(CompileError::VariableShadowsImportedConstant {
+                            name: name.clone(),
+                            constant_span: constant_ident.span().clone(),
+                            constant_decl: constant_decl.decl_span.clone()
+                        })
+                    }
+                    // constant shadowing a non imported constant sequentially
+                    (constant_ident, ConstantDecl { .. }, false, ConstantDecl { .. }, ConstShadowingMode::Sequential) => {
+                        errors.push(CompileError::ConstantShadowsConstant {
+                            name: name.clone(),
+                            constant_span: constant_ident.span().clone()
+                        })
+                    }
+                    // constant shadowing an imported constant sequentially
+                    (constant_ident, ConstantDecl { .. }, true, ConstantDecl(constant_decl), ConstShadowingMode::Sequential) => {
+                        errors.push(CompileError::ConstantShadowsImportedConstant {
+                            name: name.clone(),
+                            constant_span: constant_ident.span().clone(),
+                            constant_decl: constant_decl.decl_span.clone()
+                        })
+                    }
                     // constant shadowing a variable
-                    (_, VariableDecl(variable_decl), ConstantDecl { .. }, _) => {
+                    (_, VariableDecl(variable_decl), _, ConstantDecl { .. }, _) => {
                         errors.push(CompileError::ConstantShadowsVariable {
                             name: name.clone(),
                             variable_span: variable_decl.name.span().clone()
                         })
                     }
-                    // constant shadowing a constant outside function body
-                    (_, ConstantDecl { .. }, ConstantDecl { .. }, ConstShadowingMode::ItemStyle) => {
+                    // constant shadowing a constant item-style (outside function body)
+                    (_, ConstantDecl { .. }, _,  ConstantDecl { .. }, ConstShadowingMode::ItemStyle) => {
                         errors.push(CompileError::MultipleDefinitionsOfConstant {
                             name: name.clone(),
                             span: name.span(),
-                        })
-                    }
-                    // constant shadowing a constant within function body
-                    (constant_ident, ConstantDecl { .. }, ConstantDecl { .. }, ConstShadowingMode::Sequential) => {
-                        errors.push(CompileError::ConstantShadowsConstant {
-                            name: name.clone(),
-                            constant_span: constant_ident.span().clone()
                         })
                     }
                     // type or type alias shadowing another type or type alias
@@ -156,6 +173,7 @@ impl Items {
                         | TypeAliasDecl { .. }
                         | TraitDecl { .. }
                         | AbiDecl { .. },
+                        _,
                         StructDecl { .. }
                         | EnumDecl { .. }
                         | TypeAliasDecl { .. }
@@ -167,7 +185,7 @@ impl Items {
                         span: name.span(),
                     }),
                     // Generic parameter shadowing another generic parameter
-                    (_, GenericTypeForFunctionScope { .. }, GenericTypeForFunctionScope { .. }, _) => {
+                    (_, GenericTypeForFunctionScope { .. }, _, GenericTypeForFunctionScope { .. }, _) => {
                         errors.push(CompileError::GenericShadowsGeneric { name: name.clone() });
                     }
                     _ => {}
@@ -175,11 +193,11 @@ impl Items {
             };
 
         if let Some((ident, decl)) = self.symbols.get_key_value(&name) {
-            append_shadowing_error(ident, decl, &item, const_shadowing_mode, &mut errors);
+            append_shadowing_error(ident, decl, false, &item, const_shadowing_mode, &mut errors);
         }
 
         if let Some((ident, (_, GlobImport::No, decl, _))) = self.use_synonyms.get_key_value(&name) {
-            append_shadowing_error(ident, decl, &item, const_shadowing_mode, &mut errors);
+            append_shadowing_error(ident, decl, true, &item, const_shadowing_mode, &mut errors);
         }
 
         self.symbols.insert(name, item);
