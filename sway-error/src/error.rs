@@ -898,15 +898,24 @@ impl ToDiagnostic for CompileError {
                 issue: Issue::error(
                     source_engine,
                     self.span().clone(),
-                    format!("Constant \"{name}\" shadows constant with the same name.")
+                    format!("Constant \"{name}\" shadows constant with the same name")
                 ),
-                hints: vec![crate::diagnostic::Hint::info(
-                    source_engine,
-                    constant_span.clone(),
-                    format!("Constant \"{name}\" is declared here.")
-                )],
+                hints: vec![
+                    crate::diagnostic::Hint::info(
+                        source_engine,
+                        constant_span.clone(),
+                        format!("This is the shadowed constant.")
+                    ),
+                    crate::diagnostic::Hint::error(
+                        source_engine,
+                        self.span().clone(),
+                        format!("This is the constant \"{name}\" that shadows the constant.")
+                    ),
+                ],
                 help: vec![
-                    "Unlike variables, constants cannot be shadowed by other constants or variables, nor they can shadow variables.".to_string()
+                    "Unlike variables, constants cannot be shadowed by other constants or variables.".to_string(),
+                    "They also cannot shadow variables.".to_string(),
+                    "Consider renaming one of the constants.".to_string(),
                 ],
                 ..Default::default()
             },

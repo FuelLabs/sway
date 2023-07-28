@@ -141,10 +141,10 @@ impl Items {
                         })
                     }
                     // constant shadowing a constant within function body
-                    (_, ConstantDecl(constant_decl), ConstantDecl { .. }, ConstShadowingMode::Sequential) => {
+                    (constant_ident, ConstantDecl { .. }, ConstantDecl { .. }, ConstShadowingMode::Sequential) => {
                         errors.push(CompileError::ConstantShadowsConstant {
                             name: name.clone(),
-                            constant_span: constant_decl.decl_span.clone()
+                            constant_span: constant_ident.span().clone()
                         })
                     }
                     // type or type alias shadowing another type or type alias
