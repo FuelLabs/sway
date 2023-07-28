@@ -5,8 +5,7 @@ use sway_types::{Span, SourceId, SourceEngine};
 /// Provides detailed, rich description of a compile error or warning.
 #[derive(Debug, Default)]
 pub struct Diagnostic {
-    pub(crate) code: Option<Code>, // TODO: Make mandatory once we remove all old-style warnings and errors.
-    pub(crate) reason: Option<String>, // TODO: Make mandatory once we remove all old-style warnings and errors.
+    pub(crate) reason: Option<Reason>, // TODO: Make mandatory once we remove all old-style warnings and errors.
     pub(crate) issue: Issue,
     pub(crate) hints: Vec<Hint>,
     pub(crate) help: Vec<String>,
@@ -20,10 +19,6 @@ impl Diagnostic {
         self.reason.is_none() && self.hints.is_empty() && self.help.is_empty()
     }
 
-    pub fn code(&self) -> Option<&Code> {
-        self.code.as_ref()
-    }
-
     pub fn level(&self) -> Level {
         match self.issue.label_type {
             LabelType::Error => Level::Error,
@@ -32,7 +27,7 @@ impl Diagnostic {
         }
     }
 
-    pub fn reason(&self) -> Option<&String> {
+    pub fn reason(&self) -> Option<&Reason> {
         self.reason.as_ref()
     }
 
@@ -397,6 +392,29 @@ impl Code {
 
     pub fn as_str(&self) -> &str {
         self.text.as_ref()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Reason {
+    code: Code,
+    description: String,
+}
+
+impl Reason {
+    pub fn new(code: Code, description: String) -> Self {
+        Self {
+            code,
+            description
+        }
+    }
+
+    pub fn code(&self) -> &str {
+        self.code.as_str()
+    }
+
+    pub fn description(&self) -> &str {
+        self.description.as_ref()
     }
 }
 

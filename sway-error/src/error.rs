@@ -1,4 +1,4 @@
-use crate::diagnostic::{Diagnostic, ToDiagnostic, Issue, Code};
+use crate::diagnostic::{Diagnostic, ToDiagnostic, Issue, Code, Reason};
 use crate::convert_parse_tree_error::ConvertParseTreeError;
 use crate::lex_error::LexError;
 use crate::parser_error::ParseError;
@@ -837,11 +837,13 @@ impl Spanned for CompileError {
 
 impl ToDiagnostic for CompileError {
     fn to_diagnostic(&self, source_engine: &SourceEngine) -> Diagnostic {
+        let code = |number: u16| Code::semantic_analysis(number);
         use CompileError::*;
         match self {
             ConstantsCannotBeShadowed { variable_or_constant, name, constant_span, constant_decl, is_alias } => Diagnostic {
-                code: Some(Code::semantic_analysis(1)),
-                reason: Some("Constants cannot be shadowed".to_string()),
+                reason: Some(Reason::new(code(1), "Constants cannot be shadowed".to_string())),
+                // TODO-IG: Issue level should actually be the part of the reason. But it would complicate handling of labels.
+                //          Let's leave it like this. #[error] macro will anyhow encapsulate it and ensure consistency.
                 issue: Issue::error(
                     source_engine,
                     name.span().clone(),
@@ -863,8 +865,9 @@ impl ToDiagnostic for CompileError {
                             // Constant "x" is declared here.
                             //  or
                             // Constant "x" gets imported here.
-                            "Constant \"{name}\" {} here.",
-                            if constant_decl.clone() != Span::dummy() { "gets imported" } else { "is declared" }
+                            "Constant \"{name}\" {} here{}.",
+                            if constant_decl.clone() != Span::dummy() { "gets imported" } else { "is declared" },
+                            if *is_alias { " as alias" } else { "" }
                         )
                     ),
                     crate::diagnostic::Hint::info( // Ignored if the constant_decl is Span::dummy().
@@ -874,7 +877,7 @@ impl ToDiagnostic for CompileError {
                     ),
                     crate::diagnostic::Hint::error(
                         source_engine,
-                        self.span().clone(),
+                        name.span().clone(),
                         format!(
                             "Shadowing via {} \"{name}\" happens here.", 
                             if variable_or_constant == "Variable" { "variable" } else { "new constant" }
@@ -898,11 +901,10 @@ impl ToDiagnostic for CompileError {
                 ..Default::default()
             },
             ConstantShadowsVariable { name , variable_span } => Diagnostic {
-                code: Some(Code::semantic_analysis(2)),
-                reason: Some("Constants cannot shadow variables".to_string()),
+                reason: Some(Reason::new(code(2), "Constants cannot shadow variables".to_string())),
                 issue: Issue::error(
                     source_engine,
-                    self.span().clone(),
+                    name.span().clone(),
                     format!("Constant \"{name}\" shadows variable with the same name")
                 ),
                 hints: vec![
@@ -913,7 +915,7 @@ impl ToDiagnostic for CompileError {
                     ),
                     crate::diagnostic::Hint::error(
                         source_engine,
-                        self.span().clone(),
+                        name.span().clone(),
                         format!("This is the constant \"{name}\" that shadows the variable.")
                     ),
                 ],
@@ -924,6 +926,10 @@ impl ToDiagnostic for CompileError {
                 ..Default::default()
             },
            _ => Diagnostic {
+                    // TODO: Temporary we use self here to achieve backward compatibility.
+                    //       In general, self must not be used and will not be used once we
+                    //       switch to our own #[error] macro. All the values for the formating
+                    //       of a diagnostic must come from the enum variant parameters.
                     issue: Issue::error(source_engine, self.span().clone(), format!("{}", self)),
                     ..Default::default()
                 }

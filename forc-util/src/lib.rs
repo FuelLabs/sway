@@ -452,7 +452,7 @@ fn format_err(source_engine: &SourceEngine, err: &CompileError) {
 
     let snippet_title = Some(Annotation {
         label: Some(label.as_str()),
-        id: if SHOW_DIAGNOSTIC_CODE { err.code().map(|code| code.as_str())} else { None },
+        id: if SHOW_DIAGNOSTIC_CODE { err.reason().map(|reason| reason.code())} else { None },
         annotation_type: diagnostic_level_to_annotation_type(err.level()),
     });
 
@@ -535,7 +535,7 @@ fn format_err(source_engine: &SourceEngine, err: &CompileError) {
     fn get_title_label(diagnostics: &Diagnostic, label: &mut String) {
         label.clear();
         if diagnostics.reason().is_some() {
-            label.push_str(diagnostics.reason().unwrap());
+            label.push_str(diagnostics.reason().unwrap().description());
             label.push_str(". ");
         }
         label.push_str(diagnostics.issue().friendly_text());
