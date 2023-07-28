@@ -120,34 +120,22 @@ impl Items {
              errors: &mut Vec<CompileError>| {
                 use ty::TyDecl::*;
                 match (ident, decl, is_use, &item, const_shadowing_mode) {
-                    // variable shadowing a non imported constant
-                    (constant_ident, ConstantDecl { .. }, false, VariableDecl { .. }, _) => {
-                        errors.push(CompileError::VariableShadowsConstant {
-                            name: name.clone(),
-                            constant_span: constant_ident.span().clone()
-                        })
-                    }
-                    // variable shadowing an imported constant
-                    (constant_ident, ConstantDecl(constant_decl), true,  VariableDecl { .. }, _) => {
-                        errors.push(CompileError::VariableShadowsImportedConstant {
+                    // variable shadowing a constant
+                    (constant_ident, ConstantDecl(constant_decl), is_imported_constant,  VariableDecl { .. }, _) => {
+                        errors.push(CompileError::ConstantsCannotBeShadowed {
+                            variable_or_constant: "Variable".to_string(),
                             name: name.clone(),
                             constant_span: constant_ident.span().clone(),
-                            constant_decl: constant_decl.decl_span.clone()
+                            constant_decl: if is_imported_constant { constant_decl.decl_span.clone() } else { Span::dummy() }
                         })
                     }
-                    // constant shadowing a non imported constant sequentially
-                    (constant_ident, ConstantDecl { .. }, false, ConstantDecl { .. }, ConstShadowingMode::Sequential) => {
-                        errors.push(CompileError::ConstantShadowsConstant {
-                            name: name.clone(),
-                            constant_span: constant_ident.span().clone()
-                        })
-                    }
-                    // constant shadowing an imported constant sequentially
-                    (constant_ident, ConstantDecl { .. }, true, ConstantDecl(constant_decl), ConstShadowingMode::Sequential) => {
-                        errors.push(CompileError::ConstantShadowsImportedConstant {
+                    // constant shadowing a constant sequentially
+                    (constant_ident, ConstantDecl(constant_decl), is_imported_constant, ConstantDecl { .. }, ConstShadowingMode::Sequential) => {
+                        errors.push(CompileError::ConstantsCannotBeShadowed {
+                            variable_or_constant: "Constant".to_string(),
                             name: name.clone(),
                             constant_span: constant_ident.span().clone(),
-                            constant_decl: constant_decl.decl_span.clone()
+                            constant_decl: if is_imported_constant { constant_decl.decl_span.clone() } else { Span::dummy() }
                         })
                     }
                     // constant shadowing a variable
