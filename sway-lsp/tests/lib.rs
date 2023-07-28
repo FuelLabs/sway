@@ -849,7 +849,7 @@ async fn go_to_definition_for_paths() {
         req_uri: &uri,
         req_line: 13,
         req_char: 17,
-        def_line: 74,
+        def_line: 253,
         def_start_char: 5,
         def_end_char: 9,
         def_path: "sway-lib-core/src/primitives.sw",
