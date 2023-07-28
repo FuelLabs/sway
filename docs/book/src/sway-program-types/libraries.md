@@ -5,7 +5,7 @@
 Libraries in Sway are files used to define new common behavior.
 <!-- library:example:end -->
 
-The most prominent example of this is the [Sway Standard Library](../introduction/standard_library.html) that is made implicitly available to all Forc projects created using `forc new`.
+The most prominent example of this is the [Sway Standard Library](../introduction/standard_library.md) that is made implicitly available to all Forc projects created using `forc new`.
 
 ## Writing Libraries
 
@@ -192,14 +192,12 @@ Some Sway Libraries to try out:
 
 - [Binary Merkle Proof](https://github.com/FuelLabs/sway-libs/tree/master/libs/merkle_proof)
 - [Non-Fungible Token](https://github.com/FuelLabs/sway-libs/tree/master/libs/nft)
-- [String](https://github.com/FuelLabs/sway-libs/tree/master/libs/string)
 - [Signed Integers](https://github.com/FuelLabs/sway-libs/tree/master/libs/signed_integers)
 - [Unsigned Fixed Point Number](https://github.com/FuelLabs/sway-libs/tree/master/libs/fixed_point)
-- [StorageMapVec](https://github.com/FuelLabs/sway-libs/tree/master/libs/storagemapvec)
 
 ### Example
 
-You can import and use a Sway Library such as the [NFT](https://github.com/FuelLabs/sway-libs/tree/master/sway_libs/src/nft) library just like any other external library.
+You can import and use a Sway Library such as the [NFT](https://github.com/FuelLabs/sway-libs/tree/master/libs/nft/src) library just like any other external library.
 
 ```sway
 use sway_libs::nft::{

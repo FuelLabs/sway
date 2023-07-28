@@ -20,7 +20,7 @@ If you want to run `fuel-core` with UTXO validation, you can pass `--utxo-valida
 
 To install `forc-wallet` please refer to `forc-wallet`'s [github repo](https://github.com/FuelLabs/forc-wallet#forc-wallet).
 
-1. Construct the transaction by using either `forc deploy` or `forc run`. To do so simply run `forc deploy` or `forc run` with your desired parameters. For a list of parameters please refer to the [forc-deploy](./forc_deploy) or [forc-run](./forc_run) section of the book. Once you run either command you will be asked the address of the wallet you are going to be signing with. After the address is given the transaction will be generated and you will be given a transaction ID. At this point CLI will actively wait for you to insert the signature.
+1. Construct the transaction by using either `forc deploy` or `forc run`. To do so simply run `forc deploy` or `forc run` with your desired parameters. For a list of parameters please refer to the [forc-deploy](./forc_deploy.md) or [forc-run](./forc_run.md) section of the book. Once you run either command you will be asked the address of the wallet you are going to be signing with. After the address is given the transaction will be generated and you will be given a transaction ID. At this point CLI will actively wait for you to insert the signature.
 2. Take the transaction ID generated in the first step and sign it with `forc wallet sign --account <account_index> tx-id <transaction_id>`. This will generate a signature.
 3. Take the signature generated in the second step and provide it to `forc-deploy` (or `forc-run`). Once the signature is provided, the signed transaction will be submitted.
 
@@ -50,16 +50,16 @@ forc wallet account <account_index>
 
 ## Interacting with the testnet
 
-While using `forc-deploy` or `forc-run` to interact with the testnet you need to pass the testnet end point with `--url`
+While using `forc-deploy` or `forc-run` to interact with the testnet you need to pass the testnet end point with `--node-url`
 
 ```sh
-forc-deploy --url https://node-beta-1.fuel.network/graphql:443
+forc-deploy --node-url https://beta-3.fuel.network/graphql
 ```
 
-Since deploying and running projects on the testnet cost gas, you will need coins to pay for them. You can get some using the [testnet faucet](https://faucet-beta-1.fuel.network/).
+Since deploying and running projects on the testnet cost gas, you will need coins to pay for them. You can get some using the [testnet faucet](https://faucet-beta-3.fuel.network/).
 
 Also the default value of the "gas price" parameter is 0 for both `forc-deploy` and `forc-run`. Without changing it you will get an error complaining about gas price being too low. While using testnet you can pass `--gas-price 1` to overcome this issue. So a complete command for deploying to the testnet would look like:
 
 ```sh
-forc-deploy --url https://node-beta-1.fuel.network/graphql:443 --gas-price 1
+forc-deploy --node-url https://beta-3.fuel.network/graphql --gas-price 1
 ```

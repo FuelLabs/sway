@@ -13,7 +13,7 @@ With that regard in mind, the account based approach can be partially replicated
 
 The following sections will take a look at how an asset can be:
 
-- [`Minted`](mint.md) (created)
+- [`Minted`](mint/index.md) (created)
 - [`Burned`](burn.md) (destroyed)
 - [`Transferred`](transfer/index.md) (sent)
 
