@@ -15,7 +15,8 @@ use crate::{
         CallPath,
     },
     semantic_analysis::{
-        declaration::insert_supertraits_into_namespace, AbiMode, TypeCheckContext,
+        declaration::{insert_supertraits_into_namespace, SupertraitOf},
+        AbiMode, TypeCheckContext,
     },
     type_system::*,
 };
@@ -67,7 +68,12 @@ impl ty::TyTraitDecl {
         // Recursively make the interface surfaces and methods of the
         // supertraits available to this trait.
         check!(
-            insert_supertraits_into_namespace(ctx.by_ref(), self_type, &supertraits),
+            insert_supertraits_into_namespace(
+                ctx.by_ref(),
+                self_type,
+                &supertraits,
+                &SupertraitOf::Trait
+            ),
             return err(warnings, errors),
             warnings,
             errors

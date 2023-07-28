@@ -1,0 +1,3 @@
+category = "fail"
+
+# check: $()No method named "super_abi_method" found for type "contract".

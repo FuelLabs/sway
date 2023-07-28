@@ -8,12 +8,12 @@ impl raw_ptr {
     }
 
     /// Calculates the offset from the pointer.
-    pub fn add<T>(self, count: u64) -> raw_ptr {
+    pub fn add<T>(self, count: u64) -> Self {
         __ptr_add::<T>(self, count)
     }
 
     /// Calculates the offset from the pointer.
-    pub fn sub<T>(self, count: u64) -> raw_ptr {
+    pub fn sub<T>(self, count: u64) -> Self {
         __ptr_sub::<T>(self, count)
     }
 
@@ -30,7 +30,7 @@ impl raw_ptr {
     }
 
     /// Copies `count * size_of<T>` bytes from `self` to `dst`.
-    pub fn copy_to<T>(self, dst: raw_ptr, count: u64) {
+    pub fn copy_to<T>(self, dst: Self, count: u64) {
         let len = __mul(count, __size_of::<T>());
         asm(dst: dst, src: self, len: len) {
             mcp dst src len;
@@ -67,14 +67,14 @@ impl raw_ptr {
     }
 
     /// Copies `count` bytes from `self` to `dst`
-    pub fn copy_bytes_to(self, dst: raw_ptr, count: u64) {
+    pub fn copy_bytes_to(self, dst: Self, count: u64) {
         asm(dst: dst, src: self, len: count) {
             mcp dst src len;
         };
     }
 
     /// Add a u64 offset to a raw_ptr
-    pub fn add_uint_offset(self, offset: u64) -> raw_ptr {
+    pub fn add_uint_offset(self, offset: u64) -> Self {
         asm(ptr: self, offset: offset, new) {
             add new ptr offset;
             new: raw_ptr
@@ -82,7 +82,7 @@ impl raw_ptr {
     }
 
     /// Subtract a u64 offset from a raw_ptr
-    pub fn sub_uint_offset(self, offset: u64) -> raw_ptr {
+    pub fn sub_uint_offset(self, offset: u64) -> Self {
         asm(ptr: self, offset: offset, new) {
             sub new ptr offset;
             new: raw_ptr

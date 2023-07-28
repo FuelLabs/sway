@@ -162,6 +162,17 @@ pub(crate) fn type_check_method_application(
     let mut is_method_call_syntax_used = false;
     if !method.is_contract_call {
         if let MethodName::FromModule { ref method_name } = method_name_binding.inner {
+            if let Some(first_arg) = args_buf.get(0) {
+                // check if the user calls an ABI supertrait's method (those are private)
+                // as a contract method
+                if let TypeInfo::ContractCaller { .. } = type_engine.get(first_arg.return_type) {
+                    errors.push(CompileError::AbiSupertraitMethodCallAsContractCall {
+                        fn_name: method_name.clone(),
+                        span: span.clone(),
+                    });
+                    return err(warnings, errors);
+                }
+            }
             is_method_call_syntax_used = true;
             let is_first_param_self = method
                 .parameters
