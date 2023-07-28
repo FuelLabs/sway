@@ -4,6 +4,8 @@ pub mod capabilities;
 pub mod config;
 pub mod core;
 pub mod error;
+#[cfg(feature = "custom-event-loop")]
+pub mod event_loop;
 pub mod server_state;
 pub mod handlers {
     pub mod notification;

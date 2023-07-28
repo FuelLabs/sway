@@ -69,3 +69,15 @@ pub(crate) fn handle_did_change_watched_files(
         }
     }
 }
+
+#[cfg(feature = "custom-event-loop")]
+pub(crate) fn handle_cancel(
+    state: &mut crate::event_loop::server_state_ext::ServerStateExt,
+    params: lsp_types::CancelParams,
+) {
+    let id: lsp_server::RequestId = match params.id {
+        lsp_types::NumberOrString::Number(id) => id.into(),
+        lsp_types::NumberOrString::String(id) => id.into(),
+    };
+    state.cancel(id);
+}
