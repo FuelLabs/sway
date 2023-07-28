@@ -20,7 +20,7 @@ library;
 // library code
 ```
 
-A good reference library to use when learning library design is the [Sway Standard Library](../introduction/standard_library.html). For example, the standard library offers an [implementation](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/option.sw) of `enum Option<T>` which is a generic type that represents either the existence of a value using the variant `Some(..)` or a value's absence using the variant `None`. The [Sway file implementing `Option<T>`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/option.sw) has the following structure:
+A good reference library to use when learning library design is the [Sway Standard Library](../introduction/standard_library.md). For example, the standard library offers an [implementation](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/option.sw) of `enum Option<T>` which is a generic type that represents either the existence of a value using the variant `Some(..)` or a value's absence using the variant `None`. The [Sway file implementing `Option<T>`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/option.sw) has the following structure:
 
 - The `library` keyword:
 

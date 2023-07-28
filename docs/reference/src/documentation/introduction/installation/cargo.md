@@ -1,6 +1,6 @@
 # Cargo
 
-Cargo can be used to install the Sway toolchain with various [`plugins`](../../forc/plugins/index.md).
+Cargo can be used to install the Sway toolchain with various [`plugins`](https://fuellabs.github.io/sway/master/book/forc/plugins/index.html).
 
 ## Dependencies
 
