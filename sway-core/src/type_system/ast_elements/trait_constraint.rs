@@ -10,7 +10,10 @@ use crate::{
     engine_threading::*,
     error::*,
     language::{parsed::Supertrait, ty, CallPath},
-    semantic_analysis::{declaration::insert_supertraits_into_namespace, TypeCheckContext},
+    semantic_analysis::{
+        declaration::{insert_supertraits_into_namespace, SupertraitOf},
+        TypeCheckContext,
+    },
     type_system::priv_prelude::*,
     types::*,
     CompileResult,
@@ -220,7 +223,8 @@ impl TraitConstraint {
                     insert_supertraits_into_namespace(
                         ctx.by_ref(),
                         type_id,
-                        &trait_decl.supertraits
+                        &trait_decl.supertraits,
+                        &SupertraitOf::Trait
                     ),
                     return err(warnings, errors),
                     warnings,

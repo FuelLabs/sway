@@ -1,0 +1,3 @@
+category = "fail"
+
+# check: $()A trait cannot be a subtrait of an ABI.
