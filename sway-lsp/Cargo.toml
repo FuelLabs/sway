@@ -8,6 +8,11 @@ homepage.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+default = ["custom-event-loop"]
+# default = []
+custom-event-loop = ["crossbeam-channel", "lsp-server", "num_cpus", "stdx"]
+
 [dependencies]
 anyhow = "1.0.41"
 dashmap = "5.4"
@@ -37,6 +42,12 @@ toml_edit = "0.19"
 tower-lsp = { version = "0.19", features = ["proposed"] }
 tracing = "0.1"
 urlencoding = "2.1.2"
+
+# custom-event-loop deps
+crossbeam-channel = { version = "0.5.5", optional = true }
+lsp-server = { version = "0.7.0", optional = true }
+num_cpus = { version = "1.15.0", optional = true }
+stdx = { git = "https://github.com/JoshuaBatty/rust-analyzer-stdx", optional = true }
 
 [dev-dependencies]
 assert-json-diff = "2.0"
