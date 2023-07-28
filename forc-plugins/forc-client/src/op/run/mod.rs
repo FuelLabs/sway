@@ -1,3 +1,4 @@
+mod encode;
 use crate::{
     cmd,
     util::{
