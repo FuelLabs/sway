@@ -859,32 +859,25 @@ impl ToDiagnostic for CompileError {
                         source_engine,
                         constant_span.clone(),
                         format!(
-                            "This is the shadowed {}constant.",
-                            if constant_decl.clone() != Span::dummy() { "imported " } else { "" }
+                            // Constant "x" is declared here.
+                            //  or
+                            // Constant "x" gets imported here.
+                            "Constant \"{name}\" {} here.",
+                            if constant_decl.clone() != Span::dummy() { "gets imported" } else { "is declared" }
                         )
                     ),
                     crate::diagnostic::Hint::info( // Ignored if the constant_decl is Span::dummy().
                         source_engine,
                         constant_decl.clone(),
-                        format!("This is the original declaration of the constant \"{name}\".")
+                        format!("This is the original declaration of the imported constant \"{name}\".")
                     ),
                     crate::diagnostic::Hint::error(
                         source_engine,
                         self.span().clone(),
                         format!(
-                            // This is the variable "x" that shadows the constant. 
-                            //  or
-                            // This is the constant "x" that shadows. 
-                            //  or
-                            // ...
-                            "This is the {} \"{name}\" that shadows{}.", 
-                            variable_or_constant.clone().to_lowercase(),
-                            match (variable_or_constant.as_str(), constant_decl.clone() != Span::dummy()) {
-                                ("Variable", false) => " the constant".to_string(),
-                                ("Constant", false) => "".to_string(),
-                                (_, true) => " the imported constant".to_string(),
-                                _ => unreachable!("We can have only the listed combinations: variable/constant shadows a non imported/imported constant.")
-                            })
+                            "Shadowing via {} \"{name}\" happens here.", 
+                            if variable_or_constant == "Variable" { "variable" } else { "new constant" }
+                        )
                     ),
                 ],
                 help: vec![
@@ -910,7 +903,7 @@ impl ToDiagnostic for CompileError {
                     crate::diagnostic::Hint::info(
                         source_engine,
                         variable_span.clone(),
-                        format!("This is the shadowed variable.")
+                        format!("This is the shadowed variable \"{name}\".")
                     ),
                     crate::diagnostic::Hint::error(
                         source_engine,
