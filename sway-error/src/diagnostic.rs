@@ -5,13 +5,20 @@ use sway_types::{Span, SourceId, SourceEngine};
 /// Provides detailed, rich description of a compile error or warning.
 #[derive(Debug, Default)]
 pub struct Diagnostic {
-    pub(crate) reason: Option<String>,
+    pub(crate) reason: Option<String>, // TODO: Make mandatory once we remove all old-style warnings and errors.
     pub(crate) issue: Issue,
     pub(crate) hints: Vec<Hint>,
     pub(crate) help: Vec<String>,
 }
 
 impl Diagnostic {
+    /// For backward compatibility purposes. True if the diagnostic
+    /// was defined before the detailed diagnostics were introduced.
+    /// An old-style diagnostic contains just the issue.
+    pub fn is_old_style(&self) -> bool {
+        self.reason.is_none() && self.hints.is_empty() && self.help.is_empty()
+    }
+
     pub fn level(&self) -> Level {
         match self.issue.label_type {
             LabelType::Error => Level::Error,

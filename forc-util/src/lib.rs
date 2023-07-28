@@ -14,7 +14,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use sway_core::language::parsed::TreeType;
-use sway_error::{error::CompileError, warning::CompileWarning, diagnostic::{Diagnostic, Label, ToDiagnostic, LabelType}};
+use sway_error::{error::CompileError, warning::CompileWarning, diagnostic::{Diagnostic, Label, ToDiagnostic, LabelType, Issue, Level}};
 use sway_types::{LineCol, SourceEngine, Spanned, Span};
 use sway_utils::constants;
 use tracing::error;
@@ -413,7 +413,9 @@ pub fn print_on_failure(
             warnings
                 .iter()
                 .for_each(|w| format_warning(source_engine, w));
-            errors.iter().for_each(|e| format_err(source_engine, e));
+            errors
+                .iter()
+                .for_each(|e| format_err(source_engine, e));
         }
     }
 
@@ -434,13 +436,18 @@ pub fn print_on_failure(
 fn format_err(source_engine: &SourceEngine, err: &CompileError) {
     let err = err.to_diagnostic(source_engine);
 
+    if err.is_old_style() {
+        format_old_style_diagnostic(err.issue());
+        return;
+    }
+
     let mut label = String::new();
     get_title_label(&err, &mut label);
 
     let snippet_title = Some(Annotation {
         label: Some(label.as_str()),
         id: None,
-        annotation_type: AnnotationType::Error,
+        annotation_type: diagnostic_level_to_annotation_type(err.level()),
     });
 
     let mut snippet_slices = Vec::<Slice<'_>>::new();
@@ -472,6 +479,53 @@ fn format_err(source_engine: &SourceEngine, err: &CompileError) {
 
     tracing::error!("{}\n____\n", DisplayList::from(snippet));
 
+    fn format_old_style_diagnostic(issue: &Issue) {
+        let annotation_type = label_type_to_annotation_type(issue.label_type());
+
+        let snippet_title = Some(Annotation {
+            label: if issue.is_in_source() { None } else { Some(issue.friendly_text()) },
+            id: None,
+            annotation_type,
+        });
+
+        let mut snippet_slices = vec![];
+        if issue.is_in_source() {
+            let span = issue.span();
+            let input = span.input();
+            let mut start_pos = span.start();
+            let mut end_pos = span.end();
+            let (mut start, end) = span.line_col();
+            let input = construct_window(&mut start, end, &mut start_pos, &mut end_pos, input);
+
+            let slice = Slice {
+                source: input,
+                line_start: start.line,
+                // Safe unwrap because the issue is in source, so the source path surely exists.
+                origin: Some(issue.source_path().unwrap().as_str()),
+                fold: false,
+                annotations: vec![SourceAnnotation {
+                    label: issue.friendly_text(),
+                    annotation_type,
+                    range: (start_pos, end_pos),
+                }]
+            };
+
+            snippet_slices.push(slice);
+        }
+
+        let snippet = Snippet {
+            title: snippet_title,
+            footer: vec![],
+            slices: snippet_slices,
+            opt: FormatOptions {
+                color: true,
+                ..Default::default()
+            },
+        };
+
+        tracing::error!("{}\n____\n", DisplayList::from(snippet));
+    }
+
     fn get_title_label(diagnostics: &Diagnostic, label: &mut String) {
         label.clear();
         if diagnostics.reason().is_some() {
@@ -480,6 +534,13 @@ fn format_err(source_engine: &SourceEngine, err: &CompileError) {
         }
         label.push_str(diagnostics.issue().friendly_text());
         label.push('.');
+    }
+
+    fn diagnostic_level_to_annotation_type(level: Level) -> AnnotationType {
+        match level {
+            Level::Warning => AnnotationType::Warning,
+            Level::Error => AnnotationType::Error,
+        }
     }
 }
 
@@ -545,7 +606,7 @@ fn construct_slice<'a>(labels: Vec<&'a Label>) -> Slice<'a> {
     let source_code = labels[0].span().input();
 
     // Joint span of the code snippet that covers all the labels.
-    let span = Span::join_all(labels.iter().map(|message| message.span().clone()));
+    let span = Span::join_all(labels.iter().map(|label| label.span().clone()));
 
     let (source, line_start, shift_in_bytes) = construct_code_snippet(&span, source_code);
 
@@ -554,7 +615,7 @@ fn construct_slice<'a>(labels: Vec<&'a Label>) -> Slice<'a> {
     for message in labels {
         annotations.push(SourceAnnotation {
             label: message.friendly_text(),
-            annotation_type: get_annotation_type(message.label_type()),
+            annotation_type: label_type_to_annotation_type(message.label_type()),
             range: get_annotation_range(message.span(), source_code, shift_in_bytes)
         });
     }
@@ -584,13 +645,13 @@ fn construct_slice<'a>(labels: Vec<&'a Label>) -> Slice<'a> {
 
         (start_pos, end_pos)
     }
+}
 
-    fn get_annotation_type(message_type: LabelType) -> AnnotationType {
-        match message_type {
-            LabelType::Info => AnnotationType::Info,
-            LabelType::Warning => AnnotationType::Warning,
-            LabelType::Error => AnnotationType::Error,
-        }
+fn label_type_to_annotation_type(label_type: LabelType) -> AnnotationType {
+    match label_type {
+        LabelType::Info => AnnotationType::Info,
+        LabelType::Warning => AnnotationType::Warning,
+        LabelType::Error => AnnotationType::Error,
     }
 }
 
