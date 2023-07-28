@@ -54,4 +54,7 @@ pub struct Command {
     /// Sign the deployment transaction manually.
     #[clap(long)]
     pub manual_signing: bool,
+    /// Arguments to pass into main function with forc run.
+    #[clap(long)]
+    pub args: Option<Vec<String>>,
 }
