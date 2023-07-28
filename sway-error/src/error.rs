@@ -853,16 +853,18 @@ impl ToDiagnostic for CompileError {
                     crate::diagnostic::Hint::info(
                         source_engine,
                         constant_span.clone(),
-                        format!("This is the shadowed constant.")),
+                        format!("This is the shadowed constant.")
+                    ),
                     crate::diagnostic::Hint::error(
                         source_engine,
                         self.span().clone(),
-                        format!("This is the variable \"{name}\" that shadows the constant.")),
+                        format!("This is the variable \"{name}\" that shadows the constant.")
+                    ),
                 ],
                 help: vec![
                     "Unlike variables, constants cannot be shadowed by other constants or variables.".to_string(),
                     "They also cannot shadow variables.".to_string(),
-                    "Consider renaming either the varable or the constant.".to_string(),
+                    "Consider renaming either the variable or the constant.".to_string(),
                 ],
                 ..Default::default()
             },
@@ -871,15 +873,23 @@ impl ToDiagnostic for CompileError {
                 issue: Issue::error(
                     source_engine,
                     self.span().clone(),
-                    format!("Constant \"{name}\" shadows variable with the same name.")
+                    format!("Constant \"{name}\" shadows variable with the same name")
                 ),
-                hints: vec![crate::diagnostic::Hint::info(
-                    source_engine,
-                    variable_span.clone(),
-                    format!("Variable \"{name}\" is declared here.")
-                )],
+                hints: vec![
+                    crate::diagnostic::Hint::info(
+                        source_engine,
+                        variable_span.clone(),
+                        format!("This is the shadowed variable.")
+                    ),
+                    crate::diagnostic::Hint::error(
+                        source_engine,
+                        self.span().clone(),
+                        format!("This is the constant \"{name}\" that shadows the variable.")
+                    ),
+                ],
                 help: vec![
-                    "Unlike variables, constants cannot be shadowed by other constants or variables, nor they can shadow variables.".to_string()
+                    "Variables can shadow other variables, but constants cannot.".to_string(),
+                    "Consider renaming either the variable or the constant.".to_string(),
                 ],
                 ..Default::default()
             },
