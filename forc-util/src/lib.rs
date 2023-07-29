@@ -15,7 +15,7 @@ use std::{
 };
 use sway_core::language::parsed::TreeType;
 use sway_error::{error::CompileError, warning::CompileWarning, diagnostic::{Diagnostic, Label, ToDiagnostic, LabelType, Issue, Level}};
-use sway_types::{LineCol, SourceEngine, Spanned, Span};
+use sway_types::{LineCol, SourceEngine, Span};
 use sway_utils::constants;
 use tracing::error;
 
@@ -373,7 +373,7 @@ pub fn print_warnings(
     if !terse_mode {
         warnings
             .iter()
-            .for_each(|w| format_warning(source_engine, w));
+            .for_each(|w| format_diagnostic(&w.to_diagnostic(source_engine)));
     }
 
     println_yellow_err(&format!(
@@ -404,18 +404,18 @@ pub fn print_on_failure(
             warnings
                 .iter()
                 .rev()
-                .for_each(|w| format_warning(source_engine, w));
+                .for_each(|w| format_diagnostic(&w.to_diagnostic(source_engine)));
             errors
                 .iter()
                 .rev()
-                .for_each(|e| format_err(source_engine, e));
+                .for_each(|e| format_diagnostic(&e.to_diagnostic(source_engine)));
         } else {
             warnings
                 .iter()
-                .for_each(|w| format_warning(source_engine, w));
+                .for_each(|w| format_diagnostic(&w.to_diagnostic(source_engine)));
             errors
                 .iter()
-                .for_each(|e| format_err(source_engine, e));
+                .for_each(|e| format_diagnostic(&e.to_diagnostic(source_engine)));
         }
     }
 
@@ -439,37 +439,35 @@ pub fn print_on_failure(
 /// diagnostic codes.
 const SHOW_DIAGNOSTIC_CODE: bool = true;
 
-fn format_err(source_engine: &SourceEngine, err: &CompileError) {
-    let err = err.to_diagnostic(source_engine);
-
-    if err.is_old_style() {
-        format_old_style_diagnostic(err.issue());
+fn format_diagnostic(diagnostic: &Diagnostic) {
+    if diagnostic.is_old_style() {
+        format_old_style_diagnostic(diagnostic.issue());
         return;
     }
 
     let mut label = String::new();
-    get_title_label(&err, &mut label);
+    get_title_label(&diagnostic, &mut label);
 
     let snippet_title = Some(Annotation {
         label: Some(label.as_str()),
-        id: if SHOW_DIAGNOSTIC_CODE { err.reason().map(|reason| reason.code())} else { None },
-        annotation_type: diagnostic_level_to_annotation_type(err.level()),
+        id: if SHOW_DIAGNOSTIC_CODE { diagnostic.reason().map(|reason| reason.code())} else { None },
+        annotation_type: diagnostic_level_to_annotation_type(diagnostic.level()),
     });
 
     let mut snippet_slices = Vec::<Slice<'_>>::new();
 
     // We first display labels from the issue file...
-    if err.issue().is_in_source() {
-        snippet_slices.push(construct_slice(err.labels_in_issue_source()))
+    if diagnostic.issue().is_in_source() {
+        snippet_slices.push(construct_slice(diagnostic.labels_in_issue_source()))
     }
 
-    // ...and then all the remaining labels from other files.
-    for source_path in err.related_sources(false) {
-        snippet_slices.push(construct_slice(err.labels_in_source(source_path)))
+    // ...and then all the remaining labels from the other files.
+    for source_path in diagnostic.related_sources(false) {
+        snippet_slices.push(construct_slice(diagnostic.labels_in_source(source_path)))
     }
 
     let mut snippet_footer = Vec::<Annotation<'_>>::new();
-    for help in err.help() {
+    for help in diagnostic.help() {
         snippet_footer.push(Annotation { id: None, label: Some(&help), annotation_type: AnnotationType::Help });
     }
 
@@ -483,7 +481,10 @@ fn format_err(source_engine: &SourceEngine, err: &CompileError) {
         },
     };
 
-    tracing::error!("{}\n____\n", DisplayList::from(snippet));
+    match diagnostic.level() {
+        Level::Warning => tracing::warn!("{}\n____\n", DisplayList::from(snippet)),
+        Level::Error => tracing::error!("{}\n____\n", DisplayList::from(snippet)),
+    }
 
     fn format_old_style_diagnostic(issue: &Issue) {
         let annotation_type = label_type_to_annotation_type(issue.label_type());
@@ -548,48 +549,6 @@ fn format_err(source_engine: &SourceEngine, err: &CompileError) {
             Level::Error => AnnotationType::Error,
         }
     }
-}
-
-fn format_warning(source_engine: &SourceEngine, err: &CompileWarning) {
-    let span = err.span();
-    let input = span.input();
-    let path = err.source_id().map(|id| source_engine.get_path(&id));
-    let path_str = path.as_ref().map(|p| p.to_string_lossy());
-
-    let friendly_str = maybe_uwuify(&err.to_friendly_warning_string());
-    let mut start_pos = span.start();
-    let mut end_pos = span.end();
-    if start_pos == end_pos {
-        // if start/pos are same we will not get that arrow pointing to code, so we add +1.
-        end_pos += 1;
-    }
-
-    let (mut start, end) = err.span.line_col();
-    let input = construct_window(&mut start, end, &mut start_pos, &mut end_pos, input);
-    let snippet = Snippet {
-        title: Some(Annotation {
-            label: None,
-            id: None,
-            annotation_type: AnnotationType::Warning,
-        }),
-        footer: vec![],
-        slices: vec![Slice {
-            source: input,
-            line_start: start.line,
-            origin: path_str.as_deref(),
-            fold: false,
-            annotations: vec![SourceAnnotation {
-                label: &friendly_str,
-                annotation_type: AnnotationType::Warning,
-                range: (start_pos, end_pos),
-            }],
-        }],
-        opt: FormatOptions {
-            color: true,
-            ..Default::default()
-        },
-    };
-    tracing::warn!("{}\n____\n", DisplayList::from(snippet))
 }
 
 fn construct_slice<'a>(labels: Vec<&'a Label>) -> Slice<'a> {

@@ -279,7 +279,7 @@ impl ToDiagnostic for CompileWarning {
                     //       In general, self must not be used and will not be used once we
                     //       switch to our own #[error] macro. All the values for the formating
                     //       of a diagnostic must come from the enum variant parameters.
-                    issue: Issue::error(source_engine, self.span().clone(), format!("{}", self.warning_content)),
+                    issue: Issue::warning(source_engine, self.span().clone(), format!("{}", self.warning_content)),
                     ..Default::default()
                 }
         }
