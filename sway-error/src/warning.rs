@@ -1,3 +1,5 @@
+use crate::diagnostic::{Diagnostic, ToDiagnostic, Issue, Code, Reason};
+
 use core::fmt;
 
 use sway_types::{Ident, SourceId, Span, Spanned};
@@ -241,6 +243,45 @@ impl fmt::Display for Warning {
             ModulePrivacyDisabled => write!(f, "Module privacy rules will soon change to make modules private by default.
                                             You can enable the new behavior with the --experimental-private-modules flag, which will become the default behavior in a later release.
                                             More details are available in the related RFC: https://github.com/FuelLabs/sway-rfcs/blob/master/rfcs/0008-private-modules.md"),
+        }
+    }
+}
+
+impl ToDiagnostic for CompileWarning {
+    fn to_diagnostic(&self, source_engine: &sway_types::SourceEngine) -> Diagnostic {
+        let code = |number: u16| Code::warnings(number);
+        use sway_types::style::*;
+        use Warning::*;
+        match &self.warning_content {
+            NonScreamingSnakeCaseConstName { name } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Constant name is not idiomatic".to_string())),
+                issue: Issue::warning(
+                    source_engine,
+                    name.span().clone(),
+                    format!("Constant \"{name}\" should be SCREAMING_SNAKE_CASE")
+                ),
+                hints: vec![
+                    crate::diagnostic::Hint::warning(
+                        source_engine,
+                        name.span().clone(),
+                        format!("\"{name}\" should be SCREAMING_SNAKE_CASE, like \"{}\".", to_screaming_snake_case(name.as_str()))
+                    ),
+                ],
+                help: vec![
+                    "In Sway, ABIs, structs, traits, and enums are CapitalCase.".to_string(),
+                    "Modules, variables, and functions are snake_case, while constants are SCREAMING_SNAKE_CASE.".to_string(),
+                    format!("Consider renaming the constant to, e.g., \"{}\".", to_screaming_snake_case(name.as_str())),
+                ],
+                ..Default::default()
+            },
+           _ => Diagnostic {
+                    // TODO: Temporary we use self here to achieve backward compatibility.
+                    //       In general, self must not be used and will not be used once we
+                    //       switch to our own #[error] macro. All the values for the formating
+                    //       of a diagnostic must come from the enum variant parameters.
+                    issue: Issue::error(source_engine, self.span().clone(), format!("{}", self.warning_content)),
+                    ..Default::default()
+                }
         }
     }
 }
