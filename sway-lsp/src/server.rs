@@ -3,7 +3,7 @@
 
 use crate::{
     handlers::{notification, request},
-    lsp_ext::ShowAstParams,
+    lsp_ext::{OnEnterParams, ShowAstParams},
     server_state::ServerState,
 };
 use lsp_types::{
@@ -116,5 +116,9 @@ impl LanguageServer for ServerState {
 impl ServerState {
     pub async fn show_ast(&self, params: ShowAstParams) -> Result<Option<TextDocumentIdentifier>> {
         request::handle_show_ast(self, params)
+    }
+
+    pub async fn on_enter(&self, params: OnEnterParams) -> Result<Option<WorkspaceEdit>> {
+        request::on_enter(self, params)
     }
 }
