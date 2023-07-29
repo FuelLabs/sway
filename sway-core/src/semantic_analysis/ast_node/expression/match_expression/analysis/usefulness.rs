@@ -1,12 +1,10 @@
-use sway_error::error::CompileError;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_types::Span;
 
-use crate::{
-    error::{err, ok},
-    language::ty,
-    type_system::TypeId,
-    CompileResult, Engines,
-};
+use crate::{language::ty, type_system::TypeId, Engines};
 
 use super::{
     constructor_factory::ConstructorFactory, matrix::Matrix, patstack::PatStack, pattern::Pattern,
@@ -198,13 +196,12 @@ use super::{
 /// exhaustive if the imaginary additional wildcard pattern has an empty
 /// `WitnessReport`.
 pub(crate) fn check_match_expression_usefulness(
+    handler: &Handler,
     engines: &Engines,
     type_id: TypeId,
     scrutinees: Vec<ty::TyScrutinee>,
     span: Span,
-) -> CompileResult<(WitnessReport, Vec<ReachableReport>)> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+) -> Result<(WitnessReport, Vec<ReachableReport>), ErrorEmitted> {
     let mut matrix = Matrix::empty();
     let mut arms_reachability = vec![];
 
@@ -220,24 +217,14 @@ pub(crate) fn check_match_expression_usefulness(
     {
         let witness_report = WitnessReport::NoWitnesses;
         let arms_reachability = vec![];
-        return ok((witness_report, arms_reachability), warnings, errors);
+        return Ok((witness_report, arms_reachability));
     }
 
     let factory = ConstructorFactory::new(engines, type_id);
     for scrutinee in scrutinees.into_iter() {
-        let pat = check!(
-            Pattern::from_scrutinee(scrutinee.clone()),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        let pat = Pattern::from_scrutinee(scrutinee.clone());
         let v = PatStack::from_pattern(pat);
-        let witness_report = check!(
-            is_useful(engines, &factory, &matrix, &v, &span),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        let witness_report = is_useful(handler, engines, &factory, &matrix, &v, &span)?;
         matrix.push(v);
         // if an arm has witnesses to its usefulness then it is reachable
         arms_reachability.push(ReachableReport::new(
@@ -246,14 +233,9 @@ pub(crate) fn check_match_expression_usefulness(
         ));
     }
     let v = PatStack::from_pattern(Pattern::wild_pattern());
-    let witness_report = check!(
-        is_useful(engines, &factory, &matrix, &v, &span),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    let witness_report = is_useful(handler, engines, &factory, &matrix, &v, &span)?;
     // if a wildcard case has no witnesses to its usefulness, then the match arms are exhaustive
-    ok((witness_report, arms_reachability), warnings, errors)
+    Ok((witness_report, arms_reachability))
 }
 
 /// Given a `Matrix` *P* and a `PatStack` *q*, computes a `WitnessReport` from
@@ -270,51 +252,25 @@ pub(crate) fn check_match_expression_usefulness(
 /// pattern, or-pattern, or constructed pattern we do something different. Each
 /// case returns a witness report that we propagate through the recursive steps.
 fn is_useful(
+    handler: &Handler,
     engines: &Engines,
     factory: &ConstructorFactory,
     p: &Matrix,
     q: &PatStack,
     span: &Span,
-) -> CompileResult<WitnessReport> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-
-    let (m, n) = check!(p.m_n(span), return err(warnings, errors), warnings, errors);
+) -> Result<WitnessReport, ErrorEmitted> {
+    let (m, n) = p.m_n(handler, span)?;
     match (m, n) {
-        (0, 0) => ok(
-            WitnessReport::Witnesses(PatStack::fill_wildcards(q.len())),
-            warnings,
-            errors,
-        ),
-        (_, 0) => ok(WitnessReport::NoWitnesses, warnings, errors),
+        (0, 0) => Ok(WitnessReport::Witnesses(PatStack::fill_wildcards(q.len()))),
+        (_, 0) => Ok(WitnessReport::NoWitnesses),
         (_, _) => {
-            let c = check!(
-                q.first(span),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
+            let c = q.first(handler, span)?;
             let witness_report = match c {
-                Pattern::Wildcard => check!(
-                    is_useful_wildcard(engines, factory, p, q, span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ),
-                Pattern::Or(pats) => check!(
-                    is_useful_or(engines, factory, p, q, pats, span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ),
-                c => check!(
-                    is_useful_constructed(engines, factory, p, q, c, span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ),
+                Pattern::Wildcard => is_useful_wildcard(handler, engines, factory, p, q, span)?,
+                Pattern::Or(pats) => is_useful_or(handler, engines, factory, p, q, pats, span)?,
+                c => is_useful_constructed(handler, engines, factory, p, q, c, span)?,
             };
-            ok(witness_report, warnings, errors)
+            Ok(witness_report)
         }
     }
 }
@@ -357,31 +313,19 @@ fn is_useful(
 ///     5. Add this new pattern to the resulting witness report
 ///     6. Return the witness report
 fn is_useful_wildcard(
+    handler: &Handler,
     engines: &Engines,
     factory: &ConstructorFactory,
     p: &Matrix,
     q: &PatStack,
     span: &Span,
-) -> CompileResult<WitnessReport> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-
+) -> Result<WitnessReport, ErrorEmitted> {
     // 1. Compute Σ = {c₁, ... , cₙ}, which is the set of constructors that appear
     //    as root constructors of the patterns of *P*'s first column.
-    let sigma = check!(
-        p.compute_sigma(span),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    let sigma = p.compute_sigma(handler, span)?;
 
     // 2. Determine if Σ is a complete signature.
-    let is_complete_signature = check!(
-        factory.is_complete_signature(engines, &sigma, span),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    let is_complete_signature = factory.is_complete_signature(handler, engines, &sigma, span)?;
 
     if is_complete_signature {
         // 3. If it is a complete signature:
@@ -391,20 +335,16 @@ fn is_useful_wildcard(
         for c_k in sigma.iter() {
             //     3.1. For every every *k* 0..*n*, compute the specialized `Matrix`
             //        *S(cₖ, P)*
-            let s_c_k_p = check!(
-                compute_specialized_matrix(c_k, p, q, span),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
+            let s_c_k_p = compute_specialized_matrix(handler, c_k, p, q, span)?;
 
             //     3.2. Compute the specialized `Matrix` *S(cₖ, q)*
-            let s_c_k_q = check!(
-                compute_specialized_matrix(c_k, &Matrix::from_pat_stack(q.clone()), q, span),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
+            let s_c_k_q = compute_specialized_matrix(
+                handler,
+                c_k,
+                &Matrix::from_pat_stack(q.clone()),
+                q,
+                span,
+            )?;
 
             // *S(cₖ, q)* may have multiple rows in the case of a or pattern
             // in that case we define: *U(P,((r1∣r2) q2...qn)) = U(P,(r1 q2...qn)) ∨ U(P,(r2 q2...qn))*
@@ -413,12 +353,7 @@ fn is_useful_wildcard(
 
             for s_c_k_q in s_c_k_q.rows() {
                 //     3.3. Recursively compute U(S(cₖ, P), S(cₖ, q))
-                let new_wr = check!(
-                    is_useful(engines, factory, &s_c_k_p, s_c_k_q, span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                let new_wr = is_useful(handler, engines, factory, &s_c_k_p, s_c_k_q, span)?;
                 wr = WitnessReport::join_witness_reports(wr, new_wr);
             }
 
@@ -432,24 +367,16 @@ fn is_useful_wildcard(
                 (WitnessReport::NoWitnesses, WitnessReport::NoWitnesses) => {}
                 (WitnessReport::Witnesses(_), WitnessReport::NoWitnesses) => {}
                 (WitnessReport::NoWitnesses, wr @ WitnessReport::Witnesses(_)) => {
-                    let (pat, wr) = check!(
-                        WitnessReport::split_into_leading_constructor(wr, c_k, span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
+                    let (pat, wr) =
+                        WitnessReport::split_into_leading_constructor(handler, wr, c_k, span)?;
                     if !pat_stack.contains(&pat) {
                         pat_stack.push(pat);
                     }
                     witness_report = wr;
                 }
                 (_, wr) => {
-                    let (pat, wr) = check!(
-                        WitnessReport::split_into_leading_constructor(wr, c_k, span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
+                    let (pat, wr) =
+                        WitnessReport::split_into_leading_constructor(handler, wr, c_k, span)?;
                     if !pat_stack.contains(&pat) {
                         pat_stack.push(pat);
                     }
@@ -463,75 +390,40 @@ fn is_useful_wildcard(
         match &mut witness_report {
             WitnessReport::NoWitnesses => {}
             witness_report => {
-                let pat_stack = check!(
-                    Pattern::from_pat_stack(pat_stack, span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                check!(
-                    witness_report.add_witness(pat_stack, span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                let pat_stack = Pattern::from_pat_stack(handler, pat_stack, span)?;
+                witness_report.add_witness(handler, pat_stack, span)?
             }
         }
 
         //     7. Return the witness report
-        ok(witness_report, warnings, errors)
+        Ok(witness_report)
     } else {
         // 4. If it is not a complete signature:
 
         //     4.1. Compute the default `Matrix` *D(P)*
-        let d_p = check!(
-            compute_default_matrix(p, q, span),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        let d_p = compute_default_matrix(handler, p, q, span)?;
 
         //     4.2. Compute *q'* as \[q₂ ... qₙ*\].
-        let (_, q_rest) = check!(
-            q.split_first(span),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        let (_, q_rest) = q.split_first(handler, span)?;
 
         //     4.3. Recursively compute *U(D(P), q')*.
-        let mut witness_report = check!(
-            is_useful(engines, factory, &d_p, &q_rest, span),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        let mut witness_report = is_useful(handler, engines, factory, &d_p, &q_rest, span)?;
 
         //     4.4. If Σ is empty, create a pattern not present in Σ
         let witness_to_add = if sigma.is_empty() {
             Pattern::Wildcard
         } else {
-            check!(
-                factory.create_pattern_not_present(engines, sigma, span),
-                return err(warnings, errors),
-                warnings,
-                errors
-            )
+            factory.create_pattern_not_present(handler, engines, sigma, span)?
         };
 
         //     4.5. Add this new pattern to the resulting witness report
         match &mut witness_report {
             WitnessReport::NoWitnesses => {}
-            witness_report => check!(
-                witness_report.add_witness(witness_to_add, span),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ),
+            witness_report => witness_report.add_witness(handler, witness_to_add, span)?,
         }
 
         //     4.6. Return the witness report
-        ok(witness_report, warnings, errors)
+        Ok(witness_report)
     }
 }
 
@@ -548,47 +440,31 @@ fn is_useful_wildcard(
 /// 2. Extract the specialized `Matrix` *S(c, q)*
 /// 3. Recursively compute *U(S(c, P), S(c, q))*
 fn is_useful_constructed(
+    handler: &Handler,
     engines: &Engines,
     factory: &ConstructorFactory,
     p: &Matrix,
     q: &PatStack,
     c: Pattern,
     span: &Span,
-) -> CompileResult<WitnessReport> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-
+) -> Result<WitnessReport, ErrorEmitted> {
     // 1. Extract the specialized `Matrix` *S(c, P)*
-    let s_c_p = check!(
-        compute_specialized_matrix(&c, p, q, span),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    let s_c_p = compute_specialized_matrix(handler, &c, p, q, span)?;
 
     // 2. Extract the specialized `Matrix` *S(c, q)*
-    let s_c_q = check!(
-        compute_specialized_matrix(&c, &Matrix::from_pat_stack(q.clone()), q, span),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    let s_c_q =
+        compute_specialized_matrix(handler, &c, &Matrix::from_pat_stack(q.clone()), q, span)?;
 
     // *S(c, q)* may have multiple rows in the case of a or pattern
     // in that case we define: *U(P,((r1∣r2) q2...qn)) = U(P,(r1 q2...qn)) ∨ U(P,(r2 q2...qn))*
     let mut witness_report = WitnessReport::NoWitnesses;
     for s_c_q in s_c_q.rows() {
         // 3. Recursively compute *U(S(c, P), S(c, q))*
-        let wr = check!(
-            is_useful(engines, factory, &s_c_p, s_c_q, span),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        let wr = is_useful(handler, engines, factory, &s_c_p, s_c_q, span)?;
 
         witness_report = WitnessReport::join_witness_reports(witness_report, wr);
     }
-    ok(witness_report, warnings, errors)
+    Ok(witness_report)
 }
 
 /// Computes a witness report from *U(P, q)* when *q* is an or-pattern
@@ -603,22 +479,15 @@ fn is_useful_constructed(
 /// 2. Compute the witnesses from *U(P, q')*
 /// 3. Aggregate the witnesses from every *U(P, q')*
 fn is_useful_or(
+    handler: &Handler,
     engines: &Engines,
     factory: &ConstructorFactory,
     p: &Matrix,
     q: &PatStack,
     pats: PatStack,
     span: &Span,
-) -> CompileResult<WitnessReport> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-
-    let (_, q_rest) = check!(
-        q.split_first(span),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+) -> Result<WitnessReport, ErrorEmitted> {
+    let (_, q_rest) = q.split_first(handler, span)?;
     let mut p = p.clone();
     let mut witness_report = WitnessReport::Witnesses(PatStack::empty());
     for pat in pats.into_iter() {
@@ -627,18 +496,13 @@ fn is_useful_or(
         v.append(&mut q_rest.clone());
 
         // 2. Compute the witnesses from *U(P, q')*
-        let wr = check!(
-            is_useful(engines, factory, &p, &v, span),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        let wr = is_useful(handler, engines, factory, &p, &v, span)?;
         p.push(v);
 
         // 3. Aggregate the witnesses from every *U(P, q')*
         witness_report = WitnessReport::join_witness_reports(witness_report, wr);
     }
-    ok(witness_report, warnings, errors)
+    Ok(witness_report)
 }
 
 /// Given a `Matrix` *P*, constructs the default `Matrix` *D(P). This is done by
@@ -647,32 +511,24 @@ fn is_useful_or(
 /// Intuition: A default `Matrix` is a transformation upon *P* that "shrinks"
 /// the rows of *P* depending on if the row is able to generally match all
 /// patterns in a default case.
-fn compute_default_matrix(p: &Matrix, q: &PatStack, span: &Span) -> CompileResult<Matrix> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+fn compute_default_matrix(
+    handler: &Handler,
+    p: &Matrix,
+    q: &PatStack,
+    span: &Span,
+) -> Result<Matrix, ErrorEmitted> {
     let mut d_p = Matrix::empty();
     for p_i in p.rows().iter() {
-        d_p.append(&mut check!(
-            compute_default_matrix_row(p_i, q, span),
-            return err(warnings, errors),
-            warnings,
-            errors
-        ));
+        d_p.append(&mut compute_default_matrix_row(handler, p_i, q, span)?);
     }
-    let (m, n) = check!(
-        d_p.m_n(span),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    let (m, n) = d_p.m_n(handler, span)?;
     if m > 0 && n != (q.len() - 1) {
-        errors.push(CompileError::Internal(
+        return Err(handler.emit_err(CompileError::Internal(
             "D(P) matrix is misshapen",
             span.clone(),
-        ));
-        return err(warnings, errors);
+        )));
     }
-    ok(d_p, warnings, errors)
+    Ok(d_p)
 }
 
 /// Given a `PatStack` *pⁱ* from `Matrix` *P*, compute the resulting row of the
@@ -701,19 +557,13 @@ fn compute_default_matrix(p: &Matrix, q: &PatStack, span: &Span) -> CompileResul
 ///     2. The resulting rows are the rows obtained from calling the recursive
 ///        *D(P')*
 fn compute_default_matrix_row(
+    handler: &Handler,
     p_i: &PatStack,
     q: &PatStack,
     span: &Span,
-) -> CompileResult<Vec<PatStack>> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+) -> Result<Vec<PatStack>, ErrorEmitted> {
     let mut rows: Vec<PatStack> = vec![];
-    let (p_i_1, mut p_i_rest) = check!(
-        p_i.split_first(span),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    let (p_i_1, mut p_i_rest) = p_i.split_first(handler, span)?;
     match p_i_1 {
         Pattern::Wildcard => {
             // 2. *pⁱ₁* is a wildcard pattern:
@@ -734,19 +584,14 @@ fn compute_default_matrix_row(
             }
             //     2. The resulting rows are the rows obtained from calling the recursive
             //        *D(P')*
-            let d_p = check!(
-                compute_default_matrix(&m, q, span),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
+            let d_p = compute_default_matrix(handler, &m, q, span)?;
             rows.append(&mut d_p.into_rows());
         }
         // 1. *pⁱ₁* is a constructed pattern *c'(r₁, ..., rₐ)*:
         //     1. no row is produced
         _ => {}
     }
-    ok(rows, warnings, errors)
+    Ok(rows)
 }
 
 /// Given a constructor *c* and a `Matrix` *P*, constructs the specialized
@@ -756,52 +601,36 @@ fn compute_default_matrix_row(
 /// Intuition: A specialized `Matrix` is a transformation upon *P* that
 /// "unwraps" the rows of *P* depending on if they are congruent with *c*.
 fn compute_specialized_matrix(
+    handler: &Handler,
     c: &Pattern,
     p: &Matrix,
     q: &PatStack,
     span: &Span,
-) -> CompileResult<Matrix> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+) -> Result<Matrix, ErrorEmitted> {
     let mut s_c_p = Matrix::empty();
 
     if let Pattern::Or(cpats) = c {
         for cpat in cpats.iter() {
-            let mut rows = check!(
-                compute_specialized_matrix(cpat, p, q, span),
-                return err(warnings, errors),
-                warnings,
-                errors
-            )
-            .into_rows();
+            let mut rows = compute_specialized_matrix(handler, cpat, p, q, span)?.into_rows();
 
             s_c_p.append(&mut rows);
         }
-        return ok(s_c_p, warnings, errors);
+        return Ok(s_c_p);
     }
 
     for p_i in p.rows().iter() {
-        s_c_p.append(&mut check!(
-            compute_specialized_matrix_row(c, p_i, q, span),
-            return err(warnings, errors),
-            warnings,
-            errors
-        ));
+        s_c_p.append(&mut compute_specialized_matrix_row(
+            handler, c, p_i, q, span,
+        )?);
     }
-    let (m, n) = check!(
-        s_c_p.m_n(span),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    let (m, n) = s_c_p.m_n(handler, span)?;
     if m > 0 && n != (c.a() + q.len() - 1) {
-        errors.push(CompileError::Internal(
+        return Err(handler.emit_err(CompileError::Internal(
             "S(c,P) matrix is misshapen",
             span.clone(),
-        ));
-        return err(warnings, errors);
+        )));
     }
-    ok(s_c_p, warnings, errors)
+    Ok(s_c_p)
 }
 
 /// Given a constructor *c* and a `PatStack` *pⁱ* from `Matrix` *P*, compute the
@@ -835,20 +664,14 @@ fn compute_specialized_matrix(
 ///     2. The resulting rows are the rows obtained from calling the recursive
 ///        *S(c, P')*
 fn compute_specialized_matrix_row(
+    handler: &Handler,
     c: &Pattern,
     p_i: &PatStack,
     q: &PatStack,
     span: &Span,
-) -> CompileResult<Vec<PatStack>> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+) -> Result<Vec<PatStack>, ErrorEmitted> {
     let mut rows: Vec<PatStack> = vec![];
-    let (p_i_1, mut p_i_rest) = check!(
-        p_i.split_first(span),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    let (p_i_1, mut p_i_rest) = p_i.split_first(handler, span)?;
     match p_i_1 {
         Pattern::Wildcard => {
             // 3. *pⁱ₁* is a wildcard pattern and the number of sub-patterns in *c* is *a*:
@@ -870,24 +693,14 @@ fn compute_specialized_matrix_row(
 
             //     4.2. The resulting rows are the rows obtained from calling the recursive
             //        *S(c, P')*
-            let s_c_p = check!(
-                compute_specialized_matrix(c, &m, q, span),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
+            let s_c_p = compute_specialized_matrix(handler, c, &m, q, span)?;
             rows.append(&mut s_c_p.into_rows());
         }
         other => {
             if c.has_the_same_constructor(&other) {
                 // 1. *pⁱ₁* is a constructed pattern *c'(r₁, ..., rₐ)* where *c* == *c'*:
                 //     1.1. the resulting row equals \[*r₁ ... rₐ pⁱ₂ ... pⁱₙ*\]
-                let mut row: PatStack = check!(
-                    other.sub_patterns(span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                let mut row: PatStack = other.sub_patterns(handler, span)?;
                 row.append(&mut p_i_rest);
                 rows.push(row);
             }
@@ -895,5 +708,5 @@ fn compute_specialized_matrix_row(
             //     2.1. no row is produced
         }
     }
-    ok(rows, warnings, errors)
+    Ok(rows)
 }

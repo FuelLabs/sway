@@ -3,12 +3,14 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use sway_error::error::CompileError;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     engine_threading::*,
-    error::*,
     language::{CallPath, Visibility},
     transform,
     type_system::*,
@@ -100,24 +102,20 @@ impl MonomorphizeHelper for TyEnumDecl {
 impl TyEnumDecl {
     pub(crate) fn expect_variant_from_name(
         &self,
+        handler: &Handler,
         variant_name: &Ident,
-    ) -> CompileResult<&TyEnumVariant> {
-        let warnings = vec![];
-        let mut errors = vec![];
+    ) -> Result<&TyEnumVariant, ErrorEmitted> {
         match self
             .variants
             .iter()
             .find(|x| x.name.as_str() == variant_name.as_str())
         {
-            Some(variant) => ok(variant, warnings, errors),
-            None => {
-                errors.push(CompileError::UnknownEnumVariant {
-                    enum_name: self.call_path.suffix.clone(),
-                    variant_name: variant_name.clone(),
-                    span: variant_name.span(),
-                });
-                err(warnings, errors)
-            }
+            Some(variant) => Ok(variant),
+            None => Err(handler.emit_err(CompileError::UnknownEnumVariant {
+                enum_name: self.call_path.suffix.clone(),
+                variant_name: variant_name.clone(),
+                span: variant_name.span(),
+            })),
         }
     }
 }

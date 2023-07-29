@@ -3,12 +3,12 @@ use std::{
     hash::{Hash, Hasher},
 };
 
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Span};
 
 use crate::{
     decl_engine::*,
     engine_threading::*,
-    error::*,
     language::{parsed::TreeType, ty::*, Visibility},
     transform::AttributeKind,
     type_system::*,
@@ -120,9 +120,10 @@ impl UpdateConstantExpression for TyAstNode {
 impl CollectTypesMetadata for TyAstNode {
     fn collect_types_metadata(
         &self,
+        handler: &Handler,
         ctx: &mut CollectTypesMetadataContext,
-    ) -> CompileResult<Vec<TypeMetadata>> {
-        self.content.collect_types_metadata(ctx)
+    ) -> Result<Vec<TypeMetadata>, ErrorEmitted> {
+        self.content.collect_types_metadata(handler, ctx)
     }
 }
 
@@ -354,14 +355,15 @@ impl HashWithEngines for TyAstNodeContent {
 impl CollectTypesMetadata for TyAstNodeContent {
     fn collect_types_metadata(
         &self,
+        handler: &Handler,
         ctx: &mut CollectTypesMetadataContext,
-    ) -> CompileResult<Vec<TypeMetadata>> {
+    ) -> Result<Vec<TypeMetadata>, ErrorEmitted> {
         use TyAstNodeContent::*;
         match self {
-            Declaration(decl) => decl.collect_types_metadata(ctx),
-            Expression(expr) => expr.collect_types_metadata(ctx),
-            ImplicitReturnExpression(expr) => expr.collect_types_metadata(ctx),
-            SideEffect(_) => ok(vec![], vec![], vec![]),
+            Declaration(decl) => decl.collect_types_metadata(handler, ctx),
+            Expression(expr) => expr.collect_types_metadata(handler, ctx),
+            ImplicitReturnExpression(expr) => expr.collect_types_metadata(handler, ctx),
+            SideEffect(_) => Ok(vec![]),
         }
     }
 }

@@ -1,9 +1,7 @@
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Span;
 
-use crate::{
-    error::{err, ok},
-    CompileError, CompileResult,
-};
+use crate::CompileError;
 
 use super::patstack::PatStack;
 
@@ -54,41 +52,39 @@ impl Matrix {
 
     /// Returns the number of rows *m* and the number of columns *n* of the
     /// `Matrix` in the form (*m*, *n*).
-    pub(crate) fn m_n(&self, span: &Span) -> CompileResult<(usize, usize)> {
-        let warnings = vec![];
-        let mut errors = vec![];
+    pub(crate) fn m_n(
+        &self,
+        handler: &Handler,
+        span: &Span,
+    ) -> Result<(usize, usize), ErrorEmitted> {
         let first = match self.rows.first() {
             Some(first) => first,
-            None => return ok((0, 0), warnings, errors),
+            None => return Ok((0, 0)),
         };
         let n = first.len();
         for row in self.rows.iter().skip(1) {
             if row.len() != n {
-                errors.push(CompileError::Internal(
+                return Err(handler.emit_err(CompileError::Internal(
                     "found invalid matrix size",
                     span.clone(),
-                ));
-                return err(warnings, errors);
+                )));
             }
         }
-        ok((self.rows.len(), n), warnings, errors)
+        Ok((self.rows.len(), n))
     }
 
     /// Computes Σ, where Σ is a `PatStack` containing the first element of
     /// every row of the `Matrix`.
-    pub(crate) fn compute_sigma(&self, span: &Span) -> CompileResult<PatStack> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+    pub(crate) fn compute_sigma(
+        &self,
+        handler: &Handler,
+        span: &Span,
+    ) -> Result<PatStack, ErrorEmitted> {
         let mut pat_stack = PatStack::empty();
         for row in self.rows.iter() {
-            let first = check!(
-                row.first(span),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
+            let first = row.first(handler, span)?;
             pat_stack.push(first.into_root_constructor())
         }
-        ok(pat_stack.remove_duplicates(), warnings, errors)
+        Ok(pat_stack.remove_duplicates())
     }
 }

@@ -1,7 +1,6 @@
 use crate::{
     decl_engine::DeclRef,
     engine_threading::Engines,
-    error::*,
     language::{
         parsed::*,
         ty::{self, TyDecl},
@@ -158,8 +157,7 @@ impl Module {
         ns.root.module.is_external = true;
         ns.root.module.visibility = Visibility::Public;
         let type_check_ctx = TypeCheckContext::from_root(&mut ns, engines);
-        let typed_node =
-            ty::TyAstNode::type_check(type_check_ctx, ast_node).unwrap(&mut vec![], &mut vec![]);
+        let typed_node = ty::TyAstNode::type_check(handler, type_check_ctx, ast_node).unwrap();
         // get the decl out of the typed node:
         // we know as an invariant this must be a const decl, as we hardcoded a const decl in
         // the above `format!`.  if it isn't we report an
@@ -218,10 +216,14 @@ impl Module {
     /// Lookup the submodule at the given path.
     ///
     /// This should be used rather than `Index` when we don't yet know whether the module exists.
-    pub(crate) fn check_submodule(&self, path: &[Ident]) -> CompileResult<&Module> {
+    pub(crate) fn check_submodule(
+        &self,
+        handler: &Handler,
+        path: &[Ident],
+    ) -> Result<&Module, ErrorEmitted> {
         match self.submodule(path) {
-            None => err(vec![], vec![module_not_found(path)]),
-            Some(module) => ok(module, vec![], vec![]),
+            None => Err(handler.emit_err(module_not_found(path))),
+            Some(module) => Ok(module),
         }
     }
 
@@ -233,29 +235,17 @@ impl Module {
     /// Paths are assumed to be relative to `self`.
     pub(crate) fn star_import(
         &mut self,
+        handler: &Handler,
         src: &Path,
         dst: &Path,
         engines: &Engines,
         is_src_absolute: bool,
-    ) -> CompileResult<()> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
-        check!(
-            self.check_module_privacy(src, dst),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+    ) -> Result<(), ErrorEmitted> {
+        self.check_module_privacy(handler, src, dst)?;
 
         let decl_engine = engines.de();
 
-        let src_ns = check!(
-            self.check_submodule(src),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        let src_ns = self.check_submodule(handler, src)?;
 
         let implemented_traits = src_ns.implemented_traits.clone();
         let mut symbols_and_decls = vec![];
@@ -281,7 +271,7 @@ impl Module {
             );
         }
 
-        ok((), warnings, errors)
+        Ok(())
     }
 
     /// Given a path to a `src` module, create synonyms to every symbol in that module to the given
@@ -292,29 +282,17 @@ impl Module {
     /// Paths are assumed to be relative to `self`.
     pub fn star_import_with_reexports(
         &mut self,
+        handler: &Handler,
         src: &Path,
         dst: &Path,
         engines: &Engines,
         is_src_absolute: bool,
-    ) -> CompileResult<()> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
-        check!(
-            self.check_module_privacy(src, dst),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+    ) -> Result<(), ErrorEmitted> {
+        self.check_module_privacy(handler, src, dst)?;
 
         let decl_engine = engines.de();
 
-        let src_ns = check!(
-            self.check_submodule(src),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        let src_ns = self.check_submodule(handler, src)?;
 
         let implemented_traits = src_ns.implemented_traits.clone();
         let use_synonyms = src_ns.use_synonyms.clone();
@@ -366,7 +344,7 @@ impl Module {
             try_add(symbol, path, decl);
         }
 
-        ok((), warnings, errors)
+        Ok(())
     }
 
     /// Pull a single item from a `src` module and import it into the `dst` module.
@@ -375,59 +353,56 @@ impl Module {
     /// import.
     pub(crate) fn self_import(
         &mut self,
+        handler: &Handler,
         engines: &Engines,
         src: &Path,
         dst: &Path,
         alias: Option<Ident>,
         is_src_absolute: bool,
-    ) -> CompileResult<()> {
+    ) -> Result<(), ErrorEmitted> {
         let (last_item, src) = src.split_last().expect("guaranteed by grammar");
-        self.item_import(engines, src, last_item, dst, alias, is_src_absolute)
+        self.item_import(
+            handler,
+            engines,
+            src,
+            last_item,
+            dst,
+            alias,
+            is_src_absolute,
+        )
     }
 
     /// Pull a single `item` from the given `src` module and import it into the `dst` module.
     ///
     /// Paths are assumed to be relative to `self`.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn item_import(
         &mut self,
+        handler: &Handler,
         engines: &Engines,
         src: &Path,
         item: &Ident,
         dst: &Path,
         alias: Option<Ident>,
         is_src_absolute: bool,
-    ) -> CompileResult<()> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
-        check!(
-            self.check_module_privacy(src, dst),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+    ) -> Result<(), ErrorEmitted> {
+        self.check_module_privacy(handler, src, dst)?;
 
         let decl_engine = engines.de();
 
-        let src_ns = check!(
-            self.check_submodule(src),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        let src_ns = self.check_submodule(handler, src)?;
         let mut impls_to_insert = TraitMap::default();
         match src_ns.symbols.get(item).cloned() {
             Some(decl) => {
                 if !decl.visibility(decl_engine).is_public() && !is_ancestor(src, dst) {
-                    errors.push(CompileError::ImportPrivateSymbol {
+                    handler.emit_err(CompileError::ImportPrivateSymbol {
                         name: item.clone(),
                         span: item.span(),
                     });
                 }
 
-                let type_id = decl.return_type(engines).value;
                 //  if this is an enum or struct or function, import its implementations
-                if let Some(type_id) = type_id {
+                if let Ok(type_id) = decl.return_type(&Handler::default(), engines) {
                     impls_to_insert.extend(
                         src_ns
                             .implemented_traits
@@ -451,7 +426,7 @@ impl Module {
                 let dst_ns = &mut self[dst];
                 let add_synonym = |name| {
                     if let Some((_, GlobImport::No, _, _)) = dst_ns.use_synonyms.get(name) {
-                        errors.push(CompileError::ShadowsOtherSymbol { name: name.clone() });
+                        handler.emit_err(CompileError::ShadowsOtherSymbol { name: name.clone() });
                     }
                     dst_ns.use_synonyms.insert(
                         name.clone(),
@@ -469,18 +444,17 @@ impl Module {
                 };
             }
             None => {
-                errors.push(CompileError::SymbolNotFound {
+                return Err(handler.emit_err(CompileError::SymbolNotFound {
                     name: item.clone(),
                     span: item.span(),
-                });
-                return err(warnings, errors);
+                }));
             }
         };
 
         let dst_ns = &mut self[dst];
         dst_ns.implemented_traits.extend(impls_to_insert, engines);
 
-        ok((), warnings, errors)
+        Ok(())
     }
 
     /// Pull a single variant `variant` from the enum `enum_name` from the given `src` module and import it into the `dst` module.
@@ -489,6 +463,7 @@ impl Module {
     #[allow(clippy::too_many_arguments)] // TODO: remove lint bypass once private modules are no longer experimental
     pub(crate) fn variant_import(
         &mut self,
+        handler: &Handler,
         engines: &Engines,
         src: &Path,
         enum_name: &Ident,
@@ -496,29 +471,16 @@ impl Module {
         dst: &Path,
         alias: Option<Ident>,
         is_src_absolute: bool,
-    ) -> CompileResult<()> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
-        check!(
-            self.check_module_privacy(src, dst),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+    ) -> Result<(), ErrorEmitted> {
+        self.check_module_privacy(handler, src, dst)?;
 
         let decl_engine = engines.de();
 
-        let src_ns = check!(
-            self.check_submodule(src),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        let src_ns = self.check_submodule(handler, src)?;
         match src_ns.symbols.get(enum_name).cloned() {
             Some(decl) => {
                 if !decl.visibility(decl_engine).is_public() && !is_ancestor(src, dst) {
-                    errors.push(CompileError::ImportPrivateSymbol {
+                    handler.emit_err(CompileError::ImportPrivateSymbol {
                         name: enum_name.clone(),
                         span: enum_name.span(),
                     });
@@ -544,8 +506,9 @@ impl Module {
                         let dst_ns = &mut self[dst];
                         let mut add_synonym = |name| {
                             if let Some((_, GlobImport::No, _, _)) = dst_ns.use_synonyms.get(name) {
-                                errors
-                                    .push(CompileError::ShadowsOtherSymbol { name: name.clone() });
+                                handler.emit_err(CompileError::ShadowsOtherSymbol {
+                                    name: name.clone(),
+                                });
                             }
                             dst_ns.use_synonyms.insert(
                                 name.clone(),
@@ -571,30 +534,27 @@ impl Module {
                             None => add_synonym(variant_name),
                         };
                     } else {
-                        errors.push(CompileError::SymbolNotFound {
+                        return Err(handler.emit_err(CompileError::SymbolNotFound {
                             name: variant_name.clone(),
                             span: variant_name.span(),
-                        });
-                        return err(warnings, errors);
+                        }));
                     }
                 } else {
-                    errors.push(CompileError::Internal(
+                    return Err(handler.emit_err(CompileError::Internal(
                         "Attempting to import variants of something that isn't an enum",
                         enum_name.span(),
-                    ));
-                    return err(warnings, errors);
+                    )));
                 }
             }
             None => {
-                errors.push(CompileError::SymbolNotFound {
+                return Err(handler.emit_err(CompileError::SymbolNotFound {
                     name: enum_name.clone(),
                     span: enum_name.span(),
-                });
-                return err(warnings, errors);
+                }));
             }
         };
 
-        ok((), warnings, errors)
+        Ok(())
     }
 
     /// Pull all variants from the enum `enum_name` from the given `src` module and import them all into the `dst` module.
@@ -602,34 +562,22 @@ impl Module {
     /// Paths are assumed to be relative to `self`.
     pub(crate) fn variant_star_import(
         &mut self,
+        handler: &Handler,
         src: &Path,
         dst: &Path,
         engines: &Engines,
         enum_name: &Ident,
         is_src_absolute: bool,
-    ) -> CompileResult<()> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
-        check!(
-            self.check_module_privacy(src, dst),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+    ) -> Result<(), ErrorEmitted> {
+        self.check_module_privacy(handler, src, dst)?;
 
         let decl_engine = engines.de();
 
-        let src_ns = check!(
-            self.check_submodule(src),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        let src_ns = self.check_submodule(handler, src)?;
         match src_ns.symbols.get(enum_name).cloned() {
             Some(decl) => {
                 if !decl.visibility(decl_engine).is_public() && !is_ancestor(src, dst) {
-                    errors.push(CompileError::ImportPrivateSymbol {
+                    handler.emit_err(CompileError::ImportPrivateSymbol {
                         name: enum_name.clone(),
                         span: enum_name.span(),
                     });
@@ -668,49 +616,44 @@ impl Module {
                         );
                     }
                 } else {
-                    errors.push(CompileError::Internal(
+                    return Err(handler.emit_err(CompileError::Internal(
                         "Attempting to import variants of something that isn't an enum",
                         enum_name.span(),
-                    ));
-                    return err(warnings, errors);
+                    )));
                 }
             }
             None => {
-                errors.push(CompileError::SymbolNotFound {
+                return Err(handler.emit_err(CompileError::SymbolNotFound {
                     name: enum_name.clone(),
                     span: enum_name.span(),
-                });
-                return err(warnings, errors);
+                }));
             }
         };
 
-        ok((), warnings, errors)
+        Ok(())
     }
 
-    fn check_module_privacy(&self, src: &Path, dst: &Path) -> CompileResult<()> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
+    fn check_module_privacy(
+        &self,
+        handler: &Handler,
+        src: &Path,
+        dst: &Path,
+    ) -> Result<(), ErrorEmitted> {
         // you are always allowed to access your ancestor's symbols
         if !is_ancestor(src, dst) {
             // we don't check the first prefix because direct children are always accessible
             for prefix in iter_prefixes(src).skip(1) {
-                let module = check!(
-                    self.check_submodule(prefix),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                let module = self.check_submodule(handler, prefix)?;
                 if module.visibility.is_private() {
                     let prefix_last = prefix[prefix.len() - 1].clone();
-                    errors.push(CompileError::ImportPrivateModule {
+                    handler.emit_err(CompileError::ImportPrivateModule {
                         span: prefix_last.span(),
                         name: prefix_last,
                     });
                 }
             }
         }
-        ok((), warnings, errors)
+        Ok(())
     }
 }
 

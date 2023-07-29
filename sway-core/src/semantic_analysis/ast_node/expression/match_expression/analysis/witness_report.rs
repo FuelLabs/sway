@@ -1,12 +1,10 @@
 use std::fmt;
 
 use itertools::Itertools;
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Span;
 
-use crate::{
-    error::{err, ok},
-    CompileError, CompileResult,
-};
+use crate::CompileError;
 
 use super::{patstack::PatStack, pattern::Pattern};
 
@@ -43,53 +41,39 @@ impl WitnessReport {
     /// *wr'* is created by taking the remaining elements of *wr* after *a*
     /// elements have been removed from the front of *wr*.
     pub(crate) fn split_into_leading_constructor(
+        handler: &Handler,
         witness_report: WitnessReport,
         c: &Pattern,
         span: &Span,
-    ) -> CompileResult<(Pattern, Self)> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+    ) -> Result<(Pattern, Self), ErrorEmitted> {
         match witness_report {
-            WitnessReport::NoWitnesses => {
-                errors.push(CompileError::Internal(
-                    "expected to find witnesses to use as arguments to a constructor",
-                    span.clone(),
-                ));
-                err(warnings, errors)
-            }
+            WitnessReport::NoWitnesses => Err(handler.emit_err(CompileError::Internal(
+                "expected to find witnesses to use as arguments to a constructor",
+                span.clone(),
+            ))),
             WitnessReport::Witnesses(witnesses) => {
-                let (rs, ps) = check!(
-                    witnesses.split_at(c.a(), span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                let pat = check!(
-                    Pattern::from_constructor_and_arguments(c, rs, span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                ok((pat, WitnessReport::Witnesses(ps)), warnings, errors)
+                let (rs, ps) = witnesses.split_at(handler, c.a(), span)?;
+                let pat = Pattern::from_constructor_and_arguments(handler, c, rs, span)?;
+                Ok((pat, WitnessReport::Witnesses(ps)))
             }
         }
     }
 
     /// Prepends a witness `Pattern` onto the `WitnessReport`.
-    pub(crate) fn add_witness(&mut self, witness: Pattern, span: &Span) -> CompileResult<()> {
-        let warnings = vec![];
-        let mut errors = vec![];
+    pub(crate) fn add_witness(
+        &mut self,
+        handler: &Handler,
+        witness: Pattern,
+        span: &Span,
+    ) -> Result<(), ErrorEmitted> {
         match self {
-            WitnessReport::NoWitnesses => {
-                errors.push(CompileError::Internal(
-                    "expected to find witnesses",
-                    span.clone(),
-                ));
-                err(warnings, errors)
-            }
+            WitnessReport::NoWitnesses => Err(handler.emit_err(CompileError::Internal(
+                "expected to find witnesses",
+                span.clone(),
+            ))),
             WitnessReport::Witnesses(witnesses) => {
                 witnesses.prepend(witness);
-                ok((), warnings, errors)
+                Ok(())
             }
         }
     }

@@ -1,21 +1,22 @@
-use sway_error::error::CompileError;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_types::Span;
 
 use crate::{
-    error::*, language::ty, semantic_analysis::TypeCheckContext, type_system::*,
+    language::ty, semantic_analysis::TypeCheckContext, type_system::*,
     types::DeterministicallyAborts,
 };
 
 pub(crate) fn instantiate_if_expression(
+    handler: &Handler,
     ctx: TypeCheckContext,
     condition: ty::TyExpression,
     then: ty::TyExpression,
     r#else: Option<ty::TyExpression>,
     span: Span,
-) -> CompileResult<ty::TyExpression> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-
+) -> Result<ty::TyExpression, ErrorEmitted> {
     let type_engine = ctx.engines.te();
     let decl_engine = ctx.engines.de();
     let engines = ctx.engines();
@@ -29,19 +30,21 @@ pub(crate) fn instantiate_if_expression(
         } else {
             type_engine.insert(engines, TypeInfo::Tuple(vec![]))
         };
-        append!(
-            type_engine.unify_with_self(
-                engines,
-                then.return_type,
-                ty_to_check,
-                ctx.self_type(),
-                &then.span,
-                "`then` branch must return expected type.",
-                None
-            ),
-            warnings,
-            errors
+        let (warnings, errors) = type_engine.unify_with_self(
+            engines,
+            then.return_type,
+            ty_to_check,
+            ctx.self_type(),
+            &then.span,
+            "`then` branch must return expected type.",
+            None,
         );
+        for warn in warnings {
+            handler.emit_warn(warn);
+        }
+        for err in errors {
+            handler.emit_err(err);
+        }
     }
     let mut else_deterministically_aborts = false;
     let r#else = r#else.map(|r#else| {
@@ -53,19 +56,21 @@ pub(crate) fn instantiate_if_expression(
         };
         if !else_deterministically_aborts {
             // if this does not deterministically_abort, check the block return type
-            append!(
-                type_engine.unify_with_self(
-                    engines,
-                    r#else.return_type,
-                    ty_to_check,
-                    ctx.self_type(),
-                    &r#else.span,
-                    "`else` branch must return expected type.",
-                    None
-                ),
-                warnings,
-                errors
+            let (warnings, errors) = type_engine.unify_with_self(
+                engines,
+                r#else.return_type,
+                ty_to_check,
+                ctx.self_type(),
+                &r#else.span,
+                "`else` branch must return expected type.",
+                None,
             );
+            for warn in warnings {
+                handler.emit_warn(warn);
+            }
+            for err in errors {
+                handler.emit_err(err);
+            }
         }
         Box::new(r#else)
     });
@@ -76,7 +81,7 @@ pub(crate) fn instantiate_if_expression(
         .unwrap_or_else(|| type_engine.insert(engines, TypeInfo::Tuple(Vec::new())));
     // if there is a type annotation, then the else branch must exist
     if !else_deterministically_aborts && !then_deterministically_aborts {
-        let (mut new_warnings, mut new_errors) = type_engine.unify_with_self(
+        let (new_warnings, new_errors) = type_engine.unify_with_self(
             engines,
             then.return_type,
             r#else_ret_ty,
@@ -85,16 +90,20 @@ pub(crate) fn instantiate_if_expression(
             "The two branches of an if expression must return the same type.",
             None,
         );
-        warnings.append(&mut new_warnings);
+        for warn in new_warnings {
+            handler.emit_warn(warn);
+        }
         if new_errors.is_empty() {
             if !type_engine.get(r#else_ret_ty).is_unit() && r#else.is_none() {
-                errors.push(CompileError::NoElseBranch {
+                handler.emit_err(CompileError::NoElseBranch {
                     span: span.clone(),
                     r#type: engines.help_out(ctx.type_annotation()).to_string(),
                 });
             }
         } else {
-            errors.append(&mut new_errors);
+            for err in new_errors {
+                handler.emit_err(err);
+            }
         }
     }
 
@@ -112,5 +121,5 @@ pub(crate) fn instantiate_if_expression(
         return_type,
         span,
     };
-    ok(exp, warnings, errors)
+    Ok(exp)
 }
