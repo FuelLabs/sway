@@ -1,7 +1,7 @@
 //! This module is responsible for implementing handlers for Language Server
 //! Protocol. This module specifically handles notification messages sent by the Client.
 
-use crate::{capabilities, core::sync, server_state::ServerState};
+use crate::{core::sync, server_state::ServerState};
 use forc_pkg::PackageManifestFile;
 use lsp_types::{
     DidChangeTextDocumentParams, DidChangeWatchedFilesParams, DidOpenTextDocumentParams,
@@ -30,15 +30,11 @@ pub(crate) async fn handle_did_change_text_document(
     state: &ServerState,
     params: DidChangeTextDocumentParams,
 ) {
-    let config = state.config.read().on_enter.clone();
     match state
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
     {
         Ok((uri, session)) => {
-            // handle on_enter capabilities if they are enabled
-            capabilities::on_enter(&config, &state.client, &session, &uri.clone(), &params).await;
-
             // update this file with the new changes and write to disk
             match session.write_changes_to_file(&uri, params.content_changes) {
                 Ok(_) => {

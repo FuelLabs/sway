@@ -1,9 +1,11 @@
-use sway_error::error::CompileError;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_types::{BaseIdent, Ident, Span, Spanned};
 
 use crate::{
     decl_engine::DeclEngineInsert,
-    error::*,
     language::{
         parsed::*,
         ty::{self, TyDecl},
@@ -15,11 +17,10 @@ use crate::{
 
 impl ty::TyScrutinee {
     pub(crate) fn type_check(
+        handler: &Handler,
         mut ctx: TypeCheckContext,
         scrutinee: Scrutinee,
-    ) -> CompileResult<Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+    ) -> Result<Self, ErrorEmitted> {
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
         match scrutinee {
@@ -28,19 +29,18 @@ impl ty::TyScrutinee {
 
                 let mut typed_elems = Vec::with_capacity(elems.len());
                 for scrutinee in elems {
-                    typed_elems.push(check!(
-                        ty::TyScrutinee::type_check(ctx.by_ref(), scrutinee),
-                        return err(warnings, errors),
-                        warnings,
-                        errors,
-                    ));
+                    typed_elems.push(ty::TyScrutinee::type_check(
+                        handler,
+                        ctx.by_ref(),
+                        scrutinee,
+                    )?);
                 }
                 let typed_scrutinee = ty::TyScrutinee {
                     variant: ty::TyScrutineeVariant::Or(typed_elems),
                     type_id,
                     span,
                 };
-                ok(typed_scrutinee, warnings, errors)
+                Ok(typed_scrutinee)
             }
             Scrutinee::CatchAll { span } => {
                 let type_id = type_engine.insert(engines, TypeInfo::Unknown);
@@ -57,7 +57,7 @@ impl ty::TyScrutinee {
                     type_id: type_engine.insert(engines, TypeInfo::Placeholder(dummy_type_param)),
                     span,
                 };
-                ok(typed_scrutinee, warnings, errors)
+                Ok(typed_scrutinee)
             }
             Scrutinee::Literal { value, span } => {
                 let typed_scrutinee = ty::TyScrutinee {
@@ -65,21 +65,22 @@ impl ty::TyScrutinee {
                     type_id: type_engine.insert(engines, value.to_typeinfo()),
                     span,
                 };
-                ok(typed_scrutinee, warnings, errors)
+                Ok(typed_scrutinee)
             }
-            Scrutinee::Variable { name, span } => type_check_variable(ctx, name, span),
+            Scrutinee::Variable { name, span } => type_check_variable(handler, ctx, name, span),
             Scrutinee::StructScrutinee {
                 struct_name,
                 fields,
                 span,
-            } => type_check_struct(ctx, struct_name.suffix, fields, span),
+            } => type_check_struct(handler, ctx, struct_name.suffix, fields, span),
             Scrutinee::EnumScrutinee {
                 call_path,
                 value,
                 span,
-            } => type_check_enum(ctx, call_path, *value, span),
+            } => type_check_enum(handler, ctx, call_path, *value, span),
             Scrutinee::AmbiguousSingleIdent(ident) => {
                 let maybe_enum = type_check_enum(
+                    &Handler::default(),
                     ctx.by_ref(),
                     CallPath {
                         prefixes: vec![],
@@ -96,48 +97,48 @@ impl ty::TyScrutinee {
                 if maybe_enum.is_ok() {
                     maybe_enum
                 } else {
-                    type_check_variable(ctx, ident.clone(), ident.span())
+                    type_check_variable(handler, ctx, ident.clone(), ident.span())
                 }
             }
-            Scrutinee::Tuple { elems, span } => type_check_tuple(ctx, elems, span),
-            Scrutinee::Error { .. } => err(vec![], vec![]),
+            Scrutinee::Tuple { elems, span } => type_check_tuple(handler, ctx, elems, span),
+            Scrutinee::Error { .. } => Err(ErrorEmitted),
         }
     }
 }
 
 fn type_check_variable(
+    handler: &Handler,
     ctx: TypeCheckContext,
     name: Ident,
     span: Span,
-) -> CompileResult<ty::TyScrutinee> {
-    let warnings = vec![];
-    let mut errors = vec![];
-
+) -> Result<ty::TyScrutinee, ErrorEmitted> {
     let type_engine = ctx.engines.te();
     let decl_engine = ctx.engines.de();
 
-    let typed_scrutinee = match ctx.namespace.resolve_symbol(&name).value {
+    let typed_scrutinee = match ctx
+        .namespace
+        .resolve_symbol(&Handler::default(), &name)
+        .ok()
+    {
         // If this variable is a constant, then we turn it into a [TyScrutinee::Constant](ty::TyScrutinee::Constant).
         Some(ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. })) => {
             let constant_decl = decl_engine.get_constant(decl_id);
             let value = match constant_decl.value {
                 Some(ref value) => value,
                 None => {
-                    errors.push(CompileError::Internal(
+                    return Err(handler.emit_err(CompileError::Internal(
                         "constant value does not contain expression",
                         span,
-                    ));
-                    return err(warnings, errors);
+                    )));
                 }
             };
             let literal = match value.extract_literal_value() {
                 Some(value) => value,
                 None => {
-                    errors.push(CompileError::Unimplemented(
+                    return Err(handler.emit_err(CompileError::Unimplemented(
                         "constant values of this type are not supported yet",
                         span,
-                    ));
-                    return err(warnings, errors);
+                    )));
                 }
             };
             ty::TyScrutinee {
@@ -154,48 +155,35 @@ fn type_check_variable(
         },
     };
 
-    ok(typed_scrutinee, warnings, errors)
+    Ok(typed_scrutinee)
 }
 
 fn type_check_struct(
+    handler: &Handler,
     mut ctx: TypeCheckContext,
     struct_name: Ident,
     fields: Vec<StructScrutineeField>,
     span: Span,
-) -> CompileResult<ty::TyScrutinee> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-
+) -> Result<ty::TyScrutinee, ErrorEmitted> {
     let type_engine = ctx.engines.te();
     let decl_engine = ctx.engines.de();
 
     // find the struct definition from the name
-    let unknown_decl = check!(
-        ctx.namespace.resolve_symbol(&struct_name).cloned(),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-    let struct_ref = check!(
-        unknown_decl.to_struct_ref(ctx.engines()),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    let unknown_decl = ctx
+        .namespace
+        .resolve_symbol(handler, &struct_name)
+        .cloned()?;
+    let struct_ref = unknown_decl.to_struct_ref(handler, ctx.engines())?;
     let mut struct_decl = decl_engine.get_struct(&struct_ref);
 
     // monomorphize the struct definition
-    check!(
-        ctx.monomorphize(
-            &mut struct_decl,
-            &mut [],
-            EnforceTypeArguments::No,
-            &struct_name.span()
-        ),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    ctx.monomorphize(
+        handler,
+        &mut struct_decl,
+        &mut [],
+        EnforceTypeArguments::No,
+        &struct_name.span(),
+    )?;
 
     // type check the fields
     let mut typed_fields = vec![];
@@ -209,21 +197,15 @@ fn type_check_struct(
                 span,
             } => {
                 // ensure that the struct definition has this field
-                let struct_field = check!(
-                    struct_decl.expect_field(&field),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                let struct_field = struct_decl.expect_field(handler, &field)?;
                 // type check the nested scrutinee
                 let typed_scrutinee = match scrutinee {
                     None => None,
-                    Some(scrutinee) => Some(check!(
-                        ty::TyScrutinee::type_check(ctx.by_ref(), scrutinee),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    )),
+                    Some(scrutinee) => Some(ty::TyScrutinee::type_check(
+                        handler,
+                        ctx.by_ref(),
+                        scrutinee,
+                    )?),
                 };
                 typed_fields.push(ty::TyStructScrutineeField {
                     field,
@@ -244,12 +226,12 @@ fn type_check_struct(
             .map(|f| f.name.to_string())
             .collect::<Vec<_>>();
 
-        errors.push(CompileError::MatchStructPatternMissingFields {
-            span,
-            missing_fields,
-        });
-
-        return err(warnings, errors);
+        return Err(
+            handler.emit_err(CompileError::MatchStructPatternMissingFields {
+                span,
+                missing_fields,
+            }),
+        );
     }
 
     let struct_ref = decl_engine.insert(struct_decl);
@@ -267,18 +249,16 @@ fn type_check_struct(
         },
     };
 
-    ok(typed_scrutinee, warnings, errors)
+    Ok(typed_scrutinee)
 }
 
 fn type_check_enum(
+    handler: &Handler,
     mut ctx: TypeCheckContext,
     call_path: CallPath<Ident>,
     value: Scrutinee,
     span: Span,
-) -> CompileResult<ty::TyScrutinee> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-
+) -> Result<ty::TyScrutinee, ErrorEmitted> {
     let type_engine = ctx.engines.te();
     let decl_engine = ctx.engines.de();
     let engines = ctx.engines();
@@ -292,18 +272,11 @@ fn type_check_enum(
                 is_absolute: call_path.is_absolute,
             };
             // find the enum definition from the name
-            let unknown_decl = check!(
-                ctx.namespace.resolve_call_path(&enum_callpath).cloned(),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            let enum_ref = check!(
-                unknown_decl.to_enum_ref(ctx.engines()),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
+            let unknown_decl = ctx
+                .namespace
+                .resolve_call_path(handler, &enum_callpath)
+                .cloned()?;
+            let enum_ref = unknown_decl.to_enum_ref(handler, ctx.engines())?;
             (
                 enum_callpath.span(),
                 decl_engine.get_enum(&enum_ref),
@@ -312,12 +285,10 @@ fn type_check_enum(
         }
         None => {
             // we may have an imported variant
-            let decl = check!(
-                ctx.namespace.resolve_call_path(&call_path).cloned(),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
+            let decl = ctx
+                .namespace
+                .resolve_call_path(handler, &call_path)
+                .cloned()?;
             if let TyDecl::EnumVariantDecl(ty::EnumVariantDecl { enum_ref, .. }) = decl.clone() {
                 (
                     call_path.suffix.span(),
@@ -325,44 +296,31 @@ fn type_check_enum(
                     decl,
                 )
             } else {
-                errors.push(CompileError::EnumNotFound {
+                return Err(handler.emit_err(CompileError::EnumNotFound {
                     name: call_path.suffix.clone(),
                     span: call_path.suffix.span(),
-                });
-                return err(warnings, errors);
+                }));
             }
         }
     };
     let variant_name = call_path.suffix.clone();
 
     // monomorphize the enum definition
-    check!(
-        ctx.monomorphize(
-            &mut enum_decl,
-            &mut [],
-            EnforceTypeArguments::No,
-            &callsite_span,
-        ),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    ctx.monomorphize(
+        handler,
+        &mut enum_decl,
+        &mut [],
+        EnforceTypeArguments::No,
+        &callsite_span,
+    )?;
 
     // check to see if the variant exists and grab it if it does
-    let variant = check!(
-        enum_decl.expect_variant_from_name(&variant_name).cloned(),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    let variant = enum_decl
+        .expect_variant_from_name(handler, &variant_name)
+        .cloned()?;
 
     // type check the nested scrutinee
-    let typed_value = check!(
-        ty::TyScrutinee::type_check(ctx, value),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    let typed_value = ty::TyScrutinee::type_check(handler, ctx, value)?;
 
     let enum_ref = decl_engine.insert(enum_decl);
     let typed_scrutinee = ty::TyScrutinee {
@@ -377,28 +335,26 @@ fn type_check_enum(
         span,
     };
 
-    ok(typed_scrutinee, warnings, errors)
+    Ok(typed_scrutinee)
 }
 
 fn type_check_tuple(
+    handler: &Handler,
     mut ctx: TypeCheckContext,
     elems: Vec<Scrutinee>,
     span: Span,
-) -> CompileResult<ty::TyScrutinee> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-
+) -> Result<ty::TyScrutinee, ErrorEmitted> {
     let type_engine = ctx.engines.te();
     let engines = ctx.engines();
 
     let mut typed_elems = vec![];
     for elem in elems.into_iter() {
-        typed_elems.push(check!(
-            ty::TyScrutinee::type_check(ctx.by_ref(), elem),
-            continue,
-            warnings,
-            errors
-        ));
+        typed_elems.push(
+            match ty::TyScrutinee::type_check(handler, ctx.by_ref(), elem) {
+                Ok(res) => res,
+                Err(_) => continue,
+            },
+        );
     }
     let type_id = type_engine.insert(
         engines,
@@ -420,5 +376,5 @@ fn type_check_tuple(
         span,
     };
 
-    ok(typed_scrutinee, warnings, errors)
+    Ok(typed_scrutinee)
 }

@@ -1,3 +1,3 @@
 category = "fail"
 
-# check: $()No method named "foo" found for type "ContractCaller<MyAbi>".
+# check: $()Cannot call ABI supertrait's method as a contract method: "foo"

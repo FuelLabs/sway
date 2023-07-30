@@ -1,11 +1,12 @@
 use crate::cli::CheckCommand;
 use anyhow::Result;
-use forc_pkg::{self as pkg};
+use forc_pkg as pkg;
 use pkg::manifest::ManifestFile;
 use std::path::PathBuf;
-use sway_core::{language::ty, CompileResult, Engines};
+use sway_core::{language::ty, Engines};
+use sway_error::handler::Handler;
 
-pub fn check(command: CheckCommand, engines: &Engines) -> Result<CompileResult<ty::TyProgram>> {
+pub fn check(command: CheckCommand, engines: &Engines) -> Result<(Option<ty::TyProgram>, Handler)> {
     let CheckCommand {
         build_target,
         path,
@@ -34,9 +35,9 @@ pub fn check(command: CheckCommand, engines: &Engines) -> Result<CompileResult<t
     let tests_enabled = !disable_tests;
 
     let mut v = pkg::check(&plan, build_target, terse_mode, tests_enabled, engines)?;
-    let res = v
+    let (res, handler) = v
         .pop()
-        .expect("there is guaranteed to be at least one elem in the vector")
-        .flat_map(|programs| CompileResult::new(programs.typed, vec![], vec![]));
-    Ok(res)
+        .expect("there is guaranteed to be at least one elem in the vector");
+    let res = res.and_then(|programs| programs.typed);
+    Ok((res, handler))
 }
