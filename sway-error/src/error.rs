@@ -901,10 +901,10 @@ impl ToDiagnostic for CompileError {
                 help: vec![
                     "Unlike variables, constants cannot be shadowed by other constants or variables.".to_string(),
                     match (variable_or_constant.as_str(), constant_decl.clone() != Span::dummy()) {
-                        ("Variable", false) => "Consider renaming either the variable or the constant.".to_string(),
+                        ("Variable", false) => format!("Consider renaming either the variable \"{name}\" or the constant \"{name}\"."),
                         ("Constant", false) => "Consider renaming one of the constants.".to_string(),
                         (variable_or_constant, true) => format!(
-                            "Consider renaming the {} or using {} for the imported constant.",
+                            "Consider renaming the {} \"{name}\" or using {} for the imported constant.",
                             variable_or_constant.clone().to_lowercase(),
                             if *is_alias { "a different alias" } else { "an alias" }
                         ),

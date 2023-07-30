@@ -433,13 +433,11 @@ pub fn print_on_failure(
     }
 }
 
-/// Temporary switch for testing the feature.
-/// Keep it false until we decide to fully support the diagnostic codes.
-/// This primarily means creating help pages for the defined
-/// diagnostic codes.
-const SHOW_DIAGNOSTIC_CODE: bool = true;
-
 fn format_diagnostic(diagnostic: &Diagnostic) {
+    /// Temporary switch for testing the feature.
+    /// Keep it false until we decide to fully support the diagnostic codes.
+    const SHOW_DIAGNOSTIC_CODE: bool = false;
+
     if diagnostic.is_old_style() {
         format_old_style_diagnostic(diagnostic.issue());
         return;
