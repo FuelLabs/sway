@@ -9,7 +9,7 @@ use super::types::{create_tagged_union_type, create_tuple_aggregate};
 
 use sway_error::error::CompileError;
 use sway_ir::{Constant, Context, Type, Value};
-use sway_types::{span::Span, integer_bits::IntegerBits};
+use sway_types::{integer_bits::IntegerBits, span::Span};
 
 pub(super) fn convert_literal_to_value(context: &mut Context, ast_literal: &Literal) -> Value {
     match ast_literal {

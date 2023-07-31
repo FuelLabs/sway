@@ -677,7 +677,7 @@ fn lex_int_lit(
             None => (10, (BigUint::from(0u32), None)),
         }
     } else {
-        (10,decimal_int_lit(l, digit))
+        (10, decimal_int_lit(l, digit))
     };
 
     let ty_opt = lex_int_ty_opt(l)?;
@@ -685,17 +685,20 @@ fn lex_int_lit(
     // Only accepts u256 literals in hex form
     if let Some((LitIntType::U256, span)) = &ty_opt {
         if radix != 16 {
-            return Err(error(l.handler, LexError { 
-                kind: LexErrorKind::U256NotInHex,
-                span: span.clone()
-            }));
+            return Err(error(
+                l.handler,
+                LexError {
+                    kind: LexErrorKind::U256NotInHex,
+                    span: span.clone(),
+                },
+            ));
         }
     }
 
     let literal = Literal::Int(LitInt {
         span: span(l, index, end_opt.unwrap_or(l.src.len())),
         parsed: big_uint,
-        ty_opt
+        ty_opt,
     });
 
     Ok(Some(CommentedTokenTree::Tree(literal.into())))
