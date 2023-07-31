@@ -653,6 +653,7 @@ impl<'ir, 'eng> MidenVMAsmBuilder<'ir, 'eng> {
             Unit => vec![DirectOp::push(MidenStackValue::Unit)],
             Bool(b) => vec![DirectOp::push(b)],
             Uint(x) => vec![DirectOp::push(x)],
+            U256(x) => todo!(),
             B256(_) => todo!(),
             String(_) => todo!(),
             Array(_) => todo!(),

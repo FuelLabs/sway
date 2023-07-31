@@ -187,8 +187,8 @@ impl TestContext {
                             harness::test_json_abi(&name, &compiled)
                         })
                         .await;
-                        result?;
                         output.push_str(&out);
+                        result?;
                     }
                     Ok(())
                 }
