@@ -20,7 +20,7 @@ use crate::{
     types::*,
 };
 use sway_ast::intrinsics::Intrinsic;
-use sway_error::error::{CompileError, Hint};
+use sway_error::error::CompileError;
 use sway_ir::{Context, *};
 use sway_types::{
     constants,
@@ -676,7 +676,7 @@ impl<'eng> FnCompiler<'eng> {
                     return Err(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
                         span,
-                        hint: Hint::new("This argument must be a copy type".to_string()),
+                        hint: "This argument must be a copy type".to_string(),
                     });
                 }
                 let key_value = self.compile_expression_to_value(context, md_mgr, key_exp)?;
@@ -700,7 +700,7 @@ impl<'eng> FnCompiler<'eng> {
                     return Err(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
                         span,
-                        hint: Hint::new("This argument must be raw_ptr".to_string()),
+                        hint: "This argument must be raw_ptr".to_string(),
                     });
                 }
                 let key_value = self.compile_expression_to_value(context, md_mgr, &key_exp)?;

@@ -667,7 +667,8 @@ fn construct_code_snippet<'a>(span: &Span, input: &'a str) -> (&'a str, usize, u
     (&input[calculated_start_ix..calculated_end_ix], lines_to_start_of_snippet, calculated_start_ix)
 }
 
-// TODO-IG: Remove once multi-span is implemented for warnings.
+// TODO: Remove once "old-style" diagnostic is fully replaced with new one and the backward
+//       compatibility is no longer needed.
 /// Given a start and an end position and an input, determine how much of a window to show in the
 /// error.
 /// Mutates the start and end indexes to be in line with the new slice length.
@@ -728,22 +729,4 @@ fn construct_window<'a>(
 
     start.line = lines_to_start_of_snippet;
     &input[calculated_start_ix..calculated_end_ix]
-}
-
-// TODO-IG: Remove once multi-span is implemented for warnings.
-#[cfg(all(feature = "uwu", any(target_arch = "x86", target_arch = "x86_64")))]
-pub fn maybe_uwuify(raw: &str) -> String {
-    use uwuifier::uwuify_str_sse;
-    uwuify_str_sse(raw)
-}
-
-#[cfg(all(feature = "uwu", not(any(target_arch = "x86", target_arch = "x86_64"))))]
-pub fn maybe_uwuify(raw: &str) -> String {
-    compile_error!("The `uwu` feature only works on x86 or x86_64 processors.");
-    Default::default()
-}
-
-#[cfg(not(feature = "uwu"))]
-pub fn maybe_uwuify(raw: &str) -> String {
-    raw.to_string()
 }

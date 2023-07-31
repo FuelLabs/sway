@@ -1,4 +1,4 @@
-use crate::diagnostic::{Diagnostic, ToDiagnostic, Issue, Code, Reason};
+use crate::diagnostic::{Diagnostic, ToDiagnostic, Issue, Code, Reason, Hint};
 
 use core::fmt;
 
@@ -261,7 +261,7 @@ impl ToDiagnostic for CompileWarning {
                     format!("Constant \"{name}\" should be SCREAMING_SNAKE_CASE")
                 ),
                 hints: vec![
-                    crate::diagnostic::Hint::warning(
+                    Hint::warning(
                         source_engine,
                         name.span().clone(),
                         format!("\"{name}\" should be SCREAMING_SNAKE_CASE, like \"{}\".", to_screaming_snake_case(name.as_str()))

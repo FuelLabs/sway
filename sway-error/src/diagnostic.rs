@@ -1,6 +1,6 @@
 use std::{path::PathBuf, vec};
 
-use sway_types::{Span, SourceId, SourceEngine};
+use sway_types::{Span, SourceEngine};
 
 /// Provides detailed, rich description of a compile error or warning.
 #[derive(Debug, Default)]
@@ -122,7 +122,7 @@ pub enum LabelType {
 /// Diagnostic message related to a span of source code in a source file.
 /// 
 /// If the message in a particular situation cannot be related to a span
-/// in a known source file (e.g., when importing symbols) // TODO-IG: Check this claim.
+/// in a known source file (e.g., when importing symbols)
 /// the span must be set to [Span::dummy]. Such messages without a valid span
 /// will be ignored.
 /// 
@@ -166,11 +166,6 @@ impl Label {
         }
     }
 
-    // TODO-IG: Remove once multi-span is implemented for warnings.
-    pub fn source_id(&self) -> Option<SourceId> {
-        self.span.source_id().cloned()
-    }
-
     /// True if the `Label` is actually related to a span of source code in a source file.
     pub fn is_in_source(&self) -> bool {
         self.source_path.is_some() && (self.span.start() < self.span.end())
@@ -207,19 +202,19 @@ impl Label {
     }
 
     #[cfg(all(feature = "uwu", any(target_arch = "x86", target_arch = "x86_64")))]
-    pub fn maybe_uwuify(raw: &str) -> String {
+    fn maybe_uwuify(raw: &str) -> String {
         use uwuifier::uwuify_str_sse;
         uwuify_str_sse(raw)
     }
 
     #[cfg(all(feature = "uwu", not(any(target_arch = "x86", target_arch = "x86_64"))))]
-    pub fn maybe_uwuify(raw: &str) -> String {
+    fn maybe_uwuify(raw: &str) -> String {
         compile_error!("The `uwu` feature only works on x86 or x86_64 processors.");
         Default::default()
     }
 
     #[cfg(not(feature = "uwu"))]
-    pub fn maybe_uwuify(raw: &str) -> String {
+    fn maybe_uwuify(raw: &str) -> String {
         raw.to_string()
     }
 }

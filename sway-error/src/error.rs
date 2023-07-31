@@ -1,4 +1,4 @@
-use crate::diagnostic::{Diagnostic, ToDiagnostic, Issue, Code, Reason};
+use crate::diagnostic::{Diagnostic, ToDiagnostic, Issue, Code, Reason, Hint};
 use crate::convert_parse_tree_error::ConvertParseTreeError;
 use crate::lex_error::LexError;
 use crate::parser_error::ParseError;
@@ -573,11 +573,11 @@ pub enum CompileError {
     NonConstantDeclValue { span: Span },
     #[error("Declaring storage in a {program_kind} is not allowed.")]
     StorageDeclarationInNonContract { program_kind: String, span: Span },
-    #[error("Unsupported argument type to intrinsic \"{name}\". {hint}")]
+    #[error("Unsupported argument type to intrinsic \"{name}\".{}", if hint == "" { "".to_string() } else { format!(" Hint: {hint}") })]
     IntrinsicUnsupportedArgType {
         name: String,
         span: Span,
-        hint: Hint,
+        hint: String,
     },
     #[error("Call to \"{name}\" expects {expected} arguments")]
     IntrinsicIncorrectNumArgs {
@@ -856,8 +856,10 @@ impl ToDiagnostic for CompileError {
         match self {
             ConstantsCannotBeShadowed { variable_or_constant, name, constant_span, constant_decl, is_alias } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Constants cannot be shadowed".to_string())),
-                // TODO-IG: Issue level should actually be the part of the reason. But it would complicate handling of labels.
-                //          Let's leave it like this. #[error] macro will anyhow encapsulate it and ensure consistency.
+                // NOTE: Issue level should actually be the part of the reason. But it would complicate handling of labels in the transitional
+                //       period when we still have "old-style" diagnostics.
+                //       Let's leave it like this, refactoring at the moment does not pay of.
+                //       And our #[error] macro will anyhow encapsulate it and ensure consistency.
                 issue: Issue::error(
                     source_engine,
                     name.span().clone(),
@@ -872,7 +874,7 @@ impl ToDiagnostic for CompileError {
                     )
                 ),
                 hints: vec![
-                    crate::diagnostic::Hint::info(
+                    Hint::info(
                         source_engine,
                         constant_span.clone(),
                         format!(
@@ -884,12 +886,12 @@ impl ToDiagnostic for CompileError {
                             if *is_alias { " as alias" } else { "" }
                         )
                     ),
-                    crate::diagnostic::Hint::info( // Ignored if the constant_decl is Span::dummy().
+                    Hint::info( // Ignored if the constant_decl is Span::dummy().
                         source_engine,
                         constant_decl.clone(),
                         format!("This is the original declaration of the imported constant \"{name}\".")
                     ),
-                    crate::diagnostic::Hint::error(
+                    Hint::error(
                         source_engine,
                         name.span().clone(),
                         format!(
@@ -922,12 +924,12 @@ impl ToDiagnostic for CompileError {
                     format!("Constant \"{name}\" shadows variable with the same name")
                 ),
                 hints: vec![
-                    crate::diagnostic::Hint::info(
+                    Hint::info(
                         source_engine,
                         variable_span.clone(),
                         format!("This is the shadowed variable \"{name}\".")
                     ),
-                    crate::diagnostic::Hint::error(
+                    Hint::error(
                         source_engine,
                         name.span().clone(),
                         format!("This is the constant \"{name}\" that shadows the variable.")
@@ -948,27 +950,5 @@ impl ToDiagnostic for CompileError {
                     ..Default::default()
                 }
         }
-    }
-}
-
-// TODO-IG: Delete once multi-span errors are implemented.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Hint {
-    msg: Option<String>,
-}
-
-impl Hint {
-    pub fn empty() -> Hint {
-        Hint { msg: None }
-    }
-
-    pub fn new(msg: String) -> Hint {
-        Hint { msg: Some(msg) }
-    }
-}
-
-impl fmt::Display for Hint {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Hint: {}", &self.msg.as_ref().unwrap_or(&"".to_string()))
     }
 }
