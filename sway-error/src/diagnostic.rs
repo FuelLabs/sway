@@ -1,6 +1,6 @@
 use std::{path::PathBuf, vec};
 
-use sway_types::{Span, SourceEngine};
+use sway_types::{SourceEngine, Span};
 
 /// Provides detailed, rich description of a compile error or warning.
 #[derive(Debug, Default)]
@@ -58,7 +58,7 @@ impl Diagnostic {
             .iter()
             // Safe unwrapping because all the labels are in source.
             .filter(|&label| label.source_path().unwrap() == source_path)
-            .map(|label| *label)
+            .copied()
             .collect()
     }
 
@@ -108,7 +108,7 @@ impl Diagnostic {
 pub enum Level {
     Warning,
     #[default]
-    Error
+    Error,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -116,20 +116,20 @@ pub enum LabelType {
     #[default]
     Info,
     Warning,
-    Error
+    Error,
 }
 
 /// Diagnostic message related to a span of source code in a source file.
-/// 
+///
 /// If the message in a particular situation cannot be related to a span
 /// in a known source file (e.g., when importing symbols)
 /// the span must be set to [Span::dummy]. Such messages without a valid span
 /// will be ignored.
-/// 
+///
 /// E.g., a note like 'The function "{name}" is defined here.'
 /// will be displayed only when we have access to the source
 /// code in which the function is defined.
-/// 
+///
 /// We can also have error messages that are not related to any particular
 /// place in code.
 #[derive(Debug)]
@@ -192,12 +192,18 @@ impl Label {
     }
 
     fn get_source_path(source_engine: &SourceEngine, span: &Span) -> Option<SourcePath> {
-        let path_buf = span.source_id().cloned().map(|id| source_engine.get_path(&id));
+        let path_buf = span
+            .source_id()
+            .cloned()
+            .map(|id| source_engine.get_path(&id));
         let path_string = path_buf.as_ref().map(|p| p.to_string_lossy().to_string());
 
         match (path_buf, path_string) {
-            (Some(path_buf), Some(path_string)) => Some(SourcePath { path_buf, path_string }),
-            _ => None
+            (Some(path_buf), Some(path_string)) => Some(SourcePath {
+                path_buf,
+                path_string,
+            }),
+            _ => None,
         }
     }
 
@@ -239,13 +245,13 @@ pub struct Issue {
 impl Issue {
     pub fn warning(source_engine: &SourceEngine, span: Span, text: String) -> Self {
         Self {
-            label: Label::warning(source_engine, span, text)
+            label: Label::warning(source_engine, span, text),
         }
     }
 
     pub fn error(source_engine: &SourceEngine, span: Span, text: String) -> Self {
         Self {
-            label: Label::error(source_engine, span, text)
+            label: Label::error(source_engine, span, text),
         }
     }
 }
@@ -256,7 +262,7 @@ impl Default for Issue {
             label: Label {
                 label_type: LabelType::Error,
                 ..Default::default()
-            }
+            },
         }
     }
 }
@@ -276,19 +282,19 @@ pub struct Hint {
 impl Hint {
     pub fn info(source_engine: &SourceEngine, span: Span, text: String) -> Self {
         Self {
-            label: Label::info(source_engine, span, text)
+            label: Label::info(source_engine, span, text),
         }
     }
 
     pub fn warning(source_engine: &SourceEngine, span: Span, text: String) -> Self {
         Self {
-            label: Label::warning(source_engine, span, text)
+            label: Label::warning(source_engine, span, text),
         }
     }
 
     pub fn error(source_engine: &SourceEngine, span: Span, text: String) -> Self {
         Self {
-            label: Label::error(source_engine, span, text)
+            label: Label::error(source_engine, span, text),
         }
     }
 }
@@ -303,7 +309,7 @@ impl std::ops::Deref for Hint {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct SourcePath {
     path_buf: PathBuf,
-    path_string: String
+    path_string: String,
 }
 
 impl SourcePath {
@@ -377,11 +383,14 @@ impl Code {
     }
 
     fn new(area: DiagnosticArea, number: u16) -> Self {
-        debug_assert!(0 < number && number < 999, "The diagnostic code number must be greater then zero and smaller then 999.");
+        debug_assert!(
+            0 < number && number < 999,
+            "The diagnostic code number must be greater then zero and smaller then 999."
+        );
         Self {
             area,
             number,
-            text: format!("{}{:03}", area.prefix(), number)
+            text: format!("{}{:03}", area.prefix(), number),
         }
     }
 
@@ -398,10 +407,7 @@ pub struct Reason {
 
 impl Reason {
     pub fn new(code: Code, description: String) -> Self {
-        Self {
-            code,
-            description
-        }
+        Self { code, description }
     }
 
     pub fn code(&self) -> &str {

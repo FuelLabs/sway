@@ -112,42 +112,71 @@ impl Items {
     ) -> Result<(), ErrorEmitted> {
         let append_shadowing_error =
             |ident: &Ident,
-            decl: &ty::TyDecl,
-            is_use: bool,
-            is_alias: bool,
-            item: &ty::TyDecl,
-            const_shadowing_mode: ConstShadowingMode| {
+             decl: &ty::TyDecl,
+             is_use: bool,
+             is_alias: bool,
+             item: &ty::TyDecl,
+             const_shadowing_mode: ConstShadowingMode| {
                 use ty::TyDecl::*;
                 match (ident, decl, is_use, is_alias, &item, const_shadowing_mode) {
                     // variable shadowing a constant
-                    (constant_ident, ConstantDecl(constant_decl), is_imported_constant, is_alias,  VariableDecl { .. }, _) => {
+                    (
+                        constant_ident,
+                        ConstantDecl(constant_decl),
+                        is_imported_constant,
+                        is_alias,
+                        VariableDecl { .. },
+                        _,
+                    ) => {
                         handler.emit_err(CompileError::ConstantsCannotBeShadowed {
                             variable_or_constant: "Variable".to_string(),
                             name: name.clone(),
-                            constant_span: constant_ident.span().clone(),
-                            constant_decl: if is_imported_constant { constant_decl.decl_span.clone() } else { Span::dummy() },
-                            is_alias
+                            constant_span: constant_ident.span(),
+                            constant_decl: if is_imported_constant {
+                                constant_decl.decl_span.clone()
+                            } else {
+                                Span::dummy()
+                            },
+                            is_alias,
                         });
                     }
                     // constant shadowing a constant sequentially
-                    (constant_ident, ConstantDecl(constant_decl), is_imported_constant, is_alias, ConstantDecl { .. }, ConstShadowingMode::Sequential) => {
+                    (
+                        constant_ident,
+                        ConstantDecl(constant_decl),
+                        is_imported_constant,
+                        is_alias,
+                        ConstantDecl { .. },
+                        ConstShadowingMode::Sequential,
+                    ) => {
                         handler.emit_err(CompileError::ConstantsCannotBeShadowed {
                             variable_or_constant: "Constant".to_string(),
                             name: name.clone(),
-                            constant_span: constant_ident.span().clone(),
-                            constant_decl: if is_imported_constant { constant_decl.decl_span.clone() } else { Span::dummy() },
-                            is_alias
+                            constant_span: constant_ident.span(),
+                            constant_decl: if is_imported_constant {
+                                constant_decl.decl_span.clone()
+                            } else {
+                                Span::dummy()
+                            },
+                            is_alias,
                         });
                     }
                     // constant shadowing a variable
                     (_, VariableDecl(variable_decl), _, _, ConstantDecl { .. }, _) => {
                         handler.emit_err(CompileError::ConstantShadowsVariable {
                             name: name.clone(),
-                            variable_span: variable_decl.name.span().clone()
+                            variable_span: variable_decl.name.span(),
                         });
                     }
                     // constant shadowing a constant item-style (outside of a function body)
-                    (_, ConstantDecl { .. }, _, _,  ConstantDecl { .. }, ConstShadowingMode::ItemStyle) => {
+                    (
+                        _,
+                        ConstantDecl { .. },
+                        _,
+                        _,
+                        ConstantDecl { .. },
+                        ConstShadowingMode::ItemStyle,
+                    ) => {
                         handler.emit_err(CompileError::MultipleDefinitionsOfConstant {
                             name: name.clone(),
                             span: name.span(),
@@ -156,7 +185,8 @@ impl Items {
                     // type or type alias shadowing another type or type alias
                     // trait/abi shadowing another trait/abi
                     // type or type alias shadowing a trait/abi, or vice versa
-                    (   _, 
+                    (
+                        _,
                         StructDecl { .. }
                         | EnumDecl { .. }
                         | TypeAliasDecl { .. }
@@ -172,13 +202,21 @@ impl Items {
                         _,
                     ) => {
                         handler.emit_err(CompileError::MultipleDefinitionsOfName {
-                                            name: name.clone(),
-                                            span: name.span(),
-                                        });
-                    },
+                            name: name.clone(),
+                            span: name.span(),
+                        });
+                    }
                     // generic parameter shadowing another generic parameter
-                    (_, GenericTypeForFunctionScope { .. }, _, _, GenericTypeForFunctionScope { .. }, _) => {
-                        handler.emit_err(CompileError::GenericShadowsGeneric { name: name.clone() });
+                    (
+                        _,
+                        GenericTypeForFunctionScope { .. },
+                        _,
+                        _,
+                        GenericTypeForFunctionScope { .. },
+                        _,
+                    ) => {
+                        handler
+                            .emit_err(CompileError::GenericShadowsGeneric { name: name.clone() });
                     }
                     _ => {}
                 }
@@ -188,8 +226,16 @@ impl Items {
             append_shadowing_error(ident, decl, false, false, &item, const_shadowing_mode);
         }
 
-        if let Some((ident, (_, GlobImport::No, decl, _))) = self.use_synonyms.get_key_value(&name) {
-            append_shadowing_error(ident, decl, true, self.use_aliases.get(&name.to_string()).is_some(), &item, const_shadowing_mode);
+        if let Some((ident, (_, GlobImport::No, decl, _))) = self.use_synonyms.get_key_value(&name)
+        {
+            append_shadowing_error(
+                ident,
+                decl,
+                true,
+                self.use_aliases.get(&name.to_string()).is_some(),
+                &item,
+                const_shadowing_mode,
+            );
         }
 
         self.symbols.insert(name, item);

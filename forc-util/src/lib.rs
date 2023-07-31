@@ -7,14 +7,18 @@ use annotate_snippets::{
 use ansi_term::Colour;
 use anyhow::{bail, Result};
 use forc_tracing::{println_red_err, println_yellow_err};
-use std::{str, collections::HashSet};
+use std::{collections::HashSet, str};
 use std::{ffi::OsStr, process::Termination};
 use std::{
     fmt::Display,
     path::{Path, PathBuf},
 };
 use sway_core::language::parsed::TreeType;
-use sway_error::{error::CompileError, warning::CompileWarning, diagnostic::{Diagnostic, Label, ToDiagnostic, LabelType, Issue, Level}};
+use sway_error::{
+    diagnostic::{Diagnostic, Issue, Label, LabelType, Level, ToDiagnostic},
+    error::CompileError,
+    warning::CompileWarning,
+};
 use sway_types::{LineCol, SourceEngine, Span};
 use sway_utils::constants;
 use tracing::error;
@@ -444,11 +448,15 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
     }
 
     let mut label = String::new();
-    get_title_label(&diagnostic, &mut label);
+    get_title_label(diagnostic, &mut label);
 
     let snippet_title = Some(Annotation {
         label: Some(label.as_str()),
-        id: if SHOW_DIAGNOSTIC_CODE { diagnostic.reason().map(|reason| reason.code())} else { None },
+        id: if SHOW_DIAGNOSTIC_CODE {
+            diagnostic.reason().map(|reason| reason.code())
+        } else {
+            None
+        },
         annotation_type: diagnostic_level_to_annotation_type(diagnostic.level()),
     });
 
@@ -466,7 +474,11 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
 
     let mut snippet_footer = Vec::<Annotation<'_>>::new();
     for help in diagnostic.help() {
-        snippet_footer.push(Annotation { id: None, label: Some(&help), annotation_type: AnnotationType::Help });
+        snippet_footer.push(Annotation {
+            id: None,
+            label: Some(help),
+            annotation_type: AnnotationType::Help,
+        });
     }
 
     let snippet = Snippet {
@@ -488,7 +500,11 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
         let annotation_type = label_type_to_annotation_type(issue.label_type());
 
         let snippet_title = Some(Annotation {
-            label: if issue.is_in_source() { None } else { Some(issue.friendly_text()) },
+            label: if issue.is_in_source() {
+                None
+            } else {
+                Some(issue.friendly_text())
+            },
             id: None,
             annotation_type,
         });
@@ -512,7 +528,7 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
                     label: issue.friendly_text(),
                     annotation_type,
                     range: (start_pos, end_pos),
-                }]
+                }],
             };
 
             snippet_slices.push(slice);
@@ -549,7 +565,7 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
     }
 }
 
-fn construct_slice<'a>(labels: Vec<&'a Label>) -> Slice<'a> {
+fn construct_slice(labels: Vec<&Label>) -> Slice {
     debug_assert!(
         !labels.is_empty(),
         "To construct slices, at least one label must be provided."
@@ -579,7 +595,7 @@ fn construct_slice<'a>(labels: Vec<&'a Label>) -> Slice<'a> {
         annotations.push(SourceAnnotation {
             label: message.friendly_text(),
             annotation_type: label_type_to_annotation_type(message.label_type()),
-            range: get_annotation_range(message.span(), source_code, shift_in_bytes)
+            range: get_annotation_range(message.span(), source_code, shift_in_bytes),
         });
     }
 
@@ -591,7 +607,11 @@ fn construct_slice<'a>(labels: Vec<&'a Label>) -> Slice<'a> {
         annotations,
     };
 
-    fn get_annotation_range(span: &Span, source_code: &str, shift_in_bytes: usize) -> (usize, usize) {
+    fn get_annotation_range(
+        span: &Span,
+        source_code: &str,
+        shift_in_bytes: usize,
+    ) -> (usize, usize) {
         let mut start_pos = span.start();
         let mut end_pos = span.end();
 
@@ -620,7 +640,7 @@ fn label_type_to_annotation_type(label_type: LabelType) -> AnnotationType {
 
 /// Given the overall span to be shown in the code snippet, determines how much of the input source
 /// to show in the snippet.
-/// 
+///
 /// Returns the source to be shown, the line start, and the offset of the snippet in bytes relative
 /// to the begining of the input code.
 ///
@@ -664,7 +684,11 @@ fn construct_code_snippet<'a>(span: &Span, input: &'a str) -> (&'a str, usize, u
     let calculated_start_ix = calculated_start_ix.unwrap_or(0);
     let calculated_end_ix = calculated_end_ix.unwrap_or(input.len());
 
-    (&input[calculated_start_ix..calculated_end_ix], lines_to_start_of_snippet, calculated_start_ix)
+    (
+        &input[calculated_start_ix..calculated_end_ix],
+        lines_to_start_of_snippet,
+        calculated_start_ix,
+    )
 }
 
 // TODO: Remove once "old-style" diagnostic is fully replaced with new one and the backward

@@ -1,12 +1,12 @@
-use crate::diagnostic::{Diagnostic, ToDiagnostic, Issue, Code, Reason, Hint};
 use crate::convert_parse_tree_error::ConvertParseTreeError;
+use crate::diagnostic::{Code, Diagnostic, Hint, Issue, Reason, ToDiagnostic};
 use crate::lex_error::LexError;
 use crate::parser_error::ParseError;
 use crate::type_error::TypeError;
 
 use core::fmt;
 use sway_types::constants::STORAGE_PURITY_ATTRIBUTE_NAME;
-use sway_types::{Ident, Span, Spanned, SourceEngine};
+use sway_types::{Ident, SourceEngine, Span, Spanned};
 use thiserror::Error;
 
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
@@ -455,7 +455,13 @@ pub enum CompileError {
         span: Span,
     },
     #[error("Constants cannot be shadowed. {variable_or_constant} \"{name}\" shadows constant with the same name.")]
-    ConstantsCannotBeShadowed { variable_or_constant: String, name: Ident, constant_span: Span, constant_decl: Span, is_alias: bool },
+    ConstantsCannotBeShadowed {
+        variable_or_constant: String,
+        name: Ident,
+        constant_span: Span,
+        constant_decl: Span,
+        is_alias: bool,
+    },
     #[error("Constants cannot shadow variables. The constant \"{name}\" shadows variable with the same name.")]
     ConstantShadowsVariable { name: Ident, variable_span: Span },
     #[error("The imported symbol \"{name}\" shadows another symbol with the same name.")]
@@ -573,7 +579,7 @@ pub enum CompileError {
     NonConstantDeclValue { span: Span },
     #[error("Declaring storage in a {program_kind} is not allowed.")]
     StorageDeclarationInNonContract { program_kind: String, span: Span },
-    #[error("Unsupported argument type to intrinsic \"{name}\".{}", if hint == "" { "".to_string() } else { format!(" Hint: {hint}") })]
+    #[error("Unsupported argument type to intrinsic \"{name}\".{}", if hint.is_empty() { "".to_string() } else { format!(" Hint: {hint}") })]
     IntrinsicUnsupportedArgType {
         name: String,
         span: Span,
@@ -777,7 +783,7 @@ impl Spanned for CompileError {
             InvalidOpcodeFromPredicate { span, .. } => span.clone(),
             ArrayOutOfBounds { span, .. } => span.clone(),
             ConstantsCannotBeShadowed { name, .. } => name.span(),
-            ConstantShadowsVariable { name, ..} => name.span(),
+            ConstantShadowsVariable { name, .. } => name.span(),
             ShadowsOtherSymbol { name } => name.span(),
             GenericShadowsGeneric { name } => name.span(),
             MatchExpressionNonExhaustive { span, .. } => span.clone(),
@@ -851,7 +857,7 @@ impl Spanned for CompileError {
 
 impl ToDiagnostic for CompileError {
     fn to_diagnostic(&self, source_engine: &SourceEngine) -> Diagnostic {
-        let code = |number: u16| Code::semantic_analysis(number);
+        let code = Code::semantic_analysis;
         use CompileError::*;
         match self {
             ConstantsCannotBeShadowed { variable_or_constant, name, constant_span, constant_decl, is_alias } => Diagnostic {
@@ -862,7 +868,7 @@ impl ToDiagnostic for CompileError {
                 //       And our #[error] macro will anyhow encapsulate it and ensure consistency.
                 issue: Issue::error(
                     source_engine,
-                    name.span().clone(),
+                    name.span(),
                     format!(
                         // Variable "x" shadows constant with the same name
                         //  or
@@ -893,7 +899,7 @@ impl ToDiagnostic for CompileError {
                     ),
                     Hint::error(
                         source_engine,
-                        name.span().clone(),
+                        name.span(),
                         format!(
                             "Shadowing via {} \"{name}\" happens here.", 
                             if variable_or_constant == "Variable" { "variable" } else { "new constant" }
@@ -907,20 +913,18 @@ impl ToDiagnostic for CompileError {
                         ("Constant", false) => "Consider renaming one of the constants.".to_string(),
                         (variable_or_constant, true) => format!(
                             "Consider renaming the {} \"{name}\" or using {} for the imported constant.",
-                            variable_or_constant.clone().to_lowercase(),
+                            variable_or_constant.to_lowercase(),
                             if *is_alias { "a different alias" } else { "an alias" }
                         ),
                         _ => unreachable!("We can have only the listed combinations: variable/constant shadows a non imported/imported constant.")
                     }
-                    
                 ],
-                ..Default::default()
             },
             ConstantShadowsVariable { name , variable_span } => Diagnostic {
                 reason: Some(Reason::new(code(2), "Constants cannot shadow variables".to_string())),
                 issue: Issue::error(
                     source_engine,
-                    name.span().clone(),
+                    name.span(),
                     format!("Constant \"{name}\" shadows variable with the same name")
                 ),
                 hints: vec![
@@ -931,7 +935,7 @@ impl ToDiagnostic for CompileError {
                     ),
                     Hint::error(
                         source_engine,
-                        name.span().clone(),
+                        name.span(),
                         format!("This is the constant \"{name}\" that shadows the variable.")
                     ),
                 ],
@@ -939,14 +943,13 @@ impl ToDiagnostic for CompileError {
                     "Variables can shadow other variables, but constants cannot.".to_string(),
                     "Consider renaming either the variable or the constant.".to_string(),
                 ],
-                ..Default::default()
             },
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.
                     //       In general, self must not be used and will not be used once we
                     //       switch to our own #[error] macro. All the values for the formating
                     //       of a diagnostic must come from the enum variant parameters.
-                    issue: Issue::error(source_engine, self.span().clone(), format!("{}", self)),
+                    issue: Issue::error(source_engine, self.span(), format!("{}", self)),
                     ..Default::default()
                 }
         }
