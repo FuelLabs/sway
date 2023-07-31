@@ -1257,6 +1257,7 @@ pub(crate) fn type_name_to_type_info_opt(name: &Ident) -> Option<TypeInfo> {
         "u16" => Some(TypeInfo::UnsignedInteger(IntegerBits::Sixteen)),
         "u32" => Some(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
         "u64" => Some(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
+        "u256" => Some(TypeInfo::UnsignedInteger(IntegerBits::V256)),
         "bool" => Some(TypeInfo::Boolean),
         "unit" => Some(TypeInfo::Tuple(Vec::new())),
         "b256" => Some(TypeInfo::B256),
@@ -2886,6 +2887,17 @@ fn literal_to_literal(
                             }
                         };
                         Literal::U64(value)
+                    }
+                    // TODO u256 are limited to u64 literals for the moment
+                    LitIntType::U256 => {
+                        let value = match u64::try_from(parsed) {
+                            Ok(value) => value,
+                            Err(..) => {
+                                let error = ConvertParseTreeError::U64LiteralOutOfRange { span };
+                                return Err(handler.emit_err(error.into()));
+                            }
+                        };
+                        Literal::U256(value)
                     }
                     LitIntType::I8 | LitIntType::I16 | LitIntType::I32 | LitIntType::I64 => {
                         let error = ConvertParseTreeError::SignedIntegersNotSupported { span };

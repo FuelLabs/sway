@@ -435,7 +435,7 @@ mod ir_builder {
                 / "true" _ { IrAstConstValue::Bool(true) }
                 / "false" _ { IrAstConstValue::Bool(false) }
                 / "0x" s:$(hex_digit()*<64>) _ {
-                    IrAstConstValue::B256(string_to_hex::<32>(s))
+                    IrAstConstValue::Hex256(string_to_hex::<32>(s))
                 }
                 / n:decimal() { IrAstConstValue::Number(n) }
                 / string_const()
@@ -494,6 +494,7 @@ mod ir_builder {
                 = ("unit" / "()") _ { IrAstTy::Unit }
                 / "bool" _ { IrAstTy::Bool }
                 / "u64" _ { IrAstTy::U64 }
+                / "u256" _ { IrAstTy::U256 }
                 / "b256" _ { IrAstTy::B256 }
                 / "string" _ "<" _ sz:decimal() ">" _ { IrAstTy::String(sz) }
                 / array_ty()
@@ -723,7 +724,7 @@ mod ir_builder {
         Undef(IrAstTy),
         Unit,
         Bool(bool),
-        B256([u8; 32]),
+        Hex256([u8; 32]),
         Number(u64),
         String(Vec<u8>),
         Array(IrAstTy, Vec<IrAstConst>),
@@ -745,12 +746,22 @@ mod ir_builder {
     }
 
     impl IrAstConstValue {
-        fn as_constant_value(&self, context: &mut Context) -> ConstantValue {
+        fn as_constant_value(&self, context: &mut Context, val_ty: IrAstTy) -> ConstantValue {
             match self {
                 IrAstConstValue::Undef(_) => ConstantValue::Undef,
                 IrAstConstValue::Unit => ConstantValue::Unit,
                 IrAstConstValue::Bool(b) => ConstantValue::Bool(*b),
-                IrAstConstValue::B256(bs) => ConstantValue::B256(*bs),
+                IrAstConstValue::Hex256(bs) => {
+                    match val_ty {
+                        IrAstTy::U256 => {
+                            // TODO u256 limited to u64
+                            let n = u64::from_be_bytes(bs[24..].try_into().unwrap());
+                            ConstantValue::U256(n)
+                        }
+                        IrAstTy::B256 => ConstantValue::B256(*bs),
+                        _ => unreachable!("invalid type for hex number"),
+                    }
+                }
                 IrAstConstValue::Number(n) => ConstantValue::Uint(*n),
                 IrAstConstValue::String(bs) => ConstantValue::String(bs.clone()),
                 IrAstConstValue::Array(el_ty, els) => {
@@ -773,7 +784,7 @@ mod ir_builder {
         fn as_constant(&self, context: &mut Context, val_ty: IrAstTy) -> Constant {
             Constant {
                 ty: val_ty.to_ir_type(context),
-                value: self.as_constant_value(context),
+                value: self.as_constant_value(context, val_ty),
             }
         }
 
@@ -782,7 +793,17 @@ mod ir_builder {
                 IrAstConstValue::Undef(_) => unreachable!("Can't convert 'undef' to a value."),
                 IrAstConstValue::Unit => Constant::get_unit(context),
                 IrAstConstValue::Bool(b) => Constant::get_bool(context, *b),
-                IrAstConstValue::B256(bs) => Constant::get_b256(context, *bs),
+                IrAstConstValue::Hex256(bs) => {
+                    match val_ty {
+                        IrAstTy::U256 => {
+                            // TODO u256 limited to u64
+                            let n = u64::from_be_bytes(bs[24..].try_into().unwrap());
+                            Constant::get_uint(context, 256, n)
+                        }
+                        IrAstTy::B256 => Constant::get_b256(context, *bs),
+                        _ => unreachable!("invalid type for hex number"),
+                    }
+                }
                 IrAstConstValue::Number(n) => Constant::get_uint(context, 64, *n),
                 IrAstConstValue::String(s) => Constant::get_string(context, s.clone()),
                 IrAstConstValue::Array(..) => {
@@ -802,6 +823,7 @@ mod ir_builder {
         Unit,
         Bool,
         U64,
+        U256,
         B256,
         String(u64),
         Array(Box<IrAstTy>, u64),
@@ -816,6 +838,7 @@ mod ir_builder {
                 IrAstTy::Unit => Type::get_unit(context),
                 IrAstTy::Bool => Type::get_bool(context),
                 IrAstTy::U64 => Type::get_uint64(context),
+                IrAstTy::U256 => Type::get_uint256(context),
                 IrAstTy::B256 => Type::get_b256(context),
                 IrAstTy::String(n) => Type::new_string(context, *n),
                 IrAstTy::Array(el_ty, count) => {
