@@ -6,7 +6,7 @@ pub enum IntegerBits {
     Sixteen,
     ThirtyTwo,
     SixtyFour,
-    V256,
+    V256
 }
 
 impl fmt::Display for IntegerBits {

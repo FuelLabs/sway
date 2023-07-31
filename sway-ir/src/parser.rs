@@ -757,11 +757,11 @@ mod ir_builder {
                             // TODO u256 limited to u64
                             let n = u64::from_be_bytes(bs[24..].try_into().unwrap());
                             ConstantValue::U256(n)
-                        }
+                        },
                         IrAstTy::B256 => ConstantValue::B256(*bs),
-                        _ => unreachable!("invalid type for hex number"),
+                        _ => unreachable!("invalid type for hex number")
                     }
-                }
+                },
                 IrAstConstValue::Number(n) => ConstantValue::Uint(*n),
                 IrAstConstValue::String(bs) => ConstantValue::String(bs.clone()),
                 IrAstConstValue::Array(el_ty, els) => {
@@ -799,11 +799,11 @@ mod ir_builder {
                             // TODO u256 limited to u64
                             let n = u64::from_be_bytes(bs[24..].try_into().unwrap());
                             Constant::get_uint(context, 256, n)
-                        }
+                        },
                         IrAstTy::B256 => Constant::get_b256(context, *bs),
-                        _ => unreachable!("invalid type for hex number"),
+                        _ => unreachable!("invalid type for hex number")
                     }
-                }
+                },
                 IrAstConstValue::Number(n) => Constant::get_uint(context, 64, *n),
                 IrAstConstValue::String(s) => Constant::get_string(context, s.clone()),
                 IrAstConstValue::Array(..) => {

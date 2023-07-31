@@ -384,7 +384,9 @@ impl Type {
 
     pub fn size_in_bytes(&self, context: &Context) -> u64 {
         match self.get_content(context) {
-            TypeContent::Unit | TypeContent::Bool | TypeContent::Pointer(_) => 8,
+            TypeContent::Unit
+            | TypeContent::Bool
+            | TypeContent::Pointer(_) => 8,
             TypeContent::Uint(bits) => (*bits as u64) / 8,
             TypeContent::Slice => 16,
             TypeContent::B256 => 32,

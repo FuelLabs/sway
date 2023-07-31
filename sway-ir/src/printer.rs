@@ -930,19 +930,16 @@ impl Constant {
             ConstantValue::Bool(b) => format!("bool {}", if *b { "true" } else { "false" }),
             ConstantValue::Uint(v) => format!("{} {}", self.ty.as_string(context), v),
             ConstantValue::U256(v) => {
-                // TODO u256 limited to u64
+                 // TODO u256 limited to u64
                 let mut bytes = vec![0u8; 24];
                 bytes.extend(&v.to_be_bytes());
                 assert!(bytes.len() == 32);
-                format!(
-                    "u256 0x{}",
-                    bytes
-                        .iter()
-                        .map(|b| format!("{b:02x}"))
-                        .collect::<Vec<String>>()
-                        .concat()
+                format!("u256 0x{}",  bytes.iter()
+                    .map(|b| format!("{b:02x}"))
+                    .collect::<Vec<String>>()
+                    .concat()
                 )
-            }
+            },
             ConstantValue::B256(bs) => format!(
                 "b256 0x{}",
                 bs.iter()
