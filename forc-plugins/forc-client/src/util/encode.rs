@@ -49,6 +49,7 @@ pub(crate) enum Type {
     U16,
     U32,
     U64,
+    U256,
     Bool,
 }
 
@@ -86,6 +87,11 @@ impl Token {
                 let u64_val = value.parse::<u64>()?;
                 Ok(Token(fuels_core::types::Token::U64(u64_val)))
             }
+            //TODO u256 limited to u64 value
+            Type::U256 => {
+                let u64_val = value.parse::<u64>()?;
+                Ok(Token(fuels_core::types::Token::U256(u64_val.into())))
+            }
             Type::Bool => {
                 let bool_val = value.parse::<bool>()?;
                 Ok(Token(fuels_core::types::Token::Bool(bool_val)))
@@ -104,6 +110,7 @@ impl FromStr for Type {
             "u16" => Ok(Type::U16),
             "u32" => Ok(Type::U32),
             "u64" => Ok(Type::U64),
+            "u256" => Ok(Type::U256),
             "bool" => Ok(Type::Bool),
             other => anyhow::bail!("{other} type is not supported."),
         }
@@ -142,7 +149,7 @@ mod tests {
 
     #[test]
     fn test_type_generation_success() {
-        let possible_type_list = ["()", "u8", "u16", "u32", "u64", "bool"];
+        let possible_type_list = ["()", "u8", "u16", "u32", "u64", "u256", "bool"];
         let types = possible_type_list
             .iter()
             .map(|type_str| Type::from_str(type_str))
@@ -155,6 +162,7 @@ mod tests {
             Type::U16,
             Type::U32,
             Type::U64,
+            Type::U256,
             Type::Bool,
         ];
         assert_eq!(types, expected_types)
