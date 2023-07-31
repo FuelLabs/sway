@@ -4,12 +4,13 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use sway_types::{Ident, Named, Span};
+use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     decl_engine::*,
     engine_threading::*,
     language::{ty::*, *},
+    semantic_analysis::TypeCheckContext,
     type_system::*,
 };
 
@@ -880,7 +881,7 @@ impl ReplaceSelfType for TyExpressionVariant {
 }
 
 impl ReplaceDecls for TyExpressionVariant {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: &Engines) {
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, ctx: &TypeCheckContext) {
         use TyExpressionVariant::*;
         match self {
             Literal(..) => (),
@@ -889,35 +890,74 @@ impl ReplaceDecls for TyExpressionVariant {
                 ref mut arguments,
                 ..
             } => {
-                fn_ref.replace_decls(decl_mapping, engines);
+                let mut filter_type_opt = None;
+                if let Some(arg) = arguments.get(0) {
+                    match ctx.engines.te().get(arg.1.return_type) {
+                        TypeInfo::SelfType => {
+                            filter_type_opt = Some(ctx.self_type());
+                        }
+                        _ => {
+                            filter_type_opt = Some(arg.1.return_type);
+                        }
+                    }
+                }
+
+                if let Some(filter_type) = filter_type_opt {
+                    let filtered_decl_mapping = decl_mapping.filter(filter_type, ctx.engines());
+                    fn_ref.replace_decls(&filtered_decl_mapping, ctx);
+                } else {
+                    fn_ref.replace_decls(decl_mapping, ctx);
+                };
+
                 let new_decl_ref = fn_ref
                     .clone()
-                    .replace_decls_and_insert_new_with_parent(decl_mapping, engines);
+                    .replace_decls_and_insert_new_with_parent(decl_mapping, ctx);
                 fn_ref.replace_id(*new_decl_ref.id());
                 for (_, arg) in arguments.iter_mut() {
-                    arg.replace_decls(decl_mapping, engines);
+                    arg.replace_decls(decl_mapping, ctx);
                 }
+
+                let decl_engine = ctx.engines().de();
+                let mut method = ctx.engines().de().get(fn_ref);
+                // Handle the trait constraints. This includes checking to see if the trait
+                // constraints are satisfied and replacing old decl ids based on the
+                // constraint with new decl ids based on the new type.
+                let mut errors = vec![];
+                let mut warnings = vec![];
+                let inner_decl_mapping = check!(
+                    TypeParameter::gather_decl_mapping_from_trait_constraints(
+                        ctx,
+                        &method.type_parameters,
+                        &method.name.span()
+                    ),
+                    return, // we can ignore error as this is already checked in its own type_check_method_application,
+                    warnings,
+                    errors
+                );
+                method.replace_decls(&inner_decl_mapping, ctx);
+                let new_decl_ref = decl_engine
+                    .insert(method)
+                    .with_parent(decl_engine, (*fn_ref.id()).into());
+                fn_ref.replace_id(*new_decl_ref.id());
             }
             LazyOperator { lhs, rhs, .. } => {
-                (*lhs).replace_decls(decl_mapping, engines);
-                (*rhs).replace_decls(decl_mapping, engines);
+                (*lhs).replace_decls(decl_mapping, ctx);
+                (*rhs).replace_decls(decl_mapping, ctx);
             }
-            ConstantExpression { const_decl, .. } => {
-                const_decl.replace_decls(decl_mapping, engines)
-            }
+            ConstantExpression { const_decl, .. } => const_decl.replace_decls(decl_mapping, ctx),
             VariableExpression { .. } => (),
             Tuple { fields } => fields
                 .iter_mut()
-                .for_each(|x| x.replace_decls(decl_mapping, engines)),
+                .for_each(|x| x.replace_decls(decl_mapping, ctx)),
             Array {
                 elem_type: _,
                 contents,
             } => contents
                 .iter_mut()
-                .for_each(|x| x.replace_decls(decl_mapping, engines)),
+                .for_each(|x| x.replace_decls(decl_mapping, ctx)),
             ArrayIndex { prefix, index } => {
-                (*prefix).replace_decls(decl_mapping, engines);
-                (*index).replace_decls(decl_mapping, engines);
+                (*prefix).replace_decls(decl_mapping, ctx);
+                (*index).replace_decls(decl_mapping, ctx);
             }
             StructExpression {
                 struct_ref: _,
@@ -926,29 +966,29 @@ impl ReplaceDecls for TyExpressionVariant {
                 call_path_binding: _,
             } => fields
                 .iter_mut()
-                .for_each(|x| x.replace_decls(decl_mapping, engines)),
+                .for_each(|x| x.replace_decls(decl_mapping, ctx)),
             CodeBlock(block) => {
-                block.replace_decls(decl_mapping, engines);
+                block.replace_decls(decl_mapping, ctx);
             }
             FunctionParameter => (),
-            MatchExp { desugared, .. } => desugared.replace_decls(decl_mapping, engines),
+            MatchExp { desugared, .. } => desugared.replace_decls(decl_mapping, ctx),
             IfExp {
                 condition,
                 then,
                 r#else,
             } => {
-                condition.replace_decls(decl_mapping, engines);
-                then.replace_decls(decl_mapping, engines);
+                condition.replace_decls(decl_mapping, ctx);
+                then.replace_decls(decl_mapping, ctx);
                 if let Some(ref mut r#else) = r#else {
-                    r#else.replace_decls(decl_mapping, engines);
+                    r#else.replace_decls(decl_mapping, ctx);
                 }
             }
             AsmExpression { .. } => {}
             StructFieldAccess { prefix, .. } => {
-                prefix.replace_decls(decl_mapping, engines);
+                prefix.replace_decls(decl_mapping, ctx);
             }
             TupleElemAccess { prefix, .. } => {
-                prefix.replace_decls(decl_mapping, engines);
+                prefix.replace_decls(decl_mapping, ctx);
             }
             EnumInstantiation {
                 enum_ref: _,
@@ -958,30 +998,30 @@ impl ReplaceDecls for TyExpressionVariant {
                 // TODO: replace enum decl
                 //enum_decl.replace_decls(decl_mapping);
                 if let Some(ref mut contents) = contents {
-                    contents.replace_decls(decl_mapping, engines);
+                    contents.replace_decls(decl_mapping, ctx);
                 };
             }
-            AbiCast { address, .. } => address.replace_decls(decl_mapping, engines),
+            AbiCast { address, .. } => address.replace_decls(decl_mapping, ctx),
             StorageAccess { .. } => (),
             IntrinsicFunction(_) => {}
             EnumTag { exp } => {
-                exp.replace_decls(decl_mapping, engines);
+                exp.replace_decls(decl_mapping, ctx);
             }
             UnsafeDowncast { exp, .. } => {
-                exp.replace_decls(decl_mapping, engines);
+                exp.replace_decls(decl_mapping, ctx);
             }
             AbiName(_) => (),
             WhileLoop {
                 ref mut condition,
                 ref mut body,
             } => {
-                condition.replace_decls(decl_mapping, engines);
-                body.replace_decls(decl_mapping, engines);
+                condition.replace_decls(decl_mapping, ctx);
+                body.replace_decls(decl_mapping, ctx);
             }
             Break => (),
             Continue => (),
-            Reassignment(reassignment) => reassignment.replace_decls(decl_mapping, engines),
-            Return(stmt) => stmt.replace_decls(decl_mapping, engines),
+            Reassignment(reassignment) => reassignment.replace_decls(decl_mapping, ctx),
+            Return(stmt) => stmt.replace_decls(decl_mapping, ctx),
         }
     }
 }

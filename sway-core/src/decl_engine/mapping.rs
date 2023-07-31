@@ -1,8 +1,11 @@
 use std::fmt;
 
-use crate::language::ty::{TyTraitInterfaceItem, TyTraitItem};
+use crate::{
+    language::ty::{TyTraitInterfaceItem, TyTraitItem},
+    Engines, TypeId, UnifyCheck,
+};
 
-use super::{AssociatedItemDeclId, InterfaceItemMap, ItemMap};
+use super::{AssociatedItemDeclId, DeclEngineGet, InterfaceItemMap, ItemMap};
 
 type SourceDecl = AssociatedItemDeclId;
 type DestinationDecl = AssociatedItemDeclId;
@@ -98,5 +101,26 @@ impl DeclMapping {
             }
         }
         None
+    }
+
+    pub(crate) fn filter(&self, self_type: TypeId, engines: &Engines) -> DeclMapping {
+        let mut mapping: Vec<(SourceDecl, DestinationDecl)> = vec![];
+        for (source_decl_ref, dest_decl_ref) in self.mapping.iter().cloned() {
+            match dest_decl_ref {
+                AssociatedItemDeclId::TraitFn(_) => mapping.push((source_decl_ref, dest_decl_ref)),
+                AssociatedItemDeclId::Function(func_id) => {
+                    let func = engines.de().get(&func_id);
+
+                    let unify_check = UnifyCheck::non_dynamic_equality(engines);
+                    if let (left, Some(right)) = (self_type, func.parameters.get(0)) {
+                        if unify_check.check(left, right.type_argument.type_id) {
+                            mapping.push((source_decl_ref, dest_decl_ref));
+                        }
+                    }
+                }
+                AssociatedItemDeclId::Constant(_) => mapping.push((source_decl_ref, dest_decl_ref)),
+            }
+        }
+        DeclMapping { mapping }
     }
 }

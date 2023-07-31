@@ -5,7 +5,10 @@ use std::{
 
 use sway_types::{Ident, Span, Spanned};
 
-use crate::{decl_engine::*, engine_threading::*, language::ty::*, type_system::*};
+use crate::{
+    decl_engine::*, engine_threading::*, language::ty::*, semantic_analysis::TypeCheckContext,
+    type_system::*,
+};
 
 #[derive(Clone, Debug)]
 pub struct TyReassignment {
@@ -61,8 +64,8 @@ impl ReplaceSelfType for TyReassignment {
 }
 
 impl ReplaceDecls for TyReassignment {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: &Engines) {
-        self.rhs.replace_decls(decl_mapping, engines);
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, ctx: &TypeCheckContext) {
+        self.rhs.replace_decls(decl_mapping, ctx);
     }
 }
 

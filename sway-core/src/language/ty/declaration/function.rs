@@ -10,6 +10,7 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::{parsed, ty::*, Inline, Purity, Visibility},
+    semantic_analysis::TypeCheckContext,
     transform,
     type_system::*,
     types::*,
@@ -123,8 +124,8 @@ impl ReplaceSelfType for TyFunctionDecl {
 }
 
 impl ReplaceDecls for TyFunctionDecl {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: &Engines) {
-        self.body.replace_decls(decl_mapping, engines);
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, ctx: &TypeCheckContext) {
+        self.body.replace_decls(decl_mapping, ctx);
     }
 }
 

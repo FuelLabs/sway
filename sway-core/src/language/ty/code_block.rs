@@ -1,8 +1,8 @@
 use std::hash::Hasher;
 
 use crate::{
-    decl_engine::*, engine_threading::*, language::ty::*, type_system::*,
-    types::DeterministicallyAborts,
+    decl_engine::*, engine_threading::*, language::ty::*, semantic_analysis::TypeCheckContext,
+    type_system::*, types::DeterministicallyAborts,
 };
 
 #[derive(Clone, Debug)]
@@ -41,10 +41,10 @@ impl ReplaceSelfType for TyCodeBlock {
 }
 
 impl ReplaceDecls for TyCodeBlock {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: &Engines) {
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, ctx: &TypeCheckContext) {
         self.contents
             .iter_mut()
-            .for_each(|x| x.replace_decls(decl_mapping, engines));
+            .for_each(|x| x.replace_decls(decl_mapping, ctx));
     }
 }
 

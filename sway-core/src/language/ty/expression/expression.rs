@@ -7,6 +7,7 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::{ty::*, Literal},
+    semantic_analysis::TypeCheckContext,
     type_system::*,
     types::*,
 };
@@ -59,8 +60,8 @@ impl ReplaceSelfType for TyExpression {
 }
 
 impl ReplaceDecls for TyExpression {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: &Engines) {
-        self.expression.replace_decls(decl_mapping, engines);
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, ctx: &TypeCheckContext) {
+        self.expression.replace_decls(decl_mapping, ctx);
     }
 }
 
