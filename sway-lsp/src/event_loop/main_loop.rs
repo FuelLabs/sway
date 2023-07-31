@@ -227,18 +227,11 @@ impl ServerStateExt {
     }
 }
 
-use crate::{
-    core::session::Session,
-    error::LanguageServerError,
-    server_state::ServerState,
-};
+use crate::{core::session::Session, error::LanguageServerError, server_state::ServerState};
+use lsp_types::{DidChangeTextDocumentParams, DidOpenTextDocumentParams, Url};
 use std::{path::PathBuf, sync::Arc};
-use lsp_types::{DidOpenTextDocumentParams, DidChangeTextDocumentParams, Url};
 
-fn handle_did_open_text_document(
-    state: &mut ServerState,
-    params: DidOpenTextDocumentParams,
-) {
+fn handle_did_open_text_document(state: &mut ServerState, params: DidOpenTextDocumentParams) {
     match state
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
@@ -251,10 +244,7 @@ fn handle_did_open_text_document(
     }
 }
 
-fn handle_did_change_text_document(
-    state: &mut ServerState,
-    params: DidChangeTextDocumentParams,
-) {
+fn handle_did_change_text_document(state: &mut ServerState, params: DidChangeTextDocumentParams) {
     match state
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
@@ -271,7 +261,6 @@ fn handle_did_change_text_document(
         Err(err) => tracing::error!("{}", err.to_string()),
     }
 }
-
 
 fn parse_project(uri: Url, workspace_uri: Url, session: Arc<Session>) {
     let should_publish = match session.parse_project(&uri) {

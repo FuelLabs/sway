@@ -5,10 +5,10 @@ use std::{fmt, panic, thread};
 use stdx::thread::ThreadIntent;
 
 use crate::{
-    server_state::ServerState,
     event_loop::{
-    self, main_loop::Task, server_state_ext::ServerStateExt, Cancelled, LspError, Result,
+        self, main_loop::Task, server_state_ext::ServerStateExt, Cancelled, LspError, Result,
     },
+    server_state::ServerState,
 };
 
 /// A visitor for routing a raw JSON request to an appropriate handler function.
@@ -294,10 +294,7 @@ pub(crate) struct NotificationDispatcher<'a> {
 }
 
 impl<'a> NotificationDispatcher<'a> {
-    pub(crate) fn on<N>(
-        &mut self,
-        f: fn(&mut ServerState, N::Params),
-    ) -> Result<&mut Self>
+    pub(crate) fn on<N>(&mut self, f: fn(&mut ServerState, N::Params)) -> Result<&mut Self>
     where
         N: lsp_types::notification::Notification,
         N::Params: DeserializeOwned + Send,
