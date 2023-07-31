@@ -1,5 +1,6 @@
 use std::hash::{Hash, Hasher};
 
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
@@ -104,9 +105,16 @@ impl ReplaceSelfType for TyConstantDecl {
 }
 
 impl ReplaceDecls for TyConstantDecl {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, ctx: &TypeCheckContext) {
+    fn replace_decls_inner(
+        &mut self,
+        decl_mapping: &DeclMapping,
+        handler: &Handler,
+        ctx: &TypeCheckContext,
+    ) -> Result<(), ErrorEmitted> {
         if let Some(expr) = &mut self.value {
-            expr.replace_decls(decl_mapping, ctx);
+            expr.replace_decls(decl_mapping, handler, ctx)
+        } else {
+            Ok(())
         }
     }
 }

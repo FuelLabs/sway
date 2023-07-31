@@ -533,7 +533,7 @@ fn type_check_trait_implementation(
         match item {
             TyImplItem::Fn(decl_ref) => {
                 let mut method = decl_engine.get_function(decl_ref);
-                method.replace_decls(&decl_mapping, &ctx);
+                method.replace_decls(&decl_mapping, handler, &ctx)?;
                 method.subst(&type_mapping, engines);
                 method.replace_self_type(engines, ctx.self_type());
                 all_items_refs.push(TyImplItem::Fn(
@@ -544,7 +544,7 @@ fn type_check_trait_implementation(
             }
             TyImplItem::Constant(decl_ref) => {
                 let mut const_decl = decl_engine.get_constant(decl_ref);
-                const_decl.replace_decls(&decl_mapping, &ctx);
+                const_decl.replace_decls(&decl_mapping, handler, &ctx)?;
                 const_decl.subst(&type_mapping, engines);
                 const_decl.replace_self_type(engines, ctx.self_type());
                 all_items_refs.push(TyImplItem::Constant(decl_engine.insert(const_decl)));
@@ -613,7 +613,7 @@ fn type_check_impl_method(
         ty::TyFunctionDecl::type_check(handler, ctx.by_ref(), impl_method.clone(), true, false)?;
 
     // Ensure that there aren't multiple definitions of this function impl'd
-    if impld_item_refs.contains_key(&(impl_method.name, self_type)) {
+    if impld_item_refs.contains_key(&(impl_method.name.clone(), self_type)) {
         return Err(
             handler.emit_err(CompileError::MultipleDefinitionsOfFunction {
                 name: impl_method.name.clone(),

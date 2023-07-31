@@ -60,8 +60,13 @@ impl ReplaceSelfType for TyExpression {
 }
 
 impl ReplaceDecls for TyExpression {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, ctx: &TypeCheckContext) {
-        self.expression.replace_decls(decl_mapping, ctx);
+    fn replace_decls_inner(
+        &mut self,
+        decl_mapping: &DeclMapping,
+        handler: &Handler,
+        ctx: &TypeCheckContext,
+    ) -> Result<(), ErrorEmitted> {
+        self.expression.replace_decls(decl_mapping, handler, ctx)
     }
 }
 

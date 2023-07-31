@@ -1,5 +1,6 @@
 use std::hash::{Hash, Hasher};
 
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Ident;
 
 use crate::{
@@ -41,7 +42,12 @@ impl ReplaceSelfType for TyStructExpressionField {
 }
 
 impl ReplaceDecls for TyStructExpressionField {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, ctx: &TypeCheckContext) {
-        self.value.replace_decls(decl_mapping, ctx);
+    fn replace_decls_inner(
+        &mut self,
+        decl_mapping: &DeclMapping,
+        handler: &Handler,
+        ctx: &TypeCheckContext,
+    ) -> Result<(), ErrorEmitted> {
+        self.value.replace_decls(decl_mapping, handler, ctx)
     }
 }

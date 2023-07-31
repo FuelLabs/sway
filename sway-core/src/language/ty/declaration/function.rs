@@ -124,8 +124,13 @@ impl ReplaceSelfType for TyFunctionDecl {
 }
 
 impl ReplaceDecls for TyFunctionDecl {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, ctx: &TypeCheckContext) {
-        self.body.replace_decls(decl_mapping, ctx);
+    fn replace_decls_inner(
+        &mut self,
+        decl_mapping: &DeclMapping,
+        handler: &Handler,
+        ctx: &TypeCheckContext,
+    ) -> Result<(), ErrorEmitted> {
+        self.body.replace_decls(decl_mapping, handler, ctx)
     }
 }
 

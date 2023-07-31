@@ -88,17 +88,24 @@ impl ReplaceSelfType for TyAstNode {
 }
 
 impl ReplaceDecls for TyAstNode {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, ctx: &TypeCheckContext) {
+    fn replace_decls_inner(
+        &mut self,
+        decl_mapping: &DeclMapping,
+        handler: &Handler,
+        ctx: &TypeCheckContext,
+    ) -> Result<(), ErrorEmitted> {
         match self.content {
             TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
-                exp.replace_decls(decl_mapping, ctx)
+                exp.replace_decls(decl_mapping, handler, ctx)
             }
             TyAstNodeContent::Declaration(TyDecl::VariableDecl(ref mut decl)) => {
-                decl.body.replace_decls(decl_mapping, ctx);
+                decl.body.replace_decls(decl_mapping, handler, ctx)
             }
-            TyAstNodeContent::Declaration(_) => {}
-            TyAstNodeContent::Expression(ref mut expr) => expr.replace_decls(decl_mapping, ctx),
-            TyAstNodeContent::SideEffect(_) => (),
+            TyAstNodeContent::Declaration(_) => Ok(()),
+            TyAstNodeContent::Expression(ref mut expr) => {
+                expr.replace_decls(decl_mapping, handler, ctx)
+            }
+            TyAstNodeContent::SideEffect(_) => Ok(()),
         }
     }
 }

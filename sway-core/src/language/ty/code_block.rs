@@ -1,5 +1,7 @@
 use std::hash::Hasher;
 
+use sway_error::handler::{ErrorEmitted, Handler};
+
 use crate::{
     decl_engine::*, engine_threading::*, language::ty::*, semantic_analysis::TypeCheckContext,
     type_system::*, types::DeterministicallyAborts,
@@ -41,10 +43,29 @@ impl ReplaceSelfType for TyCodeBlock {
 }
 
 impl ReplaceDecls for TyCodeBlock {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, ctx: &TypeCheckContext) {
-        self.contents
-            .iter_mut()
-            .for_each(|x| x.replace_decls(decl_mapping, ctx));
+    fn replace_decls_inner(
+        &mut self,
+        decl_mapping: &DeclMapping,
+        handler: &Handler,
+        ctx: &TypeCheckContext,
+    ) -> Result<(), ErrorEmitted> {
+        let mut error_emitted = None;
+
+        for x in self.contents.iter_mut() {
+            match x.replace_decls(decl_mapping, handler, ctx) {
+                Ok(res) => res,
+                Err(err) => {
+                    error_emitted = Some(err);
+                    continue;
+                }
+            };
+        }
+
+        if let Some(err) = error_emitted {
+            Err(err)
+        } else {
+            Ok(())
+        }
     }
 }
 
