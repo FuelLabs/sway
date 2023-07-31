@@ -218,11 +218,71 @@ impl ServerStateExt {
             server_state: self,
         }
         //.on::<notifs::Cancel>(handlers::handle_cancel)?
-        .on::<notifs::DidOpenTextDocument>(handlers::handle_did_open_text_document)?
-        .on::<notifs::DidChangeTextDocument>(handlers::handle_did_change_text_document)?
+        .on::<notifs::DidOpenTextDocument>(handle_did_open_text_document)?
+        .on::<notifs::DidChangeTextDocument>(handle_did_change_text_document)?
         //.on::<notifs::DidSaveTextDocument>(handlers::handle_did_save_text_document)?
         //.on::<notifs::DidChangeWatchedFiles>(handlers::handle_did_change_watched_files)?
         .finish();
         Ok(())
+    }
+}
+
+use crate::{
+    core::session::Session,
+    error::LanguageServerError,
+    server_state::ServerState,
+};
+use std::{path::PathBuf, sync::Arc};
+use lsp_types::{DidOpenTextDocumentParams, DidChangeTextDocumentParams, Url};
+
+fn handle_did_open_text_document(
+    state: &mut ServerState,
+    params: DidOpenTextDocumentParams,
+) {
+    match state
+        .sessions
+        .uri_and_session_from_workspace(&params.text_document.uri)
+    {
+        Ok((uri, session)) => {
+            session.handle_open_file(&uri);
+            parse_project(uri, params.text_document.uri, session.clone());
+        }
+        Err(err) => tracing::error!("{}", err.to_string()),
+    }
+}
+
+fn handle_did_change_text_document(
+    state: &mut ServerState,
+    params: DidChangeTextDocumentParams,
+) {
+    match state
+        .sessions
+        .uri_and_session_from_workspace(&params.text_document.uri)
+    {
+        Ok((uri, session)) => {
+            // update this file with the new changes and write to disk
+            match session.write_changes_to_file(&uri, params.content_changes) {
+                Ok(_) => {
+                    parse_project(uri, params.text_document.uri, session.clone());
+                }
+                Err(err) => tracing::error!("{}", err.to_string()),
+            }
+        }
+        Err(err) => tracing::error!("{}", err.to_string()),
+    }
+}
+
+
+fn parse_project(uri: Url, workspace_uri: Url, session: Arc<Session>) {
+    let should_publish = match session.parse_project(&uri) {
+        Ok(should_publish) => should_publish,
+        Err(err) => {
+            tracing::error!("{}", err);
+            matches!(err, LanguageServerError::FailedToParse)
+        }
+    };
+    if should_publish {
+        // self.publish_diagnostics(&uri, &workspace_uri, session)
+        //     .await;
     }
 }

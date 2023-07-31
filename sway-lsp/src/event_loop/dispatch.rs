@@ -296,7 +296,7 @@ pub(crate) struct NotificationDispatcher<'a> {
 impl<'a> NotificationDispatcher<'a> {
     pub(crate) fn on<N>(
         &mut self,
-        f: fn(&mut ServerState, N::Params) -> Result<()>,
+        f: fn(&mut ServerState, N::Params),
     ) -> Result<&mut Self>
     where
         N: lsp_types::notification::Notification,
@@ -317,7 +317,7 @@ impl<'a> NotificationDispatcher<'a> {
             }
         };
         let _pctx = stdx::panic_context::enter(format!("\nnotification: {}", N::METHOD));
-        f(self.server_state, params)?;
+        f(self.server_state, params);
         Ok(self)
     }
 
