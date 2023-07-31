@@ -1598,7 +1598,7 @@ fn method_call_fields_to_method_application_expression(
             .collect::<Result<_, _>>()?,
     };
     let arguments = iter::once(*target)
-        .chain(args.into_inner().into_iter())
+        .chain(args.into_inner())
         .map(|expr| expr_to_expression(context, handler, engines, expr))
         .collect::<Result<_, _>>()?;
     Ok(Box::new(MethodApplicationExpression {
@@ -4128,7 +4128,7 @@ fn error_if_self_param_is_not_allowed(
 /// Walks all the cfg attributes in a map, evaluating them
 /// and returning false if any evaluated to false.
 pub fn cfg_eval(
-    context: &mut Context,
+    context: &Context,
     handler: &Handler,
     attrs_map: &AttributesMap,
 ) -> Result<bool, ErrorEmitted> {

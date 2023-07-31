@@ -184,7 +184,7 @@ pub fn abi_param_type(
     }
 }
 
-pub(self) fn generate_abi_function(
+fn generate_abi_function(
     fn_decl: &TyFunctionDecl,
     type_engine: &TypeEngine,
     decl_engine: &DeclEngine,
@@ -228,7 +228,7 @@ pub(self) fn generate_abi_function(
     })
 }
 
-pub(self) fn abi_str_type_arg(
+fn abi_str_type_arg(
     type_arg: &TypeArgument,
     type_engine: &TypeEngine,
     decl_engine: &DeclEngine,

@@ -152,10 +152,11 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
     ) -> Result<(), ErrorEmitted> {
         let Some(instruction) = instr_val.get_instruction(self.context) else {
             return Err(handler.emit_err(CompileError::Internal(
-                    "Value not an instruction.",
-                    self.md_mgr
-                        .val_to_span(self.context, *instr_val)
-                        .unwrap_or_else(Span::dummy), )));
+                "Value not an instruction.",
+                self.md_mgr
+                    .val_to_span(self.context, *instr_val)
+                    .unwrap_or_else(Span::dummy),
+            )));
         };
 
         // The only instruction whose compilation returns a Result itself is AsmBlock, which
@@ -697,101 +698,96 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         // until then we can keep track of the constant values and add them once.
 
         let base_reg = self.value_to_register(base_val)?;
-        let (base_reg, const_offs, _) =
-            indices
-                .iter()
-                .fold(Ok((base_reg, 0, base_type)), |acc, idx_val| {
-                    // So we're folding to a Result, as unwrapping the constants can fail.
-                    acc.and_then(|(reg, offs, elem_ty)| {
-                        // If we find a constant index then we add its offset to `offs`.  Otherwise we grab
-                        // its value, which should be compiled already, and add it to reg.
-                        if elem_ty.is_struct(self.context) {
-                            // For structs the index must be a const uint.
-                            unwrap_constant_uint(idx_val).map(|idx| {
-                                let field_types = elem_ty.get_field_types(self.context);
-                                let field_type = field_types[idx];
-                                let field_offs_in_bytes = field_types
-                                    .iter()
-                                    .take(idx)
-                                    .map(|field_ty| ir_type_size_in_bytes(self.context, field_ty))
-                                    .sum::<u64>();
-                                (reg, offs + field_offs_in_bytes, field_type)
-                            })
-                        } else if elem_ty.is_union(self.context) {
-                            // For unions the index must also be a const uint.
-                            unwrap_constant_uint(idx_val).map(|idx| {
-                                let field_type = elem_ty.get_field_types(self.context)[idx];
-                                let union_size_in_bytes =
-                                    ir_type_size_in_bytes(self.context, &elem_ty);
-                                let field_size_in_bytes =
-                                    ir_type_size_in_bytes(self.context, &field_type);
-
-                                // The union fields are at offset (union_size - variant_size) due to left padding.
-                                (
-                                    reg,
-                                    offs + union_size_in_bytes - field_size_in_bytes,
-                                    field_type,
-                                )
-                            })
-                        } else if elem_ty.is_array(self.context) {
-                            // For arrays the index is a value.  We need to fetch it and add it to
-                            // the base.
-                            let array_elem_ty =
-                                elem_ty.get_array_elem_type(self.context).ok_or_else(|| {
-                                    CompileError::Internal(
-                                        "Failed to get elem type for known array",
-                                        owning_span.clone().unwrap_or_else(Span::dummy),
-                                    )
-                                })?;
-                            let array_elem_size =
-                                ir_type_size_in_bytes(self.context, &array_elem_ty);
-                            let size_reg = self.reg_seqr.next();
-                            self.immediate_to_reg(
-                                array_elem_size,
-                                size_reg.clone(),
-                                None,
-                                "get size of element",
-                                owning_span.clone(),
-                            );
-
-                            let index_reg = self.value_to_register(idx_val)?;
-                            let offset_reg = self.reg_seqr.next();
-
-                            self.cur_bytecode.push(Op {
-                                opcode: Either::Left(VirtualOp::MUL(
-                                    offset_reg.clone(),
-                                    index_reg,
-                                    size_reg,
-                                )),
-                                comment: "get offset to array element".into(),
-                                owning_span: owning_span.clone(),
-                            });
-                            self.cur_bytecode.push(Op {
-                                opcode: Either::Left(VirtualOp::ADD(
-                                    offset_reg.clone(),
-                                    reg,
-                                    offset_reg.clone(),
-                                )),
-                                comment: "add to array base".into(),
-                                owning_span: owning_span.clone(),
-                            });
-                            let member_type =
-                                elem_ty.get_array_elem_type(self.context).ok_or_else(|| {
-                                    CompileError::Internal(
-                                        "Can't get array elem type for GEP.",
-                                        sway_types::span::Span::dummy(),
-                                    )
-                                })?;
-
-                            Ok((offset_reg, offs, member_type))
-                        } else {
-                            Err(CompileError::Internal(
-                                "Cannot get element offset in non-aggregate.",
-                                sway_types::span::Span::dummy(),
-                            ))
-                        }
+        let (base_reg, const_offs, _) = indices.iter().try_fold(
+            (base_reg, 0, base_type),
+            |(reg, offs, elem_ty), idx_val| {
+                // So we're folding to a Result, as unwrapping the constants can fail.
+                // If we find a constant index then we add its offset to `offs`.  Otherwise we grab
+                // its value, which should be compiled already, and add it to reg.
+                if elem_ty.is_struct(self.context) {
+                    // For structs the index must be a const uint.
+                    unwrap_constant_uint(idx_val).map(|idx| {
+                        let field_types = elem_ty.get_field_types(self.context);
+                        let field_type = field_types[idx];
+                        let field_offs_in_bytes = field_types
+                            .iter()
+                            .take(idx)
+                            .map(|field_ty| ir_type_size_in_bytes(self.context, field_ty))
+                            .sum::<u64>();
+                        (reg, offs + field_offs_in_bytes, field_type)
                     })
-                })?;
+                } else if elem_ty.is_union(self.context) {
+                    // For unions the index must also be a const uint.
+                    unwrap_constant_uint(idx_val).map(|idx| {
+                        let field_type = elem_ty.get_field_types(self.context)[idx];
+                        let union_size_in_bytes = ir_type_size_in_bytes(self.context, &elem_ty);
+                        let field_size_in_bytes = ir_type_size_in_bytes(self.context, &field_type);
+
+                        // The union fields are at offset (union_size - variant_size) due to left padding.
+                        (
+                            reg,
+                            offs + union_size_in_bytes - field_size_in_bytes,
+                            field_type,
+                        )
+                    })
+                } else if elem_ty.is_array(self.context) {
+                    // For arrays the index is a value.  We need to fetch it and add it to
+                    // the base.
+                    let array_elem_ty =
+                        elem_ty.get_array_elem_type(self.context).ok_or_else(|| {
+                            CompileError::Internal(
+                                "Failed to get elem type for known array",
+                                owning_span.clone().unwrap_or_else(Span::dummy),
+                            )
+                        })?;
+                    let array_elem_size = ir_type_size_in_bytes(self.context, &array_elem_ty);
+                    let size_reg = self.reg_seqr.next();
+                    self.immediate_to_reg(
+                        array_elem_size,
+                        size_reg.clone(),
+                        None,
+                        "get size of element",
+                        owning_span.clone(),
+                    );
+
+                    let index_reg = self.value_to_register(idx_val)?;
+                    let offset_reg = self.reg_seqr.next();
+
+                    self.cur_bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::MUL(
+                            offset_reg.clone(),
+                            index_reg,
+                            size_reg,
+                        )),
+                        comment: "get offset to array element".into(),
+                        owning_span: owning_span.clone(),
+                    });
+                    self.cur_bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::ADD(
+                            offset_reg.clone(),
+                            reg,
+                            offset_reg.clone(),
+                        )),
+                        comment: "add to array base".into(),
+                        owning_span: owning_span.clone(),
+                    });
+                    let member_type =
+                        elem_ty.get_array_elem_type(self.context).ok_or_else(|| {
+                            CompileError::Internal(
+                                "Can't get array elem type for GEP.",
+                                sway_types::span::Span::dummy(),
+                            )
+                        })?;
+
+                    Ok((offset_reg, offs, member_type))
+                } else {
+                    Err(CompileError::Internal(
+                        "Cannot get element offset in non-aggregate.",
+                        sway_types::span::Span::dummy(),
+                    ))
+                }
+            },
+        )?;
 
         if const_offs == 0 {
             // No need to add anything.

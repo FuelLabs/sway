@@ -862,10 +862,10 @@ mod ir_builder {
     ) -> Result<Context, IrError> {
         let mut ctx = Context::new(source_engine);
         let md_map = build_metadata_map(&mut ctx, ir_ast_mod.metadata);
-        let mut module = Module::new(&mut ctx, ir_ast_mod.kind);
+        let module = Module::new(&mut ctx, ir_ast_mod.kind);
         let mut builder = IrBuilder {
             module,
-            configs_map: build_configs_map(&mut ctx, &mut module, ir_ast_mod.configs, &md_map),
+            configs_map: build_configs_map(&mut ctx, &module, ir_ast_mod.configs, &md_map),
             md_map,
             unresolved_calls: Vec::new(),
         };
@@ -1335,7 +1335,7 @@ mod ir_builder {
 
     fn build_configs_map(
         context: &mut Context,
-        module: &mut Module,
+        module: &Module,
         ir_configs: Vec<IrAstConfig>,
         md_map: &HashMap<MdIdxRef, MetadataIndex>,
     ) -> HashMap<String, Value> {

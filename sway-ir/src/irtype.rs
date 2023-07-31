@@ -281,11 +281,9 @@ impl Type {
             return None;
         }
 
-        indices.iter().fold(Some(*self), |ty, idx| {
-            ty.and_then(|ty| {
-                ty.get_field_type(context, *idx)
-                    .or_else(|| ty.get_array_elem_type(context))
-            })
+        indices.iter().try_fold(*self, |ty, idx| {
+            ty.get_field_type(context, *idx)
+                .or_else(|| ty.get_array_elem_type(context))
         })
     }
 
@@ -294,7 +292,7 @@ impl Type {
     pub fn get_indexed_offset(&self, context: &Context, indices: &[Value]) -> Option<u64> {
         indices
             .iter()
-            .fold(Some((*self, 0)), |ty, idx| {
+            .try_fold((*self, 0), |(ty, accum_offset), idx| {
                 let Some(Constant {
                     value: ConstantValue::Uint(idx),
                     ty: _,
@@ -302,35 +300,33 @@ impl Type {
                 else {
                     return None;
                 };
-                ty.and_then(|(ty, accum_offset)| {
-                    if ty.is_struct(context) {
-                        // Sum up all sizes of all previous fields.
-                        let prev_idxs_offset = (0..(*idx)).try_fold(0, |accum, pre_idx| {
-                            ty.get_field_type(context, pre_idx)
-                                .map(|field_ty| field_ty.size_in_bytes(context) + accum)
-                        })?;
-                        ty.get_field_type(context, *idx)
-                            .map(|field_ty| (field_ty, accum_offset + prev_idxs_offset))
-                    } else if ty.is_union(context) {
-                        ty.get_field_type(context, *idx)
-                            .map(|field_ty| (field_ty, accum_offset))
-                    } else {
-                        assert!(
-                            ty.is_array(context),
-                            "Expected aggregate type when indexing using GEP. Got {}",
-                            ty.as_string(context)
-                        );
-                        // size_of_element * idx will be the offset of idx.
-                        ty.get_array_elem_type(context).map(|elm_ty| {
-                            let prev_idxs_offset = ty
-                                .get_array_elem_type(context)
-                                .unwrap()
-                                .size_in_bytes(context)
-                                * idx;
-                            (elm_ty, accum_offset + prev_idxs_offset)
-                        })
-                    }
-                })
+                if ty.is_struct(context) {
+                    // Sum up all sizes of all previous fields.
+                    let prev_idxs_offset = (0..(*idx)).try_fold(0, |accum, pre_idx| {
+                        ty.get_field_type(context, pre_idx)
+                            .map(|field_ty| field_ty.size_in_bytes(context) + accum)
+                    })?;
+                    ty.get_field_type(context, *idx)
+                        .map(|field_ty| (field_ty, accum_offset + prev_idxs_offset))
+                } else if ty.is_union(context) {
+                    ty.get_field_type(context, *idx)
+                        .map(|field_ty| (field_ty, accum_offset))
+                } else {
+                    assert!(
+                        ty.is_array(context),
+                        "Expected aggregate type when indexing using GEP. Got {}",
+                        ty.as_string(context)
+                    );
+                    // size_of_element * idx will be the offset of idx.
+                    ty.get_array_elem_type(context).map(|elm_ty| {
+                        let prev_idxs_offset = ty
+                            .get_array_elem_type(context)
+                            .unwrap()
+                            .size_in_bytes(context)
+                            * idx;
+                        (elm_ty, accum_offset + prev_idxs_offset)
+                    })
+                }
             })
             .map(|pair| pair.1)
     }
