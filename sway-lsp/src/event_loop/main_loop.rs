@@ -180,7 +180,7 @@ impl ServerStateExt {
             //.on_sync_mut::<lsp_ext::ReloadWorkspace>(handlers::handle_workspace_reload)
             // Request handlers which are related to the user typing
             // are run on the main thread to reduce latency:
-            // .on_sync::<lsp_ext::OnEnter>(handlers::handle_on_enter)
+            .on_sync::<lsp_ext::OnEnterParams>(handlers::handle_on_enter)
             // We can’t run latency-sensitive request handlers which do semantic
             // analysis on the main thread because that would block other
             // requests. Instead, we run these request handlers on higher priority
