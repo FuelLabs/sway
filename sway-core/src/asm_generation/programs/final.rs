@@ -80,10 +80,7 @@ impl std::fmt::Display for FinalProgram {
                     .collect::<Vec<_>>();
                 separator.push_all(concretized_ops);
 
-                let basic_blocks = separator
-                    .take()
-                    .into_iter()
-                    .chain(separator.finish().into_iter());
+                let basic_blocks = separator.take().into_iter().chain(separator.finish());
 
                 for block in basic_blocks {
                     let mut offset = block.offset;

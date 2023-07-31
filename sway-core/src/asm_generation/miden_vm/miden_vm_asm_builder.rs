@@ -171,7 +171,7 @@ impl<'ir, 'eng> MidenVMAsmBuilder<'ir, 'eng> {
 
     fn copy_contract_code_to_memory(
         &self,
-        s: &mut MidenVMAsmSection,
+        s: &MidenVMAsmSection,
         data_size: u32,
         data_offset: u32,
     ) {

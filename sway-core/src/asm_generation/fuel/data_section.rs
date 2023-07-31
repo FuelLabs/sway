@@ -128,7 +128,7 @@ impl Entry {
             Datum::ByteArray(bs) if bs.len() % 8 == 0 => bs.clone(),
             Datum::ByteArray(bs) => bs
                 .iter()
-                .chain(vec![0; 8].iter())
+                .chain([0; 8].iter())
                 .copied()
                 .take((bs.len() + 7) & 0xfffffff8_usize)
                 .collect(),

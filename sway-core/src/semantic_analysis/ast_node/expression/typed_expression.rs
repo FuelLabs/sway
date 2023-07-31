@@ -83,7 +83,7 @@ impl ty::TyExpression {
         let args_and_names = method
             .parameters
             .into_iter()
-            .zip(arguments.into_iter())
+            .zip(arguments)
             .map(|(param, arg)| (param.name, arg))
             .collect::<Vec<(_, _)>>();
         let exp = ty::TyExpression {
