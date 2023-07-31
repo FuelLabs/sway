@@ -1,12 +1,13 @@
 use clap::Parser;
 use fuel_crypto::SecretKey;
+use fuels_core::types::bech32::Bech32Address;
 
 pub use super::submit::Network;
 pub use forc::cli::shared::{BuildOutput, BuildProfile, Minify, Pkg, Print};
 pub use forc_tx::{Gas, Maturity};
 
-/// Run script project.
-/// Crafts a script transaction then sends it to a running node.
+/// Run a script or spend a predicate.
+/// Crafts a script or predicate spending transaction then sends it to a running node.
 #[derive(Debug, Default, Parser)]
 #[clap(bin_name = "forc run", version)]
 pub struct Command {
@@ -57,4 +58,10 @@ pub struct Command {
     /// Arguments to pass into main function with forc run.
     #[clap(long)]
     pub args: Option<Vec<String>>,
+    /// Amount to unlock for spending a predicate.
+    #[clap(long)]
+    pub spend_amount: Option<u64>,
+    /// Receiveng address of the spent predicate assets.
+    #[clap(long)]
+    pub receive_address: Option<Bech32Address>,
 }
