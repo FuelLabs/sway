@@ -41,9 +41,9 @@ impl Constant {
     pub fn new_uint(context: &mut Context, nbits: u16, n: u64) -> Self {
         Constant {
             ty: Type::new_uint(context, nbits),
-            value:match nbits {
+            value: match nbits {
                 256 => ConstantValue::U256(n),
-                _ => ConstantValue::Uint(n)
+                _ => ConstantValue::Uint(n),
             },
         }
     }

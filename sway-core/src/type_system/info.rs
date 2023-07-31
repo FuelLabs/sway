@@ -619,7 +619,7 @@ impl TypeInfo {
                     Sixteen => "u16",
                     ThirtyTwo => "u32",
                     SixtyFour => "u64",
-                    V256 => "u256"
+                    V256 => "u256",
                 }
                 .into()
             }
