@@ -402,7 +402,7 @@ impl Pattern {
                             fields: struct_pattern
                                 .fields
                                 .iter()
-                                .zip(args.into_iter())
+                                .zip(args)
                                 .map(|((name, _), arg)| (name.clone(), arg))
                                 .collect::<Vec<_>>(),
                         })
