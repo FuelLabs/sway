@@ -104,12 +104,12 @@ pub fn main() -> Result<()> {
         let graph = plan.graph();
         let manifest_map = plan.manifest_map();
 
-        for (node, compile_result) in order.iter().zip(compile_results) {
+        for (node, (compile_result, _handler)) in order.iter().zip(compile_results) {
             let id = &graph[*node].id();
 
             if let Some(pkg_manifest_file) = manifest_map.get(id) {
                 let manifest_file = ManifestFile::from_dir(pkg_manifest_file.path())?;
-                let ty_program = match compile_result.value.and_then(|programs| programs.typed) {
+                let ty_program = match compile_result.and_then(|programs| programs.typed) {
                     Some(ty_program) => ty_program,
                     _ => bail!(
                         "documentation could not be built from manifest located at '{}'",
@@ -129,8 +129,8 @@ pub fn main() -> Result<()> {
     } else {
         let ty_program = match compile_results
             .pop()
-            .and_then(|compilation| compilation.value)
-            .and_then(|programs| programs.typed)
+            .and_then(|(programs, _handler)| programs)
+            .and_then(|p| p.typed)
         {
             Some(ty_program) => ty_program,
             _ => bail!(

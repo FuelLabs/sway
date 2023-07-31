@@ -6,12 +6,10 @@ use crate::{
 
 impl ty::TyCodeBlock {
     pub(crate) fn type_check(
+        handler: &Handler,
         mut ctx: TypeCheckContext,
         code_block: CodeBlock,
-    ) -> CompileResult<(Self, TypeId)> {
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
-
+    ) -> Result<(Self, TypeId), ErrorEmitted> {
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
@@ -22,7 +20,7 @@ impl ty::TyCodeBlock {
             .iter()
             .filter_map(|node| {
                 let ctx = ctx.by_ref().scoped(&mut code_block_namespace);
-                ty::TyAstNode::type_check(ctx, node.clone()).ok(&mut warnings, &mut errors)
+                ty::TyAstNode::type_check(handler, ctx, node.clone()).ok()
             })
             .collect::<Vec<ty::TyAstNode>>();
 
@@ -69,8 +67,8 @@ impl ty::TyCodeBlock {
                     let never_decl_opt = ctx
                         .namespace
                         .root()
-                        .resolve_symbol(&never_mod_path, &never_ident)
-                        .value;
+                        .resolve_symbol(&Handler::default(), &never_mod_path, &never_ident)
+                        .ok();
 
                     if let Some(ty::TyDecl::EnumDecl(ty::EnumDecl {
                         name,
@@ -93,11 +91,17 @@ impl ty::TyCodeBlock {
                 }
             });
 
-        append!(ctx.unify_with_self(block_type, &span), warnings, errors);
+        let (warnings, errors) = ctx.unify_with_self(block_type, &span);
+        for warn in warnings {
+            handler.emit_warn(warn);
+        }
+        for err in errors {
+            handler.emit_err(err);
+        }
 
         let typed_code_block = ty::TyCodeBlock {
             contents: evaluated_contents,
         };
-        ok((typed_code_block, block_type), warnings, errors)
+        Ok((typed_code_block, block_type))
     }
 }

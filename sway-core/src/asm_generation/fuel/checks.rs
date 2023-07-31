@@ -1,15 +1,15 @@
 //! Various checks and heuristics that are naively run on sequences of opcodes.
 //!
 //! This is _not_ the place for optimization passes.
-use sway_error::error::CompileError;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_types::Span;
 
-use crate::{
-    asm_lang::{
-        allocated_ops::{AllocatedOp, AllocatedOpcode},
-        VirtualImmediate18,
-    },
-    error::*,
+use crate::asm_lang::{
+    allocated_ops::{AllocatedOp, AllocatedOpcode},
+    VirtualImmediate18,
 };
 
 /// Checks if an opcode is one that cannot be executed from within a script.
@@ -22,41 +22,46 @@ use crate::{
 ///   }
 /// }
 /// ```
-pub(crate) fn check_script_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> {
+pub(crate) fn check_script_opcodes(
+    handler: &Handler,
+    ops: &[AllocatedOp],
+) -> Result<(), ErrorEmitted> {
     use AllocatedOpcode::*;
-    let mut errors = vec![];
+    let mut error_emitted = None;
     for op in ops {
         match op.opcode {
             GM(_, VirtualImmediate18 { value: 1..=2 }) => {
-                errors.push(CompileError::GMFromExternalContext {
+                error_emitted = Some(handler.emit_err(CompileError::GMFromExternalContext {
                     span: get_op_span(op),
-                });
+                }));
             }
             MINT(..) => {
-                errors.push(CompileError::MintFromExternalContext {
+                error_emitted = Some(handler.emit_err(CompileError::MintFromExternalContext {
                     span: get_op_span(op),
-                });
+                }));
             }
             BURN(..) => {
-                errors.push(CompileError::BurnFromExternalContext {
+                error_emitted = Some(handler.emit_err(CompileError::BurnFromExternalContext {
                     span: get_op_span(op),
-                });
+                }));
             }
             SWW(..) | SRW(..) | SRWQ(..) | SWWQ(..) => {
-                errors.push(CompileError::ContractStorageFromExternalContext {
-                    span: get_op_span(op),
-                });
+                error_emitted = Some(handler.emit_err(
+                    CompileError::ContractStorageFromExternalContext {
+                        span: get_op_span(op),
+                    },
+                ));
             }
             _ => (),
         }
     }
 
-    if errors.is_empty() {
-        ok((), vec![], errors)
-    } else {
+    if let Some(err) = error_emitted {
         // Abort compilation because the finalized asm contains opcodes invalid to a script.
         // Preemptively avoids the creation of scripts with opcodes not allowed at runtime.
-        err(vec![], errors)
+        Err(err)
+    } else {
+        Ok(())
     }
 }
 
@@ -77,55 +82,59 @@ pub(crate) fn check_script_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> {
 /// the function verifies that the immediate of JI, JNEI, JNZI is greater than the opcode offset.
 ///
 /// See: https://fuellabs.github.io/fuel-specs/master/vm/index.html?highlight=predicate#predicate-verification
-pub(crate) fn check_predicate_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> {
+pub(crate) fn check_predicate_opcodes(
+    handler: &Handler,
+    ops: &[AllocatedOp],
+) -> Result<(), ErrorEmitted> {
     use AllocatedOpcode::*;
-    let mut errors = vec![];
+
+    let mut error_emitted = None;
 
     for op in ops.iter() {
-        let invalid_opcode = |name_str: &str, errors: &mut Vec<CompileError>| {
-            errors.push(CompileError::InvalidOpcodeFromPredicate {
+        let mut invalid_opcode = |name_str: &str| {
+            error_emitted = Some(handler.emit_err(CompileError::InvalidOpcodeFromPredicate {
                 opcode: name_str.to_string(),
                 span: get_op_span(op),
-            });
+            }));
         };
         match op.opcode.clone() {
-            BAL(..) => invalid_opcode("BAL", &mut errors),
-            BHEI(..) => invalid_opcode("BHEI", &mut errors),
-            BHSH(..) => invalid_opcode("BHSH", &mut errors),
-            BURN(..) => invalid_opcode("BURN", &mut errors),
-            CALL(..) => invalid_opcode("CALL", &mut errors),
-            CB(..) => invalid_opcode("CB", &mut errors),
-            CCP(..) => invalid_opcode("CCP", &mut errors),
-            CROO(..) => invalid_opcode("CROO", &mut errors),
-            CSIZ(..) => invalid_opcode("CSIZ", &mut errors),
+            BAL(..) => invalid_opcode("BAL"),
+            BHEI(..) => invalid_opcode("BHEI"),
+            BHSH(..) => invalid_opcode("BHSH"),
+            BURN(..) => invalid_opcode("BURN"),
+            CALL(..) => invalid_opcode("CALL"),
+            CB(..) => invalid_opcode("CB"),
+            CCP(..) => invalid_opcode("CCP"),
+            CROO(..) => invalid_opcode("CROO"),
+            CSIZ(..) => invalid_opcode("CSIZ"),
             GM(_, VirtualImmediate18 { value: 1..=2 }) => {
-                errors.push(CompileError::GMFromExternalContext {
+                error_emitted = Some(handler.emit_err(CompileError::GMFromExternalContext {
                     span: get_op_span(op),
-                });
+                }));
             }
-            LDC(..) => invalid_opcode("LDC", &mut errors),
-            LOG(..) => invalid_opcode("LOG", &mut errors),
-            LOGD(..) => invalid_opcode("LOGD", &mut errors),
-            MINT(..) => invalid_opcode("MINT", &mut errors),
-            RETD(..) => invalid_opcode("RETD", &mut errors),
-            SMO(..) => invalid_opcode("SMO", &mut errors),
-            SRW(..) => invalid_opcode("SRW", &mut errors),
-            SRWQ(..) => invalid_opcode("SRWQ", &mut errors),
-            SWW(..) => invalid_opcode("SWW", &mut errors),
-            SWWQ(..) => invalid_opcode("SWWQ", &mut errors),
-            TIME(..) => invalid_opcode("TIME", &mut errors),
-            TR(..) => invalid_opcode("TR", &mut errors),
-            TRO(..) => invalid_opcode("TRO", &mut errors),
+            LDC(..) => invalid_opcode("LDC"),
+            LOG(..) => invalid_opcode("LOG"),
+            LOGD(..) => invalid_opcode("LOGD"),
+            MINT(..) => invalid_opcode("MINT"),
+            RETD(..) => invalid_opcode("RETD"),
+            SMO(..) => invalid_opcode("SMO"),
+            SRW(..) => invalid_opcode("SRW"),
+            SRWQ(..) => invalid_opcode("SRWQ"),
+            SWW(..) => invalid_opcode("SWW"),
+            SWWQ(..) => invalid_opcode("SWWQ"),
+            TIME(..) => invalid_opcode("TIME"),
+            TR(..) => invalid_opcode("TR"),
+            TRO(..) => invalid_opcode("TRO"),
             _ => (),
         };
     }
 
-    if errors.is_empty() {
-        ok((), vec![], errors)
-    } else {
+    if let Some(err) = error_emitted {
         // Abort compilation because the finalized asm contains opcodes invalid to a predicate.
         // Preemptively avoids the creation of predicates with opcodes not allowed at runtime.
-        err(vec![], errors)
+        Err(err)
+    } else {
+        Ok(())
     }
 }
 
