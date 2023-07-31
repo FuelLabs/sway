@@ -6,6 +6,7 @@ pub enum IntegerBits {
     Sixteen,
     ThirtyTwo,
     SixtyFour,
+    V256
 }
 
 impl fmt::Display for IntegerBits {
@@ -16,6 +17,7 @@ impl fmt::Display for IntegerBits {
             Sixteen => "sixteen",
             ThirtyTwo => "thirty two",
             SixtyFour => "sixty four",
+            V256 => "256",
         };
         write!(f, "{s}")
     }

@@ -9,7 +9,7 @@ use super::types::{create_tagged_union_type, create_tuple_aggregate};
 
 use sway_error::error::CompileError;
 use sway_ir::{Constant, Context, Type, Value};
-use sway_types::span::Span;
+use sway_types::{span::Span, integer_bits::IntegerBits};
 
 pub(super) fn convert_literal_to_value(context: &mut Context, ast_literal: &Literal) -> Value {
     match ast_literal {
@@ -25,6 +25,7 @@ pub(super) fn convert_literal_to_value(context: &mut Context, ast_literal: &Lite
         Literal::U16(n) => Constant::get_uint(context, 64, *n as u64),
         Literal::U32(n) => Constant::get_uint(context, 64, *n as u64),
         Literal::U64(n) => Constant::get_uint(context, 64, *n),
+        Literal::U256(n) => Constant::get_uint(context, 256, *n),
         Literal::Numeric(n) => Constant::get_uint(context, 64, *n),
         Literal::String(s) => Constant::get_string(context, s.as_str().as_bytes().to_vec()),
         Literal::Boolean(b) => Constant::get_bool(context, *b),
@@ -42,6 +43,7 @@ pub(super) fn convert_literal_to_constant(
         Literal::U16(n) => Constant::new_uint(context, 64, *n as u64),
         Literal::U32(n) => Constant::new_uint(context, 64, *n as u64),
         Literal::U64(n) => Constant::new_uint(context, 64, *n),
+        Literal::U256(n) => Constant::new_uint(context, 256, *n),
         Literal::Numeric(n) => Constant::new_uint(context, 64, *n),
         Literal::String(s) => Constant::new_string(context, s.as_str().as_bytes().to_vec()),
         Literal::Boolean(b) => Constant::new_bool(context, *b),
@@ -99,6 +101,7 @@ fn convert_resolved_type(
 
     Ok(match ast_type {
         // All integers are `u64`, see comment in convert_literal_to_value() above.
+        TypeInfo::UnsignedInteger(IntegerBits::V256) => Type::get_uint256(context),
         TypeInfo::UnsignedInteger(_) => Type::get_uint64(context),
         TypeInfo::Numeric => Type::get_uint64(context),
         TypeInfo::Boolean => Type::get_bool(context),
