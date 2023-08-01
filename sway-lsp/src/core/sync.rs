@@ -49,13 +49,14 @@ impl SyncWorkspace {
     /// the current workspace.
     pub fn resync(&self) -> Result<(), LanguageServerError> {
         self.clone_manifest_dir_to_temp()?;
-        self.manifest_path()
+        if let Some(manifest) = self
+            .manifest_path()
             .and_then(|manifest_path| PackageManifestFile::from_dir(&manifest_path).ok())
-            .map(|manifest| {
-                if let Some(temp_manifest_path) = &self.temp_manifest_path() {
-                    edit_manifest_dependency_paths(&manifest, temp_manifest_path)
-                }
-            });
+        {
+            if let Some(temp_manifest_path) = &self.temp_manifest_path() {
+                edit_manifest_dependency_paths(&manifest, temp_manifest_path)
+            }
+        }
         Ok(())
     }
 
