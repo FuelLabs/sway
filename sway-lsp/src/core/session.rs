@@ -38,7 +38,7 @@ use sway_core::{
         parsed::{AstNode, ParseProgram},
         ty,
     },
-    BuildTarget, CompileResult, Engines, Namespace, Programs,
+    BuildTarget, Engines, Namespace, Programs,
 };
 use sway_types::{Span, Spanned};
 use sway_utils::helpers::get_sway_files;
@@ -200,13 +200,9 @@ impl Session {
         self.runnables.clear();
 
         let results_len = results.len();
-        for (i, res) in results.into_iter().enumerate() {
+        for (i, (value, handler)) in results.into_iter().enumerate() {
             // We can convert these destructured elements to a Vec<Diagnostic> later on.
-            let CompileResult {
-                value,
-                warnings,
-                errors,
-            } = res;
+            let (errors, warnings) = handler.consume();
 
             if value.is_none() {
                 // If there was an unrecoverable error in the parser
@@ -220,11 +216,9 @@ impl Session {
                 typed,
             } = value.unwrap();
 
-            let ast_res = CompileResult::new(typed, warnings, errors);
-
             // Get a reference to the typed program AST.
-            let typed_program = ast_res.value.as_ref().ok_or_else(|| {
-                *diagnostics = get_diagnostics(&ast_res.warnings, &ast_res.errors);
+            let typed_program = typed.as_ref().ok().ok_or_else(|| {
+                *diagnostics = get_diagnostics(&warnings, &errors);
                 LanguageServerError::FailedToParse
             })?;
 
@@ -255,7 +249,7 @@ impl Session {
                 self.save_parsed_program(parsed.to_owned().clone());
                 self.save_typed_program(typed_program.to_owned().clone());
 
-                *diagnostics = get_diagnostics(&ast_res.warnings, &ast_res.errors);
+                *diagnostics = get_diagnostics(&warnings, &errors);
             } else {
                 // Collect tokens from dependencies and the standard library prelude.
                 self.parse_ast_to_tokens(&parsed, &ctx, |an, ctx| {

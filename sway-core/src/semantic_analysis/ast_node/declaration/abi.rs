@@ -3,9 +3,10 @@ use std::collections::HashSet;
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
+use crate::decl_engine::{DeclEngineInsert, DeclId};
+use sway_error::handler::{ErrorEmitted, Handler};
+
 use crate::{
-    decl_engine::{DeclEngineInsert, DeclId},
-    error::*,
     language::{
         parsed::*,
         ty::{self, TyImplItem, TyTraitItem},
@@ -15,17 +16,15 @@ use crate::{
     semantic_analysis::{
         declaration::insert_supertraits_into_namespace, AbiMode, TypeCheckContext,
     },
-    CompileResult, ReplaceSelfType, TypeId, TypeInfo,
+    ReplaceSelfType, TypeId, TypeInfo,
 };
 
 impl ty::TyAbiDecl {
     pub(crate) fn type_check(
+        handler: &Handler,
         ctx: TypeCheckContext,
         abi_decl: AbiDeclaration,
-    ) -> CompileResult<Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
+    ) -> Result<Self, ErrorEmitted> {
         let AbiDeclaration {
             name,
             interface_surface,
@@ -51,17 +50,13 @@ impl ty::TyAbiDecl {
 
         // Recursively make the interface surfaces and methods of the
         // supertraits available to this abi.
-        check!(
-            insert_supertraits_into_namespace(
-                ctx.by_ref(),
-                self_type,
-                &supertraits,
-                &SupertraitOf::Abi(span.clone())
-            ),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        insert_supertraits_into_namespace(
+            handler,
+            ctx.by_ref(),
+            self_type,
+            &supertraits,
+            &SupertraitOf::Abi(span.clone()),
+        )?;
 
         // Type check the interface surface.
         let mut new_interface_surface = vec![];
@@ -69,31 +64,28 @@ impl ty::TyAbiDecl {
         let mut ids: HashSet<Ident> = HashSet::default();
 
         let error_on_shadowing_superabi_method =
-            |method_name: &Ident, ctx: &mut TypeCheckContext, errors: &mut Vec<CompileError>| {
-                if let Some(superabi_impl_method_ref) = ctx
-                    .namespace
-                    .find_method_for_type(
-                        ctx.self_type(),
-                        &[],
-                        &method_name.clone(),
-                        ctx.self_type(),
-                        ctx.type_annotation(),
-                        &Default::default(),
-                        None,
-                        ctx.engines,
-                        false,
-                    )
-                    .value
-                {
+            |method_name: &Ident, ctx: &mut TypeCheckContext| {
+                if let Ok(superabi_impl_method_ref) = ctx.namespace.find_method_for_type(
+                    &Handler::default(),
+                    ctx.self_type(),
+                    &[],
+                    &method_name.clone(),
+                    ctx.self_type(),
+                    ctx.type_annotation(),
+                    &Default::default(),
+                    None,
+                    ctx.engines,
+                    false,
+                ) {
                     let superabi_impl_method =
                         ctx.engines.de().get_function(&superabi_impl_method_ref);
                     if let Some(ty::TyDecl::AbiDecl(abi_decl)) =
-                        superabi_impl_method.implementing_type.clone()
+                        superabi_impl_method.implementing_type
                     {
-                        errors.push(CompileError::AbiShadowsSuperAbiMethod {
-                            span: method_name.span().clone(),
-                            superabi: abi_decl.name.clone(),
-                        })
+                        handler.emit_err(CompileError::AbiShadowsSuperAbiMethod {
+                            span: method_name.span(),
+                            superabi: abi_decl.name,
+                        });
                     }
                 }
             };
@@ -103,19 +95,14 @@ impl ty::TyAbiDecl {
                 TraitItem::TraitFn(method) => {
                     // check that a super-trait does not define a method
                     // with the same name as the current interface method
-                    error_on_shadowing_superabi_method(&method.name, &mut ctx, &mut errors);
-                    let method = check!(
-                        ty::TyTraitFn::type_check(ctx.by_ref(), method),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
+                    error_on_shadowing_superabi_method(&method.name, &mut ctx);
+                    let method = ty::TyTraitFn::type_check(handler, ctx.by_ref(), method)?;
                     for param in &method.parameters {
                         if param.is_reference || param.is_mutable {
-                            errors.push(CompileError::RefMutableNotAllowedInContractAbi {
+                            handler.emit_err(CompileError::RefMutableNotAllowedInContractAbi {
                                 param_name: param.name.clone(),
                                 span: param.name.span(),
-                            })
+                            });
                         }
                     }
                     new_interface_surface.push(ty::TyTraitInterfaceItem::TraitFn(
@@ -124,66 +111,55 @@ impl ty::TyAbiDecl {
                     method.name.clone()
                 }
                 TraitItem::Constant(const_decl) => {
-                    let const_decl = check!(
-                        ty::TyConstantDecl::type_check(ctx.by_ref(), const_decl.clone(),),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
+                    let const_decl =
+                        ty::TyConstantDecl::type_check(handler, ctx.by_ref(), const_decl.clone())?;
                     let decl_ref = ctx.engines.de().insert(const_decl.clone());
                     new_interface_surface
                         .push(ty::TyTraitInterfaceItem::Constant(decl_ref.clone()));
 
                     let const_name = const_decl.call_path.suffix.clone();
-                    check!(
-                        ctx.insert_symbol(
-                            const_name.clone(),
-                            ty::TyDecl::ConstantDecl(ty::ConstantDecl {
-                                name: const_name.clone(),
-                                decl_id: *decl_ref.id(),
-                                decl_span: const_decl.span.clone()
-                            })
-                        ),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
+                    ctx.insert_symbol(
+                        handler,
+                        const_name.clone(),
+                        ty::TyDecl::ConstantDecl(ty::ConstantDecl {
+                            name: const_name.clone(),
+                            decl_id: *decl_ref.id(),
+                            decl_span: const_decl.span.clone(),
+                        }),
+                    )?;
 
                     const_name
                 }
             };
 
             if !ids.insert(decl_name.clone()) {
-                errors.push(CompileError::MultipleDefinitionsOfName {
+                handler.emit_err(CompileError::MultipleDefinitionsOfName {
                     name: decl_name.clone(),
                     span: decl_name.span(),
-                })
+                });
             }
         }
 
         // Type check the items.
         let mut new_items = vec![];
         for method in methods.into_iter() {
-            let method = check!(
-                ty::TyFunctionDecl::type_check(ctx.by_ref(), method.clone(), false, false),
-                ty::TyFunctionDecl::error(method.clone()),
-                warnings,
-                errors
-            );
-            error_on_shadowing_superabi_method(&method.name, &mut ctx, &mut errors);
+            let method =
+                ty::TyFunctionDecl::type_check(handler, ctx.by_ref(), method.clone(), false, false)
+                    .unwrap_or_else(|_| ty::TyFunctionDecl::error(method.clone()));
+            error_on_shadowing_superabi_method(&method.name, &mut ctx);
             for param in &method.parameters {
                 if param.is_reference || param.is_mutable {
-                    errors.push(CompileError::RefMutableNotAllowedInContractAbi {
+                    handler.emit_err(CompileError::RefMutableNotAllowedInContractAbi {
                         param_name: param.name.clone(),
                         span: param.name.span(),
-                    })
+                    });
                 }
             }
             if !ids.insert(method.name.clone()) {
-                errors.push(CompileError::MultipleDefinitionsOfName {
+                handler.emit_err(CompileError::MultipleDefinitionsOfName {
                     name: method.name.clone(),
                     span: method.name.span(),
-                })
+                });
             }
             new_items.push(TyTraitItem::Fn(ctx.engines.de().insert(method)));
         }
@@ -199,18 +175,17 @@ impl ty::TyAbiDecl {
             span,
             attributes,
         };
-        ok(abi_decl, warnings, errors)
+        Ok(abi_decl)
     }
 
     pub(crate) fn insert_interface_surface_and_items_into_namespace(
         &self,
+        handler: &Handler,
         self_decl_id: DeclId<ty::TyAbiDecl>,
         ctx: TypeCheckContext,
         type_id: TypeId,
         subabi_span: Option<Span>,
-    ) -> CompileResult<()> {
-        let warnings = vec![];
-        let mut errors = vec![];
+    ) -> Result<(), ErrorEmitted> {
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
@@ -228,15 +203,15 @@ impl ty::TyAbiDecl {
             (false, Span::dummy())
         };
 
-        for item in interface_surface.iter() {
-            match item {
-                ty::TyTraitInterfaceItem::TraitFn(decl_ref) => {
-                    let mut method = decl_engine.get_trait_fn(decl_ref);
-                    if look_for_conflicting_abi_methods {
-                        // looking for conflicting ABI methods for triangle-like ABI hierarchies
-                        if let Some(superabi_method_ref) = ctx
-                            .namespace
-                            .find_method_for_type(
+        handler.scope(|handler| {
+            for item in interface_surface.iter() {
+                match item {
+                    ty::TyTraitInterfaceItem::TraitFn(decl_ref) => {
+                        let mut method = decl_engine.get_trait_fn(decl_ref);
+                        if look_for_conflicting_abi_methods {
+                            // looking for conflicting ABI methods for triangle-like ABI hierarchies
+                            if let Ok(superabi_method_ref) = ctx.namespace.find_method_for_type(
+                                &Handler::default(),
                                 ctx.self_type(),
                                 &[],
                                 &method.name.clone(),
@@ -246,74 +221,74 @@ impl ty::TyAbiDecl {
                                 None,
                                 ctx.engines,
                                 false,
-                            )
-                            .value
-                        {
-                            let superabi_method =
-                                ctx.engines.de().get_function(&superabi_method_ref);
-                            if let Some(ty::TyDecl::AbiDecl(abi_decl)) =
-                                superabi_method.implementing_type.clone()
-                            {
-                                // rule out the diamond superABI hierarchy:
-                                // it's not an error if the "conflicting" methods
-                                // actually come from the same super-ABI
-                                //            Top
-                                //      /              \
-                                //   Left            Right
-                                //      \              /
-                                //           Bottom
-                                // if we are accumulating methods from Left and Right
-                                // to place it into Bottom we will encounter
-                                // the same method from Top in both Left and Right
-                                if self_decl_id != abi_decl.decl_id {
-                                    errors.push(CompileError::ConflictingSuperAbiMethods {
-                                        span: subabi_span.clone(),
-                                        method_name: method.name.to_string(),
-                                        superabi1: abi_decl.name.to_string(),
-                                        superabi2: self.name.to_string(),
-                                    })
+                            ) {
+                                let superabi_method =
+                                    ctx.engines.de().get_function(&superabi_method_ref);
+                                if let Some(ty::TyDecl::AbiDecl(abi_decl)) =
+                                    superabi_method.implementing_type.clone()
+                                {
+                                    // rule out the diamond superABI hierarchy:
+                                    // it's not an error if the "conflicting" methods
+                                    // actually come from the same super-ABI
+                                    //            Top
+                                    //      /              \
+                                    //   Left            Right
+                                    //      \              /
+                                    //           Bottom
+                                    // if we are accumulating methods from Left and Right
+                                    // to place it into Bottom we will encounter
+                                    // the same method from Top in both Left and Right
+                                    if self_decl_id != abi_decl.decl_id {
+                                        handler.emit_err(
+                                            CompileError::ConflictingSuperAbiMethods {
+                                                span: subabi_span.clone(),
+                                                method_name: method.name.to_string(),
+                                                superabi1: abi_decl.name.to_string(),
+                                                superabi2: self.name.to_string(),
+                                            },
+                                        );
+                                    }
                                 }
                             }
                         }
+                        method.replace_self_type(engines, type_id);
+                        all_items.push(TyImplItem::Fn(
+                            ctx.engines
+                                .de()
+                                .insert(method.to_dummy_func(AbiMode::ImplAbiFn(
+                                    self.name.clone(),
+                                    Some(self_decl_id),
+                                )))
+                                .with_parent(ctx.engines.de(), (*decl_ref.id()).into()),
+                        ));
                     }
-                    method.replace_self_type(engines, type_id);
-                    all_items.push(TyImplItem::Fn(
-                        ctx.engines
-                            .de()
-                            .insert(method.to_dummy_func(AbiMode::ImplAbiFn(
-                                self.name.clone(),
-                                Some(self_decl_id),
-                            )))
-                            .with_parent(ctx.engines.de(), (*decl_ref.id()).into()),
-                    ));
-                }
-                ty::TyTraitInterfaceItem::Constant(decl_ref) => {
-                    let const_decl = decl_engine.get_constant(decl_ref);
-                    let const_name = const_decl.call_path.suffix.clone();
-                    all_items.push(TyImplItem::Constant(decl_ref.clone()));
-                    let const_shadowing_mode = ctx.const_shadowing_mode();
-                    ctx.namespace.insert_symbol(
-                        const_name.clone(),
-                        ty::TyDecl::ConstantDecl(ty::ConstantDecl {
-                            name: const_name,
-                            decl_id: *decl_ref.id(),
-                            decl_span: const_decl.span.clone(),
-                        }),
-                        const_shadowing_mode,
-                    );
+                    ty::TyTraitInterfaceItem::Constant(decl_ref) => {
+                        let const_decl = decl_engine.get_constant(decl_ref);
+                        let const_name = const_decl.call_path.suffix.clone();
+                        all_items.push(TyImplItem::Constant(decl_ref.clone()));
+                        let const_shadowing_mode = ctx.const_shadowing_mode();
+                        let _ = ctx.namespace.insert_symbol(
+                            handler,
+                            const_name.clone(),
+                            ty::TyDecl::ConstantDecl(ty::ConstantDecl {
+                                name: const_name,
+                                decl_id: *decl_ref.id(),
+                                decl_span: const_decl.span.clone(),
+                            }),
+                            const_shadowing_mode,
+                        );
+                    }
                 }
             }
-        }
-        for item in items.iter() {
-            match item {
-                ty::TyTraitItem::Fn(decl_ref) => {
-                    let mut method = decl_engine.get_function(decl_ref);
-                    // check if we inherit the same impl method from different branches
-                    // XXX this piece of code can be abstracted out into a closure
-                    // and reused for interface methods if the issue of mutable ctx is solved
-                    if let Some(superabi_impl_method_ref) = ctx
-                        .namespace
-                        .find_method_for_type(
+            for item in items.iter() {
+                match item {
+                    ty::TyTraitItem::Fn(decl_ref) => {
+                        let mut method = decl_engine.get_function(decl_ref);
+                        // check if we inherit the same impl method from different branches
+                        // XXX this piece of code can be abstracted out into a closure
+                        // and reused for interface methods if the issue of mutable ctx is solved
+                        if let Ok(superabi_impl_method_ref) = ctx.namespace.find_method_for_type(
+                            &Handler::default(),
                             ctx.self_type(),
                             &[],
                             &method.name.clone(),
@@ -323,60 +298,56 @@ impl ty::TyAbiDecl {
                             None,
                             ctx.engines,
                             false,
-                        )
-                        .value
-                    {
-                        let superabi_impl_method =
-                            ctx.engines.de().get_function(&superabi_impl_method_ref);
-                        if let Some(ty::TyDecl::AbiDecl(abi_decl)) =
-                            superabi_impl_method.implementing_type.clone()
-                        {
-                            // allow the diamond superABI hierarchy
-                            if self_decl_id != abi_decl.decl_id {
-                                errors.push(CompileError::ConflictingSuperAbiMethods {
-                                    span: subabi_span.clone(),
-                                    method_name: method.name.to_string(),
-                                    superabi1: abi_decl.name.to_string(),
-                                    superabi2: self.name.to_string(),
-                                })
+                        ) {
+                            let superabi_impl_method =
+                                ctx.engines.de().get_function(&superabi_impl_method_ref);
+                            if let Some(ty::TyDecl::AbiDecl(abi_decl)) =
+                                superabi_impl_method.implementing_type.clone()
+                            {
+                                // allow the diamond superABI hierarchy
+                                if self_decl_id != abi_decl.decl_id {
+                                    handler.emit_err(CompileError::ConflictingSuperAbiMethods {
+                                        span: subabi_span.clone(),
+                                        method_name: method.name.to_string(),
+                                        superabi1: abi_decl.name.to_string(),
+                                        superabi2: self.name.to_string(),
+                                    });
+                                }
                             }
                         }
+                        method.replace_self_type(engines, type_id);
+                        all_items.push(TyImplItem::Fn(
+                            ctx.engines
+                                .de()
+                                .insert(method)
+                                .with_parent(ctx.engines.de(), (*decl_ref.id()).into()),
+                        ));
                     }
-                    method.replace_self_type(engines, type_id);
-                    all_items.push(TyImplItem::Fn(
-                        ctx.engines
-                            .de()
-                            .insert(method)
-                            .with_parent(ctx.engines.de(), (*decl_ref.id()).into()),
-                    ));
-                }
-                ty::TyTraitItem::Constant(decl_ref) => {
-                    let mut const_decl = decl_engine.get_constant(decl_ref);
-                    const_decl.replace_self_type(engines, type_id);
-                    all_items.push(TyImplItem::Constant(ctx.engines.de().insert(const_decl)));
+                    ty::TyTraitItem::Constant(decl_ref) => {
+                        let mut const_decl = decl_engine.get_constant(decl_ref);
+                        const_decl.replace_self_type(engines, type_id);
+                        all_items.push(TyImplItem::Constant(ctx.engines.de().insert(const_decl)));
+                    }
                 }
             }
-        }
-        // Insert the methods of the ABI into the namespace.
-        // Specifically do not check for conflicting definitions because
-        // this is just a temporary namespace for type checking and
-        // these are not actual impl blocks.
-        // We check that a contract method cannot call a contract method
-        // from the same ABI later, during method application typechecking.
-        ctx.namespace.insert_trait_implementation(
-            CallPath::from(self.name.clone()),
-            vec![],
-            type_id,
-            &all_items,
-            &self.span,
-            Some(self.span()),
-            false,
-            ctx.engines,
-        );
-        if errors.is_empty() {
-            ok((), warnings, errors)
-        } else {
-            err(warnings, errors)
-        }
+            // Insert the methods of the ABI into the namespace.
+            // Specifically do not check for conflicting definitions because
+            // this is just a temporary namespace for type checking and
+            // these are not actual impl blocks.
+            // We check that a contract method cannot call a contract method
+            // from the same ABI later, during method application typechecking.
+            let _ = ctx.namespace.insert_trait_implementation(
+                &Handler::default(),
+                CallPath::from(self.name.clone()),
+                vec![],
+                type_id,
+                &all_items,
+                &self.span,
+                Some(self.span()),
+                false,
+                ctx.engines,
+            );
+            Ok(())
+        })
     }
 }

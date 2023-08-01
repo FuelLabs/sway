@@ -10,14 +10,13 @@ use sway_ast::keywords::{
 };
 use sway_ast::literal::{LitBool, LitBoolType};
 use sway_ast::punctuated::Punctuated;
-use sway_ast::token::Delimiter;
 use sway_ast::{
     AbiCastArgs, CodeBlockContents, Expr, ExprArrayDescriptor, ExprStructField,
     ExprTupleDescriptor, GenericArgs, IfCondition, IfExpr, LitInt, Literal, MatchBranch,
     MatchBranchKind, PathExpr, PathExprSegment, Statement, StatementLet,
 };
 use sway_error::parser_error::ParseErrorKind;
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{ast::Delimiter, Ident, Span, Spanned};
 
 mod asm;
 pub mod op_code;
@@ -104,7 +103,7 @@ impl Parse for StatementLet {
 
         // Recover on missing expression.
         // FIXME(Centril): We should point at right after `=`, not at it.
-        let on_err = |_| Expr::Error([eq_token.span()].into());
+        let on_err = |err| Expr::Error([eq_token.span()].into(), err);
         let expr = parser.parse().unwrap_or_else(on_err);
 
         // Recover on missing semicolon.
@@ -586,8 +585,8 @@ fn parse_projection(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr>
 
             // Nothing expected followed. Now we have parsed `expr .`.
             // Try to recover as an unknown sort of expression.
-            parser.emit_error(ParseErrorKind::ExpectedFieldName);
-            return Ok(Expr::Error([target.span(), dot_token.span()].into()));
+            let err = parser.emit_error(ParseErrorKind::ExpectedFieldName);
+            return Ok(Expr::Error([target.span(), dot_token.span()].into(), err));
         }
         return Ok(expr);
     }
@@ -712,7 +711,10 @@ fn parse_atom(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
             // We tried parsing it as a path but we didn't succeed so we try to recover this
             // as an unknown sort of expression. This happens, for instance, when the user
             // types `foo::`
-            return Ok(Expr::Error([path.span()].into()));
+            return Ok(Expr::Error(
+                [path.span()].into(),
+                parser.emit_error(ParseErrorKind::ExpectedPathType),
+            ));
         }
         if !ctx.parsing_conditional {
             if let Some(fields) = Braces::try_parse(parser)? {

@@ -23,6 +23,8 @@ pub mod state;
 
 pub mod style;
 
+pub mod ast;
+
 pub type Id = [u8; Bytes32::LEN];
 pub type Contract = [u8; ContractId::LEN];
 

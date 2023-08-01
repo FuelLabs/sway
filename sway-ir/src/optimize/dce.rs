@@ -67,7 +67,7 @@ fn get_loaded_symbols(context: &Context, val: Value) -> Vec<Symbol> {
             coins,
             asset_id,
             ..
-        } => vec![*params, *coins, *asset_id]
+        } => [*params, *coins, *asset_id]
             .iter()
             .flat_map(|val| get_symbols(context, *val).to_vec())
             .collect(),

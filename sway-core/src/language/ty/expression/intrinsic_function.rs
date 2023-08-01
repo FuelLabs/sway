@@ -4,11 +4,11 @@ use std::{
 };
 
 use crate::{
-    decl_engine::DeclEngine, engine_threading::*, error::*, language::ty::*, type_system::*,
-    types::*,
+    decl_engine::DeclEngine, engine_threading::*, language::ty::*, type_system::*, types::*,
 };
 use itertools::Itertools;
 use sway_ast::Intrinsic;
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Span;
 
 #[derive(Debug, Clone)]
@@ -96,26 +96,15 @@ impl DeterministicallyAborts for TyIntrinsicFunctionKind {
 impl CollectTypesMetadata for TyIntrinsicFunctionKind {
     fn collect_types_metadata(
         &self,
+        handler: &Handler,
         ctx: &mut CollectTypesMetadataContext,
-    ) -> CompileResult<Vec<TypeMetadata>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+    ) -> Result<Vec<TypeMetadata>, ErrorEmitted> {
         let mut types_metadata = vec![];
         for type_arg in self.type_arguments.iter() {
-            types_metadata.append(&mut check!(
-                type_arg.type_id.collect_types_metadata(ctx),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ));
+            types_metadata.append(&mut type_arg.type_id.collect_types_metadata(handler, ctx)?);
         }
         for arg in self.arguments.iter() {
-            types_metadata.append(&mut check!(
-                arg.collect_types_metadata(ctx),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ));
+            types_metadata.append(&mut arg.collect_types_metadata(handler, ctx)?);
         }
 
         match self.kind {
@@ -136,6 +125,6 @@ impl CollectTypesMetadata for TyIntrinsicFunctionKind {
             _ => {}
         }
 
-        ok(types_metadata, warnings, errors)
+        Ok(types_metadata)
     }
 }

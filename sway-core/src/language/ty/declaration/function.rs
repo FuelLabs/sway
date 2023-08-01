@@ -4,11 +4,11 @@ use std::{
 };
 
 use sha2::{Digest, Sha256};
+use sway_error::handler::{ErrorEmitted, Handler};
 
 use crate::{
     decl_engine::*,
     engine_threading::*,
-    error::*,
     language::{parsed, ty::*, Inline, Purity, Visibility},
     transform,
     type_system::*,
@@ -179,42 +179,31 @@ impl UnconstrainedTypeParameters for TyFunctionDecl {
 impl CollectTypesMetadata for TyFunctionDecl {
     fn collect_types_metadata(
         &self,
+        handler: &Handler,
         ctx: &mut CollectTypesMetadataContext,
-    ) -> CompileResult<Vec<TypeMetadata>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+    ) -> Result<Vec<TypeMetadata>, ErrorEmitted> {
         let mut body = vec![];
         for content in self.body.contents.iter() {
-            body.append(&mut check!(
-                content.collect_types_metadata(ctx),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ));
+            body.append(&mut content.collect_types_metadata(handler, ctx)?);
         }
-        body.append(&mut check!(
-            self.return_type.type_id.collect_types_metadata(ctx),
-            return err(warnings, errors),
-            warnings,
-            errors
-        ));
+        body.append(
+            &mut self
+                .return_type
+                .type_id
+                .collect_types_metadata(handler, ctx)?,
+        );
         for type_param in self.type_parameters.iter() {
-            body.append(&mut check!(
-                type_param.type_id.collect_types_metadata(ctx),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ));
+            body.append(&mut type_param.type_id.collect_types_metadata(handler, ctx)?);
         }
         for param in self.parameters.iter() {
-            body.append(&mut check!(
-                param.type_argument.type_id.collect_types_metadata(ctx),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ));
+            body.append(
+                &mut param
+                    .type_argument
+                    .type_id
+                    .collect_types_metadata(handler, ctx)?,
+            );
         }
-        ok(body, warnings, errors)
+        Ok(body)
     }
 }
 
@@ -267,42 +256,38 @@ impl TyFunctionDecl {
         }
     }
 
-    pub fn to_fn_selector_value_untruncated(&self, engines: &Engines) -> CompileResult<Vec<u8>> {
-        let mut errors = vec![];
-        let mut warnings = vec![];
+    pub fn to_fn_selector_value_untruncated(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+    ) -> Result<Vec<u8>, ErrorEmitted> {
         let mut hasher = Sha256::new();
-        let data = check!(
-            self.to_selector_name(engines),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        let data = self.to_selector_name(handler, engines)?;
         hasher.update(data);
         let hash = hasher.finalize();
-        ok(hash.to_vec(), warnings, errors)
+        Ok(hash.to_vec())
     }
 
     /// Converts a [TyFunctionDecl] into a value that is to be used in contract function
     /// selectors.
     /// Hashes the name and parameters using SHA256, and then truncates to four bytes.
-    pub fn to_fn_selector_value(&self, engines: &Engines) -> CompileResult<[u8; 4]> {
-        let mut errors = vec![];
-        let mut warnings = vec![];
-        let hash = check!(
-            self.to_fn_selector_value_untruncated(engines),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+    pub fn to_fn_selector_value(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+    ) -> Result<[u8; 4], ErrorEmitted> {
+        let hash = self.to_fn_selector_value_untruncated(handler, engines)?;
         // 4 bytes truncation via copying into a 4 byte buffer
         let mut buf = [0u8; 4];
         buf.copy_from_slice(&hash[..4]);
-        ok(buf, warnings, errors)
+        Ok(buf)
     }
 
-    pub fn to_selector_name(&self, engines: &Engines) -> CompileResult<String> {
-        let mut errors = vec![];
-        let mut warnings = vec![];
+    pub fn to_selector_name(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+    ) -> Result<String, ErrorEmitted> {
         let named_params = self
             .parameters
             .iter()
@@ -311,16 +296,16 @@ impl TyFunctionDecl {
                     .te()
                     .to_typeinfo(type_argument.type_id, &type_argument.span)
                     .expect("unreachable I think?")
-                    .to_selector_name(engines, &type_argument.span)
+                    .to_selector_name(handler, engines, &type_argument.span)
             })
-            .filter_map(|name| name.ok(&mut warnings, &mut errors))
+            .filter_map(|name| name.ok())
             .collect::<Vec<String>>();
 
-        ok(
-            format!("{}({})", self.name.as_str(), named_params.join(","),),
-            warnings,
-            errors,
-        )
+        Ok(format!(
+            "{}({})",
+            self.name.as_str(),
+            named_params.join(","),
+        ))
     }
 
     /// Whether or not this function is the default entry point.

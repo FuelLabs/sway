@@ -217,7 +217,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             connect_impl_trait(engines, &trait_name, graph, &items, entry_node)?;
             Ok(leaves.to_vec())
         }
-        ty::TyDecl::ErrorRecovery(_) => Ok(leaves.to_vec()),
+        ty::TyDecl::ErrorRecovery(..) => Ok(leaves.to_vec()),
     }
 }
 
