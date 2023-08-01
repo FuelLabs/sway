@@ -1,9 +1,11 @@
 use crate::{
+    core::session::Session,
     event_loop::{main_loop::Task, task_pool::TaskPool},
     server_state::ServerState,
 };
 use crossbeam_channel::{unbounded, Receiver, Sender};
-use std::time::Instant;
+use lsp_types::{Diagnostic, Url};
+use std::{sync::Arc, time::Instant};
 
 // Enforces drop order
 pub(crate) struct Handle<H, C> {
@@ -88,6 +90,16 @@ impl ServerStateExt {
     ) {
         let not = lsp_server::Notification::new(N::METHOD.to_string(), params);
         self.send(not.into());
+    }
+
+    pub(crate) fn publish_diagnostics(&self, uri: Url, diagnostics: Vec<Diagnostic>) {
+        self.send_notification::<lsp_types::notification::PublishDiagnostics>(
+            lsp_types::PublishDiagnosticsParams {
+                uri,
+                diagnostics,
+                version: None,
+            },
+        );
     }
 
     pub(crate) fn register_request(
