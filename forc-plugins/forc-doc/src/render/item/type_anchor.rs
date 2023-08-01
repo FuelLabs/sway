@@ -96,6 +96,7 @@ pub(crate) fn render_type_anchor(
                 IntegerBits::Sixteen => "u16",
                 IntegerBits::ThirtyTwo => "u32",
                 IntegerBits::SixtyFour => "u64",
+                IntegerBits::V256 => "u256",
             };
             Ok(box_html! {
                 : uint;

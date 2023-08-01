@@ -9,9 +9,8 @@ use crate::{
     type_system::{
         EnforceTypeArguments, MonomorphizeHelper, SubstTypes, TypeArgument, TypeId, TypeInfo,
     },
-    CompileResult, CompileWarning,
 };
-use sway_error::error::CompileError;
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{span::Span, Ident};
 
 /// Contextual state tracked and accumulated throughout type-checking.
@@ -257,16 +256,18 @@ impl<'a> TypeCheckContext<'a> {
     /// Short-hand for calling the `monomorphize` function in the type engine
     pub(crate) fn monomorphize<T>(
         &mut self,
+        handler: &Handler,
         value: &mut T,
         type_arguments: &mut [TypeArgument],
         enforce_type_arguments: EnforceTypeArguments,
         call_site_span: &Span,
-    ) -> CompileResult<()>
+    ) -> Result<(), ErrorEmitted>
     where
         T: MonomorphizeHelper + SubstTypes,
     {
         let mod_path = self.namespace.mod_path.clone();
         self.engines.te().monomorphize(
+            handler,
             self.engines(),
             value,
             type_arguments,
@@ -281,12 +282,14 @@ impl<'a> TypeCheckContext<'a> {
     /// the `TypeCheckContext`.
     pub(crate) fn resolve_type_with_self(
         &mut self,
+        handler: &Handler,
         type_id: TypeId,
         span: &Span,
         enforce_type_args: EnforceTypeArguments,
         type_info_prefix: Option<&Path>,
-    ) -> CompileResult<TypeId> {
+    ) -> Result<TypeId, ErrorEmitted> {
         self.namespace.resolve_type_with_self(
+            handler,
             self.engines(),
             type_id,
             self.self_type,
@@ -299,22 +302,25 @@ impl<'a> TypeCheckContext<'a> {
     /// Short-hand for calling [Namespace::resolve_type_without_self]
     pub(crate) fn resolve_type_without_self(
         &mut self,
+        handler: &Handler,
         type_id: TypeId,
         span: &Span,
         type_info_prefix: Option<&Path>,
-    ) -> CompileResult<TypeId> {
-        self.namespace
-            .resolve_type_without_self(self.engines(), type_id, span, type_info_prefix)
+    ) -> Result<TypeId, ErrorEmitted> {
+        self.namespace.resolve_type_without_self(
+            handler,
+            self.engines(),
+            type_id,
+            span,
+            type_info_prefix,
+        )
     }
 
     /// Short-hand around `type_system::unify_with_self`, where the `TypeCheckContext` provides the
     /// type annotation, self type and help text.
-    pub(crate) fn unify_with_self(
-        &self,
-        ty: TypeId,
-        span: &Span,
-    ) -> (Vec<CompileWarning>, Vec<CompileError>) {
+    pub(crate) fn unify_with_self(&self, handler: &Handler, ty: TypeId, span: &Span) {
         self.engines.te().unify_with_self(
+            handler,
             self.engines(),
             ty,
             self.type_annotation(),
@@ -327,9 +333,14 @@ impl<'a> TypeCheckContext<'a> {
 
     /// Short-hand for calling [Namespace::insert_symbol] with the `const_shadowing_mode` provided by
     /// the `TypeCheckContext`.
-    pub(crate) fn insert_symbol(&mut self, name: Ident, item: TyDecl) -> CompileResult<()> {
+    pub(crate) fn insert_symbol(
+        &mut self,
+        handler: &Handler,
+        name: Ident,
+        item: TyDecl,
+    ) -> Result<(), ErrorEmitted> {
         self.namespace
-            .insert_symbol(name, item, self.const_shadowing_mode)
+            .insert_symbol(handler, name, item, self.const_shadowing_mode)
     }
 
     /// Get the engines needed for engine threading.

@@ -7,10 +7,9 @@ use sway_ast::{
     brackets::SquareBrackets,
     expr::Expr,
     keywords::{PtrToken, SliceToken, StrToken, Token, UnderscoreToken},
-    token::Delimiter,
     ty::{Ty, TyArrayDescriptor, TyTupleDescriptor},
 };
-use sway_types::Spanned;
+use sway_types::{ast::Delimiter, Spanned};
 
 impl Format for Ty {
     fn format(

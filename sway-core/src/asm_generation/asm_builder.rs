@@ -1,6 +1,7 @@
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::Function;
 
-use crate::{asm_lang::Label, CompileResult};
+use crate::asm_lang::Label;
 
 use super::{
     evm::EvmAsmBuilderResult, fuel::fuel_asm_builder::FuelAsmBuilderResult,
@@ -15,6 +16,10 @@ pub enum AsmBuilderResult {
 
 pub trait AsmBuilder {
     fn func_to_labels(&mut self, func: &Function) -> (Label, Label);
-    fn compile_function(&mut self, function: Function) -> CompileResult<()>;
+    fn compile_function(
+        &mut self,
+        handler: &Handler,
+        function: Function,
+    ) -> Result<(), ErrorEmitted>;
     fn finalize(&self) -> AsmBuilderResult;
 }

@@ -134,7 +134,7 @@ impl<'a> Solver<'a> {
             TypeInfo::Custom { .. } => todo!(),
             TypeInfo::SelfType => todo!(),
             TypeInfo::Numeric => todo!(),
-            TypeInfo::ErrorRecovery => todo!(),
+            TypeInfo::ErrorRecovery(_) => todo!(),
             TypeInfo::Array(_, _) => todo!(),
             TypeInfo::Storage { .. } => todo!(),
             TypeInfo::Alias { .. } => todo!(),

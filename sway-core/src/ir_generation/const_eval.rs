@@ -926,6 +926,7 @@ fn const_eval_intrinsic(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sway_error::handler::Handler;
     use sway_ir::Kind;
 
     /// This function validates if an expression can be converted to [Constant].
@@ -943,6 +944,7 @@ mod tests {
     /// It DOES NOT have access to the std lib, and constants, and other features that demand full compilation.
     fn assert_is_constant(is_constant: bool, prefix: &str, expr: &str) {
         let engines = Engines::default();
+        let handler = Handler::default();
         let mut context = Context::new(engines.se());
         let mut md_mgr = MetadataManager::default();
         let core_lib = namespace::Module::default();
@@ -950,6 +952,7 @@ mod tests {
         let mut performance_data = sway_utils::PerformanceData::default();
 
         let r = crate::compile_to_ast(
+            &handler,
             &engines,
             std::sync::Arc::from(format!("library; {prefix} fn f() -> u64 {{ {expr}; 0 }}")),
             core_lib,
@@ -958,11 +961,13 @@ mod tests {
             &mut performance_data,
         );
 
-        if !r.errors.is_empty() {
-            panic!("{:#?}", r.errors);
+        let (errors, _warnings) = handler.consume();
+
+        if !errors.is_empty() {
+            panic!("{:#?}", errors);
         }
 
-        let f = r.value.unwrap();
+        let f = r.unwrap();
         let f = f.typed.unwrap();
 
         let f = f

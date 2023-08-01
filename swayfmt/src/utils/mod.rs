@@ -1,6 +1,6 @@
 use crate::formatter::*;
 use std::fmt::Write;
-use sway_ast::token::PunctKind;
+use sway_types::ast::PunctKind;
 
 pub(crate) mod language;
 pub(crate) mod map;

@@ -1089,7 +1089,7 @@ impl UpdateConstantExpression for TyExpressionVariant {
 fn find_const_decl_from_impl(
     implementing_type: &TyDecl,
     decl_engine: &DeclEngine,
-    const_decl: &mut Box<TyConstantDecl>,
+    const_decl: &TyConstantDecl,
 ) -> Option<TyConstantDecl> {
     match implementing_type {
         TyDecl::ImplTrait(ImplTrait { decl_id, .. }) => {

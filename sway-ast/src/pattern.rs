@@ -1,3 +1,5 @@
+use sway_error::handler::ErrorEmitted;
+
 use crate::priv_prelude::*;
 
 #[derive(Clone, Debug, Serialize)]
@@ -29,7 +31,7 @@ pub enum Pattern {
     },
     Tuple(Parens<Punctuated<Pattern, CommaToken>>),
     // to handle parser recovery: Error represents an incomplete Constructor
-    Error(Box<[Span]>),
+    Error(Box<[Span]>, #[serde(skip_serializing)] ErrorEmitted),
 }
 
 impl Spanned for Pattern {
@@ -59,7 +61,7 @@ impl Spanned for Pattern {
             Pattern::Constructor { path, args } => Span::join(path.span(), args.span()),
             Pattern::Struct { path, fields } => Span::join(path.span(), fields.span()),
             Pattern::Tuple(pat_tuple) => pat_tuple.span(),
-            Pattern::Error(spans) => spans.iter().cloned().reduce(Span::join).unwrap(),
+            Pattern::Error(spans, _) => spans.iter().cloned().reduce(Span::join).unwrap(),
         }
     }
 }

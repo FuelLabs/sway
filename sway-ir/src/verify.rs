@@ -547,20 +547,18 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
         // unwrap it and try to fetch the field type (which will fail for arrays) otherwise (i.e.,
         // not a constant int or not a struct) fetch the array element type, which will fail for
         // non-arrays.
-        let index_ty = indices.iter().fold(Some(base_ty), |ty, idx_val| {
-            ty.and_then(|ty| {
-                idx_val
-                    .get_constant(self.context)
-                    .and_then(|const_ref| {
-                        if let ConstantValue::Uint(n) = const_ref.value {
-                            Some(n)
-                        } else {
-                            None
-                        }
-                    })
-                    .and_then(|idx| ty.get_field_type(self.context, idx))
-                    .or_else(|| ty.get_array_elem_type(self.context))
-            })
+        let index_ty = indices.iter().try_fold(base_ty, |ty, idx_val| {
+            idx_val
+                .get_constant(self.context)
+                .and_then(|const_ref| {
+                    if let ConstantValue::Uint(n) = const_ref.value {
+                        Some(n)
+                    } else {
+                        None
+                    }
+                })
+                .and_then(|idx| ty.get_field_type(self.context, idx))
+                .or_else(|| ty.get_array_elem_type(self.context))
         });
 
         if self.opt_ty_not_eq(&Some(elem_inner_ty), &index_ty) {
