@@ -1,12 +1,14 @@
 use crate::{
     decl_engine::{DeclEngine, DeclRefEnum, DeclRefStruct},
     engine_threading::*,
-    error::*,
     language::{ty, CallPath},
     type_system::priv_prelude::*,
     Ident,
 };
-use sway_error::error::CompileError;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_types::{integer_bits::IntegerBits, span::Span, Spanned};
 
 use std::{
@@ -433,6 +435,7 @@ impl DisplayWithEngines for TypeInfo {
                 IntegerBits::Sixteen => "u16",
                 IntegerBits::ThirtyTwo => "u32",
                 IntegerBits::SixtyFour => "u64",
+                IntegerBits::V256 => "u256",
             }
             .into(),
             Boolean => "bool".into(),
@@ -498,6 +501,7 @@ impl DebugWithEngines for TypeInfo {
                 IntegerBits::Sixteen => "u16",
                 IntegerBits::ThirtyTwo => "u32",
                 IntegerBits::SixtyFour => "u64",
+                IntegerBits::V256 => "u256",
             }
             .into(),
             Boolean => "bool".into(),
@@ -599,9 +603,10 @@ impl TypeInfo {
     /// maps a type to a name that is used when constructing function selectors
     pub(crate) fn to_selector_name(
         &self,
+        handler: &Handler,
         engines: &Engines,
         error_msg_span: &Span,
-    ) -> CompileResult<String> {
+    ) -> Result<String, ErrorEmitted> {
         let type_engine = engines.te();
         let decl_engine = engines.de();
         use TypeInfo::*;
@@ -614,6 +619,7 @@ impl TypeInfo {
                     Sixteen => "u16",
                     ThirtyTwo => "u32",
                     SixtyFour => "u64",
+                    V256 => "u256",
                 }
                 .into()
             }
@@ -627,15 +633,12 @@ impl TypeInfo {
                             type_engine
                                 .to_typeinfo(field_type.type_id, error_msg_span)
                                 .expect("unreachable?")
-                                .to_selector_name(engines, error_msg_span)
+                                .to_selector_name(handler, engines, error_msg_span)
                         })
-                        .collect::<Vec<CompileResult<String>>>();
+                        .collect::<Vec<Result<String, _>>>();
                     let mut buf = vec![];
                     for name in names {
-                        match name.value {
-                            Some(value) => buf.push(value),
-                            None => return name,
-                        }
+                        buf.push(name?);
                     }
                     buf
                 };
@@ -653,17 +656,17 @@ impl TypeInfo {
                             let ty = match type_engine
                                 .to_typeinfo(ty.type_argument.type_id, error_msg_span)
                             {
-                                Err(e) => return err(vec![], vec![e.into()]),
+                                Err(e) => return Err(handler.emit_err(e.into())),
                                 Ok(ty) => ty,
                             };
-                            ty.to_selector_name(engines, error_msg_span)
+                            ty.to_selector_name(handler, engines, error_msg_span)
                         })
-                        .collect::<Vec<CompileResult<String>>>();
+                        .collect::<Vec<Result<String, _>>>();
                     let mut buf = vec![];
                     for name in names {
-                        match name.value {
-                            Some(value) => buf.push(value),
-                            None => return name,
+                        match name {
+                            Ok(value) => buf.push(value),
+                            Err(e) => return Err(e),
                         }
                     }
                     buf
@@ -675,17 +678,17 @@ impl TypeInfo {
                         .iter()
                         .map(|ty| {
                             let ty = match type_engine.to_typeinfo(ty.type_id, error_msg_span) {
-                                Err(e) => return err(vec![], vec![e.into()]),
+                                Err(e) => return Err(handler.emit_err(e.into())),
                                 Ok(ty) => ty,
                             };
-                            ty.to_selector_name(engines, error_msg_span)
+                            ty.to_selector_name(handler, engines, error_msg_span)
                         })
-                        .collect::<Vec<CompileResult<String>>>();
+                        .collect::<Vec<Result<String, _>>>();
                     let mut buf = vec![];
                     for arg in type_arguments {
-                        match arg.value {
-                            Some(value) => buf.push(value),
-                            None => return arg,
+                        match arg {
+                            Ok(value) => buf.push(value),
+                            Err(e) => return Err(e),
                         }
                     }
                     buf
@@ -707,18 +710,15 @@ impl TypeInfo {
                             let ty = match type_engine
                                 .to_typeinfo(ty.type_argument.type_id, error_msg_span)
                             {
-                                Err(e) => return err(vec![], vec![e.into()]),
+                                Err(e) => return Err(handler.emit_err(e.into())),
                                 Ok(ty) => ty,
                             };
-                            ty.to_selector_name(engines, error_msg_span)
+                            ty.to_selector_name(handler, engines, error_msg_span)
                         })
-                        .collect::<Vec<CompileResult<String>>>();
+                        .collect::<Vec<Result<String, _>>>();
                     let mut buf = vec![];
                     for name in names {
-                        match name.value {
-                            Some(value) => buf.push(value),
-                            None => return name,
-                        }
+                        buf.push(name?);
                     }
                     buf
                 };
@@ -729,18 +729,15 @@ impl TypeInfo {
                         .iter()
                         .map(|ty| {
                             let ty = match type_engine.to_typeinfo(ty.type_id, error_msg_span) {
-                                Err(e) => return err(vec![], vec![e.into()]),
+                                Err(e) => return Err(handler.emit_err(e.into())),
                                 Ok(ty) => ty,
                             };
-                            ty.to_selector_name(engines, error_msg_span)
+                            ty.to_selector_name(handler, engines, error_msg_span)
                         })
-                        .collect::<Vec<CompileResult<String>>>();
+                        .collect::<Vec<Result<String, _>>>();
                     let mut buf = vec![];
                     for arg in type_arguments {
-                        match arg.value {
-                            Some(value) => buf.push(value),
-                            None => return arg,
-                        }
+                        buf.push(arg?);
                     }
                     buf
                 };
@@ -755,36 +752,33 @@ impl TypeInfo {
                 }
             }
             Array(elem_ty, length) => {
-                let name = type_engine
-                    .get(elem_ty.type_id)
-                    .to_selector_name(engines, error_msg_span);
-                let name = match name.value {
-                    Some(name) => name,
-                    None => return name,
+                let name = type_engine.get(elem_ty.type_id).to_selector_name(
+                    handler,
+                    engines,
+                    error_msg_span,
+                );
+                let name = match name {
+                    Ok(name) => name,
+                    Err(e) => return Err(e),
                 };
                 format!("a[{};{}]", name, length.val())
             }
             RawUntypedPtr => "rawptr".to_string(),
             RawUntypedSlice => "rawslice".to_string(),
             Alias { ty, .. } => {
-                let name = type_engine
-                    .get(ty.type_id)
-                    .to_selector_name(engines, error_msg_span);
-                match name.value {
-                    Some(name) => name,
-                    None => return name,
-                }
+                let name =
+                    type_engine
+                        .get(ty.type_id)
+                        .to_selector_name(handler, engines, error_msg_span);
+                name?
             }
             _ => {
-                return err(
-                    vec![],
-                    vec![CompileError::InvalidAbiType {
-                        span: error_msg_span.clone(),
-                    }],
-                )
+                return Err(handler.emit_err(CompileError::InvalidAbiType {
+                    span: error_msg_span.clone(),
+                }));
             }
         };
-        ok(name, vec![], vec![])
+        Ok(name)
     }
 
     pub fn is_uninhabited(&self, type_engine: &TypeEngine, decl_engine: &DeclEngine) -> bool {
@@ -915,35 +909,33 @@ impl TypeInfo {
 
     pub(crate) fn apply_type_arguments(
         self,
+        handler: &Handler,
         type_arguments: Vec<TypeArgument>,
         span: &Span,
-    ) -> CompileResult<TypeInfo> {
-        let warnings = vec![];
-        let mut errors = vec![];
+    ) -> Result<TypeInfo, ErrorEmitted> {
         if type_arguments.is_empty() {
-            return ok(self, warnings, errors);
+            return Ok(self);
         }
         match self {
             TypeInfo::Enum { .. } | TypeInfo::Struct { .. } => {
-                errors.push(CompileError::Internal(
+                Err(handler.emit_err(CompileError::Internal(
                     "did not expect to apply type arguments to this type",
                     span.clone(),
-                ));
-                err(warnings, errors)
+                )))
             }
             TypeInfo::Custom {
                 call_path,
                 type_arguments: other_type_arguments,
             } => {
                 if other_type_arguments.is_some() {
-                    errors.push(CompileError::TypeArgumentsNotAllowed { span: span.clone() });
-                    err(warnings, errors)
+                    Err(handler
+                        .emit_err(CompileError::TypeArgumentsNotAllowed { span: span.clone() }))
                 } else {
                     let type_info = TypeInfo::Custom {
                         call_path,
                         type_arguments: Some(type_arguments),
                     };
-                    ok(type_info, warnings, errors)
+                    Ok(type_info)
                 }
             }
             TypeInfo::Unknown
@@ -967,8 +959,7 @@ impl TypeInfo {
             | TypeInfo::Placeholder(_)
             | TypeInfo::TypeParam(_)
             | TypeInfo::Alias { .. } => {
-                errors.push(CompileError::TypeArgumentsNotAllowed { span: span.clone() });
-                err(warnings, errors)
+                Err(handler.emit_err(CompileError::TypeArgumentsNotAllowed { span: span.clone() }))
             }
         }
     }
@@ -999,10 +990,9 @@ impl TypeInfo {
     /// supported in match expressions, and return an error if it is not.
     pub(crate) fn expect_is_supported_in_match_expressions(
         &self,
+        handler: &Handler,
         span: &Span,
-    ) -> CompileResult<()> {
-        let warnings = vec![];
-        let mut errors = vec![];
+    ) -> Result<(), ErrorEmitted> {
         match self {
             TypeInfo::UnsignedInteger(_)
             | TypeInfo::Enum { .. }
@@ -1012,7 +1002,7 @@ impl TypeInfo {
             | TypeInfo::B256
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Numeric
-            | TypeInfo::Alias { .. } => ok((), warnings, errors),
+            | TypeInfo::Alias { .. } => Ok(()),
             TypeInfo::Unknown
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
@@ -1026,25 +1016,24 @@ impl TypeInfo {
             | TypeInfo::Array(_, _)
             | TypeInfo::Storage { .. }
             | TypeInfo::Placeholder(_)
-            | TypeInfo::TypeParam(_) => {
-                errors.push(CompileError::Unimplemented(
-                    "matching on this type is unsupported right now",
-                    span.clone(),
-                ));
-                err(warnings, errors)
-            }
+            | TypeInfo::TypeParam(_) => Err(handler.emit_err(CompileError::Unimplemented(
+                "matching on this type is unsupported right now",
+                span.clone(),
+            ))),
             TypeInfo::ErrorRecovery => {
                 // return an error but don't create a new error message
-                err(warnings, errors)
+                Err(ErrorEmitted)
             }
         }
     }
 
     /// Given a `TypeInfo` `self`, check to see if `self` is currently
     /// supported in `impl` blocks in the "type implementing for" position.
-    pub(crate) fn expect_is_supported_in_impl_blocks_self(&self, span: &Span) -> CompileResult<()> {
-        let warnings = vec![];
-        let mut errors = vec![];
+    pub(crate) fn expect_is_supported_in_impl_blocks_self(
+        &self,
+        handler: &Handler,
+        span: &Span,
+    ) -> Result<(), ErrorEmitted> {
         match self {
             TypeInfo::UnsignedInteger(_)
             | TypeInfo::Enum { .. }
@@ -1062,22 +1051,19 @@ impl TypeInfo {
             | TypeInfo::Contract
             | TypeInfo::Numeric
             | TypeInfo::Alias { .. }
-            | TypeInfo::UnknownGeneric { .. } => ok((), warnings, errors),
+            | TypeInfo::UnknownGeneric { .. } => Ok(()),
             TypeInfo::Unknown
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::SelfType
             | TypeInfo::Storage { .. }
             | TypeInfo::Placeholder(_)
-            | TypeInfo::TypeParam(_) => {
-                errors.push(CompileError::Unimplemented(
-                    "implementing traits on this type is unsupported right now",
-                    span.clone(),
-                ));
-                err(warnings, errors)
-            }
+            | TypeInfo::TypeParam(_) => Err(handler.emit_err(CompileError::Unimplemented(
+                "implementing traits on this type is unsupported right now",
+                span.clone(),
+            ))),
             TypeInfo::ErrorRecovery => {
                 // return an error but don't create a new error message
-                err(warnings, errors)
+                Err(ErrorEmitted)
             }
         }
     }
@@ -1302,16 +1288,15 @@ impl TypeInfo {
     /// 3) in the case where a `subfield` does not exist on `self`
     pub(crate) fn apply_subfields(
         &self,
+        handler: &Handler,
         engines: &Engines,
         subfields: &[Ident],
         span: &Span,
-    ) -> CompileResult<ty::TyStructField> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+    ) -> Result<ty::TyStructField, ErrorEmitted> {
         let type_engine = engines.te();
         let decl_engine = engines.de();
         match (self, subfields.split_first()) {
-            (TypeInfo::Struct { .. } | TypeInfo::Alias { .. }, None) => err(warnings, errors),
+            (TypeInfo::Struct { .. } | TypeInfo::Alias { .. }, None) => Err(ErrorEmitted),
             (TypeInfo::Struct(decl_ref), Some((first, rest))) => {
                 let decl = decl_engine.get_struct(decl_ref);
                 let field = match decl
@@ -1327,28 +1312,22 @@ impl TypeInfo {
                             .iter()
                             .map(|x| x.name.as_str())
                             .collect::<Vec<_>>();
-                        errors.push(CompileError::FieldNotFound {
+                        return Err(handler.emit_err(CompileError::FieldNotFound {
                             field_name: first.clone(),
                             struct_name: decl.call_path.suffix.clone(),
                             available_fields: available_fields.join(", "),
                             span: first.span(),
-                        });
-                        return err(warnings, errors);
+                        }));
                     }
                 };
                 let field = if rest.is_empty() {
                     field
                 } else {
-                    check!(
-                        type_engine
-                            .get(field.type_argument.type_id)
-                            .apply_subfields(engines, rest, span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    )
+                    type_engine
+                        .get(field.type_argument.type_id)
+                        .apply_subfields(handler, engines, rest, span)?
                 };
-                ok(field, warnings, errors)
+                Ok(field)
             }
             (
                 TypeInfo::Alias {
@@ -1358,18 +1337,15 @@ impl TypeInfo {
                 _,
             ) => type_engine
                 .get(*type_id)
-                .apply_subfields(engines, subfields, span),
+                .apply_subfields(handler, engines, subfields, span),
             (TypeInfo::ErrorRecovery, _) => {
                 // dont create a new error in this case
-                err(warnings, errors)
+                Err(ErrorEmitted)
             }
-            (type_info, _) => {
-                errors.push(CompileError::FieldAccessOnNonStruct {
-                    actually: format!("{:?}", engines.help_out(type_info)),
-                    span: span.clone(),
-                });
-                err(warnings, errors)
-            }
+            (type_info, _) => Err(handler.emit_err(CompileError::FieldAccessOnNonStruct {
+                actually: format!("{:?}", engines.help_out(type_info)),
+                span: span.clone(),
+            })),
         }
     }
 
@@ -1441,30 +1417,28 @@ impl TypeInfo {
     /// type, transitively.
     pub(crate) fn expect_tuple(
         &self,
+        handler: &Handler,
         engines: &Engines,
         debug_string: impl Into<String>,
         debug_span: &Span,
-    ) -> CompileResult<Vec<TypeArgument>> {
-        let warnings = vec![];
-        let errors = vec![];
+    ) -> Result<Vec<TypeArgument>, ErrorEmitted> {
         match self {
-            TypeInfo::Tuple(elems) => ok(elems.to_vec(), warnings, errors),
+            TypeInfo::Tuple(elems) => Ok(elems.to_vec()),
             TypeInfo::Alias {
                 ty: TypeArgument { type_id, .. },
                 ..
-            } => engines
-                .te()
-                .get(*type_id)
-                .expect_tuple(engines, debug_string, debug_span),
-            TypeInfo::ErrorRecovery => err(warnings, errors),
-            a => err(
-                vec![],
-                vec![CompileError::NotATuple {
-                    name: debug_string.into(),
-                    span: debug_span.clone(),
-                    actually: engines.help_out(a).to_string(),
-                }],
-            ),
+            } => {
+                engines
+                    .te()
+                    .get(*type_id)
+                    .expect_tuple(handler, engines, debug_string, debug_span)
+            }
+            TypeInfo::ErrorRecovery => Err(ErrorEmitted),
+            a => Err(handler.emit_err(CompileError::NotATuple {
+                name: debug_string.into(),
+                span: debug_span.clone(),
+                actually: engines.help_out(a).to_string(),
+            })),
         }
     }
 
@@ -1486,30 +1460,26 @@ impl TypeInfo {
     /// transitively.
     pub(crate) fn expect_enum(
         &self,
+        handler: &Handler,
         engines: &Engines,
         debug_string: impl Into<String>,
         debug_span: &Span,
-    ) -> CompileResult<DeclRefEnum> {
-        let warnings = vec![];
-        let errors = vec![];
+    ) -> Result<DeclRefEnum, ErrorEmitted> {
         match self {
-            TypeInfo::Enum(decl_ref) => ok(decl_ref.clone(), warnings, errors),
+            TypeInfo::Enum(decl_ref) => Ok(decl_ref.clone()),
             TypeInfo::Alias {
                 ty: TypeArgument { type_id, .. },
                 ..
             } => engines
                 .te()
                 .get(*type_id)
-                .expect_enum(engines, debug_string, debug_span),
-            TypeInfo::ErrorRecovery => err(warnings, errors),
-            a => err(
-                vec![],
-                vec![CompileError::NotAnEnum {
-                    name: debug_string.into(),
-                    span: debug_span.clone(),
-                    actually: engines.help_out(a).to_string(),
-                }],
-            ),
+                .expect_enum(handler, engines, debug_string, debug_span),
+            TypeInfo::ErrorRecovery => Err(ErrorEmitted),
+            a => Err(handler.emit_err(CompileError::NotAnEnum {
+                name: debug_string.into(),
+                span: debug_span.clone(),
+                actually: engines.help_out(a).to_string(),
+            })),
         }
     }
 
@@ -1532,28 +1502,24 @@ impl TypeInfo {
     #[allow(dead_code)]
     pub(crate) fn expect_struct(
         &self,
+        handler: &Handler,
         engines: &Engines,
         debug_span: &Span,
-    ) -> CompileResult<DeclRefStruct> {
-        let warnings = vec![];
-        let errors = vec![];
+    ) -> Result<DeclRefStruct, ErrorEmitted> {
         match self {
-            TypeInfo::Struct(decl_ref) => ok(decl_ref.clone(), warnings, errors),
+            TypeInfo::Struct(decl_ref) => Ok(decl_ref.clone()),
             TypeInfo::Alias {
                 ty: TypeArgument { type_id, .. },
                 ..
             } => engines
                 .te()
                 .get(*type_id)
-                .expect_struct(engines, debug_span),
-            TypeInfo::ErrorRecovery => err(warnings, errors),
-            a => err(
-                vec![],
-                vec![CompileError::NotAStruct {
-                    span: debug_span.clone(),
-                    actually: engines.help_out(a).to_string(),
-                }],
-            ),
+                .expect_struct(handler, engines, debug_span),
+            TypeInfo::ErrorRecovery => Err(ErrorEmitted),
+            a => Err(handler.emit_err(CompileError::NotAStruct {
+                span: debug_span.clone(),
+                actually: engines.help_out(a).to_string(),
+            })),
         }
     }
 }

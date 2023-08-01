@@ -3,13 +3,15 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use sway_error::error::CompileError;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
     decl_engine::*,
     engine_threading::*,
-    error::*,
     language::{ty::*, Visibility},
     type_system::*,
     types::*,
@@ -502,47 +504,31 @@ impl CollectTypesMetadata for TyDecl {
     // this is only run on entry nodes, which must have all well-formed types
     fn collect_types_metadata(
         &self,
+        handler: &Handler,
         ctx: &mut CollectTypesMetadataContext,
-    ) -> CompileResult<Vec<TypeMetadata>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+    ) -> Result<Vec<TypeMetadata>, ErrorEmitted> {
         let decl_engine = ctx.engines.de();
         let metadata = match self {
             TyDecl::VariableDecl(decl) => {
-                let mut body = check!(
-                    decl.body.collect_types_metadata(ctx),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
+                let mut body = decl.body.collect_types_metadata(handler, ctx)?;
+                body.append(
+                    &mut decl
+                        .type_ascription
+                        .type_id
+                        .collect_types_metadata(handler, ctx)?,
                 );
-                body.append(&mut check!(
-                    decl.type_ascription.type_id.collect_types_metadata(ctx),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
                 body
             }
             TyDecl::FunctionDecl(FunctionDecl { decl_id, .. }) => {
                 let decl = decl_engine.get_function(decl_id);
-                check!(
-                    decl.collect_types_metadata(ctx),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                )
+                decl.collect_types_metadata(handler, ctx)?
             }
             TyDecl::ConstantDecl(ConstantDecl { decl_id, .. }) => {
                 let TyConstantDecl { value, .. } = decl_engine.get_constant(decl_id);
                 if let Some(value) = value {
-                    check!(
-                        value.collect_types_metadata(ctx),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    )
+                    value.collect_types_metadata(handler, ctx)?
                 } else {
-                    return ok(vec![], warnings, errors);
+                    return Ok(vec![]);
                 }
             }
             TyDecl::ErrorRecovery(_)
@@ -556,11 +542,7 @@ impl CollectTypesMetadata for TyDecl {
             | TyDecl::TypeAliasDecl(_)
             | TyDecl::GenericTypeForFunctionScope(_) => vec![],
         };
-        if errors.is_empty() {
-            ok(metadata, warnings, errors)
-        } else {
-            err(warnings, errors)
-        }
+        Ok(metadata)
     }
 }
 
@@ -590,155 +572,141 @@ impl TyDecl {
     /// Retrieves the declaration as a `DeclRef<DeclId<TyEnumDecl>>`.
     ///
     /// Returns an error if `self` is not the [TyDecl][EnumDecl] variant.
-    pub(crate) fn to_enum_ref(&self, engines: &Engines) -> CompileResult<DeclRefEnum> {
+    pub(crate) fn to_enum_ref(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+    ) -> Result<DeclRefEnum, ErrorEmitted> {
         match self {
             TyDecl::EnumDecl(EnumDecl {
                 name,
                 decl_id,
                 subst_list: _,
                 decl_span,
-            }) => ok(
-                DeclRef::new(name.clone(), *decl_id, decl_span.clone()),
-                vec![],
-                vec![],
-            ),
+            }) => Ok(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
             TyDecl::TypeAliasDecl(TypeAliasDecl { decl_id, .. }) => {
                 let TyTypeAliasDecl { ty, span, .. } = engines.de().get_type_alias(decl_id);
-                engines.te().get(ty.type_id).expect_enum(engines, "", &span)
+                engines
+                    .te()
+                    .get(ty.type_id)
+                    .expect_enum(handler, engines, "", &span)
             }
-            TyDecl::ErrorRecovery(_) => err(vec![], vec![]),
-            decl => err(
-                vec![],
-                vec![CompileError::DeclIsNotAnEnum {
-                    actually: decl.friendly_type_name().to_string(),
-                    span: decl.span(),
-                }],
-            ),
+            TyDecl::ErrorRecovery(_) => Err(ErrorEmitted),
+            decl => Err(handler.emit_err(CompileError::DeclIsNotAnEnum {
+                actually: decl.friendly_type_name().to_string(),
+                span: decl.span(),
+            })),
         }
     }
 
     /// Retrieves the declaration as a `DeclRef<DeclId<TyStructDecl>>`.
     ///
     /// Returns an error if `self` is not the [TyDecl][StructDecl] variant.
-    pub(crate) fn to_struct_ref(&self, engines: &Engines) -> CompileResult<DeclRefStruct> {
+    pub(crate) fn to_struct_ref(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+    ) -> Result<DeclRefStruct, ErrorEmitted> {
         match self {
             TyDecl::StructDecl(StructDecl {
                 name,
                 decl_id,
                 subst_list: _,
                 decl_span,
-            }) => ok(
-                DeclRef::new(name.clone(), *decl_id, decl_span.clone()),
-                vec![],
-                vec![],
-            ),
+            }) => Ok(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
             TyDecl::TypeAliasDecl(TypeAliasDecl { decl_id, .. }) => {
                 let TyTypeAliasDecl { ty, span, .. } = engines.de().get_type_alias(decl_id);
-                engines.te().get(ty.type_id).expect_struct(engines, &span)
+                engines
+                    .te()
+                    .get(ty.type_id)
+                    .expect_struct(handler, engines, &span)
             }
-            TyDecl::ErrorRecovery(_) => err(vec![], vec![]),
-            decl => err(
-                vec![],
-                vec![CompileError::DeclIsNotAStruct {
-                    actually: decl.friendly_type_name().to_string(),
-                    span: decl.span(),
-                }],
-            ),
+            TyDecl::ErrorRecovery(_) => Err(ErrorEmitted),
+            decl => Err(handler.emit_err(CompileError::DeclIsNotAStruct {
+                actually: decl.friendly_type_name().to_string(),
+                span: decl.span(),
+            })),
         }
     }
 
     /// Retrieves the declaration as a `DeclRef<DeclId<TyFunctionDecl>>`.
     ///
     /// Returns an error if `self` is not the [TyDecl][FunctionDecl] variant.
-    pub(crate) fn to_fn_ref(&self) -> CompileResult<DeclRef<DeclId<TyFunctionDecl>>> {
+    pub(crate) fn to_fn_ref(
+        &self,
+        handler: &Handler,
+    ) -> Result<DeclRef<DeclId<TyFunctionDecl>>, ErrorEmitted> {
         match self {
             TyDecl::FunctionDecl(FunctionDecl {
                 name,
                 decl_id,
                 subst_list: _,
                 decl_span,
-            }) => ok(
-                DeclRef::new(name.clone(), *decl_id, decl_span.clone()),
-                vec![],
-                vec![],
-            ),
-            TyDecl::ErrorRecovery(_) => err(vec![], vec![]),
-            decl => err(
-                vec![],
-                vec![CompileError::DeclIsNotAFunction {
-                    actually: decl.friendly_type_name().to_string(),
-                    span: decl.span(),
-                }],
-            ),
+            }) => Ok(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
+            TyDecl::ErrorRecovery(_) => Err(ErrorEmitted),
+            decl => Err(handler.emit_err(CompileError::DeclIsNotAFunction {
+                actually: decl.friendly_type_name().to_string(),
+                span: decl.span(),
+            })),
         }
     }
 
     /// Retrieves the declaration as a variable declaration.
     ///
     /// Returns an error if `self` is not a [TyVariableDecl].
-    pub(crate) fn expect_variable(&self) -> CompileResult<&TyVariableDecl> {
-        let warnings = vec![];
-        let mut errors = vec![];
+    pub(crate) fn expect_variable(
+        &self,
+        handler: &Handler,
+    ) -> Result<&TyVariableDecl, ErrorEmitted> {
         match self {
-            TyDecl::VariableDecl(decl) => ok(decl, warnings, errors),
-            TyDecl::ErrorRecovery(_) => err(vec![], vec![]),
-            decl => {
-                errors.push(CompileError::DeclIsNotAVariable {
-                    actually: decl.friendly_type_name().to_string(),
-                    span: decl.span(),
-                });
-                err(warnings, errors)
-            }
+            TyDecl::VariableDecl(decl) => Ok(decl),
+            TyDecl::ErrorRecovery(_) => Err(ErrorEmitted),
+            decl => Err(handler.emit_err(CompileError::DeclIsNotAVariable {
+                actually: decl.friendly_type_name().to_string(),
+                span: decl.span(),
+            })),
         }
     }
 
     /// Retrieves the declaration as a `DeclRef<DeclId<TyAbiDecl>>`.
     ///
     /// Returns an error if `self` is not the [TyDecl][AbiDecl] variant.
-    pub(crate) fn to_abi_ref(&self) -> CompileResult<DeclRef<DeclId<TyAbiDecl>>> {
+    pub(crate) fn to_abi_ref(
+        &self,
+        handler: &Handler,
+    ) -> Result<DeclRef<DeclId<TyAbiDecl>>, ErrorEmitted> {
         match self {
             TyDecl::AbiDecl(AbiDecl {
                 name,
                 decl_id,
                 decl_span,
-            }) => ok(
-                DeclRef::new(name.clone(), *decl_id, decl_span.clone()),
-                vec![],
-                vec![],
-            ),
-            TyDecl::ErrorRecovery(_) => err(vec![], vec![]),
-            decl => err(
-                vec![],
-                vec![CompileError::DeclIsNotAnAbi {
-                    actually: decl.friendly_type_name().to_string(),
-                    span: decl.span(),
-                }],
-            ),
+            }) => Ok(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
+            TyDecl::ErrorRecovery(_) => Err(ErrorEmitted),
+            decl => Err(handler.emit_err(CompileError::DeclIsNotAnAbi {
+                actually: decl.friendly_type_name().to_string(),
+                span: decl.span(),
+            })),
         }
     }
 
     /// Retrieves the declaration as a `DeclRef<DeclId<TyConstantDecl>>`.
     ///
     /// Returns an error if `self` is not the [TyDecl][ConstantDecl] variant.
-    pub(crate) fn to_const_ref(&self) -> CompileResult<DeclRef<DeclId<TyConstantDecl>>> {
+    pub(crate) fn to_const_ref(
+        &self,
+        handler: &Handler,
+    ) -> Result<DeclRef<DeclId<TyConstantDecl>>, ErrorEmitted> {
         match self {
             TyDecl::ConstantDecl(ConstantDecl {
                 name,
                 decl_id,
                 decl_span,
-            }) => ok(
-                DeclRef::new(name.clone(), *decl_id, decl_span.clone()),
-                vec![],
-                vec![],
-            ),
-            TyDecl::ErrorRecovery(_) => err(vec![], vec![]),
-            decl => err(
-                vec![],
-                vec![CompileError::DeclIsNotAConstant {
-                    actually: decl.friendly_type_name().to_string(),
-                    span: decl.span(),
-                }],
-            ),
+            }) => Ok(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
+            TyDecl::ErrorRecovery(_) => Err(ErrorEmitted),
+            decl => Err(handler.emit_err(CompileError::DeclIsNotAConstant {
+                actually: decl.friendly_type_name().to_string(),
+                span: decl.span(),
+            })),
         }
     }
 
@@ -802,9 +770,11 @@ impl TyDecl {
         }
     }
 
-    pub(crate) fn return_type(&self, engines: &Engines) -> CompileResult<TypeId> {
-        let warnings = vec![];
-        let mut errors = vec![];
+    pub(crate) fn return_type(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+    ) -> Result<TypeId, ErrorEmitted> {
         let type_engine = engines.te();
         let decl_engine = engines.de();
         let type_id = match self {
@@ -848,15 +818,14 @@ impl TyDecl {
                 type_id, ..
             }) => *type_id,
             decl => {
-                errors.push(CompileError::NotAType {
+                return Err(handler.emit_err(CompileError::NotAType {
                     span: decl.span(),
                     name: engines.help_out(decl).to_string(),
                     actually_is: decl.friendly_type_name(),
-                });
-                return err(warnings, errors);
+                }));
             }
         };
-        ok(type_id, warnings, errors)
+        Ok(type_id)
     }
 
     pub(crate) fn visibility(&self, decl_engine: &DeclEngine) -> Visibility {

@@ -7,11 +7,13 @@ use crate::{
         ProgramKind,
     },
     asm_lang::Label,
-    error::*,
     metadata::MetadataManager,
 };
 use etk_ops::london::*;
-use sway_error::error::CompileError;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_ir::{Context, *};
 use sway_types::Span;
 
@@ -98,8 +100,12 @@ impl<'ir, 'eng> AsmBuilder for EvmAsmBuilder<'ir, 'eng> {
         self.func_to_labels(func)
     }
 
-    fn compile_function(&mut self, function: Function) -> CompileResult<()> {
-        self.compile_function(function)
+    fn compile_function(
+        &mut self,
+        handler: &Handler,
+        function: Function,
+    ) -> Result<(), ErrorEmitted> {
+        self.compile_function(handler, function)
     }
 
     fn finalize(&self) -> AsmBuilderResult {
@@ -286,20 +292,14 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
 
     pub(super) fn compile_instruction(
         &mut self,
+        handler: &Handler,
         instr_val: &Value,
         func_is_entry: bool,
-    ) -> CompileResult<()> {
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+    ) -> Result<(), ErrorEmitted> {
         if let Some(instruction) = instr_val.get_instruction(self.context) {
             match instruction {
                 Instruction::AsmBlock(asm, args) => {
-                    check!(
-                        self.compile_asm_block(instr_val, asm, args),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    )
+                    self.compile_asm_block(handler, instr_val, asm, args)?
                 }
                 Instruction::BitCast(val, ty) => self.compile_bitcast(instr_val, val, ty),
                 Instruction::UnaryOp { op, arg } => self.compile_unary_op(instr_val, op, arg),
@@ -316,12 +316,9 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
                     cond_value,
                     true_block,
                     false_block,
-                } => check!(
-                    self.compile_conditional_branch(cond_value, true_block, false_block),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ),
+                } => {
+                    self.compile_conditional_branch(handler, cond_value, true_block, false_block)?
+                }
                 Instruction::ContractCall {
                     params,
                     coins,
@@ -330,7 +327,7 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
                     ..
                 } => self.compile_contract_call(instr_val, params, coins, asset_id, gas),
                 Instruction::FuelVm(fuel_vm_instr) => {
-                    errors.push(CompileError::Internal(
+                    handler.emit_err(CompileError::Internal(
                         "Invalid FuelVM IR instruction provided to the EVM code gen.",
                         self.md_mgr
                             .val_to_span(self.context, *instr_val)
@@ -344,12 +341,7 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
                 } => self.compile_get_elem_ptr(instr_val, base, elem_ptr_ty, indices),
                 Instruction::GetLocal(local_var) => self.compile_get_local(instr_val, local_var),
                 Instruction::IntToPtr(val, _) => self.compile_int_to_ptr(instr_val, val),
-                Instruction::Load(src_val) => check!(
-                    self.compile_load(instr_val, src_val),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ),
+                Instruction::Load(src_val) => self.compile_load(handler, instr_val, src_val)?,
                 Instruction::MemCopyBytes {
                     dst_val_ptr,
                     src_val_ptr,
@@ -373,30 +365,26 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
                 Instruction::Store {
                     dst_val_ptr: dst_val,
                     stored_val,
-                } => check!(
-                    self.compile_store(instr_val, dst_val, stored_val),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ),
+                } => self.compile_store(handler, instr_val, dst_val, stored_val)?,
             }
         } else {
-            errors.push(CompileError::Internal(
+            handler.emit_err(CompileError::Internal(
                 "Value not an instruction.",
                 self.md_mgr
                     .val_to_span(self.context, *instr_val)
                     .unwrap_or_else(Self::empty_span),
             ));
         }
-        ok((), warnings, errors)
+        Ok(())
     }
 
     fn compile_asm_block(
         &mut self,
+        handler: &Handler,
         instr_val: &Value,
         asm: &AsmBlock,
         asm_args: &[AsmArg],
-    ) -> CompileResult<()> {
+    ) -> Result<(), ErrorEmitted> {
         todo!();
     }
 
@@ -438,10 +426,11 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
 
     fn compile_conditional_branch(
         &mut self,
+        handler: &Handler,
         cond_value: &Value,
         true_block: &BranchToWithArgs,
         false_block: &BranchToWithArgs,
-    ) -> CompileResult<()> {
+    ) -> Result<(), ErrorEmitted> {
         todo!();
     }
 
@@ -461,7 +450,11 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
         todo!();
     }
 
-    fn compile_get_storage_key(&mut self, instr_val: &Value) -> CompileResult<()> {
+    fn compile_get_storage_key(
+        &mut self,
+        handler: &Handler,
+        instr_val: &Value,
+    ) -> Result<(), ErrorEmitted> {
         todo!();
     }
 
@@ -487,7 +480,12 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
         todo!();
     }
 
-    fn compile_load(&mut self, instr_val: &Value, src_val: &Value) -> CompileResult<()> {
+    fn compile_load(
+        &mut self,
+        handler: &Handler,
+        instr_val: &Value,
+        src_val: &Value,
+    ) -> Result<(), ErrorEmitted> {
         todo!();
     }
 
@@ -554,34 +552,42 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
 
     fn compile_state_access_quad_word(
         &mut self,
+        handler: &Handler,
         instr_val: &Value,
         val: &Value,
         key: &Value,
         number_of_slots: &Value,
         access_type: StateAccessType,
-    ) -> CompileResult<()> {
+    ) -> Result<(), ErrorEmitted> {
         todo!();
     }
 
-    fn compile_state_load_word(&mut self, instr_val: &Value, key: &Value) -> CompileResult<()> {
+    fn compile_state_load_word(
+        &mut self,
+        handler: &Handler,
+        instr_val: &Value,
+        key: &Value,
+    ) -> Result<(), ErrorEmitted> {
         todo!();
     }
 
     fn compile_state_store_word(
         &mut self,
+        handler: &Handler,
         instr_val: &Value,
         store_val: &Value,
         key: &Value,
-    ) -> CompileResult<()> {
+    ) -> Result<(), ErrorEmitted> {
         todo!();
     }
 
     fn compile_store(
         &mut self,
+        handler: &Handler,
         instr_val: &Value,
         dst_val: &Value,
         stored_val: &Value,
-    ) -> CompileResult<()> {
+    ) -> Result<(), ErrorEmitted> {
         todo!();
     }
 
@@ -593,7 +599,11 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
         })
     }
 
-    pub fn compile_function(&mut self, function: Function) -> CompileResult<()> {
+    pub fn compile_function(
+        &mut self,
+        handler: &Handler,
+        function: Function,
+    ) -> Result<(), ErrorEmitted> {
         self.cur_section = Some(EvmAsmSection::new());
 
         // push1 0x80
@@ -623,17 +633,10 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
         let func_is_entry = function.is_entry(self.context);
 
         // Compile instructions.
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
         for block in function.block_iter(self.context) {
             self.insert_block_label(block);
             for instr_val in block.instruction_iter(self.context) {
-                check!(
-                    self.compile_instruction(&instr_val, func_is_entry),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                self.compile_instruction(handler, &instr_val, func_is_entry)?;
             }
         }
 
@@ -675,7 +678,7 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
         self.sections.push(self.cur_section.take().unwrap());
         self.cur_section = None;
 
-        ok((), vec![], vec![])
+        Ok(())
     }
 
     pub(super) fn compile_call(&mut self, instr_val: &Value, function: &Function, args: &[Value]) {

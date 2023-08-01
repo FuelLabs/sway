@@ -291,11 +291,9 @@ impl<'a> Unifier<'a> {
         let mut warnings = vec![];
         let mut errors = vec![];
         for (rf, ef) in rfs.iter().zip(efs.iter()) {
-            append!(
-                self.unify(rf.type_id, ef.type_id, &rf.span),
-                warnings,
-                errors
-            );
+            let (mut warns, mut errs) = self.unify(rf.type_id, ef.type_id, &rf.span);
+            warnings.append(&mut warns);
+            errors.append(&mut errs);
         }
         (warnings, errors)
     }
@@ -314,14 +312,15 @@ impl<'a> Unifier<'a> {
         let (en, etps, efs) = e;
         if rn == en && rfs.len() == efs.len() && rtps.len() == etps.len() {
             rfs.iter().zip(efs.iter()).for_each(|(rf, ef)| {
-                append!(
-                    self.unify(rf.type_argument.type_id, ef.type_argument.type_id, span),
-                    warnings,
-                    errors
-                );
+                let (mut warns, mut errs) =
+                    self.unify(rf.type_argument.type_id, ef.type_argument.type_id, span);
+                warnings.append(&mut warns);
+                errors.append(&mut errs);
             });
             rtps.iter().zip(etps.iter()).for_each(|(rtp, etp)| {
-                append!(self.unify(rtp.type_id, etp.type_id, span), warnings, errors);
+                let (mut warns, mut errs) = self.unify(rtp.type_id, etp.type_id, span);
+                warnings.append(&mut warns);
+                errors.append(&mut errs);
             });
         } else {
             let (received, expected) = self.assign_args(received, expected);
@@ -349,14 +348,15 @@ impl<'a> Unifier<'a> {
         let (en, etps, evs) = e;
         if rn == en && rvs.len() == evs.len() && rtps.len() == etps.len() {
             rvs.iter().zip(evs.iter()).for_each(|(rv, ev)| {
-                append!(
-                    self.unify(rv.type_argument.type_id, ev.type_argument.type_id, span),
-                    warnings,
-                    errors
-                );
+                let (mut warns, mut errs) =
+                    self.unify(rv.type_argument.type_id, ev.type_argument.type_id, span);
+                warnings.append(&mut warns);
+                errors.append(&mut errs);
             });
             rtps.iter().zip(etps.iter()).for_each(|(rtp, etp)| {
-                append!(self.unify(rtp.type_id, etp.type_id, span), warnings, errors);
+                let (mut warns, mut errs) = self.unify(rtp.type_id, etp.type_id, span);
+                warnings.append(&mut warns);
+                errors.append(&mut errs);
             });
         } else {
             let (received, expected) = self.assign_args(received, expected);

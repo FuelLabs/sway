@@ -2,13 +2,13 @@ use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
 use crate::{
-    error::*,
     language::{parsed::*, CallPath},
     type_system::*,
     Engines,
 };
 
 use sway_error::error::CompileError;
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::integer_bits::IntegerBits;
 use sway_types::Spanned;
 use sway_types::{ident::Ident, span::Span};
@@ -18,9 +18,10 @@ use sway_types::{ident::Ident, span::Span};
 /// dependencies breaking.
 
 pub(crate) fn order_ast_nodes_by_dependency(
+    handler: &Handler,
     engines: &Engines,
     nodes: Vec<AstNode>,
-) -> CompileResult<Vec<AstNode>> {
+) -> Result<Vec<AstNode>, ErrorEmitted> {
     let type_engine = engines.te();
 
     let decl_dependencies = DependencyMap::from_iter(
@@ -35,20 +36,22 @@ pub(crate) fn order_ast_nodes_by_dependency(
         // Because we're pulling these errors out of a HashMap they'll probably be in a funny
         // order.  Here we'll sort them by span start.
         errors.sort_by_key(|err| err.span().start());
-        err(Vec::new(), errors)
+
+        let error_emitted = errors
+            .into_iter()
+            .fold(None, |_acc, err| Some(handler.emit_err(err)))
+            .unwrap();
+
+        Err(error_emitted)
     } else {
         // Reorder the parsed AstNodes based on dependency.  Includes first, then uses, then
         // reordered declarations, then anything else.  To keep the list stable and simple we can
         // use a basic insertion sort.
-        ok(
-            nodes
-                .into_iter()
-                .fold(Vec::<AstNode>::new(), |ordered, node| {
-                    insert_into_ordered_nodes(type_engine, &decl_dependencies, ordered, node)
-                }),
-            Vec::new(),
-            Vec::new(),
-        )
+        Ok(nodes
+            .into_iter()
+            .fold(Vec::<AstNode>::new(), |ordered, node| {
+                insert_into_ordered_nodes(type_engine, &decl_dependencies, ordered, node)
+            }))
     }
 }
 
@@ -849,6 +852,7 @@ fn type_info_name(type_info: &TypeInfo) -> String {
             IntegerBits::Sixteen => "uint16",
             IntegerBits::ThirtyTwo => "uint32",
             IntegerBits::SixtyFour => "uint64",
+            IntegerBits::V256 => "uint256",
         },
         TypeInfo::Boolean => "bool",
         TypeInfo::Custom {

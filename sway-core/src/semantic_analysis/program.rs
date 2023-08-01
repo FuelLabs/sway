@@ -1,5 +1,4 @@
 use crate::{
-    error::*,
     language::{parsed::ParseProgram, ty},
     metadata::MetadataManager,
     semantic_analysis::{
@@ -8,6 +7,7 @@ use crate::{
     },
     Engines,
 };
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{Context, Module};
 
 impl ty::TyProgram {
@@ -16,18 +16,18 @@ impl ty::TyProgram {
     /// The given `initial_namespace` acts as an initial state for each module within this program.
     /// It should contain a submodule for each library package dependency.
     pub fn type_check(
+        handler: &Handler,
         engines: &Engines,
         parsed: &ParseProgram,
         initial_namespace: namespace::Module,
         package_name: &str,
-    ) -> CompileResult<Self> {
+    ) -> Result<Self, ErrorEmitted> {
         let mut namespace = Namespace::init_root(initial_namespace);
         let ctx =
             TypeCheckContext::from_root(&mut namespace, engines).with_kind(parsed.kind.clone());
         let ParseProgram { root, kind } = parsed;
-        let mod_res = ty::TyModule::type_check(ctx, root);
-        mod_res.flat_map(|root| {
-            let res = Self::validate_root(engines, &root, kind.clone(), package_name);
+        ty::TyModule::type_check(handler, ctx, root).and_then(|root| {
+            let res = Self::validate_root(handler, engines, &root, kind.clone(), package_name);
             res.map(|(kind, declarations, configurables)| Self {
                 kind,
                 root,
@@ -42,13 +42,12 @@ impl ty::TyProgram {
 
     pub(crate) fn get_typed_program_with_initialized_storage_slots(
         self,
+        handler: &Handler,
         engines: &Engines,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         module: Module,
-    ) -> CompileResult<Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+    ) -> Result<Self, ErrorEmitted> {
         let decl_engine = engines.de();
         match &self.kind {
             ty::TyProgramKind::Contract { .. } => {
@@ -65,42 +64,27 @@ impl ty::TyProgram {
                         ..
                     })) => {
                         let decl = decl_engine.get_storage(decl_id);
-                        let mut storage_slots = check!(
-                            decl.get_initialized_storage_slots(engines, context, md_mgr, module,),
-                            return err(warnings, errors),
-                            warnings,
-                            errors,
-                        );
+                        let mut storage_slots = decl.get_initialized_storage_slots(
+                            handler, engines, context, md_mgr, module,
+                        )?;
                         // Sort the slots to standardize the output. Not strictly required by the
                         // spec.
                         storage_slots.sort();
-                        ok(
-                            Self {
-                                storage_slots,
-                                ..self
-                            },
-                            warnings,
-                            errors,
-                        )
-                    }
-                    _ => ok(
-                        Self {
-                            storage_slots: vec![],
+                        Ok(Self {
+                            storage_slots,
                             ..self
-                        },
-                        warnings,
-                        errors,
-                    ),
+                        })
+                    }
+                    _ => Ok(Self {
+                        storage_slots: vec![],
+                        ..self
+                    }),
                 }
             }
-            _ => ok(
-                Self {
-                    storage_slots: vec![],
-                    ..self
-                },
-                warnings,
-                errors,
-            ),
+            _ => Ok(Self {
+                storage_slots: vec![],
+                ..self
+            }),
         }
     }
 }

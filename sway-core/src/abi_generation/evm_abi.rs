@@ -89,6 +89,7 @@ pub fn abi_str(type_info: &TypeInfo, type_engine: &TypeEngine, decl_engine: &Dec
             IntegerBits::Sixteen => "uint16",
             IntegerBits::ThirtyTwo => "uint32",
             IntegerBits::SixtyFour => "uint64",
+            IntegerBits::V256 => "uint256",
         }
         .into(),
         Boolean => "bool".into(),
@@ -149,6 +150,7 @@ pub fn abi_param_type(
             IntegerBits::Sixteen => ethabi::ParamType::Uint(16),
             IntegerBits::ThirtyTwo => ethabi::ParamType::Uint(32),
             IntegerBits::SixtyFour => ethabi::ParamType::Uint(64),
+            IntegerBits::V256 => ethabi::ParamType::Uint(256),
         },
         Boolean => ethabi::ParamType::Bool,
         B256 => ethabi::ParamType::Uint(256),
@@ -184,7 +186,7 @@ pub fn abi_param_type(
     }
 }
 
-pub(self) fn generate_abi_function(
+fn generate_abi_function(
     fn_decl: &TyFunctionDecl,
     type_engine: &TypeEngine,
     decl_engine: &DeclEngine,
@@ -228,7 +230,7 @@ pub(self) fn generate_abi_function(
     })
 }
 
-pub(self) fn abi_str_type_arg(
+fn abi_str_type_arg(
     type_arg: &TypeArgument,
     type_engine: &TypeEngine,
     decl_engine: &DeclEngine,
