@@ -128,7 +128,7 @@ pub enum TypeInfo {
     Numeric,
     Contract,
     // used for recovering from errors in the ast
-    ErrorRecovery,
+    ErrorRecovery(ErrorEmitted),
     // Static, constant size arrays.
     Array(TypeArgument, Length),
     /// Represents the entire storage declaration struct
@@ -223,7 +223,7 @@ impl HashWithEngines for TypeInfo {
             | TypeInfo::Boolean
             | TypeInfo::B256
             | TypeInfo::Contract
-            | TypeInfo::ErrorRecovery
+            | TypeInfo::ErrorRecovery(_)
             | TypeInfo::Unknown
             | TypeInfo::SelfType
             | TypeInfo::RawUntypedPtr
@@ -450,7 +450,7 @@ impl DisplayWithEngines for TypeInfo {
             B256 => "b256".into(),
             Numeric => "numeric".into(),
             Contract => "contract".into(),
-            ErrorRecovery => "unknown".into(),
+            ErrorRecovery(_) => "unknown".into(),
             Enum(decl_ref) => {
                 let decl = engines.de().get_enum(decl_ref);
                 print_inner_types(
@@ -517,7 +517,7 @@ impl DebugWithEngines for TypeInfo {
             B256 => "b256".into(),
             Numeric => "numeric".into(),
             Contract => "contract".into(),
-            ErrorRecovery => "unknown due to error".into(),
+            ErrorRecovery(_) => "unknown due to error".into(),
             Enum(decl_ref) => {
                 let decl = engines.de().get_enum(decl_ref);
                 print_inner_types_debug(
@@ -586,7 +586,7 @@ impl TypeInfo {
             TypeInfo::B256 => 12,
             TypeInfo::Numeric => 13,
             TypeInfo::Contract => 14,
-            TypeInfo::ErrorRecovery => 15,
+            TypeInfo::ErrorRecovery(_) => 15,
             TypeInfo::Array(_, _) => 16,
             TypeInfo::Storage { .. } => 17,
             TypeInfo::RawUntypedPtr => 18,
@@ -871,7 +871,7 @@ impl TypeInfo {
                         .get(elem_ty.type_id)
                         .can_safely_ignore(type_engine, decl_engine)
             }
-            TypeInfo::ErrorRecovery => true,
+            TypeInfo::ErrorRecovery(_) => true,
             TypeInfo::Unknown => true,
             _ => false,
         }
@@ -950,7 +950,7 @@ impl TypeInfo {
             | TypeInfo::Ptr(..)
             | TypeInfo::Slice(..)
             | TypeInfo::Contract
-            | TypeInfo::ErrorRecovery
+            | TypeInfo::ErrorRecovery(_)
             | TypeInfo::Array(_, _)
             | TypeInfo::Storage { .. }
             | TypeInfo::Placeholder(_)
@@ -1017,10 +1017,7 @@ impl TypeInfo {
                 "matching on this type is unsupported right now",
                 span.clone(),
             ))),
-            TypeInfo::ErrorRecovery => {
-                // return an error but don't create a new error message
-                Err(ErrorEmitted)
-            }
+            TypeInfo::ErrorRecovery(err) => Err(*err),
         }
     }
 
@@ -1058,10 +1055,7 @@ impl TypeInfo {
                 "implementing traits on this type is unsupported right now",
                 span.clone(),
             ))),
-            TypeInfo::ErrorRecovery => {
-                // return an error but don't create a new error message
-                Err(ErrorEmitted)
-            }
+            TypeInfo::ErrorRecovery(err) => Err(*err),
         }
     }
 
@@ -1114,7 +1108,7 @@ impl TypeInfo {
             | TypeInfo::B256
             | TypeInfo::Numeric
             | TypeInfo::Contract
-            | TypeInfo::ErrorRecovery => {}
+            | TypeInfo::ErrorRecovery(_) => {}
             TypeInfo::Enum(enum_ref) => {
                 let enum_decl = decl_engine.get_enum(enum_ref);
                 for type_param in enum_decl.type_parameters.iter() {
@@ -1293,7 +1287,9 @@ impl TypeInfo {
         let type_engine = engines.te();
         let decl_engine = engines.de();
         match (self, subfields.split_first()) {
-            (TypeInfo::Struct { .. } | TypeInfo::Alias { .. }, None) => Err(ErrorEmitted),
+            (TypeInfo::Struct { .. } | TypeInfo::Alias { .. }, None) => {
+                panic!("Trying to apply an empty list of subfields");
+            }
             (TypeInfo::Struct(decl_ref), Some((first, rest))) => {
                 let decl = decl_engine.get_struct(decl_ref);
                 let field = match decl
@@ -1335,10 +1331,7 @@ impl TypeInfo {
             ) => type_engine
                 .get(*type_id)
                 .apply_subfields(handler, engines, subfields, span),
-            (TypeInfo::ErrorRecovery, _) => {
-                // dont create a new error in this case
-                Err(ErrorEmitted)
-            }
+            (TypeInfo::ErrorRecovery(err), _) => Err(*err),
             (type_info, _) => Err(handler.emit_err(CompileError::FieldAccessOnNonStruct {
                 actually: format!("{:?}", engines.help_out(type_info)),
                 span: span.clone(),
@@ -1366,7 +1359,7 @@ impl TypeInfo {
             | TypeInfo::RawUntypedSlice
             | TypeInfo::Ptr(..)
             | TypeInfo::Slice(..)
-            | TypeInfo::ErrorRecovery => false,
+            | TypeInfo::ErrorRecovery(_) => false,
             TypeInfo::Unknown
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::ContractCaller { .. }
@@ -1430,7 +1423,7 @@ impl TypeInfo {
                     .get(*type_id)
                     .expect_tuple(handler, engines, debug_string, debug_span)
             }
-            TypeInfo::ErrorRecovery => Err(ErrorEmitted),
+            TypeInfo::ErrorRecovery(err) => Err(*err),
             a => Err(handler.emit_err(CompileError::NotATuple {
                 name: debug_string.into(),
                 span: debug_span.clone(),
@@ -1471,7 +1464,7 @@ impl TypeInfo {
                 .te()
                 .get(*type_id)
                 .expect_enum(handler, engines, debug_string, debug_span),
-            TypeInfo::ErrorRecovery => Err(ErrorEmitted),
+            TypeInfo::ErrorRecovery(err) => Err(*err),
             a => Err(handler.emit_err(CompileError::NotAnEnum {
                 name: debug_string.into(),
                 span: debug_span.clone(),
@@ -1512,7 +1505,7 @@ impl TypeInfo {
                 .te()
                 .get(*type_id)
                 .expect_struct(handler, engines, debug_span),
-            TypeInfo::ErrorRecovery => Err(ErrorEmitted),
+            TypeInfo::ErrorRecovery(err) => Err(*err),
             a => Err(handler.emit_err(CompileError::NotAStruct {
                 span: debug_span.clone(),
                 actually: engines.help_out(a).to_string(),

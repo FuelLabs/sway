@@ -3,6 +3,7 @@ use crate::{
     TypeInfo,
 };
 
+use sway_error::handler::ErrorEmitted;
 use sway_types::{ident::Ident, span::Span, Spanned};
 
 /// A [Scrutinee] is on the left-hand-side of a pattern, and dictates whether or
@@ -44,6 +45,7 @@ pub enum Scrutinee {
     // this is to handle parser recovery
     Error {
         spans: Box<[Span]>,
+        err: ErrorEmitted,
     },
 }
 
@@ -71,7 +73,7 @@ impl Spanned for Scrutinee {
             Scrutinee::StructScrutinee { span, .. } => span.clone(),
             Scrutinee::EnumScrutinee { span, .. } => span.clone(),
             Scrutinee::Tuple { span, .. } => span.clone(),
-            Scrutinee::Error { spans } => spans.iter().cloned().reduce(Span::join).unwrap(),
+            Scrutinee::Error { spans, .. } => spans.iter().cloned().reduce(Span::join).unwrap(),
         }
     }
 }

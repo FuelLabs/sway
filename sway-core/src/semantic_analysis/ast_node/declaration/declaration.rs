@@ -33,7 +33,9 @@ impl ty::TyDecl {
                         EnforceTypeArguments::Yes,
                         None,
                     )
-                    .unwrap_or_else(|_| type_engine.insert(engines, TypeInfo::ErrorRecovery));
+                    .unwrap_or_else(|err| {
+                        type_engine.insert(engines, TypeInfo::ErrorRecovery(err))
+                    });
                 let mut ctx = ctx
                     .with_type_annotation(type_ascription.type_id)
                     .with_help_text(
@@ -41,7 +43,8 @@ impl ty::TyDecl {
                         with the assigned expression's type.",
                     );
                 let result = ty::TyExpression::type_check(handler, ctx.by_ref(), body);
-                let body = result.unwrap_or_else(|_| ty::TyExpression::error(name.span(), engines));
+                let body =
+                    result.unwrap_or_else(|err| ty::TyExpression::error(err, name.span(), engines));
 
                 // Integers are special in the sense that we can't only rely on the type of `body`
                 // to get the type of the variable. The type of the variable *has* to follow
@@ -65,7 +68,7 @@ impl ty::TyDecl {
                 let span = decl.span.clone();
                 let const_decl = match ty::TyConstantDecl::type_check(handler, ctx.by_ref(), decl) {
                     Ok(res) => res,
-                    Err(_) => return Ok(ty::TyDecl::ErrorRecovery(span)),
+                    Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),
                 };
                 let typed_const_decl: ty::TyDecl = decl_engine.insert(const_decl.clone()).into();
                 ctx.insert_symbol(handler, const_decl.name().clone(), typed_const_decl.clone())?;
@@ -75,7 +78,7 @@ impl ty::TyDecl {
                 let span = decl.span.clone();
                 let enum_decl = match ty::TyEnumDecl::type_check(handler, ctx.by_ref(), decl) {
                     Ok(res) => res,
-                    Err(_) => return Ok(ty::TyDecl::ErrorRecovery(span)),
+                    Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),
                 };
                 let call_path = enum_decl.call_path.clone();
                 let decl: ty::TyDecl = decl_engine.insert(enum_decl).into();
@@ -94,7 +97,7 @@ impl ty::TyDecl {
                     false,
                 ) {
                     Ok(res) => res,
-                    Err(_) => return Ok(ty::TyDecl::ErrorRecovery(span)),
+                    Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),
                 };
                 let name = fn_decl.name.clone();
                 let decl: ty::TyDecl = decl_engine.insert(fn_decl).into();
@@ -106,7 +109,7 @@ impl ty::TyDecl {
                 let mut trait_decl =
                     match ty::TyTraitDecl::type_check(handler, ctx.by_ref(), trait_decl) {
                         Ok(res) => res,
-                        Err(_) => return Ok(ty::TyDecl::ErrorRecovery(span)),
+                        Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),
                     };
                 let name = trait_decl.name.clone();
 
@@ -148,7 +151,7 @@ impl ty::TyDecl {
                     match ty::TyImplTrait::type_check_impl_trait(handler, ctx.by_ref(), impl_trait)
                     {
                         Ok(res) => res,
-                        Err(_) => return Ok(ty::TyDecl::ErrorRecovery(span)),
+                        Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),
                     };
                 // if this ImplTrait implements a trait and not an ABI,
                 // we insert its methods into the context
@@ -191,7 +194,7 @@ impl ty::TyDecl {
                 let mut impl_trait =
                     match ty::TyImplTrait::type_check_impl_self(handler, ctx.by_ref(), impl_self) {
                         Ok(val) => val,
-                        Err(_) => return Ok(ty::TyDecl::ErrorRecovery(span)),
+                        Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),
                     };
                 ctx.namespace.insert_trait_implementation(
                     handler,
@@ -217,8 +220,8 @@ impl ty::TyDecl {
                 let span = decl.span.clone();
                 let decl = match ty::TyStructDecl::type_check(handler, ctx.by_ref(), decl) {
                     Ok(res) => res,
-                    Err(_) => {
-                        return Ok(ty::TyDecl::ErrorRecovery(span));
+                    Err(err) => {
+                        return Ok(ty::TyDecl::ErrorRecovery(span, err));
                     }
                 };
                 let call_path = decl.call_path.clone();
@@ -232,8 +235,8 @@ impl ty::TyDecl {
                 let mut abi_decl = match ty::TyAbiDecl::type_check(handler, ctx.by_ref(), abi_decl)
                 {
                     Ok(res) => res,
-                    Err(_) => {
-                        return Ok(ty::TyDecl::ErrorRecovery(span));
+                    Err(err) => {
+                        return Ok(ty::TyDecl::ErrorRecovery(span, err));
                     }
                 };
                 let name = abi_decl.name.clone();
@@ -333,7 +336,9 @@ impl ty::TyDecl {
                         EnforceTypeArguments::Yes,
                         None,
                     )
-                    .unwrap_or_else(|_| type_engine.insert(engines, TypeInfo::ErrorRecovery));
+                    .unwrap_or_else(|err| {
+                        type_engine.insert(engines, TypeInfo::ErrorRecovery(err))
+                    });
 
                 // create the type alias decl using the resolved type above
                 let decl = ty::TyTypeAliasDecl {

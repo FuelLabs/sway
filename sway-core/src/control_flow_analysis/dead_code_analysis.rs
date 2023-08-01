@@ -564,7 +564,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             connect_type_alias_declaration(engines, &type_alias, graph, entry_node)?;
             Ok(leaves.to_vec())
         }
-        ty::TyDecl::ErrorRecovery(_) | ty::TyDecl::GenericTypeForFunctionScope(_) => {
+        ty::TyDecl::ErrorRecovery(..) | ty::TyDecl::GenericTypeForFunctionScope(_) => {
             Ok(leaves.to_vec())
         }
     }
@@ -2252,7 +2252,7 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
             ty::TyDecl::ImplTrait { .. } => false,
             ty::TyDecl::AbiDecl { .. } => false,
             ty::TyDecl::GenericTypeForFunctionScope { .. } => false,
-            ty::TyDecl::ErrorRecovery(_) => false,
+            ty::TyDecl::ErrorRecovery(..) => false,
             ty::TyDecl::StorageDecl { .. } => false,
         },
         ty::TyAstNodeContent::Expression(_) => false,

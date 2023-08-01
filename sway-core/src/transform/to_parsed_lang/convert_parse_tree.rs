@@ -1625,10 +1625,10 @@ fn expr_func_app_to_expression_kind(
         ..
     } = match *func {
         Expr::Path(path_expr) => path_expr,
-        Expr::Error(_) => {
+        Expr::Error(_, err) => {
             // FIXME we can do better here and return function application expression here
             // if there are no parsing errors in the arguments
-            return Ok(ExpressionKind::Error(Box::new([span])));
+            return Ok(ExpressionKind::Error(Box::new([span]), err));
         }
         _ => {
             let error = ConvertParseTreeError::FunctionArbitraryExpression { span: func.span() };
@@ -1767,8 +1767,8 @@ fn expr_to_expression(
 ) -> Result<Expression, ErrorEmitted> {
     let span = expr.span();
     let expression = match expr {
-        Expr::Error(part_spans) => Expression {
-            kind: ExpressionKind::Error(part_spans),
+        Expr::Error(part_spans, err) => Expression {
+            kind: ExpressionKind::Error(part_spans, err),
             span,
         },
         Expr::Path(path_expr) => path_expr_to_expression(context, handler, engines, path_expr)?,
@@ -3627,7 +3627,7 @@ fn pattern_to_scrutinee(
             },
             span,
         },
-        Pattern::Error(spans) => Scrutinee::Error { spans },
+        Pattern::Error(spans, err) => Scrutinee::Error { spans, err },
     };
     Ok(scrutinee)
 }

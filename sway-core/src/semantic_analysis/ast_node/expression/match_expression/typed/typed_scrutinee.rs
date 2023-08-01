@@ -101,7 +101,7 @@ impl ty::TyScrutinee {
                 }
             }
             Scrutinee::Tuple { elems, span } => type_check_tuple(handler, ctx, elems, span),
-            Scrutinee::Error { .. } => Err(ErrorEmitted),
+            Scrutinee::Error { err, .. } => Err(err),
         }
     }
 }

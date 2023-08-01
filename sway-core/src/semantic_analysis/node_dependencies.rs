@@ -32,27 +32,26 @@ pub(crate) fn order_ast_nodes_by_dependency(
 
     // Check here for recursive calls now that we have a nice map of the dependencies to help us.
     let mut errors = find_recursive_decls(&decl_dependencies);
-    if !errors.is_empty() {
+
+    handler.scope(|handler| {
         // Because we're pulling these errors out of a HashMap they'll probably be in a funny
         // order.  Here we'll sort them by span start.
         errors.sort_by_key(|err| err.span().start());
 
-        let error_emitted = errors
-            .into_iter()
-            .fold(None, |_acc, err| Some(handler.emit_err(err)))
-            .unwrap();
+        for err in errors {
+            handler.emit_err(err);
+        }
+        Ok(())
+    })?;
 
-        Err(error_emitted)
-    } else {
-        // Reorder the parsed AstNodes based on dependency.  Includes first, then uses, then
-        // reordered declarations, then anything else.  To keep the list stable and simple we can
-        // use a basic insertion sort.
-        Ok(nodes
-            .into_iter()
-            .fold(Vec::<AstNode>::new(), |ordered, node| {
-                insert_into_ordered_nodes(type_engine, &decl_dependencies, ordered, node)
-            }))
-    }
+    // Reorder the parsed AstNodes based on dependency.  Includes first, then uses, then
+    // reordered declarations, then anything else.  To keep the list stable and simple we can
+    // use a basic insertion sort.
+    Ok(nodes
+        .into_iter()
+        .fold(Vec::<AstNode>::new(), |ordered, node| {
+            insert_into_ordered_nodes(type_engine, &decl_dependencies, ordered, node)
+        }))
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -578,7 +577,7 @@ impl Dependencies {
             | ExpressionKind::Break
             | ExpressionKind::Continue
             | ExpressionKind::StorageAccess(_)
-            | ExpressionKind::Error(_) => self,
+            | ExpressionKind::Error(_, _) => self,
 
             ExpressionKind::Tuple(fields) => self.gather_from_iter(fields.iter(), |deps, field| {
                 deps.gather_from_expr(engines, field)
@@ -863,7 +862,7 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::B256 => "b256",
         TypeInfo::Numeric => "numeric",
         TypeInfo::Contract => "contract",
-        TypeInfo::ErrorRecovery => "err_recov",
+        TypeInfo::ErrorRecovery(_) => "err_recov",
         TypeInfo::Unknown => "unknown",
         TypeInfo::UnknownGeneric { name, .. } => return format!("generic {name}"),
         TypeInfo::TypeParam(_) => "type param",

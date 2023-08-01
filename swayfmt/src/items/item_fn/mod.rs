@@ -13,10 +13,9 @@ use crate::{
 use std::fmt::Write;
 use sway_ast::{
     keywords::{MutToken, RefToken, SelfToken, Token},
-    token::Delimiter,
     FnArg, FnArgs, FnSignature, ItemFn,
 };
-use sway_types::Spanned;
+use sway_types::{ast::Delimiter, Spanned};
 
 #[cfg(test)]
 mod tests;

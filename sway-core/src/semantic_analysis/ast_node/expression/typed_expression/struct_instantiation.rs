@@ -79,7 +79,7 @@ pub(crate) fn struct_instantiation(
             EnforceTypeArguments::No,
             Some(&type_info_prefix),
         )
-        .unwrap_or_else(|_| type_engine.insert(engines, TypeInfo::ErrorRecovery));
+        .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
 
     // extract the struct name and fields from the type info
     let type_info = type_engine.get(type_id);
@@ -159,7 +159,7 @@ fn type_check_field_arguments(
                 struct_field.span = field.value.span.clone();
             }
             None => {
-                handler.emit_err(CompileError::StructMissingField {
+                let err = handler.emit_err(CompileError::StructMissingField {
                     field_name: struct_field.name.clone(),
                     struct_name: struct_name.clone(),
                     span: span.clone(),
@@ -168,7 +168,7 @@ fn type_check_field_arguments(
                     name: struct_field.name.clone(),
                     value: ty::TyExpression {
                         expression: ty::TyExpressionVariant::Tuple { fields: vec![] },
-                        return_type: type_engine.insert(engines, TypeInfo::ErrorRecovery),
+                        return_type: type_engine.insert(engines, TypeInfo::ErrorRecovery(err)),
                         span: span.clone(),
                     },
                 });
@@ -190,30 +190,20 @@ fn unify_field_arguments_and_struct_fields(
     let type_engine = ctx.engines.te();
     let engines = ctx.engines();
 
-    let mut error_emitted = None;
-    for struct_field in struct_fields.iter() {
-        if let Some(typed_field) = typed_fields.iter().find(|x| x.name == struct_field.name) {
-            let (warnings, errors) = type_engine.unify(
-                engines,
-                typed_field.value.return_type,
-                struct_field.type_argument.type_id,
-                &typed_field.value.span,
-                "Struct field's type must match the type specified in its declaration.",
-                None,
-            );
-
-            for warn in warnings {
-                handler.emit_warn(warn);
-            }
-            for err in errors {
-                error_emitted = Some(handler.emit_err(err));
+    handler.scope(|handler| {
+        for struct_field in struct_fields.iter() {
+            if let Some(typed_field) = typed_fields.iter().find(|x| x.name == struct_field.name) {
+                type_engine.unify(
+                    handler,
+                    engines,
+                    typed_field.value.return_type,
+                    struct_field.type_argument.type_id,
+                    &typed_field.value.span,
+                    "Struct field's type must match the type specified in its declaration.",
+                    None,
+                );
             }
         }
-    }
-
-    if let Some(err) = error_emitted {
-        Err(err)
-    } else {
         Ok(())
-    }
+    })
 }

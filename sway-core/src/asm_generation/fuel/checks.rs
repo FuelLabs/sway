@@ -27,42 +27,36 @@ pub(crate) fn check_script_opcodes(
     ops: &[AllocatedOp],
 ) -> Result<(), ErrorEmitted> {
     use AllocatedOpcode::*;
-    let mut error_emitted = None;
-    for op in ops {
-        match op.opcode {
-            GM(_, VirtualImmediate18 { value: 1..=2 }) => {
-                error_emitted = Some(handler.emit_err(CompileError::GMFromExternalContext {
-                    span: get_op_span(op),
-                }));
-            }
-            MINT(..) => {
-                error_emitted = Some(handler.emit_err(CompileError::MintFromExternalContext {
-                    span: get_op_span(op),
-                }));
-            }
-            BURN(..) => {
-                error_emitted = Some(handler.emit_err(CompileError::BurnFromExternalContext {
-                    span: get_op_span(op),
-                }));
-            }
-            SWW(..) | SRW(..) | SRWQ(..) | SWWQ(..) => {
-                error_emitted = Some(handler.emit_err(
-                    CompileError::ContractStorageFromExternalContext {
+    // Abort compilation because the finalized asm contains opcodes invalid to a script.
+    // Preemptively avoids the creation of scripts with opcodes not allowed at runtime.
+    handler.scope(|handler| {
+        for op in ops {
+            match op.opcode {
+                GM(_, VirtualImmediate18 { value: 1..=2 }) => {
+                    handler.emit_err(CompileError::GMFromExternalContext {
                         span: get_op_span(op),
-                    },
-                ));
+                    });
+                }
+                MINT(..) => {
+                    handler.emit_err(CompileError::MintFromExternalContext {
+                        span: get_op_span(op),
+                    });
+                }
+                BURN(..) => {
+                    handler.emit_err(CompileError::BurnFromExternalContext {
+                        span: get_op_span(op),
+                    });
+                }
+                SWW(..) | SRW(..) | SRWQ(..) | SWWQ(..) => {
+                    handler.emit_err(CompileError::ContractStorageFromExternalContext {
+                        span: get_op_span(op),
+                    });
+                }
+                _ => (),
             }
-            _ => (),
         }
-    }
-
-    if let Some(err) = error_emitted {
-        // Abort compilation because the finalized asm contains opcodes invalid to a script.
-        // Preemptively avoids the creation of scripts with opcodes not allowed at runtime.
-        Err(err)
-    } else {
         Ok(())
-    }
+    })
 }
 
 /// Checks if an opcode is one that cannot be executed from within a predicate.
@@ -88,54 +82,49 @@ pub(crate) fn check_predicate_opcodes(
 ) -> Result<(), ErrorEmitted> {
     use AllocatedOpcode::*;
 
-    let mut error_emitted = None;
-
-    for op in ops.iter() {
-        let mut invalid_opcode = |name_str: &str| {
-            error_emitted = Some(handler.emit_err(CompileError::InvalidOpcodeFromPredicate {
-                opcode: name_str.to_string(),
-                span: get_op_span(op),
-            }));
-        };
-        match op.opcode.clone() {
-            BAL(..) => invalid_opcode("BAL"),
-            BHEI(..) => invalid_opcode("BHEI"),
-            BHSH(..) => invalid_opcode("BHSH"),
-            BURN(..) => invalid_opcode("BURN"),
-            CALL(..) => invalid_opcode("CALL"),
-            CB(..) => invalid_opcode("CB"),
-            CCP(..) => invalid_opcode("CCP"),
-            CROO(..) => invalid_opcode("CROO"),
-            CSIZ(..) => invalid_opcode("CSIZ"),
-            GM(_, VirtualImmediate18 { value: 1..=2 }) => {
-                error_emitted = Some(handler.emit_err(CompileError::GMFromExternalContext {
+    // Abort compilation because the finalized asm contains opcodes invalid to a predicate.
+    // Preemptively avoids the creation of predicates with opcodes not allowed at runtime.
+    handler.scope(|handler| {
+        for op in ops.iter() {
+            let invalid_opcode = |name_str: &str| {
+                handler.emit_err(CompileError::InvalidOpcodeFromPredicate {
+                    opcode: name_str.to_string(),
                     span: get_op_span(op),
-                }));
-            }
-            LDC(..) => invalid_opcode("LDC"),
-            LOG(..) => invalid_opcode("LOG"),
-            LOGD(..) => invalid_opcode("LOGD"),
-            MINT(..) => invalid_opcode("MINT"),
-            RETD(..) => invalid_opcode("RETD"),
-            SMO(..) => invalid_opcode("SMO"),
-            SRW(..) => invalid_opcode("SRW"),
-            SRWQ(..) => invalid_opcode("SRWQ"),
-            SWW(..) => invalid_opcode("SWW"),
-            SWWQ(..) => invalid_opcode("SWWQ"),
-            TIME(..) => invalid_opcode("TIME"),
-            TR(..) => invalid_opcode("TR"),
-            TRO(..) => invalid_opcode("TRO"),
-            _ => (),
-        };
-    }
-
-    if let Some(err) = error_emitted {
-        // Abort compilation because the finalized asm contains opcodes invalid to a predicate.
-        // Preemptively avoids the creation of predicates with opcodes not allowed at runtime.
-        Err(err)
-    } else {
+                });
+            };
+            match op.opcode.clone() {
+                BAL(..) => invalid_opcode("BAL"),
+                BHEI(..) => invalid_opcode("BHEI"),
+                BHSH(..) => invalid_opcode("BHSH"),
+                BURN(..) => invalid_opcode("BURN"),
+                CALL(..) => invalid_opcode("CALL"),
+                CB(..) => invalid_opcode("CB"),
+                CCP(..) => invalid_opcode("CCP"),
+                CROO(..) => invalid_opcode("CROO"),
+                CSIZ(..) => invalid_opcode("CSIZ"),
+                GM(_, VirtualImmediate18 { value: 1..=2 }) => {
+                    handler.emit_err(CompileError::GMFromExternalContext {
+                        span: get_op_span(op),
+                    });
+                }
+                LDC(..) => invalid_opcode("LDC"),
+                LOG(..) => invalid_opcode("LOG"),
+                LOGD(..) => invalid_opcode("LOGD"),
+                MINT(..) => invalid_opcode("MINT"),
+                RETD(..) => invalid_opcode("RETD"),
+                SMO(..) => invalid_opcode("SMO"),
+                SRW(..) => invalid_opcode("SRW"),
+                SRWQ(..) => invalid_opcode("SRWQ"),
+                SWW(..) => invalid_opcode("SWW"),
+                SWWQ(..) => invalid_opcode("SWWQ"),
+                TIME(..) => invalid_opcode("TIME"),
+                TR(..) => invalid_opcode("TR"),
+                TRO(..) => invalid_opcode("TRO"),
+                _ => (),
+            };
+        }
         Ok(())
-    }
+    })
 }
 
 fn get_op_span(op: &AllocatedOp) -> Span {

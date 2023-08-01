@@ -1,5 +1,4 @@
-use sway_ast::token::Delimiter;
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{ast::Delimiter, Ident, Span, Spanned};
 use thiserror::Error;
 
 #[derive(Error, Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]

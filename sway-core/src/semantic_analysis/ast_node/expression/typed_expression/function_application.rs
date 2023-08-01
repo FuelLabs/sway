@@ -103,27 +103,21 @@ fn type_check_arguments(
     let type_engine = ctx.engines.te();
     let engines = ctx.engines();
 
-    let mut error_emitted = None;
-
-    let typed_arguments = arguments
-        .into_iter()
-        .map(|arg| {
-            let ctx = ctx
-                .by_ref()
-                .with_help_text("")
-                .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
-            ty::TyExpression::type_check(handler, ctx, arg.clone()).unwrap_or_else(|err| {
-                error_emitted = Some(err);
-                ty::TyExpression::error(arg.span(), engines)
+    handler.scope(|handler| {
+        let typed_arguments = arguments
+            .into_iter()
+            .map(|arg| {
+                let ctx = ctx
+                    .by_ref()
+                    .with_help_text("")
+                    .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+                ty::TyExpression::type_check(handler, ctx, arg.clone())
+                    .unwrap_or_else(|err| ty::TyExpression::error(err, arg.span(), engines))
             })
-        })
-        .collect();
+            .collect();
 
-    if let Some(err) = error_emitted {
-        Err(err)
-    } else {
         Ok(typed_arguments)
-    }
+    })
 }
 
 /// Unifies the types of the arguments with the types of the parameters. Returns
@@ -138,50 +132,42 @@ fn unify_arguments_and_parameters(
     let engines = ctx.engines();
     let mut typed_arguments_and_names = vec![];
 
-    let mut error_emitted = None;
+    handler.scope(|handler| {
+        for (arg, param) in typed_arguments.into_iter().zip(parameters.iter()) {
+            // unify the type of the argument with the type of the param
 
-    for (arg, param) in typed_arguments.into_iter().zip(parameters.iter()) {
-        // unify the type of the argument with the type of the param
-
-        let (warnings, errors) = type_engine.unify(
-            engines,
-            arg.return_type,
-            param.type_argument.type_id,
-            &arg.span,
-            "The argument that has been provided to this function's type does \
+            let unify_res = handler.scope(|unify_handler| {
+                type_engine.unify(
+                    unify_handler,
+                    engines,
+                    arg.return_type,
+                    param.type_argument.type_id,
+                    &arg.span,
+                    "The argument that has been provided to this function's type does \
             not match the declared type of the parameter in the function \
             declaration.",
-            None,
-        );
-        for warn in warnings {
-            handler.emit_warn(warn);
-        }
-        for err in errors.clone() {
-            error_emitted = Some(handler.emit_err(err));
-        }
-        if !errors.is_empty() {
-            continue;
-        }
+                    None,
+                );
+                Ok(())
+            });
+            if unify_res.is_err() {
+                continue;
+            }
 
-        // check for matching mutability
-        let param_mutability =
-            ty::VariableMutability::new_from_ref_mut(param.is_reference, param.is_mutable);
-        if arg.gather_mutability().is_immutable() && param_mutability.is_mutable() {
-            error_emitted = Some(handler.emit_err(
-                CompileError::ImmutableArgumentToMutableParameter {
+            // check for matching mutability
+            let param_mutability =
+                ty::VariableMutability::new_from_ref_mut(param.is_reference, param.is_mutable);
+            if arg.gather_mutability().is_immutable() && param_mutability.is_mutable() {
+                handler.emit_err(CompileError::ImmutableArgumentToMutableParameter {
                     span: arg.span.clone(),
-                },
-            ));
+                });
+            }
+
+            typed_arguments_and_names.push((param.name.clone(), arg));
         }
 
-        typed_arguments_and_names.push((param.name.clone(), arg));
-    }
-
-    if let Some(err) = error_emitted {
-        Err(err)
-    } else {
         Ok(typed_arguments_and_names)
-    }
+    })
 }
 
 pub(crate) fn check_function_arguments_arity(

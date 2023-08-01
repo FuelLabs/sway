@@ -165,7 +165,7 @@ impl Parse for UseStatement {
 impl Parse for Expression {
     fn parse(&self, ctx: &ParseContext) {
         match &self.kind {
-            ExpressionKind::Error(part_spans) => {
+            ExpressionKind::Error(part_spans, _) => {
                 for span in part_spans.iter() {
                     ctx.tokens.insert(
                         to_ident_key(&Ident::new(span.clone())),

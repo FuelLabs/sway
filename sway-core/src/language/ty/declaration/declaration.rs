@@ -31,7 +31,7 @@ pub enum TyDecl {
     // If type parameters are defined for a function, they are put in the namespace just for
     // the body of that function.
     GenericTypeForFunctionScope(GenericTypeForFunctionScope),
-    ErrorRecovery(Span),
+    ErrorRecovery(Span, ErrorEmitted),
     StorageDecl(StorageDecl),
     TypeAliasDecl(TypeAliasDecl),
 }
@@ -225,7 +225,7 @@ impl PartialEqWithEngines for TyDecl {
                     type_id: yti,
                 }),
             ) => xn == yn && type_engine.get(*xti).eq(&type_engine.get(*yti), engines),
-            (TyDecl::ErrorRecovery(x), TyDecl::ErrorRecovery(y)) => x == y,
+            (TyDecl::ErrorRecovery(x, _), TyDecl::ErrorRecovery(y, _)) => x == y,
             _ => false,
         }
     }
@@ -279,7 +279,7 @@ impl HashWithEngines for TyDecl {
                 name.hash(state);
                 type_engine.get(*type_id).hash(state, engines);
             }
-            TyDecl::ErrorRecovery(_) => {}
+            TyDecl::ErrorRecovery(..) => {}
         }
     }
 }
@@ -328,7 +328,7 @@ impl SubstTypes for TyDecl {
             | TyDecl::ConstantDecl(_)
             | TyDecl::StorageDecl(_)
             | TyDecl::GenericTypeForFunctionScope(_)
-            | TyDecl::ErrorRecovery(_) => (),
+            | TyDecl::ErrorRecovery(..) => (),
         }
     }
 }
@@ -365,7 +365,7 @@ impl ReplaceSelfType for TyDecl {
             | TyDecl::ConstantDecl(_)
             | TyDecl::StorageDecl(_)
             | TyDecl::GenericTypeForFunctionScope(_)
-            | TyDecl::ErrorRecovery(_) => (),
+            | TyDecl::ErrorRecovery(..) => (),
         }
     }
 }
@@ -405,7 +405,7 @@ impl Spanned for TyDecl {
             TyDecl::GenericTypeForFunctionScope(GenericTypeForFunctionScope { name, .. }) => {
                 name.span()
             }
-            TyDecl::ErrorRecovery(span) => span.clone(),
+            TyDecl::ErrorRecovery(span, _) => span.clone(),
         }
     }
 }
@@ -531,7 +531,7 @@ impl CollectTypesMetadata for TyDecl {
                     return Ok(vec![]);
                 }
             }
-            TyDecl::ErrorRecovery(_)
+            TyDecl::ErrorRecovery(..)
             | TyDecl::StorageDecl(_)
             | TyDecl::TraitDecl(_)
             | TyDecl::StructDecl(_)
@@ -562,7 +562,7 @@ impl GetDeclIdent for TyDecl {
             TyDecl::EnumVariantDecl(EnumVariantDecl { variant_name, .. }) => {
                 Some(variant_name.clone())
             }
-            TyDecl::ErrorRecovery(_) => None,
+            TyDecl::ErrorRecovery(..) => None,
             TyDecl::StorageDecl(_) => None,
         }
     }
@@ -591,7 +591,7 @@ impl TyDecl {
                     .get(ty.type_id)
                     .expect_enum(handler, engines, "", &span)
             }
-            TyDecl::ErrorRecovery(_) => Err(ErrorEmitted),
+            TyDecl::ErrorRecovery(_, err) => Err(*err),
             decl => Err(handler.emit_err(CompileError::DeclIsNotAnEnum {
                 actually: decl.friendly_type_name().to_string(),
                 span: decl.span(),
@@ -621,7 +621,7 @@ impl TyDecl {
                     .get(ty.type_id)
                     .expect_struct(handler, engines, &span)
             }
-            TyDecl::ErrorRecovery(_) => Err(ErrorEmitted),
+            TyDecl::ErrorRecovery(_, err) => Err(*err),
             decl => Err(handler.emit_err(CompileError::DeclIsNotAStruct {
                 actually: decl.friendly_type_name().to_string(),
                 span: decl.span(),
@@ -643,7 +643,7 @@ impl TyDecl {
                 subst_list: _,
                 decl_span,
             }) => Ok(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
-            TyDecl::ErrorRecovery(_) => Err(ErrorEmitted),
+            TyDecl::ErrorRecovery(_, err) => Err(*err),
             decl => Err(handler.emit_err(CompileError::DeclIsNotAFunction {
                 actually: decl.friendly_type_name().to_string(),
                 span: decl.span(),
@@ -660,7 +660,7 @@ impl TyDecl {
     ) -> Result<&TyVariableDecl, ErrorEmitted> {
         match self {
             TyDecl::VariableDecl(decl) => Ok(decl),
-            TyDecl::ErrorRecovery(_) => Err(ErrorEmitted),
+            TyDecl::ErrorRecovery(_, err) => Err(*err),
             decl => Err(handler.emit_err(CompileError::DeclIsNotAVariable {
                 actually: decl.friendly_type_name().to_string(),
                 span: decl.span(),
@@ -681,7 +681,7 @@ impl TyDecl {
                 decl_id,
                 decl_span,
             }) => Ok(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
-            TyDecl::ErrorRecovery(_) => Err(ErrorEmitted),
+            TyDecl::ErrorRecovery(_, err) => Err(*err),
             decl => Err(handler.emit_err(CompileError::DeclIsNotAnAbi {
                 actually: decl.friendly_type_name().to_string(),
                 span: decl.span(),
@@ -702,7 +702,7 @@ impl TyDecl {
                 decl_id,
                 decl_span,
             }) => Ok(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
-            TyDecl::ErrorRecovery(_) => Err(ErrorEmitted),
+            TyDecl::ErrorRecovery(_, err) => Err(*err),
             decl => Err(handler.emit_err(CompileError::DeclIsNotAConstant {
                 actually: decl.friendly_type_name().to_string(),
                 span: decl.span(),
@@ -747,7 +747,7 @@ impl TyDecl {
             ImplTrait(_) => "impl trait",
             AbiDecl(_) => "abi",
             GenericTypeForFunctionScope(_) => "generic type parameter",
-            ErrorRecovery(_) => "error",
+            ErrorRecovery(_, _) => "error",
             StorageDecl(_) => "contract storage",
             TypeAliasDecl(_) => "type alias",
         }
@@ -862,7 +862,7 @@ impl TyDecl {
             | TyDecl::ImplTrait(_)
             | TyDecl::StorageDecl(_)
             | TyDecl::AbiDecl(_)
-            | TyDecl::ErrorRecovery(_) => Visibility::Public,
+            | TyDecl::ErrorRecovery(_, _) => Visibility::Public,
             TyDecl::VariableDecl(decl) => decl.mutability.visibility(),
         }
     }

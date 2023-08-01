@@ -31,7 +31,7 @@ pub use {
         punctuated::Punctuated,
         statement::{Statement, StatementLet},
         submodule::Submodule,
-        token::{Delimiter, Group, Punct, PunctKind, Spacing, TokenStream, TokenTree},
+        token::{Group, Punct, Spacing, TokenStream, TokenTree},
         ty::Ty,
         where_clause::{WhereBound, WhereClause},
     },
@@ -41,5 +41,8 @@ pub use {
     std::{
         fmt, marker::PhantomData, mem, ops::ControlFlow, path::PathBuf, str::FromStr, sync::Arc,
     },
-    sway_types::{Ident, Span, Spanned},
+    sway_types::{
+        ast::{Delimiter, PunctKind},
+        Ident, Span, Spanned,
+    },
 };

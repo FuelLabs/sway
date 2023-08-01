@@ -7,6 +7,8 @@ mod substitute;
 mod unify;
 
 pub use priv_prelude::*;
+#[cfg(test)]
+use sway_error::handler::Handler;
 
 #[cfg(test)]
 use crate::{language::ty::TyEnumDecl, transform::AttributesMap};
@@ -118,7 +120,9 @@ fn generic_enum_resolution() {
     let ty_2 = engines.te().insert(&engines, TypeInfo::Enum(decl_ref_2));
 
     // Unify them together...
-    let (_, errors) = engines.te().unify(&engines, ty_1, ty_2, &sp, "", None);
+    let h = Handler::default();
+    engines.te().unify(&h, &engines, ty_1, ty_2, &sp, "", None);
+    let (_, errors) = h.consume();
     assert!(errors.is_empty());
 
     if let TypeInfo::Enum(decl_ref_1) = engines.te().get(ty_1) {
@@ -146,7 +150,9 @@ fn basic_numeric_unknown() {
         .insert(&engines, TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
-    let (_, errors) = engines.te().unify(&engines, id, id2, &sp, "", None);
+    let h = Handler::default();
+    engines.te().unify(&h, &engines, id, id2, &sp, "", None);
+    let (_, errors) = h.consume();
     assert!(errors.is_empty());
 
     assert!(matches!(
@@ -168,7 +174,9 @@ fn unify_numerics() {
         .insert(&engines, TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
-    let (_, errors) = engines.te().unify(&engines, id2, id, &sp, "", None);
+    let h = Handler::default();
+    engines.te().unify(&h, &engines, id2, id, &sp, "", None);
+    let (_, errors) = h.consume();
     assert!(errors.is_empty());
 
     assert!(matches!(
@@ -189,7 +197,9 @@ fn unify_numerics_2() {
     let id2 = type_engine.insert(&engines, TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
-    let (_, errors) = type_engine.unify(&engines, id, id2, &sp, "", None);
+    let h = Handler::default();
+    type_engine.unify(&h, &engines, id, id2, &sp, "", None);
+    let (_, errors) = h.consume();
     assert!(errors.is_empty());
 
     assert!(matches!(
