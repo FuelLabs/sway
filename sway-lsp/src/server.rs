@@ -33,15 +33,21 @@ impl LanguageServer for ServerState {
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        notification::handle_did_open_text_document(self, params).await;
+        if let Err(err) = notification::handle_did_open_text_document(self, params).await {
+            tracing::error!("{}", err.to_string());
+        }
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        notification::handle_did_change_text_document(self, params).await;
+        if let Err(err) = notification::handle_did_change_text_document(self, params).await {
+            tracing::error!("{}", err.to_string());
+        }
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
-        notification::handle_did_save_text_document(self, params).await;
+        if let Err(err) = notification::handle_did_save_text_document(self, params).await {
+            tracing::error!("{}", err.to_string());
+        }
     }
 
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
