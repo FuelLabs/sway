@@ -911,7 +911,8 @@ impl ReplaceDecls for TyExpressionVariant {
                 }
 
                 if let Some(filter_type) = filter_type_opt {
-                    let filtered_decl_mapping = decl_mapping.filter(filter_type, ctx.engines());
+                    let filtered_decl_mapping =
+                        decl_mapping.filter_functions_by_self_type(filter_type, ctx.engines());
                     fn_ref.replace_decls(&filtered_decl_mapping, handler, ctx)?;
                 } else {
                     fn_ref.replace_decls(decl_mapping, handler, ctx)?;

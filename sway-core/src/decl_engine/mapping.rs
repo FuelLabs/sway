@@ -103,7 +103,12 @@ impl DeclMapping {
         None
     }
 
-    pub(crate) fn filter(&self, self_type: TypeId, engines: &Engines) -> DeclMapping {
+    /// This method returns only associated item functions that have as self type the given type.
+    pub(crate) fn filter_functions_by_self_type(
+        &self,
+        self_type: TypeId,
+        engines: &Engines,
+    ) -> DeclMapping {
         let mut mapping: Vec<(SourceDecl, DestinationDecl)> = vec![];
         for (source_decl_ref, dest_decl_ref) in self.mapping.iter().cloned() {
             match dest_decl_ref {
