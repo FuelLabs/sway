@@ -4,13 +4,16 @@ use num_bigint::BigUint;
 use std::sync::Arc;
 use sway_ast::literal::{LitChar, LitInt, LitIntType, LitString, Literal};
 use sway_ast::token::{
-    Comment, CommentKind, CommentedGroup, CommentedTokenStream, CommentedTokenTree, Delimiter,
-    DocComment, DocStyle, GenericTokenTree, Punct, PunctKind, Spacing, TokenStream,
+    Comment, CommentKind, CommentedGroup, CommentedTokenStream, CommentedTokenTree, DocComment,
+    DocStyle, GenericTokenTree, Punct, Spacing, TokenStream,
 };
 use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::lex_error::{LexError, LexErrorKind};
-use sway_types::{Ident, SourceId, Span, Spanned};
+use sway_types::{
+    ast::{Delimiter, PunctKind},
+    Ident, SourceId, Span, Spanned,
+};
 use unicode_xid::UnicodeXID;
 
 #[extension_trait]

@@ -75,7 +75,10 @@ fn parse_atomic_pattern(parser: &mut Parser) -> ParseResult<Pattern> {
 
         let path = parser.parse::<PathExpr>()?;
         if path.incomplete_suffix {
-            return Ok(Pattern::Error(Box::new([path.span()])));
+            return Ok(Pattern::Error(
+                Box::new([path.span()]),
+                parser.emit_error(ParseErrorKind::ExpectedPathType),
+            ));
         }
         if let Some(args) = Parens::try_parse(parser)? {
             return Ok(Pattern::Constructor { path, args });

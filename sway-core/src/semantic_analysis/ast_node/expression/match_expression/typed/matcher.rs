@@ -124,17 +124,10 @@ pub(crate) fn matcher(
     let engines = ctx.engines();
 
     // unify the type of the scrutinee with the type of the expression
-    let mut error_emitted = None;
-    let (warnings, errors) = type_engine.unify(engines, type_id, exp.return_type, &span, "", None);
-    for warn in warnings {
-        handler.emit_warn(warn);
-    }
-    for err in errors {
-        error_emitted = Some(handler.emit_err(err));
-    }
-    if let Some(err) = error_emitted {
-        return Err(err);
-    }
+    handler.scope(|h| {
+        type_engine.unify(h, engines, type_id, exp.return_type, &span, "", None);
+        Ok(())
+    })?;
 
     match variant {
         ty::TyScrutineeVariant::Or(elems) => {

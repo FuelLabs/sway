@@ -91,13 +91,7 @@ impl ty::TyCodeBlock {
                 }
             });
 
-        let (warnings, errors) = ctx.unify_with_self(block_type, &span);
-        for warn in warnings {
-            handler.emit_warn(warn);
-        }
-        for err in errors {
-            handler.emit_err(err);
-        }
+        ctx.unify_with_self(handler, block_type, &span);
 
         let typed_code_block = ty::TyCodeBlock {
             contents: evaluated_contents,

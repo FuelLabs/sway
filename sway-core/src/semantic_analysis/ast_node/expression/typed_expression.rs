@@ -113,7 +113,7 @@ impl ty::TyExpression {
         let span = expr_span.clone();
         let res = match expr.kind {
             // We've already emitted an error for the `::Error` case.
-            ExpressionKind::Error(_) => Ok(ty::TyExpression::error(span, engines)),
+            ExpressionKind::Error(_, err) => Ok(ty::TyExpression::error(err, span, engines)),
             ExpressionKind::Literal(lit) => Ok(Self::type_check_literal(engines, lit, span)),
             ExpressionKind::AmbiguousVariableExpression(name) => {
                 let call_path = CallPath {
@@ -349,7 +349,7 @@ impl ty::TyExpression {
                     );
                 let expr_span = expr.span();
                 let expr = ty::TyExpression::type_check(handler, ctx, *expr)
-                    .unwrap_or_else(|_| ty::TyExpression::error(expr_span, engines));
+                    .unwrap_or_else(|err| ty::TyExpression::error(err, expr_span, engines));
                 let typed_expr = ty::TyExpression {
                     expression: ty::TyExpressionVariant::Return(Box::new(expr)),
                     return_type: type_engine.insert(engines, TypeInfo::Unknown),
@@ -365,13 +365,7 @@ impl ty::TyExpression {
         };
 
         // if the return type cannot be cast into the annotation type then it is a type error
-        let (warnings, errors) = ctx.unify_with_self(typed_expression.return_type, &expr_span);
-        for warn in warnings {
-            handler.emit_warn(warn);
-        }
-        for err in errors {
-            handler.emit_err(err);
-        }
+        ctx.unify_with_self(handler, typed_expression.return_type, &expr_span);
 
         // The annotation may result in a cast, which is handled in the type engine.
         typed_expression.return_type = ctx
@@ -382,7 +376,7 @@ impl ty::TyExpression {
                 EnforceTypeArguments::No,
                 None,
             )
-            .unwrap_or_else(|_| type_engine.insert(engines, TypeInfo::ErrorRecovery));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
 
         // Literals of type Numeric can now be resolved if typed_expression.return_type is
         // an UnsignedInteger or a Numeric
@@ -483,19 +477,19 @@ impl ty::TyExpression {
                 }
             }
             Some(a) => {
-                handler.emit_err(CompileError::NotAVariable {
+                let err = handler.emit_err(CompileError::NotAVariable {
                     name: name.clone(),
                     what_it_is: a.friendly_type_name(),
                     span,
                 });
-                ty::TyExpression::error(name.span(), engines)
+                ty::TyExpression::error(err, name.span(), engines)
             }
             None => {
-                handler.emit_err(CompileError::UnknownVariable {
+                let err = handler.emit_err(CompileError::UnknownVariable {
                     var_name: name.clone(),
                     span,
                 });
-                ty::TyExpression::error(name.span(), engines)
+                ty::TyExpression::error(err, name.span(), engines)
             }
         };
         Ok(exp)
@@ -533,10 +527,10 @@ impl ty::TyExpression {
         let mut ctx = ctx.with_help_text("");
         let engines = ctx.engines();
         let typed_lhs = ty::TyExpression::type_check(handler, ctx.by_ref(), lhs.clone())
-            .unwrap_or_else(|_| ty::TyExpression::error(lhs.span(), engines));
+            .unwrap_or_else(|err| ty::TyExpression::error(err, lhs.span(), engines));
 
         let typed_rhs = ty::TyExpression::type_check(handler, ctx.by_ref(), rhs.clone())
-            .unwrap_or_else(|_| ty::TyExpression::error(rhs.span(), engines));
+            .unwrap_or_else(|err| ty::TyExpression::error(err, rhs.span(), engines));
 
         let type_annotation = ctx.type_annotation();
         let exp = instantiate_lazy_operator(op, typed_lhs, typed_rhs, type_annotation, span);
@@ -560,13 +554,7 @@ impl ty::TyExpression {
                 )
             });
 
-        let (warnings, errors) = ctx.unify_with_self(block_return_type, &span);
-        for warn in warnings {
-            handler.emit_warn(warn);
-        }
-        for err in errors {
-            handler.emit_err(err);
-        }
+        ctx.unify_with_self(handler, block_return_type, &span);
 
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
@@ -596,7 +584,7 @@ impl ty::TyExpression {
                 .with_help_text("The condition of an if expression must be a boolean expression.")
                 .with_type_annotation(type_engine.insert(engines, TypeInfo::Boolean));
             ty::TyExpression::type_check(handler, ctx, condition.clone())
-                .unwrap_or_else(|_| ty::TyExpression::error(condition.span(), engines))
+                .unwrap_or_else(|err| ty::TyExpression::error(err, condition.span(), engines))
         };
         let then = {
             let ctx = ctx
@@ -604,7 +592,7 @@ impl ty::TyExpression {
                 .with_help_text("")
                 .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
             ty::TyExpression::type_check(handler, ctx, then.clone())
-                .unwrap_or_else(|_| ty::TyExpression::error(then.span(), engines))
+                .unwrap_or_else(|err| ty::TyExpression::error(err, then.span(), engines))
         };
         let r#else = r#else.map(|expr| {
             let ctx = ctx
@@ -612,7 +600,7 @@ impl ty::TyExpression {
                 .with_help_text("")
                 .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
             ty::TyExpression::type_check(handler, ctx, expr.clone())
-                .unwrap_or_else(|_| ty::TyExpression::error(expr.span(), engines))
+                .unwrap_or_else(|err| ty::TyExpression::error(err, expr.span(), engines))
         });
         let exp = instantiate_if_expression(handler, ctx, condition, then, r#else, span)?;
         Ok(exp)
@@ -635,7 +623,7 @@ impl ty::TyExpression {
                 .with_help_text("")
                 .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
             ty::TyExpression::type_check(handler, ctx, value.clone())
-                .unwrap_or_else(|_| ty::TyExpression::error(value.span(), engines))
+                .unwrap_or_else(|err| ty::TyExpression::error(err, value.span(), engines))
         };
         let type_id = typed_value.return_type;
 
@@ -719,7 +707,7 @@ impl ty::TyExpression {
                 EnforceTypeArguments::No,
                 None,
             )
-            .unwrap_or_else(|_| type_engine.insert(engines, TypeInfo::ErrorRecovery));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
 
         // type check the initializers
         let typed_registers =
@@ -735,8 +723,8 @@ impl ty::TyExpression {
                             );
 
                             ty::TyExpression::type_check(handler, ctx, initializer.clone())
-                                .unwrap_or_else(|_| {
-                                    ty::TyExpression::error(initializer.span(), engines)
+                                .unwrap_or_else(|err| {
+                                    ty::TyExpression::error(err, initializer.span(), engines)
                                 })
                         }),
                     },
@@ -810,7 +798,7 @@ impl ty::TyExpression {
                 .with_help_text("tuple field type does not match the expected type")
                 .with_type_annotation(field_type.type_id);
             let typed_field = ty::TyExpression::type_check(handler, ctx, field)
-                .unwrap_or_else(|_| ty::TyExpression::error(field_span, engines));
+                .unwrap_or_else(|err| ty::TyExpression::error(err, field_span, engines));
             typed_field_types.push(TypeArgument {
                 type_id: typed_field.return_type,
                 initial_type_id: field_type.type_id,
@@ -1310,8 +1298,8 @@ impl ty::TyExpression {
             ctx.self_type(),
             ctx.engines(),
         ) {
-            Ok(val) => val,
-            Err(_) => return None,
+            Ok(Some(val)) => val,
+            Ok(None) | Err(_) => return None,
         };
 
         Some((const_decl_ref, call_path_binding.clone()))
@@ -1338,7 +1326,7 @@ impl ty::TyExpression {
                 .with_help_text("An address that is being ABI cast must be of type b256")
                 .with_type_annotation(type_engine.insert(engines, TypeInfo::B256));
             ty::TyExpression::type_check(handler, ctx, address)
-                .unwrap_or_else(|_| ty::TyExpression::error(err_span, engines))
+                .unwrap_or_else(|err| ty::TyExpression::error(err, err_span, engines))
         };
 
         // look up the call path and get the declaration it references
@@ -1513,16 +1501,17 @@ impl ty::TyExpression {
                     .with_help_text("")
                     .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
                 Self::type_check(handler, ctx, expr)
-                    .unwrap_or_else(|_| ty::TyExpression::error(span, engines))
+                    .unwrap_or_else(|err| ty::TyExpression::error(err, span, engines))
             })
             .collect();
 
         let elem_type = typed_contents[0].return_type;
         for typed_elem in &typed_contents[1..] {
-            let (new_warnings, new_errors) = ctx
-                .by_ref()
+            let h = Handler::default();
+            ctx.by_ref()
                 .with_type_annotation(elem_type)
-                .unify_with_self(typed_elem.return_type, &typed_elem.span);
+                .unify_with_self(&h, typed_elem.return_type, &typed_elem.span);
+            let (new_errors, new_warnings) = h.consume();
             let no_warnings = new_warnings.is_empty();
             let no_errors = new_errors.is_empty();
             for warn in new_warnings {
@@ -1744,8 +1733,8 @@ impl ty::TyExpression {
                             let ctx = ctx.by_ref().with_help_text("");
                             let typed_index =
                                 ty::TyExpression::type_check(handler, ctx, index.as_ref().clone())
-                                    .unwrap_or_else(|_| {
-                                        ty::TyExpression::error(span.clone(), engines)
+                                    .unwrap_or_else(|err| {
+                                        ty::TyExpression::error(err, span.clone(), engines)
                                     });
                             names_vec.push(ty::ProjectionKind::ArrayIndex {
                                 index: Box::new(typed_index),
@@ -1771,7 +1760,7 @@ impl ty::TyExpression {
                 let ctx = ctx.with_type_annotation(ty_of_field).with_help_text("");
                 let rhs_span = rhs.span();
                 let rhs = ty::TyExpression::type_check(handler, ctx, rhs)
-                    .unwrap_or_else(|_| ty::TyExpression::error(rhs_span, engines));
+                    .unwrap_or_else(|err| ty::TyExpression::error(err, rhs_span, engines));
 
                 Ok(ty::TyExpression {
                     expression: ty::TyExpressionVariant::Reassignment(Box::new(
@@ -1881,8 +1870,8 @@ impl ty::TyExpression {
                 Ok(exp)
             }
             Err(e) => {
-                handler.emit_err(e);
-                let exp = ty::TyExpression::error(span, engines);
+                let err = handler.emit_err(e);
+                let exp = ty::TyExpression::error(err, span, engines);
                 Ok(exp)
             }
         }

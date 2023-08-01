@@ -9,12 +9,8 @@ use crate::{
     type_system::{
         EnforceTypeArguments, MonomorphizeHelper, SubstTypes, TypeArgument, TypeId, TypeInfo,
     },
-    CompileWarning,
 };
-use sway_error::{
-    error::CompileError,
-    handler::{ErrorEmitted, Handler},
-};
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{span::Span, Ident};
 
 /// Contextual state tracked and accumulated throughout type-checking.
@@ -322,12 +318,9 @@ impl<'a> TypeCheckContext<'a> {
 
     /// Short-hand around `type_system::unify_with_self`, where the `TypeCheckContext` provides the
     /// type annotation, self type and help text.
-    pub(crate) fn unify_with_self(
-        &self,
-        ty: TypeId,
-        span: &Span,
-    ) -> (Vec<CompileWarning>, Vec<CompileError>) {
+    pub(crate) fn unify_with_self(&self, handler: &Handler, ty: TypeId, span: &Span) {
         self.engines.te().unify_with_self(
+            handler,
             self.engines(),
             ty,
             self.type_annotation(),
