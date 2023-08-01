@@ -35,12 +35,7 @@ pub fn misc_demotion(
     let asm_arg_res = asm_block_arg_demotion(context, function)?;
     let asm_ret_res = asm_block_ret_demotion(context, function)?;
     let addrof_res = ptr_to_int_demotion(context, function)?;
-
-    let before = context.to_string();
     let wide_binary_op_res = wide_binary_op_demotion(context, function)?;
-    let after = context.to_string();
-
-    println!("{}", prettydiff::diff_lines(&before, &after));
 
     Ok(log_res || asm_arg_res || asm_ret_res || addrof_res || wide_binary_op_res)
 }
