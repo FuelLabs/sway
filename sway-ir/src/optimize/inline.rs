@@ -576,6 +576,17 @@ fn inline_instruction(
                 FuelVmInstruction::StateStoreWord { stored_val, key } => new_block
                     .ins(context)
                     .state_store_word(map_value(stored_val), map_value(key)),
+                FuelVmInstruction::WideBinaryOp {
+                    op,
+                    arg1,
+                    arg2,
+                    result,
+                } => new_block.ins(context).wide_binary_op(
+                    op,
+                    map_value(arg1),
+                    map_value(arg2),
+                    map_value(result),
+                ),
             },
             Instruction::GetElemPtr {
                 base,

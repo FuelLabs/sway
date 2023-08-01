@@ -236,6 +236,12 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
                             stored_val: dst_val,
                             key,
                         } => self.verify_state_store_word(dst_val, key)?,
+                        FuelVmInstruction::WideBinaryOp {
+                            op,
+                            arg1,
+                            arg2,
+                            result,
+                        } => self.verify_wide_binary_op(op, arg1, arg2, result)?,
                     },
                     Instruction::GetElemPtr {
                         base,
@@ -301,6 +307,33 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
                     return Err(IrError::VerifyUnaryOpIncorrectArgType);
                 }
             }
+        }
+
+        Ok(())
+    }
+
+    fn verify_wide_binary_op(
+        &self,
+        _: &BinaryOpKind,
+        arg1: &Value,
+        arg2: &Value,
+        result: &Value,
+    ) -> Result<(), IrError> {
+        let arg1_ty = arg1
+            .get_type(self.context)
+            .ok_or(IrError::VerifyBinaryOpIncorrectArgType)?;
+        let arg2_ty = arg2
+            .get_type(self.context)
+            .ok_or(IrError::VerifyBinaryOpIncorrectArgType)?;
+        let result_ty = result
+            .get_type(self.context)
+            .ok_or(IrError::VerifyBinaryOpIncorrectArgType)?;
+
+        if arg1_ty.is_ptr(self.context)
+            && arg2_ty.is_ptr(self.context)
+            && result_ty.is_ptr(self.context)
+        {
+            return Err(IrError::VerifyBinaryOpIncorrectArgType);
         }
 
         Ok(())

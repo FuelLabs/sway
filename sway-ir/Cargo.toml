@@ -14,6 +14,7 @@ downcast-rs = "1.2.0"
 filecheck = "0.5"
 generational-arena = "0.2"
 peg = "0.7"
+prettydiff = "0.6.4"
 rustc-hash = "1.1.0"
 sway-ir-macros = { version = "0.42.1", path = "sway-ir-macros" }
 sway-types = { version = "0.42.1", path = "../sway-types" }

@@ -5586,6 +5586,7 @@ dependencies = [
  "filecheck",
  "generational-arena",
  "peg",
+ "prettydiff 0.6.4",
  "rustc-hash",
  "sway-ir-macros",
  "sway-types",
