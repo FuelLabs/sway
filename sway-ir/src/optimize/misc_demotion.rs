@@ -9,8 +9,8 @@
 /// - Fuel ASM block return values: These are also assumed to be pointers for 'by-reference'
 ///   values.
 use crate::{
-    asm::AsmArg, AnalysisResults, BinaryOpKind, Context, FuelVmInstruction,
-    Function, Instruction, IrError, Pass, PassMutability, ScopedPass, Type, Value,
+    asm::AsmArg, AnalysisResults, BinaryOpKind, Context, FuelVmInstruction, Function, Instruction,
+    IrError, Pass, PassMutability, ScopedPass, Type, Value,
 };
 
 use rustc_hash::FxHashMap;

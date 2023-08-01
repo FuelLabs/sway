@@ -426,12 +426,7 @@ pub(crate) fn on_enter(
     {
         Ok((uri, session)) => {
             // handle on_enter capabilities if they are enabled
-            Ok(capabilities::on_enter(
-                &config,
-                &session,
-                &uri,
-                &params,
-            ))
+            Ok(capabilities::on_enter(&config, &session, &uri, &params))
         }
         Err(err) => {
             tracing::error!("{}", err.to_string());
