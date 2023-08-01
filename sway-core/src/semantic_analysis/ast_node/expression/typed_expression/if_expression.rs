@@ -30,7 +30,8 @@ pub(crate) fn instantiate_if_expression(
         } else {
             type_engine.insert(engines, TypeInfo::Tuple(vec![]))
         };
-        let (warnings, errors) = type_engine.unify_with_self(
+        type_engine.unify_with_self(
+            handler,
             engines,
             then.return_type,
             ty_to_check,
@@ -39,12 +40,6 @@ pub(crate) fn instantiate_if_expression(
             "`then` branch must return expected type.",
             None,
         );
-        for warn in warnings {
-            handler.emit_warn(warn);
-        }
-        for err in errors {
-            handler.emit_err(err);
-        }
     }
     let mut else_deterministically_aborts = false;
     let r#else = r#else.map(|r#else| {
@@ -56,7 +51,8 @@ pub(crate) fn instantiate_if_expression(
         };
         if !else_deterministically_aborts {
             // if this does not deterministically_abort, check the block return type
-            let (warnings, errors) = type_engine.unify_with_self(
+            type_engine.unify_with_self(
+                handler,
                 engines,
                 r#else.return_type,
                 ty_to_check,
@@ -65,12 +61,6 @@ pub(crate) fn instantiate_if_expression(
                 "`else` branch must return expected type.",
                 None,
             );
-            for warn in warnings {
-                handler.emit_warn(warn);
-            }
-            for err in errors {
-                handler.emit_err(err);
-            }
         }
         Box::new(r#else)
     });
@@ -81,7 +71,10 @@ pub(crate) fn instantiate_if_expression(
         .unwrap_or_else(|| type_engine.insert(engines, TypeInfo::Tuple(Vec::new())));
     // if there is a type annotation, then the else branch must exist
     if !else_deterministically_aborts && !then_deterministically_aborts {
-        let (new_warnings, new_errors) = type_engine.unify_with_self(
+        // delay emitting the errors until we decide if this is a missing else branch or some other set of errors
+        let h = Handler::default();
+        type_engine.unify_with_self(
+            &h,
             engines,
             then.return_type,
             r#else_ret_ty,
@@ -90,6 +83,8 @@ pub(crate) fn instantiate_if_expression(
             "The two branches of an if expression must return the same type.",
             None,
         );
+
+        let (new_errors, new_warnings) = h.consume();
         for warn in new_warnings {
             handler.emit_warn(warn);
         }

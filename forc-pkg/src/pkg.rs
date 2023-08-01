@@ -1800,8 +1800,8 @@ pub fn compile(
         Ok(programs) => programs,
     };
     let typed_program = match programs.typed.as_ref() {
-        None => return fail(handler),
-        Some(typed_program) => typed_program,
+        Err(_) => return fail(handler),
+        Ok(typed_program) => typed_program,
     };
 
     if profile.print_ast {
@@ -1813,7 +1813,7 @@ pub fn compile(
 
     let namespace = typed_program.root.namespace.clone().into();
 
-    if handler.has_error() {
+    if handler.has_errors() {
         return fail(handler);
     }
 
@@ -1893,7 +1893,7 @@ pub fn compile(
         metrics
     );
 
-    let errored = handler.has_error() || (handler.has_warning() && profile.error_on_warnings);
+    let errored = handler.has_errors() || (handler.has_warnings() && profile.error_on_warnings);
 
     let compiled = match bc_res {
         Ok(compiled) if !errored => compiled,
@@ -2663,7 +2663,7 @@ pub fn check(
         };
 
         match programs.typed.as_ref() {
-            Some(typed_program) => {
+            Ok(typed_program) => {
                 if let TreeType::Library = typed_program.kind.tree_type() {
                     let mut namespace = typed_program.root.namespace.clone();
                     namespace.name = Some(Ident::new_no_span(pkg.name.clone()));
@@ -2681,7 +2681,7 @@ pub fn check(
 
                 source_map.insert_dependency(manifest.dir());
             }
-            None => {
+            Err(_) => {
                 results.push((programs_res.ok(), handler));
                 return Ok(results);
             }

@@ -2,10 +2,9 @@ use crate::{Parse, ParseBracket, ParseResult, ParseToEnd, Parser, ParserConsumed
 
 use sway_ast::brackets::{Parens, SquareBrackets};
 use sway_ast::keywords::{DoubleColonToken, OpenAngleBracketToken};
-use sway_ast::token::Delimiter;
 use sway_ast::ty::{Ty, TyArrayDescriptor, TyTupleDescriptor};
 use sway_error::parser_error::ParseErrorKind;
-use sway_types::Ident;
+use sway_types::{ast::Delimiter, Ident};
 
 impl Parse for Ty {
     fn parse(parser: &mut Parser) -> ParseResult<Ty> {

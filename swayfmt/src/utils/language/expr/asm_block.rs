@@ -9,10 +9,9 @@ use crate::{
 use std::fmt::Write;
 use sway_ast::{
     expr::asm::{AsmBlock, AsmBlockContents, AsmFinalExpr, AsmRegisterDeclaration},
-    token::Delimiter,
     Instruction,
 };
-use sway_types::Spanned;
+use sway_types::{ast::Delimiter, Spanned};
 
 impl Format for AsmBlock {
     fn format(

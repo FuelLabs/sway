@@ -6,8 +6,8 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{token::Delimiter, ExprArrayDescriptor, ExprTupleDescriptor};
-use sway_types::Spanned;
+use sway_ast::{ExprArrayDescriptor, ExprTupleDescriptor};
+use sway_types::{ast::Delimiter, Spanned};
 
 impl Format for ExprTupleDescriptor {
     fn format(

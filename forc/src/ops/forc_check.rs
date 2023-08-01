@@ -38,6 +38,6 @@ pub fn check(command: CheckCommand, engines: &Engines) -> Result<(Option<ty::TyP
     let (res, handler) = v
         .pop()
         .expect("there is guaranteed to be at least one elem in the vector");
-    let res = res.and_then(|programs| programs.typed);
+    let res = res.and_then(|programs| programs.typed.ok());
     Ok((res, handler))
 }

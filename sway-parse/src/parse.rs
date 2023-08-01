@@ -1,10 +1,9 @@
 use crate::keywords::RESERVED_KEYWORDS;
 use crate::{ParseResult, Parser, ParserConsumed, Peeker};
 
-use sway_ast::token::Delimiter;
 use sway_ast::Intrinsic;
 use sway_error::parser_error::ParseErrorKind;
-use sway_types::{Ident, Spanned};
+use sway_types::{ast::Delimiter, Ident, Spanned};
 
 pub trait Parse {
     fn parse(parser: &mut Parser) -> ParseResult<Self>

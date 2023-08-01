@@ -191,8 +191,8 @@ fn type_check_size_of_type(
     let targ = type_arguments[0].clone();
     let initial_type_info = type_engine
         .to_typeinfo(targ.type_id, &targ.span)
-        .map_err(CompileError::from)
-        .unwrap_or_else(|_| TypeInfo::ErrorRecovery);
+        .map_err(|e| handler.emit_err(e.into()))
+        .unwrap_or_else(TypeInfo::ErrorRecovery);
     let initial_type_id = type_engine.insert(engines, initial_type_info);
     let type_id = ctx
         .resolve_type_with_self(
@@ -202,7 +202,7 @@ fn type_check_size_of_type(
             EnforceTypeArguments::Yes,
             None,
         )
-        .unwrap_or_else(|_| type_engine.insert(engines, TypeInfo::ErrorRecovery));
+        .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
     let intrinsic_function = ty::TyIntrinsicFunctionKind {
         kind,
         arguments: vec![],
@@ -243,8 +243,8 @@ fn type_check_is_reference_type(
     let targ = type_arguments[0].clone();
     let initial_type_info = type_engine
         .to_typeinfo(targ.type_id, &targ.span)
-        .map_err(CompileError::from)
-        .unwrap_or_else(|_| TypeInfo::ErrorRecovery);
+        .map_err(|e| handler.emit_err(e.into()))
+        .unwrap_or_else(TypeInfo::ErrorRecovery);
     let initial_type_id = type_engine.insert(engines, initial_type_info);
     let type_id = ctx
         .resolve_type_with_self(
@@ -254,7 +254,7 @@ fn type_check_is_reference_type(
             EnforceTypeArguments::Yes,
             None,
         )
-        .unwrap_or_else(|_| type_engine.insert(engines, TypeInfo::ErrorRecovery));
+        .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
     let intrinsic_function = ty::TyIntrinsicFunctionKind {
         kind,
         arguments: vec![],
@@ -312,8 +312,8 @@ fn type_check_cmp(
     // Check for supported argument types
     let arg_ty = type_engine
         .to_typeinfo(lhs.return_type, &lhs.span)
-        .map_err(CompileError::from)
-        .unwrap_or_else(|_| TypeInfo::ErrorRecovery);
+        .map_err(|e| handler.emit_err(e.into()))
+        .unwrap_or_else(TypeInfo::ErrorRecovery);
     let is_valid_arg_ty = matches!(arg_ty, TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric)
         || (matches!(&kind, Intrinsic::Eq)
             && matches!(arg_ty, TypeInfo::Boolean | TypeInfo::RawUntypedPtr));
@@ -384,8 +384,8 @@ fn type_check_gtf(
     let targ = type_arguments[0].clone();
     let initial_type_info = type_engine
         .to_typeinfo(targ.type_id, &targ.span)
-        .map_err(CompileError::from)
-        .unwrap_or_else(|_| TypeInfo::ErrorRecovery);
+        .map_err(|e| handler.emit_err(e.into()))
+        .unwrap_or_else(TypeInfo::ErrorRecovery);
     let initial_type_id = type_engine.insert(engines, initial_type_info);
     let type_id = ctx
         .resolve_type_with_self(
@@ -395,7 +395,7 @@ fn type_check_gtf(
             EnforceTypeArguments::Yes,
             None,
         )
-        .unwrap_or_else(|_| type_engine.insert(engines, TypeInfo::ErrorRecovery));
+        .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
 
     Ok((
         ty::TyIntrinsicFunctionKind {
@@ -439,8 +439,8 @@ fn type_check_addr_of(
     let exp = ty::TyExpression::type_check(handler, ctx, arguments[0].clone())?;
     let copy_type_info = type_engine
         .to_typeinfo(exp.return_type, &span)
-        .map_err(CompileError::from)
-        .unwrap_or_else(|_| TypeInfo::ErrorRecovery);
+        .map_err(|e| handler.emit_err(e.into()))
+        .unwrap_or_else(TypeInfo::ErrorRecovery);
     if copy_type_info.is_copy_type() {
         return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
@@ -488,8 +488,8 @@ fn type_check_state_clear(
     let key_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[0].clone())?;
     let key_ty = type_engine
         .to_typeinfo(key_exp.return_type, &span)
-        .map_err(CompileError::from)
-        .unwrap_or_else(|_| TypeInfo::ErrorRecovery);
+        .map_err(|e| handler.emit_err(e.into()))
+        .unwrap_or_else(TypeInfo::ErrorRecovery);
     if !key_ty.eq(&TypeInfo::B256, ctx.engines()) {
         return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
@@ -542,8 +542,8 @@ fn type_check_state_load_word(
     let exp = ty::TyExpression::type_check(handler, ctx, arguments[0].clone())?;
     let key_ty = type_engine
         .to_typeinfo(exp.return_type, &span)
-        .map_err(CompileError::from)
-        .unwrap_or_else(|_| TypeInfo::ErrorRecovery);
+        .map_err(|e| handler.emit_err(e.into()))
+        .unwrap_or_else(TypeInfo::ErrorRecovery);
     if !key_ty.eq(&TypeInfo::B256, engines) {
         return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
@@ -597,8 +597,8 @@ fn type_check_state_store_word(
     let key_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[0].clone())?;
     let key_ty = type_engine
         .to_typeinfo(key_exp.return_type, &span)
-        .map_err(CompileError::from)
-        .unwrap_or_else(|_| TypeInfo::ErrorRecovery);
+        .map_err(|e| handler.emit_err(e.into()))
+        .unwrap_or_else(TypeInfo::ErrorRecovery);
     if !key_ty.eq(&TypeInfo::B256, ctx.engines()) {
         return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
@@ -615,8 +615,8 @@ fn type_check_state_store_word(
         let mut ctx = ctx.with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
         let initial_type_info = type_engine
             .to_typeinfo(targ.type_id, &targ.span)
-            .map_err(CompileError::from)
-            .unwrap_or_else(|_| TypeInfo::ErrorRecovery);
+            .map_err(|e| handler.emit_err(e.into()))
+            .unwrap_or_else(TypeInfo::ErrorRecovery);
         let initial_type_id = type_engine.insert(engines, initial_type_info);
         let type_id = ctx
             .resolve_type_with_self(
@@ -626,7 +626,7 @@ fn type_check_state_store_word(
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|_| type_engine.insert(engines, TypeInfo::ErrorRecovery));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
         TypeArgument {
             type_id,
             initial_type_id,
@@ -686,8 +686,8 @@ fn type_check_state_quad(
     let key_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[0].clone())?;
     let key_ty = type_engine
         .to_typeinfo(key_exp.return_type, &span)
-        .map_err(CompileError::from)
-        .unwrap_or_else(|_| TypeInfo::ErrorRecovery);
+        .map_err(|e| handler.emit_err(e.into()))
+        .unwrap_or_else(TypeInfo::ErrorRecovery);
     if !key_ty.eq(&TypeInfo::B256, ctx.engines()) {
         return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
@@ -706,8 +706,8 @@ fn type_check_state_quad(
         let mut ctx = ctx.with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
         let initial_type_info = type_engine
             .to_typeinfo(targ.type_id, &targ.span)
-            .map_err(CompileError::from)
-            .unwrap_or_else(|_| TypeInfo::ErrorRecovery);
+            .map_err(|e| handler.emit_err(e.into()))
+            .unwrap_or_else(TypeInfo::ErrorRecovery);
         let initial_type_id = type_engine.insert(engines, initial_type_info);
         let type_id = ctx
             .resolve_type_with_self(
@@ -717,7 +717,7 @@ fn type_check_state_quad(
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|_| type_engine.insert(engines, TypeInfo::ErrorRecovery));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
         TypeArgument {
             type_id,
             initial_type_id,
@@ -991,8 +991,8 @@ fn type_check_ptr_ops(
     let targ = type_arguments[0].clone();
     let initial_type_info = type_engine
         .to_typeinfo(targ.type_id, &targ.span)
-        .map_err(CompileError::from)
-        .unwrap_or_else(|_| TypeInfo::ErrorRecovery);
+        .map_err(|e| handler.emit_err(e.into()))
+        .unwrap_or_else(TypeInfo::ErrorRecovery);
     let initial_type_id = type_engine.insert(engines, initial_type_info);
     let type_id = ctx
         .resolve_type_with_self(
@@ -1002,7 +1002,7 @@ fn type_check_ptr_ops(
             EnforceTypeArguments::No,
             None,
         )
-        .unwrap_or_else(|_| type_engine.insert(engines, TypeInfo::ErrorRecovery));
+        .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
 
     let mut ctx = ctx
         .by_ref()
@@ -1014,8 +1014,8 @@ fn type_check_ptr_ops(
     // Check for supported argument types
     let lhs_ty = type_engine
         .to_typeinfo(lhs.return_type, &lhs.span)
-        .map_err(CompileError::from)
-        .unwrap_or_else(|_| TypeInfo::ErrorRecovery);
+        .map_err(|e| handler.emit_err(e.into()))
+        .unwrap_or_else(TypeInfo::ErrorRecovery);
     if !matches!(lhs_ty, TypeInfo::RawUntypedPtr) {
         return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
@@ -1088,8 +1088,8 @@ fn type_check_smo(
             .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
         let initial_type_info = type_engine
             .to_typeinfo(targ.type_id, &targ.span)
-            .map_err(CompileError::from)
-            .unwrap_or_else(|_| TypeInfo::ErrorRecovery);
+            .map_err(|e| handler.emit_err(e.into()))
+            .unwrap_or_else(TypeInfo::ErrorRecovery);
         let initial_type_id = type_engine.insert(engines, initial_type_info);
         let type_id = ctx
             .resolve_type_with_self(
@@ -1099,7 +1099,7 @@ fn type_check_smo(
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|_| type_engine.insert(engines, TypeInfo::ErrorRecovery));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
         TypeArgument {
             type_id,
             initial_type_id,

@@ -11,10 +11,9 @@ use crate::{
 };
 use std::fmt::Write;
 use sway_ast::{
-    token::Delimiter, Braces, CommaToken, ExprTupleDescriptor, PathExpr, Pattern,
-    PatternStructField, Punctuated,
+    Braces, CommaToken, ExprTupleDescriptor, PathExpr, Pattern, PatternStructField, Punctuated,
 };
-use sway_types::Spanned;
+use sway_types::{ast::Delimiter, Spanned};
 
 impl Format for Pattern {
     fn format(
@@ -317,7 +316,7 @@ impl LeafSpans for Pattern {
             Pattern::Tuple(tuple) => {
                 collected_spans.append(&mut tuple.leaf_spans());
             }
-            Pattern::Error(spans) => {
+            Pattern::Error(spans, _) => {
                 let mut leaf_spans = spans.iter().map(|s| ByteSpan::from(s.clone())).collect();
                 collected_spans.append(&mut leaf_spans)
             }

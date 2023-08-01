@@ -5521,6 +5521,7 @@ dependencies = [
  "num-bigint",
  "num-traits",
  "serde",
+ "sway-error",
  "sway-types",
 ]
 
@@ -5569,11 +5570,8 @@ dependencies = [
 name = "sway-error"
 version = "0.42.1"
 dependencies = [
- "extension-trait",
- "num-bigint",
  "num-traits",
  "smallvec",
- "sway-ast",
  "sway-types",
  "thiserror",
 ]

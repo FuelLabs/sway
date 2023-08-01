@@ -806,7 +806,7 @@ impl TypeInfo {
             B256 => "b256".into(),
             Numeric => "u64".into(), // u64 is the default
             Contract => "contract".into(),
-            ErrorRecovery => "unknown due to error".into(),
+            ErrorRecovery(_) => "unknown due to error".into(),
             Enum(decl_ref) => {
                 let decl = decl_engine.get_enum(decl_ref);
                 format!("enum {}", call_path_display(ctx, &decl.call_path))

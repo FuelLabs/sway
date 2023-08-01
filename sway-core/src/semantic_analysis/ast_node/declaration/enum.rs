@@ -75,7 +75,7 @@ impl ty::TyEnumVariant {
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|_| type_engine.insert(engines, TypeInfo::ErrorRecovery));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
         Ok(ty::TyEnumVariant {
             name: variant.name.clone(),
             type_argument,
