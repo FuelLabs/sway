@@ -58,21 +58,9 @@ pub(crate) async fn handle_did_save_text_document(
         .uri_and_session_from_workspace(&params.text_document.uri)
     {
         Ok((uri, session)) => {
-            // overwrite the contents of the tmp/folder with everything in
-            // the current workspace. (resync)
-            if let Err(err) = session.sync.clone_manifest_dir_to_temp() {
+            if let Err(err) = session.sync.resync() {
                 tracing::error!("{}", err.to_string().as_str());
             }
-
-            let _ = session
-                .sync
-                .manifest_path()
-                .and_then(|manifest_path| PackageManifestFile::from_dir(&manifest_path).ok())
-                .map(|manifest| {
-                    if let Some(temp_manifest_path) = &session.sync.temp_manifest_path() {
-                        sync::edit_manifest_dependency_paths(&manifest, temp_manifest_path)
-                    }
-                });
             state
                 .parse_project(uri, params.text_document.uri, session)
                 .await;
@@ -81,7 +69,7 @@ pub(crate) async fn handle_did_save_text_document(
     }
 }
 
-pub(crate) async fn handle_did_change_watched_files(
+pub(crate) fn handle_did_change_watched_files(
     state: &ServerState,
     params: DidChangeWatchedFilesParams,
 ) {

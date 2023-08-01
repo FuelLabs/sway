@@ -45,7 +45,7 @@ impl LanguageServer for ServerState {
     }
 
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
-        notification::handle_did_change_watched_files(self, params).await;
+        notification::handle_did_change_watched_files(self, params);
     }
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
