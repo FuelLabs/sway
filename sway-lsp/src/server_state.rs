@@ -74,18 +74,13 @@ impl ServerState {
         diagnostics_to_publish
     }
 
-    async fn publish_diagnostics(&self, uri: &Url, workspace_uri: &Url, session: Arc<Session>) {
-        // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
-        // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
-        self.client
-            .publish_diagnostics(workspace_uri.clone(), self.diagnostics(uri, session), None)
-            .await;
-    }
-
     pub(crate) async fn parse_project(&self, uri: Url, workspace_uri: Url, session: Arc<Session>) {
         let should_publish = run_blocking_parse_project(uri.clone(), session.clone()).await;
         if should_publish {
-            self.publish_diagnostics(&uri, &workspace_uri, session)
+            // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
+            // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
+            self.client
+                .publish_diagnostics(workspace_uri.clone(), self.diagnostics(&uri, session), None)
                 .await;
         }
     }
