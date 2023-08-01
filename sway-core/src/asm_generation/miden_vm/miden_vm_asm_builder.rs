@@ -171,7 +171,7 @@ impl<'ir, 'eng> MidenVMAsmBuilder<'ir, 'eng> {
 
     fn copy_contract_code_to_memory(
         &self,
-        s: &mut MidenVMAsmSection,
+        s: &MidenVMAsmSection,
         data_size: u32,
         data_offset: u32,
     ) {
@@ -653,6 +653,7 @@ impl<'ir, 'eng> MidenVMAsmBuilder<'ir, 'eng> {
             Unit => vec![DirectOp::push(MidenStackValue::Unit)],
             Bool(b) => vec![DirectOp::push(b)],
             Uint(x) => vec![DirectOp::push(x)],
+            U256(x) => todo!(),
             B256(_) => todo!(),
             String(_) => todo!(),
             Array(_) => todo!(),

@@ -58,6 +58,8 @@ pub enum LexErrorKind {
     UnicodeEscapeInvalidCharValue { span: Span },
     #[error("invalid escape code")]
     InvalidEscapeCode { position: usize },
+    #[error("invalid u256. Only hex literals are supported")]
+    U256NotInHex,
 }
 
 impl Spanned for LexError {

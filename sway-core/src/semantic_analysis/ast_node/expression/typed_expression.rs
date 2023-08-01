@@ -83,7 +83,7 @@ impl ty::TyExpression {
         let args_and_names = method
             .parameters
             .into_iter()
-            .zip(arguments.into_iter())
+            .zip(arguments)
             .map(|(param, arg)| (param.name, arg))
             .collect::<Vec<(_, _)>>();
         let exp = ty::TyExpression {
@@ -415,6 +415,7 @@ impl ty::TyExpression {
             Literal::U16(_) => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
             Literal::U32(_) => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
             Literal::U64(_) => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+            Literal::U256(_) => TypeInfo::UnsignedInteger(IntegerBits::V256),
             Literal::Boolean(_) => TypeInfo::Boolean,
             Literal::B256(_) => TypeInfo::B256,
         };
@@ -1841,6 +1842,18 @@ impl ty::TyExpression {
                                 engines,
                                 e,
                                 TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+                                span.clone(),
+                            )
+                        }),
+                        new_type,
+                    ),
+                    //TODO u256 limited to u64 literals
+                    IntegerBits::V256 => (
+                        num.to_string().parse().map(Literal::U256).map_err(|e| {
+                            Literal::handle_parse_int_error(
+                                engines,
+                                e,
+                                TypeInfo::UnsignedInteger(IntegerBits::V256),
                                 span.clone(),
                             )
                         }),
