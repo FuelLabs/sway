@@ -216,11 +216,11 @@ impl ServerStateExt {
             not: Some(not),
             server_state: self,
         }
-        //.on::<notifs::Cancel>(handlers::handle_cancel)?
-        .on::<notifs::DidOpenTextDocument>(handlers::handle_did_open_text_document)?
-        .on::<notifs::DidChangeTextDocument>(handlers::handle_did_change_text_document)?
-        //.on::<notifs::DidSaveTextDocument>(handlers::handle_did_save_text_document)?
-        //.on::<notifs::DidChangeWatchedFiles>(handlers::handle_did_change_watched_files)?
+        //.on_sync_mut::<notifs::Cancel>(handlers::handle_cancel)?
+        .on_sync_mut::<notifs::DidOpenTextDocument>(handlers::handle_did_open_text_document)?
+        .on_sync_mut::<notifs::DidChangeTextDocument>(handlers::handle_did_change_text_document)?
+        //.on_sync_mut::<notifs::DidSaveTextDocument>(handlers::handle_did_save_text_document)?
+        //.on_sync_mut::<notifs::DidChangeWatchedFiles>(handlers::handle_did_change_watched_files)?
         .finish();
         Ok(())
     }

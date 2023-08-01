@@ -78,12 +78,22 @@ impl<'a> RequestDispatcher<'a> {
         };
         let global_state_snapshot = self.server_state.snapshot();
 
-        let result = panic::catch_unwind(move || {
+        // Note, RA is doing this correctly, we just cant atm because the catch_unwind doesn't
+        // allow inner types to have interior mutability, which DashMap does
+        // let result = panic::catch_unwind(move || {
+        //     let _pctx = stdx::panic_context::enter(panic_context);
+        //     f(global_state_snapshot, params)
+        // });
+        //
+        // if let Ok(response) = thread_result_to_response::<R>(req.id, result) {
+        //     self.server_state.respond(response);
+        // }
+
+        let result = {
             let _pctx = stdx::panic_context::enter(panic_context);
             f(global_state_snapshot, params)
-        });
-
-        if let Ok(response) = thread_result_to_response::<R>(req.id, result) {
+        };
+        if let Ok(response) = result_to_response::<R>(req.id, result) {
             self.server_state.respond(response);
         }
 
@@ -113,11 +123,25 @@ impl<'a> RequestDispatcher<'a> {
             .spawn(ThreadIntent::Worker, {
                 let world = self.server_state.snapshot();
                 move || {
-                    let result = panic::catch_unwind(move || {
+                    // Note, RA is doing this correctly, we just cant atm because the catch_unwind doesn't
+                    // allow inner types to have interior mutability, which DashMap does
+                    // let result = panic::catch_unwind(move || {
+                    //     let _pctx = stdx::panic_context::enter(panic_context);
+                    //     f(world, params)
+                    // });
+                    // match thread_result_to_response::<R>(req.id.clone(), result) {
+                    //     Ok(response) => Task::Response(response),
+                    //     Err(_) => Task::Response(lsp_server::Response::new_err(
+                    //         req.id,
+                    //         lsp_server::ErrorCode::ContentModified as i32,
+                    //         "content modified".to_string(),
+                    //     )),
+
+                    let result = {
                         let _pctx = stdx::panic_context::enter(panic_context);
                         f(world, params)
-                    });
-                    match thread_result_to_response::<R>(req.id.clone(), result) {
+                    };
+                    match result_to_response::<R>(req.id.clone(), result) {
                         Ok(response) => Task::Response(response),
                         Err(_) => Task::Response(lsp_server::Response::new_err(
                             req.id,
@@ -191,11 +215,21 @@ impl<'a> RequestDispatcher<'a> {
             .spawn(intent, {
                 let world = self.server_state.snapshot();
                 move || {
-                    let result = panic::catch_unwind(move || {
+                    // Note, RA is doing this correctly, we just cant atm because the catch_unwind doesn't
+                    // allow inner types to have interior mutability, which DashMap does
+                    // let result = panic::catch_unwind(move || {
+                    //     let _pctx = stdx::panic_context::enter(panic_context);
+                    //     f(world, params)
+                    // });
+                    // match thread_result_to_response::<R>(req.id.clone(), result) {
+                    //     Ok(response) => Task::Response(response),
+                    //     Err(_) => Task::Retry(req),
+                    // }
+                    let result = {
                         let _pctx = stdx::panic_context::enter(panic_context);
                         f(world, params)
-                    });
-                    match thread_result_to_response::<R>(req.id.clone(), result) {
+                    };
+                    match result_to_response::<R>(req.id.clone(), result) {
                         Ok(response) => Task::Response(response),
                         Err(_) => Task::Retry(req),
                     }
@@ -298,7 +332,7 @@ pub(crate) struct NotificationDispatcher<'a> {
 }
 
 impl<'a> NotificationDispatcher<'a> {
-    pub(crate) fn on<N>(
+    pub(crate) fn on_sync_mut<N>(
         &mut self,
         f: fn(&mut ServerStateExt, N::Params) -> Result<(), LanguageServerError>,
     ) -> anyhow::Result<&mut Self>
@@ -321,7 +355,7 @@ impl<'a> NotificationDispatcher<'a> {
             }
         };
         let _pctx = stdx::panic_context::enter(format!("\nnotification: {}", N::METHOD));
-        f(self.server_state, params);
+        f(self.server_state, params)?;
         Ok(self)
     }
 
