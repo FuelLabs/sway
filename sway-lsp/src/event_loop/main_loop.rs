@@ -7,7 +7,6 @@ use crate::{
     event_loop::{
         dispatch::{NotificationDispatcher, RequestDispatcher},
         server_state_ext::ServerStateExt,
-        Result,
     },
     lsp_ext,
 };
@@ -16,7 +15,7 @@ use lsp_server::{Connection, Notification, Request};
 use lsp_types::notification::Notification as _;
 use std::{fmt, time::Instant};
 
-pub fn run(config: Config, connection: Connection) -> Result<()> {
+pub fn run(config: Config, connection: Connection) -> anyhow::Result<()> {
     tracing::info!("initial config: {:#?}", config);
     ServerStateExt::new(connection.sender).run(connection.receiver)
 }
@@ -71,7 +70,7 @@ pub(crate) fn notification_is<N: lsp_types::notification::Notification>(
 }
 
 impl ServerStateExt {
-    fn run(mut self, inbox: Receiver<lsp_server::Message>) -> Result<()> {
+    fn run(mut self, inbox: Receiver<lsp_server::Message>) -> anyhow::Result<()> {
         while let Some(event) = self.next_event(&inbox) {
             if matches!(
                 &event,
@@ -83,7 +82,7 @@ impl ServerStateExt {
             self.handle_event(event)?;
         }
 
-        Err("client exited without proper shutdown sequence".into())
+        anyhow::bail!("client exited without proper shutdown sequence")
     }
 
     fn next_event(&self, inbox: &Receiver<lsp_server::Message>) -> Option<Event> {
@@ -96,7 +95,7 @@ impl ServerStateExt {
         }
     }
 
-    fn handle_event(&mut self, event: Event) -> Result<()> {
+    fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
         let loop_start = Instant::now();
 
         let event_dbg_msg = format!("{event:?}");
@@ -209,7 +208,7 @@ impl ServerStateExt {
     }
 
     /// Handles an incoming notification.
-    fn on_notification(&mut self, not: Notification) -> Result<()> {
+    fn on_notification(&mut self, not: Notification) -> anyhow::Result<()> {
         use crate::handlers::notification as handlers;
         use lsp_types::notification as notifs;
 
