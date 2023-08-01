@@ -1,6 +1,8 @@
 //! sway-lsp extensions to the LSP.
 
-use lsp_types::{request::Request, TextDocumentContentChangeEvent, TextDocumentIdentifier, Url};
+use lsp_types::{
+    request::Request, TextDocumentContentChangeEvent, TextDocumentIdentifier, Url, WorkspaceEdit,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
@@ -19,10 +21,10 @@ pub struct OnEnterParams {
     pub content_changes: Vec<TextDocumentContentChangeEvent>,
 }
 
-pub enum OnEnterRequest {}
+pub enum OnEnter {}
 
-impl Request for OnEnterRequest {
+impl Request for OnEnter {
     type Params = OnEnterParams;
-    type Result = String;
+    type Result = Option<WorkspaceEdit>;
     const METHOD: &'static str = "sway/on_enter";
 }
