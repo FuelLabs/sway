@@ -422,3 +422,23 @@ pub(crate) fn handle_on_enter(
         }
     }
 }
+
+pub(crate) fn handle_on_enter_snap(
+    state: crate::event_loop::server_state_ext::ServerStateSnapshot,
+    params: lsp_ext::OnEnterParams,
+) -> anyhow::Result<Option<WorkspaceEdit>> {
+    let config = state.config.read().on_enter.clone();
+    match state
+        .sessions
+        .uri_and_session_from_workspace(&params.text_document.uri)
+    {
+        Ok((uri, session)) => {
+            // handle on_enter capabilities if they are enabled
+            Ok(capabilities::on_enter(&config, &session, &uri, &params))
+        }
+        Err(err) => {
+            tracing::error!("{}", err.to_string());
+            Ok(None)
+        }
+    }
+}

@@ -81,12 +81,7 @@ impl ServerState {
         diagnostics_to_publish
     }
 
-    pub(crate) async fn parse_project_async(
-        &self,
-        uri: Url,
-        workspace_uri: Url,
-        session: Arc<Session>,
-    ) {
+    pub(crate) async fn parse_project_async(&self, uri: Url, workspace_uri: Url, session: Arc<Session>) {
         let should_publish = run_blocking_parse_project(uri.clone(), session.clone()).await;
         if should_publish {
             // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec

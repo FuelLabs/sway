@@ -5,8 +5,12 @@ use std::{fmt, panic, thread};
 use stdx::thread::ThreadIntent;
 
 use crate::{
+    error::LanguageServerError,
     event_loop::{
-        self, main_loop::Task, server_state_ext::ServerStateExt, Cancelled, LspError, Result,
+        self,
+        main_loop::Task,
+        server_state_ext::{ServerStateExt, ServerStateSnapshot},
+        Cancelled, LspError, Result,
     },
     server_state::ServerState,
 };
@@ -61,7 +65,7 @@ impl<'a> RequestDispatcher<'a> {
     /// Dispatches the request onto the current thread.
     pub(crate) fn on_sync<R>(
         &mut self,
-        f: fn(GlobalStateSnapshot, R::Params) -> Result<R::Result>,
+        f: fn(ServerStateSnapshot, R::Params) -> Result<R::Result>,
     ) -> &mut Self
     where
         R: lsp_types::request::Request,
@@ -90,7 +94,7 @@ impl<'a> RequestDispatcher<'a> {
     /// without retrying it if it panics.
     pub(crate) fn on_no_retry<R>(
         &mut self,
-        f: fn(GlobalStateSnapshot, R::Params) -> Result<R::Result>,
+        f: fn(ServerStateSnapshot, R::Params) -> Result<R::Result>,
     ) -> &mut Self
     where
         R: lsp_types::request::Request + 'static,
@@ -130,7 +134,7 @@ impl<'a> RequestDispatcher<'a> {
     /// Dispatches a non-latency-sensitive request onto the thread pool.
     pub(crate) fn on<R>(
         &mut self,
-        f: fn(GlobalStateSnapshot, R::Params) -> Result<R::Result>,
+        f: fn(ServerStateSnapshot, R::Params) -> Result<R::Result>,
     ) -> &mut Self
     where
         R: lsp_types::request::Request + 'static,
@@ -143,7 +147,7 @@ impl<'a> RequestDispatcher<'a> {
     /// Dispatches a latency-sensitive request onto the thread pool.
     pub(crate) fn on_latency_sensitive<R>(
         &mut self,
-        f: fn(GlobalStateSnapshot, R::Params) -> Result<R::Result>,
+        f: fn(ServerStateSnapshot, R::Params) -> Result<R::Result>,
     ) -> &mut Self
     where
         R: lsp_types::request::Request + 'static,
@@ -168,7 +172,7 @@ impl<'a> RequestDispatcher<'a> {
     fn on_with_thread_intent<R>(
         &mut self,
         intent: ThreadIntent,
-        f: fn(GlobalStateSnapshot, R::Params) -> Result<R::Result>,
+        f: fn(ServerStateSnapshot, R::Params) -> Result<R::Result>,
     ) -> &mut Self
     where
         R: lsp_types::request::Request + 'static,
@@ -290,11 +294,14 @@ where
 
 pub(crate) struct NotificationDispatcher<'a> {
     pub(crate) not: Option<lsp_server::Notification>,
-    pub(crate) server_state: &'a mut ServerState,
+    pub(crate) server_state: &'a mut ServerStateExt,
 }
 
 impl<'a> NotificationDispatcher<'a> {
-    pub(crate) fn on<N>(&mut self, f: fn(&mut ServerState, N::Params)) -> Result<&mut Self>
+    pub(crate) fn on<N>(
+        &mut self,
+        f: fn(&mut ServerStateExt, N::Params) -> Result<(), LanguageServerError>,
+    ) -> Result<&mut Self>
     where
         N: lsp_types::notification::Notification,
         N::Params: DeserializeOwned + Send,

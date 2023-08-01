@@ -1,10 +1,13 @@
 use crate::{
+    config::Config,
     core::session::Session,
     event_loop::{main_loop::Task, task_pool::TaskPool},
-    server_state::ServerState,
+    server_state::{ServerState, Sessions},
+    utils::keyword_docs::KeywordDocs,
 };
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use lsp_types::{Diagnostic, Url};
+use parking_lot::RwLock;
 use std::{sync::Arc, time::Instant};
 
 // Enforces drop order
@@ -47,13 +50,15 @@ impl EventLoopState {
 fn main_loop_num_threads() -> usize {
     num_cpus::get_physical().try_into().unwrap_or(1)
 }
+pub struct ServerStateSnapshot {
+    pub(crate) config: Arc<RwLock<Config>>,
+    pub(crate) keyword_docs: Arc<KeywordDocs>,
+    pub(crate) sessions: Arc<Sessions>,
+}
 
 impl ServerStateExt {
-    pub fn new(
-        client: Client,
-        sender: crossbeam_channel::Sender<lsp_server::Message>,
-    ) -> ServerStateExt {
-        let state = ServerState::new(client);
+    pub fn new(sender: crossbeam_channel::Sender<lsp_server::Message>) -> ServerStateExt {
+        let state = ServerState::default();
         let event_loop_state = EventLoopState::new(sender);
         ServerStateExt {
             state,
@@ -72,6 +77,14 @@ impl ServerStateExt {
             handler,
         );
         self.send(request.into());
+    }
+
+    pub(crate) fn snapshot(&self) -> ServerStateSnapshot {
+        ServerStateSnapshot {
+            config: self.state.config.clone(),
+            keyword_docs: self.state.keyword_docs.clone(),
+            sessions: self.state.sessions.clone(),
+        }
     }
 
     pub(crate) fn complete_request(&mut self, response: lsp_server::Response) {
