@@ -87,8 +87,12 @@ pub(crate) fn handle_did_open_text_document(
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)?;
     session.handle_open_file(&uri);
-    ext.state.parse_project(uri, params.text_document.uri, session.clone());
-    ext.publish_diagnostics(params.text_document.uri, ext.state.diagnostics(&uri, session));
+    ext.state
+        .parse_project(uri, params.text_document.uri, session.clone());
+    ext.publish_diagnostics(
+        params.text_document.uri,
+        ext.state.diagnostics(&uri, session),
+    );
     Ok(())
 }
 
@@ -97,12 +101,17 @@ pub(crate) fn handle_did_change_text_document(
     ext: &ServerStateExt,
     params: DidChangeTextDocumentParams,
 ) -> Result<(), LanguageServerError> {
-    let (uri, session) = ext.state
+    let (uri, session) = ext
+        .state
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)?;
     session.write_changes_to_file(&uri, params.content_changes)?;
-    ext.state.parse_project(uri, params.text_document.uri, session.clone());
-    ext.publish_diagnostics(params.text_document.uri, ext.state.diagnostics(&uri, session));
+    ext.state
+        .parse_project(uri, params.text_document.uri, session.clone());
+    ext.publish_diagnostics(
+        params.text_document.uri,
+        ext.state.diagnostics(&uri, session),
+    );
     Ok(())
 }
 
@@ -111,20 +120,22 @@ pub(crate) fn handle_did_save_text_document(
     ext: &ServerStateExt,
     params: DidSaveTextDocumentParams,
 ) -> Result<(), LanguageServerError> {
-    let (uri, session) = ext.state
+    let (uri, session) = ext
+        .state
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)?;
     session.sync.resync()?;
-    ext.state.parse_project(uri, params.text_document.uri, session.clone());
-    ext.publish_diagnostics(params.text_document.uri, ext.state.diagnostics(&uri, session));
+    ext.state
+        .parse_project(uri, params.text_document.uri, session.clone());
+    ext.publish_diagnostics(
+        params.text_document.uri,
+        ext.state.diagnostics(&uri, session),
+    );
     Ok(())
 }
 
 #[cfg(feature = "custom-event-loop")]
-pub(crate) fn handle_cancel(
-    state: &mut ServerStateExt,
-    params: lsp_types::CancelParams,
-) {
+pub(crate) fn handle_cancel(state: &mut ServerStateExt, params: lsp_types::CancelParams) {
     let id: lsp_server::RequestId = match params.id {
         lsp_types::NumberOrString::Number(id) => id.into(),
         lsp_types::NumberOrString::String(id) => id.into(),
