@@ -608,7 +608,7 @@ pub(super) fn debug_expr(
     field_width: Option<usize>,
     body_width: Option<usize>,
     expr_width: usize,
-    formatter: &mut Formatter,
+    formatter: &Formatter,
 ) {
     println!(
         "DEBUG:\nline: {buf}\nfield: {:?}, body: {:?}, expr: {expr_width}, Shape::width: {}",

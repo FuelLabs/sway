@@ -398,7 +398,7 @@ impl TraitMap {
                 Ok(pos) => self.trait_impls[pos]
                     .value
                     .trait_items
-                    .extend(oe.value.trait_items.into_iter()),
+                    .extend(oe.value.trait_items),
                 Err(pos) => self.trait_impls.insert(pos, oe),
             }
         }

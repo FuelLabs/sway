@@ -1257,6 +1257,7 @@ pub(crate) fn type_name_to_type_info_opt(name: &Ident) -> Option<TypeInfo> {
         "u16" => Some(TypeInfo::UnsignedInteger(IntegerBits::Sixteen)),
         "u32" => Some(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
         "u64" => Some(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
+        "u256" => Some(TypeInfo::UnsignedInteger(IntegerBits::V256)),
         "bool" => Some(TypeInfo::Boolean),
         "unit" => Some(TypeInfo::Tuple(Vec::new())),
         "b256" => Some(TypeInfo::B256),
@@ -1598,7 +1599,7 @@ fn method_call_fields_to_method_application_expression(
             .collect::<Result<_, _>>()?,
     };
     let arguments = iter::once(*target)
-        .chain(args.into_inner().into_iter())
+        .chain(args.into_inner())
         .map(|expr| expr_to_expression(context, handler, engines, expr))
         .collect::<Result<_, _>>()?;
     Ok(Box::new(MethodApplicationExpression {
@@ -2887,6 +2888,17 @@ fn literal_to_literal(
                         };
                         Literal::U64(value)
                     }
+                    // TODO u256 are limited to u64 literals for the moment
+                    LitIntType::U256 => {
+                        let value = match u64::try_from(parsed) {
+                            Ok(value) => value,
+                            Err(..) => {
+                                let error = ConvertParseTreeError::U64LiteralOutOfRange { span };
+                                return Err(handler.emit_err(error.into()));
+                            }
+                        };
+                        Literal::U256(value)
+                    }
                     LitIntType::I8 | LitIntType::I16 | LitIntType::I32 | LitIntType::I64 => {
                         let error = ConvertParseTreeError::SignedIntegersNotSupported { span };
                         return Err(handler.emit_err(error.into()));
@@ -4128,7 +4140,7 @@ fn error_if_self_param_is_not_allowed(
 /// Walks all the cfg attributes in a map, evaluating them
 /// and returning false if any evaluated to false.
 pub fn cfg_eval(
-    context: &mut Context,
+    context: &Context,
     handler: &Handler,
     attrs_map: &AttributesMap,
 ) -> Result<bool, ErrorEmitted> {

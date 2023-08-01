@@ -153,7 +153,7 @@ impl Scrutinee {
                         _ => vec![],
                     })
                     .collect::<Vec<TypeInfo>>();
-                vec![name, fields].concat()
+                [name, fields].concat()
             }
             Scrutinee::EnumScrutinee {
                 call_path, value, ..
@@ -164,7 +164,7 @@ impl Scrutinee {
                     type_arguments: None,
                 }];
                 let value = value.gather_approximate_typeinfo_dependencies();
-                vec![name, value].concat()
+                [name, value].concat()
             }
             Scrutinee::Tuple { elems, .. } | Scrutinee::Or { elems, .. } => elems
                 .iter()

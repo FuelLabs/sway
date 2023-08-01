@@ -790,6 +790,7 @@ impl TypeInfo {
                 IntegerBits::Sixteen => "u16",
                 IntegerBits::ThirtyTwo => "u32",
                 IntegerBits::SixtyFour => "u64",
+                IntegerBits::V256 => "u256",
             }
             .into(),
             Boolean => "bool".into(),

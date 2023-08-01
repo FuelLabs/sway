@@ -71,6 +71,7 @@ pub(crate) fn instantiate_if_expression(
         .unwrap_or_else(|| type_engine.insert(engines, TypeInfo::Tuple(Vec::new())));
     // if there is a type annotation, then the else branch must exist
     if !else_deterministically_aborts && !then_deterministically_aborts {
+        // delay emitting the errors until we decide if this is a missing else branch or some other set of errors
         let h = Handler::default();
         type_engine.unify_with_self(
             &h,

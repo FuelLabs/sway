@@ -235,7 +235,7 @@ pub(crate) fn create_interference_graph(
         .fold(BTreeSet::new(), |mut tree, elem| {
             let mut regs = elem.registers();
             regs.retain(|&reg| reg.is_virtual());
-            tree.extend(regs.into_iter());
+            tree.extend(regs);
             tree
         })
         .iter()

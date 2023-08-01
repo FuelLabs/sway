@@ -16,6 +16,7 @@ pub enum ConstantValue {
     Unit,
     Bool(bool),
     Uint(u64),
+    U256(u64), // TODO u256 limited to u64 values
     B256([u8; 32]),
     String(Vec<u8>),
     Array(Vec<Constant>),
@@ -37,10 +38,13 @@ impl Constant {
         }
     }
 
-    pub fn new_uint(context: &mut Context, nbits: u8, n: u64) -> Self {
+    pub fn new_uint(context: &mut Context, nbits: u16, n: u64) -> Self {
         Constant {
             ty: Type::new_uint(context, nbits),
-            value: ConstantValue::Uint(n),
+            value: match nbits {
+                256 => ConstantValue::U256(n),
+                _ => ConstantValue::Uint(n),
+            },
         }
     }
 
@@ -89,7 +93,7 @@ impl Constant {
         Value::new_constant(context, new_const)
     }
 
-    pub fn get_uint(context: &mut Context, nbits: u8, value: u64) -> Value {
+    pub fn get_uint(context: &mut Context, nbits: u16, value: u64) -> Value {
         let new_const = Constant::new_uint(context, nbits, value);
         Value::new_constant(context, new_const)
     }
@@ -125,6 +129,7 @@ impl Constant {
                 (ConstantValue::Unit, ConstantValue::Unit) => true,
                 (ConstantValue::Bool(l0), ConstantValue::Bool(r0)) => l0 == r0,
                 (ConstantValue::Uint(l0), ConstantValue::Uint(r0)) => l0 == r0,
+                (ConstantValue::U256(l0), ConstantValue::U256(r0)) => l0 == r0,
                 (ConstantValue::B256(l0), ConstantValue::B256(r0)) => l0 == r0,
                 (ConstantValue::String(l0), ConstantValue::String(r0)) => l0 == r0,
                 (ConstantValue::Array(l0), ConstantValue::Array(r0))

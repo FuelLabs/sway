@@ -289,10 +289,7 @@ impl TypeSubstMap {
         type_parameters: Vec<SourceType>,
         type_arguments: Vec<DestinationType>,
     ) -> TypeSubstMap {
-        let mapping = type_parameters
-            .into_iter()
-            .zip(type_arguments.into_iter())
-            .collect();
+        let mapping = type_parameters.into_iter().zip(type_arguments).collect();
         TypeSubstMap { mapping }
     }
 

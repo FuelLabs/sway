@@ -25,6 +25,7 @@ pub enum LitIntType {
     U16,
     U32,
     U64,
+    U256,
     I8,
     I16,
     I32,
