@@ -87,7 +87,6 @@ impl<'a> Unifier<'a> {
             // If they have the same `TypeInfo`, then we either compare them for
             // correctness or perform further unification.
             (Boolean, Boolean) => (),
-            (SelfType, SelfType) => (),
             (B256, B256) => (),
             (Numeric, Numeric) => (),
             (Contract, Contract) => (),

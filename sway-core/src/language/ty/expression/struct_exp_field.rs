@@ -35,12 +35,6 @@ impl SubstTypes for TyStructExpressionField {
     }
 }
 
-impl ReplaceSelfType for TyStructExpressionField {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        self.value.replace_self_type(engines, self_type);
-    }
-}
-
 impl ReplaceDecls for TyStructExpressionField {
     fn replace_decls_inner(
         &mut self,

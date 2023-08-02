@@ -50,13 +50,16 @@ impl ty::TyTraitDecl {
         let engines = ctx.engines();
 
         // A temporary namespace for checking within the trait's scope.
-        let self_type = type_engine.insert(engines, TypeInfo::SelfType);
         let mut trait_namespace = ctx.namespace.clone();
-        let mut ctx = ctx.scoped(&mut trait_namespace).with_self_type(self_type);
+        let mut ctx = ctx.scoped(&mut trait_namespace);
+
+        // Create a new type parameter for the "self type".
+        let self_type_param = TypeParameter::new_self_type(engines, name.span());
+        let self_type = self_type_param.type_id;
 
         // Type check the type parameters.
         let new_type_parameters =
-            TypeParameter::type_check_type_params(handler, ctx.by_ref(), type_parameters)?;
+            TypeParameter::type_check_type_params(handler, ctx.by_ref(), type_parameters, Some(self_type_param))?;
 
         // Insert them into the current namespace.
         for p in &new_type_parameters {
@@ -344,7 +347,6 @@ impl ty::TyTraitDecl {
             match item {
                 ty::TyTraitInterfaceItem::TraitFn(decl_ref) => {
                     let mut method = decl_engine.get_trait_fn(decl_ref);
-                    method.replace_self_type(engines, type_id);
                     method.subst(&type_mapping, engines);
                     all_items.push(TyImplItem::Fn(
                         ctx.engines
@@ -375,7 +377,6 @@ impl ty::TyTraitDecl {
             match item {
                 ty::TyTraitItem::Fn(decl_ref) => {
                     let mut method = decl_engine.get_function(decl_ref);
-                    method.replace_self_type(engines, type_id);
                     method.subst(&type_mapping, engines);
                     all_items.push(TyImplItem::Fn(
                         ctx.engines
@@ -386,7 +387,6 @@ impl ty::TyTraitDecl {
                 }
                 ty::TyTraitItem::Constant(decl_ref) => {
                     let mut const_decl = decl_engine.get_constant(decl_ref);
-                    const_decl.replace_self_type(engines, type_id);
                     const_decl.subst(&type_mapping, engines);
                     all_items.push(TyImplItem::Constant(ctx.engines.de().insert(const_decl)));
                 }

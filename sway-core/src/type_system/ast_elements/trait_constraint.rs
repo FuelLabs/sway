@@ -69,14 +69,6 @@ impl SubstTypes for TraitConstraint {
     }
 }
 
-impl ReplaceSelfType for TraitConstraint {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        self.type_arguments
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
-    }
-}
-
 impl From<&Supertrait> for TraitConstraint {
     fn from(supertrait: &Supertrait) -> Self {
         TraitConstraint {
@@ -150,10 +142,11 @@ impl TraitConstraint {
         // Type check the type arguments.
         for type_argument in self.type_arguments.iter_mut() {
             type_argument.type_id = ctx
-                .resolve_type_without_self(
+                .resolve_type(
                     handler,
                     type_argument.type_id,
                     &type_argument.span,
+                    EnforceTypeArguments::Yes,
                     None,
                 )
                 .unwrap_or_else(|err| {

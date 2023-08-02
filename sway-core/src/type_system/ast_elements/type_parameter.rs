@@ -98,15 +98,6 @@ impl SubstTypes for TypeParameter {
     }
 }
 
-impl ReplaceSelfType for TypeParameter {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        self.type_id.replace_self_type(engines, self_type);
-        self.trait_constraints
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
-    }
-}
-
 impl Spanned for TypeParameter {
     fn span(&self) -> Span {
         self.name_ident.span()
@@ -131,6 +122,40 @@ impl fmt::Debug for TypeParameter {
 }
 
 impl TypeParameter {
+    pub(crate) fn new_self_type(engines: &Engines, span: Span) -> TypeParameter {
+        let type_engine = engines.te();
+
+        let name = Ident::new_with_override("Self".into(), span.clone());
+        let type_id = type_engine.insert(
+            engines,
+            TypeInfo::UnknownGeneric {
+                name: name.clone(),
+                trait_constraints: VecSet(vec![]),
+            },
+        );
+        TypeParameter {
+            type_id,
+            initial_type_id: type_id,
+            name_ident: name,
+            trait_constraints: vec![],
+            trait_constraints_span: span,
+            is_from_parent: false,
+        }
+    }
+
+    pub(crate) fn insert_self_type_into_namespace(&self, handler: &Handler, ctx: TypeCheckContext) {
+        let type_parameter_decl = ty::TyDecl::GenericTypeForFunctionScope (ty::GenericTypeForFunctionScope {
+            name: self.name_ident.clone(),
+            type_id: self.type_id,
+        });
+        let name_a = Ident::new_with_override("self".into(), self.name_ident.span());
+        let name_b = Ident::new_with_override("Self".into(), self.name_ident.span());
+        let const_shadowing_mode = ctx.const_shadowing_mode();
+        let _ = ctx.namespace
+            .insert_symbol(handler, name_a, type_parameter_decl.clone(), const_shadowing_mode);
+        let _ = ctx.namespace.insert_symbol(handler, name_b, type_parameter_decl, const_shadowing_mode);
+    }
+
     /// Type check a list of [TypeParameter] and return a new list of
     /// [TypeParameter]. This will also insert this new list into the current
     /// namespace.
@@ -138,8 +163,13 @@ impl TypeParameter {
         handler: &Handler,
         mut ctx: TypeCheckContext,
         type_params: Vec<TypeParameter>,
+        self_type_param: Option<TypeParameter>,
     ) -> Result<Vec<TypeParameter>, ErrorEmitted> {
         let mut new_type_params: Vec<TypeParameter> = vec![];
+
+        if let Some(self_type_param) = self_type_param.clone() {
+            self_type_param.insert_self_type_into_namespace(handler, ctx.by_ref());
+        }
 
         handler.scope(|handler| {
             for type_param in type_params.into_iter() {

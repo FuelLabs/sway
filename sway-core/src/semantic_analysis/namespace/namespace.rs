@@ -132,39 +132,15 @@ impl Namespace {
         )
     }
 
-    /// Short-hand for calling [Root::resolve_type_with_self] on `root` with the `mod_path`.
+    /// Short-hand for calling [Root::resolve_type] on `root` with the `mod_path`.
     #[allow(clippy::too_many_arguments)] // TODO: remove lint bypass once private modules are no longer experimental
-    pub(crate) fn resolve_type_with_self(
+    pub(crate) fn resolve_type(
         &mut self,
         handler: &Handler,
         engines: &Engines,
         type_id: TypeId,
-        self_type: TypeId,
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
-        type_info_prefix: Option<&Path>,
-    ) -> Result<TypeId, ErrorEmitted> {
-        let mod_path = self.mod_path.clone();
-        engines.te().resolve_with_self(
-            handler,
-            engines,
-            type_id,
-            self_type,
-            span,
-            enforce_type_arguments,
-            type_info_prefix,
-            self,
-            &mod_path,
-        )
-    }
-
-    /// Short-hand for calling [Root::resolve_type_without_self] on `root` and with the `mod_path`.
-    pub(crate) fn resolve_type_without_self(
-        &mut self,
-        handler: &Handler,
-        engines: &Engines,
-        type_id: TypeId,
-        span: &Span,
         type_info_prefix: Option<&Path>,
     ) -> Result<TypeId, ErrorEmitted> {
         let mod_path = self.mod_path.clone();
@@ -173,7 +149,7 @@ impl Namespace {
             engines,
             type_id,
             span,
-            EnforceTypeArguments::Yes,
+            enforce_type_arguments,
             type_info_prefix,
             self,
             &mod_path,
@@ -185,10 +161,9 @@ impl Namespace {
     pub(crate) fn find_items_for_type(
         &mut self,
         handler: &Handler,
-        mut type_id: TypeId,
+        type_id: TypeId,
         item_prefix: &Path,
         item_name: &Ident,
-        self_type: TypeId,
         engines: &Engines,
     ) -> Result<Vec<ty::TyTraitItem>, ErrorEmitted> {
         let type_engine = engines.te();
@@ -206,22 +181,6 @@ impl Namespace {
 
         // grab the local items from the local module
         let local_items = local_module.get_items_for_type(engines, type_id);
-
-        type_id.replace_self_type(engines, self_type);
-
-        // resolve the type
-        let type_id = type_engine
-            .resolve(
-                handler,
-                engines,
-                type_id,
-                &item_name.span(),
-                EnforceTypeArguments::No,
-                None,
-                self,
-                item_prefix,
-            )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
 
         // grab the module where the type itself is declared
         let type_module = self.root().check_submodule(handler, item_prefix)?;
@@ -266,7 +225,6 @@ impl Namespace {
         type_id: TypeId,
         method_prefix: &Path,
         method_name: &Ident,
-        self_type: TypeId,
         annotation_type: TypeId,
         args_buf: &VecDeque<ty::TyExpression>,
         as_trait: Option<TypeInfo>,
@@ -289,7 +247,6 @@ impl Namespace {
             type_id,
             method_prefix,
             method_name,
-            self_type,
             engines,
         )?;
 
@@ -350,11 +307,11 @@ impl Namespace {
                                             .iter()
                                             .zip(trait_decl.trait_type_arguments.clone())
                                         {
-                                            let p1_type_id = self.resolve_type_without_self(
-                                                handler, engines, p1.type_id, &p1.span, None,
+                                            let p1_type_id = self.resolve_type(
+                                                handler, engines, p1.type_id, &p1.span, EnforceTypeArguments::Yes, None,
                                             )?;
-                                            let p2_type_id = self.resolve_type_without_self(
-                                                handler, engines, p2.type_id, &p2.span, None,
+                                            let p2_type_id = self.resolve_type(
+                                                handler, engines, p2.type_id, &p2.span, EnforceTypeArguments::Yes, None,
                                             )?;
                                             if !eq_check.check(p1_type_id, p2_type_id) {
                                                 params_equal = false;
@@ -478,7 +435,6 @@ impl Namespace {
                     type_id,
                     method_prefix,
                     method_name,
-                    self_type,
                     annotation_type,
                     args_buf,
                     as_trait,
@@ -511,7 +467,6 @@ impl Namespace {
         handler: &Handler,
         type_id: TypeId,
         item_name: &Ident,
-        self_type: TypeId,
         engines: &Engines,
     ) -> Result<Option<DeclRefConstant>, ErrorEmitted> {
         let matching_item_decl_refs = self.find_items_for_type(
@@ -519,7 +474,6 @@ impl Namespace {
             type_id,
             &Vec::<Ident>::new(),
             item_name,
-            self_type,
             engines,
         )?;
 

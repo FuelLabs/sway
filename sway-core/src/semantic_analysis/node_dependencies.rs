@@ -862,7 +862,6 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         } => name.suffix.as_str(),
         TypeInfo::Tuple(fields) if fields.is_empty() => "unit",
         TypeInfo::Tuple(..) => "tuple",
-        TypeInfo::SelfType => "self",
         TypeInfo::B256 => "b256",
         TypeInfo::Numeric => "numeric",
         TypeInfo::Contract => "contract",

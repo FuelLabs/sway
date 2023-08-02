@@ -174,38 +174,11 @@ impl TypeEngine {
                         .map(|type_arg| type_arg.type_id)
                         .collect(),
                 );
+                // TODO treat Self: we should extend the type mapping with Self -> Placeholder
                 value.subst(&type_mapping, engines);
                 Ok(())
             }
         }
-    }
-
-    /// Replace any instances of the [TypeInfo::SelfType] variant with
-    /// `self_type` in both `received` and `expected`, then unify `received` and
-    /// `expected`.
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) fn unify_with_self(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        mut received: TypeId,
-        mut expected: TypeId,
-        self_type: TypeId,
-        span: &Span,
-        help_text: &str,
-        err_override: Option<CompileError>,
-    ) {
-        received.replace_self_type(engines, self_type);
-        expected.replace_self_type(engines, self_type);
-        self.unify(
-            handler,
-            engines,
-            received,
-            expected,
-            span,
-            help_text,
-            err_override,
-        )
     }
 
     /// Make the types of `received` and `expected` equivalent (or produce an
@@ -299,7 +272,6 @@ impl TypeEngine {
             | TypeInfo::Boolean
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::Custom { .. }
-            | TypeInfo::SelfType
             | TypeInfo::B256
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery(..)
@@ -352,7 +324,6 @@ impl TypeEngine {
             | TypeInfo::Boolean
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::Custom { .. }
-            | TypeInfo::SelfType
             | TypeInfo::B256
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery(..)
@@ -543,34 +514,6 @@ impl TypeEngine {
             _ => type_id,
         };
         Ok(type_id)
-    }
-
-    /// Replace any instances of the [TypeInfo::SelfType] variant with
-    /// `self_type` in `type_id`, then resolve `type_id`.
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) fn resolve_with_self(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        mut type_id: TypeId,
-        self_type: TypeId,
-        span: &Span,
-        enforce_type_arguments: EnforceTypeArguments,
-        type_info_prefix: Option<&Path>,
-        namespace: &mut Namespace,
-        mod_path: &Path,
-    ) -> Result<TypeId, ErrorEmitted> {
-        type_id.replace_self_type(engines, self_type);
-        self.resolve(
-            handler,
-            engines,
-            type_id,
-            span,
-            enforce_type_arguments,
-            type_info_prefix,
-            namespace,
-            mod_path,
-        )
     }
 
     /// Pretty print method for printing the [TypeEngine]. This method is

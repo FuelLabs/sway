@@ -184,7 +184,7 @@ impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
 
         // resolve the type of the type info object
         let type_id = ctx
-            .resolve_type_with_self(
+            .resolve_type(
                 handler,
                 type_engine.insert(engines, type_info),
                 &type_info_span,
@@ -253,7 +253,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
             TypeArgs::Prefix(_) => {
                 // Resolve the type arguments without monomorphizing.
                 for type_argument in self.type_arguments.to_vec_mut().iter_mut() {
-                    ctx.resolve_type_with_self(
+                    ctx.resolve_type(
                         handler,
                         type_argument.type_id,
                         &type_argument.span,

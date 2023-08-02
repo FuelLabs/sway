@@ -446,7 +446,6 @@ impl<'a> UnifyCheck<'a> {
                 // TypeId, they may later resolve to be different types in the type
                 // engine
                 (TypeInfo::Unknown, TypeInfo::Unknown) => false,
-                (TypeInfo::SelfType, TypeInfo::SelfType) => false,
                 (TypeInfo::Numeric, TypeInfo::Numeric) => false,
                 (TypeInfo::Storage { .. }, TypeInfo::Storage { .. }) => false,
 

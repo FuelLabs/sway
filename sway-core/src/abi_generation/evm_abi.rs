@@ -101,7 +101,6 @@ pub fn abi_str(type_info: &TypeInfo, type_engine: &TypeEngine, decl_engine: &Dec
                 .collect::<Vec<String>>();
             format!("({})", field_strs.join(", "))
         }
-        SelfType => "Self".into(),
         B256 => "uint256".into(),
         Numeric => "u64".into(), // u64 is the default
         Contract => "contract".into(),

@@ -28,7 +28,7 @@ impl ty::TyEnumDecl {
 
         // Type check the type parameters.
         let new_type_parameters =
-            TypeParameter::type_check_type_params(handler, ctx.by_ref(), type_parameters)?;
+            TypeParameter::type_check_type_params(handler, ctx.by_ref(), type_parameters, None)?;
 
         // Insert them into the current namespace.
         for p in &new_type_parameters {
@@ -72,7 +72,7 @@ impl ty::TyEnumVariant {
         let engines = ctx.engines();
         let mut type_argument = variant.type_argument;
         type_argument.type_id = ctx
-            .resolve_type_with_self(
+            .resolve_type(
                 handler,
                 type_argument.type_id,
                 &type_argument.span,

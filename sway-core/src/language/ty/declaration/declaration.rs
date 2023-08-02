@@ -333,43 +333,6 @@ impl SubstTypes for TyDecl {
     }
 }
 
-impl ReplaceSelfType for TyDecl {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        match self {
-            TyDecl::VariableDecl(ref mut var_decl) => {
-                var_decl.replace_self_type(engines, self_type)
-            }
-            TyDecl::FunctionDecl(FunctionDecl {
-                ref mut decl_id, ..
-            }) => decl_id.replace_self_type(engines, self_type),
-            TyDecl::TraitDecl(TraitDecl {
-                ref mut decl_id, ..
-            }) => decl_id.replace_self_type(engines, self_type),
-            TyDecl::StructDecl(StructDecl {
-                ref mut decl_id, ..
-            }) => decl_id.replace_self_type(engines, self_type),
-            TyDecl::EnumDecl(EnumDecl {
-                ref mut decl_id, ..
-            }) => decl_id.replace_self_type(engines, self_type),
-            TyDecl::EnumVariantDecl(EnumVariantDecl {
-                ref mut enum_ref, ..
-            }) => enum_ref.replace_self_type(engines, self_type),
-            TyDecl::ImplTrait(ImplTrait {
-                ref mut decl_id, ..
-            }) => decl_id.replace_self_type(engines, self_type),
-            TyDecl::TypeAliasDecl(TypeAliasDecl {
-                ref mut decl_id, ..
-            }) => decl_id.replace_self_type(engines, self_type),
-            // generics in an ABI is unsupported by design
-            TyDecl::AbiDecl(_)
-            | TyDecl::ConstantDecl(_)
-            | TyDecl::StorageDecl(_)
-            | TyDecl::GenericTypeForFunctionScope(_)
-            | TyDecl::ErrorRecovery(..) => (),
-        }
-    }
-}
-
 impl TyDecl {
     pub fn get_fun_decl_ref(&self) -> Option<DeclRefFunction> {
         if let TyDecl::FunctionDecl(FunctionDecl {
