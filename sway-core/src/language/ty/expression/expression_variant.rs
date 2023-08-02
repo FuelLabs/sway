@@ -4,12 +4,14 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use sway_types::{Ident, Named, Span};
+use sway_error::handler::{ErrorEmitted, Handler};
+use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     decl_engine::*,
     engine_threading::*,
     language::{ty::*, *},
+    semantic_analysis::TypeCheckContext,
     type_system::*,
 };
 
@@ -880,109 +882,159 @@ impl ReplaceSelfType for TyExpressionVariant {
 }
 
 impl ReplaceDecls for TyExpressionVariant {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: &Engines) {
-        use TyExpressionVariant::*;
-        match self {
-            Literal(..) => (),
-            FunctionApplication {
-                ref mut fn_ref,
-                ref mut arguments,
-                ..
-            } => {
-                fn_ref.replace_decls(decl_mapping, engines);
-                let new_decl_ref = fn_ref
-                    .clone()
-                    .replace_decls_and_insert_new_with_parent(decl_mapping, engines);
-                fn_ref.replace_id(*new_decl_ref.id());
-                for (_, arg) in arguments.iter_mut() {
-                    arg.replace_decls(decl_mapping, engines);
+    fn replace_decls_inner(
+        &mut self,
+        decl_mapping: &DeclMapping,
+        handler: &Handler,
+        ctx: &TypeCheckContext,
+    ) -> Result<(), ErrorEmitted> {
+        handler.scope(|handler| {
+            use TyExpressionVariant::*;
+            match self {
+                Literal(..) => (),
+                FunctionApplication {
+                    ref mut fn_ref,
+                    ref mut arguments,
+                    ..
+                } => {
+                    let mut filter_type_opt = None;
+                    if let Some(arg) = arguments.get(0) {
+                        match ctx.engines.te().get(arg.1.return_type) {
+                            TypeInfo::SelfType => {
+                                filter_type_opt = Some(ctx.self_type());
+                            }
+                            _ => {
+                                filter_type_opt = Some(arg.1.return_type);
+                            }
+                        }
+                    }
+
+                    if let Some(filter_type) = filter_type_opt {
+                        let filtered_decl_mapping =
+                            decl_mapping.filter_functions_by_self_type(filter_type, ctx.engines());
+                        fn_ref.replace_decls(&filtered_decl_mapping, handler, ctx)?;
+                    } else {
+                        fn_ref.replace_decls(decl_mapping, handler, ctx)?;
+                    };
+
+                    let new_decl_ref = fn_ref.clone().replace_decls_and_insert_new_with_parent(
+                        decl_mapping,
+                        handler,
+                        ctx,
+                    )?;
+                    fn_ref.replace_id(*new_decl_ref.id());
+                    for (_, arg) in arguments.iter_mut() {
+                        match arg.replace_decls(decl_mapping, handler, ctx) {
+                            Ok(res) => res,
+                            Err(_) => {
+                                continue;
+                            }
+                        };
+                    }
+
+                    let decl_engine = ctx.engines().de();
+                    let mut method = ctx.engines().de().get(fn_ref);
+                    // Handle the trait constraints. This includes checking to see if the trait
+                    // constraints are satisfied and replacing old decl ids based on the
+                    let inner_decl_mapping =
+                        TypeParameter::gather_decl_mapping_from_trait_constraints(
+                            handler,
+                            ctx,
+                            &method.type_parameters,
+                            &method.name.span(),
+                        )?;
+                    method.replace_decls(&inner_decl_mapping, handler, ctx)?;
+                    let new_decl_ref = decl_engine
+                        .insert(method)
+                        .with_parent(decl_engine, (*fn_ref.id()).into());
+                    fn_ref.replace_id(*new_decl_ref.id());
                 }
-            }
-            LazyOperator { lhs, rhs, .. } => {
-                (*lhs).replace_decls(decl_mapping, engines);
-                (*rhs).replace_decls(decl_mapping, engines);
-            }
-            ConstantExpression { const_decl, .. } => {
-                const_decl.replace_decls(decl_mapping, engines)
-            }
-            VariableExpression { .. } => (),
-            Tuple { fields } => fields
-                .iter_mut()
-                .for_each(|x| x.replace_decls(decl_mapping, engines)),
-            Array {
-                elem_type: _,
-                contents,
-            } => contents
-                .iter_mut()
-                .for_each(|x| x.replace_decls(decl_mapping, engines)),
-            ArrayIndex { prefix, index } => {
-                (*prefix).replace_decls(decl_mapping, engines);
-                (*index).replace_decls(decl_mapping, engines);
-            }
-            StructExpression {
-                struct_ref: _,
-                fields,
-                instantiation_span: _,
-                call_path_binding: _,
-            } => fields
-                .iter_mut()
-                .for_each(|x| x.replace_decls(decl_mapping, engines)),
-            CodeBlock(block) => {
-                block.replace_decls(decl_mapping, engines);
-            }
-            FunctionParameter => (),
-            MatchExp { desugared, .. } => desugared.replace_decls(decl_mapping, engines),
-            IfExp {
-                condition,
-                then,
-                r#else,
-            } => {
-                condition.replace_decls(decl_mapping, engines);
-                then.replace_decls(decl_mapping, engines);
-                if let Some(ref mut r#else) = r#else {
-                    r#else.replace_decls(decl_mapping, engines);
+                LazyOperator { lhs, rhs, .. } => {
+                    (*lhs).replace_decls(decl_mapping, handler, ctx)?;
+                    (*rhs).replace_decls(decl_mapping, handler, ctx)?;
                 }
+                ConstantExpression { const_decl, .. } => {
+                    const_decl.replace_decls(decl_mapping, handler, ctx)?
+                }
+                VariableExpression { .. } => (),
+                Tuple { fields } => fields.iter_mut().for_each(|x| {
+                    x.replace_decls(decl_mapping, handler, ctx).ok();
+                }),
+                Array {
+                    elem_type: _,
+                    contents,
+                } => contents.iter_mut().for_each(|x| {
+                    x.replace_decls(decl_mapping, handler, ctx).ok();
+                }),
+                ArrayIndex { prefix, index } => {
+                    (*prefix).replace_decls(decl_mapping, handler, ctx).ok();
+                    (*index).replace_decls(decl_mapping, handler, ctx).ok();
+                }
+                StructExpression {
+                    struct_ref: _,
+                    fields,
+                    instantiation_span: _,
+                    call_path_binding: _,
+                } => fields.iter_mut().for_each(|x| {
+                    x.replace_decls(decl_mapping, handler, ctx).ok();
+                }),
+                CodeBlock(block) => block.replace_decls(decl_mapping, handler, ctx)?,
+                FunctionParameter => (),
+                MatchExp { desugared, .. } => {
+                    desugared.replace_decls(decl_mapping, handler, ctx)?
+                }
+                IfExp {
+                    condition,
+                    then,
+                    r#else,
+                } => {
+                    condition.replace_decls(decl_mapping, handler, ctx).ok();
+                    then.replace_decls(decl_mapping, handler, ctx).ok();
+                    if let Some(ref mut r#else) = r#else {
+                        r#else.replace_decls(decl_mapping, handler, ctx).ok();
+                    }
+                }
+                AsmExpression { .. } => {}
+                StructFieldAccess { prefix, .. } => {
+                    prefix.replace_decls(decl_mapping, handler, ctx)?
+                }
+                TupleElemAccess { prefix, .. } => {
+                    prefix.replace_decls(decl_mapping, handler, ctx)?
+                }
+                EnumInstantiation {
+                    enum_ref: _,
+                    contents,
+                    ..
+                } => {
+                    // TODO: replace enum decl
+                    //enum_decl.replace_decls(decl_mapping);
+                    if let Some(ref mut contents) = contents {
+                        contents.replace_decls(decl_mapping, handler, ctx)?;
+                    };
+                }
+                AbiCast { address, .. } => address.replace_decls(decl_mapping, handler, ctx)?,
+                StorageAccess { .. } => (),
+                IntrinsicFunction(_) => {}
+                EnumTag { exp } => exp.replace_decls(decl_mapping, handler, ctx)?,
+                UnsafeDowncast { exp, .. } => exp.replace_decls(decl_mapping, handler, ctx)?,
+                AbiName(_) => (),
+                WhileLoop {
+                    ref mut condition,
+                    ref mut body,
+                } => {
+                    condition.replace_decls(decl_mapping, handler, ctx).ok();
+                    body.replace_decls(decl_mapping, handler, ctx)?;
+                }
+                Break => (),
+                Continue => (),
+                Reassignment(reassignment) => {
+                    reassignment.replace_decls(decl_mapping, handler, ctx)?
+                }
+                Return(stmt) => stmt.replace_decls(decl_mapping, handler, ctx)?,
             }
-            AsmExpression { .. } => {}
-            StructFieldAccess { prefix, .. } => {
-                prefix.replace_decls(decl_mapping, engines);
-            }
-            TupleElemAccess { prefix, .. } => {
-                prefix.replace_decls(decl_mapping, engines);
-            }
-            EnumInstantiation {
-                enum_ref: _,
-                contents,
-                ..
-            } => {
-                // TODO: replace enum decl
-                //enum_decl.replace_decls(decl_mapping);
-                if let Some(ref mut contents) = contents {
-                    contents.replace_decls(decl_mapping, engines);
-                };
-            }
-            AbiCast { address, .. } => address.replace_decls(decl_mapping, engines),
-            StorageAccess { .. } => (),
-            IntrinsicFunction(_) => {}
-            EnumTag { exp } => {
-                exp.replace_decls(decl_mapping, engines);
-            }
-            UnsafeDowncast { exp, .. } => {
-                exp.replace_decls(decl_mapping, engines);
-            }
-            AbiName(_) => (),
-            WhileLoop {
-                ref mut condition,
-                ref mut body,
-            } => {
-                condition.replace_decls(decl_mapping, engines);
-                body.replace_decls(decl_mapping, engines);
-            }
-            Break => (),
-            Continue => (),
-            Reassignment(reassignment) => reassignment.replace_decls(decl_mapping, engines),
-            Return(stmt) => stmt.replace_decls(decl_mapping, engines),
-        }
+
+            Ok(())
+        })
     }
 }
 
