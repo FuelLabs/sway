@@ -5574,6 +5574,7 @@ dependencies = [
  "smallvec",
  "sway-types",
  "thiserror",
+ "uwuify",
 ]
 
 [[package]]

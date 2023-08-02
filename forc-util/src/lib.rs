@@ -7,16 +7,19 @@ use annotate_snippets::{
 use ansi_term::Colour;
 use anyhow::{bail, Result};
 use forc_tracing::{println_red_err, println_yellow_err};
-use std::str;
+use std::{collections::HashSet, str};
 use std::{ffi::OsStr, process::Termination};
 use std::{
     fmt::Display,
     path::{Path, PathBuf},
 };
 use sway_core::language::parsed::TreeType;
-use sway_error::error::CompileError;
-use sway_error::warning::CompileWarning;
-use sway_types::{LineCol, SourceEngine, Spanned};
+use sway_error::{
+    diagnostic::{Diagnostic, Issue, Label, LabelType, Level, ToDiagnostic},
+    error::CompileError,
+    warning::CompileWarning,
+};
+use sway_types::{LineCol, SourceEngine, Span};
 use sway_utils::constants;
 use tracing::error;
 
@@ -374,7 +377,7 @@ pub fn print_warnings(
     if !terse_mode {
         warnings
             .iter()
-            .for_each(|w| format_warning(source_engine, w));
+            .for_each(|w| format_diagnostic(&w.to_diagnostic(source_engine)));
     }
 
     println_yellow_err(&format!(
@@ -405,16 +408,18 @@ pub fn print_on_failure(
             warnings
                 .iter()
                 .rev()
-                .for_each(|w| format_warning(source_engine, w));
+                .for_each(|w| format_diagnostic(&w.to_diagnostic(source_engine)));
             errors
                 .iter()
                 .rev()
-                .for_each(|e| format_err(source_engine, e));
+                .for_each(|e| format_diagnostic(&e.to_diagnostic(source_engine)));
         } else {
             warnings
                 .iter()
-                .for_each(|w| format_warning(source_engine, w));
-            errors.iter().for_each(|e| format_err(source_engine, e));
+                .for_each(|w| format_diagnostic(&w.to_diagnostic(source_engine)));
+            errors
+                .iter()
+                .for_each(|e| format_diagnostic(&e.to_diagnostic(source_engine)));
         }
     }
 
@@ -432,108 +437,268 @@ pub fn print_on_failure(
     }
 }
 
-fn format_err(source_engine: &SourceEngine, err: &CompileError) {
-    let span = err.span();
-    let input = span.input();
-    let path = err.source_id().map(|id| source_engine.get_path(&id));
-    let path_str = path.as_ref().map(|p| p.to_string_lossy());
-    let mut start_pos = span.start();
-    let mut end_pos = span.end();
+fn format_diagnostic(diagnostic: &Diagnostic) {
+    /// Temporary switch for testing the feature.
+    /// Keep it false until we decide to fully support the diagnostic codes.
+    const SHOW_DIAGNOSTIC_CODE: bool = false;
 
-    let friendly_str = maybe_uwuify(&format!("{err}"));
-    let (snippet_title, snippet_slices) = if start_pos < end_pos {
-        let title = Some(Annotation {
-            label: None,
+    if diagnostic.is_old_style() {
+        format_old_style_diagnostic(diagnostic.issue());
+        return;
+    }
+
+    let mut label = String::new();
+    get_title_label(diagnostic, &mut label);
+
+    let snippet_title = Some(Annotation {
+        label: Some(label.as_str()),
+        id: if SHOW_DIAGNOSTIC_CODE {
+            diagnostic.reason().map(|reason| reason.code())
+        } else {
+            None
+        },
+        annotation_type: diagnostic_level_to_annotation_type(diagnostic.level()),
+    });
+
+    let mut snippet_slices = Vec::<Slice<'_>>::new();
+
+    // We first display labels from the issue file...
+    if diagnostic.issue().is_in_source() {
+        snippet_slices.push(construct_slice(diagnostic.labels_in_issue_source()))
+    }
+
+    // ...and then all the remaining labels from the other files.
+    for source_path in diagnostic.related_sources(false) {
+        snippet_slices.push(construct_slice(diagnostic.labels_in_source(source_path)))
+    }
+
+    let mut snippet_footer = Vec::<Annotation<'_>>::new();
+    for help in diagnostic.help() {
+        snippet_footer.push(Annotation {
             id: None,
-            annotation_type: AnnotationType::Error,
+            label: Some(help),
+            annotation_type: AnnotationType::Help,
         });
-
-        let (mut start, end) = err.span().line_col();
-        let input = construct_window(&mut start, end, &mut start_pos, &mut end_pos, input);
-        let slices = vec![Slice {
-            source: input,
-            line_start: start.line,
-            origin: path_str.as_deref(),
-            fold: false,
-            annotations: vec![SourceAnnotation {
-                label: &friendly_str,
-                annotation_type: AnnotationType::Error,
-                range: (start_pos, end_pos),
-            }],
-        }];
-
-        (title, slices)
-    } else {
-        (
-            Some(Annotation {
-                label: Some(friendly_str.as_str()),
-                id: None,
-                annotation_type: AnnotationType::Error,
-            }),
-            Vec::new(),
-        )
-    };
+    }
 
     let snippet = Snippet {
         title: snippet_title,
-        footer: vec![],
         slices: snippet_slices,
+        footer: snippet_footer,
         opt: FormatOptions {
             color: true,
             ..Default::default()
         },
     };
-    tracing::error!("{}\n____\n", DisplayList::from(snippet))
-}
 
-fn format_warning(source_engine: &SourceEngine, err: &CompileWarning) {
-    let span = err.span();
-    let input = span.input();
-    let path = err.source_id().map(|id| source_engine.get_path(&id));
-    let path_str = path.as_ref().map(|p| p.to_string_lossy());
-
-    let friendly_str = maybe_uwuify(&err.to_friendly_warning_string());
-    let mut start_pos = span.start();
-    let mut end_pos = span.end();
-    if start_pos == end_pos {
-        // if start/pos are same we will not get that arrow pointing to code, so we add +1.
-        end_pos += 1;
+    match diagnostic.level() {
+        Level::Warning => tracing::warn!("{}\n____\n", DisplayList::from(snippet)),
+        Level::Error => tracing::error!("{}\n____\n", DisplayList::from(snippet)),
     }
 
-    let (mut start, end) = err.span.line_col();
-    let input = construct_window(&mut start, end, &mut start_pos, &mut end_pos, input);
-    let snippet = Snippet {
-        title: Some(Annotation {
-            label: None,
+    fn format_old_style_diagnostic(issue: &Issue) {
+        let annotation_type = label_type_to_annotation_type(issue.label_type());
+
+        let snippet_title = Some(Annotation {
+            label: if issue.is_in_source() {
+                None
+            } else {
+                Some(issue.friendly_text())
+            },
             id: None,
-            annotation_type: AnnotationType::Warning,
-        }),
-        footer: vec![],
-        slices: vec![Slice {
-            source: input,
-            line_start: start.line,
-            origin: path_str.as_deref(),
-            fold: false,
-            annotations: vec![SourceAnnotation {
-                label: &friendly_str,
-                annotation_type: AnnotationType::Warning,
-                range: (start_pos, end_pos),
-            }],
-        }],
-        opt: FormatOptions {
-            color: true,
-            ..Default::default()
-        },
-    };
-    tracing::warn!("{}\n____\n", DisplayList::from(snippet))
+            annotation_type,
+        });
+
+        let mut snippet_slices = vec![];
+        if issue.is_in_source() {
+            let span = issue.span();
+            let input = span.input();
+            let mut start_pos = span.start();
+            let mut end_pos = span.end();
+            let (mut start, end) = span.line_col();
+            let input = construct_window(&mut start, end, &mut start_pos, &mut end_pos, input);
+
+            let slice = Slice {
+                source: input,
+                line_start: start.line,
+                // Safe unwrap because the issue is in source, so the source path surely exists.
+                origin: Some(issue.source_path().unwrap().as_str()),
+                fold: false,
+                annotations: vec![SourceAnnotation {
+                    label: issue.friendly_text(),
+                    annotation_type,
+                    range: (start_pos, end_pos),
+                }],
+            };
+
+            snippet_slices.push(slice);
+        }
+
+        let snippet = Snippet {
+            title: snippet_title,
+            footer: vec![],
+            slices: snippet_slices,
+            opt: FormatOptions {
+                color: true,
+                ..Default::default()
+            },
+        };
+
+        tracing::error!("{}\n____\n", DisplayList::from(snippet));
+    }
+
+    fn get_title_label(diagnostics: &Diagnostic, label: &mut String) {
+        label.clear();
+        if diagnostics.reason().is_some() {
+            label.push_str(diagnostics.reason().unwrap().description());
+            label.push_str(". ");
+        }
+        label.push_str(diagnostics.issue().friendly_text());
+        label.push('.');
+    }
+
+    fn diagnostic_level_to_annotation_type(level: Level) -> AnnotationType {
+        match level {
+            Level::Warning => AnnotationType::Warning,
+            Level::Error => AnnotationType::Error,
+        }
+    }
 }
 
+fn construct_slice(labels: Vec<&Label>) -> Slice {
+    debug_assert!(
+        !labels.is_empty(),
+        "To construct slices, at least one label must be provided."
+    );
+
+    debug_assert!(
+        labels.iter().all(|label| label.is_in_source()),
+        "Slices can be constructed only for labels that are related to a place in source code."
+    );
+
+    debug_assert!(
+        HashSet::<&str>::from_iter(labels.iter().map(|label| label.source_path().unwrap().as_str())).len() == 1,
+        "Slices can be constructed only for labels that are related to places in the same source code."
+    );
+
+    let soruce_file = labels[0].source_path().map(|path| path.as_str());
+    let source_code = labels[0].span().input();
+
+    // Joint span of the code snippet that covers all the labels.
+    let span = Span::join_all(labels.iter().map(|label| label.span().clone()));
+
+    let (source, line_start, shift_in_bytes) = construct_code_snippet(&span, source_code);
+
+    let mut annotations = vec![];
+
+    for message in labels {
+        annotations.push(SourceAnnotation {
+            label: message.friendly_text(),
+            annotation_type: label_type_to_annotation_type(message.label_type()),
+            range: get_annotation_range(message.span(), source_code, shift_in_bytes),
+        });
+    }
+
+    return Slice {
+        source,
+        line_start,
+        origin: soruce_file,
+        fold: true,
+        annotations,
+    };
+
+    fn get_annotation_range(
+        span: &Span,
+        source_code: &str,
+        shift_in_bytes: usize,
+    ) -> (usize, usize) {
+        let mut start_pos = span.start();
+        let mut end_pos = span.end();
+
+        let start_ix_bytes = start_pos - std::cmp::min(shift_in_bytes, start_pos);
+        let end_ix_bytes = end_pos - std::cmp::min(shift_in_bytes, end_pos);
+
+        // We want the start_pos and end_pos in terms of chars and not bytes, so translate.
+        start_pos = source_code[shift_in_bytes..(shift_in_bytes + start_ix_bytes)]
+            .chars()
+            .count();
+        end_pos = source_code[shift_in_bytes..(shift_in_bytes + end_ix_bytes)]
+            .chars()
+            .count();
+
+        (start_pos, end_pos)
+    }
+}
+
+fn label_type_to_annotation_type(label_type: LabelType) -> AnnotationType {
+    match label_type {
+        LabelType::Info => AnnotationType::Info,
+        LabelType::Warning => AnnotationType::Warning,
+        LabelType::Error => AnnotationType::Error,
+    }
+}
+
+/// Given the overall span to be shown in the code snippet, determines how much of the input source
+/// to show in the snippet.
+///
+/// Returns the source to be shown, the line start, and the offset of the snippet in bytes relative
+/// to the begining of the input code.
+///
+/// The library we use doesn't handle auto-windowing and line numbers, so we must manually
+/// calculate the line numbers and match them up with the input window. It is a bit fiddly.
+fn construct_code_snippet<'a>(span: &Span, input: &'a str) -> (&'a str, usize, usize) {
+    // how many lines to prepend or append to the highlighted region in the window
+    const NUM_LINES_BUFFER: usize = 2;
+
+    let (start, end) = span.line_col();
+
+    let total_lines_in_input = input.chars().filter(|x| *x == '\n').count();
+    debug_assert!(end.line >= start.line);
+    let total_lines_of_highlight = end.line - start.line;
+    debug_assert!(total_lines_in_input >= total_lines_of_highlight);
+
+    let mut current_line = 0;
+    let mut lines_to_start_of_snippet = 0;
+    let mut calculated_start_ix = None;
+    let mut calculated_end_ix = None;
+    let mut pos = 0;
+    for character in input.chars() {
+        if character == '\n' {
+            current_line += 1
+        }
+
+        if current_line + NUM_LINES_BUFFER >= start.line && calculated_start_ix.is_none() {
+            calculated_start_ix = Some(pos);
+            lines_to_start_of_snippet = current_line;
+        }
+
+        if current_line >= end.line + NUM_LINES_BUFFER && calculated_end_ix.is_none() {
+            calculated_end_ix = Some(pos);
+        }
+
+        if calculated_start_ix.is_some() && calculated_end_ix.is_some() {
+            break;
+        }
+        pos += character.len_utf8();
+    }
+    let calculated_start_ix = calculated_start_ix.unwrap_or(0);
+    let calculated_end_ix = calculated_end_ix.unwrap_or(input.len());
+
+    (
+        &input[calculated_start_ix..calculated_end_ix],
+        lines_to_start_of_snippet,
+        calculated_start_ix,
+    )
+}
+
+// TODO: Remove once "old-style" diagnostic is fully replaced with new one and the backward
+//       compatibility is no longer needed.
 /// Given a start and an end position and an input, determine how much of a window to show in the
 /// error.
 /// Mutates the start and end indexes to be in line with the new slice length.
 ///
 /// The library we use doesn't handle auto-windowing and line numbers, so we must manually
-/// calculate the line numbers and match them up with the input window. It is a bit fiddly.t
+/// calculate the line numbers and match them up with the input window. It is a bit fiddly.
 fn construct_window<'a>(
     start: &mut LineCol,
     end: LineCol,
@@ -588,20 +753,4 @@ fn construct_window<'a>(
 
     start.line = lines_to_start_of_snippet;
     &input[calculated_start_ix..calculated_end_ix]
-}
-
-#[cfg(all(feature = "uwu", any(target_arch = "x86", target_arch = "x86_64")))]
-fn maybe_uwuify(raw: &str) -> String {
-    use uwuifier::uwuify_str_sse;
-    uwuify_str_sse(raw)
-}
-#[cfg(all(feature = "uwu", not(any(target_arch = "x86", target_arch = "x86_64"))))]
-fn maybe_uwuify(raw: &str) -> String {
-    compile_error!("The `uwu` feature only works on x86 or x86_64 processors.");
-    Default::default()
-}
-
-#[cfg(not(feature = "uwu"))]
-fn maybe_uwuify(raw: &str) -> String {
-    raw.to_string()
 }
