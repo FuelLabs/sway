@@ -715,6 +715,36 @@ fn instruction_to_doc<'a>(
                         .append(md_namer.md_idx_to_doc(context, metadata)),
                     ))
                 }
+                FuelVmInstruction::WideBinaryOp {
+                    op,
+                    arg1,
+                    arg2,
+                    result,
+                } => {
+                    let op_str = match op {
+                        BinaryOpKind::Add => "add",
+                        BinaryOpKind::Sub => "sub",
+                        BinaryOpKind::Mul => "mul",
+                        BinaryOpKind::Div => "div",
+                        BinaryOpKind::And => "and",
+                        BinaryOpKind::Or => "or",
+                        BinaryOpKind::Xor => "xor",
+                        BinaryOpKind::Mod => "mod",
+                        BinaryOpKind::Rsh => "rsh",
+                        BinaryOpKind::Lsh => "lsh",
+                    };
+                    maybe_constant_to_doc(context, md_namer, namer, arg1)
+                        .append(maybe_constant_to_doc(context, md_namer, namer, arg2))
+                        .append(Doc::line(
+                            Doc::text(format!(
+                                "wide {op_str} {}, {} to {}",
+                                namer.name(context, arg1),
+                                namer.name(context, arg2),
+                                namer.name(context, result),
+                            ))
+                            .append(md_namer.md_idx_to_doc(context, metadata)),
+                        ))
+                }
             },
             Instruction::GetElemPtr {
                 base,

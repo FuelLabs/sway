@@ -643,6 +643,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
                     let ptr_ty = ptr.get_inner_type(self.context);
                     let var_size = match ptr_ty.get_content(self.context) {
+                        TypeContent::Uint(256) => 4,
                         TypeContent::Unit
                         | TypeContent::Bool
                         | TypeContent::Uint(_)
