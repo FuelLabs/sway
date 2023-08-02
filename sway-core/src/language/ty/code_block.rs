@@ -49,23 +49,18 @@ impl ReplaceDecls for TyCodeBlock {
         handler: &Handler,
         ctx: &TypeCheckContext,
     ) -> Result<(), ErrorEmitted> {
-        let mut error_emitted = None;
+        handler.scope(|handler| {
+            for x in self.contents.iter_mut() {
+                match x.replace_decls(decl_mapping, handler, ctx) {
+                    Ok(res) => res,
+                    Err(_) => {
+                        continue;
+                    }
+                };
+            }
 
-        for x in self.contents.iter_mut() {
-            match x.replace_decls(decl_mapping, handler, ctx) {
-                Ok(res) => res,
-                Err(err) => {
-                    error_emitted = Some(err);
-                    continue;
-                }
-            };
-        }
-
-        if let Some(err) = error_emitted {
-            Err(err)
-        } else {
             Ok(())
-        }
+        })
     }
 }
 
