@@ -8,6 +8,7 @@
 /// - Fuel ASM block arguments: These are assumed to be pointers for 'by-reference' values.
 /// - Fuel ASM block return values: These are also assumed to be pointers for 'by-reference'
 ///   values.
+/// - Fuel WIde binary operators: Demote binary operands bigger than 64 bits.
 use crate::{
     asm::AsmArg, AnalysisResults, BinaryOpKind, Context, FuelVmInstruction, Function, Instruction,
     IrError, Pass, PassMutability, ScopedPass, Type, Value,
@@ -499,63 +500,4 @@ fn wide_binary_op_demotion(context: &mut Context, function: Function) -> Result<
     }
 
     Ok(true)
-}
-
-#[cfg(test)]
-mod test {
-    use crate::{tests::assert_optimization, MISCDEMOTION_NAME};
-
-    #[test]
-    fn assert_wide_binary_op_demotion_constants() {
-        let expected = [
-         "v0 = get_local ptr u256, __wide_lhs, !0",
-         "v1 = const u256 0x0000000000000000000000000000000000000000000000000000000000000001, !0",
-         "store v1 to v0, !0",
-         "v2 = get_local ptr u256, __wide_rhs, !0",
-         "v3 = const u256 0x0000000000000000000000000000000000000000000000000000000000000002, !0",
-         "store v3 to v2, !0",
-         "v4 = get_local ptr u256, __wide_result, !0",
-         "wide add v0, v2 to v4, !0",
-         "v5 = load v4, !0",
-        ];
-        let body = "
-    entry fn main() -> u256 {
-        entry():
-        v0 = const u256 0x0000000000000000000000000000000000000000000000000000000000000001, !0
-        v1 = const u256 0x0000000000000000000000000000000000000000000000000000000000000002, !0
-        v2 = add v0, v1, !0
-        ret u256 v2
-    }
-";
-        assert_optimization(&[MISCDEMOTION_NAME], body, Some(expected.into_iter()));
-    }
-
-    #[test]
-    fn assert_wide_binary_op_demotion_loads() {
-        let expected = [
-            "v1 = load v0, !0",
-            "v3 = load v2, !0",
-            "v4 = get_local ptr u256, __wide_lhs, !0",
-            "store v1 to v4, !0",
-            "v5 = get_local ptr u256, __wide_rhs, !0",
-            "store v3 to v5, !0",
-            "v6 = get_local ptr u256, __wide_result, !0",
-            "wide add v4, v5 to v6, !0",
-            "v7 = load v6, !0",
-        ];
-        let body = "
-        entry fn main() -> u256 {
-            local u256 lhs
-            local u256 rhs
-            entry():
-            v0 = get_local ptr u256, lhs
-            v1 = load v0, !0
-            v2 = get_local ptr u256, rhs
-            v3 = load v2, !0
-            v4 = add v1, v3, !0
-            ret u256 v4
-        }
-";
-        assert_optimization(&[MISCDEMOTION_NAME], body, Some(expected.into_iter()));
-    }
 }

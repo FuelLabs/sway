@@ -333,10 +333,10 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
             && arg2_ty.is_ptr(self.context)
             && result_ty.is_ptr(self.context)
         {
-            return Err(IrError::VerifyBinaryOpIncorrectArgType);
+            Ok(())
+        } else {
+            Err(IrError::VerifyBinaryOpIncorrectArgType)
         }
-
-        Ok(())
     }
 
     fn verify_binary_op(
