@@ -332,11 +332,11 @@ pub(crate) fn type_check_method_application(
     // constraint with new decl ids based on the new type.
     let decl_mapping = TypeParameter::gather_decl_mapping_from_trait_constraints(
         handler,
-        ctx.by_ref(),
+        &ctx,
         &method.type_parameters,
         &call_path.span(),
     )?;
-    method.replace_decls(&decl_mapping, ctx.engines());
+    method.replace_decls(&decl_mapping, handler, &ctx)?;
     let return_type = method.return_type.type_id;
     let new_decl_ref = decl_engine
         .insert(method)
