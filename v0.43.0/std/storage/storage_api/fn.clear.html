@@ -1,0 +1,14 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="swaydoc"><meta name="description" content="API documentation for the Sway `clear` function in `storage_api`."><meta name="keywords" content="sway, swaylang, sway-lang, clear"><link rel="icon" href="../../../static.files/sway-logo.svg"><title>clear in storage_api - Sway</title><link rel="stylesheet" type="text/css" href="../../../static.files/normalize.css"><link rel="stylesheet" type="text/css" href="../../../static.files/swaydoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../static.files/ayu.css"><link rel="stylesheet" href="../../../static.files/ayu.min.css"></head><body class="swaydoc fn"><nav class="sidebar"><a class="sidebar-logo" href="../../../std/index.html"><div class="logo-container"><img class="sway-logo" src="../../../static.files/sway-logo.svg" alt="logo"></div></a><h2 class="location">Function clear</h2><div class="sidebar-elems"><section><div class="block"><ul></ul></div></section></div></nav><main><div class="width-limiter"><section id="main-content" class="content"><div class="main-heading"><h1 class="fqn"><span class="in-band">Function <a class="mod" href="../../index.html">std</a><span>::</span><a class="mod" href="../index.html">storage</a><span>::</span><a class="mod" href="index.html">storage_api</a><span>::</span><a class="fn" href="#">clear</a></span></h1></div><div class="docblock item-decl"><pre class="sway fn"><code>pub fn clear&lt;T&gt;(slot: b256) -&gt; bool </code></pre></div><details class="swaydoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Clear a sequence of consecutive storage slots starting at a some slot. Returns a Boolean<br />
+indicating whether all of the storage slots cleared were previously set.</p>
+<h3>Arguments</h3>
+<ul>
+<li><code>slot</code> - The key of the first storage slot that will be cleared</li>
+</ul>
+<h3>Examples</h3>
+<pre><code class="language-sway">let five = 5_u64;
+write(ZERO_B256, 0, five);
+let cleared = clear::&lt;u64&gt;(ZERO_B256);
+assert(cleared);
+assert(read::&lt;u64&gt;(ZERO_B256, 0).is_none());
+</code></pre>
+</div></details></section></div></main><script src="../../../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>
