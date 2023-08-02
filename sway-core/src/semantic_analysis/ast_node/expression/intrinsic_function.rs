@@ -1,6 +1,6 @@
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::{
-    error::{CompileError, Hint},
+    error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
 use sway_types::integer_bits::IntegerBits;
@@ -321,7 +321,7 @@ fn type_check_cmp(
         return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
             span: lhs.span,
-            hint: Hint::empty(),
+            hint: "".to_string(),
         }));
     }
 
@@ -445,7 +445,7 @@ fn type_check_addr_of(
         return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
             span,
-            hint: Hint::new("Only a reference type can be used as argument here".to_string()),
+            hint: "Only a reference type can be used as argument here".to_string(),
         }));
     }
 
@@ -494,7 +494,7 @@ fn type_check_state_clear(
         return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
             span,
-            hint: Hint::new("Argument type must be B256, a key into the state storage".to_string()),
+            hint: "Argument type must be B256, a key into the state storage".to_string(),
         }));
     }
 
@@ -548,7 +548,7 @@ fn type_check_state_load_word(
         return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
             span,
-            hint: Hint::new("Argument type must be B256, a key into the state storage".to_string()),
+            hint: "Argument type must be B256, a key into the state storage".to_string(),
         }));
     }
     let intrinsic_function = ty::TyIntrinsicFunctionKind {
@@ -603,7 +603,7 @@ fn type_check_state_store_word(
         return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
             span,
-            hint: Hint::new("Argument type must be B256, a key into the state storage".to_string()),
+            hint: "Argument type must be B256, a key into the state storage".to_string(),
         }));
     }
     let mut ctx = ctx.with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
@@ -692,7 +692,7 @@ fn type_check_state_quad(
         return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
             span,
-            hint: Hint::new("Argument type must be B256, a key into the state storage".to_string()),
+            hint: "Argument type must be B256, a key into the state storage".to_string(),
         }));
     }
     let mut ctx = ctx.with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
@@ -1020,7 +1020,7 @@ fn type_check_ptr_ops(
         return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
             span: lhs.span,
-            hint: Hint::empty(),
+            hint: "".to_string(),
         }));
     }
 

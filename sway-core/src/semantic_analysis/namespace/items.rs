@@ -111,40 +111,89 @@ impl Items {
         const_shadowing_mode: ConstShadowingMode,
     ) -> Result<(), ErrorEmitted> {
         let append_shadowing_error =
-            |decl: &ty::TyDecl, item: &ty::TyDecl, const_shadowing_mode: ConstShadowingMode| {
+            |ident: &Ident,
+             decl: &ty::TyDecl,
+             is_use: bool,
+             is_alias: bool,
+             item: &ty::TyDecl,
+             const_shadowing_mode: ConstShadowingMode| {
                 use ty::TyDecl::*;
-                match (decl, &item, const_shadowing_mode) {
+                match (ident, decl, is_use, is_alias, &item, const_shadowing_mode) {
                     // variable shadowing a constant
-                    (ConstantDecl { .. }, VariableDecl { .. }, _) => {
-                        handler
-                            .emit_err(CompileError::VariableShadowsConstant { name: name.clone() });
+                    (
+                        constant_ident,
+                        ConstantDecl(constant_decl),
+                        is_imported_constant,
+                        is_alias,
+                        VariableDecl { .. },
+                        _,
+                    ) => {
+                        handler.emit_err(CompileError::ConstantsCannotBeShadowed {
+                            variable_or_constant: "Variable".to_string(),
+                            name: name.clone(),
+                            constant_span: constant_ident.span(),
+                            constant_decl: if is_imported_constant {
+                                constant_decl.decl_span.clone()
+                            } else {
+                                Span::dummy()
+                            },
+                            is_alias,
+                        });
+                    }
+                    // constant shadowing a constant sequentially
+                    (
+                        constant_ident,
+                        ConstantDecl(constant_decl),
+                        is_imported_constant,
+                        is_alias,
+                        ConstantDecl { .. },
+                        ConstShadowingMode::Sequential,
+                    ) => {
+                        handler.emit_err(CompileError::ConstantsCannotBeShadowed {
+                            variable_or_constant: "Constant".to_string(),
+                            name: name.clone(),
+                            constant_span: constant_ident.span(),
+                            constant_decl: if is_imported_constant {
+                                constant_decl.decl_span.clone()
+                            } else {
+                                Span::dummy()
+                            },
+                            is_alias,
+                        });
                     }
                     // constant shadowing a variable
-                    (VariableDecl { .. }, ConstantDecl { .. }, _) => {
-                        handler
-                            .emit_err(CompileError::ConstantShadowsVariable { name: name.clone() });
+                    (_, VariableDecl(variable_decl), _, _, ConstantDecl { .. }, _) => {
+                        handler.emit_err(CompileError::ConstantShadowsVariable {
+                            name: name.clone(),
+                            variable_span: variable_decl.name.span(),
+                        });
                     }
-                    // constant shadowing a constant outside function body
-                    (ConstantDecl { .. }, ConstantDecl { .. }, ConstShadowingMode::ItemStyle) => {
+                    // constant shadowing a constant item-style (outside of a function body)
+                    (
+                        _,
+                        ConstantDecl { .. },
+                        _,
+                        _,
+                        ConstantDecl { .. },
+                        ConstShadowingMode::ItemStyle,
+                    ) => {
                         handler.emit_err(CompileError::MultipleDefinitionsOfConstant {
                             name: name.clone(),
                             span: name.span(),
                         });
                     }
-                    // constant shadowing a constant within function body
-                    (ConstantDecl { .. }, ConstantDecl { .. }, ConstShadowingMode::Sequential) => {
-                        handler
-                            .emit_err(CompileError::ConstantShadowsConstant { name: name.clone() });
-                    }
                     // type or type alias shadowing another type or type alias
                     // trait/abi shadowing another trait/abi
                     // type or type alias shadowing a trait/abi, or vice versa
                     (
+                        _,
                         StructDecl { .. }
                         | EnumDecl { .. }
                         | TypeAliasDecl { .. }
                         | TraitDecl { .. }
                         | AbiDecl { .. },
+                        _,
+                        _,
                         StructDecl { .. }
                         | EnumDecl { .. }
                         | TypeAliasDecl { .. }
@@ -157,8 +206,15 @@ impl Items {
                             span: name.span(),
                         });
                     }
-                    // Generic parameter shadowing another generic parameter
-                    (GenericTypeForFunctionScope { .. }, GenericTypeForFunctionScope { .. }, _) => {
+                    // generic parameter shadowing another generic parameter
+                    (
+                        _,
+                        GenericTypeForFunctionScope { .. },
+                        _,
+                        _,
+                        GenericTypeForFunctionScope { .. },
+                        _,
+                    ) => {
                         handler
                             .emit_err(CompileError::GenericShadowsGeneric { name: name.clone() });
                     }
@@ -166,15 +222,24 @@ impl Items {
                 }
             };
 
-        if let Some(decl) = self.symbols.get(&name) {
-            append_shadowing_error(decl, &item, const_shadowing_mode);
+        if let Some((ident, decl)) = self.symbols.get_key_value(&name) {
+            append_shadowing_error(ident, decl, false, false, &item, const_shadowing_mode);
         }
 
-        if let Some((_, GlobImport::No, decl, _)) = self.use_synonyms.get(&name) {
-            append_shadowing_error(decl, &item, const_shadowing_mode);
+        if let Some((ident, (_, GlobImport::No, decl, _))) = self.use_synonyms.get_key_value(&name)
+        {
+            append_shadowing_error(
+                ident,
+                decl,
+                true,
+                self.use_aliases.get(&name.to_string()).is_some(),
+                &item,
+                const_shadowing_mode,
+            );
         }
 
         self.symbols.insert(name, item);
+
         Ok(())
     }
 
