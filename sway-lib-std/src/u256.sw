@@ -1,7 +1,7 @@
 //! A 256-bit unsigned integer type.
 library;
 
-use ::assert::assert;
+use ::assert::{assert_eq, assert};
 use ::convert::From;
 use ::result::Result::{self, *};
 use ::u128::U128;
@@ -654,7 +654,7 @@ impl Power for U256 {
         if exp == one {
             // Manually clone `self`. Otherwise, we may have a `MemoryOverflow`
             // issue with code that looks like: `x = x.pow(other)`
-            return Self::from((self.upper, self.lower));
+            return Self::from((self.a, self.b, self.c, self.d));
         }
 
         while exp & one == zero {
