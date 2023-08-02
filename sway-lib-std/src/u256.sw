@@ -5,6 +5,7 @@ use ::assert::assert;
 use ::convert::From;
 use ::result::Result::{self, *};
 use ::u128::U128;
+use ::math::Power;
 
 /// Left shift a `u64` and preserve the overflow amount if any.
 fn lsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
@@ -637,4 +638,50 @@ impl core::ops::Divide for U256 {
 
         quotient
     }
+}
+
+impl Power for U256 {
+    fn pow(self, exponent: Self) -> Self {
+        let mut value = self;
+        let mut exp = exponent;
+        let one = Self::from((0, 1));
+        let zero = Self::from((0, 0));
+
+        if exp == zero {
+            return one;
+        }
+
+        if exp == one {
+            // Manually clone `self`. Otherwise, we may have a `MemoryOverflow`
+            // issue with code that looks like: `x = x.pow(other)`
+            return Self::from((self.upper, self.lower));
+        }
+
+        while exp & one == zero {
+            value = value * value;
+            exp >>= 1;
+        }
+
+        if exp == one {
+            return value;
+        }
+
+        let mut acc = value;
+        while exp > one {
+            exp >>= 1;
+            value = value * value;
+            if exp & one == one {
+                acc = acc * value;
+            }
+        }
+        acc
+    }
+}
+
+#[test]
+fn test_pow_u256() {
+    let num = 5;
+    assert_eq(num.pow(2), 25);
+    assert_eq(num.pow(3), 125);
+    assert_eq(num.pow(10), 9765625)
 }
