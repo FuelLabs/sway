@@ -8,6 +8,6 @@ source = 'path+from-root-C9E1B0494AB5FDF1'
 dependencies = ['core']
 
 [[package]]
-name = 'test_script_bytes'
+name = 'test_script'
 source = 'member'
 dependencies = ['std']
