@@ -184,7 +184,7 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
                         }
                     }
                     let prompt = format!(
-                        "\nPlease provide the password of your encrypted wallet vault at {wallet_path:?}:"
+                        "\nPlease provide the password of your encrypted wallet vault at {wallet_path:?}: "
                     );
                     let password = rpassword::prompt_password(prompt)?;
                     let verification = AccountVerification::Yes(password.clone());
@@ -205,7 +205,7 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
                     }
                     print_account_balances(&accounts, &account_balances);
 
-                    print!("\nPlease provide the index of account to use for signing:");
+                    print!("\nPlease provide the index of account to use for signing: ");
                     std::io::stdout().flush()?;
                     let mut account_index = String::new();
                     std::io::stdin().read_line(&mut account_index)?;
@@ -224,7 +224,7 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
                     let hashed = public_key.hash();
                     let bech32 = Bech32Address::new(FUEL_BECH32_HRP, hashed);
                     let question = format!(
-                        "Do you accept to sign this transaction with {}? [y/N]: ",
+                        "Do you agree to sign this transaction with {}? [y/N]: ",
                         bech32
                     );
                     let accepted = ask_user_yes_no_question(&question)?;
