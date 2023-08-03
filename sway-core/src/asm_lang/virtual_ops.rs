@@ -61,6 +61,18 @@ pub(crate) enum VirtualOp {
         VirtualRegister,
         VirtualImmediate06,
     ),
+    WQML(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualImmediate06,
+    ),
+    WQDV(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualImmediate06,
+    ),
 
     /* Control Flow Instructions */
     JMP(VirtualRegister),
@@ -214,6 +226,8 @@ impl VirtualOp {
             XOR(r1, r2, r3) => vec![r1, r2, r3],
             XORI(r1, r2, _i) => vec![r1, r2],
             WQOP(r1, r2, r3, _) => vec![r1, r2, r3],
+            WQML(r1, r2, r3, _) => vec![r1, r2, r3],
+            WQDV(r1, r2, r3, _) => vec![r1, r2, r3],
 
             /* Control Flow Instructions */
             JMP(r1) => vec![r1],
@@ -324,6 +338,8 @@ impl VirtualOp {
             XOR(_r1, r2, r3) => vec![r2, r3],
             XORI(_r1, r2, _i) => vec![r2],
             WQOP(r1, r2, r3, _) => vec![r1, r2, r3],
+            WQML(r1, r2, r3, _) => vec![r1, r2, r3],
+            WQDV(r1, r2, r3, _) => vec![r1, r2, r3],
 
             /* Control Flow Instructions */
             JMP(r1) => vec![r1],
@@ -434,6 +450,8 @@ impl VirtualOp {
             XOR(r1, _r2, _r3) => vec![r1],
             XORI(r1, _r2, _i) => vec![r1],
             WQOP(_, _, _, _) => vec![],
+            WQML(_, _, _, _) => vec![],
+            WQDV(_, _, _, _) => vec![],
 
             /* Control Flow Instructions */
             JMP(_r1) => vec![],
@@ -680,6 +698,18 @@ impl VirtualOp {
                 i.clone(),
             ),
             WQOP(r1, r2, r3, i) => Self::WQOP(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                i.clone(),
+            ),
+            WQML(r1, r2, r3, i) => Self::WQML(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                i.clone(),
+            ),
+            WQDV(r1, r2, r3, i) => Self::WQDV(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
                 update_reg(reg_to_reg_map, r3),
@@ -1104,6 +1134,18 @@ impl VirtualOp {
                 imm.clone(),
             ),
             WQOP(reg1, reg2, reg3, imm) => AllocatedOpcode::WQOP(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+                imm.clone(),
+            ),
+            WQML(reg1, reg2, reg3, imm) => AllocatedOpcode::WQML(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+                imm.clone(),
+            ),
+            WQDV(reg1, reg2, reg3, imm) => AllocatedOpcode::WQDV(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),

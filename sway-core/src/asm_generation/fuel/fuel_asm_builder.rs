@@ -503,6 +503,24 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 val2_reg,
                 VirtualImmediate06::wide_op(crate::asm_lang::WideOperations::Add, true),
             ),
+            BinaryOpKind::Sub => VirtualOp::WQOP(
+                result_reg,
+                val1_reg,
+                val2_reg,
+                VirtualImmediate06::wide_op(crate::asm_lang::WideOperations::Sub, true),
+            ),
+            BinaryOpKind::Mul => VirtualOp::WQML(
+                result_reg,
+                val1_reg,
+                val2_reg,
+                VirtualImmediate06::wide_mul(true, true),
+            ),
+            BinaryOpKind::Div => VirtualOp::WQDV(
+                result_reg,
+                val1_reg,
+                val2_reg,
+                VirtualImmediate06::wide_div(true),
+            ),
             _ => todo!(),
         };
 

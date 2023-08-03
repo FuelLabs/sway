@@ -335,13 +335,17 @@ fn wide_binary_op_demotion(context: &mut Context, function: Function) -> Result<
                 let arg2_type = arg2
                     .get_type(context)
                     .and_then(|x| x.get_uint_width(context));
-                match op {
-                    BinaryOpKind::Add => match (arg1_type, arg2_type) {
-                        (Some(256), Some(256)) => Some((block, instr_val)),
-                        _ => None,
-                    },
-                    _ => None,
-                }
+
+                match (arg1_type, arg2_type) {
+                    (Some(256), Some(256)) => {
+                        use BinaryOpKind::*;
+                        match op {
+                            Add | Sub | Mul | Div => Some((block, instr_val)),
+                            _ => todo!(),
+                        }
+                    }
+                    _ => None
+                }                
             } else {
                 None
             }
