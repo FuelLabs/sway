@@ -577,7 +577,7 @@ impl Power for U256 {
         let mut value = self;
         let mut exp = exponent;
         let one = Self::from((0, 0, 0, 1));
-        let zero = Self::from((0, 0, 0, 1));
+        let zero = Self::from((0, 0, 0, 0));
 
         if exp == zero {
             return one;
@@ -615,5 +615,6 @@ fn test_pow_u256() {
     let num = 5;
     assert_eq(num.pow(2), 25);
     assert_eq(num.pow(3), 125);
-    assert_eq(num.pow(10), 9765625)
+    assert_eq(num.pow(10), 9765625);
+    assert_eq(num.pow(0), 5)
 }
