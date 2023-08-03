@@ -7,8 +7,8 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{token::Delimiter, ExprStructField};
-use sway_types::Spanned;
+use sway_ast::ExprStructField;
+use sway_types::{ast::Delimiter, Spanned};
 
 impl Format for ExprStructField {
     fn format(

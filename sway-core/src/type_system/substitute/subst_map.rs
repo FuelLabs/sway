@@ -246,7 +246,7 @@ impl TypeSubstMap {
             | (TypeInfo::B256, TypeInfo::B256)
             | (TypeInfo::Numeric, TypeInfo::Numeric)
             | (TypeInfo::Contract, TypeInfo::Contract)
-            | (TypeInfo::ErrorRecovery, TypeInfo::ErrorRecovery)
+            | (TypeInfo::ErrorRecovery(_), TypeInfo::ErrorRecovery(_))
             | (TypeInfo::Str(_), TypeInfo::Str(_))
             | (TypeInfo::UnsignedInteger(_), TypeInfo::UnsignedInteger(_))
             | (TypeInfo::ContractCaller { .. }, TypeInfo::ContractCaller { .. }) => TypeSubstMap {
@@ -433,7 +433,7 @@ impl TypeSubstMap {
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
             | TypeInfo::Contract
-            | TypeInfo::ErrorRecovery => None,
+            | TypeInfo::ErrorRecovery(..) => None,
         }
     }
 }

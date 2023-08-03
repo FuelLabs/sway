@@ -93,24 +93,17 @@ impl CollectTypesMetadata for TraitConstraint {
         ctx: &mut CollectTypesMetadataContext,
     ) -> Result<Vec<TypeMetadata>, ErrorEmitted> {
         let mut res = vec![];
-        let mut error_emitted = None;
-        for type_arg in self.type_arguments.iter() {
-            res.extend(
-                match type_arg.type_id.collect_types_metadata(handler, ctx) {
-                    Ok(res) => res,
-                    Err(err) => {
-                        error_emitted = Some(err);
-                        continue;
-                    }
-                },
-            );
-        }
-
-        if let Some(err) = error_emitted {
-            Err(err)
-        } else {
+        handler.scope(|handler| {
+            for type_arg in self.type_arguments.iter() {
+                res.extend(
+                    match type_arg.type_id.collect_types_metadata(handler, ctx) {
+                        Ok(res) => res,
+                        Err(_) => continue,
+                    },
+                );
+            }
             Ok(res)
-        }
+        })
     }
 }
 
@@ -163,10 +156,10 @@ impl TraitConstraint {
                     &type_argument.span,
                     None,
                 )
-                .unwrap_or_else(|_| {
+                .unwrap_or_else(|err| {
                     ctx.engines
                         .te()
-                        .insert(ctx.engines(), TypeInfo::ErrorRecovery)
+                        .insert(ctx.engines(), TypeInfo::ErrorRecovery(err))
                 });
         }
 

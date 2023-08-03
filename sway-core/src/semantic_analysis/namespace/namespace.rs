@@ -190,9 +190,8 @@ impl Namespace {
         // If the type that we are looking for is the error recovery type, then
         // we want to return the error case without creating a new error
         // message.
-        if let TypeInfo::ErrorRecovery = type_engine.get(type_id) {
-            // FIXME: find a better way to handle error recovery
-            return Err(ErrorEmitted);
+        if let TypeInfo::ErrorRecovery(err) = type_engine.get(type_id) {
+            return Err(err);
         }
 
         // grab the local module
@@ -215,7 +214,7 @@ impl Namespace {
                 self,
                 item_prefix,
             )
-            .unwrap_or_else(|_| type_engine.insert(engines, TypeInfo::ErrorRecovery));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
 
         // grab the module where the type itself is declared
         let type_module = self.root().check_submodule(handler, item_prefix)?;
@@ -452,11 +451,11 @@ impl Namespace {
             return Ok(method_decl_ref);
         }
 
-        if !args_buf
-            .get(0)
-            .map(|x| type_engine.get(x.return_type))
-            .eq(&Some(TypeInfo::ErrorRecovery), engines)
+        if let Some(TypeInfo::ErrorRecovery(err)) =
+            args_buf.get(0).map(|x| type_engine.get(x.return_type))
         {
+            Err(err)
+        } else {
             if try_inserting_trait_impl_on_failure {
                 // Retrieve the implemented traits for the type and insert them in the namespace.
                 // insert_trait_implementation_for_type is already called when we do type check of structs, enums, arrays and tuples.
@@ -482,13 +481,12 @@ impl Namespace {
             } else {
                 engines.help_out(type_id).to_string()
             };
-            handler.emit_err(CompileError::MethodNotFound {
+            Err(handler.emit_err(CompileError::MethodNotFound {
                 method_name: method_name.clone(),
                 type_name,
                 span: method_name.span(),
-            });
+            }))
         }
-        Err(ErrorEmitted)
     }
 
     /// Given a name and a type (plus a `self_type` to potentially
@@ -505,7 +503,7 @@ impl Namespace {
         item_name: &Ident,
         self_type: TypeId,
         engines: &Engines,
-    ) -> Result<DeclRefConstant, ErrorEmitted> {
+    ) -> Result<Option<DeclRefConstant>, ErrorEmitted> {
         let matching_item_decl_refs = self.find_items_for_type(
             handler,
             type_id,
@@ -523,11 +521,7 @@ impl Namespace {
             })
             .collect::<Vec<_>>();
 
-        if let Some(constant_decl_ref) = matching_constant_decl_refs.first() {
-            Ok(constant_decl_ref.clone())
-        } else {
-            Err(ErrorEmitted)
-        }
+        Ok(matching_constant_decl_refs.first().cloned())
     }
 
     /// Short-hand for performing a [Module::star_import] with `mod_path` as the destination.
@@ -681,7 +675,7 @@ impl Namespace {
     }
 
     pub(crate) fn get_items_for_type_and_trait_name(
-        &mut self,
+        &self,
         engines: &Engines,
         type_id: TypeId,
         trait_name: &CallPath,

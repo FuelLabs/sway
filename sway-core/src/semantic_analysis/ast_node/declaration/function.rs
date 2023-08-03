@@ -70,21 +70,17 @@ impl ty::TyFunctionDecl {
 
         // type check the function parameters, which will also insert them into the namespace
         let mut new_parameters = vec![];
-        let mut error_emitted = None;
-        for parameter in parameters.into_iter() {
-            new_parameters.push(
-                match ty::TyFunctionParameter::type_check(handler, ctx.by_ref(), parameter) {
-                    Ok(val) => val,
-                    Err(err) => {
-                        error_emitted = Some(err);
-                        continue;
-                    }
-                },
-            );
-        }
-        if let Some(err) = error_emitted {
-            return Err(err);
-        }
+        handler.scope(|handler| {
+            for parameter in parameters.into_iter() {
+                new_parameters.push(
+                    match ty::TyFunctionParameter::type_check(handler, ctx.by_ref(), parameter) {
+                        Ok(val) => val,
+                        Err(_) => continue,
+                    },
+                );
+            }
+            Ok(())
+        })?;
 
         // type check the return type
         return_type.type_id = ctx
@@ -95,7 +91,7 @@ impl ty::TyFunctionDecl {
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|_| type_engine.insert(engines, TypeInfo::ErrorRecovery));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
 
         // type check the function body
         //
@@ -107,10 +103,10 @@ impl ty::TyFunctionDecl {
                 .with_purity(purity)
                 .with_help_text("Function body's return type does not match up with its return type annotation.")
                 .with_type_annotation(return_type.type_id);
-            ty::TyCodeBlock::type_check(handler, ctx, body).unwrap_or_else(|_| {
+            ty::TyCodeBlock::type_check(handler, ctx, body).unwrap_or_else(|err| {
                 (
                     ty::TyCodeBlock { contents: vec![] },
-                    type_engine.insert(engines, TypeInfo::ErrorRecovery),
+                    type_engine.insert(engines, TypeInfo::ErrorRecovery(err)),
                 )
             })
         };
@@ -175,30 +171,21 @@ fn unify_return_statements(
 ) -> Result<(), ErrorEmitted> {
     let type_engine = ctx.engines.te();
 
-    let mut error_emitted = None;
-
-    for stmt in return_statements.iter() {
-        let (warnings, errors) = type_engine.unify_with_self(
-            ctx.engines(),
-            stmt.return_type,
-            return_type,
-            ctx.self_type(),
-            &stmt.span,
-            "Return statement must return the declared function return type.",
-            None,
-        );
-        for warn in warnings {
-            handler.emit_warn(warn);
+    handler.scope(|handler| {
+        for stmt in return_statements.iter() {
+            type_engine.unify_with_self(
+                handler,
+                ctx.engines(),
+                stmt.return_type,
+                return_type,
+                ctx.self_type(),
+                &stmt.span,
+                "Return statement must return the declared function return type.",
+                None,
+            );
         }
-        for err in errors {
-            error_emitted = Some(handler.emit_err(err));
-        }
-    }
-    if let Some(err) = error_emitted {
-        Err(err)
-    } else {
         Ok(())
-    }
+    })
 }
 
 #[test]

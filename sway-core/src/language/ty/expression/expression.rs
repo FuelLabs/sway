@@ -7,6 +7,7 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::{ty::*, Literal},
+    semantic_analysis::TypeCheckContext,
     type_system::*,
     types::*,
 };
@@ -59,8 +60,13 @@ impl ReplaceSelfType for TyExpression {
 }
 
 impl ReplaceDecls for TyExpression {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: &Engines) {
-        self.expression.replace_decls(decl_mapping, engines);
+    fn replace_decls_inner(
+        &mut self,
+        decl_mapping: &DeclMapping,
+        handler: &Handler,
+        ctx: &TypeCheckContext,
+    ) -> Result<(), ErrorEmitted> {
+        self.expression.replace_decls(decl_mapping, handler, ctx)
     }
 }
 
@@ -379,11 +385,11 @@ impl DeterministicallyAborts for TyExpression {
 }
 
 impl TyExpression {
-    pub(crate) fn error(span: Span, engines: &Engines) -> TyExpression {
+    pub(crate) fn error(err: ErrorEmitted, span: Span, engines: &Engines) -> TyExpression {
         let type_engine = engines.te();
         TyExpression {
             expression: TyExpressionVariant::Tuple { fields: vec![] },
-            return_type: type_engine.insert(engines, TypeInfo::ErrorRecovery),
+            return_type: type_engine.insert(engines, TypeInfo::ErrorRecovery(err)),
             span,
         }
     }

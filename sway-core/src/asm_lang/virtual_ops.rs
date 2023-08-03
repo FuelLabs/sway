@@ -55,6 +55,12 @@ pub(crate) enum VirtualOp {
     SUBI(VirtualRegister, VirtualRegister, VirtualImmediate12),
     XOR(VirtualRegister, VirtualRegister, VirtualRegister),
     XORI(VirtualRegister, VirtualRegister, VirtualImmediate12),
+    WQOP(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualImmediate06,
+    ),
 
     /* Control Flow Instructions */
     JMP(VirtualRegister),
@@ -207,6 +213,7 @@ impl VirtualOp {
             SUBI(r1, r2, _i) => vec![r1, r2],
             XOR(r1, r2, r3) => vec![r1, r2, r3],
             XORI(r1, r2, _i) => vec![r1, r2],
+            WQOP(r1, r2, r3, _) => vec![r1, r2, r3],
 
             /* Control Flow Instructions */
             JMP(r1) => vec![r1],
@@ -316,6 +323,7 @@ impl VirtualOp {
             SUBI(_r1, r2, _i) => vec![r2],
             XOR(_r1, r2, r3) => vec![r2, r3],
             XORI(_r1, r2, _i) => vec![r2],
+            WQOP(r1, r2, r3, _) => vec![r1, r2, r3],
 
             /* Control Flow Instructions */
             JMP(r1) => vec![r1],
@@ -425,6 +433,7 @@ impl VirtualOp {
             SUBI(r1, _r2, _i) => vec![r1],
             XOR(r1, _r2, _r3) => vec![r1],
             XORI(r1, _r2, _i) => vec![r1],
+            WQOP(_, _, _, _) => vec![],
 
             /* Control Flow Instructions */
             JMP(_r1) => vec![],
@@ -668,6 +677,12 @@ impl VirtualOp {
             XORI(r1, r2, i) => Self::XORI(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
+                i.clone(),
+            ),
+            WQOP(r1, r2, r3, i) => Self::WQOP(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
                 i.clone(),
             ),
 
@@ -1086,6 +1101,12 @@ impl VirtualOp {
             XORI(reg1, reg2, imm) => AllocatedOpcode::XORI(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
+                imm.clone(),
+            ),
+            WQOP(reg1, reg2, reg3, imm) => AllocatedOpcode::WQOP(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
                 imm.clone(),
             ),
 

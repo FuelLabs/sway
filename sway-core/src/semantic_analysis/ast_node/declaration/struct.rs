@@ -71,7 +71,7 @@ impl ty::TyStructField {
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|_| type_engine.insert(ctx.engines(), TypeInfo::ErrorRecovery));
+            .unwrap_or_else(|err| type_engine.insert(ctx.engines(), TypeInfo::ErrorRecovery(err)));
         let field = ty::TyStructField {
             name: field.name,
             span: field.span,

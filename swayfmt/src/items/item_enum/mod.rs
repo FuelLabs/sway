@@ -11,11 +11,11 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{
-    token::{Delimiter, PunctKind},
-    ItemEnum,
+use sway_ast::ItemEnum;
+use sway_types::{
+    ast::{Delimiter, PunctKind},
+    Spanned,
 };
-use sway_types::Spanned;
 
 #[cfg(test)]
 mod tests;

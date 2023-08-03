@@ -109,7 +109,7 @@ pub fn main() -> Result<()> {
 
             if let Some(pkg_manifest_file) = manifest_map.get(id) {
                 let manifest_file = ManifestFile::from_dir(pkg_manifest_file.path())?;
-                let ty_program = match compile_result.and_then(|programs| programs.typed) {
+                let ty_program = match compile_result.and_then(|programs| programs.typed.ok()) {
                     Some(ty_program) => ty_program,
                     _ => bail!(
                         "documentation could not be built from manifest located at '{}'",
@@ -130,7 +130,7 @@ pub fn main() -> Result<()> {
         let ty_program = match compile_results
             .pop()
             .and_then(|(programs, _handler)| programs)
-            .and_then(|p| p.typed)
+            .and_then(|p| p.typed.ok())
         {
             Some(ty_program) => ty_program,
             _ => bail!(

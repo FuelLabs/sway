@@ -77,24 +77,18 @@ pub(crate) fn instantiate_enum(
             let typed_expr = ty::TyExpression::type_check(handler, enum_ctx, single_expr.clone())?;
 
             // unify the value of the argument with the variant
-            let mut error_emitted = None;
-            let (warnings, errors) = type_engine.unify(
-                engines,
-                typed_expr.return_type,
-                enum_variant.type_argument.type_id,
-                span,
-                "Enum instantiator must match its declared variant type.",
-                None,
-            );
-            for warn in warnings {
-                handler.emit_warn(warn);
-            }
-            for err in errors {
-                error_emitted = Some(handler.emit_err(err));
-            }
-            if let Some(err) = error_emitted {
-                return Err(err);
-            }
+            handler.scope(|handler| {
+                type_engine.unify(
+                    handler,
+                    engines,
+                    typed_expr.return_type,
+                    enum_variant.type_argument.type_id,
+                    span,
+                    "Enum instantiator must match its declared variant type.",
+                    None,
+                );
+                Ok(())
+            })?;
 
             // we now know that the instantiator type matches the declared type, via the above tpe
             // check

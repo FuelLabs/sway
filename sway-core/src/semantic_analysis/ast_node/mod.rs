@@ -146,14 +146,14 @@ impl ty::TyAstNode {
                         .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown))
                         .with_help_text("");
                     let inner = ty::TyExpression::type_check(handler, ctx, expr.clone())
-                        .unwrap_or_else(|_| ty::TyExpression::error(expr.span(), engines));
+                        .unwrap_or_else(|err| ty::TyExpression::error(err, expr.span(), engines));
                     ty::TyAstNodeContent::Expression(inner)
                 }
                 AstNodeContent::ImplicitReturnExpression(expr) => {
                     let ctx =
                         ctx.with_help_text("Implicit return must match up with block's type.");
                     let typed_expr = ty::TyExpression::type_check(handler, ctx, expr.clone())
-                        .unwrap_or_else(|_| ty::TyExpression::error(expr.span(), engines));
+                        .unwrap_or_else(|err| ty::TyExpression::error(err, expr.span(), engines));
                     ty::TyAstNodeContent::ImplicitReturnExpression(typed_expr)
                 }
             },

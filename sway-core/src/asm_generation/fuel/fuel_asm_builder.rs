@@ -10,7 +10,10 @@ use crate::{
         },
         ProgramKind,
     },
-    asm_lang::{virtual_register::*, Label, Op, VirtualImmediate12, VirtualImmediate18, VirtualOp},
+    asm_lang::{
+        virtual_register::*, Label, Op, VirtualImmediate06, VirtualImmediate12, VirtualImmediate18,
+        VirtualOp,
+    },
     decl_engine::DeclRefFunction,
     metadata::MetadataManager,
 };
@@ -245,6 +248,12 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     FuelVmInstruction::StateStoreWord { stored_val, key } => {
                         self.compile_state_store_word(instr_val, stored_val, key)
                     }
+                    FuelVmInstruction::WideBinaryOp {
+                        op,
+                        arg1,
+                        arg2,
+                        result,
+                    } => self.compile_wide_binary_op(instr_val, op, arg1, arg2, result),
                 },
                 Instruction::GetElemPtr {
                     base,
@@ -472,6 +481,37 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         });
 
         self.reg_map.insert(*instr_val, res_reg);
+        Ok(())
+    }
+
+    fn compile_wide_binary_op(
+        &mut self,
+        instr_val: &Value,
+        op: &BinaryOpKind,
+        arg1: &Value,
+        arg2: &Value,
+        result: &Value,
+    ) -> Result<(), CompileError> {
+        let result_reg = self.value_to_register(result)?;
+        let val1_reg = self.value_to_register(arg1)?;
+        let val2_reg = self.value_to_register(arg2)?;
+
+        let opcode = match op {
+            BinaryOpKind::Add => VirtualOp::WQOP(
+                result_reg,
+                val1_reg,
+                val2_reg,
+                VirtualImmediate06::wide_op(crate::asm_lang::WideOperations::Add, true),
+            ),
+            _ => todo!(),
+        };
+
+        self.cur_bytecode.push(Op {
+            opcode: Either::Left(opcode),
+            comment: String::new(),
+            owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+        });
+
         Ok(())
     }
 

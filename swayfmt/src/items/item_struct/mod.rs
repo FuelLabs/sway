@@ -11,8 +11,8 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{token::Delimiter, ItemStruct};
-use sway_types::Spanned;
+use sway_ast::ItemStruct;
+use sway_types::{ast::Delimiter, Spanned};
 
 #[cfg(test)]
 mod tests;

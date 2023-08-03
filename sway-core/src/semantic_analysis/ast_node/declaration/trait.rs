@@ -178,10 +178,12 @@ impl ty::TyTraitDecl {
         for item in interface_surface.iter() {
             match item {
                 ty::TyTraitInterfaceItem::TraitFn(decl_ref) => {
-                    interface_surface_item_refs.insert(decl_ref.name().clone(), item.clone());
+                    interface_surface_item_refs
+                        .insert((decl_ref.name().clone(), type_id), item.clone());
                 }
                 ty::TyTraitInterfaceItem::Constant(decl_ref) => {
-                    interface_surface_item_refs.insert(decl_ref.name().clone(), item.clone());
+                    interface_surface_item_refs
+                        .insert((decl_ref.name().clone(), type_id), item.clone());
                 }
             }
         }
@@ -194,10 +196,10 @@ impl ty::TyTraitDecl {
         {
             match &item {
                 ty::TyTraitItem::Fn(decl_ref) => {
-                    impld_item_refs.insert(decl_ref.name().clone(), item.clone());
+                    impld_item_refs.insert((decl_ref.name().clone(), type_id), item.clone());
                 }
                 ty::TyTraitItem::Constant(decl_ref) => {
-                    impld_item_refs.insert(decl_ref.name().clone(), item.clone());
+                    impld_item_refs.insert((decl_ref.name().clone(), type_id), item.clone());
                 }
             };
         }
@@ -209,7 +211,7 @@ impl ty::TyTraitDecl {
     /// this trait.
     pub(crate) fn retrieve_interface_surface_and_items_and_implemented_items_for_type(
         &self,
-        ctx: TypeCheckContext,
+        ctx: &TypeCheckContext,
         type_id: TypeId,
         call_path: &CallPath,
         type_arguments: &[TypeArgument],
@@ -232,10 +234,12 @@ impl ty::TyTraitDecl {
         for item in interface_surface.iter() {
             match item {
                 ty::TyTraitInterfaceItem::TraitFn(decl_ref) => {
-                    interface_surface_item_refs.insert(decl_ref.name().clone(), item.clone());
+                    interface_surface_item_refs
+                        .insert((decl_ref.name().clone(), type_id), item.clone());
                 }
                 ty::TyTraitInterfaceItem::Constant(decl_ref) => {
-                    interface_surface_item_refs.insert(decl_ref.name().clone(), item.clone());
+                    interface_surface_item_refs
+                        .insert((decl_ref.name().clone(), type_id), item.clone());
                 }
             }
         }
@@ -244,10 +248,10 @@ impl ty::TyTraitDecl {
         for item in items.iter() {
             match item {
                 ty::TyTraitItem::Fn(decl_ref) => {
-                    item_refs.insert(decl_ref.name().clone(), item.clone());
+                    item_refs.insert((decl_ref.name().clone(), type_id), item.clone());
                 }
                 ty::TyTraitItem::Constant(decl_ref) => {
-                    item_refs.insert(decl_ref.name().clone(), item.clone());
+                    item_refs.insert((decl_ref.name().clone(), type_id), item.clone());
                 }
             }
         }
@@ -273,7 +277,7 @@ impl ty::TyTraitDecl {
                     let mut method = decl_engine.get_function(&decl_ref);
                     method.subst(&type_mapping, engines);
                     impld_item_refs.insert(
-                        method.name.clone(),
+                        (method.name.clone(), type_id),
                         TyTraitItem::Fn(
                             decl_engine
                                 .insert(method)
@@ -285,7 +289,7 @@ impl ty::TyTraitDecl {
                     let mut const_decl = decl_engine.get_constant(&decl_ref);
                     const_decl.subst(&type_mapping, engines);
                     impld_item_refs.insert(
-                        const_decl.call_path.suffix.clone(),
+                        (const_decl.call_path.suffix.clone(), type_id),
                         TyTraitItem::Constant(decl_engine.insert(const_decl)),
                     );
                 }

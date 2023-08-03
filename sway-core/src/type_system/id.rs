@@ -234,7 +234,7 @@ impl ReplaceSelfType for TypeId {
                 | TypeInfo::RawUntypedPtr
                 | TypeInfo::RawUntypedSlice
                 | TypeInfo::Contract
-                | TypeInfo::ErrorRecovery
+                | TypeInfo::ErrorRecovery(_)
                 | TypeInfo::Placeholder(_) => None,
             }
         }
@@ -249,7 +249,7 @@ impl SubstTypes for TypeId {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         let type_engine = engines.te();
         if let Some(matching_id) = type_mapping.find_match(*self, engines) {
-            if !matches!(type_engine.get(matching_id), TypeInfo::ErrorRecovery) {
+            if !matches!(type_engine.get(matching_id), TypeInfo::ErrorRecovery(_)) {
                 *self = matching_id;
             }
         }
@@ -380,68 +380,68 @@ impl TypeId {
             structure_generics.insert(*self, trait_constraints);
         }
 
-        let mut error_emitted = None;
-
-        for (structure_type_id, structure_trait_constraints) in &structure_generics {
-            if structure_trait_constraints.is_empty() {
-                continue;
-            }
-
-            // resolving trait constraits require a concrete type, we need to default numeric to u64
-            engines
-                .te()
-                .decay_numeric(handler, engines, *structure_type_id, span)?;
-
-            let structure_type_info = engines.te().get(*structure_type_id);
-            let structure_type_info_with_engines = engines.help_out(structure_type_info.clone());
-            if let TypeInfo::UnknownGeneric {
-                trait_constraints, ..
-            } = &structure_type_info
-            {
-                let mut generic_trait_constraints_trait_names: Vec<CallPath<BaseIdent>> = vec![];
-                for trait_constraint in trait_constraints.iter() {
-                    generic_trait_constraints_trait_names.push(trait_constraint.trait_name.clone());
+        handler.scope(|handler| {
+            for (structure_type_id, structure_trait_constraints) in &structure_generics {
+                if structure_trait_constraints.is_empty() {
+                    continue;
                 }
-                for structure_trait_constraint in structure_trait_constraints {
-                    if !generic_trait_constraints_trait_names
-                        .contains(&structure_trait_constraint.trait_name)
-                    {
-                        error_emitted =
-                            Some(handler.emit_err(CompileError::TraitConstraintMissing {
+
+                // resolving trait constraits require a concrete type, we need to default numeric to u64
+                engines
+                    .te()
+                    .decay_numeric(handler, engines, *structure_type_id, span)?;
+
+                let structure_type_info = engines.te().get(*structure_type_id);
+                let structure_type_info_with_engines =
+                    engines.help_out(structure_type_info.clone());
+                if let TypeInfo::UnknownGeneric {
+                    trait_constraints, ..
+                } = &structure_type_info
+                {
+                    let mut generic_trait_constraints_trait_names: Vec<CallPath<BaseIdent>> =
+                        vec![];
+                    for trait_constraint in trait_constraints.iter() {
+                        generic_trait_constraints_trait_names
+                            .push(trait_constraint.trait_name.clone());
+                    }
+                    for structure_trait_constraint in structure_trait_constraints {
+                        if !generic_trait_constraints_trait_names
+                            .contains(&structure_trait_constraint.trait_name)
+                        {
+                            handler.emit_err(CompileError::TraitConstraintMissing {
                                 param: structure_type_info_with_engines.to_string(),
-                                trait_name:
-                                    structure_trait_constraint.trait_name.suffix.to_string(),
+                                trait_name: structure_trait_constraint
+                                    .trait_name
+                                    .suffix
+                                    .to_string(),
                                 span: span.clone(),
-                            }));
+                            });
+                        }
                     }
-                }
-            } else {
-                let generic_trait_constraints_trait_names = ctx
-                    .namespace
-                    .implemented_traits
-                    .get_trait_names_for_type(engines, *structure_type_id);
-                for structure_trait_constraint in structure_trait_constraints {
-                    if !generic_trait_constraints_trait_names.contains(
-                        &structure_trait_constraint
-                            .trait_name
-                            .to_fullpath(ctx.namespace),
-                    ) {
-                        error_emitted =
-                            Some(handler.emit_err(CompileError::TraitConstraintNotSatisfied {
+                } else {
+                    let generic_trait_constraints_trait_names = ctx
+                        .namespace
+                        .implemented_traits
+                        .get_trait_names_for_type(engines, *structure_type_id);
+                    for structure_trait_constraint in structure_trait_constraints {
+                        if !generic_trait_constraints_trait_names.contains(
+                            &structure_trait_constraint
+                                .trait_name
+                                .to_fullpath(ctx.namespace),
+                        ) {
+                            handler.emit_err(CompileError::TraitConstraintNotSatisfied {
                                 ty: structure_type_info_with_engines.to_string(),
-                                trait_name:
-                                    structure_trait_constraint.trait_name.suffix.to_string(),
+                                trait_name: structure_trait_constraint
+                                    .trait_name
+                                    .suffix
+                                    .to_string(),
                                 span: span.clone(),
-                            }));
+                            });
+                        }
                     }
                 }
             }
-        }
-
-        if let Some(err) = error_emitted {
-            Err(err)
-        } else {
             Ok(())
-        }
+        })
     }
 }
