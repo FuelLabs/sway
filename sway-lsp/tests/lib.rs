@@ -544,7 +544,7 @@ async fn go_to_definition_for_paths() {
         req_line: 10,
         req_char: 27,
         def_line: 81,
-        def_start_char: 9,
+        def_start_char: 37,
         def_end_char: 15,
         def_path: "sway-lib-std/src/option.sw",
     };
