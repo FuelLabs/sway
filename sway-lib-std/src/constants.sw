@@ -7,7 +7,7 @@ use ::contract_id::ContractId;
 ///
 /// # Additional Information
 ///
-/// On the Fuel network, the base asset is Ethereum. It is hardcoded as the 0 ContractId.
+/// On the Fuel network, the base asset is Ether. It is hardcoded as the 0x00..00 ContractId.
 ///
 /// # Examples
 /// 
