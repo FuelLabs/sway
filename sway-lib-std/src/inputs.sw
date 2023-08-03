@@ -93,7 +93,7 @@ impl Eq for Input {
 ///
 /// # Returns
 ///
-/// * `Input` - The type of the input at `index`.
+/// * [Input] - The type of the input at `index`.
 ///
 /// # Examples
 ///
