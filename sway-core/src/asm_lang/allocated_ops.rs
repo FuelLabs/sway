@@ -111,12 +111,15 @@ pub(crate) enum AllocatedOpcode {
     ),
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     WQCM(
         AllocatedRegister,
         AllocatedRegister,
         AllocatedRegister,
         VirtualImmediate06,
     ),
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 =======
@@ -278,7 +281,10 @@ impl AllocatedOpcode {
             WQDV(_, _, _, _) => vec![],
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             WQCM(r1, _, _, _) => vec![r1],
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 =======
@@ -401,7 +407,10 @@ impl fmt::Display for AllocatedOpcode {
             WQDV(a, b, c, d) => write!(fmtr, "wqdv {a} {b} {c} {d}"),
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             WQCM(a, b, c, d) => write!(fmtr, "wqcm {a} {b} {c} {d}"),
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 =======

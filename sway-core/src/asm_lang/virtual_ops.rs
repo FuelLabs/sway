@@ -75,12 +75,15 @@ pub(crate) enum VirtualOp {
     ),
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     WQCM(
         VirtualRegister,
         VirtualRegister,
         VirtualRegister,
         VirtualImmediate06,
     ),
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 =======
@@ -242,7 +245,10 @@ impl VirtualOp {
             WQDV(r1, r2, r3, _) => vec![r1, r2, r3],
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             WQCM(r1, r2, r3, _) => vec![r1, r2, r3],
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 =======
@@ -361,7 +367,10 @@ impl VirtualOp {
             WQDV(r1, r2, r3, _) => vec![r1, r2, r3],
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             WQCM(_, r2, r3, _) => vec![r2, r3],
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 =======
@@ -480,7 +489,10 @@ impl VirtualOp {
             WQDV(_, _, _, _) => vec![],
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             WQCM(r1, _, _, _) => vec![r1],
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 =======
@@ -750,12 +762,15 @@ impl VirtualOp {
             ),
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             WQCM(r1, r2, r3, i) => Self::WQCM(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
                 update_reg(reg_to_reg_map, r3),
                 i.clone(),
             ),
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 =======
