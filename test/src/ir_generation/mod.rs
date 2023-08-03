@@ -443,6 +443,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>, verbose: bool) -> R
                     .unwrap_or_else(|e| panic!("{}: {e}\n{ir_output}", path.display()));
                 let parsed_ir_output = sway_ir::printer::to_string(&parsed_ir);
                 if ir_output != parsed_ir_output {
+                    println!("Deserialized IR:");
                     tracing::error!("{}", prettydiff::diff_lines(&ir_output, &parsed_ir_output));
                     panic!("{} failed IR (de)serialization.", path.display());
                 }

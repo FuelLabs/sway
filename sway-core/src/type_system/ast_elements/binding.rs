@@ -191,7 +191,7 @@ impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
                 EnforceTypeArguments::No,
                 Some(&type_info_prefix),
             )
-            .unwrap_or_else(|_| type_engine.insert(engines, TypeInfo::ErrorRecovery));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
 
         Ok(type_id)
     }
@@ -260,7 +260,9 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
                         EnforceTypeArguments::Yes,
                         None,
                     )
-                    .unwrap_or_else(|_| type_engine.insert(engines, TypeInfo::ErrorRecovery));
+                    .unwrap_or_else(|err| {
+                        type_engine.insert(engines, TypeInfo::ErrorRecovery(err))
+                    });
                 }
             }
         }

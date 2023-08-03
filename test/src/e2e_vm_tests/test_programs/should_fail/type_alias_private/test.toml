@@ -1,8 +1,4 @@
 category = "fail"
 
 # check: $()fn foo(x: lib::Alias) {}
-
-# check: $()fn foo(x: lib::Alias) {}
-
-# check: $()fn foo(x: lib::Alias) {}
 # nextln: $()Symbol "Alias" is private.

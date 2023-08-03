@@ -49,7 +49,6 @@ pub use semantic_analysis::namespace::{self, Namespace};
 pub mod types;
 
 use sway_error::error::CompileError;
-use sway_error::warning::CompileWarning;
 use sway_types::{ident::Ident, span, Spanned};
 pub use type_system::*;
 
@@ -513,7 +512,7 @@ pub fn compile_to_ast(
     );
 
     handler.dedup();
-    Ok(Programs::new(lexed_program, parsed_program, typed_res.ok()))
+    Ok(Programs::new(lexed_program, parsed_program, typed_res))
 }
 
 /// Given input Sway source code, try compiling to a `CompiledAsm`,
@@ -548,15 +547,15 @@ pub fn ast_to_asm(
     build_config: &BuildConfig,
 ) -> Result<CompiledAsm, ErrorEmitted> {
     let typed_program = match &programs.typed {
-        Some(typed_program) => typed_program,
-        None => return Err(ErrorEmitted),
+        Ok(typed_program) => typed_program,
+        Err(err) => return Err(*err),
     };
 
     let asm = match compile_ast_to_ir_to_asm(handler, engines, typed_program, build_config) {
         Ok(res) => res,
-        Err(_) => {
+        Err(err) => {
             handler.dedup();
-            return Err(ErrorEmitted);
+            return Err(err);
         }
     };
     Ok(CompiledAsm(asm))
@@ -622,9 +621,6 @@ pub(crate) fn compile_ast_to_ir_to_asm(
 
         // Run a DCE and simplify-cfg to clean up any obsolete instructions.
         pass_group.append_pass(DCE_NAME);
-        // XXX Oh no, if we add simplifycfg here it unearths a bug in the register allocator which
-        // manifests in the `should_pass/language/while_loops` test.  Fixing the register allocator
-        // is a very high priority but isn't a part of this change.
         pass_group.append_pass(SIMPLIFYCFG_NAME);
     }
 
@@ -694,14 +690,13 @@ fn perform_control_flow_analysis(
 ) -> Result<(), ErrorEmitted> {
     let dca_res = dead_code_analysis(handler, engines, program);
     let rpa_errors = return_path_analysis(engines, program);
-    let rpa_res = if rpa_errors.is_empty() {
-        Ok(())
-    } else {
+    let rpa_res = handler.scope(|handler| {
         for err in rpa_errors {
             handler.emit_err(err);
         }
-        Err(ErrorEmitted)
-    };
+        Ok(())
+    });
+
     if let Ok(graph) = dca_res.clone() {
         graph.visualize(engines, print_graph, print_graph_url_format);
     }
