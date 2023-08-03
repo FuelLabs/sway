@@ -644,8 +644,8 @@ impl Power for U256 {
     fn pow(self, exponent: Self) -> Self {
         let mut value = self;
         let mut exp = exponent;
-        let one = Self::from((0, 1));
-        let zero = Self::from((0, 0));
+        let one = Self::from((0, 0, 0, 1));
+        let zero = Self::from((0, 0, 0, 1));
 
         if exp == zero {
             return one;
