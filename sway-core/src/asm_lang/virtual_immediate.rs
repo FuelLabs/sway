@@ -52,16 +52,12 @@ impl VirtualImmediate06 {
     pub fn wide_mul(lhs_indirect: bool, rhs_indirect: bool) -> VirtualImmediate06 {
         let lhs = if lhs_indirect { 16u8 } else { 0 };
         let rhs = if rhs_indirect { 32u8 } else { 0 };
-        VirtualImmediate06 {
-            value: lhs | rhs,
-        }
+        VirtualImmediate06 { value: lhs | rhs }
     }
 
     pub fn wide_div(rhs_indirect: bool) -> VirtualImmediate06 {
         let rhs = if rhs_indirect { 32u8 } else { 0 };
-        VirtualImmediate06 {
-            value: rhs,
-        }
+        VirtualImmediate06 { value: rhs }
     }
 }
 

@@ -344,8 +344,8 @@ fn wide_binary_op_demotion(context: &mut Context, function: Function) -> Result<
                             _ => todo!(),
                         }
                     }
-                    _ => None
-                }                
+                    _ => None,
+                }
             } else {
                 None
             }
