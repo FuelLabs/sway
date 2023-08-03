@@ -321,7 +321,7 @@ impl core::ops::Subtract for U128 {
     }
 }
 impl core::ops::Multiply for U128 {
-    /// Multiply a `U128` with a `U128`. Panics of overflow.
+    /// Multiply a `U128` with a `U128`. Panics if overflow.
     fn multiply(self, other: Self) -> Self {
         // in case both of the `U128` upper parts are bigger than zero,
         // it automatically means overflow, as any `U128` value
