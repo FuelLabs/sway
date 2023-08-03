@@ -447,13 +447,13 @@ fn type_check_trait_implementation(
                 let method = decl_engine.get_trait_fn(decl_ref);
                 let name = method.name.clone();
                 method_checklist.insert(name.clone(), method);
-                interface_item_refs.insert(name, item.clone());
+                interface_item_refs.insert((name, self_type), item.clone());
             }
             TyTraitInterfaceItem::Constant(decl_ref) => {
                 let constant = decl_engine.get_constant(decl_ref);
                 let name = constant.call_path.suffix.clone();
                 constant_checklist.insert(name.clone(), constant);
-                interface_item_refs.insert(name, item.clone());
+                interface_item_refs.insert((name, self_type), item.clone());
             }
         }
     }
@@ -479,7 +479,7 @@ fn type_check_trait_implementation(
 
                 // Add this method to the "impld items".
                 let decl_ref = decl_engine.insert(impl_method);
-                impld_item_refs.insert(name, TyTraitItem::Fn(decl_ref));
+                impld_item_refs.insert((name, self_type), TyTraitItem::Fn(decl_ref));
             }
             ImplItem::Constant(const_decl) => {
                 let const_decl = type_check_const_decl(
@@ -499,7 +499,7 @@ fn type_check_trait_implementation(
 
                 // Add this constant to the "impld decls".
                 let decl_ref = decl_engine.insert(const_decl);
-                impld_item_refs.insert(name, TyTraitItem::Constant(decl_ref));
+                impld_item_refs.insert((name, self_type), TyTraitItem::Constant(decl_ref));
             }
         }
     }
@@ -533,7 +533,7 @@ fn type_check_trait_implementation(
         match item {
             TyImplItem::Fn(decl_ref) => {
                 let mut method = decl_engine.get_function(decl_ref);
-                method.replace_decls(&decl_mapping, engines);
+                method.replace_decls(&decl_mapping, handler, &ctx)?;
                 method.subst(&type_mapping, engines);
                 method.replace_self_type(engines, ctx.self_type());
                 all_items_refs.push(TyImplItem::Fn(
@@ -544,7 +544,7 @@ fn type_check_trait_implementation(
             }
             TyImplItem::Constant(decl_ref) => {
                 let mut const_decl = decl_engine.get_constant(decl_ref);
-                const_decl.replace_decls(&decl_mapping, engines);
+                const_decl.replace_decls(&decl_mapping, handler, &ctx)?;
                 const_decl.subst(&type_mapping, engines);
                 const_decl.replace_self_type(engines, ctx.self_type());
                 all_items_refs.push(TyImplItem::Constant(decl_engine.insert(const_decl)));
@@ -613,7 +613,7 @@ fn type_check_impl_method(
         ty::TyFunctionDecl::type_check(handler, ctx.by_ref(), impl_method.clone(), true, false)?;
 
     // Ensure that there aren't multiple definitions of this function impl'd
-    if impld_item_refs.contains_key(&impl_method.name) {
+    if impld_item_refs.contains_key(&(impl_method.name.clone(), self_type)) {
         return Err(
             handler.emit_err(CompileError::MultipleDefinitionsOfFunction {
                 name: impl_method.name.clone(),
@@ -825,7 +825,7 @@ fn type_check_const_decl(
     let const_name = const_decl.call_path.suffix.clone();
 
     // Ensure that there aren't multiple definitions of this constant
-    if impld_constant_ids.contains_key(&const_name) {
+    if impld_constant_ids.contains_key(&(const_name.clone(), self_type)) {
         return Err(
             handler.emit_err(CompileError::MultipleDefinitionsOfConstant {
                 name: const_name.clone(),

@@ -341,6 +341,11 @@ source = 'member'
 dependencies = ['std']
 
 [[package]]
+name = 'test_script_bytes'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
 name = 'token_ops'
 source = 'member'
 dependencies = ['std']

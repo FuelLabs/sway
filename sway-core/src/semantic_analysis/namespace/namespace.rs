@@ -675,7 +675,7 @@ impl Namespace {
     }
 
     pub(crate) fn get_items_for_type_and_trait_name(
-        &mut self,
+        &self,
         engines: &Engines,
         type_id: TypeId,
         trait_name: &CallPath,

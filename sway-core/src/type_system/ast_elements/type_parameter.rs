@@ -251,7 +251,7 @@ impl TypeParameter {
     /// Creates a [DeclMapping] from a list of [TypeParameter]s.
     pub(crate) fn gather_decl_mapping_from_trait_constraints(
         handler: &Handler,
-        mut ctx: TypeCheckContext,
+        ctx: &TypeCheckContext,
         type_parameters: &[TypeParameter],
         access_span: &Span,
     ) -> Result<DeclMapping, ErrorEmitted> {
@@ -289,13 +289,8 @@ impl TypeParameter {
                     } = trait_constraint;
 
                     let (trait_interface_item_refs, trait_item_refs, trait_impld_item_refs) =
-                        match handle_trait(
-                            handler,
-                            ctx.by_ref(),
-                            *type_id,
-                            trait_name,
-                            trait_type_arguments,
-                        ) {
+                        match handle_trait(handler, ctx, *type_id, trait_name, trait_type_arguments)
+                        {
                             Ok(res) => res,
                             Err(_) => continue,
                         };
@@ -317,7 +312,7 @@ impl TypeParameter {
 
 fn handle_trait(
     handler: &Handler,
-    mut ctx: TypeCheckContext,
+    ctx: &TypeCheckContext,
     type_id: TypeId,
     trait_name: &CallPath,
     type_arguments: &[TypeArgument],
@@ -340,7 +335,7 @@ fn handle_trait(
 
                 let (trait_interface_item_refs, trait_item_refs, trait_impld_item_refs) =
                     trait_decl.retrieve_interface_surface_and_items_and_implemented_items_for_type(
-                        ctx.by_ref(),
+                        ctx,
                         type_id,
                         trait_name,
                         type_arguments,
@@ -354,7 +349,7 @@ fn handle_trait(
                         supertrait_interface_item_refs,
                         supertrait_item_refs,
                         supertrait_impld_item_refs,
-                    ) = match handle_trait(handler, ctx.by_ref(), type_id, &supertrait.name, &[]) {
+                    ) = match handle_trait(handler, ctx, type_id, &supertrait.name, &[]) {
                         Ok(res) => res,
                         Err(_) => continue,
                     };

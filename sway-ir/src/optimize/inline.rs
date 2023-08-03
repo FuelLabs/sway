@@ -151,6 +151,14 @@ pub fn inline_in_module(
             return true;
         }
 
+        if func.args_iter(ctx).any(|(_name, arg_val)| {
+            arg_val.get_type(ctx).map_or(false, |ty| {
+                ty.is_ptr(ctx) || !(ty.is_unit(ctx) | ty.is_bool(ctx) | ty.is_uint(ctx))
+            })
+        }) {
+            return true;
+        }
+
         false
     };
 
@@ -576,6 +584,17 @@ fn inline_instruction(
                 FuelVmInstruction::StateStoreWord { stored_val, key } => new_block
                     .ins(context)
                     .state_store_word(map_value(stored_val), map_value(key)),
+                FuelVmInstruction::WideBinaryOp {
+                    op,
+                    arg1,
+                    arg2,
+                    result,
+                } => new_block.ins(context).wide_binary_op(
+                    op,
+                    map_value(arg1),
+                    map_value(arg2),
+                    map_value(result),
+                ),
             },
             Instruction::GetElemPtr {
                 base,

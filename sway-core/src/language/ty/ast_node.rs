@@ -10,6 +10,7 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::{parsed::TreeType, ty::*, Visibility},
+    semantic_analysis::TypeCheckContext,
     transform::AttributeKind,
     type_system::*,
     types::*,
@@ -87,17 +88,24 @@ impl ReplaceSelfType for TyAstNode {
 }
 
 impl ReplaceDecls for TyAstNode {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: &Engines) {
+    fn replace_decls_inner(
+        &mut self,
+        decl_mapping: &DeclMapping,
+        handler: &Handler,
+        ctx: &TypeCheckContext,
+    ) -> Result<(), ErrorEmitted> {
         match self.content {
             TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
-                exp.replace_decls(decl_mapping, engines)
+                exp.replace_decls(decl_mapping, handler, ctx)
             }
             TyAstNodeContent::Declaration(TyDecl::VariableDecl(ref mut decl)) => {
-                decl.body.replace_decls(decl_mapping, engines);
+                decl.body.replace_decls(decl_mapping, handler, ctx)
             }
-            TyAstNodeContent::Declaration(_) => {}
-            TyAstNodeContent::Expression(ref mut expr) => expr.replace_decls(decl_mapping, engines),
-            TyAstNodeContent::SideEffect(_) => (),
+            TyAstNodeContent::Declaration(_) => Ok(()),
+            TyAstNodeContent::Expression(ref mut expr) => {
+                expr.replace_decls(decl_mapping, handler, ctx)
+            }
+            TyAstNodeContent::SideEffect(_) => Ok(()),
         }
     }
 }
