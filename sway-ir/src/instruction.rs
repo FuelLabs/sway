@@ -155,6 +155,13 @@ pub enum FuelVmInstruction {
         stored_val: Value,
         key: Value,
     },
+
+    WideBinaryOp {
+        op: BinaryOpKind,
+        arg1: Value,
+        arg2: Value,
+        result: Value,
+    },
 }
 
 /// Comparison operations.
@@ -282,6 +289,10 @@ impl Instruction {
             Instruction::MemCopyBytes { .. }
             | Instruction::MemCopyVal { .. }
             | Instruction::Store { .. } => Some(Type::get_unit(context)),
+
+            Instruction::FuelVm(FuelVmInstruction::WideBinaryOp { result, .. }) => {
+                result.get_type(context)
+            }
         }
     }
 
@@ -385,6 +396,9 @@ impl Instruction {
                     vec![*stored_val, *key, *number_of_slots]
                 }
                 FuelVmInstruction::StateStoreWord { stored_val, key } => vec![*stored_val, *key],
+                FuelVmInstruction::WideBinaryOp {
+                    arg1, arg2, result, ..
+                } => vec![*result, *arg1, *arg2],
             },
         }
     }
@@ -531,6 +545,13 @@ impl Instruction {
                     replace(key);
                     replace(stored_val);
                 }
+                FuelVmInstruction::WideBinaryOp {
+                    arg1, arg2, result, ..
+                } => {
+                    replace(arg1);
+                    replace(arg2);
+                    replace(result);
+                }
             },
         }
     }
@@ -550,7 +571,8 @@ impl Instruction {
             | Instruction::MemCopyBytes { .. }
             | Instruction::MemCopyVal { .. }
             | Instruction::Store { .. }
-            | Instruction::Ret(..) => true,
+            | Instruction::Ret(..)
+            | Instruction::FuelVm(FuelVmInstruction::WideBinaryOp { .. }) => true,
 
             Instruction::UnaryOp { .. }
             | Instruction::BinaryOp { .. }
@@ -685,6 +707,24 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
 
     pub fn unary_op(self, op: UnaryOpKind, arg: Value) -> Value {
         make_instruction!(self, Instruction::UnaryOp { op, arg })
+    }
+
+    pub fn wide_binary_op(
+        self,
+        op: BinaryOpKind,
+        arg1: Value,
+        arg2: Value,
+        result: Value,
+    ) -> Value {
+        make_instruction!(
+            self,
+            Instruction::FuelVm(FuelVmInstruction::WideBinaryOp {
+                op,
+                arg1,
+                arg2,
+                result
+            })
+        )
     }
 
     pub fn binary_op(self, op: BinaryOpKind, arg1: Value, arg2: Value) -> Value {

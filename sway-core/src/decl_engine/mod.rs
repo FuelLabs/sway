@@ -30,7 +30,10 @@ pub(crate) use replace_decls::*;
 use sway_types::Ident;
 pub(crate) use template::*;
 
-use crate::language::ty::{TyTraitInterfaceItem, TyTraitItem};
+use crate::{
+    language::ty::{TyTraitInterfaceItem, TyTraitItem},
+    TypeId,
+};
 
-pub(crate) type InterfaceItemMap = BTreeMap<Ident, TyTraitInterfaceItem>;
-pub(crate) type ItemMap = BTreeMap<Ident, TyTraitItem>;
+pub(crate) type InterfaceItemMap = BTreeMap<(Ident, TypeId), TyTraitInterfaceItem>;
+pub(crate) type ItemMap = BTreeMap<(Ident, TypeId), TyTraitItem>;

@@ -1,11 +1,12 @@
 use crate::convert_parse_tree_error::ConvertParseTreeError;
+use crate::diagnostic::{Code, Diagnostic, Hint, Issue, Reason, ToDiagnostic};
 use crate::lex_error::LexError;
 use crate::parser_error::ParseError;
 use crate::type_error::TypeError;
 
 use core::fmt;
 use sway_types::constants::STORAGE_PURITY_ATTRIBUTE_NAME;
-use sway_types::{Ident, SourceId, Span, Spanned};
+use sway_types::{Ident, SourceEngine, Span, Spanned};
 use thiserror::Error;
 
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
@@ -453,12 +454,16 @@ pub enum CompileError {
         count: usize,
         span: Span,
     },
-    #[error("Variables cannot shadow constants. The variable \"{name}\" shadows constant with the same name.")]
-    VariableShadowsConstant { name: Ident },
+    #[error("Constants cannot be shadowed. {variable_or_constant} \"{name}\" shadows constant with the same name.")]
+    ConstantsCannotBeShadowed {
+        variable_or_constant: String,
+        name: Ident,
+        constant_span: Span,
+        constant_decl: Span,
+        is_alias: bool,
+    },
     #[error("Constants cannot shadow variables. The constant \"{name}\" shadows variable with the same name.")]
-    ConstantShadowsVariable { name: Ident },
-    #[error("Constants cannot shadow constants. The constant \"{name}\" shadows constant with the same name.")]
-    ConstantShadowsConstant { name: Ident },
+    ConstantShadowsVariable { name: Ident, variable_span: Span },
     #[error("The imported symbol \"{name}\" shadows another symbol with the same name.")]
     ShadowsOtherSymbol { name: Ident },
     #[error("The name \"{name}\" is already used for a generic parameter in this scope.")]
@@ -574,11 +579,11 @@ pub enum CompileError {
     NonConstantDeclValue { span: Span },
     #[error("Declaring storage in a {program_kind} is not allowed.")]
     StorageDeclarationInNonContract { program_kind: String, span: Span },
-    #[error("Unsupported argument type to intrinsic \"{name}\". {hint}")]
+    #[error("Unsupported argument type to intrinsic \"{name}\".{}", if hint.is_empty() { "".to_string() } else { format!(" Hint: {hint}") })]
     IntrinsicUnsupportedArgType {
         name: String,
         span: Span,
-        hint: Hint,
+        hint: String,
     },
     #[error("Call to \"{name}\" expects {expected} arguments")]
     IntrinsicIncorrectNumArgs {
@@ -777,9 +782,8 @@ impl Spanned for CompileError {
             ContractStorageFromExternalContext { span, .. } => span.clone(),
             InvalidOpcodeFromPredicate { span, .. } => span.clone(),
             ArrayOutOfBounds { span, .. } => span.clone(),
-            VariableShadowsConstant { name } => name.span(),
-            ConstantShadowsVariable { name } => name.span(),
-            ConstantShadowsConstant { name } => name.span(),
+            ConstantsCannotBeShadowed { name, .. } => name.span(),
+            ConstantShadowsVariable { name, .. } => name.span(),
             ShadowsOtherSymbol { name } => name.span(),
             GenericShadowsGeneric { name } => name.span(),
             MatchExpressionNonExhaustive { span, .. } => span.clone(),
@@ -851,29 +855,103 @@ impl Spanned for CompileError {
     }
 }
 
-impl CompileError {
-    pub fn source_id(&self) -> Option<SourceId> {
-        self.span().source_id().cloned()
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Hint {
-    msg: Option<String>,
-}
-
-impl Hint {
-    pub fn empty() -> Hint {
-        Hint { msg: None }
-    }
-
-    pub fn new(msg: String) -> Hint {
-        Hint { msg: Some(msg) }
-    }
-}
-
-impl fmt::Display for Hint {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Hint: {}", &self.msg.as_ref().unwrap_or(&"".to_string()))
+impl ToDiagnostic for CompileError {
+    fn to_diagnostic(&self, source_engine: &SourceEngine) -> Diagnostic {
+        let code = Code::semantic_analysis;
+        use CompileError::*;
+        match self {
+            ConstantsCannotBeShadowed { variable_or_constant, name, constant_span, constant_decl, is_alias } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Constants cannot be shadowed".to_string())),
+                // NOTE: Issue level should actually be the part of the reason. But it would complicate handling of labels in the transitional
+                //       period when we still have "old-style" diagnostics.
+                //       Let's leave it like this, refactoring at the moment does not pay of.
+                //       And our #[error] macro will anyhow encapsulate it and ensure consistency.
+                issue: Issue::error(
+                    source_engine,
+                    name.span(),
+                    format!(
+                        // Variable "x" shadows constant with the same name
+                        //  or
+                        // Constant "x" shadows imported constant with the same name
+                        //  or
+                        // ...
+                        "{variable_or_constant} \"{name}\" shadows {}constant with the same name",
+                        if constant_decl.clone() != Span::dummy() { "imported " } else { "" }
+                    )
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        constant_span.clone(),
+                        format!(
+                            // Constant "x" is declared here.
+                            //  or
+                            // Constant "x" gets imported here.
+                            "Constant \"{name}\" {} here{}.",
+                            if constant_decl.clone() != Span::dummy() { "gets imported" } else { "is declared" },
+                            if *is_alias { " as alias" } else { "" }
+                        )
+                    ),
+                    Hint::info( // Ignored if the constant_decl is Span::dummy().
+                        source_engine,
+                        constant_decl.clone(),
+                        format!("This is the original declaration of the imported constant \"{name}\".")
+                    ),
+                    Hint::error(
+                        source_engine,
+                        name.span(),
+                        format!(
+                            "Shadowing via {} \"{name}\" happens here.", 
+                            if variable_or_constant == "Variable" { "variable" } else { "new constant" }
+                        )
+                    ),
+                ],
+                help: vec![
+                    "Unlike variables, constants cannot be shadowed by other constants or variables.".to_string(),
+                    match (variable_or_constant.as_str(), constant_decl.clone() != Span::dummy()) {
+                        ("Variable", false) => format!("Consider renaming either the variable \"{name}\" or the constant \"{name}\"."),
+                        ("Constant", false) => "Consider renaming one of the constants.".to_string(),
+                        (variable_or_constant, true) => format!(
+                            "Consider renaming the {} \"{name}\" or using {} for the imported constant.",
+                            variable_or_constant.to_lowercase(),
+                            if *is_alias { "a different alias" } else { "an alias" }
+                        ),
+                        _ => unreachable!("We can have only the listed combinations: variable/constant shadows a non imported/imported constant.")
+                    }
+                ],
+            },
+            ConstantShadowsVariable { name , variable_span } => Diagnostic {
+                reason: Some(Reason::new(code(2), "Constants cannot shadow variables".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    name.span(),
+                    format!("Constant \"{name}\" shadows variable with the same name")
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        variable_span.clone(),
+                        format!("This is the shadowed variable \"{name}\".")
+                    ),
+                    Hint::error(
+                        source_engine,
+                        name.span(),
+                        format!("This is the constant \"{name}\" that shadows the variable.")
+                    ),
+                ],
+                help: vec![
+                    "Variables can shadow other variables, but constants cannot.".to_string(),
+                    "Consider renaming either the variable or the constant.".to_string(),
+                ],
+            },
+           _ => Diagnostic {
+                    // TODO: Temporary we use self here to achieve backward compatibility.
+                    //       In general, self must not be used and will not be used once we
+                    //       switch to our own #[error] macro. All the values for the formating
+                    //       of a diagnostic must come from the enum variant parameters.
+                    issue: Issue::error(source_engine, self.span(), format!("{}", self)),
+                    ..Default::default()
+                }
+        }
     }
 }
