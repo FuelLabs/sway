@@ -669,7 +669,7 @@ async fn go_to_definition_for_paths() {
         req_line: 27,
         req_char: 38,
         def_line: 4,
-        def_start_char: 9,
+        def_start_char: 37,
         def_end_char: 17,
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
     };
@@ -683,7 +683,7 @@ async fn go_to_definition_for_paths() {
         req_uri: &uri,
         req_line: 32,
         req_char: 37,
-        def_line: 9,
+        def_line: 37,
         def_start_char: 11,
         def_end_char: 21,
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
