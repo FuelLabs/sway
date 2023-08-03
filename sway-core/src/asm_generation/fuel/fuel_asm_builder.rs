@@ -12,7 +12,7 @@ use crate::{
     },
     asm_lang::{
         virtual_register::*, Label, Op, VirtualImmediate06, VirtualImmediate12, VirtualImmediate18,
-        VirtualOp,
+        VirtualOp, WideCmp,
     },
     decl_engine::DeclRefFunction,
     metadata::MetadataManager,
@@ -254,6 +254,11 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         arg2,
                         result,
                     } => self.compile_wide_binary_op(instr_val, op, arg1, arg2, result),
+                    FuelVmInstruction::WideCmpOp {
+                        op,
+                        arg1,
+                        arg2,
+                    } => self.compile_wide_cmp_op(instr_val, op, arg1, arg2),
                 },
                 Instruction::GetElemPtr {
                     base,
@@ -532,6 +537,39 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
         Ok(())
     }
+
+    fn compile_wide_cmp_op(
+        &mut self,
+        instr_val: &Value,
+        op: &Predicate,
+        arg1: &Value,
+        arg2: &Value,
+    ) -> Result<(), CompileError> {
+        let res_reg = self.reg_seqr.next();
+        let val1_reg = self.value_to_register(arg1)?;
+        let val2_reg = self.value_to_register(arg2)?;
+
+        let opcode = match op {
+            Predicate::Equal => VirtualOp::WQCM(
+                res_reg.clone(),
+                val1_reg,
+                val2_reg,
+                VirtualImmediate06::wide_cmp(WideCmp::Equality, true),
+            ),
+            _ => todo!(),
+        };
+
+        self.cur_bytecode.push(Op {
+            opcode: Either::Left(opcode),
+            comment: String::new(),
+            owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+        });
+
+        self.reg_map.insert(*instr_val, res_reg);
+
+        Ok(())
+    }
+
 
     fn compile_binary_op(
         &mut self,

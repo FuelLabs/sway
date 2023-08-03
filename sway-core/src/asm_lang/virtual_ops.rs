@@ -73,6 +73,12 @@ pub(crate) enum VirtualOp {
         VirtualRegister,
         VirtualImmediate06,
     ),
+    WQCM(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualImmediate06,
+    ),
 
     /* Control Flow Instructions */
     JMP(VirtualRegister),
@@ -228,6 +234,7 @@ impl VirtualOp {
             WQOP(r1, r2, r3, _) => vec![r1, r2, r3],
             WQML(r1, r2, r3, _) => vec![r1, r2, r3],
             WQDV(r1, r2, r3, _) => vec![r1, r2, r3],
+            WQCM(r1, r2, r3, _) => vec![r1, r2, r3],
 
             /* Control Flow Instructions */
             JMP(r1) => vec![r1],
@@ -340,6 +347,7 @@ impl VirtualOp {
             WQOP(r1, r2, r3, _) => vec![r1, r2, r3],
             WQML(r1, r2, r3, _) => vec![r1, r2, r3],
             WQDV(r1, r2, r3, _) => vec![r1, r2, r3],
+            WQCM(_, r2, r3, _) => vec![r2, r3],
 
             /* Control Flow Instructions */
             JMP(r1) => vec![r1],
@@ -452,6 +460,7 @@ impl VirtualOp {
             WQOP(_, _, _, _) => vec![],
             WQML(_, _, _, _) => vec![],
             WQDV(_, _, _, _) => vec![],
+            WQCM(r1, _, _, _) => vec![r1],
 
             /* Control Flow Instructions */
             JMP(_r1) => vec![],
@@ -710,6 +719,12 @@ impl VirtualOp {
                 i.clone(),
             ),
             WQDV(r1, r2, r3, i) => Self::WQDV(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                i.clone(),
+            ),
+            WQCM(r1, r2, r3, i) => Self::WQCM(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
                 update_reg(reg_to_reg_map, r3),
@@ -1146,6 +1161,12 @@ impl VirtualOp {
                 imm.clone(),
             ),
             WQDV(reg1, reg2, reg3, imm) => AllocatedOpcode::WQDV(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+                imm.clone(),
+            ),
+            WQCM(reg1, reg2, reg3, imm) => AllocatedOpcode::WQCM(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),

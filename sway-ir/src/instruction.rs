@@ -155,12 +155,16 @@ pub enum FuelVmInstruction {
         stored_val: Value,
         key: Value,
     },
-
     WideBinaryOp {
         op: BinaryOpKind,
         arg1: Value,
         arg2: Value,
         result: Value,
+    },
+    WideCmpOp {
+        op: Predicate,
+        arg1: Value,
+        arg2: Value,
     },
 }
 
@@ -290,8 +294,12 @@ impl Instruction {
             | Instruction::MemCopyVal { .. }
             | Instruction::Store { .. } => Some(Type::get_unit(context)),
 
+            // Wide Operations
             Instruction::FuelVm(FuelVmInstruction::WideBinaryOp { result, .. }) => {
                 result.get_type(context)
+            }
+            Instruction::FuelVm(FuelVmInstruction::WideCmpOp { .. }) => {
+                Some(Type::get_bool(context))
             }
         }
     }
@@ -399,6 +407,9 @@ impl Instruction {
                 FuelVmInstruction::WideBinaryOp {
                     arg1, arg2, result, ..
                 } => vec![*result, *arg1, *arg2],
+                FuelVmInstruction::WideCmpOp {
+                    arg1, arg2, ..
+                } => vec![*arg1, *arg2],
             },
         }
     }
@@ -552,6 +563,12 @@ impl Instruction {
                     replace(arg2);
                     replace(result);
                 }
+                FuelVmInstruction::WideCmpOp {
+                    arg1, arg2, ..
+                } => {
+                    replace(arg1);
+                    replace(arg2);
+                }
             },
         }
     }
@@ -572,7 +589,8 @@ impl Instruction {
             | Instruction::MemCopyVal { .. }
             | Instruction::Store { .. }
             | Instruction::Ret(..)
-            | Instruction::FuelVm(FuelVmInstruction::WideBinaryOp { .. }) => true,
+            | Instruction::FuelVm(FuelVmInstruction::WideBinaryOp { .. })
+            | Instruction::FuelVm(FuelVmInstruction::WideCmpOp { .. }) => true,
 
             Instruction::UnaryOp { .. }
             | Instruction::BinaryOp { .. }
@@ -723,6 +741,22 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
                 arg1,
                 arg2,
                 result
+            })
+        )
+    }
+
+    pub fn wide_cmp_op(
+        self,
+        op: Predicate,
+        arg1: Value,
+        arg2: Value,
+    ) -> Value {
+        make_instruction!(
+            self,
+            Instruction::FuelVm(FuelVmInstruction::WideCmpOp {
+                op,
+                arg1,
+                arg2,
             })
         )
     }

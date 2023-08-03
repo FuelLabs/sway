@@ -744,6 +744,24 @@ fn instruction_to_doc<'a>(
                             ))
                             .append(md_namer.md_idx_to_doc(context, metadata)),
                         ))
+                },
+                FuelVmInstruction::WideCmpOp { op, arg1, arg2 } => {
+                    let pred_str = match op {
+                        Predicate::Equal => "eq",
+                        Predicate::LessThan => "lt",
+                        Predicate::GreaterThan => "gt",
+                    };
+                    maybe_constant_to_doc(context, md_namer, namer, arg1)
+                        .append(maybe_constant_to_doc(context, md_namer, namer, arg2))
+                        .append(Doc::line(
+                            Doc::text(format!(
+                                "{} = wide cmp {pred_str} {} {}",
+                                namer.name(context, ins_value),
+                                namer.name(context, arg1),
+                                namer.name(context, arg2),
+                            ))
+                            .append(md_namer.md_idx_to_doc(context, metadata)),
+                        ))
                 }
             },
             Instruction::GetElemPtr {

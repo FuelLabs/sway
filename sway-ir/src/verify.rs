@@ -242,6 +242,11 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
                             arg2,
                             result,
                         } => self.verify_wide_binary_op(op, arg1, arg2, result)?,
+                        FuelVmInstruction::WideCmpOp {
+                            op,
+                            arg1,
+                            arg2,
+                        } => self.verify_wide_cmp(op, arg1, arg2)?,
                     },
                     Instruction::GetElemPtr {
                         base,
@@ -310,6 +315,28 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
         }
 
         Ok(())
+    }
+
+    fn verify_wide_cmp(
+        &self,
+        _: &Predicate,
+        arg1: &Value,
+        arg2: &Value,
+    ) -> Result<(), IrError> {
+        let arg1_ty = arg1
+            .get_type(self.context)
+            .ok_or(IrError::VerifyBinaryOpIncorrectArgType)?;
+        let arg2_ty = arg2
+            .get_type(self.context)
+            .ok_or(IrError::VerifyBinaryOpIncorrectArgType)?;
+
+        if arg1_ty.is_ptr(self.context)
+            && arg2_ty.is_ptr(self.context)
+        {
+            Ok(())
+        } else {
+            Err(IrError::VerifyBinaryOpIncorrectArgType)
+        }
     }
 
     fn verify_wide_binary_op(

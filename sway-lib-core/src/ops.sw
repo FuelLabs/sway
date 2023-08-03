@@ -236,6 +236,12 @@ impl Eq for bool {
     }
 }
 
+impl Eq for u256 {
+    fn eq(self, other: Self) -> bool {
+        __eq(self, other)
+    }
+}
+
 impl Eq for u64 {
     fn eq(self, other: Self) -> bool {
         __eq(self, other)

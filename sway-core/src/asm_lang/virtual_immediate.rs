@@ -12,6 +12,11 @@ pub enum WideOperations {
     Sub = 1,
 }
 
+#[repr(u8)]
+pub enum WideCmp {
+    Equality = 0,
+}
+
 /// 6-bit immediate value type
 #[derive(Clone, Debug)]
 pub struct VirtualImmediate06 {
@@ -44,6 +49,12 @@ impl VirtualImmediate06 {
     }
 
     pub fn wide_op(op: WideOperations, rhs_indirect: bool) -> VirtualImmediate06 {
+        VirtualImmediate06 {
+            value: (op as u8) | if rhs_indirect { 32u8 } else { 0 },
+        }
+    }
+
+    pub fn wide_cmp(op: WideCmp, rhs_indirect: bool) -> VirtualImmediate06 {
         VirtualImmediate06 {
             value: (op as u8) | if rhs_indirect { 32u8 } else { 0 },
         }

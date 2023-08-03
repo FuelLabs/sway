@@ -595,6 +595,15 @@ fn inline_instruction(
                     map_value(arg2),
                     map_value(result),
                 ),
+                FuelVmInstruction::WideCmpOp {
+                    op,
+                    arg1,
+                    arg2,
+                } => new_block.ins(context).wide_cmp_op(
+                    op,
+                    map_value(arg1),
+                    map_value(arg2),
+                ),
             },
             Instruction::GetElemPtr {
                 base,
