@@ -345,7 +345,7 @@ pub fn input_witness_index(index: u64) -> Option<u8> {
 ///
 /// fn foo() {
 ///     let input_predicate_length = input_predicate_length(0);
-///     assert(input_predicate_length.unwrap() != 0);
+///     assert(input_predicate_length.unwrap() != 0u16);
 /// }
 /// ```
 pub fn input_predicate_length(index: u64) -> Option<u16> {
