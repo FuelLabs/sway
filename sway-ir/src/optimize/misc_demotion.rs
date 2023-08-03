@@ -11,7 +11,7 @@
 /// - Fuel WIde binary operators: Demote binary operands bigger than 64 bits.
 use crate::{
     asm::AsmArg, AnalysisResults, BinaryOpKind, Context, FuelVmInstruction, Function, Instruction,
-    IrError, Pass, PassMutability, ScopedPass, Type, Value, Predicate,
+    IrError, Pass, PassMutability, Predicate, ScopedPass, Type, Value,
 };
 
 use rustc_hash::FxHashMap;

@@ -73,12 +73,15 @@ pub(crate) enum VirtualOp {
         VirtualRegister,
         VirtualImmediate06,
     ),
+<<<<<<< Updated upstream
     WQCM(
         VirtualRegister,
         VirtualRegister,
         VirtualRegister,
         VirtualImmediate06,
     ),
+=======
+>>>>>>> Stashed changes
 
     /* Control Flow Instructions */
     JMP(VirtualRegister),
@@ -234,7 +237,10 @@ impl VirtualOp {
             WQOP(r1, r2, r3, _) => vec![r1, r2, r3],
             WQML(r1, r2, r3, _) => vec![r1, r2, r3],
             WQDV(r1, r2, r3, _) => vec![r1, r2, r3],
+<<<<<<< Updated upstream
             WQCM(r1, r2, r3, _) => vec![r1, r2, r3],
+=======
+>>>>>>> Stashed changes
 
             /* Control Flow Instructions */
             JMP(r1) => vec![r1],
@@ -347,7 +353,10 @@ impl VirtualOp {
             WQOP(r1, r2, r3, _) => vec![r1, r2, r3],
             WQML(r1, r2, r3, _) => vec![r1, r2, r3],
             WQDV(r1, r2, r3, _) => vec![r1, r2, r3],
+<<<<<<< Updated upstream
             WQCM(_, r2, r3, _) => vec![r2, r3],
+=======
+>>>>>>> Stashed changes
 
             /* Control Flow Instructions */
             JMP(r1) => vec![r1],
@@ -460,7 +469,10 @@ impl VirtualOp {
             WQOP(_, _, _, _) => vec![],
             WQML(_, _, _, _) => vec![],
             WQDV(_, _, _, _) => vec![],
+<<<<<<< Updated upstream
             WQCM(r1, _, _, _) => vec![r1],
+=======
+>>>>>>> Stashed changes
 
             /* Control Flow Instructions */
             JMP(_r1) => vec![],
@@ -724,12 +736,15 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r3),
                 i.clone(),
             ),
+<<<<<<< Updated upstream
             WQCM(r1, r2, r3, i) => Self::WQCM(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
                 update_reg(reg_to_reg_map, r3),
                 i.clone(),
             ),
+=======
+>>>>>>> Stashed changes
 
             /* Control Flow Instructions */
             JMP(r1) => Self::JMP(update_reg(reg_to_reg_map, r1)),
