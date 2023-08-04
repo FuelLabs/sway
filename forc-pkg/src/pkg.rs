@@ -21,6 +21,7 @@ use std::{
     fmt,
     fs::{self, File},
     hash::{Hash, Hasher},
+    io::Write,
     path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
@@ -428,35 +429,43 @@ impl BuiltPackage {
         Ok(())
     }
 
-    /// Writes the ABI in JSON format to the given `path`.
-    pub fn write_json_abi(&self, path: &Path, minify: MinifyOpts) -> Result<()> {
+    pub fn json_abi_string(&self, minify_json_abi: bool) -> Result<Option<String>> {
         match &self.program_abi {
             ProgramABI::Fuel(program_abi) => {
                 if !program_abi.functions.is_empty() {
-                    let file = File::create(path)?;
-                    let res = if minify.json_abi {
-                        serde_json::to_writer(&file, &program_abi)
+                    let json_string = if minify_json_abi {
+                        serde_json::to_string(&program_abi)
                     } else {
-                        serde_json::to_writer_pretty(&file, &program_abi)
-                    };
-                    res?
+                        serde_json::to_string_pretty(&program_abi)
+                    }?;
+                    Ok(Some(json_string))
+                } else {
+                    Ok(None)
                 }
             }
             ProgramABI::Evm(program_abi) => {
                 if !program_abi.is_empty() {
-                    let file = File::create(path)?;
-                    let res = if minify.json_abi {
-                        serde_json::to_writer(&file, &program_abi)
+                    let json_string = if minify_json_abi {
+                        serde_json::to_string(&program_abi)
                     } else {
-                        serde_json::to_writer_pretty(&file, &program_abi)
-                    };
-                    res?
+                        serde_json::to_string_pretty(&program_abi)
+                    }?;
+                    Ok(Some(json_string))
+                } else {
+                    Ok(None)
                 }
             }
             // TODO?
-            ProgramABI::MidenVM(_) => (),
+            ProgramABI::MidenVM(_) => Ok(None),
         }
+    }
 
+    /// Writes the ABI in JSON format to the given `path`.
+    pub fn write_json_abi(&self, path: &Path, minify: MinifyOpts) -> Result<()> {
+        if let Some(json_abi_string) = self.json_abi_string(minify.json_abi)? {
+            let mut file = File::create(path)?;
+            file.write_all(json_abi_string.as_bytes())?;
+        }
         Ok(())
     }
 
