@@ -544,7 +544,7 @@ async fn go_to_definition_for_paths() {
         req_line: 10,
         req_char: 27,
         def_line: 81,
-        def_start_char: 37,
+        def_start_char: 9,
         def_end_char: 15,
         def_path: "sway-lib-std/src/option.sw",
     };
@@ -669,7 +669,7 @@ async fn go_to_definition_for_paths() {
         req_line: 27,
         req_char: 38,
         def_line: 4,
-        def_start_char: 37,
+        def_start_char: 9,
         def_end_char: 17,
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
     };
@@ -683,14 +683,14 @@ async fn go_to_definition_for_paths() {
         req_uri: &uri,
         req_line: 32,
         req_char: 37,
-        def_line: 37,
+        def_line: 9,
         def_start_char: 11,
         def_end_char: 21,
         def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
     };
     // DeepStruct
     let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
-    definition_check_with_req_offset(&mut service, &mut go_to, 33, 37, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 33, 9, &mut i).await;
 
     let mut go_to = GotoDefinition {
         req_uri: &uri,
@@ -851,7 +851,7 @@ async fn go_to_definition_for_paths() {
         req_char: 17,
         def_line: 74,
         def_start_char: 5,
-        def_end_char: 37,
+        def_end_char: 9,
         def_path: "sway-lib-core/src/primitives.sw",
     };
     // b256
