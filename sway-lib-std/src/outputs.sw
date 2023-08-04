@@ -242,10 +242,10 @@ pub fn output_asset_id(index: u64) -> Option<ContractId> {
 /// # Examples
 ///
 /// ```sway
-/// use std::outputs::output_reciever;
+/// use std::outputs::output_asset_to;
 ///
 /// fn foo() {
-///     let output_reciever = output_reciever(0);
+///     let output_reciever = output_asset_to(0);
 ///     log(output_reciever);
 /// }
 /// ```
